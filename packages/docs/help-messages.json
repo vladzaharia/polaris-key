@@ -136,8 +136,15 @@
       "page": "signing-in",
       "entry": "rate_limited"
     },
+    "code_expired": {
+      "page": "signing-in",
+      "entry": "code_expired",
+      "why": "The code we emailed ran out of time before it was entered.",
+      "fix": "Select **Send a new code** and enter the new one."
+    },
     "sign-in-expired": {
       "page": "signing-in",
+      "entry": "code_expired",
       "why": "The code shown in the app works for 10 minutes, and it ran out before the sign-in finished.",
       "fix": "Start the sign-in again in the app to get a new code."
     },

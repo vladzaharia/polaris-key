@@ -715,8 +715,6 @@
     <!-- Email code step (SIGN-IN.md §3.4). -->
     <string name="signin_code_tooMany">Zu viele Versuche. Fordern Sie einen neuen Code an.</string>
     <!-- Email code step (SIGN-IN.md §3.4). -->
-    <string name="signin_code_expired">Dieser Code ist abgelaufen. Fordern Sie einen neuen Code an.</string>
-    <!-- Email code step (SIGN-IN.md §3.4). -->
     <string name="signin_code_differentEmail">Andere E-Mail-Adresse verwenden</string>
     <string name="signin_code_differentEmail__macos">Andere E-Mail-Adresse verwenden</string>
     <!-- Sign-in email subject (SIGN-IN.md §3.15). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
@@ -1978,6 +1976,10 @@
     <string name="core_codes_invalid_code_title">Falscher Code</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_code_message">Dieser Code hat nicht funktioniert. Prüfen Sie die E-Mail und geben Sie ihn erneut ein.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_code_expired_title">Code abgelaufen</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_code_expired_message">Dieser Code ist abgelaufen. Fordern Sie einen neuen an.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_in_use_title">E-Mail-Adresse bereits verwendet</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

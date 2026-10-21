@@ -310,7 +310,6 @@
     "signin.code.resent": "{email} 주소로 새 코드와 링크를 보냈어요.",
     "signin.code.triesLeft": "{n, plural, other {#번 더 시도할 수 있어요.}}",
     "signin.code.tooMany": "시도 횟수가 너무 많아요. 새 코드를 요청하세요.",
-    "signin.code.expired": "코드가 만료됐어요. 새 코드를 요청하세요.",
     "signin.code.differentEmail": "다른 이메일 사용",
     "signin.email.subject": "Polaris Locker 코드: {code}",
     "signin.email.body": "또는 버튼으로 로그인하세요. 코드와 링크는 10분 동안 한 번만 사용할 수 있어요.",

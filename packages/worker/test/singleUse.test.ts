@@ -25,7 +25,10 @@ import {
   handleMagicVerify,
   portalFlowKey,
 } from "../src/services/identity/portal/auth.js";
-import { upsertPortalProductSettings } from "../src/services/identity/portal/repo.js";
+import {
+  getOrCreateAccountByEmail,
+  upsertPortalProductSettings,
+} from "../src/services/identity/portal/repo.js";
 import { artefacts } from "./singleUseMock.js";
 
 // I-02: the atomic single-use store (S-16 §3.2 G15). These run the REAL SingleUseDO class over
@@ -323,6 +326,8 @@ describe("portal magic links and flows are consumed atomically (G15)", () => {
       },
     } as never;
     await seedProduct(db, "acme");
+    // A new address finishes through the gate first (PX-21); this is the returning sign-in.
+    await getOrCreateAccountByEmail(db, "user@example.com", NOW);
     await upsertPortalProductSettings(db, "acme", { portalEnabled: true }, NOW);
     const res = await handleMagicStart(
       new Request("https://key.plrs.im/api/magic/start", {

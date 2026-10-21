@@ -207,6 +207,7 @@ const FR: CopyBundle = {
     signin_expired: "Cette connexion a expiré. Recommencez.",
     invalid_code:
       "Ce code n'a pas fonctionné. Vérifiez l'e-mail et saisissez-le à nouveau.",
+    code_expired: "Ce code a expiré. Envoyez un nouveau code.",
     email_in_use:
       "Un autre compte Polaris Locker utilise déjà cette adresse e-mail. Associez cette connexion à ce compte, ou utilisez une autre adresse.",
     terms_required: "Acceptez les conditions pour continuer.",

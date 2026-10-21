@@ -1941,11 +1941,6 @@ msgstr[2] "Quedan {n} intentos."
 msgid "signin.code.tooMany"
 msgstr "Demasiados intentos. Envía un código nuevo."
 
-#. That code has expired. Send a new code.
-#. Email code step (SIGN-IN.md §3.4).
-msgid "signin.code.expired"
-msgstr "Ese código venció. Envía un código nuevo."
-
 #. Use a different email
 #. Email code step (SIGN-IN.md §3.4).
 msgid "signin.code.differentEmail"
@@ -5228,6 +5223,16 @@ msgstr "Código incorrecto"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
 msgstr "Ese código no funcionó. Revisa el correo y vuelve a escribirlo."
+
+#. Code expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.title"
+msgstr "Código caducado"
+
+#. That code has expired. Send a new code.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.message"
+msgstr "Ese código ha caducado. Pide uno nuevo."
 
 #. Email already in use
 #. Core copy (conformance/parity/copy.en.json, codes).

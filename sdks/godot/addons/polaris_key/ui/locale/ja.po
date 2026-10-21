@@ -1929,11 +1929,6 @@ msgstr[0] "残り{n}回です。"
 msgid "signin.code.tooMany"
 msgstr "試行回数が多すぎます。新しいコードを送信してください。"
 
-#. That code has expired. Send a new code.
-#. Email code step (SIGN-IN.md §3.4).
-msgid "signin.code.expired"
-msgstr "コードの有効期限が切れました。新しいコードを送信してください。"
-
 #. Use a different email
 #. Email code step (SIGN-IN.md §3.4).
 msgid "signin.code.differentEmail"
@@ -5202,6 +5197,16 @@ msgstr "コードが正しくありません"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
 msgstr "そのコードは使用できませんでした。メールを確認して、もう一度入力してください。"
+
+#. Code expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.title"
+msgstr "コードの有効期限切れ"
+
+#. That code has expired. Send a new code.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.message"
+msgstr "そのコードは有効期限が切れています。新しいコードを送信してください。"
 
 #. Email already in use
 #. Core copy (conformance/parity/copy.en.json, codes).

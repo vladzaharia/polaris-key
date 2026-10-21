@@ -58,6 +58,7 @@ public enum ErrorCode {
     public static let turnstileFailed = "turnstile_failed"
     public static let signinExpired = "signin_expired"
     public static let invalidCode = "invalid_code"
+    public static let codeExpired = "code_expired"
     public static let emailInUse = "email_in_use"
     public static let termsRequired = "terms_required"
     public static let licenseOwned = "license_owned"
@@ -232,6 +233,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "turnstile_failed",
     "signin_expired",
     "invalid_code",
+    "code_expired",
     "email_in_use",
     "terms_required",
     "license_owned",
@@ -406,6 +408,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "turnstile_failed": "wire",
     "signin_expired": "wire",
     "invalid_code": "wire",
+    "code_expired": "wire",
     "email_in_use": "wire",
     "terms_required": "wire",
     "license_owned": "wire",

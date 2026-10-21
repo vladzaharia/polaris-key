@@ -1929,11 +1929,6 @@ msgstr[0] "还可尝试{n}次。"
 msgid "signin.code.tooMany"
 msgstr "尝试次数过多。请发送新验证码。"
 
-#. That code has expired. Send a new code.
-#. Email code step (SIGN-IN.md §3.4).
-msgid "signin.code.expired"
-msgstr "验证码已过期。请发送新验证码。"
-
 #. Use a different email
 #. Email code step (SIGN-IN.md §3.4).
 msgid "signin.code.differentEmail"
@@ -5202,6 +5197,16 @@ msgstr "验证码错误"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
 msgstr "该验证码无效。请检查电子邮件后重新输入。"
+
+#. Code expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.title"
+msgstr "验证码已过期"
+
+#. That code has expired. Send a new code.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.code_expired.message"
+msgstr "该验证码已过期。请发送新的验证码。"
 
 #. Email already in use
 #. Core copy (conformance/parity/copy.en.json, codes).

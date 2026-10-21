@@ -1536,11 +1536,6 @@
       "role": "body",
       "note": "Email code step (SIGN-IN.md §3.4)."
     },
-    "signin.code.expired": {
-      "value": "That code has expired. Send a new code.",
-      "role": "body",
-      "note": "Email code step (SIGN-IN.md §3.4)."
-    },
     "signin.code.differentEmail": {
       "value": "Use a different email",
       "role": "button",

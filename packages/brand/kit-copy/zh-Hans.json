@@ -310,7 +310,6 @@
     "signin.code.resent": "我们已向{email}发送新的验证码和链接。",
     "signin.code.triesLeft": "{n, plural, other {还可尝试#次。}}",
     "signin.code.tooMany": "尝试次数过多。请发送新验证码。",
-    "signin.code.expired": "验证码已过期。请发送新验证码。",
     "signin.code.differentEmail": "使用其他电子邮件",
     "signin.email.subject": "你的Polaris Locker验证码：{code}",
     "signin.email.body": "或点击按钮登录。验证码和链接仅可使用一次，10分钟内有效。",
