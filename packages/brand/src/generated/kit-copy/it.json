@@ -799,6 +799,7 @@
   "signin.join.undoConfirm": "Annullare l'unione con {email}? Puoi fino al {date}.",
   "signin.approve.tooMany": "Troppi tentativi. Aspetta un minuto e riprova.",
   "signin.key.enterKey": "Inserisci la tua chiave di licenza.",
+  "signin.code.missing": "Non hai ricevuto il codice?",
   "core.fallback.title": "Si è verificato un problema",
   "core.fallback.message": "Si è verificato un problema ({code}). Riprova.",
   "core.codes.unauthorized.title": "Accesso non effettuato",

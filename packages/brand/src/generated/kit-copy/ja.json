@@ -799,6 +799,7 @@
   "signin.join.undoConfirm": "{email} とのまとめを元に戻しますか？{date}まで可能です。",
   "signin.approve.tooMany": "試行が多すぎます。1分待ってからもう一度お試しください。",
   "signin.key.enterKey": "ライセンスキーを入力してください。",
+  "signin.code.missing": "コードが届きませんか?",
   "core.fallback.title": "問題が発生しました",
   "core.fallback.message": "問題が発生しました（{code}）。もう一度お試しください。",
   "core.codes.unauthorized.title": "サインインしていません",

@@ -35,6 +35,8 @@ import { ErrorPanel } from "../States.js";
 import { SeatMeter } from "../SeatMeter.js";
 import { SectionCard } from "./Card.js";
 import { t } from "../../../lib/copy.js";
+import { HELP_LINKS } from "../../helpLinks.js";
+import { HelpLink } from "../HelpLink.js";
 
 /**
  * Devices (§4.20, §4.22): the devices using a seat, each with **Remove**, which expands the row
@@ -155,6 +157,9 @@ export function DevicesCard({
               ? t("locker.devices.removeNoteSignIn")
               : t("locker.devices.removeNote")}
           </p>
+          <HelpLink href={HELP_LINKS.devices} className="mt-2">
+            {t("locker.devices.help")}
+          </HelpLink>
         </>
       )}
     </SectionCard>

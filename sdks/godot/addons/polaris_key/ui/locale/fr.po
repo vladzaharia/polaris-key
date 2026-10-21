@@ -4759,6 +4759,11 @@ msgstr "Trop d'essais. Attendez une minute, puis réessayez."
 msgid "signin.key.enterKey"
 msgstr "Saisissez votre clé de licence."
 
+#. Didn't get a code?
+#. Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a).
+msgid "signin.code.missing"
+msgstr "Pas de code reçu ?"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

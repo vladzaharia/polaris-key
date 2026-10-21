@@ -670,6 +670,7 @@
   "signin.join.undoConfirm": "Undo the join with {email}? You can until {date}.",
   "signin.approve.tooMany": "Too many tries. Wait a minute, then try again.",
   "signin.key.enterKey": "Enter your license key.",
+  "signin.code.missing": "Didn't get a code?",
   "core.fallback.title": "Something went wrong",
   "core.fallback.message": "Something went wrong ({code}). Try again.",
   "core.gate.ok.title": "License active",

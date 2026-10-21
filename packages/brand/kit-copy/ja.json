@@ -1503,6 +1503,11 @@
     "locker.missing.anotherEmail": "別のメールアドレス？",
     "locker.missing.addInMethods": "サインイン方法で追加",
     "locker.missing.connectSteam": "Steamを連携",
-    "locker.missing.inStore": "ストアで購入しましたか？アプリからサインインしてください"
+    "locker.missing.inStore": "ストアで購入しましたか？アプリからサインインしてください",
+    "signin.code.missing": "コードが届きませんか?",
+    "locker.help.guide": "問い合わせ先",
+    "locker.help.whatToDo": "対処方法",
+    "locker.devices.help": "デバイスのヘルプ",
+    "locker.library.empty.missing": "購入したアプリが表示されませんか?"
   }
 }

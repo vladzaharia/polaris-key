@@ -4733,6 +4733,11 @@ msgstr "試行が多すぎます。1分待ってからもう一度お試しく�
 msgid "signin.key.enterKey"
 msgstr "ライセンスキーを入力してください。"
 
+#. Didn't get a code?
+#. Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a).
+msgid "signin.code.missing"
+msgstr "コードが届きませんか?"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

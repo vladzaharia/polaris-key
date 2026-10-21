@@ -34,9 +34,11 @@ import {
   type CodeVerifyOutcome,
   OrDivider as Divider,
   ProviderRow,
+  QuietAnchor,
   QuietLink,
   QuietLinks,
 } from "../../ui/auth/index.js";
+import { HELP_LINKS } from "../helpLinks.js";
 import { Lockup } from "../components/Lockup.js";
 import { ProductIcon } from "../components/ProductIcon.js";
 import { KeyField } from "../components/KeyField.js";
@@ -349,7 +351,25 @@ export function SignInPage({
           </Button>
         ) : handle !== null && request.data && !requestGone ? (
           <RequestFooter view={request.data} />
-        ) : undefined
+        ) : (
+          <nav
+            aria-label={t("locker.shell.help")}
+            className="flex flex-wrap justify-center gap-x-5"
+          >
+            <a
+              href={HELP_LINKS.help}
+              className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-fg-strong"
+            >
+              {t("locker.shell.helpLink")}
+            </a>
+            <a
+              href={HELP_LINKS.privacy}
+              className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-fg-strong"
+            >
+              {t("locker.shell.privacy")}
+            </a>
+          </nav>
+        )
       }
       stepKey={stepKey}
       direction={direction}
@@ -1093,6 +1113,9 @@ function CodeStep({
         <QuietLink onClick={onChangeEmail}>
           {t("signin.code.differentEmail")}
         </QuietLink>
+        <QuietAnchor href={HELP_LINKS.codeDidntArrive}>
+          {t("signin.code.missing")}
+        </QuietAnchor>
       </CodeEntry>
     </>
   );

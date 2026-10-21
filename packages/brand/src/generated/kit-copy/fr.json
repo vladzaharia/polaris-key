@@ -799,6 +799,7 @@
   "signin.join.undoConfirm": "Annuler la réunion avec {email} ? Possible jusqu'au {date}.",
   "signin.approve.tooMany": "Trop d'essais. Attendez une minute, puis réessayez.",
   "signin.key.enterKey": "Saisissez votre clé de licence.",
+  "signin.code.missing": "Pas de code reçu ?",
   "core.fallback.title": "Something went wrong",
   "core.fallback.message": "Something went wrong ({code}). Try again.",
   "core.codes.unauthorized.title": "Not signed in",

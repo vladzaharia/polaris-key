@@ -1503,6 +1503,11 @@
     "locker.missing.anotherEmail": "다른 이메일?",
     "locker.missing.addInMethods": "로그인 방법에서 추가",
     "locker.missing.connectSteam": "Steam 연결",
-    "locker.missing.inStore": "스토어에서 구매했나요? 앱에서 로그인하세요"
+    "locker.missing.inStore": "스토어에서 구매했나요? 앱에서 로그인하세요",
+    "signin.code.missing": "코드를 받지 못하셨나요?",
+    "locker.help.guide": "문의처",
+    "locker.help.whatToDo": "해결 방법",
+    "locker.devices.help": "기기 도움말",
+    "locker.library.empty.missing": "앱을 구매했는데 보이지 않나요?"
   }
 }

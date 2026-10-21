@@ -1789,6 +1789,8 @@
     <string name="signin_approve_tooMany">Too many tries. Wait a minute, then try again.</string>
     <!-- Activate dialog: Continue pressed with an empty field. -->
     <string name="signin_key_enterKey">Enter your license key.</string>
+    <!-- Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a). -->
+    <string name="signin_code_missing">Didn't get a code?</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

@@ -1802,6 +1802,8 @@
     <string name="signin_approve_tooMany">Muitas tentativas. Aguarde um minuto e tente de novo.</string>
     <!-- Activate dialog: Continue pressed with an empty field. -->
     <string name="signin_key_enterKey">Digite sua chave de licença.</string>
+    <!-- Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a). -->
+    <string name="signin_code_missing">Não recebeu o código?</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Algo deu errado</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

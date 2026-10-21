@@ -4,6 +4,8 @@ import { Button } from "../../../ui/Button.js";
 import type { LibraryProduct } from "../../model/library.js";
 import { SectionCard } from "./Card.js";
 import { t } from "../../../lib/copy.js";
+import { HELP_LINKS } from "../../helpLinks.js";
+import { HelpLink } from "../HelpLink.js";
 
 /** A long developer name or address wraps inside the button, never past the window (WCAG 1.4.10). */
 const WRAPS =
@@ -25,6 +27,11 @@ export function HelpCard({
           {t("locker.help.body", { developer: who, product: product.name })}
         </p>
         <div className="flex flex-wrap gap-2">
+          {!supportUrl && !supportEmail && !website ? (
+            <HelpLink href={HELP_LINKS.contact}>
+              {t("locker.help.guide")}
+            </HelpLink>
+          ) : null}
           {supportUrl ? (
             <Button asChild variant="quiet" className={WRAPS}>
               <a href={supportUrl} target="_blank" rel="noreferrer">

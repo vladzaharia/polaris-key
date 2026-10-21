@@ -813,6 +813,7 @@ export type KitCopyKey =
   | "signin.join.undoConfirm"
   | "signin.approve.tooMany"
   | "signin.key.enterKey"
+  | "signin.code.missing"
   | "core.fallback.title"
   | "core.fallback.message"
   | "core.codes.unauthorized.title"

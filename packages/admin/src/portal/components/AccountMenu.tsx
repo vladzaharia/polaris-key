@@ -20,16 +20,21 @@ import {
 import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
 import { useActivate } from "../activate.js";
+import { HELP_LINKS } from "../helpLinks.js";
 import { href } from "../router.js";
 import { Avatar } from "./Avatar.js";
 import { t } from "../../lib/copy.js";
 
 /** The public Help door and the page on what the site keeps (no terms page exists yet). */
 const FOOT_LINKS = [
-  { label: t("locker.shell.helpLink"), href: "/docs/help/", icon: CircleHelp },
+  {
+    label: t("locker.shell.helpLink"),
+    href: HELP_LINKS.help,
+    icon: CircleHelp,
+  },
   {
     label: t("locker.shell.privacy"),
-    href: "/docs/help/your-data/",
+    href: HELP_LINKS.privacy,
     icon: ShieldCheck,
   },
 ] as const;
