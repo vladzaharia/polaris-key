@@ -24,10 +24,10 @@
     "font-family: ol > li.group.flex > div.flex.min-w-0 > div.font-semibold.text-fg-strong \"Mossgarden is in your library\" font-family ui-sans-serif is not the theme's (rubik, jetbrains mono)"
   ],
   "product-entry/dark": [
-    "tier-separator: div.flex.gap-4 > div.min-w-0.flex-1 > div.flex.flex-wrap > span \"·\" separator \"·\" is its own flex item; keep it in one text run with its neighbours"
+    "tier-separator: div.flex.gap-4 > div.min-w-0.flex-1 > div.flex.min-w-0 > span \"·\" separator \"·\" is its own flex item; keep it in one text run with its neighbours"
   ],
   "product-entry/light": [
-    "tier-separator: div.flex.gap-4 > div.min-w-0.flex-1 > div.flex.flex-wrap > span \"·\" separator \"·\" is its own flex item; keep it in one text run with its neighbours"
+    "tier-separator: div.flex.gap-4 > div.min-w-0.flex-1 > div.flex.min-w-0 > span \"·\" separator \"·\" is its own flex item; keep it in one text run with its neighbours"
   ],
   "activate-enter/dark": [
     "text-size-floor: div.pk-scroll.min-h-0 > div.space-y-2 > p.flex.items-center > span.inline-flex.shrink-0 \"M\" font-size 10px (min 12px)"
@@ -96,16 +96,16 @@
     "empty-placeholder: div#radix-_r_d_.fixed.z-50 > div.pk-scroll.min-h-0 > div > div.relative.overflow-hidden an empty placeholder where an image or logo belongs"
   ],
   "product-account-bound/dark": [
-    "tier-separator: div.flex.gap-4 > div.min-w-0.flex-1 > div.flex.flex-wrap > span \"·\" separator \"·\" is its own flex item; keep it in one text run with its neighbours"
+    "tier-separator: div.flex.gap-4 > div.min-w-0.flex-1 > div.flex.min-w-0 > span \"·\" separator \"·\" is its own flex item; keep it in one text run with its neighbours"
   ],
   "product-account-bound/light": [
-    "tier-separator: div.flex.gap-4 > div.min-w-0.flex-1 > div.flex.flex-wrap > span \"·\" separator \"·\" is its own flex item; keep it in one text run with its neighbours"
+    "tier-separator: div.flex.gap-4 > div.min-w-0.flex-1 > div.flex.min-w-0 > span \"·\" separator \"·\" is its own flex item; keep it in one text run with its neighbours"
   ],
   "product-sign-in/light": [
-    "tier-separator: div.flex.gap-4 > div.min-w-0.flex-1 > div.flex.flex-wrap > span \"·\" separator \"·\" is its own flex item; keep it in one text run with its neighbours"
+    "tier-separator: div.flex.gap-4 > div.min-w-0.flex-1 > div.flex.min-w-0 > span \"·\" separator \"·\" is its own flex item; keep it in one text run with its neighbours"
   ],
   "product-sign-in/dark": [
-    "tier-separator: div.flex.gap-4 > div.min-w-0.flex-1 > div.flex.flex-wrap > span \"·\" separator \"·\" is its own flex item; keep it in one text run with its neighbours"
+    "tier-separator: div.flex.gap-4 > div.min-w-0.flex-1 > div.flex.min-w-0 > span \"·\" separator \"·\" is its own flex item; keep it in one text run with its neighbours"
   ],
   "product-token/dark": [
     "tier-separator: div.flex.flex-wrap > div.min-w-0.space-y-0.5 > p.flex.flex-wrap > span \"·\" separator \"·\" is its own flex item; keep it in one text run with its neighbours"

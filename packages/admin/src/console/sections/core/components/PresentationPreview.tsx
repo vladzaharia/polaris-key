@@ -89,7 +89,7 @@ function PreviewBody({
       <Frame caption="Sign-in card">
         <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
           <ProductLogo name={name} presentation={presentation} size={24} />
-          <span className="line-clamp-2 min-w-0 text-sm">
+          <span className="min-w-0 text-sm [overflow-wrap:anywhere]">
             <strong className="font-semibold text-fg-strong">{name}</strong>{" "}
             wants you to sign in
           </span>

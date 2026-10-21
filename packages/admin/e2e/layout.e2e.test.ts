@@ -152,6 +152,8 @@ interface Case {
   hash: string;
   /** Opens a drawer or dialog after the page settles. */
   act?: (page: Page) => Promise<void>;
+  /** The case needs a window at least this wide (a control that is not drawn below it). */
+  minWidth?: number;
 }
 
 // ── The case list: nav.ts's pages, their records and tabs, the overlays ──────────────────────
@@ -220,6 +222,8 @@ function cases(): Case[] {
     {
       name: "home:table",
       hash: "#/",
+      // The Cards/Table switch is not drawn below 640 px: a phone always shows Cards.
+      minWidth: 640,
       act: async (page) => {
         await page.getByRole("radio", { name: "Table" }).click();
         // A phone draws the table as cards (`mobile="cards"`): wait on the choice, not the role.
@@ -643,6 +647,7 @@ for (const vp of VIEWPORTS) {
       for (const c of CASES) {
         if (vp.only && !vp.only.includes(c.name)) continue;
         if (vp.accept && !vp.accept(c.name)) continue;
+        if (c.minWidth && vp.width < c.minWidth) continue;
         if (ONLY_CASES && !ONLY_CASES.some((n) => c.name.includes(n))) continue;
         it(c.name, async () => {
           const { page, gaps, errors } = await open(c, theme, vp);

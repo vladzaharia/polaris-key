@@ -56,8 +56,9 @@ describe("settings layout", () => {
     const grid = container.querySelector("[data-theme]")!;
     expect(grid.className).toContain("lg:grid-cols-3");
     expect(grid.className).not.toContain("md:grid-cols-3");
-    expect(screen.getByText(/wants you to sign in/).className).toContain(
-      "line-clamp-2",
-    );
+    const head = screen.getByText(/wants you to sign in/).className;
+    expect(head).toContain("[overflow-wrap:anywhere]");
+    expect(head).not.toContain("truncate");
+    expect(head).not.toContain("line-clamp");
   });
 });

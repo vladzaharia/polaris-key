@@ -785,6 +785,8 @@
   }
   function orphanWord(el) {
     const words = [];
+    const clips = getComputedStyle(el).overflowY !== "visible";
+    const clipBottom = clips ? el.getBoundingClientRect().bottom - 1 : Infinity;
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
     let n;
     while ((n = walker.nextNode())) {
@@ -796,7 +798,8 @@
         r.setStart(n, m.index);
         r.setEnd(n, m.index + m[0].length);
         const rect = [...r.getClientRects()].pop();
-        if (rect && rect.width > 0)
+        // A word the line clamp or an overflow clip hides is not on the screen, so it is no orphan.
+        if (rect && rect.width > 0 && rect.top < clipBottom)
           words.push({ w: m[0], top: Math.round(rect.top), h: rect.height });
       }
     }

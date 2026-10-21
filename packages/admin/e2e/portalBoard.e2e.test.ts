@@ -44,6 +44,13 @@ const debt: Record<string, string[]> = existsSync(LEDGER)
   : {};
 const found: Record<string, string[]> = {};
 
+/**
+ * Radix numbers its overlay ids from React's `useId` counter (`#radix-_r_n_`), which moves whenever
+ * a screen above gains or loses a component. The ledger names the finding by its place in the
+ * markup, so the number is not part of the name.
+ */
+const norm = (f: string): string => f.replace(/#radix-[^.\s]*/g, "#radix-*");
+
 let portal: PortalHarness;
 beforeAll(async () => {
   portal = await startPortal();
@@ -54,7 +61,7 @@ afterAll(async () => {
     const next: Record<string, string[]> = {};
     for (const [key, list] of Object.entries(found)) {
       const kept = existsSync(LEDGER)
-        ? list.filter((f) => debt[key]?.includes(f))
+        ? list.filter((f) => debt[key]?.some((d) => norm(d) === norm(f)))
         : list;
       if (kept.length) next[key] = kept;
     }
@@ -88,16 +95,17 @@ describe.concurrent("every shipped state passes the ui-qa lint", () => {
           ].sort();
           found[key] = list;
           if (process.env.PKEY_RECORD_PORTAL_BOARD === "1") return;
-          const known = debt[key] ?? [];
+          const known = (debt[key] ?? []).map(norm);
+          const seen = list.map(norm);
           expect
             .soft(
-              list.filter((f) => !known.includes(f)),
+              seen.filter((f) => !known.includes(f)),
               "new findings",
             )
             .toEqual([]);
           expect
             .soft(
-              known.filter((f) => !list.includes(f)),
+              known.filter((f) => !seen.includes(f)),
               "recorded findings that have gone: shrink the ledger",
             )
             .toEqual([]);

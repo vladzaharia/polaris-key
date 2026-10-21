@@ -230,6 +230,15 @@ describe("the session-ended overlay in the built console", () => {
       await page.screenshot({ path: `${SHOTS}/overlay-1440-light.png` });
     // The API is back before Escape: no request meets the 401 again while focus settles.
     s.restore();
+    // Escape before the dialog has taken focus would race its focus trap and its focus return.
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[role="alertdialog"]')
+          ?.contains(document.activeElement) ?? false,
+      undefined,
+      { timeout: 5_000 },
+    );
     await page.keyboard.press("Escape");
     await dialog.waitFor({ state: "detached", timeout: 10_000 });
     // Focus went back to where it was or, if that is gone, to the page heading; never <body>.

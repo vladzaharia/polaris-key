@@ -615,11 +615,17 @@ async function open(
         ? route.fulfill({ json: body })
         : route.fulfill({ status: 404, json: { error: "not_found" } });
     }
-    const res = await route.fetch();
-    const headers = { ...res.headers() };
-    if (url.pathname.endsWith(".html"))
-      headers["content-security-policy"] = CSP;
-    return route.fulfill({ response: res, headers });
+    try {
+      const res = await route.fetch();
+      const headers = { ...res.headers() };
+      if (url.pathname.endsWith(".html"))
+        headers["content-security-policy"] = CSP;
+      return await route.fulfill({ response: res, headers });
+    } catch (e) {
+      // A test closes its context while an asset request is in flight: the response is gone with
+      // it. That is the end of the page, not a failure; anything else still throws.
+      if (!/disposed|closed/i.test(String(e))) throw e;
+    }
   });
   const page = await ctx.newPage();
   await page.goto(`${base}/manage.html#/p/djdl/license/licenses`);
@@ -700,8 +706,8 @@ describe("overlays under the Worker's CSP", () => {
     await violations(page);
     for (const [hash, title] of [
       ["#/", "Home"],
-      // ST-44: the Products page retired into Home; its address lands there.
-      ["#/products", "Home"],
+      // ST-44 retired the Products page into Home; ST-49 made its old address a "Page moved" page.
+      ["#/products", "Page moved"],
       ["#/products/new?via=manual&step=basics", "New product"],
       ["#/platform", "Settings"],
       ["#/platform/operations", "Operations"],
@@ -711,7 +717,8 @@ describe("overlays under the Worker's CSP", () => {
       await page.evaluate((h) => {
         location.hash = h;
       }, hash);
-      await page.locator("[data-page-title]", { hasText: title }).waitFor();
+      // A "Page moved" page is the shell's, not a PageHeader: it carries no data-page-title.
+      await page.locator("h1", { hasText: title }).waitFor();
       await page.waitForTimeout(200);
       expect(await violations(page), `${hash}: CSP violations`).toEqual([]);
     }
