@@ -834,7 +834,7 @@
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_tag_new">Nuova</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
-    <string name="signin_choice_tag_full">Nessun dispositivo libero</string>
+    <string name="signin_choice_tag_full">Tutti i dispositivi in uso</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_keep">Mantieni la licenza usata da questo dispositivo</string>
     <string name="signin_choice_keep__macos">Mantieni la licenza usata da questo dispositivo</string>

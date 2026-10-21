@@ -361,10 +361,10 @@ export function DeviceRow({
   };
 
   return (
-    // A size container: in a narrow card (the side column from 1024 px, a phone) Remove goes under
-    // the meta line, so the name has the row's full width.
+    // A size container: in a narrow card (the side column at 1024 px, a phone) Remove goes under
+    // the meta line; from 20 rem of content (the side column at 1180 px and up) it ends the row (B-089), so the name has the row's full width.
     <li ref={rowRef} className="py-3 @container">
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 @[24rem]:grid-cols-[auto_minmax(0,1fr)_auto] @[24rem]:items-center">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 @[20rem]:grid-cols-[auto_minmax(0,1fr)_auto] @[20rem]:items-center">
         <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
           <DeviceGlyph platform={device.platform} />
         </span>
@@ -386,7 +386,7 @@ export function DeviceRow({
             size="md"
             // In a very narrow card (320 px, or text at 200 %), under the icon and name too, so the
             // button has the row's whole width (WCAG 1.4.10). In px: a rem query scales with the text.
-            className="col-start-2 h-10 justify-self-start @max-[280px]:col-span-2 @max-[280px]:col-start-1 @[24rem]:col-start-3 @[24rem]:row-start-1"
+            className="col-start-2 h-10 justify-self-start @max-[280px]:col-span-2 @max-[280px]:col-start-1 @[20rem]:col-start-3 @[20rem]:row-start-1"
             aria-label={t("locker.freeDevice.removeName", { device: name })}
             aria-expanded={false}
             aria-controls={panelId}

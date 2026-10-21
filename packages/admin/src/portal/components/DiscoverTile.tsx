@@ -157,7 +157,12 @@ export function DiscoverTile({
         </ProductArt>
         <div className="flex flex-1 flex-col px-3 pb-3 desk:px-3.5 desk:pb-3.5">
           <div
-            className={cn("flex items-start gap-2.5", noArt ? "mt-3" : "-mt-4")}
+            // No cover: the row starts at the same 4 px under the art as the icon's row does, and
+            // keeps its height, so a tile without an icon sits level with its neighbours (B-079).
+            className={cn(
+              "flex items-start gap-2.5",
+              noArt ? "mt-1 min-h-5" : "-mt-4",
+            )}
           >
             {noArt ? null : (
               <ProductIcon
@@ -202,7 +207,22 @@ export function DiscoverTile({
             facts={facts}
             platforms={offerPlatforms(offer.platforms)}
           />
-          {reason && ReasonIcon ? (
+          {error ? (
+            // A failed Add says so in the reason's place: the tile keeps its height and the row does
+            // not move (B-080). Focusable so a keyboard user lands on it when the button has gone.
+            <p
+              id={errorId}
+              role="alert"
+              tabIndex={-1}
+              className="mt-2 flex gap-2.5 rounded-md bg-danger-subtle px-2.5 py-1.5 text-sm text-fg outline-none"
+            >
+              <AlertCircle
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 self-start text-danger"
+              />
+              <span>{error}</span>
+            </p>
+          ) : reason && ReasonIcon ? (
             <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-md bg-surface-sunken px-2.5 py-1.5 text-sm text-fg-strong">
               <span className="flex min-w-0 flex-1 gap-2.5">
                 <ReasonIcon
@@ -227,18 +247,6 @@ export function DiscoverTile({
                   </span>
                 </a>
               ) : null}
-            </p>
-          ) : null}
-          {error ? (
-            <p
-              id={errorId}
-              role="alert"
-              // Focusable so a keyboard user lands on it when the button has gone (an ended offer).
-              tabIndex={-1}
-              className="mt-3 flex gap-2 text-sm text-danger outline-none"
-            >
-              <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
-              {error}
             </p>
           ) : null}
           {link ? (

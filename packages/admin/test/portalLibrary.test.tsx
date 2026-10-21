@@ -96,6 +96,67 @@ describe("Library on today's data (PX-02)", () => {
     expect(screen.queryByText(/Discover/)).toBeNull();
   });
 
+  it("empty: what will show up here, and Activate once, in the state and not also in the strip (B-085)", async () => {
+    mockFetch(signedIn([]));
+    renderPortal();
+    await screen.findByRole("heading", { name: "Nothing here yet" });
+    expect(
+      screen.getByText("Apps you buy or activate show up here."),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByRole("button", { name: "Activate a license" }),
+    ).toHaveLength(1);
+    const strip = screen.getByRole("region", { name: "Missing a license?" });
+    expect(
+      within(strip).queryByRole("button", { name: "Activate a license" }),
+    ).toBeNull();
+  });
+
+  describe("a build for other platforms than this device (B-086)", () => {
+    const windowsOnly = release({
+      product: "nightfall",
+      version: "1.4.2",
+      artifacts: [
+        artifact({
+          artifactId: "win",
+          name: "Nightfall.exe",
+          platform: "windows",
+          arch: "x64",
+        }),
+      ],
+    });
+    const many = (n: number) =>
+      Array.from({ length: n }, (_, i) =>
+        i === 0
+          ? nightfall
+          : license({
+              product: `p${i}`,
+              productName: `Product ${i}`,
+              activatedAt: NOW_S - i * DAY,
+            }),
+      );
+
+    it("2-7 products: the platform glyphs say it, so the tile does not say it again", async () => {
+      mockFetch(
+        signedIn(many(3), { "/api/releases": { releases: [windowsOnly] } }),
+      );
+      renderPortal();
+      await library();
+      const tile = await screen.findByRole("article", { name: "Nightfall" });
+      expect(within(tile).queryByText(/only$/)).toBeNull();
+    });
+
+    it("8 or more: the compact tile draws no glyphs, so it keeps the note", async () => {
+      mockFetch(
+        signedIn(many(9), { "/api/releases": { releases: [windowsOnly] } }),
+      );
+      renderPortal();
+      await library();
+      const tile = await screen.findByRole("article", { name: "Nightfall" });
+      expect(within(tile).getByText("Windows only")).toBeTruthy();
+    });
+  });
+
   it("one product: the hero with the solid download and the summary", async () => {
     mockFetch(
       signedIn([nightfall], {
@@ -293,17 +354,21 @@ describe("Library on today's data (PX-02)", () => {
       }),
     ).toBeTruthy();
     const strip = screen.getByRole("region", { name: "Missing a license?" });
-    // Both rows link it (the Steam one too), underlined: colour alone is not a link (WCAG 1.4.1).
-    const methods = [
-      within(strip).getByRole("link", { name: "Add it in Sign-in methods" }),
-      within(strip).getByRole("link", { name: "Connect Steam" }),
-    ];
-    for (const a of methods) {
-      expect(a.getAttribute("href")).toMatch(/methods/);
-      expect(a.className).toContain("underline");
-    }
+    // The other email links Sign-in methods, underlined: colour alone is not a link (WCAG 1.4.1).
+    const methods = within(strip).getByRole("link", {
+      name: "Add it in Sign-in methods",
+    });
+    expect(methods.getAttribute("href")).toMatch(/methods/);
+    expect(methods.className).toContain("underline");
     expect(within(strip).getByText(/Another email\?/)).toBeTruthy();
-    expect(within(strip).getByText(/Bought on Steam\?/)).toBeTruthy();
+    // A Steam purchase comes back through the app, so it is text: Sign-in methods attaches no
+    // purchase (B-075).
+    expect(
+      within(strip).getByText(
+        "Bought on Steam? Open the app from Steam and choose Restore purchase.",
+      ),
+    ).toBeTruthy();
+    expect(within(strip).queryByRole("link", { name: /Steam/ })).toBeNull();
     expect(
       within(strip).getByText("Bought in a store? Sign in from the app"),
     ).toBeTruthy();

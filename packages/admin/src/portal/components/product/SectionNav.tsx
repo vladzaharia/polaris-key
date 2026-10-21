@@ -79,7 +79,7 @@ export function SectionNav({
                 className={cn(
                   variant === "toc"
                     ? "-ml-px block border-l-[3px] py-2 pl-4 text-sm"
-                    : "inline-flex h-9 items-center whitespace-nowrap rounded-full border px-4 text-sm",
+                    : "inline-flex h-9 items-center whitespace-nowrap rounded-full border px-4 text-sm pointer-coarse:h-11",
                   variant === "toc"
                     ? on
                       ? "border-[var(--pk-locker-accent)] font-medium text-fg-strong"

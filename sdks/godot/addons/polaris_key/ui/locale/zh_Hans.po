@@ -2226,10 +2226,10 @@ msgstr "在此设备上"
 msgid "signin.choice.tag.new"
 msgstr "新"
 
-#. No free devices
+#. All devices in use
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.tag.full"
-msgstr "无空余设备"
+msgstr "所有设备均在使用中"
 
 #. Keep the license this device uses
 #. Choose a license for this device (SIGN-IN.md §3.6).

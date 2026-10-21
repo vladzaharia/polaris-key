@@ -243,7 +243,9 @@ describe("the Devices card: a change to the devices using a seat is one list tra
     expect(
       within(card()).getByRole("img", { name: "1 of 3 devices in use" }),
     ).toBeTruthy();
-    expect(card().textContent).toContain("+2 not using a seat");
+    expect(card().textContent).toContain(
+      "2 more devices signed in, not using a seat",
+    );
     // The visible digits count down to the same number.
     await waitFor(() =>
       expect(

@@ -353,7 +353,7 @@
   "signin.choice.picker.store": "{tier} · {store}",
   "signin.choice.tag.current": "이 기기에서 사용 중",
   "signin.choice.tag.new": "신규",
-  "signin.choice.tag.full": "빈 기기 자리 없음",
+  "signin.choice.tag.full": "모든 기기 사용 중",
   "signin.choice.keep": "이 기기가 사용 중인 라이선스 유지",
   "signin.choice.keepMeta": "{product}은(는) 지금처럼 계속 실행돼요.",
   "signin.choice.create": "새 무료 라이선스 만들기",

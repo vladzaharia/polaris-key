@@ -315,12 +315,15 @@ describe("Activate license modal (PX-06)", () => {
     });
   }
 
-  /** The Library strip's first item (PX-35): the opener that keeps focus where the dialog puts it. */
-  async function openFromStrip(): Promise<HTMLElement> {
+  /**
+   * The empty Library's own button (the strip no longer offers Activate beside it, B-085): the
+   * opener that keeps focus where the dialog puts it.
+   */
+  async function openFromEmptyLibrary(): Promise<HTMLElement> {
     await userEvent.click(
-      await within(
-        await screen.findByRole("region", { name: "Missing a license?" }),
-      ).findByRole("button", { name: "Activate a license" }),
+      within(
+        await screen.findByRole("region", { name: "Nothing here yet" }),
+      ).getByRole("button", { name: "Activate a license" }),
     );
     return screen.findByRole("dialog", { name: "Activate a license" });
   }
@@ -475,6 +478,83 @@ describe("Activate license modal (PX-06)", () => {
       name: "Mossgarden is in your library",
     });
     expect(fetchedRequests()).toContain("POST /api/claim/license-key");
+  });
+
+  it("a server error on Add keeps the person on the confirm step with its own words, and Add tries again (B-083)", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": {
+        verdict: "addable",
+        product: PREVIEW_PRODUCT,
+        entries: null,
+      },
+      "POST /api/claim/license-key": {
+        status: 500,
+        body: { error: "internal_error" },
+      },
+    });
+    renderPortal();
+    await pasteAndContinue(await openFromHeader());
+    const confirm = await screen.findByRole("dialog", {
+      name: "Add Mossgarden to your library?",
+    });
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Add to my library" }),
+    );
+    expect((await within(confirm).findByRole("alert")).textContent).toBe(
+      "Couldn't add this license. Try again in a moment.",
+    );
+    // Still the confirm step, not the key step; Add is there to retry.
+    expect(
+      screen.getByRole("dialog", { name: "Add Mossgarden to your library?" }),
+    ).toBeTruthy();
+    expect(
+      within(confirm).getByRole("button", { name: "Add to my library" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "License key" })).toBeNull();
+  });
+
+  it("a refusal about the key still goes back to the key step (B-083)", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": {
+        verdict: "addable",
+        product: PREVIEW_PRODUCT,
+        entries: null,
+      },
+      "POST /api/claim/license-key": {
+        status: 401,
+        body: { error: "unauthorized" },
+      },
+    });
+    renderPortal();
+    await pasteAndContinue(await openFromHeader());
+    const confirm = await screen.findByRole("dialog", {
+      name: "Add Mossgarden to your library?",
+    });
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Add to my library" }),
+    );
+    expect(
+      await screen.findByRole("textbox", { name: "License key" }),
+    ).toBeTruthy();
+  });
+
+  it("drops the format help once the key is valid, and keeps the link's own line (B-087)", async () => {
+    mockFetch(routes());
+    renderPortal();
+    const dialog = await openFromHeader();
+    expect(
+      within(dialog).getByText("Starts with pkey_. Case-sensitive."),
+    ).toBeTruthy();
+    fireEvent.paste(
+      within(dialog).getByRole("textbox", { name: "License key" }),
+      { clipboardData: { getData: () => KEY } },
+    );
+    expect(within(dialog).getByText("Key format is valid")).toBeTruthy();
+    expect(
+      within(dialog).queryByText("Starts with pkey_. Case-sensitive."),
+    ).toBeNull();
   });
 
   /** The preview of a floating key already on `devices` devices (PX-23, S-24 D22). */
@@ -873,7 +953,7 @@ describe("Activate license modal (PX-06)", () => {
   it("explains a typed cut-short key on Continue and drops the help line (UX-05)", async () => {
     mockFetch(routes());
     renderPortal();
-    const dialog = await openFromStrip();
+    const dialog = await openFromEmptyLibrary();
     expect(
       within(dialog).getByText("Starts with pkey_. Case-sensitive."),
     ).toBeTruthy();

@@ -2232,7 +2232,7 @@ msgstr ""
 msgid "signin.choice.tag.new"
 msgstr ""
 
-#. No free devices
+#. All devices in use
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.tag.full"
 msgstr ""

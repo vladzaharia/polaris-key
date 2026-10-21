@@ -128,12 +128,9 @@ export function MissingLicense({
                 {t("locker.missing.addInMethods")}
               </a>
             </li>
-            <li>
-              {t("locker.missing.steamTitle")}{" "}
-              <a href={href.account("methods")} className={LINK}>
-                {t("locker.missing.connectSteam")}
-              </a>
-            </li>
+            {/* Text, not a link: Steam purchases come back through the app's Restore purchase;
+                Sign-in methods attaches nothing (B-075). */}
+            <li className="py-2 wide:py-0">{t("locker.missing.steamTitle")}</li>
             <li className="py-2 wide:py-0">{t("locker.missing.inStore")}</li>
           </ul>
         </div>

@@ -575,7 +575,9 @@ describe("product page on today's data (PX-04)", () => {
     renderPortal();
     await page();
     const devices = screen.getByRole("region", { name: "Devices" });
-    expect(within(devices).getByText(/\+1 not using a seat/)).toBeTruthy();
+    expect(
+      within(devices).getByText(/1 more device signed in, not using a seat/),
+    ).toBeTruthy();
     await userEvent.click(
       within(devices).getByRole("button", { name: "Remove Studio PC" }),
     );
@@ -1917,7 +1919,7 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
     const license = screen.getByRole("region", { name: "License" });
     // In the main column with What's new, after it; not in the licence's side column.
-    const column = (el: HTMLElement) => el.parentElement!.parentElement!;
+    const column = (el: HTMLElement) => el.parentElement!;
     expect(column(help)).toBe(column(news));
     expect(column(help)).not.toBe(column(license));
     for (const nav of ["On this page", "Sections"])

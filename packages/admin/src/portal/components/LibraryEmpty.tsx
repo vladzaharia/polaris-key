@@ -36,6 +36,9 @@ export function LibraryEmpty({
       <h2 id="empty-h" className="text-xl font-semibold text-fg-strong">
         {t("locker.library.empty.title")}
       </h2>
+      <p className="-mt-2 max-w-sm text-fg-muted">
+        {t("locker.library.empty.body")}
+      </p>
       <div className="flex flex-wrap justify-center gap-3">
         <Button
           size="lg"

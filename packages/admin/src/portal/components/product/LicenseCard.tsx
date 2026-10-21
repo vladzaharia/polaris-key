@@ -83,6 +83,8 @@ export function LicenseCard({
   return (
     <SectionCard
       id="license"
+      // Tighter from 1024 px, so the Devices card below starts in the first screen at 1280 × 800.
+      className="desk:p-5"
       // The page's h1 already names the product (the mockup's card says only "License").
       title={t("license.title")}
       aside={
@@ -192,7 +194,7 @@ function LicenseFacts({
   const external = renewHref !== null && !renewHref.startsWith("mailto:");
   const charted = termPlot(detail.activatedAt, detail.expiresAt) !== null;
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 desk:space-y-2">
       {status.kind === "suspended" ? (
         <p className="rounded-lg border border-danger-border bg-danger-subtle p-3 text-sm text-fg">
           {t("license.suspended", {
@@ -236,7 +238,7 @@ function LicenseFacts({
           ) : null}
         </LicenseTerm>
       )}
-      <dl className="grid grid-cols-1 gap-x-4 gap-y-4 text-sm min-[22rem]:grid-cols-2">
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-4 text-sm min-[22rem]:grid-cols-2 desk:gap-y-2">
         <Fact term={t("license.fact.versions")}>
           <span
             className={
@@ -264,15 +266,23 @@ function LicenseFacts({
             {channels.join(", ")}
           </Fact>
         ) : null}
-        {/* The key is a fact like the others: the mask, and why it is only a mask. */}
+        {/* The key is a fact like the others: the mask on one line with a disclosure, which holds
+            why it is only a mask (a fingerprint, or the last 4 characters). */}
         {key ? (
           <Fact term={t("part.keyField.label")} wide>
-            <KeyMask slug={product.slug} last4={key.last4} />
-            <span className="mt-1 block text-xs text-fg-muted">
-              {key.last4
-                ? t("license.key.last4")
-                : t("license.key.fingerprint")}
-            </span>
+            <div className="flex flex-wrap items-center gap-x-3">
+              <KeyMask slug={product.slug} last4={key.last4} />
+              <details className="text-xs text-fg-muted open:basis-full">
+                <summary className="inline-flex min-h-6 cursor-pointer items-center rounded-sm underline [text-decoration-style:dotted] underline-offset-2 hover:text-fg-strong">
+                  {t("license.key.why")}
+                </summary>
+                <p className="mt-1">
+                  {key.last4
+                    ? t("license.key.last4")
+                    : t("license.key.fingerprint")}
+                </p>
+              </details>
+            </div>
           </Fact>
         ) : null}
         {includes.length ? (
@@ -311,7 +321,7 @@ function Fact({
   return (
     <div className={wide ? "min-[22rem]:col-span-2" : undefined}>
       <dt className="text-xs text-fg-muted">{term}</dt>
-      <dd className="mt-0.5 min-w-0 text-fg-strong [overflow-wrap:anywhere]">
+      <dd className="mt-0.5 min-w-0 text-fg-strong desk:mt-0 [overflow-wrap:anywhere]">
         {children}
       </dd>
     </div>

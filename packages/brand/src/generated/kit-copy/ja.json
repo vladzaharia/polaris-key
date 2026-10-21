@@ -353,7 +353,7 @@
   "signin.choice.picker.store": "{tier} · {store}",
   "signin.choice.tag.current": "このデバイスで使用中",
   "signin.choice.tag.new": "新規",
-  "signin.choice.tag.full": "空きデバイスなし",
+  "signin.choice.tag.full": "すべての端末が使用中",
   "signin.choice.keep": "このデバイスのライセンスを使い続ける",
   "signin.choice.keepMeta": "{product}は現在のまま動作し続けます。",
   "signin.choice.create": "新しい無料ライセンスを作成",

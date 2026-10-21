@@ -122,7 +122,7 @@ function SkeletonTile({
 }): React.ReactElement {
   return (
     <div aria-hidden className={cn("space-y-2 rounded-xl", className)}>
-      <Skeleton className="aspect-[2/1] w-full rounded-xl" />
+      <Skeleton className="aspect-[5/2] w-full rounded-xl" />
       <Skeleton className="h-28 w-full rounded-xl" />
     </div>
   );
@@ -180,10 +180,12 @@ function LibraryBody({
         <ul ref={stagger.ref} className={cn(TILE_GRID, stagger.className)}>
           {justAddedFirst(products).map((p) => (
             <li key={p.slug} className="grid">
+              {/* No "Windows and Linux only" here: the tile's platform glyphs already say it
+                  (B-086); the compact tiles below draw no glyphs, so they keep the note. */}
               <LibraryTile
                 product={p}
                 action={action(p)}
-                note={coverageNote(p) ?? platformsOnlyNote(p, device)}
+                note={coverageNote(p)}
               />
             </li>
           ))}

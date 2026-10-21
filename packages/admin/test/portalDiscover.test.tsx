@@ -227,7 +227,7 @@ describe("Discover (PX-16)", () => {
     expect(within(lumen).getByText("90 days")).toBeTruthy();
     expect(within(lumen).getByText("2 devices")).toBeTruthy();
     expect(
-      within(lumen).getByText("For members of aperture-seven-customers"),
+      within(lumen).getByText("For aperture-seven-customers"),
     ).toBeTruthy();
     // No cover: the letter shows once, on the icon's tile, never also on the art.
     expect(
@@ -469,6 +469,11 @@ describe("Discover (PX-16)", () => {
     expect((await within(lumen).findByRole("alert")).textContent).toBe(
       "Aperture Seven no longer gives Lumen RAW to your account.",
     );
+    // The error takes the reason's place, so the tile keeps its height and the row does not
+    // move (B-080).
+    expect(
+      within(lumen).queryByText("For aperture-seven-customers"),
+    ).toBeNull();
     expect(
       within(lumen).queryByRole("button", { name: /Add to library/ }),
     ).toBeNull();
@@ -604,9 +609,7 @@ describe("Discover's words (model/discover.ts)", () => {
     expect(reasonCopy("free_with_account").text).toBe(
       "Free with a Polaris Locker account",
     );
-    expect(reasonCopy("group:beta-testers").text).toBe(
-      "For members of beta-testers",
-    );
+    expect(reasonCopy("group:beta-testers").text).toBe("For beta-testers");
     expect(reasonCopy("group:").kind).toBe("other");
     expect(reasonCopy("something_new").text).toBe(
       "Offered to your account by its developer",

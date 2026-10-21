@@ -552,23 +552,32 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
       // Main · side from 1024 px, the pills until 1180 px.
       await o.page.setViewportSize({ width: 1024, height: 900 });
       expect(await layout()).toMatchObject({ columns: "grid", pills: true });
-      // In the narrow side column Remove sits under the meta line: the name has the row.
+      // In the narrow side column (1024 px) Remove sits under the meta line: the name has the
+      // row. From 1180 px the column holds the row, and Remove ends it (B-089).
       for (const width of [1024, 1440]) {
         await o.page.setViewportSize({ width, height: 900 });
-        const rows = await o.page.evaluate(() =>
-          [...document.querySelectorAll("#section-devices li")]
-            .map((li) => {
-              const name = li.querySelector("[data-device-name]");
-              const remove = li.querySelector("button[aria-label^=Remove]");
-              if (!name || !remove) return null;
-              const meta = name.nextElementSibling!.getBoundingClientRect();
-              return remove.getBoundingClientRect().top >= meta.bottom;
-            })
-            .filter((r) => r !== null),
+        const rows = await o.page.evaluate(
+          (width) =>
+            [...document.querySelectorAll("#section-devices li")]
+              .map((li) => {
+                const name = li.querySelector("[data-device-name]");
+                const remove = li.querySelector("button[aria-label^=Remove]");
+                if (!name || !remove) return null;
+                const meta = name.nextElementSibling!.getBoundingClientRect();
+                const under = remove.getBoundingClientRect().top >= meta.bottom;
+                return width < 1180 ? under : !under;
+              })
+              .filter((r) => r !== null),
+          width,
         );
         expect.soft(rows.length, `device rows at ${width}`).toBeGreaterThan(0);
         expect
-          .soft(rows.every(Boolean), `Remove under the meta at ${width}`)
+          .soft(
+            rows.every(Boolean),
+            width < 1180
+              ? `Remove under the meta at ${width}`
+              : `Remove beside the name at ${width}`,
+          )
           .toBe(true);
       }
       await o.page.setViewportSize({ width: 1024, height: 900 });

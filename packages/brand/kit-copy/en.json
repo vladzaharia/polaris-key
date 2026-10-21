@@ -1787,7 +1787,7 @@
       "note": "Choose a license for this device (SIGN-IN.md §3.6)."
     },
     "signin.choice.tag.full": {
-      "value": "No free devices",
+      "value": "All devices in use",
       "role": "label",
       "note": "Choose a license for this device (SIGN-IN.md §3.6)."
     },
@@ -4106,6 +4106,11 @@
       "role": "hint",
       "note": "The customer portal's License section on a product page (PX-28a). Under the masked key when only a fingerprint of the key is kept."
     },
+    "license.key.why": {
+      "value": "Why only part of it?",
+      "role": "label",
+      "note": "The License card on desk widths (stabilization lead item): the summary of the disclosure that holds the note under the masked key."
+    },
     "license.expired": {
       "value": "Renew to use it again.",
       "role": "body",
@@ -5115,6 +5120,11 @@
       "value": "Nothing here yet",
       "role": "title",
       "note": "Library page, its toolbar, empty and list states; moved from the portal's components (P0-36)."
+    },
+    "locker.library.empty.body": {
+      "value": "Apps you buy or activate show up here.",
+      "role": "hint",
+      "note": "The empty Library (B-085): what will appear here."
     },
     "locker.library.empty.discover": {
       "value": "See {count} in Discover",
@@ -6331,6 +6341,11 @@
       "role": "button",
       "note": "Activate a license dialog (P0-36)."
     },
+    "locker.activate.addFailed": {
+      "value": "Couldn't add this license. Try again in a moment.",
+      "role": "hint",
+      "note": "The Activate dialog: a server error on Add (B-083). Not about the key, so the person stays on the confirm step."
+    },
     "locker.key.cutShort": {
       "value": "This key is cut short. It starts with pkey_, the product, then 22 characters. Copy the whole key again.",
       "role": "hint",
@@ -6617,7 +6632,7 @@
       "note": "Discover tiles, offers and the storefront page (P0-36)."
     },
     "locker.offer.reasonGroup": {
-      "value": "For members of {org}",
+      "value": "For {org}",
       "role": "hint",
       "note": "Discover tiles, offers and the storefront page (P0-36)."
     },
@@ -6782,7 +6797,7 @@
       "note": "Portal shell, library and product pages (P0-36)."
     },
     "locker.missing.steamTitle": {
-      "value": "Bought on Steam?",
+      "value": "Bought on Steam? Open the app from Steam and choose Restore purchase.",
       "role": "label",
       "note": "Portal shell, library and product pages (P0-36)."
     },
@@ -7112,7 +7127,7 @@
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },
     "locker.devices.idle": {
-      "value": "+{count} not using a seat",
+      "value": "{count, plural, one {# more device signed in, not using a seat} other {# more devices signed in, not using a seat}}",
       "role": "hint",
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },
@@ -7528,11 +7543,6 @@
     },
     "locker.missing.addInMethods": {
       "value": "Add it in Sign-in methods",
-      "role": "button",
-      "note": "Library strip: other ways to get a license (P0-36, PX-35)."
-    },
-    "locker.missing.connectSteam": {
-      "value": "Connect Steam",
       "role": "button",
       "note": "Library strip: other ways to get a license (P0-36, PX-35)."
     },
