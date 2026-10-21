@@ -14,6 +14,7 @@
 
 import { randomUUID } from "node:crypto";
 import { isAbsolute, posix, relative, resolve, sep, win32 } from "node:path";
+import { PolarisError } from "@polaris-key/client-core/errors";
 import type { PolarisKeyClient } from "../client.js";
 import type { ClientBootOptions } from "../boot.js";
 import type { ClaimResult, CommerceStore } from "../commerce/client.js";
@@ -88,7 +89,7 @@ export interface ExposePolarisBridgeOptions {
   flowGraceSeconds?: number;
 }
 
-/** The default sender rule: the top frame, on the app's origin. A frame the app did
+/** The default sender rule: the top frame, on the app's origin (no `data:`, `blob:` or `about:` document). A frame the app did
  *  not load itself (an iframe, a navigated-away window, remote content) cannot drive the
  *  bridge. */
 function defaultAllowSender(
@@ -116,7 +117,11 @@ function defaultAllowSender(
     if (pinned) return pinned.includes(url.origin);
     if (url.protocol === "http:" || url.protocol === "https:")
       return ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
-    return true;
+    // Without a pinned origin only the app's own content may drive the bridge: a file or a custom
+    // protocol the host registered. Documents a page can synthesise or navigate to are not that.
+    return !["data:", "blob:", "about:", "javascript:", "ws:", "wss:"].includes(
+      url.protocol,
+    );
   };
 }
 
@@ -198,6 +203,11 @@ export function bridgeActivation(r: ActivationResult): Record<string, unknown> {
 }
 
 function envelopeError(e: unknown): BridgeEnvelope {
+  // Only the SDK's own typed errors and the bridge's refusals describe themselves to the renderer.
+  // Anything else (a filesystem error naming a path, a TypeError from a host callback) is a
+  // host detail: the renderer gets a generic answer, never its message.
+  if (!(e instanceof PolarisError) && !(e instanceof BridgeRefusal))
+    return { ok: false, code: "unknown", message: "The request failed." };
   const err = e as { code?: unknown; message?: unknown; detail?: unknown };
   const out: BridgeEnvelope = {
     ok: false,
@@ -228,7 +238,7 @@ function bag(args: unknown): Record<string, unknown> {
 
 function str(v: unknown, name: string): string {
   if (typeof v !== "string" || v === "")
-    throw new BridgeRefusal("invalid-arguments", `${name} must be a string.`);
+    throw new BridgeRefusal("invalid-argument", `${name} must be a string.`);
   return v;
 }
 
@@ -434,7 +444,7 @@ export function exposePolarisBridge(
       const label = b.label;
       if (label !== null && typeof label !== "string")
         throw new BridgeRefusal(
-          "invalid-arguments",
+          "invalid-argument",
           "label must be a string or null.",
         );
       await client.renameDevice(str(b.deviceId, "deviceId"), label);

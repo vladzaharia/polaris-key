@@ -487,6 +487,21 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "The app's licensing isn't set up correctly. Contact the developer.",
   },
+  "invalid-argument": {
+    title: "Request not accepted",
+    message:
+      "The app sent a request the licensing bridge could not read. Contact the developer.",
+  },
+  "invoke-not-allowed": {
+    title: "Request not allowed",
+    message:
+      "The app asked for something its licensing bridge does not offer. Contact the developer.",
+  },
+  "sender-refused": {
+    title: "Window not allowed",
+    message:
+      "This window may not use the app's licensing. Contact the developer.",
+  },
   "not-configured": {
     title: "App not set up",
     message: "The app's licensing isn't set up yet. Contact the developer.",

@@ -546,3 +546,26 @@ describe("DesktopAdapter — bridge v4 verbs are gated on the host's protocol ve
     ]);
   });
 });
+
+// @pkey-feature core.errors
+describe("DesktopAdapter — the bridge's refusal codes stay typed (B-152)", () => {
+  it("keeps invalid-argument, invoke-not-allowed and sender-refused as their own codes", async () => {
+    for (const code of [
+      "invalid-argument",
+      "invoke-not-allowed",
+      "sender-refused",
+    ]) {
+      const bridge: PolarisBridge = {
+        ...makeFakeBridge(okBridgeState()),
+        version: 4,
+        async invoke() {
+          throw Object.assign(new Error("refused"), { code });
+        },
+      };
+      const adapter = new DesktopAdapter({ bridge, now: () => NOW_SEC });
+      await expect(
+        adapter.releaseFetch({ record: "r" } as never, { to: "a/b" }),
+      ).rejects.toMatchObject({ code });
+    }
+  });
+});

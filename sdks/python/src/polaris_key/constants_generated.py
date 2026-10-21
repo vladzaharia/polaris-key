@@ -261,6 +261,9 @@ class ErrorCode:
     SIGN_IN_DENIED: Final = "sign-in-denied"
     SIGN_IN_UNAVAILABLE: Final = "sign-in-unavailable"
     INVALID_OPTIONS: Final = "invalid-options"
+    INVALID_ARGUMENT: Final = "invalid-argument"
+    INVOKE_NOT_ALLOWED: Final = "invoke-not-allowed"
+    SENDER_REFUSED: Final = "sender-refused"
     NOT_CONFIGURED: Final = "not-configured"
     UNSUPPORTED: Final = "unsupported"
     TIMEOUT: Final = "timeout"
@@ -437,6 +440,9 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "sign-in-denied",
     "sign-in-unavailable",
     "invalid-options",
+    "invalid-argument",
+    "invoke-not-allowed",
+    "sender-refused",
     "not-configured",
     "unsupported",
     "timeout",
@@ -615,6 +621,9 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "sign-in-denied": "client",
         "sign-in-unavailable": "client",
         "invalid-options": "client",
+        "invalid-argument": "client",
+        "invoke-not-allowed": "client",
+        "sender-refused": "client",
         "not-configured": "client",
         "unsupported": "client",
         "timeout": "client",

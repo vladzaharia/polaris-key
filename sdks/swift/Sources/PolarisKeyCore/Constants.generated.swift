@@ -116,6 +116,9 @@ public enum ErrorCode {
     public static let signInDenied = "sign-in-denied"
     public static let signInUnavailable = "sign-in-unavailable"
     public static let invalidOptions = "invalid-options"
+    public static let invalidArgument = "invalid-argument"
+    public static let invokeNotAllowed = "invoke-not-allowed"
+    public static let senderRefused = "sender-refused"
     public static let notConfigured = "not-configured"
     public static let unsupported = "unsupported"
     public static let timeout = "timeout"
@@ -292,6 +295,9 @@ public let ERROR_CODE_VALUES: [String] = [
     "sign-in-denied",
     "sign-in-unavailable",
     "invalid-options",
+    "invalid-argument",
+    "invoke-not-allowed",
+    "sender-refused",
     "not-configured",
     "unsupported",
     "timeout",
@@ -468,6 +474,9 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "sign-in-denied": "client",
     "sign-in-unavailable": "client",
     "invalid-options": "client",
+    "invalid-argument": "client",
+    "invoke-not-allowed": "client",
+    "sender-refused": "client",
     "not-configured": "client",
     "unsupported": "client",
     "timeout": "client",

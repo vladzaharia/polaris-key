@@ -429,6 +429,18 @@
       "title": "App não configurado",
       "message": "O licenciamento do app não está configurado corretamente. Contate o desenvolvedor."
     },
+    "invalid-argument": {
+      "title": "Solicitação não aceita",
+      "message": "O app enviou uma solicitação que a ponte de licenciamento não conseguiu ler. Contate o desenvolvedor."
+    },
+    "invoke-not-allowed": {
+      "title": "Solicitação não permitida",
+      "message": "O app pediu algo que sua ponte de licenciamento não oferece. Contate o desenvolvedor."
+    },
+    "sender-refused": {
+      "title": "Janela não permitida",
+      "message": "Esta janela não pode usar o licenciamento do app. Contate o desenvolvedor."
+    },
     "not-configured": {
       "title": "App não configurado",
       "message": "O licenciamento do app ainda não está configurado. Contate o desenvolvedor."

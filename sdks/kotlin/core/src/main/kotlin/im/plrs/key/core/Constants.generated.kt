@@ -118,6 +118,9 @@ public object ErrorCode {
     public const val signInDenied: String = "sign-in-denied"
     public const val signInUnavailable: String = "sign-in-unavailable"
     public const val invalidOptions: String = "invalid-options"
+    public const val invalidArgument: String = "invalid-argument"
+    public const val invokeNotAllowed: String = "invoke-not-allowed"
+    public const val senderRefused: String = "sender-refused"
     public const val notConfigured: String = "not-configured"
     public const val unsupported: String = "unsupported"
     public const val timeout: String = "timeout"
@@ -294,6 +297,9 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "sign-in-denied",
     "sign-in-unavailable",
     "invalid-options",
+    "invalid-argument",
+    "invoke-not-allowed",
+    "sender-refused",
     "not-configured",
     "unsupported",
     "timeout",
@@ -470,6 +476,9 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "sign-in-denied" to "client",
     "sign-in-unavailable" to "client",
     "invalid-options" to "client",
+    "invalid-argument" to "client",
+    "invoke-not-allowed" to "client",
+    "sender-refused" to "client",
     "not-configured" to "client",
     "unsupported" to "client",
     "timeout" to "client",

@@ -1296,6 +1296,9 @@ function fetchError(e: unknown): PolarisError {
     return new PolarisError("network", message, code);
   if (
     code === "payload-mismatch" ||
+    code === ErrorCode.invalidArgument ||
+    code === ErrorCode.invokeNotAllowed ||
+    code === ErrorCode.senderRefused ||
     code === "invalid-options" ||
     code === "service-unavailable" ||
     code === "not-configured"

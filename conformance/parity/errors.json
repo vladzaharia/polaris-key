@@ -634,6 +634,24 @@
       "description": "The client's options failed validation when it was constructed or configured (Godot: at configure): a bad product slug, version, base URL or pin, an invalid outlet, or a pinned release key that is also a trust pin. Godot's `config.set_value` also answers it for a value its catalog schema refuses and for a secret key, the refusal the other SDKs and `sync-scenarios.json` name with the canonical `bad_request`; Godot's runners map that canonical code to this one."
     },
     {
+      "code": "invalid-argument",
+      "kind": "client",
+      "service": "core",
+      "description": "The Electron desktop bridge refused a call because an argument was missing, of the wrong type, or out of bounds (an absolute or escaping download path, an unknown store or kind). One spelling for every verb; the renderer adapter surfaces it as a typed error."
+    },
+    {
+      "code": "invoke-not-allowed",
+      "kind": "client",
+      "service": "core",
+      "description": "The Electron desktop bridge's generic invoke named a service method the host does not expose to the renderer."
+    },
+    {
+      "code": "sender-refused",
+      "kind": "client",
+      "service": "core",
+      "description": "The Electron desktop bridge refused a call from a window or frame the host's sender rule does not allow (an iframe, a navigated-away window, remote content)."
+    },
+    {
       "code": "not-configured",
       "kind": "client",
       "service": "core",

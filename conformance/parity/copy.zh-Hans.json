@@ -429,6 +429,18 @@
       "title": "应用未设置",
       "message": "应用的许可功能未正确设置。请联系开发者。"
     },
+    "invalid-argument": {
+      "title": "请求未被接受",
+      "message": "应用发送的请求，许可桥接无法读取。请联系开发者。"
+    },
+    "invoke-not-allowed": {
+      "title": "请求不被允许",
+      "message": "应用请求了许可桥接不提供的操作。请联系开发者。"
+    },
+    "sender-refused": {
+      "title": "窗口不被允许",
+      "message": "此窗口不能使用应用的许可功能。请联系开发者。"
+    },
     "not-configured": {
       "title": "应用未设置",
       "message": "应用的许可功能尚未设置。请联系开发者。"
