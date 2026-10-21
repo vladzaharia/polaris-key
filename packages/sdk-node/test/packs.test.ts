@@ -109,6 +109,8 @@ class FakeServer {
     }
     const rec = /^\/djdl\/release\/records\/([0-9a-f]{64})$/.exec(url.pathname);
     if (rec) {
+      // 0: drop the connection, a transport failure with no response.
+      if (this.recordStatus === 0) return void req.socket.destroy();
       if (this.recordStatus !== null)
         return void res.writeHead(this.recordStatus).end();
       const p = this.packs.find((x) => x.recordSha256 === rec[1]);
@@ -632,7 +634,7 @@ describe("DirPackStorage", () => {
 });
 
 describe("a failed record fetch keeps its class (B-150)", () => {
-  it("reports a 5xx as server-error and any other refusal as network-error", async () => {
+  it("maps 401 unauthorized, 403 forbidden, 5xx server-error, the rest network-error", async () => {
     work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
     const v1 = await treePack({
       packId: "djdl.l10n",
@@ -644,8 +646,10 @@ describe("a failed record fetch keeps its class (B-150)", () => {
     for (const [status, code] of [
       [503, "server-error"],
       [500, "server-error"],
+      [401, "unauthorized"],
+      [403, "forbidden"],
       [404, "network-error"],
-      [403, "network-error"],
+      [0, "network-error"], // a dropped connection: no response
     ] as const) {
       srv.recordStatus = status;
       const c = await client({ stamp: [v1] });

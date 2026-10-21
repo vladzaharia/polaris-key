@@ -389,6 +389,23 @@ final class PacksFacetTests: XCTestCase {
         await c.close()
     }
 
+    func testAFailedRecordFetchKeepsItsClass() async throws {
+        let v1 = treePack(packId: "djdl.l10n", version: "1.0.0", seq: 1, files: v1Files)
+        let path = "/djdl/release/records/\(v1.recordSha256)"
+        let cases: [(Int, String)] = [
+            (401, ErrorCode.unauthorized), (403, ErrorCode.forbidden), (500, ErrorCode.serverError),
+            (503, ErrorCode.serverError), (404, ErrorCode.networkError), (0, ErrorCode.networkError),
+        ]
+        for (status, want) in cases {
+            await serve([v1])
+            if status == 0 { await server.drop(path) } else { await server.reply(path, status: status) }
+            let (c, update) = try await client(stamp: try stampFile(v1))
+            let (got, _) = await code { _ = try await update.packs.ensure(["djdl.l10n"]) }
+            XCTAssertEqual(got, want, "status \(status)")
+            await c.close()
+        }
+    }
+
     func testUpdatesByTheFileStrategyAfterARelaunchAndResumesADroppedDownload() async throws {
         let v1 = treePack(packId: "djdl.l10n", version: "1.0.0", seq: 1, files: v1Files)
         var f2 = v1Files

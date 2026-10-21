@@ -359,7 +359,8 @@ export function stubClient(
         deviceCode: "dc_secret",
         userCode: "WDJB-MJHT",
         verificationUri: "https://polaris.locker/device",
-        verificationUriComplete: "https://polaris.locker/device?code=WDJB-MJHT",
+        verificationUriComplete:
+          "https://polaris.locker/device?user_code=WDJB-MJHT",
         expiresIn: 600,
         interval: 5,
         expiresAt: NOW / 1000 + 252,

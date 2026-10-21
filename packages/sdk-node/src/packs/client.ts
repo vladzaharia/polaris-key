@@ -10,6 +10,10 @@
 //   zstd       `node:zlib` after a start-up probe, else `@polaris-key/zstd-wasm` (`selectNodeZstd`);
 //   SHA-256    `node:crypto`, streaming.
 //
+// A refused record fetch keeps its class (B-150, one mapping in every packs client): 200 is
+// ok; 401 `unauthorized`; 403 `forbidden`; 5xx `server-error`; no response at all (a transport
+// failure) and any other status, 404 included, `network-error`. Only the last is worth a retry.
+//
 // The running build's pins come from its content stamp (`packs.contentStamp`, a file among the
 // app's own read-only resources, never a user-writable path): a host without a stamp has no packs.
 // Embedded baselines (`packs.embedded`) are verified once — marker, bytes, stamp pin — and then
@@ -168,6 +172,14 @@ export interface PacksWiring {
     installed: (installs: readonly PackInstall[]) => void;
     failed: (packIds: readonly string[], code: string) => void;
   };
+}
+
+/** The error code for a record fetch the registry answered with a non-ok `status`. */
+function recordRefusal(status: number): string {
+  if (status === 401) return ErrorCode.unauthorized;
+  if (status === 403) return ErrorCode.forbidden;
+  if (status >= 500) return ErrorCode.serverError;
+  return ErrorCode.networkError;
 }
 
 export class PacksClient {
@@ -581,14 +593,7 @@ export class PacksClient {
         }),
         signal: this.w.ctx.deadline(),
       });
-      // A 5xx is the server's failure, not the network's (Python's pack client agrees).
-      if (!res.ok) {
-        return {
-          ok: false,
-          code:
-            res.status >= 500 ? ErrorCode.serverError : ErrorCode.networkError,
-        };
-      }
+      if (!res.ok) return { ok: false, code: recordRefusal(res.status) };
       // A record over the bound is refused at step `hash` without hashing; never buffer more.
       return {
         ok: true,

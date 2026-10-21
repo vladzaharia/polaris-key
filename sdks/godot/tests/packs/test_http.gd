@@ -134,6 +134,19 @@ func run(t: PKeyTestContext) -> void:
 	r = await packs.ensure(["djdl.gated"])
 	t.check("http: a 403 delivery_gate_missing from the blob route is pack-not-entitled, not a network error", not r.ok and String(r.code) == "pack-not-entitled", str(r))
 
+	# A refused record fetch keeps its class (B-150): 401 unauthorized, 403 forbidden, 5xx
+	# server-error; a dropped connection and any other status (404) stay network-error.
+	var refusals := [[401, "unauthorized"], [403, "forbidden"], [500, "server-error"], [503, "server-error"], [404, "network-error"], [0, "network-error"]]
+	for pair in refusals:
+		var status: int = pair[0]
+		plan["/djdl/release/records/"] = func(_req: Dictionary) -> Dictionary:
+			if status == 0:
+				# Advertise more than is sent: the connection ends mid-body, no usable response.
+				return {"status": 200, "headers": {"Content-Type": "application/jose", "Content-Length": "5000"}, "body": "x".to_utf8_buffer(), "truncate": true}
+			return {"status": status, "headers": {"Content-Type": "application/json"}, "body": "{\"error\":{\"code\":\"internal_error\"}}"}
+		r = await packs.ensure(["djdl.gated"])
+		t.check("http: a record fetch answered %d is %s" % [status, pair[1]], not r.ok and String(r.code) == pair[1], str(r))
+
 	# The boot's FETCH events through boot_fetch (the stamp's required packs, all current now).
 	var events: Array = []
 	packs.content = F.stamp_for([p, p2])

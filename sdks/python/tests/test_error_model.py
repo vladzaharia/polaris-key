@@ -101,7 +101,7 @@ def _prompt(c: Any) -> SignInPrompt:
         deviceCode="dc_" + "x" * 40,
         userCode="WDJB-MJHT",
         verificationUri="https://key.example/device",
-        verificationUriComplete="https://key.example/device?code=WDJB-MJHT",
+        verificationUriComplete="https://key.example/device?user_code=WDJB-MJHT",
         expiresIn=600,
         interval=1,
         expiresAt=c.core.now() + 600,
