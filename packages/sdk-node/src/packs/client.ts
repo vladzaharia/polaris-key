@@ -581,7 +581,14 @@ export class PacksClient {
         }),
         signal: this.w.ctx.deadline(),
       });
-      if (!res.ok) return { ok: false, code: ErrorCode.networkError };
+      // A 5xx is the server's failure, not the network's (Python's pack client agrees).
+      if (!res.ok) {
+        return {
+          ok: false,
+          code:
+            res.status >= 500 ? ErrorCode.serverError : ErrorCode.networkError,
+        };
+      }
       // A record over the bound is refused at step `hash` without hashing; never buffer more.
       return {
         ok: true,

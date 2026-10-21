@@ -79,6 +79,8 @@ class FakeServer {
   feed: string | null = null;
   /** The channel `feed` is served under. */
   feedChannel = "stable";
+  /** B-150: answer every record fetch with this status instead of the record. */
+  recordStatus: number | null = null;
 
   async start(): Promise<void> {
     this.server = createServer((req, res) => void this.handle(req, res));
@@ -107,6 +109,8 @@ class FakeServer {
     }
     const rec = /^\/djdl\/release\/records\/([0-9a-f]{64})$/.exec(url.pathname);
     if (rec) {
+      if (this.recordStatus !== null)
+        return void res.writeHead(this.recordStatus).end();
       const p = this.packs.find((x) => x.recordSha256 === rec[1]);
       const body = p?.jws ?? this.records.get(rec[1]!);
       if (!body) return void res.writeHead(404).end();
@@ -245,6 +249,7 @@ afterEach(async () => {
   srv.seen = [];
   srv.reports = [];
   srv.ignoreRange = false;
+  srv.recordStatus = null;
   srv.cutRange = 0;
   if (work) await rm(work, { recursive: true, force: true });
 });
@@ -623,6 +628,33 @@ describe("DirPackStorage", () => {
       detail: "hash",
     });
     c.close();
+  });
+});
+
+describe("a failed record fetch keeps its class (B-150)", () => {
+  it("reports a 5xx as server-error and any other refusal as network-error", async () => {
+    work = await mkdtemp(join(tmpdir(), "pkey-packs-"));
+    const v1 = await treePack({
+      packId: "djdl.l10n",
+      version: "1.0.0",
+      seq: 1,
+      files: v1Files,
+    });
+    srv.packs = [v1];
+    for (const [status, code] of [
+      [503, "server-error"],
+      [500, "server-error"],
+      [404, "network-error"],
+      [403, "network-error"],
+    ] as const) {
+      srv.recordStatus = status;
+      const c = await client({ stamp: [v1] });
+      await expect(c.update.packs.ensure(["djdl.l10n"])).rejects.toMatchObject({
+        code,
+      });
+      c.close();
+    }
+    srv.recordStatus = null;
   });
 });
 
