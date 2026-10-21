@@ -3922,10 +3922,10 @@ msgstr "Connecté avec {provider}"
 msgid "signin.gate.termsTitle"
 msgstr "Encore une étape"
 
-#. Your name
+#. Screen name
 #. Finish step: the screen name field.
 msgid "signin.gate.name"
-msgstr "Votre nom"
+msgstr "Nom d’affichage"
 
 #. Use {email}
 #. Finish step: the provider's address as a radio. Arguments: {email} = an address.
@@ -3972,10 +3972,10 @@ msgstr "Vous seul pouvez la voir. Les apps ne la reçoivent jamais."
 msgid "signin.gate.productTerms"
 msgstr "J'accepte les {term}"
 
-#. By continuing you agree to the {term}.
+#. I agree to {term}
 #. Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated.
 msgid "signin.gate.platformTerms"
-msgstr "En continuant, vous acceptez les {term}."
+msgstr "J’accepte {term}"
 
 #. That sign-in has expired. Sign in again.
 #. Finish step: the 15-minute sign-in ran out.
@@ -4142,10 +4142,10 @@ msgstr "Trop de tentatives. Attendez une minute, puis réessayez."
 msgid "signin.gate.termsLinkProduct"
 msgstr "conditions de {product}"
 
-#. Polaris Locker terms
+#. Polaris Locker’s Terms and Privacy Policy
 #. The platform's terms link in the finish step. Polaris Locker is never translated.
 msgid "signin.gate.termsLinkPlatform"
-msgstr "conditions de Polaris Locker"
+msgstr "les Conditions et la Politique de confidentialité de Polaris Locker"
 
 #. That code expired. Ask for a new one on the other device.
 #. Approve dialog: the code is spent or expired (410).
@@ -5137,6 +5137,136 @@ msgstr "appareil Android"
 #. The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a browser is called in “For your …”.
 msgid "getIt.device.web"
 msgstr "navigateur"
+
+#. Confirmed by {provider}
+#. Finish step: beside the Email label when a provider vouches for the address. Arguments: {provider}.
+msgid "signin.gate.confirmedBy"
+msgstr "Confirmé par {provider}"
+
+#. Confirmed by code
+#. Finish step: beside the Email label when a sign-in code proved the address.
+msgid "signin.gate.confirmedByCode"
+msgstr "Confirmé par code"
+
+#. Use a name from
+#. Finish step: label above the screen-name suggestion chips.
+msgid "signin.gate.nameFrom"
+msgstr "Utiliser un nom de"
+
+#. Shown in Polaris Locker and in emails.
+#. Finish step: under the screen name. Polaris Locker is never translated.
+msgid "signin.gate.nameHint"
+msgstr "Affiché dans Polaris Locker et dans les e-mails."
+
+#. Picture
+#. Finish step: the picture group label.
+msgid "signin.gate.picture"
+msgstr "Image"
+
+#. Initials
+#. Finish step: the initials picture tile.
+msgid "signin.gate.pictureInitialsTile"
+msgstr "Initiales"
+
+#. From your name
+#. Finish step: under the initials tile.
+msgid "signin.gate.pictureFromName"
+msgstr "D’après votre nom"
+
+#. Upload
+#. Finish step: the upload picture tile.
+msgid "signin.gate.pictureUpload"
+msgstr "Importer"
+
+#. PNG or JPEG
+#. Finish step: under the upload tile; the accepted file types.
+msgid "signin.gate.pictureUploadHint"
+msgstr "PNG ou JPEG"
+
+#. In use
+#. Finish step: under the picture tile in use.
+msgid "signin.gate.pictureInUse"
+msgstr "Utilisée"
+
+#. Add a passkey after this
+#. Finish step: the unticked passkey opt-in.
+msgid "signin.gate.passkey"
+msgstr "Ajouter une clé d’accès ensuite"
+
+#. Choose a PNG or JPEG up to 5 MB.
+#. Finish step: an upload that is not a PNG or JPEG.
+msgid "signin.gate.pictureInvalid"
+msgstr "Choisissez un PNG ou un JPEG de 5 Mo maximum."
+
+#. Add a passkey
+#. Finish: the step after the account exists, offering one passkey.
+msgid "signin.gate.passkeyTitle"
+msgstr "Ajouter une clé d’accès"
+
+#. Next time is one tap.
+#. Finish: under the passkey step title.
+msgid "signin.gate.passkeyLede"
+msgstr "La prochaine fois, un seul geste."
+
+#. Add a passkey
+#. Finish: the one-tap button that opens the browser passkey prompt.
+msgid "signin.gate.passkeyAdd"
+msgstr "Ajouter une clé d’accès"
+
+#. macos: Add a Passkey
+msgctxt "macos"
+msgid "signin.gate.passkeyAdd"
+msgstr "Ajouter une clé d’accès"
+
+#. Passkey added.
+#. Finish: passkey outcome, success.
+msgid "signin.gate.passkeyAdded"
+msgstr "Clé d’accès ajoutée."
+
+#. No passkey was added. You can add one in Account.
+#. Finish: passkey outcome, none added.
+msgid "signin.gate.passkeyFailed"
+msgstr "Aucune clé d’accès n’a été ajoutée. Vous pouvez en ajouter une dans Compte."
+
+#. Skip
+#. Finish: leaves the passkey step.
+msgid "signin.gate.passkeySkip"
+msgstr "Passer"
+
+#. Your upload
+#. Finish: the tile of a picture the person picked from their device.
+msgid "signin.gate.pictureYours"
+msgstr "Votre fichier"
+
+#. Your picture wasn't saved. Add one in Account.
+#. Finish: shown on arrival when the picked picture could not be saved.
+msgid "signin.gate.uploadFailed"
+msgstr "Votre image n’a pas été enregistrée. Ajoutez-en une dans Compte."
+
+#. We sent a new code to {email}.
+#. Finish: the code stage after a resend. Arguments: {email}.
+msgid "signin.gate.resent"
+msgstr "Nous avons envoyé un nouveau code à {email}."
+
+#. {email} already belongs to a Polaris Locker account. Use a different email, or sign in to that account first.
+#. Finish: the join offer when the other account is not yet proven. Arguments: {email}.
+msgid "signin.gate.joinOtherLede"
+msgstr "{email} appartient déjà à un compte Polaris Locker. Utilisez un autre e-mail, ou connectez-vous d’abord à ce compte."
+
+#. Enter a screen name.
+#. Finish: the screen name field left empty.
+msgid "signin.gate.nameRequired"
+msgstr "Saisissez un nom d’affichage."
+
+#. Agree to {app}’s terms to keep going.
+#. Finish: lede of the terms-only step. Arguments: {app}.
+msgid "signin.gate.termsLede"
+msgstr "Acceptez les conditions de {app} pour continuer."
+
+#. Enter all 6 digits.
+#. Code entry: submitted with fewer than six digits.
+msgid "signin.code.incomplete"
+msgstr "Saisissez les 6 chiffres."
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

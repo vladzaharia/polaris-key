@@ -1461,7 +1461,7 @@
     <!-- Finish step title when only the terms are asked. -->
     <string name="signin_gate_termsTitle">还有一步</string>
     <!-- Finish step: the screen name field. -->
-    <string name="signin_gate_name">您的姓名</string>
+    <string name="signin_gate_name">显示名称</string>
     <!-- Finish step: the provider's address as a radio. Arguments: {email} = an address. Arguments: 1=email. -->
     <string name="signin_gate_useEmail">使用 %1$s</string>
     <!-- Finish step: marks an Apple private-relay address. -->
@@ -1479,7 +1479,7 @@
     <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=term. -->
     <string name="signin_gate_productTerms">我同意%1$s</string>
     <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. Arguments: 1=term. -->
-    <string name="signin_gate_platformTerms">继续即表示您同意%1$s。</string>
+    <string name="signin_gate_platformTerms">我同意%1$s</string>
     <!-- Finish step: the 15-minute sign-in ran out. -->
     <string name="signin_gate_expired">此次登录已过期。请重新登录。</string>
     <!-- Finish step: the join offer (SIGN-IN.md §3.5). -->
@@ -1542,7 +1542,7 @@
     <!-- The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name. Arguments: 1=product. -->
     <string name="signin_gate_termsLinkProduct">%1$s 条款</string>
     <!-- The platform's terms link in the finish step. Polaris Locker is never translated. -->
-    <string name="signin_gate_termsLinkPlatform">Polaris Locker 条款</string>
+    <string name="signin_gate_termsLinkPlatform">Polaris Locker 的条款和隐私政策</string>
     <!-- Approve dialog: the code is spent or expired (410). -->
     <string name="signin_approve_expiredCode">该代码已过期。请在另一台设备上获取新代码。</string>
     <!-- Approve dialog: no pending request has this code (404 or 422). -->
@@ -1930,6 +1930,57 @@
     <string name="getIt_device_android">Android 设备</string>
     <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a browser is called in “For your …”. -->
     <string name="getIt_device_web">浏览器</string>
+    <!-- Finish step: beside the Email label when a provider vouches for the address. Arguments: {provider}. Arguments: 1=provider. -->
+    <string name="signin_gate_confirmedBy">已由%1$s确认</string>
+    <!-- Finish step: beside the Email label when a sign-in code proved the address. -->
+    <string name="signin_gate_confirmedByCode">已通过验证码确认</string>
+    <!-- Finish step: label above the screen-name suggestion chips. -->
+    <string name="signin_gate_nameFrom">使用来自以下的名称</string>
+    <!-- Finish step: under the screen name. Polaris Locker is never translated. -->
+    <string name="signin_gate_nameHint">显示在 Polaris Locker 和电子邮件中。</string>
+    <!-- Finish step: the picture group label. -->
+    <string name="signin_gate_picture">头像</string>
+    <!-- Finish step: the initials picture tile. -->
+    <string name="signin_gate_pictureInitialsTile">首字母</string>
+    <!-- Finish step: under the initials tile. -->
+    <string name="signin_gate_pictureFromName">来自你的名称</string>
+    <!-- Finish step: the upload picture tile. -->
+    <string name="signin_gate_pictureUpload">上传</string>
+    <!-- Finish step: under the upload tile; the accepted file types. -->
+    <string name="signin_gate_pictureUploadHint">PNG 或 JPEG</string>
+    <!-- Finish step: under the picture tile in use. -->
+    <string name="signin_gate_pictureInUse">使用中</string>
+    <!-- Finish step: the unticked passkey opt-in. -->
+    <string name="signin_gate_passkey">之后添加通行密钥</string>
+    <!-- Finish step: an upload that is not a PNG or JPEG. -->
+    <string name="signin_gate_pictureInvalid">请选择不超过 5 MB 的 PNG 或 JPEG。</string>
+    <!-- Finish: the step after the account exists, offering one passkey. -->
+    <string name="signin_gate_passkeyTitle">添加通行密钥</string>
+    <!-- Finish: under the passkey step title. -->
+    <string name="signin_gate_passkeyLede">下次只需轻点一下。</string>
+    <!-- Finish: the one-tap button that opens the browser passkey prompt. -->
+    <string name="signin_gate_passkeyAdd">添加通行密钥</string>
+    <string name="signin_gate_passkeyAdd__macos">添加通行密钥</string>
+    <!-- Finish: passkey outcome, success. -->
+    <string name="signin_gate_passkeyAdded">已添加通行密钥。</string>
+    <!-- Finish: passkey outcome, none added. -->
+    <string name="signin_gate_passkeyFailed">未添加通行密钥。你可以在账户中添加。</string>
+    <!-- Finish: leaves the passkey step. -->
+    <string name="signin_gate_passkeySkip">跳过</string>
+    <!-- Finish: the tile of a picture the person picked from their device. -->
+    <string name="signin_gate_pictureYours">你上传的图片</string>
+    <!-- Finish: shown on arrival when the picked picture could not be saved. -->
+    <string name="signin_gate_uploadFailed">图片未保存。请在账户中添加。</string>
+    <!-- Finish: the code stage after a resend. Arguments: {email}. Arguments: 1=email. -->
+    <string name="signin_gate_resent">我们已向 %1$s 发送新的验证码。</string>
+    <!-- Finish: the join offer when the other account is not yet proven. Arguments: {email}. Arguments: 1=email. -->
+    <string name="signin_gate_joinOtherLede">%1$s 已属于一个 Polaris Locker 账户。请使用其他邮箱，或先登录该账户。</string>
+    <!-- Finish: the screen name field left empty. -->
+    <string name="signin_gate_nameRequired">请输入显示名称。</string>
+    <!-- Finish: lede of the terms-only step. Arguments: {app}. Arguments: 1=app. -->
+    <string name="signin_gate_termsLede">同意 %1$s 的条款后继续。</string>
+    <!-- Code entry: submitted with fewer than six digits. -->
+    <string name="signin_code_incomplete">请输入全部 6 位数字。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">出现问题</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

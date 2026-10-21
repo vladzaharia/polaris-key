@@ -155,6 +155,7 @@ describe("account sessions", () => {
 
   it("the account cookie is host-only, HttpOnly, Secure and SameSite=Lax", async () => {
     const w = await seededWorld();
+    await getOrCreateAccountByEmail(w.db, "ada@example.com", NOW);
     const d = new Device(w);
     await d.send("POST", "/api/signin/email/start", {
       email: "ada@example.com",
@@ -212,6 +213,7 @@ describe("the session's browser label", () => {
 
   it("is what the session list shows", async () => {
     const w = await seededWorld();
+    await getOrCreateAccountByEmail(w.db, "ada@example.com", NOW);
     const d = new Device(w);
     await d.send("POST", "/api/signin/email/start", {
       email: "ada@example.com",

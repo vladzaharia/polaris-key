@@ -636,11 +636,12 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
 2. **CodeStep** (email path): one email with a 6-digit code and a magic link (I-07). Six cells
    submit on the sixth digit; "Or open the link in the email. Keep this tab open."; **Send a new
    code** (frame 2).
-3. **EmailGateStep** (first sign-in through Apple, Google or Steam; PX-21, PORTAL.md §4.29): the
-   "Signed in with Apple" strip, **Confirm your email**, `ProfileImport` (name and picture where the
-   provider gives them), the email radio cards, Terms when the product requires them, primary
-   "Continue to Tidewater Studio" or **Send code** for a typed address. **No skip path**; Cancel
-   abandons the sign-in. A provider-verified address needs no code (frame 3).
+3. **FinishStep** (every new account; first sign-in through Apple, Google or Steam, or a first email
+   code; PX-21, PORTAL.md §4.29, mockup `identity.finish`): h1 "Create your account", the email as
+   plain text with "Confirmed by Google" beside its label, **Screen name** with "Use a name from"
+   chips, picture tiles, explicit terms checks, the quiet passkey opt-in and a never-disabled
+   primary, **Create account and continue** (or **Send code** for a typed address). **No skip
+   path**; Cancel abandons the sign-in. A provider-verified address needs no code (frame 3).
 4. **LicenseChoiceStep**, "Choose a license for this device" (owner, 2026-10-05; SIGN-IN.md §3.6):
    shown on every sign-in that binds this installation, even with one license (a one-tap confirm).
    - Each row reads "Tidewater Studio", then the tier as a neutral pill ("Pro") with "2 of 3

@@ -242,6 +242,18 @@ export async function verifyEmailCode(
   env: Env,
   addr: EmailCodeAddress & { code: string; req: Request },
 ): Promise<{ ok: true; payload: string } | { ok: false }> {
+  const out = await verifyEmailCodeLive(env, addr);
+  return out.ok ? out : { ok: false };
+}
+
+/**
+ * `verifyEmailCode`, saying also whether a code was outstanding to guess against: the finish
+ * step tells an expired code (send a new one, no try spent) from a wrong one. Same strikes.
+ */
+export async function verifyEmailCodeLive(
+  env: Env,
+  addr: EmailCodeAddress & { code: string; req: Request },
+): Promise<{ ok: true; payload: string } | { ok: false; live: boolean }> {
   const ref = await codeRef(env, addr.product, addr.recipient, addr.flowId);
   const code = normalizeEmailCode(addr.code);
   // A malformed code still spends an attempt: it is a guess like any other.
@@ -263,7 +275,7 @@ export async function verifyEmailCode(
         lockSec: EMAIL_LOCKOUT_SECONDS,
       },
     );
-  return { ok: false };
+  return { ok: false, live: result.live };
 }
 
 /** Whether a recipient is currently locked out of new codes (fails closed: unreachable reads as

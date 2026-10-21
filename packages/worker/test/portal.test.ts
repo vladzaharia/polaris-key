@@ -126,6 +126,8 @@ describe("customer portal", () => {
       },
     } as unknown as Env["EMAIL"];
     await seedProduct(db, "djdl");
+    // A new address finishes through the gate first (PX-21); this is the returning sign-in.
+    await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
     const { licenseId } = await seedLicenseWithKey(db, "djdl");
 
     const start = await handlePortalApi(

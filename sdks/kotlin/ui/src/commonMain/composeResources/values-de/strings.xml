@@ -1471,7 +1471,7 @@
     <!-- Finish step title when only the terms are asked. -->
     <string name="signin_gate_termsTitle">Noch ein Schritt</string>
     <!-- Finish step: the screen name field. -->
-    <string name="signin_gate_name">Ihr Name</string>
+    <string name="signin_gate_name">Anzeigename</string>
     <!-- Finish step: the provider's address as a radio. Arguments: {email} = an address. Arguments: 1=email. -->
     <string name="signin_gate_useEmail">%1$s verwenden</string>
     <!-- Finish step: marks an Apple private-relay address. -->
@@ -1489,7 +1489,7 @@
     <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=term. -->
     <string name="signin_gate_productTerms">Ich stimme den %1$s zu</string>
     <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. Arguments: 1=term. -->
-    <string name="signin_gate_platformTerms">Mit dem Fortfahren stimmen Sie den %1$s zu.</string>
+    <string name="signin_gate_platformTerms">Ich stimme den %1$s zu</string>
     <!-- Finish step: the 15-minute sign-in ran out. -->
     <string name="signin_gate_expired">Diese Anmeldung ist abgelaufen. Melden Sie sich erneut an.</string>
     <!-- Finish step: the join offer (SIGN-IN.md §3.5). -->
@@ -1552,7 +1552,7 @@
     <!-- The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name. Arguments: 1=product. -->
     <string name="signin_gate_termsLinkProduct">Bedingungen von %1$s</string>
     <!-- The platform's terms link in the finish step. Polaris Locker is never translated. -->
-    <string name="signin_gate_termsLinkPlatform">Bedingungen von Polaris Locker</string>
+    <string name="signin_gate_termsLinkPlatform">Bedingungen und Datenschutzerklärung von Polaris Locker</string>
     <!-- Approve dialog: the code is spent or expired (410). -->
     <string name="signin_approve_expiredCode">Dieser Code ist abgelaufen. Fordern Sie auf dem anderen Gerät einen neuen an.</string>
     <!-- Approve dialog: no pending request has this code (404 or 422). -->
@@ -1944,6 +1944,57 @@
     <string name="getIt_device_android">Android-Gerät</string>
     <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a browser is called in “For your …”. -->
     <string name="getIt_device_web">Browser</string>
+    <!-- Finish step: beside the Email label when a provider vouches for the address. Arguments: {provider}. Arguments: 1=provider. -->
+    <string name="signin_gate_confirmedBy">Bestätigt von %1$s</string>
+    <!-- Finish step: beside the Email label when a sign-in code proved the address. -->
+    <string name="signin_gate_confirmedByCode">Per Code bestätigt</string>
+    <!-- Finish step: label above the screen-name suggestion chips. -->
+    <string name="signin_gate_nameFrom">Namen übernehmen von</string>
+    <!-- Finish step: under the screen name. Polaris Locker is never translated. -->
+    <string name="signin_gate_nameHint">Wird in Polaris Locker und in E-Mails angezeigt.</string>
+    <!-- Finish step: the picture group label. -->
+    <string name="signin_gate_picture">Bild</string>
+    <!-- Finish step: the initials picture tile. -->
+    <string name="signin_gate_pictureInitialsTile">Initialen</string>
+    <!-- Finish step: under the initials tile. -->
+    <string name="signin_gate_pictureFromName">Aus Ihrem Namen</string>
+    <!-- Finish step: the upload picture tile. -->
+    <string name="signin_gate_pictureUpload">Hochladen</string>
+    <!-- Finish step: under the upload tile; the accepted file types. -->
+    <string name="signin_gate_pictureUploadHint">PNG oder JPEG</string>
+    <!-- Finish step: under the picture tile in use. -->
+    <string name="signin_gate_pictureInUse">In Verwendung</string>
+    <!-- Finish step: the unticked passkey opt-in. -->
+    <string name="signin_gate_passkey">Danach einen Passkey hinzufügen</string>
+    <!-- Finish step: an upload that is not a PNG or JPEG. -->
+    <string name="signin_gate_pictureInvalid">Wählen Sie ein PNG oder JPEG bis 5 MB.</string>
+    <!-- Finish: the step after the account exists, offering one passkey. -->
+    <string name="signin_gate_passkeyTitle">Passkey hinzufügen</string>
+    <!-- Finish: under the passkey step title. -->
+    <string name="signin_gate_passkeyLede">Beim nächsten Mal genügt ein Tipp.</string>
+    <!-- Finish: the one-tap button that opens the browser passkey prompt. -->
+    <string name="signin_gate_passkeyAdd">Passkey hinzufügen</string>
+    <string name="signin_gate_passkeyAdd__macos">Passkey hinzufügen</string>
+    <!-- Finish: passkey outcome, success. -->
+    <string name="signin_gate_passkeyAdded">Passkey hinzugefügt.</string>
+    <!-- Finish: passkey outcome, none added. -->
+    <string name="signin_gate_passkeyFailed">Es wurde kein Passkey hinzugefügt. Sie können einen im Konto hinzufügen.</string>
+    <!-- Finish: leaves the passkey step. -->
+    <string name="signin_gate_passkeySkip">Überspringen</string>
+    <!-- Finish: the tile of a picture the person picked from their device. -->
+    <string name="signin_gate_pictureYours">Ihr Upload</string>
+    <!-- Finish: shown on arrival when the picked picture could not be saved. -->
+    <string name="signin_gate_uploadFailed">Ihr Bild wurde nicht gespeichert. Fügen Sie eines im Konto hinzu.</string>
+    <!-- Finish: the code stage after a resend. Arguments: {email}. Arguments: 1=email. -->
+    <string name="signin_gate_resent">Wir haben einen neuen Code an %1$s gesendet.</string>
+    <!-- Finish: the join offer when the other account is not yet proven. Arguments: {email}. Arguments: 1=email. -->
+    <string name="signin_gate_joinOtherLede">%1$s gehört bereits zu einem Polaris Locker-Konto. Verwenden Sie eine andere E-Mail-Adresse oder melden Sie sich zuerst bei diesem Konto an.</string>
+    <!-- Finish: the screen name field left empty. -->
+    <string name="signin_gate_nameRequired">Geben Sie einen Anzeigenamen ein.</string>
+    <!-- Finish: lede of the terms-only step. Arguments: {app}. Arguments: 1=app. -->
+    <string name="signin_gate_termsLede">Stimmen Sie den Bedingungen von %1$s zu, um fortzufahren.</string>
+    <!-- Code entry: submitted with fewer than six digits. -->
+    <string name="signin_code_incomplete">Geben Sie alle 6 Ziffern ein.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Ein Fehler ist aufgetreten</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

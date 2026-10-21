@@ -3292,7 +3292,7 @@
       "note": "Finish step title when only the terms are asked."
     },
     "signin.gate.name": {
-      "value": "Your name",
+      "value": "Screen name",
       "role": "label",
       "note": "Finish step: the screen name field."
     },
@@ -3332,7 +3332,7 @@
       "note": "Finish step: the product's terms checkbox. Arguments: {product} = the product's name."
     },
     "signin.gate.platformTerms": {
-      "value": "By continuing you agree to the {term}.",
+      "value": "I agree to {term}",
       "role": "body",
       "note": "Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated."
     },
@@ -3477,7 +3477,7 @@
       "note": "The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name."
     },
     "signin.gate.termsLinkPlatform": {
-      "value": "Polaris Locker terms",
+      "value": "Polaris Locker’s Terms and Privacy Policy",
       "role": "label",
       "note": "The platform's terms link in the finish step. Polaris Locker is never translated."
     },
@@ -4400,6 +4400,131 @@
       "value": "browser",
       "role": "label",
       "note": "The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a browser is called in “For your …”."
+    },
+    "signin.gate.confirmedBy": {
+      "value": "Confirmed by {provider}",
+      "role": "label",
+      "note": "Finish step: beside the Email label when a provider vouches for the address. Arguments: {provider}."
+    },
+    "signin.gate.confirmedByCode": {
+      "value": "Confirmed by code",
+      "role": "label",
+      "note": "Finish step: beside the Email label when a sign-in code proved the address."
+    },
+    "signin.gate.nameFrom": {
+      "value": "Use a name from",
+      "role": "label",
+      "note": "Finish step: label above the screen-name suggestion chips."
+    },
+    "signin.gate.nameHint": {
+      "value": "Shown in Polaris Locker and in emails.",
+      "role": "hint",
+      "note": "Finish step: under the screen name. Polaris Locker is never translated."
+    },
+    "signin.gate.picture": {
+      "value": "Picture",
+      "role": "label",
+      "note": "Finish step: the picture group label."
+    },
+    "signin.gate.pictureInitialsTile": {
+      "value": "Initials",
+      "role": "label",
+      "note": "Finish step: the initials picture tile."
+    },
+    "signin.gate.pictureFromName": {
+      "value": "From your name",
+      "role": "hint",
+      "note": "Finish step: under the initials tile."
+    },
+    "signin.gate.pictureUpload": {
+      "value": "Upload",
+      "role": "label",
+      "note": "Finish step: the upload picture tile."
+    },
+    "signin.gate.pictureUploadHint": {
+      "value": "PNG or JPEG",
+      "role": "hint",
+      "note": "Finish step: under the upload tile; the accepted file types."
+    },
+    "signin.gate.pictureInUse": {
+      "value": "In use",
+      "role": "hint",
+      "note": "Finish step: under the picture tile in use."
+    },
+    "signin.gate.passkey": {
+      "value": "Add a passkey after this",
+      "role": "label",
+      "note": "Finish step: the unticked passkey opt-in."
+    },
+    "signin.gate.pictureInvalid": {
+      "value": "Choose a PNG or JPEG up to 5 MB.",
+      "role": "body",
+      "note": "Finish step: an upload that is not a PNG or JPEG."
+    },
+    "signin.gate.passkeyTitle": {
+      "value": "Add a passkey",
+      "role": "title",
+      "note": "Finish: the step after the account exists, offering one passkey."
+    },
+    "signin.gate.passkeyLede": {
+      "value": "Next time is one tap.",
+      "role": "body",
+      "note": "Finish: under the passkey step title."
+    },
+    "signin.gate.passkeyAdd": {
+      "value": "Add a passkey",
+      "role": "button",
+      "note": "Finish: the one-tap button that opens the browser passkey prompt."
+    },
+    "signin.gate.passkeyAdded": {
+      "value": "Passkey added.",
+      "role": "body",
+      "note": "Finish: passkey outcome, success."
+    },
+    "signin.gate.passkeyFailed": {
+      "value": "No passkey was added. You can add one in Account.",
+      "role": "body",
+      "note": "Finish: passkey outcome, none added."
+    },
+    "signin.gate.passkeySkip": {
+      "value": "Skip",
+      "role": "button",
+      "note": "Finish: leaves the passkey step."
+    },
+    "signin.gate.pictureYours": {
+      "value": "Your upload",
+      "role": "label",
+      "note": "Finish: the tile of a picture the person picked from their device."
+    },
+    "signin.gate.uploadFailed": {
+      "value": "Your picture wasn't saved. Add one in Account.",
+      "role": "body",
+      "note": "Finish: shown on arrival when the picked picture could not be saved."
+    },
+    "signin.gate.resent": {
+      "value": "We sent a new code to {email}.",
+      "role": "body",
+      "note": "Finish: the code stage after a resend. Arguments: {email}."
+    },
+    "signin.gate.joinOtherLede": {
+      "value": "{email} already belongs to a Polaris Locker account. Use a different email, or sign in to that account first.",
+      "role": "body",
+      "note": "Finish: the join offer when the other account is not yet proven. Arguments: {email}."
+    },
+    "signin.gate.nameRequired": {
+      "value": "Enter a screen name.",
+      "role": "body",
+      "note": "Finish: the screen name field left empty."
+    },
+    "signin.gate.termsLede": {
+      "value": "Agree to {app}’s terms to keep going.",
+      "role": "body",
+      "note": "Finish: lede of the terms-only step. Arguments: {app}."
+    },
+    "signin.code.incomplete": {
+      "value": "Enter all 6 digits.",
+      "role": "body",
+      "note": "Code entry: submitted with fewer than six digits."
     }
   }
 }

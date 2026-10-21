@@ -306,6 +306,7 @@ describe("magic link", () => {
 
   it("in the asking browser, the landing page's POST signs in", async () => {
     const w = await seededWorld();
+    await getOrCreateAccountByEmail(w.db, "ada@example.com", NOW);
     const { asker, token } = await started(w);
     const res = await asker.send(
       "POST",
@@ -321,6 +322,7 @@ describe("magic link", () => {
 
   it("on another device it asks to confirm a sign-in requested at <time> from <place>, and signs only the asker in", async () => {
     const w = await seededWorld();
+    await getOrCreateAccountByEmail(w.db, "ada@example.com", NOW);
     const { asker, link, token } = await started(w);
     const phone = new Device(w, "198.51.100.50");
     const page = await phone.send(

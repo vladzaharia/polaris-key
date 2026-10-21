@@ -431,7 +431,79 @@ export const SHIPPED: ShippedState[] = [
       },
     }),
     ready: async (p) => {
-      await h1(p, "Confirm your email");
+      await h1(p, "Create your account");
+      await p.getByText("Confirmed by Google").waitFor();
+      await p
+        .getByRole("button", { name: "Create account and continue" })
+        .waitFor();
+    },
+  },
+  {
+    section: "4.29",
+    id: "signin-finish-terms",
+    title:
+      "Finish: the primary stays enabled; each unticked agreement is named at its box",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      terms: { url: "https://lanternworks.example/terms", version: "2" },
+      platformTerms: { url: "https://polaris.locker/terms", version: "1" },
+      product: { slug: "nightfall", name: "Nightfall" },
+    }),
+    ready: async (p) => {
+      await h1(p, "Create your account");
+      await p
+        .getByRole("button", { name: "Create account and continue" })
+        .click();
+      await p.getByText("Agree to the terms to continue.").first().waitFor();
+    },
+  },
+  {
+    section: "4.29",
+    id: "signin-finish-upload",
+    title:
+      "Finish: a picked picture previews as a data: image (the CSP allows no blob:) and becomes the tile in use",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      platformTerms: { url: "https://polaris.locker/terms", version: "1" },
+    }),
+    ready: async (p) => {
+      await h1(p, "Create your account");
+      await p.locator('input[type="file"]').setInputFiles({
+        name: "me.png",
+        mimeType: "image/png",
+        buffer: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+          "base64",
+        ),
+      });
+      await p.getByText("Your upload").waitFor();
+      await p.locator('img[src^="data:image/png"]').waitFor();
+    },
+  },
+  {
+    section: "4.29",
+    id: "signin-finish-terms-only",
+    title:
+      "Finish: an existing account that only owes terms sees only the terms",
+    scenario: "signedOut",
+    path: "/?signin=confirm-email",
+    routes: gateView({
+      newAccount: false,
+      emailRequired: false,
+      email: {
+        provider: null,
+        providerVerified: false,
+        relay: false,
+        pending: null,
+        confirmed: "mara@fennick.studio",
+      },
+      terms: { url: "https://lanternworks.example/terms", version: "2" },
+      product: { slug: "nightfall", name: "Nightfall" },
+    }),
+    ready: async (p) => {
+      await h1(p, "One more step");
       await p.getByRole("button", { name: "Continue" }).waitFor();
     },
   },
@@ -460,7 +532,7 @@ export const SHIPPED: ShippedState[] = [
       },
     }),
     ready: async (p) => {
-      await h1(p, "Confirm your email");
+      await h1(p, "Create your account");
       await p.getByRole("button", { name: "Send code" }).waitFor();
     },
   },

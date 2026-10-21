@@ -890,6 +890,31 @@ export type KitCopyKey =
   | "getIt.device.ios"
   | "getIt.device.android"
   | "getIt.device.web"
+  | "signin.gate.confirmedBy"
+  | "signin.gate.confirmedByCode"
+  | "signin.gate.nameFrom"
+  | "signin.gate.nameHint"
+  | "signin.gate.picture"
+  | "signin.gate.pictureInitialsTile"
+  | "signin.gate.pictureFromName"
+  | "signin.gate.pictureUpload"
+  | "signin.gate.pictureUploadHint"
+  | "signin.gate.pictureInUse"
+  | "signin.gate.passkey"
+  | "signin.gate.pictureInvalid"
+  | "signin.gate.passkeyTitle"
+  | "signin.gate.passkeyLede"
+  | "signin.gate.passkeyAdd"
+  | "signin.gate.passkeyAdded"
+  | "signin.gate.passkeyFailed"
+  | "signin.gate.passkeySkip"
+  | "signin.gate.pictureYours"
+  | "signin.gate.uploadFailed"
+  | "signin.gate.resent"
+  | "signin.gate.joinOtherLede"
+  | "signin.gate.nameRequired"
+  | "signin.gate.termsLede"
+  | "signin.code.incomplete"
   | "core.fallback.title"
   | "core.fallback.message"
   | "core.codes.unauthorized.title"
@@ -1414,6 +1439,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "yourData.account.copy.button": { macos: "Download My Data" },
   "yourData.remove.keep": { macos: "Keep My Data" },
   "getIt.flow.emailMe": { macos: "Email Me the Download" },
+  "signin.gate.passkeyAdd": { macos: "Add a Passkey" },
 };
 
 /** Locales whose core.* strings are English until their core pack lands. */

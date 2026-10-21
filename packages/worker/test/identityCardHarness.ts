@@ -171,8 +171,13 @@ export class Device {
     return res;
   }
 
-  /** The whole email-code sign-in for `email`. */
+  /** The whole email-code sign-in for `email`; a new address's finish step is completed too. */
   async signInWithCode(email: string, now = NOW): Promise<Response> {
+    return this.finishNewAccount(await this.verifyCode(email, now), now);
+  }
+
+  /** The email-code sign-in up to the verify's own answer (`finish` for a new address). */
+  async verifyCode(email: string, now = NOW): Promise<Response> {
     const start = await this.send(
       "POST",
       "/api/signin/email/start",
@@ -184,6 +189,33 @@ export class Device {
       "POST",
       "/api/signin/email/verify",
       { code: lastCode(this.w, email) },
+      { now },
+    );
+  }
+
+  /**
+   * A new address finishes through the gate (PX-21: always): when `res` answered `finish`, tick
+   * what the gate asks and answer its sign-in. Any other answer passes through.
+   */
+  async finishNewAccount(res: Response, now = NOW): Promise<Response> {
+    if (res.status !== 200) return res;
+    const body = (await res.clone().json()) as { status?: string };
+    if (body.status !== "finish") return res;
+    const gate = (await (
+      await this.send("GET", "/api/signin/confirm-email", undefined, { now })
+    ).json()) as {
+      terms: { version: string } | null;
+      platformTerms?: { version: string } | null;
+    };
+    return this.send(
+      "POST",
+      "/api/signin/confirm-email",
+      {
+        ...(gate.terms ? { termsVersion: gate.terms.version } : {}),
+        ...(gate.platformTerms
+          ? { platformTermsVersion: gate.platformTerms.version }
+          : {}),
+      },
       { now },
     );
   }

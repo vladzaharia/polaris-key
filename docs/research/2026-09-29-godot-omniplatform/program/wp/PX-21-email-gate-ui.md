@@ -46,6 +46,24 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/I-27.md`](../plans/I-27.md) §12: the D4 flow and ConsentStep's toggles; FinishStep per §2.4.
 
+## Rebuilt to identity.finish (2026-10-20)
+
+Owner direction and lead decisions of 2026-10-20 win over everything above. Verified against the
+code: P0-38's FinishStep (`portal/components/signin/FinishStep.tsx`) is replaced by the
+`identity.finish` mockup (MK-L1 re-skin).
+
+- One h1 "Create your account" for every new account; the email is plain text with "Confirmed by
+  Google" (or "Confirmed by code") beside its label; no "Signed in with" strip.
+- "Screen name", "Use a name from" chips (current marked), picture tiles (provider, Initials,
+  Upload), explicit terms checkboxes with the error at the checkbox, the passkey opt-in. The
+  primary is never disabled (it replaces the older "disabled until both terms" rule above).
+- The finish code stage and the sign-in's CodeStep share one `CodeEntry` (`ui/auth/CodeEntry.tsx`).
+- Worker: `beginEmailFinish` no longer returns `null` when Polaris Locker's terms are unset, so a
+  new email-code address always finishes here. `pnpm gen transcripts` changed nothing.
+- Corrections: the gate cannot take an upload, so an upload and a passkey are made right after the
+  gate passes (best effort); the product terms' "From {developer} · {date}" line needs the gate
+  view to carry both (follow-up); SIGN-IN.md §3.4, §3.5, §4.6 and EXPERIENCE.md follow identity.finish.
+
 ## Goal
 
 The login card's `/signin/confirm-email` step renders `EmailGate` with `ProfileImport` in every §4.29 variant (verified, code, Steam empty, terms), plain and under the app header, with the `email_in_use` join hand-off and no skip path.
@@ -132,10 +150,10 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] e2e per variant; the app header persists; no skip path exists.
-- [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
-- [ ] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
-- [ ] No horizontal page scroll at 360 px on every screen this package touches (§8).
+- [x] e2e per variant (google, steam, register, code, join, terms error); the app header is the card's and untouched; no skip path exists.
+- [x] `pnpm --filter @polaris-key/admin build` passes and the finish states report zero CSP violations (portalQuality, signin-finish).
+- [x] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
+- [x] No horizontal page scroll at 360 px on every screen this package touches (§8).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

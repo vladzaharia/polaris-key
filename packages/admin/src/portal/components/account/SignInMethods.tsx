@@ -137,7 +137,7 @@ export function SignInMethods({
                   later(() => setCmd((c) => ({ ...c, email: c.email + 1 }))),
               },
               {
-                label: "Add a passkey",
+                label: t("signin.gate.passkeyAdd"),
                 disabledReason: passkeyReason ?? undefined,
                 onSelect: () =>
                   later(() =>
@@ -1238,7 +1238,7 @@ function AddPasskey({
             if (!reason) void add();
           }}
         >
-          Add a passkey
+          {t("signin.gate.passkeyAdd")}
         </Button>
       )}
       {reason && prompt ? (

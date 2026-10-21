@@ -78,7 +78,7 @@ import {
   EMAIL_CODE_MAX_ATTEMPTS,
   EMAIL_CODE_TTL_SECONDS,
   issueEmailCode,
-  verifyEmailCode,
+  verifyEmailCodeLive,
 } from "../../../core/notify/emailLimits.js";
 import { isApplePrivateRelay } from "../../../core/notify/emailDelivery.js";
 import {
@@ -255,6 +255,8 @@ interface GateRecord {
   birthdate?: BirthdateChoice | null;
   /** FinishStep's Initials: the provider's picture declined, as an explicit choice. */
   initials?: boolean;
+  /** The terms versions the person ticked, kept so a resend after a reload need not tick again. */
+  accepted?: { terms?: string; platformTerms?: string };
   // ── I-30 (absent on a record opened by an earlier Worker: nothing to write) ──
   linkAssertion?: LinkAssertion | null;
   amr?: string[] | null;
@@ -495,14 +497,13 @@ function birthdateOffer(
 
 /**
  * I-33: the email path's finish. A first email-code sign-in of an address no account knows opens
- * the same gate a provider's first sign-in does, when it has something to ask: today, Polaris
- * Key's terms (`identity.platformTerms`). Answers `null` when nothing is asked, and the email
- * sign-in then creates the account as before. The address is already proven by the code, so the
- * gate starts confirmed and asks only for the profile and the terms. A known address, or one
- * another account uses, is never sent here (`signIn` signs it in or answers the join offer).
- *
- * PX-21 makes the step unconditional for every new address once the card renders FinishStep:
- * then the screen name, picture and passkey opt-in are asked on this path too.
+ * the same gate a provider's first sign-in does: the screen name, the picture, the passkey
+ * opt-in and the terms. PX-21 makes it unconditional for every new address, so it opens even
+ * while Polaris Locker's terms are unset (`identity.platformTerms`). Answers `null` only for an
+ * address that is not valid or that an account already knows; the email sign-in then signs in as
+ * before. The address is already proven by the code, so the gate starts confirmed. A known
+ * address, or one another account uses, is never sent here (`signIn` signs it in or answers the
+ * join offer).
  */
 export async function beginEmailFinish(
   env: Env,
@@ -524,7 +525,6 @@ export async function beginEmailFinish(
     })) !== null || (await accountUsingEmail(db, id.subject)) !== null;
   if (known) return null;
   const terms = await platformTermsToAsk(db, null);
-  if (!terms) return null;
   const gate: GateRecord = {
     v: 1,
     rev: 0,
@@ -590,6 +590,8 @@ async function gateView(db: Db, gate: GateRecord): Promise<unknown> {
   const providerEmail = gate.identity.email;
   return {
     status: "gate",
+    // PX-21: a new account ("Create your account") or an existing one that only owes terms.
+    newAccount: gate.accountId === null,
     provider: gate.identity.kind,
     stage: gate.stage,
     expiresAt: gate.createdAt + GATE_TTL_SECONDS,
@@ -689,7 +691,10 @@ async function gatePicture(
 }
 
 /** What FinishStep's `POST` chose beside the email, kept on the gate until it passes (I-33). */
-type FinishChoices = Pick<GateRecord, "name" | "birthdate" | "initials">;
+type FinishChoices = Pick<
+  GateRecord,
+  "name" | "birthdate" | "initials" | "accepted"
+>;
 
 /**
  * FinishStep's choices from the body, or the refusal: the terms (each version ticked), the
@@ -700,7 +705,13 @@ function finishChoices(
   gate: GateRecord,
   now: number,
 ): { ok: true; choices: FinishChoices } | { ok: false; res: Response } {
-  if (gate.terms && body.termsVersion !== gate.terms.version) {
+  const tickedTerms =
+    body.termsVersion === gate.terms?.version ||
+    gate.accepted?.terms === gate.terms?.version;
+  const tickedPlatform =
+    body.platformTermsVersion === gate.platformTerms?.version ||
+    gate.accepted?.platformTerms === gate.platformTerms?.version;
+  if (gate.terms && !tickedTerms) {
     return {
       ok: false,
       res: cardJson(
@@ -713,10 +724,7 @@ function finishChoices(
       ),
     };
   }
-  if (
-    gate.platformTerms &&
-    body.platformTermsVersion !== gate.platformTerms.version
-  ) {
+  if (gate.platformTerms && !tickedPlatform) {
     return {
       ok: false,
       res: cardJson(
@@ -782,7 +790,17 @@ function finishChoices(
     typedName && typedName !== (gate.profile.name ?? null) ? typedName : null;
   return {
     ok: true,
-    choices: { name, birthdate, initials: body.picture === "initials" },
+    choices: {
+      name,
+      birthdate,
+      initials: body.picture === "initials",
+      accepted: {
+        ...(gate.terms ? { terms: gate.terms.version } : {}),
+        ...(gate.platformTerms
+          ? { platformTerms: gate.platformTerms.version }
+          : {}),
+      },
+    },
   };
 }
 
@@ -921,13 +939,23 @@ async function gateVerify(
   if (!allowed) return cardJson({ error: "rate_limited" }, 429);
   const body = await readJsonObject(req);
   const code = typeof body?.code === "string" ? body.code : "";
-  const result = await verifyEmailCode(env, {
+  const result = await verifyEmailCodeLive(env, {
     product: PORTAL_EMAIL_SCOPE,
     recipient: gate.pendingEmail,
     flowId: ref.id,
     code,
     req,
   });
+  if (!result.ok && !result.live) {
+    // No code is outstanding (expired, or spent): nothing was guessed, so no try is burned.
+    return cardJson(
+      {
+        error: "code_expired",
+        message: "That code has expired. Send a new code.",
+      },
+      400,
+    );
+  }
   if (!result.ok) {
     const attempts = gate.attempts + 1;
     await updateGate(env, ref, gate, { attempts });

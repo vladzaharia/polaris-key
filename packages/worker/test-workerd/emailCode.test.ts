@@ -7,6 +7,7 @@ import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { D1Db } from "../src/db/d1.js";
 import { issueEmailCode } from "../src/core/notify/emailLimits.js";
+import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import { putArtefact } from "../src/core/singleUse.js";
 import { SIGNIN_FLOW_COOKIE } from "../src/core/accounts/accountCookies.js";
 import {
@@ -28,6 +29,8 @@ describe("email code on workerd", () => {
     const db = new D1Db(env.DB);
     const now = Math.floor(Date.now() / 1000);
     const email = `race-${crypto.randomUUID()}@example.com`;
+    // A new address finishes through the gate first (PX-21); this is the returning sign-in.
+    await getOrCreateAccountByEmail(db, email, now);
     const secret = crypto.randomUUID();
     const ref = await signinFlowRef(workerEnv, secret);
     await putArtefact(
