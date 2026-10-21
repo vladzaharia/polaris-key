@@ -1043,6 +1043,9 @@
     }
   },
   "developerOnly": [
+    "invalid-argument",
+    "invoke-not-allowed",
+    "sender-refused",
     "bad_request",
     "method_not_allowed",
     "misconfigured",

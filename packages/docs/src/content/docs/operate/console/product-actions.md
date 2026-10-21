@@ -22,7 +22,7 @@ Resync re-reads `schema`, `product` and `release` from the linked repo's **defau
 never a caller-supplied ref, so the manifest applied to production can't be a function of an
 unreviewed branch — and re-applies each in place:
 
-- Product metadata (name, licence defaults, web origins) is written unless the console has
+- Product metadata (name, license defaults, web origins) is written unless the console has
   claimed that field; the admin group is manifest-only and always follows the manifest. The
   compatibility window follows the ownership rule below.
 - The catalog gets a new active `schemaVersion` **only when its content actually changed**, and
@@ -56,7 +56,7 @@ profile it changes gets its own audit row.
 
 ## Claimed settings
 
-On a repository-linked product, saving the display name or a licence default in Settings
+On a repository-linked product, saving the display name or a license default in Settings
 claims it for the console: you confirm first, the row's source badge then reads **Set in
 console**, and resyncs leave it alone. **Revert…** in that badge restores the value from the
 last applied manifest at once, or at the next resync for a product not applied since claims
@@ -65,7 +65,7 @@ badge. The admin group is read-only on every product: change it in `.pkey/produc
 
 ## Manifest-authoritative mode
 
-A repository-linked product can make its `.pkey/` the only writer of its **display name, licence
+A repository-linked product can make its `.pkey/` the only writer of its **display name, license
 defaults, web origins and catalog**: turn on **Manifest-authoritative** in Settings → Repository
 (you confirm first). Off is the default. While it is on, saving one of those in the console is
 refused unless it is a **break-glass claim**, for an incident that cannot wait for a commit:
@@ -94,9 +94,9 @@ called by `deploy.yml` with every production deploy at the deployed commit): a p
 Resync of it are refused with "the system product is applied by the deploy hook", and Settings
 offers no Resync for it. The deploy hook applies the release configuration, the package
 deliverables, the trusted publisher and each enabled service's manifest rows, plus the value of
-any field whose break-glass claim it ends. It does not yet apply the display name, the licence
+any field whose break-glass claim it ends. It does not yet apply the display name, the license
 defaults, the web origins, the catalog or the admin group from `.pkey/`; applying every declared
-field is not built. Its break-glass claims (today on the licence defaults: its display name and
+field is not built. Its break-glass claims (today on the license defaults: its display name and
 admin group cannot be changed in the console) end after 7 days or at the first deploy that
 changes the field, and each deploy's log names the live ones as warnings.
 

@@ -26,7 +26,7 @@ In the console this is **Platform → Settings** (`#/platform/settings`; `#/plat
 | `BLOB_GC_GRACE_DAYS`              | How long an object stays unreferenced before the collector may delete it.                           | 1 to 365 days (default 30)                 |
 | `LICENSING_RESERVED_NAMES`        | What happens to a catalog flag that declares a reserved entitlement name with an incompatible type. | `warn` or `error` (default `warn`)         |
 | `IDENTITY_RESERVED_DISPLAY_NAMES` | What happens to a product or listing name that uses a platform or store name.                       | `warn` or `error` (default `warn`)         |
-| `KEYENTRY_REFUSALS`               | Lets Identity products refuse key entry past the per-licence limit and on owned licences.           | `on` or `off` (default `off`)              |
+| `KEYENTRY_REFUSALS`               | Lets Identity products refuse key entry past the per-license limit and on owned licenses.           | `on` or `off` (default `off`)              |
 | `ASSET_HOSTING`                   | Serves Polaris Key's own copies of product images and mirrors release files (hosted assets).        | `on` or `off` (default `on`)               |
 
 32 MiB is the measured ceiling of the delta consumer, so a runtime size cap can only lower it.
@@ -57,7 +57,7 @@ minor releases or 60 days, whichever is later. It sits under Sign-in in the cons
 
 `KEYENTRY_REFUSALS` is `identity.keyEntryRefusals`, the rollout switch for
 [key entries](/docs/features/licensing/activation/#key-entries). Key entries are counted either way. On, a
-product with Identity on refuses a new device a key whose licence is in no account and has used
+product with Identity on refuses a new device a key whose license is in no account and has used
 every key entry, with a link to add the key to an account; a device already using its key is never
 refused. Turn it on only once the SDKs that show the refusal are released. Turning it either way
 asks first. It sits under Sign-in in the console.
@@ -126,7 +126,7 @@ section (`?section=`), so a link opens there.
   products whose value changes, named, with what each goes from and to; its button carries the
   count, and Confirm waits until the count is in. The key-entry ceiling is a bound: it clamps a product that set a higher
   limit and never rewrites its value (raising it releases those products again), and the row lists the products it clamps with what each set
-  and what is in effect. The licence defaults (device limit, offline window) are not editable yet.
+  and what is in effect. The license defaults (device limit, offline window) are not editable yet.
 - **Sign-in.** The reserved display-name setting and the console session length. The identity
   provider's deploy-time values are under Advanced.
 - **Storefront and hosting.** The hosted-assets switch (`ASSET_HOSTING`; turning it

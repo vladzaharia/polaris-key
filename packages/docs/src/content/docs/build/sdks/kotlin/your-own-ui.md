@@ -19,7 +19,7 @@ as the quickstart does; every snippet here takes it as a parameter.
 Every `suspend` function on the client is main-safe: it moves its own file and network work off the
 calling thread, so call it from `viewModelScope`, `rememberCoroutineScope` or `runBlocking` alike.
 `client.update.install` is the exception: it runs the platform installer where you call it, and each
-installer keeps its own file work off the main thread. Cancelling the scope cancels a sign-in wait.
+installer keeps its own file work off the main thread. Canceling the scope cancels a sign-in wait.
 `close()` is not `suspend`; it stops the client's threads so a JVM `main` can exit. From Java,
 `PolarisKeyFutures(client)` returns `CompletableFuture`s.
 
@@ -143,7 +143,7 @@ suspend fun signIn(client: PolarisKeyClient, show: (code: String, address: Strin
 }
 ```
 
-`waitForSignIn` paces its polls and stops when its coroutine is cancelled; when it answers `Ready`,
+`waitForSignIn` paces its polls and stops when its coroutine is canceled; when it answers `Ready`,
 the token is stored and the first sync is done. `licenseUser()` is the pairwise subject only (it
 ships after `0.9.3`); the person's name and email are planned. Anyone holding the code can finish
 the sign-in elsewhere, so say who signed in. Sign-in needs the Identity service; with it off, every

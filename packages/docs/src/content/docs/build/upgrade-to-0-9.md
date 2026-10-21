@@ -40,9 +40,9 @@ Set the services in `modules.<service>.enabled`:
 | Neither License nor Identity      | `open`              |
 
 See [Registering a product](/docs/build/manifest/register/) for the manifest service declaration.
-A licensed product registers no device without a licence, so a product that declared `open` beside
+A licensed product registers no device without a license, so a product that declared `open` beside
 License gets no keyless device token under 0.9. Enrollment is a different mechanism with a
-different result: it issues a licence to an anonymous caller, and it does not change the
+different result: it issues a license to an anonymous caller, and it does not change the
 registration policy. See [Enrollment](/docs/features/licensing/access/).
 
 ## Check the result

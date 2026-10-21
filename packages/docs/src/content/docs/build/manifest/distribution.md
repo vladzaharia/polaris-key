@@ -160,7 +160,7 @@ for a command-line build whose executable resolves under `Cellar/<formula>/`).
 GitHub, where `pkey storefront homebrew pr` and `pkey storefront scoop pr` open pull requests
 ([Pull-request steps](/docs/features/ship-builds/ci-stores/#pull-request-steps-winget-homebrew-scoop-and-flathub)): a
 tap is `<owner>/homebrew-<name>` and a bucket `<owner>/<repo>`, and neither may belong to the
-`Homebrew` or `ScoopInstaller` organisation.
+`Homebrew` or `ScoopInstaller` organization.
 
 `direct.scoop` (optional) is what the [Scoop manifest](/docs/features/ship-builds/channels/feeds/#scoop)
 installs: `bin`, a relative path inside the Windows archive or a list of up to 16, which Scoop
