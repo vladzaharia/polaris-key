@@ -392,10 +392,10 @@ describe("@polaris-key/cli", () => {
       "polaris_config.py",
       "PolarisConfig.swift",
       "PolarisConfig.kt",
-      "polaris_key_config.gd",
+      "polaris_key.tres",
     ])
       expect(trust.out()).toContain(file);
-    expect(trust.out()).toContain("const PINNED_TRUST_KEYS := {");
+    expect(trust.out()).toContain("pinned_trust_keys = {");
 
     const sdk = capture();
     expect(

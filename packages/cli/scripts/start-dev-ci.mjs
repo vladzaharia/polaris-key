@@ -343,7 +343,18 @@ function writeConfig(lang, info, dir) {
   const cwd = path.join(dir, "config");
   const run = spawnSync(
     process.execPath,
-    [PKEY, "sdk", "--lang", lang, "--dev", "--url", info.baseUrl, "--write"],
+    [
+      PKEY,
+      "sdk",
+      "--lang",
+      lang,
+      "--dev",
+      "--url",
+      info.baseUrl,
+      "--write",
+      // Godot's file is polaris_key.tres beside project.godot; this directory has no project.
+      ...(lang === "godot" ? ["--out", "polaris_key.tres"] : []),
+    ],
     { cwd, encoding: "utf8", timeout: 60_000 },
   );
   if (run.error || run.status !== 0)

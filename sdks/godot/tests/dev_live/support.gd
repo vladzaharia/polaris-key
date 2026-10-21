@@ -1,15 +1,15 @@
 class_name PKeyDevLive
 extends RefCounted
 ## The bed for the dev_live suite (SP-41): the shipped Godot SDK, configured from the file
-## `pkey sdk --lang godot --dev --write` generated, talking real HTTP over the SDK's own transport
+## `pkey sdk --lang godot --dev --write` generated (a polaris_key.tres), talking real HTTP over the SDK's own transport
 ## to a `pkey dev` server a CI lane (or a developer) started. Nothing here is a fake: the server
 ## runs the Worker's router with a seeded product, and the sign-in is approved by the harness-side
 ## approver, as a person on another device would.
 ##
 ##   PKEY_DEV_BASE_URL   the server's origin, http://127.0.0.1:<port> (no trailing slash)
-##   PKEY_DEV_CONFIG     the polaris_key_config.gd `pkey sdk --lang godot --dev --url … --write`
-##                       wrote. It lives outside this tree, so it is read by absolute path and
-##                       compiled in memory (a load() would register it with the project)
+##   PKEY_DEV_CONFIG     the polaris_key.tres `pkey sdk --lang godot --dev --url … --write`
+##                       wrote. It lives outside this tree, so it is loaded by absolute path
+##                       (uncached: it is not a resource of the project)
 ##   PKEY_DEV_APPROVE    packages/cli/scripts/dev-approve.mjs, run as
 ##                       `node <it> <verificationUri> <userCode>`; exit 0 means approved
 ##
@@ -42,9 +42,8 @@ var config_path := ""
 var approve_path := ""
 ## `GET /__dev/info`, as the server last answered it.
 var info: Dictionary = {}
-## The generated quickstart file, compiled, and its constants.
-var config: GDScript = null
-var consts: Dictionary = {}
+## The generated polaris_key.tres, loaded.
+var config: PKeyOptions = null
 ## The `configure()` result of the SDK `sdk()` last made.
 var last_configure: PKeyResult = null
 
@@ -100,13 +99,10 @@ func open(t: PKeyTestContext) -> bool:
 	if not ready:
 		return false
 
-	var compiled := GDScript.new()
-	compiled.source_code = FileAccess.get_file_as_string(config_path)
-	var err := compiled.reload()
-	if not t.check("open: the generated config compiles", err == OK and compiled.can_instantiate(), "reload error %d in %s" % [err, config_path]):
+	var loaded = ResourceLoader.load(config_path, "", ResourceLoader.CACHE_MODE_IGNORE)
+	if not t.check("open: the generated polaris_key.tres loads as PKeyOptions", loaded is PKeyOptions, config_path):
 		return false
-	config = compiled
-	consts = compiled.get_script_constant_map()
+	config = loaded
 
 	var got := await refresh_info()
 	if not t.check("open: the server answers GET /__dev/info (a healthy pkey dev)", got["status"] == 200 and info.has("keys") and info.has("product"), "status %s %s" % [got["status"], got["error"]]):
@@ -183,9 +179,12 @@ static func next_patch(version: String) -> String:
 
 # ── The SDK ──────────────────────────────────────────────────────────────────────────────────
 
-## The generated quickstart's own one line, `PolarisConfig.options()`.
+## A copy of the generated polaris_key.tres, as `PolarisKey.boot()` reads it.
 func options() -> PKeyOptions:
-	return config.call("options")
+	var o: PKeyOptions = config.duplicate()
+	o.pinned_trust_keys = config.pinned_trust_keys.duplicate()
+	o.pinned_release_keys = config.pinned_release_keys.duplicate()
+	return o
 
 
 ## The device a role runs as. The Worker counts a key entry for every seat a licence's key

@@ -79,16 +79,16 @@ pkey sdk --lang <lang> --product <slug> --write
 
 Replace `<slug>` with the slug from step 1. For a platform that isn't at `key.plrs.im`, add `--base-url <console origin>`: the console's address without `/manage/`. The table gives `<lang>` for each SDK and the file it writes:
 
-| SDK    | `<lang>` | File written            |
-| ------ | -------- | ----------------------- |
-| Node   | `node`   | `polaris.config.ts`     |
-| React  | `react`  | `polaris.config.ts`     |
-| Python | `python` | `polaris_config.py`     |
-| Swift  | `swift`  | `PolarisConfig.swift`   |
-| Kotlin | `kotlin` | `PolarisConfig.kt`      |
-| Godot  | `godot`  | `polaris_key_config.gd` |
+| SDK    | `<lang>` | File written          |
+| ------ | -------- | --------------------- |
+| Node   | `node`   | `polaris.config.ts`   |
+| React  | `react`  | `polaris.config.ts`   |
+| Python | `python` | `polaris_config.py`   |
+| Swift  | `swift`  | `PolarisConfig.swift` |
+| Kotlin | `kotlin` | `PolarisConfig.kt`    |
+| Godot  | `godot`  | `polaris_key.tres`    |
 
-The file lands in the current directory. For Swift, run the command in your target's folder (`Sources/<Target>`), or add `--out Sources/<Target>/PolarisConfig.swift`, so the target compiles it.
+The file lands in the current directory. For Swift, run the command in your target's folder (`Sources/<Target>`), or add `--out Sources/<Target>/PolarisConfig.swift`, so the target compiles it. For Godot, run it in the project: the facts go into `polaris_key.tres` beside `project.godot`.
 
 You should see the file written and each pin's key id and SHA-256 fingerprint:
 

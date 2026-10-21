@@ -11610,7 +11610,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // src/index.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { mkdir as mkdir12, readFile as readFile25, writeFile as writeFile20 } from "node:fs/promises";
+import { mkdir as mkdir12, readFile as readFile25, stat as stat11, writeFile as writeFile20 } from "node:fs/promises";
 import path30 from "node:path";
 
 // src/bundle.ts
@@ -23715,7 +23715,7 @@ var COMMANDS = [
     valueless: ["dev"],
     about: [
       {
-        text: "pkey sdk add writes the SDK's config file and prints the install and the start. It refuses unless discovery serves exactly the pins --expect names, by fingerprint (copy them from the console's Integration page): it never trusts discovery first. Without --lang, pkey sdk prints a Node example with the pins given. With --lang it reads the product's discovery (and, in the product's repo, .pkey/release's releaseKeys) and prints that SDK's config file; --write writes it to the SDK's default path or --out, and --force replaces a file pkey sdk did not write. --dev reads the product, origin and release keys from a running pkey dev (--url, else ./polaris-key.json) instead."
+        text: "pkey sdk add writes the SDK's config file and prints the install and the start. It refuses unless discovery serves exactly the pins --expect names, by fingerprint (copy them from the console's Integration page): it never trusts discovery first. Without --lang, pkey sdk prints a Node example with the pins given. With --lang it reads the product's discovery (and, in the product's repo, .pkey/release's releaseKeys) and prints that SDK's config file; --write writes it to the SDK's default path or --out, and --force replaces a file pkey sdk did not write. For Godot the file is polaris_key.tres beside project.godot: the product, base URL, pins, release keys and services go into it and its other properties stay. --dev reads the product, origin and release keys from a running pkey dev (--url, else ./polaris-key.json) instead."
       }
     ]
   },
@@ -30735,7 +30735,7 @@ var SDK_CONFIG_DEFAULT_OUT = {
   python: "polaris_config.py",
   swift: "PolarisConfig.swift",
   kotlin: "PolarisConfig.kt",
-  godot: "polaris_key_config.gd"
+  godot: "polaris_key.tres"
 };
 var KOTLIN_PACKAGE_RE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
 function banner2(lang, facts, comment) {
@@ -30956,42 +30956,97 @@ public object PolarisConfig {
 }
 `;
 }
-function gdMap(map) {
+var GODOT_SCRIPT_ID = "1";
+var GODOT_OPTIONS_SCRIPT = "res://addons/polaris_key/core/options.gd";
+function tresDict(map) {
   const rows = Object.entries(map);
   if (rows.length === 0) return "{}";
   return `{
-${rows.map(([k, v]) => `	${q(k)}: ${q(v)},`).join("\n")}
+${rows.map(([k, v]) => `${q(k)}: ${q(v)}`).join(",\n")}
 }`;
 }
+function godotOptionFields(facts) {
+  return [
+    ["product", q(facts.product)],
+    ["base_url", q(facts.baseUrl)],
+    ["pinned_trust_keys", tresDict(facts.pinnedKeys)],
+    ["pinned_release_keys", tresDict(facts.pinnedReleaseKeys)],
+    [
+      "expected_services",
+      `PackedStringArray(${facts.services.map(q).join(", ")})`
+    ]
+  ];
+}
 function renderGodot(facts) {
-  return `${banner2("godot", facts, "#")}
-extends RefCounted
-## Polaris Key configuration for ${facts.product}. Keep it outside addons/:
-##
-##     const PolarisConfig := preload("res://polaris_key_config.gd")
-##     PolarisKey.configure(PolarisConfig.options())
-
-const PRODUCT := ${q(facts.product)}
-const BASE_URL := ${q(facts.baseUrl)}
-const PINNED_TRUST_KEYS := ${gdMap(facts.pinnedKeys)}
-const PINNED_RELEASE_KEYS := ${gdMap(facts.pinnedReleaseKeys)}
-const EXPECTED_SERVICES := [${facts.services.map(q).join(", ")}]
-
-
-## Writes the product facts into [param opts] and returns it; every other field is left alone.
-static func apply(opts: PKeyOptions) -> PKeyOptions:
-	opts.product = PRODUCT
-	opts.base_url = BASE_URL
-	opts.pinned_trust_keys = PINNED_TRUST_KEYS.duplicate()
-	opts.pinned_release_keys = PINNED_RELEASE_KEYS.duplicate()
-	opts.expected_services = PackedStringArray(EXPECTED_SERVICES)
-	return opts
-
-
-## A new [PKeyOptions] carrying the product facts.
-static func options() -> PKeyOptions:
-	return apply(PKeyOptions.new())
-`;
+  return [
+    `[gd_resource type="Resource" script_class="PKeyOptions" load_steps=2 format=3]`,
+    ``,
+    `[ext_resource type="Script" path="${GODOT_OPTIONS_SCRIPT}" id="${GODOT_SCRIPT_ID}"]`,
+    ``,
+    `[resource]`,
+    `script = ExtResource("${GODOT_SCRIPT_ID}")`,
+    ...godotOptionFields(facts).map(([k, v]) => `${k} = ${v}`),
+    ``
+  ].join("\n");
+}
+function tresValueEnd(src, from) {
+  let depth = 0;
+  let inStr = false;
+  for (let i = from; i < src.length; i++) {
+    const c = src[i];
+    if (inStr) {
+      if (c === "\\") i++;
+      else if (c === '"') inStr = false;
+    } else if (c === '"') inStr = true;
+    else if ("{[(".includes(c)) depth++;
+    else if ("}])".includes(c)) depth--;
+    else if (c === "\n" && depth <= 0) return i;
+  }
+  return src.length;
+}
+function mergeGodotOptions(existing, facts) {
+  const head = /^\[gd_resource [^\n]*\]/.exec(existing)?.[0] ?? "";
+  if (!head.includes('script_class="PKeyOptions"'))
+    throw new Error("it is not a PKeyOptions text resource");
+  const marker2 = /^\[resource\][ \t]*$/m.exec(existing);
+  if (!marker2) throw new Error("it has no [resource] section");
+  let pos = marker2.index + marker2[0].length;
+  let insertAt = pos;
+  const edits = [];
+  const owned = new Map(godotOptionFields(facts));
+  const seen = /* @__PURE__ */ new Set();
+  const gap = /(?:\s|;[^\n]*)*/y;
+  const prop = /([A-Za-z_][A-Za-z0-9_/]*)[ \t]*=[ \t]*/y;
+  for (; ; ) {
+    gap.lastIndex = pos;
+    gap.exec(existing);
+    pos = gap.lastIndex;
+    if (pos >= existing.length || existing[pos] === "[") break;
+    prop.lastIndex = pos;
+    const pm = prop.exec(existing);
+    if (!pm) throw new Error("it has a line that is not a property");
+    const end = tresValueEnd(existing, prop.lastIndex);
+    const key = pm[1];
+    const next = owned.get(key);
+    if (next !== void 0) {
+      seen.add(key);
+      edits.push({ from: prop.lastIndex, to: end, text: next });
+    }
+    insertAt = end;
+    pos = end;
+  }
+  const missing = [...owned].filter(([k]) => !seen.has(k));
+  if (missing.length > 0)
+    edits.push({
+      from: insertAt,
+      to: insertAt,
+      text: missing.map(([k, v]) => `
+${k} = ${v}`).join("")
+    });
+  let out = existing;
+  for (const e of edits.sort((a, b) => b.from - a.from))
+    out = out.slice(0, e.from) + e.text + out.slice(e.to);
+  return out;
 }
 function renderSdkConfig(lang, facts, opts = {}) {
   const js = /\.(m?js|cjs)$/.test(opts.out ?? "");
@@ -31611,11 +31666,9 @@ var GODOT_KIT = {
     code: lines2(
       `extends Node`,
       ``,
-      `const PolarisConfig := preload("res://polaris_key_config.gd")`,
-      ``,
       ``,
       `func _ready() -> void:`,
-      `	await PolarisKey.boot({options = PolarisConfig.options()})`,
+      `	await PolarisKey.boot()  # reads res://polaris_key.tres`,
       `	get_tree().change_scene_to_file("res://game/title.tscn")`
     )
   })
@@ -45930,17 +45983,40 @@ ${SDK_CONFIG_USAGE}`
     );
   const out = flagString(parsed, "out");
   const pkg = flagString(parsed, "package");
-  const content = renderSdkConfig(lang, facts, {
+  const writing = add5 || flagBool(parsed, "write");
+  let target;
+  let content = renderSdkConfig(lang, facts, {
     ...out !== void 0 ? { out } : {},
     ...pkg !== void 0 ? { kotlinPackage: pkg } : {}
   });
-  if (!add5 && !flagBool(parsed, "write")) {
+  if (lang === "godot") {
+    if (out !== void 0) target = path30.resolve(cwd, out);
+    else {
+      const project = await findGodotProject(cwd);
+      if (project) target = path30.join(project, SDK_CONFIG_DEFAULT_OUT.godot);
+      else if (writing)
+        throw new Error(
+          `No project.godot at or above ${cwd}; run pkey sdk in the Godot project, or pass --out.`
+        );
+    }
+    const current = target ? await readFile25(target, "utf8").catch(() => null) : null;
+    if (current !== null && !flagBool(parsed, "force")) {
+      try {
+        content = mergeGodotOptions(current, facts);
+      } catch (e) {
+        throw new Error(
+          `${target}: ${e.message}; pass --force to replace it.`
+        );
+      }
+    }
+  }
+  if (!writing) {
     stdout.write(content);
     return 0;
   }
-  const target = path30.resolve(cwd, out ?? SDK_CONFIG_DEFAULT_OUT[lang]);
+  target ??= path30.resolve(cwd, out ?? SDK_CONFIG_DEFAULT_OUT[lang]);
   const existing = await readFile25(target, "utf8").catch(() => null);
-  if (existing !== null && !existing.includes(SDK_CONFIG_MARKER) && !flagBool(parsed, "force"))
+  if (lang !== "godot" && existing !== null && !existing.includes(SDK_CONFIG_MARKER) && !flagBool(parsed, "force"))
     throw new Error(
       `${target} exists and was not written by pkey sdk; pass --force to replace it.`
     );
@@ -45949,8 +46025,31 @@ ${SDK_CONFIG_USAGE}`
   stdout.write(`${factsSummary(facts)}
 Wrote ${target}
 `);
+  if (lang === "godot") {
+    const old = path30.join(path30.dirname(target), "polaris_key_config.gd");
+    if (await stat11(old).then(
+      () => true,
+      () => false
+    ))
+      stdout.write(
+        `Note: ${old} is no longer read; delete it. The settings live in polaris_key.tres.
+`
+      );
+  }
   if (add5) stdout.write(addNextSteps(lang, facts));
   return 0;
+}
+async function findGodotProject(from) {
+  for (let dir = path30.resolve(from); ; ) {
+    if (await stat11(path30.join(dir, "project.godot")).then(
+      () => true,
+      () => false
+    ))
+      return dir;
+    const up = path30.dirname(dir);
+    if (up === dir) return null;
+    dir = up;
+  }
 }
 function parseExpect(raw) {
   if (raw === void 0)

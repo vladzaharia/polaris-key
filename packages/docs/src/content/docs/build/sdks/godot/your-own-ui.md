@@ -16,18 +16,15 @@ screen names, copy keys, controls, and decisions; the game supplies the nodes, f
 formatting. For the ready-made scenes instead, start with the [Godot quickstart](/docs/build/quickstart/godot/)
 or the [Godot UI kit](/docs/build/ui/frameworks/godot/).
 
-The generated config is the shared setup. If a game does not use `PolarisKey.boot()`, it must start
+`res://polaris_key.tres` is the shared setup. If a game does not use `PolarisKey.boot()`, it must start
 the cached state, explicitly run `discover()`, and then sync. `discover()` installs the current
 capability map and presentation; `sync()` verifies and refreshes the service documents.
 
 ```gdscript
 extends Node
 
-const PolarisConfig := preload("res://polaris_key_config.gd")
-
-
 func _ready() -> void:
-	var configured := PolarisKey.configure(PolarisConfig.options())
+	var configured := PolarisKey.configure(load("res://polaris_key.tres"))
 	if not configured.ok:
 		push_error(configured.code)
 		return
@@ -273,11 +270,8 @@ func test_device_limit_link() -> void:
 A test that starts the SDK keeps the disk, the clock and the network out of it:
 
 ```gdscript
-const PolarisConfig := preload("res://polaris_key_config.gd")
-
-
 func offline_options() -> PKeyOptions:
-	var opts := PolarisConfig.options()
+	var opts: PKeyOptions = load("res://polaris_key.tres").duplicate()
 	opts.store = PKeyMemoryStore.new()  # nothing touches the disk or the keychain
 	opts.local_only = true              # nothing touches the network
 	opts.build_stamp_path = ""          # ignore an exported game's build stamp

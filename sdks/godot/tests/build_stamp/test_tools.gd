@@ -12,6 +12,7 @@ func run(t: PKeyTestContext) -> void:
 	_presets(t)
 	_manifest(t)
 	_args(t)
+	_config_file(t)
 	_invocation(t)
 	t.check("cors: the note names web.origins and the product", PKeySetupTools.cors_note("acme").contains("web.origins") and PKeySetupTools.cors_note("acme").contains("acme"))
 
@@ -62,8 +63,8 @@ func _manifest(t: PKeyTestContext) -> void:
 
 func _args(t: PKeyTestContext) -> void:
 	var keys := {"b-key": "BBB", "a-key": "AAA"}
-	var with_manifest := PKeySetupTools.sdk_args("acme", "https://key.plrs.im", "/p/polaris_key_config.gd", keys, true)
-	t.check("sdk: the command line", with_manifest == PackedStringArray(["sdk", "--lang", "godot", "--product", "acme", "--base-url", "https://key.plrs.im", "--write", "--out", "/p/polaris_key_config.gd"]), str(with_manifest))
+	var with_manifest := PKeySetupTools.sdk_args("acme", "https://key.plrs.im", "/p/polaris_key.tres", keys, true)
+	t.check("sdk: the command line", with_manifest == PackedStringArray(["sdk", "--lang", "godot", "--product", "acme", "--base-url", "https://key.plrs.im", "--write", "--out", "/p/polaris_key.tres"]), str(with_manifest))
 	var without := PKeySetupTools.sdk_args("acme", "https://key.plrs.im", "/p/c.gd", keys, false)
 	t.check("sdk: pinned release keys ride along, sorted, without a manifest", without.slice(10) == PackedStringArray(["--release-key", "a-key=AAA", "--release-key", "b-key=BBB"]), str(without))
 	t.check("sdk: --force only on request", PKeySetupTools.sdk_args("acme", "u", "o", {}, true, true).has("--force") and not with_manifest.has("--force"))
@@ -82,3 +83,32 @@ func _invocation(t: PKeyTestContext) -> void:
 		return
 	var missing := PKeySetupTools.run({"path": "/nonexistent/pkey-cli-binary", "args": PackedStringArray()})
 	t.check("run: a binary that cannot start fails", not missing["ok"], str(missing))
+
+
+func _config_file(t: PKeyTestContext) -> void:
+	DirAccess.make_dir_recursive_absolute(TMP)
+	var path := TMP.path_join("polaris_key.tres")
+	t.check("config: no file, no fields", PKeySetupTools.config_fields(path).is_empty())
+	var o := PKeyOptions.new()
+	o.product = "acme"
+	o.base_url = "https://key.plrs.im"
+	o.default_channel = "beta"
+	ResourceSaver.save(o, path)
+	var before := PKeySetupTools.config_fields(path)
+	t.check("config: the CLI-owned fields are read", before["product"] == "acme" and before.size() == PKeySetupTools.CLI_FIELDS.size(), str(before))
+	t.check("config: unchanged fields are reported as such", PKeySetupTools.fields_report(before, before, path).contains("already had"))
+	o.pinned_trust_keys = {"k": "v"}
+	o.default_channel = "dev"
+	ResourceSaver.save(o, path)
+	var after := PKeySetupTools.config_fields(path)
+	var report := PKeySetupTools.fields_report(before, after, path)
+	t.check("config: only the changed CLI fields are named", report.contains("pinned_trust_keys") and not report.contains("product") and not report.contains("default_channel"), report)
+	t.check("config: a file the CLI did not write is reported", PKeySetupTools.fields_report(before, {}, path).contains("not written"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	var legacy := TMP.path_join("polaris_key_config.gd")
+	var f := FileAccess.open(legacy, FileAccess.WRITE)
+	f.store_string("extends RefCounted\n")
+	f.close()
+	var gone := PKeySetupTools.remove_legacy_config(legacy)
+	t.check("legacy: the retired config script is deleted on request", gone["ok"] and not FileAccess.file_exists(legacy), str(gone))
+	t.check("legacy: nothing to delete is not an error", PKeySetupTools.remove_legacy_config(legacy)["ok"])

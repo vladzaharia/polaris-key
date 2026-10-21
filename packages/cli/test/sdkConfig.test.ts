@@ -46,7 +46,7 @@ const SAMPLES: Record<SdkLang, { file: string; kotlinPackage?: string }> = {
     file: "sdks/kotlin/sdk/src/test/kotlin/polaris/generated/PolarisConfig.kt",
     kotlinPackage: "polaris.generated",
   },
-  godot: { file: "sdks/godot/tests/sdk_config/polaris_key_config.gd" },
+  godot: { file: "sdks/godot/tests/sdk_config/polaris_key.tres" },
 };
 
 const dirs: string[] = [];
@@ -284,6 +284,127 @@ describe("pkey sdk --lang", () => {
     expect(await readFile(path.join(cwd, "mine.py"), "utf8")).toBe(
       "PINS = {}\n",
     );
+  });
+
+  describe("godot: one polaris_key.tres", () => {
+    const DOCK_FILE = [
+      '[gd_resource type="Resource" script_class="PKeyOptions" load_steps=2 format=3]',
+      "",
+      '[ext_resource type="Script" path="res://addons/polaris_key/core/options.gd" id="1"]',
+      "",
+      "[resource]",
+      'script = ExtResource("1")',
+      'product = "old"',
+      'base_url = "https://old.example"',
+      'default_channel = "beta"',
+      'pinned_trust_keys = {\n"stale": "x"\n}',
+      'update_outlet = "steam"',
+      "ui_accent = Color(1, 0.5, 0, 1)",
+      'device_name = "a = b; {not a value"',
+      "",
+    ].join("\n");
+
+    async function project(file?: string): Promise<string> {
+      const cwd = await tempDir();
+      await writeFile(path.join(cwd, "project.godot"), "config_version=5\n");
+      await mkdir(path.join(cwd, "game"), { recursive: true });
+      if (file !== undefined)
+        await writeFile(path.join(cwd, "polaris_key.tres"), file);
+      return cwd;
+    }
+    const run = async (cwd: string, extra: string[] = []) => {
+      const io = capture();
+      const code = await runPkey(
+        ["sdk", "--lang", "godot", "--product", "acme", ...extra],
+        {
+          cwd,
+          fetchImpl: fakeFetch(DISCOVERY).fetchImpl,
+          ...io,
+        },
+      );
+      return { code, io };
+    };
+    const release = ["--release-key", `${RELEASE_KID}=${RELEASE_KEY}`];
+
+    it("creates the file beside project.godot, found from a subdirectory", async () => {
+      const cwd = await project();
+      const { code, io } = await run(path.join(cwd, "game"), [
+        "--write",
+        ...release,
+      ]);
+      expect(code, io.err()).toBe(0);
+      expect(await readFile(path.join(cwd, "polaris_key.tres"), "utf8")).toBe(
+        renderSdkConfig("godot", await facts()),
+      );
+      expect(io.out()).toContain("polaris_key.tres");
+    });
+
+    it("writes the five facts and keeps every other property, twice the same", async () => {
+      const cwd = await project(DOCK_FILE);
+      const target = path.join(cwd, "polaris_key.tres");
+      expect((await run(cwd, ["--write", ...release])).code).toBe(0);
+      const once = await readFile(target, "utf8");
+      expect(once).toContain('product = "acme"');
+      expect(once).toContain('base_url = "https://key.plrs.im"');
+      expect(once).toContain(`"${TRUST_KID}": "${TRUST_KEY}"`);
+      expect(once).not.toContain("stale");
+      expect(once).toContain(`"${RELEASE_KID}": "${RELEASE_KEY}"`);
+      expect(once).toContain(
+        'expected_services = PackedStringArray("license", "config", "release", "update")',
+      );
+      for (const kept of [
+        'default_channel = "beta"',
+        'update_outlet = "steam"',
+        "ui_accent = Color(1, 0.5, 0, 1)",
+        'device_name = "a = b; {not a value"',
+        'script = ExtResource("1")',
+      ])
+        expect(once).toContain(kept);
+      expect((await run(cwd, ["--write", ...release])).code).toBe(0);
+      expect(await readFile(target, "utf8")).toBe(once);
+    });
+
+    it("prints what it would write without --write", async () => {
+      const cwd = await project(DOCK_FILE);
+      const { code, io } = await run(cwd, release);
+      expect(code).toBe(0);
+      expect(io.out()).toContain('default_channel = "beta"');
+      expect(io.out()).toContain('product = "acme"');
+      expect(await readFile(path.join(cwd, "polaris_key.tres"), "utf8")).toBe(
+        DOCK_FILE,
+      );
+    });
+
+    it("refuses without a project, writes nothing on a release-key refusal, and refuses a foreign file", async () => {
+      const bare = await tempDir();
+      const none = await run(bare, ["--write", ...release]);
+      expect(none.code).toBe(1);
+      const cwd = await project(DOCK_FILE);
+      const missing = await run(cwd, ["--write"]);
+      expect(missing.code).toBe(1);
+      expect(await readFile(path.join(cwd, "polaris_key.tres"), "utf8")).toBe(
+        DOCK_FILE,
+      );
+      const other = await project('[gd_resource type="Theme" format=3]\n');
+      const refused = await run(other, ["--write", ...release]);
+      expect(refused.code).toBe(1);
+      expect(await readFile(path.join(other, "polaris_key.tres"), "utf8")).toBe(
+        '[gd_resource type="Theme" format=3]\n',
+      );
+      expect((await run(other, ["--write", "--force", ...release])).code).toBe(
+        0,
+      );
+    });
+
+    it("says once that polaris_key_config.gd is no longer read, and leaves it", async () => {
+      const cwd = await project();
+      await writeFile(path.join(cwd, "polaris_key_config.gd"), "# old\n");
+      const { io } = await run(cwd, ["--write", ...release]);
+      expect(io.out()).toMatch(/polaris_key_config\.gd is no longer read/);
+      expect(
+        await readFile(path.join(cwd, "polaris_key_config.gd"), "utf8"),
+      ).toBe("# old\n");
+    });
   });
 
   it("prints to stdout without --write, and takes --release-key outside a product repo", async () => {

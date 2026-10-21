@@ -268,7 +268,9 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "Without --lang, pkey sdk prints a Node example with the pins given. With --lang it " +
           "reads the product's discovery (and, in the product's repo, .pkey/release's " +
           "releaseKeys) and prints that SDK's config file; --write writes it to the SDK's " +
-          "default path or --out, and --force replaces a file pkey sdk did not write. --dev " +
+          "default path or --out, and --force replaces a file pkey sdk did not write. For Godot " +
+          "the file is polaris_key.tres beside project.godot: the product, base URL, pins, " +
+          "release keys and services go into it and its other properties stay. --dev " +
           "reads the product, origin and release keys from a running pkey dev (--url, else " +
           "./polaris-key.json) instead.",
       },
