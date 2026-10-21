@@ -31,6 +31,7 @@ import { useResyncFlow } from "../../../components/ResyncDialog.js";
 import { navigate, Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { readPref, writePref, PREF_KEYS } from "../../../storage.js";
+import { useMediaQuery } from "../../../../ui/data-table/DataTable.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 import { useCanOpenHref } from "../../../access/context.js";
 import {
@@ -289,9 +290,12 @@ export function ProductShelf({
   /** The attention read answered: until it has, the Attention facet is not offered. */
   attentionKnown: boolean;
 }): React.ReactElement {
-  const [view, setView] = React.useState<View>(() =>
+  const [chosenView, setView] = React.useState<View>(() =>
     readPref(PREF_KEYS.homeView, parseView, "cards"),
   );
+  // On a phone the Table is the Cards in a frame: one list of rows, so no choice and no switch.
+  const phone = useMediaQuery("(max-width: 639px)");
+  const view: View = phone ? "cards" : chosenView;
   const [state, setState] = useTableUrlState("products", {
     facets: HOME_FACETS,
   });
@@ -403,16 +407,18 @@ export function ProductShelf({
         </div>
         {many ? (
           <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
-            <SegmentedControl
-              size="sm"
-              aria-label="View"
-              options={VIEW_OPTIONS}
-              value={view}
-              onChange={(v) => {
-                setView(v);
-                writePref(PREF_KEYS.homeView, v);
-              }}
-            />
+            {phone ? null : (
+              <SegmentedControl
+                size="sm"
+                aria-label="View"
+                options={VIEW_OPTIONS}
+                value={view}
+                onChange={(v) => {
+                  setView(v);
+                  writePref(PREF_KEYS.homeView, v);
+                }}
+              />
+            )}
             <ActionMenu
               label="More product actions"
               items={[

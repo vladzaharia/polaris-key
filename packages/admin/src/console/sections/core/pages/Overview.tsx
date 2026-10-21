@@ -29,11 +29,7 @@ import {
   type ReleaseDto,
   type ServiceSlug,
 } from "../../../../api.js";
-import {
-  formatCount,
-  formatDate,
-  fromSeconds,
-} from "../../../../lib/format.js";
+import { formatCount, fromSeconds } from "../../../../lib/format.js";
 import { ACCESS_LABELS } from "../../../../lib/labels.js";
 import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
@@ -55,6 +51,7 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useAttention, useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { OverviewAttention } from "../components/OverviewAttention.js";
+import { OverviewByline } from "../components/OverviewByline.js";
 import { Link, navigate } from "../../../router.js";
 import { Big, Line, TileFrame } from "../components/TileFrame.js";
 import { CommerceTile } from "../../commerce/CommerceTile.js";
@@ -224,15 +221,12 @@ function OverviewBody({
           title={p.name}
           titleAside={<IdChip value={slug} noun="slug" head={32} />}
           description={
-            <>
-              Runs {features.length}{" "}
-              {features.length === 1 ? "feature" : "features"}
-              {p.releaseSource === "github" ? " · linked to a repository" : ""}
-              {sync?.lastSyncedAt
-                ? ` · last resync ${formatDate(fromSeconds(sync.lastSyncedAt))}`
-                : ""}{" "}
-              · created {formatDate(fromSeconds(p.createdAt))}
-            </>
+            <OverviewByline
+              features={features.length}
+              linked={p.releaseSource === "github"}
+              resyncedAt={sync?.lastSyncedAt}
+              createdAt={p.createdAt}
+            />
           }
           primaryAction={primary}
           secondaryActions={[

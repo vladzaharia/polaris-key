@@ -21,9 +21,9 @@ export function PlatformMeters({
     <ul aria-label={label} className="space-y-2.5">
       {rows.map((p) => (
         <li key={p.platform} className="space-y-1">
-          <p className="flex items-baseline justify-between gap-2 text-sm">
+          <p className="flex flex-wrap items-baseline justify-between gap-x-2 text-sm">
             <span className="font-medium text-fg-strong">{p.label}</span>
-            <span className="text-fg-muted">
+            <span className="ml-auto whitespace-nowrap text-right text-fg-muted">
               {p.verified} of {p.total} Verified
             </span>
           </p>

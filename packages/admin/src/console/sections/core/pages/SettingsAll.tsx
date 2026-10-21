@@ -185,7 +185,7 @@ export function SettingsAllPage({
         description="Every setting this product has. Edit one where it lives."
         refetching={values.isFetching && !values.isPending}
       />
-      <SettingsSection id="all-settings" title="Settings">
+      <SettingsSection id="all-settings" title="Index">
         <div className="flex flex-wrap items-end gap-3 px-5 pt-4">
           <label className="min-w-0 flex-1 basis-56 space-y-1 text-sm text-fg-muted">
             <span>Find a setting</span>
@@ -198,13 +198,13 @@ export function SettingsAllPage({
             />
           </label>
           <div className="w-full space-y-1 text-sm text-fg-muted sm:w-48">
-            <span id="all-settings-service">Service</span>
+            <span id="all-settings-service">Feature</span>
             <Select
               aria-labelledby="all-settings-service"
               value={service}
               onChange={(v) => setService(v ?? ALL)}
               options={[
-                { value: ALL, label: "All services" },
+                { value: ALL, label: "All features" },
                 ...services.map((s) => ({
                   value: s,
                   label: serviceLabel(s as never),

@@ -382,7 +382,7 @@ const VIEWPORTS: {
         width: 390,
         height: 844,
         rootFontPercent: 200,
-        only: ["global:home", "home:table", ...TEXT200_CASES],
+        only: ["global:home", "home:table", "djdl:overview", ...TEXT200_CASES],
       },
       // Forced colours (a Windows contrast theme) and `prefers-contrast: more`: Home, Licenses and
       // Services.
