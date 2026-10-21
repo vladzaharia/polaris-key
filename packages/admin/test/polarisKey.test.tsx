@@ -262,7 +262,7 @@ describe("the Polaris Key tile (rendered from the registry)", () => {
       /Published from CI|No app assigned|Not connected/,
     );
     const strip = within(tile).getByRole("list", {
-      name: "Polaris Key capabilities",
+      name: "Polaris Key: what it allows",
     });
     // Every first-party op is "Built in"; the unsupported one keeps its reason.
     expect(
@@ -552,6 +552,30 @@ describe("the Polaris Key panel", () => {
         "No one: no way to add this product is configured or turned on.",
       ),
     ).toBeTruthy();
+  });
+
+  it("B-227: the empty state names the manifest's autoIssue block, not a console setting that does not exist", async () => {
+    bootWith(
+      PAGE,
+      routes({}, { ...STATUS, available: [], active: [], groups: [] }),
+    );
+    const empty = (
+      await screen.findByText("No way to add this product is configured")
+    ).closest("section, div")!;
+    expect(empty.parentElement!.textContent).toContain("autoIssue");
+    expect(empty.parentElement!.textContent).not.toContain(
+      "turn on auto-issue",
+    );
+  });
+
+  it("B-227: Off for this deployment links a platform admin to the switch, and tells anyone else who to ask", async () => {
+    bootWith(PAGE, routes({}, { ...STATUS, enabled: false }));
+    const link = await screen.findByRole("link", {
+      name: "Turn it on in Platform settings",
+    });
+    expect(link.getAttribute("href")).toBe(
+      "#/platform/settings?setting=storefront.polarisKey.enabled",
+    );
   });
 });
 

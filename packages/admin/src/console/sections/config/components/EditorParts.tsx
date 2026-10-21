@@ -3,6 +3,7 @@ import { Lock, SlidersHorizontal, Stamp } from "lucide-react";
 import type { ConfigEntry } from "../../../../api.js";
 import { catalogDiagnostics } from "../../../../schema/index.js";
 import { CodeEditor } from "../../../../ui/CodeEditor.js";
+import { useWriteLock } from "../../../../ui/WriteLock.js";
 import { ENTRY_TYPE_LABELS, type EntryType } from "./entryType.js";
 import { draftDocument, type CatalogDraft } from "../model/catalogDraft.js";
 
@@ -46,6 +47,7 @@ export function JsonMode({
   }, [serialised]);
 
   const labelId = React.useId();
+  const { locked } = useWriteLock();
   return (
     <div className="space-y-2">
       <p id={labelId} className="sr-only">
@@ -60,6 +62,7 @@ export function JsonMode({
         heightClass="h-[32rem]"
         aria-labelledby={labelId}
         validate={catalogDiagnostics}
+        readOnly={locked}
         onChange={(next) => {
           setText(next);
           try {

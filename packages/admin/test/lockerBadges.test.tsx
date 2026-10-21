@@ -149,4 +149,28 @@ describe("the Polaris Locker page", () => {
       screen.queryByRole("link", { name: /Open in Polaris Locker/ }),
     ).toBeNull();
   });
+  it("B-228: says who can see the page the badges link to when the audience is not everyone", async () => {
+    const me = { ...ME, customerOrigin: "https://polaris.locker" };
+    bootWith(PAGE, { "/manage/api/me": me, ...routes });
+    const section = (
+      await screen.findByRole("heading", { name: "Get a badge" })
+    ).closest("section")!;
+    expect(section.textContent).toContain(
+      "only people who can add the product",
+    );
+    cleanup();
+    bootWith(PAGE, {
+      "/manage/api/me": me,
+      ...routes,
+      [P("/storefronts/polaris-key")]: {
+        ...STATUS,
+        listing: { ...STATUS.listing, audience: "everyone" },
+      },
+    });
+    const all = (
+      await screen.findByRole("heading", { name: "Get a badge" })
+    ).closest("section")!;
+    expect(all.textContent).not.toContain("only people who can add");
+    expect(all.textContent).toContain("Each badge links to its page");
+  });
 });

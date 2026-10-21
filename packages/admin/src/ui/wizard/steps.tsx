@@ -158,10 +158,10 @@ export function SnippetStep({
           options={tabs.map((t) => ({ value: t.id, label: t.label }))}
         />
       ) : null}
-      <p className="text-sm text-fg-muted">
-        <span className="font-mono text-fg">{tab.filename}</span>
-        {tab.where ? `. ${tab.where}.` : null}
-      </p>
+      {tab.where ? (
+        // The code block's header names the file; the line says only where it goes.
+        <p className="text-sm text-fg-muted">{tab.where}.</p>
+      ) : null}
       <CodeBlock
         code={tab.code}
         language={tab.language ?? "text"}

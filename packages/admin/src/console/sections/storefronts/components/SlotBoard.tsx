@@ -23,6 +23,7 @@ import { StatusPill } from "../../../../ui/StatusPill.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { LISTING_GROUP_LABELS, useSlots } from "../data.js";
+import { docsUrl } from "../../../../lib/docsLinks.js";
 
 const KIND_WORDS: Record<ListingSlotDto["kind"], string> = {
   human: "Made by a person",
@@ -137,7 +138,7 @@ export function SlotBoard({
         headingLevel={3}
         title="No listing images yet"
         description="Run pkey listing assets in CI: it derives every store's icons and art from the masters and registers them here for review."
-        docs="/docs/admin/storefront-listing/"
+        docs={docsUrl("storefrontListing")}
       />
     );
   const order = Object.keys(LISTING_GROUP_LABELS);

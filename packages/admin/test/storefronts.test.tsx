@@ -9,14 +9,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { configureAxe } from "vitest-axe";
-import { resetConsole } from "./consoleHarness.js";
+import { ME, resetConsole } from "./consoleHarness.js";
 import { P, bootWith, writes } from "./distributionFixture.js";
 import type {
   StorefrontDto,
   StorefrontStepDto,
   StorefrontsResponse,
 } from "../src/api.js";
+
+const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
+function walk(dir: string, out: string[] = []): string[] {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) walk(p, out);
+    else if (/\.(ts|tsx)$/.test(name)) out.push(p);
+  }
+  return out;
+}
 
 const axe = configureAxe({
   rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
@@ -364,7 +377,7 @@ describe("Distribution → Storefronts", () => {
     const arcade = within(main()).getByRole("region", { name: "Acme Arcade" });
     // The capability strip: API, link and not offered (with its reason), as badges.
     const strip = within(play).getByRole("list", {
-      name: "Google Play capabilities",
+      name: "Google Play: what it allows",
     });
     expect(
       [...strip.querySelectorAll("[data-capability]")].map((b) =>
@@ -373,7 +386,7 @@ describe("Distribution → Storefronts", () => {
     ).toEqual(["api", "deep-link", "unsupported"]);
     expect(strip.textContent).toContain("AABs reach Google Play from CI.");
     expect(
-      within(arcade).getByRole("list", { name: "Acme Arcade capabilities" })
+      within(arcade).getByRole("list", { name: "Acme Arcade: what it allows" })
         .textContent,
     ).toContain("CI");
     // A pill only for what needs attention: the healthy store has none.
@@ -603,6 +616,8 @@ describe("Distribution → Storefronts", () => {
 
   it("steps are marked from facts: a step passed with unmet facts warns, and nothing is done by position", async () => {
     bootWith(`${PAGE}?flow=add&step=run&stores=google-play`, routes());
+    // The loaded flow, not the frame shown while the stores load (B-225).
+    await screen.findByRole("button", { name: /^Continue/ });
     const nav = await screen.findByRole("navigation", {
       name: "Add to storefronts",
     });
@@ -772,5 +787,99 @@ describe("Distribution → Listing", () => {
       ]),
     );
     expect(main().textContent).not.toMatch(NO_STATUS_COPY);
+  });
+});
+
+// ── Bug package W (B-222 … B-228) ────────────────────────────────────────────────────────────
+
+const VIEWER = {
+  ...ME,
+  platformAdmin: false,
+  permissions: {
+    roles: [],
+    platform: { view: ["console"], edit: [] },
+    products: {
+      djdl: { view: ["core", "ship"], edit: [] },
+      acme: { view: ["core", "ship"], edit: [] },
+    },
+  },
+};
+
+describe("Storefronts: bug package W", () => {
+  it("B-222: with only the built-in store, Add to storefronts says where a store is connected, or who connects it", async () => {
+    const builtIn: StorefrontDto = {
+      ...NEW_STORE,
+      id: "polaris-key",
+      builtIn: true,
+    };
+    bootWith(
+      `${PAGE}?flow=add`,
+      routes({ [SF()]: { ...VIEW, stores: [builtIn] } }),
+    );
+    expect(
+      await screen.findByRole("link", { name: "Open Store connections" }),
+    ).toBeTruthy();
+    cleanup();
+    bootWith(
+      `${PAGE}?flow=add`,
+      routes({
+        [SF()]: { ...VIEW, stores: [builtIn] },
+        "/manage/api/me": VIEWER,
+      }),
+    );
+    await screen.findByText("Every storefront here is built in");
+    expect(
+      screen.queryByRole("link", { name: "Open Store connections" }),
+    ).toBeNull();
+    expect(main().textContent).toContain("Ask a platform admin");
+  });
+
+  it("B-223: a viewer without Ship edit sees the Run step's actions off, with who to ask", async () => {
+    const { calls } = bootWith(
+      `${PAGE}?flow=add&step=run&stores=google-play`,
+      routes({ "/manage/api/me": VIEWER }),
+    );
+    const send = await screen.findByRole("button", {
+      name: "Send the listing text",
+    });
+    expect(send.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(send);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(writes(calls)).toEqual([]);
+  });
+
+  it("B-224: while a step's own actions are open, Continue is outline, not a second primary", async () => {
+    bootWith(`${PAGE}?flow=add&step=run&stores=google-play`, routes());
+    const cont = await screen.findByRole("button", { name: /^Continue/ });
+    expect(cont.getAttribute("data-variant")).toBe("outline");
+    cleanup();
+    bootWith(
+      `${PAGE}?flow=add&step=prerequisites&stores=google-play`,
+      routes(),
+    );
+    const cont2 = await screen.findByRole("button", { name: /^Continue/ });
+    expect(cont2.getAttribute("data-variant")).toBe("primary");
+  });
+
+  it("B-225: while the stores load, the stepper and the step heading are already there", async () => {
+    bootWith(
+      `${PAGE}?flow=add&step=assets&stores=google-play`,
+      routes({ [SF()]: () => new Promise<Response>(() => {}) }),
+    );
+    const nav = await screen.findByRole("navigation", {
+      name: "Add to storefronts",
+    });
+    expect(within(nav).getAllByRole("listitem").length).toBeGreaterThan(5);
+    expect(
+      screen.getByRole("heading", { level: 2, name: /Assets|assets|Accept/ }),
+    ).toBeTruthy();
+  });
+
+  it("B-226: no storefronts page names a moved /docs/admin/ path; the docs links come from docsLinks", () => {
+    const dir = join(SRC, "console", "sections", "storefronts");
+    const hits = walk(dir).filter((f) =>
+      readFileSync(f, "utf8").includes("/docs/admin/"),
+    );
+    expect(hits).toEqual([]);
   });
 });

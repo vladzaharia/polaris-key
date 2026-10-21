@@ -1661,10 +1661,103 @@ const firstParty = (op: string) => ({
   handler: `polaris-key.${op}`,
 });
 
+// B-217: a connected store with a long label and long details, so the Add to storefronts flow
+// (prerequisites, assets, run) has rows to wrap at 200 % zoom.
+const PLAY_STEP = (id: string, phase: string, label: string) => ({
+  id,
+  ops: [id],
+  phase,
+  label,
+  mode: "api",
+  typed: false,
+  state: "todo",
+  stateAt: null,
+  writes: [
+    "PATCH listings/en-US with a long path that must wrap in a narrow column",
+  ],
+  link: null,
+  ci: null,
+  pr: null,
+  run: {
+    method: "POST",
+    path: `${PROD}/distribution/storefronts/google-play/steps/${id}`,
+    body: {},
+    fields: [],
+    confirm: "plain",
+    verb: "Send the listing text and every locale to the store",
+    consequences: ["Every locale's text is replaced."],
+  },
+  assert: null,
+  next: null,
+  handoff: null,
+  copy: [],
+  detail: "Replaces the text of every locale on the store's listing page.",
+  blockedBy: null,
+});
+const PLAY_STORE = {
+  id: "google-play",
+  label: "Google Play Console",
+  listingStore: "play",
+  connection: {
+    state: "connected",
+    credential: "google-play.service-account",
+    credentialLabel: "Google Play service account",
+    source: "console",
+    lastError: null,
+  },
+  app: { id: "gg.djdl.app", name: "DJDL" },
+  outlets: ["android"],
+  readOnly: null,
+  capabilities: [
+    {
+      op: "writeListingText",
+      label: "Listing text",
+      support: { mode: "api", plane: "worker", rules: [] },
+    },
+  ],
+  prerequisites: [
+    {
+      id: "connection",
+      label: "Team connection",
+      state: "met",
+      detail: "Stored.",
+      page: "platform-stores",
+    },
+    {
+      id: "permissions",
+      label: "Write permissions on the listing and the release tracks",
+      state: "unknown",
+      detail: "Confirmed by the first write to the store, not before it.",
+      page: null,
+    },
+  ],
+  steps: [
+    PLAY_STEP("writeListingText", "listing", "Send the listing text"),
+    PLAY_STEP("submit", "submit", "Send for review"),
+  ],
+  pushListing: null,
+  confirmationLabel: "Google Play Console",
+};
+
 const POLARIS_KEY_ROUTES: Record<string, unknown> = {
+  [`${PROD}/distribution/storefronts/slots`]: {
+    slots: [
+      {
+        slot: "key-art",
+        locale: null,
+        group: "masters",
+        kind: "human",
+        state: "missing",
+        spec: "16:9, at least 3840×2160, no logo or text, with a long note that wraps",
+        textAllowed: "none",
+        asset: null,
+      },
+    ],
+  },
   [`${PROD}/distribution/storefronts`]: {
     listing: { name: "DJDL", defaultLocale: "en-US", locales: ["en-US"] },
     stores: [
+      PLAY_STORE,
       {
         id: "polaris-key",
         label: "Polaris Locker",

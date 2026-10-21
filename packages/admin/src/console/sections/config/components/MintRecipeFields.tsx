@@ -2,6 +2,7 @@ import * as React from "react";
 import type { MintBlock } from "@polaris-key/catalog";
 import type { ConfigEntry } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
+import { Unlocked } from "../../../../ui/WriteLock.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Select } from "../../../../ui/Select.js";
@@ -130,14 +131,17 @@ export function MintRecipeFields({
           title="Minting is stopped until you approve"
           action={
             edited ? undefined : (
-              <Button
-                size="sm"
-                variant="outline"
-                data-recipe-opener=""
-                onClick={() => setRecipeId(entry.key)}
-              >
-                Review and approve…
-              </Button>
+              // Reading the recipe is open to a view-only member; the drawer gates Approve.
+              <Unlocked>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  data-recipe-opener=""
+                  onClick={() => setRecipeId(entry.key)}
+                >
+                  Review and approve…
+                </Button>
+              </Unlocked>
             )
           }
         >

@@ -24,6 +24,7 @@ import type {
   StorefrontStepDto,
 } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { CapabilityBadge } from "../../../../ui/CapabilityBadge.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
@@ -150,6 +151,9 @@ function useVerifier(
   };
 }
 
+/** A step's action names what it sends, so it wraps in a narrow column instead of running off it (B-217). */
+const WRAPS = "h-auto min-h-8 max-w-full whitespace-normal py-1 text-left";
+
 export function StepCard({
   slug,
   store,
@@ -175,6 +179,8 @@ export function StepCard({
     !step.blockedBy;
   const verifier = useVerifier(slug, store.id, step, verifying);
   const blocked = readOnly || step.blockedBy !== null;
+  // A viewer without Ship edit sees the actions off, with who to ask (B-223): the Worker refuses them anyway.
+  const gate = useWriteGate("ship", slug).disabledReason;
 
   const actions: React.ReactNode[] = [];
   if (step.run && open)
@@ -182,8 +188,10 @@ export function StepCard({
       <Button
         key="run"
         size="sm"
+        className={WRAPS}
         variant={step.typed ? "danger" : "primary"}
         disabled={blocked}
+        disabledReason={gate}
         onClick={() =>
           onIntent({
             request: step.run!,
@@ -235,8 +243,10 @@ export function StepCard({
       <Button
         key="assert"
         size="sm"
+        className={WRAPS}
         variant="outline"
         disabled={blocked}
+        disabledReason={gate}
         onClick={() =>
           step.assert
             ? onIntent({
@@ -259,7 +269,9 @@ export function StepCard({
       <Button
         key="next"
         size="sm"
+        className={WRAPS}
         disabled={readOnly}
+        disabledReason={gate}
         onClick={() =>
           onIntent({
             request: step.next!,
