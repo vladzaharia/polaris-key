@@ -168,7 +168,7 @@ function DriftRow({
           </dl>
         )}
       </div>
-      <div className="flex shrink-0 gap-2">
+      <div className="flex min-w-0 max-w-full shrink-0 flex-wrap gap-2">
         {unknownClaim ? (
           <span className="self-center text-sm text-fg-muted">
             Revert in a newer console
@@ -177,6 +177,7 @@ function DriftRow({
           <Button
             variant="outline"
             size="sm"
+            className="h-auto min-h-8 max-w-full whitespace-normal py-1 text-left"
             aria-label={
               matches
                 ? `Hand ${item.label} back to the manifest`
