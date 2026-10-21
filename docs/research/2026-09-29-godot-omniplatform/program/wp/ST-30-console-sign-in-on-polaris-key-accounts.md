@@ -191,7 +191,9 @@ csrf, exp, authAt, stepUpAt?}`, no `groups` and no `sub`. The callback now runs 
   public Terms page exists yet (the Locker menu says the same).
 - **Overlay**: `console/shell/SessionEnded.tsx` is a modal `Dialog`; "Sign in again" opens the card
   in a second tab (a link) that returns to `#/signed-in` and tells the first over a
-  `BroadcastChannel`. This keeps unsaved input, which a same-tab round trip cannot. Only a page
+  `BroadcastChannel`. The request that met the 401 is held and sent again after sign-in, so the page
+  never shows an error and keeps its form state; "Not now" fails it with its 401. This keeps unsaved
+  input, which a same-tab round trip cannot. Only a page
   that loaded `/me` in this tab gets the overlay; a first load with a lapsed cookie still shows the
   card.
 - **Cross-links**: the console user menu has 'My library' (`/me.customerOrigin`); `GET /api/me` on
