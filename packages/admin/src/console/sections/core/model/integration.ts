@@ -251,8 +251,7 @@ export function nextStep(
   if (pending.length > 0)
     return {
       text: pending.length === 1 ? "Review the recipe" : "Review the recipes",
-      reason:
-        "A minted token mints nothing until its recipe is approved as it stands.",
+      reason: "Approve the recipe before it can mint tokens.",
       to: reviewHref(slug, [...pending]),
     };
   const blocked = view.features.find((f) => f.status === "blocked");

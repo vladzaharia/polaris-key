@@ -309,7 +309,7 @@ const UNKNOWN: MomentObservation = { state: "unknown" };
 const BEFORE: MomentObservation = { state: "before" };
 
 const ACTION_LINK =
-  "inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline";
+  "inline-flex min-h-6 items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline";
 
 /** The first catalog: published once it has entries; a 404 is "not yet", any other error unknown. */
 export function catalogMoment(
@@ -851,7 +851,7 @@ function RecentActivity({ slug }: { slug: string }): React.ReactElement {
       action={
         <Link
           to={r.activity(slug)}
-          className="inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
+          className="inline-flex min-h-6 items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
         >
           View activity
           <ArrowRight aria-hidden className="size-3.5" />

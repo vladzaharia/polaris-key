@@ -350,9 +350,10 @@ export function AttentionList({
       <ul
         ref={motion.ref}
         className={cn(
-          // From a 36rem card the rows share four columns (pill, subject, message, link), so
+          // From a 36rem card the rows share four columns (pill, subject, message, link); the message
+          // stops at 72ch and the link follows it, not the card's far edge, so
           // every subject and message starts at one x whatever its pill word.
-          "divide-y divide-border @xl:grid @xl:grid-cols-[auto_fit-content(11rem)_minmax(0,1fr)_auto]",
+          "divide-y divide-border @xl:grid @xl:grid-cols-[max-content_fit-content(11rem)_fit-content(72ch)_max-content]",
           motion.className,
         )}
       >
@@ -389,7 +390,7 @@ export function AttentionList({
               item.action.href ? (
                 <Link
                   to={item.action.href}
-                  className="flex min-h-6 min-w-0 max-w-full items-center gap-1 text-sm leading-6 text-fg-strong underline-offset-4 hover:underline @xl:justify-self-end"
+                  className="flex min-h-6 min-w-0 max-w-full items-center gap-1 text-sm leading-6 text-fg-strong underline-offset-4 hover:underline @xl:justify-self-start"
                 >
                   <span className="min-w-0 truncate">{item.action.label}</span>
                   <ArrowRight aria-hidden className="size-3.5 shrink-0" />
@@ -398,7 +399,7 @@ export function AttentionList({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="shrink-0 @xl:justify-self-end"
+                  className="shrink-0 @xl:justify-self-start"
                   onClick={item.action.onSelect}
                 >
                   {item.action.label}

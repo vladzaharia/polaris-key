@@ -12,7 +12,7 @@
 import { renderFeedSetup, type FeedSnippet } from "../feedSetup.js";
 import type { PackageEcosystem } from "../packages.js";
 import type { ServiceSlug } from "../services.generated.js";
-import { SDK_IDS, type SdkFit, type SdkId } from "./fit.js";
+import { SDK_IDS, type SdkFit, type SdkHost, type SdkId } from "./fit.js";
 import {
   SDK_CONFIG_DEFAULT_OUT,
   renderSdkConfig,
@@ -98,9 +98,20 @@ const INSTALL: Record<
   },
 };
 
+/** The Node server lane: the Fetch-core verifier, on the same npm feed as the SDK. */
+const SERVER_INSTALL = {
+  ...INSTALL.node,
+  name: "@polaris-key/server",
+};
+
 /** The install snippets for one SDK, from the platform feed's setup. */
-export function sdkInstall(sdk: SdkId): FeedSnippet[] {
-  const spec = INSTALL[sdk];
+export function sdkInstall(
+  sdk: SdkId,
+  host: SdkHost | null | undefined = "app",
+): FeedSnippet[] {
+  // A Node server verifies with `@polaris-key/server`, which is what its start block imports.
+  const spec =
+    sdk === "node" && host === "server" ? SERVER_INSTALL : INSTALL[sdk];
   const all = renderFeedSetup(spec.ecosystem, {
     origin: SDK_REGISTRY_ORIGIN,
     owner: FEED_OWNER,
@@ -233,7 +244,7 @@ export function renderSdkSetup(sdk: SdkId, o: SdkSetupContext): SdkSetup {
 
   return {
     sdk,
-    install: sdkInstall(sdk),
+    install: sdkInstall(sdk, fit.host),
     installNote: sdkInstallNote(sdk),
     config: { filename: out, language: CONFIG_LANGUAGE[sdk], code },
     start,

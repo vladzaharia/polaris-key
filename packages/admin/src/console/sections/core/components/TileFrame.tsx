@@ -19,6 +19,13 @@ const SHIP_BUILDS_TITLES: Partial<Record<ServiceSlug, string>> = {
   update: "In-app updates",
 };
 
+/** Ship builds is one feature: its three tiles wear the Releases accent, not one each. */
+const SHIP_BUILDS_ACCENT: ServiceSlug = "release";
+
+export function tileAccent(service: ServiceSlug): ServiceSlug {
+  return service in SHIP_BUILDS_TITLES ? SHIP_BUILDS_ACCENT : service;
+}
+
 export function tileTitle(service: ServiceSlug): string {
   return (
     SHIP_BUILDS_TITLES[service] ??
@@ -53,7 +60,7 @@ export function TileFrame({
   const id = `tile-${service}`;
   return (
     <section
-      data-service={service}
+      data-service={tileAccent(service)}
       aria-labelledby={id}
       className="flex flex-col gap-3 rounded-lg border border-border border-t-2 border-t-accent bg-surface-raised p-4"
     >
@@ -81,7 +88,7 @@ export function TileFrame({
       </div>
       <Link
         to={href}
-        className="inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
+        className="inline-flex min-h-6 items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
       >
         {linkLabel}
         <ArrowRight aria-hidden className="size-3.5" />

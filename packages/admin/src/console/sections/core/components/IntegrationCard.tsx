@@ -119,7 +119,7 @@ function Body({
             </Button>
           </div>
         ) : (
-          <p className="text-base text-fg-strong">Every feature is Verified.</p>
+          <p className="text-base text-fg-strong">Every feature is verified.</p>
         )}
         <ul aria-label="Features" className="divide-y divide-border">
           {view.features.map((f) => (
@@ -141,7 +141,7 @@ function Body({
           <span className="text-2xl font-semibold text-fg-strong">
             {verified}
           </span>{" "}
-          of {total} {total === 1 ? "feature" : "features"} Verified
+          of {total} {total === 1 ? "feature" : "features"} verified
         </p>
         {platformProgress(view).length > 0 ? (
           <PlatformMeters view={view} />

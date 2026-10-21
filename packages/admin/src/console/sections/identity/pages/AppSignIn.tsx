@@ -239,7 +239,7 @@ function PageBody({
       ? `${name} ${draft.portalEnabled ? "shown" : "hidden"} in libraries`
       : null,
     draft.keyReissueEnabled !== saved.keyReissueEnabled
-      ? `lost key ${draft.keyReissueEnabled ? "shown" : "hidden"}`
+      ? `lost-key replacement ${draft.keyReissueEnabled ? "on" : "off"}`
       : null,
     draft.keyLimit !== saved.keyLimit
       ? `key entries ${

@@ -9,7 +9,7 @@
  * same table and wait for their lane (SP-33b).
  *
  * Lanes: `kit` is the drop-in screens, `library` is your own UI on the SDK, `server` is a backend
- * that verifies a licence a client sends (a server has no screens). A combination the SDK cannot
+ * that verifies a license a client sends (a server has no screens). A combination the SDK cannot
  * do today renders `null`, never a guess.
  */
 
@@ -41,7 +41,7 @@ export interface UsageContext {
   mintRecipe: string;
   /** A content pack id (`.pkey/release` packs). */
   packId: string;
-  /** The licence flag a store purchase grants. */
+  /** The license flag a store purchase grants. */
   commerceFlag: string;
   /** The app's own command name, for a CLI. */
   appName: string;
@@ -153,8 +153,8 @@ const NODE_HEAD = (c: UsageContext, imports = "PolarisKeyClient"): string =>
 
 const NODE_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
   licensing: (c) => ({
-    title: "Gate on the licence",
-    filename: "licence.ts",
+    title: "Gate on the license",
+    filename: "license.ts",
     language: "ts",
     code: lines(
       NODE_HEAD(c, "copy, PolarisKeyClient"),
@@ -335,14 +335,14 @@ const NODE_ELECTRON: Partial<Record<IntegrationFeature, Maker>> = {
 
 const NODE_SERVER: Partial<Record<IntegrationFeature, Maker>> = {
   licensing: (c) => ({
-    title: "Verify a licence your app sends",
+    title: "Verify a license your app sends",
     filename: "verify.ts",
     language: "ts",
     code: lines(
       `import { verifyLicenseDocument } from "@polaris-key/server";`,
       `import { polarisConfig } from "./polaris.config.js";`,
       ``,
-      `// The app sends its cached licence document and its device id with the request.`,
+      `// The app sends its cached license document and its device id with the request.`,
       `export async function allowed(jws: string, deviceId: string): Promise<boolean> {`,
       `  const v = await verifyLicenseDocument(jws, {`,
       `    trust: polarisConfig.trust.pinnedKeys,`,
@@ -383,7 +383,7 @@ const REACT_KIT: Partial<Record<IntegrationFeature, Maker>> = {
 
 const REACT_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
   licensing: (c) => ({
-    title: "Gate on the licence",
+    title: "Gate on the license",
     filename: "Gate.tsx",
     language: "tsx",
     code: lines(
@@ -478,8 +478,8 @@ const PY_HEAD = (c: UsageContext, imports = "PolarisKeyClient"): string =>
 
 const PY_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
   licensing: (c) => ({
-    title: "Gate on the licence",
-    filename: "licence.py",
+    title: "Gate on the license",
+    filename: "license.py",
     language: "python",
     code: lines(
       `from typing import Optional`,
@@ -645,8 +645,8 @@ const SWIFT_KIT: Partial<Record<IntegrationFeature, Maker>> = {
 };
 const SWIFT_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
   licensing: (c) => ({
-    title: "Gate on the licence",
-    filename: "Licence.swift",
+    title: "Gate on the license",
+    filename: "License.swift",
     language: "swift",
     code: lines(
       `import PolarisKey`,
@@ -690,8 +690,8 @@ const KOTLIN_KIT: Partial<Record<IntegrationFeature, Maker>> = {
 };
 const KOTLIN_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
   licensing: (c) => ({
-    title: "Gate on the licence",
-    filename: "Licence.kt",
+    title: "Gate on the license",
+    filename: "License.kt",
     language: "kotlin",
     code: lines(
       `import com.acme.polaris.PolarisConfig`,
@@ -723,7 +723,7 @@ const GODOT_KIT: Partial<Record<IntegrationFeature, Maker>> = {
 };
 const GODOT_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
   licensing: () => ({
-    title: "React to the licence state",
+    title: "React to the license state",
     filename: "gate.gd",
     language: "gdscript",
     code: lines(

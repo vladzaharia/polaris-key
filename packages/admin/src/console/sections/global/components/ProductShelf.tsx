@@ -34,6 +34,9 @@ import { readPref, writePref, PREF_KEYS } from "../../../storage.js";
 import { useMediaQuery } from "../../../../ui/data-table/DataTable.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 import { useCanOpenHref, useLandingPage } from "../../../access/context.js";
+import { canIn } from "../../../access/can.js";
+import { askReason } from "../../../access/useCan.js";
+import { useMe } from "../../../data/hooks.js";
 import {
   filterHomeRows,
   HOME_FACETS,
@@ -321,6 +324,17 @@ export function ProductShelf({
   // held them: a table row's menu is where a product is resynced or deleted.
   const resync = useResyncFlow();
   const [deleting, setDeleting] = React.useState<HomeRow | null>(null);
+  // ST-29: deleting is the Settings area's, as in the product's own danger zone. A row menu has
+  // no hook per row, so the gate reads the session's permissions.
+  const me = useMe().data;
+  const deleteReason = (row: HomeRow): string | undefined =>
+    !me || canIn(me, "settings", row.slug, "edit")
+      ? undefined
+      : askReason(
+          "settings",
+          undefined,
+          canIn(me, "settings", row.slug, "view"),
+        );
   const rowActions = (row: HomeRow): RowActionItem[] => [
     ...[
       { label: "Open overview", href: r.overview(row.slug) },
@@ -341,6 +355,7 @@ export function ProductShelf({
     {
       label: "Delete product…",
       tone: "danger" as const,
+      disabledReason: deleteReason(row),
       onSelect: () => setDeleting(row),
     },
   ];

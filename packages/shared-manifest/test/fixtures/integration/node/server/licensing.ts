@@ -2,7 +2,7 @@
 import { verifyLicenseDocument } from "@polaris-key/server";
 import { polarisConfig } from "./polaris.config.js";
 
-// The app sends its cached licence document and its device id with the request.
+// The app sends its cached license document and its device id with the request.
 export async function allowed(jws: string, deviceId: string): Promise<boolean> {
   const v = await verifyLicenseDocument(jws, {
     trust: polarisConfig.trust.pinnedKeys,

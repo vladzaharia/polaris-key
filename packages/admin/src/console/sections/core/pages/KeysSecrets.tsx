@@ -155,9 +155,7 @@ export function SecretsSection({ slug }: { slug: string }): React.ReactElement {
                 ) : null}
                 {s.requiredBy.length ? (
                   <p className="text-sm text-fg-muted">
-                    {s.configured ? "Required by " : "Without it, "}
-                    <span>{s.requiredBy.join(", ")}</span>
-                    {s.configured ? "" : " won’t work"}
+                    Needed by <span>{s.requiredBy.join(", ")}</span>.
                   </p>
                 ) : null}
               </div>

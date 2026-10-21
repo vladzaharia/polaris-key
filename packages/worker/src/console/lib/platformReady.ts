@@ -128,7 +128,7 @@ export async function platformReady(
     },
     {
       id: "store-accounts",
-      title: "Store accounts connected",
+      title: "Stores connected",
       done: missingStores.length === 0,
       detail: missingStores.map((m) => storeSentence(m, names)).join(" "),
       action: {
@@ -137,7 +137,7 @@ export async function platformReady(
         label:
           missingStores.length === 1
             ? `Connect ${STORE_LABEL[missingStores[0]!.store] ?? "store"}`
-            : "Open store accounts",
+            : "Open store connections",
         to: "connections",
       },
     },

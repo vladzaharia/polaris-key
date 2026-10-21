@@ -33,7 +33,7 @@
     "lane": "library",
     "framework": null,
     "language": "ts",
-    "title": "Gate on the licence",
+    "title": "Gate on the license",
     "docs": "/docs/build/sdks/node/your-own-ui/",
     "status": "available",
     "compiled": true
@@ -124,7 +124,7 @@
     "lane": "server",
     "framework": null,
     "language": "ts",
-    "title": "Verify a licence your app sends",
+    "title": "Verify a license your app sends",
     "docs": "/docs/features/licensing/server-verification/",
     "status": "available",
     "compiled": true
@@ -150,7 +150,7 @@
     "lane": "library",
     "framework": null,
     "language": "tsx",
-    "title": "Gate on the licence",
+    "title": "Gate on the license",
     "docs": "/docs/build/sdks/react/your-own-ui/",
     "status": "available",
     "compiled": true
@@ -215,7 +215,7 @@
     "lane": "library",
     "framework": null,
     "language": "python",
-    "title": "Gate on the licence",
+    "title": "Gate on the license",
     "docs": "/docs/build/sdks/python/your-own-ui/",
     "status": "available",
     "compiled": true
@@ -319,7 +319,7 @@
     "lane": "library",
     "framework": null,
     "language": "swift",
-    "title": "Gate on the licence",
+    "title": "Gate on the license",
     "docs": "/docs/build/sdks/swift/your-own-ui/",
     "status": "available",
     "compiled": false
@@ -345,7 +345,7 @@
     "lane": "library",
     "framework": null,
     "language": "kotlin",
-    "title": "Gate on the licence",
+    "title": "Gate on the license",
     "docs": "/docs/build/sdks/kotlin/your-own-ui/",
     "status": "available",
     "compiled": false
@@ -371,7 +371,7 @@
     "lane": "library",
     "framework": null,
     "language": "gdscript",
-    "title": "React to the licence state",
+    "title": "React to the license state",
     "docs": "/docs/build/sdks/godot/your-own-ui/",
     "status": "available",
     "compiled": false

@@ -106,6 +106,12 @@ const MASTHEAD_DEBT: {
     why: "the release's facts run to three rows on a phone and two at the 1024 px rail",
   },
   {
+    cases: /^djdl:deliverables\/record/,
+    kinds: ["masthead/height"],
+    owner: "the deliverable record's package (B-062, follow-up of ST-48)",
+    why: "at 640 px the facts wrap under the name (28 px) and the one secondary action takes its own row (44 px)",
+  },
+  {
     cases: /^djdl:outlets/,
     kinds: ["right-align/card-consistency"],
     owner: "the Distribution keys card's package (follow-up of ST-48)",
@@ -286,6 +292,7 @@ const ZOOM_CASES = [
   "djdl:services",
   "djdl:app-sign-in",
   "djdl:releases",
+  "djdl:deliverables/record/delivery",
   "djdl:activity?table",
   "long:overview",
   "dialog:set-secret",

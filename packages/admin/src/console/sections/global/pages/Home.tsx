@@ -10,6 +10,7 @@ import { GithubIcon } from "../../../../ui/GithubIcon.js";
 import { ProductLogo } from "../../../../ui/ProductLogo.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useWriteGate } from "../../../access/useCan.js";
+import { useCanOpenHref } from "../../../access/context.js";
 import { useCan } from "../../../access/useCan.js";
 import {
   useAttention,
@@ -85,12 +86,18 @@ export function Home(): React.ReactElement {
   const [guideHidden, setGuideHidden] = useSetupGuideHidden(operator);
 
   const list = React.useMemo(() => products.data ?? [], [products.data]);
+  // ST-29: an item whose page the member's role does not open is not counted, any more than listed.
+  const canOpen = useCanOpenHref();
+  const openable = React.useMemo(
+    () => (attention.data ?? []).filter((a) => canOpen(attentionHref(a))),
+    [attention.data, canOpen],
+  );
   const bySlug = React.useMemo(() => {
     const m = new Map<string, AttentionItemDto[]>();
-    for (const a of attention.data ?? [])
+    for (const a of openable)
       m.set(a.product.slug, [...(m.get(a.product.slug) ?? []), a]);
     return m;
-  }, [attention.data]);
+  }, [openable]);
   const rows: HomeRow[] = React.useMemo(
     () =>
       [...list]
@@ -139,7 +146,7 @@ export function Home(): React.ReactElement {
         document.querySelector<HTMLElement>(heading)?.focus(),
       );
   };
-  const items = attentionRows(attention.data ?? [], logoOf);
+  const items = attentionRows(openable, logoOf);
   // The grid splits only when attention has rows to show (or is still loading or failed, so its
   // card holds the slot): a healthy platform's one-line all-clear never leaves a void beside the
   // guide, which then takes the row under it.
@@ -197,19 +204,35 @@ export function Home(): React.ReactElement {
     />
   );
   // A dismissed guide comes back from the header's menu; with nothing hidden there is no menu.
+  const stepsOpen =
+    ready.data && Array.isArray(ready.data.rows)
+      ? ready.data.total - ready.data.done
+      : 0;
   const guideMenu =
     platform && guideHidden ? (
-      <ActionMenu
-        label="More actions"
-        size="md"
-        items={[
-          {
-            label: "Show Platform ready",
-            icon: <Eye />,
-            onSelect: restoreGuide,
-          },
-        ]}
-      />
+      <>
+        {stepsOpen > 0 ? (
+          <Button
+            variant="outline"
+            size="sm"
+            data-setup-steps-open=""
+            onClick={restoreGuide}
+          >
+            {stepsOpen} setup {stepsOpen === 1 ? "step" : "steps"} open
+          </Button>
+        ) : null}
+        <ActionMenu
+          label="More actions"
+          size="md"
+          items={[
+            {
+              label: "Show Platform ready",
+              icon: <Eye />,
+              onSelect: restoreGuide,
+            },
+          ]}
+        />
+      </>
     ) : null;
 
   const header = (

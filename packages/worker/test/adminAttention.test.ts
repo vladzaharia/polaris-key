@@ -179,6 +179,8 @@ describe("GET /manage/api/platform/ready", () => {
     };
     const row = res.rows.find((r) => r.id === "store-accounts")!;
     expect(row.done).toBe(false);
+    // B-059: named for the page it opens (Store connections).
+    expect(row.title).toBe("Stores connected");
     expect(row.detail).toBe(
       "Diceroll's Steam uploads need a Steamworks publisher key.",
     );

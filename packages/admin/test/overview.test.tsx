@@ -284,6 +284,37 @@ describe("Core → Overview", () => {
     expect(await screen.findByText("7 devices")).toBeTruthy();
   });
 
+  it("B-051/B-052: Ship builds' three tiles share the Releases accent and their link is a 24 px target", async () => {
+    const { tileAccent, TileFrame } =
+      await import("../src/console/sections/core/components/TileFrame.js");
+    expect(
+      ["release", "distribution", "update"].map((x) => tileAccent(x as never)),
+    ).toEqual(["release", "release", "release"]);
+    expect(tileAccent("license")).toBe("license");
+    expect(tileAccent("config")).toBe("config");
+    const { container } = renderAt(
+      "#/p/djdl",
+      <TileFrame service="update" href="#/x" linkLabel="Open updates" />,
+    );
+    expect(
+      container.querySelector("section")?.getAttribute("data-service"),
+    ).toBe("release");
+    expect(
+      screen.getByRole("link", { name: "Open updates" }).className,
+    ).toContain("min-h-6");
+  });
+
+  it("B-052/B-060: View activity is a 24 px target and the minted-token step reads as an instruction", async () => {
+    mount();
+    const activity = await screen.findByRole("link", { name: /View activity/ });
+    expect(activity.className).toContain("min-h-6");
+    const { nextStep } =
+      await import("../src/console/sections/core/model/integration.js");
+    expect(
+      nextStep("djdl", { features: [] } as never, true, ["edge.mint"])?.reason,
+    ).toBe("Approve the recipe before it can mint tokens.");
+  });
+
   it("draws Commerce's tile and counts it among the services the product runs", async () => {
     fns.product.mockResolvedValue({
       product: product({
@@ -306,7 +337,7 @@ describe("Core → Overview", () => {
       await screen.findByRole("heading", { name: "Integration" })
     ).closest("section")!;
     expect(
-      await within(card).findByText(/of 2 features Verified/),
+      await within(card).findByText(/of 2 features verified/),
     ).toBeTruthy();
     expect(within(card).getByText("Verified")).toBeTruthy();
     expect(within(card).getByText("Waiting on setup")).toBeTruthy();
@@ -396,7 +427,7 @@ describe("Core → Overview", () => {
     const show = await screen.findByRole("button", {
       name: "Show Integration",
     });
-    expect(screen.queryByText(/features Verified/)).toBeNull();
+    expect(screen.queryByText(/features verified/)).toBeNull();
     fns.updateProductSetting.mockResolvedValue({
       ok: true,
       claimed: false,

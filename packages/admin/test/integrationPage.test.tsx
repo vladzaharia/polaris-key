@@ -104,7 +104,7 @@ describe("Core → Integration", () => {
   it("shows each feature's setup, its code and where it was seen, per platform", async () => {
     boot("#/p/djdl/integration", { extra: { [`${API}/integration`]: view() } });
     await page();
-    expect(await screen.findByText("1 of 2 features Verified")).toBeTruthy();
+    expect(await screen.findByText("1 of 2 features verified")).toBeTruthy();
     const licensing = await openFeature("Licensing");
     expect(licensing.getAttribute("data-service")).toBe("license");
     const seen = within(licensing).getByRole("list", { name: "Verified on" });
@@ -420,7 +420,7 @@ describe("Core → Integration", () => {
   it("passes axe", async () => {
     boot("#/p/djdl/integration", { extra: { [`${API}/integration`]: view() } });
     await page();
-    await screen.findByText("1 of 2 features Verified");
+    await screen.findByText("1 of 2 features verified");
     await expectNoAxeViolations(document.body);
   });
 });

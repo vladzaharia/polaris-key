@@ -204,7 +204,7 @@ export function IntegrationPage({
         description={
           total === 0
             ? undefined
-            : `${verified} of ${total} ${total === 1 ? "feature" : "features"} Verified`
+            : `${verified} of ${total} ${total === 1 ? "feature" : "features"} verified`
         }
         freshness={{
           updatedAt: view.dataUpdatedAt,

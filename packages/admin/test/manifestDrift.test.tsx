@@ -118,6 +118,18 @@ describe("Settings → Differs from the manifest (ST-17)", () => {
       const row = (await screen.findByRole("heading", { name: label })).closest(
         "li",
       ) as HTMLElement;
+      if (label === "Default device limit") {
+        // B-058: a row that already matches can only be handed back.
+        expect(
+          within(row).getByRole("button", {
+            name: `Hand ${label} back to the manifest`,
+          }).textContent,
+        ).toBe("Hand back to manifest");
+        expect(
+          within(row).queryByRole("button", { name: /^Revert|^Keep/ }),
+        ).toBeNull();
+        continue;
+      }
       expect(
         within(row).getByRole("button", {
           name: `Revert ${label} to the manifest`,
@@ -172,6 +184,10 @@ describe("Settings → Differs from the manifest (ST-17)", () => {
       name: /Return display name to the manifest\?/,
     });
     expect(fns.revertClaim).not.toHaveBeenCalled();
+    // B-058: the dialog names both values.
+    expect(
+      within(dialog).getByText("Console: DJDL Pro → Manifest: DJDL"),
+    ).toBeTruthy();
     await user.click(
       within(dialog).getByRole("button", { name: "Revert to manifest" }),
     );
