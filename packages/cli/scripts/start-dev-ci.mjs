@@ -547,10 +547,12 @@ function expectedTraffic(product) {
       1,
     ],
     [
+      // I-37: the IdP callback hands over (303) to the explicit approval page; the person's
+      // "Sign in on <device>" POST is what approves the code.
       "B4 sign-in approved",
-      "GET",
-      `/${p}/identity/auth/callback`,
-      `/${name}/identity/auth/callback`,
+      "POST",
+      `/${p}/identity/auth/device/approve`,
+      `/${name}/identity/auth/device/approve`,
       200,
       1,
     ],
