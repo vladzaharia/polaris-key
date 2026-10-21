@@ -151,7 +151,7 @@ describe("product header: the icon in front of the cover (§4.20)", () => {
   });
 });
 
-describe("library cards: 5:2 art, the status inset on its plate, no byline", () => {
+describe("library cards: 5:2 art, the status pill in the body, no byline", () => {
   for (const [scenario, path] of [
     ["three", "/"],
     ["twelve", "/#/?view=grid"],
@@ -184,19 +184,19 @@ describe("library cards: 5:2 art, the status inset on its plate, no byline", () 
               (a) => a.getAttribute("aria-labelledby") === "tile-nightfall",
             )!;
             const art = article.querySelector<HTMLElement>("[data-art]")!;
-            // Healthy is silence on art (UX-03): Nightfall has no plate; the issue plate
-            // (owner's padding) is measured on Ember Tactics, which has expired.
+            // Healthy is silence (UX-03); Ember Tactics has expired, so it carries the issue pill.
+            // The pill sits in the tile's body, never over the art (EXPERIENCE §7.3, LF3).
             const emberArt = document.querySelector<HTMLElement>(
               "article[aria-labelledby='tile-ember-tactics'] [data-art]",
             )!;
-            // Under 11 rem a tile moves the plate from the art into its meta row (PX-35).
-            const plate = emberArt.querySelector<HTMLElement>("span.absolute");
             const a = art.getBoundingClientRect();
-            const e = emberArt.getBoundingClientRect();
-            const p = plate?.getBoundingClientRect() ?? e;
-            const pill = (
-              plate?.firstElementChild ?? emberArt
-            ).getBoundingClientRect();
+            const pill = [
+              ...emberArt.closest("article")!.querySelectorAll("[data-tone]"),
+            ]
+              .filter((e) => e.textContent?.includes("Expired"))
+              .pop();
+            const pr = pill?.getBoundingClientRect();
+            const er = emberArt.getBoundingClientRect();
             const icon = article.querySelector<HTMLElement>("img[data-art]")!;
             const s = getComputedStyle(icon);
             // A full-bleed square icon (Tidewater's) gets the store's corner mask, nothing more.
@@ -206,15 +206,9 @@ describe("library cards: 5:2 art, the status inset on its plate, no byline", () 
             const q = getComputedStyle(square);
             return {
               ratio: a.width / a.height,
-              healthyPlate:
-                (art.querySelector("span.absolute")?.childElementCount ?? 0) >
-                0,
-              inMeta:
-                !plate &&
-                !!emberArt.closest("article")!.textContent!.includes("Expired"),
-              insetRight: e.right - p.right,
-              insetBottom: p.top - e.top,
-              plateHeight: pill.height,
+              pillInBody:
+                !!pill && !emberArt.contains(pill) && pr!.top >= er.bottom - 1,
+              textOverArt: emberArt.textContent?.includes("Expired") ?? true,
               byline: article.textContent!.includes("Lanternworks"),
               iconFrame: [
                 s.backgroundColor,
@@ -226,20 +220,13 @@ describe("library cards: 5:2 art, the status inset on its plate, no byline", () 
               squareRadius: parseFloat(q.borderTopLeftRadius),
             };
           });
-          // The denser tile's 5:2 art (PX-35); the status plate sits in its top-right corner.
+          // The denser tile's 5:2 art (PX-35); the status pill sits in the body under it.
           expect(card.ratio, `${scenario} ${theme} ${width}`).toBeCloseTo(
             5 / 2,
             1,
           );
-          expect(card.healthyPlate).toBe(false);
-          if (card.inMeta) {
-            expect(width).toBeLessThan(761);
-          } else {
-            expect(card.insetRight).toBeGreaterThanOrEqual(8);
-            expect(card.insetBottom).toBeGreaterThanOrEqual(8);
-            expect(card.insetRight).toBe(card.insetBottom);
-            expect(card.plateHeight).toBeGreaterThanOrEqual(32);
-          }
+          expect(card.pillInBody, `${scenario} ${theme} ${width}`).toBe(true);
+          expect(card.textOverArt).toBe(false);
           expect(card.byline).toBe(false);
           expect(card.iconFrame).toEqual(["rgba(0, 0, 0, 0)", "0px", "0px"]);
           expect(card.shapes).toEqual(["shaped", "square"]);
@@ -1328,6 +1315,15 @@ describe("main flows", () => {
           () => !!document.activeElement?.closest("[role=alertdialog]"),
         ),
       ).toBe(true);
+    }
+    // Which control the fifth Tab reaches depends on how many stops the dialog has (the typed
+    // email, Cancel and Schedule; a body that scrolls adds one). When it lands on the soft-disabled
+    // Schedule button its reason tooltip is open, and that tooltip takes the first Escape: that is
+    // right (WCAG 1.4.13, dismissable without moving focus), so the dialog closes on the next.
+    if ((await o.page.locator("[role=tooltip]").count()) > 0) {
+      await o.page.keyboard.press("Escape");
+      await expect(o.page.locator("[role=tooltip]")).toHaveCount(0);
+      expect(await dialog.isVisible()).toBe(true);
     }
     await o.page.keyboard.press("Escape");
     await dialog.waitFor({ state: "detached" });

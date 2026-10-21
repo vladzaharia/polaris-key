@@ -17,6 +17,19 @@ const dirsOf = (dir: string): string[] =>
     .filter((d) => d.isDirectory() && d.name !== "node_modules")
     .map((d) => d.name);
 
+interface ServiceRow {
+  slug: string;
+  label: string;
+}
+
+/** The opt-in service rows, the one declaration of the services. */
+function serviceTable(): ServiceRow[] {
+  const table = JSON.parse(
+    readFileSync(join(ROOT, "tools", "services.json"), "utf8"),
+  ) as { services: ServiceRow[] };
+  return table.services;
+}
+
 /** The first fenced block under the "Layout" heading. */
 function layoutBlock(): string {
   const section = readme.split(/^## Layout$/m)[1] ?? "";
@@ -54,8 +67,33 @@ describe("README.md", () => {
       expect(section).toContain(task);
   });
 
+  it("counts the opt-in services from tools/services.json and names each", () => {
+    const services = serviceTable();
+    const words = "zero one two three four five six seven eight nine ten".split(
+      " ",
+    );
+    const word = words[services.length] ?? String(services.length);
+    expect(readme).toMatch(new RegExp(`carries ${word} opt-in services`));
+    for (const s of services)
+      expect(readme, s.label).toContain(`**${s.label}**`);
+  });
+
   it("states no test counts", () => {
     expect(readme).not.toMatch(/\b\d[\d,]*\s+tests\b/i);
     expect(readme).not.toMatch(/\bworker \d{3,}/i);
   });
+});
+
+describe("packages/worker/README.md", () => {
+  const worker = readFileSync(join(ROOT, "packages/worker/README.md"), "utf8");
+  // The layout line that lists the slugs: from "services/<slug>/" to "public.ts".
+  const slugs =
+    /services\/<slug>\/([\s\S]*?);\s*public\.ts/.exec(worker)?.[1] ?? "";
+
+  it.each(serviceTable().map((s) => s.slug))(
+    "the layout block lists the %s service",
+    (slug) => {
+      expect(slugs.split(/\s+/)).toContain(slug);
+    },
+  );
 });

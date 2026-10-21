@@ -16,8 +16,9 @@ import type {
  * URL; the page reads it back.
  *
  * The controls are in the order they are read and tabbed to, with no CSS `order` (WCAG 2.4.3,
- * B-076): search on a row of its own below `wide`, then the chips and sort, then the toggle, which
- * wraps to the row below them when they fill theirs; from `wide` all of them share one row.
+ * B-076): search on a row of its own below `wide`, then the chips, then sort and the toggle. On a
+ * phone sort and the toggle share the row under the chips (LF3); from `sm` they sit beside the
+ * chips and wrap when they do not fit; from `wide` all of them share one row.
  */
 export function LibraryToolbar({
   total,
@@ -112,44 +113,48 @@ export function LibraryToolbar({
           className="absolute end-3 hidden desk:flex"
         />
       </label>
-      <div className="flex min-w-0 flex-1 basis-72 flex-wrap items-center gap-2">
-        <div
-          role="group"
-          aria-label={t("locker.library.filter")}
-          className="flex flex-wrap gap-2"
-        >
-          {chips
-            .filter((c) => c.count > 0)
-            .map((c) => {
-              const on = filter === c.id;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => onChange({ filter: c.id })}
-                  className={cn(
-                    "inline-flex h-10 pointer-coarse:h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-md",
-                    on
-                      ? "border-fg-strong bg-fg-strong font-medium text-surface-page"
-                      : "border-border-strong text-fg-strong hover:bg-hover",
-                  )}
-                >
-                  {c.dot ? (
-                    <span
-                      aria-hidden
-                      className="size-1.5 rounded-full bg-warning"
-                    />
-                  ) : null}
-                  {c.label}
-                  <span className={cn("text-xs", on ? "" : "text-fg-muted")}>
-                    {c.count}
-                  </span>
-                </button>
-              );
-            })}
-        </div>
-        <label className="ms-auto flex items-center">
+      <div
+        role="group"
+        aria-label={t("locker.library.filter")}
+        className="flex min-w-0 flex-1 basis-72 flex-wrap gap-2"
+      >
+        {chips
+          .filter((c) => c.count > 0)
+          .map((c) => {
+            const on = filter === c.id;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onChange({ filter: c.id })}
+                className={cn(
+                  "inline-flex h-10 pointer-coarse:h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-md",
+                  on
+                    ? "border-fg-strong bg-fg-strong font-medium text-surface-page"
+                    : "border-border-strong text-fg-strong hover:bg-hover",
+                )}
+              >
+                {c.dot ? (
+                  <span
+                    aria-hidden
+                    className="size-1.5 rounded-full bg-warning"
+                  />
+                ) : null}
+                {c.label}
+                <span className={cn("text-xs", on ? "" : "text-fg-muted")}>
+                  {c.count}
+                </span>
+              </button>
+            );
+          })}
+      </div>
+      {/* Sort and the view toggle share a row on a phone (LF3); from `sm` they sit beside the chips. */}
+      <div
+        data-library-view-row=""
+        className="flex min-w-0 flex-wrap items-center justify-between gap-3 max-sm:basis-full sm:ms-auto"
+      >
+        <label className="flex items-center">
           <span className="sr-only">{t("locker.library.sort")}</span>
           <select
             value={sort}
@@ -160,37 +165,37 @@ export function LibraryToolbar({
             <option value="name">{t("locker.library.sortName")}</option>
           </select>
         </label>
+        <SegmentedControl
+          aria-label={t("locker.library.view")}
+          className="h-11 shrink-0 pointer-coarse:h-[3.125rem] pointer-coarse:[&>[role=radio]]:h-11 pointer-coarse:[&>[role=radio]]:min-w-11"
+          value={mode}
+          onChange={onMode}
+          options={[
+            {
+              value: "grid",
+              label: (
+                <span className="flex items-center gap-2">
+                  <LayoutGrid aria-hidden className="size-4" />
+                  <span className="sr-only sm:not-sr-only">
+                    {t("locker.library.grid")}
+                  </span>
+                </span>
+              ),
+            },
+            {
+              value: "list",
+              label: (
+                <span className="flex items-center gap-2">
+                  <List aria-hidden className="size-4" />
+                  <span className="sr-only sm:not-sr-only">
+                    {t("locker.library.list")}
+                  </span>
+                </span>
+              ),
+            },
+          ]}
+        />
       </div>
-      <SegmentedControl
-        aria-label={t("locker.library.view")}
-        className="h-11 shrink-0 pointer-coarse:h-[3.125rem] pointer-coarse:[&>[role=radio]]:h-11 pointer-coarse:[&>[role=radio]]:min-w-11"
-        value={mode}
-        onChange={onMode}
-        options={[
-          {
-            value: "grid",
-            label: (
-              <span className="flex items-center gap-2">
-                <LayoutGrid aria-hidden className="size-4" />
-                <span className="sr-only sm:not-sr-only">
-                  {t("locker.library.grid")}
-                </span>
-              </span>
-            ),
-          },
-          {
-            value: "list",
-            label: (
-              <span className="flex items-center gap-2">
-                <List aria-hidden className="size-4" />
-                <span className="sr-only sm:not-sr-only">
-                  {t("locker.library.list")}
-                </span>
-              </span>
-            ),
-          },
-        ]}
-      />
     </div>
   );
 }

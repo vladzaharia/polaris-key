@@ -256,7 +256,7 @@ describe("§4.19 Activate license errors: every case, inline, never a toast", ()
       "Product portal off",
       { verdict: "portal_off", product: PRODUCT, entries: null },
       "Little Fern manages this license elsewhere.",
-      [] as string[],
+      ["Use a different key"],
     ],
   ])("%s", async (_case, answer, copy, actions) => {
     mockFetch(routes(answer));
@@ -265,11 +265,15 @@ describe("§4.19 Activate license errors: every case, inline, never a toast", ()
     await pasteAndContinue(dialog);
     const alert = await within(dialog).findByRole("alert");
     expect(alert.textContent).toBe(copy);
-    expect(
-      within(dialog)
-        .getByRole("textbox", { name: "License key" })
-        .getAttribute("aria-invalid"),
-    ).toBe("true");
+    // Only a key that is wrong is a field error; a well-formed key the account can't use here is
+    // not (LF3): no invalid state, the neutral border, the info icon.
+    const field = within(dialog).getByRole("textbox", { name: "License key" });
+    const wrong = _case === "Unknown key";
+    expect(field.getAttribute("aria-invalid")).toBe(wrong ? "true" : null);
+    expect(alert.querySelector(".text-danger")).toBe(
+      wrong ? alert.firstElementChild : null,
+    );
+    expect(field.closest(".border-danger") === null).toBe(!wrong);
     // Never a dead primary: Continue stays pressable (it sends nothing for a refused key), and
     // `license_owned` leads with joining the accounts instead.
     if (_case === "Owned by another account") {
@@ -284,6 +288,11 @@ describe("§4.19 Activate license errors: every case, inline, never a toast", ()
     } else expect(continueButton(dialog).disabled).toBe(false);
     for (const name of actions)
       expect(within(dialog).getByRole("button", { name })).toBeTruthy();
+    // "Manages this license elsewhere" says where to go next.
+    if (_case === "Product portal off")
+      expect(dialog.textContent).toContain(
+        "Sign in where you bought it, or ask the developer.",
+      );
     expect(fetchedRequests()).not.toContain("POST /api/claim/license-key");
     expect(await axeViolations()).toEqual([]);
     // Use a different key clears the field and gives Continue back.

@@ -370,7 +370,7 @@ describe("Library on today's data (PX-02)", () => {
     ).toBeTruthy();
     expect(within(strip).queryByRole("link", { name: /Steam/ })).toBeNull();
     expect(
-      within(strip).getByText("Bought in a store? Sign in from the app"),
+      within(strip).getByText("Bought in a store? Sign in from the app."),
     ).toBeTruthy();
     await userEvent.click(
       within(tile).getByRole("button", { name: "Activate a license" }),
@@ -422,13 +422,32 @@ describe("Library on today's data (PX-02)", () => {
     ).toBeTruthy();
     expect(
       await screen.findByText(
-        "Couldn't load your library. Check your connection.",
+        "Couldn't load your library. Try again in a moment.",
       ),
     ).toBeTruthy();
     expect(screen.queryByText("Something went wrong")).toBeNull();
     expect(screen.queryByText(/Nothing here/)).toBeNull();
-    expect(screen.getAllByText(/try again/i)).toHaveLength(1);
+    expect(screen.getAllByText(/^try again$/i)).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+  });
+
+  it("a server error at boot says what failed, not 'Something went wrong' (LF3)", async () => {
+    mockFetch(
+      signedIn([], {
+        "/api/me": { status: 500, body: { error: "internal" } },
+      }),
+    );
+    renderPortal();
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Couldn't open Polaris Locker",
+      }),
+    ).toBeTruthy();
+    expect(screen.getByText("Try again in a moment.")).toBeTruthy();
+    expect(screen.queryByText("Something went wrong")).toBeNull();
+    expect(screen.queryByText(/connection/i)).toBeNull();
+    expect(screen.getAllByText(/^try again$/i)).toHaveLength(1);
   });
 
   it("asks for releases only when the module is on", async () => {

@@ -8,9 +8,11 @@
  * guide p.2: compact when the full wordmark would shrink the mark below 48 px), 52 px tall and
  * 180 px wide; the Locker lockup is the trimmed horizontal, 40 px tall (218 px wide, over the
  * Locker guide's 180 px minimum on p.7). The header supplies the
- * clear space: it is 4 rem tall (global.css). Where a header has no room for 180 px (under 26 rem)
- * the mark stands alone with the same accessible name ("for crowded navigation use the mark alone
- * with an accessible label", Locker guide p.7). Each theme draws its own inks, so both are
+ * clear space: it is 4 rem tall (global.css). Where a header has no room for 180 px (the Key
+ * lockup under 26 rem) the mark stands alone with the same accessible name ("for crowded
+ * navigation use the mark alone with an accessible label", Locker guide p.7). The Locker lockup
+ * keeps its words on phones down to 20 rem (a 320 px window), since Help is the customer's page
+ * and the name is how they know where they are (LF3). Each theme draws its own inks, so both are
  * rendered and the unused one is hidden by class (no inline style; the CSP allows none).
  */
 import { lockupSvg, markSvg } from "@polaris-key/brand/svg";
@@ -25,7 +27,7 @@ const height = locker ? 40 : 52;
 const themes = ["dark", "light"] as const;
 ---
 
-<a href={siteTitleHref} class="site-title pk-site-title sl-flex" aria-label={name}>
+<a href={siteTitleHref} class="site-title pk-site-title sl-flex" data-kind={kind} aria-label={name}>
   <span class="pk-lockup" aria-hidden="true">
     {
       themes.map((theme) => (

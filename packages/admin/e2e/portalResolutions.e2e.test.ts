@@ -317,29 +317,15 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
       { list, item },
     );
 
-  /** Compact tiles whose status pill overlaps their icon (the pill is the art's only child span). */
+  /**
+   * Tiles with a status pill drawn on the cover art (LF3, EXPERIENCE §7.3: no text over a
+   * customer's art). The pill is in the tile's body at every width, so the art holds none.
+   */
   const pillsOverIcons = (page: Page) =>
     page.evaluate(() =>
       [...document.querySelectorAll("[data-library-grid=compact] article")]
-        .map((tile) => {
-          const pill = tile.querySelector(
-            ":scope > :first-child span.absolute",
-          );
-          const icon = tile.querySelector(
-            ":scope > div > div:first-child > :first-child",
-          );
-          if (!pill || !icon) return null;
-          const a = pill.getBoundingClientRect();
-          const b = icon.getBoundingClientRect();
-          const overlap =
-            a.width > 0 &&
-            a.left < b.right &&
-            b.left < a.right &&
-            a.top < b.bottom &&
-            b.top < a.bottom;
-          return overlap ? tile.getAttribute("aria-labelledby") : null;
-        })
-        .filter(Boolean),
+        .filter((tile) => tile.querySelector("[data-art] [data-tone]"))
+        .map((tile) => tile.getAttribute("aria-labelledby")),
     );
 
   it("Needs attention: one card, a row per item, one-line actions right-aligned", async ({

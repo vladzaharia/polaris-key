@@ -129,7 +129,10 @@ export function SecretValue({
         <p id={valueId} className="font-medium text-fg-strong">
           {label}
         </p>
-        <div className="flex items-start gap-2 rounded-md border border-border bg-surface-sunken p-3">
+        <div
+          data-secret-box=""
+          className="flex items-start gap-2 rounded-md border border-border bg-surface-sunken p-3"
+        >
           <code
             aria-describedby={valueId}
             className="min-w-0 flex-1 select-all break-all font-mono text-sm text-fg-strong"
