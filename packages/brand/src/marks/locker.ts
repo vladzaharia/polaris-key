@@ -7,13 +7,15 @@
 import {
   LOCKER_BADGE_LABELS,
   LOCKER_BADGE_PALETTES,
-  LOCKER_BADGE_PREFIXES,
-  LOCKER_BADGE_TEMPLATES,
   LOCKER_GEOMETRY,
   LOCKER_LOCKUP_PALETTES,
   LOCKER_LOCKUP_TEMPLATES,
   LOCKER_MARK_PALETTES,
 } from "../generated/locker.js";
+import {
+  LOCKER_BADGE_PREFIXES,
+  LOCKER_BADGE_TEMPLATES,
+} from "../generated/locker-badge.js";
 import { LOCKER_CUT_GRID, type LockerCut } from "../tokens/primitives.js";
 import { isNoBit, opticalCut, type BitColor, type MarkTheme } from "./core.js";
 import type { LockerTemplate } from "./types.js";
@@ -193,8 +195,23 @@ export function lockerBadgeBodyWith(
   treatment: LockerBadgeTreatment = "transparent",
   theme: LockerBadgeTheme = "dark",
 ): string {
+  return lockerBadgeBodyFrom(
+    lockerBadgeTemplate(treatment),
+    prefix,
+    treatment,
+    theme,
+  );
+}
+
+/** `lockerBadgeBodyWith` for a template the caller holds: a bundle that draws one treatment keeps the other two out. */
+export function lockerBadgeBodyFrom(
+  template: LockerTemplate,
+  prefix: string,
+  treatment: LockerBadgeTreatment,
+  theme: LockerBadgeTheme,
+): string {
   return fillRoles(
-    lockerBadgeTemplate(treatment).body.replace("{prefix}", prefix),
+    template.body.replace("{prefix}", prefix),
     LOCKER_BADGE_PALETTES[treatment][theme],
   );
 }

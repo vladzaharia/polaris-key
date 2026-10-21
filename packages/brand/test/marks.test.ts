@@ -1,6 +1,7 @@
 // Mark rules: optical-cut selection, the gold/section bit, lockup bit suppression and the badge
 // minimum sizes.
 
+import { poweredByTransparentSvg } from "../src/marks/badge.js";
 import { describe, expect, it } from "vitest";
 
 import { SERVICE_ACCENTS } from "../src/generated/tokens.js";
@@ -237,6 +238,11 @@ describe("accessibility", () => {
     expect(poweredBySvg({})).toContain(
       'aria-label="Powered by Polaris Locker"',
     );
+    for (const theme of ["dark", "light", "white"] as const)
+      for (const opts of [{}, { width: 640 }, { title: "" }, { title: "x" }])
+        expect(poweredByTransparentSvg({ theme, ...opts })).toBe(
+          poweredBySvg({ theme, ...opts }),
+        );
     expect(keyPoweredBySvg({})).toContain(
       'aria-label="Powered by Polaris Key"',
     );

@@ -26,8 +26,12 @@ import {
   tableFor,
   titleCase,
   validateKitCopy,
+  isLazyEnKey,
+  leanIndex,
   webIndex,
   webJson,
+  webLeanJson,
+  webRestJson,
   xcstrings,
   type KitCopySources,
 } from "../scripts/kit-copy.js";
@@ -492,6 +496,18 @@ describe("renderers (goldens over a synthetic catalog)", () => {
   it("web", () => {
     golden("web-de.json", webJson(model, "de"));
     golden("web-index.ts", webIndex(model));
+    golden("web-lean.ts", leanIndex(model));
+  });
+  it("web: the lean and rest English tables partition the full one", () => {
+    const en = tableFor(model, "en");
+    const lean = JSON.parse(webLeanJson(model)) as Record<string, string>;
+    const rest = JSON.parse(webRestJson(model)) as Record<string, string>;
+    expect(Object.keys(lean).some(isLazyEnKey)).toBe(false);
+    expect(Object.keys(rest).every(isLazyEnKey)).toBe(true);
+    expect({ ...lean, ...rest }).toEqual(en);
+    expect(Object.keys(lean).length + Object.keys(rest).length).toBe(
+      Object.keys(en).length,
+    );
   });
   it("Node", () => golden("node.ts", nodeModule(model)));
   it("Swift", () => golden("Localizable.xcstrings", xcstrings(model)));

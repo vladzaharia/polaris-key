@@ -28,7 +28,8 @@
 //   social/{key,delivery}/portrait-*.svg  the 1080 x 1350 portrait cards (the square on a taller
 //                                       canvas)
 //   css/locker.css                      the Locker kit's tokens/locker.css, verbatim, for plrs.im
-//   src/generated/locker.ts             the Locker marks' geometry, lockup and badge templates
+//   src/generated/locker.ts             the Locker marks' geometry, lockup templates and badge palettes
+//   src/generated/locker-badge.ts       the Locker badges' templates and label prefixes
 //   web/locker/*                        the Locker kit's web icons (bytes copied), the manifest
 //                                       (id, start_url, scope /) and head snippet
 //   GENERATED.sha256                    SHA-256 of every text asset above, the lockups, the CSS and
@@ -809,6 +810,34 @@ export const LOCKER_LOCKUP_TEMPLATES: Record<
 /** The colour each role takes in each lockup variant. */
 export const LOCKER_LOCKUP_PALETTES = ${JSON.stringify(lockupPalettes)} as const;
 
+/** badges/index.json: slug to label ("open-in" to "Open in"). The accessible name is "<label> Polaris Locker". */
+export const LOCKER_BADGE_LABELS = ${JSON.stringify(k.badgeLabels)} as const;
+
+/** The colour each role takes in each badge treatment and theme. */
+export const LOCKER_BADGE_PALETTES = ${JSON.stringify(k.badgePalettes)} as const;
+`;
+}
+
+function lockerBadgeArtTs(): string {
+  const k = LOCKER_KIT;
+  return `${banner("//")}
+
+import type { LockerTemplate } from "../marks/types.js";
+
+/**
+ * The badges' artwork (the three treatments' templates and the outlined label prefixes), apart
+ * from \`locker.ts\` so a bundle that draws the badge on demand loads it as one lazy chunk
+ * (\`@polaris-key/brand/badge\`; SP-47 size budget).
+ */
+
+/**
+ * Each treatment's template is its own export, so a bundle that draws one (the React kit's
+ * attribution is always \`transparent\`) does not carry the other two (SP-47 size budget).
+ */
+export const LOCKER_BADGE_TRANSPARENT: LockerTemplate = ${JSON.stringify(k.badges.transparent)};
+export const LOCKER_BADGE_STICKER: LockerTemplate = ${JSON.stringify(k.badges.sticker)};
+export const LOCKER_BADGE_OUTLINE: LockerTemplate = ${JSON.stringify(k.badges.outline)};
+
 /**
  * locker-kit/badges/*.svg as one template per treatment with a \`{prefix}\` slot (the 16 labels
  * share every other byte), the label names and each label's outlined prefix group.
@@ -816,10 +845,11 @@ export const LOCKER_LOCKUP_PALETTES = ${JSON.stringify(lockupPalettes)} as const
 export const LOCKER_BADGE_TEMPLATES: Record<
   "transparent" | "sticker" | "outline",
   LockerTemplate
-> = ${JSON.stringify(k.badges)};
-
-/** badges/index.json: slug to label ("open-in" to "Open in"). The accessible name is "<label> Polaris Locker". */
-export const LOCKER_BADGE_LABELS = ${JSON.stringify(k.badgeLabels)} as const;
+> = {
+  transparent: LOCKER_BADGE_TRANSPARENT,
+  sticker: LOCKER_BADGE_STICKER,
+  outline: LOCKER_BADGE_OUTLINE,
+};
 
 /**
  * The "Powered by" label's outlined prefix group, on its own so the React kit's attribution
@@ -833,8 +863,6 @@ export const LOCKER_BADGE_PREFIXES = {
   "powered-by": LOCKER_POWERED_BY_PREFIX,
 } as const;
 
-/** The colour each role takes in each badge treatment and theme. */
-export const LOCKER_BADGE_PALETTES = ${JSON.stringify(k.badgePalettes)} as const;
 `;
 }
 
@@ -1864,6 +1892,11 @@ const TARGETS: Target[] = [
   {
     path: "packages/brand/src/generated/locker.ts",
     render: lockerTs,
+    parser: "typescript",
+  },
+  {
+    path: "packages/brand/src/generated/locker-badge.ts",
+    render: lockerBadgeArtTs,
     parser: "typescript",
   },
   {

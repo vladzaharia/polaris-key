@@ -3,9 +3,15 @@
 // same shared stylesheet, so a state drawn here and by `<pk-*>` is the same pixels (UI-KITS.md
 // §3.2, §7.1). Every string is a catalog key of the view (DL8).
 
-import { Fragment, type KeyboardEvent, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { POWERED_BY } from "@polaris-key/brand";
-import { markSvg, poweredBySvg } from "@polaris-key/brand/svg";
+import { markSvg } from "@polaris-key/brand/svg";
 import type { Copy, UiInput, View } from "@polaris-key/ui-core";
 import { encodeQr, monogramOf, OPENS, type Resolved } from "./contract.js";
 
@@ -856,6 +862,41 @@ export function statusLine(c: KitCtx, keys: string[]): ReactNode {
 
 const POWERED_BY_KEY = "part.poweredBy";
 
+type BadgeSvg =
+  typeof import("@polaris-key/brand/badge").poweredByTransparentSvg;
+let badgeSvg: BadgeSvg | undefined;
+let badgeLoad: Promise<void> | undefined;
+/** Load the badge's artwork once (about 7 KB gzip a gate that never shows it need not carry). */
+function loadBadge(): Promise<void> {
+  return (badgeLoad ??= import("@polaris-key/brand/badge").then(
+    (m) => {
+      badgeSvg = m.poweredByTransparentSvg;
+    },
+    () => {
+      // The badge is decoration: the line under it keeps the attribution.
+    },
+  ));
+}
+
+/** The 320 x 104 Locker badge (the same markup as `poweredBySvg`), drawn once its art has loaded. */
+function PoweredByBadge(props: { scheme: "dark" | "light"; title: string }) {
+  const [, load] = useState(badgeSvg !== undefined);
+  useEffect(() => {
+    if (!badgeSvg) void loadBadge().then(() => load(badgeSvg !== undefined));
+  }, []);
+  return (
+    <div
+      className="powered-by-badge"
+      data-part="powered-by-badge"
+      dangerouslySetInnerHTML={{
+        __html: badgeSvg
+          ? badgeSvg({ theme: props.scheme, title: props.title })
+          : "",
+      }}
+    />
+  );
+}
+
 /**
  * The optional attribution at the foot of a pane or screen (UI-KITS §1.6): the Locker micro mark and
  * the phrase in live text, or on About with `poweredBy: "badge"` the 320 x 104 badge where 320 px
@@ -885,16 +926,7 @@ export function attribution(c: KitCtx, meta: string[]): ReactNode {
   if (!badge) return line;
   return (
     <div className="powered-by" data-variant="badge">
-      <div
-        className="powered-by-badge"
-        data-part="powered-by-badge"
-        dangerouslySetInnerHTML={{
-          __html: poweredBySvg({
-            theme: scheme,
-            title: plain(c, POWERED_BY_KEY),
-          }),
-        }}
-      />
+      <PoweredByBadge scheme={scheme} title={plain(c, POWERED_BY_KEY)} />
       {line}
     </div>
   );

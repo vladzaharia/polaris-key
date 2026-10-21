@@ -3,19 +3,26 @@
 // ICU-subset formatter. English is bundled; another launch locale loads once, on demand, and every
 // element showing it re-renders when it arrives. Platform variants (macOS title case) come from
 // `KIT_COPY_VARIANTS` when the theme's platform asks for them.
+//
+// English is bundled without the wire codes' messages (`core.codes.*`) and the terminal's `cli.*`
+// lines (SP-47 size budget): they arrive as one more table the first time copy is asked for, and
+// every element re-renders when they do. Until then a code's text is the catalog's fallback
+// sentence, exactly as for a locale still loading.
 
 import {
-  KIT_COPY_EN,
+  KIT_COPY_EN_LEAN,
   KIT_COPY_VARIANTS,
   loadKitCopy,
+  loadKitCopyEnRest,
   type KitCopyLocale,
-  type KitCopyTable,
-} from "@polaris-key/brand/kit-copy";
+} from "@polaris-key/brand/kit-copy/lean";
+import type { KitCopyTable } from "@polaris-key/brand/kit-copy";
 import { Copy, resolveLocale, type CopyTable } from "@polaris-key/ui-core";
 
 const tables: Partial<Record<string, CopyTable>> & { en: CopyTable } = {
-  en: KIT_COPY_EN,
+  en: KIT_COPY_EN_LEAN,
 };
+let englishRest: "idle" | "loading" | "done" = "idle";
 const loading = new Map<string, Promise<void>>();
 const listeners = new Set<() => void>();
 
@@ -42,9 +49,30 @@ export function ensureLocale(locale: string): void {
   );
 }
 
+/** Start loading the English keys the bundled table leaves out (once). */
+function ensureEnglishRest(): void {
+  if (englishRest !== "idle") return;
+  englishRest = "loading";
+  loadKitCopyEnRest()
+    .then((rest) => {
+      // A table provided meanwhile (tests, a host) is complete and wins.
+      if (englishRest === "loading") {
+        tables.en = { ...tables.en, ...rest };
+        englishRest = "done";
+        for (const l of [...listeners]) l();
+      }
+    })
+    .catch(() => {
+      // Copy never breaks a screen: a code's text stays the fallback sentence.
+      englishRest = "done";
+    });
+}
+
 /** Register a table directly (tests, or a host that preloads a pack). */
 export function provideTable(locale: string, table: CopyTable): void {
-  tables[resolveLocale(locale)] = table;
+  const wanted = resolveLocale(locale);
+  tables[wanted] = table;
+  if (wanted === "en") englishRest = "done";
   for (const l of [...listeners]) l();
 }
 
@@ -66,6 +94,7 @@ export function copyFor(
   platform: string | null = null,
 ): Copy {
   ensureLocale(locale);
+  ensureEnglishRest();
   const variants = variantOverrides(platform);
   const merged = Object.keys(variants).length
     ? { ...overrides, en: { ...variants, ...(overrides.en ?? {}) } }

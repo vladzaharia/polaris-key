@@ -1,0 +1,56 @@
+// GENERATED FILE — do not edit by hand.
+//
+// Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/kit-copy.ts) from
+// packages/brand/kit-copy/ (en.json and the eight locale packs) and the core copy in
+// conformance/parity/copy.<locale>.json. `pnpm gen brand --check` fails the green gate on any
+// difference. To change a string, edit its source and regenerate.
+/**
+ * The web kits' copy entry (SP-47): the launch locales, the English variants, the per-locale
+ * loaders and a lean English table (`en-lean.json`) without the wire codes' messages and the
+ * terminal lines, which load on demand as `en-rest.json`. `./index.js` re-exports everything but
+ * the tables and carries the full English table.
+ */
+import en from "./en-lean.json" with { type: "json" };
+import type { KitCopyTable } from "./index.js";
+
+/** The launch locales, English first. */
+export const KIT_COPY_LOCALES = ["en","de","fr","es","pt-BR","it","ja","ko","zh-Hans"] as const;
+export type KitCopyLocale = (typeof KIT_COPY_LOCALES)[number];
+
+/** English without `core.codes.*` and the terminal's `cli.*`: what a first paint needs. */
+export const KIT_COPY_EN_LEAN: Readonly<Record<string, string>> = en;
+
+/** The English keys `KIT_COPY_EN_LEAN` leaves out (load once; merge over the lean table). */
+export async function loadKitCopyEnRest(): Promise<Readonly<Record<string, string>>> {
+  return (await import("./en-rest.json", { with: { type: "json" } })).default;
+}
+
+/** English platform variants (D13 title case on macOS and documented verbs); other locales have none. */
+export const KIT_COPY_VARIANTS: Readonly<Record<string, Readonly<Record<string, string>>>> = {"common.signInTo":{"macos":"Sign In to {product}"},"common.restart":{"macos":"Install and Relaunch"}};
+
+/** Locales whose core.* strings are English until their core pack lands. */
+export const KIT_COPY_CORE_FALLBACK: readonly string[] = ["fr","es","pt-BR","it","ja","ko","zh-Hans"];
+
+/** Load one locale's table (code-split per locale). */
+export async function loadKitCopy(locale: KitCopyLocale): Promise<KitCopyTable> {
+  switch (locale) {
+    case "en":
+      return (await import("./en.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "de":
+      return (await import("./de.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "fr":
+      return (await import("./fr.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "es":
+      return (await import("./es.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "pt-BR":
+      return (await import("./pt-BR.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "it":
+      return (await import("./it.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "ja":
+      return (await import("./ja.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "ko":
+      return (await import("./ko.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "zh-Hans":
+      return (await import("./zh-Hans.json", { with: { type: "json" } })).default as KitCopyTable;
+  }
+}

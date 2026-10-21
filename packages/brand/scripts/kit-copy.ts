@@ -1042,12 +1042,70 @@ export type KitCopyKey =
 /** One locale's table. */
 export type KitCopyTable = Readonly<Record<KitCopyKey, string>>;
 
+/** The English table, always bundled: every lookup falls back to it key by key. */
+export const KIT_COPY_EN: KitCopyTable = en as KitCopyTable;
+
+// The locale list, variants and loaders live in ./lean.js, which carries no English table, so the
+// web kits (which load the lean one) do not pull this full table in with them.
+export {
+  KIT_COPY_CORE_FALLBACK,
+  KIT_COPY_LOCALES,
+  KIT_COPY_VARIANTS,
+  loadKitCopy,
+  type KitCopyLocale,
+} from "./lean.js";
+`;
+}
+
+/**
+ * The English keys the web kits do not need at first paint (\`LAZY_EN_PREFIXES\`): the wire codes'
+ * titles and messages and the terminal kit's lines. They load as a second English chunk, so the
+ * React gate's initial bundle stays under its size budget (SP-47). A key listed in
+ * \`LAZY_EN_KEEP\` stays in the lean table because a web renderer draws it.
+ */
+export const LAZY_EN_PREFIXES = ["core.codes.", "cli."] as const;
+export const LAZY_EN_KEEP: ReadonlySet<string> = new Set([
+  "cli.signin.waitingCode",
+]);
+export const isLazyEnKey = (key: string): boolean =>
+  LAZY_EN_PREFIXES.some((p) => key.startsWith(p)) && !LAZY_EN_KEEP.has(key);
+
+export const webLeanJson = (model: KitCopyModel): string =>
+  JSON.stringify(
+    Object.fromEntries(
+      Object.entries(tableFor(model, "en")).filter(([k]) => !isLazyEnKey(k)),
+    ),
+  );
+export const webRestJson = (model: KitCopyModel): string =>
+  JSON.stringify(
+    Object.fromEntries(
+      Object.entries(tableFor(model, "en")).filter(([k]) => isLazyEnKey(k)),
+    ),
+  );
+
+/** The lean entry: everything a web kit needs except the full English table (see \`index.ts\`). */
+export function leanIndex(model: KitCopyModel): string {
+  return `${banner("//")}
+/**
+ * The web kits' copy entry (SP-47): the launch locales, the English variants, the per-locale
+ * loaders and a lean English table (\`en-lean.json\`) without the wire codes' messages and the
+ * terminal lines, which load on demand as \`en-rest.json\`. \`./index.js\` re-exports everything but
+ * the tables and carries the full English table.
+ */
+import en from "./en-lean.json" with { type: "json" };
+import type { KitCopyTable } from "./index.js";
+
 /** The launch locales, English first. */
 export const KIT_COPY_LOCALES = ${JSON.stringify(model.locales)} as const;
 export type KitCopyLocale = (typeof KIT_COPY_LOCALES)[number];
 
-/** The English table, always bundled: every lookup falls back to it key by key. */
-export const KIT_COPY_EN: KitCopyTable = en as KitCopyTable;
+/** English without \`core.codes.*\` and the terminal's \`cli.*\`: what a first paint needs. */
+export const KIT_COPY_EN_LEAN: Readonly<Record<string, string>> = en;
+
+/** The English keys \`KIT_COPY_EN_LEAN\` leaves out (load once; merge over the lean table). */
+export async function loadKitCopyEnRest(): Promise<Readonly<Record<string, string>>> {
+  return (await import("./en-rest.json", { with: { type: "json" } })).default;
+}
 
 /** English platform variants (D13 title case on macOS and documented verbs); other locales have none. */
 export const KIT_COPY_VARIANTS: Readonly<Record<string, Readonly<Record<string, string>>>> = ${JSON.stringify(variantsFor(model))};
@@ -1584,6 +1642,21 @@ export const KIT_COPY_TARGETS: KitCopyTarget[] = [
   {
     path: "packages/brand/src/generated/kit-copy/index.ts",
     render: () => webIndex(model()),
+    parser: "typescript",
+  },
+  {
+    path: "packages/brand/src/generated/kit-copy/en-lean.json",
+    render: () => webLeanJson(model()),
+    parser: "json",
+  },
+  {
+    path: "packages/brand/src/generated/kit-copy/en-rest.json",
+    render: () => webRestJson(model()),
+    parser: "json",
+  },
+  {
+    path: "packages/brand/src/generated/kit-copy/lean.ts",
+    render: () => leanIndex(model()),
     parser: "typescript",
   },
   ...KIT_LOCALES.map((l) => ({

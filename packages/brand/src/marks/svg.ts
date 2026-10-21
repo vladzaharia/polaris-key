@@ -8,7 +8,7 @@
 // follow the surrounding text colour.
 
 import { GEOMETRY, KIT_PALETTES, SPRITE } from "../generated/geometry.js";
-import { LOCKER_POWERED_BY_PREFIX } from "../generated/locker.js";
+import { LOCKER_POWERED_BY_PREFIX } from "../generated/locker-badge.js";
 import {
   BADGE_TEMPLATES,
   LOCKUP_GLYPHS,
@@ -422,11 +422,19 @@ function badgeInnerWith(opts: LockerBadgeOptions, prefix: string): string {
  * raised to 320. The art is not a control: add a real destination.
  */
 export function badgeSvg(opts: LockerBadgeOptions): string {
-  return badgeSvgOf(opts, badgeInner(opts));
+  return badgeSvgOf(
+    opts,
+    badgeInner(opts),
+    lockerBadgeTemplate(opts.treatment),
+  );
 }
 
-function badgeSvgOf(opts: LockerBadgeOptions, inner: string): string {
-  const t = lockerBadgeTemplate(opts.treatment);
+/** A badge's `<svg>` around `inner`, sized from the template `t` (`./badge.ts` draws the default treatment alone). */
+export function badgeSvgOf(
+  opts: LockerBadgeOptions,
+  inner: string,
+  t: { width: number; height: number },
+): string {
   const width =
     opts.width === undefined || !Number.isFinite(opts.width)
       ? LOCKER_BADGE_CANVAS.width
@@ -494,7 +502,11 @@ export function poweredBySvg(opts: PoweredByOptions = {}): string {
     width: opts.width,
     title: opts.title ?? ALT.poweredBy,
   };
-  return badgeSvgOf(badge, badgeInnerWith(badge, LOCKER_POWERED_BY_PREFIX));
+  return badgeSvgOf(
+    badge,
+    badgeInnerWith(badge, LOCKER_POWERED_BY_PREFIX),
+    lockerBadgeTemplate(opts.treatment),
+  );
 }
 
 // ── "Powered by Polaris Key": platform references, not offered to integrators ───────────────
