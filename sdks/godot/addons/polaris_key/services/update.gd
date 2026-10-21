@@ -646,7 +646,7 @@ static func _get_jose(core: PKeyCore, url: String, limit: int) -> Dictionary:
 	if status >= 200 and status < 300:
 		return {"ok": true, "body": r.detail["body"]}
 	var e := PKeyErrors.read_body(r.detail["body"])
-	return {"ok": false, "code": e["code"] if e["code"] != "" else String(PKeyErrors.HTTP_ERROR)}
+	return {"ok": false, "status": status, "code": e["code"] if e["code"] != "" else String(PKeyErrors.HTTP_ERROR)}
 
 
 static func _pinned(committed: Dictionary, platform: String) -> Dictionary:
