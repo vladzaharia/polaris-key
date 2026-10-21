@@ -256,6 +256,9 @@ const AUTH_CARD_RULES = [
   `.ac-body .actions.stack,.ac-body .stack{gap:.5rem}`,
   `.ac-foot{display:flex;gap:.75rem;align-items:flex-start;padding:1rem 1.75rem;border-top:1px solid var(--rule);color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
   `.ac-foot svg{margin-top:.125rem}`,
+  // Under the card: Help and Privacy, quiet, with 24 px targets.
+  `.ac-links{display:flex;flex-wrap:wrap;justify-content:center;gap:.25rem 1.5rem;max-width:28.5rem;margin:1.25rem auto 0;padding:0 1.25rem}`,
+  `.ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;padding:.125rem .25rem;font-size:.875rem;line-height:1.25rem}`,
   `.ic{flex:none;width:1.25rem;height:1.25rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}`,
   `.ic.sm{width:1rem;height:1rem}`,
   // Buttons: 48 px, ink fill, one primary per step. `.link` is the quiet third action.
@@ -357,9 +360,6 @@ const CONSOLE_PAGE_CSS_TAIL = [
   `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.5rem;background:var(--sunken);color:var(--strong);font:inherit}`,
   `.ac-body input[type=email]::placeholder{color:var(--muted);opacity:1}`,
   `.ac-body .fine{color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
-  // Under the card: Help and Privacy, quiet and 24 px apart from each other's targets.
-  `.ac-links{display:flex;justify-content:center;gap:1.5rem;max-width:28.5rem;margin:1.25rem auto 0}`,
-  `.ac-links a{display:inline-flex;align-items:center;min-height:1.5rem;padding:.125rem .25rem;font-size:.875rem;line-height:1.25rem}`,
   `.ac-brand .ac-surface{margin-left:.75rem;padding-left:.75rem;border-left:1px solid var(--edge);color:var(--muted);font-size:1rem;line-height:1.5rem}`,
   `@media (forced-colors: active){.ac-brand .ac-surface{color:CanvasText;border-color:CanvasText}}`,
   // On a tall window the card sits near the optical centre (about 40% from the top), not under
@@ -423,8 +423,9 @@ export interface BrandPageOptions {
   /** Locker only: the card's footer line, plain text beside an icon. */
   footer?: { icon: IconName; text: string };
   /**
-   * Console only: the links under the card (Help, Privacy). Each `href` is a path on this host,
-   * written by the page, never taken from a request.
+   * The links under the card (Help, Privacy). Each `href` is a path on this host, written by the
+   * page, never taken from a request. Polaris Locker pages get `LOCKER_CARD_LINKS` unless they
+   * pass their own; `[]` shows none.
    */
   links?: readonly { label: string; href: string }[];
   /**
@@ -641,6 +642,12 @@ export function renderBrandPage(opts: BrandPageOptions): string {
     .join("\n");
 }
 
+/** Help and Privacy under every Polaris Locker card (no Terms: no such page exists). */
+export const LOCKER_CARD_LINKS = [
+  { label: "Help", href: "/docs/help/" },
+  { label: "Privacy", href: "/docs/help/your-data/" },
+] as const;
+
 /**
  * The AuthCard's Worker twin: a Polaris Locker page (no script, no `style=` attribute) with the
  * same slots as `packages/admin/src/ui/auth/AuthCard.tsx`: the lockup, then one card with an
@@ -650,6 +657,7 @@ export function renderBrandPage(opts: BrandPageOptions): string {
  */
 export function renderAuthCard(opts: AuthCardOptions): string {
   const consoleCard = opts.brand === "console";
+  const cardLinks = opts.links ?? (consoleCard ? [] : LOCKER_CARD_LINKS);
   lockerLockup ??= themedLockup(
     "locker",
     "horizontal",
@@ -716,8 +724,8 @@ export function renderAuthCard(opts: AuthCardOptions): string {
       ? `<footer class="ac-foot">${icon(opts.footer.icon, true)}<span>${escapeHtml(opts.footer.text)}</span></footer>`
       : "",
     `</main>`,
-    consoleCard && opts.links?.length
-      ? `<nav class="ac-links" aria-label="Help and privacy">${opts.links
+    cardLinks.length
+      ? `<nav class="ac-links" aria-label="Help and privacy">${cardLinks
           .map(
             (l) => `<a href="${escapeHtml(l.href)}">${escapeHtml(l.label)}</a>`,
           )
