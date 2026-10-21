@@ -38,7 +38,7 @@ export type SettingHome =
   | { kind: "api" };
 
 /**
- * The element a section label scrolls to on its page (`?at=<id>`, read by the hub). A label with
+ * The element a section label scrolls to on its page (`?setting=<key>` lands there when the page draws no row). A label with
  * no entry lands on the page.
  */
 const ANCHORS: Readonly<Record<string, string>> = {
@@ -47,8 +47,8 @@ const ANCHORS: Readonly<Record<string, string>> = {
   "settings|Web origins": "settings-origins",
   "settings|Repository": "settings-repository",
   "settings|Alerts": "settings-alerts",
-  "settings|Sign-in mail": "settings-mail",
-  "settings|Lazy deltas": "settings-deltas",
+  "settings|Email": "settings-mail",
+  "settings|Deltas": "settings-deltas",
   "keys|Signing keys": "keys-signing",
   "keys|Secrets": "keys-secrets",
   "keys|CI publishing": "keys-ci",
@@ -61,6 +61,12 @@ export function anchorOf(home: {
   section?: string;
 }): string | null {
   return ANCHORS[`${home.page}|${home.section ?? ""}`] ?? null;
+}
+
+/** The element id of the section a key's home lands on, when its page has one. */
+export function anchorOfKey(key: string): string | null {
+  const home = SETTING_HOMES[key];
+  return home?.kind === "page" ? anchorOf(home) : null;
 }
 
 const at = (
@@ -103,10 +109,10 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   // The manifest names the secrets and the console sets each value, sealed.
   "core.secrets": at("keys", "Secrets"),
   // ST-11: registry rows; Settings → Features → General has their editors (ST-08n).
-  "deltas.lazy.enabled": at("settings", "Lazy deltas"),
-  "deltas.lazy.hotDevices": at("settings", "Lazy deltas"),
-  "deltas.lazy.dailyCap": at("settings", "Lazy deltas"),
-  "email.dailyCap": at("settings", "Sign-in mail"),
+  "deltas.lazy.enabled": at("settings", "Deltas"),
+  "deltas.lazy.hotDevices": at("settings", "Deltas"),
+  "deltas.lazy.dailyCap": at("settings", "Deltas"),
+  "email.dailyCap": at("settings", "Email"),
   "assets.releases.mirror": at("presentation", "Hosting and quotas"),
   "assets.quota.mediaBytes": at("presentation", "Hosting and quotas"),
   "assets.quota.releaseBytes": at("presentation", "Hosting and quotas"),

@@ -4,6 +4,7 @@ import type { ServicesResponse } from "../../../../api.js";
 import { SERVICE_SLUGS } from "../../../../services.generated.js";
 import { cn } from "../../../../lib/cn.js";
 import { REGISTRATION_LABELS } from "../../../../lib/labels.js";
+import { Unlocked } from "../../../../ui/WriteLock.js";
 import { Button } from "../../../../ui/Button.js";
 import { serviceLabel } from "../../../../ui/ServiceBadge.js";
 import type { Enabled } from "./serviceFeatures.js";
@@ -27,44 +28,46 @@ function FoldedRow({
   children?: React.ReactNode;
 }): React.ReactElement {
   return (
-    <div id={id} className="border-t border-border px-4 py-4 sm:px-5">
-      <div className="flex items-center gap-4">
-        <span
-          aria-hidden
-          className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-surface-sunken text-fg-muted"
-        >
-          {icon}
-        </span>
-        <p
-          id={`${id}-title`}
-          className="min-w-0 flex-1 text-base font-medium text-fg-strong"
-        >
-          {title}
-        </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          id={`${id}-button`}
-          aria-expanded={open}
-          aria-controls={controls}
-          aria-labelledby={`${id}-button ${id}-title`}
-          iconEnd={
-            <ChevronDown
-              aria-hidden
-              className={cn("transition-transform", open && "rotate-180")}
-            />
-          }
-          onClick={onToggle}
-        >
-          {open ? "Hide" : "Show"}
-        </Button>
-      </div>
-      {open && children ? (
-        <div id={controls} className="mt-3 pl-12">
-          {children}
+    <Unlocked>
+      <div id={id} className="border-t border-border px-4 py-4 sm:px-5">
+        <div className="flex items-center gap-4">
+          <span
+            aria-hidden
+            className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-surface-sunken text-fg-muted"
+          >
+            {icon}
+          </span>
+          <p
+            id={`${id}-title`}
+            className="min-w-0 flex-1 text-base font-medium text-fg-strong"
+          >
+            {title}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            id={`${id}-button`}
+            aria-expanded={open}
+            aria-controls={controls}
+            aria-labelledby={`${id}-button ${id}-title`}
+            iconEnd={
+              <ChevronDown
+                aria-hidden
+                className={cn("transition-transform", open && "rotate-180")}
+              />
+            }
+            onClick={onToggle}
+          >
+            {open ? "Hide" : "Show"}
+          </Button>
         </div>
-      ) : null}
-    </div>
+        {open && children ? (
+          <div id={controls} className="mt-3 pl-12">
+            {children}
+          </div>
+        ) : null}
+      </div>
+    </Unlocked>
   );
 }
 

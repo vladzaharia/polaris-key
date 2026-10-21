@@ -2,6 +2,7 @@ import * as React from "react";
 import { Eye, Moon, Sun } from "lucide-react";
 import type { ProductPresentation } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
+import { Unlocked } from "../../../../ui/WriteLock.js";
 import { Button } from "../../../../ui/Button.js";
 import { Drawer, DrawerBody } from "../../../../ui/Drawer.js";
 import { ProductLogo } from "../../../../ui/ProductLogo.js";
@@ -83,7 +84,7 @@ function PreviewBody({
   return (
     <div
       data-theme={theme}
-      className="grid gap-4 rounded-md bg-surface-page p-4 text-fg sm:grid-cols-3 xl:grid-cols-1 [&>*]:min-w-0"
+      className="grid gap-4 rounded-md bg-surface-page p-4 text-fg md:grid-cols-3 xl:grid-cols-1 [&>*]:min-w-0"
     >
       <Frame caption="Sign-in card">
         <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
@@ -153,13 +154,15 @@ export function PresentationPreview({
   const [theme, setTheme] = React.useState<PreviewTheme>("dark");
   const [open, setOpen] = React.useState(false);
   const controls = (
-    <SegmentedControl
-      size="sm"
-      aria-label="Preview theme"
-      options={THEMES}
-      value={theme}
-      onChange={setTheme}
-    />
+    <Unlocked>
+      <SegmentedControl
+        size="sm"
+        aria-label="Preview theme"
+        options={THEMES}
+        value={theme}
+        onChange={setTheme}
+      />
+    </Unlocked>
   );
   const body = (
     <PreviewBody
@@ -194,14 +197,16 @@ export function PresentationPreview({
         </div>
         <div className="p-4">{body}</div>
       </section>
-      <Button
-        variant="outline"
-        className="w-full sm:hidden"
-        iconStart={<Eye aria-hidden />}
-        onClick={() => setOpen(true)}
-      >
-        Preview
-      </Button>
+      <Unlocked>
+        <Button
+          variant="outline"
+          className="w-full sm:hidden"
+          iconStart={<Eye aria-hidden />}
+          onClick={() => setOpen(true)}
+        >
+          Preview
+        </Button>
+      </Unlocked>
       <Drawer
         open={open}
         onOpenChange={setOpen}

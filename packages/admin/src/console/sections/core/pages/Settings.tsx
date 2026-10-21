@@ -410,7 +410,7 @@ function SettingsBody({
         area="general"
         keys={["email.dailyCap"]}
         id="settings-mail"
-        title="Sign-in mail"
+        title="Email"
       />
       <ProductSettingsSection
         slug={slug}
@@ -421,7 +421,7 @@ function SettingsBody({
           "deltas.lazy.dailyCap",
         ]}
         id="settings-deltas"
-        title="Lazy deltas"
+        title="Deltas"
       />
 
       <DangerZone>

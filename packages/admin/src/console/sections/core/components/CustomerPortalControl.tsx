@@ -97,8 +97,8 @@ export function CustomerPortalControl({
             touch
             checked={on && !blocked}
             saving={pending !== null}
-            disabled={blocked || locked}
-            readOnly={query.isPending}
+            aria-disabled={blocked || locked || undefined}
+            readOnly={blocked || locked || query.isPending}
             aria-describedby={
               [
                 blocked ? `${switchId}-requirements` : null,

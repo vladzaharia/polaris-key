@@ -436,10 +436,7 @@ function SubSwitch({
             parentOn ? (
               <ReviewRecipeLink slug={ctx.slug} />
             ) : (
-              <span
-                aria-disabled="true"
-                className="text-sm text-fg-muted underline underline-offset-2"
-              >
+              <span aria-disabled="true" className="text-sm text-fg-muted">
                 Review recipe
               </span>
             )

@@ -3,6 +3,7 @@ import { AlertTriangle, RotateCw } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { errorCopy, type ErrorContext } from "../lib/errorCopy.js";
 import { Button } from "./Button.js";
+import { Unlocked } from "./WriteLock.js";
 import { CopyButton } from "./CopyButton.js";
 
 /**
@@ -106,52 +107,58 @@ function Actions({
   const variant = compact ? "ghost" : "outline";
   const size = compact ? "xs" : "sm";
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      {onRetry ? (
-        <Button
-          size={size}
-          variant={variant}
-          iconStart={<RotateCw />}
-          onClick={onRetry}
-        >
-          Retry
-        </Button>
-      ) : null}
-      {copy.action === "reload" ? (
-        <Button
-          size={size}
-          variant={variant}
-          onClick={() => window.location.reload()}
-        >
-          Reload the page
-        </Button>
-      ) : null}
-      {copy.action === "sign-in" ? (
-        <Button size={size} asChild>
-          <a
-            href={`/manage/login?returnTo=${encodeURIComponent(window.location.hash)}`}
+    <Unlocked>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {onRetry ? (
+          <Button
+            size={size}
+            variant={variant}
+            iconStart={<RotateCw />}
+            onClick={onRetry}
           >
-            Sign in
-          </a>
-        </Button>
-      ) : null}
-      {copy.action === "platform" ? (
-        <Button size={size} variant={variant} asChild>
-          <a href="#/platform">Open Platform</a>
-        </Button>
-      ) : null}
-      {copy.action === "none" && context?.collectionHref ? (
-        <Button size={size} variant={variant} asChild>
-          <a href={context.collectionHref}>Back to the list</a>
-        </Button>
-      ) : null}
-      {copy.action === "copy-details" && !compact ? (
-        <CopyButton
-          value={JSON.stringify(copy.details, null, 2)}
-          label="Copy details"
-          showLabel
-        />
-      ) : null}
-    </div>
+            Retry
+          </Button>
+        ) : null}
+        {copy.action === "reload" ? (
+          <Button
+            size={size}
+            variant={variant}
+            onClick={() => window.location.reload()}
+          >
+            Reload the page
+          </Button>
+        ) : null}
+        {copy.action === "sign-in" ? (
+          <Button size={size} asChild>
+            <a
+              href={`/manage/login?returnTo=${encodeURIComponent(window.location.hash)}`}
+            >
+              Sign in
+            </a>
+          </Button>
+        ) : null}
+        {copy.action === "platform" ? (
+          <Button size={size} variant={variant} asChild>
+            <a href="#/platform">Open Platform</a>
+          </Button>
+        ) : null}
+        {copy.action === "none" && context?.collectionHref ? (
+          <Button size={size} variant={variant} asChild>
+            <a href={context.collectionHref}>Back to the list</a>
+          </Button>
+        ) : null}
+        {copy.action === "copy-details" ? (
+          <CopyButton
+            value={JSON.stringify(copy.details, null, 2)}
+            label="Copy details"
+            showLabel
+            size={size}
+            text="Copy details"
+          />
+        ) : null}
+      </div>
+    </Unlocked>
   );
 }
+
+export { ErrorDescription } from "./CopyDetails.js";

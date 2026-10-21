@@ -1,5 +1,4 @@
 import * as React from "react";
-import type { ErrorCopy } from "../lib/errorCopy.js";
 import { CopyButton } from "./CopyButton.js";
 
 /**
@@ -9,14 +8,32 @@ import { CopyButton } from "./CopyButton.js";
 export function CopyDetails({
   copy,
 }: {
-  copy: Pick<ErrorCopy, "action" | "details">;
+  copy: { action?: string; details?: Record<string, unknown> };
 }): React.ReactElement | null {
   if (copy.action !== "copy-details") return null;
   return (
     <CopyButton
-      value={JSON.stringify(copy.details, null, 2)}
+      value={JSON.stringify(copy.details ?? {}, null, 2)}
       label="Copy details"
       showLabel
+      text="Copy details"
     />
+  );
+}
+
+/** A refusal's description with its Copy details button after it, for a callout body. */
+export function ErrorDescription({
+  copy,
+}: {
+  copy: {
+    description?: string;
+    action?: string;
+    details?: Record<string, unknown>;
+  };
+}): React.ReactElement {
+  return (
+    <>
+      {copy.description} <CopyDetails copy={copy} />
+    </>
   );
 }

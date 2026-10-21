@@ -35,20 +35,48 @@ function useScrollEdges(activeKey: string): {
   React.useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const on = el.querySelector<HTMLElement>(
-      '[aria-current="page"],[aria-selected="true"]',
-    );
-    if (on) {
+    let touched = false;
+    const reveal = (): void => {
+      const on = el.querySelector<HTMLElement>(
+        '[aria-current="page"],[aria-selected="true"]',
+      );
+      if (!on) return;
       const box = el.getBoundingClientRect();
       const t = on.getBoundingClientRect();
       if (t.left < box.left || t.right > box.right)
         el.scrollLeft += t.left - box.left - (box.width - t.width) / 2;
-    }
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(measure);
+    };
+    const settle = (): void => {
+      // A tab's count arrives after the first paint and widens it: keep the active tab in view
+      // until the reader moves the strip themselves.
+      if (!touched) reveal();
+      measure();
+    };
+    const hands = (): void => {
+      touched = true;
+    };
+    el.addEventListener("wheel", hands, { passive: true });
+    el.addEventListener("touchstart", hands, { passive: true });
+    el.addEventListener("pointerdown", hands);
+    settle();
+    if (typeof ResizeObserver === "undefined")
+      return () => {
+        el.removeEventListener("wheel", hands);
+        el.removeEventListener("touchstart", hands);
+        el.removeEventListener("pointerdown", hands);
+      };
+    const ro = new ResizeObserver(settle);
     ro.observe(el);
-    return () => ro.disconnect();
+    for (const child of Array.from(el.children)) {
+      ro.observe(child);
+      for (const grand of Array.from(child.children)) ro.observe(grand);
+    }
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("wheel", hands);
+      el.removeEventListener("touchstart", hands);
+      el.removeEventListener("pointerdown", hands);
+    };
   }, [activeKey, measure]);
   return { ref, edges, onScroll: measure };
 }

@@ -24,6 +24,7 @@ import {
 } from "../src/console/shell/palette/settings.js";
 import type { PaletteContext } from "../src/console/shell/palette/types.js";
 import { SETTINGS_INDEX } from "../src/console/settings.generated.js";
+import { SETTING_HOMES } from "../src/console/sections/core/model/settingHomes.js";
 import { parseLocation } from "../src/console/routes.js";
 import { ALL_ON, ME, boot, resetConsole } from "./consoleHarness.js";
 import { expectNoAxeViolations } from "./coreTestUtils.js";
@@ -74,10 +75,11 @@ describe("palette settings source", () => {
       const row = rows.find((r) => r.id === `setting:djdl:${e.key}`);
       expect(row, q).toBeDefined();
       const route = parseLocation(row!.href!).route;
+      const home = SETTING_HOMES[e.key];
       expect(route).toMatchObject({
         kind: "product",
         slug: "djdl",
-        page: "settings-all",
+        page: home?.kind === "page" ? home.page : "settings-all",
       });
       expect(route.kind === "product" && route.query.get("setting")).toBe(
         e.key,
@@ -120,10 +122,34 @@ describe("palette settings source", () => {
     );
   });
 
-  it("caps the rows", () => {
-    expect(
-      settingsItems(ctx(granted(["core", "license", "config"])), "e").length,
-    ).toBeLessThanOrEqual(SETTINGS_ROWS_MAX);
+  it("caps the rows and ends with the way to see them all", () => {
+    const rows = settingsItems(
+      ctx(granted(["core", "license", "config"])),
+      "e",
+    );
+    const more = rows.filter((r) => r.id.startsWith("setting:more:"));
+    expect(rows.length - more.length).toBeLessThanOrEqual(SETTINGS_ROWS_MAX);
+    expect(more).toHaveLength(1);
+    expect(more[0]!.label).toMatch(/^See all \d+ settings$/);
+    expect(parseLocation(more[0]!.href!).route).toMatchObject({
+      page: "settings-all",
+    });
+  });
+
+  it("sends a manifest-owned or API-only setting to All settings, the rest to their page", () => {
+    const me = granted(["core", "license", "config", "ship"]);
+    const api = live.find(
+      (e) => e.scope === "product" && SETTING_HOMES[e.key]?.kind === "api",
+    );
+    if (api) {
+      const row = settingsItems(ctx(me), api.key).find(
+        (r) => r.id === `setting:djdl:${api.key}`,
+      );
+      if (row)
+        expect(parseLocation(row.href!).route).toMatchObject({
+          page: "settings-all",
+        });
+    }
   });
 });
 
@@ -152,8 +178,8 @@ describe("the palette with settings", () => {
     ).toBeTruthy();
     await userEvent.keyboard("{Enter}");
     await waitFor(() =>
-      expect(window.location.hash).toBe(
-        `#/p/djdl/settings/all?setting=${encodeURIComponent(e.key)}`,
+      expect(window.location.hash).toMatch(
+        new RegExp(`\\?setting=${e.key.replace(/\./g, "\\.")}$`),
       ),
     );
   });

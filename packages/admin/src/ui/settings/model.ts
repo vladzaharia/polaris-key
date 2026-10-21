@@ -88,6 +88,12 @@ export function intentOf(
   return level === "L1" ? "caution" : "neutral";
 }
 
+/** A registry unit as words: `perDay` is "a day"; the rest read as they are. */
+export function unitWord(unit: string): string {
+  if (unit === "perDay") return "a day";
+  return unit;
+}
+
 /** A value as the console shows it: "On", "30 days", "32 MiB", an enum's label. */
 export function formatSettingValue(
   spec: SettingSpec,
@@ -108,7 +114,7 @@ export function formatSettingValue(
     const unit =
       n === 1 && /^(days|hours|minutes|seconds)$/.test(spec.unit)
         ? spec.unit.slice(0, -1)
-        : spec.unit;
+        : unitWord(spec.unit);
     return `${formatCount(n)} ${unit}`;
   }
   if (spec.kind === "enum") return map?.[String(value)] ?? String(value);
@@ -133,7 +139,7 @@ export function fromField(spec: SettingSpec, value: number): number {
 export function fieldUnit(spec: SettingSpec): string | undefined {
   if (spec.kind !== "integer") return undefined;
   if (spec.unit === "bytes") return spec.byteUnit === "GiB" ? "GiB" : "MiB";
-  return spec.unit === "count" ? undefined : spec.unit;
+  return spec.unit === "count" ? undefined : unitWord(spec.unit);
 }
 
 /** The message a draft fails with, or `null` when it can be saved. */

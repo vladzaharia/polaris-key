@@ -2,6 +2,7 @@ import * as React from "react";
 import { RadioGroup } from "radix-ui";
 import { cn } from "../lib/cn.js";
 import { reducedMotion, tokenMs } from "./motion/reducedMotion.js";
+import { useWriteLock } from "./WriteLock.js";
 
 export interface SegmentedOption<V extends string = string> {
   value: V;
@@ -139,6 +140,7 @@ export function SegmentedControl<V extends string = string>({
   ref,
   ...aria
 }: SegmentedControlProps<V>): React.ReactElement {
+  const { locked } = useWriteLock();
   const root = React.useRef<HTMLDivElement | null>(null);
   const thumb = React.useRef<HTMLSpanElement | null>(null);
   const items = React.useRef(new Map<string, HTMLButtonElement>());
@@ -159,7 +161,7 @@ export function SegmentedControl<V extends string = string>({
       id={id}
       name={name}
       value={value}
-      disabled={disabled}
+      disabled={disabled || locked}
       orientation="horizontal"
       loop
       onValueChange={(v) => onChange?.(v as V)}

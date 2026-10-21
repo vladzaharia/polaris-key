@@ -138,7 +138,8 @@ export function PackageFeedsControl({
             touch
             checked={on}
             saving={pending !== null}
-            disabled={blocked || locked || query.isPending}
+            aria-disabled={blocked || locked || undefined}
+            readOnly={blocked || locked || query.isPending}
             aria-describedby={describedBy}
             onCheckedChange={(next) => {
               if (next) void save(true).catch(() => undefined);

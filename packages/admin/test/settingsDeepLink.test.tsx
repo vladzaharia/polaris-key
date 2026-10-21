@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, waitFor } from "@testing-library/react";
 import type * as ApiModule from "../src/api.js";
+import { SettingsHub } from "../src/console/sections/core/pages/SettingsHub.js";
 import { SettingsAllPage } from "../src/console/sections/core/pages/SettingsAll.js";
 import { SETTINGS_INDEX } from "../src/console/settings.generated.js";
 import { ALL_ON, ME } from "./consoleHarness.js";
@@ -50,13 +51,18 @@ describe("the deep link", () => {
         x.pending === null &&
         x.deprecated === null,
     )!;
-    const { container } = renderAt(
+    renderAt(
       `#/p/djdl/settings/all?setting=${encodeURIComponent(e.key)}`,
-      <SettingsAllPage slug="djdl" />,
+      <SettingsHub slug="djdl" page="settings-all">
+        <SettingsAllPage slug="djdl" />
+      </SettingsHub>,
     );
     await waitFor(() =>
       expect(document.activeElement?.id).toBe(`all-setting-${e.key}`),
     );
-    await expectNoAxeViolations(container);
+    // The hub header alone has no shell around it: check the table the row sits in.
+    await expectNoAxeViolations(
+      document.getElementById(`all-setting-${e.key}`)!.closest("table")!,
+    );
   });
 });

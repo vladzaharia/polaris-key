@@ -543,7 +543,9 @@ describe("Services feature groups", () => {
     mount();
     const packages = await screen.findByRole("switch", { name: /Packages/i });
     const requirementId = packages.getAttribute("aria-describedby");
-    expect((packages as HTMLButtonElement).disabled).toBe(true);
+    expect((packages as HTMLButtonElement).getAttribute("aria-disabled")).toBe(
+      "true",
+    );
     expect(requirementId).toBe("feature-packages-requirements");
     expect(document.getElementById(requirementId!)?.textContent).toBe(
       "Turns on with Ship builds",

@@ -10,10 +10,12 @@
  */
 
 import * as React from "react";
-import { History, ListTree, Lock } from "lucide-react";
+import { History, ListTree } from "lucide-react";
 import { PageHeaderNested } from "../../../../ui/PageHeader.js";
 import { Button } from "../../../../ui/Button.js";
 import { ProductLogo } from "../../../../ui/ProductLogo.js";
+import { Callout } from "../../../../ui/Callout.js";
+import { WriteLock } from "../../../../ui/WriteLock.js";
 import { PageTabs, type PageTab } from "../../../components/PageTabs.js";
 import {
   useAccessAdmins,
@@ -22,7 +24,9 @@ import {
 } from "../../../access/useCan.js";
 import { useProduct } from "../../../data/hooks.js";
 import type { ProductPageId } from "../../../nav.js";
-import { codecs, Link, useSearchParam } from "../../../router.js";
+import { Link } from "../../../router.js";
+import { useSettingTarget } from "../../../useSettingTarget.js";
+import { anchorOfKey } from "../model/settingHomes.js";
 import { productPage, r } from "../../../routes.js";
 
 /**
@@ -45,35 +49,6 @@ const TAB_OF: Partial<Record<ProductPageId, ProductPageId>> = {
  * Land on the row an All settings link names (`?at=<element id>`): wait for it to render, scroll
  * to it and focus it. Each target is taken once, so the reader scrolls on from there.
  */
-const AT = codecs.string();
-
-function useLandOn(): void {
-  const [at] = useSearchParam("at", AT);
-  React.useEffect(() => {
-    if (!at) return;
-    let done = false;
-    const land = (): boolean => {
-      const el = document.getElementById(at);
-      if (!el) return false;
-      done = true;
-      el.scrollIntoView({ block: "start" });
-      el.focus({ preventScroll: true });
-      return true;
-    };
-    const first = window.setTimeout(land, 50);
-    const obs = new MutationObserver(() => {
-      if (!done && land()) obs.disconnect();
-    });
-    obs.observe(document.body, { childList: true, subtree: true });
-    const stop = window.setTimeout(() => obs.disconnect(), 5000);
-    return () => {
-      window.clearTimeout(first);
-      window.clearTimeout(stop);
-      obs.disconnect();
-    };
-  }, [at]);
-}
-
 export function SettingsHub({
   slug,
   page,
@@ -83,7 +58,7 @@ export function SettingsHub({
   page: ProductPageId;
   children: React.ReactNode;
 }): React.ReactElement {
-  useLandOn();
+  useSettingTarget(true, undefined, anchorOfKey);
   const gate = useWriteGate(page === "keys" ? "keys" : "core", slug);
   // Features gates its own switches and says why; the other tabs lock whole under one note.
   const lock =
@@ -159,20 +134,13 @@ export function SettingsHub({
         </div>
       </header>
       {lock && gate.disabledReason ? (
-        <p
-          role="note"
-          className="flex items-center gap-2 text-sm text-fg-muted"
-        >
-          <Lock aria-hidden className="size-4 shrink-0" />
+        <Callout tone="info" title="You can view these settings">
           {gate.disabledReason}
-        </p>
+        </Callout>
       ) : null}
-      <fieldset
-        disabled={lock}
-        className="m-0 min-w-0 space-y-6 border-0 p-0 [&:disabled_label:has(input:disabled)]:cursor-not-allowed [&:disabled_label:has(input:disabled)]:opacity-50"
-      >
+      <WriteLock locked={lock} reason={gate.disabledReason}>
         <PageHeaderNested.Provider value>{children}</PageHeaderNested.Provider>
-      </fieldset>
+      </WriteLock>
     </div>
   );
 }

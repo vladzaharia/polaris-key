@@ -4,6 +4,7 @@ import { ImageIcon, Upload } from "lucide-react";
 import { ApiError, type HostedAssetDto } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { ActionMenu } from "../../../../ui/ActionMenu.js";
+import { useWriteLock } from "../../../../ui/WriteLock.js";
 import { Button } from "../../../../ui/Button.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
@@ -58,6 +59,7 @@ export function PresentationSlotRow({
   quotaFull?: boolean;
 }): React.ReactElement {
   const queryClient = useQueryClient();
+  const lock = useWriteLock();
   const [busy, setBusy] = React.useState(false);
   const [failure, setFailure] = React.useState<string | null>(null);
   const [confirm, setConfirm] = React.useState<"revert" | "delete" | null>(
@@ -152,9 +154,7 @@ export function PresentationSlotRow({
           : null,
       ].filter(Boolean)
     : ["Nothing hosted yet"];
-  if (uploadable && quotaFull)
-    facts.push("Image quota full: free space under Hosting and quotas first");
-  else if (uploadable && !failure)
+  if (uploadable && !failure && !quotaFull)
     facts.push(`${ACCEPTED_FORMATS}, up to ${binaryBytes(maxBytes)}`);
 
   const menu = canDelete
@@ -211,7 +211,7 @@ export function PresentationSlotRow({
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 max-sm:col-span-2 max-sm:justify-start">
           {uploadable ? (
             <label
-              aria-disabled={busy || quotaFull || undefined}
+              aria-disabled={busy || quotaFull || lock.locked || undefined}
               className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border-strong px-3 text-xs font-normal text-fg hover:bg-hover focus-within:ring-2 focus-within:ring-focus aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent"
             >
               <Upload aria-hidden className="size-4" />
@@ -220,9 +220,15 @@ export function PresentationSlotRow({
                 type="file"
                 accept={UPLOAD_ACCEPT}
                 aria-label={`${verb} ${label}`}
-                aria-describedby={failure ? errorId : undefined}
+                aria-describedby={
+                  failure
+                    ? errorId
+                    : quotaFull
+                      ? "presentation-quota-full"
+                      : undefined
+                }
                 className="sr-only"
-                disabled={busy || quotaFull}
+                disabled={busy || quotaFull || lock.locked}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   e.target.value = "";

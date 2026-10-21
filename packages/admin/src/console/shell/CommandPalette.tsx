@@ -8,6 +8,7 @@ import { StatusPill } from "../../ui/StatusPill.js";
 import { useProduct, useProducts } from "../data/hooks.js";
 import { pageOfRoute, slugOfRoute } from "../routes.js";
 import { navigate, useLocation } from "../router.js";
+import { LAND_EVENT } from "../useSettingTarget.js";
 import { Kbd } from "../../ui/Kbd.js";
 import { LiveRegion } from "../../ui/LiveRegion.js";
 import { ServiceDots, type ProductLike } from "./bits.js";
@@ -109,12 +110,18 @@ export function CommandPalette({
     key: number;
   } | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  // Where focus was before the palette opened, and whether a pick moved it on: Radix has no
+  // trigger to return to (the palette opens from ⌘K or a button that does not own it).
+  const opener = React.useRef<HTMLElement | null>(null);
+  const moved = React.useRef(false);
   // Reset on open, during render rather than in an effect, so the input mounts holding the
   // initial query and the dialog's open focus can select it.
   const [wasOpen, setWasOpen] = React.useState(false);
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) {
+      opener.current = document.activeElement as HTMLElement | null;
+      moved.current = false;
       setQuery(initialQuery);
       setRecentIds(readRecents());
     }
@@ -129,6 +136,14 @@ export function CommandPalette({
   const byValue = new Map(
     groups.flatMap((g) => g.items.map((i) => [valueOf(g.heading, i), i])),
   );
+
+  /** Go to a hash; a jump to the one already shown lands on its target again. */
+  const go = (href: string): void => {
+    moved.current = true;
+    if (window.location.hash === href)
+      window.setTimeout(() => window.dispatchEvent(new Event(LAND_EVENT)), 60);
+    else navigate(href);
+  };
 
   const run = (item: PaletteItem, newTab = false): void => {
     if (item.inert) return;
@@ -147,13 +162,13 @@ export function CommandPalette({
     }
     if (item.perform) {
       item.perform({
-        navigate: (href) => navigate(href),
+        navigate: go,
         openPanel: (render) =>
           setPanel((p) => ({ render, open: true, key: (p?.key ?? 0) + 1 })),
       });
       return;
     }
-    if (item.href) navigate(item.href);
+    if (item.href) go(item.href);
   };
 
   return (
@@ -163,6 +178,10 @@ export function CommandPalette({
           <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs animate-pk-overlay-in" />
           <DialogPrimitive.Content
             aria-describedby={undefined}
+            onCloseAutoFocus={(e) => {
+              e.preventDefault();
+              if (!moved.current) opener.current?.focus();
+            }}
             onOpenAutoFocus={(e) => {
               if (!initialQuery) return;
               e.preventDefault();
@@ -228,27 +247,29 @@ export function CommandPalette({
                         value={valueOf(g.heading, item)}
                         disabled={item.inert}
                         onSelect={() => run(item)}
-                        className="flex cursor-pointer data-[disabled=true]:cursor-default items-center gap-2.5 rounded-sm px-2 py-2 text-sm transition-colors duration-(--pk-duration-micro) ease-standard data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong"
+                        className="flex cursor-pointer data-[disabled=true]:cursor-default items-center gap-2.5 rounded-sm px-2 py-2 text-sm transition-colors duration-(--pk-duration-micro) ease-standard data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong forced-colors:data-[selected=true]:[outline:2px_solid_Highlight] forced-colors:data-[selected=true]:-outline-offset-2"
                       >
                         <span className="text-fg-muted">{item.icon}</span>
-                        <span
-                          className={cn(
-                            "min-w-0",
-                            item.inert ? "whitespace-normal" : "truncate",
-                          )}
-                        >
-                          {item.label}
-                          {item.labelMono ? (
-                            <>
-                              {" "}
-                              <code className="font-mono tracking-wider">
-                                {item.labelMono}
-                              </code>
-                            </>
-                          ) : null}
-                        </span>
-                        <span className="min-w-0 truncate text-xs text-fg-muted">
-                          {item.detail}
+                        <span className="flex min-w-0 flex-col max-sm:flex-1 sm:contents">
+                          <span
+                            className={cn(
+                              "min-w-0",
+                              item.inert ? "whitespace-normal" : "sm:truncate",
+                            )}
+                          >
+                            {item.label}
+                            {item.labelMono ? (
+                              <>
+                                {" "}
+                                <code className="font-mono tracking-wider">
+                                  {item.labelMono}
+                                </code>
+                              </>
+                            ) : null}
+                          </span>
+                          <span className="min-w-0 text-xs text-fg-muted sm:truncate">
+                            {item.detail}
+                          </span>
                         </span>
                         {item.product ? (
                           <ServiceDots product={item.product} />

@@ -27,19 +27,15 @@ import { canIn } from "../../../access/can.js";
 import { useMe, useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { pageOf, sectionOf, type ProductPageId } from "../../../nav.js";
-import { Link } from "../../../router.js";
-import { useSettingTarget } from "../../../useSettingTarget.js";
+import { Link, useLocation } from "../../../router.js";
+import { LAND_EVENT } from "../../../useSettingTarget.js";
 import { productPage } from "../../../routes.js";
 import {
   SETTINGS_INDEX,
   type SettingsIndexEntry,
 } from "../../../settings.generated.js";
 import { SettingsSection } from "../../../templates/Settings.js";
-import {
-  anchorOf,
-  SETTING_HOMES,
-  type SettingHome,
-} from "../model/settingHomes.js";
+import { SETTING_HOMES, type SettingHome } from "../model/settingHomes.js";
 import { SETTINGS_AREAS } from "./SettingsHub.js";
 
 /** A page as the console words it elsewhere: `Settings → Features`, `License → Enrollment`. */
@@ -75,7 +71,7 @@ function EditIn({
         <Link
           to={productPage(slug, home.page, {
             id: home.id,
-            ...(anchorOf(home) ? { query: { at: anchorOf(home)! } } : {}),
+            query: { setting: entry.key },
           })}
           className="inline-flex min-h-6 items-center gap-1 text-accent-fg underline-offset-4 hover:underline"
         >
@@ -131,10 +127,24 @@ export function SettingsAllPage({
     queryFn: () => api.productSettings(slug),
   });
   useLoadingAnnouncement("all settings", values.isPending);
-  useSettingTarget(!values.isPending, (k) => `all-setting-${k}`);
   const [text, setText] = React.useState("");
   const find = React.useRef<HTMLInputElement>(null);
   const [service, setService] = React.useState<string>(ALL);
+  // A jump to a setting clears what would hide its row (and lands again when it names the same
+  // one twice): the landing itself is the hub's.
+  const query = useLocation().route.query;
+  const target = query.get("setting");
+  const q = query.get("q");
+  React.useEffect(() => {
+    const clear = (): void => {
+      setText("");
+      setService(ALL);
+    };
+    if (target) clear();
+    else if (q) setText(q);
+    window.addEventListener(LAND_EVENT, clear);
+    return () => window.removeEventListener(LAND_EVENT, clear);
+  }, [target, q]);
 
   const entries = React.useMemo(
     () =>

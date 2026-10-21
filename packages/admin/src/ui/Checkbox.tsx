@@ -2,6 +2,7 @@ import * as React from "react";
 import { Checkbox as CheckboxPrimitive } from "radix-ui";
 import { Check, Minus } from "lucide-react";
 import { cn } from "../lib/cn.js";
+import { useWriteLock } from "./WriteLock.js";
 
 type RootProps = React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>;
 
@@ -47,6 +48,8 @@ export function Checkbox({
   ...props
 }: CheckboxProps): React.ReactElement {
   const reactId = React.useId();
+  const { locked } = useWriteLock();
+  readOnly = readOnly || locked;
   const boxId = id ?? `cb-${reactId.replace(/:/g, "")}`;
   const descId = description ? `${boxId}-desc` : undefined;
   const state = checked ?? value ?? false;

@@ -9,10 +9,7 @@ import { cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type * as ApiModule from "../src/api.js";
 import type { Me, ProductDetail } from "../src/api.js";
-import {
-  anchorOf,
-  SETTING_HOMES,
-} from "../src/console/sections/core/model/settingHomes.js";
+import { SETTING_HOMES } from "../src/console/sections/core/model/settingHomes.js";
 import { SettingsAllPage } from "../src/console/sections/core/pages/SettingsAll.js";
 import { productPage } from "../src/console/routes.js";
 import { SETTINGS_INDEX } from "../src/console/settings.generated.js";
@@ -99,7 +96,7 @@ describe("All settings → Edit in", () => {
       "license.defaults.deviceLimit",
       "Settings → Features",
       "License defaults",
-      "#/p/djdl/settings?at=settings-license",
+      "#/p/djdl/settings",
     ],
     [
       "license.fingerprint",
@@ -117,7 +114,7 @@ describe("All settings → Edit in", () => {
       "release.github",
       "Settings → Features",
       "Repository",
-      "#/p/djdl/settings?at=settings-repository",
+      "#/p/djdl/settings",
     ],
     [
       "release.compatWindow",
@@ -152,7 +149,9 @@ describe("All settings → Edit in", () => {
     expect(cell).toContain(where);
     if (section) expect(cell).toContain(section);
     await userEvent.setup().click(link);
-    expect(window.location.hash).toBe(hash);
+    expect(window.location.hash).toBe(
+      `${hash}${hash.includes("?") ? "&" : "?"}setting=${key}`,
+    );
   });
 
   it.each([
@@ -200,7 +199,7 @@ describe("All settings → Edit in", () => {
         ).toEqual([
           productPage("djdl", home.page, {
             id: home.id,
-            ...(anchorOf(home) ? { query: { at: anchorOf(home)! } } : {}),
+            query: { setting: e.key },
           }),
         ]);
       else expect(links, e.key).toEqual([]);

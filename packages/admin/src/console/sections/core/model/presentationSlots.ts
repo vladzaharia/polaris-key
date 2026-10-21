@@ -142,7 +142,8 @@ export function uploadError(
     if (e.status === 415)
       return `That file type is not accepted. Use ${ACCEPTED_FORMATS}.${keeps}`;
   }
-  return `The upload failed.${keeps}`;
+  if (e instanceof ApiError) return `The upload failed. Try again.${keeps}`;
+  return `The upload didn't reach Polaris Key. Check your connection and try again.${keeps}`;
 }
 
 /** The standard slots, plus any other row, in display order. */

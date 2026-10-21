@@ -18,6 +18,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api.js";
+import { Callout } from "../../../../ui/Callout.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
@@ -88,6 +89,28 @@ export function PresentationPage({
             title="What customers see"
             description="Polaris Key hosts a copy of each file and serves it from its image host; your original is unchanged."
           >
+            {usage.data?.media.full ? (
+              <div id="presentation-quota-full" className="px-5 py-4">
+                <Callout tone="warning" title="Image quota full">
+                  Uploads and replacements are off until space is freed. See{" "}
+                  <a
+                    href="#presentation-hosting"
+                    className="text-accent-fg underline underline-offset-2"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const to = document.getElementById(
+                        "presentation-hosting",
+                      );
+                      to?.scrollIntoView({ block: "start" });
+                      to?.focus();
+                    }}
+                  >
+                    Hosting and quotas
+                  </a>
+                  .
+                </Callout>
+              </div>
+            ) : null}
             {presentation.map(slotRow)}
             {slotRow(heroSlot!)}
           </SettingsSection>

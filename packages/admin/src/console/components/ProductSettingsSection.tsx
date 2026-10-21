@@ -34,6 +34,7 @@ import {
 } from "../../ui/settings/model.js";
 import { toast } from "../../ui/toast.js";
 import { useProduct } from "../data/hooks.js";
+import { useSettingTarget } from "../useSettingTarget.js";
 import { mutate } from "../data/mutations.js";
 import { qk } from "../data/queries.js";
 import { SettingsSection } from "../templates/Settings.js";
@@ -92,6 +93,8 @@ export function ProductSettingsSection({
     queryFn: () => api.productSettings(slug, area),
   });
   const product = useProduct(slug).data;
+  // `?setting=<key>` (a palette or All settings link) lands on this section's row.
+  useSettingTarget(!q.isPending);
   const linked = product?.releaseSource === "github";
 
   let body: React.ReactNode;
