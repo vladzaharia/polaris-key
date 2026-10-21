@@ -100,7 +100,7 @@ export function StatusSection({
 }): React.ReactElement {
   const queryClient = useQueryClient();
   // The same gate as Settings → Features: the switch is a Core setting.
-  const gate = useWriteGate("core", slug);
+  const gate = useWriteGate("core", slug, "Settings");
   const busy = React.useRef(false);
   const [working, setWorking] = React.useState(false);
   const [off, setOff] = React.useState<OffConfirmation | null>(null);
@@ -180,7 +180,6 @@ export function StatusSection({
           </Tiled>
         }
         htmlFor="app-sign-in-status"
-        help={gate.disabledReason}
       >
         <Switch
           id="app-sign-in-status"

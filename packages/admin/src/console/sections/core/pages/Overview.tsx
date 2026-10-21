@@ -47,6 +47,7 @@ import {
   type MomentObservation,
 } from "../../../components/Moment.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { useAttention, useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { OverviewAttention } from "../components/OverviewAttention.js";
@@ -176,6 +177,7 @@ function OverviewBody({
     ? nextStep(slug, view, Boolean(p.signing?.publicKey), pending)
     : null;
   const setup = useSetup(slug);
+  const licenseGate = useWriteGate("license", slug);
   const hidden = setup.choices.integrationHidden !== null;
   // Show Integration puts the card back and the card takes focus; nothing else moves it.
   const [justShown, setJustShown] = React.useState(false);
@@ -194,7 +196,7 @@ function OverviewBody({
   );
 
   const fallback = on(p, "license") ? (
-    <Button asChild>
+    <Button asChild disabledReason={licenseGate.disabledReason}>
       <Link to={r.newLicense(slug)}>New license</Link>
     </Button>
   ) : on(p, "config") ? (
