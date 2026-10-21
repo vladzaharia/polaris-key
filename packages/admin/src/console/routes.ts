@@ -11,7 +11,7 @@
  * A section's key alone (`#/p/<slug>/license`, `#/platform`) redirects to the section's first
  * page; the router applies a redirect with `history.replaceState`, so Back does not loop.
  * Anything else unrecognised is a not-found page that names the segment: there is no silent
- * fallback (SH-8), and `#/productsfoo` is not Products. A pre-redesign tab (`MOVED_TABS`) is
+ * fallback (SH-8), and `#/productsfoo` is not Products. A removed 0.9 address (`ROUTE_LEDGER`) is
  * not-found too, but the route carries where its page went, and the page says so.
  */
 
@@ -29,6 +29,9 @@ import {
   type PageId,
   type ProductPageId,
 } from "./nav.js";
+import { ledgerLookup, type MovedTo } from "./routeLedger.js";
+
+export type { MovedTo };
 
 /** A parsed location. `query` is the hash's query string, always present (maybe empty). */
 export type Route =
@@ -59,16 +62,10 @@ export type Route =
       slug?: string;
       /** The path that matched nothing, for the not-found copy. */
       path: string;
-      /** The page a pre-redesign tab became (`MOVED_TABS`), when the path is one. */
+      /** Where a removed 0.9 address went (`ROUTE_LEDGER`), when the path is one. */
       moved?: MovedTo;
       query: URLSearchParams;
     };
-
-/** Where a pre-redesign product URL's page lives now: the page, and the record id it named. */
-export interface MovedTo {
-  page: ProductPageId;
-  id?: string;
-}
 
 /** A nested record: its id segments (`[name]`, or `[owner, name]`) and its tab. */
 export interface RouteChild {
@@ -85,50 +82,17 @@ export interface ParsedLocation {
 // ── Moved pages ────────────────────────────────────────────────────────────────────────────────
 
 /**
- * The pre-redesign product tabs (`#/p/<slug>/<tab>[/<id>]`, the old `route.ts`) and the page each
- * one became. They do not redirect: the 0.9 line keeps no compatibility windows. The product
- * not-found page reads this map instead and says where the page went ("This page moved to
- * License → Licenses"), with one button to the new address that keeps the record id and the
- * query. The old `config`, `distribution` and `identity` tabs are section keys now, so they are
+ * A removed page's address, read from the ledger (`routeLedger.ts`). Nothing redirects: the 0.9
+ * line keeps no compatibility windows. The not-found page carries where the page went ("This page
+ * moved to License → Licenses"), with one button to the new address that keeps the record id and
+ * the query. The old `config`, `distribution` and `identity` tabs are section keys now, so they are
  * section roots and redirect like any other.
  */
-export const MOVED_TABS: ReadonlyMap<string, ProductPageId> = new Map<
-  string,
-  ProductPageId
->([
-  ["overview", "overview"],
-  // ST-08: Services, Presentation and Keys & secrets became tabs of the product settings hub
-  // (`settings/features`, `settings/presentation`, `settings/keys`). No redirect, no alias.
-  ["services", "services"],
-  ["presentation", "presentation"],
-  ["keys", "keys"],
-  ["secrets", "keys"],
-  ["licenses", "licenses"],
-  ["tiers", "tiers"],
-  ["fingerprints", "enrollment"],
-  ["profiles", "profiles"],
-  ["releases", "releases"],
-  ["deliverables", "deliverables"],
-  ["compatibility", "compatibility"],
-  ["distribution-matrix", "matrix"],
-  ["distribution-health", "health"],
-  ["updates", "feed"],
-]);
-
-/** An old tab, or an old tab and a record id when its page has records; anything else is not. */
-function movedFrom(rest: string[]): MovedTo | undefined {
-  // I-29: Identity → Portal and Identity → Sign-in became the one App sign-in page.
-  if (
-    rest.length === 2 &&
-    rest[0] === "identity" &&
-    (rest[1] === "portal" || rest[1] === "sign-in")
-  )
-    return { page: "app-sign-in" };
-  const page = rest[0] === undefined ? undefined : MOVED_TABS.get(rest[0]);
-  if (!page) return undefined;
-  if (rest.length === 1) return { page };
-  if (rest.length === 2 && pageOf(page).record) return { page, id: rest[1] };
-  return undefined;
+function movedFrom(
+  scope: "product" | "global",
+  path: string[],
+): MovedTo | undefined {
+  return ledgerLookup(scope, path, (page) => !!pageOf(page).record);
 }
 
 // ── Parsing ────────────────────────────────────────────────────────────────────────────────────
@@ -268,7 +232,7 @@ export function parseLocation(hash: string): ParsedLocation {
         `#/p/${encodeURIComponent(slug)}${target ? `/${target}` : ""}${suffix}`,
       );
     }
-    const moved = movedFrom(rest);
+    const moved = movedFrom("product", rest);
     return {
       route: {
         kind: "not-found",
@@ -284,19 +248,6 @@ export function parseLocation(hash: string): ParsedLocation {
   // The Platform group's key alone is its root, as a product section's is.
   if (globalPath === PLATFORM_GROUP.key) {
     return redirectTo(globalHref(platformItems()[0]!.page, suffix));
-  }
-  // ST-44: the Products page retired into Home; its address, with any filters, lands there.
-  if (globalPath === "products") {
-    // The retired Setup facet is Home's Attention facet (`setup=attention` is "needs attention").
-    const carried = new URLSearchParams(query);
-    const setup = carried.get("setup");
-    if (setup !== null) {
-      carried.delete("setup");
-      if (setup === "attention") carried.set("attention", "yes");
-      else if (setup === "complete") carried.set("attention", "no");
-    }
-    const q2 = carried.toString();
-    return redirectTo(globalHref("home", q2 ? `?${q2}` : ""));
   }
   const global = GLOBAL_PAGES.find((p) => p.path === globalPath);
   if (global) {
@@ -324,7 +275,15 @@ export function parseLocation(hash: string): ParsedLocation {
       },
     };
   }
-  return { route: { kind: "not-found", path: rawPath, query } };
+  const moved = movedFrom("global", segments);
+  return {
+    route: {
+      kind: "not-found",
+      path: rawPath,
+      ...(moved ? { moved } : {}),
+      query,
+    },
+  };
 }
 
 /** Redirect to `hash`, following on when it redirects too. */
@@ -411,12 +370,30 @@ export function hrefFor(route: Route): string {
   return `${prefix}${route.path}${suffix}`;
 }
 
-/** The new address of a moved page (`MovedTo`), with the old URL's query. */
+/**
+ * The new address of a moved page (`MovedTo`), with the old URL's query; `undefined` for a deleted
+ * page, which has no new address. The retired Products page's filters follow it to Home, where its
+ * Setup facet is the Attention facet (`setup=attention` is "needs attention").
+ */
 export function movedHref(
-  slug: string,
+  slug: string | undefined,
   moved: MovedTo,
   query: URLSearchParams,
-): string {
+): string | undefined {
+  if (!moved.page) return undefined;
+  if (moved.scope === "global") {
+    const carried = new URLSearchParams(query);
+    if (moved.page === "home") {
+      const setup = carried.get("setup");
+      if (setup !== null) {
+        carried.delete("setup");
+        if (setup === "attention") carried.set("attention", "yes");
+        else if (setup === "complete") carried.set("attention", "no");
+      }
+    }
+    return globalHref(moved.page, queryString(carried), { id: moved.id });
+  }
+  if (slug === undefined) return undefined;
   return productHref(slug, moved.page, { id: moved.id }, queryString(query));
 }
 

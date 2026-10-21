@@ -8,6 +8,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { configureAxe } from "vitest-axe";
 import { SERVICE_ACCENTS } from "@polaris-key/brand";
 import { PRODUCT_PAGES, SECTIONS, navItems } from "../src/console/nav.js";
 
@@ -27,6 +28,10 @@ import {
  * pages and the page heading. These drive the whole `App`, because the properties that matter span
  * the sidebar AND the router: a hidden section must also be a deep link that explains itself.
  */
+
+const axe = configureAxe({
+  rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
+});
 
 beforeEach(resetConsole);
 afterEach(() => {
@@ -909,6 +914,42 @@ describe("state pages (T8)", () => {
       ).toBe(href);
       cleanup();
     }
+  });
+
+  it("a removed global page opens Page moved without a product, and passes axe", async () => {
+    boot("#/products?setup=attention");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Page moved" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: "This page moved to Home",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Go to Home" }).getAttribute("href"),
+    ).toBe("#/?attention=yes");
+    await waitFor(() =>
+      expect(document.title).toBe("Page moved · Polaris Key Console"),
+    );
+    const results = await axe(document.body);
+    expect(results.violations.map((v) => v.id)).toEqual([]);
+  });
+
+  it("the retired Identity pages open Page moved naming App sign-in, and pass axe", async () => {
+    boot("#/p/djdl/identity/portal", { services: ALL_ON });
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: /^This page moved to/,
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: /^Go to / }).getAttribute("href"),
+    ).toBe("#/p/djdl/identity/app-sign-in");
+    const results = await axe(document.body);
+    expect(results.violations.map((v) => v.id)).toEqual([]);
   });
 
   it("an unknown global path is not found, not Products (#/productsfoo)", async () => {

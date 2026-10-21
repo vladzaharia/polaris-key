@@ -20,6 +20,7 @@ import {
   pageOf,
   sectionOf,
   type NavSection,
+  type ProductPageId,
 } from "../nav.js";
 import { Link } from "../router.js";
 import { movedHref, r, searchTermFor, type MovedTo } from "../routes.js";
@@ -126,9 +127,10 @@ export function NotFoundPage({
 }
 
 /**
- * A pre-redesign product URL (`routes.ts` `MOVED_TABS`): not found, but the page says where it
- * went and links there, keeping the record id and the query. It does not redirect; the 0.9 line
- * keeps no compatibility windows, and the bookmark is the operator's to update.
+ * A removed 0.9 address (`routeLedger.ts`): not found, but the page says where it went and links
+ * there, keeping the record id and the query. A page deleted with no successor says that instead.
+ * It does not redirect; the 0.9 line keeps no compatibility windows, and the bookmark is the
+ * operator's to update.
  */
 export function MovedPage({
   path,
@@ -138,20 +140,23 @@ export function MovedPage({
   onOpenPalette,
 }: {
   path: string;
-  slug: string;
+  slug?: string;
   moved: MovedTo;
   query: URLSearchParams;
   onOpenPalette: (query?: string) => void;
 }): React.ReactElement {
-  const page = pageOf(moved.page);
-  const section = sectionOf(moved.page);
-  const record = moved.id !== undefined ? page.record : undefined;
+  const target = moved.page ? pageOf(moved.page) : undefined;
+  const section = moved.page ? sectionOf(moved.page) : undefined;
+  const record = moved.id !== undefined ? target?.record : undefined;
   // The hub's tabs are reached from Settings, whatever section the page sits in.
-  const home = SETTINGS_HUB_PAGES.includes(moved.page)
-    ? "Settings\u00a0→\u00a0"
-    : section
-      ? `${section.label}\u00a0→\u00a0`
-      : "";
+  const home =
+    moved.page && SETTINGS_HUB_PAGES.includes(moved.page as ProductPageId)
+      ? "Settings\u00a0\u2192\u00a0"
+      : section
+        ? `${section.label}\u00a0\u2192\u00a0`
+        : "";
+  const href = movedHref(slug, moved, query);
+  const fallback = slug ? r.overview(slug) : r.home();
   return (
     <section className="space-y-6 animate-pk-enter">
       <StateHeading>Page moved</StateHeading>
@@ -159,20 +164,30 @@ export function MovedPage({
         kind="not-found"
         headingLevel={2}
         // No-break spaces keep "License → Licenses" on one line when the title wraps on a phone.
-        title={`This page moved to ${home}${page.label}`}
+        title={
+          target
+            ? `This page moved to ${home}${target.label}`
+            : "This page was deleted"
+        }
         description={
           <>
             An address from before the console was reorganized:{" "}
-            <code className="font-mono">{path}</code>. Update your bookmark to
-            the new one.
+            <code className="font-mono">{path}</code>.{" "}
+            {target
+              ? "Update your bookmark to the new one."
+              : "Nothing replaces it."}
           </>
         }
         primaryAction={
           <Button asChild>
-            <Link to={movedHref(slug, moved, query)}>
-              {record
+            <Link to={href ?? fallback}>
+              {target && record
                 ? `Open ${record.noun.toLowerCase()} ${moved.id}`
-                : `Go to ${page.label}`}
+                : target
+                  ? `Go to ${target.label}`
+                  : slug
+                    ? "Go to Overview"
+                    : "Go to Home"}
             </Link>
           </Button>
         }

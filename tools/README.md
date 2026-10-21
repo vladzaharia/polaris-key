@@ -71,6 +71,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 | `readme-work`   | reads and writes | `pnpm gen readme-work`              |
 | `parity`        | reads            | `pnpm gen parity`                   |
 | `ux-rows`       | reads            | `pnpm gen ux-rows`                  |
+| `route-ledger`  | reads            | `pnpm gen route-ledger`             |
 | `integration`   | reads            | `pnpm gen integration`              |
 | `mirrors`       | reads            | `pnpm gen mirrors` (named run only) |
 
