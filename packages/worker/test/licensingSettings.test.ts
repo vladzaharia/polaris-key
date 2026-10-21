@@ -645,6 +645,23 @@ describe("the settings API refuses what the registry refuses", () => {
     }
   });
 
+  it("serves each setting's rbacArea, and an unset daily mail cap says which platform value it follows (B-029, B-035)", async () => {
+    const ctx = await linked({ licensing: { reanchor: "never" } }, AFTER);
+    const lic = await call(ctx, "GET", "effective?area=license.licensing");
+    for (const s of lic.json.settings as { rbacArea: string }[])
+      expect(s.rbacArea).toBe("license");
+    const mail = await call(ctx, "GET", "effective");
+    const cap = (
+      mail.json.settings as {
+        key: string;
+        value: unknown;
+        inherited?: unknown;
+      }[]
+    ).find((s) => s.key === "email.dailyCap")!;
+    expect(cap.value).toBeNull();
+    expect(typeof cap.inherited).toBe("number");
+  });
+
   it("Revert without a claim is a 409", async () => {
     const ctx = await linked({ licensing: { reanchor: "never" } }, AFTER);
     const res = await call(ctx, "DELETE", "licensing.reanchor", {

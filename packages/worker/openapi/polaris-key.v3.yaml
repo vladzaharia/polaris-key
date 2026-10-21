@@ -21475,6 +21475,7 @@ components:
           manifestPath,
           visibleWhen,
           serviceEnabled,
+          rbacArea,
           value,
           source,
           defaultValue,
@@ -21513,9 +21514,14 @@ components:
           type: [object, "null"]
           additionalProperties: true
         serviceEnabled: { type: boolean }
+        rbacArea:
+          type: string
+          description: The console area a write needs; a member without edit access sees the row read-only.
         value: {}
         source: { type: string, enum: [default, manifest, console] }
         defaultValue: {}
+        inherited:
+          description: What an unset value follows, when the platform supplies one (the daily mail cap); absent otherwise.
         manifestValue:
           description: What the last applied manifest declares; absent when it declares nothing.
         version:

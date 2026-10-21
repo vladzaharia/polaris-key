@@ -98,7 +98,15 @@ export function isRowBacked(def: SettingDef): boolean {
  * Operator-owned scalar keys the same routes serve (ST-39): no manifest path, so no claim and no
  * resync. A write is `setting.update`, Revert is "reset to default".
  */
-export const OPERATOR_ROW_KEYS: readonly string[] = ["core.setup"];
+export const OPERATOR_ROW_KEYS: readonly string[] = [
+  "core.setup",
+  // ST-11: the lazy-delta opt-in and thresholds and the sign-in mail cap, which Core → Settings
+  // edits. Their readers already read the `product_settings` rows.
+  "deltas.lazy.enabled",
+  "deltas.lazy.hotDevices",
+  "deltas.lazy.dailyCap",
+  "email.dailyCap",
+];
 
 /** Does the settings API serve `def`: a row-backed claimable key or an operator row key? */
 export function isRowServed(def: SettingDef): boolean {

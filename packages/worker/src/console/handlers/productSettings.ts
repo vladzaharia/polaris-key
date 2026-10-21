@@ -43,6 +43,10 @@ import { getManifestSnapshot } from "../../core/manifestSnapshot.js";
 import { getProductSyncState } from "../../core/products/store.js";
 import { driftView } from "../../core/settingsDrift.js";
 import { claimsApply } from "../../core/settingsClaims.js";
+import {
+  PRODUCT_EMAIL_CAP_KEY,
+  productDailyEmailCap,
+} from "../../core/notify/emailDelivery.js";
 import type { SettingDef } from "../../core/settings/types.js";
 import { SETTINGS } from "../../mount.js";
 import type { AdminSession } from "../../core/console/session.js";
@@ -76,9 +80,13 @@ export interface ProductSettingDto {
   /** Hide (or show read-only) while the owning service is off (`visibleWhen`). */
   visibleWhen: SettingDef["visibleWhen"] | null;
   serviceEnabled: boolean;
+  /** The console area a write needs (`SettingDef.rbacArea`): a member without edit sees it read-only. */
+  rbacArea: SettingDef["rbacArea"];
   value: unknown;
   source: RowSettingView["source"];
   defaultValue: unknown;
+  /** What an unset value follows, when the platform supplies one (the daily mail cap). */
+  inherited?: unknown;
   /** What the last applied manifest declares (Revert's target), when it declares it. */
   manifestValue?: unknown;
   version: number;
@@ -109,6 +117,7 @@ function dto(
     visibleWhen: d.visibleWhen ?? null,
     serviceEnabled:
       d.service === "core" || services[d.service]?.enabled === true,
+    rbacArea: d.rbacArea,
     value: view.value,
     source: view.source,
     defaultValue: view.defaultValue,
@@ -181,9 +190,12 @@ export async function handleProductSettings(
     );
     const views = await readRowSettings(db, product, defs, now);
     const manifest = await snapshotManifest(db, product);
-    return adminJson({
-      settings: views.map((v) => dto(v, services, manifest)),
-    });
+    const settings = views.map((v) => dto(v, services, manifest));
+    // An unset daily mail cap follows the platform default: say which number (B-035).
+    for (const s of settings)
+      if (s.key === PRODUCT_EMAIL_CAP_KEY && s.value === null)
+        s.inherited = await productDailyEmailCap(env, db, product.slug);
+    return adminJson({ settings });
   }
 
   // ST-17: the claims against the last applied manifest, and the plan the last apply recorded.
