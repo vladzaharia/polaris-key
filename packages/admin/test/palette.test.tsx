@@ -409,7 +409,7 @@ describe("the palette in the console", () => {
     // The product's Settings, not Platform → Settings nor License → Settings ("Licensing", LX-06).
     await userEvent.click(
       await within(dialog).findByRole("option", {
-        name: /^Settings.*Core · DJDL/,
+        name: /^Settings.*Product · DJDL/,
       }),
     );
     await waitFor(() => expect(window.location.hash).toBe("#/p/djdl/settings"));

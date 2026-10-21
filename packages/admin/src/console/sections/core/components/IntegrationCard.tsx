@@ -70,7 +70,7 @@ export function IntegrationCard({
       data-testid="integration-card"
       className="col-span-full overflow-hidden rounded-xl border border-border bg-surface-raised"
     >
-      <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
+      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border px-4 py-3 sm:px-5">
         <h2
           id="overview-integration"
           ref={heading}
@@ -108,7 +108,10 @@ function Body({
         {next ? (
           <div className="space-y-3">
             <p className="text-base text-fg-strong">{next.reason}</p>
-            <Button asChild>
+            <Button
+              asChild
+              className="h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-left"
+            >
               <Link to={next.to}>
                 {next.text}
                 <ArrowRight aria-hidden className="size-4" />

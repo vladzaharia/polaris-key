@@ -4,9 +4,8 @@
 
 import * as React from "react";
 import type { ProductDetail, ProductRef } from "../../api.js";
-import { SERVICE_TABLE } from "../../services.generated.js";
+import { FEATURES, SERVICE_TABLE } from "../../services.generated.js";
 import { cn } from "../../lib/cn.js";
-import { SECTIONS } from "../nav.js";
 
 /** A product as the switcher and palette see it: the registry row when loaded, else the session's. */
 export type ProductLike = ProductRef | ProductDetail;
@@ -21,8 +20,9 @@ export function enabledServices(p: ProductLike): string[] | null {
 }
 
 /**
- * One accent dot per enabled service (ADMIN.md §1.3 "service dots"). Never colour alone: the dots
- * are hidden from assistive technology and an sr-only sentence names the services.
+ * One accent dot per running feature (ADMIN.md §1.3), the count and order Home's glyph row shows:
+ * Ship builds is one dot however many of its services are on. Never colour alone: the dots are
+ * hidden from assistive technology and an sr-only sentence names the features.
  */
 export function ServiceDots({
   product,
@@ -33,10 +33,10 @@ export function ServiceDots({
 }): React.ReactElement | null {
   const slugs = enabledServices(product);
   if (!slugs) return null;
-  // The console's own names (nav.ts), not the service table's: "Licensing", "Sign-in".
-  const labels = SERVICE_TABLE.filter((row) => slugs.includes(row.slug)).map(
-    (row) => SECTIONS.find((s) => s.service === row.slug)?.label ?? row.label,
+  const running = FEATURES.filter((f) =>
+    f.services.some((s) => slugs.includes(s)),
   );
+  const labels = running.map((f) => f.label);
   return (
     <span className={cn("inline-flex items-center gap-1", className)}>
       <span
@@ -44,10 +44,10 @@ export function ServiceDots({
         aria-hidden
         title={labels.length ? `Runs ${labels.join(", ")}` : undefined}
       >
-        {slugs.map((slug) => (
+        {running.map((f) => (
           <span
-            key={slug}
-            data-service={slug}
+            key={f.id}
+            data-service={f.accent}
             className="size-1.5 rounded-full bg-accent"
           />
         ))}
@@ -55,7 +55,7 @@ export function ServiceDots({
       <span className="sr-only">
         {labels.length
           ? `Runs ${labels.join(", ")}.`
-          : "Runs no optional services."}
+          : "Runs no optional features."}
       </span>
     </span>
   );

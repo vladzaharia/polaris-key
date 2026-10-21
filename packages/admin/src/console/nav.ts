@@ -86,6 +86,13 @@ export type ServiceAccent = "core" | ServiceAccentToken;
 /** A sidebar section's key: `core`, or the service slug that gates it. */
 export type SectionKey = "core" | ServiceSlug;
 
+/** The sections that make up Ship builds, one sidebar group (B5). */
+export const SHIP_BUILDS_KEYS: readonly SectionKey[] = [
+  "release",
+  "distribution",
+  "update",
+];
+
 /** A collapsible sidebar group: a product section, or the Platform section. */
 export type NavGroupKey = SectionKey | "platform";
 

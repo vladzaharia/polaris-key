@@ -55,6 +55,53 @@ const live = SETTINGS_INDEX.filter(
 const ofArea = (area: string, scope = "product") =>
   live.find((e) => e.scope === scope && e.rbacArea === area)!;
 
+describe("palette from Home: across the operator's products", () => {
+  const products = [
+    { slug: "djdl", name: "DJDL", services: null },
+    { slug: "acme", name: "Acme", services: null },
+  ] as unknown as PaletteContext["products"];
+  const home = (): PaletteContext => ({
+    ...ctx(granted(["core", "license", "config"]), null),
+    products,
+  });
+
+  it("finds a product's setting, naming its product and the page it lives on", () => {
+    const rows = settingsItems(
+      {
+        ...home(),
+        me: {
+          ...ME,
+          platformAdmin: false,
+          permissions: {
+            roles: [],
+            platform: { view: ["console"], edit: ["console"] },
+            products: {
+              djdl: { view: ["keys"], edit: ["keys"] },
+              acme: { view: ["keys"], edit: ["keys"] },
+            },
+          },
+        },
+      },
+      "signing keys",
+    ).filter((r) => r.id.startsWith("setting:"));
+    expect(rows.map((r) => r.id)).toEqual(
+      expect.arrayContaining([
+        "setting:djdl:core.keys",
+        "setting:acme:core.keys",
+      ]),
+    );
+    const row = rows.find((r) => r.id === "setting:djdl:core.keys")!;
+    expect(row.detail).toBe("DJDL · Keys & secrets");
+    expect(row.detail).not.toMatch(/\bCore\b|License\b|Identity/);
+  });
+
+  it("never lists more than the cap", () => {
+    expect(settingsItems(home(), "e").length).toBeLessThanOrEqual(
+      SETTINGS_ROWS_MAX,
+    );
+  });
+});
+
 describe("palette settings source", () => {
   it("is registered, and its heading has a place", () => {
     expect(PALETTE_SOURCES.map((s) => s.id)).toEqual(

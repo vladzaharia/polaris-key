@@ -7,9 +7,14 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { navigationSource } from "../src/console/shell/palette/navigation.js";
+import {
+  ACROSS_PRODUCTS_MAX,
+  navigationSource,
+  productPagesAcross,
+} from "../src/console/shell/palette/navigation.js";
 import {
   createActions,
+  deleteProductActions,
   missingChain,
   sdkActions,
   serviceSwitchId,
@@ -73,6 +78,7 @@ describe("the registry", () => {
     expect(ids).toEqual([
       "support-code",
       "navigation",
+      "product-pages",
       "actions",
       "settings",
       "products",
@@ -226,12 +232,31 @@ describe("ranking", () => {
     ).toEqual([
       // Core → Settings, then License → Settings (LX-06), in section order. The licence page is
       // "Licensing" in the palette and still found by its sidebar label.
-      ["Pages", ["Core · DJDL", "Licensing · DJDL"]],
+      // The settings hub's tabs (Features, Keys & secrets, Members…) are found by the word too.
+      [
+        "Pages",
+        [
+          "Product · DJDL",
+          "Settings · DJDL",
+          "Licensing · DJDL",
+          "Settings · DJDL",
+          "Settings · DJDL",
+          "Settings · DJDL",
+          "Settings · DJDL",
+          "Settings · DJDL",
+        ],
+      ],
       ["Platform", ["Platform"]],
     ]);
     expect(groups[0]!.items.map((i) => i.label)).toEqual([
       "Settings",
+      "All settings",
       "Licensing",
+      "Features",
+      "Presentation",
+      "Polaris Locker",
+      "Keys & secrets",
+      "Members",
     ]);
   });
 
@@ -439,5 +464,53 @@ describe("the palette in the console", () => {
       within(dialog).getByRole("button", { name: "Cancel" }),
     );
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+});
+
+describe("palette across products (from Home)", () => {
+  const products = [
+    { slug: "djdl", name: "DJDL", services: ALL_ON },
+    { slug: "acme", name: "Acme", services: ALL_ON },
+  ] as never;
+
+  it('"secret" finds Keys & secrets for each product, before any trust pin', () => {
+    const rows = productPagesAcross(products, "secret");
+    expect(rows.map((r) => [r.label, r.detail])).toEqual([
+      ["Keys & secrets", "DJDL · Settings"],
+      ["Keys & secrets", "Acme · Settings"],
+    ]);
+  });
+
+  it("is typed only, capped, and indexes the Members tab", () => {
+    expect(productPagesAcross(products, "")).toEqual([]);
+    expect(productPagesAcross(products, "e").length).toBeLessThanOrEqual(
+      ACROSS_PRODUCTS_MAX,
+    );
+    expect(productPagesAcross(products, "members").map((r) => r.href)).toEqual(
+      expect.arrayContaining(["#/p/djdl/settings/members"]),
+    );
+  });
+
+  it("offers Delete product… per product, typed only", () => {
+    const ctx = { slug: null, productName: null, products };
+    expect(deleteProductActions(ctx, "")).toEqual([]);
+    expect(deleteProductActions(ctx, "delete djdl").map((r) => r.id)).toEqual([
+      "action:delete-product:djdl",
+    ]);
+  });
+});
+
+describe("palette on a product: secret", () => {
+  it("ranks the Keys & secrets page above Trust pins", () => {
+    const items = [
+      ...sdkActions("djdl"),
+      ...navigationSource("djdl", "DJDL", ALL_ON),
+    ];
+    const groups = rankPalette(items, [], "secret", PALETTE_GROUPS);
+    const flat = groups.flatMap((g) => g.items.map((i) => i.label));
+    expect(flat.indexOf("Keys & secrets")).toBeGreaterThanOrEqual(0);
+    expect(flat.indexOf("Keys & secrets")).toBeLessThan(
+      flat.indexOf("Trust pins"),
+    );
   });
 });
