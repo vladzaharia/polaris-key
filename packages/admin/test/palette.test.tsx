@@ -111,7 +111,7 @@ describe("the sources", () => {
       ...productSource([{ slug: "acme", name: "Acme", schemaVersion: 1 }]),
     ];
     expect(filterItems(items, "lic").map((i) => i.label)[0]).toBe("Licenses");
-    expect(filterItems(items, "license tiers").map((i) => i.label)).toEqual([
+    expect(filterItems(items, "licensing tiers").map((i) => i.label)).toEqual([
       "Tiers",
     ]);
     expect(filterItems(items, "acme").map((i) => i.label)).toEqual(["Acme"]);
