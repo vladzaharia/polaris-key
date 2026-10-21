@@ -469,9 +469,11 @@ export function ActivateDialog({
                             }
                           />
                         ) : helpForRefusal(verdict.code) ? (
-                          <HelpLink href={helpForRefusal(verdict.code)!}>
-                            {t("locker.help.whatToDo")}
-                          </HelpLink>
+                          <div className="basis-full text-left">
+                            <HelpLink href={helpForRefusal(verdict.code)!}>
+                              {t("locker.help.whatToDo")}
+                            </HelpLink>
+                          </div>
                         ) : undefined,
                     }
                   : null
@@ -580,6 +582,11 @@ function RefusalActions({
           {t("signin.join.ownedNotice")}
         </p>
       ) : null}
+      {help ? (
+        <div className="basis-full text-left">
+          <HelpLink href={help}>{t("locker.help.whatToDo")}</HelpLink>
+        </div>
+      ) : null}
       <Button
         variant="ghost"
         size="sm"
@@ -597,9 +604,6 @@ function RefusalActions({
         >
           {t("locker.activate.addVerify")}
         </Button>
-      ) : null}
-      {help ? (
-        <HelpLink href={help}>{t("locker.help.whatToDo")}</HelpLink>
       ) : null}
     </>
   );
