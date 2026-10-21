@@ -146,6 +146,7 @@ export function RelinkDialog({
   const [target, setTarget] = React.useState("");
   const [reason, setReason] = React.useState("");
   const [missing, setMissing] = React.useState(false);
+  const targetRef = React.useRef<HTMLInputElement>(null);
   React.useEffect(() => {
     if (open) {
       setTarget("");
@@ -184,7 +185,7 @@ export function RelinkDialog({
       confirmDisabled={!fresh || !targetOk || !reasonOk}
       describeError={(e) =>
         e instanceof ApiError && e.code === "target_not_found"
-          ? { title: "No user has that code or id" }
+          ? null
           : errorCopy(e, { thing: "License" })
       }
       onConfirm={async () => {
@@ -201,8 +202,10 @@ export function RelinkDialog({
             description: `It now belongs to ${parsed.kind === "code" ? formatSupportCode(parsed.code) : res.subject}. Undo is open for 72 hours.`,
           });
         } catch (e) {
-          if (e instanceof ApiError && e.code === "target_not_found")
+          if (e instanceof ApiError && e.code === "target_not_found") {
             setMissing(true);
+            targetRef.current?.focus();
+          }
           if (e instanceof ApiError && e.code === "step_up_required")
             markStale();
           throw e;
@@ -220,6 +223,7 @@ export function RelinkDialog({
           </label>
           <Input
             id="relink-target"
+            ref={targetRef}
             mono
             value={target}
             placeholder="Support code or ps_…"

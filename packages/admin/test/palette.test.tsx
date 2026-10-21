@@ -287,6 +287,38 @@ describe("the palette in the console", () => {
     );
   });
 
+  it("a nine-character page name still opens its page: no support-code row, Enter works (I-41)", async () => {
+    boot("#/p/djdl", { services: ALL_ON });
+    await screen.findByRole("navigation", { name: "Console" });
+    const dialog = await openPalette();
+    const input = within(dialog).getByRole("combobox", {
+      name: "Search or jump to",
+    });
+    await userEvent.type(input, "API tokens");
+    await waitFor(() => expect(optionNames(dialog).length).toBeGreaterThan(0));
+    expect(
+      optionNames(dialog).some((n) =>
+        /support code|wrong|never contain/i.test(n),
+      ),
+    ).toBe(false);
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(window.location.hash).toBe("#/tokens"));
+  });
+
+  it("shows no support-code row for a plain word of nine letters", async () => {
+    boot("#/p/djdl", { services: ALL_ON });
+    await screen.findByRole("navigation", { name: "Console" });
+    const dialog = await openPalette();
+    await userEvent.type(
+      within(dialog).getByRole("combobox", { name: "Search or jump to" }),
+      "teammates",
+    );
+    await waitFor(() =>
+      expect(within(dialog).getByText(/Nothing matches/)).toBeTruthy(),
+    );
+    expect(within(dialog).queryByText(/One character is wrong/)).toBeNull();
+  });
+
   it("says one thing for each state of a support code: wrong character, lookalike, none, too many", async () => {
     boot("#/p/djdl", {
       services: ALL_ON,

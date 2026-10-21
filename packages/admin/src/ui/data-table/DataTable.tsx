@@ -391,6 +391,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     error,
     onRetry,
     empty,
+    noResults: noResultsOverride,
     mobile = "scroll",
     toolbarActions,
     chrome = "auto",
@@ -1276,19 +1277,22 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       kind="no-results"
       headingRef={noMatchRef}
       title={
-        unloaded && narrowedLoaded
+        noResultsOverride?.title ??
+        (unloaded && narrowedLoaded
           ? `No match in the ${formatCount(data.length)} newest`
-          : `No ${caption.toLowerCase()} match these filters`
+          : `No ${caption.toLowerCase()} match these filters`)
       }
       description={
-        unloaded && narrowedLoaded && searchFailed ? (
+        noResultsOverride?.description ??
+        (unloaded && narrowedLoaded && searchFailed ? (
           <span role="alert">{`Couldn't load more ${caption.toLowerCase()}.`}</span>
-        ) : undefined
+        ) : undefined)
       }
       filters={describeFilters(view, facets)}
       onClearFilters={clearFilters}
       primaryAction={
-        unloaded?.onSearchAll && narrowedLoaded ? (
+        noResultsOverride?.action ??
+        (unloaded?.onSearchAll && narrowedLoaded ? (
           <Button
             data-search-all=""
             loading={unloaded.searchingAll}
@@ -1301,7 +1305,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                 ? `Search all ${formatCount(unloaded.total)}`
                 : "Search all"}
           </Button>
-        ) : undefined
+        ) : undefined)
       }
     />
   ) : (

@@ -162,6 +162,12 @@ export interface DataTableProps<T> {
   onRetry?: () => void;
   /** The first-run state, shown when there are no rows and no filters. */
   empty?: React.ReactNode;
+  /** Replaces the no-results title, description and action for a search the page understands (a support code). */
+  noResults?: {
+    title: string;
+    description?: React.ReactNode;
+    action?: React.ReactNode;
+  };
   /** Below 1024 px: `cards` draws each row as a card; `scroll` keeps the table (it must fit). */
   mobile?: "cards" | "scroll";
   /** Extra controls at the end of the filter bar (Export, a date range). */

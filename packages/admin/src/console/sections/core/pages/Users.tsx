@@ -31,6 +31,8 @@ import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { qk } from "../../../data/queries.js";
 import { Link, navigate } from "../../../router.js";
+import { openPaletteWith, paletteShortcutLabel } from "../../../shortcuts.js";
+import { Button } from "../../../../ui/Button.js";
 import { r } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
@@ -38,6 +40,7 @@ import {
   SUPPORT_CODE_BAD_CHECK,
   SUPPORT_CODE_LOOKALIKE,
   formatSupportCode,
+  looksLikeSupportCode,
   parseSupportCode,
 } from "../../../../lib/supportCode.js";
 import { UserRecord } from "./UserRecord.js";
@@ -187,18 +190,38 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
     return cols;
   }, [identityOn]);
 
-  // A search shaped like a support code that finds nobody here names the code and points to Cmd-K.
+  // A search shaped like a support code that finds nobody here says so in the empty state, with
+  // the way to look in every product. Plain text ("john.smith") never gets this.
   const typed = parseSupportCode(q);
-  const codeNote =
-    q && !list.isPending && rows.length === 0
-      ? typed.kind === "code"
-        ? `No user of this product has support code ${formatSupportCode(typed.code)}. Press Cmd+K to look it up in every product you manage.`
-        : typed.kind === "bad_check"
-          ? SUPPORT_CODE_BAD_CHECK
-          : typed.kind === "lookalike"
-            ? SUPPORT_CODE_LOOKALIKE
-            : null
-      : null;
+  const codeShaped = looksLikeSupportCode(q) || typed.kind === "code";
+  const noResults =
+    q && codeShaped
+      ? typed.kind === "bad_check"
+        ? { title: SUPPORT_CODE_BAD_CHECK }
+        : typed.kind === "lookalike"
+          ? { title: SUPPORT_CODE_LOOKALIKE }
+          : typed.kind === "code"
+            ? {
+                title: `No user of this product has support code ${formatSupportCode(typed.code)}`,
+                description: (
+                  <>
+                    Search every product you manage with{" "}
+                    {paletteShortcutLabel()}.
+                  </>
+                ),
+                action: (
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      openPaletteWith(formatSupportCode(typed.code))
+                    }
+                  >
+                    Search all products
+                  </Button>
+                ),
+              }
+            : undefined
+      : undefined;
 
   const rowHref = (u: ProductUserSummary): string => r.user(slug, u.subject);
 
@@ -260,12 +283,8 @@ function UsersCollection({ slug }: { slug: string }): React.ReactElement {
           )
         }
         mobile="cards"
+        noResults={noResults}
       />
-      {codeNote ? (
-        <p role="status" className="text-sm text-fg-muted">
-          {codeNote}
-        </p>
-      ) : null}
     </CollectionTemplate>
   );
 }

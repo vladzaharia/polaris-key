@@ -42,6 +42,22 @@ describe("support codes in the console", () => {
       code: "K7M4QX9TZ",
     });
     expect(parseSupportCode("sarah.bergx")).toEqual({ kind: "not_code" });
+    // Nine-letter words are words, not mistyped codes; only a valid check makes one a code.
+    for (const word of [
+      "teammates",
+      "john.smith",
+      "Cloud Sync",
+      "API tokens",
+      "Trust pins",
+    ])
+      expect(parseSupportCode(word), word).toEqual({ kind: "not_code" });
+    expect(parseSupportCode("KMNPQRSTM")).toEqual({
+      kind: "code",
+      code: "KMNPQRSTM",
+    });
+    // Code-shaped text with a digit, or in three groups of three, is told it is a typo.
+    expect(parseSupportCode("KMN-PQR-STX")).toEqual({ kind: "bad_check" });
+    expect(parseSupportCode("KMNPQRST2")).toEqual({ kind: "bad_check" });
     // The check is the Worker's: these pairs are pinned on both sides.
     expect(supportCodeCheck("23456789")).toBe("J");
     expect(supportCodeCheck("K7M4QX9T")).toBe("Z");

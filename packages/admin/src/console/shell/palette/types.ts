@@ -62,6 +62,8 @@ export interface PaletteItem {
   perform?: (api: PaletteRunApi) => void;
   /** A line that says something and goes nowhere: it does not close the palette. */
   inert?: boolean;
+  /** Runs `perform` without closing the palette (a retry). */
+  keepOpen?: boolean;
   /** Shown only once the query matches it, never in the untyped list (EXPERIENCE.md §0.3 J-1). */
   matchOnly?: boolean;
   /**

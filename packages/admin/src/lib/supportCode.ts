@@ -32,21 +32,28 @@ export type ParsedSupportCode =
   | { kind: "bad_check" }
   | { kind: "code"; code: string };
 
+/** Three groups of three, however separated: the shape a code is read out in. */
+const GROUPED = /^\s*[a-z0-9]{3}[\s.-]+[a-z0-9]{3}[\s.-]+[a-z0-9]{3}\s*$/i;
+
+/**
+ * Is this text shaped like a support code someone typed (a digit in it, or three groups of three)?
+ * A nine-letter word ("teammates", "john.smith") is not: only a valid check symbol makes one a code.
+ */
+export function looksLikeSupportCode(input: string): boolean {
+  return GROUPED.test(input) || /\d/.test(input);
+}
+
 export function parseSupportCode(input: string): ParsedSupportCode {
   if (input.length > 40) return { kind: "not_code" };
   const s = input.toUpperCase().replace(/[\s.-]/g, "");
-  if (s.length !== LENGTH) return { kind: "not_code" };
-  if (/[01ILOU]/.test(s) && /^[A-Z0-9]+$/.test(s)) {
-    // Only a lookalike when everything else is in the alphabet: a word with an L is just a word.
-    const rest = s.replace(/[01ILOU]/g, "");
-    if ([...rest].every((ch) => SUPPORT_CODE_ALPHABET.includes(ch)))
-      return { kind: "lookalike" };
-  }
-  for (const ch of s)
-    if (!SUPPORT_CODE_ALPHABET.includes(ch)) return { kind: "not_code" };
-  return supportCodeCheck(s.slice(0, -1)) === s.slice(-1)
-    ? { kind: "code", code: s }
-    : { kind: "bad_check" };
+  if (s.length !== LENGTH || !/^[A-Z0-9]+$/.test(s))
+    return { kind: "not_code" };
+  const inAlphabet = [...s].every((ch) => SUPPORT_CODE_ALPHABET.includes(ch));
+  if (inAlphabet && supportCodeCheck(s.slice(0, -1)) === s.slice(-1))
+    return { kind: "code", code: s };
+  // Only text shaped like a code is told it is a mistyped one.
+  if (!looksLikeSupportCode(input)) return { kind: "not_code" };
+  return inAlphabet ? { kind: "bad_check" } : { kind: "lookalike" };
 }
 
 /** The nine characters of a valid code, or `null`. */

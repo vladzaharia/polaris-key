@@ -218,6 +218,28 @@ describe("Users list", () => {
     );
   });
 
+  it("a plain search finds no code note, and a code with no match says so with a way to search every product (I-41)", async () => {
+    productUsers.mockResolvedValue({
+      identityOn: false,
+      users: [],
+      nextCursor: null,
+    });
+    mount("#/p/djdl/users?q=john.smith");
+    await screen.findByText(/match these filters/);
+    expect(screen.queryByText(/never contain/)).toBeNull();
+    expect(screen.queryByText(/One character is wrong/)).toBeNull();
+    cleanup();
+    mount("#/p/djdl/users?q=K7M-4QX-9TZ");
+    expect(
+      await screen.findByText(
+        "No user of this product has support code K7M-4QX-9TZ",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Search all products" }),
+    ).toBeTruthy();
+  });
+
   it("says where a contact email came from", async () => {
     productUsers.mockResolvedValue({
       identityOn: false,

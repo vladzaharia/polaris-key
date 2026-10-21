@@ -101,8 +101,12 @@ function SupportCodeRow({
   // A code the person just asked for takes focus and is announced once; one already there is not.
   const groupRef = React.useRef<HTMLDivElement>(null);
   const asked = create.data?.supportCode ?? null;
+  // One polite region, always mounted and empty until the code arrives, so it reads once.
+  const [announced, setAnnounced] = React.useState("");
   React.useEffect(() => {
-    if (asked) groupRef.current?.focus();
+    if (!asked) return;
+    groupRef.current?.focus();
+    setAnnounced(`Support code ${asked}`);
   }, [asked]);
   const limited =
     create.error instanceof PortalApiError && create.error.status === 429;
@@ -112,50 +116,52 @@ function SupportCodeRow({
       : `${portalErrorCopy(create.error).title}. ${portalErrorCopy(create.error).description}`
     : null;
   return (
-    <DataRow
-      icon={<LifeBuoy aria-hidden />}
-      title={YOUR_DATA_COPY["yourData.product.support.title"]}
-      description={supportCodeHint(name)}
-      flush
-      below={
-        failure ? (
-          <p role="alert" className="text-sm text-danger">
-            {failure}
-          </p>
-        ) : null
-      }
-    >
-      {code ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <div
-            ref={groupRef}
-            role="group"
-            aria-label="Support code"
-            tabIndex={-1}
-            className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            <code className="select-all break-normal rounded-md bg-surface-sunken px-3 py-1.5 font-mono text-lg tracking-widest text-fg-strong">
-              {code}
-            </code>
+    <>
+      <DataRow
+        icon={<LifeBuoy aria-hidden />}
+        title={YOUR_DATA_COPY["yourData.product.support.title"]}
+        description={supportCodeHint(name)}
+        flush
+        below={
+          failure ? (
+            <p role="alert" className="text-sm text-danger">
+              {failure}
+            </p>
+          ) : null
+        }
+      >
+        {code ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              ref={groupRef}
+              role="group"
+              aria-label="Support code"
+              tabIndex={-1}
+              className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              <code className="select-all break-normal rounded-md box-decoration-clone bg-surface-sunken px-3 py-1.5 font-mono text-lg tracking-widest text-fg-strong">
+                {code}
+              </code>
+            </div>
+            <CopyButton
+              value={code}
+              label="Copy support code"
+              size="md"
+              showLabel
+            />
           </div>
-          <CopyButton
-            value={code}
-            label="Copy support code"
-            size="md"
-            showLabel
-          />
-          {asked ? <LiveRegion message={`Support code ${asked}`} /> : null}
-        </div>
-      ) : (
-        <Button
-          variant="outline"
-          className="w-full sm:w-auto"
-          loading={create.isPending || view.isPending}
-          onClick={() => create.mutate()}
-        >
-          Get a support code
-        </Button>
-      )}
-    </DataRow>
+        ) : (
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto"
+            loading={create.isPending || view.isPending}
+            onClick={() => create.mutate()}
+          >
+            Get a support code
+          </Button>
+        )}
+      </DataRow>
+      <LiveRegion message={announced} />
+    </>
   );
 }

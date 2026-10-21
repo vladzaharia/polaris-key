@@ -6,6 +6,7 @@ import {
   SUPPORT_CODE_BAD_CHECK,
   SUPPORT_CODE_LOOKALIKE,
   formatSupportCode,
+  looksLikeSupportCode,
   parseSupportCode,
 } from "../../../lib/supportCode.js";
 import { qk } from "../../data/queries.js";
@@ -47,6 +48,8 @@ export function useSupportCodeItems(
       inert: true,
     },
   ];
+  // A nine-letter word is no code: only code-shaped text gets a line of its own.
+  const shaped = looksLikeSupportCode(typed);
   if (parsed.kind === "lookalike")
     return inert("lookalike", SUPPORT_CODE_LOOKALIKE);
   if (parsed.kind === "bad_check")
@@ -71,6 +74,7 @@ export function useSupportCodeItems(
       },
     ];
   }
+  if (!shaped) return [];
   if (found.error instanceof ApiError && found.error.status === 429)
     return inert("limited", "Too many lookups. Try again in a minute.");
   if (found.error instanceof ApiError && found.error.status === 404)
@@ -78,7 +82,19 @@ export function useSupportCodeItems(
       "none",
       `No user with support code ${dashed} in your products. Check it with the customer.`,
     );
-  return inert("failed", `Couldn't look up support code ${dashed}. Try again.`);
+  // Enter on the failure row asks again (the palette stays open).
+  return [
+    {
+      id: "support-code:failed",
+      group: "Support code",
+      label: `Couldn't look up support code ${dashed}. Press Enter to try again.`,
+      detail: "",
+      keywords: typed,
+      icon,
+      keepOpen: true,
+      perform: () => void found.refetch(),
+    },
+  ];
 }
 
 export const supportCodePaletteSource: PaletteSource = {

@@ -41,6 +41,7 @@ import { ApiTokens } from "../sections/global/pages/ApiTokens.js";
 import { PersonalTokens } from "../sections/global/pages/PersonalTokens.js";
 import { Announcer, LiveRegion } from "../../ui/LiveRegion.js";
 import type { ProductLike } from "./bits.js";
+import { OPEN_PALETTE_EVENT } from "../shortcuts.js";
 import { CommandPalette } from "./CommandPalette.js";
 import { navigationSource, productSource } from "./palette/navigation.js";
 import { PageErrorBoundary } from "./PageErrorBoundary.js";
@@ -271,6 +272,13 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
     setPaletteQuery(query);
     setPaletteOpen(true);
   }, []);
+  // A page asks for the palette with a query already typed (`openPaletteWith`, `shortcuts.tsx`).
+  React.useEffect(() => {
+    const on = (e: Event): void =>
+      openPalette(String((e as CustomEvent<string>).detail ?? ""));
+    window.addEventListener(OPEN_PALETTE_EVENT, on);
+    return () => window.removeEventListener(OPEN_PALETTE_EVENT, on);
+  }, [openPalette]);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [switcherOpen, setSwitcherOpen] = React.useState(false);
   // A refused or unknown page holds no section: open every group the member can use if there are
