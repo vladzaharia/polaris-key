@@ -79,18 +79,16 @@ const PRODUCT: ProductDetail = {
     sync: { enabled: false },
     commerce: { enabled: false },
   },
-  setup: {
-    sync: {
-      source: "webhook",
-      status: "ok",
-      lastCheckedAt: 1_720_000_000,
-      lastSyncedAt: 1_720_000_000,
-      commitSha: "abc123def4567890",
-      changedPaths: [".pkey/product.yaml"],
-      updated: ["product", "release"],
-      errors: [],
-      message: null,
-    },
+  sync: {
+    source: "webhook",
+    status: "ok",
+    lastCheckedAt: 1_720_000_000,
+    lastSyncedAt: 1_720_000_000,
+    commitSha: "abc123def4567890",
+    changedPaths: [".pkey/product.yaml"],
+    updated: ["product", "release"],
+    errors: [],
+    message: null,
   },
   createdAt: 1_700_000_000,
   modifiedAt: 1_710_000_000,
@@ -489,7 +487,7 @@ describe("Repo sync drawer (REL-2, REL-8, REL-9)", () => {
     product.mockResolvedValue({
       product: {
         ...PRODUCT,
-        setup: { sync: { ...PRODUCT.setup!.sync!, changedPaths: paths } },
+        sync: { ...PRODUCT.sync!, changedPaths: paths },
       },
     });
     const drawer = await openDrawer();

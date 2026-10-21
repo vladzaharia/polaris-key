@@ -195,28 +195,22 @@ someone console access, it does not: add them to the platform OIDC provider's ad
 
 A product's **Settings** page holds its registry fields and the **Danger zone**, where **Delete product…** lives. Everything else it edits has its own page.
 
-## Setup health
+## What needs attention
 
-The Overview tab's "needs attention" strip and guided checklist, the registry's Setup column and
-Home's Needs attention list are all projections of one server-computed setup state, recomputed on
-every product read rather than cached. It checks six
-things:
+Home's Needs attention list, a product's Overview and the product switcher's badge all read one
+server call, `GET /manage/api/attention`, recomputed on every read. It lists broken things only:
 
-| Module              | Healthy when                                                                                                                                                                                                               |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Signing key**     | An active signing key exists.                                                                                                                                                                                              |
-| **OIDC**            | Platform provider: `PLATFORM_OIDC_ISSUER`/`PLATFORM_OIDC_CLIENT_ID` are configured worker-wide. Custom provider: the product's own issuer, client id and client-secret product-secret are all set.                         |
-| **Release**         | (Linked products only) A GitHub repo, an installation id, and a binary name are all present.                                                                                                                               |
-| **Customer portal** | Always "configured" — this module reports its enabled/disabled state, not a completeness check.                                                                                                                            |
-| **Manifest sync**   | The most recent resync attempt didn't error.                                                                                                                                                                               |
-| **Edge mint**       | Every recipe's signing secret is set and marked usage `edge-mint`, and every recipe is [approved](/docs/features/managed-config/edge-mint/#approving-a-recipe) as it stands (`needs-secret` / `needs-approval` otherwise). |
+| Item                  | Raised when                                                                                                      |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **No signing key**    | The product has no active signing key.                                                                           |
+| **Missing secret**    | A secret the product's OIDC or edge-mint configuration names has no value in the Default profile.                |
+| **Secret not marked** | A recipe's signing secret is set but not marked usage `edge-mint`.                                               |
+| **Needs approval**    | An edge-mint recipe is not [approved](/docs/features/managed-config/edge-mint/#approving-a-recipe) as it stands. |
+| **Resync failed**     | The most recent manifest resync errored.                                                                         |
+| **Credential**        | A store credential has expired or expires within the window.                                                     |
 
-Anything incomplete surfaces two ways: as a plain-language entry in the "needs attention" strip,
-and as an actionable row in the checklist (a direct link to Secrets, Settings, or Releases,
-whichever fixes it). The **required secrets** list on
-[Keys & secrets](/docs/operate/console/keys-and-secrets/) is drawn from the same computation — a
-product's OIDC and edge-mint configuration name which secrets it needs, and setup health checks
-whether each one is actually set.
+Each item links to the page that fixes it. The **required secrets** list on
+[Keys & secrets](/docs/operate/console/keys-and-secrets/) is drawn from the same configuration.
 
 ## Services & enablement
 

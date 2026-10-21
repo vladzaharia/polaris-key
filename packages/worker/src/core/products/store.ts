@@ -487,7 +487,6 @@ export type ProductUpdateFields = Partial<
     | "default_max_offline_days"
     | "default_device_limit"
     | "admin_group"
-    | "branding_json"
   >
 >;
 

@@ -488,7 +488,7 @@ function RepositorySection({
   } | null>(null);
   const linked = product.releaseSource === "github";
   const system = product.system === true;
-  const sync = product.setup?.sync ?? null;
+  const sync = product.sync ?? null;
   return (
     <SettingsSection
       id="settings-repository"

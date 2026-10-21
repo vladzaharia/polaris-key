@@ -92,7 +92,7 @@ export function KeysPage({ slug }: { slug: string }): React.ReactElement {
     <div className="space-y-6" data-template="keys">
       <VerificationSection product={p} />
       <SigningKeysSection slug={slug} product={p} />
-      <SecretsSection slug={slug} product={p} />
+      <SecretsSection slug={slug} />
       <TrustPolicySection slug={slug} />
       <CiPublishingSection slug={slug} />
       {p.services?.release?.enabled ? <ContentKeysSection slug={slug} /> : null}

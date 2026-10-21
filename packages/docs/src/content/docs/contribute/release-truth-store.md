@@ -314,7 +314,7 @@ reported as missing, so it is not told it "needs setup" for artifacts it never b
 block that omits the field. When a product does ship DMGs, an operator's
 `requireSparkleSignature` still fails closed exactly as before.
 
-The console's setup state applies the same predicate without calling GitHub: it reads the
+The release health check applies the same predicate without calling GitHub: it reads the
 declared map, and for a product with no map it asks the truth store whether the newest synced
 release carries a `.dmg`.
 

@@ -18,6 +18,7 @@ const fns = vi.hoisted(() => ({
   activity: vi.fn(),
   productKeys: vi.fn(),
   integration: vi.fn(),
+  attention: vi.fn(),
   productSettings: vi.fn(),
   updateProductSetting: vi.fn(),
 }));
@@ -40,6 +41,24 @@ vi.mock("../src/api.js", async () => {
 const { ApiError } = await import("../src/api.js");
 const { OverviewPage } =
   await import("../src/console/sections/core/pages/Overview.js");
+
+const item = (id: string, short: string, lines: string[]) => ({
+  id: `djdl:${id}`,
+  product: { slug: "djdl", name: "DJDL" },
+  kind: id.split(":")[0],
+  tone: "warning" as const,
+  service: null,
+  short,
+  lines,
+  action: { label: "Open keys", page: "keys" },
+  area: "keys",
+});
+const SECRET_ITEM = item("secret.missing:WEBHOOK_SECRET", "Missing secret", [
+  "Required secret `WEBHOOK_SECRET` has no value in the Default profile.",
+]);
+const SIGNING_ITEM = item("signing.missing", "No signing key", [
+  "No usable signing key.",
+]);
 
 const NOW = Math.floor(Date.now() / 1000);
 const ALL: ServiceSlug[] = [
@@ -72,16 +91,6 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
     createdAt: NOW - 1000,
     modifiedAt: NOW,
     services: enablement(["license", "config"]),
-    setup: {
-      secrets: [
-        {
-          name: "WEBHOOK_SECRET",
-          configured: false,
-          sources: ["OIDC sign-in"],
-        },
-      ],
-      warnings: [],
-    },
     ...over,
   };
 }
@@ -211,6 +220,7 @@ beforeEach(() => {
     now: NOW,
   });
   fns.integration.mockResolvedValue(integrationView());
+  fns.attention.mockResolvedValue({ items: [SECRET_ITEM, SIGNING_ITEM] });
   fns.productSettings.mockResolvedValue({ settings: [] });
 });
 afterEach(cleanup);
@@ -345,8 +355,8 @@ describe("Core → Overview", () => {
       ],
     });
     mount();
-    expect(await screen.findByText("Secret WEBHOOK_SECRET")).toBeTruthy();
-    expect(await screen.findByText("Signing key")).toBeTruthy();
+    expect(await screen.findByText("Missing secret")).toBeTruthy();
+    expect(await screen.findByText("No signing key")).toBeTruthy();
   });
 
   it("holds the setup items back until the next step is known (no item rises and is then taken back)", async () => {
@@ -360,8 +370,8 @@ describe("Core → Overview", () => {
       product: product({ signing: undefined }),
     });
     mount();
-    expect(await screen.findByText("Secret WEBHOOK_SECRET")).toBeTruthy();
-    expect(screen.queryByText("Signing key")).toBeNull();
+    expect(await screen.findByText("Missing secret")).toBeTruthy();
+    expect(screen.queryByText("No signing key")).toBeNull();
     answer(integrationView());
     await waitFor(() => expect(screen.getByTestId("integration-card")));
   });

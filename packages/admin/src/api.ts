@@ -1081,21 +1081,6 @@ export interface ProductSigningBundle {
   trustKeys?: Record<string, string>;
 }
 
-export interface ProductModuleSummary {
-  id?: string;
-  key?: string;
-  name?: string;
-  label?: string;
-  description?: string;
-  status?: string;
-  configured?: boolean;
-  enabled?: boolean;
-  required?: boolean;
-  provider?: "platform" | "custom" | string | null;
-  missing?: string[];
-  missingSecrets?: string[];
-}
-
 // ── edge-mint recipe approval (Config, P0-12) ────────────────────────────────
 
 /** What a product secret may be used for. Set by an operator only — never by a manifest. */
@@ -1232,36 +1217,6 @@ export interface EdgeMintRecipesResponse {
   recipes: EdgeMintRecipe[];
 }
 
-export interface ProductSetupAction {
-  id?: string;
-  label?: string;
-  title?: string;
-  description?: string;
-  href?: string;
-  route?: string;
-  status?: string;
-}
-
-export interface ProductSetupState {
-  status?: string;
-  complete?: boolean;
-  healthy?: boolean;
-  missing?: string[];
-  warnings?: string[];
-  requiredSecrets?: string[];
-  missingSecrets?: string[];
-  secrets?: {
-    name: string;
-    configured: boolean;
-    sources?: string[];
-  }[];
-  modules?:
-    | ProductModuleSummary[]
-    | Record<string, ProductModuleSummary | boolean | string>;
-  sync?: ProductSyncState | null;
-  nextActions?: ProductSetupAction[] | string[];
-}
-
 export interface ProductSyncState {
   source?: string;
   status?: string;
@@ -1330,22 +1285,6 @@ export interface ReleaseHealth {
     assetCount: number;
     htmlUrl: string;
   };
-}
-
-export interface ProductOnboarding {
-  baseUrl?: string;
-  configUrl?: string;
-  activateUrl?: string;
-  jwksUrl?: string;
-  docsUrl?: string;
-  sdkSnippets?:
-    | Record<string, string>
-    | { label?: string; language?: string; code?: string }[];
-  modules?:
-    | ProductModuleSummary[]
-    | Record<string, ProductModuleSummary | boolean | string>;
-  setup?: ProductSetupState;
-  nextActions?: ProductSetupAction[] | string[];
 }
 
 /** A product's hosted icon on the image host (worker `console/lib/presentation.ts`). */
@@ -1518,12 +1457,9 @@ export interface ProductDetail {
   signing?: ProductSigningBundle | null;
   jwksUrl?: string;
   jwks?: unknown;
-  modules?:
-    | ProductModuleSummary[]
-    | Record<string, ProductModuleSummary | boolean | string>;
   portalSettings?: PortalProductSettings;
-  setup?: ProductSetupState;
-  onboarding?: ProductOnboarding;
+  /** The last manifest resync, `null` before the first. Detail row only. */
+  sync?: ProductSyncState | null;
   /**
    * Which services this product runs (D-15). Carried on the product row itself — not only on
    * `GET …/services` — because the SHELL needs it to decide which nav sections exist, and the
@@ -2044,8 +1980,6 @@ export interface CreateManualProductResult {
   slug: string;
   kid: string;
   signing?: ProductSigningBundle | null;
-  setup?: ProductSetupState;
-  onboarding?: ProductOnboarding;
   product: ProductDetail | null;
 }
 
@@ -2055,8 +1989,6 @@ export interface LinkRepoResult {
   kid: string;
   signing?: ProductSigningBundle | null;
   product?: ProductDetail | null;
-  setup?: ProductSetupState;
-  onboarding?: ProductOnboarding;
   install?: unknown;
   remainingSecrets?: string[];
 }

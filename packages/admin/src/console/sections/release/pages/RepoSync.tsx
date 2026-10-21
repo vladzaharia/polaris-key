@@ -79,7 +79,7 @@ export function SyncSummary({
   health: ReleaseHealth | undefined;
   product: ProductDetail | undefined;
 }): React.ReactElement | null {
-  const last = product?.setup?.sync?.lastSyncedAt ?? null;
+  const last = product?.sync?.lastSyncedAt ?? null;
   if (!health && !last) return null;
   const h = health ? healthEntry(health.status) : null;
   return (
@@ -245,7 +245,7 @@ export function RepoSyncDrawer({
   onResult: (result: ResyncResult | null) => void;
 }): React.ReactElement {
   const linked = isRepoLinked(product);
-  const sync = product?.setup?.sync ?? null;
+  const sync = product?.sync ?? null;
   const h = health ? healthEntry(health.status) : null;
   const s = sync?.status ? SYNC[sync.status] : undefined;
   return (

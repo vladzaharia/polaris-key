@@ -44,7 +44,6 @@ const row = (slug: string, name: string) => ({
   services,
   effectiveRegistration: "requires-license",
   servicesSource: "manifest",
-  setup: { status: "ok", healthy: true, nextActions: [] },
 });
 const ROUTES: Record<string, unknown> = {
   "/manage/api/me": {

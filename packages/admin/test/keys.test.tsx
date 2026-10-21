@@ -65,15 +65,6 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
       sync: { enabled: false },
       commerce: { enabled: false },
     },
-    setup: {
-      secrets: [
-        {
-          name: "OIDC_CLIENT_SECRET",
-          configured: false,
-          sources: ["OIDC sign-in"],
-        },
-      ],
-    },
     ...over,
   };
 }

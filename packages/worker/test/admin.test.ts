@@ -35,12 +35,10 @@ import type { ServiceHooks } from "../src/core/hooks.js";
 import type { ServiceDescriptor } from "../src/core/registry.js";
 import { releaseService } from "../src/services/release/index.js";
 import { updateService } from "../src/services/update/index.js";
-import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { handleMintToken } from "../src/services/config/mint.js";
 import { buildDoc } from "../src/services/identity/doc.js";
-import { upsertDeliverable } from "../src/services/release/model.js";
 import { signDoc } from "../src/core/signing.js";
 import { open } from "../src/platform/keyvault.js";
 import { verifyJws } from "@polaris-key/jws";
@@ -98,6 +96,24 @@ function mkReq(
 
 const dispatch = (req: Request, env: Env, db: Db, path: string) =>
   handleAdmin(req, env, db, path, { now: NOW });
+
+/** The ids `GET /api/attention` answers for the signed-in operator. */
+async function attentionIds(
+  env: Env,
+  db: ReturnType<typeof makeTestDb>,
+  cookie: string,
+): Promise<string[]> {
+  const res = await dispatch(
+    mkReq("GET", "/api/attention", { cookie }),
+    env,
+    db,
+    "/api/attention",
+  );
+  expect(res.status).toBe(200);
+  return ((await res.json()) as { items: Array<{ id: string }> }).items.map(
+    (i) => i.id,
+  );
+}
 
 describe("admin api", () => {
   it("rejects an unauthenticated request with 401", async () => {
@@ -326,16 +342,14 @@ describe("admin api", () => {
         releaseSource: string;
         signingKid: string;
         signing: { kid: string; alg: string; publicKey: string } | null;
-        setup: {
-          sync: {
-            source: string;
-            status: string;
-            commitSha: string;
-            changedPaths: string[];
-            updated: string[];
-            errors: string[];
-            message: string;
-          };
+        sync: {
+          source: string;
+          status: string;
+          commitSha: string;
+          changedPaths: string[];
+          updated: string[];
+          errors: string[];
+          message: string;
         };
       };
     };
@@ -346,7 +360,7 @@ describe("admin api", () => {
       alg: "Ed25519",
       publicKey: expect.any(String),
     });
-    expect(body.product.setup.sync).toMatchObject({
+    expect(body.product.sync).toMatchObject({
       source: "webhook",
       status: "error",
       commitSha: "abc123",
@@ -1124,33 +1138,31 @@ describe("admin api", () => {
       "/api/products/djdl",
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      product: {
-        setup: {
-          healthy: boolean;
-          requiredSecrets: string[];
-          missingSecrets: string[];
-          secrets: Array<{ name: string; configured: boolean }>;
-        };
-      };
+    const body = (await res.json()) as { product: Record<string, unknown> };
+    expect(body.product).not.toHaveProperty("setup");
+    expect(body.product).not.toHaveProperty("onboarding");
+    expect(body.product).not.toHaveProperty("modules");
+    // The secrets inventory names the required secrets and says which have a value.
+    const inv = await dispatch(
+      mkReq("GET", "/api/products/djdl/secrets", { cookie }),
+      env,
+      db,
+      "/api/products/djdl/secrets",
+    );
+    const listing = (await inv.json()) as {
+      secrets: Array<{ name: string; configured: boolean }>;
     };
-    expect(body.product.setup.healthy).toBe(false);
-    expect(body.product.setup.requiredSecrets).toEqual([
-      "MUSIC_KEY",
-      "OIDC_SECRET",
+    expect(listing.secrets.map((s) => [s.name, s.configured])).toEqual([
+      ["MUSIC_KEY", false],
+      ["OIDC_SECRET", true],
     ]);
-    expect(body.product.setup.missingSecrets).toEqual(["MUSIC_KEY"]);
-    expect(body.product.setup.secrets).toEqual([
-      { name: "MUSIC_KEY", configured: false, sources: ["Edge mint music"] },
-      {
-        name: "OIDC_SECRET",
-        configured: true,
-        sources: ["OIDC sign-in"],
-      },
-    ]);
+    // Attention names the one that is missing.
+    expect(await attentionIds(env, db, cookie)).toContain(
+      "djdl:secret.missing:MUSIC_KEY",
+    );
   });
 
-  it("the setup checklist flags an edge-mint recipe awaiting approval and a secret not marked edge-mint (P0-12)", async () => {
+  it("attention flags an edge-mint recipe awaiting approval and a secret not marked edge-mint (P0-12)", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
@@ -1167,76 +1179,34 @@ describe("admin api", () => {
       email: "a@x.io",
       groups: [PLATFORM_GROUP],
     });
-    type Setup = {
-      healthy: boolean;
-      missing: string[];
-      modules: Array<{
-        id: string;
-        status: string;
-        pendingApproval?: string[];
-      }>;
-      nextActions: Array<{ id: string }>;
-    };
-    const setup = async (): Promise<Setup> => {
-      const res = await dispatch(
-        mkReq("GET", "/api/products/djdl", { cookie }),
-        env,
-        db,
-        "/api/products/djdl",
-      );
-      return ((await res.json()) as { product: { setup: Setup } }).product
-        .setup;
-    };
+    const ids = () => attentionIds(env, db, cookie);
 
-    let s = await setup();
-    expect(s.healthy).toBe(false);
-    expect(s.missing).toContain("edge mint: MUSIC_KEY is not marked edge-mint");
-    expect(s.missing).toContain("edge mint: recipe music awaits approval");
-    expect(s.modules.find((m) => m.id === "edgeMint")).toMatchObject({
-      status: "needs-secret",
-      pendingApproval: ["music"],
-    });
-    expect(s.nextActions.map((a) => a.id)).toEqual(
-      expect.arrayContaining(["secret-usage:MUSIC_KEY", "edge-mint:music"]),
+    expect(await ids()).toEqual(
+      expect.arrayContaining([
+        "djdl:secret.usage:MUSIC_KEY",
+        "djdl:mint.pending:music",
+      ]),
     );
 
     // Marked edge-mint: only the approval is left.
     await seedProductSecret(db, "djdl", "MUSIC_KEY", "pem", "edge-mint");
-    s = await setup();
-    expect(s.modules.find((m) => m.id === "edgeMint")?.status).toBe(
-      "needs-approval",
-    );
-    expect(s.missing).not.toContain(
-      "edge mint: MUSIC_KEY is not marked edge-mint",
-    );
+    expect(await ids()).toEqual(["djdl:mint.pending:music"]);
 
-    // Approved: the module is configured and the checklist item is gone.
+    // Approved: the item is gone.
     await approveEdgeMintRecipe(db, "djdl", "music");
-    s = await setup();
-    expect(s.modules.find((m) => m.id === "edgeMint")).toMatchObject({
-      status: "configured",
-      pendingApproval: [],
-    });
-    expect(s.nextActions.map((a) => a.id)).not.toContain("edge-mint:music");
+    expect(await ids()).toEqual([]);
 
     // Anonymous enrolment makes the mint public: an approval without the acknowledgement no
-    // longer counts, and the recipe is back on the checklist.
+    // longer counts, and the recipe is back.
     await db.run(
       "UPDATE products SET auto_issue_json = ? WHERE slug = 'djdl'",
       JSON.stringify({ enabled: true, tierId: "free", mode: "anonymous" }),
     );
-    s = await setup();
-    expect(s.modules.find((m) => m.id === "edgeMint")).toMatchObject({
-      status: "needs-approval",
-      pendingApproval: ["music"],
-    });
+    expect(await ids()).toEqual(["djdl:mint.pending:music"]);
     await approveEdgeMintRecipe(db, "djdl", "music", {
       acknowledgeOpenRegistration: true,
     });
-    s = await setup();
-    expect(s.modules.find((m) => m.id === "edgeMint")?.status).toBe(
-      "configured",
-    );
+    expect(await ids()).toEqual([]);
   });
 
   it("keys/rotate stages a new key, then break-glass activation retires the old key", async () => {
@@ -1910,175 +1880,6 @@ describe("admin services enablement", () => {
     expect((await call(w, "GET", "/whatever")).status).toBe(404);
     expect((await call(w, "DELETE", "")).status).toBe(405);
     expect((await call(w, "GET", "/revert")).status).toBe(405);
-  });
-});
-
-describe("admin product setup: Sparkle warning", () => {
-  const SPARKLE =
-    "release: Sparkle public key not configured; appcasts may be unsigned";
-
-  async function warningsFor(opts: {
-    update: boolean;
-    policy: string | null;
-    withDmg?: boolean;
-    /** Declare an artifact map; `true` includes a macOS dmg build. */
-    mapWithDmg?: boolean;
-  }): Promise<string[]> {
-    const db = makeTestDb();
-    const env = adminEnv(new KvMock(), ["djdl"]);
-    await seedProduct(db, "djdl");
-    const services: ServicesMap = {
-      license: { enabled: true },
-      config: { enabled: true },
-      release: { enabled: true },
-      distribution: { enabled: true },
-      update: { enabled: opts.update },
-      identity: { enabled: false },
-      sync: { enabled: false },
-      commerce: { enabled: false },
-    };
-    await setServices(
-      db,
-      "djdl",
-      serializeServices({ services }),
-      "manifest",
-      NOW,
-    );
-    await db.run(
-      `INSERT INTO release_config
-         (product, gh_owner, gh_repo, gh_installation_id, binary_name, sparkle_ed25519_pub,
-          artifact_policy_json)
-       VALUES ('djdl', 'acme', 'djdl', 42, 'djdl', NULL, ?)`,
-      opts.policy,
-    );
-    if (opts.mapWithDmg !== undefined) {
-      await upsertDeliverable(
-        db,
-        {
-          product: "djdl",
-          deliverableId: "app",
-          kind: "app",
-          defJson: JSON.stringify({
-            kind: "app",
-            versioning: { scheme: "semver", buildNumber: null },
-            channels: {},
-            artifacts: [
-              opts.mapWithDmg
-                ? {
-                    id: "macos",
-                    platform: "macos",
-                    arch: "universal",
-                    format: "dmg",
-                    role: "payload",
-                    match: "djdl-*.dmg",
-                  }
-                : {
-                    id: "linux",
-                    platform: "linux",
-                    arch: "x86_64",
-                    format: "tar.gz",
-                    role: "payload",
-                    match: "djdl-*.tar.gz",
-                  },
-            ],
-          }),
-        },
-        NOW,
-      );
-    }
-    if (opts.withDmg) {
-      await db.run(
-        `INSERT INTO release_metadata
-           (product, release_id, version, metadata_access, artifacts_access, published_at,
-            created_at, modified_at)
-         VALUES ('djdl', 'rel_1', '1.0.0', 'public', 'public', ?, ?, ?)`,
-        NOW,
-        NOW,
-        NOW,
-      );
-      await db.run(
-        `INSERT INTO release_artifacts
-           (product, release_id, artifact_id, name, kind, access, created_at)
-         VALUES ('djdl', 'rel_1', 'a1', 'djdl-arm64.dmg', 'dmg', 'public', ?)`,
-        NOW,
-      );
-    }
-    const { cookie } = await sessionCookie(env, {
-      sub: "u1",
-      name: "Ada",
-      email: "a@x.io",
-      groups: [PLATFORM_GROUP],
-    });
-    const res = await dispatch(
-      mkReq("GET", "/api/products/djdl", { cookie }),
-      env,
-      db,
-      "/api/products/djdl",
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      product: { setup: { warnings: string[] } };
-    };
-    return body.product.setup.warnings;
-  }
-
-  it("does not warn for a product with no policy and no DMG evidence (Linux-only)", async () => {
-    expect(await warningsFor({ update: true, policy: null })).toEqual([]);
-  });
-
-  it("warns for a djdl-shaped product: no policy, the latest release carries a DMG", async () => {
-    expect(
-      await warningsFor({ update: true, policy: null, withDmg: true }),
-    ).toEqual([SPARKLE]);
-  });
-
-  it("warns when the policy explicitly requires a DMG, before any release exists", async () => {
-    expect(
-      await warningsFor({
-        update: true,
-        policy: JSON.stringify({ requireDmg: true }),
-      }),
-    ).toEqual([SPARKLE]);
-  });
-
-  it("warns when the declared artifact map names a macOS dmg build", async () => {
-    expect(
-      await warningsFor({ update: true, policy: null, mapWithDmg: true }),
-    ).toEqual([SPARKLE]);
-  });
-
-  it("trusts a declared map without a dmg build over an undeclared .dmg upload", async () => {
-    expect(
-      await warningsFor({
-        update: true,
-        policy: null,
-        mapWithDmg: false,
-        withDmg: true,
-      }),
-    ).toEqual([]);
-  });
-
-  it("does not warn when Update is off", async () => {
-    expect(await warningsFor({ update: false, policy: null })).toEqual([]);
-  });
-
-  it("does not warn for a product that requires no DMG and has none", async () => {
-    expect(
-      await warningsFor({
-        update: true,
-        policy: JSON.stringify({ requireDmg: false }),
-      }),
-    ).toEqual([]);
-  });
-
-  it("warns when requireDmg is false but the latest release carries a DMG", async () => {
-    expect(
-      await warningsFor({
-        update: true,
-        policy: JSON.stringify({ requireDmg: false }),
-        withDmg: true,
-      }),
-    ).toEqual([SPARKLE]);
   });
 });
 

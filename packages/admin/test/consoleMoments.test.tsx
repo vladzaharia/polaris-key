@@ -111,7 +111,6 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
     createdAt: NOW - 1000,
     modifiedAt: NOW,
     services: enablement(["license", "config"]),
-    setup: { secrets: [], warnings: [] },
     ...over,
   };
 }
@@ -613,17 +612,26 @@ describe("moments under reduced motion: the same line, a static check", () => {
 
 // ── Attention-list stagger ──────────────────────────────────────────────────────────────────────
 
-const warned = () =>
-  product({
-    setup: {
-      secrets: [],
-      warnings: ["Webhook URL is unreachable", "release: Missing workflow"],
-    },
+/** The server's attention read answers `n` items for the product Overview shows. */
+const warn = (n: number): void => {
+  fns.attention.mockResolvedValue({
+    items: Array.from({ length: n }, (_, i) => ({
+      id: `djdl:secret.missing:S${i}`,
+      product: { slug: "djdl", name: "DJDL" },
+      kind: "secret.missing",
+      tone: "warning",
+      service: "config",
+      short: "Missing secret",
+      lines: [`Required secret S${i} has no value.`],
+      action: { label: "Set secret", page: "keys" },
+      area: "keys",
+    })),
   });
+};
 
 describe("Overview's attention list staggers in on the page's first load only", () => {
   beforeEach(() => {
-    fns.product.mockResolvedValue({ product: warned() });
+    warn(2);
   });
 
   it("staggers when the product arrives while the page is open", async () => {
@@ -634,7 +642,8 @@ describe("Overview's attention list staggers in on the page's first load only", 
 
   it("staggers on the page's first visit even when the product is already cached", async () => {
     // Overview gets its product at once from the products list (a placeholder): still its first load.
-    testQueryClient().setQueryData(["product", "djdl"], warned());
+    warn(2);
+    testQueryClient().setQueryData(["product", "djdl"], product());
     overview();
     await screen.findByRole("region", { name: "Needs attention" });
     expect(attentionList().className).toMatch(/\bpk-stagger\b/);
@@ -663,12 +672,13 @@ describe("Overview's attention list staggers in on the page's first load only", 
 
   it("a list a refetch mounts later is not part of the first load", async () => {
     fns.product.mockResolvedValue({ product: product() });
+    fns.attention.mockResolvedValue({ items: [] });
     overview();
     await screen.findByRole("heading", { level: 1, name: "DJDL" });
     expect(
       screen.queryByRole("region", { name: "Needs attention" }),
     ).toBeNull();
-    fns.product.mockResolvedValue({ product: warned() });
+    warn(2);
     await refetch();
     await screen.findByRole("region", { name: "Needs attention" });
     expect(attentionList().className).not.toMatch(/\bpk-stagger\b/);
@@ -677,22 +687,16 @@ describe("Overview's attention list staggers in on the page's first load only", 
   it("never inside a View Transition", async () => {
     let arrive!: (v: unknown) => void;
     fns.product.mockReturnValue(new Promise((r) => (arrive = r)));
+    warn(2);
     overview();
     document.documentElement.setAttribute("data-vt", "route");
-    await act(async () => arrive({ product: warned() }));
+    await act(async () => arrive({ product: product() }));
     await screen.findByRole("region", { name: "Needs attention" });
     expect(attentionList().className).not.toMatch(/\bpk-stagger\b/);
   });
 
   it("Show all turns it off for good, and the extra items apply at once", async () => {
-    fns.product.mockResolvedValue({
-      product: product({
-        setup: {
-          secrets: [],
-          warnings: ["w1", "w2", "w3", "w4", "w5", "w6", "w7"],
-        },
-      }),
-    });
+    warn(7);
     overview();
     await screen.findByRole("region", { name: "Needs attention" });
     expect(attentionList().className).toMatch(/\bpk-stagger\b/);
@@ -721,7 +725,7 @@ describe("the stagger class leaves when the items' animations end (never on a ti
         finished,
       }));
     };
-    fns.product.mockResolvedValue({ product: warned() });
+    warn(2);
     overview();
     await screen.findByRole("region", { name: "Needs attention" });
     expect(attentionList().className).toMatch(/\bpk-stagger\b/);
@@ -734,7 +738,7 @@ describe("the stagger class leaves when the items' animations end (never on a ti
   it("under reduced motion there are none, so it comes off at once", async () => {
     document.documentElement.dataset.motion = "reduce";
     proto.getAnimations = () => [];
-    fns.product.mockResolvedValue({ product: warned() });
+    warn(2);
     overview();
     await screen.findByRole("region", { name: "Needs attention" });
     await waitFor(() =>

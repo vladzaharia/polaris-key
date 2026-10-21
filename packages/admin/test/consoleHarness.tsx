@@ -80,7 +80,6 @@ export function productRow(
     adminGroup: null,
     createdAt: 0,
     modifiedAt: 0,
-    setup: { status: "ok", healthy: true, nextActions: [] },
     ...(services
       ? {
           services,

@@ -70,7 +70,7 @@ when it was last set, and what requires it (for example "OIDC client secret", or
 the recipe id). A row's **Set…** (or **Replace…**) opens the drawer with its name filled in.
 Saving over a configured secret needs **Replace the existing value** ticked first, so a stored
 value is never overwritten by accident. The required names come from the same setup computation
-as the Overview checklist — see [Products](/docs/operate/console/products/#setup-health) for exactly which
+as Needs attention — see [Products](/docs/operate/console/products/#what-needs-attention) for exactly which
 manifest fields feed it.
 
 `/manage/api/products/<slug>/secrets` (GET) returns the list as
@@ -167,4 +167,4 @@ See [CI publishing](/docs/build/ci/) for the workflow side.
   `outlet_credentials` and `edge_mint_approvals`.
 - [Edge-mint](/docs/features/managed-config/edge-mint/) — recipes, the two operator conditions, and the
   mint route.
-- [Products](/docs/operate/console/products/#setup-health) — the full setup-health computation.
+- [Products](/docs/operate/console/products/#what-needs-attention) — what raises a Needs attention item.
