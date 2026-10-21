@@ -149,6 +149,11 @@
     {
       "pattern": "Download \\d+(\\.\\d+)+ ↗",
       "reason": "UpdatePrompt on the web: the kit formats the version into the button (a link out, so the arrow)."
+    },
+    {
+      "pattern": "Enter a license key or sign in|to continue\\.|tidewater activate|tidewater login|Enter a license key or sign|in to continue\\.|This device was signed out\\. Sign in|or activate again to continue\\.|This device was signed out\\.|Sign in or activate again|To keep using|Tidewater Studio:|Use the license on|your account|Use a license key|Sign in|Use a different key|To keep using Tidewater Studio:|Use the license on your account",
+      "boards": ["terminal"],
+      "reason": "A catalog sentence or fix row wrapped at the column of the 40- and 32-column frames (gate refusal, revoked status): the Node kit's narrow renders (harness NARROW_VARIANTS) break it there, so each row is a fragment of one catalog string."
     }
   ]
 }

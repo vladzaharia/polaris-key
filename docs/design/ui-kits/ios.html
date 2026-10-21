@@ -990,9 +990,103 @@
         </div>
       </figure>
 
+      <!-- 2a. Activate: inline, one form on the gate's screen -->
+      <figure>
+        <figcaption>
+          ios · activate · inline, one form, key parsed (the default: the gate
+          pushes it, no sheet). Built today
+        </figcaption>
+        <div class="shot" data-shot="activate-inline">
+          <div class="screen">
+            <div class="ambient"></div>
+            <div
+              style="
+                position: absolute;
+                inset: 62px 20px auto;
+                display: grid;
+                gap: 6px;
+              "
+            >
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 10px;
+                  margin-bottom: 18px;
+                "
+              >
+                <span
+                  class="glass on-plain circ"
+                  data-icon="chevronLeft"
+                  data-size="20"
+                  aria-label="Back"
+                ></span>
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="28"
+                  style="border-radius: 7px"
+                ></span>
+                <span style="font-weight: 600">Tidewater Studio</span>
+              </div>
+              <h2 class="title-l" style="margin: 0 4px 6px">
+                Add your license
+              </h2>
+              <p
+                class="sub"
+                style="margin: 0 4px 22px; font-size: 15px; line-height: 20px"
+              >
+                You'll find it in your purchase email.
+              </p>
+              <div class="flabel">License key</div>
+              <div class="field">
+                <span class="mono"
+                  ><span class="k-key"
+                    ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                    ><span>3WPLDA</span></span
+                  ><span class="caret"></span
+                ></span>
+                <span class="paste"
+                  ><span data-icon="paste" data-size="15"></span>Paste</span
+                >
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 8px;
+                  align-items: center;
+                  margin: 12px 4px 0;
+                  font-size: 15px;
+                  color: var(--pk-text-muted);
+                "
+              >
+                <span
+                  style="color: var(--pk-success)"
+                  data-icon="badge"
+                  data-size="18"
+                ></span>
+                <span
+                  ><b style="font-weight: 600; color: var(--pk-text-strong)"
+                    >Tidewater Studio Pro</b
+                  >&#8201;·&#8201;Lifetime&#8201;·&#8201;3 devices</span
+                >
+              </div>
+            </div>
+            <div style="position: absolute; inset-inline: 20px; bottom: 352px">
+              <div class="glass prominent cap">Activate license</div>
+            </div>
+            <div class="kb"></div>
+          </div>
+        </div>
+      </figure>
+
       <!-- 2. Activate: sheet with keyboard -->
       <figure>
-        <figcaption>ios · activate (large-detent sheet, key parsed)</figcaption>
+        <figcaption>
+          ios · activate as a sheet, the labelled alternative when the host
+          presents it over its own screen (large detent, key parsed). Built
+          today
+        </figcaption>
         <div class="shot" data-shot="activate">
           <div class="screen" data-tpl="gate">
             <div class="dim"></div>
@@ -1028,7 +1122,7 @@
                 class="sub"
                 style="margin: 0 4px 22px; font-size: 15px; line-height: 20px"
               >
-                Your key is in the purchase email from Harbor Audio.
+                You'll find it in your purchase email.
               </p>
               <div class="flabel">License key</div>
               <div class="field">
@@ -1453,7 +1547,7 @@
                       line-height: 20px;
                     "
                   >
-                    Your key is in the purchase email from Harbor Audio.
+                    You'll find it in your purchase email.
                   </p>
                   <div class="flabel">License key</div>
                   <div class="field">
@@ -1690,7 +1784,8 @@
       <!-- 12. Boot, status and error -->
       <figure>
         <figcaption>
-          ios · boot, status (blocked) and error (offline)
+          ios · boot (a neutral 2 px shimmer after the grace, no part-filled
+          bar), status (blocked) and error (offline)
         </figcaption>
         <div class="row-shot" data-shot="states">
           <div>
@@ -1707,9 +1802,14 @@
                     ></div>
                     <div
                       class="k-progress"
-                      style="width: 120px; margin-top: 28px"
+                      style="
+                        width: 120px;
+                        margin-top: 28px;
+                        position: relative;
+                        --kit-accent-fg: var(--pk-text-muted);
+                      "
                     >
-                      <i style="width: 45%"></i>
+                      <span class="k-shimmer"></span>
                     </div>
                     <span class="foot-note">Checking your license</span>
                   </div>
@@ -1827,7 +1927,7 @@
           ),
         );
       const rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
-      document.getElementById("kb1").innerHTML =
+      const kbHtml =
         rows
           .map((r, i) => {
             let keys = [...r]
@@ -1839,6 +1939,7 @@
           })
           .join("") +
         `<div class="r"><span class="k w">123</span><span class="k w">☺</span><span class="k sp">space</span><span class="k go">go</span></div>`;
+      document.querySelectorAll(".kb").forEach((k) => (k.innerHTML = kbHtml));
       document.querySelectorAll(".sessions").forEach((sess) => {
         [
           "Harbor demo · 4 tracks",
