@@ -1,40 +1,45 @@
 import type { PlatformKey } from "../components/Glyphs.js";
+import { t, type KitCopyKey } from "../../lib/copy.js";
 
 /**
  * Get it's copy for stores and install sources (PORTAL.md §4.20; P0-48), on the product page and
- * in the focused download flow.
- *
- * The catalog (`lib/copy.ts` `t()`) holds no `getIt.*` keys yet, so, like `profile.ts`, the strings
- * live here under the keys they will take, and the sentences built from data are the functions
- * below the table. US spelling, sentence
- * case, no jargon (§6.1): "Other ways to install", never "install sources".
+ * in the focused download flow. Every string is a `getIt.*` key in the kit copy catalog (P0-36,
+ * PX-28a), in all nine locales; this file keeps the names the callers already import. US spelling,
+ * sentence case, no jargon (§6.1): "Other ways to install", never "install sources".
  */
-export const GET_IT_COPY = {
-  "getIt.alsoYoursOn": "Also yours on",
-  "getIt.otherWays": "Other ways to install",
-  "getIt.newTab": "(opens in a new tab)",
-  "getIt.sourceUrl": "Source URL",
-  "getIt.repositoryUrl": "Repository URL",
-  "getIt.fingerprint": "Repository fingerprint (SHA-256)",
-  "getIt.noFingerprint":
-    "No repository fingerprint is published. Check it with the developer before you trust the repository.",
-  "getIt.obtainiumWeb": "Open via obtainium.imranr.dev",
-  "getIt.otherFiles": "To download the files, open this page on your computer.",
-  "getIt.flow.sourcesBelow": "Other ways to install it are below.",
-  "getIt.flow.desktopBuilds": "You're viewing desktop builds.",
-  "getIt.flow.emailMe": "Email me the download",
-  "getIt.flow.otherBuilds": "Other platforms and architectures",
-  "getIt.flow.channel": "Channel",
-  "getIt.flow.sha256": "SHA-256",
-  "getIt.flow.fullSha256": "Full SHA-256",
-  "getIt.flow.copySha256": "Copy SHA-256",
-  "getIt.flow.hint.pkg": "Open the .pkg and follow the installer.",
-  "getIt.flow.hint.installer": "Run the installer and follow the steps.",
-  "getIt.flow.hint.appimage": "Make it executable, then run it.",
-  "getIt.flow.hint.package": "Install it with your package manager.",
-  "getIt.flow.hint.apk": "Open the .apk on your Android device to install it.",
-  "getIt.flow.hint.flatpak": "Install it with Flatpak.",
-} as const;
+const FIXED = [
+  "getIt.alsoYoursOn",
+  "getIt.otherWays",
+  "getIt.newTab",
+  "getIt.sourceUrl",
+  "getIt.repositoryUrl",
+  "getIt.fingerprint",
+  "getIt.noFingerprint",
+  "getIt.obtainiumWeb",
+  "getIt.otherFiles",
+  "getIt.flow.sourcesBelow",
+  "getIt.flow.desktopBuilds",
+  "getIt.flow.emailMe",
+  "getIt.flow.otherBuilds",
+  "getIt.flow.channel",
+  "getIt.flow.sha256",
+  "getIt.flow.fullSha256",
+  "getIt.flow.copySha256",
+  "getIt.flow.hint.pkg",
+  "getIt.flow.hint.installer",
+  "getIt.flow.hint.appimage",
+  "getIt.flow.hint.package",
+  "getIt.flow.hint.apk",
+  "getIt.flow.hint.flatpak",
+] as const satisfies readonly KitCopyKey[];
+
+/** The fixed strings, read through the catalog on each use. */
+export const GET_IT_COPY = Object.defineProperties(
+  {},
+  Object.fromEntries(
+    FIXED.map((key) => [key, { enumerable: true, get: () => t(key) }]),
+  ),
+) as { readonly [K in (typeof FIXED)[number]]: string };
 
 /** The product name the source's own app goes by, for a row's title ("AltStore", "Homebrew"). */
 const SOURCE_NAME: Readonly<Record<string, string>> = {
@@ -55,12 +60,12 @@ export function sourceName(s: { kind: string; label: string }): string {
 
 /** "Version 2.4.1". */
 export function versionLine(version: string): string {
-  return `Version ${version}`;
+  return t("getIt.version", { version });
 }
 
 /** "Open this page on your computer to download Tidewater Studio." */
 export function openOnComputer(product: string): string {
-  return `Open this page on your computer to download ${product}.`;
+  return t("getIt.openOnComputer", { product });
 }
 
 /**
@@ -72,11 +77,13 @@ export function installOnThis(
   ua: string = typeof navigator === "undefined" ? "" : navigator.userAgent,
 ): string {
   if (os === "ios")
-    return /iPad|Macintosh/.test(ua)
-      ? "Install on this iPad"
-      : "Install on this iPhone";
-  if (os === "android") return "Install on this Android device";
-  return "Install on this device";
+    return t(
+      /iPad|Macintosh/.test(ua)
+        ? "getIt.installOn.ipad"
+        : "getIt.installOn.iphone",
+    );
+  if (os === "android") return t("getIt.installOn.android");
+  return t("getIt.installOn.device");
 }
 
 /** The copy button's accessible name: "Copy Homebrew command", "Copy source URL". */
@@ -86,40 +93,41 @@ export function copyLabel(
 ): string {
   switch (what) {
     case "command":
-      return `Copy ${name} command`;
+      return t("getIt.copy.command", { name });
     case "source":
-      return "Copy source URL";
+      return t("getIt.copy.source");
     case "repository":
-      return "Copy repository URL";
+      return t("getIt.copy.repository");
     case "fingerprint":
-      return "Copy repository fingerprint";
+      return t("getIt.copy.fingerprint");
   }
 }
 
 /** Under a QR code: which device scans it, and what it opens. */
 export function scanHint(platform: PlatformKey | null, app: string): string {
-  const device =
+  return t(
     platform === "ios"
-      ? "iPhone or iPad"
+      ? "getIt.scan.apple"
       : platform === "android"
-        ? "Android device"
-        : "phone";
-  return `Scan with your ${device} to add it in ${app}.`;
+        ? "getIt.scan.android"
+        : "getIt.scan.phone",
+    { app },
+  );
 }
 
 /** The QR image's text alternative. */
 export function qrAlt(label: string): string {
-  return `QR code: ${label}`;
+  return t("getIt.qrAlt", { name: label });
 }
 
 /** The sources list's accessible name: "Other ways to install on macOS". */
 export function otherWaysOn(platform: string): string {
-  return `Other ways to install on ${platform}`;
+  return t("getIt.otherWaysOn", { platform });
 }
 
 /** The focused download's primary on a computer: "Download for macOS". */
 export function downloadFor(os: string): string {
-  return `Download for ${os}`;
+  return t("getIt.downloadFor", { platform: os });
 }
 
 /**
@@ -132,22 +140,27 @@ export function downloadName(
   version: string,
   arch: string,
 ): string {
-  return `${downloadFor(os)}: ${product} ${version}, ${arch}`;
+  return t("getIt.downloadName", {
+    platform: os,
+    product,
+    version,
+    name: arch,
+  });
 }
 
 /** The phone's primary: "Email me the download: Orbit Survey for macOS". */
 export function emailName(product: string, os: string): string {
-  return `${GET_IT_COPY["getIt.flow.emailMe"]}: ${product} for ${os}`;
+  return t("getIt.flow.emailName", { product, platform: os });
 }
 
 /** The toast after the email is sent. */
 export function emailSent(product: string, os: string): string {
-  return `We sent you the link to download ${product} for ${os}.`;
+  return t("getIt.flow.emailSent", { product, platform: os });
 }
 
 /** Under the title when the license's last covered version isn't the newest. */
 export function lastCovered(newest: string): string {
-  return `This is the last version your license covers. Version ${newest} isn't included.`;
+  return t("getIt.lastCovered", { version: newest });
 }
 
 /**
@@ -161,26 +174,26 @@ export function installHint(
 ): string | null {
   switch (format?.replace(/^\./, "").toLowerCase()) {
     case "dmg":
-      return `Open the .dmg and drag ${productName} to Applications.`;
+      return t("getIt.flow.hint.dmg", { product: productName });
     case "pkg":
-      return GET_IT_COPY["getIt.flow.hint.pkg"];
+      return t("getIt.flow.hint.pkg");
     case "exe":
     case "msi":
     case "msix":
-      return GET_IT_COPY["getIt.flow.hint.installer"];
+      return t("getIt.flow.hint.installer");
     case "zip":
     case "tar.gz":
     case "tar.xz":
-      return `Unzip it and open ${productName}.`;
+      return t("getIt.flow.hint.zip", { product: productName });
     case "appimage":
-      return GET_IT_COPY["getIt.flow.hint.appimage"];
+      return t("getIt.flow.hint.appimage");
     case "deb":
     case "rpm":
-      return GET_IT_COPY["getIt.flow.hint.package"];
+      return t("getIt.flow.hint.package");
     case "apk":
-      return GET_IT_COPY["getIt.flow.hint.apk"];
+      return t("getIt.flow.hint.apk");
     case "flatpak":
-      return GET_IT_COPY["getIt.flow.hint.flatpak"];
+      return t("getIt.flow.hint.flatpak");
     default:
       return null;
   }

@@ -405,7 +405,7 @@ function FreeDevice({
             rel="noreferrer"
             className="font-medium text-accent-fg hover:underline"
           >
-            Ask {pres.developer ?? "the developer"}
+            Ask {pres.developer ?? t("license.developerFallback")}
           </a>
         </p>
       ) : null}

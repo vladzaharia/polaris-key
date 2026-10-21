@@ -1,4 +1,5 @@
 import * as React from "react";
+import { t } from "../../lib/copy.js";
 import { useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Info } from "lucide-react";
 import { Button } from "../../ui/Button.js";
@@ -143,7 +144,7 @@ function EntryGetIt({
     : null;
   if (files) return <GetItPanel product={product} device={device} />;
   if (!website) return null;
-  const who = developer ?? "the developer";
+  const who = developer ?? t("license.developerFallback");
   return (
     <SectionCard id="get" title={`Get ${product.name}`}>
       <div className="space-y-4">

@@ -1,14 +1,16 @@
 import * as React from "react";
 import { ExternalLink, Info, Package } from "lucide-react";
-import { Hash } from "../../../ui/Hash.js";
+import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
+import type { PortalDownloads } from "../../api.js";
 import { useProductDownloads } from "../../data.js";
 import type { LibraryProduct, DeviceInHand } from "../../model/library.js";
 import { formatDay, osName } from "../../model/library.js";
 import {
+  deviceNoun,
   getItFromDownloads,
+  fileSource,
   getItModel,
-  recommendedLabel,
   type FileRowModel,
 } from "../../model/product.js";
 import {
@@ -16,13 +18,73 @@ import {
   installOnThis,
   openOnComputer,
 } from "../../copy/getIt.js";
-import { PlatformGlyph } from "../Glyphs.js";
+import { FileHash } from "./FileHash.js";
+import { PlatformGlyph, type PlatformKey } from "../Glyphs.js";
 import { PILL_CLASS, StorePillList } from "../StorePills.js";
 import { SectionCard } from "./Card.js";
 import { DownloadButton } from "./DownloadButton.js";
 import { InstallSourceList } from "./InstallSources.js";
 import { t } from "../../../lib/copy.js";
 import { platformInSentence } from "../../../lib/vocab/platforms.js";
+
+/**
+ * What Get it shows, from the downloads view (else the releases): the model, its rows (an
+ * inactive license's files left out), the install sources, the stores not already on the phone's
+ * lead, and whether the card renders at all. The product page asks the same question for its
+ * nav, so a section that is not drawn is not in the nav either.
+ */
+function getItView(
+  product: LibraryProduct,
+  device: DeviceInHand,
+  data: PortalDownloads | null | undefined,
+) {
+  const who = {
+    developer: product.presentation.developer,
+    website: product.presentation.website,
+  };
+  const model =
+    (data ? getItFromDownloads(data, device, who) : null) ??
+    getItModel(
+      product.releases,
+      device,
+      product.licenses.some((l) => l.usable),
+      { ...who, stores: product.stores },
+    );
+  if (!model) return null;
+  const mine = new Set(model.recommended.map((r) => r.artifact.artifactId));
+  // A license that is not active says so once, in the License card: its files get no row here.
+  const rows = [
+    ...model.recommended,
+    ...model.groups
+      .flatMap((g) => g.rows)
+      .filter((r) => !mine.has(r.artifact.artifactId)),
+  ].filter((r) => !r.inactive);
+  const withSources = model.groups.filter((g) => g.sources.length > 0);
+  // The phone's lead already offers its own stores: "Also yours on" never repeats them.
+  const leadIds = new Set(model.here?.stores.map((s) => s.id));
+  const stores = model.stores.filter((s) => !leadIds.has(s.id));
+  // A phone hands off to a computer only when a computer could download something.
+  const filesElsewhere = model.groups.some((g) =>
+    g.rows.some((r) => !r.inactive),
+  );
+  const render =
+    rows.length > 0 ||
+    withSources.length > 0 ||
+    stores.length > 0 ||
+    model.here !== null ||
+    (device.phone && filesElsewhere);
+  return { model, mine, rows, withSources, stores, render, filesElsewhere };
+}
+
+/** Whether the Get it card will be drawn: true while the downloads are still loading. */
+export function useGetItShown(
+  product: LibraryProduct,
+  device: DeviceInHand,
+): boolean {
+  const downloads = useProductDownloads(product.slug, true);
+  if (downloads.isPending) return true;
+  return getItView(product, device, downloads.data)?.render ?? false;
+}
 
 /**
  * Get it, first cut (§4.20, PX-04): the build recommended for the device in hand (honest: a
@@ -53,26 +115,19 @@ export function GetItPanel({
   const downloads = useProductDownloads(product.slug, true);
   if (downloads.isPending)
     return (
-      <SectionCard id="get" title={`Get ${product.name}`}>
+      <SectionCard id="get" title={t("getIt.heading")}>
         <Skeleton className="h-40 w-full" aria-busy />
       </SectionCard>
     );
-  const who = {
-    developer: product.presentation.developer,
-    website: product.presentation.website,
-  };
-  const model =
-    (downloads.data ? getItFromDownloads(downloads.data, device, who) : null) ??
-    getItModel(
-      product.releases,
-      device,
-      product.licenses.some((l) => l.usable),
-      { ...who, stores: product.stores },
-    );
-  if (!model) return null;
+  const view = getItView(product, device, downloads.data);
+  if (!view?.render) return null;
+  const { model, mine, rows, withSources, stores, filesElsewhere } = view;
   const { latest, here } = model;
+  // The accessible name says which file: its build and its file name.
   const describe = (r: FileRowModel) =>
-    r.platform ? `${platformInSentence(r.platform)} ${r.title}` : r.title;
+    r.platform
+      ? `${platformInSentence(r.platform)} ${r.title}, ${r.artifact.name}`
+      : r.title;
   const desktopFiles = model.groups.some(
     (g) =>
       g.rows.length > 0 &&
@@ -80,21 +135,36 @@ export function GetItPanel({
         g.platform === "windows" ||
         g.platform === "linux"),
   );
+  // The head names the release the rows are (the covered one, when the newest is not covered).
+  const shown = model.newerNotCovered
+    ? { version: model.release.version, publishedAt: model.release.publishedAt }
+    : latest;
   return (
     <SectionCard
       id="get"
-      title={`Get ${product.name}`}
-      subtitle={`Latest: ${latest.version}${latest.publishedAt ? `, released ${formatDay(latest.publishedAt)}` : ""}`}
+      title={t("getIt.heading")}
+      aside={
+        <p className="shrink-0 pt-1 text-right text-xs text-fg-muted">
+          {shown.publishedAt
+            ? t("getIt.latest", {
+                version: shown.version,
+                date: formatDay(shown.publishedAt),
+              })
+            : shown.version}
+        </p>
+      }
     >
       {model.newerNotCovered ? (
         <p className="mb-4 flex gap-2 rounded-lg border border-border bg-surface-sunken p-3 text-sm text-fg">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-muted" />
-          Version {model.newerNotCovered.version} isn't included in your
-          license. Your license covers {model.release.version}, below.
+          {t("getIt.notCovered", {
+            version: model.newerNotCovered.version,
+            max: model.release.version,
+          })}
         </p>
       ) : null}
       {here ? (
-        <div className="mb-5 space-y-3 rounded-xl border border-border bg-accent-subtle p-4 desk:p-5">
+        <div className="mb-5 space-y-3 rounded-xl border border-border bg-surface-sunken p-4 desk:p-5">
           <p className="text-sm text-fg-muted">{installOnThis(here.os)}</p>
           <ul
             aria-label={installOnThis(here.os)}
@@ -109,7 +179,7 @@ export function GetItPanel({
                   className={PILL_CLASS}
                 >
                   {s.label}
-                  <ExternalLink aria-hidden className="size-4 text-accent-fg" />
+                  <ExternalLink aria-hidden className="size-4 text-fg-muted" />
                   <span className="sr-only">{C["getIt.newTab"]}</span>
                 </a>
               </li>
@@ -130,7 +200,7 @@ export function GetItPanel({
                     {s.label}
                     <ExternalLink
                       aria-hidden
-                      className="size-4 text-accent-fg"
+                      className="size-4 text-fg-muted"
                     />
                     <span className="sr-only">{C["getIt.newTab"]}</span>
                   </a>
@@ -142,142 +212,70 @@ export function GetItPanel({
             <p className="text-sm text-fg-muted">{C["getIt.otherFiles"]}</p>
           ) : null}
         </div>
-      ) : device.phone ? (
+      ) : device.phone && filesElsewhere ? (
         <p className="mb-4 rounded-lg border border-border bg-surface-sunken p-4 text-sm text-fg">
           {openOnComputer(product.name)}
         </p>
-      ) : model.os && model.recommended.length ? (
-        // A size container: the column is narrow on tablets (main · side), so the build and its
-        // Download sit side by side only when the box has 24rem, not from a viewport width.
-        <div className="mb-5 space-y-3 rounded-xl border border-border bg-accent-subtle p-4 @container desk:p-5">
-          <p className="text-sm text-fg-muted">{recommendedLabel(model.os)}</p>
-          {model.recommended.map((r) => (
-            <div
-              key={r.artifact.artifactId}
-              className="flex flex-col gap-3 @sm:flex-row @sm:items-center"
-            >
-              <span className="inline-flex size-12 shrink-0 items-center justify-center rounded-lg bg-surface-page text-fg-strong">
-                {r.platform ? (
-                  <PlatformGlyph platform={r.platform} className="size-6" />
-                ) : null}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-fg-strong">
-                  {r.platform ? `${osName(r.platform)} · ` : ""}
-                  {r.title}
-                </p>
-                <p className="text-sm text-fg-muted">
-                  {r.title === "Universal" && r.platform === "macos"
-                    ? "Runs on Apple silicon and Intel · "
-                    : ""}
-                  {r.meta}
-                </p>
-              </div>
-              <DownloadButton
-                product={product.slug}
-                productName={product.name}
-                release={r.release}
-                artifact={r.artifact}
-                describe={describe(r)}
-                lead
+      ) : null}
+      {rows.length ? (
+        // The table scrolls inside its own labelled, focusable region, never the page.
+        <div
+          role="region"
+          aria-label={t("getIt.table")}
+          tabIndex={0}
+          className="-mx-5 overflow-x-auto border-y border-border desk:-mx-6"
+        >
+          <table className="w-full min-w-[17rem] border-collapse text-left text-sm">
+            <caption className="sr-only">{t("getIt.table")}</caption>
+            <thead>
+              <tr className="text-xs text-fg-muted">
+                <th scope="col" className="px-5 py-2 font-medium desk:px-6">
+                  {t("getIt.col.platform")}
+                </th>
+                <th
+                  scope="col"
+                  className="hidden px-2 py-2 font-medium sm:table-cell"
+                >
+                  {C["getIt.flow.sha256"]}
+                </th>
+                <th scope="col" className="px-5 py-2 desk:px-6">
+                  <span className="sr-only">{t("getIt.col.action")}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border border-t border-border">
+              {rows.map((r) => (
+                <FileRow
+                  key={r.artifact.artifactId}
+                  row={r}
+                  mine={mine.has(r.artifact.artifactId) ? model.os : null}
+                  product={product}
+                  describe={describe(r)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {withSources.length ? (
+        <section className="mt-5 space-y-3">
+          <h3 className="text-md font-semibold text-fg-strong">
+            {C["getIt.otherWays"]}
+          </h3>
+          {withSources.map((g) => (
+            <div key={g.label}>
+              <h4 className="text-xs font-semibold text-fg-muted">{g.label}</h4>
+              <InstallSourceList
+                sources={g.sources}
+                platform={g.platform}
+                desktop={!device.phone}
+                heading={null}
               />
             </div>
           ))}
-        </div>
+        </section>
       ) : null}
-      <h3 className="mb-2 text-md font-semibold text-fg-strong">
-        All platforms
-      </h3>
-      <div className="divide-y divide-border border-t border-border">
-        {model.groups.map((g) => (
-          <div key={g.label} className="py-2">
-            <h4 className="py-2 text-xs font-semibold text-fg-muted">
-              {g.label}
-            </h4>
-            {g.rows.length ? (
-              <ul className="divide-y divide-border">
-                {g.rows.map((r) => (
-                  <li
-                    key={r.artifact.artifactId}
-                    className="flex flex-wrap items-center gap-3 py-3"
-                  >
-                    <span className="inline-flex size-8 shrink-0 items-center justify-center text-fg-muted">
-                      {r.platform ? (
-                        <PlatformGlyph
-                          platform={r.platform}
-                          className="size-5"
-                        />
-                      ) : (
-                        <Package aria-hidden className="size-5" />
-                      )}
-                    </span>
-                    {/* A 9 rem floor: a narrow or zoomed window moves the button to its own line
-                        instead of squeezing the name to a letter per line. */}
-                    <div className="min-w-0 flex-[1_1_9rem]">
-                      {/* Wraps, never cut short (§4.20, like a device's name). */}
-                      <p
-                        data-platform-name=""
-                        className="break-words font-medium text-fg-strong"
-                      >
-                        {r.title}
-                      </p>
-                      <p className="text-sm text-fg-muted">{r.meta}</p>
-                    </div>
-                    {r.artifact.sha256 ? (
-                      <Hash
-                        value={r.artifact.sha256}
-                        label="SHA-256"
-                        className="hidden sm:inline-flex"
-                      />
-                    ) : null}
-                    {r.elsewhere ? (
-                      r.elsewhere.href ? (
-                        <a
-                          href={r.elsewhere.href}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex h-10 items-center gap-2 rounded-md border border-border-strong px-3 text-sm font-medium text-fg-strong hover:bg-hover"
-                        >
-                          {r.elsewhere.label}
-                          <ExternalLink aria-hidden className="size-4" />
-                          <span className="sr-only">{C["getIt.newTab"]}</span>
-                        </a>
-                      ) : (
-                        <span className="text-right text-sm font-medium text-fg-strong">
-                          {r.elsewhere.label}
-                        </span>
-                      )
-                    ) : r.notIncluded ? (
-                      <span className="text-right text-sm">
-                        <span className="block font-medium text-fg-strong">
-                          {t("core.codes.not_entitled.title")}
-                        </span>
-                        <span className="block text-fg-muted">
-                          {r.notIncluded}
-                        </span>
-                      </span>
-                    ) : (
-                      <DownloadButton
-                        product={product.slug}
-                        productName={product.name}
-                        release={r.release}
-                        artifact={r.artifact}
-                        describe={describe(r)}
-                      />
-                    )}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            <InstallSourceList
-              sources={g.sources}
-              platform={g.platform}
-              desktop={!device.phone}
-            />
-          </div>
-        ))}
-      </div>
-      {model.stores.length ? (
+      {stores.length ? (
         <div className="mt-5 space-y-2">
           <h3
             id={`${product.slug}-also-yours-on`}
@@ -286,15 +284,106 @@ export function GetItPanel({
             {C["getIt.alsoYoursOn"]}
           </h3>
           <StorePillList
-            stores={model.stores}
+            stores={stores}
             labelledBy={`${product.slug}-also-yours-on`}
           />
         </div>
       ) : null}
-      <p className="mt-4 flex items-center gap-2 text-sm text-fg-muted">
-        <Info aria-hidden className="size-4 shrink-0" />
-        Download links are made fresh when you click, so they never go stale.
-      </p>
     </SectionCard>
+  );
+}
+
+/** One file of the downloads table: its name over its facts, its checksum, its one action. */
+function FileRow({
+  row: r,
+  mine,
+  product,
+  describe,
+}: {
+  row: FileRowModel;
+  /** The OS this is the build for, when it is the one for the device in hand. */
+  mine: PlatformKey | null;
+  product: LibraryProduct;
+  describe: string;
+}): React.ReactElement {
+  return (
+    <tr className={mine ? "bg-surface-sunken" : undefined}>
+      {/* The device's own build: tinted, with a strong edge, so it reads in dark too. */}
+      <th
+        scope="row"
+        className={`border-l-4 px-4 py-3 text-left font-normal desk:px-5 ${mine ? "border-fg-strong" : "border-transparent"}`}
+      >
+        <span className="flex items-center gap-3">
+          <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-page text-fg-muted">
+            {r.platform ? (
+              <PlatformGlyph platform={r.platform} className="size-5" />
+            ) : (
+              <Package aria-hidden className="size-5" />
+            )}
+          </span>
+          <span className="min-w-0">
+            {/* Wraps, never cut short (§4.20, like a device's name). */}
+            <span
+              data-platform-name=""
+              className="block break-words font-medium text-fg-strong"
+            >
+              {r.platform ? `${osName(r.platform)} · ${r.title}` : r.title}
+            </span>
+            <span className="block text-fg-muted">
+              {mine
+                ? `${t("getIt.forYour", { device: deviceNoun(mine) })} · `
+                : ""}
+              {/* A size never breaks across lines ("3.1 GB"). */}
+              {fileSource(r.artifact)?.replace(
+                /(\d) (?=[KMGT]?B\b)/,
+                "$1\u00a0",
+              )}
+            </span>
+          </span>
+        </span>
+      </th>
+      <td className="hidden whitespace-nowrap px-2 py-3 sm:table-cell">
+        {r.artifact.sha256 && !r.elsewhere && !r.notIncluded ? (
+          <FileHash value={r.artifact.sha256} file={r.artifact.name} />
+        ) : null}
+      </td>
+      <td className="px-5 py-3 text-right desk:px-6">
+        {r.elsewhere ? (
+          r.elsewhere.href ? (
+            <Button
+              asChild
+              variant="quiet"
+              className="min-h-11 whitespace-normal"
+            >
+              <a href={r.elsewhere.href} target="_blank" rel="noreferrer">
+                {r.elsewhere.label}
+                <ExternalLink aria-hidden />
+                <span className="sr-only">{C["getIt.newTab"]}</span>
+              </a>
+            </Button>
+          ) : (
+            <span className="font-medium text-fg-strong">
+              {r.elsewhere.label}
+            </span>
+          )
+        ) : r.notIncluded ? (
+          <span className="block">
+            <span className="block font-medium text-fg-strong">
+              {t("core.codes.not_entitled.title")}
+            </span>
+            <span className="block text-fg-muted">{r.notIncluded}</span>
+          </span>
+        ) : (
+          <DownloadButton
+            product={product.slug}
+            productName={product.name}
+            release={r.release}
+            artifact={r.artifact}
+            describe={describe}
+            table
+          />
+        )}
+      </td>
+    </tr>
   );
 }

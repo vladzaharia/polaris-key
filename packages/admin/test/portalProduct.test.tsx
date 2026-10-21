@@ -214,7 +214,7 @@ describe("product page on today's data (PX-04)", () => {
     mockFetch(routes());
     renderPortal();
     await page();
-    const card = screen.getByRole("region", { name: "Nightfall license" });
+    const card = screen.getByRole("region", { name: "License" });
     expect(within(card).getByText("Lifetime")).toBeTruthy();
     expect(within(card).queryByText("For life")).toBeNull();
     // The tier is a neutral pill at the header's top right (owner polish 2026-10-07), and the
@@ -243,12 +243,12 @@ describe("product page on today's data (PX-04)", () => {
     await page();
     // Healthy is silence: no "Active" pill in the header or on the License card.
     expect(within(screen.getByRole("main")).queryByText("Active")).toBeNull();
-    const card = screen.getByRole("region", { name: "Nightfall license" });
+    const card = screen.getByRole("region", { name: "License" });
     // The tier is a neutral pill on the License card (owner, 2026-10-05, overriding UX-03's
     // "tier as text" for this card only); the facts stay as text.
     expect(within(card).getByText("Deluxe")).toBeTruthy();
     expect(within(card).queryByText("Tier")).toBeNull();
-    expect(within(card).getByText("Access").tagName).toBe("DT");
+    expect(within(card).getByText("Covers versions").tagName).toBe("DT");
     const included = within(card).getByRole("list", { name: "Included" });
     expect(
       within(included)
@@ -277,9 +277,9 @@ describe("product page on today's data (PX-04)", () => {
       name: "Nightfall",
     });
     const card = await screen.findByRole("region", {
-      name: "Nightfall license",
+      name: "License",
     });
-    await within(card).findByText("Access");
+    await within(card).findByText("Covers versions");
     expect(within(h1.parentElement!).getByText("Expired")).toBeTruthy();
     expect(within(card).queryByText("Expired")).toBeNull();
   });
@@ -302,17 +302,24 @@ describe("product page on today's data (PX-04)", () => {
     );
     renderPortal();
     const card = await screen.findByRole("region", {
-      name: "Nightfall license",
+      name: "License",
     });
-    const access = await within(card).findByText("Access");
-    expect(access.nextElementSibling?.textContent).toMatch(/^Ended /);
-    expect(card.textContent).toMatch(
-      /Ended [^.]+\. Renew with the developer to use it again\./,
-    );
+    // The term leads the card: "Ended <date>", the timeline full, and Renew to use it again.
+    const term = await waitFor(() => {
+      const el = card.querySelector("[data-license-term]");
+      expect(el).toBeTruthy();
+      return el!;
+    });
+    expect(term.textContent).toMatch(/Ended \d{1,2} \w{3} \d{4}/);
+    // No link to renew with, so nothing promises a renewal.
+    expect(term.textContent).not.toContain("Renew");
+    expect(
+      within(card).getByRole("img", { name: /^From .* to .*\. Today is / }),
+    ).toBeTruthy();
     expect(card.textContent).not.toMatch(/Updates included|newer versions/);
   });
 
-  it("a licence with an end date reads Until <date> under Access (P0-47)", async () => {
+  it("a licence with an end date reads Until <date> in the term (P0-47)", async () => {
     const term = license({
       product: "nightfall",
       tier: "deluxe",
@@ -328,11 +335,10 @@ describe("product page on today's data (PX-04)", () => {
     );
     renderPortal();
     const card = await screen.findByRole("region", {
-      name: "Nightfall license",
+      name: "License",
     });
-    const access = await within(card).findByText("Access");
-    expect(access.tagName).toBe("DT");
-    expect(access.nextElementSibling?.textContent).toMatch(/^Until /);
+    const until = await within(card).findByText(/^Until /);
+    expect(until.closest("[data-license-term]")).toBeTruthy();
     expect(card.textContent).not.toMatch(/Updates included/);
   });
 
@@ -355,9 +361,9 @@ describe("product page on today's data (PX-04)", () => {
     );
     renderPortal();
     const card = await screen.findByRole("region", {
-      name: "Nightfall license",
+      name: "License",
     });
-    await within(card).findByText("Access");
+    await within(card).findByText("Covers versions");
     const pills = card.querySelector("[data-license-pills]")!;
     expect(
       Array.from(pills.querySelectorAll("[data-status=pill]")).map((p) => [
@@ -399,11 +405,11 @@ describe("product page on today's data (PX-04)", () => {
     mockFetch(routes());
     renderPortal();
     await page();
-    const get = screen.getByRole("region", { name: "Get Nightfall" });
-    expect(within(get).getByText("Recommended for your Mac")).toBeTruthy();
-    expect(
-      within(get).getByText(/Runs on Apple silicon and Intel/),
-    ).toBeTruthy();
+    const get = screen.getByRole("region", { name: "Get it" });
+    // One table; the build for this Mac is its first row, marked "For your Mac".
+    const first = within(get).getAllByRole("row")[1]!;
+    expect(first.textContent).toContain("macOS · Universal");
+    expect(first.textContent).toContain("For your Mac");
     expect(within(get).getByText("Not included")).toBeTruthy();
     // /api/releases says "no" without saying why (it may just not be servable yet): no claim
     // about the license's coverage.
@@ -411,7 +417,6 @@ describe("product page on today's data (PX-04)", () => {
     expect(
       within(get).queryByText("Your license doesn't include this version"),
     ).toBeNull();
-    expect(within(get).getByText("Extras")).toBeTruthy();
     expect(
       within(get).getAllByRole("button", { name: /Copy SHA-256/ }).length,
     ).toBeGreaterThan(0);
@@ -500,8 +505,8 @@ describe("product page on today's data (PX-04)", () => {
     );
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get Nightfall" });
-    await within(get).findByText(/Version 2.0 isn't included in your license/);
+    const get = await screen.findByRole("region", { name: "Get it" });
+    await within(get).findByText(/Version 2.0 isn't included/);
     expect(get.textContent).toContain("Your license covers 1.8");
     expect(
       within(get).getByText("Your license doesn't include this version"),
@@ -509,7 +514,7 @@ describe("product page on today's data (PX-04)", () => {
     expect(within(get).getByRole("link", { name: /Steam/ })).toBeTruthy();
     expect(
       within(get).getByRole("button", {
-        name: "Download Nightfall 1.8 for macOS Universal",
+        name: "Download Nightfall 1.8 for macOS Universal, Nightfall.dmg",
       }),
     ).toBeTruthy();
   });
@@ -746,7 +751,7 @@ describe("product page on today's data (PX-04)", () => {
     );
     renderPortal();
     await screen.findByRole("heading", { level: 1, name: "Quill" });
-    const card = await screen.findByRole("region", { name: "Quill license" });
+    const card = await screen.findByRole("region", { name: "License" });
     await within(card).findByText("Activated");
     expect(within(card).getByText("Standard")).toBeTruthy();
     // Granted through OIDC at sign-in: "Automatic grant" (owner polish 2026-10-07).
@@ -784,7 +789,7 @@ describe("product page on today's data (PX-04)", () => {
       }),
     );
     renderPortal();
-    const card = await screen.findByRole("region", { name: "Quill license" });
+    const card = await screen.findByRole("region", { name: "License" });
     await within(card).findByText("Activated");
     expect(licenseSource(card)).toBe("Automatic grant");
     expect(within(card).queryByText(/of \d+ devices?/)).toBeNull();
@@ -824,7 +829,7 @@ describe("product page on today's data (PX-04)", () => {
       window.history.replaceState(null, "", "/#/p/quill");
       mockFetch(both());
       renderPortal();
-      const card = await screen.findByRole("region", { name: "Quill license" });
+      const card = await screen.findByRole("region", { name: "License" });
       const picker = within(card).getByRole("combobox");
       const options = within(picker)
         .getAllByRole("option")
@@ -836,7 +841,7 @@ describe("product page on today's data (PX-04)", () => {
       window.history.replaceState(null, "", "/#/p/quill?license=lic_key");
       mockFetch(both());
       renderPortal();
-      const card = await screen.findByRole("region", { name: "Quill license" });
+      const card = await screen.findByRole("region", { name: "License" });
       await within(card).findByText("Activated");
       expect(within(card).getByText("Standard")).toBeTruthy();
       expect(within(card).queryByText(/devices?$/)).toBeNull();
@@ -858,7 +863,7 @@ describe("product page on today's data (PX-04)", () => {
       window.history.replaceState(null, "", "/#/p/quill?license=lic_acct");
       mockFetch(both());
       renderPortal();
-      const card = await screen.findByRole("region", { name: "Quill license" });
+      const card = await screen.findByRole("region", { name: "License" });
       await within(card).findByText("Activated");
       const devices = screen.getByRole("region", { name: "Devices" });
       await within(devices).findByText("Living room PC");
@@ -907,7 +912,7 @@ describe("a licence's origin names the store it came from (owner, 2026-10-05)", 
       }),
     );
     renderPortal();
-    const card = await screen.findByRole("region", { name: "Quill license" });
+    const card = await screen.findByRole("region", { name: "License" });
     await waitFor(() =>
       expect(licenseSource(card)).toBe("Steam key ending 3WPLDA"),
     );
@@ -938,7 +943,7 @@ describe("a licence's origin names the store it came from (owner, 2026-10-05)", 
       }),
     );
     renderPortal();
-    const card = await screen.findByRole("region", { name: "Quill license" });
+    const card = await screen.findByRole("region", { name: "License" });
     await waitFor(() => expect(licenseSource(card)).toBe("From Steam"));
     expect(within(card).getByText("Standard")).toBeTruthy();
   });
@@ -963,7 +968,7 @@ describe("licence origins and Remove from my library (PX-23)", () => {
     );
     renderPortal();
     const card = await screen.findByRole("region", {
-      name: "Mossgarden license",
+      name: "License",
     });
     await within(card).findByText("License source");
     expect(licenseSource(card)).toBe("Added with a key");
@@ -1004,7 +1009,7 @@ describe("licence origins and Remove from my library (PX-23)", () => {
     );
     renderPortal();
     const card = await screen.findByRole("region", {
-      name: "Mossgarden license",
+      name: "License",
     });
     await within(card).findByText("License source");
     expect(licenseSource(card)).toBe("From Little Fern");
@@ -1324,9 +1329,9 @@ describe("product page correctness (UX-04)", () => {
     );
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get Nightfall" });
-    await within(get).findByText("Recommended for your Windows PC");
-    expect(within(get).queryByText(/Recommended for your Mac/)).toBeNull();
+    const get = await screen.findByRole("region", { name: "Get it" });
+    await within(get).findByText(/For your Windows PC/);
+    expect(within(get).queryByText(/For your Mac/)).toBeNull();
     expect(within(get).getByText(/Windows · x64/)).toBeTruthy();
     expect(
       screen.getAllByRole("button", {
@@ -1367,7 +1372,7 @@ describe("product page correctness (UX-04)", () => {
     );
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get Nightfall" });
+    const get = await screen.findByRole("region", { name: "Get it" });
     const steam = await within(get).findByRole("link", {
       name: "Get it from Steam (opens in a new tab)",
     });
@@ -1744,7 +1749,7 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
       }),
     );
     renderPortal();
-    const card = await screen.findByRole("region", { name: "Quill license" });
+    const card = await screen.findByRole("region", { name: "License" });
     expect(card.closest("[data-columns]")!.getAttribute("data-columns")).toBe(
       "one",
     );
@@ -1755,10 +1760,127 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     await page();
     expect(
       screen
-        .getByRole("region", { name: "Nightfall license" })
+        .getByRole("region", { name: "License" })
         .closest("[data-columns]")!
         .getAttribute("data-columns"),
     ).toBe("two");
+  });
+
+  it("Renew is in the License card alone: a link to the developer for an ended license, never for a healthy one (PX-28a)", async () => {
+    const lapsed = license({
+      product: "nightfall",
+      tier: "deluxe",
+      expiresAt: NOW_S - 3 * DAY,
+    });
+    mockFetch(
+      signedIn([lapsed], {
+        "/api/releases": { releases },
+        "/api/library": libraryFor([lapsed], undefined, {
+          developerName: "Kiln Games",
+          support: { url: "https://help.example.com", email: null },
+        }),
+        "/api/licenses/nightfall/lic_nightfall": detail(lapsed, {
+          devices: [],
+        }),
+      }),
+    );
+    renderPortal();
+    const card = await screen.findByRole("region", { name: "License" });
+    const renew = await within(card).findByRole("link", {
+      name: /^Renew with Kiln Games/,
+    });
+    expect(renew.getAttribute("href")).toBe("https://help.example.com");
+    expect(card.textContent).toContain("Renew to use it again.");
+    // One Renew on the page, and it is not a filled primary.
+    expect(screen.getAllByRole("link", { name: /^Renew with/ })).toHaveLength(
+      1,
+    );
+    expect(renew.className).not.toMatch(/bg-primary|bg-action/);
+    cleanup();
+    mockFetch(routes());
+    renderPortal();
+    await page();
+    expect(screen.queryByRole("link", { name: /^Renew with/ })).toBeNull();
+  });
+
+  it("an ended license gets no Not included rows in Get it: the card says it once (PORTAL.md §4.4)", async () => {
+    const lapsed = license({
+      product: "nightfall",
+      tier: "deluxe",
+      expiresAt: NOW_S - 3 * DAY,
+    });
+    mockFetch(
+      signedIn([lapsed], {
+        "/api/releases": { releases },
+        "/api/products/nightfall/downloads": downloadsView("nightfall", [
+          dlFile({
+            artifactId: "m",
+            platform: "macos",
+            canDownload: false,
+            reason: "license_inactive",
+          }),
+        ]),
+        "/api/licenses/nightfall/lic_nightfall": detail(lapsed, {
+          devices: [],
+        }),
+      }),
+    );
+    renderPortal();
+    const card = await screen.findByRole("region", { name: "License" });
+    await within(card).findByText(/^Ended /);
+    expect(screen.queryByText("Not included")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Get it" })).toBeNull();
+    // Neither the section nav nor the jump bar points at the card that is not there.
+    for (const nav of ["On this page", "Sections"]) {
+      const links = within(screen.getByRole("navigation", { name: nav }))
+        .getAllByRole("link")
+        .map((l) => l.textContent);
+      expect(links).toContain("License");
+      expect(links).not.toContain("Get it");
+    }
+  });
+
+  it("an ended license on an iPhone has no Get it either: no hand-off to a computer with nothing on it, and no nav entry", async () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15",
+    );
+    const lapsed = license({
+      product: "nightfall",
+      tier: "deluxe",
+      expiresAt: NOW_S - 3 * DAY,
+    });
+    mockFetch(
+      signedIn([lapsed], {
+        "/api/releases": { releases },
+        "/api/products/nightfall/downloads": downloadsView("nightfall", [
+          dlFile({
+            artifactId: "m",
+            platform: "macos",
+            canDownload: false,
+            reason: "license_inactive",
+          }),
+        ]),
+        "/api/licenses/nightfall/lic_nightfall": detail(lapsed, {
+          devices: [],
+        }),
+      }),
+    );
+    renderPortal();
+    const card = await screen.findByRole("region", { name: "License" });
+    await within(card).findByText(/^Ended /);
+    expect(screen.queryByText(/Open this page on your computer/)).toBeNull();
+    expect(screen.queryByRole("region", { name: "Get it" })).toBeNull();
+    for (const nav of ["On this page", "Sections"])
+      expect(
+        within(screen.getByRole("navigation", { name: nav }))
+          .getAllByRole("link")
+          .map((l) => l.textContent),
+      ).not.toContain("Get it");
+    // The License card leads the main column, with What's new, not the rail.
+    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    expect(card.parentElement!.parentElement).toBe(
+      news.parentElement!.parentElement,
+    );
   });
 
   it("Help closes the main column, so the nav ends with it and Your data on every width", async () => {
@@ -1773,7 +1895,7 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     await page();
     const help = await screen.findByRole("region", { name: "Need help?" });
     const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
-    const license = screen.getByRole("region", { name: "Nightfall license" });
+    const license = screen.getByRole("region", { name: "License" });
     // In the main column with What's new, after it; not in the licence's side column.
     const column = (el: HTMLElement) => el.parentElement!.parentElement!;
     expect(column(help)).toBe(column(news));
@@ -1843,7 +1965,7 @@ describe("Get it: other ways to install (P0-48)", () => {
     mockFetch(routes({ "/api/products/nightfall/downloads": view("macos") }));
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get Nightfall" });
+    const get = await screen.findByRole("region", { name: "Get it" });
     const mac = await within(get).findByRole("list", {
       name: "Other ways to install on macOS",
     });
@@ -1916,7 +2038,7 @@ describe("Get it: other ways to install (P0-48)", () => {
     mockFetch(routes({ "/api/products/nightfall/downloads": view("ios") }));
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get Nightfall" });
+    const get = await screen.findByRole("region", { name: "Get it" });
     const lead = await within(get).findByRole("list", {
       name: "Install on this iPhone",
     });
@@ -1939,7 +2061,7 @@ describe("Get it: other ways to install (P0-48)", () => {
       ),
     ).toBeTruthy();
     expect(within(get).queryByRole("img", { name: /QR code/ })).toBeNull();
-    // The phone's own OS comes first under All platforms.
+    // The phone's own OS comes first among the install sources.
     const headings = within(get)
       .getAllByRole("heading", { level: 4 })
       .map((h) => h.textContent);

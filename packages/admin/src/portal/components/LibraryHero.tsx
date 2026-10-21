@@ -99,7 +99,7 @@ export function LibraryHero({
           {product.kind === "entry" ? (
             // An open product (PS-04): nothing to licence, so no licence or seat facts.
             <>
-              <dt className="text-fg-muted">License</dt>
+              <dt className="text-fg-muted">{t("license.title")}</dt>
               <dd className="text-fg-strong">None needed</dd>
             </>
           ) : (
@@ -108,7 +108,7 @@ export function LibraryHero({
                   says only its term, and is absent when there is none. */}
               {term ? (
                 <>
-                  <dt className="text-fg-muted">License</dt>
+                  <dt className="text-fg-muted">{t("license.title")}</dt>
                   <dd className="text-fg-strong">{term}</dd>
                 </>
               ) : null}

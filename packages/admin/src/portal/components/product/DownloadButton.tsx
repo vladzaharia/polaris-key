@@ -22,6 +22,7 @@ export function DownloadButton({
   lead = false,
   label = t("boot.consent.download"),
   ariaLabel,
+  table = false,
 }: {
   product: string;
   productName: string;
@@ -33,18 +34,34 @@ export function DownloadButton({
   label?: string;
   /** The accessible name; it must contain `label` (WCAG label in name). */
   ariaLabel?: string;
+  /**
+   * A row of the downloads table: 44 px high, and below `sm` a 44 px square with the glyph alone
+   * (the accessible name carries the words).
+   */
+  table?: boolean;
 }): React.ReactElement {
   const start = useStartDownload();
   return (
     <Button
       variant={lead ? "primary" : "quiet"}
       size={lead ? "lg" : "md"}
-      className={lead ? "h-12 px-6" : "h-10"}
+      className={
+        lead
+          ? "h-12 px-6"
+          : table
+            ? "size-11 px-0 sm:h-11 sm:w-auto sm:px-4"
+            : "h-10"
+      }
       loading={start.isPending}
       iconStart={<Download aria-hidden />}
       aria-label={
         ariaLabel ??
-        `${label} ${productName} ${release.version} for ${describe}`
+        t("getIt.downloadAria", {
+          name: label,
+          product: productName,
+          version: release.version,
+          platform: describe,
+        })
       }
       onClick={() =>
         start.mutate(
@@ -56,17 +73,21 @@ export function DownloadButton({
           {
             onSuccess: () =>
               announce(
-                `Downloading ${productName} ${release.version} for ${describe}`,
+                t("getIt.downloading", {
+                  product: productName,
+                  version: release.version,
+                  platform: describe,
+                }),
               ),
             onError: (err) =>
-              toast.error("The download didn't start", {
+              toast.error(t("getIt.downloadFailed"), {
                 description: portalErrorCopy(err).description,
               }),
           },
         )
       }
     >
-      {label}
+      {table ? <span className="sr-only sm:not-sr-only">{label}</span> : label}
     </Button>
   );
 }

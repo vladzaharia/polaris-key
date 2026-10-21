@@ -390,9 +390,7 @@ describe("Remove my data from a product (I-11)", () => {
     expect(
       await screen.findByRole("region", { name: "Your data in Mossgarden" }),
     ).toBeTruthy();
-    expect(
-      screen.getByRole("region", { name: "Mossgarden license" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("region", { name: "License" })).toBeTruthy();
     // This product's route alone: not the account's deletion, not another product.
     expect(fetchedRequests().filter((r) => r.startsWith("DELETE"))).toEqual([
       "DELETE /api/products/mossgarden/data",

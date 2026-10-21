@@ -536,7 +536,7 @@ function StoreButtons({
           {
             id: "website",
             url: site,
-            label: `Get it from ${product.developerName ?? "the developer"}`,
+            label: `Get it from ${product.developerName ?? t("license.developerFallback")}`,
           },
         ]
       : [];
@@ -587,7 +587,7 @@ function addError(product: PortalStorefrontProduct, err: unknown): AddError {
     err.code === "not_eligible"
   )
     return {
-      text: `${product.developerName ?? "The developer"} no longer gives ${product.name} to your account.`,
+      text: `${product.developerName ?? t("license.developerFallbackCap")} no longer gives ${product.name} to your account.`,
       ended: true,
     };
   // The words PX-34 settled on Discover's tile.

@@ -120,6 +120,9 @@ export const KEY_NAMESPACES = [
   // The customer portal's Account page (PX-31a): the profile card and Your data.
   "profile",
   "yourData",
+  // The customer portal's License and Get it sections (PX-28a, P0-36): not a kit component.
+  "license",
+  "getIt",
   // The terminal kits' own strings: help, key hints, status rows (UK-14, UK-13).
   "cli",
 ] as const;
@@ -133,6 +136,8 @@ const SHARED_NAMESPACES = new Set([
   "cli",
   "profile",
   "yourData",
+  "license",
+  "getIt",
 ]);
 
 /** The §4.1 component names, exactly. */

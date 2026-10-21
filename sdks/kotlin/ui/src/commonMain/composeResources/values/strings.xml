@@ -1774,6 +1774,176 @@
     <!-- Your data (Account and each product page); moved from the portal's copy tables (P0-36). -->
     <string name="yourData_remove_keep">Keep my data</string>
     <string name="yourData_remove_keep__macos">Keep My Data</string>
+    <!-- The customer portal's License section on a product page (PX-28a). The card's heading; the page already names the product. -->
+    <string name="license_title">License</string>
+    <!-- The customer portal's License section on a product page (PX-28a). The term line of a license that has ended. Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
+    <string name="license_term_ended">Ended %1$s</string>
+    <!-- The customer portal's License section on a product page (PX-28a). The text alternative of the term timeline. Arguments: {min} = the start date, {max} = the end date, {date} = today, all already formatted by the platform. Arguments: 1=min, 2=max, 3=date. -->
+    <string name="license_timeline_alt">From %1$s to %2$s. Today is %3$s.</string>
+    <!-- The customer portal's License section on a product page (PX-28a). The label over the timeline's today marker. Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
+    <string name="license_timeline_today">Today, %1$s</string>
+    <!-- The customer portal's License section on a product page (PX-28a). A fact's label: which versions the license covers. -->
+    <string name="license_fact_versions">Covers versions</string>
+    <!-- The customer portal's License section on a product page (PX-28a). A fact's label: how the license reached the person (the value is one of the signin.choice.origin.* strings). -->
+    <string name="license_fact_source">License source</string>
+    <!-- The customer portal's License section on a product page (PX-28a). A fact's label: how long the license works without a connection. -->
+    <string name="license_fact_offline">Works offline for</string>
+    <!-- The customer portal's License section on a product page (PX-28a). A fact's label: the release tracks (channels) the license gets. Arguments: {count} = how many. Arguments: 1=count. -->
+    <plurals name="license_fact_tracks">
+        <item quantity="one">Release track</item>
+        <item quantity="other">Release tracks</item>
+    </plurals>
+    <!-- The customer portal's License section on a product page (PX-28a). A fact's label: what the license includes. -->
+    <string name="license_fact_included">Included</string>
+    <!-- The customer portal's License section on a product page (PX-28a). A fact's value: the offline allowance. Arguments: {days} = the number of days. Arguments: 1=days. -->
+    <plurals name="license_offline">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <!-- The customer portal's License section on a product page (PX-28a). Under the masked key when the Worker kept its last 4 characters. -->
+    <string name="license_key_last4">Only the last 4 characters are kept, so a key can’t be shown in full.</string>
+    <!-- The customer portal's License section on a product page (PX-28a). Under the masked key when only a fingerprint of the key is kept. -->
+    <string name="license_key_fingerprint">Polaris Locker keeps only a fingerprint of your key, so it can’t be shown again. Keep the copy from your email or store.</string>
+    <!-- The customer portal's License section on a product page (PX-28a). Beside Renew when the license has ended. -->
+    <string name="license_expired">Renew to use it again.</string>
+    <!-- The customer portal's License section on a product page (PX-28a). Renew, an outlined link to the developer's own page (never a primary). Arguments: {developer} = the developer's name. Arguments: 1=developer. -->
+    <string name="license_renew">Renew with %1$s</string>
+    <!-- The customer portal's License section on a product page (PX-28a). Shown when the developer suspended the license. Arguments: {developer} = the developer's name (or “The developer”). Arguments: 1=developer. -->
+    <string name="license_suspended">%1$s suspended this license. Contact them to find out why.</string>
+    <!-- The customer portal's License section on a product page (PX-28a). The label of the picker when a product has several licenses. Arguments: {count} = how many; {tier} = the tier names, comma separated. Arguments: 1=count, 2=tier. -->
+    <plurals name="license_switcher">
+        <item quantity="one">%1$d license · %2$s</item>
+        <item quantity="other">%1$d licenses · %2$s</item>
+    </plurals>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Heading over the stores where the person also owns the product. -->
+    <string name="getIt_alsoYoursOn">Also yours on</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Heading over a platform's install sources. -->
+    <string name="getIt_otherWays">Other ways to install</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Added after a link's name for screen readers. -->
+    <string name="getIt_newTab">(opens in a new tab)</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Label of an install source's address. -->
+    <string name="getIt_sourceUrl">Source URL</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Label of a package repository's address. -->
+    <string name="getIt_repositoryUrl">Repository URL</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Label of a repository's SHA-256 fingerprint. -->
+    <string name="getIt_fingerprint">Repository fingerprint (SHA-256)</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Shown when a repository publishes no fingerprint. -->
+    <string name="getIt_noFingerprint">No repository fingerprint is published. Check it with the developer before you trust the repository.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Link text: open an Obtainium source from the web. -->
+    <string name="getIt_obtainiumWeb">Open via obtainium.imranr.dev</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Shown on a phone that has an install source of its own. -->
+    <string name="getIt_otherFiles">To download the files, open this page on your computer.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under a build on the download step. -->
+    <string name="getIt_flow_sourcesBelow">Other ways to install it are below.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Shown when a phone views the desktop builds. -->
+    <string name="getIt_flow_desktopBuilds">You're viewing desktop builds.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The phone's primary action: email the download link. -->
+    <string name="getIt_flow_emailMe">Email me the download</string>
+    <string name="getIt_flow_emailMe__macos">Email Me the Download</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Disclosure label over the other builds. -->
+    <string name="getIt_flow_otherBuilds">Other platforms and architectures</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Label of a build's release channel. -->
+    <string name="getIt_flow_channel">Channel</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Label of a file's SHA-256 checksum (a technical name, kept as is). -->
+    <string name="getIt_flow_sha256">SHA-256</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Title of the popover that shows the whole checksum. -->
+    <string name="getIt_flow_fullSha256">Full SHA-256</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The Copy button next to a checksum. -->
+    <string name="getIt_flow_copySha256">Copy SHA-256</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that opens a .pkg. -->
+    <string name="getIt_flow_hint_pkg">Open the .pkg and follow the installer.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that runs a Windows installer. -->
+    <string name="getIt_flow_hint_installer">Run the installer and follow the steps.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that runs an AppImage. -->
+    <string name="getIt_flow_hint_appimage">Make it executable, then run it.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that installs a .deb or .rpm. -->
+    <string name="getIt_flow_hint_package">Install it with your package manager.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that installs an .apk. -->
+    <string name="getIt_flow_hint_apk">Open the .apk on your Android device to install it.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that installs a Flatpak. -->
+    <string name="getIt_flow_hint_flatpak">Install it with Flatpak.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that opens a .dmg. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="getIt_flow_hint_dmg">Open the .dmg and drag %1$s to Applications.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The step that opens a zip or tarball. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="getIt_flow_hint_zip">Unzip it and open %1$s.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A version line. Arguments: {version} = the version. Arguments: 1=version. -->
+    <string name="getIt_version">Version %1$s</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Shown on a phone with nothing to install. Arguments: {product} = the product's name. Arguments: 1=product. -->
+    <string name="getIt_openOnComputer">Open this page on your computer to download %1$s.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The phone lead's heading on an iPad. -->
+    <string name="getIt_installOn_ipad">Install on this iPad</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The phone lead's heading on an iPhone. -->
+    <string name="getIt_installOn_iphone">Install on this iPhone</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The phone lead's heading on an Android device. -->
+    <string name="getIt_installOn_android">Install on this Android device</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The phone lead's heading on any other device. -->
+    <string name="getIt_installOn_device">Install on this device</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A copy button's name. Arguments: {name} = the install source's name. Arguments: 1=name. -->
+    <string name="getIt_copy_command">Copy %1$s command</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A copy button's name. -->
+    <string name="getIt_copy_source">Copy source URL</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A copy button's name. -->
+    <string name="getIt_copy_repository">Copy repository URL</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A copy button's name. -->
+    <string name="getIt_copy_fingerprint">Copy repository fingerprint</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under a QR code for an Apple device. Arguments: {app} = the app that opens it. Arguments: 1=app. -->
+    <string name="getIt_scan_apple">Scan with your iPhone or iPad to add it in %1$s.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under a QR code for an Android device. Arguments: {app} = the app that opens it. Arguments: 1=app. -->
+    <string name="getIt_scan_android">Scan with your Android device to add it in %1$s.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under a QR code for any other phone. Arguments: {app} = the app that opens it. Arguments: 1=app. -->
+    <string name="getIt_scan_phone">Scan with your phone to add it in %1$s.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A QR image's text alternative. Arguments: {name} = what the code opens. Arguments: 1=name. -->
+    <string name="getIt_qrAlt">QR code: %1$s</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A list's accessible name. Arguments: {platform} = the platform's name. Arguments: 1=platform. -->
+    <string name="getIt_otherWaysOn">Other ways to install on %1$s</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The download primary on a computer. Arguments: {platform} = the platform's name. Arguments: 1=platform. -->
+    <string name="getIt_downloadFor">Download for %1$s</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The primary's accessible name; it begins with the visible words. Arguments: {platform}, {product}, {version}, {name} = the build's architecture. Arguments: 1=platform, 2=product, 3=version, 4=name. -->
+    <string name="getIt_downloadName">Download for %1$s: %2$s %3$s, %4$s</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The phone primary's accessible name. Arguments: {product}, {platform}. Arguments: 1=product, 2=platform. -->
+    <string name="getIt_flow_emailName">Email me the download: %1$s for %2$s</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The toast after the email is sent. Arguments: {product}, {platform}. Arguments: 1=product, 2=platform. -->
+    <string name="getIt_flow_emailSent">We sent you the link to download %1$s for %2$s.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under the title when the license's last covered version isn't the newest. Arguments: {version} = the newest version. Arguments: 1=version. -->
+    <string name="getIt_lastCovered">This is the last version your license covers. Version %1$s isn't included.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The product page card's heading. -->
+    <string name="getIt_heading">Get it</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The card's head aside: the newest version and its day. Arguments: {version}, {date}. Arguments: 1=version, 2=date. -->
+    <string name="getIt_latest">%1$s · %2$s</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The downloads table's accessible name. -->
+    <string name="getIt_table">Downloads</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The downloads table's first column. -->
+    <string name="getIt_col_platform">Platform</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The downloads table's last column, which has no visible heading. -->
+    <string name="getIt_col_action">Action</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under the build for the device in hand. Arguments: {device} = the device's noun (Mac, PC). Arguments: 1=device. -->
+    <string name="getIt_forYour">For your %1$s</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Over the table when the newest version is outside the license. Arguments: {version} = the newest version; {max} = the version the license covers. Arguments: 1=max, 2=version. -->
+    <string name="getIt_notCovered">Your license covers %1$s. Version %2$s isn't included.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under the downloads table. -->
+    <string name="getIt_fresh">Download links are made fresh when you click, so they never go stale.</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Announced when a download starts. Arguments: {product}, {version}, {platform} = the build's description. Arguments: 1=product, 2=version, 3=platform. -->
+    <string name="getIt_downloading">Downloading %1$s %2$s for %3$s</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Toast title when a download didn't start. -->
+    <string name="getIt_downloadFailed">The download didn't start</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). A download button's accessible name; it begins with the button's visible words. Arguments: {name} = the visible label, {product}, {version}, {platform} = what the file is for. Arguments: 1=name, 2=product, 3=version, 4=platform. -->
+    <string name="getIt_downloadAria">%1$s %2$s %3$s for %4$s</string>
+    <!-- The customer portal's License section on a product page (PX-28a). Stands for the developer's name when the Worker has none, inside a sentence (lower case). -->
+    <string name="license_developerFallback">the developer</string>
+    <!-- The customer portal's License section on a product page (PX-28a). Stands for the developer's name when the Worker has none, at the start of a sentence. -->
+    <string name="license_developerFallbackCap">The developer</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Mac is called in “For your …”. -->
+    <string name="getIt_device_macos">Mac</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Windows computer is called in “For your …”. -->
+    <string name="getIt_device_windows">Windows PC</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a Linux computer is called in “For your …”. -->
+    <string name="getIt_device_linux">Linux computer</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What an iPhone or iPad is called in “For your …”. -->
+    <string name="getIt_device_ios">iPhone or iPad</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What an Android device is called in “For your …”. -->
+    <string name="getIt_device_android">Android device</string>
+    <!-- The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). What a browser is called in “For your …”. -->
+    <string name="getIt_device_web">browser</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

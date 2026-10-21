@@ -1,4 +1,5 @@
 import * as React from "react";
+import { t } from "../../lib/copy.js";
 import {
   AlertCircle,
   ArrowRight,
@@ -331,7 +332,7 @@ function LinkActions({
         <li>
           <ExternalButton
             href={site}
-            label={`Get it from ${offer.developerName ?? "the developer"}`}
+            label={`Get it from ${offer.developerName ?? t("license.developerFallback")}`}
             name={offer.name}
           />
         </li>

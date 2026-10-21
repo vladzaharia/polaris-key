@@ -392,7 +392,7 @@ export function licenseOrigin(
     case "signin":
       return AUTOMATIC_GRANT;
     case "developer":
-      return `From ${facts.developer?.trim() || "the developer"}`;
+      return `From ${facts.developer?.trim() || t("license.developerFallback")}`;
   }
 }
 
@@ -591,7 +591,7 @@ export function statusFromServer(
         kind: "suspended",
         label: "Suspended",
         tone: "danger",
-        note: `Suspended by ${developer ?? "the developer"}.`,
+        note: `Suspended by ${developer ?? t("license.developerFallback")}.`,
         attention: true,
       };
     case "expired":
@@ -816,7 +816,10 @@ function archName(a: PortalArtifact): string | null {
       : arch === "x86_64"
         ? "Intel"
         : arch;
-  return arch === "x86_64" ? "x64" : arch;
+  // The same words as the downloads table's rows (`archTitle`): one vocabulary.
+  if (a.platform === "windows")
+    return arch === "x86_64" ? "x64" : arch === "arm64" ? "Arm64" : arch;
+  return arch === "x86_64" ? "x86_64" : arch === "arm64" ? "ARM64" : arch;
 }
 
 /** Covered builds for one OS in one release. */
@@ -940,7 +943,7 @@ function actionFromDownloads(
     if (desktop)
       return {
         kind: "email",
-        label: "Email me the download",
+        label: t("getIt.flow.emailMe"),
         platform: desktop,
       };
     return anyCovered ? seeDownloads : null;
@@ -953,7 +956,7 @@ function actionFromDownloads(
       : [];
   if (os && files.length > 0) {
     const label = rec!.latest
-      ? `Download for ${osName(os)}`
+      ? t("getIt.downloadFor", { platform: osName(os) })
       : `Download ${rec!.version}`;
     if (files.length > 1)
       // Two Mac builds and no Universal one: both are on the page, Apple silicon first.
@@ -1052,11 +1055,17 @@ export function quickAction(
     const builds = buildsFor(r, os);
     if (builds.length === 0) continue;
     const pick = pickBuild(builds);
-    if (!pick) return { ...seeDownloads, label: `Download for ${osName(os)}` };
+    if (!pick)
+      return {
+        ...seeDownloads,
+        label: t("getIt.downloadFor", { platform: osName(os) }),
+      };
     const isLatest = r === latest;
     return {
       kind: "download",
-      label: isLatest ? `Download for ${osName(os)}` : `Download ${r.version}`,
+      label: isLatest
+        ? t("getIt.downloadFor", { platform: osName(os) })
+        : `Download ${r.version}`,
       detail: [
         `Version ${r.version}`,
         archName(pick),
@@ -1188,7 +1197,7 @@ export function attentionItems(
     const { supportUrl, supportEmail, developer } = p.presentation;
     const link = supportUrl ?? (supportEmail ? `mailto:${supportEmail}` : null);
     if (!link) continue;
-    const who = developer ?? "the developer";
+    const who = developer ?? t("license.developerFallback");
     const tier = tierLabel(p.best.tier);
     if (p.status.kind === "expiresSoon" && p.best.expiresAt) {
       out.push({

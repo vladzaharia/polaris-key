@@ -48,11 +48,11 @@ export function removeConsequences(o: {
 }): string[] {
   const list = [
     `Polaris Locker deletes your settings and activity for ${o.name}. This can't be undone.`,
-    `${o.developer ?? "The developer"} is told, so they can delete their own copy.`,
+    `${o.developer ?? t("license.developerFallbackCap")} is told, so they can delete their own copy.`,
   ];
   if (o.licenses === 0) list.push(`${o.name} stays in your library.`);
   else if (!o.alsoRemoveLicense) {
-    const who = o.developer ?? "the developer";
+    const who = o.developer ?? t("license.developerFallback");
     list.push(
       o.licenses === 1
         ? `Your license stays in your library. While it does, ${who} can still connect you to your old records through it.`
