@@ -64,8 +64,11 @@ function contentFor(c: KitCtx): ReactNode {
         ) ||
         // The drop-in keeps the field while a key is checked.
         (view.state === "busy" && keys.has("part.keyField.label"));
-      // A refused key is an input that is wrong: the stroke, and the message linked to it.
-      const refused = view.state === "rejected" || view.state === "cut-short";
+      // An input that is itself wrong takes the stroke and the linked message (DL7); a refusal of
+      // a well-formed key is a neutral callout (DL6), as ui-core's tone says.
+      const refused =
+        (view.state === "rejected" || view.state === "cut-short") &&
+        view.decisions.tone === "danger";
       const used = input.activation?.deviceCount;
       const limit = input.activation?.limit;
       return (
@@ -291,7 +294,9 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
           {showIdentity
             ? productHeader(c, layout.header, {
                 name: !titleNames,
-                developer: view.copy.includes("common.byDeveloper"),
+                // The hero reads icon, title, then "by Developer" (below the title).
+                developer:
+                  !heroTitle && view.copy.includes("common.byDeveloper"),
               })
             : null}
         </div>
@@ -305,6 +310,15 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
             heroTitle ? "display" : "title",
             layout.subtitles,
           )}
+          {heroTitle && view.copy.includes("common.byDeveloper") ? (
+            <p
+              className="by"
+              data-part="developer"
+              data-key="common.byDeveloper"
+            >
+              {text(c, "common.byDeveloper")}
+            </p>
+          ) : null}
           {paragraphs(
             c,
             body.filter((k) => k !== "common.byDeveloper"),
@@ -383,13 +397,15 @@ function statusGlyph(view: View): ReactNode {
         : GLYPHS.info();
   if (view.component === "GraceBanner") return GLYPHS.offline();
   if (view.component === "CloudSyncStatus")
-    return s === "offline"
-      ? GLYPHS.offline()
-      : s === "synced"
-        ? GLYPHS.success()
-        : s === "syncing"
-          ? null
-          : GLYPHS.warning();
+    return s === "error" && view.decisions.tone === "neutral"
+      ? GLYPHS.info()
+      : s === "offline"
+        ? GLYPHS.offline()
+        : s === "synced"
+          ? GLYPHS.success()
+          : s === "syncing"
+            ? null
+            : GLYPHS.warning();
   return null;
 }
 
@@ -403,11 +419,14 @@ function statusOf(view: View): string {
           ? "success"
           : "neutral";
   if (view.component === "CloudSyncStatus")
-    return view.state === "conflict" || view.state === "error"
-      ? "warning"
-      : view.state === "synced"
-        ? "success"
-        : "neutral";
+    // A sync that failed for want of a sign-in is neutral, not a fault (DL6).
+    return view.state === "error" && view.decisions.tone === "neutral"
+      ? "neutral"
+      : view.state === "conflict" || view.state === "error"
+        ? "warning"
+        : view.state === "synced"
+          ? "success"
+          : "neutral";
   return "neutral";
 }
 
@@ -1153,6 +1172,8 @@ function settingsRows(c: KitCtx): ReactNode {
   );
 }
 
+const warnedRows = new WeakMap<object, Set<string>>();
+
 function accountRows(c: KitCtx): ReactNode {
   const keys = [
     "account.tier",
@@ -1163,7 +1184,19 @@ function accountRows(c: KitCtx): ReactNode {
     "account.channel",
     "account.version",
     "account.managedSettings",
-  ].filter((k) => c.view.copy.includes(k));
+  ].filter((k) => {
+    if (!c.view.copy.includes(k)) return false;
+    // A row whose label names a fact the input lacks ("{tier} license") is left out.
+    if (!unfilled(c, k)) return true;
+    // Once per input, so a re-render with the same facts stays quiet.
+    const seen = warnedRows.get(c.input) ?? new Set<string>();
+    warnedRows.set(c.input, seen);
+    if (!seen.has(k)) {
+      seen.add(k);
+      console.warn(`[pk] ${k} has no value; not drawn`);
+    }
+    return false;
+  });
   if (keys.length === 0) return null;
   return (
     <ul className="list" data-part="account-list">

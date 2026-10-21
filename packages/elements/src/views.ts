@@ -75,8 +75,11 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
       ].includes(view.state);
       const used = input.activation?.deviceCount;
       const limit = input.activation?.limit;
-      // A refused key is an input that is wrong: the stroke, and the message linked to it.
-      const refused = view.state === "rejected" || view.state === "cut-short";
+      // An input that is itself wrong takes the stroke and the linked message (DL7); a refusal of
+      // a well-formed key is a neutral callout (DL6), as ui-core's tone says.
+      const refused =
+        (view.state === "rejected" || view.state === "cut-short") &&
+        view.decisions.tone === "danger";
       return html`${editing
         ? keyField(
             c,
@@ -442,13 +445,15 @@ function statusGlyph(view: View): TemplateResult | typeof nothing {
           : GLYPHS.info();
   if (view.component === "GraceBanner") return GLYPHS.offline();
   if (view.component === "CloudSyncStatus")
-    return s === "offline"
-      ? GLYPHS.offline()
-      : s === "synced"
-        ? GLYPHS.success()
-        : s === "syncing"
-          ? nothing
-          : GLYPHS.warning();
+    return s === "error" && view.decisions.tone === "neutral"
+      ? GLYPHS.info()
+      : s === "offline"
+        ? GLYPHS.offline()
+        : s === "synced"
+          ? GLYPHS.success()
+          : s === "syncing"
+            ? nothing
+            : GLYPHS.warning();
   return nothing;
 }
 
@@ -462,11 +467,14 @@ function statusOf(view: View): string {
           ? "success"
           : "neutral";
   if (view.component === "CloudSyncStatus")
-    return view.state === "conflict" || view.state === "error"
-      ? "warning"
-      : view.state === "synced"
-        ? "success"
-        : "neutral";
+    // A sync that failed for want of a sign-in is neutral, not a fault (DL6).
+    return view.state === "error" && view.decisions.tone === "neutral"
+      ? "neutral"
+      : view.state === "conflict" || view.state === "error"
+        ? "warning"
+        : view.state === "synced"
+          ? "success"
+          : "neutral";
   return "neutral";
 }
 
@@ -669,13 +677,7 @@ function withBase(c: RenderCtx): View {
         )
       ) {
         // ui-core carries the base (title, lede, field, Paste); the kit adds Submit and Back.
-        const kept = add("activate.submit", "common.back");
-        if (view.state !== "rejected") return kept;
-        // The danger tone is the kit's drawing.
-        return {
-          ...kept,
-          decisions: { ...kept.decisions, tone: "danger" },
-        };
+        return add("activate.submit", "common.back");
       }
       // Over the limit the key is right: Back, or another key.
       if (view.state === "device-limit")

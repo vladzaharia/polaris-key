@@ -305,15 +305,18 @@ export function cloudSyncStatusView(
   const sync = ctx.input.cloudSync;
   if (!ctx.on("sync") || !sync) return hiddenView(ctx, "CloudSyncStatus");
   const error = sync.state === "error";
+  // A sync that failed because nobody is signed in is not a fault: it says so and offers Sign in
+  // to sync, in a neutral tone (DL6). Review shows only when the host handles it.
+  const signedOut = error && sync.signedIn === false;
+  const review = sync.state === "conflict" && sync.canReview === true;
   return makeView(ctx, "CloudSyncStatus", {
     state: sync.state,
-    copy: [
-      `cloudSync.${sync.state}`,
-      error && sync.signedIn === false && "cloudSync.signIn",
-    ],
+    copy: signedOut
+      ? ["cloudSync.signedOut", "cloudSync.signIn"]
+      : [`cloudSync.${sync.state}`, review && "common.review"],
     args: { time: sync.lastSynced },
-    primary: error && sync.signedIn === false ? "cloudSync.signIn" : null,
-    tone: error ? "danger" : null,
+    primary: signedOut ? "cloudSync.signIn" : review ? "common.review" : null,
+    tone: signedOut ? "neutral" : error ? "danger" : null,
     focus: null,
   });
 }

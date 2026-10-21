@@ -20,6 +20,7 @@ import { actionOf, OPENS, placeKeys } from "./contract.js";
 import { LAYOUTS, type Layout } from "./layout.js";
 import type { Resolved } from "./theme.js";
 import { monogramOf } from "./monogram.js";
+import { spellOut } from "./spell.js";
 
 /** What a template needs to draw one view. */
 export interface RenderCtx {
@@ -632,8 +633,8 @@ export function codeDisplay(c: RenderCtx): TemplateResult | typeof nothing {
         role="text"
         data-key="a11y.code"
         aria-label=${keys.has("a11y.code")
-          ? plain(c, "a11y.code", { code })
-          : code}
+          ? plain(c, "a11y.code", { code: spellOut(code) })
+          : spellOut(code)}
         >${code}</span
       >
       ${keys.has("a11y.copyCode")

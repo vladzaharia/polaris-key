@@ -632,7 +632,7 @@ bdi {
   min-block-size: 2.75rem;
   padding-inline: var(--pk-space-1);
   background: none;
-  color: var(--pk-text-muted);
+  color: var(--pk-text-default);
   font-weight: 400;
 }
 /* Hover only where a pointer hovers: on touch it would stay lit after a tap. The primary
@@ -1073,6 +1073,8 @@ bdi {
   border-radius: var(--pk-kit-radius-group);
   background: var(--pk-surface-sunken);
   box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
+  /* Inset from the host's edge, so the frame never touches the window. */
+  margin: var(--pk-space-3);
 }
 .banner .texts {
   flex: 1 1 16rem;

@@ -339,6 +339,8 @@ export interface UiInput {
   cloudSync?: {
     state: "synced" | "syncing" | "offline" | "conflict" | "error";
     signedIn?: boolean;
+    /** The host handles Review for a conflict; without it the line stands alone. */
+    canReview?: boolean;
     /** When it last synced, relative ("2 min ago"). */
     lastSynced?: string;
   };

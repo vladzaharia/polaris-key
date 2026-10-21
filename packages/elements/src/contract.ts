@@ -17,6 +17,7 @@ export { tokenCss } from "./tokens.js";
 export { encodeQr } from "@polaris-key/node/qr";
 // DL5: the monogram's letter, past a name's bidi isolates.
 export { monogramOf } from "./monogram.js";
+export { spellOut } from "./spell.js";
 // DL8: platform names, never a raw id.
 export { platformLabel } from "./platforms.js";
 // The one sign-in form's steps (SIGN-IN.md §3.17): the body each snapshot draws, the travel order.
@@ -39,6 +40,7 @@ export {
   osReducedMotion,
   resolveFor,
   themeVars,
+  watchGround,
   watchProductIdentity,
   type ElementsTheme,
   type Resolved,

@@ -136,6 +136,9 @@ const BASE = [
   "common.paste",
 ];
 const SUBMIT = "activate.submit";
+/** The results that mean the input itself is wrong (DL7): the danger stroke. Every other refusal
+ *  of a well-formed key is a neutral callout (DL6). */
+const WRONG_KEY: ReadonlySet<string> = new Set(["unauthorized", "error"]);
 
 /** License key entry with a live verdict, and the activation's answer. */
 export function activateView(ctx: Context): View<"Activate", ActivateState> {
@@ -190,7 +193,8 @@ export function activateView(ctx: Context): View<"Activate", ActivateState> {
         link,
       });
     }
-    // A refusal of a well-formed key: the key is not wrong, so no danger stroke on the field.
+    // A refusal of a well-formed key: the key is not wrong, so no danger stroke on the field
+    // (DL6). A key the service does not know, or a check that failed, is wrong input (DL7).
     return makeView(ctx, "Activate", {
       state: "rejected",
       // Only the refusal's message: the screen's own title is already BASE's heading.
@@ -202,7 +206,7 @@ export function activateView(ctx: Context): View<"Activate", ActivateState> {
       ],
       args: { product, code: activation.code },
       primary: SUBMIT,
-      tone: activation.result === "error" ? "danger" : "neutral",
+      tone: WRONG_KEY.has(activation.result) ? "danger" : "neutral",
       errorSlot: FIELD,
       focus: FIELD,
     });

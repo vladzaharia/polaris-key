@@ -13,7 +13,13 @@ import {
 import { POWERED_BY } from "@polaris-key/brand";
 import { markSvg } from "@polaris-key/brand/svg";
 import type { Copy, UiInput, View } from "@polaris-key/ui-core";
-import { encodeQr, monogramOf, OPENS, type Resolved } from "./contract.js";
+import {
+  encodeQr,
+  monogramOf,
+  OPENS,
+  spellOut,
+  type Resolved,
+} from "./contract.js";
 
 /** What the drop-in adds around a view's own controls: the step's Back, controls and links the
  *  state lacks (Use another key), and keys it drops (Sign out on a signed-out screen). */
@@ -616,7 +622,9 @@ export function codeDisplay(c: KitCtx): ReactNode {
           role="text"
           data-key="a11y.code"
           aria-label={
-            keys.has("a11y.code") ? plain(c, "a11y.code", { code }) : code
+            keys.has("a11y.code")
+              ? plain(c, "a11y.code", { code: spellOut(code) })
+              : spellOut(code)
           }
         >
           {code}

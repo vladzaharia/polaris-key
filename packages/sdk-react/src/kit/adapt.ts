@@ -17,14 +17,6 @@ function patched(v: View, over: Partial<View>): View {
   return { ...v, ...over, decisions: { ...v.decisions, ...over.decisions } };
 }
 
-/** The gate's Activate step: ui-core carries the title, lede, field and Paste in every state
- *  (ui-matrix v4); only the drawing's tone is the kit's. */
-export function adaptActivate(view: View): View {
-  if (view.component !== "Activate" || view.state !== "rejected") return view;
-  // A key that does not exist is an input that is wrong: the danger stroke.
-  return patched(view, { decisions: { ...view.decisions, tone: "danger" } });
-}
-
 /** A pane whose transient state (rename, confirm, save, error) keeps its title and its rows. */
 export function adaptPane(view: View, input: UiInput): View {
   if (view.component === "Devices") {

@@ -145,7 +145,7 @@ describe("copy catalog (§3.2)", () => {
         code: "release-refused",
         wireCode: "channel_not_allowed",
       }),
-    ).toMatch(/release channel/);
+    ).toMatch(/include this channel/);
     expect(describeError({ code: "network" }, "fr")).toMatch(
       /Impossible de joindre/,
     );
