@@ -2,8 +2,7 @@
 // state). Two kinds of change, both only where the host drives the part (the gate with the SDK,
 // a part with `onInput`), so a fixture state still draws exactly as the corpus says:
 //
-//   * a step keeps its context: Activate keeps its title, lede and Paste while the key is
-//     typed, parsed, refused or busy; Devices and Settings keep their title and list while a
+//   * a step keeps its context: Devices and Settings keep their title and list while a
 //     row is renamed, confirmed or saved;
 //   * a refusal is shown once, under the field that caused it.
 
@@ -18,56 +17,12 @@ function patched(v: View, over: Partial<View>): View {
   return { ...v, ...over, decisions: { ...v.decisions, ...over.decisions } };
 }
 
-const ACTIVATE_KEEPS = new Set([
-  "typing",
-  "parsed",
-  "cut-short",
-  "rejected",
-  "busy",
-]);
-
-/** The gate's Activate step: one title, the lede, the field, Paste, whatever the key's state. */
+/** The gate's Activate step: ui-core carries the title, lede, field and Paste in every state
+ *  (ui-matrix v4); only the drawing's tone is the kit's. */
 export function adaptActivate(view: View): View {
-  if (view.component !== "Activate" || !ACTIVATE_KEEPS.has(view.state))
-    return view;
-  const keeps = [
-    "activate.title",
-    "activate.lede",
-    "part.keyField.label",
-    "part.keyField.placeholder",
-    "common.paste",
-  ];
-  if (view.state === "rejected")
-    return patched(view, {
-      // The refusal once, under the field: its message, not its title.
-      copy: union(
-        keeps,
-        view.copy.filter(
-          (k) => !/^core\.(activation|codes)\..*\.title$/.test(k),
-        ),
-      ),
-      // A key that does not exist is an input that is wrong: the danger stroke.
-      decisions: { ...view.decisions, tone: "danger" },
-    });
-  return patched(view, { copy: union(keeps, view.copy) });
-}
-
-/** The gate's StatusScreen: revoked says "signed out", so it offers Sign in, not Sign out. */
-export function adaptStatus(view: View, input: UiInput): View {
-  if (view.component !== "StatusScreen" || view.state !== "revoked")
-    return view;
-  if (input.capabilities?.signIn === false) return view;
-  return patched(view, {
-    copy: union(
-      ["welcome.signIn"],
-      view.copy.filter((k) => k !== "common.signOut"),
-    ),
-    decisions: {
-      ...view.decisions,
-      primary: "welcome.signIn",
-      focus: "welcome.signIn",
-    },
-  });
+  if (view.component !== "Activate" || view.state !== "rejected") return view;
+  // A key that does not exist is an input that is wrong: the danger stroke.
+  return patched(view, { decisions: { ...view.decisions, tone: "danger" } });
 }
 
 /** A pane whose transient state (rename, confirm, save, error) keeps its title and its rows. */

@@ -71,6 +71,7 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
         "parsed",
         "cut-short",
         "rejected",
+        "busy",
       ].includes(view.state);
       const used = input.activation?.deviceCount;
       const limit = input.activation?.limit;
@@ -667,21 +668,12 @@ function withBase(c: RenderCtx): View {
           view.state,
         )
       ) {
-        const kept = add(
-          "activate.title",
-          "activate.lede",
-          "part.keyField.placeholder",
-          "common.paste",
-          "activate.submit",
-          "common.back",
-        );
+        // ui-core carries the base (title, lede, field, Paste); the kit adds Submit and Back.
+        const kept = add("activate.submit", "common.back");
         if (view.state !== "rejected") return kept;
-        // The refusal once, under the field: its message, not its title; the danger tone.
+        // The danger tone is the kit's drawing.
         return {
           ...kept,
-          copy: kept.copy.filter(
-            (k) => !/^core\.(activation|codes)\..*\.title$/.test(k),
-          ),
           decisions: { ...kept.decisions, tone: "danger" },
         };
       }
@@ -696,17 +688,6 @@ function withBase(c: RenderCtx): View {
         };
       }
       return view;
-    }
-    case "StatusScreen": {
-      // Revoked says "signed out": Sign in is the way on, not Sign out.
-      if (view.state !== "revoked" || input.capabilities?.signIn === false)
-        return view;
-      const signIn = add("welcome.signIn");
-      return {
-        ...signIn,
-        copy: signIn.copy.filter((k) => k !== "common.signOut"),
-        decisions: { ...signIn.decisions, primary: "welcome.signIn" },
-      };
     }
     case "Devices": {
       if (
