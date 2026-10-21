@@ -21,6 +21,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readdirSync,
+  realpathSync,
   readFileSync,
   rmSync,
   statSync,
@@ -131,6 +132,16 @@ const SWIFT_PLACEHOLDERS = `import Foundation
 let userEnteredKey = ""
 `;
 
+/** `PackageDescription` ships with the toolchain, beside the compiler (`usr/lib/swift/pm/ManifestAPI`): a `Package.swift` block imports it. */
+function manifestApiDir(): string {
+  const found =
+    process.platform === "darwin"
+      ? spawnSync("xcrun", ["-f", "swiftc"], { encoding: "utf8" })
+      : spawnSync("which", ["swiftc"], { encoding: "utf8" });
+  const swiftc = realpathSync(found.stdout.trim() || "swiftc");
+  return join(dirname(dirname(swiftc)), "lib/swift/pm/ManifestAPI");
+}
+
 export function swiftSkipReason(): string | null {
   if (process.platform !== "darwin") return "Swift lane needs macOS";
   const v = spawnSync("swift", ["--version"], { encoding: "utf8" });
@@ -152,6 +163,11 @@ export async function compileSwift(snippets: Snippet[]): Promise<Failure[]> {
     : [bin];
   // libzstd is vendored as a C target since SP-52 (no SwiftPM checkout): its module map is in the source.
   const zstd = join(SWIFT_DIR, "Sources/libzstd");
+  const manifestApi = snippets.some((s) =>
+    /import PackageDescription/.test(s.code),
+  )
+    ? [manifestApiDir()]
+    : [];
   const dir = mkdtempSync(join(tmpdir(), "pkey-docs-swift-"));
   try {
     writeFileSync(join(dir, "Config.swift"), readFileSync(SWIFT_SAMPLE));
@@ -169,7 +185,10 @@ export async function compileSwift(snippets: Snippet[]): Promise<Failure[]> {
           "-swift-version",
           "6",
           ...(lib ? ["-parse-as-library"] : []),
-          ...modules.flatMap((m) => ["-I", m]),
+          ...(/import PackageDescription/.test(s.code)
+            ? ["-package-description-version", "6.0.0"]
+            : []),
+          ...[...modules, ...manifestApi].flatMap((m) => ["-I", m]),
           "-F",
           bin,
           "-Xcc",
@@ -234,6 +253,14 @@ lateinit var client: PolarisKeyClient
 
 /** What the player typed into the key field. */
 val userEnteredKey: String = ""
+
+/** The app's own build constants and values (a block names them, the app defines them). */
+object BuildConfig { const val VERSION_NAME: String = "1.0.0" }
+val PINNED: Map<String, String> = emptyMap()
+val RELEASE_KEYS: Map<String, String> = emptyMap()
+val stampFile: java.io.File = java.io.File("pkey-content.json")
+fun showGate() {}
+fun openListing(url: String?) {}
 `;
 
 function androidSdk(): boolean {
@@ -553,6 +580,9 @@ export function kotlinExports(): Set<string> {
       continue;
     const src = readFileSync(f, "utf8");
     for (const m of src.matchAll(decl)) names.add(m[1] ?? "");
+    // `fun interface Name` reads as a function called "interface" to the pattern above.
+    for (const m of src.matchAll(/\bfun\s+interface\s+(\w+)/g))
+      names.add(m[1] ?? "");
     for (const m of src.matchAll(/^\s+([A-Z][A-Za-z0-9_]*)\s*(?:[,;(]|$)/gm))
       names.add(m[1] ?? "");
   }

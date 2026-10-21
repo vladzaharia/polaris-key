@@ -109,6 +109,14 @@ describe("rules", () => {
     expect(lintOperatorFile("docs/RUNBOOK.md", "Plain facts.\n")).toEqual([]);
   });
 
+  it("checks spelling alone when programme ids are off (PRIVACY.md)", () => {
+    expect(
+      lintOperatorFile("docs/PRIVACY.md", "See LX-08 and the licence.\n", {
+        programmeIds: false,
+      }).map((h) => h.rule),
+    ).toEqual(["uk-spelling"]);
+  });
+
   it("flags counts of the whole set", () => {
     expect(rules(lint("The six services and the sixth SDK.\n"))).toEqual([
       "count",

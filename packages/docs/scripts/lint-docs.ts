@@ -375,15 +375,25 @@ export function readPage(id: string, root = contentRoot): PageInfo {
 /**
  * The operator files render as pages (`<RunbookSection>`, the Deploy page), so what the lint
  * keeps out of a page stays out of them: programme ids (also inside code fences, which render
- * too) and UK spellings. Their ids in hits are `docs/RUNBOOK.md` and `docs/DEPLOYMENT.md`.
+ * too) and UK spellings. Their ids in hits are `docs/RUNBOOK.md`, `docs/DEPLOYMENT.md` and `docs/PRIVACY.md`.
  */
 export const OPERATOR_FILES = ["RUNBOOK.md", "DEPLOYMENT.md"] as const;
 
-export function lintOperatorFile(id: string, text: string): Hit[] {
+/** Published whole too (reference/what-apps-collect), checked for UK spellings only: its programme ids are a separate cleanup. */
+export const SPELLING_ONLY_FILES = ["PRIVACY.md"] as const;
+
+export function lintOperatorFile(
+  id: string,
+  text: string,
+  opts: { programmeIds?: boolean } = {},
+): Hit[] {
   const hits: Hit[] = [];
   for (const l of lines(text, 1)) {
-    for (const m of l.text.replace(/\]\([^)]*\)/g, "]").matchAll(PROGRAMME_ID))
-      hits.push({ id, rule: "programme-id", line: l.n, text: m[0] });
+    if (opts.programmeIds !== false)
+      for (const m of l.text
+        .replace(/\]\([^)]*\)/g, "]")
+        .matchAll(PROGRAMME_ID))
+        hits.push({ id, rule: "programme-id", line: l.n, text: m[0] });
     if (l.fence) continue;
     for (const m of prose(l.text).matchAll(UK_SPELLING))
       hits.push({ id, rule: "uk-spelling", line: l.n, text: m[0] });
@@ -398,9 +408,17 @@ export function lintSite(facts: Facts = loadFacts()): Hit[] {
       readFileSync(join(docsRoot, "..", "..", "docs", file), "utf8"),
     ),
   );
+  const spellingOnly = SPELLING_ONLY_FILES.flatMap((file) =>
+    lintOperatorFile(
+      `docs/${file}`,
+      readFileSync(join(docsRoot, "..", "..", "docs", file), "utf8"),
+      { programmeIds: false },
+    ),
+  );
   return [
     ...allIds().flatMap((id) => lintPage(readPage(id), facts)),
     ...operator,
+    ...spellingOnly,
   ];
 }
 
