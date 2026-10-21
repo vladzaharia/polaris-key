@@ -49,7 +49,7 @@ import { PLATFORM_ORDER, PlatformGlyphs, type PlatformKey } from "./Glyphs.js";
 import { KeyField } from "./KeyField.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
-import { t } from "../../lib/copy.js";
+import { t, tParts } from "../../lib/copy.js";
 
 /**
  * Activate license (PORTAL.md §4.17–4.19, §5.2 `ActivateDialog`): always a modal over the
@@ -209,8 +209,8 @@ export function ActivateDialog({
         focusDonePrimary(anchorRef.current);
         announce(
           next.already
-            ? `${doneNameOf(next)} is already in your library`
-            : `${doneNameOf(next)} is in your library`,
+            ? t("locker.activate.alreadyIn", { product: doneNameOf(next) })
+            : t("locker.discover.added", { product: doneNameOf(next) }),
         );
       } else focusDialogHeading(anchorRef.current);
     });
@@ -246,7 +246,8 @@ export function ActivateDialog({
     const name =
       done.product?.name ?? done.license?.productName ?? nameFor(done.slug);
     if (next === "free-device") {
-      if (!done.already) toast.success(`${name} is in your library`);
+      if (!done.already)
+        toast.success(t("locker.discover.added", { product: name }));
       const params: Record<string, string> = {};
       if (licenseId) params.license = licenseId;
       if (forDevice) params.for = forDevice;
@@ -373,17 +374,13 @@ export function ActivateDialog({
       title={
         done
           ? done.already
-            ? `${doneName} is already in your library`
-            : `${doneName} is in your library`
+            ? t("locker.activate.alreadyIn", { product: doneName })
+            : t("locker.discover.added", { product: doneName })
           : confirm
-            ? `Add ${confirmName} to your library?`
-            : "Activate a license"
+            ? t("locker.activate.addAsk", { product: confirmName })
+            : t("locker.activate.title")
       }
-      description={
-        done || confirm
-          ? undefined
-          : "The product stays in your library even if you lose the key."
-      }
+      description={done || confirm ? undefined : t("locker.activate.stays")}
       describedBy={
         !done && !confirm && fromProduct && linkContext ? noticeId : undefined
       }
@@ -488,18 +485,27 @@ export function ActivateDialog({
                       size={20}
                     />
                     <span>
-                      Key for{" "}
-                      <span className="font-medium text-fg-strong">
-                        {nameFor(slug)}
-                      </span>
-                      {owned(slug) ? " · already in your library" : ""}
+                      {tParts("locker.activate.keyFor", ["product"]).map(
+                        (part, i) =>
+                          typeof part === "string" ? (
+                            part
+                          ) : (
+                            <span
+                              key={i}
+                              className="font-medium text-fg-strong"
+                            >
+                              {nameFor(slug)}
+                            </span>
+                          ),
+                      )}
+                      {owned(slug) ? ` · ${t("locker.activate.keyOwned")}` : ""}
                     </span>
                   </p>
                 ) : null
               }
               help={
                 prefill
-                  ? "Filled in from your link. Check it matches the key you have."
+                  ? t("locker.activate.prefillHelp")
                   : t("signin.key.help")
               }
             />
@@ -580,7 +586,7 @@ function RefusalActions({
           className="font-medium max-sm:min-h-11 max-sm:w-full"
           onClick={onAddEmail}
         >
-          Add and verify that email
+          {t("locker.activate.addVerify")}
         </Button>
       ) : null}
     </>
@@ -606,7 +612,7 @@ function AccountRow({
   const group = (
     <div
       role="group"
-      aria-label="Account the license joins"
+      aria-label={t("locker.activate.account")}
       className="flex min-w-0 flex-1 items-center gap-3"
     >
       <Avatar
@@ -669,13 +675,17 @@ function LinkNotice({
   forDevice?: string;
 }): React.ReactElement {
   const lead =
-    context === "card" ? `Signing in to ${name}.` : `${name} sent you here.`;
+    context === "card"
+      ? t("locker.activate.leadCard", { product: name })
+      : t("locker.activate.leadSent", { product: name });
   const body =
     context === "entries"
       ? noEntriesCopy(name)
       : context === "free-device"
-        ? `This license is on every device it allows. Add it to your account, then free one up${forDevice ? ` for ${forDevice}` : ""}.`
-        : "Add your key here, then you go back to signing in.";
+        ? forDevice
+          ? t("locker.activate.freeUpFor", { device: forDevice })
+          : t("locker.activate.freeUp")
+        : t("locker.activate.backToSignIn");
   return (
     <div
       className={cn(
@@ -762,11 +772,11 @@ function DoneStep({
   }, [back]);
   const lede = back
     ? already
-      ? `It was already in your library. Go back to ${name} and sign in.`
-      : `Go back to ${name} and sign in. You won't need the key again.`
+      ? t("locker.activate.ledeBackAlready", { product: name })
+      : t("locker.activate.ledeBack", { product: name })
     : already
-      ? "This key's license was already in your library, so nothing changed."
-      : "Download it, see your license and manage devices on its page. You won't need the key again.";
+      ? t("locker.activate.ledeAlready")
+      : t("locker.activate.ledeNew");
   return (
     <>
       <DialogBody className="space-y-4">
@@ -784,7 +794,7 @@ function DoneStep({
           ) : (
             <Check aria-hidden className="size-3.5" />
           )}
-          In your library
+          {t("locker.activate.inLibrary")}
         </span>
         <p className="text-fg">{lede}</p>
         <DevicesNote count={devices} step="done" cloudSync={cloudSync} />
@@ -800,7 +810,7 @@ function DoneStep({
               className="h-11 font-medium"
               onClick={onOpen}
             >
-              See it in your library
+              {t("locker.activate.seeLibrary")}
             </Button>
             <Button
               asChild
@@ -808,7 +818,9 @@ function DoneStep({
               className="h-11 font-medium"
               data-done-primary=""
             >
-              <a href={back}>Back to {name}</a>
+              <a href={back}>
+                {t("locker.activate.backTo", { product: name })}
+              </a>
             </Button>
           </>
         ) : (
@@ -819,7 +831,7 @@ function DoneStep({
               className="h-11 font-medium"
               onClick={onAnother}
             >
-              Activate another
+              {t("locker.activate.another")}
             </Button>
             <Button
               data-done-primary=""
@@ -828,7 +840,7 @@ function DoneStep({
               iconEnd={<ArrowRight aria-hidden />}
               onClick={onOpen}
             >
-              Open {name}
+              {t("locker.activate.open", { product: name })}
             </Button>
           </>
         )}
@@ -855,18 +867,19 @@ function DevicesNote({
 }): React.ReactElement | null {
   if (!count || count < 1) return null;
   const one = count === 1;
-  const devices = one ? "1 device" : `${count} devices`;
   const lead =
     step === "confirm"
-      ? `It's on ${devices} already.`
-      : `Its ${devices} came with it.`;
+      ? t("locker.activate.onDevices", { count })
+      : t("locker.activate.cameWith", { count });
   const rest =
     step === "confirm"
       ? one
-        ? "It keeps working and comes with it."
-        : "They keep working and come with it."
+        ? t("locker.activate.keepsOne")
+        : t("locker.activate.keepsMany")
       : cloudSync
-        ? `Sign in on ${one ? "it" : "them"} to turn on Cloud Sync.`
+        ? one
+          ? t("locker.activate.syncOne")
+          : t("locker.activate.syncMany")
         : null;
   return (
     <p className="flex gap-3 rounded-lg border border-border bg-surface-sunken p-3 text-sm text-fg">
@@ -921,7 +934,7 @@ export function ConfirmStep({
           ? t("signin.term.lifetime")
           : t("signin.term.until", { date: formatDay(lic.expiresAt) }),
         lic.deviceLimit
-          ? `up to ${lic.deviceLimit} ${lic.deviceLimit === 1 ? "device" : "devices"}`
+          ? t("locker.activate.upTo", { count: lic.deviceLimit })
           : null,
       ]
         .filter(Boolean)
@@ -961,8 +974,15 @@ export function ConfirmStep({
         <p className="flex items-center gap-2 text-sm text-fg-muted">
           <Check aria-hidden className="size-4 shrink-0 text-success" />
           <span>
-            Key recognized ·{" "}
-            <span className="font-medium text-fg-strong">{p.name}</span>
+            {tParts("locker.activate.recognized", ["product"]).map((part, i) =>
+              typeof part === "string" ? (
+                part
+              ) : (
+                <span key={i} className="font-medium text-fg-strong">
+                  {p.name}
+                </span>
+              ),
+            )}
             {p.developerName ? ` · ${p.developerName}` : ""}
           </span>
         </p>
@@ -991,7 +1011,7 @@ export function ConfirmStep({
             onClick={onBack}
             className="shrink-0 rounded-sm text-sm font-medium text-accent-fg hover:underline"
           >
-            Change key
+            {t("locker.activate.changeKey")}
           </button>
         </div>
         {entries ? (
@@ -1022,10 +1042,10 @@ export function ConfirmStep({
           className="min-w-0 font-medium"
           loading={adding}
           onClick={onAdd}
-          aria-label={primaryLabel ?? "Add to my library"}
+          aria-label={primaryLabel ?? t("locker.activate.addToLibrary")}
         >
           <span className="truncate">
-            {primaryLabel ?? "Add to my library"}
+            {primaryLabel ?? t("locker.activate.addToLibrary")}
           </span>
         </Button>
       </DialogFooter>

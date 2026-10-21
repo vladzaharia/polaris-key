@@ -6110,6 +6110,236 @@
       "value": "Create",
       "role": "button",
       "note": "Account → Packages (P0-36)."
+    },
+    "locker.activate.alreadyIn": {
+      "value": "{product} is already in your library",
+      "role": "title",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.addAsk": {
+      "value": "Add {product} to your library?",
+      "role": "title",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.title": {
+      "value": "Activate a license",
+      "role": "title",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.stays": {
+      "value": "The product stays in your library even if you lose the key.",
+      "role": "body",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.keyFor": {
+      "value": "Key for {product}",
+      "role": "label",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.keyOwned": {
+      "value": "already in your library",
+      "role": "label",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.prefillHelp": {
+      "value": "Filled in from your link. Check it matches the key you have.",
+      "role": "hint",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.addVerify": {
+      "value": "Add and verify that email",
+      "role": "button",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.account": {
+      "value": "Account the license joins",
+      "role": "a11y",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.leadCard": {
+      "value": "Signing in to {product}.",
+      "role": "hint",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.leadSent": {
+      "value": "{product} sent you here.",
+      "role": "hint",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.freeUp": {
+      "value": "This license is on every device it allows. Add it to your account, then free one up.",
+      "role": "hint",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.freeUpFor": {
+      "value": "This license is on every device it allows. Add it to your account, then free one up for {device}.",
+      "role": "hint",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.backToSignIn": {
+      "value": "Add your key here, then you go back to signing in.",
+      "role": "hint",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.ledeBackAlready": {
+      "value": "It was already in your library. Go back to {product} and sign in.",
+      "role": "body",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.ledeBack": {
+      "value": "Go back to {product} and sign in. You won't need the key again.",
+      "role": "body",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.ledeAlready": {
+      "value": "This key's license was already in your library, so nothing changed.",
+      "role": "body",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.ledeNew": {
+      "value": "Download it, see your license and manage devices on its page. You won't need the key again.",
+      "role": "body",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.inLibrary": {
+      "value": "In your library",
+      "role": "label",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.seeLibrary": {
+      "value": "See it in your library",
+      "role": "button",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.backTo": {
+      "value": "Back to {product}",
+      "role": "button",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.another": {
+      "value": "Activate another",
+      "role": "button",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.open": {
+      "value": "Open {product}",
+      "role": "button",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.onDevices": {
+      "value": "It's on {count, plural, one {# device} other {# devices}} already.",
+      "role": "body",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.cameWith": {
+      "value": "Its {count, plural, one {# device} other {# devices}} came with it.",
+      "role": "body",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.keepsOne": {
+      "value": "It keeps working and comes with it.",
+      "role": "body",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.keepsMany": {
+      "value": "They keep working and come with it.",
+      "role": "body",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.syncOne": {
+      "value": "Sign in on it to turn on Cloud Sync.",
+      "role": "body",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.syncMany": {
+      "value": "Sign in on them to turn on Cloud Sync.",
+      "role": "body",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.upTo": {
+      "value": "up to {count, plural, one {# device} other {# devices}}",
+      "role": "hint",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.recognized": {
+      "value": "Key recognized · {product}",
+      "role": "hint",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.changeKey": {
+      "value": "Change key",
+      "role": "button",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.activate.addToLibrary": {
+      "value": "Add to my library",
+      "role": "button",
+      "note": "Activate a license dialog (P0-36)."
+    },
+    "locker.key.cutShort": {
+      "value": "This key is cut short. It starts with pkey_, the product, then 22 characters. Copy the whole key again.",
+      "role": "hint",
+      "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.notKey": {
+      "value": "That isn't a Polaris Locker license key. Ours start with pkey_.",
+      "role": "hint",
+      "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.steam": {
+      "value": "This one looks like a Steam key: activate it in Steam.",
+      "role": "hint",
+      "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.space": {
+      "value": "This key has a space or line break in it. Copy the whole key again in one piece.",
+      "role": "hint",
+      "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.noSlug": {
+      "value": "This key doesn't look right. After pkey_ comes the product in lowercase, then _ and 22 characters. Copy the whole key again.",
+      "role": "hint",
+      "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.short": {
+      "value": "This key is cut short. After {prefix}_ come 22 characters, and this has {used}. Copy the whole key again.",
+      "role": "hint",
+      "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.long": {
+      "value": "This key is too long. After {prefix}_ come 22 characters, and this has {used}. Copy only the key.",
+      "role": "hint",
+      "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.badChars": {
+      "value": "This key doesn't look right. After {prefix}_ come exactly 22 letters, digits, - or _. Copy the whole key again.",
+      "role": "hint",
+      "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.unknown": {
+      "value": "We couldn't find that key. Capital letters matter, and l, 1, O and 0 are easy to mix up, so paste the key instead of typing it.",
+      "role": "hint",
+      "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.emailMismatch": {
+      "value": "{product} was bought with {email}. It joins only the account with that email verified.",
+      "role": "hint",
+      "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.emailMismatchAny": {
+      "value": "another email",
+      "role": "label",
+      "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.managedElsewhere": {
+      "value": "{developer} manages this license elsewhere.",
+      "role": "hint",
+      "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.claimEmail": {
+      "value": "{product} joins only the account with the license's email verified.",
+      "role": "hint",
+      "note": "License key checks in the Activate dialog (P0-36)."
     }
   }
 }
