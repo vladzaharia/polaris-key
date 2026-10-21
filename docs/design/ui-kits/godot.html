@@ -659,7 +659,6 @@
       </svg>
     </template>
     <main class="board">
-      <!-- 1. Gate -->
       <figure>
         <figcaption>
           godot · gate · real render of the Godot kit at 1280 × 720 (tests/ui
@@ -667,10 +666,10 @@
         </figcaption>
         <div class="shot" data-shot="built-gate" style="background: #05070f">
           <img
-            src="shots/godot-built-gate-dark.png"
+            data-built="gate"
             width="1280"
             height="720"
-            alt="godot · gate · real render of the Godot kit at 1280 × 720 (tests/ui scenario gate, needs-activation; no product art yet). Built today"
+            alt="godot · gate, needs-activation"
             style="display: block"
           />
         </div>
@@ -686,14 +685,15 @@
           style="background: #05070f"
         >
           <img
-            src="shots/godot-built-settings-dark.png"
+            data-built="settings"
             width="1280"
             height="720"
-            alt="godot · settings · real render of the Godot kit at 1280 × 720 (tests/ui scenario settings, catalog). Built today"
+            alt="godot · settings, catalog"
             style="display: block"
           />
         </div>
       </figure>
+      <!-- 1. Gate -->
       <figure>
         <figcaption>
           godot · gate (title screen; B does nothing on the root, Quit only on
@@ -746,7 +746,9 @@
         <figcaption>
           godot · activate (focus on Activate; the field is quiet until edited).
           The game owns pause: the kit never sets SceneTree.paused and emits
-          input_captured(true) while this dialog is open. UK-11 target
+          input_captured(true) while this dialog is open. UK-11 target (no built
+          dialog frame: the built kit puts the key form on the gate, shown
+          above)
         </figcaption>
         <div class="shot" data-shot="activate">
           <div class="scrim"></div>
@@ -817,6 +819,23 @@
         </div>
       </figure>
 
+      <figure>
+        <figcaption>
+          godot · sign-in · real render of the Godot kit at 1280 × 720 (scenario
+          sign_in, pending): title “Sign in”, the code and
+          polaris.locker/device, Open browser, Copy link, Cancel; no QR. Built
+          today
+        </figcaption>
+        <div class="shot" data-shot="built-sign-in" style="background: #05070f">
+          <img
+            data-built="sign-in"
+            width="1280"
+            height="720"
+            alt="godot · sign-in, pending"
+            style="display: block"
+          />
+        </div>
+      </figure>
       <!-- 3. Sign in (TV / console) -->
       <figure>
         <figcaption>
@@ -909,6 +928,26 @@
         </div>
       </figure>
 
+      <figure>
+        <figcaption>
+          godot · device limit · real render of the Godot kit at 1280 × 720
+          (scenario gate, device limit): Replace a device is the primary, Try
+          again and Use a different key beside it. Built today
+        </figcaption>
+        <div
+          class="shot"
+          data-shot="built-device-limit"
+          style="background: #05070f"
+        >
+          <img
+            data-built="device-limit"
+            width="1280"
+            height="720"
+            alt="godot · device limit"
+            style="display: block"
+          />
+        </div>
+      </figure>
       <!-- 4. Device limit -->
       <figure>
         <figcaption>godot · device limit. UK-11 target</figcaption>
@@ -970,6 +1009,26 @@
         </div>
       </figure>
 
+      <figure>
+        <figcaption>
+          godot · update toast · real render of the Godot kit at 1280 × 720
+          (scenario banner, update available): a pill with the title only, no
+          action. Built today
+        </figcaption>
+        <div
+          class="shot"
+          data-shot="built-update-toast"
+          style="background: #05070f"
+        >
+          <img
+            data-built="update-toast"
+            width="1280"
+            height="720"
+            alt="godot · update banner"
+            style="display: block"
+          />
+        </div>
+      </figure>
       <!-- 5. Update during a race: a toast only -->
       <figure>
         <figcaption>
@@ -1012,6 +1071,21 @@
         </div>
       </figure>
 
+      <figure>
+        <figcaption>
+          godot · update · real render of the Godot kit at 1280 × 720 (scenario
+          update_prompt, binary, modal): Get the update, Not now. Built today
+        </figcaption>
+        <div class="shot" data-shot="built-update" style="background: #05070f">
+          <img
+            data-built="update"
+            width="1280"
+            height="720"
+            alt="godot · update prompt, modal"
+            style="display: block"
+          />
+        </div>
+      </figure>
       <!-- 6. Update at the results screen -->
       <figure>
         <figcaption>
@@ -1154,7 +1228,9 @@
       <!-- 8. Steam Deck 1280 × 800 -->
       <figure>
         <figcaption>
-          godot · gate at 1280 × 800 (Steam Deck, 16:10). UK-11 target
+          godot · gate at 1280 × 800 (Steam Deck, 16:10). UK-11 target (no built
+          render at this size: the screenshot script has none; the built gate at
+          16:10 is read from the scene source, which fills the window)
         </figcaption>
         <div class="shot deck" data-shot="gate-deck">
           <div
@@ -1198,6 +1274,22 @@
         </div>
       </figure>
 
+      <figure>
+        <figcaption>
+          godot · boot · real render of the Godot kit at 1280 × 720 (scenario
+          boot, syncing): a part-filled bar under “Connecting…”, not the DL7
+          shimmer, and no title art. Built today
+        </figcaption>
+        <div class="shot" data-shot="built-boot" style="background: #05070f">
+          <img
+            data-built="boot"
+            width="1280"
+            height="720"
+            alt="godot · boot, syncing"
+            style="display: block"
+          />
+        </div>
+      </figure>
       <!-- 9. Boot -->
       <figure>
         <figcaption>
@@ -1241,6 +1333,22 @@
         </div>
       </figure>
 
+      <figure>
+        <figcaption>
+          godot · status · real render of the Godot kit at 1280 × 720 (scenario
+          gate, revoked): the gate's “Signed out” with the key form beside it;
+          no Renew action, no status screen of its own. Built today
+        </figcaption>
+        <div class="shot" data-shot="built-status" style="background: #05070f">
+          <img
+            data-built="status"
+            width="1280"
+            height="720"
+            alt="godot · status, revoked"
+            style="display: block"
+          />
+        </div>
+      </figure>
       <!-- 10. Status: blocked -->
       <figure>
         <figcaption>
@@ -1280,6 +1388,22 @@
         </div>
       </figure>
 
+      <figure>
+        <figcaption>
+          godot · error · real render of the Godot kit at 1280 × 720 (scenario
+          gate, network error): “Couldn't start”, Try again and Continue
+          offline; no cached-license message. Built today
+        </figcaption>
+        <div class="shot" data-shot="built-error" style="background: #05070f">
+          <img
+            data-built="error"
+            width="1280"
+            height="720"
+            alt="godot · error, network"
+            style="display: block"
+          />
+        </div>
+      </figure>
       <!-- 11. Error: offline -->
       <figure>
         <figcaption>
@@ -1328,6 +1452,9 @@
       </figure>
     </main>
     <script>
+      document.querySelectorAll("img[data-built]").forEach((i) => {
+        i.src = `shots/godot-built/${i.dataset.built}-${window.PK_THEME}.png`;
+      });
       document
         .querySelectorAll(".shot")
         .forEach((s) =>

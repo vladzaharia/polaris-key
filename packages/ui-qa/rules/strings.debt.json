@@ -64,11 +64,6 @@
     {
       "board": "android",
       "state": "settings",
-      "text": "Download on Wi-Fi only"
-    },
-    {
-      "board": "android",
-      "state": "settings",
       "text": "lock On"
     },
     {
@@ -274,11 +269,6 @@
     {
       "board": "godot",
       "state": "settings",
-      "text": "Download content automatically"
-    },
-    {
-      "board": "godot",
-      "state": "settings",
       "text": "Lifetime · m•••@fennick.studio"
     },
     {
@@ -449,11 +439,6 @@
     {
       "board": "ios",
       "state": "paywall",
-      "text": "Privacy"
-    },
-    {
-      "board": "ios",
-      "state": "paywall",
       "text": "Restore"
     },
     {
@@ -485,16 +470,6 @@
       "board": "ios",
       "state": "paywall",
       "text": "Yearly 14 days free, then $39.99 a year"
-    },
-    {
-      "board": "ios",
-      "state": "settings",
-      "text": "2.4.1 · up to date"
-    },
-    {
-      "board": "ios",
-      "state": "settings",
-      "text": "Download automatically"
     },
     {
       "board": "ios",

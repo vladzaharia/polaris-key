@@ -59,6 +59,16 @@
       "reason": "The command line the person typed, echoed above the program's output (the bin name is the fixture product's)."
     },
     {
+      "pattern": "\\$ tidewater [\\w-]+ --json(; echo \\$\\?| \\| fold -w 116)",
+      "boards": ["terminal"],
+      "reason": "The --json command lines on the terminal board: the flag, then the exit code echoed or the long line folded."
+    },
+    {
+      "pattern": "(\\{\"v\":1,|Screen\",\"state\"|ck\\.studio\"\\}).*",
+      "boards": ["terminal"],
+      "reason": "The --json result line the Node kit prints (machine output, never translated), captured from a gate refusal and a revoked status and folded at 116 columns."
+    },
+    {
       "pattern": "Tidewater Studio · [a-z-]+( [a-z-]+)*",
       "boards": ["terminal"],
       "reason": "The terminal window's title bar: the fixture product and the command running."
