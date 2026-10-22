@@ -29,9 +29,9 @@ You may also see:
 
 ## When an update is required
 
-**Update required** means the app can't continue until you update. Select **Update now** or **Update**. A message that starts **Update to keep using** has no **Later** button. With no **Update now** button, see [Apps from a store or package manager](#apps-from-a-store-or-package-manager).
+**Update required** means the app can't continue until you update. Select **Update now** or **Update**. A message titled **Update to keep using** has no **Later** button. With no **Update now** button, see [Apps from a store or package manager](#apps-from-a-store-or-package-manager).
 
-The app keeps working if it says **This version is no longer supported** and **No update is available here yet.** Check again later.
+The app keeps working if its title is **This version is no longer supported** and **No update is available here yet.** Check again later.
 
 ## Apps from a store or package manager
 
