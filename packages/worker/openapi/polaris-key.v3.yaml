@@ -13075,9 +13075,21 @@ paths:
                 client:
                   type: object
                   properties:
-                    name: { type: string, maxLength: 32 }
-                    version: { type: string, maxLength: 32 }
-                    host: { type: string, maxLength: 64 }
+                    name:
+                      {
+                        type: string,
+                        description: "Truncated to 32 characters.",
+                      }
+                    version:
+                      {
+                        type: string,
+                        description: "Truncated to 32 characters.",
+                      }
+                    host:
+                      {
+                        type: string,
+                        description: "Truncated to 64 characters.",
+                      }
       responses:
         "201":
           description: "The request. `cache-control: no-store`."
@@ -13270,7 +13282,10 @@ paths:
 
         ST-34.5: the poll of an approved `cli` request mints one `admin` personal token (7 days,
         label `pkey on <host>`) and answers it with `token`, once; no session cookie is set. A
-        refused mint answers `409`/`422 bad_request` with a `reason`.
+        refused mint answers `409`/`422 bad_request` with a `reason`; `reason: token_limit` (the
+        account holds the most tokens it may) is stable and the CLI and the console copy key off
+        it. The approval is spent by a refused mint, so the person starts a new login. If the
+        approving account was merged away before the poll, the answer is `410`.
       parameters:
         - {
             name: requestId,
@@ -13288,6 +13303,7 @@ paths:
                 oneOf:
                   - type: object
                     required: [status]
+                    not: { required: [token] }
                     properties:
                       status:
                         { type: string, enum: [pending, approved, denied] }
@@ -13311,6 +13327,11 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+        "409":
+          description: "`bad_request` with `reason: token_limit`: the account holds the most personal tokens it may, so no token was minted."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
         "410":
           description: "`expired`: unknown, expired, already answered, or not this browser's request."
           content:
@@ -13318,6 +13339,11 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
         "429":
           description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "503":
+          description: "`erasure_ledger_unavailable`: the erasure ledger could not be read; the approval is not spent, so poll again."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }

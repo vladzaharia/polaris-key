@@ -139,16 +139,27 @@ export interface DeviceLoginClient {
 export const DEVICE_LOGIN_HOST_MAX = 64;
 const CLI_LABEL_PREFIX = "pkey on ";
 
+/** Truncate by code points, so no lone surrogate is stored. */
+function truncate(s: string, max: number): string {
+  return Array.from(s).slice(0, max).join("");
+}
+
 /** Printable text only: control, format and bidi characters dropped, runs of space folded. */
 function cleanText(v: unknown, max: number): string {
   if (typeof v !== "string") return "";
-  return v
+  const cleaned = v
     .normalize("NFKC")
     .replace(/[\p{C}\p{Zl}\p{Zp}]/gu, " ")
+    // Invisible fillers: Default_Ignorable code points and the Hangul fillers render as nothing.
+    .replace(
+      /[\p{Default_Ignorable_Code_Point}\u115F\u1160\u3164\uFFA0\u2800]/gu,
+      "",
+    )
+    // At most three combining marks in a row (zalgo).
+    .replace(/(\p{M}{3})\p{M}+/gu, "$1")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, max)
     .trim();
+  return truncate(cleaned, max).trim();
 }
 
 function cleanClient(raw: unknown): DeviceLoginClient {
@@ -165,9 +176,10 @@ function cleanClient(raw: unknown): DeviceLoginClient {
 
 /** The label of a CLI-minted token. */
 export function cliTokenLabel(client: DeviceLoginClient): string {
-  return `${CLI_LABEL_PREFIX}${client.host}`
-    .slice(0, PERSONAL_TOKEN_LABEL_MAX)
-    .trim();
+  return truncate(
+    `${CLI_LABEL_PREFIX}${client.host}`,
+    PERSONAL_TOKEN_LABEL_MAX,
+  ).trim();
 }
 
 /** The stored request. */
@@ -537,6 +549,9 @@ export async function handleDeviceLoginPoll(
     // caller), and the plaintext is in this response only.
     if (taken.scope !== ADMIN_SCOPE || !taken.client)
       return err(403, "account_disabled", "this account cannot sign in");
+    // The approver was merged away between approval and poll: no token for the survivor.
+    if (account.id !== taken.accountId) return expired();
+    const memberId = await memberIdFor(env, account.id);
     const minted = await mintAccountToken(
       env,
       db,
@@ -544,7 +559,7 @@ export async function handleDeviceLoginPoll(
         accountId: account.id,
         label: cliTokenLabel(taken.client),
         scope: ADMIN_SCOPE,
-        createdBy: `console:${await memberIdFor(env, account.id)}`,
+        createdBy: `console:${memberId}`,
       },
       now,
     );
@@ -558,6 +573,16 @@ export async function handleDeviceLoginPoll(
         minted.status,
         [clearBindingCookie()],
       );
+    // Core writes no audit row for a mint; this row is the provenance record (the token row keeps
+    // no created_by column).
+    await portalAudit(db, {
+      accountId: account.id,
+      action: "portal.personal_token.create",
+      targetKind: "account_token",
+      targetId: minted.view.id,
+      summary: `Created personal token “${minted.view.label}” (…${minted.view.hint}), ${minted.view.scope}, by pkey login approved in the console (${memberId})`,
+      now,
+    });
     return json(
       {
         status: "approved",
