@@ -84,6 +84,8 @@ export class Spinner implements StageProgress {
   private readonly term: Term;
   private readonly region: LiveRegion | null;
   private label = "";
+  /** Lines held under the spinner in the same live region (key hints); already styled. */
+  private footer: ((columns: number) => readonly string[]) | null = null;
   private done = 0;
   private total = 0;
   private frame = 0;
@@ -141,6 +143,15 @@ export class Spinner implements StageProgress {
     else this.draw();
   }
 
+  /**
+   * Lines drawn under the spinner, inside its live region (laid out again at each redraw, so a
+   * resize reflows them); `null` takes them away.
+   */
+  setFooter(lines: ((columns: number) => readonly string[]) | null): void {
+    this.footer = lines;
+    if (this.region && this.label) this.draw();
+  }
+
   advance(done: number, total: number): void {
     if (!this.region) return;
     this.done = done;
@@ -153,6 +164,7 @@ export class Spinner implements StageProgress {
     this.stopTicking?.();
     this.stopTicking = null;
     this.label = "";
+    this.footer = null;
     this.region?.close();
   }
 
@@ -182,7 +194,14 @@ export class Spinner implements StageProgress {
 
   private draw(): void {
     if (!this.region || !this.label || !this.atLineStart) return;
-    this.region.draw(() => [{ mark: "none", spans: [{ text: this.line() }] }]);
+    this.region.draw(() =>
+      [this.line(), ...(this.footer?.(this.term.caps.columns) ?? [])].map(
+        (text) => ({
+          mark: "none" as const,
+          spans: [{ text }],
+        }),
+      ),
+    );
   }
 
   /** One line, never wider than the terminal (a wrapped line would break the redraw). */

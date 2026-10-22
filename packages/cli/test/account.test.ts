@@ -103,7 +103,7 @@ const signedIn = (
   extra: { label?: string; hint?: string } = {},
 ) => memoryStore({ [ORIGIN]: { token: PERSONAL, expiresAt, ...extra } });
 
-const LABELLED = { label: "pkey on key.example", hint: "h7Q2" };
+const LABELLED = { label: "pkey on ada-macbook", hint: "h7Q2" };
 
 /** One `--json` line: parses, ends in a newline, and the stream holds nothing else. */
 function oneLine(out: string): Record<string, unknown> {
@@ -144,7 +144,8 @@ describe("whoami", () => {
         "Name    Ada Lovelace",
         "Email   ada@example.com",
         "Roles   DJDL admin, Platform admin, Superadmin",
-        "Token   “pkey on key.example” (…h7Q2), ends 2096-10-02",
+        "Token   “pkey on ada-macbook” (pkeyp_…h7Q2)",
+        "Ends    2096-10-02",
         "",
       ]
         .join("\n")
@@ -201,7 +202,7 @@ describe("whoami", () => {
         type: "personal",
         scope: "admin",
         source: "credential-store",
-        label: "pkey on key.example",
+        label: "pkey on ada-macbook",
         hint: "h7Q2",
       },
     });
@@ -236,15 +237,15 @@ describe("whoami", () => {
       const rows = lines.filter((l) => !/^[A-Z][a-z]+ {1,7}\S/.test(l));
       expect(rows.length, `${columns} wraps`).toBeGreaterThan(0);
       for (const l of rows) expect(l.startsWith(" ".repeat(8)), l).toBe(true);
-      expect(r.out).toContain("ends 2096-10-02");
+      expect(r.out).toContain("Ends");
+      expect(r.out).toContain("2096-10-02");
       expect(r.out.replace(/\s+/g, " ")).toContain("DJDL admin");
     }
   });
 
   it("warns about the root lapse only when every Superadmin grant comes from the identity provider", async () => {
-    const lapse =
-      "Superadmin from your identity provider lasts 8 hours after a console sign-in.";
-    const ask = "Ask for a stored Superadmin role to keep it in pkey.";
+    const lapse = "Superadmin ends 8 hours after your last console sign-in.";
+    const ask = "Ask for a stored Superadmin role to keep it.";
     const say = async (roles: ReturnType<typeof role>[]) => {
       const { f } = fakeFetch(() =>
         json(200, { ...ME, permissions: { roles } }),
@@ -263,12 +264,12 @@ describe("whoami", () => {
         role("superadmin", "platform", "root"),
         role("superadmin", "platform", "grant"),
       ]),
-    ).not.toContain("lasts 8 hours");
+    ).not.toContain("ends 8 hours after");
     expect(await say([role("superadmin", "platform", "grant")])).not.toContain(
-      "lasts 8 hours",
+      "ends 8 hours after",
     );
     expect(await say([role("platform_admin", "platform")])).not.toContain(
-      "lasts 8 hours",
+      "ends 8 hours after",
     );
   });
 
@@ -394,7 +395,7 @@ describe("whoami", () => {
     });
     expect(r.code).toBe(4);
     expect(r.err.replace(/\s+/g, " ")).toContain(
-      "PKEY_ADMIN_TOKEN was refused. It may have ended, been revoked, or isn't an admin token.",
+      "PKEY_ADMIN_TOKEN was refused. It may have ended, been revoked, or not be an admin token.",
     );
   });
 
@@ -610,15 +611,15 @@ describe("logout", () => {
     expect(r.code).toBe(1);
     expect(r.err).toBe(
       [
-        "!  Signed out on this computer, but couldn't reach key.example, so the token",
-        "   still works until 2096-10-02.",
-        '   Revoke "pkey on key.example" (...h7Q2) in Personal tokens:',
+        "!  Signed out on this computer, but couldn't reach key.example, so it still",
+        "   works until 2096-10-02.",
+        '   Revoke "pkey on ada-macbook" (pkeyp_...h7Q2) in Personal tokens:',
         `   ${ORIGIN}/manage/#/personal-tokens`,
         "",
       ].join("\n"),
     );
     expect(r.out).toBe("");
-    expect(r.err + r.out).not.toContain("pkeyp_");
+    expect(r.err + r.out).not.toContain(PERSONAL);
   });
 
   it("the end date is the local one, not UTC", async () => {
@@ -627,9 +628,7 @@ describe("logout", () => {
       store: async () => signedIn(3_999_982_000, LABELLED),
       fetchImpl: offline(),
     });
-    expect(r.err.replace(/\s+/g, " ")).toContain(
-      "still works until 2096-10-01.",
-    );
+    expect(r.err.replace(/\s+/g, " ")).toContain("works until 2096-10-01.");
   });
 
   it("offline --json: one line with tokenEndsAt and revokeUrl, nothing on stderr", async () => {
@@ -664,7 +663,7 @@ describe("logout", () => {
     expect(store.entries.size).toBe(0);
     expect(r.code).toBe(1);
     expect(r.err.replace(/\s+/g, " ")).toContain(
-      "Signed out on this computer, but key.example didn't revoke it (HTTP 500), so the token still works until it ends.",
+      "Signed out on this computer, but key.example didn't revoke it (HTTP 500), so it still works until it ends.",
     );
     expect(r.err).not.toContain("reach");
   });
@@ -681,7 +680,7 @@ describe("logout", () => {
       expect(store.entries.size, `${status}`).toBe(0);
       expect(r.code, `${status}`).toBe(1);
       expect(r.err.replace(/\s+/g, " ")).toContain(
-        `key.example refused to revoke the token (HTTP ${status}), so the token still works`,
+        `key.example refused to revoke it (HTTP ${status}), so it still works`,
       );
     }
   });
@@ -833,7 +832,7 @@ describe("logout", () => {
     expect(store.calls).toBe(1);
     expect(r.code).toBe(1);
     expect(r.err).toBe(
-      "x  The token is revoked, but pkey couldn't remove it from the credential store.\n   Run pkey logout again.\n",
+      "x  The token is revoked, but pkey couldn't remove it from the credential store.\n   Allow pkey access to the credential store, then run pkey logout again.\n",
     );
     expect(r.err).not.toContain("No credential store");
     const j = await run(["logout", "--json", ...BASE], {
@@ -859,12 +858,303 @@ describe("logout", () => {
   });
 });
 
-describe("login stub and registry", () => {
-  it("login is registered and refuses until ST-34.8", async () => {
-    const r = await run(["login"]);
-    expect(r.code).toBe(4);
+const COLOUR = {
+  CI: "",
+  NO_COLOR: "",
+  TERM: "xterm-256color",
+  FORCE_COLOR: "1",
+};
+
+describe("colour terminals: every glyph role exists", () => {
+  it("whoami ✗ in colour does not throw (R1)", async () => {
+    const { f } = fakeFetch(() => json(500));
+    const r = await run(["whoami", ...BASE], {
+      env: COLOUR,
+      store: async () => signedIn(),
+      fetchImpl: f,
+      columns: 80,
+    });
+    expect(r.code).toBe(1);
+    expect(r.err).toContain("\x1b[");
+    expect(r.err).toContain("key.example answered 500.");
+    expect(r.err).not.toContain("TypeError");
   });
 
+  it("logout ✗ in colour does not throw (R1)", async () => {
+    const mem = signedIn();
+    const refusing: CredentialStore = {
+      get: mem.get,
+      set: mem.set,
+      delete: () => {
+        throw new NoStoreError();
+      },
+    };
+    const { f } = fakeFetch(() => json(200));
+    const r = await run(["logout", ...BASE], {
+      env: COLOUR,
+      store: async () => refusing,
+      fetchImpl: f,
+      columns: 80,
+    });
+    expect(r.code).toBe(1);
+    expect(r.err).toContain("\x1b[");
+    expect(r.err).toContain("couldn't remove it from the credential store");
+  });
+
+  it("whoami ▲ and the success row in colour render", async () => {
+    const { f } = fakeFetch(() => json(200, ME));
+    const ok = await run(["whoami", ...BASE], {
+      env: COLOUR,
+      store: async () => signedIn(FAR, LABELLED),
+      fetchImpl: f,
+      columns: 80,
+    });
+    expect(ok.code).toBe(0);
+    expect(ok.out).toContain("\x1b[");
+    const refused = await run(["whoami", ...BASE], {
+      env: COLOUR,
+      store: async () => memoryStore(),
+      columns: 80,
+    });
+    expect(refused.code).toBe(4);
+    expect(refused.err).toContain("\x1b[");
+  });
+});
+
+describe("whoami rows (R2, R3, R4)", () => {
+  const HOST = "licensing-staging.moonlit-harbor-games.example.com";
+  const longMe = (over: Record<string, unknown>) => ({ ...ME, ...over });
+  const at = async (columns: number, me: unknown, base = ORIGIN) => {
+    const { f } = fakeFetch(() => json(200, me));
+    const store = memoryStore({
+      [base]: { token: PERSONAL, expiresAt: FAR, ...LABELLED },
+    });
+    return run(["whoami", "--base-url", base], {
+      store: async () => store,
+      fetchImpl: f,
+      columns,
+    });
+  };
+
+  it("R2: a long host and email wrap at their own break points and are never cut", async () => {
+    const email = "priya.ramanathan-subramanian@analytical-engine.example";
+    for (const columns of [60, 40, 32]) {
+      const r = await at(columns, longMe({ email }), `https://${HOST}`);
+      for (const l of r.out.trimEnd().split("\n"))
+        expect(l.length, l).toBeLessThanOrEqual(columns);
+      expect(r.out).not.toContain("…");
+      const joined = (label: string) => {
+        const lines = r.out.split("\n");
+        const i = lines.findIndex((l) => l.startsWith(label));
+        const parts = [lines[i]!.slice(label.length).trim()];
+        for (
+          let j = i + 1;
+          j < lines.length && lines[j]!.startsWith("        ");
+          j++
+        )
+          parts.push(lines[j]!.trim());
+        return parts.join("");
+      };
+      if (columns >= 32) {
+        expect(joined("Host"), `${columns}`).toBe(HOST);
+        expect(joined("Email"), `${columns}`).toBe(email);
+      }
+    }
+  });
+
+  it("R3: a spaceless name wider than the row breaks at a hyphen, then in runs, and never overflows", async () => {
+    const name =
+      "Wolfeschlegelsteinhausenbergerdorff-Wolfeschlegelsteinhausenbergerdorffxxxxxxxxxxxxxxxxxxx";
+    for (const columns of [40, 32, 28, 24]) {
+      const r = await at(columns, longMe({ name }));
+      for (const l of r.out.trimEnd().split("\n"))
+        expect(l.length, `${columns}: ${l}`).toBeLessThanOrEqual(columns);
+      expect(r.out.replace(/\s+/g, "")).toContain(name.replace(/\s+/g, ""));
+    }
+  });
+
+  it("R4: below 32 columns each label is its own line and the value starts at column 0", async () => {
+    const r = await at(28, ME);
+    const lines = r.out.trimEnd().split("\n");
+    expect(lines.slice(0, 4)).toEqual([
+      "Host",
+      "key.example",
+      "Name",
+      "Ada Lovelace",
+    ]);
+    for (const l of lines) {
+      expect(l.length).toBeLessThanOrEqual(28);
+      expect(l.startsWith(" "), l).toBe(false);
+      expect(/^[,;·-]/.test(l), l).toBe(false);
+    }
+    const t32 = await at(32, ME);
+    expect(t32.out.split("\n")[0]).toBe("Host    key.example");
+  });
+
+  it("the end date is its own row; the token is the label and the console's hint form", async () => {
+    const r = await at(80, ME);
+    expect(r.out).toContain('Token   "pkey on ada-macbook" (pkeyp_...h7Q2)\n');
+    expect(r.out).toContain("Ends    2096-10-02\n");
+    expect(r.out).not.toMatch(/, ends/);
+  });
+
+  it("an entry with no stored label shows the hint alone, never an invented label", async () => {
+    const { f } = fakeFetch(() => json(200, ME));
+    const r = await run(["whoami", ...BASE], {
+      store: async () => signedIn(),
+      fetchImpl: f,
+    });
+    expect(r.out).toContain("Token   pkeyp_...PPPP\n");
+    expect(r.out).not.toContain("pkey on");
+    const j = await run(["whoami", "--json", ...BASE], {
+      store: async () => signedIn(),
+      fetchImpl: f,
+    });
+    const token = (oneLine(j.out) as { token: Record<string, unknown> }).token;
+    expect(token).not.toHaveProperty("label");
+    expect(token["hint"]).toBe("PPPP");
+  });
+
+  it("the root-lapse note has a blank row before it", async () => {
+    const { f } = fakeFetch(() =>
+      json(200, {
+        ...ME,
+        permissions: { roles: [role("superadmin", "platform", "root")] },
+      }),
+    );
+    const r = await run(["whoami", ...BASE], {
+      store: async () => signedIn(),
+      fetchImpl: f,
+      columns: 100,
+    });
+    expect(r.out).toMatch(/Ends {4}2096-10-02\n\n!  Superadmin ends 8 hours/);
+  });
+});
+
+describe("account commands: refusals and bounds", () => {
+  it("a 403 is sign-in-refused in --json, distinct from sign-in-ended", async () => {
+    const { f } = fakeFetch(() => json(403));
+    const r = await run(["whoami", "--json", ...BASE], {
+      store: async () => signedIn(),
+      fetchImpl: f,
+    });
+    expect(oneLine(r.out)).toMatchObject({ exit: 4, error: "sign-in-refused" });
+    const ended = await run(["whoami", "--json", ...BASE], {
+      store: async () => signedIn(),
+      fetchImpl: fakeFetch(() => json(401)).f,
+    });
+    expect(oneLine(ended.out)).toMatchObject({ error: "sign-in-ended" });
+  });
+
+  it("a keychain refusal names the command to run again", async () => {
+    const r = await run(["whoami", ...BASE], {
+      store: async () => {
+        throw new KeychainRefusedError();
+      },
+    });
+    expect(r.err).toContain("then run pkey whoami again.");
+    const l = await run(["logout", ...BASE], {
+      store: async () => {
+        throw new KeychainRefusedError();
+      },
+    });
+    expect(l.err).toContain("then run pkey logout again.");
+  });
+
+  it("a non-https --base-url is a short ▲ usage line (exit 2) that never names PKEY_ADMIN_TOKEN", async () => {
+    for (const command of ["whoami", "logout"]) {
+      const r = await run([command, "--base-url", "http://key.example"], {
+        store: async () => signedIn(),
+        columns: 40,
+      });
+      expect(r.code, command).toBe(2);
+      expect(r.err, command).toContain(
+        `!  pkey ${command} needs an https address.`,
+      );
+      expect(r.err.replace(/\s+/g, " ")).toContain(
+        "Use https://key.plrs.im; http works only on localhost.",
+      );
+      expect(r.err).not.toContain("PKEY_ADMIN_TOKEN");
+      for (const l of r.err.trimEnd().split("\n"))
+        expect(l.length, l).toBeLessThanOrEqual(40);
+      const j = await run(
+        [command, "--json", "--base-url", "http://key.example"],
+        {
+          store: async () => signedIn(),
+        },
+      );
+      expect(j.code).toBe(2);
+      expect(j.err).toBe("");
+      expect(oneLine(j.out)).toMatchObject({
+        ok: false,
+        exit: 2,
+        error: "usage",
+      });
+      expect(j.out).not.toContain("PKEY_ADMIN_TOKEN");
+    }
+  });
+
+  it("unknown flags and extra words are ignored, as every other command does", async () => {
+    const { f } = fakeFetch(() => json(200, ME));
+    const r = await run(["whoami", "--bogus", "extra", ...BASE], {
+      store: async () => signedIn(FAR, LABELLED),
+      fetchImpl: f,
+    });
+    expect(r.code).toBe(0);
+    const v = await run(["validate", "--bogus", "extra"]);
+    expect(v.err).not.toContain("Unknown option");
+  });
+
+  it("N1: a body past 64 KiB is read as nothing, not buffered", async () => {
+    const big = "x".repeat(70_000);
+    const { f } = fakeFetch(() => json(200, { ...ME, pad: big }));
+    const r = await run(["whoami", ...BASE], {
+      store: async () => signedIn(),
+      fetchImpl: f,
+    });
+    expect(r.code).toBe(1);
+    expect(r.err).toContain("didn't answer as a Polaris Key console");
+  });
+
+  it("N3: a request that times out is the same as one that cannot connect", async () => {
+    const timeout = (async () => {
+      throw Object.assign(new Error("The operation timed out"), {
+        name: "TimeoutError",
+      });
+    }) as typeof fetch;
+    const r = await run(["whoami", "--json", ...BASE], {
+      store: async () => signedIn(),
+      fetchImpl: timeout,
+    });
+    expect(oneLine(r.out)).toMatchObject({
+      exit: 1,
+      error: "unreachable",
+      cause: "TIMEOUT",
+    });
+  });
+
+  it("every call carries a timeout signal", async () => {
+    let signal: AbortSignal | null | undefined;
+    const f = (async (_u: string, init: RequestInit) => {
+      signal = init.signal;
+      return json(200, ME);
+    }) as typeof fetch;
+    await run(["whoami", ...BASE], {
+      store: async () => signedIn(),
+      fetchImpl: f,
+    });
+    expect(signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("a token typed into --base-url is masked in the error", async () => {
+    const r = await run(["whoami", "--base-url", `not a url ${PERSONAL}`], {
+      store: async () => signedIn(),
+    });
+    expect(r.err + r.out).not.toContain(PERSONAL);
+  });
+});
+
+describe("account registry", () => {
   it("the account commands are in the registry, which is sound", () => {
     const names = COMMANDS.filter((c) => c.group === "account").map(
       (c) => c.name,

@@ -513,7 +513,7 @@ describe("pkey whoami and pkey logout at narrow widths (goldens)", () => {
         {
           token: PERSONAL,
           expiresAt: 1_793_000_000,
-          label: "pkey on key.plrs.im",
+          label: "pkey on priya-mbp",
           hint: "h7Q2",
         },
       ],
@@ -556,12 +556,13 @@ describe("pkey whoami and pkey logout at narrow widths (goldens)", () => {
         "Roles   Platform admin, DJDL admin,",
         "        All products admin, Superadmin,",
         "        Console access",
-        'Token   "pkey on key.plrs.im" (...h7Q2),',
-        "        ends 2026-10-26",
-        "!  Superadmin from your identity",
-        "   provider lasts 8 hours after a",
-        "   console sign-in. Ask for a stored",
-        "   Superadmin role to keep it in pkey.",
+        'Token   "pkey on priya-mbp"',
+        "        (pkeyp_...h7Q2)",
+        "Ends    2026-10-26",
+        "",
+        "!  Superadmin ends 8 hours after your",
+        "   last console sign-in. Ask for a",
+        "   stored Superadmin role to keep it.",
         "",
       ].join("\n"),
     );
@@ -580,14 +581,78 @@ describe("pkey whoami and pkey logout at narrow widths (goldens)", () => {
         "        All products admin,",
         "        Superadmin,",
         "        Console access",
-        'Token   "pkey on key.plrs.im"',
-        "        (...h7Q2),",
-        "        ends 2026-10-26",
-        "!  Superadmin from your identity",
-        "   provider lasts 8 hours after",
-        "   a console sign-in. Ask for a",
-        "   stored Superadmin role to",
-        "   keep it in pkey.",
+        'Token   "pkey on priya-mbp"',
+        "        (pkeyp_...h7Q2)",
+        "Ends    2026-10-26",
+        "",
+        "!  Superadmin ends 8 hours after",
+        "   your last console sign-in.",
+        "   Ask for a stored Superadmin",
+        "   role to keep it.",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("whoami at 28 columns: each label on its own line, values at column 0", async () => {
+    const r = await narrow(["whoami"], 28, answers);
+    expect(r.code).toBe(0);
+    expect(r.out).toBe(
+      [
+        "Host",
+        "key.plrs.im",
+        "Name",
+        "Priya Raman",
+        "Email",
+        "priya@example.com",
+        "Roles",
+        "Platform admin, DJDL admin,",
+        "All products admin,",
+        "Superadmin, Console access",
+        "Token",
+        '"pkey on priya-mbp"',
+        "(pkeyp_...h7Q2)",
+        "Ends",
+        "2026-10-26",
+        "",
+        "!  Superadmin ends 8 hours",
+        "   after your last console",
+        "   sign-in. Ask for a stored",
+        "   Superadmin role to",
+        "   keep it.",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("whoami with a long email wraps it at its own break points (40 columns)", async () => {
+    const long = (async () =>
+      new Response(
+        JSON.stringify({
+          ...ME,
+          email: "priya.ramanathan-subramanian@analytical-engine.example",
+        }),
+        { status: 200 },
+      )) as typeof fetch;
+    const r = await narrow(["whoami"], 40, long);
+    expect(r.code).toBe(0);
+    expect(r.out).toBe(
+      [
+        "Host    key.plrs.im",
+        "Name    Priya Raman",
+        "Email   priya.ramanathan-",
+        "        subramanian@analytical-engine",
+        "        .example",
+        "Roles   Platform admin, DJDL admin,",
+        "        All products admin, Superadmin,",
+        "        Console access",
+        'Token   "pkey on priya-mbp"',
+        "        (pkeyp_...h7Q2)",
+        "Ends    2026-10-26",
+        "",
+        "!  Superadmin ends 8 hours after your",
+        "   last console sign-in. Ask for a",
+        "   stored Superadmin role to keep it.",
         "",
       ].join("\n"),
     );
@@ -602,10 +667,10 @@ describe("pkey whoami and pkey logout at narrow widths (goldens)", () => {
     expect(r.err).toBe(
       [
         "!  Signed out on this computer, but",
-        "   couldn't reach key.plrs.im, so the",
-        "   token still works until 2026-10-26.",
-        '   Revoke "pkey on key.plrs.im"',
-        "   (...h7Q2) in Personal tokens:",
+        "   couldn't reach key.plrs.im, so it",
+        "   still works until 2026-10-26.",
+        '   Revoke "pkey on priya-mbp"',
+        "   (pkeyp_...h7Q2) in Personal tokens:",
         "   https://key.plrs.im/manage/#/",
         "   personal-tokens",
         "",
@@ -623,10 +688,11 @@ describe("pkey whoami and pkey logout at narrow widths (goldens)", () => {
       [
         "!  Signed out on this computer,",
         "   but couldn't reach",
-        "   key.plrs.im, so the token",
-        "   still works until 2026-10-26.",
-        '   Revoke "pkey on key.plrs.im"',
-        "   (...h7Q2) in Personal tokens:",
+        "   key.plrs.im, so it still",
+        "   works until 2026-10-26.",
+        '   Revoke "pkey on priya-mbp"',
+        "   (pkeyp_...h7Q2) in",
+        "   Personal tokens:",
         "   https://key.plrs.im/manage/#/",
         "   personal-tokens",
         "",

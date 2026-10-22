@@ -76,6 +76,9 @@ export class Refusal extends Error {
   }
 }
 
+/** The tail of a fix that names no command; the account commands put theirs in its place. */
+export const COMMAND_AGAIN = "run the command again";
+
 /** No usable store here (no keyring module, no keychain service). Never carries a token. */
 export class NoStoreError extends Refusal {
   constructor() {
@@ -93,7 +96,7 @@ export class KeychainRefusedError extends Refusal {
   constructor() {
     super(
       "The credential store refused access.",
-      "Allow pkey when it asks, or unlock the store, then run the command again.",
+      `Allow pkey when it asks, or unlock the store, then ${COMMAND_AGAIN}.`,
       "keychain-refused",
     );
     this.name = "KeychainRefusedError";

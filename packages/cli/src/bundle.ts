@@ -339,6 +339,14 @@ export function adminToken(
 }
 
 /**
+ * `text` with any pkey token in it (`pkeya_`, `pkeyp_`, `pkeyci_`, `pkeyr_`, a device token) shown
+ * as `[token]`: a mistyped `--base-url` can carry one, and an error must not echo it.
+ */
+export function maskTokens(text: string): string {
+  return text.replace(/pkey[a-z]{1,2}t?_[A-Za-z0-9_-]{20,}/g, "[token]");
+}
+
+/**
  * The base URL, validated and trailing-slash-stripped. `https:` always; `http:` only on a
  * loopback host, so `wrangler dev` and the integration suites keep working — the same rule
  * `normalizeBaseUrl` enforces in `packages/sdk-node/src/core/context.ts`, applied here because
@@ -351,7 +359,7 @@ export function normalizeBaseUrl(raw: string, credentialEnv: string): string {
     url = new URL(raw);
   } catch {
     throw new UsageError(
-      `--base-url is not a valid URL: ${raw}. Give a full origin, e.g. ${DEFAULT_BASE_URL}.`,
+      `--base-url is not a valid URL: ${maskTokens(raw)}. Give a full origin, e.g. ${DEFAULT_BASE_URL}.`,
     );
   }
   const loopback =

@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -67,13 +67,19 @@ const ME = () =>
   json(200, {
     name: "Ada Lovelace",
     email: "ada@example.com",
-    permissions: { roles: [{ role: "admin", scope: "product:djdl" }] },
+    products: [{ slug: "djdl", name: "DJDL" }],
+    permissions: { roles: [{ role: "product_admin", scope: "product:djdl" }] },
   });
 
 /** A fake console: `polls` answers GET /api/device-login/<id> in order (the last repeats). */
 function server(
   polls: (() => Response)[],
-  opts: { start?: () => Response } = {},
+  opts: {
+    start?: () => Response;
+    /** The answer to DELETE /me/personal-tokens/current, by the bearer it came with. */
+    revoke?: (auth: string | null) => Response;
+    onCall?: (c: Call) => void;
+  } = {},
 ) {
   const calls: Call[] = [];
   let n = 0;
@@ -88,6 +94,7 @@ function server(
       body: init.body ? JSON.parse(String(init.body)) : undefined,
     };
     calls.push(c);
+    opts.onCall?.(c);
     const u = new URL(c.url);
     if (u.pathname === "/api/device-login/start")
       return (opts.start ?? START)();
@@ -95,7 +102,7 @@ function server(
       return polls[Math.min(n++, polls.length - 1)]!();
     if (u.pathname === "/manage/api/me" && c.method === "GET") return ME();
     if (u.pathname === "/manage/api/me/personal-tokens/current")
-      return json(200, {});
+      return (opts.revoke ?? (() => json(200, {})))(c.auth);
     return json(404);
   }) as typeof fetch;
   return { f, calls };
@@ -126,39 +133,46 @@ interface RunOpts {
   f: typeof fetch;
   seams?: LoginSeams;
   columns?: number;
+  /** Let the spinner animate on a terminal (the default turns reduced motion on). */
+  animate?: boolean;
+  /** Leave `--base-url` out (the default console, https://key.plrs.im). */
+  defaultBase?: boolean;
 }
 
 async function run(argv: string[], o: RunOpts) {
   let out = "";
   let err = "";
   const opened: string[] = [];
-  const code = await runPkey(["login", "--base-url", ORIGIN, ...argv], {
-    cwd: HERE,
-    env: {
-      NO_COLOR: "1",
-      ...(o.columns ? { PKEY_REDUCED_MOTION: "1" } : {}),
-      ...o.env,
+  const code = await runPkey(
+    ["login", ...(o.defaultBase ? [] : ["--base-url", ORIGIN]), ...argv],
+    {
+      cwd: HERE,
+      env: {
+        NO_COLOR: "1",
+        ...(o.columns && !o.animate ? { PKEY_REDUCED_MOTION: "1" } : {}),
+        ...o.env,
+      },
+      stdout: {
+        write: (c: string) => ((out += c), true),
+        columns: o.columns,
+        isTTY: o.columns !== undefined,
+      },
+      stderr: {
+        write: (c: string) => ((err += c), true),
+        columns: o.columns,
+        isTTY: o.columns !== undefined,
+      },
+      fetchImpl: o.f,
+      credentialStore: o.store ?? (async () => memoryStore()),
+      login: {
+        openUrl: async (u) => void opened.push(u),
+        platform: "darwin",
+        hostname: () => "laptop",
+        sleep: async () => undefined,
+        ...o.seams,
+      },
     },
-    stdout: {
-      write: (c: string) => ((out += c), true),
-      columns: o.columns,
-      isTTY: o.columns !== undefined,
-    },
-    stderr: {
-      write: (c: string) => ((err += c), true),
-      columns: o.columns,
-      isTTY: o.columns !== undefined,
-    },
-    fetchImpl: o.f,
-    credentialStore: o.store ?? (async () => memoryStore()),
-    login: {
-      openUrl: async (u) => void opened.push(u),
-      platform: "darwin",
-      hostname: () => "laptop",
-      sleep: async () => undefined,
-      ...o.seams,
-    },
-  });
+  );
   return { code, out, err, opened };
 }
 
@@ -176,7 +190,12 @@ describe("pkey login: the flow", () => {
     const { f, calls } = server([PENDING, APPROVED]);
     const r = await run([], { f, store: async () => store });
     expect(r.code).toBe(0);
-    expect(store.entries.get(ORIGIN)).toEqual({ token: TOKEN, expiresAt: FAR });
+    expect(store.entries.get(ORIGIN)).toEqual({
+      token: TOKEN,
+      expiresAt: FAR,
+      label: "pkey on laptop",
+      hint: "h7Q2",
+    });
     expect(calls[0]).toMatchObject({
       url: `${ORIGIN}/api/device-login/start`,
       method: "POST",
@@ -193,13 +212,13 @@ describe("pkey login: the flow", () => {
       "GET /manage/api/me",
     ]);
     expect(r.out).toContain("Polaris Key console · key.example");
-    expect(r.out).toContain(
-      "Signed in to key.example as Ada Lovelace (ada@example.com)",
-    );
-    expect(r.out).toContain("Admin (djdl)");
-    expect(r.out).toMatch(/pkeyp_…h7Q2 · admin · ends \d{4}-\d{2}-\d{2}/);
-    expect(r.out).toContain("Saved in  macOS Keychain\n");
-    expect(r.out).toContain("End it with pkey logout.");
+    expect(r.out).toContain("✓  Signed in as Ada Lovelace (ada@example.com)\n");
+    expect(r.out).toContain("  Roles     DJDL admin\n");
+    expect(r.out).toContain("  Token     “pkey on laptop” (pkeyp_…h7Q2)\n");
+    expect(r.out).toMatch(/ {2}Ends {6}\d{4}-\d{2}-\d{2}\n/);
+    expect(r.out).toContain("  Saved in  macOS Keychain\n");
+    expect(r.out).toContain("\n  End it with pkey logout.");
+    expect(r.out).not.toContain("Signed in to");
     noToken(r.out, r.err);
   });
 
@@ -391,7 +410,7 @@ describe("pkey login: the flow", () => {
     };
     const { f, calls } = server([APPROVED]);
     const r = await run([], { f, store: async () => failing });
-    expect(r.code).toBe(4);
+    expect(r.code).toBe(1);
     const del = calls.find((c) => c.method === "DELETE")!;
     expect(del.url).toBe(`${ORIGIN}/manage/api/me/personal-tokens/current`);
     expect(del.auth).toBe(`Bearer ${TOKEN}`);
@@ -407,8 +426,13 @@ describe("pkey login: the flow", () => {
     };
     const { f, calls } = server([APPROVED]);
     const r = await run([], { f, store: async () => lossy });
-    expect(r.code).toBe(4);
-    expect(r.err).toContain("wouldn't keep the token");
+    expect(r.code).toBe(1);
+    expect(r.err).toContain(
+      "✗  macOS Keychain wouldn't save the sign-in, so pkey revoked it.",
+    );
+    expect(r.err.replace(/\s+/g, " ")).toContain(
+      "Unlock the keychain and run pkey login --base-url https://key.example again, or make a token at https://key.example/manage/#/personal-tokens and set PKEY_ADMIN_TOKEN.",
+    );
     expect(
       calls.some((c) => c.method === "DELETE" && c.auth === `Bearer ${TOKEN}`),
     ).toBe(true);
@@ -430,19 +454,147 @@ describe("pkey login: the flow", () => {
     expect(store.entries.size).toBe(0);
   });
 
-  it("a second login first ends the token it replaces, at its own origin, before start", async () => {
+  it("F01: the old token is revoked only after the new one is stored and read back", async () => {
     const store = memoryStore({ [ORIGIN]: { token: OLD, expiresAt: FAR } });
-    const { f, calls } = server([APPROVED]);
+    let heldWhenRevoked: string | undefined;
+    const { f, calls } = server([APPROVED], {
+      onCall: (c) => {
+        if (c.method === "DELETE")
+          heldWhenRevoked = store.entries.get(ORIGIN)?.token;
+      },
+    });
     const r = await run([], { f, store: async () => store });
     expect(r.code).toBe(0);
-    expect(calls[0]).toMatchObject({
-      method: "DELETE",
+    // No revoke before start: the first request is the start.
+    expect(calls[0]!.url).toContain("/api/device-login/start");
+    const del = calls.filter((c) => c.method === "DELETE");
+    expect(del).toHaveLength(1);
+    expect(del[0]).toMatchObject({
       url: `${ORIGIN}/manage/api/me/personal-tokens/current`,
       auth: `Bearer ${OLD}`,
     });
-    expect(calls[1]!.url).toContain("/api/device-login/start");
+    // By then the store already held the new token.
+    expect(heldWhenRevoked).toBe(TOKEN);
     expect(store.entries.get(ORIGIN)!.token).toBe(TOKEN);
+    expect(r.err).toBe("");
     expect(r.out + r.err).not.toContain(OLD);
+  });
+
+  it("F01: the start says when you are already signed in; an ended sign-in is not mentioned", async () => {
+    const live = await run([], {
+      f: server([APPROVED]).f,
+      store: async () =>
+        memoryStore({ [ORIGIN]: { token: OLD, expiresAt: FAR } }),
+    });
+    expect(live.out).toContain(
+      "You're already signed in here. The old token ends once the new one is saved.",
+    );
+    const ended = await run([], {
+      f: server([APPROVED]).f,
+      store: async () =>
+        memoryStore({ [ORIGIN]: { token: OLD, expiresAt: 1 } }),
+      seams: { now: () => 5_000_000_000_000 },
+    });
+    expect(ended.out).not.toContain("already signed in");
+  });
+
+  it("F01: Esc, a denial, an expiry and a network failure each leave the old sign-in working", async () => {
+    const base = () => ({
+      store: memoryStore({ [ORIGIN]: { token: OLD, expiresAt: FAR } }),
+    });
+    const check = async (
+      make: (store: CredentialStore) => ReturnType<typeof run>,
+    ) => {
+      const { store } = base();
+      const r = await make(store);
+      expect(r.code).not.toBe(0);
+      expect(store.get(ORIGIN)!.token).toBe(OLD);
+      return r;
+    };
+    const calls: Call[][] = [];
+    const track = (polls: (() => Response)[]) => {
+      const s = server(polls);
+      calls.push(s.calls);
+      return s.f;
+    };
+    const k = keys();
+    await check((store) =>
+      run([], {
+        f: track([PENDING]),
+        store: async () => store,
+        seams: { stdin: k.input, sleep: async () => k.press("\x1b") },
+      }),
+    );
+    await check((store) =>
+      run([], {
+        f: track([() => json(200, { status: "denied" })]),
+        store: async () => store,
+      }),
+    );
+    await check((store) =>
+      run([], { f: track([() => json(410, {})]), store: async () => store }),
+    );
+    await check((store) =>
+      run([], {
+        f: (async (url: string) => {
+          if (String(url).endsWith("/start")) return START();
+          throw new Error("ECONNRESET");
+        }) as typeof fetch,
+        store: async () => store,
+      }),
+    );
+    for (const c of calls)
+      expect(c.filter((x) => x.method === "DELETE")).toEqual([]);
+  });
+
+  it("F01: a store that will not keep the new token puts the old one back and revokes only the new", async () => {
+    const mem = memoryStore({ [ORIGIN]: { token: OLD, expiresAt: FAR } });
+    let writes = 0;
+    const flaky: CredentialStore = {
+      get: mem.get,
+      delete: mem.delete,
+      set: (o, c) => {
+        if (writes++ === 0) throw new NoStoreError();
+        mem.set(o, c);
+      },
+    };
+    const { f, calls } = server([APPROVED]);
+    const r = await run([], { f, store: async () => flaky });
+    expect(r.code).toBe(1);
+    expect(mem.entries.get(ORIGIN)!.token).toBe(OLD);
+    const del = calls.filter((c) => c.method === "DELETE");
+    expect(del.map((c) => c.auth)).toEqual([`Bearer ${TOKEN}`]);
+  });
+
+  it("F01: if the old token cannot be revoked, one line says so; the new sign-in stands", async () => {
+    const store = memoryStore({ [ORIGIN]: { token: OLD, expiresAt: FAR } });
+    const { f } = server([APPROVED], {
+      revoke: (auth) =>
+        auth === `Bearer ${OLD}` ? json(500, {}) : json(200, {}),
+    });
+    const r = await run([], { f, store: async () => store });
+    expect(r.code).toBe(0);
+    expect(store.entries.get(ORIGIN)!.token).toBe(TOKEN);
+    expect(r.err).toMatch(
+      /^\n▲ {2}Couldn't end your previous sign-in, so it still works until \d{4}-\d{2}-\d{2}\. Revoke it at\n {3}https:\/\/key\.example\/manage\/#\/personal-tokens\.\n$|Couldn't end your previous sign-in/,
+    );
+    expect(r.err.trim().split("\n").length).toBeLessThanOrEqual(2);
+    const json1 = await run(["--json"], {
+      f: server([APPROVED], {
+        revoke: (a) => (a === `Bearer ${OLD}` ? json(500, {}) : json(200, {})),
+      }).f,
+      store: async () =>
+        memoryStore({ [ORIGIN]: { token: OLD, expiresAt: FAR } }),
+    });
+    expect(
+      json1.out
+        .trim()
+        .split("\n")
+        .map((l) => JSON.parse(l))[1],
+    ).toMatchObject({
+      ok: true,
+      replaced: "not-revoked",
+    });
   });
 
   it("an old token for another origin is not touched", async () => {
@@ -462,8 +614,10 @@ describe("pkey login: the other endings", () => {
     const { f } = server([PENDING, () => json(200, { status: "denied" })]);
     const r = await run([], { f, store: async () => store });
     expect(r.code).toBe(4);
-    expect(r.err).toContain(`▲  Code ${CODE} was denied in the browser.`);
-    expect(r.err).toContain("Run pkey login to try again.");
+    expect(r.err).toContain(`▲  Code ${CODE} was canceled in the browser.`);
+    expect(r.err).toContain(
+      "Run pkey login --base-url https://key.example to try again.",
+    );
     expect(store.entries.size).toBe(0);
   });
 
@@ -472,7 +626,9 @@ describe("pkey login: the other endings", () => {
     const r = await run([], { f });
     expect(r.code).toBe(1);
     expect(r.err).toContain(`Code ${CODE} expired before it was approved.`);
-    expect(r.err).toContain("Run pkey login to get a new one.");
+    expect(r.err).toContain(
+      "Run pkey login --base-url https://key.example to get a new one.",
+    );
   });
 
   it("expired by the clock when the server stays pending", async () => {
@@ -500,8 +656,9 @@ describe("pkey login: the other endings", () => {
     const r = await run([], { f, store: async () => store });
     expect(r.code).toBe(4);
     expect(r.err).toBe(
-      "▲  You already have 25 personal tokens, the most allowed.\n" +
-        "   Revoke one in Personal tokens, then run pkey login again.\n" +
+      "\n▲  You already have 25 personal tokens, the most allowed.\n" +
+        "   Revoke one in Personal tokens, then run pkey login --base-url\n" +
+        "   https://key.example again.\n" +
         `   ${ORIGIN}/manage/#/personal-tokens\n`,
     );
     expect(store.entries.size).toBe(0);
@@ -535,7 +692,13 @@ describe("pkey login: the other endings", () => {
     expect(r.err).toContain(
       `Lost contact with key.example while waiting for code ${CODE}.`,
     );
-    expect(r.err).toContain("Run pkey login to try again.");
+    expect(r.err).toContain(
+      "Run pkey login --base-url https://key.example to try again.",
+    );
+    // N5: the code may have been approved while the network was down.
+    expect(r.err).toContain(
+      "If you approved it, the token may exist; check Personal tokens.",
+    );
   });
 
   it("a rate-limited start is a refusal", async () => {
@@ -551,7 +714,7 @@ describe("pkey login: copy", () => {
     const r = await run([], { f: server([() => json(410, {})]).f });
     expect(r.code).toBe(1);
     expect(r.err).toMatch(
-      /^✗ {2}Code WDJB-MJHT expired before it was approved\./,
+      /^\n✗ {2}Code WDJB-MJHT expired before it was approved\./,
     );
   });
 
@@ -597,10 +760,11 @@ describe("pkey login: copy", () => {
 });
 
 describe("pkey login: keys, browser, --json", () => {
-  it("Esc and Ctrl+C each cancel with one line and exit 130; raw mode is restored", async () => {
+  it("F08: Esc and Ctrl+D cancel (exit 1, cancelled); Ctrl+C is interrupted (130); raw mode is restored", async () => {
     for (const [key, exit] of [
-      ["\x1b", 130],
-      ["\x03", 130],
+      ["\x1b", 1, "cancelled"],
+      ["\x04", 1, "cancelled"],
+      ["\x03", 130, "interrupted"],
     ] as const) {
       const k = keys();
       const store = memoryStore();
@@ -611,9 +775,8 @@ describe("pkey login: keys, browser, --json", () => {
         seams: { stdin: k.input, sleep: async () => k.press(key) },
       });
       expect(r.code).toBe(exit);
-      expect(r.err).toBe(
-        "!  Cancelled. Nothing was saved.\n".replace("!", "▲"),
-      );
+      expect(r.err).toBe("\n▲  Canceled. Nothing was saved.\n");
+
       expect(store.entries.size).toBe(0);
       expect(calls.filter((c) => c.url.includes(POLL)).length).toBe(0);
       expect(k.raw).toEqual([true, false]);
@@ -632,7 +795,7 @@ describe("pkey login: keys, browser, --json", () => {
       },
     });
     expect(r.code).toBe(130);
-    expect(r.err).toContain("Cancelled");
+    expect(r.err).toContain("Canceled. Nothing was saved.");
   });
 
   it("Enter opens the page again, c copies the code", async () => {
@@ -742,17 +905,57 @@ describe("pkey login: keys, browser, --json", () => {
   });
 });
 
+const bare = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
+
+describe("pkey login: goldens", () => {
+  const dump = process.env["PKEY_GOLDENS"];
+  const cases: [string, number, () => (() => Response)[], string[]][] = [
+    ["approved", 80, () => [PENDING, APPROVED], []],
+    ["approved", 40, () => [PENDING, APPROVED], []],
+    ["approved", 32, () => [PENDING, APPROVED], []],
+    ["approved", 28, () => [PENDING, APPROVED], []],
+    ["denied", 40, () => [() => json(200, { status: "denied" })], []],
+    ["denied", 32, () => [() => json(200, { status: "denied" })], []],
+    ["expired", 32, () => [() => json(410, {})], []],
+  ];
+  // PKEY_GOLDENS=<dir> rewrites the files this reads (review them before committing).
+  const dir = path.join(HERE, "fixtures/login-goldens");
+  for (const [name, columns, polls, argv] of cases) {
+    it(`${name} at ${columns} columns`, async () => {
+      const k = keys();
+      const r = await run(argv, {
+        f: server(polls()).f,
+        columns,
+        seams: { stdin: k.input },
+      });
+      const text = `${bare(r.out)}--- stderr ---\n${bare(r.err)}`;
+      if (dump) {
+        mkdirSync(dump, { recursive: true });
+        writeFileSync(path.join(dump, `${name}-${columns}.txt`), text);
+      }
+      for (const l of text.split("\n"))
+        expect([...l].length, l).toBeLessThanOrEqual(columns);
+      expect(text).toBe(
+        readFileSync(path.join(dir, `${name}-${columns}.txt`), "utf8"),
+      );
+    });
+  }
+});
+
 describe("pkey login: how it looks", () => {
   const widest = (s: string) =>
     s
       .split("\n")
-      .filter((l) => !l.startsWith("http"))
-      .reduce((m, l) => Math.max(m, [...l].length), 0);
+      .reduce(
+        (m, l) => Math.max(m, [...l.replace(/\x1b\[[0-9;]*m/g, "")].length),
+        0,
+      );
 
   it("fits 32 columns (the link line aside)", async () => {
     const { f } = server([PENDING, APPROVED]);
     const r = await run([], { f, columns: 32 });
     expect(widest(r.out)).toBeLessThanOrEqual(32);
+    expect(widest(r.err)).toBeLessThanOrEqual(32);
     const d = await run([], {
       f: server([() => json(200, { status: "denied" })]).f,
       columns: 32,
@@ -822,5 +1025,611 @@ describe("pkey login: how it looks", () => {
     );
     const j = await run(["--json"], { f: server([PENDING, APPROVED]).f });
     writeFileSync(path.join(dir, "json.txt"), j.out);
+  });
+});
+
+const failing = (code?: string) =>
+  (async (url: string) => {
+    if (String(url).endsWith("/start") && code === undefined) return START();
+    throw Object.assign(new TypeError("fetch failed"), {
+      cause: code ? Object.assign(new Error("x"), { code }) : undefined,
+    });
+  }) as typeof fetch;
+
+const lastLine = (out: string): Record<string, unknown> =>
+  JSON.parse(out.trimEnd().split("\n").at(-1)!) as Record<string, unknown>;
+
+describe("pkey login: failures say what to do (F03, F04, F07)", () => {
+  it("F03: no answer from start is ✗ with a fix, keeps the cause, never names an API path", async () => {
+    const r = await run([], { f: failing("ECONNREFUSED"), columns: 80 });
+    expect(r.code).toBe(1);
+    expect(r.err).toBe(
+      "✗  Can't reach key.example.\n   Check your network, or --base-url.\n",
+    );
+    expect(r.out + r.err).not.toContain("/api/");
+    const j = await run(["--json"], { f: failing("ECONNREFUSED") });
+    expect(lastLine(j.out)).toMatchObject({
+      ok: false,
+      exit: 1,
+      error: "network",
+      cause: "ECONNREFUSED",
+      host: "key.example",
+    });
+    expect(j.out).not.toContain("/api/");
+  });
+
+  it("F03: a 500 from start is ✗ with a fix", async () => {
+    const { f } = server([APPROVED], { start: () => json(500, {}) });
+    const r = await run([], { f, columns: 80 });
+    expect(r.code).toBe(1);
+    expect(r.err).toBe(
+      "✗  key.example couldn't start a sign-in (HTTP 500).\n   Try again in a minute.\n",
+    );
+    expect(r.err).not.toContain("/api/");
+  });
+
+  it("F04: every exit under --json ends in one result line on stdout", async () => {
+    const cases: [string, string[], RunOpts, Record<string, unknown>][] = [
+      [
+        "network",
+        [],
+        { f: failing("ENOTFOUND") },
+        { error: "network", exit: 1 },
+      ],
+      [
+        "server",
+        [],
+        { f: server([APPROVED], { start: () => json(500) }).f },
+        { error: "server-error", exit: 1 },
+      ],
+      [
+        "usage",
+        ["--base-url", "http://key.example"],
+        { f: server([APPROVED]).f },
+        { error: "usage", exit: 2 },
+      ],
+      [
+        "internal",
+        [],
+        {
+          f: server([APPROVED]).f,
+          store: async () => {
+            throw new Error("disk on fire");
+          },
+        },
+        { error: "internal", exit: 1 },
+      ],
+    ];
+    for (const [name, argv, o, want] of cases) {
+      const r = await run(["--json", ...argv], o);
+      expect(r.code, name).toBe(want["exit"]);
+      expect(lastLine(r.out), name).toMatchObject({
+        v: 1,
+        command: "login",
+        event: "result",
+        ok: false,
+        ...want,
+      });
+      expect(r.err, name).toBe("");
+    }
+  });
+
+  it("F07: a non-https address is a wrapped ▲ line with the fix, no mid-word break", async () => {
+    for (const columns of [80, 40, 32, 28]) {
+      const { f, calls } = server([APPROVED]);
+      const r = await run(["--base-url", "http://key.example"], { f, columns });
+      expect(r.code).toBe(2);
+      expect(calls).toEqual([]);
+      const text = r.err.replace(/\s+/g, " ").trim();
+      expect(text).toBe(
+        "▲ pkey login needs an https address. Use https://key.plrs.im; http works only on localhost.",
+      );
+      for (const l of r.err.trimEnd().split("\n"))
+        expect([...l].length, l).toBeLessThanOrEqual(columns);
+      expect(r.err).toContain("https://key.plrs.im");
+      expect(r.err).not.toContain("PKEY_ADMIN_TOKEN");
+    }
+  });
+});
+
+describe("pkey login: what the person sees (F02, F05, F06, F14, F16)", () => {
+  it("F02: roles use the console's names, with product names from /me.products", async () => {
+    const me = () =>
+      json(200, {
+        name: "Ada Lovelace",
+        email: "ada@example.com",
+        products: [{ slug: "djdl", name: "DJDL" }],
+        permissions: {
+          roles: [
+            { role: "superadmin", scope: "platform" },
+            { role: "platform_admin", scope: "platform" },
+            { role: "console_access", scope: "platform" },
+            { role: "product_admin", scope: "products:*" },
+            { role: "product_admin", scope: "product:djdl" },
+            { role: "product_admin", scope: "product:ghost" },
+          ],
+        },
+      });
+    const f = (async (url: string, init: RequestInit) => {
+      if (new URL(String(url)).pathname === "/manage/api/me") return me();
+      return server([APPROVED]).f(url, init);
+    }) as typeof fetch;
+    const r = await run([], { f });
+    expect(r.out.replace(/\s+/g, " ")).toContain(
+      "Roles Superadmin, Platform admin, Console access, All products admin, DJDL admin, ghost admin",
+    );
+    expect(r.out).not.toMatch(/product_admin|platform_admin|Admin \(/);
+  });
+
+  it("F05: 'Signed in as …' without the host; the name and email never split", async () => {
+    const r = await run([], { f: server([APPROVED]).f, columns: 28 });
+    expect(bare(r.out)).toContain(
+      "✓  Signed in as Ada Lovelace\n   (ada@example.com)\n",
+    );
+    expect(r.out).not.toContain("Signed in to");
+  });
+
+  it("F05: a name or email wider than the row wraps and loses nothing (no ellipsis)", async () => {
+    const name = "Maximiliana Alexandrovna Rostropovich-Wellington";
+    const email =
+      "maximiliana.rostropovich-wellington@subsidiary.example.co.uk";
+    const f = (async (url: string, init: RequestInit) => {
+      if (new URL(String(url)).pathname === "/manage/api/me")
+        return json(200, { name, email, permissions: { roles: [] } });
+      return server([APPROVED]).f(url, init);
+    }) as typeof fetch;
+    for (const columns of [40, 32, 28]) {
+      const r = await run([], { f, columns });
+      const text = bare(r.out);
+      expect(text).not.toContain("…opovich");
+      for (const l of text.trimEnd().split("\n"))
+        expect([...l].length, l).toBeLessThanOrEqual(columns);
+      const squashed = text.replace(/\s+/g, "");
+      expect(squashed).toContain(name.replace(/\s+/g, ""));
+      expect(squashed).toContain(email);
+    }
+  });
+
+  it("F06: a code denied in the browser is 'canceled in the browser'; the JSON code stays denied", async () => {
+    const j = await run(["--json"], {
+      f: server([() => json(200, { status: "denied" })]).f,
+    });
+    expect(lastLine(j.out)).toMatchObject({
+      error: "denied",
+      exit: 4,
+      message: `Code ${CODE} was canceled in the browser. Run pkey login --base-url ${ORIGIN} to try again.`,
+    });
+    const text = await run([], {
+      f: server([() => json(200, { status: "denied" })]).f,
+    });
+    expect(text.err + text.out).not.toMatch(/denied|Cancelled|cancelled/i);
+  });
+
+  it("F14: the login stores the label and hint, so whoami shows them", async () => {
+    const store = memoryStore();
+    const { f } = server([APPROVED]);
+    await run([], { f, store: async () => store });
+    let out = "";
+    await runPkey(["whoami", "--base-url", ORIGIN], {
+      cwd: HERE,
+      env: { NO_COLOR: "1", TZ: "UTC" },
+      stdout: { write: (c: string) => ((out += c), true) },
+      stderr: { write: () => true },
+      fetchImpl: f,
+      credentialStore: async () => store,
+    });
+    expect(out).toContain("Token   “pkey on laptop” (pkeyp_…h7Q2)");
+  });
+
+  it("F16: the header is bold with a muted host; the name is bold; the hints are key strong, verb muted", async () => {
+    const k = keys();
+    const r = await run([], {
+      f: server([APPROVED]).f,
+      columns: 80,
+      env: { NO_COLOR: "", FORCE_COLOR: "1", TERM: "xterm-256color" },
+      seams: { stdin: k.input },
+    });
+    const BOLD = "\x1b[1m";
+    expect(r.out).toContain(`${BOLD}Polaris Key console\x1b[22m`);
+    expect(r.out).toMatch(/\x1b\[(2|90)m · key\.example\x1b\[(22|39)m/);
+    expect(r.out).toMatch(/\x1b\[(2|90)mDidn't open\? Go to\x1b\[(22|39)m/);
+    expect(r.out).toContain(`${BOLD}Ada Lovelace\x1b[22m`);
+    expect(r.out).toContain(`${BOLD}Enter\x1b[22m`);
+    expect(r.out).toMatch(/\x1b\[1mc\x1b\[22m\x1b\[(2|90)m copy the code/);
+  });
+});
+
+describe("pkey login: the live region and the keys (F09, F10, F13, F15)", () => {
+  it("F15: the spinner and the key hints are one region, hints under it, closed at the end", async () => {
+    const k = keys();
+    const r = await run([], {
+      f: server([PENDING, APPROVED]).f,
+      columns: 80,
+      animate: true,
+      env: { NO_COLOR: "1", TERM: "xterm-256color" },
+      seams: { stdin: k.input },
+    });
+    expect(r.code).toBe(0);
+    expect(r.err).toContain("Waiting for approval");
+    // Both rows are drawn in one frame (spinner, then the hints under it).
+    expect(r.err).toMatch(
+      /Waiting for approval\n {3}.*Enter.*open again.*copy the code.*Esc.*cancel/,
+    );
+    // One blank row before the result, and nothing of the region left after it.
+    expect(bare(r.out)).toMatch(
+      /Check that the code in your browser matches:\n WDJB-MJHT \n\n✓ {2}Signed in as/,
+    );
+    expect(r.out).not.toContain("Enter open again");
+  });
+
+  it("F15: the region is closed on every ending, not only on success", async () => {
+    for (const poll of [
+      () => json(200, { status: "denied" }),
+      () => json(410, {}),
+    ]) {
+      const k = keys();
+      const r = await run([], {
+        f: server([poll]).f,
+        columns: 80,
+        animate: true,
+        env: { NO_COLOR: "1", TERM: "xterm-256color" },
+        seams: { stdin: k.input },
+      });
+      expect(r.err).toMatch(/\x1b\[\?25h/);
+      expect(r.err.lastIndexOf("Waiting for approval")).toBeLessThan(
+        r.err.search(/[▲✗]/),
+      );
+    }
+  });
+
+  it("F09: over SSH there is no copy key, and c copies nothing", async () => {
+    for (const env of <Record<string, string>[]>[
+      { SSH_CONNECTION: "1 2 3 4" },
+      { SSH_TTY: "/dev/pts/1" },
+    ]) {
+      const k = keys();
+      const copied: string[] = [];
+      const r = await run([], {
+        f: server([PENDING, APPROVED]).f,
+        env,
+        columns: 80,
+        seams: {
+          stdin: k.input,
+          copyText: async (t) => (copied.push(t), true),
+          sleep: async () => k.press("c"),
+        },
+      });
+      expect(r.code).toBe(0);
+      expect(copied).toEqual([]);
+      expect(bare(r.out)).toContain("Esc cancel");
+      expect(bare(r.out)).not.toMatch(/\bc cop/);
+      expect(bare(r.out)).not.toContain("Copied");
+      expect(bare(r.out)).not.toContain("Enter open again");
+    }
+  });
+
+  it("F09: off SSH the copy key says what happened, inside the region", async () => {
+    const k = keys();
+    const r = await run([], {
+      f: server([PENDING, APPROVED]).f,
+      columns: 80,
+      animate: true,
+      env: { NO_COLOR: "1", TERM: "xterm-256color" },
+      seams: {
+        stdin: k.input,
+        copyText: async () => true,
+        sleep: async () => {
+          k.press("c");
+          await new Promise((r) => setTimeout(r, 5));
+        },
+      },
+    });
+    expect(bare(r.err)).toContain("c copied");
+  });
+
+  it("F10: GITHUB_ACTIONS and BUILDKITE are CI too: refused, no network, no store", async () => {
+    for (const env of <Record<string, string>[]>[
+      { GITHUB_ACTIONS: "true" },
+      { BUILDKITE: "true" },
+      { CI: "1" },
+    ]) {
+      const { f, calls } = server([APPROVED]);
+      let touched = false;
+      const r = await run([], {
+        f,
+        env,
+        store: async () => ((touched = true), memoryStore()),
+      });
+      expect(r.code).toBe(4);
+      expect(r.err).toContain(
+        "pkey login needs a person; in CI use PKEY_ADMIN_TOKEN",
+      );
+      expect(calls).toEqual([]);
+      expect(touched).toBe(false);
+    }
+    const notCi = await run([], {
+      f: server([APPROVED]).f,
+      env: { CI: "false" },
+    });
+    expect(notCi.code).toBe(0);
+  });
+
+  it("F13: after the first network failure the spinner reads 'Reconnecting to <host>…'", async () => {
+    let n = 0;
+    const base = server([APPROVED]).f;
+    const f = (async (url: string, init: RequestInit) => {
+      if (
+        new URL(String(url)).pathname.startsWith("/api/device-login/dl_") &&
+        n++ === 0
+      )
+        throw new TypeError("fetch failed");
+      return base(url, init);
+    }) as typeof fetch;
+    const r = await run([], { f, columns: 80 });
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("Reconnecting to key.example…\n");
+    expect(r.out.indexOf("Waiting for approval")).toBeLessThan(
+      r.out.indexOf("Reconnecting"),
+    );
+    // Animated: the spinner label changes, then goes back.
+    n = 0;
+    const a = await run([], {
+      f,
+      columns: 80,
+      animate: true,
+      env: { NO_COLOR: "1", TERM: "xterm-256color" },
+      seams: { sleep: async () => new Promise((r) => setTimeout(r, 5)) },
+    });
+    expect(a.err).toContain("Reconnecting to key.example");
+    expect(a.err.lastIndexOf("Waiting for approval")).toBeGreaterThan(
+      a.err.indexOf("Reconnecting"),
+    );
+  });
+});
+
+describe("pkey login: rerun lines, store failures, bounds (F11, F12, F17, N1-N5)", () => {
+  it("F12: a rerun line repeats --base-url only when it came from the flag", async () => {
+    const withFlag = await run([], { f: server([() => json(410, {})]).f });
+    expect(withFlag.err).toContain(
+      `Run pkey login --base-url ${ORIGIN} to get a new one.`,
+    );
+    const without = await run([], {
+      f: server([() => json(410, {})]).f,
+      defaultBase: true,
+    });
+    expect(without.err).toContain("Run pkey login to get a new one.");
+    expect(without.err).not.toContain("--base-url");
+  });
+
+  it("F11: the store's real name per OS, and 'this computer'", async () => {
+    for (const [platform, name, advice] of [
+      ["darwin", "macOS Keychain", "Unlock the keychain"],
+      [
+        "win32",
+        "Windows Credential Manager",
+        "Check Windows Credential Manager",
+      ],
+      ["linux", "Secret Service", "Unlock your keyring"],
+    ] as const) {
+      const mem = memoryStore();
+      const failingStore: CredentialStore = {
+        get: mem.get,
+        delete: mem.delete,
+        set: () => {
+          throw new NoStoreError();
+        },
+      };
+      const r = await run([], {
+        f: server([APPROVED]).f,
+        store: async () => failingStore,
+        seams: { platform },
+      });
+      expect(r.code).toBe(1);
+      expect(r.err).toContain(
+        `✗  ${name} wouldn't save the sign-in, so pkey revoked it.`,
+      );
+      expect(r.err.replace(/\s+/g, " ")).toContain(advice);
+    }
+    const r = await run([], {
+      f: server([APPROVED]).f,
+      store: async () => {
+        throw new NoStoreError();
+      },
+    });
+    expect(r.err).toContain("No credential store on this computer.");
+    expect(r.err).not.toContain("this machine");
+  });
+
+  it("F11: when the new token cannot be revoked either, it says so and where", async () => {
+    const mem = memoryStore();
+    const failingStore: CredentialStore = {
+      get: mem.get,
+      delete: mem.delete,
+      set: () => {
+        throw new NoStoreError();
+      },
+    };
+    const r = await run([], {
+      f: server([APPROVED], { revoke: () => json(500) }).f,
+      store: async () => failingStore,
+    });
+    expect(r.code).toBe(1);
+    expect(r.err).toContain(
+      "wouldn't save the sign-in, and pkey couldn't revoke it.",
+    );
+    expect(r.err.replace(/\s+/g, " ")).toContain(
+      "Revoke “pkey on laptop” (pkeyp_…h7Q2) at https://key.example/manage/#/personal-tokens.",
+    );
+    noToken(r.out, r.err);
+  });
+
+  it("F17: the link drops ?code= below 49 columns (the code is right under it); the JSON url keeps it", async () => {
+    const wide = await run([], { f: server([APPROVED]).f, columns: 70 });
+    expect(wide.out).toContain(`/manage/device?code=${CODE}`);
+    // https://key.plrs.im/manage/device?code=XXXX-XXXX is 48 cells.
+    const at49 = await run([], {
+      f: server([APPROVED]).f,
+      columns: 49,
+      defaultBase: true,
+    });
+    expect(at49.out).toContain("https://key.plrs.im/manage/device?code=");
+    const at48 = await run([], {
+      f: server([APPROVED]).f,
+      columns: 48,
+      defaultBase: true,
+    });
+    expect(at48.out).toContain("https://key.plrs.im/manage/device\n");
+    expect(at48.out).not.toContain("?code=");
+    expect(at48.out).toContain("Enter this code in your browser:");
+    const j = await run(["--json"], { f: server([APPROVED]).f });
+    expect(j.out).toContain(`?code=${CODE}`);
+  });
+
+  it("N1: a start answer past 64 KiB is read as nothing", async () => {
+    const big = () =>
+      json(
+        201,
+        { id: POLL, code: CODE, pad: "x".repeat(70_000) },
+        {
+          "set-cookie": `__Host-pkey_device_login=${COOKIE}; Path=/; Secure`,
+        },
+      );
+    const r = await run([], { f: server([APPROVED], { start: big }).f });
+    expect(r.code).toBe(1);
+    expect(r.err).toContain("answered the sign-in start unexpectedly");
+  });
+
+  it("N2: expiresIn is clamped to 600 seconds", async () => {
+    const j = await run(["--json"], {
+      f: server([PENDING], { start: () => START({ expiresIn: 100_000 }) }).f,
+      seams: {
+        now: (() => {
+          let t = 0;
+          return () => (t += 3000);
+        })(),
+      },
+    });
+    expect(JSON.parse(j.out.split("\n")[0]!)).toMatchObject({
+      event: "started",
+      expiresIn: 600,
+    });
+    let t = 0;
+    const { f, calls } = server([PENDING], {
+      start: () => START({ expiresIn: 100_000 }),
+    });
+    const r = await run([], {
+      f,
+      seams: { now: () => t, sleep: async (ms) => void (t += ms) },
+    });
+    expect(r.code).toBe(1);
+    // 600 s at the server's 3 s interval is 200 polls; 100000 s would be tens of thousands.
+    expect(
+      calls.filter((c) => c.url.includes(POLL)).length,
+    ).toBeLessThanOrEqual(201);
+  });
+
+  it("N3: start and poll carry a timeout signal; a timeout is a network failure", async () => {
+    const signals: (AbortSignal | null | undefined)[] = [];
+    const base = server([PENDING, APPROVED]).f;
+    const f = (async (url: string, init: RequestInit) => {
+      if (new URL(String(url)).pathname.startsWith("/api/"))
+        signals.push(init.signal);
+      return base(url, init);
+    }) as typeof fetch;
+    await run([], { f });
+    expect(signals).toHaveLength(3);
+    for (const s of signals) expect(s).toBeInstanceOf(AbortSignal);
+    const timeout = (async (url: string) => {
+      if (String(url).endsWith("/start")) return START();
+      throw Object.assign(new Error("timed out"), { name: "TimeoutError" });
+    }) as typeof fetch;
+    const r = await run(["--json"], { f: timeout });
+    expect(lastLine(r.out)).toMatchObject({
+      error: "network",
+      cause: "TIMEOUT",
+    });
+  });
+
+  it("N4: the clipboard tool's stdin has an error handler (a dead pbcopy cannot crash pkey)", () => {
+    const src = readFileSync(path.join(HERE, "../src/login.ts"), "utf8");
+    expect(src).toMatch(/child\.stdin\.on\("error", \(\) => \{\}\)/);
+  });
+
+  it("N5: only an expiry after a network failure adds the 'token may exist' line", async () => {
+    const plain = await run([], { f: server([() => json(410, {})]).f });
+    expect(plain.err).not.toContain("token may exist");
+    let n = 0;
+    const base = server([() => json(410, {})]).f;
+    const f = (async (url: string, init: RequestInit) => {
+      if (
+        new URL(String(url)).pathname.startsWith("/api/device-login/dl_") &&
+        n++ === 0
+      )
+        throw new TypeError("fetch failed");
+      return base(url, init);
+    }) as typeof fetch;
+    const r = await run([], { f });
+    expect(r.err).toContain(
+      "If you approved it, the token may exist; check Personal tokens.",
+    );
+    expect(
+      lastLine((await run(["--json"], { f: ((n = 0), f) })).out)["message"],
+    ).toContain("token may exist");
+  });
+
+  it("the help says what the keys, the endings and the replaced token do", async () => {
+    let out = "";
+    await runPkey(["help", "login"], {
+      cwd: HERE,
+      env: { NO_COLOR: "1" },
+      stdout: {
+        write: (c: string) => ((out += c), true),
+        columns: 200,
+        isTTY: true,
+      },
+      stderr: { write: () => true },
+    });
+    const text = out.replace(/\s+/g, " ");
+    expect(text).toContain(
+      "ends the token it replaces once the new one is saved",
+    );
+    expect(text).toContain(
+      "Esc and Ctrl+D cancel and exit 1; Ctrl+C exits 130",
+    );
+    expect(text).toContain("not over SSH");
+  });
+
+  it("SIGINT under --json is one 'interrupted' line, exit 130", async () => {
+    let fire: () => void = () => undefined;
+    const r = await run(["--json"], {
+      f: server([PENDING]).f,
+      seams: {
+        onInterrupt: (cb) => ((fire = cb), () => undefined),
+        sleep: async () => fire(),
+      },
+    });
+    expect(r.code).toBe(130);
+    expect(lastLine(r.out)).toMatchObject({
+      error: "interrupted",
+      exit: 130,
+      ok: false,
+    });
+  });
+});
+
+describe("colour terminals: every login glyph renders (R1)", () => {
+  it("✗ and ▲ endings and a failed start in colour", async () => {
+    const colour = { NO_COLOR: "", FORCE_COLOR: "1", TERM: "xterm-256color" };
+    for (const [f, code] of [
+      [failing("ECONNREFUSED"), 1],
+      [server([APPROVED], { start: () => json(500) }).f, 1],
+      [server([() => json(410, {})]).f, 1],
+      [server([() => json(200, { status: "denied" })]).f, 4],
+    ] as const) {
+      const r = await run([], { f, columns: 80, env: colour });
+      expect(r.code).toBe(code);
+      expect(r.err).toContain("\x1b[");
+      expect(r.err).not.toContain("TypeError");
+    }
   });
 });

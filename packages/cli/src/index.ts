@@ -752,6 +752,7 @@ const defaultStore = (): Promise<CredentialStore> =>
 function accountIo(parsed: ParsedArgs, rt: Runtime): AccountIo {
   return {
     baseUrl: flagString(parsed, "base-url") ?? DEFAULT_BASE_URL,
+    baseUrlGiven: flagString(parsed, "base-url") !== undefined,
     json: flagBool(parsed, "json"),
     env: rt.ci.env,
     stdout: rt.stdout,

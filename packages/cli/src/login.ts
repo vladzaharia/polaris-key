@@ -7,6 +7,7 @@
  *            code, never taken from the answer), checks the code matches, and approves.
  *   poll     GET /api/device-login/<id> with the cookie until approved, denied, expired or refused.
  *   store    The token goes to the OS credential store under the origin, read back to prove it.
+ *            Only then is the token this sign-in replaces ended.
  *
  * Security properties (each has a test in test/login.test.ts):
  *   phishing   the code is shown in reverse video with "Check that the code in your browser
@@ -16,32 +17,55 @@
  *              `redirect: "manual"` and a 3xx is refused.
  *   no echo    the token appears nowhere: not in output, `--json`, errors or the label. The hint
  *              is its last four characters.
+ *   bounds     a response is read through a 64 KiB cap, the code lives at most 600 s and a request
+ *              that has not answered in 15 s is a network failure.
  *   CI         refuses before the network or the credential store is touched.
  *   store      opened and probed BEFORE start, so an approval never mints a token that cannot be
  *              kept; a failed write revokes the new token; the write is read back.
+ *   replace    the old token is revoked only after the new one is stored and read back, so a
+ *              cancel, a denial, an expiry or a network failure leaves the old sign-in working.
  */
 
 import { spawn } from "node:child_process";
 import { hostname as osHostname, platform as osPlatform } from "node:os";
-import { ADMIN_TOKEN_ENV, request } from "./bundle.js";
 import {
+  cellWidth,
+  isCi,
+  keyHints,
+  wrapSpans,
+  type Line,
+} from "@polaris-key/node/terminal";
+import { ADMIN_TOKEN_ENV } from "./bundle.js";
+import {
+  block,
   call,
+  day,
+  envelope,
+  Failure,
   guarded,
   hostOf,
+  jsonLine,
   jsonOf,
-  note,
+  networkCode,
+  originFor,
+  plain,
+  Redirected,
+  REQUEST_TIMEOUT_MS,
+  roleName,
+  rowsText,
+  shown,
+  text,
+  tokenLine,
   type AccountIo,
 } from "./account.js";
 import {
   isCredentialShape,
-  originOf,
   Refusal,
   type CredentialStore,
+  type StoredCredential,
 } from "./credentials.js";
 import { Spinner, type Term, type TermFlags } from "./terminal.js";
-import { untrusted } from "./untrusted.js";
 import { CLI_VERSION } from "./version.js";
-import { wrapSpans } from "@polaris-key/node/terminal";
 
 export const LOGIN_USAGE =
   "pkey login [--base-url url] [--no-browser] [--json]";
@@ -55,6 +79,8 @@ const COOKIE_VALUE_SHAPE = /^[A-Za-z0-9_-]{16,128}$/;
 /** Consecutive network failures tolerated while polling. */
 const NETWORK_FAILURES = 5;
 const MAX_INTERVAL_MS = 30_000;
+/** A code lives at most this long here, whatever the server says (N2). */
+const MAX_EXPIRES_IN_S = 600;
 
 /** The slice of a TTY stdin the keys use. */
 export interface KeyInput {
@@ -90,14 +116,6 @@ export interface LoginIo extends AccountIo {
   seams: LoginSeams;
 }
 
-type Painted = (s: string) => string;
-
-/** True under a CI system: `CI` set to anything but empty, 0 or false. */
-function underCi(env: AccountIo["env"]): boolean {
-  const v = env["CI"]?.trim().toLowerCase();
-  return v !== undefined && v !== "" && v !== "0" && v !== "false";
-}
-
 function hasDisplay(env: AccountIo["env"], platform: NodeJS.Platform): boolean {
   if (platform === "darwin" || platform === "win32") return true;
   return Boolean(env["DISPLAY"] || env["WAYLAND_DISPLAY"]);
@@ -108,6 +126,13 @@ export function backendName(platform: NodeJS.Platform): string {
   if (platform === "darwin") return "macOS Keychain";
   if (platform === "win32") return "Windows Credential Manager";
   return "Secret Service";
+}
+
+/** What to do about a store that would not save: the platform's own word for it. */
+function unlockAdvice(platform: NodeJS.Platform): string {
+  if (platform === "darwin") return "Unlock the keychain";
+  if (platform === "win32") return "Check Windows Credential Manager";
+  return "Unlock your keyring";
 }
 
 /** The default browser opener: no shell, the URL as one argument. */
@@ -140,6 +165,8 @@ function defaultCopy(text: string): Promise<boolean> {
   return new Promise((resolve) => {
     const child = spawn(cmd, args, { stdio: ["pipe", "ignore", "ignore"] });
     child.once("error", () => resolve(false));
+    // A clipboard tool that exits before reading must not crash pkey with EPIPE.
+    child.stdin.on("error", () => {});
     child.once("close", (code) => resolve(code === 0));
     child.stdin.end(text);
   });
@@ -176,88 +203,77 @@ function setCookieOf(res: Response): string | null {
   return null;
 }
 
-/** A terminal state of the flow: the JSON line, the human text and the exit code. */
+/** A request that never got an answer: its network error code (or null) is all that is kept. */
+class Transport extends Error {
+  constructor(readonly code: string | null) {
+    super("transport");
+  }
+}
+
+/** One request: no redirect followed, at most `REQUEST_TIMEOUT_MS`, and `abort` ends it early. */
+async function send(
+  f: typeof fetch,
+  url: string,
+  init: RequestInit,
+  abort: AbortSignal,
+): Promise<Response> {
+  try {
+    return await f(url, {
+      ...init,
+      redirect: "manual",
+      signal: AbortSignal.any([abort, AbortSignal.timeout(REQUEST_TIMEOUT_MS)]),
+    });
+  } catch (e) {
+    throw new Transport(networkCode(e));
+  }
+}
+
+/** `before` + `pkey login` as the person ran it (`--base-url` repeated) + `after`. */
+function rerun(
+  io: LoginIo,
+  origin: string,
+  before: string,
+  after: string,
+): Line {
+  return [
+    text(before),
+    text("pkey login"),
+    ...(io.baseUrlGiven
+      ? [text(" --base-url "), text(origin, { break: "url" as const })]
+      : []),
+    text(after),
+  ];
+}
+
+/** How a sign-in ended without a token: what to print, what to exit with, and the JSON code. */
 interface Outcome {
-  /** The `error` code in --json. */
   state: string;
   exit: number;
-  /** ▲ for a refusal or a decision, ✗ for a failure. */
   kind: "warn" | "fail";
-  text: string;
-  /** Lines under the message; a bare URL is never wrapped. */
-  fix?: string[];
+  lines: Line[];
   extra?: Record<string, unknown>;
 }
 
-/** `▲  text` or `✗  text`, then the fix lines indented under it. */
-function outcomeText(
-  o: Pick<Outcome, "kind" | "text" | "fix">,
-  t: Term,
-): string {
-  const { painter, symbols, caps } = t;
-  const width = Math.max(1, caps.columns - 3);
-  const glyph =
-    o.kind === "warn"
-      ? painter.style(symbols.warn, ["warning"])
-      : painter.style(symbols.fail, ["danger"]);
-  const wrap = (text: string, first: boolean) =>
-    /^https?:\/\/\S+$/.test(text)
-      ? `   ${text}`
-      : wrapSpans([{ text }], width)
-          .map(
-            (l, i) =>
-              `${first && i === 0 ? `${glyph}  ` : "   "}${painter.line(l)}`,
-          )
-          .join("\n");
-  return `${[wrap(o.text, true), ...(o.fix ?? []).map((f) => wrap(f, false))].join("\n")}\n`;
-}
-
-/** Local calendar date, `2026-10-29`. */
-function localDay(epochSeconds: number): string {
-  const d = new Date(epochSeconds * 1000);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
-/** A role as a person reads it: "Admin (djdl)", "Superadmin (platform)". */
-function roleLabel(role: string, scope: string): string {
-  const name = role.charAt(0).toUpperCase() + role.slice(1);
-  const where = scope.startsWith("product:") ? scope.slice(8) : scope;
-  return where ? `${name} (${where})` : name;
-}
+const flat = (lines: Line[]): string =>
+  lines.map((l) => l.map((s) => s.text).join("")).join(" ");
 
 export function cmdLogin(io: LoginIo): Promise<number> {
   const given = Object.fromEntries(
     Object.entries(io.seams).filter(([, v]) => v !== undefined),
   );
   const seams: LoginSeams = { ...defaultSeams(), ...given };
-  let code = 0;
-  return guarded(io, async () => {
-    try {
-      code = await flow(io, seams);
-    } catch (e) {
-      // A refusal before or after the flow: in --json it is one line on stdout, not text on stderr.
-      if (io.json && e instanceof Refusal) {
-        io.stdout.write(
-          `${JSON.stringify({ v: 1, command: "login", event: "result", ok: false, exit: 4, error: "refused", message: e.message, ...(e.fix ? { fix: e.fix } : {}) })}\n`,
-        );
-        return 4;
-      }
-      throw e;
-    }
-    return code;
-  });
+  return guarded(io, "login", () => flow(io, seams));
 }
 
 async function flow(io: LoginIo, seams: LoginSeams): Promise<number> {
   // 1. CI: before the network and before the credential store.
-  if (underCi(io.env))
+  if (isCi(io.env))
     throw new Refusal(
       `pkey login needs a person; in CI use ${ADMIN_TOKEN_ENV}.`,
     );
 
   // 2. The origin: https, or http on loopback; the one string every request and the store use.
-  const origin = originOf(io.baseUrl);
+  const origin = originFor(io, "login");
   const host = hostOf(origin);
   const platform = seams.platform ?? osPlatform();
   const now = seams.now ?? Date.now;
@@ -267,45 +283,48 @@ async function flow(io: LoginIo, seams: LoginSeams): Promise<number> {
   // 3. Open and probe the store BEFORE start: an approval mints a 7-day admin token.
   const store: CredentialStore = await io.store();
   const existing = store.get(origin);
+  const replaces =
+    existing !== null &&
+    (existing.expiresAt === null || existing.expiresAt * 1000 > now());
 
   const out = io.term(io.stdout);
   const errTerm = io.term(io.stderr);
   const say = (s: string) => io.stdout.write(s);
-  const lines = (text: string, indent = ""): string =>
-    wrapSpans([{ text }], Math.max(1, out.caps.columns - indent.length))
-      .map((l) => `${indent}${out.painter.line(l)}\n`)
+  const put = (t: Term, line: Line, indent = 0): string =>
+    wrapSpans(line, Math.max(1, t.caps.columns - indent))
+      .map((l) => `${" ".repeat(indent)}${t.painter.line(l)}\n`)
       .join("");
 
-  // 4. A second login first ends the token it replaces (best-effort, to its own origin).
-  if (
-    existing &&
-    (existing.expiresAt === null || existing.expiresAt * 1000 > now())
-  ) {
-    try {
-      await call(
-        io,
-        {
-          token: existing.token,
-          source: "store",
-          origin,
-          expiresAt: existing.expiresAt,
-        },
-        "DELETE",
-        "/me/personal-tokens/current",
-      );
-    } catch {
-      /* best-effort: a token that cannot be reached ends on its own date */
-    }
-  }
-
   if (!io.json) {
-    say(`${lines(`Polaris Key console ${out.symbols.separator} ${host}`)}\n`);
+    const title = "Polaris Key console";
+    const sep = out.symbols.separator;
+    // One line when it fits; else the separator stays at the end of the first and the host hangs.
+    const fits = cellWidth(`${title} ${sep} ${host}`) <= out.caps.columns;
+    say(
+      put(
+        out,
+        fits
+          ? [
+              text(title, { style: ["strong"] }),
+              text(` ${sep} ${host}`, { style: ["muted"] }),
+            ]
+          : [text(`${title} ${sep}`, { style: ["strong"] })],
+      ),
+    );
+    if (!fits) say(put(out, [text(host, { style: ["muted"], break: "url" })]));
+    say("\n");
+    if (replaces)
+      say(
+        `${put(out, [text("You're already signed in here. The old token ends once the new one is saved.")])}\n`,
+      );
     if (io.env[ADMIN_TOKEN_ENV]?.trim())
       io.stderr.write(
-        note(
-          `${ADMIN_TOKEN_ENV} is set and takes precedence over this sign-in. Unset it to use the one pkey login saves.`,
+        block(
           errTerm,
           "warn",
+          plain(
+            `${ADMIN_TOKEN_ENV} is set and takes precedence over this sign-in. Unset it to use the one pkey login saves.`,
+          ),
         ),
       );
   }
@@ -324,55 +343,90 @@ async function flow(io: LoginIo, seams: LoginSeams): Promise<number> {
     Promise.race([sleep(ms), cancelSignal]) as Promise<void>;
 
   // 5. Start. The cookie is in memory only.
-  const startRes = await request(f, `${origin}/api/device-login/start`, {
-    method: "POST",
-    redirect: "manual",
-    headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify({
-      purpose: "cli",
-      scope: "admin",
-      client: {
-        name: "pkey",
-        version: CLI_VERSION,
-        host: (seams.hostname ?? osHostname)(),
+  let startRes: Response;
+  try {
+    startRes = await send(
+      f,
+      `${origin}/api/device-login/start`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify({
+          purpose: "cli",
+          scope: "admin",
+          client: {
+            name: "pkey",
+            version: CLI_VERSION,
+            host: (seams.hostname ?? osHostname)(),
+          },
+        }),
       },
-    }),
-    signal: abort.signal,
-  });
-  refuseRedirect(startRes, host);
+      abort.signal,
+    );
+  } catch (e) {
+    if (!(e instanceof Transport)) throw e;
+    throw new Failure(
+      `Can't reach ${host}.`,
+      "Check your network, or --base-url.",
+      "network",
+      { host, ...(e.code ? { cause: e.code } : {}) },
+    );
+  }
+  if (startRes.status >= 300 && startRes.status < 400)
+    throw new Redirected(host);
   if (startRes.status === 429)
     throw new Refusal(
       "Too many sign-in attempts from this network.",
       "Wait a few minutes, then run pkey login again.",
+      "rate-limited",
     );
   if ([404, 405, 422, 501].includes(startRes.status))
     throw new Refusal(
       `${host} doesn't offer terminal sign-in; use ${ADMIN_TOKEN_ENV}.`,
+      undefined,
+      "unsupported",
     );
   if (startRes.status !== 201)
-    throw new Error(
-      `${host} did not start a sign-in (HTTP ${startRes.status}).`,
+    throw new Failure(
+      `${host} couldn't start a sign-in (HTTP ${startRes.status}).`,
+      "Try again in a minute.",
+      "server-error",
+      { host, status: startRes.status },
     );
   const started = await jsonOf(startRes);
   const pollId = String(started["id"] ?? "");
   const userCode = String(started["code"] ?? "");
   const cookie = setCookieOf(startRes);
   if (!POLL_ID_SHAPE.test(pollId) || !CODE_SHAPE.test(userCode) || !cookie)
-    throw new Error(`${host} answered the sign-in start unexpectedly.`);
-  const expiresIn =
-    typeof started["expiresIn"] === "number" ? started["expiresIn"] : 300;
+    throw new Failure(
+      `${host} answered the sign-in start unexpectedly.`,
+      "Check --base-url.",
+      "unexpected-answer",
+      { host },
+    );
+  const expiresIn = Math.min(
+    typeof started["expiresIn"] === "number" && started["expiresIn"] > 0
+      ? started["expiresIn"]
+      : 300,
+    MAX_EXPIRES_IN_S,
+  );
   let interval = clampInterval(started["interval"], 3_000);
   const deadline = now() + expiresIn * 1000;
   // Built here, from the origin pkey resolved: a server cannot send the person elsewhere.
   const approveUrl = `${origin}/manage/device?code=${userCode}`;
+  // Too narrow for the whole link: print it without the code, which shows right under it.
+  const shortLink = !io.json && approveUrl.length >= out.caps.columns;
+  const shownUrl = shortLink ? `${origin}/manage/device` : approveUrl;
 
   // 6. Show the code and the link; open the browser when allowed.
+  const remote = Boolean(io.env["SSH_CONNECTION"] || io.env["SSH_TTY"]);
   const mayOpen =
-    !io.json &&
-    !io.noBrowser &&
-    !io.env["SSH_CONNECTION"] &&
-    !io.env["SSH_TTY"] &&
-    hasDisplay(io.env, platform);
+    !io.json && !io.noBrowser && !remote && hasDisplay(io.env, platform);
+  // The remote clipboard is not this person's: over SSH there is no copy key.
+  const mayCopy = !remote;
   const interactive = !io.json && Boolean(seams.stdin?.isTTY);
   const open = async (): Promise<boolean> => {
     try {
@@ -384,62 +438,97 @@ async function flow(io: LoginIo, seams: LoginSeams): Promise<number> {
   };
   if (io.json) {
     say(
-      `${JSON.stringify({ v: 1, command: "login", event: "started", host, code: userCode, url: approveUrl, expiresIn })}\n`,
+      jsonLine({
+        v: 1,
+        command: "login",
+        event: "started",
+        host,
+        code: userCode,
+        url: approveUrl,
+        expiresIn,
+        replaces,
+      }),
     );
   } else {
     const opened = mayOpen ? await open() : false;
     if (opened)
-      say(lines(`Opening Polaris Key in your browser${out.symbols.ellipsis}`));
-    say(lines(opened ? "Didn't open? Go to" : "Open this link in a browser:"));
-    say(`${approveUrl}\n\n`);
-    say(lines("Check that the code in your browser matches:"));
+      say(
+        put(out, [
+          text(`Opening Polaris Key in your browser${out.symbols.ellipsis}`),
+        ]),
+      );
+    say(
+      put(
+        out,
+        opened
+          ? [text("Didn't open? Go to", { style: ["muted"] })]
+          : [text("Open this link in a browser:")],
+      ),
+    );
+    say(put(out, [text(shownUrl, { break: "url" })]));
+    say("\n");
+    say(
+      put(out, [
+        text(
+          shortLink
+            ? "Enter this code in your browser:"
+            : "Check that the code in your browser matches:",
+        ),
+      ]),
+    );
     say(`${out.painter.style(` ${userCode} `, ["code"])}\n\n`);
   }
 
   const spinner = new Spinner(io.stderr, io.env, io.flags);
   const wrapped = spinner.wrap(io.stdout);
-  const wsay = (s: string) => wrapped.write(s);
   let cleanup: (() => void)[] = [];
-  const finish = <T>(v: T): T => {
+  const finish = () => {
     spinner.stop();
     for (const c of cleanup) c();
     cleanup = [];
-    return v;
   };
+  /** The blank row before a result: already there under a live spinner, else written. */
+  const gap = (): string => (spinner.active ? "" : "\n");
 
-  const removeInterrupt = (seams.onInterrupt ?? (() => () => {}))(() =>
-    cancel("interrupt"),
+  cleanup.push(
+    (seams.onInterrupt ?? (() => () => {}))(() => cancel("interrupt")),
   );
-  cleanup.push(removeInterrupt);
+
+  // The key hints: one live region with the spinner, under it. The copy key says what it did.
+  let copyVerb = "copy the code";
+  const hintLines = (columns: number): string[] => {
+    const keys = [
+      mayOpen ? "Enter open again" : "",
+      mayCopy ? `c ${copyVerb}` : "",
+      "Esc cancel",
+    ].filter(Boolean);
+    return wrapSpans(
+      keyHints(keys.join(` ${errTerm.symbols.separator} `), errTerm.symbols),
+      Math.max(1, columns - 4),
+    ).map((l) => `   ${errTerm.painter.line(l)}`);
+  };
 
   if (interactive) {
     const stdin = seams.stdin!;
-    const keys = [
-      mayOpen ? "Enter open again" : "",
-      "c copy the code",
-      "Esc cancel",
-    ].filter(Boolean);
-    say(
-      `${wrapSpans(
-        [{ text: keys.join(` ${out.symbols.separator} `) }],
-        Math.max(1, out.caps.columns - 2),
-      )
-        .map((l) => `  ${out.painter.style(out.painter.line(l), ["muted"])}\n`)
-        .join("")}\n`,
-    );
     const onData = (chunk: Buffer | string) => {
       const k = chunk.toString();
       if (k === "\x03") cancel("interrupt");
-      else if (k === "\x1b") cancel("esc");
+      else if (k === "\x1b" || k === "\x04") cancel("esc");
       else if ((k === "\r" || k === "\n") && mayOpen) void open();
-      else if (k === "c" || k === "C")
-        void (seams.copyText ?? defaultCopy)(userCode).then((ok) =>
-          wsay(
-            ok
-              ? note(`Copied ${userCode}.`, out, "ok")
-              : note("No clipboard here.", out, "warn"),
-          ),
-        );
+      else if ((k === "c" || k === "C") && mayCopy)
+        void (seams.copyText ?? defaultCopy)(userCode).then((ok) => {
+          if (spinner.active) {
+            copyVerb = ok ? "copied" : "no clipboard here";
+            spinner.setFooter(hintLines);
+          } else
+            wrapped.write(
+              block(
+                out,
+                ok ? "ok" : "warn",
+                plain(ok ? `Copied ${userCode}.` : "No clipboard here."),
+              ),
+            );
+        });
     };
     try {
       stdin.setRawMode?.(true);
@@ -459,107 +548,156 @@ async function flow(io: LoginIo, seams: LoginSeams): Promise<number> {
     });
   }
 
+  const waiting = "Waiting for approval";
   if (!io.json) {
-    if (spinner.active)
-      spinner.stage("Waiting for you to approve in the browser");
-    else
-      say(
-        lines(
-          `Waiting for you to approve in the browser${out.symbols.ellipsis}`,
-        ),
-      );
+    if (spinner.active) {
+      if (interactive) spinner.setFooter(hintLines);
+      spinner.stage(waiting);
+    } else {
+      say(`${waiting}${out.symbols.ellipsis}\n`);
+      if (interactive) say(`${hintLines(out.caps.columns).join("\n")}\n`);
+    }
   }
 
   const report = (o: Outcome): number => {
-    finish(undefined);
+    finish();
     if (io.json)
       io.stdout.write(
-        `${JSON.stringify({ v: 1, command: "login", event: "result", ok: false, exit: o.exit, error: o.state, message: o.text, host, code: userCode, ...o.extra })}\n`,
+        envelope("login", o.exit, {
+          error: o.state,
+          message: flat(o.lines),
+          host,
+          code: userCode,
+          ...o.extra,
+        }),
       );
-    else io.stderr.write(outcomeText(o, errTerm));
+    else io.stderr.write(`${gap()}${block(errTerm, o.kind, o.lines)}`);
     return o.exit;
   };
-  const rerun = ["Run pkey login to try again."];
+  const cancelReport = (why: "esc" | "interrupt"): number =>
+    report({
+      state: why === "interrupt" ? "interrupted" : "cancelled",
+      exit: why === "interrupt" ? 130 : 1,
+      kind: "warn",
+      lines: plain("Canceled. Nothing was saved."),
+    });
+  /** After a network failure an approval may have gone through unseen. */
+  let sawFailure = false;
+  const maybeApproved = (): Line[] =>
+    sawFailure
+      ? plain("If you approved it, the token may exist; check Personal tokens.")
+      : [];
+  const expired = (): number =>
+    report({
+      state: "expired",
+      exit: 1,
+      kind: "fail",
+      lines: [
+        [text(`Code ${userCode} expired before it was approved.`)],
+        rerun(io, origin, "Run ", " to get a new one."),
+        ...maybeApproved(),
+      ],
+    });
 
   // 7. Poll with the server's interval, backing off on 429 and on network failures.
   let failures = 0;
   while (true) {
     await wait(interval);
-    if (cancelled) return cancelOutcome(finish, io, cancelled, errTerm, host);
-    if (now() >= deadline)
-      return report({
-        state: "expired",
-        exit: 1,
-        kind: "fail",
-        text: `Code ${userCode} expired before it was approved.`,
-        fix: ["Run pkey login to get a new one."],
-      });
+    if (cancelled) return cancelReport(cancelled);
+    if (now() >= deadline) return expired();
     let res: Response;
     try {
-      res = await request(f, `${origin}/api/device-login/${pollId}`, {
-        method: "GET",
-        redirect: "manual",
-        headers: {
-          accept: "application/json",
-          cookie: `${COOKIE_NAME}=${cookie}`,
+      res = await send(
+        f,
+        `${origin}/api/device-login/${pollId}`,
+        {
+          method: "GET",
+          headers: {
+            accept: "application/json",
+            cookie: `${COOKIE_NAME}=${cookie}`,
+          },
         },
-        signal: abort.signal,
-      });
-    } catch {
-      if (cancelled) return cancelOutcome(finish, io, cancelled, errTerm, host);
+        abort.signal,
+      );
+    } catch (e) {
+      if (!(e instanceof Transport)) throw e;
+      if (cancelled) return cancelReport(cancelled);
+      sawFailure = true;
       if (++failures >= NETWORK_FAILURES)
         return report({
-          state: "error",
+          state: "network",
           exit: 1,
           kind: "fail",
-          text: `Lost contact with ${host} while waiting for code ${userCode}.`,
-          fix: rerun,
+          lines: [
+            [
+              text(
+                `Lost contact with ${host} while waiting for code ${userCode}.`,
+              ),
+            ],
+            rerun(io, origin, "Run ", " to try again."),
+            ...maybeApproved(),
+          ],
+          extra: e.code ? { cause: e.code } : {},
         });
+      if (failures === 1 && !io.json) {
+        if (spinner.active)
+          spinner.stage(`Reconnecting to ${host}${out.symbols.ellipsis}`);
+        else say(`Reconnecting to ${host}${out.symbols.ellipsis}\n`);
+      }
       interval = Math.min(interval * 2, MAX_INTERVAL_MS);
       continue;
     }
     if (res.status >= 300 && res.status < 400) {
-      finish(undefined);
-      refuseRedirect(res, host);
+      finish();
+      throw new Redirected(host);
     }
     if (res.status === 429 || res.status === 503) {
+      sawFailure = true;
       if (++failures >= NETWORK_FAILURES)
         return report({
-          state: "error",
+          state: "network",
           exit: 1,
           kind: "fail",
-          text: `${host} is not answering right now (HTTP ${res.status}).`,
-          fix: rerun,
+          lines: [
+            [text(`${host} is not answering right now (HTTP ${res.status}).`)],
+            rerun(io, origin, "Run ", " to try again."),
+            ...maybeApproved(),
+          ],
+          extra: { status: res.status },
         });
       interval = Math.min(interval * 2, MAX_INTERVAL_MS);
       continue;
     }
+    if (failures > 0 && !io.json && spinner.active) spinner.stage(waiting);
     failures = 0;
-    if (res.status === 410)
-      return report({
-        state: "expired",
-        exit: 1,
-        kind: "fail",
-        text: `Code ${userCode} expired before it was approved.`,
-        fix: ["Run pkey login to get a new one."],
-      });
+    if (res.status === 410) return expired();
     const body = await jsonOf(res);
     if (res.status === 409 && body["reason"] === "token_limit") {
       const limit = /at most (\d{1,3}) /.exec(
         String(body["message"] ?? ""),
       )?.[1];
+      const url = `${origin}/manage/#/personal-tokens`;
       return report({
         state: "token_limit",
         exit: 4,
         kind: "warn",
-        text: limit
-          ? `You already have ${limit} personal tokens, the most allowed.`
-          : "You already have the most personal tokens allowed.",
-        fix: [
-          "Revoke one in Personal tokens, then run pkey login again.",
-          `${origin}/manage/#/personal-tokens`,
+        lines: [
+          [
+            text(
+              limit
+                ? `You already have ${limit} personal tokens, the most allowed.`
+                : "You already have the most personal tokens allowed.",
+            ),
+          ],
+          rerun(
+            io,
+            origin,
+            "Revoke one in Personal tokens, then run ",
+            " again.",
+          ),
+          [text(url, { break: "url" })],
         ],
-        extra: { url: `${origin}/manage/#/personal-tokens` },
+        extra: { url },
       });
     }
     if (res.status === 403)
@@ -567,16 +705,21 @@ async function flow(io: LoginIo, seams: LoginSeams): Promise<number> {
         state: "refused",
         exit: 4,
         kind: "warn",
-        text: "This account can't sign in.",
-        fix: ["Ask a Superadmin to check your access."],
+        lines: plain(
+          "This account can't sign in.",
+          "Ask a Superadmin to check your access.",
+        ),
       });
     if (!res.ok)
       return report({
-        state: "error",
+        state: "server-error",
         exit: 1,
         kind: "fail",
-        text: `${host} refused the sign-in (HTTP ${res.status}).`,
-        fix: rerun,
+        lines: [
+          [text(`${host} refused the sign-in (HTTP ${res.status}).`)],
+          rerun(io, origin, "Run ", " to try again."),
+        ],
+        extra: { status: res.status },
       });
     const status = body["status"];
     if (status === "pending") {
@@ -588,35 +731,34 @@ async function flow(io: LoginIo, seams: LoginSeams): Promise<number> {
         state: "denied",
         exit: 4,
         kind: "warn",
-        text: `Code ${userCode} was denied in the browser.`,
-        fix: rerun,
+        lines: [
+          [text(`Code ${userCode} was canceled in the browser.`)],
+          rerun(io, origin, "Run ", " to try again."),
+        ],
       });
     if (status !== "approved")
       return report({
-        state: "error",
+        state: "unexpected-answer",
         exit: 1,
         kind: "fail",
-        text: `${host} answered the sign-in unexpectedly.`,
-        fix: rerun,
+        lines: [
+          [text(`${host} answered the sign-in unexpectedly.`)],
+          rerun(io, origin, "Run ", " to try again."),
+        ],
       });
-    finish(undefined);
+    finish();
     return approved(io, {
       origin,
       host,
       platform,
       store,
+      previous: replaces ? existing : null,
       token: body["token"],
       expiresAt: body["expiresAt"],
+      label: body["label"],
+      gap: gap(),
     });
   }
-}
-
-function refuseRedirect(res: Response, host: string): void {
-  if (res.status >= 300 && res.status < 400)
-    throw new Refusal(
-      `${host} answered with a redirect, so pkey sent nothing further.`,
-      "Check --base-url.",
-    );
 }
 
 function clampInterval(v: unknown, fallback: number): number {
@@ -625,24 +767,26 @@ function clampInterval(v: unknown, fallback: number): number {
     : fallback;
 }
 
-function cancelOutcome(
-  finish: <T>(v: T) => T,
+/** True when the console accepted a revoke, or says the token had already ended. */
+async function revoked(
   io: LoginIo,
-  _why: "esc" | "interrupt",
-  errTerm: ReturnType<LoginIo["term"]>,
-  host: string,
-): number {
-  finish(undefined);
-  const exit = 130;
-  if (io.json)
-    io.stdout.write(
-      `${JSON.stringify({ v: 1, command: "login", event: "result", ok: false, exit, error: "cancelled", message: "Cancelled.", host })}\n`,
-    );
-  else io.stderr.write(note("Cancelled. Nothing was saved.", errTerm, "warn"));
-  return exit;
+  cred: Parameters<typeof call>[1],
+): Promise<boolean> {
+  try {
+    const res = await call(io, cred, "DELETE", "/me/personal-tokens/current");
+    if (res.ok || res.status === 401) return true;
+    if (res.status === 404) {
+      const body = await jsonOf(res);
+      const err = body["error"] as { code?: unknown } | undefined;
+      return err?.code === "not_found" || body["code"] === "not_found";
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
-/** The approved path: validate, store, read back, then say who is signed in. */
+/** The approved path: validate, store, read back, end the old token, then say who is signed in. */
 async function approved(
   io: LoginIo,
   a: {
@@ -650,8 +794,11 @@ async function approved(
     host: string;
     platform: NodeJS.Platform;
     store: CredentialStore;
+    previous: StoredCredential | null;
     token: unknown;
     expiresAt: unknown;
+    label: unknown;
+    gap: string;
   },
 ): Promise<number> {
   const { origin, host, store } = a;
@@ -663,52 +810,114 @@ async function approved(
     !Number.isInteger(a.expiresAt) ||
     a.expiresAt <= 0
   )
-    throw new Error(`${host} answered the sign-in unexpectedly.`);
+    throw new Failure(
+      `${host} answered the sign-in unexpectedly.`,
+      "Try again, or check --base-url.",
+      "unexpected-answer",
+      { host },
+    );
   const token = a.token;
   const expiresAt = a.expiresAt;
+  const label =
+    typeof a.label === "string" && a.label.trim()
+      ? shown(a.label, io.env).slice(0, 200)
+      : null;
+  const hint = token.slice(-4);
   const cred = {
     token,
     source: "store" as const,
     origin,
     expiresAt,
+    label,
+    hint,
   };
+  const t = io.term(io.stdout);
+  const personalTokens = `${origin}/manage/#/personal-tokens`;
 
   // Write, then read back. A store that cannot keep it gets the new token revoked.
   let kept = false;
   try {
-    store.set(origin, { token, expiresAt });
+    store.set(origin, { token, expiresAt, label, hint });
     kept = store.get(origin)?.token === token;
   } catch {
     kept = false;
   }
   if (!kept) {
-    try {
-      await call(io, cred, "DELETE", "/me/personal-tokens/current");
-    } catch {
-      /* best-effort: the token ends on its own date */
-    }
-    throw new Refusal(
-      "The credential store wouldn't keep the token, so pkey ended it.",
-      `Fix the ${backendName(a.platform)}, or set ${ADMIN_TOKEN_ENV} instead.`,
+    // The old sign-in still works on the server: put it back if the write displaced it.
+    if (a.previous)
+      try {
+        store.set(origin, a.previous);
+      } catch {
+        /* nothing more can be done with a store that refuses */
+      }
+    const ended = await revoked(io, cred);
+    const name = backendName(a.platform);
+    const message = ended
+      ? `${name} wouldn't save the sign-in, so pkey revoked it.`
+      : `${name} wouldn't save the sign-in, and pkey couldn't revoke it.`;
+    const quote = t.caps.unicode ? ["“", "”"] : ['"', '"'];
+    throw new Failure(
+      message,
+      undefined,
+      "store-failed",
+      { host, revoked: ended },
+      [
+        [text(message)],
+        ended
+          ? [
+              ...rerun(
+                io,
+                origin,
+                `${unlockAdvice(a.platform)} and run `,
+                " again, or make a token at ",
+              ),
+              text(personalTokens, { break: "url" }),
+              text(` and set ${ADMIN_TOKEN_ENV}.`),
+            ]
+          : [
+              text(
+                `Revoke ${label ? `${quote[0]}${label}${quote[1]} ` : ""}(pkeyp_${t.symbols.ellipsis}${hint}) at `,
+              ),
+              text(personalTokens, { break: "url" }),
+              text("."),
+            ],
+      ],
     );
   }
+
+  // The new sign-in is kept: only now does the one it replaces end.
+  let previous: "none" | "revoked" | "not-revoked" = "none";
+  if (a.previous && a.previous.token !== token)
+    previous = (await revoked(io, {
+      token: a.previous.token,
+      source: "store",
+      origin,
+      expiresAt: a.previous.expiresAt,
+    }))
+      ? "revoked"
+      : "not-revoked";
 
   // Who is it? The new token reads its own identity; failing that, still signed in.
   let name = "";
   let email = "";
   let roles: { role: string; scope: string }[] = [];
+  const products = new Map<string, string>();
   try {
     const res = await call(io, cred, "GET", "/me");
     if (res.ok) {
       const me = await jsonOf(res);
-      name = untrusted(me["name"] ?? "", io.env);
-      email = untrusted(me["email"] ?? "", io.env);
+      name = shown(me["name"] ?? "", io.env);
+      email = shown(me["email"] ?? "", io.env);
+      if (Array.isArray(me["products"]))
+        for (const p of me["products"] as { slug?: unknown; name?: unknown }[])
+          if (typeof p?.slug === "string" && typeof p.name === "string")
+            products.set(p.slug, shown(p.name, io.env));
       const perms = (me["permissions"] ?? {}) as {
         roles?: { role?: unknown; scope?: unknown }[];
       };
-      roles = (perms.roles ?? []).map((r) => ({
-        role: untrusted(r.role, io.env),
-        scope: untrusted(r.scope, io.env),
+      roles = (Array.isArray(perms.roles) ? perms.roles : []).map((r) => ({
+        role: shown(r.role, io.env),
+        scope: shown(r.scope, io.env),
       }));
     }
   } catch {
@@ -716,16 +925,9 @@ async function approved(
   }
 
   const backend = backendName(a.platform);
-  const t = io.term(io.stdout);
-  const hint = `pkeyp_${t.symbols.ellipsis}${token.slice(-4)}`;
   if (io.json) {
     io.stdout.write(
-      `${JSON.stringify({
-        v: 1,
-        command: "login",
-        event: "result",
-        ok: true,
-        exit: 0,
+      envelope("login", 0, {
         host,
         name,
         email,
@@ -733,37 +935,73 @@ async function approved(
         token: {
           type: "personal",
           scope: "admin",
+          ...(label ? { label } : {}),
+          hint,
           expiresAt: new Date(expiresAt * 1000).toISOString(),
         },
         storedIn: backend,
-      })}\n`,
+        replaced: previous,
+      }),
     );
     return 0;
   }
-  const who = name ? `${name}${email ? ` (${email})` : ""}` : email;
-  io.stdout.write(
-    `\n${note(who ? `Signed in to ${host} as ${who}` : `Signed in to ${host}`, t, "ok")}\n`,
-  );
-  const label = (k: string) => t.painter.style(k.padEnd(10), ["muted"]);
-  const width = Math.max(1, t.caps.columns - 12);
-  const rows: [string, string][] = [];
-  if (roles.length)
-    rows.push([
-      "Roles",
-      [...new Set(roles.map((r) => roleLabel(r.role, r.scope)))].join(", "),
-    ]);
-  const dot = ` ${t.symbols.separator} `;
-  rows.push([
-    "Token",
-    [hint, "admin", `ends ${localDay(expiresAt)}`].join(dot),
-  ]);
-  rows.push(["Saved in", backend]);
-  for (const [k, v] of rows)
-    wrapSpans([{ text: v }], width).forEach((l, i) =>
-      io.stdout.write(
-        `  ${i === 0 ? label(k) : " ".repeat(10)}${t.painter.line(l)}\n`,
+
+  const who: Line = name
+    ? [
+        text("Signed in as "),
+        text(name, { style: ["strong"], keep: true }),
+        ...(email ? [text(" "), text(`(${email})`, { keep: true })] : []),
+      ]
+    : email
+      ? [text("Signed in as "), text(email, { keep: true })]
+      : [text("Signed in.")];
+  io.stdout.write(`${a.gap}${block(t, "ok", [who])}\n`);
+
+  const roleNames = [
+    ...new Set(
+      roles.map((r) =>
+        roleName(r.role, r.scope, (slug) => products.get(slug) ?? slug),
       ),
+    ),
+  ];
+  io.stdout.write(
+    rowsText(
+      t,
+      [
+        [
+          "Roles",
+          roleNames.flatMap(
+            (r, i): Line => [
+              ...(i ? [text(", ")] : []),
+              text(r, { unit: true }),
+            ],
+          ),
+        ],
+        ["Token", tokenLine(t, label, hint)],
+        ["Ends", [text(day(expiresAt, io.env), { unit: true })]],
+        ["Saved in", [text(backend, { unit: true })]],
+      ],
+      { indent: 2, label: 10 },
+    ),
+  );
+  io.stdout.write(
+    `\n${t.caps.columns < 32 ? "" : "  "}End it with pkey logout.\n`,
+  );
+  if (previous === "not-revoked") {
+    const until = a.previous?.expiresAt
+      ? ` until ${day(a.previous.expiresAt, io.env)}`
+      : "";
+    io.stderr.write(
+      `\n${block(io.term(io.stderr), "warn", [
+        [
+          text(
+            `Couldn't end your previous sign-in, so it still works${until}. Revoke it at `,
+          ),
+          text(personalTokens, { break: "url" }),
+          text("."),
+        ],
+      ])}`,
     );
-  io.stdout.write(`\n  End it with pkey logout.\n`);
+  }
   return 0;
 }

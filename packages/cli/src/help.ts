@@ -157,24 +157,29 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "that the code in your browser matches the one here before you approve: it is how " +
           "you know the request is yours. On approval a personal token (admin, 7 days) goes " +
           "to your operating system's credential store, bound to the origin that issued it. " +
-          "The token is never printed. Keys: Enter opens the page again, c copies the code, " +
-          "Esc cancels.",
+          "The token is never printed. Keys: Enter opens the page again, c copies the code " +
+          "(not over SSH), Esc cancels.",
       },
       {
         text:
-          "A second pkey login first ends the token it replaces. It refuses (exit 4) in CI, " +
-          "where PKEY_ADMIN_TOKEN is the credential; without a credential store; and when you " +
-          "already have the most personal tokens allowed (revoke one at Personal tokens, then run " +
-          "it again). A denied code exits 4; an expired code or an unreachable console exits 1; " +
-          "Esc and Ctrl+C cancel and exit 130.",
+          "A second pkey login ends the token it replaces once the new one is saved; if you " +
+          "cancel, are denied, run out of time or lose the network, the old sign-in keeps " +
+          "working. It refuses (exit 4) in CI, where PKEY_ADMIN_TOKEN is the credential; " +
+          "without a credential store; and when you already have the most personal tokens " +
+          "allowed (revoke one at Personal tokens, then run it again). A code canceled in the " +
+          "browser exits 4; an expired code, an unreachable console or a credential store that " +
+          "won't save exits 1. Esc and Ctrl+D cancel and exit 1; Ctrl+C exits 130. A base " +
+          "URL that is not https is exit 2 (http works only on localhost).",
       },
       {
         text:
           "--json prints one line when the code is ready, " +
-          '{"v":1,"command":"login","event":"started","host","code","url","expiresIn"}, then ' +
-          'one result line, {"v":1,"command":"login","event":"result","ok","exit"} with name, ' +
-          "email, roles, token (no secret) and storedIn on success, or error (denied, expired, " +
-          "token_limit, cancelled, refused or error) and message. It never prompts or opens a browser.",
+          '{"v":1, "command":"login", "event":"started", "host", "code", "url", "expiresIn", ' +
+          '"replaces"}, then one result line, {"v":1, "command":"login", "event":"result", ' +
+          '"ok", "exit"} with name, email, roles, token (no secret), storedIn and replaced on ' +
+          "success, or error and message. error is denied, expired, token_limit, cancelled, " +
+          "interrupted, refused, network, server-error, store-failed, usage or internal. " +
+          "It never prompts or opens a browser.",
       },
     ],
   },
@@ -196,11 +201,12 @@ export const COMMANDS: readonly PkeyCommand[] = [
       {
         text:
           "--json prints one line, the result line: " +
-          '{"v":1,"command":"whoami","event":"result","ok","exit","host","name","email",' +
-          '"roles","token"}, with role ids. A refusal is {"ok":false,"exit":4,"error","message"}: ' +
-          "not-signed-in, sign-in-ended, no-credential-store, keychain-refused, " +
-          "admin-api-token, env-token-refused or redirect. A failure is exit 1: unreachable, " +
-          "server-error or not-a-console.",
+          '{"v":1, "command":"whoami", "event":"result", "ok", "exit", "host", "name", ' +
+          '"email", "roles", "token"}, with role ids. A refusal is {"ok":false, "exit":4, ' +
+          '"error", "message"}: not-signed-in, sign-in-ended, sign-in-refused, ' +
+          "no-credential-store, keychain-refused, admin-api-token, env-token-refused or " +
+          "redirect. A failure is exit 1: unreachable, server-error or not-a-console. A base " +
+          "URL that is not https is exit 2, error usage.",
       },
     ],
     env: [
@@ -231,7 +237,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
       {
         text:
           "--json prints one line, the result line: " +
-          '{"v":1,"command":"logout","event":"result","ok","exit","host","revoked","cleared"}. ' +
+          '{"v":1, "command":"logout", "event":"result", "ok", "exit", "host", "revoked", ' +
+          '"cleared"}. ' +
           "When the token still works it adds error (unreachable, redirect, revoke-refused or " +
           "server-error), message, tokenEndsAt and revokeUrl.",
       },
