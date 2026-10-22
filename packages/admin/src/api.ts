@@ -6207,6 +6207,10 @@ const rawApi = {
         .join("&")}`,
     ),
 
+  // ── sync: Cloud Sync usage (U-05.19) ───────────────────────────────────────
+  /** The Usage page's facts: the aggregate, today's UTC counters, tier labels and limits. */
+  syncUsage: (slug: string) => call<SyncUsageResponse>(`${p(slug)}/sync/usage`),
+
   // ── config: edge-mint recipe approval (P0-12) ───────────────────────────────
   edgeMintRecipes: (slug: string) =>
     call<EdgeMintRecipesResponse>(`${p(slug)}/config/mint`),
@@ -6962,6 +6966,45 @@ function deliveryAccessOf(s: ProductSetting): DeliveryAccess {
     })),
   };
 }
+
+/** `GET …/sync/usage` (U-05.19): counts and bytes only, no person, subject or device. */
+export type SyncUsageResponse =
+  | { enabled: false }
+  | {
+      enabled: true;
+      usage: {
+        bytes: number;
+        people: number;
+        settingsBytes: number;
+        recordBytes: number;
+        fileBytes: number;
+        revisionBytes: number;
+        computedAt: number;
+        breakdown: {
+          byTier: {
+            tierId: string | null;
+            people: number;
+            bytes: number;
+            medianBytes: number;
+            over80: number;
+          }[];
+          byKind: {
+            settings: number;
+            records: number;
+            files: number;
+            revisions: number;
+          };
+          byPlatform: {
+            platform: string | null;
+            peopleThisWeek: number;
+            lastSyncAt: number;
+          }[];
+        };
+      };
+      today: { day: string; syncs: number; conflicts: number };
+      tiers: { id: string; label: string; bytes: number | null }[];
+      defaultBytes: number;
+    };
 
 export const api: AdminApi = rawApi;
 

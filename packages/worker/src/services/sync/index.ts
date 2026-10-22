@@ -26,6 +26,7 @@ import type {
 } from "../../core/registry.js";
 import { SYNC_SETTINGS_SLICE } from "./settings.js";
 
+import { handleSyncAdmin } from "./admin/index.js";
 import { syncIntegration } from "./integration.js";
 import { syncProductDeletion, syncProductPurge } from "./productDeletion.js";
 import { syncMaintenance } from "./maintenance.js";
@@ -52,6 +53,8 @@ export const syncService: ServiceDescriptor = {
   /** U-05.9: the 15-minute per-product aggregate (`sync_product_usage`), on the connector tick. */
   scheduled: syncScheduled,
   handle: SYNC_ROUTES.handle,
+  /** U-05.19: `sync/usage` on the console API. */
+  adminHandle: handleSyncAdmin,
   surface: SYNC_ROUTES.surface,
   /** The operator's product ceiling (plans/U-01b.md D6); the quota is an entitlement (D5). */
   settings: SYNC_SETTINGS_SLICE,
