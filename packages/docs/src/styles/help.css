@@ -14,7 +14,7 @@
   --sl-text-h3: 1rem;
   --sl-text-h4: 1rem;
   --sl-line-height-headings: 1.35;
-  --sl-menu-button-size: 2.5rem;
+  --sl-menu-button-size: 2.75rem;
 }
 
 /* ---- Header --------------------------------------------------------------------------------- */
@@ -38,6 +38,14 @@
   font-size: var(--pk-font-size-xs, 0.75rem);
   font-weight: 500;
   line-height: 1;
+}
+
+/* The search sits in one place on every Help page. Starlight sizes the first column from the page's
+   own column (none on the home, a sidebar on an article), which moved the field 191 px. */
+@media (min-width: 50rem) {
+  [data-brand="locker"] header.header > .header {
+    grid-template-columns: calc(var(--sl-sidebar-width) - var(--sl-nav-pad-x)) 1fr auto;
+  }
 }
 
 [data-brand="locker"] .social-icons::after {
@@ -87,17 +95,20 @@
   outline-offset: 2px;
 }
 
-/* One glyph per theme: the moon is the way to dark mode's opposite, so each shows the other. */
+/* One glyph per choice (ThemeSelect.astro): the monitor for System, the moon for Dark, the sun for Light. */
+.pk-help-theme__dark,
 .pk-help-theme__light {
   display: none;
 }
-.pk-help-theme__dark {
+.pk-help-theme__auto {
   display: inline-flex;
 }
-:root[data-theme="light"] .pk-help-theme__dark {
+pk-help-theme-toggle[data-choice="dark"] .pk-help-theme__auto,
+pk-help-theme-toggle[data-choice="light"] .pk-help-theme__auto {
   display: none;
 }
-:root[data-theme="light"] .pk-help-theme__light {
+pk-help-theme-toggle[data-choice="dark"] .pk-help-theme__dark,
+pk-help-theme-toggle[data-choice="light"] .pk-help-theme__light {
   display: inline-flex;
 }
 
@@ -172,7 +183,7 @@
   font-size: 1.5rem;
   line-height: 2rem;
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: var(--pk-font-weight-semibold);
   letter-spacing: -0.02em;
 }
 [data-brand="locker"] h1#_top {
@@ -227,7 +238,7 @@
 
 [data-brand="locker"] .sl-markdown-content :is(h2, h3, h4) {
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: var(--pk-font-weight-semibold);
   letter-spacing: -0.01em;
 }
 [data-brand="locker"] .sl-markdown-content h2 {
@@ -276,7 +287,7 @@
   border-radius: 50%;
   background-color: var(--pk-accent-subtle);
   color: var(--pk-accent-fg);
-  font-weight: 700;
+  font-weight: var(--pk-font-weight-semibold);
 }
 [data-brand="locker"] .sl-markdown-content > ol > li:not(:last-child)::after {
   content: "";
@@ -370,7 +381,7 @@
   gap: var(--pk-space-2);
   color: var(--pk-text-strong);
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: var(--pk-font-weight-semibold);
   line-height: 1.5;
 }
 .pk-help-cards__title .pk-help-ic {
@@ -490,16 +501,18 @@
       var(--sl-nav-pad-x);
   }
   /* The brand's words stay: the lockup is 218 px wide, and the 20 rem window has the mark alone. */
+  /* The developer doors' drawer (chrome.css): the whole window, the head with Close inside it. */
   [data-brand="locker"] .sidebar-pane {
     inset-block: 0;
-    inset-inline: auto 0;
-    width: min(22rem, 100%);
-    border-inline-start: 1px solid var(--pk-border-subtle);
+    inset-inline: 0;
+    width: 100%;
     background-color: var(--pk-surface-raised);
     box-shadow: var(--sl-shadow-lg);
   }
-  [data-brand="locker"] .sidebar-pane::backdrop {
-    background-color: var(--sl-color-backdrop-overlay);
+  /* Menu and Close are 44 px targets (docs plan 8.3). */
+  .pk-help-drawer-head .pk-help-iconbtn {
+    width: 2.75rem;
+    height: 2.75rem;
   }
   [data-brand="locker"] .pk-help-drawer-head {
     display: flex;
@@ -515,7 +528,7 @@
     margin: 0;
     color: var(--pk-text-strong);
     font-size: 1.125rem;
-    font-weight: 700;
+    font-weight: var(--pk-font-weight-semibold);
   }
 }
 
@@ -550,7 +563,7 @@
   border-color: var(--pk-text-strong);
   background-color: var(--pk-surface-raised);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: var(--pk-font-weight-semibold);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -615,7 +628,7 @@
   margin: 0 0 var(--pk-space-2);
   color: var(--pk-text-strong);
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: var(--pk-font-weight-semibold);
   line-height: 1.5;
 }
 .pk-miss p {
@@ -640,7 +653,7 @@
   padding: 0 var(--pk-space-4);
   border-radius: var(--pk-radius-md);
   font: inherit;
-  font-weight: 700;
+  font-weight: var(--pk-font-weight-semibold);
   text-decoration: none;
   cursor: pointer;
 }

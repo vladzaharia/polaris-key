@@ -76,6 +76,9 @@ export async function lintTargets(
     const page = await browser.newPage({
       viewport: target.viewport ?? { width: 3200, height: 2000 },
       deviceScaleFactor: target.deviceScaleFactor ?? 1,
+      // The lint injects its own script: a page served under a strict CSP (the docs, through the
+      // Worker) would otherwise block it.
+      bypassCSP: true,
     });
     const consoleErrors: string[] = [];
     page.on("console", (m) => {

@@ -1,31 +1,39 @@
 ---
 /**
- * The theme control on every page is one icon button that flips dark and light, as in the
- * mockups; the three-way choice (System, Dark, Light) is in the phone menu (MobileMenuFooter).
+ * The header's theme control (docs plan 8.3): one icon button that cycles System, Dark and Light as
+ * the console's does, with the current choice in its name. The icon is the choice's, so System
+ * (the first load, and the way back) is never hidden behind the colour it resolves to. The phone
+ * menu holds the same three as a radiogroup (MobileMenuFooter).
  */
 import { HELP_ICONS } from "../lib/helpIcons";
 ---
 
-<pk-help-theme-toggle>
-  <button type="button" class="pk-help-iconbtn" aria-label="Theme">
+<pk-help-theme-toggle data-choice="auto">
+  <button type="button" class="pk-help-iconbtn" aria-label="Theme: System">
+    <span class="pk-help-theme__auto" set:html={HELP_ICONS.monitor} />
     <span class="pk-help-theme__dark" set:html={HELP_ICONS.moon} />
     <span class="pk-help-theme__light" set:html={HELP_ICONS.sun} />
   </button>
 </pk-help-theme-toggle>
 
 <script>
-  import { setTheme } from "../scripts/helpTheme";
+  import { setTheme, storedTheme, type Theme } from "../scripts/helpTheme";
+
+  const NEXT: Record<Theme, Theme> = { auto: "dark", dark: "light", light: "auto" };
+  const NAME: Record<Theme, string> = { auto: "System", dark: "Dark", light: "Light" };
 
   class HelpThemeToggle extends HTMLElement {
     constructor() {
       super();
-      this.querySelector("button")?.addEventListener("click", () =>
-        setTheme(
-          document.documentElement.dataset.theme === "light"
-            ? "dark"
-            : "light",
-        ),
-      );
+      const button = this.querySelector("button")!;
+      const show = (theme: Theme) => {
+        this.dataset.choice = theme;
+        button.setAttribute("aria-label", `Theme: ${NAME[theme]}`);
+      };
+      show(storedTheme());
+      button.addEventListener("click", () => setTheme(NEXT[storedTheme()]));
+      // The phone menu's radios, and another toggle, change the choice too.
+      document.addEventListener("pk-help-theme", () => show(storedTheme()));
     }
   }
   if (!customElements.get("pk-help-theme-toggle"))

@@ -11,4 +11,4 @@ sidebar:
 This page is for Platform admins. Your account can read the console docs, not this page. Ask a Platform admin for access.
 
 - Using an app? Go to [Help](/docs/help/).
-- Building with Polaris Key? Go to [Start](/docs/start/).
+- Building with Polaris Key? Go to [Developers](/docs/start/).

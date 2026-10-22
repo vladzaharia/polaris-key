@@ -37,3 +37,38 @@ const current = tabOf(id);
   )
 }
 <Default />
+
+<script>
+  /**
+   * The phone drawer (docs.mobile-menu). Starlight inerts only the main frame and the skip link, so
+   * focus could walk behind the drawer onto the header, the Menu button and the brand footers
+   * (WCAG 2.4.11). While it is open those are inert, focus starts on Close menu, and on close it
+   * returns to Menu. Help's tree keeps every group open, so its current page is brought into view.
+   */
+  const pane = document.getElementById("starlight__sidebar");
+  const BEHIND =
+    "header.header, .pk-section > footer, .sl-menu-button";
+
+  const reveal = () => {
+    if (document.querySelector(".pk-section")?.getAttribute("data-brand") !== "locker") return;
+    const here = pane?.querySelector<HTMLElement>('a[aria-current="page"]');
+    if (!pane || !here || here.offsetParent === null) return;
+    const box = pane.getBoundingClientRect();
+    const at = here.getBoundingClientRect();
+    if (at.top >= box.top && at.bottom <= box.bottom) return;
+    pane.scrollTop += at.top - box.top - (pane.clientHeight - at.height) / 2;
+  };
+
+  pane?.addEventListener("toggle", (e) => {
+    const open = (e as ToggleEvent).newState === "open";
+    for (const el of document.querySelectorAll<HTMLElement>(BEHIND))
+      el.toggleAttribute("inert", open);
+    if (open) {
+      pane.querySelector<HTMLElement>(".pk-help-drawer-head button")?.focus();
+      reveal();
+    } else {
+      document.querySelector<HTMLElement>(".sl-menu-button")?.focus();
+    }
+  });
+  reveal();
+</script>

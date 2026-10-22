@@ -133,7 +133,7 @@ export const onRequest = defineRouteMiddleware(async (context) => {
     if (!id.startsWith("help/messages")) route.toc = undefined;
     for (const h of head ?? []) {
       if (h.tag === "title" && typeof h.content === "string")
-        h.content = h.content.replace(/ \| Polaris Key$/, " · Polaris Locker");
+        h.content = h.content.replace(/ · Polaris Key$/, " · Polaris Locker");
       else if (h.tag === "meta" && h.attrs?.property === "og:site_name")
         h.attrs.content = "Polaris Locker";
       else if (h.tag === "meta" && h.attrs?.property === "og:url")

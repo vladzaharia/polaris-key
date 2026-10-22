@@ -18,15 +18,16 @@ export const DOCS_SCRIPT_HASHES: readonly string[] = [
   "'sha256-SwBaYHTbONGJpZpsvM40lJ8JneCm5m5xRdPkDorRD3k='",
   "'sha256-VBXjWD/njPiGpVaqYMUlMIHfdBZbA865+ZfgTH/zHa8='",
   "'sha256-VgrgcKBvIM3XpiLJ6fEv1Vy6YHBwlKLkYtFdfBMouTo='",
-  "'sha256-XaA2pEspIeNwRwmw9WyviJqNFlspRpob+lgtes1zzYE='",
   "'sha256-abC4lxKzuPelqMjA4iLVxB0tgZiP5lgCLsdxWdHy34w='",
   "'sha256-cWzNk5BJWLj7tqXPbljaFnZW2niFgIdv0FiguIWpgg0='",
+  "'sha256-g+2oqsv6IzjmqPl2VK3oJbv9821NtQSKdS59oRLIpn8='",
   "'sha256-hP48sUywTAXyg22qvpdOC/cYIA8MfPdKEbPC/mvGk4M='",
   "'sha256-iXdLe5431SihUeJR7l/K0mD+PcAzDD5BDLAMID+bX5I='",
   "'sha256-pD4AFoLP/IdwBq22YJtB9ZSA58jK2KN4uK3N8Y/0N3o='",
   "'sha256-ucPfdYc9FPIvbmnn9ECv3eLKYLt8/heMPFQ+hNTn6jY='",
   "'sha256-wX2yOADeV+NMngflD5uYi3vl50SHC4sfM1EmylVjlX4='",
-  "'sha256-xP4TLKzB6hcrCLQfQrTEg8qxfZ1b3HlE1OWO+7uZf1o='"
+  "'sha256-xP4TLKzB6hcrCLQfQrTEg8qxfZ1b3HlE1OWO+7uZf1o='",
+  "'sha256-z4VjyWovx2fTEyUoNKdS88ccs91xT2kE0PZDHNV3o6M='"
 ];
 
 /** CSP source expressions for every inline <style> the docs build emits. */

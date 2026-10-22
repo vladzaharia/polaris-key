@@ -38,8 +38,9 @@ const topic =
       : (groupName ?? "Help");
 const door = doorOf(route.id)?.door;
 const landing = route.id === "" || route.id === "index";
+// The landing and the Help home carry no eyebrow: it would repeat the title above it.
 const eyebrow = landing
-  ? "Start here"
+  ? undefined
   : isServiceSection(section)
     ? section.label
     : door === "operate"
@@ -72,10 +73,12 @@ const trail = [
     <div class="pk-help-header">
       <meta data-pagefind-filter="door[content]" content={doorName} />
       <meta data-pagefind-meta="trail[content]" content={trail} />
-      <p class="pk-eyebrow pk-help-eyebrow">
-        <span class="pk-eyebrow__marker" aria-hidden="true" />
-        {topic}
-      </p>
+      {route.id !== "help" && (
+        <p class="pk-eyebrow pk-help-eyebrow">
+          <span class="pk-eyebrow__marker" aria-hidden="true" />
+          {topic}
+        </p>
+      )}
       <pk-help-copy class="pk-help-titlerow">
         <h1 id="_top" data-page-title>
           {route.entry.data.title}

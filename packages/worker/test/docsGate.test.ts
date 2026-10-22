@@ -115,6 +115,11 @@ const ASSET_FILES: Record<string, { body: string; type: string }> = {
     body: "{}",
     type: "application/json",
   },
+  // A directory the build has but no tier row names: gated by default.
+  "/docs/a-new-directory/index.html": {
+    body: "<h1>unlisted</h1>",
+    type: "text/html",
+  },
 };
 
 function assetsMock(): Fetcher {
@@ -280,6 +285,36 @@ describe("handleDocs: the platform-admin gate", () => {
       const res = await handleDocs(get(path), env, NOW);
       expect(res.status, path).toBe(200);
     }
+  });
+
+  it("answers a mistyped top-level path with the 404, not the sign-in page, and never says whether a gated page exists", async () => {
+    const env = docsEnv();
+    for (const path of [
+      "/docs/strat/",
+      "/docs/strat",
+      "/docs/operat/",
+      "/docs/pagefind-memberr/x.js",
+    ]) {
+      const res = await handleDocs(get(path), env, NOW);
+      expect(res.status, path).toBe(404);
+      expect(await res.text(), path).toContain("docs 404");
+    }
+    // A gated page and a gated path that does not exist answer alike: the prefix is gated, whatever follows.
+    const real = await handleDocs(
+      get("/docs/operate/console/members/"),
+      env,
+      NOW,
+    );
+    const gone = await handleDocs(
+      get("/docs/operate/console/nope-nope/"),
+      env,
+      NOW,
+    );
+    expect([real.status, gone.status]).toEqual([302, 302]);
+    // An unlisted path the build does hold is still gated, and the path comes back after sign-in.
+    const held = await handleDocs(get("/docs/a-new-directory/"), env, NOW);
+    expect(held.status).toBe(302);
+    expect(held.headers.get("location")).toContain("/docs/access/");
   });
 
   it("gates the member and admin search bundles and every unlisted path", async () => {
