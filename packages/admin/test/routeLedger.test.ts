@@ -25,7 +25,7 @@ const V099_PAGE_IDS = [
 ]; // prettier-ignore
 
 /** Pages added after v0.9.9: each has a live row, so a later move or removal has its answer. */
-const ADDED_PAGE_IDS = ["platform-activity"]; // ST-51
+const ADDED_PAGE_IDS = ["platform-activity", "platform-members"]; // ST-51, ST-31.11
 
 const inNav = (id: string): boolean =>
   [...GLOBAL_PAGES, ...PRODUCT_PAGES].some((p) => p.page === id);

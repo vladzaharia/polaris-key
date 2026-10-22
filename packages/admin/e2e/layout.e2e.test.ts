@@ -194,6 +194,32 @@ function cases(): Case[] {
       name: "global:platform-activity?timeline",
       hash: "#/platform/activity?view=timeline",
     },
+    // ST-31.11: Platform → Members' two overlays, the invite dialog and a member's roles.
+    {
+      name: "global:platform-members?invite",
+      hash: "#/platform/members",
+      act: async (page) => {
+        await page.getByRole("button", { name: "Invite people" }).click();
+        await page
+          .getByRole("alertdialog", { name: "Invite people" })
+          .waitFor();
+      },
+    },
+    {
+      name: "global:platform-members?edit-roles",
+      hash: "#/platform/members",
+      act: async (page) => {
+        await page
+          .getByRole("button", { name: "Actions for Sam Okoye" })
+          .first()
+          .click();
+        await page.getByRole("menuitem", { name: /Edit roles/ }).click();
+        await page
+          .getByRole("dialog", { name: /Edit roles for Sam Okoye/ })
+          .waitFor();
+      },
+    },
+
     {
       name: "djdl:rollouts?view=matrix&cell",
       hash: "#/p/djdl/distribution/rollouts?view=matrix&cell=rel_240:altstore",

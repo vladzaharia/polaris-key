@@ -108,6 +108,7 @@ export type GlobalPageId =
   | "personal-tokens"
   // the Platform section (notes/S-13 §9.1)
   | "platform-settings"
+  | "platform-members"
   | "platform-status"
   | "platform-stores"
   | "platform-connections"
@@ -827,6 +828,18 @@ const PLATFORM_PAGES: NavPage[] = [
     path: "platform/settings",
     icon: ServerCog,
     docs: "/docs/operate/platform/settings/",
+    inNav: true,
+    group: "platform",
+  },
+  {
+    // ST-31.11: everyone with a role, where each role came from, and the pending invites. The
+    // Worker answers Superadmins and Platform admins only (area `members`).
+    page: "platform-members",
+    label: "Members",
+    keywords: "people roles invite access admin superadmin",
+    path: "platform/members",
+    icon: UsersRound,
+    docs: "/docs/operate/console/tour/",
     inNav: true,
     group: "platform",
   },

@@ -56,6 +56,10 @@ export type WriteMethod =
   | "deleteAlertDestination"
   | "testAlertDestination"
   | "revokePersonalToken"
+  | "inviteMembers"
+  | "grantRole"
+  | "editBindingAreas"
+  | "revokeBinding"
   | "createPlatformConnection"
   | "updatePlatformConnection"
   | "deletePlatformConnection"
@@ -432,6 +436,23 @@ export const MUTATIONS: MutationTable = {
       prefix(qk.platformConnections()),
       prefix(qk.platformActivity()),
     ],
+  },
+  // ST-31.11: a role change moves the roster and the platform trail (`rbac.*` rows).
+  inviteMembers: {
+    label: "member invite",
+    invalidates: () => [prefix(qk.members()), prefix(qk.platformActivity())],
+  },
+  grantRole: {
+    label: "role grant",
+    invalidates: () => [prefix(qk.members()), prefix(qk.platformActivity())],
+  },
+  editBindingAreas: {
+    label: "role areas edit",
+    invalidates: () => [prefix(qk.members()), prefix(qk.platformActivity())],
+  },
+  revokeBinding: {
+    label: "role revoke",
+    invalidates: () => [prefix(qk.members()), prefix(qk.platformActivity())],
   },
   revokePersonalToken: {
     label: "personal token revoke",

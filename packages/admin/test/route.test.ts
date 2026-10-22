@@ -497,6 +497,7 @@ describe("the nav model (nav.ts)", () => {
       "personal-tokens",
       "platform-connections",
       "platform-settings",
+      "platform-members",
       "platform-status",
       "platform-stores",
       "platform-feeds",
@@ -719,6 +720,7 @@ describe("global pages", () => {
   it("the Platform section's pages are one sidebar group; Home is a link", () => {
     expect(PLATFORM_GROUP.items.map((p) => p.page)).toEqual([
       "platform-settings",
+      "platform-members",
       "platform-status",
       "platform-connections",
       "platform-stores",
@@ -742,6 +744,7 @@ describe("global pages", () => {
     // URL still answers until U-27 removes the page.
     expect(platformItems().map((p) => p.page)).toEqual([
       "platform-settings",
+      "platform-members",
       "platform-status",
       "platform-connections",
       "platform-stores",

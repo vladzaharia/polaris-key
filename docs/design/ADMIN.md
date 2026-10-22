@@ -139,6 +139,7 @@ the table.
 | `platform-stores`             | `#/platform/store-connections`               | Store connections (`#/platform/store-connections`)                         | live             |
 | `platform-feeds`              | `#/platform/feeds`                           | Package feeds (`#/platform/feeds`)                                         | live             |
 | `platform-activity`           | `#/platform/activity`                        | Activity (`#/platform/activity`)                                           | live             |
+| `platform-members`            | `#/platform/members`                         | Members (`#/platform/members`)                                             | live             |
 | `platform-override-migration` | `#/platform/override-migration`              | deleted (U-27)                                                             | deleted (U-27)   |
 | `home`                        | `#`                                          | Home (`#`)                                                                 | live             |
 | `products`                    | `#/products`                                 | Home (`#`)                                                                 | moved (ST-44)    |

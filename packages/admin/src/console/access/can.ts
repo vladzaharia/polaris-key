@@ -92,6 +92,8 @@ const GLOBAL_PAGE_AREAS: Record<GlobalPageId, AreaId> = {
   "personal-tokens": "platform",
   "product-new": "platform",
   "platform-settings": "platform",
+  // The Worker gates `/members` on the `members` area (Superadmin and Platform admin hold it).
+  "platform-members": "members",
   "platform-status": "platform",
   "platform-stores": "platform",
   "platform-connections": "platform",
