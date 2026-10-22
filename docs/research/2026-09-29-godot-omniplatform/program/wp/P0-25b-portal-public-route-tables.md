@@ -44,12 +44,24 @@ Portal and core public route tables, and the CORS row flag. Done when every acce
 
 ## Acceptance criteria
 
-- [ ] Portal `handlePortal` dispatches from a route table; no hand dispatch left in it
-- [ ] Core public routes in `dispatch.ts` dispatch from a table
-- [ ] `CORS_SERVICE_PATHS` replaced by a per-row CORS flag; the CORS tests are unchanged
-- [ ] Every device transcript and the 1,800-request oracle stay byte-identical (listed 405 tightenings only)
-- [ ] routeCoverage derived from the tables (rule 10: OpenAPI and the descriptor `surface` stay in step)
+- [x] Portal `handlePortal` dispatches from a route table; no hand dispatch left in it
+- [x] Core public routes in `dispatch.ts` dispatch from a table
+- [x] `CORS_SERVICE_PATHS` replaced by a per-row CORS flag; the CORS tests are unchanged
+- [x] Every device transcript and the 1,800-request oracle stay byte-identical (listed 405 tightenings only)
+- [x] routeCoverage derived from the tables (rule 10: OpenAPI and the descriptor `surface` stay in step)
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+
+## Progress and corrections (P0-25b)
+
+Verified against the code. Corrections to the brief:
+
+- The core table is `packages/worker/src/publicRoutes.ts` (composition layer: its handlers need `SERVICES`, and Core imports no service). It is keyed by the router's route **kind**, not a path: `router.ts` still decides which kind a path is (it percent-decodes `/devices/<id>` once and answers `badRequest`), and each row carries `surface` (the OpenAPI templates `routeCoverage` now derives `CORE_KIND_PATHS` from), `cors`, `auth` and `handler`.
+- The portal table is `PORTAL_ROUTES` in `services/identity/portal/index.ts`; rows are matched with `core/http/routes.ts` `bestRow` (also now used by `serviceRoutes`), and an `accept` that refuses falls through to the next row. `methods` there are documentation, not a gate: every handler keeps its own method policy, so no response changes.
+- `CORS_SERVICE_PATHS` and `CORS_CORE_KINDS` are gone from `core/cors.ts`; coverage is `cors: true` on `ServiceRouteDecl` rows (carried out by the descriptor `surface`) and `cors` on the core rows. `isCorsCoveredRoute` and a derived `CORS_SERVICE_PATHS` are exported by `publicRoutes.ts`; the CORS tests changed only in their import path.
+- The oracle is `test/publicRouteOracle.test.ts` (3,144 requests, recorded before the move); `test/corsFlags.test.ts` holds the flags to the old list verbatim.
+- No 405 tightening, no spec change, no transcript change.
+- Not done (named follow-up slice, P0-25b-2): `handlePortalApi`'s own path walk in `portal/api.ts` (CSRF and session gates per route). The brief's "no hand dispatch left in `handlePortal`" holds: `handlePortal` has none.
+- The full green gate was not run here (scoped checks only, per the lead); the last box is left for the lead's gate.
 
 ## Verify
 

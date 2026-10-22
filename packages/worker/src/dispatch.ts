@@ -16,9 +16,8 @@ import {
   type ProductPublic,
 } from "./core/products.js";
 import type { ServiceHooks } from "./core/hooks.js";
-import { corsPreflight, isCorsCoveredRoute, withCors } from "./core/cors.js";
-import { handleDiscovery } from "./core/discovery.js";
-import { handleJwks, handleTrustManifest } from "./core/trust/trust.js";
+import { corsPreflight, withCors } from "./core/cors.js";
+import { coreRouteOf, isCorsCoveredRoute } from "./publicRoutes.js";
 import { dispatchService, serviceContext } from "./core/registry.js";
 import {
   identityNavigationRedirect,
@@ -51,16 +50,6 @@ import {
 import { handleGithubWebhook } from "./githubWebhook.js";
 import { handleDeployHook } from "./platformDeploy.js";
 import { ErrorCode, notFound, wireError } from "./core/errors.js";
-import { handleDevices, handleReport } from "./core/devices.js";
-import { handleRegister } from "./core/register.js";
-import {
-  handleAttest,
-  handleAttestChallenge,
-} from "./core/trust/attestation.js";
-import { handleAssetsPush } from "./core/assets/hostedAssetUploads.js";
-// HA-06: a CI push into a listing-model slot also writes Distribution's listing row; Core takes
-// the writer from here rather than importing the service.
-import { listingSlotMirror } from "./services/distribution/api.js";
 import {
   handleSignInBind,
   handleSignInEntry,
@@ -505,62 +494,8 @@ async function routeProduct(
     });
   }
 
-  switch (route.kind) {
-    case "discovery":
-      return handleDiscovery(req, env, db, product, SERVICES, now);
-    case "devices":
-      return handleDevices(req, env, db, product, now, route.deviceId);
-    case "report":
-      // P6-03: the hooks bound update telemetry to the product's declared outlets and channels.
-      return handleReport(
-        req,
-        env,
-        db,
-        product,
-        now,
-        serviceContext("host", SERVICES, product.services, {
-          env,
-          db,
-          product,
-          now,
-        }).hooks,
-      );
-    case "register":
-      // The registry is threaded through because `requires-identity` registration is
-      // authorized by the Identity descriptor (`ServiceDescriptor.authorizeRegistration`);
-      // Core asks the registry rather than importing the service.
-      return handleRegister(req, env, db, product, now, SERVICES);
-    case "attestChallenge":
-      return handleAttestChallenge(req, env, db, product, now);
-    case "attest":
-      // The hooks carry Distribution's store identities (`Delivery.attestationTargets`).
-      return handleAttest(
-        req,
-        env,
-        db,
-        product,
-        now,
-        serviceContext("host", SERVICES, product.services, {
-          env,
-          db,
-          product,
-          now,
-        }).hooks,
-      );
-    case "assetsPush":
-      return handleAssetsPush(
-        req,
-        env,
-        db,
-        product.slug,
-        now,
-        listingSlotMirror,
-      );
-    case "jwks":
-      return handleJwks(db, product);
-    case "trustManifest":
-      return handleTrustManifest(req, env, db, product, now);
-    default:
-      return notFound();
-  }
+  // The core routes: one table row each (`publicRoutes.ts`).
+  const core = coreRouteOf(route.kind);
+  if (!core) return notFound();
+  return core.handler({ req, env, db, product, route, now });
 }
