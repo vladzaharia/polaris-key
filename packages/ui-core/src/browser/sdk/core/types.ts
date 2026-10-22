@@ -36,6 +36,7 @@ import type { CrashTags, CrashTagsOptions } from "./crash.js";
 import type { UpdateEvent } from "../constants.generated.js";
 import type { UpdateEventEntry, UpdateEventInput } from "./updateEvents.js";
 import type { InstallOptions, InstallOutcome } from "./install.js";
+import type { KitView } from "../desktop/bridge.js";
 import type {
   FetchTarget,
   ReleaseFetchOptions,
@@ -647,6 +648,12 @@ export interface PolarisAdapter {
    *  mode then sends the journal at once: nothing records it again). `boot()` confirms by the
    *  stage matrix's `confirmCases`; call it yourself for a boot you drive. */
   confirmBoot(): Promise<void>;
+  /**
+   * The host asks the renderer to open a view (UK-06.4): a native menu item on the desktop
+   * bridge. Returns an unsubscribe. Optional: only the desktop adapter has a host to ask, and an
+   * older host never asks.
+   */
+  onOpen?(cb: (view: KitView) => void): () => void;
   /** Dispose any listeners/timers the adapter owns. */
   dispose(): void;
 }

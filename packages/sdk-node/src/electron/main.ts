@@ -29,12 +29,17 @@ import {
   DEFAULT_BRIDGE_CHANNEL,
   DEFAULT_INVOKE_VERBS,
   POLARIS_BRIDGE_VERSION,
+  KIT_VIEWS,
   channelOf,
+  openChannel,
   stateChannel,
   updateProgressChannel,
   type BridgeEnvelope,
   type BridgeMethod,
+  type KitView,
 } from "./protocol.js";
+import { resolveLocale } from "../cli/copy.js";
+import { KIT_COPY, KIT_COPY_VARIANTS } from "../kitCopy.generated.js";
 
 /** The part of Electron's `WebContents` the bridge uses. */
 export interface WebContentsLike {
@@ -153,11 +158,48 @@ function defaultAllowSender(
 /** At most this often (10 per second) an install pushes progress to its window. */
 const PROGRESS_INTERVAL_MS = 100;
 
+/** One app-menu item the host places: Electron's `MenuItemConstructorOptions` accepts it as is
+ *  (this module imports no `electron`). */
+export interface PolarisMenuItem {
+  id: string;
+  label: string;
+  click: () => void;
+}
+
+/** The menu items' copy keys, in menu order, and the view each opens. */
+const MENU_ITEMS: readonly { id: string; key: string; view: KitView }[] = [
+  {
+    id: "polaris-key.checkForUpdates",
+    key: "update.checkNow",
+    view: "update",
+  },
+  {
+    id: "polaris-key.manageLicense",
+    key: "menu.manageLicense",
+    view: "settings",
+  },
+];
+
 /** What `exposePolarisBridge` returns: tear down every handler and listener. */
 export type PolarisBridgeHandle = {
   close(): void;
   /** Push the current state to every subscribed renderer now. */
   pushState(): void;
+  /**
+   * Ask the subscribed renderers to open a view in their window: Settings (the license) or the
+   * update check (`polaris-key:open`). A renderer subscribes by listening (the preload's
+   * `onOpen`, which `<PolarisKeyGate>` uses); one that does not listen, or an older renderer,
+   * ignores it. An unknown view is refused with a thrown error, never pushed.
+   */
+  open(view: KitView): void;
+  /**
+   * The app-menu items for the host to place ("Check for updates" and "Manage license"), as plain
+   * `{ id, label, click }` objects. The labels come from the kit copy in `locale` (default
+   * English): sentence case, and on macOS (`platform` "darwin" or "macos", default
+   * `process.platform`) title case with an ellipsis, in English only (§1.5 rule 11). A click calls
+   * `open(view)`.
+   */
+  menuItems(opts?: { platform?: string; locale?: string }): PolarisMenuItem[];
 };
 
 interface FlowEntry {
@@ -1044,8 +1086,44 @@ export function exposePolarisBridge(
     );
   }
 
+  const open = (view: KitView): void => {
+    if (!KIT_VIEWS.includes(view))
+      throw new Error(`open(): ${String(view)} is not a view the kit opens.`);
+    for (const [id, wc] of subscribers) {
+      if (wc.isDestroyed?.()) {
+        subscribers.delete(id);
+        continue;
+      }
+      try {
+        wc.send(openChannel(prefix), view);
+      } catch {
+        subscribers.delete(id);
+      }
+    }
+  };
+
+  const menuItems = (
+    o: { platform?: string; locale?: string } = {},
+  ): PolarisMenuItem[] => {
+    const locale = resolveLocale(o.locale);
+    const platform = o.platform ?? process.platform;
+    const mac = platform === "darwin" || platform === "macos";
+    return MENU_ITEMS.map(({ id, key, view }) => ({
+      id,
+      // The macOS wording is English's (the catalog's `macos` variants); other locales keep
+      // their own text on every platform.
+      label:
+        (mac && locale === "en" ? KIT_COPY_VARIANTS[key]?.macos : undefined) ??
+        KIT_COPY[locale][key] ??
+        KIT_COPY.en[key]!,
+      click: () => open(view),
+    }));
+  };
+
   return {
     pushState,
+    open,
+    menuItems,
     close() {
       for (const method of BRIDGE_METHODS)
         opts.ipcMain.removeHandler(channelOf(prefix, method));

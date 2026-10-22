@@ -12,6 +12,7 @@ export {
   type IpcMainInvokeEventLike,
   type IpcMainLike,
   type PolarisBridgeHandle,
+  type PolarisMenuItem,
   type WebContentsLike,
 } from "./main.js";
 export {
@@ -26,4 +27,5 @@ export {
   DEFAULT_INVOKE_VERBS,
   POLARIS_BRIDGE_VERSION,
   type BridgeEnvelope,
+  type KitView,
 } from "./protocol.js";

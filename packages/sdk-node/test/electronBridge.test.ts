@@ -1470,6 +1470,117 @@ describe("host facts and update progress over the bridge (UK-06.3)", () => {
   });
 });
 
+describe("menu items and open(view) (UK-06.4)", () => {
+  const OPEN = "polaris-key:open";
+
+  it("labels follow the platform and the locale: title case only on macOS, English only", async () => {
+    const { handle } = await setup();
+    const labels = (o?: { platform?: string; locale?: string }) =>
+      handle.menuItems(o).map((m) => m.label);
+    expect(labels({ platform: "linux" })).toEqual([
+      "Check for updates",
+      "Manage license",
+    ]);
+    expect(labels({ platform: "win32" })).toEqual(
+      labels({ platform: "linux" }),
+    );
+    expect(labels({ platform: "darwin" })).toEqual([
+      "Check for Updates…",
+      "Manage License…",
+    ]);
+    expect(labels({ platform: "macos", locale: "en-US" })).toEqual(
+      labels({ platform: "darwin" }),
+    );
+    // Another locale keeps its own sentence on macOS too.
+    expect(labels({ platform: "darwin", locale: "de" })).toEqual([
+      "Nach Updates suchen",
+      "Lizenz verwalten",
+    ]);
+    expect(labels({ platform: "linux", locale: "pt-BR" })[1]).toBe(
+      "Gerenciar a licença",
+    );
+    // Every launch locale has both labels, none an untranslated placeholder.
+    for (const locale of [
+      "en",
+      "de",
+      "fr",
+      "es",
+      "pt-BR",
+      "it",
+      "ja",
+      "ko",
+      "zh-Hans",
+    ])
+      for (const label of labels({ locale })) {
+        expect(label).not.toBe("");
+        expect(label).not.toMatch(/[{}]|menu\./);
+      }
+    expect(handle.menuItems().map((m) => m.id)).toEqual([
+      "polaris-key.checkForUpdates",
+      "polaris-key.manageLicense",
+    ]);
+    // Plain objects (Electron's MenuItemConstructorOptions takes them as they are).
+    for (const m of handle.menuItems())
+      expect(Object.keys(m).sort()).toEqual(["click", "id", "label"]);
+  });
+
+  it("a click pushes open to the subscribed windows only", async () => {
+    const ipc = ipcPair();
+    const { client } = await setup();
+    const handle = exposePolarisBridge(client, {
+      ipcMain: ipc.ipcMain,
+      allowSender: allowApp,
+      channel: "polaris-key",
+    });
+    const bridge = createPreloadBridge(ipc.ipcRenderer);
+    const typed: PolarisBridge = bridge;
+    const seen: string[] = [];
+    const [update, settings] = handle.menuItems();
+    update!.click(); // nobody subscribed yet
+    const off = typed.onOpen!((v) => seen.push(v));
+    await new Promise((r) => setTimeout(r, 0)); // the preload's subscribe call lands
+    update!.click();
+    settings!.click();
+    expect(seen).toEqual(["update", "settings"]);
+    off();
+    await new Promise((r) => setTimeout(r, 0));
+    settings!.click();
+    expect(seen).toEqual(["update", "settings"]);
+    handle.close();
+  });
+
+  it("refuses an unknown view, and the preload drops one it does not know", async () => {
+    const { handle, ipc, bridge } = await setup();
+    expect(() => handle.open("admin" as never)).toThrow(/not a view/);
+    const seen: string[] = [];
+    (bridge as PolarisBridge).onOpen!((v) => seen.push(v));
+    ipc.sender.send(OPEN, "admin");
+    ipc.sender.send(OPEN, { view: "settings" });
+    ipc.sender.send(OPEN, "settings");
+    expect(seen).toEqual(["settings"]);
+  });
+
+  it("a destroyed window is dropped and the others still get the push", async () => {
+    const sent: unknown[] = [];
+    const live = {
+      id: 1,
+      send: (_c: string, v: unknown) => void sent.push(v),
+    };
+    const dead = {
+      id: 2,
+      send: () => {
+        throw new Error("gone");
+      },
+      isDestroyed: () => true,
+    };
+    const { handle } = await setup({}, "pkeyt_seed", {
+      host: { webContents: [dead, live] },
+    });
+    handle.open("settings");
+    expect(sent).toEqual(["settings"]);
+  });
+});
+
 describe("SafeStorageStore (SP-N11)", () => {
   const reversible = (available = true, backend = "gnome_libsecret") => ({
     isEncryptionAvailable: () => available,
