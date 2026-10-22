@@ -528,7 +528,9 @@ export async function handleAppStoreHook(
   ctx: ServiceContext,
 ): Promise<Response | null> {
   const { env, db, product, now } = ctx;
-  const settings = (await effectiveCommerceSettings(db, product.slug)).settings;
+  const settings = (
+    await effectiveCommerceSettings(db, product.slug, ["app-store"])
+  ).settings;
   const actx = await appleContext(ctx, settings);
   if (!actx) return null;
   // Unverified traffic is limited per client IP only; the product-wide bucket below counts only
@@ -654,7 +656,8 @@ export async function handlePlayHook(
   ctx: ServiceContext,
 ): Promise<Response | null> {
   const { env, db, product, now } = ctx;
-  const settings = (await effectiveCommerceSettings(db, product.slug)).settings;
+  const settings = (await effectiveCommerceSettings(db, product.slug, ["play"]))
+    .settings;
   const pctx = await playContext(ctx, settings);
   if (!pctx) return null;
   // Unverified traffic is limited per client IP; the product bucket counts verified pushes only.

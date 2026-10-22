@@ -41,6 +41,16 @@ import {
   STORES,
   type Store,
 } from "../../core/licensing/storeGrants.js";
+import {
+  listOutletCredentials,
+  outletCredentialPin,
+} from "../../core/outletCredentials.js";
+import {
+  PLATFORM_CREDENTIALS,
+  platformCredentialsOf,
+  platformPin,
+  type PlatformStore,
+} from "../../core/platformCredentials.js";
 import { listEvents } from "../../core/stores/events.js";
 import {
   readStoredCommerceSettings,
@@ -70,6 +80,29 @@ import { APP_STORE_EVENTS, PLAY_EVENTS } from "./bridge.js";
 
 type AdminCtx = ServiceContext & { session: AdminSession };
 
+/**
+ * An active own credential of the identity slot with no pin, while the product holds a platform
+ * pin for that slot: the own key hides the platform pin (D12), so the store has no app. The
+ * console says so instead of "no app assigned".
+ */
+async function ownUnpinnedBlocksPlatformPin(
+  db: AdminCtx["db"],
+  product: string,
+  store: PlatformStore,
+  field: string,
+): Promise<boolean> {
+  const id = platformCredentialsOf(store).find(
+    (c) => PLATFORM_CREDENTIALS[c].pinField === field,
+  );
+  if (!id) return false;
+  const own = (await listOutletCredentials(db, product)).filter(
+    (c) => c.status === "active" && c.kind === PLATFORM_CREDENTIALS[id].kind,
+  );
+  if (own.length === 0 || own.some((c) => outletCredentialPin(c) !== null))
+    return false;
+  return (await platformPin(db, id, product)) !== null;
+}
+
 export async function setupOf(
   ctx: Pick<AdminCtx, "env" | "db"> & { product: { slug: string } },
   eff: EffectiveCommerce,
@@ -84,6 +117,7 @@ export async function setupOf(
   const one = async (
     block: boolean,
     configured: boolean,
+    blocked: () => Promise<boolean>,
     credential: () => Promise<string | null>,
     what: string,
   ) => {
@@ -92,7 +126,11 @@ export async function setupOf(
         configured: false,
         credential: null,
         // A block whose identity is neither typed nor assigned (A-28.2); no block: off (D13).
-        reason: block ? "no_app_assigned" : "no settings for this store",
+        reason: !block
+          ? "no settings for this store"
+          : (await blocked())
+            ? "own_credential_unpinned"
+            : "no_app_assigned",
       };
     const id = await credential();
     return {
@@ -108,6 +146,7 @@ export async function setupOf(
     "app-store": await one(
       stored.appStore !== null,
       settings.appStore !== null,
+      () => ownUnpinnedBlocksPlatformPin(ctx.db, slug, "app-store", "bundleId"),
       () =>
         appStoreCredential(ctx.env, ctx.db, slug, settings.appStore!.bundleId),
       "app-store-server-key",
@@ -115,12 +154,20 @@ export async function setupOf(
     play: await one(
       stored.play !== null,
       settings.play !== null,
+      () =>
+        ownUnpinnedBlocksPlatformPin(
+          ctx.db,
+          slug,
+          "google-play",
+          "packageName",
+        ),
       () => playCredential(ctx.env, ctx.db, slug, settings.play!.packageName),
       "google-service-account",
     ),
     steam: await one(
       stored.steam !== null,
       settings.steam !== null,
+      () => ownUnpinnedBlocksPlatformPin(ctx.db, slug, "steam", "appId"),
       () => steamCredential(ctx.env, ctx.db, slug, settings.steam!.appId),
       "steam-publisher-key",
     ),

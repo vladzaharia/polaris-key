@@ -31,6 +31,8 @@ export interface StoreIdentity {
   assigned: string | null;
   /** A typed value that differs from the assigned one (the typed value is the one in force). */
   mismatch: boolean;
+  /** The store's own active pins for this identity field disagree (D15; the lowest id won). */
+  ambiguous: boolean;
 }
 
 export interface EffectiveCommerce {
@@ -45,27 +47,39 @@ const NONE: StoreIdentity = {
   source: null,
   assigned: null,
   mismatch: false,
+  ambiguous: false,
 };
 
-function resolve(typed: string | null, assigned: string | null): StoreIdentity {
+function resolve(
+  typed: string | null,
+  assigned: string | null,
+  ambiguous: boolean,
+): StoreIdentity {
   if (typed !== null)
     return {
       value: typed,
       source: "typed",
       assigned,
       mismatch: assigned !== null && assigned !== typed,
+      ambiguous,
     };
   return {
     value: assigned,
     source: assigned !== null ? "assigned" : null,
     assigned,
     mismatch: false,
+    ambiguous,
   };
 }
 
+/**
+ * `only` limits the binding reads to the named stores (the unauthenticated hooks resolve just
+ * the store they serve, so a junk request costs the reads it always did); the others read as off.
+ */
 export async function effectiveCommerceSettings(
   db: Db,
   product: string,
+  only?: readonly Store[],
 ): Promise<EffectiveCommerce> {
   const stored = await readStoredCommerceSettings(db, product);
   const identity: Record<Store, StoreIdentity> = {
@@ -78,46 +92,43 @@ export async function effectiveCommerceSettings(
     play: null,
     steam: null,
   };
+  const wanted = (s: Store) => only === undefined || only.includes(s);
 
-  if (stored.appStore) {
+  if (stored.appStore && wanted("app-store")) {
     const b = await storeAppBinding(db, product, "app-store");
     const id = resolve(
       stored.appStore.bundleId,
       b.fields.bundleId?.value ?? null,
+      b.ambiguous.includes("bundleId"),
     );
     identity["app-store"] = id;
-    if (id.value !== null) {
-      // The Apple ID check on Production notifications: typed, else the assigned Apple ID, but
-      // only when the bundle id in force is the assigned app's (the two pins name one app).
-      const assignedApple = b.fields.appleId?.value ?? null;
-      const derivedApple =
-        assignedApple !== null &&
-        /^[1-9][0-9]{0,15}$/.test(assignedApple) &&
-        id.value === id.assigned
-          ? Number(assignedApple)
-          : null;
+    // `appAppleId` is typed only: the Apple ID and the bundle id sit in different key slots and
+    // can name different apps, so deriving it could only add false `wrong_app` refusals.
+    if (id.value !== null)
       settings.appStore = {
         bundleId: id.value,
-        appAppleId:
-          stored.appStore.appAppleId ??
-          (Number.isSafeInteger(derivedApple) ? derivedApple : null),
+        appAppleId: stored.appStore.appAppleId,
         acceptSandbox: stored.appStore.acceptSandbox,
       };
-    }
   }
-  if (stored.play) {
+  if (stored.play && wanted("play")) {
     const b = await storeAppBinding(db, product, "google-play");
     const id = resolve(
       stored.play.packageName,
       b.fields.packageName?.value ?? null,
+      b.ambiguous.includes("packageName"),
     );
     identity.play = id;
     if (id.value !== null)
       settings.play = { ...stored.play, packageName: id.value };
   }
-  if (stored.steam) {
+  if (stored.steam && wanted("steam")) {
     const b = await storeAppBinding(db, product, "steam");
-    const id = resolve(stored.steam.appId, b.fields.appId?.value ?? null);
+    const id = resolve(
+      stored.steam.appId,
+      b.fields.appId?.value ?? null,
+      b.ambiguous.includes("appId"),
+    );
     identity.steam = id;
     if (id.value !== null) settings.steam = { appId: id.value };
   }
