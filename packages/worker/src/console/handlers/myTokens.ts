@@ -23,7 +23,7 @@ import { adminJson, err, notFound } from "../../core/console/respond.js";
 import {
   getAccountToken,
   listAccountTokens,
-  revokeAccountToken,
+  revokeAccountTokenCounted,
   type PersonalTokenView,
 } from "../../core/accounts/personalTokens.js";
 import { forgetRegistryTokens } from "../../core/registry/registryTokens.js";
@@ -48,7 +48,7 @@ async function revokeOwn(
   if (!was) return notFound();
   if (was.status === "revoked")
     return adminJson({ ok: true, token: ownView(was) });
-  const view = await revokeAccountToken(
+  const { view, changed } = await revokeAccountTokenCounted(
     c.db,
     accountId,
     id,
@@ -58,6 +58,8 @@ async function revokeOwn(
   );
   if (!view) return notFound();
   forgetRegistryTokens();
+  // Of two concurrent revokes of one token only the one that ended it audits.
+  if (!changed) return adminJson({ ok: true, token: ownView(view) });
   await platformAudit(
     c.db,
     c.session,

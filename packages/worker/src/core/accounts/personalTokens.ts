@@ -269,7 +269,7 @@ export async function mintAccountToken(
 
 // ── List and revoke ──────────────────────────────────────────────────────────────────────────
 
-/** The account's tokens, newest first, revoked and expired ones included until purged. */
+/** The account's tokens, live first and then newest, revoked and expired ones included until purged. */
 export async function listAccountTokens(
   db: Db,
   accountId: string,
@@ -277,8 +277,10 @@ export async function listAccountTokens(
 ): Promise<PersonalTokenView[]> {
   const rows = await db.all<PersonalTokenRow>(
     `SELECT * FROM account_tokens WHERE account_id = ?
-      ORDER BY created_at DESC, id DESC LIMIT 1000`,
+      ORDER BY (revoked_at IS NULL AND expires_at > ?) DESC, created_at DESC, id DESC
+      LIMIT 1000`,
     accountId,
+    now,
   );
   return rows.map((r) => viewOf(r, now));
 }
@@ -310,7 +312,23 @@ export async function revokeAccountToken(
   reason: PersonalTokenRevokeReason,
   now: number,
 ): Promise<PersonalTokenView | null> {
-  await db.run(
+  return (await revokeAccountTokenCounted(db, accountId, id, by, reason, now))
+    .view;
+}
+
+/**
+ * {@link revokeAccountToken}, also saying whether THIS call ended the token: of two concurrent
+ * revokes of one token exactly one has `changed` true, so only that one audits.
+ */
+export async function revokeAccountTokenCounted(
+  db: Db,
+  accountId: string,
+  id: string,
+  by: string,
+  reason: PersonalTokenRevokeReason,
+  now: number,
+): Promise<{ view: PersonalTokenView | null; changed: boolean }> {
+  const changes = await db.runChanges(
     `UPDATE account_tokens SET revoked_at = ?, revoked_by = ?, revoke_reason = ?
       WHERE account_id = ? AND id = ? AND revoked_at IS NULL`,
     now,
@@ -319,7 +337,10 @@ export async function revokeAccountToken(
     accountId,
     id,
   );
-  return getAccountToken(db, accountId, id, now);
+  return {
+    view: await getAccountToken(db, accountId, id, now),
+    changed: changes === 1,
+  };
 }
 
 /** A token as a Superadmin lists it: the view plus the account's email (never its id). Never the plaintext or the hash. */
@@ -528,12 +549,21 @@ function stmtTouch(db: Db, id: string, now: number): Promise<unknown> {
     .catch(() => undefined);
 }
 
-/** Record a use (at most hourly per token). For a caller that resolved with `touch: false`. */
+/**
+ * Record a use (at most hourly per token). For a caller that resolved with `touch: false`.
+ * `lastUsedAt` is the token view's: when it is already fresh there is no write at all.
+ */
 export async function touchPersonalToken(
   db: Db,
   id: string,
   now: number,
+  lastUsedAt?: number | null,
 ): Promise<void> {
+  if (
+    typeof lastUsedAt === "number" &&
+    lastUsedAt >= now - LAST_USED_GRANULARITY
+  )
+    return;
   await stmtTouch(db, id, now);
 }
 

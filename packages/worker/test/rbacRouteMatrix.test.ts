@@ -237,6 +237,12 @@ const PRODUCT_ROWS = ADMIN_ROUTES.filter((r) => isProductRoute(r));
 
 /** The only rows a session that resolves to no grant may call. */
 const STRANGER_OPEN = new Set(["GET /me", "POST /logout"]);
+/** Open to a no-grant session too (34.4 review), but the matrix's stranger holds a v1 cookie, which
+ *  names no account: past the grant gate the answer is the rows' own 409 reauth. */
+const STRANGER_OWN_TOKENS = new Set([
+  "GET /me/personal-tokens",
+  "DELETE /me/personal-tokens/:id",
+]);
 
 describe("the route × principal matrix", () => {
   it("covers every row of the route table", () => {
@@ -265,6 +271,8 @@ describe("the route × principal matrix", () => {
           // `GET /me` and `POST /logout` stay open to a session with no grant (ST-29 review).
           if (STRANGER_OPEN.has(routeKey(r))) {
             if (o.status !== 200) wrong.push(what);
+          } else if (STRANGER_OWN_TOKENS.has(routeKey(r))) {
+            if (o.status !== 409 || o.code !== "reauth") wrong.push(what);
           } else if (!isNoAccess(o) || o.area !== "console") wrong.push(what);
         } else if (allowed) {
           if (o.status === 401 || isNoAccess(o)) wrong.push(what);

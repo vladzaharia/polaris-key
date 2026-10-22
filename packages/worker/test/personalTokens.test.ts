@@ -313,6 +313,33 @@ describe("personal tokens: the store", () => {
     expect((await mint(ada)).ok).toBe(true);
   });
 
+  it("lists live tokens first, then newest, revoked and expired ones after", async () => {
+    const old = await mint(ada);
+    const mid = await mint(ada);
+    const newest = await mint(ada);
+    await revokeAccountToken(
+      db,
+      ada,
+      newest.view.id,
+      "portal:x",
+      "manual",
+      NOW,
+    );
+    await db.run(
+      "UPDATE account_tokens SET created_at = created_at + ? WHERE id = ?",
+      10,
+      newest.view.id,
+    );
+    await db.run(
+      "UPDATE account_tokens SET created_at = created_at + ? WHERE id = ?",
+      5,
+      old.view.id,
+    );
+    const ids = (await listAccountTokens(db, ada, NOW)).map((t) => t.id);
+    // Live (old is newer than mid) before the revoked one, though the revoked one is newest.
+    expect(ids).toEqual([old.view.id, mid.view.id, newest.view.id]);
+  });
+
   it("resolves only a live token of the scope the caller accepts, and writes last_used at most hourly", async () => {
     const { token, view } = await mint(ada);
     expect(

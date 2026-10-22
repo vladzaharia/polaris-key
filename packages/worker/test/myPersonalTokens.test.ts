@@ -383,6 +383,57 @@ describe("DELETE /me/personal-tokens/:id", () => {
   });
 });
 
+describe("a session whose holder has no grant (34.4 review)", () => {
+  it("finds and revokes its own tokens, and still nothing else", async () => {
+    const nog = await signedIn(env, db, "nog");
+    const other = await signedIn(env, db, "oth");
+    await mint(env, db, nog.aid, ADMIN_SCOPE, "mine");
+    await mint(env, db, other.aid, ADMIN_SCOPE, "theirs");
+    const csrf = await csrfOf(env, db, nog.cookie);
+    const list = await sess(env, db, nog.cookie, null, "GET", MINE);
+    expect(list.status).toBe(200);
+    const { tokens } = (await list.json()) as { tokens: Tok[] };
+    expect(tokens.map((t) => t.label)).toEqual(["mine"]);
+    // Another account's token is still a 404, and a product route is still a 403.
+    const theirs = await idOf(db, other.aid, "theirs");
+    expect(
+      (await sess(env, db, nog.cookie, csrf, "DELETE", `${MINE}/${theirs}`))
+        .status,
+    ).toBe(404);
+    expect(
+      (await sess(env, db, nog.cookie, null, "GET", "/api/products")).status,
+    ).toBe(403);
+    const id = await idOf(db, nog.aid, "mine");
+    const res = await sess(
+      env,
+      db,
+      nog.cookie,
+      csrf,
+      "DELETE",
+      `${MINE}/${id}`,
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ token: { status: "revoked" } });
+  });
+
+  it("two concurrent revokes of one token write one audit row", async () => {
+    const ann = await signedIn(env, db, "ann");
+    await bind(db, ann.aid, "platform_admin", "platform", null);
+    await mint(env, db, ann.aid, ADMIN_SCOPE, "race");
+    const id = await idOf(db, ann.aid, "race");
+    const csrf = await csrfOf(env, db, ann.cookie);
+    const both = await Promise.all([
+      sess(env, db, ann.cookie, csrf, "DELETE", `${MINE}/${id}`),
+      sess(env, db, ann.cookie, csrf, "DELETE", `${MINE}/${id}`),
+    ]);
+    expect(both.map((r) => r.status)).toEqual([200, 200]);
+    const rows = await db.all(
+      "SELECT 1 FROM platform_audit WHERE action = 'account_token.revoke'",
+    );
+    expect(rows).toHaveLength(1);
+  });
+});
+
 describe("DELETE /me/personal-tokens/current", () => {
   it("revokes exactly the presenter; its next use is 401 and a sibling still works", async () => {
     const aid = await person(env, db, "cur");
@@ -568,6 +619,25 @@ describe("fold-ins from the 34.1-34.3 review", () => {
     expect(await lastUsed("lu")).toBe(T);
     await call(env, db, tok, "GET", "/api/me", undefined, T + 3700);
     expect(await lastUsed("lu")).toBe(T + 3700);
+  });
+
+  it("a fresh last_used_at costs no UPDATE at all (the hourly throttle stays)", async () => {
+    const aid = await person(env, db, "lw");
+    await bind(db, aid, "platform_admin", "platform", null);
+    const tok = await mint(env, db, aid, ADMIN_SCOPE, "lw");
+    const writes: string[] = [];
+    const run = db.run.bind(db);
+    db.run = ((sql: string, ...params: unknown[]) => {
+      if (/UPDATE account_tokens SET last_used_at/.test(sql)) writes.push(sql);
+      return run(sql, ...(params as never[]));
+    }) as typeof db.run;
+    await call(env, db, tok, "GET", "/api/me");
+    expect(writes).toHaveLength(1);
+    await call(env, db, tok, "GET", "/api/me", undefined, T + 60);
+    await call(env, db, tok, "GET", "/api/me", undefined, T + 120);
+    expect(writes).toHaveLength(1);
+    await call(env, db, tok, "GET", "/api/me", undefined, T + 3700);
+    expect(writes).toHaveLength(2);
   });
 
   it("a holder's use rows are budgeted when the principal holds no grant", async () => {

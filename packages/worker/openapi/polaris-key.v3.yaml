@@ -15838,6 +15838,9 @@ paths:
     get:
       operationId: listAdminProducts
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: Every registered product, as the console's registry, Home and switcher read it
       description: >
         The product registry: one row per product that is not deleted, with its enablement
@@ -16326,6 +16329,9 @@ paths:
     get:
       operationId: getAdminIntegration
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: What the product needs wired, and where an SDK has answered it
       description: >
         ST-40. Per enabled feature (`licensing`, `config`, `identity`, `update`, `packs`, `sync`,
@@ -18046,6 +18052,9 @@ paths:
     get:
       operationId: listAdminMigrations
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: The data-migration jobs and their latest runs
       description: >
         Every job a mounted service contributes, each with its five newest runs (without units).
@@ -18078,6 +18087,9 @@ paths:
     get:
       operationId: getAdminMigrationRun
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: One run with its units (the report)
       description: Platform admins only; admin session cookie, or a `migrations:report` admin API token.
       parameters:
@@ -18103,6 +18115,9 @@ paths:
     post:
       operationId: dryRunAdminMigration
       tags: [admin]
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
       summary: Plan a job and store the report, changing no data
       description: >
         Plans every unit of the job and stores the report (`changes` is the diff count; zero means

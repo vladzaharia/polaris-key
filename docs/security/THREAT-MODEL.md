@@ -7077,7 +7077,7 @@ revoking the token recalls no bundle.
   gate has passed, so a refused request leaves no mark.
 
 **Residual.** A holder without a grant can still make requests that write at most the budgeted rows.
-A token whose holder holds no grant cannot end itself (`current` is not a no-grant row, so 403): the holder revokes it in the console instead.
+A token whose holder holds no grant cannot end itself (`current` is not a no-grant row, so 403): the holder revokes it in the console instead, where `GET /me/personal-tokens` and `DELETE /me/personal-tokens/:id` are no-grant rows (session only, own tokens only, a revoke only narrows, no product data read), so a holder with no grants can still find and end their own tokens. Two concurrent revokes of one token write one `account_token.revoke` row (the UPDATE's change count decides).
 
 ### Identity as a per-product service (PX-W17)
 
