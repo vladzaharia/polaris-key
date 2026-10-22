@@ -370,6 +370,7 @@ function FreeDevice({
         aria-labelledby="free-lede"
         name="free-device"
         columns={1}
+        indicator="check"
         value={picked}
         onChange={setPicked}
         options={holders.map((d) => ({

@@ -1,15 +1,7 @@
 import { devicesText } from "../../../lib/vocab/license.js";
 import * as React from "react";
 import { flushSync } from "react-dom";
-import {
-  Glasses,
-  Info,
-  Laptop,
-  Monitor,
-  Smartphone,
-  Tv,
-  Watch,
-} from "lucide-react";
+import { Glasses, Laptop, Monitor, Smartphone, Tv, Watch } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { Keep } from "../Keep.js";
@@ -37,8 +29,6 @@ import { ErrorPanel } from "../States.js";
 import { SeatMeter } from "../SeatMeter.js";
 import { SectionCard } from "./Card.js";
 import { t } from "../../../lib/copy.js";
-import { HELP_LINKS } from "../../helpLinks.js";
-import { HelpLink } from "../HelpLink.js";
 
 /**
  * Devices (§4.20, §4.22): the devices using a seat, each with **Remove**, which expands the row
@@ -103,30 +93,33 @@ export function DevicesCard({
         />
       ) : (
         <>
-          {showCount ? (
-            <p className="mb-2 text-fg-muted">
-              <CountUp
-                value={active.length}
-                className="text-xl font-semibold text-fg-strong"
-              />{" "}
-              {seatLimit
-                ? t("locker.devices.tailOf", { limit: seatLimit })
-                : t("locker.devices.tail", { count: active.length })}
-              {idle > 0 ? (
-                <>
-                  {" · "}
-                  <Keep>{t("locker.devices.idle", { count: idle })}</Keep>
-                </>
-              ) : null}
-            </p>
-          ) : null}
-          {seatLimit && showCount ? (
-            <SeatMeter
-              inUse={active.length}
-              limit={seatLimit}
-              className="mb-4"
-            />
-          ) : null}
+          {/* One line, as the mockup draws it: the count, then the meter beside it. */}
+          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-fg-muted">
+            {showCount ? (
+              <p className="min-w-0">
+                <CountUp
+                  value={active.length}
+                  className="font-semibold text-fg-strong"
+                />{" "}
+                {seatLimit
+                  ? t("locker.devices.tailOf", { limit: seatLimit })
+                  : t("locker.devices.tail", { count: active.length })}
+                {idle > 0 ? (
+                  <>
+                    {" · "}
+                    <Keep>{t("locker.devices.idle", { count: idle })}</Keep>
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+            {seatLimit && showCount ? (
+              <SeatMeter
+                inUse={active.length}
+                limit={seatLimit}
+                className="min-w-24 flex-1"
+              />
+            ) : null}
+          </div>
           {active.length === 0 ? (
             <p className="py-3 text-sm text-fg-muted">
               {signIn
@@ -156,15 +149,6 @@ export function DevicesCard({
               ))}
             </ul>
           )}
-          <p className="mt-3 flex gap-2 text-sm text-fg-muted">
-            <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            {signIn
-              ? t("locker.devices.removeNoteSignIn")
-              : t("locker.devices.removeNote")}
-          </p>
-          <HelpLink href={HELP_LINKS.devices} className="mt-2">
-            {t("locker.devices.help")}
-          </HelpLink>
         </>
       )}
     </SectionCard>
@@ -349,15 +333,13 @@ export function DeviceRow({
   const rowRef = React.useRef<HTMLLIElement>(null);
   const remove = useRemoveDevice(detail.product, detail.id);
   const name = deviceName(device);
-  const meta = [
-    deviceOsName(device.platform),
-    device.appVersion,
-    t("locker.freeDevice.lastSeen", {
-      when: formatRelative(device.lastSeen * 1000, Date.now(), PORTAL_FMT),
-    }),
-  ]
+  // Two lines, as the mockup draws them: what it runs, then when it was last seen.
+  const meta = [deviceOsName(device.platform), device.appVersion]
     .filter(Boolean)
     .join(" · ");
+  const seen = t("locker.freeDevice.lastSeen", {
+    when: formatRelative(device.lastSeen * 1000, Date.now(), PORTAL_FMT),
+  });
   const panelId = `remove-${device.deviceId}`;
   // Keep it, or Escape anywhere in the panel: close it and put focus back on the row's Remove.
   const keep = (): void => {
@@ -382,7 +364,8 @@ export function DeviceRow({
           >
             <bdi>{name}</bdi>
           </p>
-          <p className="text-sm text-fg-muted">{meta}</p>
+          {meta ? <p className="text-sm text-fg-muted">{meta}</p> : null}
+          <p className="text-sm text-fg-muted first-letter:uppercase">{seen}</p>
         </div>
         {confirming ? null : (
           <Button

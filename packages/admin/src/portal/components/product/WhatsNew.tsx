@@ -37,12 +37,6 @@ export function WhatsNew({
     <SectionCard
       id="new"
       title={t("releaseNotes.title", { product: latest.version })}
-      subtitle={[
-        latest.title,
-        latest.publishedAt ? formatDay(latest.publishedAt) : null,
-      ]
-        .filter(Boolean)
-        .join(" · ")}
     >
       {notes && notes.summary.length ? (
         <div data-notes="" className="text-md text-fg">
@@ -103,15 +97,11 @@ export function WhatsNew({
             {shown.map((r) => (
               <li
                 key={r.releaseId}
-                className="flex items-center gap-6 py-3 text-sm"
+                className="flex items-center justify-between gap-6 py-3 text-sm"
               >
-                <span className="w-20 font-mono text-fg-strong">
-                  {r.version}
-                </span>
+                <span className="text-fg-strong">{r.version}</span>
                 <span className="text-fg-muted">
-                  {[r.publishedAt ? formatDay(r.publishedAt) : null, r.title]
-                    .filter(Boolean)
-                    .join(" · ")}
+                  {r.publishedAt ? formatDay(r.publishedAt) : null}
                 </span>
               </li>
             ))}
