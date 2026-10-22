@@ -1,4 +1,5 @@
 import * as React from "react";
+import { KeyRound } from "lucide-react";
 import type { MintBlock } from "@polaris-key/catalog";
 import type { ConfigEntry } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
@@ -20,6 +21,7 @@ import {
   MINT_TTL_MAX,
 } from "../model/mintBlock.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
+import { AddSigningKey, SigningKeyEmpty, needsKey } from "./RecipeState.js";
 
 /** Select values cannot be empty, so "no flag" has one of its own. */
 const NO_FLAG = "~none";
@@ -80,6 +82,8 @@ export function MintRecipeFields({
   }, [recipe, entry]);
 
   const edited = mintEdited(entry, recipe);
+  const [addingKey, setAddingKey] = React.useState(false);
+  const keyless = recipe ? needsKey(recipe) : false;
   const entitlements = Array.from(
     new Set([
       ...flagKeys,
@@ -101,7 +105,11 @@ export function MintRecipeFields({
         >
           Recipe
         </p>
-        {recipe ? (
+        {recipe && keyless ? (
+          <StatusPill tone="warning" size="sm">
+            Needs a signing key
+          </StatusPill>
+        ) : recipe ? (
           <StatusPill domain="edgeMint" state={recipe.status} size="sm" />
         ) : recipe === null ? (
           <span className="text-sm text-fg-muted">Not saved yet</span>
@@ -151,6 +159,36 @@ export function MintRecipeFields({
               ? `Changed since approval: ${recipe.changedFields.map(changedLabel).join(", ")}.`
               : null}
         </Callout>
+      ) : null}
+      {recipe && keyless ? (
+        <>
+          <Callout
+            tone="warning"
+            title="Minting hasn’t started: no signing key"
+            action={
+              <Button
+                size="sm"
+                variant="outline"
+                iconStart={<KeyRound aria-hidden />}
+                onClick={() => setAddingKey(true)}
+              >
+                Add the key…
+              </Button>
+            }
+          >
+            The recipe is approved, but a repository never holds the key. Until
+            it is added, the app’s{" "}
+            <code className="font-mono text-xs">mintToken(“{entry.key}”)</code>{" "}
+            calls fail.
+          </Callout>
+          <SigningKeyEmpty recipe={recipe} />
+          <AddSigningKey
+            slug={slug}
+            recipe={recipe}
+            open={addingKey}
+            onOpenChange={setAddingKey}
+          />
+        </>
       ) : null}
       {recipe?.status === "approved" || recipe === null ? (
         <p className="text-sm text-fg-muted">

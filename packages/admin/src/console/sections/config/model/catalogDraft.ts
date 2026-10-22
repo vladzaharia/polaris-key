@@ -8,11 +8,16 @@
 
 import type { ConfigEntry, ProductCatalog } from "../../../../api.js";
 import { structuredDiff, type StructuredDiff } from "../../../../lib/diff.js";
+import type { EntryConflict } from "./mergeDraft.js";
 
 export interface CatalogDraft {
   baseVersion: number;
   baseEntries: ConfigEntry[];
   entries: ConfigEntry[];
+  /** Edits the repository also made, until each is settled (`mergeDraft.ts`). Review waits. */
+  conflicts?: EntryConflict[];
+  /** The resync commit whose catalog the draft was last re-based onto. */
+  rebasedOnto?: string | null;
 }
 
 const storageKey = (slug: string): string => `pk-catalog-draft:${slug}`;
