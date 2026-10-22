@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Code } from "lucide-react";
 import { SUPPORTED_FORMATS, userSettingIssues } from "@polaris-key/catalog";
 import type {
   ConfigEntry,
@@ -530,10 +530,11 @@ export function CatalogEntryForm({
           )}
         </FormField>
       ) : codeOnly ? (
-        <div className="space-y-1">
+        <div className="space-y-2">
           <p className="text-sm font-medium text-fg-strong">In the app</p>
-          <p className="text-sm text-fg-muted">
-            {codeOnlyText(entryType(entry), entry.key)}
+          <p className="flex items-center gap-2 rounded-lg border border-dashed border-border-strong px-3 py-2 text-sm text-fg-muted">
+            <Code aria-hidden className="size-4 shrink-0" />
+            <span>{codeOnlyText(entryType(entry), entry.key)}</span>
           </p>
         </div>
       ) : null}

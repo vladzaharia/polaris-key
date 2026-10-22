@@ -8,7 +8,10 @@ import { flagKeysOf, type CatalogDraft } from "../model/catalogDraft.js";
 import type { EntryConflict } from "../model/mergeDraft.js";
 import { CatalogEntryForm } from "./CatalogEntryForm.js";
 import { ConflictPanel } from "./EditorParts.js";
+import { MintCards } from "./MintCards.js";
 import { useHolders, type Removal } from "./RemovedValues.js";
+import { RecipePill, isMinted } from "./RecipeState.js";
+import { useEdgeMint } from "../data.js";
 import { WhereItsSet } from "./WhereItsSet.js";
 
 /**
@@ -45,6 +48,10 @@ export function EntryPane({
   onChange: (next: ConfigEntry) => void;
   onRemove: () => void;
 }): React.ReactElement {
+  const minted = isMinted(entry);
+  const recipe = useEdgeMint(slug).data?.recipes?.find(
+    (x) => x.id === entry.key,
+  );
   const base = draft.baseEntries.find((e) => e.key === entry.key);
   const keys = React.useMemo(
     () => (base ? [entry.key] : []),
@@ -68,6 +75,7 @@ export function EntryPane({
                 <span className="sr-only">(changed in this draft)</span>
               </>
             ) : null}
+            {minted ? <RecipePill slug={slug} entry={entry} /> : null}
           </span>
         }
         headingLevel={2}
@@ -106,7 +114,10 @@ export function EntryPane({
           </Button>
         </div>
       </Section>
-      {base ? (
+      {minted && recipe ? (
+        <MintCards slug={slug} keyName={entry.key} recipe={recipe} />
+      ) : null}
+      {base && !minted ? (
         <WhereItsSet slug={slug} entry={entry} holders={byKey[entry.key]} />
       ) : null}
     </div>

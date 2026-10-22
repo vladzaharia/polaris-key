@@ -5,11 +5,14 @@ import {
   type ConfigEntry,
   type ProductCatalog,
 } from "../../../../api.js";
+import { lineDiff } from "../../../../lib/diff.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import type { CatalogIssue } from "../../../../schema/index.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
+import { CopyButton } from "../../../../ui/CopyButton.js";
+import { Section } from "../../../../ui/Section.js";
 import { DiffViewer } from "../../../../ui/DiffViewer.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
@@ -76,7 +79,13 @@ export function ReviewDrawer({
     () => (open ? diff.removed.map((c) => c.key) : []),
     [open, diff],
   );
-  const usage = useCatalogUsage(slug, removedKeys);
+  // Usage is read for every changed key: the rail counts who sets any of them, and a removal's
+  // references come from the same read.
+  const touchedKeys = React.useMemo(
+    () => (open ? [...diff.removed, ...diff.changed].map((c) => c.key) : []),
+    [open, diff],
+  );
+  const usage = useCatalogUsage(slug, touchedKeys);
   const [ack, setAck] = React.useState(false);
   // ST-20: a manifest-authoritative product's publish is a break-glass claim with a reason (L2).
   const [reason, setReason] = React.useState("");
@@ -104,6 +113,38 @@ export function ReviewDrawer({
     for (const p of u.profiles) profilesAffected.add(p.id);
     if (refs.length) referencedBy[key] = refs;
   }
+  const reach = React.useMemo(() => {
+    const profiles = new Set<string>();
+    const licenses = new Set<string>();
+    const accounts = new Set<string>();
+    for (const key of touchedKeys) {
+      const u = usage.data?.keys[key];
+      if (!u) continue;
+      for (const p of u.profiles) profiles.add(p.id);
+      for (const l of u.licenses) licenses.add(l.id);
+      for (const a of u.accounts ?? []) accounts.add(a.subject);
+    }
+    return {
+      profiles: profiles.size,
+      licenses: licenses.size,
+      accounts: accounts.size,
+    };
+  }, [touchedKeys, usage.data]);
+  const diffText = React.useMemo(
+    () =>
+      lineDiff(
+        JSON.stringify(
+          { schemaVersion: draft.baseVersion, entries: draft.baseEntries },
+          null,
+          2,
+        ),
+        JSON.stringify(draftDocument(draft), null, 2),
+      )
+        .filter((row) => row.kind !== "context")
+        .map((row) => `${row.kind === "added" ? "+" : "-"} ${row.text}`)
+        .join("\n"),
+    [draft],
+  );
   const typeNotes = React.useMemo(() => typeChangeNotes(diff.changed), [diff]);
   const breaking =
     Object.keys(referencedBy).length > 0 || Object.keys(typeNotes).length > 0;
@@ -275,6 +316,34 @@ export function ReviewDrawer({
                   breakingChanged={typeNotes}
                 />
               )}
+              {empty ? null : (
+                <Section title="Who it reaches" headingLevel={3}>
+                  <ul className="divide-y divide-border text-sm">
+                    {(
+                      [
+                        ["Profiles", reach.profiles, "set a changed key"],
+                        ["Licenses", reach.licenses, "set their own"],
+                        ["Accounts", reach.accounts, "set their own"],
+                      ] as const
+                    )
+                      .filter(([, n]) => n > 0)
+                      .map(([label, n, what]) => (
+                        <li
+                          key={label}
+                          className="flex items-center justify-between gap-3 px-4 py-3"
+                        >
+                          <span>{label}</span>
+                          <span className="text-fg-muted">
+                            {n} {what}
+                          </span>
+                        </li>
+                      ))}
+                    <li className="px-4 py-3 text-fg-muted">
+                      Devices get v{nextVersion} at their next check.
+                    </li>
+                  </ul>
+                </Section>
+              )}
               {usage.isFetching ? (
                 <p className="text-sm text-fg-muted">
                   Checking what still uses the removed keys…
@@ -317,7 +386,18 @@ export function ReviewDrawer({
                   </div>
                 </Callout>
               ) : source === "manifest" && !empty ? (
-                <Callout tone="warning" title="This catalog is manifest-owned">
+                <Callout
+                  tone="warning"
+                  title="This catalog is manifest-owned"
+                  action={
+                    <CopyButton
+                      value={diffText}
+                      label="Copy the diff"
+                      text="Copy the diff"
+                      showLabel
+                    />
+                  }
+                >
                   Publishing claims it for the console: resyncs from the
                   repository stop re-applying{" "}
                   <code className="font-mono text-xs">{CATALOG_PATH}</code>{" "}
