@@ -33,7 +33,9 @@ import { RoleTags } from "../../../access/RoleTag.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { qk } from "../../../data/queries.js";
 import { useMe } from "../../../data/hooks.js";
-import { navigate } from "../../../router.js";
+import { navigate, useRoute } from "../../../router.js";
+import { PageTabs } from "../../../components/PageTabs.js";
+import { PlatformRoles } from "./platformRoles.js";
 import { r as routes } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
@@ -391,6 +393,46 @@ export function PlatformMembers(): React.ReactElement {
   };
 
   const roster = view.data;
+  const onRoles = useRoute().query.get("tab") === "roles";
+  const tabs = (
+    <PageTabs
+      label="Members"
+      value={onRoles ? "roles" : "members"}
+      items={[
+        {
+          value: "members",
+          label: "Members",
+          to: routes.platformMembers(),
+          ...(roster ? { count: rows.length } : {}),
+        },
+        {
+          value: "roles",
+          label: "Roles",
+          to: routes.platformMembers({ tab: "roles" }),
+        },
+      ]}
+    />
+  );
+  if (onRoles)
+    return (
+      <CollectionTemplate
+        header={
+          <PageHeader
+            title="Members"
+            description="Everyone who can sign in to the console, and the roles they hold."
+            refetching={view.isFetching && !view.isPending}
+            tabs={tabs}
+          />
+        }
+      >
+        <PlatformRoles
+          view={roster}
+          loading={view.isPending}
+          error={view.isError ? view.error : null}
+          onRetry={() => void view.refetch()}
+        />
+      </CollectionTemplate>
+    );
   return (
     <CollectionTemplate
       header={
@@ -398,6 +440,7 @@ export function PlatformMembers(): React.ReactElement {
           title="Members"
           description="Everyone who can sign in to the console, and the roles they hold."
           refetching={view.isFetching && !view.isPending}
+          tabs={tabs}
           primaryAction={
             <Button
               variant="primary"
