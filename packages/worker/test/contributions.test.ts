@@ -75,11 +75,13 @@ describe("what the descriptors contribute", () => {
   it("is bound by mount.ts: stores, holder hooks, maintenance and deletion are all there", () => {
     expect(contributedSubjectStores().map(([n]) => n)).toEqual([
       "config.accountOverrides",
+      "sync.cloudSync",
     ]);
     // Core's own store is listed beside the contributed one.
     expect(subjectStoreNames()).toEqual([
       "config.accountOverrides",
       "core.entitlementEvents",
+      "sync.cloudSync",
     ]);
     expect(contributedLicenseHolders()).not.toBeNull();
     expect(maintenanceContributions().length).toBeGreaterThanOrEqual(3);

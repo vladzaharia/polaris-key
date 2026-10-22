@@ -29,11 +29,14 @@ import { SYNC_SETTINGS_SLICE } from "./settings.js";
 
 import { syncIntegration } from "./integration.js";
 import { SYNC_ROUTES } from "./routes.js";
+import { CLOUD_SYNC_STORE, cloudSyncStore } from "./subjectStore.js";
 
 export const syncService: ServiceDescriptor = {
   slug: "sync",
   contributes: {
     integration: syncIntegration,
+    // U-05.3: the directory row joins Core's subject-store merge, delete and export.
+    subjectStores: { [CLOUD_SYNC_STORE]: cloudSyncStore },
   },
   handle: SYNC_ROUTES.handle,
   surface: SYNC_ROUTES.surface,
