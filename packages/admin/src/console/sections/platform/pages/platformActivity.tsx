@@ -357,7 +357,7 @@ export function PlatformActivityPage({
                       target={
                         <Link
                           to={eventHref(i.id)}
-                          className="text-xs text-accent-fg underline-offset-4 hover:underline"
+                          className="inline-flex min-h-6 items-center text-xs text-accent-fg underline-offset-4 hover:underline"
                         >
                           Details
                           <span className="sr-only">: {whatOf(i)}</span>

@@ -585,7 +585,9 @@ export async function listActivity(
       params: [...params, limit],
     });
   }
-  const inner = branches.map((b) => `SELECT * FROM (${b.sql})`).join(" UNION ALL ");
+  const inner = branches
+    .map((b) => `SELECT * FROM (${b.sql})`)
+    .join(" UNION ALL ");
   return db.all<ActivityRow>(
     `SELECT * FROM (${inner}) ORDER BY at DESC, id DESC LIMIT ?`,
     ...branches.flatMap((b) => b.params),

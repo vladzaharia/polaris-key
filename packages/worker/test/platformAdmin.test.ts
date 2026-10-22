@@ -421,9 +421,9 @@ describe("platform audit (A-12)", () => {
     const get = async (q: string) =>
       (await call(env, db, `/api/platform/activity?${q}`)).body;
     // Default: the platform trail alone.
-    expect((await get("")).items.map((x: { action: string }) => x.action)).toEqual(
-      ["p.one"],
-    );
+    expect(
+      (await get("")).items.map((x: { action: string }) => x.action),
+    ).toEqual(["p.one"]);
     const all = await get("product=all");
     expect(
       all.items.map((x: { action: string; product: string | null }) => [
@@ -436,7 +436,9 @@ describe("platform audit (A-12)", () => {
       ["p.one", null],
     ]);
     expect(
-      (await get("product=alpha")).items.map((x: { action: string }) => x.action),
+      (await get("product=alpha")).items.map(
+        (x: { action: string }) => x.action,
+      ),
     ).toEqual(["license.revoke"]);
     // Filters apply to every branch; the cursor spans the union.
     expect(

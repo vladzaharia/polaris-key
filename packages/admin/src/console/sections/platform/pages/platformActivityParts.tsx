@@ -137,7 +137,7 @@ export function ActivityTable({
                   data-label="When"
                   className={cn(
                     td,
-                    "whitespace-nowrap tabular-nums sm:text-end",
+                    "whitespace-nowrap tabular-nums text-end max-sm:justify-between",
                   )}
                 >
                   <time dateTime={formatIso(fromSeconds(i.at))}>
@@ -156,7 +156,7 @@ export function ActivityTable({
                 <td data-label="What" className={td}>
                   <Link
                     to={eventHref(i.id)}
-                    className="min-w-0 break-words text-fg underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+                    className="inline-flex min-h-6 min-w-0 items-center break-words text-fg underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-focus"
                   >
                     {whatOf(i)}
                   </Link>

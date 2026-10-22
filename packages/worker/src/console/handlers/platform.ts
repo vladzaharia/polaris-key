@@ -188,7 +188,13 @@ async function activity(req: Request, env: Env, db: Db): Promise<Response> {
   // Without `product` the answer is the platform trail alone, as before.
   const filters: AuditFilters = {};
   const bad: string[] = [];
-  for (const name of ["action", "actor", "targetKind", "targetId", "id"] as const) {
+  for (const name of [
+    "action",
+    "actor",
+    "targetKind",
+    "targetId",
+    "id",
+  ] as const) {
     const raw = url.searchParams.get(name);
     if (raw === null || raw === "") continue;
     if (raw.length > MAX_FILTER) bad.push(name);
