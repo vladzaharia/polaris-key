@@ -4237,7 +4237,7 @@ msgstr "Troppi tentativi. Attendi un minuto, poi riprova."
 msgid "signin.gate.termsLinkProduct"
 msgstr "termini di {product}"
 
-#. Polaris Locker’s Terms and Privacy Policy
+#. Polaris Locker's Terms and Privacy Policy
 #. The platform's terms link in the finish step. Polaris Locker is never translated.
 msgid "signin.gate.termsLinkPlatform"
 msgstr "i Termini e l’Informativa sulla privacy di Polaris Locker"
@@ -4571,7 +4571,7 @@ msgstr "{email} appartiene già a un account Polaris Locker. Usa un’altra emai
 msgid "signin.gate.nameRequired"
 msgstr "Inserisci un nome visualizzato."
 
-#. Agree to {app}’s terms to keep going.
+#. Agree to {app}'s terms to keep going.
 #. Finish: lede of the terms-only step. Arguments: {app}.
 msgid "signin.gate.termsLede"
 msgstr "Accetta i termini di {app} per continuare."

@@ -841,7 +841,7 @@ export const KIT_COPY: Readonly<
     "signin.code.rateLimited": "Too many tries. Wait a minute, then try again.",
     "signin.gate.termsLinkProduct": "{product} terms",
     "signin.gate.termsLinkPlatform":
-      "Polaris Locker’s Terms and Privacy Policy",
+      "Polaris Locker's Terms and Privacy Policy",
     "signin.approve.expiredCode":
       "That code expired. Ask for a new one on the other device.",
     "signin.approve.notFound":
@@ -914,7 +914,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.joinOtherLede":
       "{email} already belongs to a Polaris Locker account. Use a different email, or sign in to that account first.",
     "signin.gate.nameRequired": "Enter a screen name.",
-    "signin.gate.termsLede": "Agree to {app}’s terms to keep going.",
+    "signin.gate.termsLede": "Agree to {app}'s terms to keep going.",
     "signin.code.incomplete": "Enter all 6 digits.",
     "signin.nudge.title": "Add another way to sign in",
     "signin.nudge.body": "So you can always get back in.",

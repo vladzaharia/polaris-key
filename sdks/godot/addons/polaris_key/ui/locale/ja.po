@@ -4217,7 +4217,7 @@ msgstr "試行回数が多すぎます。1分待ってからもう一度お試�
 msgid "signin.gate.termsLinkProduct"
 msgstr "{product} の利用規約"
 
-#. Polaris Locker’s Terms and Privacy Policy
+#. Polaris Locker's Terms and Privacy Policy
 #. The platform's terms link in the finish step. Polaris Locker is never translated.
 msgid "signin.gate.termsLinkPlatform"
 msgstr "Polaris Lockerの利用規約とプライバシーポリシー"
@@ -4549,7 +4549,7 @@ msgstr "{email}はすでにPolaris Lockerのアカウントで使われていま
 msgid "signin.gate.nameRequired"
 msgstr "表示名を入力してください。"
 
-#. Agree to {app}’s terms to keep going.
+#. Agree to {app}'s terms to keep going.
 #. Finish: lede of the terms-only step. Arguments: {app}.
 msgid "signin.gate.termsLede"
 msgstr "続けるには{app}の規約に同意してください。"

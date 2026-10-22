@@ -4227,10 +4227,10 @@ msgstr "Too many tries. Wait a minute, then try again."
 msgid "signin.gate.termsLinkProduct"
 msgstr "{product} terms"
 
-#. Polaris Locker’s Terms and Privacy Policy
+#. Polaris Locker's Terms and Privacy Policy
 #. The platform's terms link in the finish step. Polaris Locker is never translated.
 msgid "signin.gate.termsLinkPlatform"
-msgstr "Polaris Locker’s Terms and Privacy Policy"
+msgstr "Polaris Locker's Terms and Privacy Policy"
 
 #. That code expired. Ask for a new one on the other device.
 #. Approve dialog: the code is spent or expired (410).
@@ -4560,10 +4560,10 @@ msgstr "{email} already belongs to a Polaris Locker account. Use a different ema
 msgid "signin.gate.nameRequired"
 msgstr "Enter a screen name."
 
-#. Agree to {app}’s terms to keep going.
+#. Agree to {app}'s terms to keep going.
 #. Finish: lede of the terms-only step. Arguments: {app}.
 msgid "signin.gate.termsLede"
-msgstr "Agree to {app}’s terms to keep going."
+msgstr "Agree to {app}'s terms to keep going."
 
 #. Enter all 6 digits.
 #. Code entry: submitted with fewer than six digits.

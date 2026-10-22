@@ -567,7 +567,7 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
     );
     expect(rows).toEqual({
       "Runs on": "macOS, Linux",
-      "You’d get": "No license needed",
+      "You'd get": "No license needed",
       "You qualify": "Free to use",
     });
     expect(within(panel).queryByRole("radio")).toBeNull();
