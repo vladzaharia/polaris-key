@@ -53,7 +53,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -351,9 +350,10 @@ internal fun Typography.scaled(factor: Float): Typography {
 /** The icon a message kind shows. */
 internal fun PolarisMessageKind.icon(): ImageVector = when (this) {
     PolarisMessageKind.Info -> Icons.Filled.Info
-    PolarisMessageKind.Warning, PolarisMessageKind.Blocked, PolarisMessageKind.Danger -> Icons.Filled.Warning
+    PolarisMessageKind.Warning, PolarisMessageKind.Danger -> Icons.Filled.Warning
     PolarisMessageKind.Offline -> Icons.Filled.Refresh
-    PolarisMessageKind.Locked -> Icons.Filled.Lock
+    // DL6: a refusal the person can resolve carries no error glyph.
+    PolarisMessageKind.Blocked, PolarisMessageKind.Locked -> Icons.Filled.Info
 }
 
 /** The container and text colours of a message kind's notice. */
@@ -364,8 +364,10 @@ internal fun PolarisMessageKind.tint(): Pair<Color, Color> {
     return when (this) {
         PolarisMessageKind.Info -> scheme.primaryContainer to scheme.onPrimaryContainer
         PolarisMessageKind.Offline -> scheme.secondaryContainer to scheme.onSecondaryContainer
-        PolarisMessageKind.Warning, PolarisMessageKind.Blocked -> status.warningContainer to status.onWarningContainer
-        PolarisMessageKind.Danger, PolarisMessageKind.Locked -> status.dangerContainer to status.onDangerContainer
+        PolarisMessageKind.Warning -> status.warningContainer to status.onWarningContainer
+        PolarisMessageKind.Danger -> status.dangerContainer to status.onDangerContainer
+        // DL6: a resolvable refusal is a neutral callout: default text on the sunken surface.
+        PolarisMessageKind.Blocked, PolarisMessageKind.Locked -> scheme.surfaceContainerHighest to scheme.onSurface
     }
 }
 
@@ -376,8 +378,9 @@ internal fun PolarisMessageKind.glyph(): Color {
     return when (this) {
         PolarisMessageKind.Info -> MaterialTheme.colorScheme.primary
         PolarisMessageKind.Offline -> MaterialTheme.colorScheme.onSecondaryContainer
-        PolarisMessageKind.Warning, PolarisMessageKind.Blocked -> status.warning
-        PolarisMessageKind.Danger, PolarisMessageKind.Locked -> status.danger
+        PolarisMessageKind.Warning -> status.warning
+        PolarisMessageKind.Danger -> status.danger
+        PolarisMessageKind.Blocked, PolarisMessageKind.Locked -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 }
 

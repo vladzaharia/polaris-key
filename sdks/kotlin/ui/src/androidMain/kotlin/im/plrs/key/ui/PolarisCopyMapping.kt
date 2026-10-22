@@ -15,7 +15,18 @@ import java.text.DecimalFormatSymbols
 import java.util.Locale
 
 /** The glyph a message card shows; the screen picks the icon, the mapping picks the meaning. */
-public enum class PolarisMessageKind { Info, Warning, Danger, Blocked, Offline, Locked }
+public enum class PolarisMessageKind {
+    Info,
+    Warning,
+    Danger,
+
+    /** A refusal the person can resolve (revoked, expired, version or channel): neutral, never danger (DL6). */
+    Blocked,
+    Offline,
+
+    /** The kind revoked licences used before DL6 made every resolvable refusal neutral; drawn as [Blocked]. */
+    Locked,
+}
 
 /** The resolved copy of one full-screen message (a terminal gate state, a boot stop). */
 public data class PolarisMessageCopy(
@@ -37,8 +48,8 @@ public fun PolarisCopy.gateMessage(status: LicenseStatus, allowedRange: AllowedR
     when (status) {
         LicenseStatus.ok, LicenseStatus.grace, LicenseStatus.needsActivation, LicenseStatus.notApplicable -> null
         // core.copy's gate entries: "Signed out", "License expired" (UI-KITS.md: gate copy is core copy).
-        LicenseStatus.revoked -> coreMessage("revoked", PolarisMessageKind.Locked)
-        LicenseStatus.expired -> coreMessage("expired", PolarisMessageKind.Warning)
+        LicenseStatus.revoked -> coreMessage("revoked", PolarisMessageKind.Blocked)
+        LicenseStatus.expired -> coreMessage("expired", PolarisMessageKind.Blocked)
         LicenseStatus.versionTooOld ->
             PolarisMessageCopy(versionTooOldTitle, withAllowedRange(versionTooOldBody, allowedRange), PolarisMessageKind.Blocked)
         LicenseStatus.versionTooNew ->

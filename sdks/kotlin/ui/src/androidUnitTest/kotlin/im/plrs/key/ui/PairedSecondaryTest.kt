@@ -70,7 +70,7 @@ class PairedSecondaryTest {
     fun aBlockedBootsTryAgainBesideUpdateIsTonal() {
         val blocked = bootUi(BootStage.blocked, BootOutcome.blocked).copy(blocked = BootEmit.BlockedReason.updateRequired)
         show { PolarisBootScreen(blocked, onUpdate = {}) }
-        assertPaired(copy.updateNow, copy.retry)
+        assertPaired(copy.updateAction, copy.retry)
     }
 
     @Test

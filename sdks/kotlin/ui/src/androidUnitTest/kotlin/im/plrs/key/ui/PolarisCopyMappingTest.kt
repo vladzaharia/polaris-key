@@ -32,11 +32,11 @@ class PolarisCopyMappingTest {
     fun terminalStatusesMapToTheirCopy() {
         // Revoked and expired are core.copy's gate entries (copy.en.json), verbatim.
         assertEquals(
-            PolarisMessageCopy("Signed out", "This device was signed out. Sign in or activate again to continue.", PolarisMessageKind.Locked),
+            PolarisMessageCopy("Signed out", "This device was signed out. Sign in or activate again to continue.", PolarisMessageKind.Blocked),
             copy.gateMessage(LicenseStatus.revoked),
         )
         assertEquals(
-            PolarisMessageCopy("License expired", "Connect to the internet or renew your license to continue.", PolarisMessageKind.Warning),
+            PolarisMessageCopy("License expired", "Connect to the internet or renew your license to continue.", PolarisMessageKind.Blocked),
             copy.gateMessage(LicenseStatus.expired),
         )
         // Sign-in's stops read core.copy too.

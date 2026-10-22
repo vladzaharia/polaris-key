@@ -280,9 +280,11 @@ private fun PolarisCodeView(
         PolarisCountdown(ui.fractionLeft, copy.format(copy.signInExpiresIn, countdown(ui.secondsLeft)))
     }
     val deviceLine: @Composable () -> Unit = {
+        val window = polarisWindow
         // PX-W13: the label the sign-in page will show (the Worker's echo), so the player can
-        // check the page belongs to this device.
-        ui.prompt.deviceName?.let { label ->
+        // check the page belongs to this device. A short single column drops it first (DL3: a
+        // secondary line gives way before the controls do).
+        ui.prompt.deviceName?.takeUnless { window.compactHeight && !window.twoPane }?.let { label ->
             Spacer(Modifier.height(PolarisSpace.controls))
             Text(
                 text = copy.format(copy.signInDeviceLabel, label),

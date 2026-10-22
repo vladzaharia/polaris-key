@@ -168,6 +168,7 @@ public fun PolarisBootScreen(
                     onRetry = onRetry,
                     manageAsQr = isTelevision(),
                     signIn = signIn,
+                    onUpdate = onUpdate,
                 )
             }
             BootScreen.Consent -> {
@@ -188,7 +189,7 @@ public fun PolarisBootScreen(
                 val reason = ui.blocked ?: BootEmit.BlockedReason.notAvailable
                 PolarisMessageScreen(copy.blockedMessage(reason)) {
                     if (reason == BootEmit.BlockedReason.updateRequired && onUpdate != null) {
-                        PolarisPrimaryButton(copy.updateNow, onUpdate)
+                        PolarisPrimaryButton(copy.updateAction, onUpdate)
                         PolarisSecondaryButton(copy.retry, onRetry)
                     } else {
                         PolarisPrimaryButton(copy.retry, onRetry)
