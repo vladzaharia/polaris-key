@@ -51,27 +51,6 @@ export const ROLES_MATRIX: {
   ],
   productRows: [
     {
-      id: "members",
-      name: "Members",
-      detail: "Who can manage this product",
-      cells: [
-        {
-          kind: "tick",
-        },
-        {
-          kind: "none",
-        },
-        {
-          kind: "word",
-          word: "Invite",
-          note: "invite-product",
-        },
-        {
-          kind: "none",
-        },
-      ],
-    },
-    {
       id: "core",
       name: "Core",
       detail: "Overview, Integration, Access, Devices, Users, Activity",
@@ -238,12 +217,32 @@ export const ROLES_MATRIX: {
         },
       ],
     },
+    {
+      id: "members",
+      name: "Members",
+      detail: "Who can manage this product",
+      cells: [
+        {
+          kind: "tick",
+        },
+        {
+          kind: "none",
+        },
+        {
+          kind: "word",
+          word: "Invite",
+          note: "invite-product",
+        },
+        {
+          kind: "none",
+        },
+      ],
+    },
   ],
   platformRows: [
     {
       id: "platform-members",
       name: "Members",
-      detail: "Members and SSO rules",
       cells: [
         {
           kind: "tick",

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { cleanup, screen, within } from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AreaId, Me, Member, MembersView } from "../src/api.js";
 import { ROLES_MATRIX } from "../src/console/access/rolesMatrix.generated.js";
@@ -89,18 +89,22 @@ describe("Members: Roles tab", () => {
       "Product admin",
       "Console access",
     ]);
-    await within(cardOf("superadmin")).findByText("2 people");
+    await within(cardOf("superadmin")).findByText("2 people hold this role");
     expect(
       within(cardOf("superadmin")).getByText(
         /Given by a Superadmin or the root rule/,
       ),
     ).toBeTruthy();
     expect(
-      within(cardOf("platform_admin")).getByText("No one yet"),
+      within(cardOf("platform_admin")).getByText("No one holds this role"),
     ).toBeTruthy();
     // A member with two bindings of one role counts once.
-    expect(within(cardOf("product_admin")).getByText("3 people")).toBeTruthy();
-    expect(within(cardOf("console_access")).getByText("1 person")).toBeTruthy();
+    expect(
+      within(cardOf("product_admin")).getByText("3 people hold this role"),
+    ).toBeTruthy();
+    expect(
+      within(cardOf("console_access")).getByText("1 person holds this role"),
+    ).toBeTruthy();
     expect(screen.queryByText(/Create role/i)).toBeNull();
   });
 
@@ -131,7 +135,8 @@ describe("Members: Roles tab", () => {
         else if (cell.kind === "none")
           expect(within(td).getByText("No access")).toBeTruthy();
         else {
-          const w = within(td).getByText(cell.word);
+          // The word is a control that goes to its note.
+          const w = within(td).getByRole("button", { name: cell.word });
           expect(w.getAttribute("aria-describedby")).toBe(
             `roles-note-${cell.note}`,
           );
@@ -149,19 +154,24 @@ describe("Members: Roles tab", () => {
   it("phone tiles pick the one role column the matrix shows", async () => {
     const user = userEvent.setup();
     open();
-    const tiles = await screen.findByRole("group", { name: "Role" });
-    const product = within(tiles).getByRole("button", {
+    const tiles = await screen.findByRole("radiogroup", { name: "Role" });
+    const product = within(tiles).getByRole("radio", {
       name: /Product admin/,
     });
-    expect(product.getAttribute("aria-pressed")).toBe("true");
+    expect(product.getAttribute("aria-checked")).toBe("true");
     const shown = () =>
       [...document.querySelectorAll("thead th[data-role-col]")]
         .filter((th) => !th.className.includes("max-sm:hidden"))
         .map((th) => th.getAttribute("data-role-col"));
     expect(shown()).toEqual(["product_admin"]);
     await user.click(
-      within(tiles).getByRole("button", { name: /Console access/ }),
+      within(tiles).getByRole("radio", { name: /Console access/ }),
     );
+    expect(shown()).toEqual(["console_access"]);
+    // Arrow keys move the choice (and the column) round the group.
+    await user.keyboard("{ArrowRight}");
+    expect(shown()).toEqual(["superadmin"]);
+    await user.keyboard("{ArrowLeft}");
     expect(shown()).toEqual(["console_access"]);
     expect(
       screen.getByText(/Every other role includes it/, {
@@ -174,7 +184,7 @@ describe("Members: Roles tab", () => {
     open(asRole("platform_admin"));
     await screen.findByRole("table", { name: /What each role can do/ });
     expect(
-      await within(cardOf("superadmin")).findByText("2 people"),
+      await within(cardOf("superadmin")).findByText("2 people hold this role"),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Invite people" })).toBeNull();
   });
@@ -184,7 +194,9 @@ describe("Members: Roles tab", () => {
     open();
     await screen.findByRole("heading", { level: 2, name: "Superadmin" });
     expect(
-      await within(cardOf("superadmin")).findByText("At least 2 people"),
+      await within(cardOf("superadmin")).findByText(
+        "At least 2 people hold this role",
+      ),
     ).toBeTruthy();
   });
 
@@ -204,12 +216,90 @@ describe("Members: Roles tab", () => {
     expect(
       screen.getByRole("table", { name: /What each role can do/ }),
     ).toBeTruthy();
-    expect(within(cardOf("superadmin")).getByText("Not counted")).toBeTruthy();
+    // The failure is said once: the cards draw no count.
+    expect(screen.getAllByText(/didn.t load/).length).toBe(1);
+    expect(
+      cardOf("superadmin").querySelector("[data-role-count]")!.textContent,
+    ).toBe("");
     answer = view();
     await user.click(retry);
     expect(
-      await within(cardOf("superadmin")).findByText("2 people"),
+      await within(cardOf("superadmin")).findByText("2 people hold this role"),
     ).toBeTruthy();
+    // The alert is gone: focus lands on the cards' region, not on the page.
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute("aria-label")).toBe("Roles"),
+    );
+  });
+
+  it("a refused read says so and offers no Retry", async () => {
+    answer = new Response(
+      JSON.stringify({ error: { code: "forbidden", message: "no" } }),
+      { status: 403, headers: { "content-type": "application/json" } },
+    );
+    open();
+    expect(
+      await screen.findByText("You can’t see who holds each role."),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: /Retry|Try again/ }),
+    ).toBeNull();
+    expect(screen.queryByText(/edit access/)).toBeNull();
+    expect(
+      screen.getByRole("table", { name: /What each role can do/ }),
+    ).toBeTruthy();
+  });
+
+  it("says None counted for an empty slice of a cut roster, and groups thousands", async () => {
+    answer = view({
+      truncated: true,
+      members: Array.from({ length: 2062 }, (_, i) =>
+        member(`m${i}`, ["superadmin"]),
+      ),
+    });
+    open();
+    await screen.findByRole("heading", { level: 2, name: "Superadmin" });
+    expect(
+      await within(cardOf("superadmin")).findByText(
+        "At least 2,062 people hold this role",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(cardOf("platform_admin")).getByText("None counted"),
+    ).toBeTruthy();
+  });
+
+  it("the Members tab counts people, not invites, with thousands grouped", async () => {
+    answer = view({
+      members: Array.from({ length: 2400 }, (_, i) =>
+        member(`m${i}`, ["console_access"]),
+      ),
+      invites: [
+        {
+          bindingId: "b1",
+          email: "a@x.io",
+          role: "console_access",
+          scope: "platform",
+          areas: null,
+          invitedBy: { name: "Ada" },
+          sentAt: 1,
+          expiresAt: 2,
+        },
+      ],
+    });
+    open();
+    const nav = await screen.findByRole("navigation", { name: "Members" });
+    expect(
+      await within(nav).findByRole("link", { name: /^Members\s*2,400$/ }),
+    ).toBeTruthy();
+  });
+
+  it("an exception word takes you to its note", async () => {
+    const user = userEvent.setup();
+    open();
+    await screen.findByRole("table", { name: /What each role can do/ });
+    await user.click(screen.getAllByRole("button", { name: "Create" })[0]!);
+    expect(document.activeElement?.id).toBe("roles-note-create");
   });
 
   it("the tab strip moves between Members and Roles", async () => {

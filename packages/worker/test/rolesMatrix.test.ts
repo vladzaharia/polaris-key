@@ -76,8 +76,14 @@ describe("roles matrix", () => {
     expect([...MATRIX_ROLES]).toEqual([...ROLES]);
   });
 
-  it("lists the ten product areas in AREAS order, then the six platform rows", () => {
-    expect(PRODUCT_ROWS.map((r) => r.area)).toEqual([...PRODUCT_AREAS]);
+  it("lists the ten product areas in AREAS order with Members last, then the six platform rows", () => {
+    expect(PRODUCT_ROWS.map((r) => r.area)).toEqual([
+      ...PRODUCT_AREAS.filter((a) => a !== "members"),
+      "members",
+    ]);
+    expect([...PRODUCT_ROWS.map((r) => r.area)].sort()).toEqual(
+      [...PRODUCT_AREAS].sort(),
+    );
     expect(PRODUCT_ROWS).toHaveLength(10);
     expect(PLATFORM_ROWS.map((r) => r.name)).toEqual([
       "Members",

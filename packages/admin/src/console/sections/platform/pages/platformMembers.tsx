@@ -403,7 +403,13 @@ export function PlatformMembers(): React.ReactElement {
           value: "members",
           label: "Members",
           to: routes.platformMembers(),
-          ...(roster ? { count: rows.length } : {}),
+          ...(roster
+            ? {
+                count: new Intl.NumberFormat("en").format(
+                  roster.members.length,
+                ),
+              }
+            : {}),
         },
         {
           value: "roles",
