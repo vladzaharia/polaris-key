@@ -147,8 +147,39 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       storage: { kind: "rich", adapter: "dist_transports" },
       since: "ST-19b",
     }),
+    // F-34.3: the owner's `packageFeeds` switch, the one off switch of every package feed of the
+    // product (reads, publishes, renders). The manifest provisions the row on (F-34.2) only for a
+    // product that has none; it never turns it back on. Operator-owned: turning it off is L1.
+    setting({
+      key: "distribution.packageFeeds",
+      scope: "product",
+      service: "distribution",
+      area: "distribution.feeds",
+      label: "Serve package feeds",
+      description:
+        "Whether the product's package feeds answer at all. Off stops every read and publish of every feed at once; nothing is deleted, and turning it on serves them again.",
+      keywords: ["feeds", "packages", "registry", "off switch", "kill switch"],
+      docs: "/docs/features/ship-builds/channels/",
+      value: { kind: "boolean" },
+      defaultValue: false,
+      merge: "cascade",
+      ownership: "operator",
+      confirm: { on: "L0", off: "L1" },
+      visibleWhen: VISIBLE,
+      readers: [
+        "services/distribution/registryFeeds.ts",
+        "services/distribution/registry/settings.ts",
+        "services/distribution/registryMaterialiser.ts",
+        "services/release/packages/native/publish.ts",
+        "services/release/packages/ociPush.ts",
+        "services/identity/portal/api.ts",
+      ],
+      storage: { kind: "rich", adapter: "dist_registry_owners" },
+      since: "F-34.3",
+    }),
     // F-02/F-11: one `dist_registry_feeds` row per owner and ecosystem (enabled, access mode,
-    // namespace, size cap). Console-owned: a feed is switched on from the Feeds page.
+    // namespace, size cap). F-34.2 provisions a missing row from `.pkey/release` (Customers);
+    // the operator owns it from then on: the manifest never updates, re-enables or widens it.
     setting({
       key: "distribution.feeds",
       scope: "product",
@@ -156,7 +187,7 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       area: "distribution.feeds",
       label: "Package feeds",
       description:
-        "Per ecosystem: whether the product's feed answers, who may read it, its namespace and the largest package it accepts. The platform's feeds policy bounds it.",
+        "Per ecosystem: whether the product's feed answers, who may read it (Public or Customers), its namespace and the largest package it accepts. A package declared in .pkey/release gets a Customers feed on the first sync; only the operator makes it Public. The platform's feeds policy bounds it, and Serve package feeds switches all of them off.",
       keywords: ["npm", "pypi", "registry", "packages"],
       docs: "/docs/features/ship-builds/channels/",
       value: {
@@ -172,6 +203,7 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       readers: [
         "services/distribution/registry/settings.ts",
         "services/distribution/registry/authorize.ts",
+        "services/distribution/ingest.ts",
       ],
       storage: { kind: "rich", adapter: "dist_registry_feeds" },
       since: "ST-09",

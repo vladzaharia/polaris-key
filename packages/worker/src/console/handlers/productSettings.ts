@@ -632,6 +632,7 @@ export async function handleProductSettings(
                   value: body.value,
                   ctx: adapterCtx(r),
                   guard,
+                  by: session.sub,
                 }),
             }
           : {}),

@@ -24,6 +24,7 @@ import type { PackageFeedSettings } from "../../core/hooks.js";
 import { isAccessMode } from "./access.js";
 import { parseJsonObject } from "../../platform/json.js";
 import type { Db, DbStatement } from "../../db/types.js";
+import type { SqlGuard } from "../../core/settings/types.js";
 
 /** One ecosystem's feed of `product`, under the owner switch and the platform policy. */
 export async function packageFeedOf(
@@ -71,13 +72,20 @@ export async function packageFeedOf(
 export async function packageFeedsOf(
   db: Db,
   product: string,
-): Promise<{ enabled: boolean; version: number; updatedAt: number | null }> {
+): Promise<{
+  enabled: boolean;
+  version: number;
+  updatedAt: number | null;
+  /** Who last wrote the row: an admin subject, or `manifest` for a provisioned one (F-34.3). */
+  updatedBy: string | null;
+}> {
   const row = await db.first<{
     enabled: number;
     version: number;
     updated_at: number;
+    updated_by: string | null;
   }>(
-    "SELECT enabled, version, updated_at FROM dist_registry_owners WHERE product = ?",
+    "SELECT enabled, version, updated_at, updated_by FROM dist_registry_owners WHERE product = ?",
     product,
   );
   return row
@@ -85,8 +93,32 @@ export async function packageFeedsOf(
         enabled: row.enabled === 1,
         version: row.version,
         updatedAt: row.updated_at,
+        updatedBy: row.updated_by,
       }
-    : { enabled: false, version: 0, updatedAt: null };
+    : { enabled: false, version: 0, updatedAt: null, updatedBy: null };
+}
+
+/**
+ * The `distribution.packageFeeds` registry write (F-34.3): the owner's switch to `enabled`,
+ * unconditionally (the version the operator saw is the registry's, `product_settings`), inside
+ * `writeSetting()`'s batch so it only lands with its audit row. A missing row is created; an
+ * existing one keeps counting its own `version`, which the `PUT …/package-feeds` contract reports.
+ */
+export function stmtWritePackageFeeds(
+  product: string,
+  enabled: boolean,
+  by: string,
+  now: number,
+  guard: SqlGuard,
+): DbStatement {
+  return {
+    sql: `INSERT INTO dist_registry_owners (product, enabled, version, updated_at, updated_by)
+          SELECT ?, ?, 1, ?, ? WHERE (${guard.sql})
+          ON CONFLICT(product) DO UPDATE SET
+            enabled = excluded.enabled, version = dist_registry_owners.version + 1,
+            updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
+    params: [product, enabled ? 1 : 0, now, by, ...guard.params],
+  };
 }
 
 /**

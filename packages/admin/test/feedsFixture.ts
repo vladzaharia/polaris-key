@@ -82,7 +82,12 @@ export function platformOverview(): FeedsOverviewDto {
     owner: "polaris-key",
     ownerName: "Polaris Key",
     distributionEnabled: true,
-    packageFeeds: { enabled: true, version: 1, updatedAt: T0 - 900_000 },
+    packageFeeds: {
+      enabled: true,
+      version: 1,
+      updatedAt: T0 - 900_000,
+      updatedBy: "manifest",
+    },
     registryOrigin: ORIGIN,
     feeds,
     summary: {
@@ -146,7 +151,12 @@ export function productOverview(): FeedsOverviewDto {
     owner: "djdl",
     ownerName: "DJDL",
     distributionEnabled: true,
-    packageFeeds: { enabled: true, version: 2, updatedAt: T0 - 100_000 },
+    packageFeeds: {
+      enabled: true,
+      version: 2,
+      updatedAt: T0 - 100_000,
+      updatedBy: "u1",
+    },
     registryOrigin: ORIGIN,
     feeds,
     summary: {
@@ -599,7 +609,12 @@ export function feedRoutes(): Record<string, unknown> {
     "/manage/api/platform/feeds": platformOverview(),
     "/manage/api/products/djdl/distribution/feeds": productOverview(),
     "/manage/api/products/djdl/distribution/package-feeds": {
-      packageFeeds: { enabled: true, version: 2, updatedAt: T0 - 100_000 },
+      packageFeeds: {
+        enabled: true,
+        version: 2,
+        updatedAt: T0 - 100_000,
+        updatedBy: "u1",
+      },
     },
   };
   for (const eco of ECOS) {

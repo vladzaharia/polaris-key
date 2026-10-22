@@ -12,7 +12,12 @@
 
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import { ENTITLEMENT_PATTERN } from "@polaris-key/protocol/packs";
-import type { SettingAdapter } from "../../core/settings/types.js";
+import {
+  RENDER_ALL,
+  stmtEnqueuePackageRender,
+} from "../../core/registry/registryQueue.js";
+import type { SqlGuard, SettingAdapter } from "../../core/settings/types.js";
+import type { DbStatement } from "../../db/types.js";
 import {
   isAccessMode,
   ACCESS_MODES,
@@ -20,12 +25,68 @@ import {
   revertAccessStatements,
   setAccessStatements,
 } from "./access.js";
+import {
+  FEED_PROVISION_ACTOR,
+  packageFeedsOf,
+  stmtWritePackageFeeds,
+} from "./registryFeeds.js";
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === "object" && !Array.isArray(v);
 }
 
+/** The statements of a `distribution.packageFeeds` write; also the `PUT …/package-feeds` route's. */
+export function packageFeedsStatements(
+  slug: string,
+  enabled: boolean,
+  by: string,
+  now: number,
+  guard: SqlGuard,
+): DbStatement[] {
+  return [
+    stmtWritePackageFeeds(slug, enabled, by, now, guard),
+    // On: render every package feed of the product now.
+    ...(enabled
+      ? [stmtEnqueuePackageRender(slug, RENDER_ALL, "package-feeds", now)]
+      : []),
+  ];
+}
+
+export function packageFeedsAudit(slug: string, enabled: boolean) {
+  return {
+    action: "distribution.package_feeds.update",
+    target: { kind: "package-feeds", id: slug },
+    summary: `${enabled ? "Turned on" : "Turned off"} package feeds for ${slug}`,
+  };
+}
+
 export const DISTRIBUTION_ADAPTERS: Readonly<Record<string, SettingAdapter>> = {
+  // F-34.3: the owner's `packageFeeds` switch, the off switch of every feed of the product
+  // (reads, publishes, renders). An adapter over `dist_registry_owners`; the manifest only ever
+  // INSERTS the row (F-34.2), so what the operator turned off stays off.
+  "distribution.packageFeeds": {
+    read: async ({ db, product }) => {
+      const owner = await packageFeedsOf(db, product.slug);
+      return {
+        value: owner.enabled,
+        source:
+          owner.updatedAt === null
+            ? "default"
+            : owner.updatedBy === FEED_PROVISION_ACTOR
+              ? "manifest"
+              : "console",
+      };
+    },
+    set: ({ value, ctx, guard, by }) =>
+      packageFeedsStatements(
+        ctx.product.slug,
+        value === true,
+        by ?? "system",
+        ctx.now,
+        guard,
+      ),
+    audit: ({ slug, after }) => packageFeedsAudit(slug, after === true),
+  },
   "distribution.access": {
     read: async ({ db, product }) => {
       const rows = await listAccess(db, product.slug);

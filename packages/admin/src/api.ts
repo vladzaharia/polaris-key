@@ -1478,6 +1478,15 @@ export interface ProductDetail {
   /** The operator-owned `packageFeeds` sub-capability (F-11): Distribution → Package feeds shows
    *  only while it is on. */
   packageFeeds?: boolean;
+  /** F-34.3: the product's package feeds at a glance (the one-product read only). `declared`
+   *  counts the package deliverables in `.pkey/release`; `offBy` and `offAt` say who turned the
+   *  feeds off and when (`manifest`: a row the ingest provisioned). */
+  packages?: {
+    declared: number;
+    feedsOn: boolean;
+    offBy: string | null;
+    offAt: number | null;
+  };
   signingKid: string;
   releaseSource?: ProductReleaseSource;
   signing?: ProductSigningBundle | null;
@@ -4492,6 +4501,8 @@ export interface PackageFeedsSwitch {
   /** 0 = never written. */
   version: number;
   updatedAt: number | null;
+  /** Who last wrote it: an admin subject, or `manifest` for a row the ingest provisioned. */
+  updatedBy: string | null;
 }
 
 interface FeedsHead {
