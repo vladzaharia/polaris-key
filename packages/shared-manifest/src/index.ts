@@ -128,6 +128,21 @@ export {
   type ChannelStorefrontFacet,
 } from "./channels.generated.js";
 
+/** Product facts, pure (A-20.1): the known-format table, file-to-format, arch fit and channel fit. */
+export {
+  KNOWN_FORMATS,
+  archFits,
+  channelFit,
+  channelFitById,
+  formatOfFile,
+  type ChannelFitResult,
+  type FitBuild,
+  type FitReason,
+  type FormatKind,
+  type KnownFormat,
+  type KnownFormatId,
+} from "./formats.js";
+
 /**
  * Cloud Sync's catalog-side checks (the `user` blocks and the catalog `cloudSync` block, every
  * rule as it applies to `.pkey/schema`) for a catalog published outside a manifest: the console's
