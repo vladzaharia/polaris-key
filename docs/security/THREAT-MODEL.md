@@ -7563,6 +7563,23 @@ the account holder into approving it ("read me the code", "scan this to claim yo
   `portal.device_login.step_up_required`, the trace of someone being talked into approving a
   device elsewhere; an approval sends "A new device signed in" to every verified address on the
   account, with "Wasn't you? Secure your account".
+- **A CLI purpose (ST-34.5).** `start` also takes `{purpose: "cli", scope: "admin", client:
+{name, version, host}}`, for `pkey login`. The record shares the store, the code index and the
+  binding cookie, and it is the console's alone: the portal's `lookup` and `approve` answer it
+  exactly like an expired request (`410 expired`, the same body as an unknown code), because a
+  portal session is never strong enough to mint an admin token; only
+  `cliDeviceLoginLookup` / `cliDeviceLoginDecide` (Identity's `public.ts`) read or decide it, with
+  the same atomic code consume and compare-and-set. Nothing mints at the decision: the poll that
+  takes an approved record (binding cookie required, record consumed in one step, so one poll
+  ever) re-checks the account's status and the erasure fence, then mints through Core's
+  `mintAccountToken` (scope `admin`, 7 days, label `pkey on <host>`). The plaintext exists only in
+  that response, which sets no session cookie. A start skips the `portalEnabled` gate (it runs in
+  console context) and asks for `admin` only; `packages:read` is a `422 bad_request`. The client
+  block is attacker-chosen text, cleaned (control and bidi characters dropped, host at most 64
+  characters) and shown to the approver as "unverified"; the approver also sees the place
+  (edge geolocation), which a client cannot set. **Residual:** the phishing of the portal feature
+  applies, and an admin token is worth more. The console card (ST-34.6) must require a stepped-up
+  console session, so approving needs a fresh sign-in, not just a cookie.
 
 ### The outbound fetcher and hosted-asset ingest (HA-01)
 
@@ -9105,6 +9122,21 @@ privacyUrl}` with https URLs reads as unset, and an unreadable store fails the s
   Residual: I-30 sends the platform IdP's `/callback` through the gate (an identity with no
   account always opens it), so only the legacy product callback still creates accounts without
   the step until I-32b retires it, and publishing waits for that (docs/RUNBOOK.md).
+- **Personal tokens (I-27 §2.5; `admin` scope ST-34.3 to 34.5).** A `pkeyp_` token is a bearer
+  credential for one account. `packages:read` is minted in the portal. `admin` is minted nowhere
+  but a console-approved `pkey login` (PX-W14's `cli` purpose, above): the poll mints it after a
+  stepped-up console session approved the code, never a portal session. **Phishing:** an attacker
+  runs `pkey login` on their machine and talks an operator into approving the code, which would
+  hand the attacker the operator's console reach for 7 days. Mitigations: the approval is a
+  console-only, stepped-up decision (never auto, never a portal session); the card shows the
+  machine name, place and the code to compare with the terminal ("Check this matches your
+  terminal"); the code lives 5 minutes and is single use; the poll needs the browser binding
+  cookie, so a leaked code or handle mints nothing; the token is default-deny on the admin API
+  (`personalToken` rows), re-checked against the holder's roles on every use, audited on every use,
+  individually revocable by the holder and by Superadmins, and revoked with the account. The
+  approver is also sent the new-device security notice. **Residual:** an operator who approves a
+  code they did not start, after comparing nothing, is phished; the card copy and the notice are
+  the defence.
 
 ### App passthrough on authorize and token (I-08)
 

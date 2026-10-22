@@ -1800,7 +1800,13 @@ async function dispatchPortalApi(
   // session yet. The signed-in half (`lookup`, `approve`) is dispatched below.
   if (segments[0] === "device-login" && segments.length === 2) {
     if (segments[1] === "start")
-      return handleDeviceLoginStart(req, env, db, now);
+      return handleDeviceLoginStart(
+        req,
+        env,
+        db,
+        now,
+        req.method === "POST" ? await readBody(req) : {},
+      );
     if (segments[1] !== "lookup" && segments[1] !== "approve")
       return handleDeviceLoginPoll(req, env, db, segments[1]!, now);
   }
