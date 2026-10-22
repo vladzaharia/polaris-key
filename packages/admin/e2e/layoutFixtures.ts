@@ -255,6 +255,25 @@ const ROUTES: Record<string, unknown> = {
   // Home: what needs attention (`GET /attention`, long names and lines included) and Platform ready.
   "/manage/api/attention": {
     items: [
+      // U-05.21: the Cloud Sync pause, one row per product with Cloud Sync on.
+      {
+        id: "diceroll:sync.paused",
+        product: { slug: "diceroll", name: "Diceroll" },
+        kind: "sync.paused",
+        tone: "warning",
+        service: "sync",
+        short: "Writes paused",
+        lines: [
+          "Cloud Sync writes are paused for every product.",
+          "Devices keep their changes and send them on resume.",
+        ],
+        action: {
+          label: "Resume writes",
+          page: "sync-setup",
+          query: { resume: "1" },
+        },
+        area: "platform",
+      },
       {
         id: "acme:sync.failed",
         product: { slug: "acme", name: "Acme" },

@@ -12,6 +12,7 @@ import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { Textarea } from "../../../ui/Textarea.js";
 import { toast } from "../../../ui/toast.js";
 import { LEVEL_RANK } from "../../../ui/settings/model.js";
+import { formatDateTime } from "../../../lib/format.js";
 import { useMe, useProducts } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 
@@ -21,12 +22,48 @@ export const stepUpKeyFor = (key: string, to: "on" | "off"): string =>
 
 const products = (n: number): string => (n === 1 ? "product" : "products");
 
+/** Who paused writes, when, and why: what the resume dialog and the banner say. */
+export interface PauseNotice {
+  since: number | null;
+  by: string | null;
+  reason: string | null;
+}
+
+/** "Paused Oct 22, 2026, 11:46 AM by Ana Lima" and, when there is one, the reason in quotes. */
+export function PauseNoticeLine({
+  notice,
+}: {
+  notice: PauseNotice;
+}): React.ReactElement {
+  return (
+    <>
+      {notice.since
+        ? `Paused ${formatDateTime(notice.since * 1000)}`
+        : "Paused"}
+      {notice.by ? (
+        <>
+          {" by "}
+          <bdi>{notice.by}</bdi>
+        </>
+      ) : null}
+      {"."}
+      {notice.reason ? (
+        <>
+          {" "}
+          <bdi>“{notice.reason}”</bdi>
+        </>
+      ) : null}
+    </>
+  );
+}
+
 export function PauseWritesDialog({
   open,
   onOpenChange,
   setting,
   to,
   propagationSeconds,
+  notice,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -34,8 +71,11 @@ export function PauseWritesDialog({
   /** `on`: pause; `off`: resume. */
   to: "on" | "off";
   propagationSeconds: number;
+  /** Who paused it and why, led with when resuming. */
+  notice?: PauseNotice | null;
 }): React.ReactElement {
   const [reason, setReason] = React.useState("");
+  const reasonRef = React.useRef<HTMLTextAreaElement>(null);
   const reasonId = React.useId();
   const all = useProducts();
   const me = useMe();
@@ -64,26 +104,33 @@ export function PauseWritesDialog({
           : "Resume Cloud Sync writes?"
       }
       lead={
-        reached.length === 0 ? (
-          <p className="text-fg">No product has Cloud Sync on.</p>
-        ) : (
-          <div>
-            <p className="font-medium text-fg-strong">
-              {pausing
-                ? `${reached.length === 1 ? "The product" : `All ${reached.length} products`} with Cloud Sync ${reached.length === 1 ? "stops" : "stop"} taking new data:`
-                : `${reached.length === 1 ? "The product" : `All ${reached.length} products`} with Cloud Sync ${reached.length === 1 ? "takes" : "take"} new data again:`}
+        <div className="space-y-3">
+          {!pausing && notice ? (
+            <p className="text-fg">
+              <PauseNoticeLine notice={notice} />
             </p>
-            <ul className="mt-1 space-y-0.5 text-fg">
-              {reached.map((p) => (
-                <li key={p.slug} className="[overflow-wrap:anywhere]">
-                  <bdi className="font-medium text-fg-strong">
-                    {p.name || p.slug}
-                  </bdi>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )
+          ) : null}
+          {reached.length === 0 ? (
+            <p className="text-fg">No product has Cloud Sync on.</p>
+          ) : (
+            <div>
+              <p className="font-medium text-fg-strong">
+                {pausing
+                  ? `${reached.length === 1 ? "The product" : `All ${reached.length} products`} with Cloud Sync ${reached.length === 1 ? "stops" : "stop"} taking new data:`
+                  : `${reached.length === 1 ? "The product" : `All ${reached.length} products`} with Cloud Sync ${reached.length === 1 ? "takes" : "take"} new data again:`}
+              </p>
+              <ul className="mt-1 space-y-0.5 text-fg">
+                {reached.map((p) => (
+                  <li key={p.slug} className="[overflow-wrap:anywhere]">
+                    <bdi className="font-medium text-fg-strong">
+                      {p.name || p.slug}
+                    </bdi>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       }
       consequences={
         pausing
@@ -100,6 +147,7 @@ export function PauseWritesDialog({
           : "Resume writes"
       }
       confirmDisabled={reason.trim() === ""}
+      initialFocusRef={reasonRef}
       signedInAt={me.data?.authAt}
       stepUpKey={stepUpKeyFor(setting.key, to)}
       stepUpState={{ reason }}
@@ -125,13 +173,16 @@ export function PauseWritesDialog({
           Reason <span className="text-fg-muted">Required</span>
         </label>
         <Textarea
+          ref={reasonRef}
           id={reasonId}
           value={reason}
           onValueChange={setReason}
           maxLength={500}
           aria-required
         />
-        <p className="text-xs text-fg-muted">Recorded in Activity.</p>
+        <p className="text-xs text-fg-muted">
+          Platform admins see it in the banner. Recorded in Activity.
+        </p>
       </div>
     </ConfirmDialog>
   );

@@ -4,11 +4,8 @@
  */
 
 import { syncedSettings, type SettingRoute } from "@polaris-key/catalog";
-import {
-  useQuery,
-  type QueryKey,
-  type UseQueryResult,
-} from "@tanstack/react-query";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { qk } from "../../data/queries.js";
 import {
   api,
   ApiError,
@@ -50,18 +47,10 @@ export function localSettings(catalog: ProductCatalog | null): string[] {
     .map((r) => r.key);
 }
 
-/** The key of the usage read (`GET …/sync/usage`); under the product's Cloud Sync area. */
-export const syncUsageKey = (slug: string): QueryKey => [
-  "product",
-  slug,
-  "sync",
-  "usage",
-];
-
 /** The Cloud Sync usage read: tiers with their bytes, the default, and the aggregate. */
 export function useSyncUsage(slug: string): UseQueryResult<SyncUsageResponse> {
   return useQuery({
-    queryKey: syncUsageKey(slug),
+    queryKey: qk.syncUsage(slug),
     queryFn: () => api.syncUsage(slug),
     retry: false,
   });

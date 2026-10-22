@@ -4,7 +4,9 @@
  *   - `usage`: the product's `sync_product_usage` row (the 15-minute aggregate; `computedAt`
  *     says how old it is) with its breakdown;
  *   - `today`: today's UTC `sync_product_daily` counters;
- *   - `tiers` / `defaultBytes`: tier labels and limits, through Core (`syncTierLimits`).
+ *   - `tiers` / `defaultBytes`: tier labels and limits, through Core (`syncTierLimits`);
+ *   - `paused`: `null`, or `{ since, by, reason }` while the platform pause is on (Core's
+ *     `syncPauseNotice`; `reason` only for a caller who holds Platform).
  *
  * Counts and bytes only: no person, subject, device id or email appears in the answer, and the
  * console computes nothing from it. A product with Cloud Sync off answers `{ enabled: false }`.
@@ -12,6 +14,8 @@
 
 import { adminJson } from "../../../core/console/respond.js";
 import { syncTierLimits } from "../../../core/accounts/syncTierLimits.js";
+import { syncPauseNotice } from "../../../core/accounts/syncPause.js";
+import { can, PLATFORM } from "../../../core/rbac/can.js";
 import type { UsageBreakdown } from "../scheduled.js";
 import type { SyncAdminContext } from "./index.js";
 
@@ -22,7 +26,7 @@ export async function handleUsage(ctx: SyncAdminContext): Promise<Response> {
   if (!product.services.sync.enabled) return adminJson({ enabled: false });
   const slug = product.slug;
   const day = new Date(now * 1000).toISOString().slice(0, 10);
-  const [row, daily, limits] = await Promise.all([
+  const [row, daily, limits, paused] = await Promise.all([
     db.first<{
       bytes: number;
       users: number;
@@ -39,6 +43,11 @@ export async function handleUsage(ctx: SyncAdminContext): Promise<Response> {
       day,
     ),
     syncTierLimits(env, db, slug, now),
+    syncPauseNotice(
+      env,
+      db,
+      can(ctx.session.principal, PLATFORM, "platform", "view"),
+    ),
   ]);
   let breakdown: UsageBreakdown = {
     byTier: [],
@@ -65,5 +74,7 @@ export async function handleUsage(ctx: SyncAdminContext): Promise<Response> {
     today: { day, syncs: n(daily?.syncs), conflicts: n(daily?.conflicts) },
     tiers: limits.tiers,
     defaultBytes: limits.defaultBytes,
+    // The platform pause, so a product admin sees why their people are waiting (U-05.21).
+    paused,
   });
 }

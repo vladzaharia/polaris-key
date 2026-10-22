@@ -15635,7 +15635,7 @@
       "owners": ["U-32", "ST-16", "ST-28"],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "CloudSyncSetup.tsx: a member without Platform access sees the platform controls without buttons, who can change them said once, and the default and tier rows read-only from the usage read (test/syncSetup.test.tsx)"
+      "evidence": "CloudSyncSetup.tsx: the pause (banner and Paused pill, who and when) comes from the usage read, so a member without Platform access sees it; they see the platform controls without buttons, who can change them said once, and the default and tier rows read-only from the usage read (test/syncSetup.test.tsx)"
     },
     {
       "id": "config.cloud-sync-usage",
@@ -15670,7 +15670,7 @@
       ],
       "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/sections/sync/CloudSyncSetup.tsx (U-05.21: Default and per-tier rows from api.syncUsage, a null tier 'Uses the default', 'N people over 80%' only above zero, 'Without a license: 1 MiB, no files', See Usage, the product ceiling meter with Change… in CeilingDialog.tsx at L2 up and L1 down, Pause all writes) over test/syncSetup.test.tsx; the Saves template pane and In your game code are not built here"
+      "evidence": "packages/admin/src/console/sections/sync/CloudSyncSetup.tsx (U-05.21: Default and per-tier rows from api.syncUsage, a null tier 'Uses the default', 'N people over 80%' only above zero, 'Without a license: 1 MiB, no files', See Usage, the product ceiling meter with Change… in CeilingDialog.tsx at L2 up and L1 down, Pause all writes) with the tier names linking to Tiers, per-read errors and skeletons, a Limits aside from 1600 px and Pause first on a phone; test/syncSetup.test.tsx; the Saves template pane and In your game code are not built here"
     },
     {
       "id": "config.effective",

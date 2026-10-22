@@ -286,6 +286,7 @@ const ZOOM_CASES = [
   "djdl:deliverables/record/delivery",
   "djdl:activity?table",
   "djdl:sync-usage",
+  "djdl:sync-setup",
   "djdl:storefronts?flow=prerequisites",
   "djdl:storefronts?flow=listing",
   "djdl:storefronts?flow=assets",

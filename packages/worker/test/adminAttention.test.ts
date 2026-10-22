@@ -165,7 +165,7 @@ describe("Cloud Sync writes paused (U-05.21)", () => {
       "Cloud Sync writes are paused for every product.",
     );
     expect(items[0]!.action).toMatchObject({
-      label: "Resume",
+      label: "Resume writes",
       page: "sync-setup",
     });
     expect(items[0]!.area).toBe("platform");

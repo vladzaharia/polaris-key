@@ -15,6 +15,7 @@ import { handleAdmin } from "../src/console/index.js";
 import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
 import { setServices } from "../src/core/products/store.js";
 import { serializeServices } from "../src/core/services.js";
+import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
 import { PRINCIPALS } from "./rbacFixtures.js";
 
 const SYNTHETIC = new Map<string, Principal>();
@@ -30,6 +31,19 @@ vi.mock("../src/core/rbac/principal.js", async (importOriginal) => {
 });
 const shipOnly = PRINCIPALS.alphaShip;
 if (shipOnly) SYNTHETIC.set(shipOnly.memberId, shipOnly);
+
+const djdlAdmin: Principal = {
+  memberId: "m-djdl-sync",
+  grants: [
+    {
+      role: "product_admin",
+      scope: "product:djdl",
+      areas: ["sync"],
+      source: "grant",
+    },
+  ],
+};
+SYNTHETIC.set(djdlAdmin.memberId, djdlAdmin);
 
 const GROUP = "platform-admins";
 const PATH = "/api/products/djdl/sync/usage";
@@ -190,5 +204,63 @@ describe("GET sync/usage", () => {
     const res = await w.get(token, NOW);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ enabled: false });
+  });
+
+  it("carries the platform pause for a product admin: since and a display name, never the reason or an id", async () => {
+    const w = await world();
+    const token = await w.sessionFor({ sub: "m-djdl-sync", groups: [] }, NOW);
+    const off = (await (await w.get(token, NOW)).json()) as { paused: unknown };
+    expect(off.paused).toBeNull();
+
+    await w.db.run(
+      `INSERT INTO platform_settings (key, value_json, version, updated_at, updated_by)
+       VALUES ('cloudSync.writesPaused', '"on"', 1, ?, 'mbr_secret123')`,
+      NOW - 600,
+    );
+    await w.db.run(
+      `INSERT INTO platform_audit (id, at, actor_sub, actor_name, actor_email, action, summary, after_json, reason, setting_key)
+       VALUES ('a1', ?, 'mbr_secret123', 'Ana Lima', 'ana@example.test', 'setting.update', 's', '{"value":"on"}', 'Storage errors in eu-west', 'cloudSync.writesPaused')`,
+      NOW - 600,
+    );
+    invalidatePlatformSettings(w.env, w.db);
+    const res = await w.get(token, NOW);
+    const text = await res.text();
+    const body = JSON.parse(text);
+    expect(body.paused).toEqual({
+      since: NOW - 600,
+      by: "Ana Lima",
+      reason: null,
+    });
+    for (const banned of ["mbr_secret123", "ana@example.test", "eu-west"])
+      expect(text).not.toContain(banned);
+    // Nothing platform-only rides on it: the same keys as for anyone.
+    expect(Object.keys(body).sort()).toEqual(
+      ["defaultBytes", "enabled", "paused", "tiers", "today", "usage"].sort(),
+    );
+
+    // A platform admin also gets the reason.
+    const root = await w.sessionFor({ sub: "u1", groups: [GROUP] }, NOW);
+    const full = (await (await w.get(root, NOW)).json()) as {
+      paused: { reason: string };
+    };
+    expect(full.paused.reason).toBe("Storage errors in eu-west");
+  });
+
+  it("never names an id when the audit row has no display name", async () => {
+    const w = await world();
+    await w.db.run(
+      `INSERT INTO platform_settings (key, value_json, version, updated_at, updated_by)
+       VALUES ('cloudSync.writesPaused', '"on"', 1, ?, 'mbr_secret123')`,
+      NOW - 60,
+    );
+    invalidatePlatformSettings(w.env, w.db);
+    const token = await w.sessionFor({ sub: "m-djdl-sync", groups: [] }, NOW);
+    const text = await (await w.get(token, NOW)).text();
+    expect(JSON.parse(text).paused).toEqual({
+      since: NOW - 60,
+      by: null,
+      reason: null,
+    });
+    expect(text).not.toContain("mbr_secret123");
   });
 });

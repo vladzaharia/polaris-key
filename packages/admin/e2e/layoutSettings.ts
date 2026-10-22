@@ -71,52 +71,6 @@ export const SETTINGS_ROUTES: Record<string, unknown> = {
       },
     ],
   },
-  [`${P}/sync/usage`]: {
-    enabled: true,
-    usage: {
-      bytes: Math.round(18.4 * GiB),
-      people: 4812,
-      settingsBytes: 0,
-      recordBytes: 0,
-      fileBytes: 0,
-      revisionBytes: 0,
-      computedAt: NOW,
-      breakdown: {
-        byTier: [
-          {
-            tierId: "free",
-            people: 3120,
-            bytes: 0,
-            medianBytes: 0,
-            over80: 41,
-          },
-          {
-            tierId: "standard",
-            people: 1402,
-            bytes: 0,
-            medianBytes: 0,
-            over80: 3,
-          },
-          {
-            tierId: "deluxe",
-            people: 290,
-            bytes: 0,
-            medianBytes: 0,
-            over80: 0,
-          },
-        ],
-        byKind: { settings: 0, records: 0, files: 0, revisions: 0 },
-        byPlatform: [],
-      },
-    },
-    today: { day: "2026-10-22", syncs: 0, conflicts: 0 },
-    tiers: [
-      { id: "free", label: "Free", bytes: 64 * MiB },
-      { id: "standard", label: "Standard", bytes: null },
-      { id: "deluxe", label: "Deluxe", bytes: GiB },
-    ],
-    defaultBytes: 256 * MiB,
-  },
   // Settings → Differs from the manifest (ST-17): one claim that differs, one kept as the manifest has it.
   [`${P}/settings/drift`]: {
     snapshot: {

@@ -6587,7 +6587,7 @@ const rawApi = {
   revertProductSetting: (
     slug: string,
     key: string,
-    body: { expectedVersion: number },
+    body: { expectedVersion: number; reason?: string; confirm?: string },
   ) =>
     call<{
       ok: true;
@@ -7011,6 +7011,12 @@ export type SyncUsageResponse =
       today: { day: string; syncs: number; conflicts: number };
       tiers: { id: string; label: string; bytes: number | null }[];
       defaultBytes: number;
+      /** The platform pause (U-05.21): `null` while writes run; `reason` only for Platform. */
+      paused?: {
+        since: number | null;
+        by: string | null;
+        reason: string | null;
+      } | null;
     };
 
 export const api: AdminApi = rawApi;

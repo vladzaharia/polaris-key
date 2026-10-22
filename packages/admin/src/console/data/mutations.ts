@@ -333,6 +333,8 @@ export const MUTATIONS: MutationTable = {
       // The reserved-names report carries the severity the settings row sets (LX-05).
       exact(qk.platformReservedNames()),
       prefix(qk.platformActivity()),
+      // Home's Needs attention lists the Cloud Sync pause (U-05.21): it must clear on Resume.
+      attention(),
     ],
   },
   mintApiToken: {
@@ -447,6 +449,8 @@ export const MUTATIONS: MutationTable = {
       // The reserved-names report carries the severity the settings row sets (LX-05).
       exact(qk.platformReservedNames()),
       prefix(qk.platformActivity()),
+      // Home's Needs attention lists the Cloud Sync pause (U-05.21): it must clear on Resume.
+      attention(),
     ],
   },
   putOverrideMigrationPrerequisites: {

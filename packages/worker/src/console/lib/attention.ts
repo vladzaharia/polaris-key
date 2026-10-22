@@ -134,7 +134,7 @@ export async function productAttention(
         "Devices keep their changes and send them on resume.",
       ],
       action: {
-        label: "Resume",
+        label: "Resume writes",
         page: "sync-setup",
         query: { resume: "1" },
       },
