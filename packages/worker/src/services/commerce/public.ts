@@ -21,3 +21,26 @@ export async function readyStorefronts(
   );
   return Object.values(setup).filter((s) => s.configured).length;
 }
+
+export interface StorefrontIdentityMismatch {
+  store: "app-store" | "play" | "steam";
+  /** The identity typed in the commerce settings (the one in force). */
+  typed: string;
+  /** The app the product is assigned on that store. */
+  assigned: string;
+}
+
+/** The stores whose typed identity differs from the assigned app (A-28.3). Read-only. */
+export async function storefrontIdentityMismatches(
+  db: Db,
+  slug: string,
+): Promise<StorefrontIdentityMismatch[]> {
+  const { identity } = await effectiveCommerceSettings(db, slug);
+  const out: StorefrontIdentityMismatch[] = [];
+  for (const store of ["app-store", "play", "steam"] as const) {
+    const i = identity[store];
+    if (i.mismatch && i.value !== null && i.assigned !== null)
+      out.push({ store, typed: i.value, assigned: i.assigned });
+  }
+  return out;
+}

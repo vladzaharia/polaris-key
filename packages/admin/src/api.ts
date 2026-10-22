@@ -1436,7 +1436,8 @@ export interface AttentionItemDto {
     | "secret.usage"
     | "signing.missing"
     | "mint.pending"
-    | "credential.expiring";
+    | "credential.expiring"
+    | "storefront.identity_mismatch";
   tone: "danger" | "warning";
   /** The service the fix belongs to (the row's accent); `null` for the product itself. */
   service: ServiceSlug | null;
@@ -2454,8 +2455,20 @@ export interface ServiceState {
 
 /** `GET …/commerce` (worker `services/commerce/admin.ts` `view`): the overview's read. */
 export type CommerceStore = "app-store" | "play" | "steam";
+/** Which app a store's purchases belong to (A-28.3). */
+export interface CommerceStoreIdentity {
+  /** The bundle id, package name or Steam app id in force; `null`: the store is off. */
+  value: string | null;
+  source: "typed" | "assigned" | null;
+  /** The app assigned on that store, whether or not it is used. */
+  assigned: string | null;
+  /** A typed value that differs from the assigned one (the typed value is in force). */
+  mismatch: boolean;
+}
+
 export interface CommerceView {
   licenseEnabled: boolean;
+  identity: Record<CommerceStore, CommerceStoreIdentity>;
   setup: Record<
     CommerceStore,
     { configured: boolean; credential: string | null; reason: string | null }
@@ -5731,6 +5744,11 @@ const rawApi = {
 
   // ── commerce (CM-29) ────────────────────────────────────────────────────────
   commerceView: (slug: string) => call<CommerceView>(`${p(slug)}/commerce`),
+  /** Drop the store's typed identity so the assigned app applies (A-28.3). */
+  commerceUseAssigned: (slug: string, store: CommerceStore) =>
+    call<CommerceView>(`${p(slug)}/commerce/settings/${store}/use-assigned`, {
+      method: "POST",
+    }),
 
   // ── services (per-product enablement) ───────────────────────────────────────
   services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),

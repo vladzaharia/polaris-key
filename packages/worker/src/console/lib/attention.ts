@@ -18,6 +18,8 @@ import type { ProductRow } from "../../core/repo.js";
 import type { AreaId, Principal } from "../authz.js";
 import { can, productScope } from "../authz.js";
 import { expiringCredentials } from "../../services/distribution/public.js";
+import { storefrontIdentityMismatches } from "../../services/commerce/public.js";
+import { parseServices } from "../../core/services.js";
 import { attentionFactsFor } from "./shape.js";
 
 export type AttentionTone = "danger" | "warning";
@@ -28,7 +30,8 @@ export type AttentionKind =
   | "secret.usage"
   | "signing.missing"
   | "mint.pending"
-  | "credential.expiring";
+  | "credential.expiring"
+  | "storefront.identity_mismatch";
 
 /** Where the fix lives: a product page, by the console's page id. */
 export interface AttentionAction {
@@ -64,6 +67,12 @@ const CREDENTIAL_LABELS: Readonly<Record<string, string>> = {
   "google-service-account": "Google Play key",
   "ms-partner-center": "Microsoft Store credential",
 };
+
+const STORE_LABELS = {
+  "app-store": "App Store",
+  play: "Google Play",
+  steam: "Steam",
+} as const;
 
 const day = (epochSeconds: number): string =>
   new Date(epochSeconds * 1000).toLocaleDateString("en-US", {
@@ -207,6 +216,25 @@ export async function productAttention(
       area: "ship",
     });
   }
+
+  // Only a product that sells through Commerce; a block left over while it is off is not news.
+  if (
+    parseServices(p.services_json ?? null).services.commerce?.enabled === true
+  )
+    for (const m of await storefrontIdentityMismatches(db, p.slug))
+      items.push({
+        id: id("storefront.identity_mismatch", m.store),
+        product,
+        kind: "storefront.identity_mismatch",
+        tone: "warning",
+        service: "commerce",
+        short: "App mismatch",
+        lines: [
+          `${STORE_LABELS[m.store]} purchases are checked against \`${m.typed}\`, not the assigned app \`${m.assigned}\`.`,
+        ],
+        action: { label: "Review", page: "storefronts" },
+        area: "commerce",
+      });
   return items;
 }
 

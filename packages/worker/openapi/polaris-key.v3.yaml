@@ -15707,7 +15707,9 @@ paths:
       description: >
         Home's Needs attention list (UX-12), composed on the server: a failed resync, a required
         secret with no value, a missing signing key, an edge-mint recipe awaiting approval, a store
-        credential expiring within 14 days or expired. Only broken things appear; what a product
+        credential expiring within 14 days or expired, a store's typed app identity that differs
+        from the app assigned to the product (`storefront.identity_mismatch`, area `commerce`).
+        Only broken things appear; what a product
         has not set up yet does not. Each item states one fact per line, names its product, and
         carries the page its fix lives in. Visibility is the registry list's, then each item's own
         area: a member who cannot open the fix never sees the item. The worst first. Admin session
@@ -21619,6 +21621,7 @@ components:
                     signing.missing,
                     mint.pending,
                     credential.expiring,
+                    storefront.identity_mismatch,
                   ]
               tone: { type: string, enum: [danger, warning] }
               service: { type: [string, "null"] }

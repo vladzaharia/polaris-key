@@ -6,6 +6,9 @@
  *     GET    …/commerce                         settings, store products, setup per
  *                                                            store, recent purchases and events
  *     PUT    …/commerce/settings                replace the settings (`settings.ts`)
+ *     POST   …/commerce/settings/<store>/use-assigned
+ *                                                            drop that store's typed identity
+ *                                                            fields so the assigned app applies
  *     PUT    …/commerce/products                map one store product to a flag (one
  *                                                            the catalog declares, or the
  *                                                            deliverable's delivery gate) and a
@@ -39,7 +42,14 @@ import {
   type Store,
 } from "../../core/licensing/storeGrants.js";
 import { listEvents } from "../../core/stores/events.js";
-import { validateCommerceSettings, writeCommerceSettings } from "./settings.js";
+import {
+  readStoredCommerceSettings,
+  validateCommerceSettings,
+  writeCommerceSettings,
+  type StoredCommerceSettings,
+} from "./settings.js";
+import { storeAppBinding } from "../../core/platformCredentials.js";
+import type { PlatformStore } from "../../core/platformStoreSettings.js";
 import {
   effectiveCommerceSettings,
   type EffectiveCommerce,
@@ -136,6 +146,9 @@ async function view(ctx: AdminCtx) {
     licenseEnabled: ctx.product.services.license?.enabled === true,
     // As stored: the identity fields are what the operator typed (null: derived or unset).
     settings: eff.stored,
+    // Which app each store's purchases belong to (A-28.3): the value in force, where it came
+    // from, the assigned app, and whether a typed value disagrees with it.
+    identity: eff.identity,
     setup: await setupOf(ctx, eff),
     products: (await listStoreProducts(ctx.db, slug)).map((p) => ({
       store: p.store,
@@ -203,6 +216,97 @@ async function flagRefusal(
     : `the catalog declares no flag ${flag}`;
 }
 
+const PLATFORM_OF = {
+  "app-store": "app-store",
+  play: "google-play",
+  steam: "steam",
+} as const satisfies Record<Store, PlatformStore>;
+
+/**
+ * `POST …/commerce/settings/<store>/use-assigned` (A-28.3, D14): the server works out the assigned
+ * app and the client sends nothing. It deletes that store's typed identity fields (App Store:
+ * `bundleId` and `appAppleId`, which name one app; Play: `packageName`; Steam: `appId`), so the
+ * assigned app applies; every other field stays. `409 no_assigned_app` when the store has no
+ * assigned app to use. A store with no `commerce.stores` block stays off (D13): nothing to clear,
+ * and nothing is written. Idempotent: with no typed field left, nothing is written or audited.
+ */
+async function useAssigned(ctx: AdminCtx, store: Store): Promise<Response> {
+  const { db, product, session, now } = ctx;
+  const slug = product.slug;
+  const binding = await storeAppBinding(db, slug, PLATFORM_OF[store]);
+  const field = (
+    {
+      "app-store": "bundleId",
+      play: "packageName",
+      steam: "appId",
+    } as const
+  )[store];
+  if (!binding.fields[field]?.value)
+    return err(
+      409,
+      ErrorCode.BadRequest,
+      "no app is assigned to this product on this store",
+      { reason: "no_assigned_app" },
+    );
+  const stored = await readStoredCommerceSettings(db, slug);
+  const before = { ...(storedBlock(stored, store) ?? {}) };
+  const typed = identityTyped(store, before);
+  if (storedBlock(stored, store) && Object.keys(typed).length > 0) {
+    const next: StoredCommerceSettings = {
+      appStore: stored.appStore && { ...stored.appStore },
+      play: stored.play && { ...stored.play },
+      steam: stored.steam && { ...stored.steam },
+    };
+    if (store === "app-store" && next.appStore) {
+      next.appStore.bundleId = null;
+      next.appStore.appAppleId = null;
+    } else if (store === "play" && next.play) next.play.packageName = null;
+    else if (store === "steam" && next.steam) next.steam.appId = null;
+    await writeCommerceSettings(db, slug, next, session.sub, now);
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "commerce.binding.derived",
+      { kind: "commerce", id: slug },
+      `Use the assigned ${store} app for ${slug}`,
+      {
+        before: { store, typed },
+        after: { store, typed: {}, assigned: binding.fields[field]!.value },
+      },
+    );
+  }
+  return adminJson(await view(ctx));
+}
+
+/** The typed identity fields a store block holds (only the non-null ones). */
+function identityTyped(
+  store: Store,
+  block: Record<string, unknown>,
+): Record<string, unknown> {
+  const keys =
+    store === "app-store"
+      ? ["bundleId", "appAppleId"]
+      : store === "play"
+        ? ["packageName"]
+        : ["appId"];
+  return Object.fromEntries(
+    keys.filter((k) => block[k] != null).map((k) => [k, block[k]]),
+  );
+}
+
+function storedBlock(
+  stored: StoredCommerceSettings,
+  store: Store,
+): Record<string, unknown> | null {
+  return ({
+    "app-store": stored.appStore,
+    play: stored.play,
+    steam: stored.steam,
+  }[store] ?? null) as Record<string, unknown> | null;
+}
+
 export async function handleCommerceAdmin(
   ctx: AdminCtx,
 ): Promise<Response | null> {
@@ -237,6 +341,19 @@ export async function handleCommerceAdmin(
     );
     return adminJson(await view(ctx));
   }
+
+  if (
+    rest.length === 3 &&
+    rest[0] === "settings" &&
+    rest[2] === "use-assigned" &&
+    isStore(rest[1])
+  ) {
+    if (req.method !== "POST")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    if (!licenseOn) return licenseOff();
+    return useAssigned(ctx, rest[1]);
+  }
+  if (rest[0] === "settings") return null;
 
   if (rest[0] !== "products") return null;
   if (rest.length === 1) {
