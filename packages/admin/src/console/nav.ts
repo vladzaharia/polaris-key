@@ -162,6 +162,7 @@ export type ProductPageId =
   // identity
   | "app-sign-in"
   // sync
+  | "sync-setup"
   | "sync-data"
   // commerce
   | "commerce-overview";
@@ -272,6 +273,9 @@ export const SETTINGS_HUB_PAGES: readonly ProductPageId[] = [
   "settings-members",
   "settings-all",
 ];
+
+/** Cloud Sync's route tabs, the first the default; one sidebar row, `sync-setup`. */
+export const SYNC_PAGES: readonly ProductPageId[] = ["sync-setup", "sync-data"];
 
 /** A feed page's route tabs (F-11), the first the default. */
 export const FEED_TABS = ["packages", "setup", "settings", "activity"] as const;
@@ -753,13 +757,24 @@ export const SECTIONS: NavSection[] = [
     docs: "/docs/features/cloud-sync/",
     items: [
       {
+        // One row for the feature: Setup is the page, Data its second route tab.
+        page: "sync-setup",
+        tile: "service",
+        label: "Cloud Sync",
+        path: "sync/setup",
+        icon: Cloud,
+        docs: "/docs/features/cloud-sync/",
+        inNav: true,
+      },
+      {
+        // A tab of Cloud Sync, not a sidebar item; its address is unchanged.
         page: "sync-data",
         tile: "service",
         label: "Data",
         path: "sync/data",
         icon: Database,
         docs: "/docs/features/cloud-sync/",
-        inNav: true,
+        inNav: false,
       },
     ],
   },

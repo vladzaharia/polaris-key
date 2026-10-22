@@ -81,6 +81,7 @@ const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
   "commerce-overview": "commerce",
   feed: "ship",
   "app-sign-in": "signin",
+  "sync-setup": "sync",
   "sync-data": "sync",
 };
 

@@ -32,3 +32,10 @@ export function declaresSaves(catalog: ProductCatalog | null): boolean {
 /** The catalog route answers 404 before the first publish: nothing is declared yet. */
 export const noCatalog = (e: unknown): boolean =>
   e instanceof ApiError && e.status === 404;
+
+/** The Editable keys that stay on each device (`user.sync: "local"`), in catalog order. */
+export function localSettings(catalog: ProductCatalog | null): string[] {
+  return syncedSettings({ entries: catalog?.entries ?? [] })
+    .filter((r) => r.route === "local")
+    .map((r) => r.key);
+}

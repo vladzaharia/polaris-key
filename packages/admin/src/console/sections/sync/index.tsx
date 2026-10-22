@@ -1,10 +1,18 @@
 import * as React from "react";
 import { SyncDataPage } from "./pages/SyncData.js";
+import { CloudSyncSetupPage } from "./CloudSyncSetup.js";
 import type { SectionPageProps } from "../../pages/types.js";
 
-/** Cloud Sync (U-04): Data, read-only, over the catalog's declarations. */
+/** Cloud Sync: one row, Setup and Data route tabs (Usage waits for U-05). */
 export default function SyncPages({
   route,
 }: SectionPageProps): React.ReactElement | null {
-  return route.page === "sync-data" ? <SyncDataPage slug={route.slug} /> : null;
+  switch (route.page) {
+    case "sync-setup":
+      return <CloudSyncSetupPage slug={route.slug} />;
+    case "sync-data":
+      return <SyncDataPage slug={route.slug} />;
+    default:
+      return null;
+  }
 }
