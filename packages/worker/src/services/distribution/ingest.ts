@@ -103,7 +103,9 @@ export function feedProvisionPlan(
 
 /** The provisioning rows (owner, then feeds), and one audit row per feed this batch creates. */
 export function feedProvisionStatements(
-  ctx: Pick<IngestContext, "manifest" | "slug" | "now">,
+  ctx: Pick<IngestContext, "manifest" | "slug" | "now"> & {
+    source?: Pick<IngestContext["source"], "origin">;
+  },
 ): {
   statements: DbStatement[];
   audits: DbStatement[];
@@ -121,7 +123,8 @@ export function feedProvisionStatements(
     ],
     // Audits run after the statements, so the guard is the row this very batch just inserted
     // (its provisioning actor, this timestamp, version 1); a feed that already existed has
-    // neither this `updated_at` nor, for an operator's, this `updated_by`.
+    // neither this `updated_at` nor, for an operator's, this `updated_by`. A second ingest in the
+    // same second finds this audit row already there and writes no duplicate (N2).
     audits: feeds.map((f) =>
       auditStatement(
         {
@@ -137,16 +140,22 @@ export function feedProvisionStatements(
             access: "licensed",
             namespace: f.namespace,
           }),
-          origin: "resync",
+          origin: ctx.source?.origin ?? "resync",
         },
         sql(
           `WHERE EXISTS (SELECT 1 FROM dist_registry_feeds
                           WHERE product = ? AND ecosystem = ? AND version = 1
-                            AND updated_at = ? AND updated_by = ?)`,
+                            AND updated_at = ? AND updated_by = ?)
+              AND NOT EXISTS (SELECT 1 FROM audit
+                               WHERE product = ? AND action = ? AND target_id = ? AND at = ?)`,
           slug,
           f.ecosystem,
           now,
           FEED_PROVISION_ACTOR,
+          slug,
+          FEED_PROVISION_ACTION,
+          f.ecosystem,
+          now,
         ),
       ),
     ),

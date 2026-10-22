@@ -106,6 +106,10 @@ export type LinkExistingResult =
       updated: string[];
       refused?: Extract<ResyncResult, { ok: true }>["refused"];
       packSets?: Extract<ResyncResult, { ok: true }>["packSets"];
+      feedProvisionSkipped?: Extract<
+        ResyncResult,
+        { ok: true }
+      >["feedProvisionSkipped"];
       remainingSecrets: string[];
     }
   | LinkRefusal;
@@ -399,6 +403,9 @@ export async function linkExistingProduct(
     updated: applied.updated,
     ...(applied.refused ? { refused: applied.refused } : {}),
     ...(applied.packSets ? { packSets: applied.packSets } : {}),
+    ...(applied.feedProvisionSkipped
+      ? { feedProvisionSkipped: applied.feedProvisionSkipped }
+      : {}),
     remainingSecrets: prepared.remainingSecrets,
   };
 }

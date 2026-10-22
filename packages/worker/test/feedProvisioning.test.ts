@@ -20,6 +20,7 @@ import { feedProvisionPlan } from "../src/services/distribution/ingest.js";
 import { distributionManifest } from "../src/services/distribution/ingest.js";
 import type { IngestContext } from "../src/core/ingest/types.js";
 import type { Db } from "../src/db/types.js";
+import { feedSkipped } from "../src/services/release/resync.js";
 import { envFor, minimal, SLUG } from "./ingest/world.js";
 
 const pkg = (ecosystem: string, name: string) => ({
@@ -287,5 +288,64 @@ describe("manifest-provisioned feeds (F-34.2)", () => {
     expect(await feeds(db)).toEqual([]);
     expect(await owner(db)).toBeNull();
     expect(await audits(db)).toEqual([]);
+  });
+
+  it("a second ingest in the same second writes no duplicate audit row", async () => {
+    const db = makeTestDb();
+    const files = filesWith(NPM);
+    await run(db, files, "create");
+    await resync(db, files, NOW);
+    await resync(db, files, NOW);
+    expect(await audits(db)).toHaveLength(1);
+  });
+
+  it("the audit row names the origin of the ingest (link, then resync)", async () => {
+    const db = makeTestDb();
+    await run(db, filesWith(NPM), "create");
+    const c = await distributionManifest.prepare({
+      manifest: parse(filesWith({ ...NPM, "pypi.t": pkg("pypi", "acme-t") })),
+      slug: SLUG,
+      now: NOW + 60,
+      enabled: true,
+      mode: "apply",
+      scope: "full",
+      source: { origin: "resync" },
+    } as unknown as IngestContext);
+    await db.batch([...c.statements, ...c.audits]);
+    const rows = await db.all<{ target_id: string; origin: string }>(
+      "SELECT target_id, origin FROM audit WHERE product = ? AND action = 'distribution.feed.provision' ORDER BY target_id",
+      SLUG,
+    );
+    expect(rows).toEqual([
+      { target_id: "npm", origin: "link" },
+      { target_id: "pypi", origin: "resync" },
+    ]);
+  });
+
+  it("a one-segment Maven groupId and a host-only Go module provision nothing, with a reason", () => {
+    const plan = feedProvisionPlan(
+      parse(
+        filesWith({
+          m: pkg("maven", "com:x"),
+          g: pkg("go", "github.com"),
+        }),
+      ),
+      SLUG,
+    );
+    expect(plan.feeds).toEqual([]);
+    expect(plan.skipped.map((k) => k.ecosystem).sort()).toEqual([
+      "go",
+      "maven",
+    ]);
+    expect(plan.skipped.every((k) => k.reason.length > 0)).toBe(true);
+  });
+
+  it("the resync and link answers carry the skip reasons from the ingest facts", () => {
+    const skipped = [{ ecosystem: "npm", reason: "several scopes" }];
+    expect(feedSkipped({ feedProvision: { skipped } })).toEqual({
+      feedProvisionSkipped: skipped,
+    });
+    expect(feedSkipped({})).toEqual({});
+    expect(feedSkipped({ feedProvision: { skipped: [] } })).toEqual({});
   });
 });
