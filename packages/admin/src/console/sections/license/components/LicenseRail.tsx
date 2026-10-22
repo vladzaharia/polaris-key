@@ -113,12 +113,14 @@ export function DurationCard({
           </strong>
         </div>
         {end !== null ? (
-          <p
-            className="text-xs text-fg-muted"
-            style={{ paddingInlineStart: `min(${pct}%, calc(100% - 9rem))` }}
-          >
-            {expired ? "Expired" : `Today · ${formatDate(now)}`}
-          </p>
+          <div className="relative h-4">
+            <p
+              className="absolute top-0 whitespace-nowrap text-xs text-fg-muted"
+              style={{ insetInlineStart: `min(${pct}%, calc(100% - 9rem))` }}
+            >
+              {expired ? "Expired" : `Today · ${formatDate(now)}`}
+            </p>
+          </div>
         ) : null}
       </div>
     </Section>
