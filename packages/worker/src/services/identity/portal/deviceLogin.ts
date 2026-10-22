@@ -779,6 +779,8 @@ export async function handleDeviceLoginApprove(
 
 /** What the console's approval card shows about a pending CLI request. */
 export interface CliDeviceLoginView {
+  /** The request's id (opaque; the poll also needs the starter's binding cookie): the audit target. */
+  id: string;
   code: string;
   device: DeviceLoginRecord["device"];
   location: DeviceLoginLocation;
@@ -826,6 +828,7 @@ export async function cliDeviceLoginLookup(
   if (!found) return null;
   const r = found.record;
   return {
+    id: found.ref.id,
     code: r.code,
     device: r.device,
     location: r.location,

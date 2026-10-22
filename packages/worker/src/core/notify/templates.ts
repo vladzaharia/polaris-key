@@ -33,6 +33,7 @@ import {
   type KeyEmailContext,
 } from "@polaris-key/brand/email-copy";
 import { platformLabel } from "@polaris-key/manifest";
+import { PERSONAL_TOKEN_DAYS } from "../accounts/personalTokens.js";
 import { renderEmail, emailAssetOrigin, type EmailContent } from "./render.js";
 
 /** A finished message: what `EMAIL.send` needs besides the addresses. */
@@ -406,7 +407,7 @@ export function newDeviceSignInNotice(input: {
 
 /**
  * ST-34.6 (D-17): a command line (`pkey login`) was approved as the person in the Polaris Key
- * console. A Polaris Key operator notice, not a Locker one: the remedy is the console's Personal
+ * console (an operator notice, not a Locker one). The remedy is the console's Personal
  * tokens (or a Superadmin), never Locker's sessions page. `origin` is the console's.
  */
 export function cliSignInNotice(input: {
@@ -423,7 +424,7 @@ export function cliSignInNotice(input: {
   return buildNotice({
     subject: "A command line signed in to the Polaris Key console as you",
     paragraphs: [
-      `${device} was approved as you in the Polaris Key console${when}${where}. Its token lasts 7 days and can do what your roles allow.`,
+      `${device} was approved as you in the Polaris Key console${when}${where}. Its token lasts ${PERSONAL_TOKEN_DAYS.admin.default} days and can do what your roles allow.`,
       "If this wasn't you, end it under Personal tokens in the console, or ask a Superadmin to.",
     ],
     action: { label: "Open the console", url: `${input.origin}/manage/` },

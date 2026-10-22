@@ -7597,13 +7597,17 @@ sign-in card's CSP (`form-action 'self'`, no inline script). Every gate on a dec
 2. **A member:** a principal with at least one grant, else the no-access card.
 3. **A per-member budget** (`DEVICE_LOGIN_APPROVE_LIMIT` a minute, bucket `adminDeviceApprove`, fail
    closed), spent before any code is looked up, so it bounds guessing someone else's code.
-4. **Same origin:** a present `Origin` header must be the console's.
+4. **Same origin** (`sameOriginPost`, Core, shared with the device-flow pages): `Sec-Fetch-Site`
+   must be `same-origin` when the browser sends it; without it, a missing `Origin`, the console's,
+   or the literal `null` passes. `null` is needed: the card is served `referrer-policy:
+no-referrer`, and Chromium and WebKit then send `Origin: null` on its own form post. The CSRF
+   field (5) is the other half; curl with no headers passes this step and still needs it.
 5. **CSRF:** the hidden `csrf` field, compared in constant time with the session's token, on both
    forms; a missing or wrong one is a 403 that decides nothing.
 6. **An explicit decision:** only `approve` or `deny`; anything else is a 400.
 7. **Step-up, for approve only:** `isSteppedUp` (the console's own five-minute rule). Without it the
-   card shows no Approve button, a forged POST is a 403 before Identity is called (the code stays
-   live), and the refusal leaves `cli.login.step_up_required`, the trace of someone being talked
+   card shows no Approve button, a forged POST is a 403 before the decision is made (the read-only
+   lookup runs to show the card; `cliDeviceLoginDecide` does not, so the code stays live), and the refusal leaves `cli.login.step_up_required`, the trace of someone being talked
    into it. Cancelling needs the session but no step-up: it ends a request and mints nothing.
 8. **The account's token limit:** at 25 live personal tokens the card says so and nothing is
    consumed, so nobody is told "approved" when the poll could not mint.
@@ -7615,9 +7619,15 @@ Only after `{ok: true}` does the page write `cli.login.approve` or `.deny` (plat
 the member id) and, on approval, send a console-branded security notice (`cliSignInNotice`: "A
 command line signed in to the Polaris Key console as you", the remedy being Personal tokens or a
 Superadmin, to every verified address) rather than Locker's new-device mail. The request's program
-name, version, host and device label are attacker-chosen text: escaped, each tagged "unverified" next
-to "Check this matches your terminal", and the place is "About <place>" because edge geolocation
-is approximate and a VPN can choose it. A `returnTo` of exactly `/manage/device?code=<code>` is
+name, version and host are attacker-chosen text: escaped, cut at the CLI's own caps (an ellipsis marks
+a cut), and the card says once that Polaris Key cannot check them, next to the code panel "Check this
+matches your terminal". The place is "<place> (approximate)" because edge geolocation is
+approximate and a VPN can choose it. The body is read with a byte cap, never trusting
+`Content-Length`. The audit target is the request's id (the token does not exist yet: the poll mints
+it later). The approval notice is sent in a `finally`, so a failed audit write cannot swallow it.
+A signed-out visit that arrives cross-site (the IdP's redirect back after the step-up) is answered
+with a script-free meta refresh to the same card instead of a 303, so the cookie rides the
+same-site hop. A `returnTo` of exactly `/manage/device?code=<code>` is
 the one query the sign-in's sanitizer allows, so a step-up lands back on the request; an absolute
 URL, `//host`, an encoded or extended variant is still refused. **Residual:** a phisher whose code
 the operator reads out and who passes the step-up gets a token; the shown host and place, the

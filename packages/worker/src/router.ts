@@ -172,7 +172,7 @@ export function matchRoute(pathname: string): Route {
   if (path === "/webhooks/deploy") return { kind: "deployHook" };
   if (path === "/manage/login") return { kind: "adminLogin" };
   // ST-34.6: the approval card for `pkey login`, before the `/manage/` SPA catch-all. The code may
-  // ride in the path (`/manage/device/<code>`: the step-up's `returnTo` cannot carry a query).
+  // ride in the query (`?code=`, which the login's `returnTo` sanitizer allows) or in the path.
   if (path === "/manage/device" || path.startsWith("/manage/device/"))
     return { kind: "adminDevice" };
   if (path === "/manage/callback") return { kind: "adminCallback" };
