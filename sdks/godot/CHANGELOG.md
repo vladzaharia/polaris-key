@@ -9,6 +9,9 @@ SDK: `.github/workflows/publish-sdks.yml` stamps `plugin.cfg`'s `version` and `P
 
 ## Unreleased
 
+- **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Use another license, and Renew only when you supply a renew handler or URL; it never offers Try again or Reconnect. The TV QR on the device-limit screen is labelled as the device management page. The offline dialog numbers its steps and shows the request QR on phones.
+  Migrating: pass the https offers URL to get the paywall's Buy in your browser button (without it the not-available paywall has no button), and pass a renew handler or URL for Renew.
+
 - **US spelling and shorter kit copy.** The English template strings `Sign-in was cancelled.`, `The
 purchase was cancelled.` and `Last seen %s` read `Sign-in was canceled.`, `The purchase was
 canceled.` and `Last used %s`; `Your license doesn't include this release channel.` drops

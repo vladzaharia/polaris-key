@@ -108,6 +108,8 @@ export function DevicesSection(props: {
 }
 ```
 
+Paywall's **Buy in your browser** needs `offers.url` on `input`, an https page. Without it the not-available screen shows no button. StatusScreen offers Renew only when your app supplies a renew handler or URL.
+
 Restyle with plain CSS. Every component draws in a `.pk-root` element carrying `data-component`,
 `data-state`, `data-theme` (`dark` or `light`), `data-preset`, `data-density` and `data-motion`.
 Inside it each part has a `data-part` name (`card`, `header`, `icon`, `title`, `lede`, `actions`,

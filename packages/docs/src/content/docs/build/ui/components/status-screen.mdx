@@ -16,6 +16,11 @@ import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 The blocking states, each with its primary fix: revoked, expired, version too old, version too new, and channel not entitled. Each state names what happened and what to do, never a raw code.
 
+- **Expired** offers **Renew** only when your app supplies a renew handler or URL, and **Use another license**. It never offers Try again or Reconnect, because neither can change the outcome.
+- **Version too new** keeps **Try again** as its one action.
+
+Pass your renew handler or URL to the kit; without one, Renew is not drawn. SwiftUI takes `renewURL` on `GateOptions`.
+
 ## States and copy
 
 <ComponentStates component="StatusScreen" />

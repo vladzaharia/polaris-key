@@ -16,6 +16,8 @@ import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 The entitlement-gated upsell: what a tier adds, and purchase or redeem through the platform's store or Polaris Locker. It uses StoreKit on Apple platforms, Play Billing on Android and Locker elsewhere.
 
+Where a purchase is not available in the app, the screen says so. **Buy in your browser** appears only when your app passes an https `offers.url` (a store or portal page). Without one, or with a link that is not https, the screen shows no button. In the web and React kits, set `offers.url` on the input. The other kits take the same link as the offers input's URL.
+
 ## States and copy
 
 <ComponentStates component="Paywall" />

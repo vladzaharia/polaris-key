@@ -6,6 +6,11 @@ only API (no deprecated aliases).
 
 ## Unreleased
 
+Kit screens.
+
+- **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Use another license, and Renew only when you supply a renew handler or URL; it never offers Try again or Reconnect. The TV QR on the device-limit screen is labelled as the device management page. The Qt kit draws the numbered steps with the request QR.
+  Migrating: pass an https `offers.url` in the offers input to get Buy in your browser on the paywall, and a renew handler or URL to get Renew.
+
 Server drop-ins.
 
 - **`polaris_key.server` (`server.license`, `server.signin`).** `PolarisKey` verifies `X-PKey-License` per WIRE-CONTRACT-V4 §14 (the six-step verdict, the problem body, the signed trust manifest refreshed every 900 s and once a minute on an unknown `kid`), with adapters for FastAPI/Starlette, Django and DRF, and Flask. Extras: `starlette`, `fastapi`, `flask`, `django`, `drf`. Replays `backend-matrix.json`.

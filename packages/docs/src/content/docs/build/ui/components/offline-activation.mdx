@@ -14,7 +14,9 @@ import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
-Activation without a network: the request code as text and a QR code, then a response file loaded, dropped or pasted. A response whose signature does not verify is rejected with its reason, never silently.
+Activation without a network, in two numbered steps: send the request (the code with Copy, and a QR code), then load the response (a file, dropped or pasted). Both steps stay on screen in every state except done. A response whose signature does not verify is rejected with its reason under step 2, never silently. Done has a title and a Done button.
+
+The request QR shows wherever it fits, phones included, so another phone can scan it. Screen readers hear "QR code with the request code". The product's name appears once, in the header, not again in the form.
 
 ## States and copy
 
