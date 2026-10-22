@@ -733,7 +733,7 @@
     },
     "version-too-old": {
       "title": "需要更新",
-      "message": "此版本已不再受支持。请更新应用以继续。"
+      "message": "此版本已不再受支持。请更新{product}以继续。"
     },
     "version-too-new": {
       "title": "此许可证不可用",

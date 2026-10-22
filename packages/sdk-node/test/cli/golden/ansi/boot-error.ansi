@@ -2,7 +2,7 @@
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · boot[22m
 [2m│[22m
 [31m✗[39m  [1mTidewater Studio couldn't start[22m
-[2m│[22m  If this keeps happening, restart the app.
+[2m│[22m  If this keeps happening, restart Tidewater Studio.
 [2m│[22m
 [2m└[22m  [1mtidewater boot[22m   Try again
 
@@ -10,7 +10,7 @@
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · boot[22m
 [2m│[22m
 [31m✗[39m  [1mTidewater Studio couldn't start[22m
-[2m│[22m  If this keeps happening, restart the app.
+[2m│[22m  If this keeps happening, restart Tidewater Studio.
 [2m│[22m
 [2m└[22m  [1mtidewater boot[22m   Try again
 
@@ -18,7 +18,7 @@
 [2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · boot[22m
 [2m│[22m
 [31m✗[39m  [1mTidewater Studio couldn't start[22m
-[2m│[22m  If this keeps happening, restart the app.
+[2m│[22m  If this keeps happening, restart Tidewater Studio.
 [2m│[22m
 [2m└[22m  [1mtidewater boot[22m   Try again
 
@@ -26,7 +26,7 @@
 ┌  [7m Tidewater Studio [27m · boot
 │
 ✗  [1mTidewater Studio couldn't start[22m
-│  If this keeps happening, restart the app.
+│  If this keeps happening, restart Tidewater Studio.
 │
 └  [1mtidewater boot[22m   Try again
 
@@ -34,7 +34,7 @@
 [2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - boot[22m
 [2m|[22m
 [31mx[39m  [1mTidewater Studio couldn't start[22m
-[2m|[22m  If this keeps happening, restart the app.
+[2m|[22m  If this keeps happening, restart Tidewater Studio.
 [2m|[22m
 [2m`[22m  [1mtidewater boot[22m   Try again
 
@@ -42,7 +42,7 @@
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · boot[22m
 [2m│[22m
 [31m✗[39m  [1mTidewater Studio couldn't start[22m
-[2m│[22m  If this keeps happening, restart the app.
+[2m│[22m  If this keeps happening, restart Tidewater Studio.
 [2m│[22m
 [2m└[22m  [1mtidewater boot[22m   Try again
 
@@ -50,7 +50,7 @@
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · boot[22m
 [2m│[22m
 [31m✗[39m  [1mTidewater Studio couldn't start[22m
-[2m│[22m  If this keeps happening, restart the app.
+[2m│[22m  If this keeps happening, restart Tidewater Studio.
 [2m│[22m
 [2m└[22m  [1mtidewater boot[22m   Try again
 
@@ -58,7 +58,7 @@
 [2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · boot[22m
 [2m│[22m
 [31m✗[39m  [1mTidewater Studio couldn't start[22m
-[2m│[22m  If this keeps happening, restart the app.
+[2m│[22m  If this keeps happening, restart Tidewater Studio.
 [2m│[22m
 [2m└[22m  [1mtidewater boot[22m   Try again
 
@@ -66,7 +66,7 @@
 ┌  [7m Tidewater Studio [27m · boot
 │
 ✗  [1mTidewater Studio couldn't start[22m
-│  If this keeps happening, restart the app.
+│  If this keeps happening, restart Tidewater Studio.
 │
 └  [1mtidewater boot[22m   Try again
 
@@ -74,6 +74,6 @@
 [2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - boot[22m
 [2m|[22m
 [31mx[39m  [1mTidewater Studio couldn't start[22m
-[2m|[22m  If this keeps happening, restart the app.
+[2m|[22m  If this keeps happening, restart Tidewater Studio.
 [2m|[22m
 [2m`[22m  [1mtidewater boot[22m   Try again

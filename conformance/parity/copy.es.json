@@ -733,7 +733,7 @@
     },
     "version-too-old": {
       "title": "Actualización obligatoria",
-      "message": "Esta versión ya no es compatible. Actualiza la app para continuar."
+      "message": "Esta versión ya no es compatible. Actualiza {product} para continuar."
     },
     "version-too-new": {
       "title": "No disponible con esta licencia",

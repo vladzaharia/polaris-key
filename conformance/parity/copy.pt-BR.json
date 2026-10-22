@@ -733,7 +733,7 @@
     },
     "version-too-old": {
       "title": "Atualização necessária",
-      "message": "Esta versão não é mais compatível. Atualize o app para continuar."
+      "message": "Esta versão não é mais compatível. Atualize {product} para continuar."
     },
     "version-too-new": {
       "title": "Indisponível nesta licença",

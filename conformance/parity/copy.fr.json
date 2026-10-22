@@ -733,7 +733,7 @@
     },
     "version-too-old": {
       "title": "Mise à jour requise",
-      "message": "Cette version n’est plus prise en charge. Mettez l’app à jour pour continuer."
+      "message": "Cette version n’est plus prise en charge. Mettez {product} à jour pour continuer."
     },
     "version-too-new": {
       "title": "Indisponible avec cette licence",

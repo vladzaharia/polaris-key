@@ -733,7 +733,7 @@
     },
     "version-too-old": {
       "title": "Update erforderlich",
-      "message": "Diese Version wird nicht mehr unterstützt. Aktualisieren Sie die App, um fortzufahren."
+      "message": "Diese Version wird nicht mehr unterstützt. Aktualisieren Sie {product}, um fortzufahren."
     },
     "version-too-new": {
       "title": "Mit dieser Lizenz nicht verfügbar",

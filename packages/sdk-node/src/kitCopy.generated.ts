@@ -130,13 +130,13 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} needs {size} of new content, and you're on a metered connection.",
     "boot.consent.download": "Download",
-    "boot.error.body": "If this keeps happening, restart the app.",
+    "boot.error.body": "If this keeps happening, restart {product}.",
     "welcome.title": "Welcome to {product}",
     "common.welcomeNoProductTitle": "Welcome",
     "common.signInToContinue": "Sign in to continue.",
     "welcome.lede": "Sign in or use a license key to continue.",
     "welcome.ledeKeyOnly": "Enter a license key to continue.",
-    "welcome.ledeSignInOnly": "Sign in to use {product}.",
+    "welcome.ledeSignInOnly": "Sign in to continue.",
     "welcome.signIn": "Sign in",
     "welcome.useKey": "Use a license key",
     "welcome.trial": "Start a free trial",
@@ -211,6 +211,7 @@ export const KIT_COPY: Readonly<
     "update.title": "{product} {version}",
     "update.availableTitle": "An update is available",
     "update.current": "You have {version} · {size} download",
+    "common.updateCurrentNoSize": "You have {version}",
     "update.whatsNew": "What's new",
     "update.allChanges": "All changes in {version}",
     "update.later": "Later",
@@ -218,10 +219,13 @@ export const KIT_COPY: Readonly<
     "update.restartNow": "Restart now",
     "update.skipVersion": "Skip this version",
     "update.install": "Update now",
+    "common.updateDownload": "Download {version}",
     "update.downloading": "Downloading · {size} of {total}",
     "update.timeLeft": "About {time} left",
+    "common.updateTimeMinutes": "About {minutes} min",
+    "common.updateTimeLessThanMinute": "Less than a minute",
     "update.readyTitle": "{product} {version} is ready",
-    "update.readyBody": "Restart {product} to finish updating.",
+    "update.readyBody": "Restart to finish updating.",
     "update.mandatoryTitle": "Update to keep using {product}",
     "update.mandatoryBody": "This version is no longer supported.",
     "update.blockedTitle": "This version is no longer supported",
@@ -247,7 +251,7 @@ export const KIT_COPY: Readonly<
     "update.platform.generic":
       "It installs through the store or platform you got {product} from.",
     "update.revokedContent":
-      "Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going.",
+      "Some of {product}'s content was withdrawn and can't be used. Update to keep going.",
     "update.upToDate": "You're up to date",
     "update.checkNow": "Check for updates",
     "updateProgress.contentTitle": "Downloading content",
@@ -313,8 +317,7 @@ export const KIT_COPY: Readonly<
     "paywall.restore": "Restore purchases",
     "paywall.purchasing": "Completing purchase…",
     "paywall.purchased": "{tier} is unlocked",
-    "paywall.notAvailable":
-      "Purchases aren't available in this version of {product}.",
+    "paywall.notAvailable": "Purchases aren't available in this version.",
     "paywall.portal": "Buy in your browser",
     "entitlement.locked": "This feature needs {tier}.",
     "entitlement.unlock": "Unlock",
@@ -341,7 +344,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Sign in to Polaris Locker",
     "signin.methods.titleApp": "Sign in",
     "signin.methods.ledeApp":
-      "Use your {product} purchase email or a work or school email.",
+      "Use your purchase email or a work or school email.",
     "signin.email.label": "Email",
     "signin.email.invalid":
       "Enter a full email address, like name@example.com.",
@@ -1501,7 +1504,7 @@ export const KIT_COPY: Readonly<
       "Enter a license key or sign in to continue.",
     "core.gate.version-too-old.title": "Update required",
     "core.gate.version-too-old.message":
-      "This version is no longer supported. Update the app to continue.",
+      "This version is no longer supported. Update {product} to continue.",
     "core.gate.version-too-new.title": "Not available on this license",
     "core.gate.version-too-new.message":
       "This build is newer than your license allows.",
@@ -1655,7 +1658,8 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} benötigt {size} an neuen Inhalten, und Sie nutzen eine getaktete Verbindung.",
     "boot.consent.download": "Herunterladen",
-    "boot.error.body": "Wenn das weiterhin passiert, starten Sie die App neu.",
+    "boot.error.body":
+      "Wenn das weiterhin passiert, starten Sie {product} neu.",
     "welcome.title": "Willkommen bei {product}",
     "common.welcomeNoProductTitle": "Willkommen",
     "common.signInToContinue": "Melden Sie sich an, um fortzufahren.",
@@ -1663,7 +1667,7 @@ export const KIT_COPY: Readonly<
       "Melden Sie sich an oder verwenden Sie einen Lizenzschlüssel, um fortzufahren.",
     "welcome.ledeKeyOnly":
       "Geben Sie einen Lizenzschlüssel ein, um fortzufahren.",
-    "welcome.ledeSignInOnly": "Melden Sie sich an, um {product} zu verwenden.",
+    "welcome.ledeSignInOnly": "Melden Sie sich an, um fortzufahren.",
     "welcome.signIn": "Anmelden",
     "welcome.useKey": "Lizenzschlüssel verwenden",
     "welcome.trial": "Kostenlos testen",
@@ -1746,6 +1750,7 @@ export const KIT_COPY: Readonly<
     "update.title": "{product} {version}",
     "update.availableTitle": "Ein Update ist verfügbar",
     "update.current": "Sie haben {version} · {size} Download",
+    "common.updateCurrentNoSize": "Sie haben {version}",
     "update.whatsNew": "Neuerungen",
     "update.allChanges": "Alle Änderungen in {version}",
     "update.later": "Später",
@@ -1753,11 +1758,13 @@ export const KIT_COPY: Readonly<
     "update.restartNow": "Jetzt neu starten",
     "update.skipVersion": "Diese Version überspringen",
     "update.install": "Jetzt aktualisieren",
+    "common.updateDownload": "{version} herunterladen",
     "update.downloading": "Wird heruntergeladen · {size} von {total}",
     "update.timeLeft": "Noch etwa {time}",
+    "common.updateTimeMinutes": "Etwa {minutes} Min.",
+    "common.updateTimeLessThanMinute": "Weniger als eine Minute",
     "update.readyTitle": "{product} {version} ist bereit",
-    "update.readyBody":
-      "Starten Sie {product} neu, um das Update abzuschließen.",
+    "update.readyBody": "Starten Sie neu, um das Update abzuschließen.",
     "update.mandatoryTitle": "Aktualisieren, um {product} weiter zu verwenden",
     "update.mandatoryBody": "Diese Version wird nicht mehr unterstützt.",
     "update.blockedTitle": "Diese Version wird nicht mehr unterstützt",
@@ -1785,7 +1792,7 @@ export const KIT_COPY: Readonly<
     "update.platform.generic":
       "Es wird über den Store oder die Plattform installiert, von der Sie {product} haben.",
     "update.revokedContent":
-      "Einige Inhalte von {product} wurden zurückgezogen und können nicht verwendet werden. Aktualisieren Sie {product}, um fortzufahren.",
+      "Einige Inhalte von {product} wurden zurückgezogen und können nicht verwendet werden. Aktualisieren Sie, um fortzufahren.",
     "update.upToDate": "Sie sind auf dem neuesten Stand",
     "update.checkNow": "Nach Updates suchen",
     "updateProgress.contentTitle": "Inhalte werden heruntergeladen",
@@ -1854,8 +1861,7 @@ export const KIT_COPY: Readonly<
     "paywall.restore": "Käufe wiederherstellen",
     "paywall.purchasing": "Kauf wird abgeschlossen…",
     "paywall.purchased": "{tier} ist freigeschaltet",
-    "paywall.notAvailable":
-      "In dieser Version von {product} sind keine Käufe möglich.",
+    "paywall.notAvailable": "In dieser Version sind keine Käufe möglich.",
     "paywall.portal": "Im Browser kaufen",
     "entitlement.locked": "Für diese Funktion ist {tier} erforderlich.",
     "entitlement.unlock": "Freischalten",
@@ -1884,7 +1890,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Bei Polaris Locker anmelden",
     "signin.methods.titleApp": "Anmelden",
     "signin.methods.ledeApp":
-      "Verwenden Sie die E-Mail-Adresse Ihres Kaufs von {product} oder eine Arbeits- oder Schul-E-Mail-Adresse.",
+      "Verwenden Sie die E-Mail-Adresse Ihres Kaufs oder eine Arbeits- oder Schul-E-Mail-Adresse.",
     "signin.email.label": "E-Mail",
     "signin.email.invalid":
       "Geben Sie eine vollständige E-Mail-Adresse ein, z. B. name@example.com.",
@@ -3132,7 +3138,7 @@ export const KIT_COPY: Readonly<
       "Geben Sie einen Lizenzschlüssel ein oder melden Sie sich an, um fortzufahren.",
     "core.gate.version-too-old.title": "Update erforderlich",
     "core.gate.version-too-old.message":
-      "Diese Version wird nicht mehr unterstützt. Aktualisieren Sie die App, um fortzufahren.",
+      "Diese Version wird nicht mehr unterstützt. Aktualisieren Sie {product}, um fortzufahren.",
     "core.gate.version-too-new.title": "Mit dieser Lizenz nicht verfügbar",
     "core.gate.version-too-new.message":
       "Dieser Build ist neuer, als Ihre Lizenz erlaubt.",
@@ -3286,14 +3292,14 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} a besoin de {size} de nouveau contenu, et votre connexion est facturée à l’usage.",
     "boot.consent.download": "Télécharger",
-    "boot.error.body": "Si le problème persiste, redémarrez l’app.",
+    "boot.error.body": "Si le problème persiste, redémarrez {product}.",
     "welcome.title": "Bienvenue dans {product}",
     "common.welcomeNoProductTitle": "Bienvenue",
     "common.signInToContinue": "Connectez-vous pour continuer.",
     "welcome.lede":
       "Connectez-vous ou utilisez une clé de licence pour continuer.",
     "welcome.ledeKeyOnly": "Saisissez une clé de licence pour continuer.",
-    "welcome.ledeSignInOnly": "Connectez-vous pour utiliser {product}.",
+    "welcome.ledeSignInOnly": "Connectez-vous pour continuer.",
     "welcome.signIn": "Se connecter",
     "welcome.useKey": "Utiliser une clé de licence",
     "welcome.trial": "Commencer un essai gratuit",
@@ -3374,6 +3380,7 @@ export const KIT_COPY: Readonly<
     "update.title": "{product} {version}",
     "update.availableTitle": "Une mise à jour est disponible",
     "update.current": "Vous avez la version {version} · {size} à télécharger",
+    "common.updateCurrentNoSize": "Vous avez la version {version}",
     "update.whatsNew": "Nouveautés",
     "update.allChanges": "Toutes les modifications de la version {version}",
     "update.later": "Plus tard",
@@ -3381,10 +3388,13 @@ export const KIT_COPY: Readonly<
     "update.restartNow": "Redémarrer maintenant",
     "update.skipVersion": "Ignorer cette version",
     "update.install": "Mettre à jour",
+    "common.updateDownload": "Télécharger {version}",
     "update.downloading": "Téléchargement · {size} sur {total}",
     "update.timeLeft": "Il reste environ {time}",
+    "common.updateTimeMinutes": "Environ {minutes} min",
+    "common.updateTimeLessThanMinute": "Moins d’une minute",
     "update.readyTitle": "{product} {version} est prêt",
-    "update.readyBody": "Redémarrez {product} pour terminer la mise à jour.",
+    "update.readyBody": "Redémarrez pour terminer la mise à jour.",
     "update.mandatoryTitle":
       "Mettez à jour pour continuer à utiliser {product}",
     "update.mandatoryBody": "Cette version n’est plus prise en charge.",
@@ -3412,7 +3422,7 @@ export const KIT_COPY: Readonly<
     "update.platform.generic":
       "Elle s’installe via la boutique ou la plateforme d’où vous avez obtenu {product}.",
     "update.revokedContent":
-      "Une partie du contenu de {product} a été retirée et ne peut plus être utilisée. Mettez à jour {product} pour continuer.",
+      "Une partie du contenu de {product} a été retirée et ne peut plus être utilisée. Mettez à jour pour continuer.",
     "update.upToDate": "Vous êtes à jour",
     "update.checkNow": "Rechercher des mises à jour",
     "updateProgress.contentTitle": "Téléchargement du contenu",
@@ -3480,7 +3490,7 @@ export const KIT_COPY: Readonly<
     "paywall.purchasing": "Finalisation de l’achat…",
     "paywall.purchased": "{tier} est débloqué",
     "paywall.notAvailable":
-      "Les achats ne sont pas disponibles dans cette version de {product}.",
+      "Les achats ne sont pas disponibles dans cette version.",
     "paywall.portal": "Acheter dans votre navigateur",
     "entitlement.locked": "Cette fonctionnalité nécessite {tier}.",
     "entitlement.unlock": "Débloquer",
@@ -3508,7 +3518,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Se connecter à Polaris Locker",
     "signin.methods.titleApp": "Se connecter",
     "signin.methods.ledeApp":
-      "Utilisez l’adresse e-mail de votre achat de {product} ou une adresse professionnelle ou scolaire.",
+      "Utilisez l’adresse e-mail de votre achat ou une adresse professionnelle ou scolaire.",
     "signin.email.label": "E-mail",
     "signin.email.invalid":
       "Saisissez une adresse e-mail complète, par exemple nom@example.com.",
@@ -4748,7 +4758,7 @@ export const KIT_COPY: Readonly<
       "Saisissez une clé de licence ou connectez-vous pour continuer.",
     "core.gate.version-too-old.title": "Mise à jour requise",
     "core.gate.version-too-old.message":
-      "Cette version n’est plus prise en charge. Mettez l’app à jour pour continuer.",
+      "Cette version n’est plus prise en charge. Mettez {product} à jour pour continuer.",
     "core.gate.version-too-new.title": "Indisponible avec cette licence",
     "core.gate.version-too-new.message":
       "Ce build est plus récent que ce que votre licence autorise.",
@@ -4902,13 +4912,13 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} necesita {size} de contenido nuevo y estás en una conexión de uso medido.",
     "boot.consent.download": "Descargar",
-    "boot.error.body": "Si el problema continúa, reinicia la app.",
+    "boot.error.body": "Si el problema continúa, reinicia {product}.",
     "welcome.title": "Te damos la bienvenida a {product}",
     "common.welcomeNoProductTitle": "Te damos la bienvenida",
     "common.signInToContinue": "Inicia sesión para continuar.",
     "welcome.lede": "Inicia sesión o usa una clave de licencia para continuar.",
     "welcome.ledeKeyOnly": "Escribe una clave de licencia para continuar.",
-    "welcome.ledeSignInOnly": "Inicia sesión para usar {product}.",
+    "welcome.ledeSignInOnly": "Inicia sesión para continuar.",
     "welcome.signIn": "Iniciar sesión",
     "welcome.useKey": "Usar una clave de licencia",
     "welcome.trial": "Iniciar prueba gratuita",
@@ -4989,6 +4999,7 @@ export const KIT_COPY: Readonly<
     "update.title": "{product} {version}",
     "update.availableTitle": "Hay una actualización disponible",
     "update.current": "Tienes la {version} · descarga de {size}",
+    "common.updateCurrentNoSize": "Tienes la {version}",
     "update.whatsNew": "Novedades",
     "update.allChanges": "Todos los cambios de {version}",
     "update.later": "Más tarde",
@@ -4996,10 +5007,13 @@ export const KIT_COPY: Readonly<
     "update.restartNow": "Reiniciar ahora",
     "update.skipVersion": "Omitir esta versión",
     "update.install": "Actualizar ahora",
+    "common.updateDownload": "Descargar {version}",
     "update.downloading": "Descargando · {size} de {total}",
     "update.timeLeft": "Quedan unos {time}",
+    "common.updateTimeMinutes": "Unos {minutes} min",
+    "common.updateTimeLessThanMinute": "Menos de un minuto",
     "update.readyTitle": "{product} {version} está lista",
-    "update.readyBody": "Reinicia {product} para terminar de actualizar.",
+    "update.readyBody": "Reinicia para terminar de actualizar.",
     "update.mandatoryTitle": "Actualiza para seguir usando {product}",
     "update.mandatoryBody": "Esta versión ya no es compatible.",
     "update.blockedTitle": "Esta versión ya no es compatible",
@@ -5026,7 +5040,7 @@ export const KIT_COPY: Readonly<
     "update.platform.generic":
       "Se instala a través de la tienda o plataforma donde obtuviste {product}.",
     "update.revokedContent":
-      "Parte del contenido de {product} se retiró y no se puede usar. Actualiza {product} para continuar.",
+      "Parte del contenido de {product} se retiró y no se puede usar. Actualiza para continuar.",
     "update.upToDate": "Tienes la última versión",
     "update.checkNow": "Buscar actualizaciones",
     "updateProgress.contentTitle": "Descargando contenido",
@@ -5093,8 +5107,7 @@ export const KIT_COPY: Readonly<
     "paywall.restore": "Restaurar compras",
     "paywall.purchasing": "Completando la compra…",
     "paywall.purchased": "{tier} está desbloqueado",
-    "paywall.notAvailable":
-      "Las compras no están disponibles en esta versión de {product}.",
+    "paywall.notAvailable": "Las compras no están disponibles en esta versión.",
     "paywall.portal": "Comprar en tu navegador",
     "entitlement.locked": "Esta función requiere {tier}.",
     "entitlement.unlock": "Desbloquear",
@@ -5122,7 +5135,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Inicia sesión en Polaris Locker",
     "signin.methods.titleApp": "Iniciar sesión",
     "signin.methods.ledeApp":
-      "Usa el correo de tu compra de {product} o un correo de trabajo o de centro educativo.",
+      "Usa el correo de tu compra o un correo de trabajo o de centro educativo.",
     "signin.email.label": "Correo electrónico",
     "signin.email.invalid":
       "Escribe una dirección de correo completa, como nombre@example.com.",
@@ -6353,7 +6366,7 @@ export const KIT_COPY: Readonly<
       "Escribe una clave de licencia o inicia sesión para continuar.",
     "core.gate.version-too-old.title": "Actualización obligatoria",
     "core.gate.version-too-old.message":
-      "Esta versión ya no es compatible. Actualiza la app para continuar.",
+      "Esta versión ya no es compatible. Actualiza {product} para continuar.",
     "core.gate.version-too-new.title": "No disponible con esta licencia",
     "core.gate.version-too-new.message":
       "Esta compilación es más reciente de lo que permite tu licencia.",
@@ -6509,13 +6522,13 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} precisa de {size} de conteúdo novo, e você está em uma conexão limitada.",
     "boot.consent.download": "Baixar",
-    "boot.error.body": "Se o problema continuar, reinicie o app.",
+    "boot.error.body": "Se o problema continuar, reinicie {product}.",
     "welcome.title": "Boas-vindas ao {product}",
     "common.welcomeNoProductTitle": "Boas-vindas",
     "common.signInToContinue": "Entre para continuar.",
     "welcome.lede": "Entre ou use uma chave de licença para continuar.",
     "welcome.ledeKeyOnly": "Digite uma chave de licença para continuar.",
-    "welcome.ledeSignInOnly": "Entre para usar {product}.",
+    "welcome.ledeSignInOnly": "Entre para continuar.",
     "welcome.signIn": "Entrar",
     "welcome.useKey": "Usar uma chave de licença",
     "welcome.trial": "Iniciar avaliação gratuita",
@@ -6598,6 +6611,7 @@ export const KIT_COPY: Readonly<
     "update.title": "{product} {version}",
     "update.availableTitle": "Há uma atualização disponível",
     "update.current": "Você tem a {version} · download de {size}",
+    "common.updateCurrentNoSize": "Você tem a {version}",
     "update.whatsNew": "Novidades",
     "update.allChanges": "Todas as mudanças da {version}",
     "update.later": "Mais tarde",
@@ -6605,10 +6619,13 @@ export const KIT_COPY: Readonly<
     "update.restartNow": "Reiniciar agora",
     "update.skipVersion": "Pular esta versão",
     "update.install": "Atualizar agora",
+    "common.updateDownload": "Baixar {version}",
     "update.downloading": "Baixando · {size} de {total}",
     "update.timeLeft": "Cerca de {time} restantes",
+    "common.updateTimeMinutes": "Cerca de {minutes} min",
+    "common.updateTimeLessThanMinute": "Menos de um minuto",
     "update.readyTitle": "{product} {version} está pronto",
-    "update.readyBody": "Reinicie {product} para concluir a atualização.",
+    "update.readyBody": "Reinicie para concluir a atualização.",
     "update.mandatoryTitle": "Atualize para continuar usando {product}",
     "update.mandatoryBody": "Esta versão não é mais compatível.",
     "update.blockedTitle": "Esta versão não é mais compatível",
@@ -6636,7 +6653,7 @@ export const KIT_COPY: Readonly<
     "update.platform.generic":
       "A atualização é instalada pela loja ou plataforma onde você obteve {product}.",
     "update.revokedContent":
-      "Parte do conteúdo de {product} foi retirada e não pode ser usada. Atualize {product} para continuar.",
+      "Parte do conteúdo de {product} foi retirada e não pode ser usada. Atualize para continuar.",
     "update.upToDate": "Você está atualizado",
     "update.checkNow": "Verificar atualizações",
     "updateProgress.contentTitle": "Baixando conteúdo",
@@ -6703,8 +6720,7 @@ export const KIT_COPY: Readonly<
     "paywall.restore": "Restaurar compras",
     "paywall.purchasing": "Concluindo a compra…",
     "paywall.purchased": "{tier} desbloqueado",
-    "paywall.notAvailable":
-      "Compras não estão disponíveis nesta versão de {product}.",
+    "paywall.notAvailable": "Compras não estão disponíveis nesta versão.",
     "paywall.portal": "Comprar no navegador",
     "entitlement.locked": "Este recurso requer {tier}.",
     "entitlement.unlock": "Desbloquear",
@@ -6733,7 +6749,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Entrar no Polaris Locker",
     "signin.methods.titleApp": "Entrar",
     "signin.methods.ledeApp":
-      "Use o e-mail da sua compra de {product} ou um e-mail de trabalho ou escola.",
+      "Use o e-mail da sua compra ou um e-mail de trabalho ou escola.",
     "signin.email.label": "E-mail",
     "signin.email.invalid":
       "Digite um endereço de e-mail completo, como nome@example.com.",
@@ -7935,7 +7951,7 @@ export const KIT_COPY: Readonly<
       "Digite uma chave de licença ou entre para continuar.",
     "core.gate.version-too-old.title": "Atualização necessária",
     "core.gate.version-too-old.message":
-      "Esta versão não é mais compatível. Atualize o app para continuar.",
+      "Esta versão não é mais compatível. Atualize {product} para continuar.",
     "core.gate.version-too-new.title": "Indisponível nesta licença",
     "core.gate.version-too-new.message":
       "Esta build é mais recente do que sua licença permite.",
@@ -8089,13 +8105,13 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} ha bisogno di {size} di nuovi contenuti e stai usando una connessione a consumo.",
     "boot.consent.download": "Scarica",
-    "boot.error.body": "Se il problema persiste, riavvia l'app.",
+    "boot.error.body": "Se il problema persiste, riavvia {product}.",
     "welcome.title": "Ti diamo il benvenuto in {product}",
     "common.welcomeNoProductTitle": "Ti diamo il benvenuto",
     "common.signInToContinue": "Accedi per continuare.",
     "welcome.lede": "Accedi o usa una chiave di licenza per continuare.",
     "welcome.ledeKeyOnly": "Inserisci una chiave di licenza per continuare.",
-    "welcome.ledeSignInOnly": "Accedi per usare {product}.",
+    "welcome.ledeSignInOnly": "Accedi per continuare.",
     "welcome.signIn": "Accedi",
     "welcome.useKey": "Usa una chiave di licenza",
     "welcome.trial": "Inizia una prova gratuita",
@@ -8173,6 +8189,7 @@ export const KIT_COPY: Readonly<
     "update.title": "{product} {version}",
     "update.availableTitle": "È disponibile un aggiornamento",
     "update.current": "Hai la versione {version} · download di {size}",
+    "common.updateCurrentNoSize": "Hai la versione {version}",
     "update.whatsNew": "Novità",
     "update.allChanges": "Tutte le modifiche della versione {version}",
     "update.later": "Più tardi",
@@ -8180,10 +8197,13 @@ export const KIT_COPY: Readonly<
     "update.restartNow": "Riavvia ora",
     "update.skipVersion": "Salta questa versione",
     "update.install": "Aggiorna ora",
+    "common.updateDownload": "Scarica {version}",
     "update.downloading": "Download · {size} di {total}",
     "update.timeLeft": "Circa {time} rimanenti",
+    "common.updateTimeMinutes": "Circa {minutes} min",
+    "common.updateTimeLessThanMinute": "Meno di un minuto",
     "update.readyTitle": "{product} {version} è pronto",
-    "update.readyBody": "Riavvia {product} per completare l'aggiornamento.",
+    "update.readyBody": "Riavvia per completare l'aggiornamento.",
     "update.mandatoryTitle": "Aggiorna per continuare a usare {product}",
     "update.mandatoryBody": "Questa versione non è più supportata.",
     "update.blockedTitle": "Questa versione non è più supportata",
@@ -8210,7 +8230,7 @@ export const KIT_COPY: Readonly<
     "update.platform.generic":
       "Si installa tramite lo store o la piattaforma da cui hai ottenuto {product}.",
     "update.revokedContent":
-      "Alcuni contenuti di {product} sono stati ritirati e non possono essere usati. Aggiorna {product} per continuare.",
+      "Alcuni contenuti di {product} sono stati ritirati e non possono essere usati. Aggiorna per continuare.",
     "update.upToDate": "Hai la versione più recente",
     "update.checkNow": "Controlla aggiornamenti",
     "updateProgress.contentTitle": "Download dei contenuti",
@@ -8277,7 +8297,7 @@ export const KIT_COPY: Readonly<
     "paywall.purchasing": "Completamento dell'acquisto…",
     "paywall.purchased": "{tier} è sbloccato",
     "paywall.notAvailable":
-      "Gli acquisti non sono disponibili in questa versione di {product}.",
+      "Gli acquisti non sono disponibili in questa versione.",
     "paywall.portal": "Acquista nel browser",
     "entitlement.locked": "Questa funzione richiede {tier}.",
     "entitlement.unlock": "Sblocca",
@@ -8305,7 +8325,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Accedi a Polaris Locker",
     "signin.methods.titleApp": "Accedi",
     "signin.methods.ledeApp":
-      "Usa l’email con cui hai acquistato {product} oppure un’email di lavoro o di scuola.",
+      "Usa l’email con cui hai fatto l’acquisto oppure un’email di lavoro o di scuola.",
     "signin.email.label": "Email",
     "signin.email.invalid":
       "Inserisci un indirizzo email completo, ad esempio nome@example.com.",
@@ -9518,7 +9538,7 @@ export const KIT_COPY: Readonly<
       "Inserisci una chiave di licenza o accedi per continuare.",
     "core.gate.version-too-old.title": "Aggiornamento necessario",
     "core.gate.version-too-old.message":
-      "Questa versione non è più supportata. Aggiorna l'app per continuare.",
+      "Questa versione non è più supportata. Aggiorna {product} per continuare.",
     "core.gate.version-too-new.title": "Non disponibile con questa licenza",
     "core.gate.version-too-new.message":
       "Questa build è più recente di quanto consentito dalla tua licenza.",
@@ -9674,14 +9694,14 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product}には{size}の新しいコンテンツが必要です。現在、従量制の接続を使用しています。",
     "boot.consent.download": "ダウンロード",
-    "boot.error.body": "問題が続く場合は、アプリを再起動してください。",
+    "boot.error.body": "問題が続く場合は、{product}を再起動してください。",
     "welcome.title": "{product}へようこそ",
     "common.welcomeNoProductTitle": "ようこそ",
     "common.signInToContinue": "続けるにはサインインしてください。",
     "welcome.lede":
       "続けるには、サインインするかライセンスキーを使用してください。",
     "welcome.ledeKeyOnly": "続けるには、ライセンスキーを入力してください。",
-    "welcome.ledeSignInOnly": "{product}を使うにはサインインしてください。",
+    "welcome.ledeSignInOnly": "続けるにはサインインしてください。",
     "welcome.signIn": "サインイン",
     "welcome.useKey": "ライセンスキーを使う",
     "welcome.trial": "無料トライアルを開始",
@@ -9764,6 +9784,7 @@ export const KIT_COPY: Readonly<
     "update.availableTitle": "アップデートがあります",
     "update.current":
       "現在のバージョン：{version} · ダウンロードサイズ：{size}",
+    "common.updateCurrentNoSize": "現在のバージョン：{version}",
     "update.whatsNew": "新機能",
     "update.allChanges": "{version}のすべての変更点",
     "update.later": "後で",
@@ -9771,11 +9792,13 @@ export const KIT_COPY: Readonly<
     "update.restartNow": "今すぐ再起動",
     "update.skipVersion": "このバージョンをスキップ",
     "update.install": "今すぐアップデート",
+    "common.updateDownload": "{version}をダウンロード",
     "update.downloading": "ダウンロード中 · {total}中{size}",
     "update.timeLeft": "残り約{time}",
+    "common.updateTimeMinutes": "約{minutes}分",
+    "common.updateTimeLessThanMinute": "1分未満",
     "update.readyTitle": "{product} {version}の準備ができました",
-    "update.readyBody":
-      "アップデートを完了するには{product}を再起動してください。",
+    "update.readyBody": "アップデートを完了するには再起動してください。",
     "update.mandatoryTitle":
       "{product}を引き続き使うにはアップデートしてください",
     "update.mandatoryBody": "このバージョンはサポートが終了しました。",
@@ -9804,7 +9827,7 @@ export const KIT_COPY: Readonly<
     "update.platform.generic":
       "{product}を入手したストアまたはプラットフォームからインストールされます。",
     "update.revokedContent":
-      "{product}の一部のコンテンツは取り下げられたため、使用できません。続けるには{product}をアップデートしてください。",
+      "{product}の一部のコンテンツは取り下げられたため、使用できません。続けるにはアップデートしてください。",
     "update.upToDate": "最新の状態です",
     "update.checkNow": "アップデートを確認",
     "updateProgress.contentTitle": "コンテンツをダウンロード中",
@@ -9869,7 +9892,7 @@ export const KIT_COPY: Readonly<
     "paywall.restore": "購入を復元",
     "paywall.purchasing": "購入を完了しています…",
     "paywall.purchased": "{tier}のロックが解除されました",
-    "paywall.notAvailable": "このバージョンの{product}では購入できません。",
+    "paywall.notAvailable": "このバージョンでは購入できません。",
     "paywall.portal": "ブラウザで購入",
     "entitlement.locked": "この機能には{tier}が必要です。",
     "entitlement.unlock": "ロックを解除",
@@ -9896,7 +9919,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Polaris Lockerにサインイン",
     "signin.methods.titleApp": "サインイン",
     "signin.methods.ledeApp":
-      "{product} の購入時のメールアドレス、または職場・学校のメールアドレスを使用してください。",
+      "購入時のメールアドレス、または職場・学校のメールアドレスを使用してください。",
     "signin.email.label": "メールアドレス",
     "signin.email.invalid":
       "name@example.comのような完全なメールアドレスを入力してください。",
@@ -11126,7 +11149,7 @@ export const KIT_COPY: Readonly<
       "続けるには、ライセンスキーを入力するか、サインインしてください。",
     "core.gate.version-too-old.title": "アップデートが必要です",
     "core.gate.version-too-old.message":
-      "このバージョンはサポートが終了しました。続けるにはアプリをアップデートしてください。",
+      "このバージョンはサポートが終了しました。続けるには{product}をアップデートしてください。",
     "core.gate.version-too-new.title": "このライセンスでは利用できません",
     "core.gate.version-too-new.message":
       "このビルドは、お持ちのライセンスで許可されているバージョンより新しいものです。",
@@ -11281,13 +11304,13 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product}에 {size} 크기의 새 콘텐츠가 필요해요. 현재 데이터 종량제 네트워크에 연결되어 있어요.",
     "boot.consent.download": "다운로드",
-    "boot.error.body": "문제가 계속되면 앱을 다시 시작해 주세요.",
+    "boot.error.body": "문제가 계속되면 {product}을(를) 다시 시작해 주세요.",
     "welcome.title": "{product}에 오신 것을 환영해요",
     "common.welcomeNoProductTitle": "환영해요",
     "common.signInToContinue": "계속하려면 로그인하세요.",
     "welcome.lede": "계속하려면 로그인하거나 라이선스 키를 사용하세요.",
     "welcome.ledeKeyOnly": "계속하려면 라이선스 키를 입력하세요.",
-    "welcome.ledeSignInOnly": "{product}을(를) 사용하려면 로그인하세요.",
+    "welcome.ledeSignInOnly": "계속하려면 로그인하세요.",
     "welcome.signIn": "로그인",
     "welcome.useKey": "라이선스 키 사용",
     "welcome.trial": "무료 체험 시작",
@@ -11366,6 +11389,7 @@ export const KIT_COPY: Readonly<
     "update.title": "{product} {version}",
     "update.availableTitle": "업데이트가 있어요",
     "update.current": "현재 버전 {version} · 다운로드 {size}",
+    "common.updateCurrentNoSize": "현재 버전 {version}",
     "update.whatsNew": "새로운 기능",
     "update.allChanges": "{version}의 모든 변경 사항",
     "update.later": "나중에",
@@ -11373,10 +11397,13 @@ export const KIT_COPY: Readonly<
     "update.restartNow": "지금 재시작",
     "update.skipVersion": "이 버전 건너뛰기",
     "update.install": "지금 업데이트",
+    "common.updateDownload": "{version} 다운로드",
     "update.downloading": "다운로드 중 · {total} 중 {size}",
     "update.timeLeft": "약 {time} 남음",
+    "common.updateTimeMinutes": "약 {minutes}분",
+    "common.updateTimeLessThanMinute": "1분 미만",
     "update.readyTitle": "{product} {version} 준비 완료",
-    "update.readyBody": "업데이트를 완료하려면 {product}을(를) 재시작하세요.",
+    "update.readyBody": "업데이트를 완료하려면 재시작하세요.",
     "update.mandatoryTitle": "{product}을(를) 계속 사용하려면 업데이트하세요",
     "update.mandatoryBody": "이 버전은 더 이상 지원되지 않아요.",
     "update.blockedTitle": "이 버전은 더 이상 지원되지 않아요",
@@ -11403,7 +11430,7 @@ export const KIT_COPY: Readonly<
     "update.platform.generic":
       "{product}을(를) 받은 스토어나 플랫폼을 통해 설치돼요.",
     "update.revokedContent":
-      "{product}의 일부 콘텐츠가 철회되어 사용할 수 없어요. 계속하려면 {product}을(를) 업데이트하세요.",
+      "{product}의 일부 콘텐츠가 철회되어 사용할 수 없어요. 계속하려면 업데이트하세요.",
     "update.upToDate": "최신 버전이에요",
     "update.checkNow": "업데이트 확인",
     "updateProgress.contentTitle": "콘텐츠 다운로드 중",
@@ -11468,7 +11495,7 @@ export const KIT_COPY: Readonly<
     "paywall.restore": "구매 항목 복원",
     "paywall.purchasing": "구매를 완료하는 중…",
     "paywall.purchased": "{tier} 잠금 해제됨",
-    "paywall.notAvailable": "이 버전의 {product}에서는 구매할 수 없어요.",
+    "paywall.notAvailable": "이 버전에서는 구매할 수 없어요.",
     "paywall.portal": "브라우저에서 구매",
     "entitlement.locked": "이 기능을 사용하려면 {tier} 등급이 필요해요.",
     "entitlement.unlock": "잠금 해제",
@@ -11495,7 +11522,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Polaris Locker에 로그인",
     "signin.methods.titleApp": "로그인",
     "signin.methods.ledeApp":
-      "{product} 구매 시 사용한 이메일 또는 직장·학교 이메일을 사용하세요.",
+      "구매 시 사용한 이메일 또는 직장·학교 이메일을 사용하세요.",
     "signin.email.label": "이메일",
     "signin.email.invalid":
       "name@example.com처럼 전체 이메일 주소를 입력하세요.",
@@ -12663,7 +12690,7 @@ export const KIT_COPY: Readonly<
       "계속하려면 라이선스 키를 입력하거나 로그인하세요.",
     "core.gate.version-too-old.title": "업데이트 필요",
     "core.gate.version-too-old.message":
-      "이 버전은 더 이상 지원되지 않아요. 계속하려면 앱을 업데이트하세요.",
+      "이 버전은 더 이상 지원되지 않아요. 계속하려면 {product}을(를) 업데이트하세요.",
     "core.gate.version-too-new.title": "이 라이선스로 사용할 수 없음",
     "core.gate.version-too-new.message":
       "이 빌드는 라이선스에서 허용하는 버전보다 최신이에요.",
@@ -12811,13 +12838,13 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product}需要{size}的新内容，而你正在使用按流量计费的网络。",
     "boot.consent.download": "下载",
-    "boot.error.body": "如果问题仍然存在，请重启应用。",
+    "boot.error.body": "如果问题仍然存在，请重启{product}。",
     "welcome.title": "欢迎使用{product}",
     "common.welcomeNoProductTitle": "欢迎",
     "common.signInToContinue": "登录以继续。",
     "welcome.lede": "登录或使用许可证密钥以继续。",
     "welcome.ledeKeyOnly": "输入许可证密钥以继续。",
-    "welcome.ledeSignInOnly": "登录以使用{product}。",
+    "welcome.ledeSignInOnly": "登录以继续。",
     "welcome.signIn": "登录",
     "welcome.useKey": "使用许可证密钥",
     "welcome.trial": "开始免费试用",
@@ -12884,6 +12911,7 @@ export const KIT_COPY: Readonly<
     "update.title": "{product} {version}",
     "update.availableTitle": "有可用的更新",
     "update.current": "当前版本：{version} · 下载大小：{size}",
+    "common.updateCurrentNoSize": "当前版本：{version}",
     "update.whatsNew": "新功能",
     "update.allChanges": "{version}的所有更改",
     "update.later": "稍后",
@@ -12891,10 +12919,13 @@ export const KIT_COPY: Readonly<
     "update.restartNow": "立即重启",
     "update.skipVersion": "跳过此版本",
     "update.install": "立即更新",
+    "common.updateDownload": "下载 {version}",
     "update.downloading": "正在下载 · {size}/{total}",
     "update.timeLeft": "大约还剩{time}",
+    "common.updateTimeMinutes": "大约 {minutes} 分钟",
+    "common.updateTimeLessThanMinute": "不到 1 分钟",
     "update.readyTitle": "{product} {version}已就绪",
-    "update.readyBody": "重启{product}以完成更新。",
+    "update.readyBody": "重启以完成更新。",
     "update.mandatoryTitle": "更新以继续使用{product}",
     "update.mandatoryBody": "此版本已不再受支持。",
     "update.blockedTitle": "此版本已不再受支持",
@@ -12916,7 +12947,7 @@ export const KIT_COPY: Readonly<
     "update.platform.package": "由你的软件包管理器安装。",
     "update.platform.generic": "通过你获取{product}的商店或平台安装。",
     "update.revokedContent":
-      "{product}的部分内容已被撤回，无法使用。请更新{product}以继续。",
+      "{product}的部分内容已被撤回，无法使用。请更新以继续。",
     "update.upToDate": "已是最新版本",
     "update.checkNow": "检查更新",
     "updateProgress.contentTitle": "正在下载内容",
@@ -12981,7 +13012,7 @@ export const KIT_COPY: Readonly<
     "paywall.restore": "恢复购买",
     "paywall.purchasing": "正在完成购买…",
     "paywall.purchased": "{tier}已解锁",
-    "paywall.notAvailable": "此版本的{product}不支持购买。",
+    "paywall.notAvailable": "此版本不支持购买。",
     "paywall.portal": "在浏览器中购买",
     "entitlement.locked": "此功能需要{tier}。",
     "entitlement.unlock": "解锁",
@@ -13007,8 +13038,7 @@ export const KIT_COPY: Readonly<
     "toast.updateAvailable": "{product} {version}现已推出",
     "signin.methods.title": "登录Polaris Locker",
     "signin.methods.titleApp": "登录",
-    "signin.methods.ledeApp":
-      "请使用购买 {product} 时的邮箱，或工作或学校邮箱。",
+    "signin.methods.ledeApp": "请使用购买时的邮箱，或工作或学校邮箱。",
     "signin.email.label": "电子邮件",
     "signin.email.invalid": "请输入完整的电子邮件地址，例如name@example.com。",
     "signin.continue": "继续",
@@ -14080,7 +14110,7 @@ export const KIT_COPY: Readonly<
     "core.gate.needs-activation.message": "请输入许可证密钥或登录以继续。",
     "core.gate.version-too-old.title": "需要更新",
     "core.gate.version-too-old.message":
-      "此版本已不再受支持。请更新应用以继续。",
+      "此版本已不再受支持。请更新{product}以继续。",
     "core.gate.version-too-new.title": "此许可证不可用",
     "core.gate.version-too-new.message": "此版本比你的许可证允许的版本更新。",
     "core.gate.channel-not-entitled.title": "渠道未包含",
