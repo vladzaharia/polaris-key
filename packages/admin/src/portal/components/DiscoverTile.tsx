@@ -28,7 +28,7 @@ import {
 } from "../model/discover.js";
 import { discoverTileFacts } from "../model/tileFacts.js";
 import { href } from "../router.js";
-import { SteamGlyph } from "./Glyphs.js";
+import { SteamGlyph } from "../../ui/Glyphs.js";
 import { TileFacts } from "./TileFacts.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";

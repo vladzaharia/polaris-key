@@ -12,7 +12,7 @@ import {
   PLATFORM_ORDER,
   PlatformGlyph,
   type PlatformKey,
-} from "../../../../portal/components/Glyphs.js";
+} from "../../../../ui/Glyphs.js";
 
 export type PlatformBadgeState = "verified" | "waiting" | "after" | "unseen";
 
@@ -42,7 +42,7 @@ export function PlatformBadge({
   title,
 }: {
   platform: string;
-  /** The platform's name ("macOS"). */
+  /** The platform's name (for example macOS). */
   label: string;
   state: PlatformBadgeState;
   /** The state in words, after "<label>: " ("Verified Oct 7, 10:42"). */

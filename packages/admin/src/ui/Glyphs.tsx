@@ -1,14 +1,14 @@
-import { t } from "../../lib/copy.js";
+import { t } from "../lib/copy.js";
 import * as React from "react";
 import { Globe, Smartphone } from "lucide-react";
-import { cn } from "../../lib/cn.js";
-import { platformInSentence } from "../../lib/vocab/platforms.js";
+import { cn } from "../lib/cn.js";
+import { platformInSentence } from "../lib/vocab/platforms.js";
 import {
   AppleGlyph,
   GoogleGlyph,
   SteamGlyph,
   type GlyphProps,
-} from "../../ui/auth/ProviderGlyphs.js";
+} from "./auth/ProviderGlyphs.js";
 
 /** Platform and provider marks for the customer site (the provider marks live in `ui/auth`). */
 export { AppleGlyph, GoogleGlyph, SteamGlyph };

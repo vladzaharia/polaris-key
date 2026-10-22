@@ -192,6 +192,9 @@ export const qk = {
   /** The Licenses page's loaded pages (P0-29); under the licenses prefix, so every licence write refreshes them. */
   licensesPages: (slug: string) =>
     product(slug, "license", "licenses", "_pages"),
+  /** The Licenses band's holder-state counts; under the licenses prefix, so every licence write refreshes them. */
+  licenseHolderCounts: (slug: string) =>
+    product(slug, "license", "licenses", "_holderCounts"),
   /** One row of the list, to learn whether the product has any licence; under the licenses prefix. */
   licensesFirst: (slug: string) =>
     product(slug, "license", "licenses", "_first"),

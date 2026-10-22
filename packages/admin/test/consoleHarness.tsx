@@ -290,6 +290,13 @@ export function boot(hash: string, opts: BootOptions = {}): FetchLog {
     ...opts.extra,
   };
   for (const p of me.products) {
+    // The Overview's Commerce card reads the feature facts; without a route the product's own
+    // route would answer this path by prefix, with no `facts`.
+    const servicesPath = `/manage/api/products/${p.slug}/services`;
+    if (!(servicesPath in routes))
+      routes[servicesPath] = servicesResponse(
+        opts.perProduct?.[p.slug] ?? opts.services ?? ALL_ON,
+      );
     // A test's own route for the product wins (an error response, say).
     if (opts.extra && `/manage/api/products/${p.slug}` in opts.extra) continue;
     routes[`/manage/api/products/${p.slug}`] = {

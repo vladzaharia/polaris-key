@@ -10,7 +10,7 @@ import type {
   PortalRelease,
   PortalStoreLink,
 } from "../api.js";
-import type { PlatformKey } from "../components/Glyphs.js";
+import type { PlatformKey } from "../../ui/Glyphs.js";
 import {
   resolveHash,
   type PortalRoute,
