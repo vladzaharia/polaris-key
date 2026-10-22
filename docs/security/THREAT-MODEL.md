@@ -8293,6 +8293,31 @@ as any licence write.
   outcome, never the address. `invited_at` is stamped only after an accepted send. Because the two
   routes share one window, mixing them cannot double the mail a licence receives.
 
+### Licence holders: the library notice at first verification (LX-27c.3)
+
+When a license waiting on an address joins an account at that address's verification (a sign-in
+method added or auto-linked, or the sign-in's link sweep), the person gets one notice per product:
+"<Product> is in your Polaris Locker library", "From <developer>".
+
+- **Only the verified address.** The notice goes to the address that was just verified on the
+  account, which is also the license's own address, because the attach itself only happens for an
+  address the account verified (T-H3, re-checked in the hook). Never to an unverified address and
+  never to another address of the account, so it hands out no address.
+- **No oracle.** It is sent after the join, to a person who has just proven the address, and says
+  nothing the person could not see in the library. Creating a license for an address still answers
+  the same whether or not an account exists (D4). A license an invitation already went out for
+  (`invited_at`) sends none.
+- **Display values.** The developer name (the listing's, otherwise the product name) and the
+  product name go through `displayValue` (control and bidi characters stripped, length bounded)
+  before the subject or text, and are HTML-escaped on top. The notice never says how the license
+  was delivered and carries no key.
+- **Best effort.** It goes through Core's send choke point (suppression, relay gate, cap); a failed
+  or blocked send is swallowed and never undoes or reports the join. The sweep run on each portal
+  request sends none: only the hook's callers and the sign-in's sweep do.
+- **Residual.** The developer name is not yet resolved at these call sites (Distribution's listing
+  is reachable only through service hooks, which they do not hold), so the notice reads "From
+  <Product>" until a Core read of the listing name is added.
+
 ### Licence holders: association by email and the auto-attach block (LX-26)
 
 A licence is floating (no account, no email) or assigned (in an account, or waiting for an account

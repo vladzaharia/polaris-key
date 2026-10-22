@@ -40,6 +40,7 @@ import {
   licenseHolderHooksRegistered,
   newLicensesAutoLink,
   onAccountEmailVerified,
+  onAccountEmailVerifiedJoined,
 } from "../src/core/licensing/licenseHolders.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import type { AccountContext } from "../src/services/identity/accounts/links.js";
@@ -66,6 +67,8 @@ import {
   syncAccountLicenseLinks,
   upsertPortalProductSettings,
 } from "../src/services/identity/portal/repo.js";
+import { suppressEmail } from "../src/core/notify/emailDelivery.js";
+import { sendLibraryNotices } from "../src/services/identity/accounts/libraryNotice.js";
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
 
 const SLUG = "tonebox";
@@ -1092,5 +1095,106 @@ describe("the creation-time email holder hook reads the licence issuer class", (
     );
     expect(await associateLicenseHolder(ctx, SLUG, licenseId)).toBe(true);
     expect(await ownerOf(licenseId)).toBe(ada.id);
+  });
+});
+
+describe("the library notice at an address's first verification (LX-27c.3)", () => {
+  type Mail = { to: string; subject: string; text: string; html: string };
+  let mail: Mail[];
+  beforeEach(() => {
+    mail = [];
+    env.EMAIL = {
+      send: async (m: Mail) => {
+        mail.push(m);
+      },
+    } as unknown as Env["EMAIL"];
+  });
+  const link = (accountId: string, email: string, verified = true) =>
+    linkIdentity(
+      ctx,
+      { accountId, authenticatedAt: NOW },
+      {
+        issuerKey: "https://accounts.google.com",
+        subject: `g-${email}`,
+        kind: "google",
+        email,
+        emailVerified: verified,
+      },
+    );
+
+  it("sends one notice per product to the verified address, from the product when no developer is known", async () => {
+    await create({ email: "dee@example.com" });
+    await create({ email: "dee@example.com" });
+    const dee = await account("dee.old@example.com");
+    mail = [];
+    expect((await link(dee.id, "dee@example.com")).ok).toBe(true);
+    const notices = mail.filter((m) =>
+      m.subject.endsWith("is in your Polaris Locker library"),
+    );
+    expect(notices).toHaveLength(1);
+    expect(notices[0]!.to).toBe("dee@example.com");
+    expect(notices[0]!.text).toContain("From ");
+    expect(notices[0]!.text).not.toContain("license key");
+    expect(notices[0]!.text + notices[0]!.html).not.toContain("pkey_");
+  });
+
+  it("sends nothing for an invited license, nor for an address that is not verified", async () => {
+    const invited = await create({ email: "inv@example.com" });
+    await db.run(
+      "UPDATE licenses SET invited_at = ? WHERE id = ?",
+      NOW,
+      invited.licenseId,
+    );
+    const inv = await account("inv.old@example.com");
+    mail = [];
+    await link(inv.id, "inv@example.com");
+    expect(await ownerOf(invited.licenseId)).toBe(inv.id);
+    expect(mail.filter((m) => m.subject.includes("library"))).toHaveLength(0);
+
+    const waiting = await create({ email: "unv@example.com" });
+    const unv = await account("unv.old@example.com");
+    await link(unv.id, "unv@example.com", false);
+    expect(await ownerOf(waiting.licenseId)).toBeNull();
+    expect(mail.filter((m) => m.subject.includes("library"))).toHaveLength(0);
+  });
+
+  it("sends nothing on a later sweep, when the pair is blocked, or to a suppressed address", async () => {
+    const created = await create({ email: "bo@example.com" });
+    const bo = await account("bo.old@example.com");
+    await link(bo.id, "bo@example.com");
+    mail = [];
+    expect(
+      await onAccountEmailVerifiedJoined(db, bo.id, "bo@example.com", NOW),
+    ).toEqual([]);
+    await portalMe(bo.id);
+    expect(mail).toHaveLength(0);
+
+    await detachLicense(ctx, {
+      accountId: bo.id,
+      product: SLUG,
+      licenseId: created.licenseId,
+    });
+    const joined = await onAccountEmailVerifiedJoined(
+      db,
+      bo.id,
+      "bo@example.com",
+      NOW,
+    );
+    expect(joined).toEqual([]);
+    expect(
+      await sendLibraryNotices(env, db, {
+        to: "bo@example.com",
+        joined,
+        origin: "https://key.plrs.im",
+        now: NOW,
+      }),
+    ).toBe(0);
+
+    await create({ email: "sup@example.com" });
+    const sup = await account("sup.old@example.com");
+    await suppressEmail(env, db, "sup@example.com", "operator", NOW);
+    mail = [];
+    await link(sup.id, "sup@example.com");
+    expect(mail.filter((m) => m.subject.includes("library"))).toHaveLength(0);
   });
 });

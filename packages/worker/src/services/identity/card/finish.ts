@@ -15,6 +15,7 @@ import {
   startAccountSession,
 } from "../portal/accountSessions.js";
 import { portalSessionFromRequest } from "../portal/session.js";
+import { sendLibraryNotices } from "../accounts/libraryNotice.js";
 import { portalAudit, syncAccountLicenseLinks } from "../portal/repo.js";
 
 /** The nudge comes back after this long if the account still has a single sign-in method. */
@@ -39,7 +40,15 @@ export async function finishSignIn(
   input: { amr: readonly string[]; action: string; summary: string },
   now: number,
 ): Promise<FinishedSignIn> {
-  await syncAccountLicenseLinks(db, account.id, now);
+  // LX-27c.3: licenses that joined by address at this sign-in get the library notice.
+  await syncAccountLicenseLinks(db, account.id, now, (joined, email) =>
+    sendLibraryNotices(env, db, {
+      to: email,
+      joined,
+      origin: new URL(req.url).origin,
+      now,
+    }).then(() => undefined),
+  );
   await portalAudit(db, {
     accountId: account.id,
     action: input.action,

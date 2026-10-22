@@ -167,6 +167,30 @@ export function licenseAddedNotice(input: {
 }
 
 /**
+ * LX-26 N1 / LX-27c.3: a license waiting on the address joined the account when the address was
+ * verified. "From <developer>" names who it comes from (the listing's developer, else the product
+ * name). It never says how it was delivered and never carries a key or another address.
+ */
+export function licenseFromDeveloperNotice(input: {
+  productName: string | null | undefined;
+  productSlug: string;
+  developerName?: string | null;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "Your new product");
+  const from = displayValue(input.developerName, name);
+  return buildNotice({
+    subject: `${name} is in your Polaris Locker library`,
+    paragraphs: [`From ${from}.`, `${name} was added to your library.`],
+    action: {
+      label: `Open ${name}`,
+      url: appLink(input.origin, productRoute(input.productSlug)),
+    },
+    origin: input.origin,
+  });
+}
+
+/**
  * S-16: a license was added to an account with its key, and the license's own email is a
  * different address. Tells the buyer which product, never which account (no address, no id).
  */

@@ -250,17 +250,26 @@ export interface LicenseHolderContext {
   origin: string;
 }
 
-/** Identity's implementation of the two association directions. */
+/** A licence that joined an account at an address's verification (LX-27c.3). */
+export interface JoinedLicense {
+  product: string;
+  id: string;
+  /** `licenses.invited_at`: when an invitation for it went out; null when none did. */
+  invitedAt: number | null;
+}
+
+/** Identity's implementation of the association directions. */
 export interface LicenseHolderHooks {
   /**
    * The account has verified `email` (it is one of `verifiedAccountEmails`): attach every licence
    * waiting on it that may join this account. Answers how many joined. An address the account has
-   * not verified attaches nothing.
+   * not verified attaches nothing. Answers the licences that joined (LX-27c.3: the caller sends the
+   * library notice).
    */
   accountEmailVerified(
     db: Db,
     args: { accountId: string; email: string; now: number },
-  ): Promise<number>;
+  ): Promise<JoinedLicense[]>;
   /**
    * The licence has just been given an email: if an account verified that address, the licence
    * is not in an account, the product's auto-link resolves on and the pair is not blocked, attach
@@ -296,8 +305,18 @@ export async function onAccountEmailVerified(
   email: string,
   now: number,
 ): Promise<number> {
+  return (await onAccountEmailVerifiedJoined(db, accountId, email, now)).length;
+}
+
+/** `onAccountEmailVerified`, answering the licences that joined (LX-27c.3). */
+export async function onAccountEmailVerifiedJoined(
+  db: Db,
+  accountId: string,
+  email: string,
+  now: number,
+): Promise<JoinedLicense[]> {
   const hooks = contributedLicenseHolders();
-  return hooks ? hooks.accountEmailVerified(db, { accountId, email, now }) : 0;
+  return hooks ? hooks.accountEmailVerified(db, { accountId, email, now }) : [];
 }
 
 /**

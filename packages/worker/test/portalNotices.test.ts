@@ -46,6 +46,7 @@ import {
   displayValue,
   downloadLinkEmail,
   licenseAddedNotice,
+  licenseFromDeveloperNotice,
   licenseAssignedToYouNotice,
   licenseMadeFloatingNotice,
   licenseReassignedAwayNotice,
@@ -63,6 +64,19 @@ const ORIGIN = "https://key.plrs.im";
 const TEMPLATES: Record<string, () => NoticeMessage> = {
   licenseAdded: () =>
     licenseAddedNotice({
+      productName: "Mossgarden",
+      productSlug: "mossgarden",
+      origin: ORIGIN,
+    }),
+  licenseFromDeveloper: () =>
+    licenseFromDeveloperNotice({
+      productName: "Mossgarden",
+      productSlug: "mossgarden",
+      developerName: "Tidewater Studio",
+      origin: ORIGIN,
+    }),
+  licenseFromProduct: () =>
+    licenseFromDeveloperNotice({
       productName: "Mossgarden",
       productSlug: "mossgarden",
       origin: ORIGIN,
@@ -166,6 +180,23 @@ describe("notice templates: copy", () => {
   it("full HTML of a plain notice and a security notice", () => {
     expect(TEMPLATES.licenseAdded!().html).toMatchSnapshot();
     expect(TEMPLATES.methodRemoved!().html).toMatchSnapshot();
+    expect(TEMPLATES.licenseFromDeveloper!().html).toMatchSnapshot();
+  });
+
+  it("the library notice names the developer, falls back to the product, and never says key", () => {
+    const m = TEMPLATES.licenseFromDeveloper!();
+    expect(m.subject).toBe("Mossgarden is in your Polaris Locker library");
+    expect(m.text).toContain("From Tidewater Studio.");
+    expect(TEMPLATES.licenseFromProduct!().text).toContain("From Mossgarden.");
+    expect(m.text).not.toContain("license key");
+    // Display values are stripped of control and bidi characters.
+    const evil = licenseFromDeveloperNotice({
+      productName: "Mossgarden",
+      productSlug: "m",
+      developerName: "Eve\u202Elive\u0007",
+      origin: ORIGIN,
+    });
+    expect(evil.text).not.toMatch(/[\u202E\u0007]/);
   });
 
   it("uses the subjects PORTAL.md §6.3 names", () => {
