@@ -32,7 +32,7 @@ static func words(t: Dictionary, copy: PKeyUiCopy, _progress: Dictionary = {}) -
 			return {"title": copy.text("toast_update_available", String(t.get("version", ""))), "consequence": String(t.get("consequence", "")), "data": false}
 		"copied":
 			return {"title": copy.text("copied"), "consequence": "", "data": false}
-		"warning":
+		"warning", "success":
 			return {"title": String(t.get("title", "")), "consequence": String(t.get("consequence", "")), "data": true}
 		"error":
 			var code := String(t.get("code", ""))
@@ -45,6 +45,12 @@ static func words(t: Dictionary, copy: PKeyUiCopy, _progress: Dictionary = {}) -
 		"progress":
 			return {"title": "", "consequence": "", "data": false}
 	return {"title": "", "consequence": "", "data": false}
+
+
+## The model kind a toast kind is drawn as: a `success` note (the game's or the kit's own words, say
+## "Signed in as Mara") is the copied toast's state with different words; the rest are their own.
+static func model_kind(kind: String) -> String:
+	return "copied" if kind == "success" else kind
 
 
 ## The actions of the toast `t`, at most MAX_ACTIONS: `[{id, key | label}]`. The toast's own list

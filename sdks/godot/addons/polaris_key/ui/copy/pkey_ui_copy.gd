@@ -484,6 +484,7 @@ const DEFAULTS := {
 	"update_no_update_yet": "No update yet.",
 	"update_check_failed": "Couldn't check. Try again.",
 	"update_notes": "What's new",
+	"update_all_changes": "All changes in %s",
 	"update_downloading": "Downloading the update… %d%%",
 }
 
