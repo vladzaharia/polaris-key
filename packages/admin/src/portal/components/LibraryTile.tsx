@@ -134,7 +134,7 @@ export function LibraryTile({
             />
           ) : null}
         </ProductArt>
-        <div className="flex flex-1 flex-col px-3 pb-3 desk:px-3.5 desk:pb-3.5">
+        <div className="flex flex-1 flex-col px-3 pb-3">
           <div
             className={cn(
               "flex items-start gap-2.5 bigtext:flex-col bigtext:gap-1",

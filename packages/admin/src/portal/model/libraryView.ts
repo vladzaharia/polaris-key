@@ -26,16 +26,15 @@ export function readView(params: URLSearchParams): LibraryView {
   };
 }
 
-/** Phones show the list by default above 6 products; a remembered choice wins (§4.15). */
+/**
+ * The grid unless the person chose: the URL's `?view=`, then the remembered choice (§4.15). A
+ * phone gets the two-column grid too (mockup `portal.library-12`).
+ */
 export function effectiveMode(
   view: LibraryViewMode | null,
   remembered: LibraryViewMode | null,
-  phone: boolean,
-  count: number,
 ): LibraryViewMode {
-  if (view) return view;
-  if (remembered) return remembered;
-  return phone && count > 6 ? "list" : "grid";
+  return view ?? remembered ?? "grid";
 }
 
 export function matches(p: LibraryProduct, q: string): boolean {
