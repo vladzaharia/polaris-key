@@ -12694,6 +12694,106 @@ function internalMessage(err) {
 This is a bug in pkey. Re-run with PKEY_DEBUG=1 for the stack, and report it.`;
 }
 
+// src/netErrors.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// src/refusal.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var Refusal = class extends Error {
+  constructor(message, fix, code = "refused") {
+    super(message);
+    this.fix = fix;
+    this.code = code;
+    this.name = "Refusal";
+  }
+  fix;
+  code;
+};
+
+// src/netErrors.ts
+var Failure = class extends Error {
+  constructor(message, fix, code, extra = {}, lines4) {
+    super(message);
+    this.fix = fix;
+    this.code = code;
+    this.extra = extra;
+    this.lines = lines4;
+    this.name = "Failure";
+  }
+  fix;
+  code;
+  extra;
+  lines;
+};
+var Unreachable = class extends Failure {
+  constructor(host, cause) {
+    super(
+      `Can't reach ${host}.`,
+      "Check your network, or --base-url.",
+      "network",
+      cause ? { cause } : {}
+    );
+    this.name = "Unreachable";
+  }
+};
+var Redirected = class extends Refusal {
+  constructor(host) {
+    super(
+      `${host} answered with a redirect, so pkey sent nothing further.`,
+      "Check --base-url.",
+      "redirect"
+    );
+    this.name = "Redirected";
+  }
+};
+function networkCode(e) {
+  if (e?.name === "TimeoutError")
+    return "TIMEOUT";
+  const code = e?.cause?.code;
+  return typeof code === "string" && /^[A-Z0-9_]{1,40}$/.test(code) ? code : null;
+}
+
+// src/httpRead.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var REQUEST_TIMEOUT_MS = 15e3;
+var MAX_JSON_BYTES = 64 * 1024;
+async function readCappedText(res, max = MAX_JSON_BYTES) {
+  try {
+    const declared = Number(res.headers.get("content-length"));
+    if (Number.isFinite(declared) && declared > max) {
+      void res.body?.cancel().catch(() => void 0);
+      return null;
+    }
+    const reader = res.body?.getReader();
+    if (!reader) return "";
+    const chunks = [];
+    let size = 0;
+    for (; ; ) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > max) {
+        void reader.cancel().catch(() => void 0);
+        return null;
+      }
+      chunks.push(value);
+    }
+    return Buffer.concat(chunks).toString("utf8");
+  } catch {
+    return null;
+  }
+}
+async function readCappedJson(res, max = MAX_JSON_BYTES) {
+  const text2 = await readCappedText(res, max);
+  if (text2 === null) return {};
+  try {
+    const v = JSON.parse(text2);
+    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+  } catch {
+    return {};
+  }
+}
+
 // src/bundle.ts
 var DEFAULT_BASE_URL = "https://key.plrs.im";
 var ADMIN_TOKEN_ENV = "PKEY_ADMIN_TOKEN";
@@ -12709,7 +12809,7 @@ var LOOPBACK_HOSTS = [
 ];
 var BUNDLE_EXTENSION = ".pkeybundle";
 var NOFOLLOW = typeof fsc.O_NOFOLLOW === "number" ? fsc.O_NOFOLLOW : 0;
-var BUNDLE_USAGE = "Usage: pkey bundle --product <slug> --device <id> --grace-days <n> [--no-config] [--license <id>] [--base-url <url>] [--out <file>] [--force]";
+var BUNDLE_USAGE = "Usage: pkey bundle --product <slug> --device <id> --grace-days <n> [--no-config] [--license <id>] [--base-url <url>] [--out <file>] [--force] [--json]";
 function bundleFileName(product, deviceId) {
   const safe = product.replace(/[^A-Za-z0-9._-]+/g, "-");
   return `${safe}-${deviceId.slice(0, 8)}${BUNDLE_EXTENSION}`;
@@ -12759,13 +12859,13 @@ ${BUNDLE_USAGE}`);
     body,
     signal: opts.signal
   });
-  if (!res.ok) throw await httpError(res, `Minting a bundle at ${url}`);
+  if (!res.ok) throw await failureOf(res, url, "mint a bundle", bundleHint);
   const payload = await readJson(res, url);
   const bundleId = asString(payload.bundleId);
   const bundle = asString(payload.bundle);
   if (!bundleId || !bundle) {
     throw new Error(
-      `${url} answered ${res.status} without a bundle. Expected {bundleId, bundle}.`
+      `${hostLabel(url)} answered ${res.status} without a bundle. Expected {bundleId, bundle}.`
     );
   }
   writeNewFile(file, bundle, force);
@@ -12776,8 +12876,25 @@ ${BUNDLE_USAGE}`);
     deviceId,
     graceDays: opts.graceDays,
     baseUrl,
-    url
+    url,
+    documents: documentsOf(bundle)
   };
+}
+function documentsOf(jws) {
+  try {
+    const part = jws.split(".")[1] ?? "";
+    const doc = JSON.parse(Buffer.from(part, "base64url").toString("utf8"));
+    return ["license", "config"].filter(
+      (k) => doc.docs !== void 0 && doc.docs[k] !== void 0
+    );
+  } catch {
+    return [];
+  }
+}
+function bundleHint(status, detail) {
+  if (status === 400 && (detail.fields?.includes("licenseId") || /licenseId/.test(detail.message ?? "")))
+    return /required/i.test(detail.message ?? "") ? "Add --license <id>." : "Check --license.";
+  return statusHint(status);
 }
 async function adminTokenFrom(source, command = "bundle") {
   return adminToken(
@@ -12825,22 +12942,52 @@ function normalizeBaseUrl(raw, credentialEnv) {
   }
   return raw.replace(/\/+$/, "");
 }
-async function request(f, url, init) {
+function hostLabel(url) {
   try {
-    return await f(url, init);
-  } catch (e) {
-    throw new Error(`Could not reach ${url}: ${e.message}`);
+    return maskTokens(new URL(url).host);
+  } catch {
+    return "the server";
   }
+}
+async function request(f, url, init) {
+  let res;
+  try {
+    res = await f(url, {
+      ...init,
+      redirect: "manual",
+      signal: init.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    });
+  } catch (e) {
+    if (isInternalError(e)) throw e;
+    throw new Unreachable(hostLabel(url), networkCode(e));
+  }
+  if (res.status >= 300 && res.status < 400)
+    throw new Redirected(hostLabel(url));
+  return res;
+}
+async function failureOf(res, url, verb, hintFor = (status) => statusHint(status)) {
+  const detail = await errorDetail(res);
+  const said = serverWords(detail.message);
+  const hint2 = hintFor(res.status, detail);
+  return new HttpFailure(
+    `${hostLabel(url)} couldn't ${verb} (HTTP ${res.status})${said ? `: ${said}` : ""}.${hint2 ? `
+${hint2}` : ""}`,
+    res.status,
+    detail
+  );
+}
+function serverWords(v) {
+  return v ? maskTokens(untrusted(v, {})).trim().replace(/\.+$/, "") : "";
 }
 async function httpError(res, what, hintFor = statusHint) {
   const detail = await errorDetail(res);
-  const u = (v) => untrusted(v, {});
+  const u = (v) => maskTokens(untrusted(v, {}));
   const label = [String(res.status), detail.code && u(detail.code)].filter(Boolean).join(" ");
   const message = detail.message ? `: ${u(detail.message)}` : "";
   const fields = detail.fields?.length ? ` (fields: ${detail.fields.map(u).join(", ")})` : "";
   const hint2 = hintFor(res.status);
   return new HttpFailure(
-    `${what} failed (${label})${message}${fields}${hint2 ? `
+    `${maskTokens(what)} failed (${label})${message}${fields}${hint2 ? `
 ${hint2}` : ""}`,
     res.status,
     detail
@@ -12857,22 +13004,17 @@ var HttpFailure = class extends Error {
   detail;
 };
 function statusHint(status) {
-  if (status === 401) {
-    return `Your sign-in or the token in ${ADMIN_TOKEN_ENV} was refused. The server answers one 401 for unknown, revoked and expired alike, on purpose. Run pkey login, or check the roster in the console (/manage -> API tokens) and mint a replacement there.`;
-  }
-  if (status === 403) {
-    return "Authenticated, but not allowed. Two causes look identical from here: the token is not scoped for this route (a `pkeya_` token needs `bundles:mint`), or the identity behind it is not allowed to do this.";
-  }
-  if (status === 404) {
-    return "No such product, or it has no usable signing key — a product that cannot sign cannot mint.";
-  }
-  if (status === 429) {
-    return "The admin API rate limit tripped. Wait a minute and retry.";
-  }
+  if (status === 401) return "Run pkey login.";
+  if (status === 403)
+    return `Use a token that covers this: an API token needs the bundles:mint scope.`;
+  if (status === 404)
+    return "Check --product, and that the product has a signing key.";
+  if (status === 429) return "Wait a minute, then try again.";
+  if (status >= 500) return "Try again in a minute.";
   return void 0;
 }
 async function errorDetail(res) {
-  const text2 = await res.text().catch(() => "");
+  const text2 = await readCappedText(res) ?? "";
   let parsed;
   try {
     parsed = JSON.parse(text2);
@@ -12898,18 +13040,23 @@ async function errorDetail(res) {
   return detail;
 }
 async function readJson(res, url) {
-  const text2 = await res.text();
+  const host = hostLabel(url);
+  const text2 = await readCappedText(res);
+  if (text2 === null)
+    throw new Error(
+      `${host} answered ${res.status} with a body over ${MAX_JSON_BYTES / 1024} KiB.`
+    );
   let parsed;
   try {
     parsed = JSON.parse(text2);
   } catch {
     throw new Error(
-      `${url} answered ${res.status} with a body that is not JSON: ${clip(text2.trim())}`
+      `${host} answered ${res.status} with a body that is not JSON.`
     );
   }
   if (!isRecord(parsed))
     throw new Error(
-      `${url} answered ${res.status} with a non-object JSON body.`
+      `${host} answered ${res.status} with a non-object JSON body.`
     );
   return parsed;
 }
@@ -12987,14 +13134,11 @@ var CLI_VERSION = read();
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var MIGRATE_USAGE = "Usage: pkey migrate list | dry-run <job> | report <run> [--base-url <url>] [--json]";
 function hint(status) {
-  if (status === 401)
-    return `Your sign-in or the token in ${ADMIN_TOKEN_ENV} was refused (unknown, revoked or expired). Run pkey login, or mint a replacement in the console: /manage -> API tokens.`;
+  if (status === 401) return "Run pkey login.";
   if (status === 403)
-    return "Not allowed. An API token needs the `migrations:report` scope, and its identity must be a platform admin.";
-  if (status === 404) return "No such job or run.";
-  if (status === 429)
-    return "The admin API rate limit tripped. Wait a minute and retry.";
-  return void 0;
+    return "An API token needs the migrations:report scope, and its owner must be a platform admin.";
+  if (status === 404) return "Check the job or run id.";
+  return statusHint(status);
 }
 async function runMigrate(opts) {
   const target = opts.target?.trim();
@@ -13021,16 +13165,24 @@ ${MIGRATE_USAGE}`
     ...post ? { body: JSON.stringify({ job: target }) } : {},
     signal: opts.signal
   });
-  if (!res.ok) throw await httpError(res, `Reading ${url}`, hint);
+  if (!res.ok)
+    throw await failureOf(
+      res,
+      url,
+      opts.verb === "list" ? "read the migration jobs" : opts.verb === "report" ? "read the report" : "run the dry run",
+      hint
+    );
   const payload = await readJson(res, url);
   if (opts.verb === "list") {
     if (!Array.isArray(payload.jobs))
-      throw new Error(`${url} answered ${res.status} without a job list.`);
+      throw new Error(
+        `${hostLabel(url)} answered ${res.status} without a job list.`
+      );
     return { verb: "list", jobs: payload.jobs };
   }
   const run2 = payload.run;
   if (!run2 || typeof run2.id !== "string")
-    throw new Error(`${url} answered ${res.status} without a run.`);
+    throw new Error(`${hostLabel(url)} answered ${res.status} without a run.`);
   return { verb: opts.verb, run: run2 };
 }
 function formatMigrate(r, env) {
@@ -23180,7 +23332,7 @@ var CI_ENV = {
 };
 var TOKEN_ENV = {
   name: ADMIN_TOKEN_ENV,
-  text: "Instead of the sign-in `pkey login` saved: an admin API token (`pkeya_...`) or a personal token (`pkeyp_...`), sent as `Authorization: Bearer`. Mint an API token in the console: /manage -> API tokens -> New token; the value is shown ONCE, at mint. It is individually revocable and expires on the date you chose. Do not commit it, and do not export it into a shared shell."
+  text: "Used instead of the sign-in pkey login saved: a personal token (pkeyp_...) or an admin API token (pkeya_...) with the bundles:mint scope, sent as Authorization: Bearer. Make an API token in the console under API tokens; its value is shown once, when you make it. It can be revoked on its own and ends on the date you chose. Do not commit it or export it into a shared shell."
 };
 var ciEnvFor = (subs) => ({ ...CI_ENV, subs });
 var STORE_SUBS = ["winget", "homebrew", "scoop", "flathub"];
@@ -23404,12 +23556,13 @@ var COMMANDS = [
   {
     name: "bundle",
     group: "bundles",
-    json: false,
+    json: true,
+    valueless: ["json"],
     context: ["product", "baseUrl"],
     summary: "Mint an offline activation bundle for one device",
     rows: [["bundle", "Mint an offline activation bundle for one device"]],
     usage: [
-      "pkey bundle --product slug --device id --grace-days n [--no-config] [--license id] [--base-url url] [--out file] [--force]"
+      "pkey bundle --product slug --device id --grace-days n [--no-config] [--license id] [--base-url url] [--out file] [--force] [--json]"
     ],
     about: [
       {
@@ -23417,6 +23570,9 @@ var COMMANDS = [
       },
       {
         text: "--base-url must be https:, or http:// on localhost or 127.0.0.1 for local development: the token is sent to whatever origin you name, so any other origin is refused before anything is sent. The file is written with mode 0600, is never created over an existing one without --force, and is never written through a symbolic link."
+      },
+      {
+        text: "--json prints one line, the result: the bundle id, the file, the device, the grace days and the documents it carries; on a failure, the error and its message."
       }
     ],
     env: [TOKEN_ENV]
@@ -24381,10 +24537,10 @@ async function findProductManifest(cwd) {
       try {
         const doc = parseFile(file, await readFile(file, "utf8"));
         if (!isRecord7(doc)) return null;
-        const wrapped2 = isRecord7(doc.product) ? doc.product : doc;
-        const slug = wrapped2.slug;
+        const wrapped = isRecord7(doc.product) ? doc.product : doc;
+        const slug = wrapped.slug;
         if (typeof slug !== "string" || !slug.trim()) return null;
-        const name = wrapped2.name;
+        const name = wrapped.name;
         return {
           slug: slug.trim(),
           ...typeof name === "string" && name.trim() ? { name: name.trim() } : {},
@@ -25040,16 +25196,6 @@ function isPersonalShape(value) {
 function hintOf(c) {
   return c.hint ?? c.token.slice(-4);
 }
-var Refusal = class extends Error {
-  constructor(message, fix, code = "refused") {
-    super(message);
-    this.fix = fix;
-    this.code = code;
-    this.name = "Refusal";
-  }
-  fix;
-  code;
-};
 var COMMAND_AGAIN = "run the command again";
 var NoStoreError = class extends Refusal {
   constructor() {
@@ -25164,20 +25310,6 @@ async function adminCredential(opts) {
 }
 
 // src/account.ts
-var Failure = class extends Error {
-  constructor(message, fix, code, extra = {}, lines4) {
-    super(message);
-    this.fix = fix;
-    this.code = code;
-    this.extra = extra;
-    this.lines = lines4;
-    this.name = "Failure";
-  }
-  fix;
-  code;
-  extra;
-  lines;
-};
 var Usage = class extends Refusal {
   constructor(message, fix, lines4) {
     super(message, fix, "usage");
@@ -25185,27 +25317,6 @@ var Usage = class extends Refusal {
     this.name = "Usage";
   }
   lines;
-};
-var Unreachable = class extends Failure {
-  constructor(host, cause) {
-    super(
-      `Can't reach ${host}.`,
-      "Check your network, or --base-url.",
-      "network",
-      cause ? { cause } : {}
-    );
-    this.name = "Unreachable";
-  }
-};
-var Redirected = class extends Refusal {
-  constructor(host) {
-    super(
-      `${host} answered with a redirect, so pkey sent nothing further.`,
-      "Check --base-url.",
-      "redirect"
-    );
-    this.name = "Redirected";
-  }
 };
 function day(epochSeconds, env) {
   const when = new Date(epochSeconds * 1e3);
@@ -25226,7 +25337,7 @@ function day(epochSeconds, env) {
   return `${p["year"]}-${p["month"]}-${p["day"]}`;
 }
 var shown = (value, env) => maskTokens(untrusted(value, env));
-var hostOf2 = (origin) => new URL(origin).host;
+var hostOf2 = (origin) => maskTokens(new URL(origin).host);
 var text = (t, extra = {}) => ({
   text: t,
   ...extra
@@ -25265,14 +25376,6 @@ function envelope(command, exit, fields) {
     ...fields
   });
 }
-var REQUEST_TIMEOUT_MS = 15e3;
-var MAX_JSON_BYTES = 64 * 1024;
-function networkCode(e) {
-  if (e?.name === "TimeoutError")
-    return "TIMEOUT";
-  const code = e?.cause?.code;
-  return typeof code === "string" && /^[A-Z0-9_]{1,40}$/.test(code) ? code : null;
-}
 async function call(io, cred, method, path32) {
   let res;
   try {
@@ -25292,33 +25395,7 @@ async function call(io, cred, method, path32) {
     throw new Redirected(hostOf2(cred.origin));
   return res;
 }
-async function jsonOf(res) {
-  try {
-    const declared = Number(res.headers.get("content-length"));
-    if (Number.isFinite(declared) && declared > MAX_JSON_BYTES) {
-      void res.body?.cancel().catch(() => void 0);
-      return {};
-    }
-    const reader = res.body?.getReader();
-    if (!reader) return {};
-    const chunks = [];
-    let size = 0;
-    for (; ; ) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > MAX_JSON_BYTES) {
-        void reader.cancel().catch(() => void 0);
-        return {};
-      }
-      chunks.push(value);
-    }
-    const v = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
-  } catch {
-    return {};
-  }
-}
+var jsonOf = readCappedJson;
 async function guarded(io, command, run2) {
   try {
     return await run2();
@@ -25400,6 +25477,27 @@ function roleName(role, scope, productName) {
     default:
       return role;
   }
+}
+var AREA_NAMES = {
+  console: "Console",
+  platform: "Platform",
+  members: "Members",
+  docs: "Docs",
+  core: "Core",
+  license: "Licensing",
+  config: "Managed config",
+  ship: "Ship builds",
+  signin: "Sign-in",
+  sync: "Cloud Sync",
+  commerce: "Commerce",
+  keys: "Keys and secrets",
+  settings: "Settings"
+};
+var areaName = (id) => Object.hasOwn(AREA_NAMES, id) ? AREA_NAMES[id] : id;
+function roleText(role, scope, areas, productName, sep, env) {
+  const label = shown(roleName(role, scope, productName), env);
+  const names = Array.isArray(areas) ? areas.filter((a) => typeof a === "string").map((a) => shown(areaName(a), env)) : [];
+  return names.length ? `${label} ${sep} ${names.join(", ")}` : label;
 }
 function tokenLine(t, label, hint2) {
   const quote = t.caps.unicode ? ["“", "”"] : ['"', '"'];
@@ -25498,13 +25596,16 @@ function cmdWhoami(io) {
         if (typeof p?.slug === "string" && typeof p.name === "string")
           products.set(p.slug, p.name);
     }
+    const t = io.term(io.stdout);
     const roleNames = [
       ...new Set(
         rawRoles.map(
-          (r) => shown(
-            roleName(String(r.role), String(r.scope), (slug) => {
-              return products.get(slug) ?? slug;
-            }),
+          (r) => roleText(
+            String(r.role),
+            String(r.scope),
+            r.areas,
+            (slug) => products.get(slug) ?? slug,
+            t.symbols.separator,
             io.env
           )
         )
@@ -25539,11 +25640,10 @@ function cmdWhoami(io) {
       );
       return 0;
     }
-    const t = io.term(io.stdout);
     const rolesLine = roleNames.length ? roleNames.flatMap((r, i) => [
       ...i ? [text(", ")] : [],
       text(r, { unit: true })
-    ]) : [text("none")];
+    ]) : [text("None")];
     const rows = [
       ["Host", [text(host, { break: "url" })]],
       ["Name", name ? [text(name, { unit: true })] : []],
@@ -25699,7 +25799,7 @@ function cmdLogout(io) {
         block(io.term(io.stderr), "warn", [
           [text(message)],
           [text(revokeLine)],
-          [text(revokeUrl, { break: "url" })]
+          [text(revokeUrl, { break: "url", link: revokeUrl })]
         ])
       );
     }
@@ -25709,51 +25809,52 @@ function cmdLogout(io) {
 
 // src/adminAuth.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var AREA_NAMES = {
-  console: "Console",
-  platform: "Platform",
-  members: "Members",
-  docs: "Docs",
-  core: "Core",
-  license: "Licensing",
-  config: "Managed config",
-  ship: "Ship builds",
-  signin: "Sign-in",
-  sync: "Cloud Sync",
-  commerce: "Commerce",
-  keys: "Keys and secrets",
-  settings: "Settings"
-};
-function wrapped(text2, t, lead, indent) {
-  const width = Math.max(1, t.caps.columns - indent.length);
-  return wrapSpans([{ text: text2 }], width).map((l, i) => `${i === 0 ? lead : indent}${t.painter.line(l)}`).join("\n");
-}
+var STACK_BELOW = 40;
+var PEOPLE_INDENT = 5;
 function accessText(a, t) {
-  const { painter, symbols, caps } = t;
-  const warn = `${painter.style(symbols.warn, ["warning"])}  `;
-  const out = [
-    wrapped(
-      `You don't have access to ${a.product} → ${a.area}.`,
-      t,
-      warn,
-      "   "
-    )
-  ];
+  const { painter, caps } = t;
+  const arrow = caps.unicode ? "→" : "->";
+  const subject = a.platform ? "Platform" : `${a.product} ${arrow} ${a.area}`;
   const ask = a.people.length ? "Ask one of these people:" : "Ask an admin to give you access.";
-  out.push(
-    wrapped(
-      a.roles.length ? `Your roles: ${a.roles.join(", ")}. ${ask}` : ask,
-      t,
-      "   ",
-      "   "
-    )
-  );
-  const nameW = Math.max(0, ...a.people.map((p) => p.name.length));
-  const mailW = Math.max(0, ...a.people.map((p) => p.email.length));
+  const roles = a.roles.length ? [
+    text("Your roles: "),
+    ...a.roles.flatMap(
+      (r, i) => [...i ? [text(", ")] : [], text(r, { unit: true })]
+    ),
+    text(`. ${ask}`)
+  ] : [text(ask)];
+  const out = [
+    block(t, "warn", [
+      [
+        text("You don't have access to "),
+        text(subject, { style: ["strong"], unit: true }),
+        text(".")
+      ]
+    ]).trimEnd()
+  ];
+  const width = Math.max(1, caps.columns - 3);
+  for (const l of wrapSpans(fit(roles, width), width))
+    out.push(`   ${painter.line(l)}`);
+  const room = Math.max(1, caps.columns - PEOPLE_INDENT);
+  const pad2 = " ".repeat(PEOPLE_INDENT);
+  const nameW = Math.max(0, ...a.people.map((p) => cellWidth(p.name)));
+  const mailW = Math.max(0, ...a.people.map((p) => cellWidth(p.email)));
   for (const p of a.people) {
-    const row2 = `     ${p.name.padEnd(nameW)}  ${p.email.padEnd(mailW)}  ${p.role}`;
-    if (row2.length <= caps.columns) out.push(row2);
-    else out.push(`     ${p.name}`, `     ${p.email} · ${p.role}`);
+    const name = [text(p.name, { unit: true })];
+    const mail = [text(p.email, { break: "url" })];
+    const role = [text(p.role, { style: ["muted"], unit: true })];
+    const rows = caps.columns < STACK_BELOW ? [name, mail, role] : nameW + 2 + mailW + 2 + cellWidth(p.role) <= room ? [
+      [
+        ...name,
+        text(" ".repeat(nameW - cellWidth(p.name) + 2)),
+        ...mail,
+        text(" ".repeat(mailW - cellWidth(p.email) + 2)),
+        ...role
+      ]
+    ] : [[...name, text("  "), ...mail, text("  "), ...role]];
+    for (const row2 of rows)
+      for (const l of wrapSpans(fit(row2, room), room))
+        out.push(`${pad2}${painter.line(l)}`);
   }
   return `${out.join("\n")}
 `;
@@ -25764,8 +25865,8 @@ async function getJson(io, cred, path32) {
       io.fetchImpl ?? fetch,
       `${cred.origin}/manage/api${path32}`,
       {
-        redirect: "manual",
-        ...io.signal ? { signal: io.signal } : {},
+        // The caller's deadline when it has one (`pkey doctor`), else this request's own.
+        signal: io.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         headers: {
           authorization: `Bearer ${cred.token}`,
           accept: "application/json"
@@ -25773,8 +25874,7 @@ async function getJson(io, cred, path32) {
       }
     );
     if (!res.ok) return null;
-    const v = await res.json();
-    return v && typeof v === "object" ? v : null;
+    return await readCappedJson(res);
   } catch {
     return null;
   }
@@ -25791,12 +25891,24 @@ async function accessInfo(io, cred, f) {
       `/access/admins?scope=${encodeURIComponent(scope)}&area=${encodeURIComponent(area)}`
     )
   ]);
+  const names = /* @__PURE__ */ new Map();
+  if (Array.isArray(me?.["products"])) {
+    for (const p of me["products"])
+      if (typeof p?.slug === "string" && typeof p.name === "string")
+        names.set(p.slug, p.name);
+  }
+  const productName = (slug) => names.get(slug) ?? slug;
+  const sep = io.term(io.stderr).symbols.separator;
   const rawRoles = me?.["permissions"]?.roles ?? [];
   const roles = [
     ...new Set(
       rawRoles.map(
-        (r) => str2(
-          roleName(String(r.role), String(r.scope), (slug) => slug),
+        (r) => roleText(
+          String(r.role),
+          String(r.scope),
+          r.areas,
+          productName,
+          sep,
           io.env
         )
       )
@@ -25805,50 +25917,137 @@ async function accessInfo(io, cred, f) {
   const people = (admins?.["admins"] ?? []).map((p) => ({
     name: str2(p.name ?? p.email ?? "", io.env),
     email: str2(p.email ?? "", io.env),
-    role: str2(
-      roleName(String(p.role), scope, (slug) => slug),
-      io.env
-    )
+    role: roleText(String(p.role), scope, null, productName, sep, io.env)
   }));
+  const platform = !scope.startsWith("product:");
   return {
-    product: scope.startsWith("product:") ? str2(scope.slice("product:".length), io.env) : "Platform",
-    area: str2(AREA_NAMES[area] ?? area, io.env),
+    product: platform ? "Platform" : str2(productName(scope.slice("product:".length)), io.env),
+    area: str2(
+      Object.hasOwn(AREA_NAMES, area) ? AREA_NAMES[area] : area,
+      io.env
+    ),
     roles,
-    people
+    people,
+    ...platform ? { platform } : {}
   };
 }
+function report(io, t, command, exit, kind, code, lines4, extra = {}) {
+  if (io.json && io.stdout)
+    io.stdout.write(
+      envelope(command, exit, {
+        error: code,
+        message: lines4.map((l) => l.map((s) => s.text).join("")).join(" "),
+        ...extra
+      })
+    );
+  else io.stderr.write(block(t, kind, lines4));
+  return exit;
+}
+var errorText = (e) => e instanceof Error ? e.message : String(e);
+var accessMessage = (a) => a.platform ? "You don't have access to Platform." : `You don't have access to ${a.product} → ${a.area}.`;
 async function withAdminCredential(io, command, run2, personalOnly = false) {
   let cred;
-  const token = async () => (cred ??= await adminCredential({
-    env: io.env,
-    baseUrl: io.baseUrl,
-    store: io.store
-  })).token;
+  const token = async () => {
+    if (!cred) {
+      originFor(io, command);
+      const found = await adminCredential({
+        env: io.env,
+        baseUrl: io.baseUrl,
+        store: io.store
+      });
+      cred = found;
+      const now = (io.now ?? (() => Math.floor(Date.now() / 1e3)))();
+      if (found.source === "store" && found.expiresAt !== null && found.expiresAt <= now)
+        throw endedRefusal(found);
+    }
+    return cred.token;
+  };
   try {
     return await run2(token);
   } catch (e) {
     const t = io.term(io.stderr);
-    if (e instanceof Refusal) {
-      io.stderr.write(refusalLines(e, t));
-      return 4;
-    }
-    if (e instanceof HttpFailure && e.status === 403 && cred) {
-      const isApi = cred.token.startsWith("pkeya_");
-      if (e.detail.reason === "no_access") {
-        io.stderr.write(accessText(await accessInfo(io, cred, e), t));
-        return 4;
-      }
-      if (!isApi || personalOnly) {
-        io.stderr.write(
-          refusalLines(
-            new Refusal(
-              `pkey ${command} isn't available to ${isApi ? "API" : "personal"} tokens.`,
-              isApi ? "Run pkey login." : "Use an API token: /manage -> API tokens."
-            ),
-            t
-          )
+    if (e instanceof Refusal)
+      return report(
+        io,
+        t,
+        command,
+        e instanceof Usage ? 2 : 4,
+        "warn",
+        e.code,
+        e.lines ?? plain2(e.message, e.fix)
+      );
+    if (e instanceof Failure)
+      return report(
+        io,
+        t,
+        command,
+        1,
+        "fail",
+        e.code,
+        e.lines ?? plain2(e.message, e.fix),
+        e.extra
+      );
+    if (e instanceof HttpFailure && cred) {
+      if (e.status === 401) {
+        const r = endedRefusal(cred);
+        return report(
+          io,
+          t,
+          command,
+          4,
+          "warn",
+          r.code,
+          plain2(r.message, r.fix)
         );
-        return 4;
+      }
+      if (e.status === 403) {
+        const isApi = cred.token.startsWith("pkeya_");
+        if (e.detail.reason === "no_access") {
+          const a = await accessInfo(io, cred, e);
+          if (io.json && io.stdout)
+            io.stdout.write(
+              envelope(command, 4, {
+                error: "no-access",
+                message: accessMessage(a),
+                product: a.product,
+                area: a.area,
+                roles: a.roles,
+                people: a.people
+              })
+            );
+          else io.stderr.write(accessText(a, t));
+          return 4;
+        }
+        if (!isApi || personalOnly) {
+          const what = `pkey ${command} isn't available to ${isApi ? "API" : "personal"} tokens.`;
+          const apiTokens = `${cred.origin}/manage/#/tokens`;
+          return report(
+            io,
+            t,
+            command,
+            4,
+            "warn",
+            "token-refused",
+            isApi ? plain2(what, "Run pkey login.") : [
+              [text(what)],
+              [
+                text("Make an API token at "),
+                text(apiTokens, { break: "url", link: apiTokens })
+              ]
+            ]
+          );
+        }
+      }
+    }
+    if (io.json && io.stdout) {
+      if (isInternalError(e)) {
+        io.stdout.write(
+          envelope(command, 1, {
+            error: "internal",
+            message: untrusted(errorText(e), io.env)
+          })
+        );
+        return 1;
       }
     }
     if (!(e instanceof UsageError) && !isInternalError(e)) {
@@ -25860,7 +26059,8 @@ async function withAdminCredential(io, command, run2, personalOnly = false) {
             envelope(command, 1, {
               error: networkCode(e) ? "network" : "failed",
               message: first,
-              ...rest.length ? { fix: rest.join(" ") } : {}
+              ...rest.length ? { fix: rest.join(" ") } : {},
+              ...e instanceof HttpFailure ? { status: e.status } : {}
             })
           );
         else io.stderr.write(block(t, "fail", plain2(first, ...rest)));
@@ -25869,9 +26069,6 @@ async function withAdminCredential(io, command, run2, personalOnly = false) {
     }
     throw e;
   }
-}
-function refusalLines(r, t) {
-  return block(t, "warn", plain2(r.message, r.fix));
 }
 
 // src/login.ts
@@ -25903,13 +26100,18 @@ var Spinner = class {
         if (err.rows) caps.rows = err.rows;
       },
       render,
-      fit: (rows) => ({ lines: render(rows), head: 0 })
+      fit: (rows) => ({
+        lines: render(rows),
+        head: rows.filter((r) => r.role === "header").length
+      })
     }) : null;
   }
   ticker;
   term;
   region;
   label = "";
+  /** Lines held above the spinner in the same live region (a command's heading); already styled. */
+  header = null;
   /** Lines held under the spinner in the same live region (key hints); already styled. */
   footer = null;
   done = 0;
@@ -25943,6 +26145,15 @@ var Spinner = class {
     else this.draw();
   }
   /**
+   * Lines drawn above the spinner, inside its live region: laid out again at each redraw, so a
+   * resize reflows them as a fresh launch would. `null` takes them away (the caller prints its
+   * own copy, since the region erases them).
+   */
+  setHeader(lines4) {
+    this.header = lines4;
+    if (this.region && this.label) this.draw();
+  }
+  /**
    * Lines drawn under the spinner, inside its live region (laid out again at each redraw, so a
    * resize reflows them); `null` takes them away.
    */
@@ -25962,6 +26173,7 @@ var Spinner = class {
     this.stopTicking = null;
     this.label = "";
     this.footer = null;
+    this.header = null;
     this.region?.close();
   }
   /**
@@ -25989,14 +26201,20 @@ var Spinner = class {
   }
   draw() {
     if (!this.region || !this.label || !this.atLineStart) return;
-    this.region.draw(
-      () => [this.line(), ...this.footer?.(this.term.caps.columns) ?? []].map(
-        (text2) => ({
-          mark: "none",
-          spans: [{ text: text2 }]
-        })
-      )
-    );
+    this.region.draw(() => {
+      const header = this.header?.(this.term.caps.columns);
+      const row2 = (text2, role) => ({
+        mark: "none",
+        spans: [{ text: text2 }],
+        ...role ? { role } : {}
+      });
+      return [
+        ...(header?.head ?? []).map((t) => row2(t, "header")),
+        ...(header?.body ?? []).map((t) => row2(t)),
+        row2(this.line()),
+        ...(this.footer?.(this.term.caps.columns) ?? []).map((t) => row2(t))
+      ];
+    });
   }
   /** One line, never wider than the terminal (a wrapped line would break the redraw). */
   line() {
@@ -26132,9 +26350,17 @@ function cmdLogin(io) {
     Object.entries(io.seams).filter(([, v]) => v !== void 0)
   );
   const seams = { ...defaultSeams(), ...given };
-  return guarded(io, "login", () => flow(io, seams));
+  const deferred = {};
+  return guarded(io, "login", async () => {
+    try {
+      return await flow(io, seams, deferred);
+    } catch (e) {
+      deferred.flush?.();
+      throw e;
+    }
+  });
 }
-async function flow(io, seams) {
+async function flow(io, seams, deferred) {
   if (isCi(io.env))
     throw new Refusal(
       `pkey login needs a person; in CI use ${ADMIN_TOKEN_ENV}.`
@@ -26151,35 +26377,54 @@ async function flow(io, seams) {
   const out = io.term(io.stdout);
   const errTerm = io.term(io.stderr);
   const say = (s) => io.stdout.write(s);
+  const layout = (line, columns, indent = 0) => wrapSpans(line, Math.max(1, columns - indent)).map(
+    (l) => `${" ".repeat(indent)}${out.painter.line(l)}`
+  );
   const put = (t, line, indent = 0) => wrapSpans(line, Math.max(1, t.caps.columns - indent)).map((l) => `${" ".repeat(indent)}${t.painter.line(l)}
 `).join("");
-  if (!io.json) {
+  const spinner = new Spinner(io.stderr, io.env, io.flags);
+  const live = !io.json && spinner.active && Boolean(io.stdout.isTTY);
+  const titleRows = (columns) => {
     const title = "Polaris Key console";
     const sep = out.symbols.separator;
-    const fits = cellWidth(`${title} ${sep} ${host}`) <= out.caps.columns;
-    say(
-      put(
-        out,
+    const fits = cellWidth(`${title} ${sep} ${host}`) <= columns;
+    return [
+      ...layout(
         fits ? [
           text(title, { style: ["strong"] }),
           text(` ${sep} ${host}`, { style: ["muted"] })
-        ] : [text(`${title} ${sep}`, { style: ["strong"] })]
-      )
-    );
-    if (!fits) say(put(out, [text(host, { style: ["muted"], break: "url" })]));
-    say("\n");
-    if (replaces)
-      say(
-        `${put(out, [text("You're already signed in here. The old token ends once the new one is saved.")])}
-`
-      );
+        ] : [text(`${title} ${sep}`, { style: ["strong"] })],
+        columns
+      ),
+      ...fits ? [] : layout([text(host, { style: ["muted"], break: "url" })], columns),
+      "",
+      ...replaces ? [
+        ...layout(
+          [
+            text(
+              "You're already signed in here. The old token ends once the new one is saved."
+            )
+          ],
+          columns
+        ),
+        ""
+      ] : []
+    ];
+  };
+  if (!io.json) {
+    if (live)
+      deferred.flush = () => say(`${titleRows(out.caps.columns).join("\n")}
+`);
+    else say(`${titleRows(out.caps.columns).join("\n")}
+`);
     if (io.env[ADMIN_TOKEN_ENV]?.trim())
       io.stderr.write(
         block(
           errTerm,
           "warn",
           plain2(
-            `${ADMIN_TOKEN_ENV} is set and takes precedence over this sign-in. Unset it to use the one pkey login saves.`
+            `${ADMIN_TOKEN_ENV} is set and takes precedence over this sign-in.`,
+            "Unset it to use the one pkey login saves."
           )
         )
       );
@@ -26237,8 +26482,8 @@ async function flow(io, seams) {
     );
   if ([404, 405, 422, 501].includes(startRes.status))
     throw new Refusal(
-      `${host} doesn't offer terminal sign-in; use ${ADMIN_TOKEN_ENV}.`,
-      void 0,
+      `${host} doesn't offer terminal sign-in.`,
+      `Set ${ADMIN_TOKEN_ENV} to a personal token instead.`,
       "unsupported"
     );
   if (startRes.status !== 201)
@@ -26266,8 +26511,7 @@ async function flow(io, seams) {
   let interval = clampInterval(started["interval"], 3e3);
   const deadline = now() + expiresIn * 1e3;
   const approveUrl = `${origin}/manage/device?code=${userCode}`;
-  const shortLink = !io.json && approveUrl.length >= out.caps.columns;
-  const shownUrl = shortLink ? `${origin}/manage/device` : approveUrl;
+  let heading;
   const remote = Boolean(io.env["SSH_CONNECTION"] || io.env["SSH_TTY"]);
   const mayOpen = !io.json && !io.noBrowser && !remote && hasDisplay(io.env, platform);
   const mayCopy = !remote;
@@ -26295,36 +26539,59 @@ async function flow(io, seams) {
     );
   } else {
     const opened = mayOpen ? await open2() : false;
-    if (opened)
-      say(
-        put(out, [
-          text(`Opening Polaris Key in your browser${out.symbols.ellipsis}`)
-        ])
+    const codeRows = (columns) => {
+      const short2 = approveUrl.length >= columns;
+      const shown3 = short2 ? `${origin}/manage/device` : approveUrl;
+      return [
+        ...opened ? layout(
+          [
+            text(
+              `Opening Polaris Key in your browser${out.symbols.ellipsis}`
+            )
+          ],
+          columns
+        ) : [],
+        ...layout(
+          opened ? [text("Didn't open? Go to", { style: ["muted"] })] : [text("Open this link in a browser:")],
+          columns
+        ),
+        ...layout([text(shown3, { break: "url", link: approveUrl })], columns),
+        "",
+        ...layout(
+          [
+            text(
+              short2 ? "Enter this code in your browser:" : "Check that the code in your browser matches:"
+            )
+          ],
+          columns
+        ),
+        out.painter.style(` ${userCode} `, ["code"]),
+        ""
+      ];
+    };
+    if (live) {
+      const rows = (columns) => [
+        ...titleRows(columns),
+        ...codeRows(columns)
+      ];
+      deferred.flush = void 0;
+      spinner.setHeader((columns) => ({
+        head: titleRows(columns),
+        body: codeRows(columns)
+      }));
+      heading = () => say(
+        `${rows(io.stdout.columns ? layoutColumns(io.stdout.columns) : out.caps.columns).join("\n")}
+`
       );
-    say(
-      put(
-        out,
-        opened ? [text("Didn't open? Go to", { style: ["muted"] })] : [text("Open this link in a browser:")]
-      )
-    );
-    say(put(out, [text(shownUrl, { break: "url" })]));
-    say("\n");
-    say(
-      put(out, [
-        text(
-          shortLink ? "Enter this code in your browser:" : "Check that the code in your browser matches:"
-        )
-      ])
-    );
-    say(`${out.painter.style(` ${userCode} `, ["code"])}
-
+    } else say(`${codeRows(out.caps.columns).join("\n")}
 `);
   }
-  const spinner = new Spinner(io.stderr, io.env, io.flags);
-  const wrapped2 = spinner.wrap(io.stdout);
+  const wrapped = spinner.wrap(io.stdout);
   let cleanup = [];
   const finish = () => {
     spinner.stop();
+    heading?.();
+    heading = void 0;
     for (const c of cleanup) c();
     cleanup = [];
   };
@@ -26358,7 +26625,7 @@ async function flow(io, seams) {
             copyVerb = ok ? "copied" : "no clipboard here";
             spinner.setFooter(hintLines);
           } else
-            wrapped2.write(
+            wrapped.write(
               block(
                 out,
                 ok ? "ok" : "warn",
@@ -26394,7 +26661,7 @@ async function flow(io, seams) {
 `);
     }
   }
-  const report = (o) => {
+  const report2 = (o) => {
     finish();
     if (io.json)
       io.stdout.write(
@@ -26409,7 +26676,7 @@ async function flow(io, seams) {
     else io.stderr.write(`${gap()}${block(errTerm, o.kind, o.lines)}`);
     return o.exit;
   };
-  const cancelReport = (why) => report({
+  const cancelReport = (why) => report2({
     state: why === "interrupt" ? "interrupted" : "cancelled",
     exit: why === "interrupt" ? 130 : 1,
     kind: "warn",
@@ -26417,7 +26684,7 @@ async function flow(io, seams) {
   });
   let sawFailure = false;
   const maybeApproved = () => sawFailure ? plain2("If you approved it, the token may exist; check Personal tokens.") : [];
-  const expired = () => report({
+  const expired = () => report2({
     state: "expired",
     exit: 1,
     kind: "fail",
@@ -26451,7 +26718,7 @@ async function flow(io, seams) {
       if (cancelled) return cancelReport(cancelled);
       sawFailure = true;
       if (++failures >= NETWORK_FAILURES)
-        return report({
+        return report2({
           state: "network",
           exit: 1,
           kind: "fail",
@@ -26482,7 +26749,7 @@ async function flow(io, seams) {
     if (res.status === 429 || res.status === 503) {
       sawFailure = true;
       if (++failures >= NETWORK_FAILURES)
-        return report({
+        return report2({
           state: "network",
           exit: 1,
           kind: "fail",
@@ -26505,7 +26772,7 @@ async function flow(io, seams) {
         String(body["message"] ?? "")
       )?.[1];
       const url = `${origin}/manage/#/personal-tokens`;
-      return report({
+      return report2({
         state: "token_limit",
         exit: 4,
         kind: "warn",
@@ -26521,13 +26788,13 @@ async function flow(io, seams) {
             "Revoke one in Personal tokens, then run ",
             " again."
           ),
-          [text(url, { break: "url" })]
+          [text(url, { break: "url", link: url })]
         ],
         extra: { url }
       });
     }
     if (res.status === 403)
-      return report({
+      return report2({
         state: "refused",
         exit: 4,
         kind: "warn",
@@ -26537,7 +26804,7 @@ async function flow(io, seams) {
         )
       });
     if (!res.ok)
-      return report({
+      return report2({
         state: "server-error",
         exit: 1,
         kind: "fail",
@@ -26553,9 +26820,9 @@ async function flow(io, seams) {
       continue;
     }
     if (status === "denied")
-      return report({
+      return report2({
         state: "denied",
-        exit: 4,
+        exit: 1,
         kind: "warn",
         lines: [
           [text(`Code ${userCode} was canceled in the browser.`)],
@@ -26563,7 +26830,7 @@ async function flow(io, seams) {
         ]
       });
     if (status !== "approved")
-      return report({
+      return report2({
         state: "unexpected-answer",
         exit: 1,
         kind: "fail",
@@ -26634,10 +26901,12 @@ async function approved(io, a) {
     kept = false;
   }
   if (!kept) {
+    let restored = true;
     if (a.previous)
       try {
         store.set(origin, a.previous);
       } catch {
+        restored = false;
       }
     const ended = await revoked(io, cred);
     const name2 = backendName(a.platform);
@@ -26657,15 +26926,15 @@ async function approved(io, a) {
             `${unlockAdvice(a.platform)} and run `,
             " again, or make a token at "
           ),
-          text(personalTokens, { break: "url" }),
+          text(personalTokens, { break: "url", link: personalTokens }),
           text(` and set ${ADMIN_TOKEN_ENV}.`)
         ] : [
           text(
             `Revoke ${label ? `${quote[0]}${label}${quote[1]} ` : ""}(pkeyp_${t.symbols.ellipsis}${hint2}) at `
           ),
-          text(personalTokens, { break: "url" }),
-          text(".")
-        ]
+          text(personalTokens, { break: "url", link: personalTokens })
+        ],
+        ...a.previous && !restored ? [rerun(io, origin, "Your old sign-in may need ", " again.")] : []
       ]
     );
   }
@@ -26695,7 +26964,8 @@ async function approved(io, a) {
       const perms = me["permissions"] ?? {};
       roles = (Array.isArray(perms.roles) ? perms.roles : []).map((r) => ({
         role: shown(r.role, io.env),
-        scope: shown(r.scope, io.env)
+        scope: shown(r.scope, io.env),
+        areas: r.areas
       }));
     }
   } catch {
@@ -26707,7 +26977,7 @@ async function approved(io, a) {
         host,
         name,
         email,
-        roles,
+        roles: roles.map((r) => ({ role: r.role, scope: r.scope })),
         token: {
           type: "personal",
           scope: "admin",
@@ -26731,7 +27001,14 @@ async function approved(io, a) {
   const roleNames = [
     ...new Set(
       roles.map(
-        (r) => roleName(r.role, r.scope, (slug) => products.get(slug) ?? slug)
+        (r) => roleText(
+          r.role,
+          r.scope,
+          r.areas,
+          (slug) => products.get(slug) ?? slug,
+          t.symbols.separator,
+          io.env
+        )
       )
     )
   ];
@@ -26741,36 +27018,37 @@ async function approved(io, a) {
       [
         [
           "Roles",
-          roleNames.flatMap(
+          roleNames.length ? roleNames.flatMap(
             (r, i) => [
               ...i ? [text(", ")] : [],
               text(r, { unit: true })
             ]
-          )
+          ) : [text("None")]
         ],
         ["Token", tokenLine(t, label, hint2)],
         ["Ends", [text(day(expiresAt, io.env), { unit: true })]],
         ["Saved in", [text(backend, { unit: true })]]
       ],
-      { indent: 2, label: 10 }
+      { indent: 3, label: 10 }
     )
   );
   io.stdout.write(
     `
-${t.caps.columns < 32 ? "" : "  "}End it with pkey logout.
+${t.caps.columns < 32 ? "" : "   "}End it with ${t.painter.style("pkey logout", ["strong"])}.
 `
   );
   if (previous === "not-revoked") {
     const until = a.previous?.expiresAt ? ` until ${day(a.previous.expiresAt, io.env)}` : "";
+    const errT = io.term(io.stderr);
+    const old = a.previous ? shown(hintOf(a.previous), io.env) : "";
     io.stderr.write(
       `
-${block(io.term(io.stderr), "warn", [
+${block(errT, "warn", [
         [
           text(
-            `Couldn't end your previous sign-in, so it still works${until}. Revoke it at `
+            `Couldn't end your previous sign-in (pkeyp_${errT.symbols.ellipsis}${old}), so it still works${until}. Revoke it at `
           ),
-          text(personalTokens, { break: "url" }),
-          text(".")
+          text(personalTokens, { break: "url", link: personalTokens })
         ]
       ])}`
     );
@@ -39705,7 +39983,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
       for (const [fileSha, s] of b.blobs)
         addObject(s.stored, `file ${fileSha.slice(0, 12)}…`);
       const deltas = [];
-      const report = {
+      const report2 = {
         key: v.key,
         payload: b.payload,
         stripped: v.stripped,
@@ -39723,7 +40001,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
         const bp = base.payloads.get(v.key);
         if (!bp) continue;
         const from = base.release.version;
-        report.noise.push(
+        report2.noise.push(
           ...noiseReport(bp.files, b.files).map((n) => `against ${from}: ${n}`)
         );
         if (b.layout === "container" && bp.bytes) {
@@ -39734,7 +40012,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
             v.payload.bytes
           );
           if ("skipped" in pd)
-            report.skippedDeltas.push(
+            report2.skippedDeltas.push(
               `payload delta from ${from}: ${pd.skipped}`
             );
           else {
@@ -39743,7 +40021,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
               pd.stored,
               `${v.key || "default"} payload delta from ${from}`
             );
-            report.bytes.deltas.push({
+            report2.bytes.deltas.push({
               from: bp.sha256,
               version: from,
               scope: "payload",
@@ -39757,10 +40035,10 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
           b
         );
         if ("skipped" in fd)
-          report.skippedDeltas.push(`files delta from ${from}: ${fd.skipped}`);
+          report2.skippedDeltas.push(`files delta from ${from}: ${fd.skipped}`);
         else {
           for (const p of fd.magicBases)
-            report.skippedDeltas.push(
+            report2.skippedDeltas.push(
               `files delta from ${from}: ${p}'s base starts with the zstd dictionary magic 37 A4 30 EC, so it ships as a blob entry (§2.7 rule 5)`
             );
           deltas.push(fd.delta);
@@ -39769,7 +40047,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
             fd.dataStored,
             `${v.key || "default"} patch data from ${from}`
           );
-          report.bytes.deltas.push({
+          report2.bytes.deltas.push({
             from: bp.sha256,
             version: from,
             scope: "files",
@@ -39778,11 +40056,11 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
         }
       }
       const label = v.key || "default";
-      for (const s of report.skippedDeltas) warn(`${label}: ${s}`);
-      for (const n of report.noise) warn(`${label}: re-import noise ${n}`);
+      for (const s of report2.skippedDeltas) warn(`${label}: ${s}`);
+      for (const n of report2.noise) warn(`${label}: re-import noise ${n}`);
       let chunksRef;
       const omittedWhy = chunksOmitted.get(v.key);
-      if (omittedWhy) report.chunksOmitted = omittedWhy;
+      if (omittedWhy) report2.chunksOmitted = omittedWhy;
       const list3 = chunked.get(v.key);
       if (list3) {
         const base = chains.get(v.key) ?? null;
@@ -39808,7 +40086,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
           { maxIndexBytes: opts.maxChunkIndexBytes }
         );
         if ("omitted" in outcome) {
-          report.chunksOmitted = outcome.omitted;
+          report2.chunksOmitted = outcome.omitted;
           warn(`${label}: no chunk index: ${outcome.omitted}.`);
         } else {
           chunksRef = outcome.ref;
@@ -39816,7 +40094,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
           addObject(outcome.index.stored, `${label} chunk index`);
           for (const [sha, bytes] of outcome.bundles)
             addObject(bytes, `${label} chunk bundle ${sha.slice(0, 12)}…`);
-          report.chunks = {
+          report2.chunks = {
             ...outcome.stats,
             sha256: outcome.index.ref.sha256,
             bytes: outcome.index.ref.bytes,
@@ -39824,7 +40102,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
           };
         }
       }
-      reports.push(report);
+      reports.push(report2);
       recordVariants.push({
         variant: v.variant,
         payload: b.payload,
@@ -43456,8 +43734,8 @@ async function runStoreSteps(steps, o) {
   if (o.toolPath !== void 0)
     for (const step of steps) checkToolPath(o.toolPath, step.tool);
   for (const step of steps) await runFileChecks(step, o.cwd);
-  const report = o.report !== false;
-  if (!report) {
+  const report2 = o.report !== false;
+  if (!report2) {
     for (const step of steps)
       if (ciStore(step.store).list.commands[step.command].unlessWorkerStaged)
         throw new Error(
@@ -43473,7 +43751,7 @@ async function runStoreSteps(steps, o) {
     return steps.map((step) => ({ step, outcome: "dry-run", exitCode: null }));
   }
   let client = null;
-  if (report) {
+  if (report2) {
     const token = await resolveCiToken({
       baseUrl: o.baseUrl,
       product: o.product,
@@ -45462,28 +45740,28 @@ ${FEEDS_PRUNE_USAGE}`);
       ...opts.deliverable ? { deliverable: opts.deliverable } : {}
     }
   });
-  let report = await ask();
-  for (let round = 1; opts.apply && report.more && round < MAX_ROUNDS; round++) {
+  let report2 = await ask();
+  for (let round = 1; opts.apply && report2.more && round < MAX_ROUNDS; round++) {
     const next = await ask();
-    report = {
+    report2 = {
       ...next,
-      packages: [...report.packages, ...next.packages].filter(
+      packages: [...report2.packages, ...next.packages].filter(
         (p) => p.prune.length || p.kept.length || p.failed?.length || p.skipped?.length
       ),
       totals: {
-        versions: report.totals.versions + next.totals.versions,
-        bytes: report.totals.bytes + next.totals.bytes,
-        freedBytes: report.totals.freedBytes + next.totals.freedBytes,
-        failed: report.totals.failed + next.totals.failed,
-        skipped: (report.totals.skipped ?? 0) + (next.totals.skipped ?? 0)
+        versions: report2.totals.versions + next.totals.versions,
+        bytes: report2.totals.bytes + next.totals.bytes,
+        freedBytes: report2.totals.freedBytes + next.totals.freedBytes,
+        failed: report2.totals.failed + next.totals.failed,
+        skipped: (report2.totals.skipped ?? 0) + (next.totals.skipped ?? 0)
       }
     };
   }
   opts.stdout.write(
-    opts.json ? `${untrustedJson(report, 2)}
-` : renderPruneReport(report, opts.env)
+    opts.json ? `${untrustedJson(report2, 2)}
+` : renderPruneReport(report2, opts.env)
   );
-  return report;
+  return report2;
 }
 
 // src/listing.ts
@@ -45956,14 +46234,17 @@ Re-run to review and apply it.`
         );
       }
       throw new Error(
-        `Importing at ${url} failed (409): ${untrusted(payload2.message ?? payload2.reason ?? "conflict", {})}`
+        `${hostLabel(url)} couldn't import the listing (HTTP 409): ${maskTokens(untrusted(payload2.message ?? payload2.reason ?? "conflict", {}))}.`
       );
     }
-    if (!res.ok) throw await httpError(res, `Importing at ${url}`, listingHint);
+    if (!res.ok)
+      throw await failureOf(res, url, "import the listing", listingHint);
     const payload = await readJson(res, url);
     const answer = payload.import;
     if (!answer || typeof answer.digest !== "string")
-      throw new Error(`${url} answered ${res.status} without an import diff.`);
+      throw new Error(
+        `${hostLabel(url)} answered ${res.status} without an import diff.`
+      );
     return answer;
   };
   const preview = await post({});
@@ -47269,10 +47550,10 @@ function acceptances(accept, pad2) {
   }
   return out;
 }
-function previewHtml(report) {
+function previewHtml(report2) {
   const esc = (s) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   const card = (title, status, file, meta, notes) => `<figure class="${esc(status)}"><figcaption><b>${esc(title)}</b> <i>${esc(status)}</i><br>${esc(meta)}${notes.map((n) => `<br><small>${esc(n)}</small>`).join("")}</figcaption>${file ? `<img src="${esc(file)}" alt="${esc(title)}" loading="lazy">` : ""}</figure>`;
-  const slots = report.slots.map(
+  const slots = report2.slots.map(
     (s) => card(
       s.slot,
       s.status,
@@ -47281,7 +47562,7 @@ function previewHtml(report) {
       s.notes
     )
   ).join("\n");
-  const shots = report.screenshots.map(
+  const shots = report2.screenshots.map(
     (s) => card(
       s.id,
       s.status,
@@ -47521,7 +47802,7 @@ ${LISTING_ASSETS_USAGE}`);
       size: zip.length
     });
   }
-  const report = {
+  const report2 = {
     format: REPORT_FORMAT,
     locale,
     focal,
@@ -47541,11 +47822,11 @@ ${LISTING_ASSETS_USAGE}`);
     packs,
     files: []
   };
-  await writeRel("preview.html", new TextEncoder().encode(previewHtml(report)));
-  report.files = [...files, "report.json"].sort();
+  await writeRel("preview.html", new TextEncoder().encode(previewHtml(report2)));
+  report2.files = [...files, "report.json"].sort();
   await writeFile19(
     path28.join(dir, "report.json"),
-    `${JSON.stringify(report, null, 2)}
+    `${JSON.stringify(report2, null, 2)}
 `
   );
   opts.progress?.stage("");
@@ -47585,7 +47866,7 @@ ${LISTING_ASSETS_USAGE}`);
   out.write(`Look before accepting: ${path28.join(rel, "preview.html")}
 `);
   const result = {
-    report,
+    report: report2,
     dir,
     uploaded: [],
     registered: null
@@ -48119,7 +48400,15 @@ var HANDLERS = {
   bundle: (p, rt) => withAdminCredential(
     adminIo(p, rt),
     "bundle",
-    (token) => cmdBundle(p, rt.cwd, rt.stdout, rt.ci.env, token, rt.ci.fetchImpl)
+    (token) => cmdBundle(
+      p,
+      rt.cwd,
+      rt.stdout,
+      rt.term(rt.stdout),
+      rt.ci.env,
+      token,
+      rt.ci.fetchImpl
+    )
   ),
   migrate: (p, rt) => withAdminCredential(
     adminIo(p, rt),
@@ -48616,7 +48905,7 @@ async function doctorJson(ctx, cwd, stdout, ci, io, signal) {
   );
   return exit;
 }
-async function cmdBundle(parsed, cwd, stdout, env, token, fetchImpl) {
+async function cmdBundle(parsed, cwd, stdout, term, env, token, fetchImpl) {
   const product = flagString(parsed, "product");
   const device = flagString(parsed, "device");
   const graceRaw = flagString(parsed, "grace-days");
@@ -48636,18 +48925,31 @@ async function cmdBundle(parsed, cwd, stdout, env, token, fetchImpl) {
     ...fetchImpl ? { fetchImpl } : {}
   });
   const rel = path30.relative(cwd, result.file);
-  stdout.write(`Minted bundle ${untrusted(result.bundleId, env)}
-`);
-  stdout.write(`- File: ${rel}
-`);
-  stdout.write(`- Device: ${result.deviceId}
-`);
+  if (flagBool(parsed, "json")) {
+    stdout.write(
+      envelope("bundle", 0, {
+        bundleId: untrusted(result.bundleId, env),
+        file: result.file,
+        deviceId: result.deviceId,
+        graceDays: result.graceDays,
+        documents: result.documents
+      })
+    );
+    return 0;
+  }
+  const carries = result.documents.length ? `${result.documents.join(" and ")}, ` : "";
   stdout.write(
-    `- Grace window: ${result.graceDays} day${result.graceDays === 1 ? "" : "s"} offline
-`
-  );
-  stdout.write(
-    "\nNext: transfer this file to the offline device and import it there.\n"
+    block(term, "ok", [
+      [
+        text("Wrote "),
+        text(rel, { break: "url" }),
+        text(
+          ` (${carries}${result.graceDays} day${result.graceDays === 1 ? "" : "s"} offline)`
+        )
+      ],
+      [text("Bundle "), text(untrusted(result.bundleId, env), { unit: true })],
+      [text("Take it to the offline device and import it there.")]
+    ])
   );
   return 0;
 }
@@ -48663,8 +48965,7 @@ async function cmdMigrate(parsed, stdout, env, token, fetchImpl) {
     fetchImpl
   });
   stdout.write(
-    flagBool(parsed, "json") ? `${untrustedJson(result, 2)}
-` : formatMigrate(result, env)
+    flagBool(parsed, "json") ? envelope("migrate", 0, { ...result }) : formatMigrate(result, env)
   );
   return 0;
 }
@@ -49315,7 +49616,7 @@ async function cmdFeeds(parsed, cwd, stdout, stderr, ci) {
   if (parsed.positional[0] === "prune") {
     const prunedProduct = flagString(parsed, "product");
     if (!prunedProduct) throw new Error(FEEDS_PRUNE_USAGE);
-    const report = await feedsPrune({
+    const report2 = await feedsPrune({
       product: prunedProduct,
       deliverable: flagString(parsed, "deliverable"),
       apply: flagBool(parsed, "apply"),
@@ -49327,7 +49628,7 @@ async function cmdFeeds(parsed, cwd, stdout, stderr, ci) {
       fetchImpl: ci.fetchImpl,
       sleep: ci.sleep
     });
-    return report.totals.failed > 0 ? 1 : 0;
+    return report2.totals.failed > 0 ? 1 : 0;
   }
   const product = flagString(parsed, "product");
   const channel = flagString(parsed, "channel");
@@ -49939,10 +50240,10 @@ async function runTransportStep(io, input, given, product, dir, step) {
   const dryRun = input("dry-run");
   if (dryRun !== void 0 && dryRun !== "false")
     throw new Error("dry-run does not apply to a transport step.");
-  const report = input("transport-report");
-  if (report !== void 0 && report !== "true" && report !== "false")
+  const report2 = input("transport-report");
+  if (report2 !== void 0 && report2 !== "true" && report2 !== "false")
     throw new Error(
-      `transport-report must be true or false (got ${JSON.stringify(report)}).`
+      `transport-report must be true or false (got ${JSON.stringify(report2)}).`
     );
   const setlive = input("steam-setlive");
   if (setlive !== void 0 && setlive !== "true" && setlive !== "false")
@@ -49960,7 +50261,7 @@ async function runTransportStep(io, input, given, product, dir, step) {
     stderr: io.stderr,
     fetchImpl: io.fetchImpl,
     sleep: io.sleep,
-    report: report !== "false"
+    report: report2 !== "false"
   };
   const platform = io.platform ?? process.platform;
   switch (step) {

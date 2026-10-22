@@ -327,7 +327,11 @@ function documentsOf(jws: string): string[] {
 
 /** The 400 a mint answers when the licence is missing or not usable. */
 function bundleHint(status: number, detail: ErrorDetail): string | undefined {
-  if (status === 400 && detail.fields?.includes("licenseId"))
+  if (
+    status === 400 &&
+    (detail.fields?.includes("licenseId") ||
+      /licenseId/.test(detail.message ?? ""))
+  )
     return /required/i.test(detail.message ?? "")
       ? "Add --license <id>."
       : "Check --license.";

@@ -32,6 +32,7 @@ import {
   cellWidth,
   isCi,
   keyHints,
+  layoutColumns,
   wrapSpans,
   type Line,
 } from "@polaris-key/node/terminal";
@@ -537,8 +538,14 @@ async function flow(
         ...codeRows(columns),
       ];
       deferred.flush = undefined;
-      spinner.setHeader(rows);
-      heading = () => say(`${rows(out.caps.columns).join("\n")}\n`);
+      spinner.setHeader((columns) => ({
+        head: titleRows(columns),
+        body: codeRows(columns),
+      }));
+      heading = () =>
+        say(
+          `${rows(io.stdout.columns ? layoutColumns(io.stdout.columns) : out.caps.columns).join("\n")}\n`,
+        );
     } else say(`${codeRows(out.caps.columns).join("\n")}\n`);
   }
 

@@ -1633,3 +1633,152 @@ describe("colour terminals: every login glyph renders (R1)", () => {
     }
   });
 });
+
+describe("pkey login: the review's minors (m3, m7-m11)", () => {
+  const link = (url: string) => `\x1b]8;;${url}\x1b\\`;
+
+  it("m3: the approve URL is an OSC 8 link on a terminal (the target keeps the code)", async () => {
+    const r = await run([], { f: server([APPROVED]).f, columns: 40 });
+    expect(r.out).toContain(link(`${ORIGIN}/manage/device?code=${CODE}`));
+    const piped = await run([], { f: server([APPROVED]).f });
+    expect(piped.out).not.toContain("\x1b]8;;");
+    const j = await run(["--json"], { f: server([APPROVED]).f, columns: 80 });
+    expect(j.out).not.toContain("\x1b]8;;");
+  });
+
+  it("m3: the token-limit URL is a link too", async () => {
+    const r = await run([], {
+      f: server([() => json(409, { reason: "token_limit" })]).f,
+      columns: 80,
+    });
+    expect(r.err).toContain(link(`${ORIGIN}/manage/#/personal-tokens`));
+  });
+
+  it("m7: the result rows sit under the text after the glyph, and the command is bold", async () => {
+    const r = await run([], {
+      f: server([APPROVED]).f,
+      columns: 80,
+      env: { NO_COLOR: "", FORCE_COLOR: "1", TERM: "xterm-256color" },
+    });
+    const text = bare(r.out);
+    expect(text).toContain("✓  Signed in as Ada Lovelace");
+    expect(text).toContain("\n   Roles     DJDL admin\n");
+    expect(text).toContain("\n   End it with pkey logout.\n");
+    expect(r.out).toContain("End it with \x1b[1mpkey logout\x1b[22m.");
+  });
+
+  it("m8: a previous sign-in that stays alive is named by its hint, and the URL ends the line", async () => {
+    const store = memoryStore({
+      [ORIGIN]: { token: OLD, expiresAt: FAR, label: null, hint: null },
+    });
+    const r = await run([], {
+      f: server([APPROVED], {
+        revoke: (auth) => (auth === `Bearer ${OLD}` ? json(500) : json(200)),
+      }).f,
+      store: async () => store,
+    });
+    expect(r.code).toBe(0);
+    expect(r.err.replace(/\s+/g, " ")).toContain(
+      "Couldn't end your previous sign-in (pkeyp_…OOOO), so it still works until",
+    );
+    expect(r.err.trimEnd().endsWith("/manage/#/personal-tokens")).toBe(true);
+  });
+
+  it("a failed restore after a failed store write says the old sign-in may need pkey login again", async () => {
+    const mem = memoryStore({
+      [ORIGIN]: { token: OLD, expiresAt: FAR, label: null, hint: null },
+    });
+    const failing: CredentialStore = {
+      get: mem.get,
+      delete: mem.delete,
+      set: () => {
+        throw new NoStoreError();
+      },
+    };
+    const r = await run([], {
+      f: server([APPROVED]).f,
+      store: async () => failing,
+    });
+    expect(r.code).toBe(1);
+    expect(r.err.replace(/\s+/g, " ")).toContain(
+      "Your old sign-in may need pkey login --base-url https://key.example again.",
+    );
+    // With a store that takes the restore, the line is not there.
+    let first = true;
+    const flaky: CredentialStore = {
+      get: mem.get,
+      delete: mem.delete,
+      set: (o, c) => {
+        if (first) {
+          first = false;
+          throw new NoStoreError();
+        }
+        mem.set(o, c);
+      },
+    };
+    const ok = await run([], {
+      f: server([APPROVED]).f,
+      store: async () => flaky,
+    });
+    expect(ok.err).not.toContain("may need");
+  });
+
+  it("m9: the missing-terminal-sign-in refusal and the env-token warning keep their fix on its own line", async () => {
+    const gone = await run([], {
+      f: server([APPROVED], { start: () => json(404, {}) }).f,
+    });
+    expect(gone.err).toBe(
+      "▲  key.example doesn't offer terminal sign-in.\n   Set PKEY_ADMIN_TOKEN to a personal token instead.\n",
+    );
+    const warned = await run([], {
+      f: server([APPROVED]).f,
+      env: { PKEY_ADMIN_TOKEN: OLD },
+    });
+    expect(warned.err).toContain(
+      "▲  PKEY_ADMIN_TOKEN is set and takes precedence over this sign-in.\n   Unset it to use the one pkey login saves.\n",
+    );
+  });
+
+  it("m10: a code canceled in the browser exits 1 like Esc; the JSON code stays denied", async () => {
+    const r = await run([], {
+      f: server([() => json(200, { status: "denied" })]).f,
+    });
+    expect(r.code).toBe(1);
+    const j = await run(["--json"], {
+      f: server([() => json(200, { status: "denied" })]).f,
+    });
+    expect(j.code).toBe(1);
+    expect(JSON.parse(j.out.trim().split("\n").at(-1)!)).toMatchObject({
+      error: "denied",
+      exit: 1,
+    });
+  });
+
+  it("m11 and M2: no roles shows None; a narrowed role shows its areas after the role", async () => {
+    const asks = (roles: unknown[]) =>
+      (async (url: string, init: RequestInit) =>
+        new URL(String(url)).pathname === "/manage/api/me"
+          ? json(200, {
+              name: "Ada Lovelace",
+              email: "ada@example.com",
+              products: [{ slug: "djdl", name: "DJDL" }],
+              permissions: { roles },
+            })
+          : server([APPROVED]).f(url, init)) as typeof fetch;
+    const none = await run([], { f: asks([]), columns: 80 });
+    expect(bare(none.out)).toContain("\n   Roles     None\n");
+    const narrowed = await run([], {
+      f: asks([
+        {
+          role: "product_admin",
+          scope: "product:djdl",
+          areas: ["license", "signin"],
+        },
+      ]),
+      columns: 80,
+    });
+    expect(bare(narrowed.out)).toContain(
+      "\n   Roles     DJDL admin · Licensing, Sign-in\n",
+    );
+  });
+});
