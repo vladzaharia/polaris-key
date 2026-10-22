@@ -176,7 +176,7 @@ import { describe, expect, it } from "vitest";
 import { polarisKey, requireEntitlement } from "@polaris-key/server/express";
 import { createTestKit } from "@polaris-key/server/testing";
 
-describe("GET /api/export", async () => {
+describe("the export route", async () => {
   const kit = await createTestKit({ product: "acme" });
   const app = express();
   app.use(polarisKey(kit.options()));
@@ -217,7 +217,7 @@ Send a request with no `X-PKey-License` header to a gated route. You should get 
 
 ## If it isn't working
 
-- The server won't start and names the option: the config is missing, empty or malformed. Run `pkey sdk --lang node --write` again.
+- The server stops at startup and names the option: the config is missing, empty or malformed. Run `pkey sdk --lang node --write` again.
 - Every request is `license_invalid`: the pins in the config are for another environment, or the `X-PKey-Device` header isn't the device the document names.
 - `license_stale` on a device that is online: the app didn't refresh its license before sending it.
 - The browser blocks the call: allow the two headers in your CORS settings.

@@ -292,6 +292,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "features/licensing/device-limit",
           "features/licensing/attestation",
           "features/licensing/server-verification",
+          "features/licensing/server-node",
           "features/licensing/model",
           "features/licensing/activation",
           "features/licensing/access",
