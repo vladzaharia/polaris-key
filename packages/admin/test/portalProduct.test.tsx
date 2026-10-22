@@ -246,7 +246,7 @@ describe("product page on today's data (PX-04)", () => {
       within(card).getByRole("img", { name: "License key for nightfall" })
         .textContent,
     ).toBe("pkey_nightfall_…");
-    expect(within(card).getByText(/can’t be shown again/)).toBeTruthy();
+    expect(within(card).getByText(/can't be shown again/)).toBeTruthy();
     expect(within(card).getByText("Original soundtrack")).toBeTruthy();
     // No "Get a new key" until G7.
     expect(within(card).queryByText(/Get a new key/)).toBeNull();

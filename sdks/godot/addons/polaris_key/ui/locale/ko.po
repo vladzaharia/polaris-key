@@ -616,10 +616,10 @@ msgstr "{product}에 {size} 크기의 새 콘텐츠가 필요해요. 현재 데�
 msgid "boot.consent.download"
 msgstr "다운로드"
 
-#. {product} couldn't finish starting. Try again.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. If this keeps happening, restart the app.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
 msgid "boot.error.body"
-msgstr "{product} 시작을 완료하지 못했어요. 다시 시도해 주세요."
+msgstr "문제가 계속되면 앱을 다시 시작해 주세요."
 
 #. Welcome to {product}
 #. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -1165,10 +1165,10 @@ msgstr "업데이트를 완료하려면 {product}을(를) 재시작하세요."
 msgid "update.mandatoryTitle"
 msgstr "{product}을(를) 계속 사용하려면 업데이트하세요"
 
-#. This version is below the minimum supported version. Update to keep using {product}.
-#. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. This version is no longer supported.
+#. UpdatePrompt: an app update. Mandatory update.
 msgid "update.mandatoryBody"
-msgstr "이 버전은 지원되는 최소 버전보다 낮아요. {product}을(를) 계속 사용하려면 업데이트하세요."
+msgstr "이 버전은 더 이상 지원되지 않아요."
 
 #. This version is no longer supported
 #. UpdatePrompt: an app update. No update is available yet.
@@ -4222,7 +4222,7 @@ msgstr "시도 횟수가 너무 많습니다. 1분 기다린 후 다시 시도�
 msgid "signin.gate.termsLinkProduct"
 msgstr "{product} 약관"
 
-#. Polaris Locker’s Terms and Privacy Policy
+#. Polaris Locker's Terms and Privacy Policy
 #. The platform's terms link in the finish step. Polaris Locker is never translated.
 msgid "signin.gate.termsLinkPlatform"
 msgstr "Polaris Locker 약관 및 개인정보 처리방침"
@@ -4554,7 +4554,7 @@ msgstr "{email}은(는) 이미 Polaris Locker 계정에 속해 있습니다. 다
 msgid "signin.gate.nameRequired"
 msgstr "표시 이름을 입력하세요."
 
-#. Agree to {app}’s terms to keep going.
+#. Agree to {app}'s terms to keep going.
 #. Finish: lede of the terms-only step. Arguments: {app}.
 msgid "signin.gate.termsLede"
 msgstr "계속하려면 {app} 약관에 동의하세요."

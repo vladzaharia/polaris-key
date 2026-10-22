@@ -230,8 +230,8 @@
     <string name="boot_consent_bodyMetered">%1$s necesita %2$s de contenido nuevo y estás en una conexión de uso medido.</string>
     <!-- Boot screen, shown while the product starts. -->
     <string name="boot_consent_download">Descargar</string>
-    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="boot_error_body">%1$s no pudo terminar de iniciarse. Inténtalo de nuevo.</string>
+    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. -->
+    <string name="boot_error_body">Si el problema continúa, reinicia la app.</string>
     <!-- Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="welcome_title">Te damos la bienvenida a %1$s</string>
     <!-- Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}. -->
@@ -428,8 +428,8 @@
     <string name="update_readyBody">Reinicia %1$s para terminar de actualizar.</string>
     <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_mandatoryTitle">Actualiza para seguir usando %1$s</string>
-    <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="update_mandatoryBody">Esta versión es anterior a la versión mínima admitida. Actualiza para seguir usando %1$s.</string>
+    <!-- UpdatePrompt: an app update. Mandatory update. -->
+    <string name="update_mandatoryBody">Esta versión ya no es compatible.</string>
     <!-- UpdatePrompt: an app update. No update is available yet. -->
     <string name="update_blockedTitle">Esta versión ya no es compatible</string>
     <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->

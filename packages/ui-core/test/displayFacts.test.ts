@@ -46,8 +46,7 @@ describe("the arguments a model fills from what it holds", () => {
       product: "Tidewater Studio",
     });
     expect(en.strings(viewOf("Boot", { ...base, ...error }))).toMatchObject({
-      "boot.error.body":
-        "Tidewater Studio couldn't finish starting. Try again.",
+      "boot.error.body": "If this keeps happening, restart the app.",
     });
     // The code stays on the view for logs and diagnostics; it is not in the copy.
     expect(viewOf("Boot", { ...base, ...error }).args).toMatchObject({
