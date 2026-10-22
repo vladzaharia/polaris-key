@@ -55,7 +55,7 @@
       "config": "config.list rows: [{key, type, source, locked, org?, value?, min?, max?, advanced?}].",
       "account": "{signedIn, holder?: account}: holder is the account signed in on this device (S-19), or absent.",
       "entitlement": "{name, entitled}.",
-      "offers": "{available, purchased?}.",
+      "offers": "{available, purchased?, url?}: url is the https page that sells the offer outside the app (a store page or the product's Polaris Locker page), from the integrator or the server; the hand-off shows only when the opener accepts it (DL14).",
       "toast": "{kind}: the toast being shown.",
       "error": "{code}: a core.codes code the step failed with."
     },
@@ -887,6 +887,11 @@
           "status.renew",
           "status.useAnotherLicense"
         ]
+      },
+      "mustNot": {
+        "invariant": "offer Try again or Reconnect on an expired license (Renew and Use another license are its controls)",
+        "copy": ["common.reconnect", "common.tryAgain"],
+        "actions": ["retry"]
       }
     },
     {
@@ -962,10 +967,12 @@
         "component": "StatusScreen",
         "state": "version-too-new",
         "copy": [
+          "common.tryAgain",
           "core.gate.version-too-new.message",
           "core.gate.version-too-new.title",
           "status.allowedMax"
-        ]
+        ],
+        "actions": ["retry"]
       },
       "mustNot": {
         "invariant": "collapse the five refusals into one error",
@@ -990,10 +997,26 @@
         "component": "StatusScreen",
         "state": "version-too-new",
         "copy": [
+          "common.tryAgain",
           "core.gate.version-too-new.message",
           "core.gate.version-too-new.title",
           "status.allowedRange"
-        ]
+        ],
+        "actions": ["retry"]
+      }
+    },
+    {
+      "name": "StatusScreen/version-too-new: Try again stays when no range is known",
+      "input": { "gate": { "status": "version-too-new" } },
+      "expect": {
+        "component": "StatusScreen",
+        "state": "version-too-new",
+        "copy": [
+          "common.tryAgain",
+          "core.gate.version-too-new.message",
+          "core.gate.version-too-new.title"
+        ],
+        "actions": ["retry"]
       }
     },
     {
@@ -1720,12 +1743,12 @@
         "component": "OfflineActivation",
         "state": "default",
         "copy": [
+          "a11y.qrRequest",
           "offlineActivation.copyCode",
           "offlineActivation.dropHint",
           "offlineActivation.loadFile",
           "offlineActivation.loadHint",
           "offlineActivation.paste",
-          "offlineActivation.product",
           "offlineActivation.request",
           "offlineActivation.submit",
           "offlineActivation.title"
@@ -1744,12 +1767,35 @@
         "component": "OfflineActivation",
         "state": "default",
         "copy": [
+          "a11y.qrRequest",
           "offlineActivation.copyCode",
           "offlineActivation.dropHint",
           "offlineActivation.loadFile",
           "offlineActivation.loadHint",
           "offlineActivation.paste",
-          "offlineActivation.product",
+          "offlineActivation.request",
+          "offlineActivation.submit",
+          "offlineActivation.title"
+        ]
+      }
+    },
+    {
+      "name": "OfflineActivation/default: the request QR on a phone too",
+      "input": {
+        "platform": { "os": "ios", "formFactor": "iphone" },
+        "capabilities": { "offlineActivation": true },
+        "offline": {}
+      },
+      "expect": {
+        "component": "OfflineActivation",
+        "state": "default",
+        "copy": [
+          "a11y.qrRequest",
+          "offlineActivation.copyCode",
+          "offlineActivation.dropHint",
+          "offlineActivation.loadFile",
+          "offlineActivation.loadHint",
+          "offlineActivation.paste",
           "offlineActivation.request",
           "offlineActivation.submit",
           "offlineActivation.title"
@@ -1765,7 +1811,18 @@
       "expect": {
         "component": "OfflineActivation",
         "state": "loaded",
-        "copy": ["offlineActivation.codeCopied", "offlineActivation.submit"]
+        "copy": [
+          "a11y.qrRequest",
+          "offlineActivation.codeCopied",
+          "offlineActivation.copyCode",
+          "offlineActivation.dropHint",
+          "offlineActivation.loadFile",
+          "offlineActivation.loadHint",
+          "offlineActivation.paste",
+          "offlineActivation.request",
+          "offlineActivation.submit",
+          "offlineActivation.title"
+        ]
       }
     },
     {
@@ -1777,7 +1834,17 @@
       "expect": {
         "component": "OfflineActivation",
         "state": "loaded",
-        "copy": ["offlineActivation.submit"]
+        "copy": [
+          "a11y.qrRequest",
+          "offlineActivation.copyCode",
+          "offlineActivation.dropHint",
+          "offlineActivation.loadFile",
+          "offlineActivation.loadHint",
+          "offlineActivation.paste",
+          "offlineActivation.request",
+          "offlineActivation.submit",
+          "offlineActivation.title"
+        ]
       },
       "mustNot": {
         "invariant": "treat a loaded file as a verified activation",
@@ -1794,7 +1861,18 @@
       "expect": {
         "component": "OfflineActivation",
         "state": "loaded",
-        "copy": ["offlineActivation.empty", "offlineActivation.submit"]
+        "copy": [
+          "a11y.qrRequest",
+          "offlineActivation.copyCode",
+          "offlineActivation.dropHint",
+          "offlineActivation.empty",
+          "offlineActivation.loadFile",
+          "offlineActivation.loadHint",
+          "offlineActivation.paste",
+          "offlineActivation.request",
+          "offlineActivation.submit",
+          "offlineActivation.title"
+        ]
       }
     },
     {
@@ -1807,8 +1885,16 @@
         "component": "OfflineActivation",
         "state": "rejected-signature",
         "copy": [
+          "a11y.qrRequest",
           "core.codes.bundle-jws-rejected.message",
-          "core.codes.bundle-jws-rejected.title"
+          "offlineActivation.copyCode",
+          "offlineActivation.dropHint",
+          "offlineActivation.loadFile",
+          "offlineActivation.loadHint",
+          "offlineActivation.paste",
+          "offlineActivation.request",
+          "offlineActivation.submit",
+          "offlineActivation.title"
         ]
       }
     },
@@ -1821,7 +1907,11 @@
       "expect": {
         "component": "OfflineActivation",
         "state": "done",
-        "copy": ["offlineActivation.done"]
+        "copy": [
+          "common.done",
+          "offlineActivation.done",
+          "offlineActivation.title"
+        ]
       }
     },
     {
@@ -8171,7 +8261,7 @@
         "component": "DeviceLimit",
         "state": "browser-mode",
         "copy": [
-          "a11y.qr",
+          "a11y.qrManage",
           "deviceLimit.browser",
           "deviceLimit.scan",
           "deviceLimit.title"
@@ -10398,11 +10488,45 @@
       "expect": {
         "component": "Paywall",
         "state": "not-available",
-        "copy": ["paywall.notAvailable"]
+        "copy": ["paywall.notAvailable", "paywall.title"]
       },
       "mustNot": {
         "invariant": "invent checkout",
-        "states": ["offers", "purchasing"]
+        "states": ["offers", "purchasing"],
+        "copy": ["paywall.portal"]
+      }
+    },
+    {
+      "name": "Paywall/not-available: hands off to the portal",
+      "input": {
+        "platform": { "os": "web", "formFactor": "computer" },
+        "entitlement": { "name": "pro.export", "entitled": false },
+        "offers": {
+          "available": false,
+          "url": "https://polaris.locker/activate?product=tidewater"
+        }
+      },
+      "expect": {
+        "component": "Paywall",
+        "state": "not-available",
+        "copy": ["paywall.notAvailable", "paywall.portal", "paywall.title"]
+      }
+    },
+    {
+      "name": "Paywall/not-available: a link that is not https is never offered",
+      "input": {
+        "platform": { "os": "web", "formFactor": "computer" },
+        "entitlement": { "name": "pro.export", "entitled": false },
+        "offers": { "available": false, "url": "http://tidewater.example/buy" }
+      },
+      "expect": {
+        "component": "Paywall",
+        "state": "not-available",
+        "copy": ["paywall.notAvailable", "paywall.title"]
+      },
+      "mustNot": {
+        "invariant": "open a link that is not https (DL14)",
+        "copy": ["paywall.portal"]
       }
     },
     {
