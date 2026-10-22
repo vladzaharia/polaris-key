@@ -218,6 +218,12 @@ export const ROUTE_LEDGER: readonly LedgerRow[] = [
     fate: "live",
   },
   {
+    id: "platform-activity",
+    scope: "global",
+    from: "platform/activity",
+    fate: "live",
+  },
+  {
     id: "platform-override-migration",
     scope: "global",
     from: "platform/override-migration",

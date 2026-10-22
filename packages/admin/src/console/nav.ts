@@ -42,6 +42,7 @@ import {
   Grid3x3,
   Image,
   HeartPulse,
+  History,
   House,
   KeyRound,
   KeySquare,
@@ -111,6 +112,7 @@ export type GlobalPageId =
   | "platform-stores"
   | "platform-connections"
   | "platform-feeds"
+  | "platform-activity"
   | "platform-override-migration";
 
 /** Pages scoped to one product (`#/p/<slug>/…`). */
@@ -867,6 +869,18 @@ const PLATFORM_PAGES: NavPage[] = [
         tabs: PACKAGE_TABS,
       },
     },
+  },
+  {
+    // ST-51: every product's trail and the platform's, one list. The Product facet scopes it.
+    page: "platform-activity",
+    label: "Activity",
+    keywords: "audit log history events changes who",
+    path: "platform/activity",
+    icon: History,
+    docs: "/docs/operate/console/activity/",
+    inNav: true,
+    group: "platform",
+    record: { noun: "Event" },
   },
   {
     // U-03: the one-time move of licence config and secret overrides onto account overrides,

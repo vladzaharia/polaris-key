@@ -487,14 +487,13 @@ describe("Status", () => {
     window.localStorage.removeItem("pk-admin-operations-auto-refresh");
   });
 
-  it("keeps the platform activity beneath it", async () => {
+  it("no longer carries the platform activity: it has its own page", async () => {
     boot("#/platform/status", { extra: route() });
     const page = await statusPage();
-    const panel = await within(page).findByRole("region", {
-      name: "Platform activity",
-    });
-    expect(await within(panel).findByText("Ada Lovelace")).toBeTruthy();
-    expect(within(panel).getByText(/re-sealed values under KEK/)).toBeTruthy();
+    await within(page).findByText(/Live since/);
+    expect(
+      within(page).queryByRole("region", { name: "Platform activity" }),
+    ).toBeNull();
   });
 
   it("answers the old Deployment and Operations addresses with Page moved, not a redirect", async () => {
@@ -516,7 +515,6 @@ describe("Status", () => {
   it("passes axe", async () => {
     boot("#/platform/status", { extra: route() });
     const page = await statusPage();
-    await within(page).findByText("Ada Lovelace");
     await within(page).findByText(/Live since/);
     const results = await axe(page);
     expect(results.violations.map((v) => v.id)).toEqual([]);
