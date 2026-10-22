@@ -78,3 +78,13 @@ describe("Personal tokens roster", () => {
     await waitFor(() => expect(document.activeElement).not.toBe(document.body));
   });
 });
+
+describe("Personal tokens breadcrumb", () => {
+  it("names Platform, where the sidebar lists the page, not Home", async () => {
+    boot("#/personal-tokens");
+    await screen.findByRole("heading", { level: 1, name: "Personal tokens" });
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(crumbs).getByText("Platform")).toBeTruthy();
+    expect(within(crumbs).queryByText("Home")).toBeNull();
+  });
+});

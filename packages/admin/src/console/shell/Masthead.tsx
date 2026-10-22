@@ -180,7 +180,13 @@ export function baseCrumbs(
       chip: "service",
     };
   }
-  if (page && isPlatformPage(page)) {
+  // The token pages sit under the sidebar's Platform links, so their parent is Platform, not Home.
+  if (
+    page &&
+    (isPlatformPage(page) ||
+      page === "api-tokens" ||
+      page === "personal-tokens")
+  ) {
     return { crumbs: [{ label: "Platform" }], chip: "platform" };
   }
   if (page === "home") {

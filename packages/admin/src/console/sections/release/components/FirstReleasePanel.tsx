@@ -109,14 +109,14 @@ export function FirstReleasePanel({
         <CheckRow
           key="app"
           state="checking"
-          title="Polaris Key app"
+          title="Polaris Key GitHub App"
           detail="Checking access to the repository…"
         />
       ) : health.isError || !github ? (
         <CheckRow
           key="app"
           state="todo"
-          title="Polaris Key app"
+          title="Polaris Key GitHub App"
           detail="Couldn't check access to the repository."
           action={
             <Button
@@ -132,7 +132,7 @@ export function FirstReleasePanel({
         <CheckRow
           key="app"
           state="done"
-          title="Polaris Key app installed"
+          title="Polaris Key GitHub App installed"
           detail={
             policy?.repository ? (
               <span className="font-mono">{policy.repository}</span>
@@ -145,7 +145,7 @@ export function FirstReleasePanel({
         <CheckRow
           key="app"
           state="failed"
-          title="Polaris Key app can't read the repository"
+          title="Polaris Key GitHub App can't read the repository"
           detail="Install the Polaris Key GitHub App on the repository, then check again."
           action={
             <Button

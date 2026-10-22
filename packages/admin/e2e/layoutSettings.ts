@@ -40,7 +40,207 @@ function asset(slot: string, over: Record<string, unknown> = {}) {
   };
 }
 
+const NOW_S = NOW;
+const DAY = 86_400;
+const ALL_ALERTS = [
+  "auto_halt",
+  "store_connection",
+  "commerce",
+  "access_changed",
+  "notifications_failing",
+];
+const WEBHOOK = {
+  id: "dst_hook000001",
+  scope: "_platform",
+  kind: "webhook",
+  target: "https://hooks.example.com/…",
+  label: "Ops channel",
+  alerts: ["auto_halt", "commerce"],
+  enabled: true,
+  version: 1,
+  lastStatus: "failed",
+  lastAt: NOW_S - 3600,
+  lastError: "HTTP 404 from hooks.example.com",
+  failures: 2,
+};
+const EMAIL = {
+  ...WEBHOOK,
+  id: "dst_mail000001",
+  kind: "email",
+  target: "ops@example.com",
+  label: null,
+  alerts: ALL_ALERTS,
+  lastStatus: "ok",
+  lastError: null,
+  failures: 0,
+};
+const personalToken = (over: Record<string, unknown>) => ({
+  id: "pt_a",
+  email: "ada@example.com",
+  label: "Ada laptop",
+  hint: "Hq2a",
+  scope: "packages:read",
+  createdAt: NOW_S - 60 * DAY,
+  expiresAt: NOW_S + 90 * DAY,
+  lastUsedAt: NOW_S - 3600,
+  revokedAt: null,
+  revokeReason: null,
+  status: "active",
+  ...over,
+});
+const apiToken = (over: Record<string, unknown>) => ({
+  id: "apitok_active01",
+  label: "CI bundle minter",
+  scopes: ["bundles:mint"],
+  createdAt: NOW_S - 30 * DAY,
+  expiresAt: NOW_S + 60 * DAY,
+  lastUsedAt: NOW_S - 7200,
+  revokedAt: null,
+  status: "active",
+  ...over,
+});
+const listing = {
+  listing: {
+    app: { defaultLocale: "en-US", name: "DJDL" },
+    source: "admin",
+    provenance: {},
+    modifiedAt: NOW_S - DAY,
+    modifiedBy: "u1",
+  },
+  locales: [],
+  overrides: [],
+  limits: { name: 30 },
+  stores: [],
+  overrideStores: [],
+  modelFields: [],
+};
+const licensing = (
+  key: string,
+  label: string,
+  value: unknown,
+  spec: unknown,
+) => ({
+  key,
+  area: "license.licensing",
+  service: "license",
+  label,
+  description: `What ${label.toLowerCase()} does.`,
+  docs: "/docs/features/licensing/access/",
+  spec,
+  confirm: { change: "L1" },
+  critical: false,
+  manifestPath: `product:${key}`,
+  visibleWhen: { service: "license", offBehaviour: "hide" },
+  serviceEnabled: true,
+  value,
+  source: "default",
+  defaultValue: value,
+  version: 0,
+  updatedAt: null,
+  updatedBy: null,
+  reason: null,
+});
+
+/** The pages the layout gate used to pass in an error state: tokens, two Platform sections, Listing, License settings. */
+const EXTRA_ROUTES: Record<string, unknown> = {
+  "/manage/api/platform/alerts": {
+    destinations: [WEBHOOK, EMAIL],
+    kinds: [
+      { id: "auto_halt", label: "Auto-halt tripped", sent: true },
+      {
+        id: "store_connection",
+        label: "Store connection failing",
+        sent: false,
+      },
+      { id: "commerce", label: "Commerce problem", sent: false },
+      { id: "access_changed", label: "Access changed", sent: false },
+      {
+        id: "notifications_failing",
+        label: "A destination is failing",
+        sent: true,
+      },
+    ],
+    max: 5,
+    emailAvailable: true,
+  },
+  "/manage/api/platform/reserved-names": {
+    mode: "warn",
+    keys: [
+      {
+        key: "deviceLimit",
+        type: "integer",
+        rule: "The license's own device limit, else the tier's, else the license's deviceLimit entitlement, else the product default.",
+      },
+    ],
+    prefixes: ["license.", "app.", "pkey."],
+    products: [
+      {
+        slug: "djdl",
+        name: "DJDL",
+        catalogVersion: 1,
+        declarations: [{ key: "deviceLimit", compatible: true, problem: null }],
+      },
+    ],
+  },
+  "/manage/api/account-tokens": {
+    tokens: [
+      personalToken({}),
+      personalToken({
+        id: "pt_long",
+        label:
+          "A deliberately long label for a build server in the Tidewater cluster",
+        email:
+          "someone.with.an.extraordinarily.long.address.for.testing@a-very-long-company-domain.example.com",
+      }),
+      personalToken({
+        id: "pt_rev",
+        label: "Old",
+        status: "revoked",
+        revokedAt: NOW_S - DAY,
+        revokeReason: "admin",
+      }),
+    ],
+  },
+  "/manage/api/tokens": {
+    tokens: [
+      apiToken({}),
+      apiToken({
+        id: "apitok_expired1",
+        label: "Old release laptop",
+        status: "expired",
+        expiresAt: NOW_S - DAY,
+        lastUsedAt: null,
+      }),
+      apiToken({
+        id: "apitok_revoked1",
+        label: "Leaked laptop token",
+        status: "revoked",
+        revokedAt: NOW_S - 10 * DAY,
+      }),
+    ],
+  },
+  [`${P}/distribution/listing`]: listing,
+  // License → Settings draws only its header without rows in the `license.licensing` area.
+  [`${P}/settings/effective`]: {
+    settings: [
+      licensing(
+        "licensing.anchorPolicy",
+        "Anchor license choice",
+        "rank-first",
+        { kind: "enum", values: ["rank-first", "most-free-seats", "oldest"] },
+      ),
+      licensing(
+        "licensing.clampGraceToExpiry",
+        "Clamp offline grace to expiry",
+        true,
+        { kind: "boolean" },
+      ),
+    ],
+  },
+};
+
 export const SETTINGS_ROUTES: Record<string, unknown> = {
+  ...EXTRA_ROUTES,
   // Settings → Differs from the manifest (ST-17): one claim that differs, one kept as the manifest has it.
   [`${P}/settings/drift`]: {
     snapshot: {

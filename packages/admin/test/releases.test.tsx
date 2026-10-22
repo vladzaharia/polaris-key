@@ -290,7 +290,9 @@ describe("Releases page (T2, ADMIN.md §6.3.1)", () => {
       await screen.findByRole("heading", { name: "Ship your first release" }),
     ).toBeTruthy();
     expect(screen.queryByRole("table")).toBeNull();
-    expect(await screen.findByText("Polaris Key app installed")).toBeTruthy();
+    expect(
+      await screen.findByText("Polaris Key GitHub App installed"),
+    ).toBeTruthy();
     expect(screen.getByText("Waiting for the first release…")).toBeTruthy();
   });
 

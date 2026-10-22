@@ -338,7 +338,7 @@ export function TermsSection({
   return (
     <SettingsSection id="terms" title="Terms">
       <SettingsRow
-        label="Polaris Key's Terms and Privacy Policy"
+        label="Polaris Locker's Terms and Privacy Policy"
         help="Once per account"
       >
         <span className="text-sm text-fg-muted">Set by the platform</span>

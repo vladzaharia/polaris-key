@@ -580,7 +580,7 @@ export function MatrixBoard({
           kind="first-run"
           headingLevel={2}
           title="No channels declared"
-          description="Channels are the places a release reaches: Polaris Key downloads, the stores, the install sources. Declare them in .pkey/distribution and resync."
+          description="Channels are the places a release reaches: Polaris Locker downloads, the stores, the install sources. Declare them in .pkey/distribution and resync."
           docs={docsUrl("rolloutControl")}
         />
       ) : rows.length === 0 ? (
