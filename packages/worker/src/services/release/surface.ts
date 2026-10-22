@@ -254,7 +254,7 @@ export async function serveReleaseSurface(
 }
 
 /** The compute step plus the two upstream error mappings, hardened. */
-async function runSurface(
+export async function runSurface(
   compute: (ctx: SurfaceContext) => Promise<Response>,
   ctx: SurfaceContext,
 ): Promise<Response> {

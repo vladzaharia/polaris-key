@@ -24,16 +24,29 @@ import { resolvedReleaseRefusal } from "../../core/licensing/entitledAccess.js";
 import type { UpdateArch } from "@polaris-key/protocol/update";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { FetchImpl } from "../release/githubApp.js";
-import { fetchTextAsset, getReleaseByTag } from "../release/github.js";
+import {
+  fetchTextAsset,
+  getReleaseByTag,
+  type Release,
+} from "../release/github.js";
 import { matchAsset, normalizeArch, sigAssetName } from "../release/assets.js";
 import { extractSummary } from "../release/changelog.js";
-import { isMovingSelector, versionFromTag } from "../release/channels.js";
+import {
+  isMovingSelector,
+  versionFromTag,
+  type ChannelSelector,
+} from "../release/channels.js";
+import {
+  resolveStoreSelector,
+  storeReleaseByTag,
+} from "../release/storeRelease.js";
 import { verifySparkleSignature } from "../release/sparkle.js";
 import {
   accessModeFor,
   artifactPolicy,
   isResolved,
   operatorPolicy,
+  type ResolvedConfig,
 } from "../release/config.js";
 import {
   APPCAST_CACHE,
@@ -100,37 +113,71 @@ export function handleUpdate(
     fetchImpl,
     (ctx) =>
       kind === "version"
-        ? handleVersion(ctx)
-        : handleAppcast(
+        ? computeVersion(ctx, "legacy")
+        : computeAppcast(
             kind === "appcast"
               ? { ...ctx.params, channel: "stable" }
               : ctx.params,
             ctx,
             artifactsAccess,
             waitUntil,
+            "legacy",
           ),
     artifactsAccess !== undefined ? { artifactsAccess } : {},
   );
 }
 
-async function handleVersion({
-  req,
-  env,
-  db,
-  cfg,
-  product,
-  params,
-  now,
-  fetchImpl,
-}: SurfaceContext): Promise<Response> {
+/**
+ * Where a compute step reads the release from (P2-12.4, plans/P2-12.md §6.3).
+ *
+ *   `legacy`: GitHub, as every served route does today (`resolveSelector`, the `v<version>` twin
+ *             by a tag lookup).
+ *   `store`:  the truth store in GitHub's shape (`resolveStoreSelector`, the twin from the same
+ *             rows). Not routed in PR 1: the comparison job (`resolverCompare.ts`) and the golden
+ *             suite are its only callers; PR 2 routes to it.
+ *
+ * The two steps share every line after the resolution, so they differ in nothing but the release
+ * they are given. The Sparkle sidecar and DMG still come from GitHub by asset id in both
+ * (P2-12.5 moves what it moves).
+ */
+export type UpdateStep = "legacy" | "store";
+
+interface StepSource {
+  resolve(selector: string | undefined): Promise<{
+    release: Release;
+    sel: ChannelSelector;
+  }>;
+  /** The release tagged exactly `tag`, or null (the appcast's `v<version>` twin check). */
+  byTag(tok: string, tag: string): Promise<Release | null>;
+}
+
+function stepSource(
+  step: UpdateStep,
+  { env, db, now, fetchImpl }: SurfaceContext,
+  cfg: ResolvedConfig,
+): StepSource {
+  if (step === "store")
+    return {
+      resolve: (selector) => resolveStoreSelector(db, cfg, selector),
+      byTag: (_tok, tag) => storeReleaseByTag(db, cfg, tag),
+    };
+  return {
+    resolve: (selector) =>
+      resolveSelector(env, db, cfg, selector, now, fetchImpl),
+    byTag: (tok, tag) =>
+      getReleaseByTag(tok, cfg.gh_owner, cfg.gh_repo, tag, fetchImpl),
+  };
+}
+
+/** The version check (`/update/version`) as the legacy or the store step computes it. */
+export async function computeVersion(
+  ctx: SurfaceContext,
+  step: UpdateStep,
+): Promise<Response> {
+  const { req, env, db, cfg, product, params, now } = ctx;
   if (!isResolved(cfg)) return notFound();
-  const { release, sel } = await resolveSelector(
-    env,
-    db,
-    cfg,
+  const { release, sel } = await stepSource(step, ctx, cfg).resolve(
     params.version ?? params.channel,
-    now,
-    fetchImpl,
   );
   // The window is re-asserted against the RESOLVED release. `/update/version` is the surface
   // that TELLS a caller which version is current, so answering `latest` or a channel with a
@@ -158,24 +205,21 @@ async function handleVersion({
   );
 }
 
-async function handleAppcast(
+/** The appcast and channel appcast as the legacy or the store step computes them. */
+export async function computeAppcast(
   params: ReleaseParams,
-  { req, env, db, cfg, product, origin, now, fetchImpl }: SurfaceContext,
+  ctx: SurfaceContext,
   artifactsAccess: ReleaseAccess | undefined,
-  waitUntil?: (promise: Promise<unknown>) => void,
+  waitUntil: ((promise: Promise<unknown>) => void) | undefined,
+  step: UpdateStep,
 ): Promise<Response> {
+  const { req, env, db, cfg, product, origin, now, fetchImpl } = ctx;
   if (!isResolved(cfg)) return notFound();
   const binaryName = cfg.binary_name ?? product.slug;
   const arch = params.arch ?? DEFAULT_APPCAST_ARCH;
   const selectorStr = params.channel ?? params.version ?? "stable";
-  const { release, sel } = await resolveSelector(
-    env,
-    db,
-    cfg,
-    selectorStr,
-    now,
-    fetchImpl,
-  );
+  const source = stepSource(step, ctx, cfg);
+  const { release, sel } = await source.resolve(selectorStr);
   const policy = artifactPolicy(cfg, artifactsAccess);
   // A bare `/update/appcast.xml` or a channel appcast names no version, so the grant's ceiling
   // was never applied to it: the release the selector resolved to is checked now. The feed's
@@ -224,13 +268,7 @@ async function handleAppcast(
   // releases; ignoring the `v`-tag does not help, because the pinned lookup never consults
   // ignoreTags (test/releaseResolution.test.ts pins both).
   if (sel.kind === "stable" && release.tag_name !== `v${segment}`) {
-    const shadow = await getReleaseByTag(
-      tok,
-      cfg.gh_owner,
-      cfg.gh_repo,
-      `v${segment}`,
-      fetchImpl,
-    );
+    const shadow = await source.byTag(tok, `v${segment}`);
     if (shadow && shadow.tag_name !== release.tag_name) return notFound();
   }
 

@@ -30,7 +30,12 @@ import {
 import type { ReleaseConfigRow } from "./config.js";
 import { NotFoundError, type Release, type ReleaseAsset } from "./github.js";
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
-import { loadDeliverableState, resolveInState, tagOf } from "./resolve.js";
+import {
+  hiddenFor,
+  loadDeliverableState,
+  resolveInState,
+  tagOf,
+} from "./resolve.js";
 import type { ReleaseArtifactRow, ReleaseMetadataRow } from "./store.js";
 
 /** GitHub's asset digest as the store keeps it, lower-case (SR-P1 N5). */
@@ -184,4 +189,71 @@ export async function resolveStoreSelector(
     : null;
   if (!release) throw new NotFoundError(`no release for selector: ${raw}`);
   return { release, sel };
+}
+
+/**
+ * The release GitHub would answer for the exact tag `tag` (`getReleaseByTag`), from the store:
+ * the legacy view's rows only, so a release the sync did not list or saw gone upstream is null,
+ * as GitHub's 404 is. The appcast's `v<version>` twin check reads it (plan §6.1).
+ */
+export async function storeReleaseByTag(
+  db: Db,
+  cfg: ReleaseConfigRow,
+  tag: string,
+): Promise<Release | null> {
+  const state = await loadDeliverableState(
+    db,
+    cfg.product,
+    APP_DELIVERABLE_ID,
+    cfg,
+    { narrow: true, view: "legacy" },
+  );
+  if (!state || hiddenFor(state, "legacy").has(tag)) return null;
+  return storeRelease(db, cfg.product, tag);
+}
+
+/** Whether a described release holds a file row GitHub's listing for it does not contain. */
+export async function describedFilesGitHubLacks(
+  db: Db,
+  product: string,
+  releaseId: string,
+): Promise<boolean> {
+  const meta = await db.first<{ metadata_json: string | null }>(
+    "SELECT metadata_json FROM release_metadata WHERE product = ? AND release_id = ? AND deliverable_id = ?",
+    product,
+    releaseId,
+    APP_DELIVERABLE_ID,
+  );
+  let listed: Set<string> | null = null;
+  try {
+    const raw = meta?.metadata_json
+      ? (JSON.parse(meta.metadata_json) as { listedAssets?: unknown })
+          .listedAssets
+      : undefined;
+    if (raw && typeof raw === "object" && !Array.isArray(raw))
+      listed = new Set(Object.keys(raw));
+  } catch {
+    listed = null;
+  }
+  const files = await db.all<{ artifact_id: string }>(
+    "SELECT artifact_id FROM release_artifacts WHERE product = ? AND release_id = ? AND build_id IS NOT NULL",
+    product,
+    releaseId,
+  );
+  return files.some(
+    (a) =>
+      !/^\d+$/.test(a.artifact_id) || (listed && !listed.has(a.artifact_id)),
+  );
+}
+
+/** The channels that have a recorded anti-rollback floor (R6-10). */
+export async function flooredChannels(
+  db: Db,
+  product: string,
+): Promise<string[]> {
+  const rows = await db.all<{ channel: string }>(
+    "SELECT channel FROM release_channel_floors WHERE product = ?",
+    product,
+  );
+  return rows.map((r) => r.channel);
 }
