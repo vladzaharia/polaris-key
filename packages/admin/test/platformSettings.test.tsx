@@ -1,12 +1,4 @@
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
   fireEvent,
@@ -41,12 +33,15 @@ const axe = configureAxe({
 // first test does not pay its first transform and evaluation inside a findBy wait (it took ~900 ms
 // of the 1 s budget alone, and missed it in a loaded deploy Verify run). The product's own
 // settings (ST-27, `#/p/djdl/settings`) are the Core section's chunk and miss the same way.
-beforeAll(async () => {
-  await Promise.all([
-    import("../src/console/sections/platform/index.js"),
-    import("../src/console/sections/core/index.js"),
-  ]);
-});
+//
+// This is a top-level await, not a `beforeAll`: the warm-up is ~400 modules of cold transform
+// (about 1 s here, over 10 s on a loaded runner), and a hook is bound by `hookTimeout` (10 s), so
+// a loaded CI run failed the whole file with "Hook timed out" although nothing asserted had run.
+// Loading the file is not time-limited the same way, and the 1 s render budget below still is.
+await Promise.all([
+  import("../src/console/sections/platform/index.js"),
+  import("../src/console/sections/core/index.js"),
+]);
 beforeEach(resetConsole);
 afterEach(() => {
   cleanup();
