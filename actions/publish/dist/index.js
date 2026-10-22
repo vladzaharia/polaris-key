@@ -25851,6 +25851,22 @@ async function withAdminCredential(io, command, run2, personalOnly = false) {
         return 4;
       }
     }
+    if (!(e instanceof UsageError) && !isInternalError(e)) {
+      const message = untrustedLines(networkMessage(e), io.env);
+      if (!isUsageError(message)) {
+        const [first = "", ...rest] = message.split("\n");
+        if (io.json && io.stdout)
+          io.stdout.write(
+            envelope(command, 1, {
+              error: networkCode(e) ? "network" : "failed",
+              message: first,
+              ...rest.length ? { fix: rest.join(" ") } : {}
+            })
+          );
+        else io.stderr.write(block(t, "fail", plain2(first, ...rest)));
+        return 1;
+      }
+    }
     throw e;
   }
 }
@@ -48148,7 +48164,9 @@ function adminIo(parsed, rt) {
     stderr: rt.stderr,
     term: rt.term,
     store: rt.store,
-    fetchImpl: rt.ci.fetchImpl
+    fetchImpl: rt.ci.fetchImpl,
+    json: flagBool(parsed, "json"),
+    stdout: rt.stdout
   };
 }
 function unknownCommand(name, term, parent) {
