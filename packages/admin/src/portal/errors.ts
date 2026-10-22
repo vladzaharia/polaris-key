@@ -1,23 +1,14 @@
 import { PortalApiError } from "./api.js";
 import { t } from "../lib/copy.js";
 import { helpForRefusal } from "./helpLinks.js";
+import { HelpLink } from "./components/HelpLink.js";
+import type { PortalVoice, PortalVoiceCopy } from "../ui/errorVoice.js";
 
 /**
  * Error copy for the customer site (PORTAL.md §6.4): what happened, in the person's terms, and
  * the next step. Never an HTTP status, an internal code or "portal api 404".
  */
-export interface PortalErrorCopy {
-  title: string;
-  description: string;
-  /** Whether trying again can help (a Retry button is offered). */
-  retry: boolean;
-  /** Title and description as one line, for a message with no heading above it. */
-  line: string;
-  /** The catalog's catch-all (`core.codes.unknown`): a page may say what failed instead. */
-  generic?: boolean;
-  /** The Help page that explains this refusal, when there is one (DOC-06a). */
-  help?: string;
-}
+export type PortalErrorCopy = PortalVoiceCopy;
 
 export function isSignedOut(err: unknown): boolean {
   return (
@@ -142,3 +133,22 @@ export function portalErrorCopy(
   }
   return fromCode("unknown", true);
 }
+
+/** What a bug report needs from a failed load: the refusal's code and status, or the error's name and message. */
+function errorDetails(error: unknown): Record<string, unknown> {
+  if (error instanceof PortalApiError)
+    return { code: error.code, status: error.status, message: error.message };
+  if (error instanceof Error)
+    return { name: error.name, message: error.message };
+  return { message: String(error) };
+}
+
+/** The customer site's voice for `ErrorState` (mounted by `PortalApp`). */
+export const portalVoice: PortalVoice = {
+  tone: "portal",
+  copy: (error, opts) => portalErrorCopy(error, opts),
+  details: errorDetails,
+  retryLabel: t("signin.retry"),
+  helpLabel: t("locker.help.whatToDo"),
+  HelpLink,
+};

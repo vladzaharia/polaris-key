@@ -51,6 +51,8 @@ import {
   type PortalRoute,
 } from "./router.js";
 import { bindWriteInvalidation, mutate } from "./mutations.js";
+import { portalVoice } from "./errors.js";
+import { ErrorVoiceProvider } from "../ui/errorVoice.js";
 import { qkFamily } from "./queries.js";
 import { t } from "../lib/copy.js";
 
@@ -72,9 +74,11 @@ export function PortalApp(): React.ReactElement {
   return (
     <ThemeProvider>
       <QueryClientProvider client={client}>
-        <AppToaster phoneBottom />
-        <Announcer />
-        <Boot />
+        <ErrorVoiceProvider voice={portalVoice}>
+          <AppToaster phoneBottom />
+          <Announcer />
+          <Boot />
+        </ErrorVoiceProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );
