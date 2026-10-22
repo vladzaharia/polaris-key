@@ -1838,6 +1838,10 @@ func size_glyph(r: TextureRect, px := 24.0, tint := Color.WHITE) -> void:
 	r.modulate = tint
 
 
+## HorizontalAlignment's trailing value: the engine's Button mirrors it under right-to-left layout.
+const ICON_AFTER_LABEL := 2
+
+
 ## The new-window glyph on an action that leaves the app (UI-KITS.md §1.5 rule 11, DL6): drawn after
 ## the label in the button's own text colours (white, tinted by the button's icon colours) at `px`
 ## logical pixels, and described to a screen reader as the catalog's `a11y.externalLink` ("Opens in
@@ -1852,7 +1856,7 @@ func leaves_app(b: Button, leaves := true, px := 16.0) -> void:
 	var m := layout_metrics()
 	var k := float(m["scale"]) * float(m["physical"])
 	b.icon = PKeyUiTheme.glyph("new_window", Color.WHITE, px, k * 2.0)
-	b.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	b.icon_alignment = ICON_AFTER_LABEL as HorizontalAlignment
 	b.expand_icon = false
 	b.add_theme_constant_override("icon_max_width", maxi(12, roundi(px * float(m["scale"]))))
 	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
