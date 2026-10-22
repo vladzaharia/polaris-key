@@ -88,8 +88,36 @@ export interface BridgeHostFacts {
   reducedTransparency?: boolean;
 }
 
+/** The part of an Electron `Notification` instance the bridge uses. */
+export interface NotificationLike {
+  show(): void;
+  on(event: "click" | "close", listener: () => void): unknown;
+}
+
+/** Electron's `Notification` class, injected (this module imports no `electron`). */
+export interface NotificationClassLike {
+  new (options: { title: string; body: string }): NotificationLike;
+  isSupported?(): boolean;
+}
+
+/** Opt-in OS notifications (UK-06.5): two events, each only while the app is not focused. */
+export interface BridgeNotifications {
+  /** Electron's `Notification` class. */
+  Notification: NotificationClassLike;
+  /** Whether the app has focus right now; a notification is shown only when this is false. */
+  isAppFocused: () => boolean;
+  /** Runs when the person clicks a notification: focus the host window. */
+  onClick?: () => void;
+  /** The kit-copy locale of the text (default English). */
+  locale?: string;
+}
+
 export interface ExposePolarisBridgeOptions {
   ipcMain: IpcMainLike;
+  /** OS notifications for "update ready to restart" and "signed in", only while the app is not
+   *  focused. Without it the bridge shows none. The text is the kit copy's `notify.*` keys:
+   *  static sentences, never a key, code, email or license id. */
+  notifications?: BridgeNotifications;
   /** Electron's `systemPreferences` and `nativeTheme`, for the accent colour, high contrast and
    *  reduced transparency in `state.host`. Without it `host` carries the OS only. */
   electron?: HostElectronLike;
@@ -714,6 +742,7 @@ export function exposePolarisBridge(
       pendingRestart = null;
       if (outcome.kind === "restartRequired") {
         pendingRestart = outcome.restart;
+        notify("updateReady");
         return { kind: outcome.kind, version: outcome.version };
       }
       return outcome;
@@ -1015,6 +1044,7 @@ export function exposePolarisBridge(
         case "ready":
           forgetFlow(flowId as string);
           pushState();
+          notify("signedIn");
           return r.identity
             ? { kind: "ok", identity: r.identity }
             : { kind: "ok" };
@@ -1089,6 +1119,38 @@ export function exposePolarisBridge(
     );
   }
 
+  // OS notifications (opt-in). A failure here is never the verb's failure.
+  const live = new Set<NotificationLike>();
+  const notify = (kind: "updateReady" | "signedIn"): void => {
+    const n = opts.notifications;
+    if (!n) return;
+    try {
+      if (n.isAppFocused()) return;
+      if (n.Notification.isSupported && !n.Notification.isSupported()) return;
+      const locale = resolveLocale(n.locale);
+      const text = (part: "title" | "body"): string =>
+        KIT_COPY[locale][`notify.${kind}.${part}`] ??
+        KIT_COPY.en[`notify.${kind}.${part}`]!;
+      const note = new n.Notification({
+        title: text("title"),
+        body: text("body"),
+      });
+      live.add(note); // kept until it is clicked or closed, so it is not collected unseen
+      note.on("click", () => {
+        live.delete(note);
+        try {
+          n.onClick?.();
+        } catch {
+          // The host's focus handler failing is its own.
+        }
+      });
+      note.on("close", () => void live.delete(note));
+      note.show();
+    } catch {
+      // No notification is better than a failed install or sign-in.
+    }
+  };
+
   const open = (view: KitView): void => {
     if (!KIT_VIEWS.includes(view))
       throw new Error(`open(): ${String(view)} is not a view the kit opens.`);
@@ -1140,6 +1202,7 @@ export function exposePolarisBridge(
       offPresentation();
       for (const id of [...flows.keys()]) forgetFlow(id);
       subscribers.clear();
+      live.clear();
     },
   };
 }

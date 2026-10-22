@@ -128,6 +128,8 @@ export const KEY_NAMESPACES = [
   "cli",
   // The Electron host's app-menu items (UK-06.4): the host places them, no kit component shows them.
   "menu",
+  // The Electron host's opt-in OS notifications (UK-06.5): static text, no kit component.
+  "notify",
 ] as const;
 
 /**
@@ -151,6 +153,7 @@ const SHARED_NAMESPACES = new Set([
   "signin",
   "cli",
   "menu",
+  "notify",
   ...PORTAL_NAMESPACES,
 ]);
 

@@ -1315,6 +1315,26 @@ msgctxt "macos"
 msgid "menu.manageLicense"
 msgstr "라이선스 관리"
 
+#. Update ready
+#. Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.updateReady.title"
+msgstr "업데이트 준비 완료"
+
+#. Restart to finish updating.
+#. Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.updateReady.body"
+msgstr "다시 시작하면 업데이트가 완료됩니다."
+
+#. Signed in
+#. Title. A sign-in finished in the browser. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.signedIn.title"
+msgstr "로그인됨"
+
+#. You're signed in on this device.
+#. Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.signedIn.body"
+msgstr "이 기기에서 로그인했습니다."
+
 #. Downloading content
 #. UpdateProgress: compact progress for an app update or a content pack.
 msgid "updateProgress.contentTitle"

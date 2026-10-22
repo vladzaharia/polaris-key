@@ -477,6 +477,14 @@
     <!-- App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane. -->
     <string name="menu_manageLicense">라이선스 관리</string>
     <string name="menu_manageLicense__macos">라이선스 관리</string>
+    <!-- Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_updateReady_title">업데이트 준비 완료</string>
+    <!-- Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_updateReady_body">다시 시작하면 업데이트가 완료됩니다.</string>
+    <!-- Title. A sign-in finished in the browser. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_signedIn_title">로그인됨</string>
+    <!-- Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id. -->
+    <string name="notify_signedIn_body">이 기기에서 로그인했습니다.</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->
     <string name="updateProgress_contentTitle">콘텐츠 다운로드 중</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->

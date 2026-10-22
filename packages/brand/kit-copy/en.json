@@ -1014,6 +1014,26 @@
         "macos": "Manage License…"
       }
     },
+    "notify.updateReady.title": {
+      "value": "Update ready",
+      "role": "title",
+      "note": "Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id."
+    },
+    "notify.updateReady.body": {
+      "value": "Restart to finish updating.",
+      "role": "body",
+      "note": "Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id."
+    },
+    "notify.signedIn.title": {
+      "value": "Signed in",
+      "role": "title",
+      "note": "Title. A sign-in finished in the browser. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id."
+    },
+    "notify.signedIn.body": {
+      "value": "You're signed in on this device.",
+      "role": "body",
+      "note": "Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id."
+    },
     "updateProgress.contentTitle": {
       "value": "Downloading content",
       "role": "title",

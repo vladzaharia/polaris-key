@@ -1323,6 +1323,26 @@ msgctxt "macos"
 msgid "menu.manageLicense"
 msgstr "Gerenciar a licença"
 
+#. Update ready
+#. Title. An update was installed and needs a restart. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.updateReady.title"
+msgstr "Atualização pronta"
+
+#. Restart to finish updating.
+#. Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.updateReady.body"
+msgstr "Reinicie para concluir a atualização."
+
+#. Signed in
+#. Title. A sign-in finished in the browser. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.signedIn.title"
+msgstr "Login concluído"
+
+#. You're signed in on this device.
+#. Body. OS notification from the Electron host, shown only while the app is not focused. Static text: never a key, code, email or license id.
+msgid "notify.signedIn.body"
+msgstr "Você entrou neste dispositivo."
+
 #. Downloading content
 #. UpdateProgress: compact progress for an app update or a content pack.
 msgid "updateProgress.contentTitle"
