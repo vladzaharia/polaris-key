@@ -116,6 +116,8 @@ const PRODUCTS = [
     packageFeeds: true,
     presentation: { icon: null },
   }),
+  // F-34.7: two declared packages, none published yet (see `waitingFeeds`).
+  product("waiting", "Waiting product", { presentation: { icon: null } }),
 ];
 
 const ME = {
@@ -276,7 +278,56 @@ function emptied(v: unknown, key = ""): unknown {
   return v;
 }
 
+/**
+ * F-34.7: the `waiting` product has declared an npm and a Swift package and published neither,
+ * with a package deliverable each: the Packages cards draw "Waiting…" and the publish command.
+ */
+function waitingFeeds(pathname: string): unknown {
+  const base = "/manage/api/products/waiting";
+  if (pathname === `${base}/distribution/feeds`) {
+    const src = ROUTES[`${P}/distribution/feeds`] as {
+      feeds: Record<string, unknown>[];
+    };
+    return {
+      ...src,
+      feeds: src.feeds.map((f) =>
+        f.ecosystem === "npm" || f.ecosystem === "swift"
+          ? {
+              ...f,
+              configured: true,
+              enabled: true,
+              status: "enabled",
+              reason: null,
+              packages: 0,
+              versions: 0,
+              lastPublishedAt: null,
+            }
+          : { ...f, configured: false },
+      ),
+    };
+  }
+  if (pathname === `${base}/release/deliverables`)
+    return {
+      gateKnown: true,
+      deliverables: [
+        {
+          id: "npm.sourcekit",
+          kind: "package",
+          type: "npm",
+        },
+        {
+          id: "swift.sourcekit",
+          kind: "package",
+          type: "swift",
+        },
+      ],
+    };
+  return undefined;
+}
+
 export function resolve(pathname: string): unknown {
+  const waiting = waitingFeeds(pathname);
+  if (waiting !== undefined) return waiting;
   const empty = "/manage/api/products/empty";
   if (pathname === empty) return { product: PRODUCTS[4] };
   if (pathname.startsWith(`${empty}/`)) {

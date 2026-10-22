@@ -16,6 +16,7 @@ import type {
 } from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { formatCount, fromSeconds } from "../../../../lib/format.js";
+import { Button } from "../../../../ui/Button.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
 import { Section } from "../../../../ui/Section.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
@@ -37,7 +38,7 @@ import {
   type FeedScope,
 } from "../model/model.js";
 import { FeedStatusPill } from "./FeedsArea.js";
-import { CommandLine, publishCommand } from "./PackagesEmpty.js";
+import { BUILD_DIR, CommandLine, publishCommand } from "./PackagesEmpty.js";
 
 /** The feeds the product has (the ones a declared package provisioned), in tab order. */
 export function provisionedFeeds(data: FeedsOverviewDto): FeedSummary[] {
@@ -152,7 +153,7 @@ function PackageRows({
   const label = ECOSYSTEM_LABELS[feed.ecosystem];
   const rows = (query.data?.pages[0]?.items ?? []).slice(0, CARD_ROWS);
   const tracks = tracksOf(rows);
-  const more = feed.packages - rows.length;
+  const more = query.data ? feed.packages - rows.length : 0;
   return (
     <>
       {query.isPending ? (
@@ -166,49 +167,72 @@ function PackageRows({
           aria-label={`${label} packages`}
           className="m-0 list-none divide-y divide-border p-0"
         >
-          {rows.map((r) => (
-            <li
-              key={`${r.owner}/${r.deliverableId}`}
-              className="flex flex-col gap-1 py-2 first:pt-0 last:pb-0"
-            >
-              <Link
-                to={packageHref(scope, feed.ecosystem, r.owner, r.name)}
-                className="break-all font-mono text-sm text-fg-strong underline-offset-2 hover:underline"
+          {rows.map((r) => {
+            const ownTracks = tracks.filter((t) =>
+              r.tags.some((x) => x.channel === t),
+            );
+            return (
+              <li
+                key={`${r.owner}/${r.deliverableId}`}
+                className="flex flex-col gap-1 py-2 first:pt-0 last:pb-0"
               >
-                {r.name}
-              </Link>
-              <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-fg-muted">
-                {tracks.map((t) => {
-                  const tag = r.tags.find((x) => x.channel === t);
-                  return (
-                    <span key={t} className="font-mono">
-                      {t}{" "}
-                      {tag ? (
-                        <span className="text-fg">{tag.version}</span>
-                      ) : (
-                        <span aria-label="none">—</span>
-                      )}
-                    </span>
-                  );
-                })}
-                <span>
-                  {tracks.length ? <Sep /> : null}
-                  {formatCount(r.versions)}{" "}
-                  {r.versions === 1 ? "version" : "versions"}
-                </span>
-                {r.lastPublishedAt ? (
-                  <>
-                    <span>
-                      <Sep />
-                      Last publish{" "}
-                      <Timestamp at={fromSeconds(r.lastPublishedAt)} />
-                    </span>
-                  </>
-                ) : null}
-              </p>
-            </li>
-          ))}
+                <Link
+                  to={packageHref(scope, feed.ecosystem, r.owner, r.name)}
+                  className="font-mono text-sm text-fg-strong underline-offset-2 hover:underline"
+                >
+                  {r.name.split(/(?<=[/\-.])/).map((part, i) => (
+                    <React.Fragment key={i}>
+                      {part}
+                      <wbr />
+                    </React.Fragment>
+                  ))}
+                </Link>
+                <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-fg-muted">
+                  {ownTracks.map((t) => {
+                    const tag = r.tags.find((x) => x.channel === t)!;
+                    return (
+                      <span
+                        key={t}
+                        className="font-mono [overflow-wrap:anywhere]"
+                      >
+                        {t} <span className="text-fg">{tag.version}</span>
+                      </span>
+                    );
+                  })}
+                  <span>
+                    {ownTracks.length ? <Sep /> : null}
+                    {formatCount(r.versions)}{" "}
+                    {r.versions === 1 ? "version" : "versions"}
+                  </span>
+                  {r.lastPublishedAt ? (
+                    <>
+                      <span>
+                        <Sep />
+                        Last publish{" "}
+                        <Timestamp at={fromSeconds(r.lastPublishedAt)} />
+                      </span>
+                    </>
+                  ) : null}
+                </p>
+              </li>
+            );
+          })}
         </ul>
+      ) : null}
+      {query.isError ? (
+        <p
+          role="alert"
+          className="m-0 flex flex-wrap items-center gap-2 text-sm text-danger"
+        >
+          The packages didn't load.
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => void query.refetch()}
+          >
+            Retry
+          </Button>
+        </p>
       ) : null}
       <Link
         to={feedHref(scope, feed.ecosystem)}
@@ -230,10 +254,8 @@ function deliverableFor(
 
 /** A declared, enabled feed with no package yet: the CI step that publishes it. */
 function WaitingBody({
-  eco,
   deliverable,
 }: {
-  eco: string;
   deliverable: string | null;
 }): React.ReactElement {
   return (
@@ -244,20 +266,19 @@ function WaitingBody({
       </p>
       {deliverable ? (
         <CommandLine
-          command={publishCommand(deliverable, `dist/${eco}`)}
+          command={publishCommand(deliverable, BUILD_DIR)}
           className="rounded-lg border"
         />
       ) : (
         <p className="m-0 text-fg-muted">
-          Publish it from CI with <code>pkey release publish</code> for its
-          deliverable.{" "}
+          Publish this package from your CI.{" "}
           <a
             href={docsUrl("publishFromCi")}
             target="_blank"
             rel="noreferrer"
-            className="text-accent-fg underline-offset-2 hover:underline"
+            className="text-accent-fg underline underline-offset-2"
           >
-            Publish from CI
+            How to set it up
           </a>
         </p>
       )}
@@ -305,19 +326,26 @@ function FeedCard({
             {feed.reason && feed.reason !== "feed-off" ? (
               <p className="m-0 text-fg-muted">{OFF_REASONS[feed.reason]}</p>
             ) : null}
-            <Link
-              to={feedHref(scope, feed.ecosystem, "settings")}
-              className="mt-auto inline-block self-start pt-1 text-accent-fg underline-offset-2 hover:underline"
-            >
-              {feed.reason === "feed-off" || feed.reason === null
-                ? "Turn it on in Settings"
-                : `Open ${label} Settings`}
-            </Link>
+            {feed.reason === "feed-off" || feed.reason === null ? (
+              <Link
+                to={feedHref(scope, feed.ecosystem, "settings")}
+                className="mt-auto inline-block self-start pt-1 text-accent-fg underline-offset-2 hover:underline"
+              >
+                Turn it on in Settings
+              </Link>
+            ) : feed.reason === "platform-off" ? (
+              <Link
+                to="#/platform/feeds"
+                className="mt-auto inline-block self-start pt-1 text-accent-fg underline-offset-2 hover:underline"
+              >
+                Platform package feeds
+              </Link>
+            ) : null}
           </div>
         ) : null}
         {feed.packages === 0 ? (
           off ? null : (
-            <WaitingBody eco={feed.ecosystem} deliverable={deliverable} />
+            <WaitingBody deliverable={deliverable} />
           )
         ) : (
           <PackageRows scope={scope} feed={feed} />
@@ -331,10 +359,20 @@ function FeedCard({
 export function FeedCards({
   scope,
   feeds,
+  focusFirst = false,
 }: {
   scope: FeedScope;
   feeds: FeedSummary[];
+  /** Move focus to the first card's heading on mount (the first feed just arrived). */
+  focusFirst?: boolean;
 }): React.ReactElement {
+  const listRef = React.useRef<HTMLUListElement>(null);
+  React.useEffect(() => {
+    if (!focusFirst) return;
+    const h = listRef.current?.querySelector<HTMLElement>("h2");
+    h?.setAttribute("tabindex", "-1");
+    h?.focus();
+  }, [focusFirst]);
   const needsDeliverable = scope.kind === "product" && feeds.some(isWaiting);
   const slug = scope.kind === "product" ? scope.slug : "";
   const deliverables = useQuery({
@@ -344,11 +382,12 @@ export function FeedCards({
   });
   return (
     <ul
+      ref={listRef}
       aria-label="Package feeds"
-      className="m-0 grid list-none gap-4 p-0 lg:grid-cols-2"
+      className="m-0 grid list-none grid-cols-1 gap-4 p-0 lg:grid-cols-2 2xl:grid-cols-3"
     >
       {feeds.map((f) => (
-        <li key={f.ecosystem} className="flex flex-col [&>*]:flex-1">
+        <li key={f.ecosystem} className="flex min-w-0 flex-col [&>*]:flex-1">
           <FeedCard
             scope={scope}
             feed={f}
@@ -380,4 +419,18 @@ export function CardsSkeleton(): React.ReactElement {
       ))}
     </div>
   );
+}
+
+/** Did the first feed just arrive on a page that showed the empty panel? Focus follows to it. */
+export function useFirstFeedArrived(
+  data: FeedsOverviewDto | undefined,
+  product: boolean,
+): boolean {
+  const count = data && product ? provisionedFeeds(data).length : null;
+  const prev = React.useRef<number | null>(null);
+  const arrived = prev.current === 0 && (count ?? 0) > 0;
+  React.useEffect(() => {
+    prev.current = count;
+  }, [count]);
+  return arrived;
 }

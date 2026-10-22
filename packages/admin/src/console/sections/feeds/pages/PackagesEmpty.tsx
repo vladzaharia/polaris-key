@@ -24,6 +24,9 @@ function deliverableOf(eco: string): string {
   return `${eco}.sourcekit`;
 }
 
+/** The build output the reader replaces; the CLI has no default for `--dir`. */
+export const BUILD_DIR = "<your build output>";
+
 /** The publish command for a deliverable (CI's step). */
 export function publishCommand(deliverable: string, dir: string): string {
   return `pkey release publish --deliverable ${deliverable} --dir ${dir}`;
@@ -91,7 +94,7 @@ function CodePane({
         className="rounded-b-none border-b-0"
       />
       <CommandLine
-        command={publishCommand(deliverableOf(eco), `dist/${eco}`)}
+        command={publishCommand(deliverableOf(eco), BUILD_DIR)}
         className="rounded-b-lg border"
       />
     </div>
@@ -115,7 +118,7 @@ function GuidedPanel({
     <section
       aria-labelledby={titleId}
       data-guided-panel=""
-      className="grid gap-6 rounded-xl border border-border bg-surface-raised p-5 sm:p-8 lg:grid-cols-2 lg:items-center lg:gap-8"
+      className="grid gap-6 rounded-xl border border-border bg-surface-raised p-5 sm:p-8 lg:grid-cols-[2fr_3fr] lg:items-center lg:gap-8"
     >
       <div className="flex flex-col items-start gap-4">
         <span

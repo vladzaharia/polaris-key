@@ -776,7 +776,7 @@ describe("the Feeds overview", () => {
     ).toBeTruthy();
     expect(
       await within(swift).findByText(
-        "pkey release publish --deliverable swift.sourcekit --dir dist/swift",
+        "pkey release publish --deliverable swift.sourcekit --dir <your build output>",
       ),
     ).toBeTruthy();
   });
@@ -790,7 +790,7 @@ describe("the Feeds overview", () => {
     });
     expect(
       within(swift)
-        .getByRole("link", { name: "Publish from CI" })
+        .getByRole("link", { name: "How to set it up" })
         .getAttribute("href"),
     ).toBe("/docs/features/ship-builds/packages/publish/#publish-from-ci");
   });
@@ -813,6 +813,71 @@ describe("the Feeds overview", () => {
     );
     expect(pollPackages(waiting)).toBe(PACKAGES_POLL_MS);
     expect(pollPackages(undefined)).toBe(false);
+  });
+
+  it("a package lists only the tracks it has, and (N more) waits for the rows", async () => {
+    boot("#/p/djdl/distribution/feeds", {
+      extra: { ...feedRoutes(), ...product(true) },
+    });
+    const list = await within(await mainReady()).findByRole("list", {
+      name: "Package feeds",
+    });
+    const npm = within(list).getByRole("region", { name: "npm" });
+    const rows = await within(npm).findAllByRole("listitem");
+    // @djdl/cli has a stable tag only: no "beta —".
+    expect(rows[1]!.textContent).toMatch(/stable\s*1\.0\.1/);
+    expect(rows[1]!.textContent).not.toContain("—");
+  });
+
+  it("a platform-off feed links to the platform page, not to Settings", async () => {
+    const overview = productOverview();
+    overview.feeds = overview.feeds.map((f) =>
+      f.ecosystem === "pypi"
+        ? {
+            ...f,
+            status: "unavailable" as const,
+            reason: "platform-off" as const,
+          }
+        : f,
+    );
+    boot("#/p/djdl/distribution/feeds", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        "/manage/api/products/djdl/distribution/feeds": overview,
+      },
+    });
+    const pypi = await within(await mainReady()).findByRole("region", {
+      name: "PyPI",
+    });
+    expect(within(pypi).queryByText(/Waiting/)).toBeNull();
+    expect(
+      within(pypi)
+        .getByRole("link", { name: "Platform package feeds" })
+        .getAttribute("href"),
+    ).toBe("#/platform/feeds");
+    expect(within(pypi).queryByText("Turn it on in Settings")).toBeNull();
+  });
+
+  it("a failed package read shows a small error with Retry", async () => {
+    boot("#/p/djdl/distribution/feeds", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        "/manage/api/products/djdl/distribution/feeds/npm/packages":
+          new Response(
+            JSON.stringify({ error: { code: "internal", message: "boom" } }),
+            { status: 500 },
+          ),
+      },
+    });
+    const npm = await within(await mainReady()).findByRole("region", {
+      name: "npm",
+    });
+    expect(
+      await within(npm).findByRole("button", { name: "Retry" }),
+    ).toBeTruthy();
+    expect(within(npm).queryByText(/more\)/)).toBeNull();
   });
 
   it("a deep link to an undeclared ecosystem says so and offers no way to create the feed", async () => {
@@ -909,7 +974,7 @@ describe("the Feeds overview", () => {
     );
     expect(
       page.getByText(
-        "pkey release publish --deliverable npm.sourcekit --dir dist/npm",
+        "pkey release publish --deliverable npm.sourcekit --dir <your build output>",
       ),
     ).toBeTruthy();
     expect(page.queryByRole("list", { name: "Package feeds" })).toBeNull();

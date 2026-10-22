@@ -14,17 +14,13 @@
  */
 
 import * as React from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, LayoutGrid } from "lucide-react";
 import { CardsSkeleton, pollPackages } from "./PackagesOverview.js";
-import { api } from "../../../../api.js";
 import type {
   FeedEcosystem,
   FeedSummary,
   FeedsOverviewDto,
 } from "../../../../api.js";
-import { docsUrl } from "../../../../lib/docsLinks.js";
-import { errorCopy } from "../../../../lib/errorCopy.js";
 import { formatCount, fromSeconds } from "../../../../lib/format.js";
 import { cn } from "../../../../lib/cn.js";
 import { Button } from "../../../../ui/Button.js";
@@ -36,12 +32,9 @@ import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
-import { toast } from "../../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useProduct } from "../../../data/hooks.js";
-import { qk } from "../../../data/queries.js";
-import { mutate } from "../../../data/mutations.js";
 import { Link, navigate } from "../../../router.js";
 import { type RouteChild } from "../../../routes.js";
 import { useFeedsOverview } from "../data.js";
@@ -63,8 +56,13 @@ import { PackagesEmpty } from "./PackagesEmpty.js";
 import { ProductFeed } from "./ProductFeed.js";
 import { useMoreTabs } from "./useMoreTabs.js";
 import { BootstrapEmpty, OwnersPanel } from "./FeedsOwners.js";
+import { PackageFeedsOff } from "./PackageFeedsOff.js";
 import { PackageRecord } from "./PackageRecord.js";
-import { FeedCards, provisionedFeeds } from "./PackagesOverview.js";
+import {
+  FeedCards,
+  provisionedFeeds,
+  useFirstFeedArrived,
+} from "./PackagesOverview.js";
 import { RegistryTokensPage } from "./RegistryTokens.js";
 
 /** The area's page for a route: the overview, a feed, or a package. */
@@ -119,109 +117,6 @@ export function FeedsArea({
   if (scope.kind === "product")
     return <ProductFeed slug={scope.slug} scope={scope} eco={eco} tab={tab} />;
   return <FeedPage scope={scope} eco={eco} tab={tab} />;
-}
-
-function PackageFeedsOff({
-  slug,
-  name,
-}: {
-  slug: string;
-  name: string;
-}): React.ReactElement {
-  const queryClient = useQueryClient();
-  const sw = useQuery({
-    queryKey: qk.packageFeedsSwitch(slug),
-    queryFn: () => api.packageFeeds(slug),
-  });
-  const overview = useFeedsOverview({ kind: "product", slug });
-  // Only feeds that were set up: what the registry refuses now and keeps for later.
-  const feeds = (overview.data?.feeds ?? []).filter((f) => f.configured);
-  const [busy, setBusy] = React.useState(false);
-  const [failure, setFailure] = React.useState<unknown>(null);
-  const turnOn = async (): Promise<void> => {
-    setBusy(true);
-    setFailure(null);
-    try {
-      const result = await mutate("savePackageFeeds", slug, {
-        enabled: true,
-        expectedVersion: sw.data?.packageFeeds.version ?? 0,
-      });
-      queryClient.setQueryData(qk.packageFeedsSwitch(slug), {
-        packageFeeds: result.packageFeeds,
-      });
-      toast.success("Package feeds turned on");
-    } catch (e) {
-      setFailure(e);
-    } finally {
-      setBusy(false);
-    }
-  };
-  const at = sw.data?.packageFeeds.updatedAt;
-  const failureCopy = failure ? errorCopy(failure) : null;
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Packages" />
-      <EmptyState
-        kind="first-run"
-        service="distribution"
-        title={`Package feeds are off for ${name}`}
-        description={
-          <>
-            Declared packages aren't served: installs and CI publishes on its
-            feeds are refused.
-            {at ? (
-              <>
-                {" "}
-                Turned off on{" "}
-                <Timestamp at={fromSeconds(at)} format="absolute" />.
-              </>
-            ) : null}{" "}
-            Nothing was deleted.
-          </>
-        }
-        primaryAction={
-          <Button onClick={() => void turnOn()} disabled={busy}>
-            Turn on package feeds
-          </Button>
-        }
-        docs={docsUrl("packageFeeds")}
-      />
-      {failureCopy ? (
-        <p role="alert" className="text-sm text-danger">
-          {failureCopy.title}
-        </p>
-      ) : null}
-      {feeds.length ? (
-        <ul
-          aria-label="Feeds refusing installs and publishes"
-          className="divide-y divide-border rounded-lg border border-border text-fg-muted"
-        >
-          {feeds.map((f) => {
-            const Icon = ECOSYSTEM_ICONS[f.ecosystem];
-            return (
-              <li
-                key={f.ecosystem}
-                className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-sm"
-              >
-                <Icon aria-hidden className="size-4 shrink-0" />
-                <span className="font-medium">
-                  {ECOSYSTEM_LABELS[f.ecosystem]}
-                </span>
-                <span>
-                  {f.packages
-                    ? `${formatCount(f.packages)} ${f.packages === 1 ? "package" : "packages"}`
-                    : "no package yet"}
-                </span>
-                <span className="ms-auto text-xs">
-                  Refusing installs and publishes
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
-    </div>
-  );
 }
 
 /**
@@ -286,7 +181,7 @@ export function FeedNav({
       aria-label="Package feeds"
       data-more-tabs={more ? "" : undefined}
       className={cn(
-        "pk-scroll overflow-x-auto border-b border-border",
+        "pk-scroll scroll-px-10 overflow-x-auto border-b border-border",
         // A fade at the edge says there are more tabs to scroll to.
         more &&
           "[mask-image:linear-gradient(to_right,black_calc(100%-2.5rem),transparent)]",
@@ -299,7 +194,12 @@ export function FeedNav({
           icon: LayoutGrid,
           to: overviewHref(scope),
         })}
-        <li aria-hidden className="mx-1.5 h-5 w-px shrink-0 bg-border-strong" />
+        {tabs.length ? (
+          <li
+            aria-hidden
+            className="mx-1.5 h-5 w-px shrink-0 bg-border-strong"
+          />
+        ) : null}
         {tabs.map((e) =>
           link({
             key: e,
@@ -450,6 +350,7 @@ export function FeedsOverview({
   useLoadingAnnouncement("package feeds", query.isPending);
   const columns = React.useMemo(() => overviewColumns(scope), [scope]);
   const data = query.data;
+  const arrived = useFirstFeedArrived(data, scope.kind === "product");
   const host = data?.registryOrigin
     ? new URL(data.registryOrigin).host
     : "the registry host";
@@ -533,7 +434,7 @@ export function FeedsOverview({
       <div className="space-y-6">
         {header}
         {feeds.length ? (
-          <FeedCards scope={scope} feeds={feeds} />
+          <FeedCards scope={scope} feeds={feeds} focusFirst={arrived} />
         ) : (
           <PackagesEmpty
             slug={scope.slug}

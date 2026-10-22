@@ -14,6 +14,11 @@ export function useMoreTabs(
     if (!el) return;
     const measure = (): void =>
       setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+    // The current tab is never off-screen or under the fade.
+    el.querySelector<HTMLElement>("[aria-current=page]")?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+    });
     measure();
     el.addEventListener("scroll", measure, { passive: true });
     const ro =

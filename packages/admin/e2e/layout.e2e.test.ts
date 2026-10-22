@@ -201,6 +201,11 @@ function cases(): Case[] {
       },
     },
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
+    // F-34.7: waiting feeds with a package deliverable (the one-line publish command).
+    {
+      name: "waiting:package-feeds",
+      hash: "#/p/waiting/distribution/feeds",
+    },
     // F-34.7: a deep link to an ecosystem the product does not declare (the guided panel).
     {
       name: "djdl:package-feeds?undeclared",
@@ -332,6 +337,7 @@ const TEXT200_CASES = [
   "djdl:package-feeds",
   "empty:package-feeds",
   "djdl:package-feeds?undeclared",
+  "waiting:package-feeds",
 ];
 /** The console's content column at its widest (BRAND.md §7.6). */
 const CONSOLE_COLUMN_MAX = 1760;
@@ -399,6 +405,7 @@ const VIEWPORTS: {
           "djdl:package-feeds",
           "empty:package-feeds",
           "djdl:package-feeds?undeclared",
+          "waiting:package-feeds",
         ],
       },
       // UI-KITS.md §7.1's wide desktop: every page with content (the empty-state twins add
@@ -740,8 +747,8 @@ for (const vp of VIEWPORTS) {
             if (SHOTS)
               await shoot(page, `${slug(c.name)}--${vp.label}-${theme}`);
             expect(csp, "CSP violations").toEqual([]);
-            // F-34.7: the Packages page passes axe (contrast included) in the light theme.
-            if (c.name.includes("package-feeds") && theme === "light")
+            // F-34.7: the Packages page passes axe (contrast included) in both themes.
+            if (c.name.includes("package-feeds"))
               expect(await axeWithin(page, "#content"), "axe").toEqual([]);
             expect(
               await page.evaluate(
