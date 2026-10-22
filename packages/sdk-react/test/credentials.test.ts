@@ -12,7 +12,16 @@ import { describe, expect, it } from "vitest";
 import { fetchCatalog } from "../src/browser/catalog.js";
 import { fetchChangelog } from "../src/browser/release.js";
 
-const src = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
+// The browser adapter lives in ui-core now (the shims left in src/ hold no calls).
+const src = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "ui-core",
+  "src",
+  "browser",
+  "sdk",
+);
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {

@@ -51,7 +51,7 @@ Service table in every language.
 - Check: `pnpm gen services --check`.
 - Underlying: `pnpm exec tsx tools/gen-services.ts`.
 - Reads: `tools/services.json`, `tools/gen-services.ts`.
-- Writes: `packages/shared-manifest/src/services.generated.ts`, `packages/admin/src/services.generated.ts`, `packages/docs/src/lib/features.generated.ts`, `packages/sdk-node/src/services.generated.ts`, `packages/sdk-react/src/core/services.generated.ts`, `sdks/python/src/polaris_key/_services.py`, `sdks/swift/Sources/PolarisKeyCore/ServiceSlug.generated.swift`, `sdks/godot/addons/polaris_key/core/services_generated.gd`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/ServiceSlug.generated.kt`.
+- Writes: `packages/shared-manifest/src/services.generated.ts`, `packages/admin/src/services.generated.ts`, `packages/docs/src/lib/features.generated.ts`, `packages/sdk-node/src/services.generated.ts`, `packages/ui-core/src/browser/sdk/core/services.generated.ts`, `sdks/python/src/polaris_key/_services.py`, `sdks/swift/Sources/PolarisKeyCore/ServiceSlug.generated.swift`, `sdks/godot/addons/polaris_key/core/services_generated.gd`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/ServiceSlug.generated.kt`.
 
 ### channels
 
@@ -84,7 +84,7 @@ SDK constants: error codes, headers, enums, feature ids, core copy.
 - Check: `pnpm gen constants --check`.
 - Underlying: `pnpm exec tsx tools/gen-sdk-constants.ts`.
 - Reads: `tools/gen-sdk-constants.ts`, `tools/capabilities.ts`, `tools/services.json`, `conformance/parity/**`, `packages/shared-protocol/src/**`, `packages/worker/src/**`, `sdks/*/parity.json`, `packages/*/parity.json`.
-- Writes: `packages/sdk-node/src/constants.generated.ts`, `packages/sdk-node/src/copy.generated.ts`, `packages/server/src/copy.generated.ts`, `packages/sdk-react/src/constants.generated.ts`, `packages/sdk-react/src/copy.generated.ts`, `sdks/python/src/polaris_key/constants_generated.py`, `sdks/python/src/polaris_key/copy_generated.py`, `sdks/swift/Sources/PolarisKeyCore/Constants.generated.swift`, `sdks/swift/Sources/PolarisKeyCore/Copy.generated.swift`, `sdks/godot/addons/polaris_key/core/constants_generated.gd`, `sdks/godot/addons/polaris_key/core/copy_generated.gd`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Constants.generated.kt`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Copy.generated.kt`.
+- Writes: `packages/sdk-node/src/constants.generated.ts`, `packages/sdk-node/src/copy.generated.ts`, `packages/server/src/copy.generated.ts`, `packages/ui-core/src/browser/sdk/constants.generated.ts`, `packages/ui-core/src/browser/sdk/copy.generated.ts`, `sdks/python/src/polaris_key/constants_generated.py`, `sdks/python/src/polaris_key/copy_generated.py`, `sdks/swift/Sources/PolarisKeyCore/Constants.generated.swift`, `sdks/swift/Sources/PolarisKeyCore/Copy.generated.swift`, `sdks/godot/addons/polaris_key/core/constants_generated.gd`, `sdks/godot/addons/polaris_key/core/copy_generated.gd`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Constants.generated.kt`, `sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Copy.generated.kt`.
 
 ### platform-inventory
 
