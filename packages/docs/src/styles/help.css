@@ -40,23 +40,6 @@
   line-height: 1;
 }
 
-/* Search starts over the article's column and reads "Search help". Starlight's own label says
-   "Search", and its translations are shared with the developer doors, so Help's word is drawn here;
-   the button keeps its accessible name. */
-[data-brand="locker"]
-  site-search
-  button[data-open-modal]
-  > span[aria-hidden="true"] {
-  font-size: 0;
-}
-[data-brand="locker"]
-  site-search
-  button[data-open-modal]
-  > span[aria-hidden="true"]::after {
-  content: "Search help";
-  font-size: var(--sl-text-sm);
-}
-
 [data-brand="locker"] .social-icons::after {
   display: none;
 }

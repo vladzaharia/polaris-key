@@ -135,14 +135,6 @@
   text-decoration-thickness: 2px;
 }
 
-/* Shown when the search engine cannot start (astro.config.mjs, pk-help-search-bundle). */
-.pk-search-failed {
-  margin: 0;
-  padding: 0.75rem 1rem;
-  color: var(--sl-color-text);
-  font-size: var(--sl-text-sm);
-}
-
 .pk-section {
   display: contents;
 }
