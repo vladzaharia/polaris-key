@@ -103,6 +103,8 @@ export interface SourceBadgeProps {
   by?: string;
   /** When a runtime value was set (epoch ms). */
   at?: number;
+  /** Replaces the popover's explanation, where the default says something untrue for the value. */
+  explain?: React.ReactNode;
   /** Renders "Revert…" in the popover; the caller confirms (an L1 action). */
   onRevert?: () => void;
   className?: string;
@@ -143,6 +145,7 @@ export function SourceBadge({
   source,
   label,
   path,
+  explain,
   by,
   at,
   onRevert: onRevertProp,
@@ -184,7 +187,9 @@ export function SourceBadge({
       }
     >
       <div className="space-y-2">
-        <p className="text-sm text-fg">{explanation(source, path)}</p>
+        <p className="text-sm text-fg">
+          {explain ?? explanation(source, path)}
+        </p>
         {setBy ? <p className="text-xs text-fg-muted">{setBy}</p> : null}
         {onRevert ? (
           <PopoverClose asChild>

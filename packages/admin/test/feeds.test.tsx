@@ -84,39 +84,37 @@ async function heading(name: string | RegExp): Promise<HTMLElement> {
   return screen.findByRole("heading", { level: 1, name });
 }
 
-describe("registry auth (F-21)", () => {
-  const NPM = NPM_PATH;
-
-  /** The npm settings page with the feed stored at `accessMode`, and a PUT that answers `put`. */
-  function bootSettings(
-    accessMode: string,
-    put: unknown = {
-      ok: true,
-      settings: feedDetail("product", "npm").settings,
+/** The npm settings page with the feed stored at `accessMode`, and a PUT that answers `put`. */
+function bootSettings(
+  accessMode: string,
+  put: unknown = {
+    ok: true,
+    settings: feedDetail("product", "npm").settings,
+  },
+  patch: Record<string, unknown> = {},
+): ReturnType<typeof boot> {
+  const routes = feedRoutes();
+  const stored = feedDetail("product", "npm");
+  routes[NPM_PATH] = {
+    ...stored,
+    settings: {
+      ...stored.settings,
+      accessMode,
+      accessDisplay:
+        accessMode === "public"
+          ? "public"
+          : accessMode === "entitled"
+            ? "customers, packages gated individually"
+            : "customers",
+      ...patch,
     },
-    patch: Record<string, unknown> = {},
-  ): ReturnType<typeof boot> {
-    const routes = feedRoutes();
-    const stored = feedDetail("product", "npm");
-    routes[NPM] = {
-      ...stored,
-      settings: {
-        ...stored.settings,
-        accessMode,
-        accessDisplay:
-          accessMode === "public"
-            ? "public"
-            : accessMode === "entitled"
-              ? "customers, packages gated individually"
-              : "customers",
-        ...patch,
-      },
-    };
-    return boot("#/p/djdl/distribution/feeds/npm/settings", {
-      extra: { ...routes, ...product(true), [`PUT ${NPM}/settings`]: put },
-    });
-  }
+  };
+  return boot("#/p/djdl/distribution/feeds/npm/settings", {
+    extra: { ...routes, ...product(true), [`PUT ${NPM_PATH}/settings`]: put },
+  });
+}
 
+describe("registry auth (F-21)", () => {
   it("Access is two options in General: Public and Customers, no Access section", async () => {
     bootSettings("public");
     const form = await general();
@@ -146,9 +144,8 @@ describe("registry auth (F-21)", () => {
         .getByRole("radio", { name: /Customers/ })
         .getAttribute("aria-checked"),
     ).toBe("true");
-    expect(
-      within(form).getByRole("link", { name: /Open Tokens/ }),
-    ).toBeTruthy();
+    expect(within(form).getByRole("link", { name: "Tokens" })).toBeTruthy();
+    expect(form.textContent).toContain("Polaris Locker");
     expect(within(form).queryByRole("button", { name: /^Save/ })).toBeNull();
     expect(form.textContent).not.toContain("gated individually");
     expect(log.calls.some((c) => c.method === "PUT")).toBe(false);
@@ -162,7 +159,8 @@ describe("registry auth (F-21)", () => {
     );
     await userEvent.click(within(form).getByRole("button", { name: /^Save/ }));
     const dialog = await screen.findByRole("alertdialog");
-    expect(dialog.textContent).toContain("401");
+    expect(dialog.textContent).toContain("refused within 30 seconds");
+    expect(dialog.textContent).not.toContain("401");
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Switch to Customers" }),
     );
@@ -184,9 +182,10 @@ describe("registry auth (F-21)", () => {
       within(dialog).getByRole("heading", { name: /Make the npm feed public/ }),
     ).toBeTruthy();
     expect(dialog.textContent).toContain("no credentials");
+    expect(dialog.textContent).toContain("stays installed");
     expect(log.calls.some((c) => c.method === "PUT")).toBe(false);
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Make public" }),
+      within(dialog).getByRole("button", { name: "Make feed public" }),
     );
     await waitFor(() =>
       expect(log.calls.find((c) => c.method === "PUT")?.json).toEqual({
@@ -217,15 +216,24 @@ describe("registry auth (F-21)", () => {
         .getByRole("radio", { name: /Customers/ })
         .getAttribute("aria-checked"),
     ).toBe("true");
-    expect(within(form).getByTestId("access-now").textContent).toContain(
-      "Customers, packages gated individually",
-    );
-    // The packages without a gate are still named.
-    expect(form.textContent).toContain("@djdl/sdk");
+    // The selected card says the fact; there is no separate "Now" line.
+    expect(
+      within(form).getByRole("radio", { name: /Customers/ }).textContent,
+    ).toContain("Packages gated individually");
+    expect(form.textContent).not.toContain("Now:");
+    // The packages without a gate are named, each linking to its Delivery tab.
+    expect(form.textContent).toContain("entitlement");
+    expect(
+      within(form)
+        .getByRole("link", { name: "@djdl/sdk" })
+        .getAttribute("href"),
+    ).toContain("/deliverables/npm.sdk/delivery");
     // Untouched: nothing to save, and no write.
     expect(within(form).queryByRole("button", { name: /^Save/ })).toBeNull();
     // Public, then back to Customers: the form is the stored choice again; still no write.
     await userEvent.click(within(form).getByRole("radio", { name: /Public/ }));
+    // The warning is about Customers: gone while Public is picked.
+    expect(form.textContent).not.toContain("License tokens are refused");
     await userEvent.click(
       within(form).getByRole("radio", { name: /Customers/ }),
     );
@@ -258,7 +266,9 @@ describe("registry auth (F-21)", () => {
       within(dialog).getByRole("button", { name: "Switch to Customers" }),
     );
     expect(
-      await within(form).findByText("Only Public and Customers can be set."),
+      await within(form).findByText(
+        "This page is out of date. Reload it, then choose again.",
+      ),
     ).toBeTruthy();
     expect(
       within(form)
@@ -878,7 +888,7 @@ describe("a feed page", () => {
       name: "General",
     });
     await userEvent.click(
-      within(general).getByRole("switch", { name: "Enabled" }),
+      within(general).getByRole("switch", { name: "Serving" }),
     );
     await userEvent.click(
       within(general).getByRole("button", { name: /^Save/ }),
@@ -953,7 +963,7 @@ describe("a feed page", () => {
       ["maven", null],
       ["pypi", "Simple API"],
       ["oci", null],
-      ["godot", "Asset listing"],
+      ["godot", null],
     ];
     for (const [eco, title] of cases) {
       cleanup();
@@ -973,20 +983,6 @@ describe("a feed page", () => {
         eco,
       ).toBeNull();
     }
-    const godot = within(main()).getByRole("form", { name: "Asset listing" });
-    // The category is gone (its stored value stays the fallback); the other keys remain.
-    expect(
-      within(godot).queryByRole("combobox", { name: "Category" }),
-    ).toBeNull();
-    expect(
-      within(godot).getByRole("combobox", { name: "Support level" }),
-    ).toBeTruthy();
-    expect(
-      within(godot).getByRole("textbox", { name: "License" }),
-    ).toBeTruthy();
-    expect(
-      within(godot).getByRole("textbox", { name: "Oldest editor" }),
-    ).toBeTruthy();
   });
 
   it("OCI has no untagged-manifest setting, and a stored retainUntaggedDays is neither shown nor sent", async () => {
@@ -1007,7 +1003,7 @@ describe("a feed page", () => {
     ).toBeNull();
     // Saving General sends only what changed.
     await userEvent.click(
-      within(form).getByRole("switch", { name: "Enabled" }),
+      within(form).getByRole("switch", { name: "Serving" }),
     );
     await userEvent.click(within(form).getByRole("button", { name: /^Save/ }));
     const dialog = await screen.findByRole("alertdialog");
@@ -1022,49 +1018,368 @@ describe("a feed page", () => {
     );
   });
 
-  it("the Godot listing panel keeps its support level, license and oldest-editor keys", async () => {
+  it("Godot's asset listing is not shown: stored values stay the fallback and are never sent", async () => {
+    const routes = feedRoutes();
+    const stored = feedDetail("platform", "godot");
+    routes["/manage/api/platform/feeds/godot"] = {
+      ...stored,
+      settings: {
+        ...stored.settings,
+        ext: { categoryId: 3, supportLevel: "official" },
+      },
+    };
     const put = "PUT /manage/api/platform/feeds/godot/settings";
     const log = boot("#/platform/feeds/godot/settings", {
-      extra: {
-        ...feedRoutes(),
-        [put]: { ok: true, settings: feedDetail("platform", "godot").settings },
-      },
+      extra: { ...routes, [put]: { ok: true, settings: stored.settings } },
     });
-    const panel = await within(await mainReady()).findByRole("form", {
-      name: "Asset listing",
-    });
-    await userEvent.type(
-      within(panel).getByRole("textbox", { name: "Oldest editor" }),
-      "4.3",
+    const form = await general();
+    expect(main().textContent).not.toMatch(
+      /asset listing|support level|oldest editor|category/i,
     );
-    await userEvent.click(within(panel).getByRole("button", { name: /^Save/ }));
+    await userEvent.click(
+      within(form).getByRole("switch", { name: "Serving" }),
+    );
+    await userEvent.click(within(form).getByRole("button", { name: /^Save/ }));
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Switch off feed" }),
+    );
     await waitFor(() =>
-      expect(log.calls.find((c) => c.method === "PUT")?.json).toMatchObject({
+      expect(log.calls.find((c) => c.method === "PUT")?.json).toEqual({
         expectedVersion: 3,
-        ext: { minGodotVersion: "4.3", supportLevel: "community" },
+        enabled: false,
       }),
     );
   });
 
-  it("Namespace: a namespace the provisioning derived reads Derived from .pkey/release, and Override opens it", async () => {
+  /** The npm settings page with the namespace the manifest provisioned. */
+  function bootDerived(
+    extra: Record<string, unknown> = {},
+    settings: Record<string, unknown> = {},
+  ): ReturnType<typeof boot> {
     const routes = feedRoutes();
     const stored = feedDetail("product", "npm");
     routes[NPM_PATH] = {
       ...stored,
-      settings: { ...stored.settings, version: 1, updatedBy: "manifest" },
+      settings: {
+        ...stored.settings,
+        version: 1,
+        updatedBy: "u1",
+        namespaceSource: "manifest",
+        ...settings,
+      },
+    };
+    return boot("#/p/djdl/distribution/feeds/npm/settings", {
+      extra: { ...routes, ...product(true), ...extra },
+    });
+  }
+
+  it("Namespace: a manifest namespace reads From manifest, and Override opens the first field", async () => {
+    bootDerived();
+    const ns = await within(await mainReady()).findByRole("form", {
+      name: "Namespace",
+    });
+    expect(
+      within(ns).getByRole("button", { name: /From manifest/ }),
+    ).toBeTruthy();
+    expect(ns.textContent).toContain("refused at publish");
+    expect(within(ns).queryByRole("textbox", { name: "Scope" })).toBeNull();
+    expect(within(ns).queryByRole("button", { name: /^Save/ })).toBeNull();
+    await userEvent.click(within(ns).getByRole("button", { name: "Override" }));
+    const scope = within(ns).getByRole("textbox", { name: "Scope" });
+    expect(scope).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(scope));
+    // Still From manifest until something is saved.
+    expect(
+      within(ns).getByRole("button", { name: /From manifest/ }),
+    ).toBeTruthy();
+  });
+
+  it("Namespace: Cancel, and Discard after an edit, return to the manifest read-out", async () => {
+    bootDerived();
+    const ns = await within(await mainReady()).findByRole("form", {
+      name: "Namespace",
+    });
+    await userEvent.click(within(ns).getByRole("button", { name: "Override" }));
+    await userEvent.click(within(ns).getByRole("button", { name: "Cancel" }));
+    expect(within(ns).queryByRole("textbox", { name: "Scope" })).toBeNull();
+    expect(within(ns).getByRole("button", { name: "Override" })).toBeTruthy();
+    await userEvent.click(within(ns).getByRole("button", { name: "Override" }));
+    await userEvent.type(
+      within(ns).getByRole("textbox", { name: "Scope" }),
+      "x",
+    );
+    await userEvent.click(within(ns).getByRole("button", { name: "Discard" }));
+    await waitFor(() =>
+      expect(within(ns).queryByRole("textbox", { name: "Scope" })).toBeNull(),
+    );
+    expect(within(ns).getByRole("button", { name: "Override" })).toBeTruthy();
+  });
+
+  it("Namespace: saving Limits does not make a manifest namespace read as the operator's", async () => {
+    const log = bootDerived({
+      [`PUT ${NPM_PATH}/settings`]: {
+        ok: true,
+        settings: feedDetail("product", "npm").settings,
+      },
+    });
+    const limits = await within(await mainReady()).findByRole("form", {
+      name: "Limits",
+    });
+    const size = within(limits).getByRole("textbox", { name: "Size" });
+    await userEvent.clear(size);
+    await userEvent.type(size, "10");
+    await userEvent.click(
+      within(limits).getByRole("button", { name: /^Save/ }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "PUT")?.json).toEqual({
+        expectedVersion: 1,
+        maxPackageBytes: 10 * 1024 * 1024,
+      }),
+    );
+    const ns = within(main()).getByRole("form", { name: "Namespace" });
+    expect(
+      within(ns).getByRole("button", { name: /From manifest/ }),
+    ).toBeTruthy();
+    // The save lands the focus on the section, not the page.
+    await waitFor(() => expect(document.activeElement?.id).toBe("feed-limits"));
+  });
+
+  it("Namespace: one saved in the console reads Set in console", async () => {
+    bootDerived({}, { namespaceSource: "console" });
+    const ns = await within(await mainReady()).findByRole("form", {
+      name: "Namespace",
+    });
+    expect(
+      within(ns).getByRole("button", { name: /Set in console/ }),
+    ).toBeTruthy();
+    expect(within(ns).getByRole("textbox", { name: "Scope" })).toBeTruthy();
+  });
+
+  it("Cancel on a General confirm shows no error and writes nothing (widen, tighten, switch off)", async () => {
+    for (const [stored, pick, cancel] of [
+      ["licensed", /Public/, "Cancel"],
+      ["public", /Customers/, "Cancel"],
+      ["licensed", null, "Cancel"],
+    ] as const) {
+      cleanup();
+      resetConsole();
+      const log = bootSettings(stored);
+      const form = await general();
+      if (pick)
+        await userEvent.click(within(form).getByRole("radio", { name: pick }));
+      else
+        await userEvent.click(
+          within(form).getByRole("switch", { name: "Serving" }),
+        );
+      await userEvent.click(
+        within(form).getByRole("button", { name: /^Save/ }),
+      );
+      const dialog = await screen.findByRole("alertdialog");
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: cancel }),
+      );
+      await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+      expect(within(form).queryByRole("alert"), String(pick)).toBeNull();
+      expect(form.textContent).not.toMatch(/went wrong|cancelled/i);
+      expect(log.calls.some((c) => c.method === "PUT")).toBe(false);
+    }
+  });
+
+  it("Escape on a General confirm shows no error either", async () => {
+    bootSettings("licensed");
+    const form = await general();
+    await userEvent.click(within(form).getByRole("radio", { name: /Public/ }));
+    await userEvent.click(within(form).getByRole("button", { name: /^Save/ }));
+    await screen.findByRole("alertdialog");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(within(form).queryByRole("alert")).toBeNull();
+    expect(form.textContent).not.toMatch(/went wrong|cancelled/i);
+  });
+
+  it("switching off and widening in one save asks once and saves both", async () => {
+    const log = bootSettings("licensed");
+    const form = await general();
+    await userEvent.click(
+      within(form).getByRole("switch", { name: "Serving" }),
+    );
+    await userEvent.click(within(form).getByRole("radio", { name: /Public/ }));
+    await userEvent.click(within(form).getByRole("button", { name: /^Save/ }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog.textContent).toContain(
+      "Switch off the npm feed and make it public",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", {
+        name: "Switch off and make public",
+      }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "PUT")?.json).toEqual({
+        expectedVersion: 3,
+        enabled: false,
+        accessMode: "public",
+      }),
+    );
+    expect(log.calls.filter((c) => c.method === "PUT").length).toBe(1);
+  });
+
+  it("switching off and moving to Customers in one save asks once and saves both", async () => {
+    const log = bootSettings("public");
+    const form = await general();
+    await userEvent.click(
+      within(form).getByRole("switch", { name: "Serving" }),
+    );
+    await userEvent.click(
+      within(form).getByRole("radio", { name: /Customers/ }),
+    );
+    await userEvent.click(within(form).getByRole("button", { name: /^Save/ }));
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", {
+        name: "Switch off and use Customers",
+      }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "PUT")?.json).toEqual({
+        expectedVersion: 3,
+        enabled: false,
+        accessMode: "licensed",
+      }),
+    );
+  });
+
+  it("toasts name what changed", async () => {
+    bootSettings("licensed");
+    const form = await general();
+    await userEvent.click(within(form).getByRole("radio", { name: /Public/ }));
+    await userEvent.click(within(form).getByRole("button", { name: /^Save/ }));
+    await userEvent.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Make feed public",
+      }),
+    );
+    expect(await screen.findByText("npm feed is public")).toBeTruthy();
+  });
+
+  it("a version conflict refetches, offers Keep mine / Discard mine, and the next save carries the fresh version", async () => {
+    let served = 3;
+    const routes = feedRoutes();
+    const stored = feedDetail("product", "npm");
+    const puts: unknown[] = [];
+    routes[NPM_PATH] = () => ({
+      ...stored,
+      settings: {
+        ...stored.settings,
+        version: served,
+        maxPackageBytes: served === 3 ? 52_428_800 : 20 * 1024 * 1024,
+      },
+    });
+    routes[`PUT ${NPM_PATH}/settings`] = (
+      _q: URLSearchParams,
+      req: { json?: unknown },
+    ) => {
+      puts.push(req.json);
+      if ((req.json as { expectedVersion: number }).expectedVersion === 3) {
+        served = 4;
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: "bad_request",
+              message: "the feed's settings changed since you read them",
+              reason: "version_conflict",
+            },
+          }),
+          { status: 409, headers: { "content-type": "application/json" } },
+        );
+      }
+      return { ok: true, settings: stored.settings };
     };
     boot("#/p/djdl/distribution/feeds/npm/settings", {
       extra: { ...routes, ...product(true) },
     });
-    const ns = await within(await mainReady()).findByRole("form", {
-      name: "Namespace",
+    const limits = await within(await mainReady()).findByRole("form", {
+      name: "Limits",
     });
-    expect(ns.textContent).toContain("Derived from .pkey/release");
-    expect(within(ns).queryByRole("textbox", { name: "Scope" })).toBeNull();
-    expect(within(ns).queryByRole("button", { name: /^Save/ })).toBeNull();
-    await userEvent.click(within(ns).getByRole("button", { name: "Override" }));
-    expect(within(ns).getByRole("textbox", { name: "Scope" })).toBeTruthy();
-    expect(ns.textContent).toContain("Overridden");
+    const size = within(limits).getByRole("textbox", { name: "Size" });
+    await userEvent.clear(size);
+    await userEvent.type(size, "10");
+    await userEvent.click(
+      within(limits).getByRole("button", { name: /^Save/ }),
+    );
+    expect(
+      await within(limits).findByText(
+        "Someone saved this feed after you opened it",
+      ),
+    ).toBeTruthy();
+    expect(limits.textContent).not.toMatch(/went wrong|changed on the server/i);
+    await userEvent.click(
+      within(limits).getByRole("button", { name: "Keep mine" }),
+    );
+    await userEvent.click(
+      within(limits).getByRole("button", { name: /^Save/ }),
+    );
+    await waitFor(() =>
+      expect(puts).toEqual([
+        { expectedVersion: 3, maxPackageBytes: 10 * 1024 * 1024 },
+        { expectedVersion: 4, maxPackageBytes: 10 * 1024 * 1024 },
+      ]),
+    );
+  });
+
+  it("a view-only member sees the settings read-only", async () => {
+    const routes = feedRoutes();
+    boot("#/p/djdl/distribution/feeds/npm/settings", {
+      me: {
+        platformAdmin: false,
+        permissions: {
+          roles: [],
+          platform: { view: ["console"], edit: [] },
+          products: {
+            djdl: { view: ["core", "ship"], edit: [] },
+            acme: { view: ["core"], edit: [] },
+          },
+        },
+      },
+      extra: { ...routes, ...product(true) },
+    });
+    const form = await general();
+    expect(
+      within(form)
+        .getByRole("radio", { name: /Public/ })
+        .closest("[aria-readonly]"),
+    ).not.toBeNull();
+  });
+
+  it("a 500 on save offers Copy details", async () => {
+    bootSettings("public", new Response("{}", { status: 500 }));
+    const form = await general();
+    await userEvent.click(
+      within(form).getByRole("radio", { name: /Customers/ }),
+    );
+    await userEvent.click(within(form).getByRole("button", { name: /^Save/ }));
+    await userEvent.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Switch to Customers",
+      }),
+    );
+    expect(
+      await within(form).findByRole("button", { name: /Copy details/ }),
+    ).toBeTruthy();
+  });
+
+  it("a never-saved feed reads Customers, as the server defaults it", async () => {
+    boot("#/p/djdl/distribution/feeds/swift/settings", {
+      extra: { ...feedRoutes(), ...product(true) },
+    });
+    const form = await general();
+    expect(
+      within(form)
+        .getByRole("radio", { name: /Customers/ })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
   });
 
   it("Namespace: a namespace an operator saved is editable with no derived badge", async () => {

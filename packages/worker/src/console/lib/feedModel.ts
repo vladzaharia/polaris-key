@@ -98,6 +98,8 @@ export interface FeedSettingsView {
   /** `accessMode` as the console shows it: public, customers, or customers gated per package. */
   accessDisplay: string;
   namespace: Record<string, unknown>;
+  /** Where the namespace came from: provisioned from `.pkey/release`, or set by an operator. */
+  namespaceSource: "manifest" | "console";
   maxPackageBytes: number;
   upstream: "none";
   ext: Record<string, unknown>;

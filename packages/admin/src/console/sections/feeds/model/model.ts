@@ -273,34 +273,6 @@ export const FEED_EXTENSION_FIELDS: Record<string, FeedExtensionField> = {
       placeholder: "acme.Kit https://github.com/acme/kit",
     },
   },
-  supportLevel: {
-    label: "Support level",
-    help: "The support level the editor shows for every addon of this feed.",
-    input: {
-      kind: "select",
-      default: "community",
-      options: [
-        { value: "official", label: "Official" },
-        { value: "community", label: "Community" },
-        { value: "testing", label: "Testing" },
-      ],
-    },
-  },
-  license: {
-    label: "License",
-    help: "Shown as each addon's license. Empty shows Unspecified.",
-    input: { kind: "text", placeholder: "MIT", maxLength: 64 },
-  },
-  minGodotVersion: {
-    label: "Oldest editor",
-    help: "Editors older than this, or of another major version, see no addons. Empty lists them to every editor.",
-    input: {
-      kind: "text",
-      placeholder: "4.4",
-      maxLength: 8,
-      pattern: /^\d{1,2}\.\d{1,2}(?:\.\d{1,2})?$/,
-    },
-  },
 };
 
 /** The ecosystem panel's section title, per protocol. */

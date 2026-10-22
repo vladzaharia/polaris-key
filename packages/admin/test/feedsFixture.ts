@@ -294,8 +294,10 @@ export function feedDetail(
     feed,
     settings: {
       enabled: feed.enabled,
-      accessMode: "public",
-      accessDisplay: "public",
+      // A feed never saved reads as the server defaults it: Customers.
+      accessMode: feed.configured ? "public" : "licensed",
+      accessDisplay: feed.configured ? "public" : "customers",
+      namespaceSource: "console",
       namespace: NAMESPACES[owner]![eco],
       maxPackageBytes: eco === "oci" ? 5_368_709_120 : 52_428_800,
       upstream: "none",

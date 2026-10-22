@@ -15,6 +15,7 @@ import { CONSOLE, enableServices, envFor } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
+import { stmtProvisionFeed } from "../src/services/distribution/registryFeeds.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
@@ -420,6 +421,39 @@ describe("product scope", () => {
         OWNER,
       ),
     ).toEqual([{ deliverable_id: "*", reason: "settings" }]);
+  });
+
+  it("namespaceSource: manifest until an operator's namespace write changes the namespace (F-34.6)", async () => {
+    await db.batch([stmtProvisionFeed(OWNER, "npm", { scope: "@acme" }, NOW)]);
+    const source = async (): Promise<string> =>
+      (await (await admin("GET", product("/npm"))).json()).settings
+        .namespaceSource;
+    const put = (body: unknown) => admin("PUT", product("/npm/settings"), body);
+    expect(await source()).toBe("manifest");
+    // The feed that was never saved reads as a console namespace.
+    expect(
+      (await (await admin("GET", product("/pypi"))).json()).settings
+        .namespaceSource,
+    ).toBe("console");
+    // An unrelated save, and the same namespace sent again, keep it.
+    expect(
+      (await put({ expectedVersion: 1, maxPackageBytes: 1000 })).status,
+    ).toBe(200);
+    expect(await source()).toBe("manifest");
+    expect(
+      (await put({ expectedVersion: 2, namespace: { scope: "@acme" } })).status,
+    ).toBe(200);
+    expect(await source()).toBe("manifest");
+    // A different namespace is the operator's.
+    expect(
+      (await put({ expectedVersion: 3, namespace: { scope: "@other" } }))
+        .status,
+    ).toBe(200);
+    expect(await source()).toBe("console");
+    expect((await put({ expectedVersion: 4, enabled: false })).status).toBe(
+      200,
+    );
+    expect(await source()).toBe("console");
   });
 
   it("has no policy route: the platform policy is the platform's", async () => {

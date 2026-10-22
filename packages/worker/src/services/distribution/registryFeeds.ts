@@ -224,11 +224,11 @@ export function stmtProvisionFeed(
   return {
     sql: `INSERT INTO dist_registry_feeds
             (product, ecosystem, enabled, access_mode, namespace_json, max_package_bytes,
-             upstream, claims_json, ext_json, version, updated_at, updated_by)
+             upstream, claims_json, ext_json, version, updated_at, updated_by, namespace_source)
           SELECT ?, ?, 1, 'licensed', ?,
                  COALESCE((SELECT max_package_bytes_ceiling FROM dist_registry_policy
                             WHERE ecosystem = ?), 52428800),
-                 'none', '[]', '{}', 1, ?, ?
+                 'none', '[]', '{}', 1, ?, ?, 'manifest'
           ON CONFLICT(product, ecosystem) DO NOTHING`,
     params: [
       product,

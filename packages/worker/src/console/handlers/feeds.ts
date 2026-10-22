@@ -139,6 +139,7 @@ interface FeedRow {
   max_package_bytes: number;
   upstream: string;
   ext_json: string;
+  namespace_source: string;
   version: number;
   updated_at: number;
   updated_by: string | null;
@@ -181,7 +182,7 @@ async function ownerOf(
 async function feedRows(db: Db, owner: string): Promise<Map<string, FeedRow>> {
   const rows = await db.all<FeedRow>(
     `SELECT ecosystem, enabled, access_mode, namespace_json, max_package_bytes, upstream,
-            ext_json, version, updated_at, updated_by
+            ext_json, namespace_source, version, updated_at, updated_by
        FROM dist_registry_feeds WHERE product = ?`,
     owner,
   );
@@ -272,6 +273,7 @@ function settingsView(
       accessMode: DEFAULT_ACCESS_MODE,
       accessDisplay: accessDisplay(DEFAULT_ACCESS_MODE),
       namespace: {},
+      namespaceSource: "console",
       maxPackageBytes: policy?.max_package_bytes_ceiling ?? 0,
       upstream: "none",
       ext: {},
@@ -290,6 +292,8 @@ function settingsView(
     accessMode,
     accessDisplay: accessDisplay(accessMode),
     namespace: parseJsonObject(feed.namespace_json) ?? {},
+    namespaceSource:
+      feed.namespace_source === "manifest" ? "manifest" : "console",
     maxPackageBytes: feed.max_package_bytes,
     upstream: "none",
     ext: parseJsonObject(feed.ext_json) ?? {},
@@ -581,6 +585,8 @@ async function putSettings(
     updateAccessMode:
       body.accessMode === undefined ? before.accessMode : accessMode,
     namespace,
+    namespaceChanged:
+      JSON.stringify(namespace) !== JSON.stringify(before.namespace),
     maxPackageBytes: maxBytes,
     ext: dropUnknownExt(eco, ext),
     now,

@@ -59,8 +59,10 @@ export function RadioCards<V extends string = string>({
 }: RadioCardsProps<V>): React.ReactElement {
   const check = indicator === "check";
   const frozen = readOnly || useWriteLock().locked;
+  // One column below 640 px is an explicit minmax(0,1fr) track: an implicit auto track grows with
+  // its content and runs past the card at a large text size.
   const cols = {
-    1: "grid-cols-[minmax(0,1fr)]",
+    1: "",
     2: "sm:grid-cols-2",
     3: "sm:grid-cols-3",
     4: "sm:grid-cols-4",
@@ -77,7 +79,7 @@ export function RadioCards<V extends string = string>({
         if (!frozen) onChange?.(v as V);
       }}
       onBlur={onBlur}
-      className={cn("grid gap-2", cols, className)}
+      className={cn("grid grid-cols-[minmax(0,1fr)] gap-2", cols, className)}
       {...aria}
     >
       {options.map((o) => {
@@ -90,7 +92,7 @@ export function RadioCards<V extends string = string>({
             disabled={o.disabled}
             aria-describedby={o.description ? `${itemId}-desc` : undefined}
             className={cn(
-              "group flex items-start gap-3 rounded-lg border border-border bg-surface-raised p-3 text-start @max-[18rem]:gap-2 @max-[18rem]:p-2",
+              "group flex min-w-0 items-start gap-3 rounded-lg border border-border bg-surface-raised p-3 text-start @max-[18rem]:gap-2 @max-[18rem]:p-2",
               // Pressable (src/motion.css): the card presses; its border and fill ease at `micro`.
               "pk-pressable hover:border-border-strong",
               "focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
@@ -118,7 +120,7 @@ export function RadioCards<V extends string = string>({
               )}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5 text-sm font-medium text-fg-strong">
+              <span className="flex flex-wrap items-center gap-x-1.5 text-sm font-medium text-fg-strong">
                 {o.icon ? (
                   <span aria-hidden className="[&_svg]:size-4">
                     {o.icon}

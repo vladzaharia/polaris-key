@@ -4546,6 +4546,8 @@ export interface FeedSettings {
   /** public, customers, or "customers, packages gated individually" (F-34.5). */
   accessDisplay?: string;
   namespace: Record<string, unknown>;
+  /** Where the namespace came from: provisioned from `.pkey/release`, or set in the console. */
+  namespaceSource?: "manifest" | "console";
   maxPackageBytes: number;
   upstream: "none";
   ext: Record<string, unknown>;
