@@ -116,6 +116,18 @@ public final class PolarisKeyGateModel {
             rebuild()
         }
     }
+    /// The activation text of offline step 2: pasted, or read from the file the person loaded.
+    /// Editing it clears a submitted verdict.
+    public var offlineText: String = "" {
+        didSet {
+            guard offlineText != oldValue else { return }
+            offlineSubmitted = false
+            offlineVerified = nil
+            rebuild()
+        }
+    }
+    /// The request code of offline step 1 (this device's id), once known.
+    public private(set) var offlineRequestCode: String = ""
     /// The sign-in request in flight, or nil.
     public private(set) var request: KitSignInRequest?
     /// Whether the first reload has finished: before it the gate is `booting`, never Welcome.
@@ -135,6 +147,9 @@ public final class PolarisKeyGateModel {
     private var bundle: KitBundle
     private var platform: KitPlatform
     private var keySubmitted = false
+    private var offlineCopied = false
+    private var offlineSubmitted = false
+    private var offlineVerified: Bool?
     private var activation: KitActivation?
     private var pending: KitPending?
     private var signIn: KitSignIn?
@@ -194,6 +209,11 @@ public final class PolarisKeyGateModel {
         self.inputs = inputs
         self.request = request
         self.presentationIcon = presentationIcon
+        // A fixture device id, so the offline preview draws a real-length code.
+        self.offlineRequestCode = "dev_7Q2Mx9cLr4TbV0aZ3WPLDA8kN5eY"
+        if inputs.offline?.file == true {
+            self.offlineText = "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktYnVuZGxlK2p3cyJ9.eyJpc3MiOiJrZXkucGxycy5pbSJ9.c2lnbmF0dXJl"
+        }
     }
 
     // MARK: Screens
@@ -317,6 +337,52 @@ public final class PolarisKeyGateModel {
         rebuild()
         announce(activate.copy.first)
         if result.isOK { await reload() }
+    }
+
+    // MARK: Offline activation
+
+    /// Show offline activation (the Welcome extra "Activate offline").
+    public func useOffline() {
+        route = .offline
+        Task { await loadOfflineRequestCode() }
+    }
+
+    /// Step 1's code: this device's id, which the request QR encodes too.
+    public func loadOfflineRequestCode() async {
+        guard let client else { return }
+        offlineRequestCode = await client.core.deviceId
+    }
+
+    /// The code was copied (the button says so for a moment).
+    public func offlineCodeCopied() {
+        offlineCopied = true
+        rebuild()
+    }
+
+    /// Step 2 by file or by paste: `text` becomes the activation text to submit.
+    public func loadOffline(_ text: String) {
+        offlineText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Activate from the loaded text. All-or-nothing; a refusal keeps the form.
+    public func submitOffline() async {
+        offlineSubmitted = true
+        offlineVerified = nil
+        rebuild()
+        guard let client, !offlineText.isEmpty else {
+            announce(offlineActivation.copy.last)
+            return
+        }
+        do {
+            _ = try await client.importBundle(offlineText)
+            offlineVerified = true
+            rebuild()
+            await reload()
+        } catch {
+            offlineVerified = false
+            rebuild()
+            announce(offlineActivation.copy.last)
+        }
     }
 
     /// Paste replaces the field's text (the field is never appended to).
@@ -577,6 +643,11 @@ public final class PolarisKeyGateModel {
         i.pending = pending
         i.keyField = KitKeyField(text: keyText, submitted: keySubmitted)
         i.activation = activation
+        if route == .offline {
+            i.offline = KitOffline(
+                copied: offlineCopied, file: !offlineText.isEmpty, submitted: offlineSubmitted,
+                verified: offlineVerified)
+        }
         i.signIn = signIn
         i.deviceCode = signIn?.channel == .deviceCode ? deviceCode : nil
         if route == .signIn { i.error = signInError }

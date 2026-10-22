@@ -139,7 +139,7 @@ extension PolarisKeyPreviewState {
 
     /// Every preview, component by component.
     public static let all: [PolarisKeyPreviewState] =
-        gate + welcome + signIn + activate + deviceLimit + statusAndGrace + update + settings
+        gate + welcome + signIn + activate + offlineActivation + deviceLimit + statusAndGrace + update + settings
         + devicesAndPaywall
 
     /// The previews of one component.
@@ -232,6 +232,35 @@ extension PolarisKeyPreviewState {
         .init(
             .welcome, "capability-limited",
             base { $0.capabilities = KitCapabilities(signIn: false) }),
+    ]
+
+    private static let offlineOn = KitCapabilities(offlineActivation: true)
+
+    static let offlineActivation: [PolarisKeyPreviewState] = [
+        .init(
+            .offlineActivation, "default",
+            base {
+                $0.capabilities = offlineOn
+                $0.offline = KitOffline()
+            }),
+        .init(
+            .offlineActivation, "loaded",
+            base {
+                $0.capabilities = offlineOn
+                $0.offline = KitOffline(file: true)
+            }),
+        .init(
+            .offlineActivation, "rejected-signature",
+            base {
+                $0.capabilities = offlineOn
+                $0.offline = KitOffline(file: true, submitted: true, verified: false)
+            }),
+        .init(
+            .offlineActivation, "done",
+            base {
+                $0.capabilities = offlineOn
+                $0.offline = KitOffline(file: true, submitted: true, verified: true)
+            }),
     ]
 
     static let signIn: [PolarisKeyPreviewState] = [

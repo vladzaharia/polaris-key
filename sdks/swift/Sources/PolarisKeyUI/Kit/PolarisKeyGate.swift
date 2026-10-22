@@ -111,8 +111,14 @@ public struct PolarisKeyGate<Content: View>: View {
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
                 }
-        case .welcome, .offline:
+        case .welcome:
             welcome
+        case .offline:
+            OfflineActivationView(
+                screen: model.offlineActivation, requestCode: model.offlineRequestCode,
+                text: $model.offlineText, onCopied: { model.offlineCodeCopied() },
+                onSubmit: { Task { await model.submitOffline() } },
+                onCancel: { model.backToWelcome() })
         case .activate:
             ActivateView(
                 screen: model.activate, text: $model.keyText,
@@ -127,6 +133,7 @@ public struct PolarisKeyGate<Content: View>: View {
         WelcomeView(
             screen: model.welcome, onSignIn: { model.beginSignIn() },
             onUseKey: { model.useLicenseKey() },
+            onExtra: { key in if key == "welcome.offline" { model.useOffline() } },
             inline: {
                 if model.welcome.shows("welcome.ledeKeyOnly") {
                     ActivateBody(
