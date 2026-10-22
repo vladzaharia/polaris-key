@@ -276,6 +276,7 @@
   "about.diagnosticsCopied": "진단 정보 복사됨",
   "channel.title": "릴리스 채널",
   "channel.locked": "{store}에서 채널을 설정해요.",
+  "channel.lockedLicense": "라이선스에 이 채널만 포함되어 있어요.",
   "toast.undo": "실행 취소",
   "toast.updateAvailable": "{product} {version} 업데이트가 있어요",
   "signin.methods.title": "Polaris Locker에 로그인",

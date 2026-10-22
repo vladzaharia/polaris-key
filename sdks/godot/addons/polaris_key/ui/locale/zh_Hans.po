@@ -1762,6 +1762,11 @@ msgstr "发布渠道"
 msgid "channel.locked"
 msgstr "渠道由{store}设置。"
 
+#. Your license includes this channel only.
+#. ChannelPicker: the license allows one release channel, so the choice is locked.
+msgid "channel.lockedLicense"
+msgstr "你的许可证仅包含此渠道。"
+
 #. Undo
 #. Toast action.
 msgid "toast.undo"

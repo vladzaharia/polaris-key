@@ -646,6 +646,8 @@
     <string name="channel_title">릴리스 채널</string>
     <!-- ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
     <string name="channel_locked">%1$s에서 채널을 설정해요.</string>
+    <!-- ChannelPicker: the license allows one release channel, so the choice is locked. -->
+    <string name="channel_lockedLicense">라이선스에 이 채널만 포함되어 있어요.</string>
     <!-- Toast action. -->
     <string name="toast_undo">실행 취소</string>
     <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->

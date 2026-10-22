@@ -4195,6 +4195,66 @@
         }
       }
     },
+    "channel.lockedLicense": {
+      "comment": "ChannelPicker: the license allows one release channel, so the choice is locked.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your license includes this channel only."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Lizenz umfasst nur diesen Kanal."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre licence n’inclut que ce canal."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu licencia solo incluye este canal."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua licença inclui apenas este canal."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua licenza include solo questo canale."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスにはこのチャンネルのみ含まれます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스에 이 채널만 포함되어 있어요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的许可证仅包含此渠道。"
+          }
+        }
+      }
+    },
     "channel.title": {
       "comment": "ChannelPicker: the release channel choice.",
       "extractionState": "manual",

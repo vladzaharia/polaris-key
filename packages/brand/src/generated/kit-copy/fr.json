@@ -276,6 +276,7 @@
   "about.diagnosticsCopied": "Diagnostics copiés",
   "channel.title": "Canal de publication",
   "channel.locked": "{store} définit le canal.",
+  "channel.lockedLicense": "Votre licence n’inclut que ce canal.",
   "toast.undo": "Annuler",
   "toast.updateAvailable": "{product} {version} est disponible",
   "signin.methods.title": "Se connecter à Polaris Locker",

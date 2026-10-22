@@ -283,6 +283,7 @@
     "about.diagnosticsCopied": "診断情報をコピーしました",
     "channel.title": "リリースチャンネル",
     "channel.locked": "チャンネルは{store}で設定されます。",
+    "channel.lockedLicense": "ライセンスにはこのチャンネルのみ含まれます。",
     "toast.undo": "取り消す",
     "toast.updateAvailable": "{product} {version}が利用可能です",
     "signin.methods.title": "Polaris Lockerにサインイン",
