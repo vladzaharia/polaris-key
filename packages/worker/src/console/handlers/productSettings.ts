@@ -382,7 +382,11 @@ async function writeRefusal(
 }
 
 /** The 409 a relaxing write gets when it names a version other than the one in force (a missing one is `writeSetting()`'s 422). */
-function staleRelax(r: Request_, def: SettingDef, view: RowSettingView): Response {
+function staleRelax(
+  r: Request_,
+  def: SettingDef,
+  view: RowSettingView,
+): Response {
   const services = parseServices(r.product.services_json).services;
   return err(
     409,

@@ -809,9 +809,7 @@ async function writeProduct(
       governed:
         def.ownership === "claimable" &&
         !(def.storage.kind === "column" && adapter?.marker) &&
-        !(
-          def.storage.kind === "rich" && ctx.registry.adapter(def.key)?.set
-        ),
+        !(def.storage.kind === "rich" && ctx.registry.adapter(def.key)?.set),
       storedBefore,
     });
   }
