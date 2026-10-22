@@ -958,7 +958,10 @@
             "about.licenses",
             "about.copyDiagnostics",
             "about.diagnosticsCopied",
-            "part.poweredBy"
+            "part.poweredBy",
+            "part.hint.select",
+            "part.hint.activate",
+            "part.hint.back"
           ]
         }
       }
