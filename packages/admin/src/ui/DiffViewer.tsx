@@ -41,10 +41,21 @@ export interface StructuredDiffViewerProps<T extends object> {
     before: T;
     after: T;
     fields: FieldChange[];
-  }) => { field: string; before: string; after: string }[];
+  }) => DiffFieldView[];
   /** A breaking-change note on a changed entry, by key. */
   breakingChanged?: Record<string, string>;
   className?: string;
+}
+
+/**
+ * One changed field in the reader's words. `values` replaces the was-to-now pair with the Added,
+ * Removed and Unchanged rows of a list (the allowed values), one value each.
+ */
+export interface DiffFieldView {
+  field: string;
+  before: string;
+  after: string;
+  values?: { added: string[]; removed: string[]; kept: string[] };
 }
 
 export interface TextDiffViewerProps {
@@ -157,11 +168,9 @@ function ChangeRow<T>({
   change: EntryChange<T>;
   refs?: readonly string[];
   note?: string;
-  fieldView?: (c: Extract<EntryChange<T>, { kind: "changed" }>) => {
-    field: string;
-    before: string;
-    after: string;
-  }[];
+  fieldView?: (
+    c: Extract<EntryChange<T>, { kind: "changed" }>,
+  ) => DiffFieldView[];
 }): React.ReactElement {
   const k = KIND[change.kind];
   const Icon = k.icon;
@@ -190,22 +199,31 @@ function ChangeRow<T>({
       </div>
       {change.kind === "changed" && fieldView ? (
         <dl className="mt-1 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-xs">
-          {fieldView(change).map((f) => (
-            <React.Fragment key={f.field}>
-              <dt className="text-fg-muted">{f.field}</dt>
-              <dd className="min-w-0 break-words text-fg">
-                <span className="text-fg-muted line-through">
-                  <span className="sr-only">was </span>
-                  {f.before}
-                </span>
-                <span aria-hidden className="mx-1 text-fg-subtle">
-                  →
-                </span>
-                <span className="sr-only"> now </span>
-                <span className="text-fg-strong">{f.after}</span>
-              </dd>
-            </React.Fragment>
-          ))}
+          {fieldView(change).map((f) =>
+            f.values ? (
+              <React.Fragment key={f.field}>
+                <dt className="text-fg-muted">{f.field}</dt>
+                <dd className="min-w-0">
+                  <ValueRows values={f.values} />
+                </dd>
+              </React.Fragment>
+            ) : (
+              <React.Fragment key={f.field}>
+                <dt className="text-fg-muted">{f.field}</dt>
+                <dd className="min-w-0 break-words text-fg">
+                  <span className="text-fg-muted line-through">
+                    <span className="sr-only">was </span>
+                    {f.before}
+                  </span>
+                  <span aria-hidden className="mx-1 text-fg-subtle">
+                    →
+                  </span>
+                  <span className="sr-only"> now </span>
+                  <span className="text-fg-strong">{f.after}</span>
+                </dd>
+              </React.Fragment>
+            ),
+          )}
         </dl>
       ) : change.kind === "changed" ? (
         <dl className="mt-1 grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-xs">
@@ -228,6 +246,39 @@ function ChangeRow<T>({
         </dl>
       ) : null}
     </li>
+  );
+}
+
+/** A list's change as rows: Added with a plus, Removed with a minus and a strike, Unchanged. */
+function ValueRows({
+  values,
+}: {
+  values: NonNullable<DiffFieldView["values"]>;
+}): React.ReactElement {
+  const rows = [
+    { label: "Added", sign: "+", items: values.added, cls: "text-success" },
+    {
+      label: "Removed",
+      sign: "−",
+      items: values.removed,
+      cls: "text-danger line-through",
+    },
+    { label: "Unchanged", sign: "", items: values.kept, cls: "text-fg" },
+  ].filter((r) => r.items.length > 0);
+  return (
+    <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-0.5">
+      {rows.map((r) => (
+        <React.Fragment key={r.label}>
+          <dt className="text-fg-muted">{r.label}</dt>
+          <dd
+            className={cn("min-w-0 font-mono [overflow-wrap:anywhere]", r.cls)}
+          >
+            {r.sign ? <span aria-hidden>{r.sign} </span> : null}
+            {r.items.join(r.sign ? ", " : ", ")}
+          </dd>
+        </React.Fragment>
+      ))}
+    </dl>
   );
 }
 

@@ -63,13 +63,44 @@ export function AllowedValues({
     if (numeric && !Number.isFinite(v)) return;
     if (!values.some((x) => same(x, v))) onChange([...values, v]);
   };
+  // A removed value keeps its place in the row, dashed and struck, until the draft publishes.
+  const gone = (v: unknown): boolean => removed.some((r) => same(r, v));
+  const items: { v: unknown; gone: boolean }[] =
+    baseValues === null
+      ? values.map((v) => ({ v, gone: false }))
+      : [
+          ...baseValues
+            .filter((b) => gone(b) || values.some((x) => same(x, b)))
+            .map((v) => ({ v, gone: gone(v) })),
+          ...values
+            .filter((v) => !baseValues.some((b) => same(b, v)))
+            .map((v) => ({ v, gone: false })),
+        ];
   return (
     <ul
       aria-label="Allowed values"
       aria-describedby={describedBy}
       className="flex flex-wrap items-center gap-2"
     >
-      {values.map((v) => {
+      {items.map(({ v, gone }) => {
+        if (gone)
+          return (
+            <li
+              key={`removed:${valueText(v)}`}
+              className="inline-flex min-h-7 items-center gap-1 rounded-full border border-dashed border-border-strong ps-3 pe-1 text-xs text-fg-muted"
+            >
+              <s className="font-mono">{valueText(v)}</s>
+              <span className="sr-only"> (removed)</span>
+              <Button
+                size="xs"
+                variant="ghost"
+                iconStart={<RotateCcw aria-hidden />}
+                onClick={() => onUndo(v)}
+              >
+                Undo<span className="sr-only"> removing {valueText(v)}</span>
+              </Button>
+            </li>
+          );
         const tag = usageTag(v, use);
         const isNew =
           baseValues !== null && !baseValues.some((b) => same(b, v));
@@ -100,23 +131,6 @@ export function AllowedValues({
           </li>
         );
       })}
-      {removed.map((v) => (
-        <li
-          key={`removed:${valueText(v)}`}
-          className="inline-flex min-h-7 items-center gap-1 rounded-full border border-dashed border-border-strong ps-3 pe-1 text-xs text-fg-muted"
-        >
-          <s className="font-mono">{valueText(v)}</s>
-          <span className="sr-only"> (removed)</span>
-          <Button
-            size="xs"
-            variant="ghost"
-            iconStart={<RotateCcw aria-hidden />}
-            onClick={() => onUndo(v)}
-          >
-            Undo<span className="sr-only"> removing {valueText(v)}</span>
-          </Button>
-        </li>
-      ))}
       <li>
         {adding ? (
           <input

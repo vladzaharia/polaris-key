@@ -8,6 +8,7 @@ import { flagKeysOf, type CatalogDraft } from "../model/catalogDraft.js";
 import type { EntryConflict } from "../model/mergeDraft.js";
 import { CatalogEntryForm } from "./CatalogEntryForm.js";
 import { ConflictPanel } from "./EditorParts.js";
+import { MintCallouts } from "./MintCallouts.js";
 import { MintCards } from "./MintCards.js";
 import { useHolders, type Removal } from "./RemovedValues.js";
 import { RecipePill, isMinted } from "./RecipeState.js";
@@ -85,6 +86,9 @@ export function EntryPane({
         headingLevel={2}
       >
         <div className="space-y-4 p-4">
+          {minted ? (
+            <MintCallouts slug={slug} entry={entry} onChange={onChange} />
+          ) : null}
           {conflicts.map((c) => (
             <ConflictPanel
               key={c.key}
@@ -111,6 +115,7 @@ export function EntryPane({
           <Button
             size="sm"
             variant="outline"
+            className="border-danger-border text-danger hover:not-aria-disabled:text-danger"
             iconStart={<Trash2 aria-hidden />}
             onClick={onRemove}
           >
@@ -122,7 +127,12 @@ export function EntryPane({
         <MintCards slug={slug} keyName={entry.key} recipe={recipe} />
       ) : null}
       {base && !minted ? (
-        <WhereItsSet slug={slug} entry={entry} holders={byKey[entry.key]} />
+        <WhereItsSet
+          slug={slug}
+          entry={entry}
+          holders={byKey[entry.key]}
+          removed={removal?.values}
+        />
       ) : null}
     </div>
   );

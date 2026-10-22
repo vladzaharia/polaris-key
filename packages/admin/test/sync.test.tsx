@@ -227,8 +227,8 @@ describe("the catalog editor's Synced setting fields", () => {
 
   it("shows a key with no user block as syncing, and offers no device scope", () => {
     renderForm(entry({ key: "audio.volume" }));
-    const syncs = screen.getByRole("checkbox", {
-      name: /Syncs across devices/,
+    const syncs = screen.getByRole("switch", {
+      name: /Syncs with Cloud Sync/,
     });
     expect(syncs.getAttribute("aria-checked")).toBe("true");
     expect(screen.queryByText("Per device")).toBeNull();
@@ -238,7 +238,7 @@ describe("the catalog editor's Synced setting fields", () => {
     const user = userEvent.setup();
     const { onChange } = renderForm(entry({ key: "audio.volume" }));
     await user.click(
-      screen.getByRole("checkbox", { name: /Syncs across devices/ }),
+      screen.getByRole("switch", { name: /Syncs with Cloud Sync/ }),
     );
     expect(onChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ user: { sync: "local" } }),
@@ -251,7 +251,7 @@ describe("the catalog editor's Synced setting fields", () => {
       entry({ key: "audio.volume", user: { sync: "local" } }),
     );
     await user.click(
-      screen.getByRole("checkbox", { name: /Syncs across devices/ }),
+      screen.getByRole("switch", { name: /Syncs with Cloud Sync/ }),
     );
     expect(onChange.mock.lastCall![0].user).toBeUndefined();
   });
@@ -312,7 +312,9 @@ describe("the catalog editor's Synced setting fields", () => {
 
   it("offers no Synced setting section on a secret or a flag", () => {
     renderForm(entry({ key: "api.token", kind: "secret" }));
-    expect(screen.queryByText("Synced setting")).toBeNull();
+    expect(
+      screen.queryByRole("switch", { name: /Syncs with Cloud Sync/ }),
+    ).toBeNull();
   });
 });
 
