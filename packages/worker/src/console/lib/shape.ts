@@ -391,8 +391,8 @@ export async function attentionFactsFor(
 /**
  * Who turned a product's package feeds off, as a display name: the actor of the latest
  * `package_feeds.update` audit row, resolved as the activity feed does. Never the raw IdP `sub`
- * the owner row records; `manifest` stays as is, and a write with no named actor reads as
- * "an operator".
+ * the owner row records, and never an email (the product record is readable from any area, Activity
+ * is not); `manifest` stays as is, and a write with no named actor reads as "an operator".
  */
 async function offByName(
   db: Db,
@@ -407,5 +407,5 @@ async function offByName(
     targetId: slug,
     limit: 1,
   });
-  return row?.actor_name || row?.actor_email || "an operator";
+  return row?.actor_name || "an operator";
 }
