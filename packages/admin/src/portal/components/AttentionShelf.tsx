@@ -28,7 +28,7 @@ export function AttentionShelf({
     >
       <h2
         id="attention-h"
-        className="flex items-baseline gap-2 px-4 py-2 text-md font-semibold text-fg-strong"
+        className="flex min-h-14 items-center gap-2 px-4 py-2 text-base font-semibold text-fg-strong desk:px-6"
       >
         {t("locker.library.needsYou")}
         <span className="text-xs font-normal text-fg-muted">
@@ -39,7 +39,7 @@ export function AttentionShelf({
         {items.map(({ product, text, action, urgent }) => (
           <li
             key={product.slug}
-            className="flex min-w-0 flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:gap-4"
+            className="flex min-w-0 flex-col gap-2 px-4 py-3 sm:min-h-14 sm:flex-row sm:items-center sm:gap-4 desk:px-6"
           >
             <div className="flex min-w-0 flex-1 items-center gap-3 bigtext:flex-col bigtext:items-start">
               <ProductIcon
@@ -47,10 +47,10 @@ export function AttentionShelf({
                 name={product.name}
                 tint={product.presentation.tint}
                 src={product.presentation.iconUrl}
-                size={40}
-                className="shrink-0"
+                size={24}
+                className="size-7 shrink-0"
               />
-              <p className="min-w-0 text-sm text-fg-muted">
+              <p className="min-w-0 text-sm text-fg">
                 <a
                   href={href.product(product.slug)}
                   dir="auto"
@@ -63,9 +63,9 @@ export function AttentionShelf({
             </div>
             <Button
               asChild
-              size="md"
+              size="sm"
               variant={urgent ? "primary" : "quiet"}
-              className="w-full min-w-0 sm:w-auto sm:max-w-[16rem] sm:shrink-0 bigtext:h-auto bigtext:min-h-10 bigtext:whitespace-normal bigtext:py-1.5"
+              className="w-full min-w-0 sm:w-auto sm:max-w-[16rem] sm:shrink-0 bigtext:h-auto bigtext:min-h-8 bigtext:whitespace-normal bigtext:py-1.5"
             >
               {action.external ? (
                 <a

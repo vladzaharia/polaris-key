@@ -1,6 +1,6 @@
 import { t } from "../../lib/copy.js";
 import * as React from "react";
-import { LayoutGrid, List, Search } from "lucide-react";
+import { Check, LayoutGrid, List, Search } from "lucide-react";
 import { SegmentedControl } from "../../ui/SegmentedControl.js";
 import { Kbd } from "../../ui/Kbd.js";
 import { cn } from "../../lib/cn.js";
@@ -88,7 +88,7 @@ export function LibraryToolbar({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <label className="relative flex h-11 pointer-coarse:h-[46px] focus-within:outline-2 focus-within:outline-solid focus-within:outline-offset-2 focus-within:outline-focus min-w-0 basis-full items-center rounded-md border border-border-strong bg-surface-page wide:w-80 wide:flex-none wide:basis-auto">
+      <label className="relative flex h-8 pointer-coarse:h-[46px] focus-within:outline-2 focus-within:outline-solid focus-within:outline-offset-2 focus-within:outline-focus min-w-0 basis-full items-center rounded-md border border-border-strong bg-surface-page wide:w-80 wide:flex-none wide:basis-auto">
         <Search
           aria-hidden
           className="pointer-events-none absolute start-3 size-4 text-fg-muted"
@@ -129,13 +129,18 @@ export function LibraryToolbar({
                 aria-pressed={on}
                 onClick={() => onChange({ filter: c.id })}
                 className={cn(
-                  "inline-flex h-10 pointer-coarse:h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-md",
+                  "inline-flex h-8 pointer-coarse:h-11 shrink-0 items-center gap-2 rounded-full border px-3 text-md",
+                  // Selected: the coral rule and its subtle plate, with a check (the mockup's
+                  // `.filter.on`); the check and the pressed state carry it, not colour alone.
                   on
-                    ? "border-fg-strong bg-fg-strong font-medium text-surface-page"
+                    ? "border-[var(--pk-locker-accent)] bg-accent-subtle font-medium text-fg-strong"
                     : "border-border-strong text-fg-strong hover:bg-hover",
                 )}
               >
-                {c.dot ? (
+                {on ? (
+                  <Check aria-hidden className="size-4 text-accent-fg" />
+                ) : null}
+                {c.dot && !on ? (
                   <span
                     aria-hidden
                     className="size-1.5 rounded-full bg-warning"
@@ -152,14 +157,14 @@ export function LibraryToolbar({
       {/* Sort and the view toggle share a row on a phone (LF3); from `sm` they sit beside the chips. */}
       <div
         data-library-view-row=""
-        className="flex min-w-0 flex-wrap items-center justify-between gap-3 max-sm:basis-full sm:ms-auto"
+        className="flex min-w-0 flex-wrap items-center justify-between gap-3 max-sm:basis-full max-sm:justify-end sm:ms-auto"
       >
         <label className="flex items-center">
           <span className="sr-only">{t("locker.library.sort")}</span>
           <select
             value={sort}
             onChange={(e) => onChange({ sort: e.target.value as LibrarySort })}
-            className="h-10 pointer-coarse:h-11 rounded-md border border-border-strong bg-surface-page px-3 text-md text-fg-strong"
+            className="h-9 pointer-coarse:h-11 rounded-md border border-border-strong bg-surface-page px-3 text-md text-fg-strong"
           >
             <option value="recent">{t("locker.library.sortRecent")}</option>
             <option value="name">{t("locker.library.sortName")}</option>
@@ -167,7 +172,7 @@ export function LibraryToolbar({
         </label>
         <SegmentedControl
           aria-label={t("locker.library.view")}
-          className="h-11 shrink-0 pointer-coarse:h-[3.125rem] pointer-coarse:[&>[role=radio]]:h-11 pointer-coarse:[&>[role=radio]]:min-w-11"
+          className="shrink-0 pointer-coarse:h-[3.125rem] pointer-coarse:[&>[role=radio]]:h-11 pointer-coarse:[&>[role=radio]]:min-w-11"
           value={mode}
           onChange={onMode}
           options={[
@@ -176,9 +181,7 @@ export function LibraryToolbar({
               label: (
                 <span className="flex items-center gap-2">
                   <LayoutGrid aria-hidden className="size-4" />
-                  <span className="sr-only sm:not-sr-only">
-                    {t("locker.library.grid")}
-                  </span>
+                  <span>{t("locker.library.grid")}</span>
                 </span>
               ),
             },
@@ -187,9 +190,7 @@ export function LibraryToolbar({
               label: (
                 <span className="flex items-center gap-2">
                   <List aria-hidden className="size-4" />
-                  <span className="sr-only sm:not-sr-only">
-                    {t("locker.library.list")}
-                  </span>
+                  <span>{t("locker.library.list")}</span>
                 </span>
               ),
             },

@@ -11,6 +11,10 @@ import { MissingLicense } from "./MissingLicense.js";
 import { t } from "../../lib/copy.js";
 import { formatDay } from "../date.js";
 
+/** The phone bar's current tab: strong ink and the 3 px coral selected marker (PORTAL.md §3, D9a). */
+const TAB_MARK =
+  "font-medium text-fg-strong before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:bg-[var(--pk-locker-accent)]";
+
 /**
  * The signed-in frame (PORTAL.md §3.2, §5.2 `PortalShell`):
  *
@@ -79,7 +83,7 @@ export function PortalShell({
       </a>
       {/* pk-vt-chrome: kept above a list transition's moving content (src/motion.css). */}
       <header className="@container pk-vt-chrome sticky top-0 z-30 border-b border-border bg-surface-page short:static tight:max-desk:static">
-        <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center gap-4 px-4 @max-[16rem]:gap-2 @max-[16rem]:px-2 desk:h-16 desk:gap-6 desk:px-8 mid:gap-8">
+        <div className="mx-auto flex h-[calc(3.5rem-1px)] w-full max-w-[82rem] items-center gap-4 px-4 @max-[16rem]:gap-2 @max-[16rem]:px-2 desk:h-[calc(4rem-1px)] desk:gap-6 desk:px-8 mid:gap-8">
           <a
             href={href.library()}
             aria-label={t("locker.shell.home")}
@@ -177,8 +181,8 @@ export function PortalShell({
             href={href.library()}
             aria-current={onLibrary ? "page" : undefined}
             className={cn(
-              "flex h-full flex-col items-center justify-center gap-0.5 text-xs",
-              onLibrary ? "font-medium text-fg-strong" : "text-fg-muted",
+              "relative flex h-full flex-col items-center justify-center gap-0.5 text-xs",
+              onLibrary ? TAB_MARK : "text-fg-muted",
             )}
           >
             <Library aria-hidden className="size-5" />
@@ -189,8 +193,8 @@ export function PortalShell({
               href={href.discover()}
               aria-current={onDiscover ? "page" : undefined}
               className={cn(
-                "flex h-full flex-col items-center justify-center gap-0.5 text-xs",
-                onDiscover ? "font-medium text-fg-strong" : "text-fg-muted",
+                "relative flex h-full flex-col items-center justify-center gap-0.5 text-xs",
+                onDiscover ? TAB_MARK : "text-fg-muted",
               )}
             >
               <span className="relative">

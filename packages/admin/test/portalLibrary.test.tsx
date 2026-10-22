@@ -101,8 +101,8 @@ describe("Library on today's data (PX-02)", () => {
     renderPortal();
     await screen.findByRole("heading", { name: "Nothing here yet" });
     expect(
-      screen.getByText("Apps you buy or activate show up here."),
-    ).toBeTruthy();
+      screen.queryByText("Apps you buy or activate show up here."),
+    ).toBeNull();
     expect(
       screen.getAllByRole("button", { name: "Activate a license" }),
     ).toHaveLength(1);
