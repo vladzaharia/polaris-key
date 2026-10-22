@@ -7425,6 +7425,7 @@ a passkey already in the account. A passkey added in the Locker account is never
   target: the link id) and mails the account and every Superadmin (`consoleMethodStrongNotice`, at
   most 25 addresses, exempt from the per-recipient budget). The marking is a conditional
   `UPDATE ... WHERE strong_at IS NULL`, so two racing calls write one audit row.
+- **The strong mark is account-scoped.** `markLinkStrong` updates `WHERE id = ? AND account_id = ?` and reports whether a row changed, so a wrong or raced link id cannot mark another account's link and a caller that matched nothing refuses instead of reporting success.
 - **SM-4.** `handleAccountPasskeys` and the portal never call `markLinkStrong`; only
   `consolePasskeyCeremony` (after a successful add) and `markConsoleMethodStrong` do. A stolen portal
   session can add a passkey but cannot make it open the console without a console step-up.

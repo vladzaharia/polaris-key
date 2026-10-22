@@ -211,7 +211,11 @@ export async function consoleSignIn(
   const strong = Boolean(known?.strong_at) || opts.operator || linkCreated;
   if (!strong) return { status: "refused", reason: "method" };
   await recordLinkGroups(db, result.linkId, identity.groups, now);
-  if (!known?.strong_at) await markLinkStrong(db, result.linkId, now);
+  if (
+    !known?.strong_at &&
+    !(await markLinkStrong(db, result.account.id, result.linkId, now))
+  )
+    return { status: "refused", reason: "method" };
   // The member id is derived, never trusted from here: it only indexes the audit alias lookup.
   await db.run(
     "UPDATE account_links SET member_id = ? WHERE id = ?",
@@ -862,7 +866,9 @@ export async function consolePasskeyCeremony(
     // An unreadable body marks nothing.
   }
   if (!linkId) return { response, strongLinkId: null };
-  await markLinkStrong(db, linkId, now);
+  // The link must be this caller's own; a miss reports nothing strong (the add itself stands).
+  if (!(await markLinkStrong(db, caller.accountId, linkId, now)))
+    return { response, strongLinkId: null };
   return { response, strongLinkId: linkId };
 }
 

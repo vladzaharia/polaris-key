@@ -343,20 +343,25 @@ export async function touchLink(
 }
 
 /**
- * Mark a link strong for the console (ST-28 SM-3). Idempotent: the first mark's time stays. Callers
- * are the console sign-in through the console IdP (SM-3(b), (c)); nothing else sets `strong_at`
- * until the step-up paths (SM-3(a), (d)) land.
+ * Mark a link strong for the console (ST-28 SM-3). The link must belong to `accountId`, the account
+ * the caller acted for, so a wrong or raced link id can never mark another account's link. The
+ * first mark's time stays. Returns whether a row matched: false is a refusal, and the caller must
+ * not report success. Callers are the console sign-in through the console IdP (SM-3(b), (c)) and
+ * the console passkey enrolment (SM-3(a)).
  */
 export async function markLinkStrong(
   db: Db,
+  accountId: string,
   linkId: string,
   now: number,
-): Promise<void> {
-  await db.run(
-    "UPDATE account_links SET strong_at = COALESCE(strong_at, ?) WHERE id = ?",
+): Promise<boolean> {
+  const changed = await db.runChanges(
+    "UPDATE account_links SET strong_at = COALESCE(strong_at, ?) WHERE id = ? AND account_id = ?",
     now,
     linkId,
+    accountId,
   );
+  return changed > 0;
 }
 
 /**
