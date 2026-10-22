@@ -806,3 +806,84 @@ export function accessChangedNotice(input: {
     }),
   };
 }
+
+/** The invite's link: the console sign-in page with the address as a hint. No secret, no token. */
+export function consoleInviteLink(
+  origin: string | null | undefined,
+  email: string,
+): string {
+  const base = (origin ?? "").replace(/\/+$/, "");
+  return `${base}/manage/login?login_hint=${encodeURIComponent(email)}`;
+}
+
+/**
+ * ST-31.7: an invite to the console, sent as Polaris Key to the invited address only. The link is
+ * the sign-in page with the address as a hint and carries nothing that lets anyone in: access
+ * follows a sign-in that proves this address, so a forwarded mail grants nothing. It says who
+ * invited, the role, the scope and the areas, and that it lapses.
+ */
+export function accessInviteNotice(input: {
+  inviter: string | null | undefined;
+  roleLabel: string;
+  scopeLabel: string | null | undefined;
+  areas: readonly string[] | null;
+  link: string;
+  origin: string | null | undefined;
+}): NoticeMessage {
+  const inviter = displayValue(input.inviter, "An operator");
+  const scope = displayValue(input.scopeLabel, "the platform");
+  const subject = "You are invited to the Polaris Key console";
+  const line = `${inviter} invited you to the Polaris Key console as ${input.roleLabel} on ${scope}${
+    input.areas ? `, limited to ${input.areas.join(", ")}` : ""
+  }.`;
+  const how =
+    "Sign in with this email address to accept. The invitation lapses after 7 days.";
+  const footer =
+    "The link only opens the sign-in page. It does not give access by itself. " +
+    "If you did not expect this, ignore this email.";
+  return {
+    subject,
+    text: [subject, line, how, `Sign in: ${input.link}`, footer].join("\n\n"),
+    html: renderEmail({
+      subject,
+      heading: subject,
+      paragraphs: [line, how],
+      action: { label: "Sign in", url: input.link },
+      footer,
+      origin: emailAssetOrigin(input.origin),
+    }),
+  };
+}
+
+/**
+ * ST-31.7 (G5 for invites): one notice per request to every Superadmin, so a session that hands
+ * out invites is loud. Counts only; it names no invited address.
+ */
+export function accessInvitesSentNotice(input: {
+  actor: string | null | undefined;
+  count: number;
+  roleLabel: string;
+  scopeLabel: string | null | undefined;
+  areas: readonly string[] | null;
+  origin: string | null | undefined;
+}): NoticeMessage {
+  const actor = displayValue(input.actor, "An operator");
+  const scope = displayValue(input.scopeLabel, "the platform");
+  const subject = `Console invitations sent: ${input.count}`;
+  const line = `${actor} invited ${input.count} ${input.count === 1 ? "person" : "people"} to the Polaris Key console as ${input.roleLabel} on ${scope}${
+    input.areas ? `, limited to ${input.areas.join(", ")}` : ""
+  }.`;
+  const footer =
+    "You get this because you are a Superadmin. If you did not expect it, open Members in the console and cancel the invitations.";
+  return {
+    subject,
+    text: [subject, line, footer].join("\n\n"),
+    html: renderEmail({
+      subject,
+      heading: subject,
+      paragraphs: [line],
+      footer,
+      origin: emailAssetOrigin(input.origin),
+    }),
+  };
+}

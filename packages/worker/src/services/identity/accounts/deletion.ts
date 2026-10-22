@@ -516,6 +516,17 @@ function commitStatements(
       params: [accountId],
     },
     stmtDetachAccountLicenses(accountId),
+    // ST-31.7: an invite names an address, not the account, so the cascade misses it. The
+    // erased person's addresses (their links' and their primary email) leave every roster.
+    {
+      sql: `DELETE FROM console_role_bindings
+             WHERE email_norm IS NOT NULL
+               AND (email_norm IN (SELECT lower(trim(email)) FROM account_links
+                                    WHERE account_id = ? AND email IS NOT NULL)
+                    OR email_norm IN (SELECT lower(trim(primary_email)) FROM accounts
+                                       WHERE id = ? AND primary_email IS NOT NULL))`,
+      params: [accountId, accountId],
+    },
     {
       sql: "DELETE FROM account_links WHERE account_id = ?",
       params: [accountId],

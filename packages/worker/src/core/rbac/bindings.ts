@@ -395,3 +395,95 @@ export async function listStoredSuperadmins(db: Db): Promise<BindingRow[]> {
       ORDER BY b.granted_at, b.id LIMIT 200`,
   );
 }
+
+/**
+ * ST-31.7: invites. An invite is an address row (`email_norm`, no account) that expires after
+ * {@link INVITE_TTL_SECONDS}. It grants nothing until sign-in converts it (ST-31.8); the principal
+ * reads account rows only. The unique index `(email_norm, role, scope)` makes a second invite for
+ * the same grant a refresh.
+ */
+export const INVITE_TTL_SECONDS = 7 * 86_400;
+/** The nightly job deletes an invite this long after it expired. */
+export const INVITE_PURGE_GRACE_SECONDS = 7 * 86_400;
+
+/** The invite (live or expired but not yet purged) for one address, role and scope. */
+export async function findInvite(
+  db: Db,
+  emailNorm: string,
+  role: string,
+  scope: string,
+): Promise<BindingRow | null> {
+  return db.first<BindingRow>(
+    `SELECT * FROM console_role_bindings
+      WHERE email_norm = ? AND role = ? AND scope = ?`,
+    emailNorm,
+    role,
+    scope,
+  );
+}
+
+/**
+ * Create the invite, or refresh the one that exists: a later expiry, the new areas, the new
+ * inviter and time. The row keeps its id.
+ */
+export function stmtUpsertInvite(b: {
+  id: string;
+  emailNorm: string;
+  role: Role;
+  scope: GrantScope;
+  areas: readonly AreaId[] | null;
+  grantedBy: string;
+  grantedAt: number;
+}): DbStatement {
+  const insert = stmtInsertBinding({
+    id: b.id,
+    accountId: null,
+    emailNorm: b.emailNorm,
+    role: b.role,
+    scope: b.scope,
+    areas: b.areas,
+    source: "invite",
+    grantedBy: b.grantedBy,
+    grantedAt: b.grantedAt,
+    expiresAt: b.grantedAt + INVITE_TTL_SECONDS,
+  });
+  return {
+    sql: `${insert.sql}
+          ON CONFLICT (email_norm, role, scope) WHERE email_norm IS NOT NULL
+          DO UPDATE SET areas_json = excluded.areas_json, granted_by = excluded.granted_by,
+                        granted_at = excluded.granted_at, expires_at = excluded.expires_at`,
+    params: insert.params,
+  };
+}
+
+/** Whether the account holds any stored binding (it is a console member besides the root rule). */
+export async function hasAccountBinding(
+  db: Db,
+  accountId: string,
+): Promise<boolean> {
+  return (
+    (await db.first<{ n: number }>(
+      "SELECT 1 AS n FROM console_role_bindings WHERE account_id = ? LIMIT 1",
+      accountId,
+    )) !== null
+  );
+}
+
+/**
+ * The nightly sweep: invites that expired more than {@link INVITE_PURGE_GRACE_SECONDS} ago.
+ * Bounded per pass; returns how many went.
+ */
+export async function purgeExpiredInvites(
+  db: Db,
+  now: number,
+  limit = 500,
+): Promise<number> {
+  return db.runChanges(
+    `DELETE FROM console_role_bindings
+      WHERE id IN (SELECT id FROM console_role_bindings
+                    WHERE email_norm IS NOT NULL AND expires_at IS NOT NULL AND expires_at < ?
+                    LIMIT ?)`,
+    now - INVITE_PURGE_GRACE_SECONDS,
+    limit,
+  );
+}

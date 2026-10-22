@@ -23,6 +23,7 @@ export {
   type ConsoleRefusal,
   type ConsoleSignInResult,
 } from "./consoleAccount.js";
+export { accountsVerifyingEmail } from "./accounts/repo.js";
 export { platformMigrationReport } from "./accounts/platformMigration.js";
 export {
   countListedUsersByProduct,

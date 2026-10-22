@@ -24,7 +24,6 @@ import { ErrorCode } from "../../core/errors.js";
 import {
   listAllInvites,
   listScopeBindings,
-  listStoredSuperadmins,
   listWideProductAdmins,
   rowToGrant,
 } from "../../core/rbac/bindings.js";
@@ -37,24 +36,9 @@ import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import type { AdminCtx } from "../routes.js";
 import { createBinding, editBinding, revokeBinding } from "./bindings.js";
+import { superadminAccountIds } from "./accessShared.js";
 
 const LIMIT = 500;
-
-/** Every current Superadmin account: the root rule's holders plus stored bindings. */
-export async function superadminAccountIds(
-  env: Env,
-  db: Db,
-  now: number,
-): Promise<{ id: string; source: "root" | "grant" }[]> {
-  const out = new Map<string, "root" | "grant">();
-  for (const id of await consoleRootHolders(env, db, now)) out.set(id, "root");
-  for (const row of await listStoredSuperadmins(db)) {
-    // A row the reader cannot understand grants nothing, so it is not listed either.
-    if (rowToGrant(row) && !out.has(row.account_id!))
-      out.set(row.account_id!, "grant");
-  }
-  return [...out].map(([id, source]) => ({ id, source }));
-}
 
 type PersonKey = Pick<ConsoleDirectoryPerson, "memberId" | "name" | "email">;
 
@@ -203,7 +187,7 @@ export async function handleProductMemberCreate(
   const slug = c.product!.slug;
   const body = await readBody(c.req);
   const extra = Object.keys(body).filter(
-    (k) => !["member", "role", "areas", "confirm"].includes(k),
+    (k) => !["member", "emails", "role", "areas", "confirm"].includes(k),
   );
   if (extra.length)
     return err(422, ErrorCode.BadRequest, "invalid request", {

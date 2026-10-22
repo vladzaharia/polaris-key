@@ -47,25 +47,39 @@ import {
 import { erasureVerdict } from "../../core/accounts/erasureFence.js";
 import { adminJson, err, readBody } from "../../core/console/respond.js";
 import { isMemberId, memberIdFor } from "../../core/console/memberId.js";
+import type { DbStatement } from "../../db/types.js";
 import { rateLimitOk } from "../../core/rateLimit.js";
-import { deliverEmail } from "../../core/notify/emailDelivery.js";
-import { accessChangedNotice } from "../../core/notify/templates.js";
+import { recipientHash } from "../../core/notify/emailLimits.js";
+import {
+  accessChangedNotice,
+  accessInviteNotice,
+  accessInvitesSentNotice,
+  consoleInviteLink,
+} from "../../core/notify/templates.js";
+import { verifiedAccountEmails } from "../../core/accounts/verifiedEmails.js";
+import { strictEmail } from "../../core/strictEmail.js";
+import { normalizeEmail } from "../../platform/email.js";
 import { getProduct } from "../../core/products/store.js";
 import {
   bindingUnchangedSql,
   findAccountBinding,
+  findInvite,
   getBinding,
+  hasAccountBinding,
   listBoundAccountIds,
   newBindingId,
   rowToGrant,
   stmtDeleteBindingIfUnchanged,
   stmtInsertBinding,
   stmtUpdateBindingAreas,
+  stmtUpsertInvite,
+  INVITE_TTL_SECONDS,
   type BindingRow,
 } from "../../core/rbac/bindings.js";
 import type { GrantScope, Role } from "../../core/rbac/can.js";
 import {
   confirmLevel,
+  inviteBootstrapAllowed,
   isWidening,
   mayChange,
   mayGrant,
@@ -74,13 +88,14 @@ import {
   type GrantSpec,
 } from "../../core/rbac/grantRules.js";
 import {
+  accountsVerifyingEmail,
   consoleDirectory,
   consoleRootHolders,
   type ConsoleDirectoryEntry,
 } from "../../services/identity/public.js";
 import { requireStepUp } from "../stepUp.js";
 import type { AdminCtx } from "../routes.js";
-import { superadminAccountIds } from "./productMembers.js";
+import { sendOperatorNotice, superadminAccountIds } from "./accessShared.js";
 
 /** The write budget per member: generous for a person, a wall for a stolen session. */
 const WRITE_LIMIT = 30;
@@ -89,6 +104,13 @@ const WRITE_WINDOW_SECONDS = 300;
 const RESOLVE_LIMIT = 20000;
 /** The most addresses one change mails. */
 const NOTICE_CAP = 25;
+/** The most addresses one invitation request takes (ST-31.7). */
+const MAX_INVITE_ADDRESSES = 20;
+/** Invitations one member may send per hour, counted per address (mail abuse). */
+const INVITE_LIMIT = 100;
+const INVITE_WINDOW_SECONDS = 3600;
+/** The most operator mails one invitation request sends besides the invitations themselves. */
+const INVITE_NOTICE_CAP = 50;
 
 const ROLE_LABEL: Record<Role, string> = {
   superadmin: "Superadmin",
@@ -254,7 +276,7 @@ function confirmRefusal(
 }
 
 interface Audited {
-  action: "rbac.grant" | "rbac.revoke";
+  action: "rbac.grant" | "rbac.revoke" | "rbac.invite";
   bindingId: string;
   memberId: string;
   summary: string;
@@ -320,6 +342,8 @@ async function notify(
   grantee: ConsoleDirectoryEntry,
   change: "granted" | "changed" | "revoked",
   spec: GrantSpec,
+  /** Mails this call may still send (shared across a batch); the caller's own cap otherwise. */
+  mails: { left: number } = { left: NOTICE_CAP },
 ): Promise<Notified> {
   try {
     const supers = await superadminAccountIds(c.env, c.db, c.now);
@@ -336,7 +360,11 @@ async function notify(
       seen.add(key);
       to.push(addr);
     }
-    const recipients = to.slice(0, NOTICE_CAP);
+    const recipients = to.slice(
+      0,
+      Math.max(0, Math.min(NOTICE_CAP, mails.left)),
+    );
+    mails.left -= recipients.length;
     const productName =
       spec.scope.startsWith("product:") && c.product?.slug
         ? (c.product.name ?? null)
@@ -354,23 +382,9 @@ async function notify(
       origin: c.env.CONSOLE_ORIGIN,
     });
     const results = await Promise.all(
-      recipients.map(async (addr) => {
-        try {
-          const r = await deliverEmail(
-            c.env,
-            c.db,
-            {
-              sender: { kind: "platform", audience: "operator" },
-              to: addr,
-              ...message,
-            },
-            c.now,
-          );
-          return r.ok;
-        } catch {
-          return false;
-        }
-      }),
+      recipients.map((addr) =>
+        sendOperatorNotice(c.env, c.db, addr, message, c.now),
+      ),
     );
     const sent = results.filter(Boolean).length;
     return { sent, of: recipients.length, nobodyNotified: sent === 0 };
@@ -400,7 +414,26 @@ export async function createBinding(
   const limited = await budget(c, w);
   if (limited) return limited;
 
-  if (typeof input.member !== "string" || !isMemberId(input.member))
+  // Exactly one of `member` (an existing member) and `emails` (invitations, ST-31.7).
+  const inviting = body.emails !== undefined;
+  if ((input.member !== undefined) === inviting)
+    return invalid(
+      inviting ? ["member", "emails"] : ["member"],
+      "member_or_emails",
+    );
+  let emails: string[] = [];
+  if (inviting) {
+    const e = body.emails;
+    if (
+      !Array.isArray(e) ||
+      e.length === 0 ||
+      !e.every((x) => typeof x === "string")
+    )
+      return invalid(["emails"]);
+    if (e.length > MAX_INVITE_ADDRESSES)
+      return invalid(["emails"], "too_many_emails");
+    emails = e as string[];
+  } else if (typeof input.member !== "string" || !isMemberId(input.member))
     return invalid(["member"]);
   const checked = validateGrant({
     role: input.role,
@@ -442,7 +475,9 @@ export async function createBinding(
   const refused = confirmRefusal(body, spec);
   if (refused) return refused;
 
-  const who = await resolveMember(c, input.member);
+  if (inviting) return createInvites(c, via, w, spec, emails);
+
+  const who = await resolveMember(c, input.member as string);
   if (who instanceof Response) return who;
   if (isSelf(w, who.accountId, who.entry.memberId)) return selfGrant();
 
@@ -498,6 +533,334 @@ export async function createBinding(
   );
 }
 
+// ── POST with emails: invitations (ST-31.7) ─────────────────────────────────────────────────
+
+type InviteStatus = "invited" | "updated" | "merged" | "invalid" | "exists";
+
+interface InviteResult {
+  email: string;
+  status: InviteStatus;
+  bindingId?: string;
+  expiresAt?: number;
+  /** An invite for a role that signs in through the operator IdP (SM-7): created, not yet usable. */
+  needsOperatorSignIn?: boolean;
+  /** True when the invitation mail went out. */
+  emailed?: boolean;
+  /** The sign-in link, only when the mail did not go out. No secret: it is a hint, not a token. */
+  link?: string;
+}
+
+/** The origin the console is served from: the configured one, else the one this request used. */
+function consoleOrigin(c: AdminCtx): string {
+  return c.env.CONSOLE_ORIGIN || new URL(c.req.url).origin;
+}
+
+/** The opaque stand-in for an invited address in the audit trail. */
+async function inviteeRef(c: AdminCtx, email: string): Promise<string> {
+  return `invitee:${(await recipientHash(c.env, email)).slice(0, 12)}`;
+}
+
+/**
+ * One request, one result per address. Authorization (writer, budget, shape, `mayGrant`, target,
+ * L2 confirm) ran in `createBinding` for the one grant every address shares, so each invitation
+ * is held to what a member grant is. Then, per address, in this order:
+ *
+ *   - an address the request repeats is `merged`; one that is not an address is `invalid`;
+ *   - D-g: the writer's own address (session or any verified one) refuses the whole request;
+ *   - D-e: the address of an existing console member (a verified match on an active account that
+ *     holds a binding or the root rule, erasure ledger clear) becomes an account binding
+ *     (`updated`, or `exists` when it already holds that grant); any other address is `invited`.
+ *     An address that matches two members is invited, not guessed at.
+ *
+ * Everything is one batch with its audit rows (`rbac.invite` names the invitee by an opaque
+ * reference, `rbac.grant` by member id). Mail goes out after the commit.
+ */
+async function createInvites(
+  c: AdminCtx,
+  via: Via,
+  w: Writer,
+  spec: GrantSpec,
+  rawEmails: readonly string[],
+): Promise<Response> {
+  const results: InviteResult[] = [];
+  const todo: { index: number; email: string }[] = [];
+  const seen = new Set<string>();
+  for (const raw of rawEmails) {
+    const email = strictEmail(raw);
+    if (!email) {
+      results.push({ email: raw.trim().slice(0, 254), status: "invalid" });
+    } else if (seen.has(email)) {
+      results.push({ email, status: "merged" });
+    } else {
+      seen.add(email);
+      results.push({ email, status: "invited" });
+      todo.push({ index: results.length - 1, email });
+    }
+  }
+
+  // D-g, for an address as for a member id: your own is a grant to yourself.
+  if (todo.length > 0) {
+    const mine = new Set(
+      (await verifiedAccountEmails(c.db, w.accountId)).map(normalizeEmail),
+    );
+    if (c.session.email) mine.add(normalizeEmail(c.session.email));
+    if (todo.some((t) => mine.has(t.email))) return selfGrant();
+  }
+
+  // D-e: who among the addresses is already a member?
+  const memberOf = new Map<string, string>(); // address -> account id
+  if (todo.length > 0) {
+    let roots: Set<string> | null = null;
+    for (const t of todo) {
+      const found: string[] = [];
+      for (const cand of await accountsVerifyingEmail(c.db, t.email)) {
+        const verdict = await erasureVerdict(c.env, c.now, cand.accountId);
+        if (verdict === "unavailable")
+          return err(503, "unavailable", "try again in a moment", {
+            reason: "erasure_ledger_unavailable",
+          });
+        if (verdict !== "clear") continue;
+        roots ??= new Set(await consoleRootHolders(c.env, c.db, c.now));
+        if (
+          roots.has(cand.accountId) ||
+          (await hasAccountBinding(c.db, cand.accountId))
+        )
+          found.push(cand.accountId);
+      }
+      if (found.length === 1) memberOf.set(t.email, found[0]!);
+    }
+  }
+
+  // The mail budget, per member, counted per address that will be invited. All or nothing.
+  const toInvite = todo.filter((t) => !memberOf.has(t.email));
+  for (let i = 0; i < toInvite.length; i++) {
+    const ok = await rateLimitOk(
+      c.env,
+      "_admin",
+      {
+        bucket: "adminInviteAddress",
+        id: w.memberId,
+        limit: INVITE_LIMIT,
+        windowSec: INVITE_WINDOW_SECONDS,
+      },
+      c.now,
+    );
+    if (!ok)
+      return err(429, "rate_limited", "too many invitations; try again later", {
+        reason: "invite_budget",
+      });
+  }
+
+  const statements: DbStatement[] = [];
+  const product = auditProduct(via, spec.scope);
+  const granted: { accountId: string; email: string }[] = [];
+  const invited: { index: number; email: string; id: string }[] = [];
+  const needsOperator = !inviteBootstrapAllowed(spec);
+  const expiresAt = c.now + INVITE_TTL_SECONDS;
+  for (const t of todo) {
+    const accountId = memberOf.get(t.email);
+    const r = results[t.index]!;
+    if (accountId) {
+      const existing = await findAccountBinding(
+        c.db,
+        accountId,
+        spec.role,
+        spec.scope,
+      );
+      if (existing) {
+        r.status = "exists";
+        r.bindingId = existing.id;
+        continue;
+      }
+      const id = newBindingId();
+      const memberId = await memberIdFor(c.env, accountId);
+      r.status = "updated";
+      r.bindingId = id;
+      granted.push({ accountId, email: t.email });
+      statements.push(
+        stmtInsertBinding({
+          id,
+          accountId,
+          emailNorm: null,
+          role: spec.role,
+          scope: spec.scope,
+          areas: spec.areas,
+          source: "grant",
+          grantedBy: w.memberId,
+          grantedAt: c.now,
+        }),
+        ...auditRows(c, product, {
+          action: "rbac.grant",
+          bindingId: id,
+          memberId,
+          summary: `Granted ${ROLE_LABEL[spec.role]} on ${spec.scope}${
+            spec.areas ? ` (${spec.areas.join(", ")})` : ""
+          } to ${memberId}`,
+          after: view(
+            { id, granted_at: c.now, source: "grant" },
+            memberId,
+            spec,
+          ),
+        }),
+      );
+      continue;
+    }
+    const existing = await findInvite(c.db, t.email, spec.role, spec.scope);
+    const id = existing?.id ?? newBindingId();
+    r.bindingId = id;
+    r.expiresAt = expiresAt;
+    if (needsOperator) r.needsOperatorSignIn = true;
+    invited.push({ index: t.index, email: t.email, id });
+    const who = await inviteeRef(c, t.email);
+    statements.push(
+      stmtUpsertInvite({
+        id,
+        emailNorm: t.email,
+        role: spec.role,
+        scope: spec.scope,
+        areas: spec.areas,
+        grantedBy: w.memberId,
+        grantedAt: c.now,
+      }),
+      ...auditRows(c, product, {
+        action: "rbac.invite",
+        bindingId: id,
+        memberId: who,
+        summary: `${existing ? "Renewed an invitation" : "Invited"} ${who} as ${ROLE_LABEL[spec.role]} on ${spec.scope}${
+          spec.areas ? ` (${spec.areas.join(", ")})` : ""
+        }`,
+        after: {
+          bindingId: id,
+          role: spec.role,
+          scope: spec.scope,
+          areas: spec.areas ? [...spec.areas] : null,
+          source: "invite",
+          expiresAt,
+        },
+      }),
+    );
+  }
+  if (statements.length > 0) await c.db.batch(statements);
+
+  // After the commit, best effort.
+  let sent = 0;
+  let of = 0;
+  const productName = await productNameOf(c, spec);
+  const inviter = c.session.name || c.session.email;
+  for (const inv of invited) {
+    const link = consoleInviteLink(consoleOrigin(c), inv.email);
+    of += 1;
+    const ok = await sendOperatorNotice(
+      c.env,
+      c.db,
+      inv.email,
+      accessInviteNotice({
+        inviter,
+        roleLabel: ROLE_LABEL[spec.role],
+        scopeLabel: scopeLabel(spec.scope, productName),
+        areas: spec.areas,
+        link,
+        origin: c.env.CONSOLE_ORIGIN,
+      }),
+      c.now,
+    );
+    const r = results[inv.index]!;
+    r.emailed = ok;
+    if (ok) sent += 1;
+    else r.link = link;
+  }
+  const mails = { left: INVITE_NOTICE_CAP };
+  for (const g of granted) {
+    const entry = await granteeOf(c, g.accountId);
+    if (!entry) continue;
+    const n = await notify(c, g.accountId, entry, "granted", spec, mails);
+    sent += n.sent;
+    of += n.of;
+  }
+  if (invited.length > 0) {
+    const n = await notifySuperadmins(
+      c,
+      accessInvitesSentNotice({
+        actor: c.session.name || c.session.email,
+        count: invited.length,
+        roleLabel: ROLE_LABEL[spec.role],
+        scopeLabel: scopeLabel(spec.scope, productName),
+        areas: spec.areas,
+        origin: c.env.CONSOLE_ORIGIN,
+      }),
+      mails,
+    );
+    sent += n.sent;
+    of += n.of;
+  }
+
+  const count = (s: InviteStatus) =>
+    results.filter((r) => r.status === s).length;
+  const wrote = invited.length + granted.length > 0;
+  return adminJson(
+    {
+      ok: true,
+      results,
+      counts: {
+        invited: count("invited"),
+        updated: count("updated"),
+        exists: count("exists"),
+        merged: count("merged"),
+        invalid: count("invalid"),
+      },
+      confirm: confirmLevel(spec),
+      emailOff: !c.env.EMAIL,
+      notified: { sent, of, nobodyNotified: sent === 0 },
+    },
+    wrote ? 201 : 200,
+  );
+}
+
+/** The product's name for a notice, or `null` for a platform scope. */
+async function productNameOf(
+  c: AdminCtx,
+  spec: GrantSpec,
+): Promise<string | null> {
+  if (!spec.scope.startsWith("product:")) return null;
+  const slug = spec.scope.slice("product:".length);
+  if (c.product?.slug === slug) return c.product.name ?? null;
+  return (await getProduct(c.db, slug))?.name ?? null;
+}
+
+/** One notice to every active Superadmin that has an address (G5), within `mails`. */
+async function notifySuperadmins(
+  c: AdminCtx,
+  message: ReturnType<typeof accessInvitesSentNotice>,
+  mails: { left: number },
+): Promise<{ sent: number; of: number }> {
+  try {
+    const ids = (await superadminAccountIds(c.env, c.db, c.now)).map(
+      (s) => s.id,
+    );
+    const dir = await consoleDirectory(c.env, c.db, ids, c.now);
+    const seen = new Set<string>();
+    const to: string[] = [];
+    for (const id of ids) {
+      const e = dir.get(id);
+      const addr = e?.email.trim();
+      if (!e || e.disabled || !addr || seen.has(addr.toLowerCase())) continue;
+      seen.add(addr.toLowerCase());
+      to.push(addr);
+    }
+    const recipients = to.slice(
+      0,
+      Math.max(0, Math.min(NOTICE_CAP, mails.left)),
+    );
+    mails.left -= recipients.length;
+    const ok = await Promise.all(
+      recipients.map((a) => sendOperatorNotice(c.env, c.db, a, message, c.now)),
+    );
+    return { sent: ok.filter(Boolean).length, of: recipients.length };
+  } catch {
+    return { sent: 0, of: 0 };
+  }
+}
+
 function exists(bindingId: string): Response {
   return err(409, ErrorCode.BadRequest, "that access is already granted", {
     reason: "exists",
@@ -510,6 +873,7 @@ export async function handleBindingCreate(c: AdminCtx): Promise<Response> {
   const body = await readBody(c.req);
   const extra = unknownFields(body, [
     "member",
+    "emails",
     "role",
     "scope",
     "areas",
@@ -532,22 +896,25 @@ export async function handleBindingCreate(c: AdminCtx): Promise<Response> {
 // ── PATCH and DELETE ────────────────────────────────────────────────────────────────────────
 
 /**
- * The binding a route names, or the 404 that says nothing: an invite row (31.7), an unknown id,
- * and, on a product route, a binding of any other scope (another product's, a platform one).
+ * The binding a route names, or the 404 that says nothing: an unknown id, and, on a product
+ * route, a binding of any other scope (another product's, a platform one). An invite row (no
+ * account) is returned only to a caller that says it handles one (`DELETE`, ST-31.7); an edit
+ * answers 404 for it.
  */
 async function boundTo(
   c: AdminCtx,
   via: Via,
   id: string,
-): Promise<(BindingRow & { account_id: string }) | Response> {
+  allowInvite = false,
+): Promise<BindingRow | Response> {
   const row = await getBinding(c.db, id);
   if (
     !row ||
-    row.account_id === null ||
+    (row.account_id === null && !allowInvite) ||
     (via.slug !== null && row.scope !== `product:${via.slug}`)
   )
     return err(404, ErrorCode.NotFound);
-  return row as BindingRow & { account_id: string };
+  return row;
 }
 
 /** The grantee's directory entry, for the member id and the notice. */
@@ -566,10 +933,10 @@ async function applyGuarded(
   c: AdminCtx,
   statements: Parameters<AdminCtx["db"]["batch"]>[0],
 ): Promise<boolean> {
-  if (!c.db.batchChanges) {
-    await c.db.batch(statements);
-    return true;
-  }
+  // Fail closed: without per-statement change counts a lost race cannot be told from a win, so
+  // the guarded write is refused rather than applied blind.
+  if (!c.db.batchChanges)
+    throw new Error("a guarded write needs a Db that reports batch changes");
   const counts = await c.db.batchChanges(statements);
   return (counts[counts.length - 1] ?? 0) > 0;
 }
@@ -595,6 +962,8 @@ export async function editBinding(c: AdminCtx, via: Via): Promise<Response> {
 
   const row = await boundTo(c, via, c.params.id ?? c.params.bindingId ?? "");
   if (row instanceof Response) return row;
+  if (row.account_id === null) return err(404, ErrorCode.NotFound);
+  const accountId = row.account_id;
   const before = specOfRow(row);
   if (!before)
     return err(409, ErrorCode.BadRequest, "this binding cannot be edited", {
@@ -613,7 +982,7 @@ export async function editBinding(c: AdminCtx, via: Via): Promise<Response> {
 
   const nextJson = after.areas === null ? null : JSON.stringify(after.areas);
   if (nextJson === row.areas_json) {
-    const entry = await granteeOf(c, row.account_id);
+    const entry = await granteeOf(c, accountId);
     return adminJson({
       ok: true,
       unchanged: true,
@@ -624,14 +993,14 @@ export async function editBinding(c: AdminCtx, via: Via): Promise<Response> {
   const widening = isWidening(before, after);
   if (widening) {
     // D-g: widening your own access is a grant to yourself.
-    if (isSelf(w, row.account_id)) return selfGrant();
+    if (isSelf(w, accountId)) return selfGrant();
     const refused = confirmRefusal(body, after);
     if (refused) return refused;
     const stepUp = requireStepUp(c.session, c.now);
     if (stepUp) return stepUp;
   }
 
-  const entry = await granteeOf(c, row.account_id);
+  const entry = await granteeOf(c, accountId);
   if (!entry) return err(404, ErrorCode.NotFound);
   const shown = view(row, entry.memberId, after);
   const guard = bindingUnchangedSql(row.id, row.areas_json);
@@ -648,7 +1017,7 @@ export async function editBinding(c: AdminCtx, via: Via): Promise<Response> {
     stmtUpdateBindingAreas(row.id, after.areas, row.areas_json),
   ]);
   if (!ok) return changed();
-  const notified = await notify(c, row.account_id, entry, "changed", after);
+  const notified = await notify(c, accountId, entry, "changed", after);
   return adminJson({ ok: true, binding: shown, widened: widening, notified });
 }
 
@@ -659,7 +1028,12 @@ export async function revokeBinding(c: AdminCtx, via: Via): Promise<Response> {
   const limited = await budget(c, w);
   if (limited) return limited;
 
-  const row = await boundTo(c, via, c.params.id ?? c.params.bindingId ?? "");
+  const row = await boundTo(
+    c,
+    via,
+    c.params.id ?? c.params.bindingId ?? "",
+    true,
+  );
   if (row instanceof Response) return row;
   // A row the reader cannot understand grants nothing; only a Superadmin may clear it away, so the
   // engine is asked about no binding at all (`mayRevoke` fails closed on one that does not validate).
@@ -672,10 +1046,37 @@ export async function revokeBinding(c: AdminCtx, via: Via): Promise<Response> {
     areas: null,
   };
 
+  const guard = bindingUnchangedSql(row.id, row.areas_json);
+
+  // ST-31.7: an invitation is taken back like a grant (D-c), with no one to tell: it never had
+  // an account, and the Superadmins were told when it was sent. Named by its opaque reference.
+  if (row.account_id === null) {
+    const who = await inviteeRef(c, row.email_norm ?? "");
+    const gone = await applyGuarded(c, [
+      ...auditRows(c, auditProduct(via, spec.scope), {
+        action: "rbac.revoke",
+        bindingId: row.id,
+        memberId: who,
+        summary: `Cancelled the invitation of ${who} as ${ROLE_LABEL[spec.role]} on ${spec.scope}`,
+        before: {
+          bindingId: row.id,
+          role: spec.role,
+          scope: spec.scope,
+          areas: spec.areas ? [...spec.areas] : null,
+          source: row.source,
+          expiresAt: row.expires_at,
+        },
+        when: guard,
+      }),
+      stmtDeleteBindingIfUnchanged(row.id, row.areas_json),
+    ]);
+    if (!gone) return changed();
+    return adminJson({ ok: true, bindingId: row.id, invite: true });
+  }
+
   const entry = await granteeOf(c, row.account_id);
   const memberId =
     entry?.memberId ?? (await memberIdFor(c.env, row.account_id));
-  const guard = bindingUnchangedSql(row.id, row.areas_json);
   const ok = await applyGuarded(c, [
     ...auditRows(c, auditProduct(via, spec.scope), {
       action: "rbac.revoke",

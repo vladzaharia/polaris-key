@@ -33,7 +33,8 @@ import { can } from "../../core/rbac/can.js";
 import { consoleDirectoryPeople } from "../../services/identity/public.js";
 import { isAreaId } from "../authz.js";
 import type { AdminCtx } from "../routes.js";
-import { byPerson, superadminAccountIds } from "./productMembers.js";
+import { superadminAccountIds } from "./accessShared.js";
+import { byPerson } from "./productMembers.js";
 
 /** One person who can help. */
 export interface AccessAdmin {

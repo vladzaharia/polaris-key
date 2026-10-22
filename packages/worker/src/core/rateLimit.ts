@@ -198,6 +198,13 @@ const FAIL_MODE: Record<string, FailMode> = {
   // ST-31.6: console grant, edit and revoke, per member. Each one hands out (or takes back) standing
   // access to the console, so an outage refuses rather than leaving a stolen session unmetered.
   adminGrantWrite: "closed",
+  // ST-31.7: operator notices (access changes, invitations) per recipient per hour. A send, so an
+  // outage refuses it; a refused notice counts as not sent and never undoes the change. The
+  // `email` prefix shards it like the other mail limits.
+  emailOperatorNoticeHour: "closed",
+  // ST-31.7: console invitations per member, counted per invited address (mail abuse from the
+  // shared sender). An outage refuses the request.
+  adminInviteAddress: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",
