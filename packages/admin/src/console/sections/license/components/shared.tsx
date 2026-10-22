@@ -473,6 +473,50 @@ export function effectivePolicy(
   return lines;
 }
 
+/**
+ * Every limit a licence would resolve to on tier `tierId` (`null`: no tier), from the licence's
+ * own values and the tier list: the Worker's `terms` for the tier it is on, a prediction for
+ * another (Change tier's "what changes"). A tier's fingerprint mode is not on `TierSummary`, so
+ * this resolves the product default; the Worker's own `terms` answer carries the real one.
+ */
+export function termsOnTier(
+  license: Pick<
+    LicenseSummary,
+    | "deviceLimit"
+    | "channels"
+    | "minVersion"
+    | "maxVersion"
+    | "inheritedDeviceLimit"
+    | "inheritedDeviceLimitSource"
+  > & { maxOfflineDays?: number | null },
+  tierId: string | null,
+  tiers: readonly TierSummary[],
+  product:
+    | Pick<ProductDetail, "defaultDeviceLimit" | "defaultMaxOfflineDays">
+    | undefined,
+): LicenseTerms {
+  const tier = tierId ? tiers.find((t) => t.id === tierId) : undefined;
+  return termsOf(
+    {
+      tier: tierId,
+      deviceLimit: license.deviceLimit ?? null,
+      entitlementDeviceLimit:
+        license.inheritedDeviceLimitSource === "entitlement"
+          ? (license.inheritedDeviceLimit ?? null)
+          : null,
+      maxOfflineDays: license.maxOfflineDays ?? null,
+      channels: license.channels,
+      minVersion: license.minVersion,
+      maxVersion: license.maxVersion,
+    },
+    tier,
+    {
+      defaultDeviceLimit: product?.defaultDeviceLimit ?? 0,
+      defaultMaxOfflineDays: product?.defaultMaxOfflineDays ?? 0,
+    },
+  );
+}
+
 /** The device limit these terms resolve to, or `null` when there is none (a product default of
  *  0): what a re-tier would enforce. */
 export function resolvedDeviceLimit(

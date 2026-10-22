@@ -1,20 +1,34 @@
 /**
- * The license record (ADMIN.md §6.5.2, T3). One header with the status once (LDT-7), the expiry,
- * who changed it last (LDT-9), a primary action and a menu with the rare ones (LDT-8); route tabs
- * (LDT-4): Overview (one Terms form, LDT-1), Keys, Devices and Config overrides. A dirty Terms
- * form stays mounted across tabs, and leaving the record asks first.
+ * The license record (ADMIN.md §6.5.2, T3; licenses.detail). The header carries the status, the
+ * holder and the id, the **Tier: X ▾** control that opens Change tier, one primary action and a
+ * menu with the rest (LDT-7, LDT-8). Route tabs (LDT-4): Status (segment `overview`: Limits with
+ * where each value comes from, Devices, and the rail's Duration and Origin), Keys, Devices,
+ * Activity and Config.
  *
- * LX-30 (S-24 §8.8): the header's holder line ("Ada Lovelace · ada@example.com · In an account",
- * "Waiting for ada@example.com" or "Floating · anyone with the key", with the batch it came from)
- * and, beside it, PX-W9's "Key entries 3 of 10" for a licence with no account. A floating licence
- * leads with **Assign…**; an assigned one has **Reassign…** and **Make floating…** (I-12's relink
- * tool, L3 typed). The newest move shows with its **Undo…** while its 72 hours run.
+ * LX-30 (S-24 §8.8): the holder variants. A license **waiting** for its holder leads with an
+ * Invitation card and **Resend invitation**; a **floating** one with Anyone with the key and
+ * **Assign to a person**, and "Key entries 3 of 10" beside the holder line (PX-W9). Reassign and
+ * Make floating are I-12's relink tool (L3 typed). The newest move shows with its **Undo…** while
+ * its 72 hours run.
  */
 
 import * as React from "react";
-import { KeyRound, Power, UserRound } from "lucide-react";
+import {
+  ChevronDown,
+  KeyRound,
+  Layers,
+  Power,
+  Send,
+  UserPlus,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ApiError, type LicenseDetail } from "../../../../api.js";
+import {
+  api,
+  ApiError,
+  type LicenseBatch,
+  type LicenseDetail,
+  type TierSummary,
+} from "../../../../api.js";
 import { useMe, useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
@@ -28,7 +42,6 @@ import { confirmFor } from "../../../../lib/actions.js";
 import { fromSeconds, formatRelative } from "../../../../lib/format.js";
 import { SIGN_IN_LABELS } from "../../../../lib/labels.js";
 import { Button } from "../../../../ui/Button.js";
-import { Callout } from "../../../../ui/Callout.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
@@ -60,7 +73,17 @@ import {
 import { DeleteLicenseDialog, deletionBlockedReason } from "./LicenseDelete.js";
 import { LicenseKeys, MintKeyDialog } from "./LicenseKeys.js";
 import { SendKeyDialog, type UnsentKey } from "../components/SendKeyDialog.js";
-import { LicenseTerms } from "./LicenseTerms.js";
+import { ExpiryDialog, ProfilesDialog } from "./LicenseTerms.js";
+import { LicenseActivity } from "./LicenseActivity.js";
+import { ChangeTierDialog } from "../components/ChangeTierDialog.js";
+import { LimitsTable } from "../components/LimitsTable.js";
+import {
+  AnyoneWithKeyCard,
+  DevicesCard,
+  DurationCard,
+  InvitationCard,
+  OriginCard,
+} from "../components/LicenseRail.js";
 import {
   actorName,
   daysUntil,
@@ -71,7 +94,13 @@ import {
   useTiers,
 } from "../components/shared.js";
 
-export const LICENSE_TABS = ["overview", "keys", "devices", "config"] as const;
+export const LICENSE_TABS = [
+  "overview",
+  "keys",
+  "devices",
+  "activity",
+  "config",
+] as const;
 export type LicenseTab = (typeof LICENSE_TABS)[number];
 
 export function useLicense(slug: string, id: string) {
@@ -164,25 +193,11 @@ function LicenseRecordBody({
   const me = useMe().data;
   const product = useProduct(slug).data;
   const tiers = useTiers(slug).data?.tiers ?? [];
-  const [termsDirty, setTermsDirty] = React.useState(false);
   const [handoff, setHandoff] = React.useState<{
     unsent: UnsentKey;
     email: string;
   } | null>(null);
-  const [dialog, setDialog] = React.useState<
-    | "holder"
-    | "assign"
-    | "reassign"
-    | "floating"
-    | "bundle"
-    | "mint"
-    | "deviceLimit"
-    | "send"
-    | "disable"
-    | "enable"
-    | "delete"
-    | null
-  >(null);
+  const [dialog, setDialog] = React.useState<RecordDialog>(null);
   // Config overrides keep their draft across tab switches once opened (the editor owns it).
   const [configOpened, setConfigOpened] = React.useState(tab === "config");
   React.useEffect(() => {
@@ -240,22 +255,56 @@ function LicenseRecordBody({
     toast.success(enable ? "License enabled" : "License disabled");
   };
 
-  const expiry =
-    license.expiresAt == null ? (
-      "No expiry"
-    ) : fromSeconds(license.expiresAt) > Date.now() ? (
-      <>
-        Expires {expiryText(license.expiresAt)} (in{" "}
-        {daysUntil(license.expiresAt)}{" "}
-        {daysUntil(license.expiresAt) === 1 ? "day" : "days"})
-      </>
-    ) : (
-      <>Expired {expiryText(license.expiresAt)}</>
-    );
   const changedBy = actorName(license.modifiedBy, me);
+  const waiting = holder.kind === "assigned" && !holder.inAccount;
+  const resendable =
+    waiting && active && !expired && Boolean(license.email?.trim());
+  const tier = license.tier ? tiers.find((t) => t.id === license.tier) : null;
+  const tierLabel = license.tier ? tier?.label || license.tier : null;
 
   const tabHref = (t: LicenseTab) =>
     r.license(slug, id, t === "overview" ? undefined : t);
+
+  // Tier: X ▾ opens Change tier; with no tier the value is muted "No tier" (CONSOLE-UX D12).
+  const tierControl = (
+    <Button
+      variant="outline"
+      aria-haspopup="dialog"
+      aria-label={`Tier: ${tierLabel ?? "No tier"}. Change tier`}
+      iconStart={<Layers />}
+      iconEnd={<ChevronDown />}
+      onClick={() => setDialog("tier")}
+    >
+      <span className="text-fg-muted conbig:sr-only">Tier</span>
+      {tierLabel ? (
+        <span>{tierLabel}</span>
+      ) : (
+        <span className="text-fg-muted">No tier</span>
+      )}
+    </Button>
+  );
+  const mainAction = !active ? (
+    <Button iconStart={<Power />} onClick={() => setDialog("enable")}>
+      Enable license
+    </Button>
+  ) : floating ? (
+    // S-24 §8.8, frame 77: a floating licence's one action is to give it a holder.
+    <Button iconStart={<UserPlus />} onClick={() => setDialog("assign")}>
+      Assign to a person
+    </Button>
+  ) : resendable ? (
+    <Button iconStart={<Send />} onClick={() => setDialog("send")}>
+      Resend invitation
+    </Button>
+  ) : (
+    <Button
+      variant="outline"
+      iconStart={<KeyRound />}
+      onClick={() => setDialog("mint")}
+    >
+      Add key
+    </Button>
+  );
 
   return (
     <div className="space-y-6">
@@ -275,37 +324,32 @@ function LicenseRecordBody({
             {licenseTitle(license)}
           </span>
         }
-        // The masthead is the holder's name and the actions (LX-30): the status and the facts sit
-        // in the strip under the tabs, so a long holder line never grows the masthead past its
-        // height, at a narrow column or at 200 % text.
-        primaryAction={
-          !active ? (
-            <Button iconStart={<Power />} onClick={() => setDialog("enable")}>
-              Enable license
-            </Button>
-          ) : floating ? (
-            // S-24 §8.8, frame 77: a floating licence's one action is to give it a holder.
-            <Button
-              iconStart={<UserRound />}
-              onClick={() => setDialog("assign")}
-            >
-              Assign…
-            </Button>
-          ) : (
-            <Button iconStart={<KeyRound />} onClick={() => setDialog("mint")}>
-              Mint key
-            </Button>
-          )
+        // At 200 % text the masthead has no room for a third line: the status moves to the
+        // facts strip below the tabs (CSS only; the other copy is `display: none`).
+        titleAside={
+          <span className="conbig:hidden">
+            <LicenseStatus license={license} />
+          </span>
         }
+        // The tier is a control beside the one action (licenses.detail): 50/50 on a phone.
+        primaryAction={
+          <div className="grid grid-cols-2 gap-2 sm:flex [&>button]:min-w-0 conbig:[&>button]:whitespace-nowrap!">
+            {tierControl}
+            {mainAction}
+          </div>
+        }
+        inlineSecondary={0}
         secondaryActions={[
+          { label: "Change tier…", onSelect: () => setDialog("tier") },
           ...(floating
             ? active
               ? []
               : [{ label: "Assign…", onSelect: () => setDialog("assign") }]
             : [{ label: "Edit holder…", onSelect: () => setDialog("holder") }]),
-          ...(active && !floating
+          ...(active && !floating && !resendable
             ? []
-            : [{ label: "Mint key…", onSelect: () => setDialog("mint") }]),
+            : [{ label: "Add key…", onSelect: () => setDialog("mint") }]),
+          { label: "Edit profiles…", onSelect: () => setDialog("profiles") },
           {
             label: "Mint offline bundle…",
             onSelect: () => setDialog("bundle"),
@@ -355,12 +399,7 @@ function LicenseRecordBody({
             label="License sections"
             value={tab}
             items={[
-              {
-                value: "overview",
-                label: "Overview",
-                to: tabHref("overview"),
-                dirty: termsDirty,
-              },
+              { value: "overview", label: "Status", to: tabHref("overview") },
               {
                 value: "keys",
                 label: "Keys",
@@ -377,6 +416,11 @@ function LicenseRecordBody({
                     : `${license.deviceCount}/${limit}`,
               },
               {
+                value: "activity",
+                label: "Activity",
+                to: tabHref("activity"),
+              },
+              {
                 value: "config",
                 label: "Config overrides",
                 to: tabHref("config"),
@@ -390,21 +434,16 @@ function LicenseRecordBody({
         data-testid="record-facts"
         className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted"
       >
-        <LicenseStatus license={license} />
+        <span className="hidden conbig:inline-flex">
+          <LicenseStatus license={license} />
+        </span>
         <HolderLine slug={slug} license={license} batch={batch} />
-        <span>{expiry}</span>
         <IdChip value={id} noun="license id" />
         {keyEntries ? (
           <span data-testid="record-key-entries">
             Key entries {keyEntries.used} of {keyEntries.limit}
           </span>
         ) : null}
-        <span data-testid="record-device-limit">
-          Device limit {seatLimitText(seats)}
-        </span>
-        <span>
-          {SIGN_IN_LABELS[license.identityProvider] ?? license.identityProvider}
-        </span>
         {license.modifiedAt ? (
           <span>
             Changed {formatRelative(fromSeconds(license.modifiedAt))}
@@ -419,22 +458,19 @@ function LicenseRecordBody({
           onUndo={() => setUndoing(undoable)}
         />
       ) : null}
-      {floating && tab === "overview" ? (
-        <Callout tone="info" title="Not in anyone's account">
-          It works on every device that enters the key
-          {limit === null ? "" : `, up to ${limit}`}. Whoever adds the key in
-          Polaris Key keeps it, or assign it to someone now.
-        </Callout>
-      ) : null}
-      {/* Overview stays mounted while its draft is dirty, so a tab switch keeps it. Each panel
-          is a `pk-vt-tabpanel`: the visible one fades through on a tab switch (S-23 §6.1); a
-          hidden one is not rendered, so it takes no part. */}
-      {tab === "overview" || termsDirty ? (
-        <div hidden={tab !== "overview"} className="pk-vt-tabpanel">
-          <LicenseTerms
+      {/* Each panel is a `pk-vt-tabpanel`: the visible one fades through on a tab switch
+          (S-23 §6.1); a hidden one is not rendered, so it takes no part. */}
+      {tab === "overview" ? (
+        <div className="pk-vt-tabpanel">
+          <StatusTab
             slug={slug}
             license={license}
-            onDirtyChange={setTermsDirty}
+            tiers={tiers}
+            product={product}
+            seats={seats}
+            batch={batch}
+            me={me}
+            onDialog={setDialog}
           />
         </div>
       ) : null}
@@ -452,12 +488,37 @@ function LicenseRecordBody({
           <LicenseDevices slug={slug} license={license} seats={seats} />
         </div>
       ) : null}
+      {tab === "activity" ? (
+        <div className="pk-vt-tabpanel">
+          <LicenseActivity slug={slug} id={id} />
+        </div>
+      ) : null}
       {configOpened ? (
         <div hidden={tab !== "config"} className="pk-vt-tabpanel">
           <LicenseConfig slug={slug} license={license} configOn={configOn} />
         </div>
       ) : null}
 
+      <ChangeTierDialog
+        slug={slug}
+        license={license}
+        tiers={tiers}
+        product={product}
+        open={dialog === "tier"}
+        onOpenChange={(o) => setDialog(o ? "tier" : null)}
+      />
+      <ExpiryDialog
+        slug={slug}
+        license={license}
+        open={dialog === "expiry"}
+        onOpenChange={(o) => setDialog(o ? "expiry" : null)}
+      />
+      <ProfilesDialog
+        slug={slug}
+        license={license}
+        open={dialog === "profiles"}
+        onOpenChange={(o) => setDialog(o ? "profiles" : null)}
+      />
       <EditHolderDialog
         slug={slug}
         license={license}
@@ -556,6 +617,84 @@ function LicenseRecordBody({
         confirmLabel="Enable license"
         onConfirm={() => toggle(true)}
       />
+    </div>
+  );
+}
+
+type RecordDialog =
+  | "holder"
+  | "assign"
+  | "reassign"
+  | "floating"
+  | "bundle"
+  | "mint"
+  | "deviceLimit"
+  | "tier"
+  | "expiry"
+  | "profiles"
+  | "send"
+  | "disable"
+  | "enable"
+  | "delete"
+  | null;
+
+/**
+ * The Status tab (licenses.detail): the main column is Limits and the Devices summary, led for a
+ * waiting or floating license by its holder card; the rail is Duration and Origin, first below
+ * 1280 px (two cards side by side) and sticky beside the main column from there.
+ */
+function StatusTab({
+  slug,
+  license,
+  tiers,
+  product,
+  seats,
+  batch,
+  me,
+  onDialog,
+}: {
+  slug: string;
+  license: LicenseDetail;
+  tiers: TierSummary[];
+  product: ReturnType<typeof useProduct>["data"];
+  seats: ReturnType<typeof seatLimitOf>;
+  batch: LicenseBatch | null;
+  me: ReturnType<typeof useMe>["data"];
+  onDialog: (d: RecordDialog) => void;
+}): React.ReactElement {
+  const holder = holderOf(license);
+  const floating = holder.kind === "floating";
+  const waiting = holder.kind === "assigned" && !holder.inAccount;
+  return (
+    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] 2xl:grid-cols-[minmax(0,1fr)_25rem]">
+      <div className="min-w-0 space-y-6 xl:col-start-1 xl:row-start-1">
+        {waiting ? (
+          <InvitationCard
+            email={license.email?.trim() ?? ""}
+            onChangeEmail={() => onDialog("reassign")}
+          />
+        ) : null}
+        {floating ? <AnyoneWithKeyCard devices={license.devices} /> : null}
+        <LimitsTable
+          slug={slug}
+          license={license}
+          tiers={tiers}
+          product={product}
+          onDeviceLimit={() => onDialog("deviceLimit")}
+        />
+        <DevicesCard slug={slug} license={license} seats={seats} />
+      </div>
+      <div
+        className={
+          "grid gap-6 sm:grid-cols-2 xl:sticky xl:top-[88px] xl:col-start-2 xl:row-start-1 xl:grid-cols-1" +
+          (waiting || floating
+            ? " order-last xl:order-none"
+            : " order-first xl:order-none")
+        }
+      >
+        <DurationCard license={license} onChange={() => onDialog("expiry")} />
+        <OriginCard slug={slug} license={license} batch={batch} me={me} />
+      </div>
     </div>
   );
 }

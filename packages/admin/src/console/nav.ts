@@ -429,7 +429,7 @@ export const SECTIONS: NavSection[] = [
         shortcut: "l",
         record: {
           noun: "License",
-          tabs: ["overview", "keys", "devices", "config"],
+          tabs: ["overview", "keys", "devices", "activity", "config"],
         },
       },
       {
