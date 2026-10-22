@@ -32,6 +32,7 @@ import {
   tighterMin,
 } from "../licensing/entitlements.js";
 import { resolveMergedPayload } from "../licensing/payload.js";
+import { customerTierOf } from "../licensing/implicitTier.js";
 import type { Product } from "../products.js";
 
 /** What a Cloud Sync mutation is checked against. `null` from `syncAccess` = no principal. */
@@ -83,7 +84,7 @@ export async function syncAccess(
     entitlements = Object.fromEntries(
       Object.entries(payload.entitlements).map(([k, e]) => [k, e?.value]),
     );
-    topTier = anchor.tier_id ?? null;
+    topTier = customerTierOf(anchor, tier)?.id ?? null;
   }
   return {
     subject: principal.subject,

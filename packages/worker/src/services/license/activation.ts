@@ -30,6 +30,7 @@ import {
 } from "../../core/errors.js";
 import { type LicenseRow } from "../../core/repo.js";
 import { getKey, getLicense, touchKey } from "../../core/licensing/store.js";
+import { customerTierId } from "../../core/licensing/implicitTier.js";
 import { setDeviceStatus } from "../../core/devices/store.js";
 import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import {
@@ -215,7 +216,7 @@ async function activateWithKey(
     token: authorized.token,
     schemaVersion: product.schemaVersion,
     device: shapeDevice(authorized.device, deviceId),
-    license: shapeLicense(license),
+    license: shapeLicense(license, await customerTierId(db, license)),
     // §12.2 rule 5: the count after this entry (an enrolled device's re-entry included).
     ...(gate.kind === "admit"
       ? {

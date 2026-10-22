@@ -14,6 +14,7 @@ import {
   platformFromFileName,
 } from "@polaris-key/manifest";
 import { licenseAccess } from "../../../core/licensing/anchor.js";
+import { customerTierId } from "../../../core/licensing/implicitTier.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
@@ -212,7 +213,10 @@ function isMutation(method: string): boolean {
 
 export { readBody };
 
-function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
+function licenseBase(
+  row: PortalLicenseRow,
+  tier: string | null,
+): Record<string, unknown> {
   return {
     id: row.id,
     product: row.product,
@@ -221,7 +225,7 @@ function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
     name: row.name ?? "",
     email: row.email ?? "",
     status: row.status,
-    tier: row.tier_id,
+    tier,
     activatedAt: row.activated_at,
     expiresAt: row.expires_at,
     maxOfflineDays: row.max_offline_days,
@@ -248,7 +252,7 @@ export async function shapeLicenseSummary(
   const activeKeyCount = keys.filter((k) => k.status === "active").length;
   const settings = await getPortalProductSettings(db, row.product);
   return {
-    ...licenseBase(row),
+    ...licenseBase(row, await customerTierId(db, row)),
     ...portalLicenseOrigin({
       origin: row.origin ?? null,
       sub: row.sub,

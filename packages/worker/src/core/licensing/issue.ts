@@ -16,6 +16,7 @@ import {
   stmtInsertLicense,
 } from "./store.js";
 import { getProduct } from "../products/store.js";
+import { isImplicitTier } from "./implicitTier.js";
 import { guardedInsert, guardedWrite, oidcGrantStatements } from "./grants.js";
 import { licenseTransitionStatement } from "./lifecycleWrites.js";
 import { mergeLicenseInto, type LicenseMerge } from "./licenseMerge.js";
@@ -350,6 +351,8 @@ export async function upgradedTier(
     getTier(db, product.slug, identityTierId),
   ]);
   if (!current || !next) return null;
+  // LX-33.2: the implicit Default tier is no tier: a licence on it is left alone, as a tierless one.
+  if (isImplicitTier(current)) return null;
   return (next.rank ?? 0) > (current.rank ?? 0) ? next : null;
 }
 

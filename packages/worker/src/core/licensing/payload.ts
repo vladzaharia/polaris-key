@@ -49,6 +49,7 @@ import {
   type TierRow,
 } from "../repo.js";
 import { getProfile, getTier, listLicenseProfiles } from "./store.js";
+import { isImplicitTier } from "./implicitTier.js";
 
 /**
  * The three managed-entry maps as the CONTROL PLANE stores them, in one object.
@@ -199,7 +200,8 @@ export async function resolveMergedPayload(
   let tier: TierRow | null = null;
   if (license?.tier_id) {
     tier = await source.tier(license.tier_id);
-    if (tier?.profile_id) {
+    // LX-33.2: an implicit tier carries no profile (its `profile_id` is NULL); read one as none.
+    if (tier?.profile_id && !isImplicitTier(tier)) {
       const p = await source.profile(tier.profile_id);
       layers.push(p?.payload_json ?? null);
     }

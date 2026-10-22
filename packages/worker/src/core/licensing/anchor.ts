@@ -54,6 +54,7 @@ import { countActiveDevices, seatActiveSince } from "../devices/store.js";
 import { getLicense } from "./store.js";
 import { licenseUsable } from "../devices.js";
 import { identityEnabled } from "../accounts/identityGate.js";
+import { implicitTierIdOf } from "./implicitTier.js";
 import type { Product, ProductPublic } from "../products.js";
 import {
   PAIRWISE_SUBJECT_PATTERN,
@@ -186,6 +187,8 @@ export async function rankAnchorCandidates(
   const device = await authorizedDevice(db, product.slug, opts.deviceId);
   const since = seatActiveSince(now);
   const candidates: AnchorCandidate[] = [];
+  // LX-33.2: a licence on the implicit Default tier is a tierless candidate.
+  const implicitId = await implicitTierIdOf(db, product.slug);
   for (const l of byId.values()) {
     const limit = await licenseDeviceLimit(db, product, l, now);
     const used = await countActiveDevices(db, product.slug, l.id, since);
@@ -200,7 +203,7 @@ export async function rankAnchorCandidates(
         : "full";
     candidates.push({
       licenseId: l.id,
-      tierId: l.tier_id,
+      tierId: l.tier_id === implicitId ? null : l.tier_id,
       expiresAt: l.expires_at,
       activatedAt: l.activated_at,
       access: await licenseAccess(db, l),

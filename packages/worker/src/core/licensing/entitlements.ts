@@ -20,6 +20,7 @@ import type { AllowedRange, ManagedEntry } from "@polaris-key/protocol";
 import type { ManagedPayload } from "./payload.js";
 import type { LicenseRow, TierRow } from "../repo.js";
 import { resolveLicenseTerms, type LicenseTerms } from "./terms.js";
+import { chainTier, customerTierOf } from "./implicitTier.js";
 
 interface ParsedSemver {
   major: number;
@@ -215,10 +216,12 @@ export function injectAdminPolicy(
   // remote re-licensing visible without touching the signed document's shape: changing
   // `licenses.tier_id` bumps `modified_at`, which changes these entries' `updatedAt`, which
   // changes the doc's ETag — so the client's next refresh detects a real content change.
-  if (license.tier_id) {
-    payload.entitlements["license.tier"] = enforced(license.tier_id);
-    if (tier?.label) {
-      payload.entitlements["license.tierLabel"] = enforced(tier.label);
+  // LX-33.2: the implicit Default tier is no tier here, so a licence on it keeps today's bytes.
+  const shown = customerTierOf(license, tier);
+  if (shown) {
+    payload.entitlements["license.tier"] = enforced(shown.id);
+    if (shown.label) {
+      payload.entitlements["license.tierLabel"] = enforced(shown.label);
     }
   }
 
@@ -276,6 +279,7 @@ export function licenseTermsOf(
     | "min_version"
     | "max_version"
     | "policy_fingerprint"
+    | "implicit"
   > | null,
   product: {
     defaultDeviceLimit: number;
@@ -290,6 +294,9 @@ export function licenseTermsOf(
   } = { minOf: tighterMin, maxOf: tighterMax },
 ): LicenseTerms {
   if (!license) license = NO_OWN_TERMS;
+  // LX-33.2: the old chain reads an implicit tier as no tier (product default, merged entitlement,
+  // product fingerprint policy), exactly as for a licence with `tier_id` NULL.
+  tier = chainTier(tier);
   return resolveLicenseTerms({
     license: {
       deviceLimit: licenseOwnDeviceLimit(license),

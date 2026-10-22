@@ -33,6 +33,7 @@ import type { ProductPublic } from "../../../core/products.js";
 import type { LicenseRow } from "../../../core/repo.js";
 import { seatActiveSince } from "../../../core/devices/store.js";
 import { getLicense, getTier } from "../../../core/licensing/store.js";
+import { customerTierOf } from "../../../core/licensing/implicitTier.js";
 import {
   rankAnchorCandidates,
   type AnchorCandidate,
@@ -133,7 +134,10 @@ async function originOf(
 
 async function tierLabel(cx: ChoiceCx, tierId: string | null): Promise<string> {
   const tier = tierId ? await getTier(cx.db, cx.product.slug, tierId) : null;
-  return tier?.label ?? cx.product.name;
+  return (
+    (tierId ? customerTierOf({ tier_id: tierId }, tier)?.label : null) ??
+    cx.product.name
+  );
 }
 
 /** Whether the product accepts a key at sign-in (the no-licence state's inline key field). */

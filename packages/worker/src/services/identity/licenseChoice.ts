@@ -44,6 +44,7 @@ import {
 import { getLicenseBySub, getTier } from "../../core/licensing/store.js";
 import { licenseUsable } from "../../core/devices.js";
 import { compareCandidates } from "../../core/licensing/anchor.js";
+import { customerTierOf } from "../../core/licensing/implicitTier.js";
 import {
   licenseDeviceLimit,
   tierFingerprintMode,
@@ -133,6 +134,16 @@ export async function choiceAccountStillLinked(
     sub,
   );
   return link !== null;
+}
+
+/** The tier name a legacy choice row shows: the tier's label, its id when it has no row, "License"
+ *  for no tier and for the implicit Default tier (LX-33.2). */
+function tierNameOf(
+  l: Pick<LicenseRow, "tier_id">,
+  tier: Parameters<typeof customerTierOf>[1],
+): string {
+  const shown = customerTierOf(l, tier);
+  return shown ? (shown.label ?? shown.id) : "License";
 }
 
 async function accountProductLicenses(
@@ -332,7 +343,7 @@ export async function legacyLicenseChoices(
     }
     rows.push({
       id: l.id,
-      tierName: tier?.label ?? (l.tier_id ? l.tier_id : "License"),
+      tierName: tierNameOf(l, tier),
       origin: originLabel(kind, source?.store ?? null, hasKey),
       fromSignIn: kind === "sign_in",
       seats: { used, limit },
@@ -392,7 +403,12 @@ export async function legacyLicenseChoices(
       } satisfies LicenseRow,
       now,
     );
-    create = { tierName: tier?.label ?? null, limit };
+    create = {
+      tierName:
+        customerTierOf({ tier_id: input.grantTierId ?? null }, tier)?.label ??
+        null,
+      limit,
+    };
   }
   const firstFree = rows.find((r) => r.state === "free");
   return {
