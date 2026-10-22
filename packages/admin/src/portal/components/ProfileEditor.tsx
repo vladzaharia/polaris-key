@@ -592,7 +592,7 @@ function YourChoiceTag({ show }: { show: boolean }): React.ReactElement {
   return (
     <span
       hidden={!show}
-      className="inline-flex h-6 items-center rounded-full bg-accent-subtle px-2 text-xs font-medium text-accent-fg"
+      className="inline-flex min-h-6 items-center rounded-xl bg-accent-subtle px-2 py-0.5 text-xs font-medium text-accent-fg [overflow-wrap:anywhere]"
     >
       {C["profile.name.yourChoice"]}
     </span>

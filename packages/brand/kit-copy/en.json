@@ -5061,6 +5061,26 @@
       "role": "body",
       "note": "The Library page failed to load for a server error; a network failure reads core.codes.network. The Try again button is separate."
     },
+    "locker.error.loadFailedDiscover": {
+      "value": "Couldn't load Discover. Try again in a moment.",
+      "role": "body",
+      "note": "The Discover page failed to load; the Try again button is separate."
+    },
+    "locker.error.loadFailedMethods": {
+      "value": "Couldn't load your sign-in methods. Try again in a moment.",
+      "role": "body",
+      "note": "Account, Sign-in methods failed to load; the Try again button is separate."
+    },
+    "locker.error.page.title": {
+      "value": "Something didn't load",
+      "role": "title",
+      "note": "The Locker's error boundary heading when a page threw while rendering; the header stays."
+    },
+    "locker.error.page.body": {
+      "value": "The rest of Polaris Locker still works. Try again, or go back to your library.",
+      "role": "body",
+      "note": "The Locker's error boundary body; Try again and Back to your library follow."
+    },
     "locker.error.boot.title": {
       "value": "Couldn't open Polaris Locker",
       "role": "title",

@@ -27,10 +27,25 @@
   --pk-admin-fill: var(--pk-surface-sunken);
 }
 
+/*
+ * The highlighted menu item (keyboard or pointer). `--pk-admin-fill` is the overlay surface in
+ * dark, so on a menu (itself `surface-overlay`) it is invisible (WCAG 2.4.7): this mixes the
+ * strong text colour into the overlay, a step that shows in both themes. The item adds an inset
+ * focus ring on top.
+ */
+:root {
+  --pk-menu-active: color-mix(
+    in oklab,
+    var(--pk-text-strong) 14%,
+    var(--pk-surface-overlay)
+  );
+}
+
 /* The admin's one colour token of its own: the neutral fill above (hover rows, the sidebar's
    active row, secondary fills). The brand's `accent` is the section colour, so this is `hover`. */
 @theme inline {
   --color-hover: var(--pk-admin-fill);
+  --color-menu-active: var(--pk-menu-active);
 }
 
 /* Motion through the brand's duration and easing tokens, which collapse to 0 ms under
