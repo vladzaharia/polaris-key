@@ -219,7 +219,7 @@ export function renderDeviceEntry(
     // B9.3: no product name before the code resolves. A forwarded link must not borrow one.
     body:
       status === 429
-        ? tooManyBody(action)
+        ? tooManyBody()
         : codeEntryBody({
             action,
             method: "post",
