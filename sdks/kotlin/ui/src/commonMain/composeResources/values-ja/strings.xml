@@ -153,6 +153,10 @@
     <string name="a11y_externalLink">ブラウザで開きます</string>
     <!-- Screen reader label; never shown. Describes the QR code. -->
     <string name="a11y_qr">サインインページを開くQRコード</string>
+    <!-- Screen reader label; never shown. Describes the QR code that carries an offline-activation request. -->
+    <string name="a11y_qrRequest">リクエストコードのQRコード</string>
+    <!-- Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page. -->
+    <string name="a11y_qrManage">デバイス管理ページを開くQRコード</string>
     <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="a11y_code">サインインコード：%1$s</string>
     <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
@@ -289,17 +293,15 @@
     <string name="activate_busy">アクティベートしています…</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
     <string name="offlineActivation_title">オフラインアクティベーション</string>
-    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <!-- OfflineActivation: step 1; the kit's number marker carries the order. -->
     <string name="offlineActivation_request">このリクエストコードを、ライセンスの提供元に送ってください。</string>
-    <!-- OfflineActivation: activation by exchanging a request code and a response file. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="offlineActivation_product">製品：%1$s</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
     <string name="offlineActivation_copyCode">コードをコピー</string>
     <string name="offlineActivation_copyCode__macos">コードをコピー</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
     <string name="offlineActivation_codeCopied">コードをコピーしました</string>
-    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
-    <string name="offlineActivation_loadHint">次に、返送されたアクティベーションファイルを読み込むか、そのテキストをペーストしてください。</string>
+    <!-- OfflineActivation: step 2; the kit's number marker carries the order. -->
+    <string name="offlineActivation_loadHint">返送されたアクティベーションファイルを読み込むか、そのテキストをペーストしてください。</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. Opens a file picker. -->
     <string name="offlineActivation_loadFile">ファイルを読み込む…</string>
     <string name="offlineActivation_loadFile__macos">ファイルを読み込む…</string>

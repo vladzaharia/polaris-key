@@ -377,8 +377,8 @@
           "copy": [
             "offlineActivation.title",
             "offlineActivation.request",
-            "offlineActivation.product",
             "offlineActivation.copyCode",
+            "a11y.qrRequest",
             "offlineActivation.loadHint",
             "offlineActivation.loadFile",
             "offlineActivation.paste",
@@ -388,6 +388,14 @@
         },
         "loaded": {
           "copy": [
+            "offlineActivation.title",
+            "offlineActivation.request",
+            "offlineActivation.copyCode",
+            "a11y.qrRequest",
+            "offlineActivation.loadHint",
+            "offlineActivation.loadFile",
+            "offlineActivation.paste",
+            "offlineActivation.dropHint",
             "offlineActivation.submit",
             "offlineActivation.codeCopied",
             "offlineActivation.empty"
@@ -395,12 +403,24 @@
         },
         "rejected-signature": {
           "copy": [
-            "core.codes.bundle-jws-rejected.title",
+            "offlineActivation.title",
+            "offlineActivation.request",
+            "offlineActivation.copyCode",
+            "a11y.qrRequest",
+            "offlineActivation.loadHint",
+            "offlineActivation.loadFile",
+            "offlineActivation.paste",
+            "offlineActivation.dropHint",
+            "offlineActivation.submit",
             "core.codes.bundle-jws-rejected.message"
           ]
         },
         "done": {
-          "copy": ["offlineActivation.done"]
+          "copy": [
+            "offlineActivation.title",
+            "offlineActivation.done",
+            "common.done"
+          ]
         }
       }
     },
@@ -440,7 +460,7 @@
             "deviceLimit.openBrowser",
             "deviceLimit.scan",
             "a11y.externalLink",
-            "a11y.qr"
+            "a11y.qrManage"
           ]
         }
       }
@@ -747,7 +767,8 @@
             "core.gate.version-too-new.title",
             "core.gate.version-too-new.message",
             "status.allowedRange",
-            "status.allowedMax"
+            "status.allowedMax",
+            "common.tryAgain"
           ]
         },
         "channel-not-entitled": {
@@ -883,7 +904,7 @@
           "copy": ["paywall.restore"]
         },
         "not-available": {
-          "copy": ["paywall.notAvailable"]
+          "copy": ["paywall.title", "paywall.notAvailable", "paywall.portal"]
         }
       }
     },

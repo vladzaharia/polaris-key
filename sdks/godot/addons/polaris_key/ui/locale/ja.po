@@ -414,6 +414,16 @@ msgstr "ブラウザで開きます"
 msgid "a11y.qr"
 msgstr "サインインページを開くQRコード"
 
+#. QR code with the request code
+#. Screen reader label; never shown. Describes the QR code that carries an offline-activation request.
+msgid "a11y.qrRequest"
+msgstr "リクエストコードのQRコード"
+
+#. QR code that opens the device management page
+#. Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page.
+msgid "a11y.qrManage"
+msgstr "デバイス管理ページを開くQRコード"
+
 #. Sign-in code {code}
 #. Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
 msgid "a11y.code"
@@ -797,14 +807,9 @@ msgid "offlineActivation.title"
 msgstr "オフラインアクティベーション"
 
 #. Send this request code to whoever gave you your license.
-#. OfflineActivation: activation by exchanging a request code and a response file.
+#. OfflineActivation: step 1; the kit's number marker carries the order.
 msgid "offlineActivation.request"
 msgstr "このリクエストコードを、ライセンスの提供元に送ってください。"
-
-#. Product: {product}
-#. OfflineActivation: activation by exchanging a request code and a response file. Arguments: {product} = the product's name from ProductIdentity (never translated).
-msgid "offlineActivation.product"
-msgstr "製品：{product}"
 
 #. Copy code
 #. OfflineActivation: activation by exchanging a request code and a response file.
@@ -821,10 +826,10 @@ msgstr "コードをコピー"
 msgid "offlineActivation.codeCopied"
 msgstr "コードをコピーしました"
 
-#. Then load the activation file you get back, or paste its text.
-#. OfflineActivation: activation by exchanging a request code and a response file.
+#. Load the activation file you get back, or paste its text.
+#. OfflineActivation: step 2; the kit's number marker carries the order.
 msgid "offlineActivation.loadHint"
-msgstr "次に、返送されたアクティベーションファイルを読み込むか、そのテキストをペーストしてください。"
+msgstr "返送されたアクティベーションファイルを読み込むか、そのテキストをペーストしてください。"
 
 #. Load file…
 #. OfflineActivation: activation by exchanging a request code and a response file. Opens a file picker.

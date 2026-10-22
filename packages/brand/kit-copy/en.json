@@ -304,6 +304,16 @@
       "role": "a11y",
       "note": "Screen reader label; never shown. Describes the QR code."
     },
+    "a11y.qrRequest": {
+      "value": "QR code with the request code",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Describes the QR code that carries an offline-activation request."
+    },
+    "a11y.qrManage": {
+      "value": "QR code that opens the device management page",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page."
+    },
     "a11y.code": {
       "value": "Sign-in code {code}",
       "role": "a11y",
@@ -600,12 +610,7 @@
     "offlineActivation.request": {
       "value": "Send this request code to whoever gave you your license.",
       "role": "body",
-      "note": "OfflineActivation: activation by exchanging a request code and a response file."
-    },
-    "offlineActivation.product": {
-      "value": "Product: {product}",
-      "role": "label",
-      "note": "OfflineActivation: activation by exchanging a request code and a response file. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "OfflineActivation: step 1; the kit's number marker carries the order."
     },
     "offlineActivation.copyCode": {
       "value": "Copy code",
@@ -618,9 +623,9 @@
       "note": "OfflineActivation: activation by exchanging a request code and a response file."
     },
     "offlineActivation.loadHint": {
-      "value": "Then load the activation file you get back, or paste its text.",
+      "value": "Load the activation file you get back, or paste its text.",
       "role": "body",
-      "note": "OfflineActivation: activation by exchanging a request code and a response file."
+      "note": "OfflineActivation: step 2; the kit's number marker carries the order."
     },
     "offlineActivation.loadFile": {
       "value": "Load file…",
