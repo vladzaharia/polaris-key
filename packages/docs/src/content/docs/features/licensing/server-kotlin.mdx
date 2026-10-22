@@ -1,0 +1,205 @@
+---
+title: "Gate a Kotlin route with the license"
+description: "Refuse a request to your Ktor route unless the device's license allows it, by tier, entitlement or sign-in, and test the gate without a network."
+type: "how-to"
+lastReviewed: "2026-10-21"
+sidebar:
+  order: 14
+---
+
+A drop-in from `polaris-key-server-ktor` reads the device's license document from the `X-PKey-License` header, verifies it offline and refuses the request when the license doesn't allow it. A route with no gate stays open. For the other backends and the steps behind this, see [Verify licenses on your server](/docs/features/licensing/server-verification/).
+
+Requires the License feature and the `PolarisConfig.kt` that `pkey sdk --lang kotlin --write` writes. The app sends `X-PKey-License` and `X-PKey-Device` with each call to your server.
+
+## Steps
+
+1. **Server** Add `im.plrs.key:polaris-key-server-ktor` from Polaris Key's Maven feed, at the version the feed lists, and the generated `PolarisConfig.kt`.
+2. **Server** Install the provider once, in `install(Authentication)`.
+3. **Server** Wrap each route that needs a gate: `requireLicense`, `requireEntitlement`, `requireTier`, `requireSignIn` or `requireAll`.
+
+## Ktor
+
+```kotlin title="Application.kt"
+import com.acme.polaris.PolarisConfig
+import im.plrs.key.server.ktor.polarisKey
+import im.plrs.key.server.ktor.requireEntitlement
+import im.plrs.key.server.ktor.requireLicense
+import im.plrs.key.server.ktor.requirePolarisLicense
+import im.plrs.key.server.ktor.requireTier
+import io.ktor.server.application.Application
+import io.ktor.server.application.install
+import io.ktor.server.auth.Authentication
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.get
+import io.ktor.server.routing.routing
+
+fun Application.module() {
+    install(Authentication) {
+        polarisKey {
+            product(PolarisConfig.PRODUCT_SLUG, PolarisConfig.pinnedKeys, PolarisConfig.BASE_URL)
+        }
+    }
+    routing {
+        get("/health") { call.respondText("ok") }
+
+        requireLicense {
+            get("/api/me") { call.respondText(call.requirePolarisLicense().tier ?: "no tier") }
+        }
+        requireEntitlement("export.pdf") {
+            get("/api/export") { call.respondText("exported") }
+        }
+        requireTier("pro", "team") {
+            get("/api/team") { call.respondText("team") }
+        }
+    }
+}
+```
+
+`polarisKey` never refuses. Only the `require*` blocks do, and each one runs the provider for its routes. `call.requirePolarisLicense()` returns the license without a null check, and throws if the route has no gate. `call.polarisLicense` is the nullable form.
+
+A missing, empty or malformed product fails at startup with a message that names the fix.
+
+## Several requirements
+
+`requireAll` checks requirements in order and refuses with the first one that fails. A valued entitlement, such as a seat count, takes a test.
+
+```kotlin title="ProRoutes.kt"
+import im.plrs.key.server.Require
+import im.plrs.key.server.ktor.requireAll
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
+
+fun Route.proRoutes() {
+    requireAll(
+        Require.signIn(),
+        Require.tier("pro"),
+        Require.entitlement("seats") { value -> (value.jsonPrimitive.intOrNull ?: 0) >= 5 },
+    ) {
+        get("/api/seats") { call.respondText("five or more seats") }
+    }
+}
+```
+
+## What a refusal looks like
+
+A refusal is `application/problem+json` with the status, `Cache-Control: no-store` and, on a 401, a `WWW-Authenticate` challenge. The title and detail are the catalog's, in the caller's `Accept-Language`.
+
+| Code               | Status | Cause                                             |
+| ------------------ | ------ | ------------------------------------------------- |
+| `license_required` | 401    | No `X-PKey-License` header                        |
+| `license_invalid`  | 401    | Bad signature, wrong product or wrong device      |
+| `license_stale`    | 401    | Past its window: the app must refresh its license |
+| `not_entitled`     | 403    | The license lacks the entitlement or the tier     |
+| `sign_in_required` | 403    | No account is signed in on the device             |
+
+To answer with another status, call `onRefusal`. `respondProblem` sends the problem's own body and headers, with the status you choose:
+
+```kotlin title="Refusals.kt"
+import com.acme.polaris.PolarisConfig
+import im.plrs.key.server.BackendRefusal
+import im.plrs.key.server.ktor.polarisKey
+import im.plrs.key.server.ktor.respondProblem
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.Application
+import io.ktor.server.application.install
+import io.ktor.server.auth.Authentication
+
+fun Application.refusals() {
+    install(Authentication) {
+        polarisKey {
+            product(PolarisConfig.PRODUCT_SLUG, PolarisConfig.pinnedKeys, PolarisConfig.BASE_URL)
+            onRefusal { call, problem ->
+                val status = if (problem.refusal == BackendRefusal.NotEntitled) HttpStatusCode.PaymentRequired else null
+                call.respondProblem(problem, status)
+            }
+        }
+    }
+}
+```
+
+`errors = ErrorMode.Throw` raises a `PolarisKeyError` into Ktor's status pages instead. A browser's CORS preflight carries no license, so every gate lets it through; `preflight = PreflightMode.Gate` turns that off. The drop-in sets no CORS header: allow `X-PKey-License` and `X-PKey-Device` in Ktor's CORS plugin, with the names in `BackendWire.POLARIS_REQUEST_HEADERS`.
+
+A gated response that sets no `Cache-Control` is sent `private`, streamed ones included.
+
+## Without Ktor
+
+`polaris-key-server` is the framework-free core. It decides from the header fields you pass, and you write the response.
+
+```kotlin title="Gate.kt"
+import com.acme.polaris.PolarisConfig
+import im.plrs.key.server.PolarisProduct
+import im.plrs.key.server.PolarisServer
+import im.plrs.key.server.PolarisServerOptions
+import im.plrs.key.server.Require
+
+val server = PolarisServer(
+    PolarisServerOptions(
+        listOf(PolarisProduct(PolarisConfig.PRODUCT_SLUG, PolarisConfig.pinnedKeys, PolarisConfig.BASE_URL)),
+    ),
+)
+
+suspend fun statusOf(headers: List<Pair<String, String>>, acceptLanguage: String?): Int {
+    val auth = server.authenticate(headers, listOf(Require.entitlement("export.pdf")), acceptLanguage)
+    return auth.problem?.status ?: 200
+}
+```
+
+Call `start()` once to fetch the trust manifest every 15 minutes, and `close()` on shutdown. A problem has `status`, `headers` and `body` to send.
+
+## Test a gated route
+
+`PolarisTestKit` signs documents with a throwaway key, so a test needs no network and no Polaris Key.
+
+```kotlin title="ExportRouteTest.kt"
+import im.plrs.key.server.BackendRefusal
+import im.plrs.key.server.ktor.polarisKey
+import im.plrs.key.server.ktor.requireEntitlement
+import im.plrs.key.server.ktor.useTestKit
+import im.plrs.key.server.testing.PolarisTestKit
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.install
+import io.ktor.server.auth.Authentication
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.get
+import io.ktor.server.routing.routing
+import io.ktor.server.testing.testApplication
+
+fun exportRoute() = testApplication {
+    val kit = PolarisTestKit(product = "acme")
+    application {
+        install(Authentication) { polarisKey { useTestKit(kit) } }
+        routing {
+            requireEntitlement("export.pdf") { get("/api/export") { call.respondText("ok") } }
+        }
+    }
+    suspend fun status(headers: Map<String, String>) =
+        client.get("/api/export") { headers.forEach { (name, value) -> header(name, value) } }.status
+
+    check(status(kit.signedHeaders { entitle("export.pdf") }) == HttpStatusCode.OK)
+    check(status(kit.headersFor(BackendRefusal.LicenseRequired)) == HttpStatusCode.Unauthorized)
+    check(status(kit.headersFor(BackendRefusal.LicenseInvalid)) == HttpStatusCode.Unauthorized)
+    check(status(kit.headersFor(BackendRefusal.LicenseStale)) == HttpStatusCode.Unauthorized)
+    check(status(kit.headersFor(BackendRefusal.NotEntitled)) == HttpStatusCode.Forbidden)
+}
+```
+
+The kit has a clock you move with `kit.clock.advance(seconds)`. For a trust manifest, `kit.trust` is a fake trust service: `kit.trust.addKey()` publishes a second key, `kit.trust.offline = true` makes the fetch fail like an unreachable Polaris Key, and `useTestKit(kit, trustRefresh = true)` turns the refresh on against it. Without Ktor, `kit.options()` builds the `PolarisServerOptions`.
+
+## Check it works
+
+Send a request with no `X-PKey-License` header to a gated route. You should get a 401 with `"code": "license_required"`. Then send the app's license from `pkey dev` ([Run Polaris Key locally](/docs/build/local/)).
+
+## If it isn't working
+
+- The server stops at startup with a message that names the product or option: the config is missing, empty or malformed. Run `pkey sdk --lang kotlin --write` again.
+- `requirePolarisLicense` throws: the route has no gate. Put it inside `requireLicense`.
+- Every request is `license_invalid`: the pins in the config are for another environment, or the `X-PKey-Device` header isn't the device the document names.
+- `license_stale` on a device that is online: the app didn't refresh its license before sending it.
+- The browser blocks the call: allow the two headers in your CORS settings.
+- To see why a request was refused, set `debug` to your logger's debug function. A line shows the step, the key id and a short device hash, never the header. A failed trust fetch is logged there with its reason, and the pinned keys keep verifying.
+- [Troubleshoot licensing](/docs/features/licensing/troubleshooting/).

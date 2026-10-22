@@ -32,6 +32,21 @@ deprecated aliases).
   `networkInterceptor()` sends no licence and throws `not-configured`). Pre-sync, one forced retry at
   least 10 s apart, typed `not_entitled` and `sign_in_required`; `headers()` is raw.
 
+- **Server drop-ins: the Node pass, in Kotlin** (`:server`, `:server-ktor`). Bad configuration fails at startup
+  with the fix: `PolarisProduct` throws `IllegalArgumentException` for an empty slug or pin set, a pin that
+  is not 43 base64url characters and a base URL that is not https (it used to fail silently inside the
+  background refresh), naming `pkey sdk --lang kotlin --write`. A failed trust fetch reaches
+  `debug` with its reason and "keeping the last verified keys and the pins" (a 404 says "check baseUrl and
+  the product slug"). Tiers and valued entitlements: `Require.entitlement/tier/signIn` and, in Ktor,
+  `requireTier(...) { }` and `requireAll(...) { }`. `call.requirePolarisLicense()` is the non-null
+  license and throws on an ungated route. A CORS preflight passes every gate (`preflight =
+PreflightMode.Gate` turns that off). Cache-Control `private` is set when the response is sent, so
+  streamed responses keep it. `call.respondProblem(problem, status)` and `BackendProblem.refusal` for a
+  custom refusal such as 402; the default statuses stay 401 and 403. `PolarisProduct`, `onRefusal` and the
+  existing gates are unchanged. New in `im.plrs.key.server.testing`: `PolarisTestKit` (throwaway key, clock,
+  `signedHeaders`, `headersFor(refusal)`, a fake trust service with `addKey`, `offline` and `calls`) and
+  `useTestKit(kit)` for `polarisKey { }`.
+
 - **Server drop-ins (`server.license`, `server.signin`, SP-57).** `im.plrs.key:polaris-key-server`
   (`:server`) decides a request to a product backend from the app's signed licence document,
   offline (WIRE-CONTRACT-V4 §14): `backendVerdict` (the six steps), `backendProblem` (the

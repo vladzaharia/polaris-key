@@ -515,7 +515,7 @@
           "note": "An Android app is not a server."
         }
       ],
-      "note": "im.plrs.key:polaris-key-server (the verdict, the problem, the trust refresh) and polaris-key-server-ktor (SP-57), replaying backend-matrix.json's verdict and problem sections on the JCA and with Tink forced, and each verdict row over a gated Ktor route. Spring Boot follows (SP-61)."
+      "note": "im.plrs.key:polaris-key-server (the verdict, the problem, the trust refresh) and polaris-key-server-ktor (SP-57), replaying backend-matrix.json's verdict and problem sections on the JCA and with Tink forced, and each verdict row over a gated Ktor route. Level with @polaris-key/server: startup config errors, tier and valued requirements (requireTier, requireAll), the CORS preflight pass, trust-fetch diagnostics through debug and PolarisTestKit. Spring Boot follows (SP-61)."
     },
     "server.signin": {
       "status": "implemented",

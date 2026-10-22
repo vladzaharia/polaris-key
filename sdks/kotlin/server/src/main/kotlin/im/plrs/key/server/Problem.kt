@@ -105,6 +105,9 @@ public class BackendProblem internal constructor(
     public val title: String,
     public val detail: String,
 ) {
+    /** The refusal this problem answers, for `when (problem.refusal)` in an `onRefusal` hook. */
+    public val refusal: BackendRefusal get() = BackendRefusal.of(code)!!
+
     /** The response headers: `Content-Type`, `Cache-Control` and, on a 401, `WWW-Authenticate`. */
     public val headers: Map<String, String>
         get() = buildMap {

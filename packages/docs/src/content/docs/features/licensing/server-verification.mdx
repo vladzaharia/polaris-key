@@ -70,7 +70,7 @@ The Node helper returns `ok: false` for any invalid document. For a valid one it
 
 Offline, a document is expected to be past its short `expiresAt`, so the helper applies the gate: `ok` and `grace` are usable and `expired` isn't. Revocation shows up as the server no longer issuing fresh documents. A backend that needs revocation bounds the document's age with `ageSeconds` and asks the app to sync first.
 
-A web backend can let a drop-in do steps 2 to 4 instead: it reads the two headers, verifies offline against the trust manifest and answers `401` or `403` with a problem body when it refuses. `@polaris-key/server` has drop-ins for Express, Hono and Next.js ([Gate a Node route with the license](/docs/features/licensing/server-node/)); `polaris_key.server` for FastAPI, Starlette, Django, DRF and Flask ([Gate a Python route with the license](/docs/features/licensing/server-python/)); `polaris-key-server-ktor` for Ktor.
+A web backend can let a drop-in do steps 2 to 4 instead: it reads the two headers, verifies offline against the trust manifest and answers `401` or `403` with a problem body when it refuses. `@polaris-key/server` has drop-ins for Express, Hono and Next.js ([Gate a Node route with the license](/docs/features/licensing/server-node/)); `polaris_key.server` for FastAPI, Starlette, Django, DRF and Flask ([Gate a Python route with the license](/docs/features/licensing/server-python/)); `polaris-key-server-ktor` for Ktor ([Gate a Kotlin route with the license](/docs/features/licensing/server-kotlin/)).
 
 ## Check it works
 
