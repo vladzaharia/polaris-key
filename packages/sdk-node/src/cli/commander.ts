@@ -401,6 +401,10 @@ export function registerPolarisCommands(
           deviceCode: flags.deviceCode === true,
           allowWorkflowCommands: flags.allowWorkflowCommands === true,
           reveal: flags.reveal === true,
+          ...(typeof flags.keyFile === "string"
+            ? { keyFile: flags.keyFile }
+            : {}),
+          keyStdin: flags.keyStdin === true,
         },
         () => buildClient(this),
         {

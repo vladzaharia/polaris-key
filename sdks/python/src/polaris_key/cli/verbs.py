@@ -10,7 +10,7 @@ state, the last one ``"event": "result"``; never prompts), ``--no-color`` and ``
 ``activate``        the key from ``--key-stdin``, ``--key-file``, ``$POLARIS_KEY_ACTIVATION_KEY``
                     or masked entry (the positional still works and warns)
 ``enroll``          a license with no key and no sign-in
-``deactivate``      release this device's seat and wipe local credentials
+``deactivate``      release this device's seat and wipe local credentials (asks on a terminal; ``--yes``)
 ``status``          the account summary, the grace line, or the blocked state and its fix
 ``register``        the keyless device mint
 ``sign-in``         sign in in the browser, or with a code when headless (``--device-code``);
@@ -153,7 +153,7 @@ def enroll(client: Any, ns: Dict[str, Any]) -> CommandResult:
 
 
 def deactivate(client: Any, ns: Dict[str, Any]) -> CommandResult:
-    return core.deactivate(client, terminal=ns.get("_term"))
+    return core.deactivate(client, yes=bool(ns.get("yes")), terminal=ns.get("_term"))
 
 
 def status(client: Any, ns: Dict[str, Any]) -> CommandResult:
@@ -319,7 +319,7 @@ VERBS: Tuple[Verb, ...] = (
          opts=_KEY_SOURCE, arg="key"),
     Verb("enroll", "license", "Get a license with no key and no sign-in.", enroll),
     Verb("deactivate", "license", "Release this device's seat and wipe local credentials.", deactivate,
-         opts=(Opt("yes", "flag", "Accepted for compatibility; deactivate does not ask.", short="y"),)),
+         opts=_YES),
     Verb("status", "license", "License, devices and offline time.", status),
     Verb("sign-in", "identity", "Sign in in your browser, or with a code.", sign_in, opts=_SIGN_IN),
     Verb("login", "identity", "Same as sign-in.", sign_in, opts=_SIGN_IN),

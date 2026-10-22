@@ -65,6 +65,8 @@ export interface KitContext {
   mounted?: readonly string[];
   /** The product slug. */
   slug: string;
+  /** The environment the run reads (`POLARIS_KEY_ACTIVATION_KEY`). */
+  env: Readonly<Record<string, string | undefined>>;
   stdout: TerminalOutput;
   stderr: TerminalOutput;
   stdin: TerminalInput & Partial<AsyncIterable<Buffer | string>>;
@@ -248,6 +250,7 @@ function buildContext(
     bin: o.bin ?? o.slug,
     ...(o.mounted ? { mounted: o.mounted } : {}),
     slug: o.slug,
+    env: io.env ?? process.env,
     stdout,
     stderr,
     stdin,

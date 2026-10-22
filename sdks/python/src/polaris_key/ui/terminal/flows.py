@@ -239,6 +239,8 @@ def status(client: Any, t: Terminal) -> Outcome:
     except Exception:
         info = None
     tier = (getattr(info, "tierLabel", None) or getattr(info, "tier", None)) if info is not None else None
+    if tier and not getattr(info, "tierLabel", None):
+        tier = tier[:1].upper() + tier[1:]  # the id with an initial capital, as Node's tierName
     view = gate_view(
         st.status,
         now=_now(),
@@ -267,6 +269,7 @@ def status(client: Any, t: Terminal) -> Outcome:
         "profile": {"name": view.holder, "email": view.email} if profile else None,
         "version": view.version,
         "channel": view.channel,
+        "tier": tier or None,
     }
     return Outcome(EXIT.ok if usable else EXIT.failed, lines, data)
 
@@ -348,6 +351,10 @@ def activate(client: Any, t: Terminal, key: Optional[str], *, reason: Optional[S
             lines = screens._frame(k, verb, k.step("done", [k.t("part.keyField.label")]), [k.t("cli.nothingChanged", "muted")])
             return _cancelled(t, lines, {"kind": "cancelled"})
     verdict = parse_key(key, final=True)
+    if verdict.state in ("empty", "malformed", "cut-short"):
+        # Refused here, before any request: exit 1 with the kind, as the Node kit.
+        kind = "cut-short" if verdict.state == "cut-short" else "malformed"
+        return Outcome(EXIT.failed, screens.key_refused(k, key, verdict, verb), {"kind": kind, "code": None})
     while True:
         result = _busy(t, lambda: client.license.activate_with_key(key), lambda f: screens.key_entry(k, key, verdict, busy=True, frame=f, reason=reason))
         view = activation_view(result, key)
@@ -403,7 +410,26 @@ def enroll(client: Any, t: Terminal) -> Outcome:
     return Outcome(EXIT.ok if view.state == "done" else EXIT.failed, lines, data)
 
 
-def deactivate(client: Any, t: Terminal) -> Outcome:
+def _declined(t: Terminal, verb: str, yes: bool) -> Optional[Outcome]:
+    """The sign-out question (D-71) on an interactive terminal unless ``--yes``: ``None`` to go on,
+    else the cancelled outcome. Anywhere else (a pipe, CI, ``--json``) it never asks."""
+    k = t.kit
+    if yes or not t.env.interactive:
+        return None
+    lines = [k.header(verb)] + [k.rail()] + k.step("warn", [k.t("signin.cli.logoutConfirm", "strong", product=k.inline_product)])
+    t.device.print(lines)
+    with t.device.keys() as keys:
+        key = keys.read(None)
+    if key in ("y", "Y"):
+        return None
+    return Outcome(EXIT.failed, [], {"signedOut": False, "state": "cancelled"})
+
+
+def deactivate(client: Any, t: Terminal, *, yes: bool = False) -> Outcome:
+    """``deactivate``: asks ``(y/N)`` on an interactive terminal unless ``--yes``, as Node does."""
+    declined = _declined(t, t.verb or "deactivate", yes)
+    if declined is not None:
+        return declined
     try:
         client.license.deactivate()
     except PolarisError as e:
@@ -526,14 +552,9 @@ def sign_in(
 def sign_out(client: Any, t: Terminal, *, yes: bool = False) -> Outcome:
     """``logout`` / ``sign-out`` (D-71): asks ``(y/N)`` on an interactive terminal unless
     ``--yes``; anywhere else it signs out as it always has."""
-    k = t.kit
-    if t.env.interactive and not yes:
-        lines = [k.header(t.verb or "sign-out")] + [k.rail()] + k.step("warn", [k.t("signin.cli.logoutConfirm", "strong", product=k.inline_product)])
-        t.device.print(lines)
-        with t.device.keys() as keys:
-            key = keys.read(None)
-        if key not in ("y", "Y"):
-            return Outcome(EXIT.failed, [], {"signedOut": False, "state": "cancelled"})
+    declined = _declined(t, t.verb or "sign-out", yes)
+    if declined is not None:
+        return declined
     try:
         client.identity.sign_out()
     except PolarisError as e:
@@ -596,13 +617,19 @@ def devices(client: Any, t: Terminal, words: Sequence[str], *, yes: bool = False
         if code == "device-management-unsupported" or type(e).__name__.startswith("DeviceManagementUnsupported"):
             return Outcome(EXIT.failed, screens.devices(k, DevicesView("Devices", "browser-mode"), verb), {"error": "device-management-unsupported"})
         raise
-    return usage(t, "devices [list | rename <id> <label> | deauthorize <id>]")
+    # The usage line is the verb's own, as the Node kit's (`devices rename <deviceId> [label...]`).
+    if action == "deauthorize":
+        return usage(t, "devices deauthorize <deviceId>")
+    if action == "rename":
+        return usage(t, "devices rename <deviceId> [label...]")
+    return usage(t, "devices [list | rename <deviceId> [label...] | deauthorize <deviceId>]")
 
 
 def usage(t: Terminal, text: str) -> Outcome:
     k = t.kit
     lines = screens.diagnostic(k, t.verb, [("usage:", f"{k.prog} {text}")])
-    return Outcome(EXIT.usage, lines, {"error": "usage", "usage": f"{k.prog} {text}"})
+    # `message` is the usage line, as on the Node kit's usage result.
+    return Outcome(EXIT.usage, lines, {"error": "usage", "usage": f"{k.prog} {text}", "message": f"{k.prog} {text}"})
 
 
 def _plain_rows(k: Any, texts: Sequence[str]) -> List[Line]:
@@ -624,7 +651,7 @@ def no_key(t: Terminal, piped: bool) -> Outcome:
     k = t.kit
     msg = k.t("cli.activate.noKeyPiped", "strong") if piped else k.t("cli.activate.noKey", "strong", command=f"{k.prog} activate")
     lines = [k.header(t.verb)] + ([k.rail()] if k.decor else []) + k.step("warn", [msg]) + screens._gap(k) + _key_fixes(k) + k.end()
-    return Outcome(EXIT.usage, screens._close(k, lines), {"error": "usage"})
+    return Outcome(EXIT.usage, screens._close(k, lines), {"error": "usage", "usage": f"{k.prog} activate", "message": msg.text})
 
 
 def key_file_problem(t: Terminal, path: str, empty: bool) -> Outcome:

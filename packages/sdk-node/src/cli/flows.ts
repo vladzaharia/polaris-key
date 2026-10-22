@@ -9,6 +9,7 @@
 
 import { canonicalPlatform } from "@polaris-key/client-core";
 import { fstatSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { PolarisKeyClient } from "../client.js";
 import type {
@@ -135,8 +136,14 @@ function failed(
   ctx: KitContext,
   e: unknown,
   lead: readonly RailRow[] = [],
+  /** The client, when the flow reaches a service: with no discovery yet, "not available" is "offline". */
+  client?: PolarisKeyClient,
 ): FlowResult {
-  const code = errorCode(e);
+  const raw = errorCode(e);
+  const code =
+    raw === "service-unavailable" && client && undiscovered(client)
+      ? "network"
+      : raw;
   const error = codeError(ctx, code);
   show(ctx, [
     ...lead,
@@ -294,6 +301,17 @@ export async function ensureDiscovery(client: PolarisKeyClient): Promise<void> {
   } catch {
     // The flow decides from what the client already believes.
   }
+}
+
+/**
+ * No discovery document has been loaded and none could be: the client only guesses which services
+ * the product runs, so "this service is off" cannot be told from "cannot connect". The Python kit
+ * reports the second (`network`); so does this one.
+ */
+function undiscovered(client: PolarisKeyClient): boolean {
+  const c = client as Partial<PolarisKeyClient>;
+  if (c.servicesPinned === true) return false;
+  return typeof c.discovery === "function" && c.discovery() === null;
 }
 
 const lastPercent = new WeakMap<KitContext, Map<string, number>>();
@@ -788,6 +806,85 @@ export interface ActivateArgs {
   key?: string;
   /** Why the person is here, as the first line under the header (`export needs a license`). */
   reason?: string;
+  /** `--key-file`: read the key from this file. */
+  keyFile?: string;
+  /** `--key-stdin`: read the key from stdin. */
+  keyStdin?: boolean;
+}
+
+/** The environment variable that hands `activate` a key without argv (the Python kit's too). */
+export const KEY_ENV_VAR = "POLARIS_KEY_ACTIVATION_KEY";
+
+type KeyPick =
+  | { from: "file" | "stdin" | "env" | "argv"; key: string }
+  | { from: "problem"; result: FlowResult; rows: RailRow[] }
+  | null;
+
+/**
+ * The key from a named source, in the Python kit's order: `--key-file`, `--key-stdin`,
+ * `$POLARIS_KEY_ACTIVATION_KEY`, then the positional (which warns). `null` leaves the prompt or
+ * a piped stdin to `obtainKey`. A file that is empty or unreadable, and `--key-stdin` with no
+ * key, end in a usage result (exit 2).
+ */
+async function pickKey(ctx: KitContext, args: ActivateArgs): Promise<KeyPick> {
+  const t = ctx.copy.t.bind(ctx.copy);
+  if (args.keyFile) {
+    let text: string | null;
+    try {
+      text = (await readFile(args.keyFile, "utf8")).trim();
+    } catch {
+      text = null;
+    }
+    if (text) return { from: "file", key: text };
+    const message = t(
+      text === null ? "cli.keyFile.unreadable" : "cli.keyFile.empty",
+    );
+    return {
+      from: "problem",
+      rows: [
+        stepRow("warn", [{ text: message, style: ["strong"] }]),
+        { mark: "rail", spans: [{ text: args.keyFile, style: ["muted"] }] },
+        endRow(),
+      ],
+      result: {
+        exitCode: EXIT.usage,
+        state: "rejected",
+        result: { file: args.keyFile },
+        error: { code: "usage", title: message, message },
+      },
+    };
+  }
+  if (args.keyStdin) {
+    const key = await readPiped(ctx);
+    if (key !== "") return { from: "stdin", key };
+    const usage = `${ctx.bin} activate --key-stdin  (--key-stdin was given but stdin held no key)`;
+    return {
+      from: "problem",
+      rows: [
+        stepRow("fail", [
+          { text: t("cli.help.usage"), style: ["strong"] },
+          { text: `  ${usage}`, keep: true },
+        ]),
+        endRow(),
+      ],
+      result: {
+        exitCode: EXIT.usage,
+        state: "error",
+        result: { usage },
+        error: {
+          code: "usage",
+          title: t("cli.help.usage"),
+          message: usage,
+          showMessage: true,
+        },
+      },
+    };
+  }
+  const fromEnv = (ctx.env[KEY_ENV_VAR] ?? "").trim();
+  if (fromEnv !== "") return { from: "env", key: fromEnv };
+  if (args.key && args.key.trim() !== "")
+    return { from: "argv", key: args.key.trim() };
+  return null;
 }
 
 /** Where the key comes from: the prompt, a pipe, or (with a warning) the command line. */
@@ -914,8 +1011,13 @@ export async function activateFlow(
       : []),
   ];
   const lead = () => hist;
+  const picked = await pickKey(ctx, args);
+  if (picked?.from === "problem") {
+    show(ctx, [...hist, ...picked.rows]);
+    return picked.result;
+  }
   // The shell-history warning sits under the header, never above the product chip (B-114).
-  if (args.key && !quiet(ctx))
+  if (picked?.from === "argv" && !quiet(ctx))
     hist.push(
       stepRow("warn", [
         {
@@ -923,7 +1025,7 @@ export async function activateFlow(
         },
       ]),
     );
-  const key = await obtainKey(ctx, args, lead);
+  const key = picked ? picked.key : await obtainKey(ctx, {}, lead);
   if (key === CANCEL)
     return {
       exitCode: EXIT.failed,
@@ -1160,6 +1262,11 @@ export async function loginFlow(
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
   await ensureDiscovery(client);
+  if (!client.capabilities().identity?.enabled && undiscovered(client))
+    return {
+      ...failed(ctx, { code: "network" }, productHeader(ctx, "login")),
+      result: { state: "error" },
+    };
   if (!client.capabilities().identity?.enabled) {
     // What happened, then the fix: this product takes a license key, not an account.
     const notice = t("cli.identityOff.notice", { product: ctx.product.name });
@@ -2094,7 +2201,7 @@ export async function updateCheckFlow(
       result: { state: view.state, decision: r.decision, channel: r.channel },
     };
   } catch (e) {
-    return failed(ctx, e);
+    return failed(ctx, e, [], client);
   }
 }
 
@@ -2290,7 +2397,7 @@ export async function updateApplyFlow(
       header,
     );
   } catch (e) {
-    return failed(ctx, e, header());
+    return failed(ctx, e, header(), client);
   }
   const d = r.decision;
   if (d.action !== "binary" && d.action !== "store") {
@@ -2614,7 +2721,7 @@ export async function packsStatusFlow(
   try {
     s = await client.update.packs.state();
   } catch (e) {
-    return failed(ctx, e);
+    return failed(ctx, e, [], client);
   }
   const active = Object.values(s.active);
   const rows: RailRow[] = [];
@@ -2757,7 +2864,7 @@ export async function packsEnsureFlow(
     };
   } catch (e) {
     live?.close();
-    return failed(ctx, e, header());
+    return failed(ctx, e, header(), client);
   } finally {
     off();
   }
@@ -2945,7 +3052,7 @@ export async function configWriteFlow(
     if (value === undefined) await client.config.clear(key);
     else await client.config.set(key, value);
   } catch (e) {
-    return failed(ctx, e);
+    return failed(ctx, e, [], client);
   }
   const r = getConfig(client, key);
   const d = r.ok

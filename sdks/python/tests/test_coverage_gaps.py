@@ -308,7 +308,7 @@ def _cli_client(**kw: Any):
 
 def test_cli_activate_then_status_then_deactivate() -> None:
     c = _cli_client()
-    r = core.activate(c, "my-key")
+    r = core.activate(c, "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv")
     assert r.code == 0 and Copy("en")("core.activation.ok.title") in r.lines
 
     st = core.status(c)
@@ -340,7 +340,7 @@ def test_cli_status_exits_zero_on_not_applicable() -> None:
 
 def test_cli_activate_unauthorized_returns_code_1() -> None:
     c = make_client(lambda r: httpx.Response(401, text="bad key"))
-    r = core.activate(c, "nope")
+    r = core.activate(c, "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv")
     assert r.code == 1 and C("core.activation.unauthorized.title") in r.lines
     assert not any("nope" in line for line in r.lines), "the key never goes back to the scrollback"
     c.close()
@@ -348,7 +348,7 @@ def test_cli_activate_unauthorized_returns_code_1() -> None:
 
 def test_cli_activate_device_limit_reports_counts() -> None:
     c = make_client(lambda r: httpx.Response(403, json={"limit": 3, "deviceCount": 3}))
-    r = core.activate(c, "k")
+    r = core.activate(c, "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv")
     assert r.code == 1
     assert C("deviceLimit.heading", used=3, limit=3) in r.lines
     assert r.data["deviceCount"] == 3 and r.data["limit"] == 3
@@ -389,7 +389,7 @@ def test_cli_register_failure_messages(status: int, fragment: str) -> None:
 
 def test_cli_config_prints_value_and_source() -> None:
     c = _cli_client()
-    core.activate(c, "k")
+    core.activate(c, "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv")
     r = core.config(c, "run.concurrency")
     assert r.code == 0
     assert r.data == {"key": "run.concurrency", "value": 4, "source": "enforced"}

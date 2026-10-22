@@ -225,7 +225,10 @@ export function polarisCommands(
         .option("ascii", { type: "boolean", describe: "ASCII symbols only" });
       for (const o of VERB_OPTIONS[verb.path[0]!] ?? []) {
         const { name, alias } = yargsOption(o.flags);
-        b = b.option(name, { type: "boolean", ...(alias ? { alias } : {}) });
+        b = b.option(name, {
+          type: o.flags.includes("<") ? "string" : "boolean",
+          ...(alias ? { alias } : {}),
+        });
       }
       return b;
     },
@@ -257,6 +260,8 @@ export function polarisCommands(
           deviceCode: bag.deviceCode === true,
           allowWorkflowCommands: bag.allowWorkflowCommands === true,
           reveal: bag.reveal === true,
+          ...(typeof bag.keyFile === "string" ? { keyFile: bag.keyFile } : {}),
+          keyStdin: bag.keyStdin === true,
         },
         () => buildClient(argv),
         {

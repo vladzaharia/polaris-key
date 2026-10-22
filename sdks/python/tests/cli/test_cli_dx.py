@@ -164,7 +164,7 @@ def test_a_result_line_names_the_command_by_its_id(tmp_path: Any, capsys: pytest
 
 
 def test_yes_is_y_and_deactivate_accepts_it(tmp_path: Any, capsys: pytest.CaptureFixture) -> None:
-    """Node takes `-y, --yes` on logout and deactivate; so does Python."""
+    """Node takes `-y, --yes` on logout and deactivate; so does Python (deactivate asks without it)."""
     parser = GroupedHelpParser(prog="tidewater")
     sub = parser.add_subparsers(dest="command", required=True)
     register_argparse(sub, config={**GOOD, "base_url": "http://127.0.0.1:9", "config_dir": str(tmp_path)}, version="1.0.0")
@@ -172,4 +172,4 @@ def test_yes_is_y_and_deactivate_accepts_it(tmp_path: Any, capsys: pytest.Captur
         args = parser.parse_args(argv)
         assert args.func(args) in (0, 1)
         assert _result(capsys.readouterr().out)["event"] == "result"
-    assert "yes" not in sub.choices["deactivate"].format_help()
+    assert "--yes" in sub.choices["deactivate"].format_help()  # a real option now: deactivate asks on a terminal

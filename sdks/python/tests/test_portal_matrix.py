@@ -134,3 +134,17 @@ def test_ensure_portal_does_not_dial_when_it_need_not(held: str) -> None:
     )
     ensure_portal(client)
     assert calls == []
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX modes")
+def test_portal_json_is_private_to_the_user(tmp_path: Path) -> None:
+    """The file is 0600 in a 0700 directory, as the Node SDK writes it."""
+    old = os.umask(0)
+    try:
+        cache = tmp_path / "fresh" / "cache"
+        PortalStore("djdl", BASE, str(cache)).accept({"core": next(r["core"] for r in MATRIX["parseCases"] if r["expect"] is not None)})
+    finally:
+        os.umask(old)
+    assert (cache / PORTAL_MEMBER_FILE).exists()
+    assert (cache / PORTAL_MEMBER_FILE).stat().st_mode & 0o777 == 0o600
+    assert cache.stat().st_mode & 0o777 == 0o700

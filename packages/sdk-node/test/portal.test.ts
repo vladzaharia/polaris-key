@@ -47,6 +47,19 @@ describe("PortalStore", () => {
     expect(s.current()).toEqual({ enabled: true, activate: ACTIVATE });
   });
 
+  it("a late load never deletes the file a discovery wrote meanwhile", async () => {
+    const o = opts();
+    writeFileSync(file(o.dir), "{not json");
+    const s = new PortalStore(o);
+    const late = s.load();
+    await s.accept({ core: { portal: { enabled: true, activate: ACTIVATE } } });
+    await late;
+    expect(existsSync(file(o.dir))).toBe(true);
+    const cold = new PortalStore(o);
+    await cold.load();
+    expect(cold.current()).toEqual({ enabled: true, activate: ACTIVATE });
+  });
+
   it.each([
     [
       "another product",

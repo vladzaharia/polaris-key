@@ -210,7 +210,7 @@ class Kit:
         if env.color == "none":
             # NO_COLOR drops colour, not weight: bold and reverse stay on a terminal (never a pipe,
             # TERM=dumb or --json), and links stay wherever the terminal takes them.
-            attributes = env.tty and not env.dumb and not env.json
+            attributes = env.out_tty and not env.dumb and not env.json
             return Palette(color="none", hyperlinks=env.hyperlinks, attributes=attributes)
         resolved = None if native else self.identity.accent(env.scheme)
         if native:

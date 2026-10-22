@@ -108,7 +108,7 @@ SCENES: Tuple[Tuple[str, Callable[[Any], List[Line]]], ...] = (
     ("activate-offline", _outcome(lambda t: flows.activate(_OFFLINE, t, "pkey_tidewater_7Q2MzK8vRb1xLp4n3WPLDA"), "activate")),
     ("login-offline", _outcome(lambda t: flows.sign_in(_OFFLINE, t), "login")),
     ("logout-offline", _outcome(lambda t: flows.sign_out(_OFFLINE, t, yes=True), "logout")),
-    ("deactivate-offline", _outcome(lambda t: flows.deactivate(_OFFLINE, t), "deactivate")),
+    ("deactivate-offline", _outcome(lambda t: flows.deactivate(_OFFLINE, t, yes=True), "deactivate")),
     ("update-check-offline", _outcome(lambda t: flows.update(_OFFLINE, t, ["check"]), "update")),
     ("update-apply-offline", _outcome(lambda t: flows.update(_OFFLINE, t, ["apply"]), "update")),
     ("gate-cannot-check", lambda e: gate.fail_outcome(_terminal(e, "export"), "export").lines),

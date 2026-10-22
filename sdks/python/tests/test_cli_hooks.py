@@ -187,15 +187,15 @@ def _text(r: core.CommandResult) -> str:
 
 def test_activate_ok():
     c = FakeClient(state=_State(status="ok"))
-    r = core.activate(c, "KEY-123")
+    r = core.activate(c, "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv")
     assert r.code == 0 and C("core.activation.ok.title") in r.lines
     assert r.data["kind"] == "ok" and r.data["status"] == "ok"
-    assert c.activated_key == "KEY-123"
+    assert c.activated_key == "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv"
 
 
 def test_activate_device_limit():
     c = FakeClient(activation_result=ActivationDeviceLimit(limit=3, deviceCount=3))
-    r = core.activate(c, "KEY")
+    r = core.activate(c, "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv")
     assert r.code == 1
     assert C("deviceLimit.heading", used=3, limit=3) in r.lines
     assert C("part.seatMeter.caption", used=3, limit=3) in _text(r)
@@ -204,7 +204,7 @@ def test_activate_device_limit():
 
 def test_activate_unauthorized():
     c = FakeClient(activation_result=ActivationUnauthorized())
-    r = core.activate(c, "KEY")
+    r = core.activate(c, "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv")
     assert r.code == 1 and C("core.activation.unauthorized.title") in r.lines
     assert C("core.activation.unauthorized.message") in _text(r)
 
@@ -309,7 +309,7 @@ def test_enroll_fingerprint_required_elsewhere_has_no_hint():
 
 def test_activation_fingerprint_required_on_linux_has_no_enrol_hint():
     c = FakeClient(activation_result=ActivationFingerprintRequired())
-    r = core.activate(c, "KEY")
+    r = core.activate(c, "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv")
     assert core.LINUX_NO_MACHINE_ID_HINT not in r.lines
 
 
@@ -397,9 +397,9 @@ def test_register_argparse_wires_every_v3_subcommand():
 def test_register_argparse_dispatch_activate(capsys):
     client = FakeClient()
     parser = _argparse_app(client)
-    args = parser.parse_args(["activate", "--product", "djdl", "KEY-9"])
+    args = parser.parse_args(["activate", "--product", "djdl", "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv"])
     assert args.func(args) == 0
-    assert client.activated_key == "KEY-9"
+    assert client.activated_key == "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv"
     assert client.closed is True
     assert C("core.activation.ok.title") in capsys.readouterr().out
 
@@ -545,7 +545,7 @@ def test_polaris_click_group_register_and_activate_exit_codes():
     bad = FakeClient(activation_result=ActivationUnauthorized())
     result = runner.invoke(
         polaris_click_group(client_factory=_factory_for(bad), verbs="all"),
-        ["activate", "--product", "djdl", "BADKEY"],
+        ["activate", "--product", "djdl", "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv"],
     )
     assert result.exit_code == 1
     assert C("core.activation.unauthorized.title") in result.output
