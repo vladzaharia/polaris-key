@@ -35,6 +35,7 @@ RECORD = os.environ.get("PKEY_GOLDEN") == "record"
 def env(color: str, symbols: str, width: int, theme: str, *, tty: bool = True) -> TermEnv:
     return TermEnv(
         tty=tty,
+        out_tty=tty,
         interactive=tty,
         color=color if tty else "none",
         symbols=symbols,

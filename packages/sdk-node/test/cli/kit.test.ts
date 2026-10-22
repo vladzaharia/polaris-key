@@ -36,6 +36,7 @@ import {
   schemeFromColorFgBg,
   schemeFromOsc11,
 } from "../../src/cli/term/caps.js";
+import { Painter } from "../../src/cli/term/paint.js";
 import { hasLogCommand } from "../../src/cli/term/sanitize.js";
 import {
   truncateMiddle,
@@ -109,6 +110,26 @@ describe("what the terminal draws (caps)", () => {
         stdout: { ...tty, isTTY: false },
       }).color,
     ).toBe("ansi16");
+  });
+  it("lets NO_COLOR and --no-color win over FORCE_COLOR and writes no SGR at all on a pipe", () => {
+    const pipe = { ...tty, isTTY: false };
+    for (const caps of [
+      detectTerminal({
+        env: { FORCE_COLOR: "1", NO_COLOR: "1" },
+        stdout: pipe,
+      }),
+      detectTerminal({
+        env: { FORCE_COLOR: "1" },
+        stdout: pipe,
+        flags: { color: false },
+      }),
+    ]) {
+      expect(caps.color).toBe("none");
+      const p = new Painter(caps);
+      expect(p.style("ABCD", ["strong", "code", "chip", "accent"])).toBe(
+        "ABCD",
+      );
+    }
   });
   it("selects ASCII under TERM=dumb, TERM=linux and --ascii", () => {
     expect(detectTerminal({ env: { TERM: "dumb" }, stdout: tty }).unicode).toBe(

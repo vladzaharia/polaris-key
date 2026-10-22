@@ -32,7 +32,7 @@ from polaris_key.ui.kit_copy_generated import KIT_COPY, KIT_COPY_LOCALES
 from polaris_key.ui.terminal.env import TermEnv
 from polaris_key.ui.terminal.parts import Kit
 
-from .fixtures import FIXTURES, Presentation
+from .fixtures import FIXTURES, Presentation, kit
 from .golden_support import env, render
 
 
@@ -420,6 +420,21 @@ def test_detect_colour_modes() -> None:
     assert _detect(env={"FORCE_COLOR": "1"}, stdout=object()).color == "ansi16"
     dumb = _detect(env={"TERM": "dumb"})
     assert (dumb.color, dumb.symbols, dumb.motion) == ("none", "ascii", False)
+
+
+def test_no_color_wins_over_force_color_and_strips_every_sgr() -> None:
+    """A pipe with FORCE_COLOR=1 and --no-color (or NO_COLOR) writes no bold and no reverse video
+    either; on a real terminal NO_COLOR keeps weight (the Node kit's rule)."""
+    from polaris_key.ui.terminal.text import Line, Span, to_ansi
+
+    line = Line([Span("ABCD-EFGH", ("code",), None, "data:code"), Span("Esc", ("strong",), None, "")])
+    for kw in ({"no_color": True, "env": {"FORCE_COLOR": "1"}}, {"env": {"FORCE_COLOR": "1", "NO_COLOR": "1"}}):
+        e = _detect(stdout=object(), **kw)
+        assert (e.color, e.tty, e.out_tty) == ("none", True, False)
+        pal = kit(e).palette()
+        assert "\x1b" not in to_ansi(line, pal)
+    real = _detect(env={"NO_COLOR": "1"})
+    assert real.out_tty and "\x1b[" in to_ansi(line, kit(real).palette())
 
 
 def test_detect_width_scheme_motion_and_headless() -> None:
