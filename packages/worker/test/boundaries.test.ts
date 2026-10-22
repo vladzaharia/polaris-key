@@ -443,8 +443,9 @@ describe("the adapter layer (A-18a)", () => {
       /[\\/]/,
     );
   const RUNTIME = new Set(["ledger.ts", "audit.ts", "budget.ts"]);
-  /** A-27.5: the listing model reads its limits from `@polaris-key/manifest` (a value import), so
-   *  the validator and the model share one number; no other declaration module may. */
+  /** A-27.5: `listingModel.ts` reads `LISTING_LIMITS`, pure data, from the declared package
+   *  `@polaris-key/manifest` (a value import), so the manifest validator and the listing model
+   *  share one number instead of two copies; no other declaration module may. */
   const MANIFEST_VALUES = new Set(["listingModel.ts"]);
 
   it("core/adapters imports nothing", () => {
