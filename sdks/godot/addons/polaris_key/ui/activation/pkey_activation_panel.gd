@@ -537,6 +537,9 @@ func _render_limit(t: PKeyUiCopy) -> void:
 	var has_link := manage_url != ""
 	_manage.text = t.text("free_device")
 	leaves_app(_manage)
+	# The glyph trails the label inside the button's width: with the theme's gap a label that wraps (a game's
+	# large type on a phone) takes one more line for it, and the docked actions leave the screen.
+	_manage.add_theme_constant_override("h_separation", 0)
 	# A QR code only on a pad-only device (a TV, a console), where there is no browser to open; every
 	# other device has the button.
 	var as_qr := how == "qr"

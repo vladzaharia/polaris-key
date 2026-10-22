@@ -379,8 +379,8 @@ func _make_entry(i: int, e: Dictionary, t: PKeyUiCopy) -> Dictionary:
 				seat_line.add_child(meter)
 				var caption := label(seat_line, "Caption", "PKeyMuted")
 				caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				caption.text = t.text("choice_devices_one" if limit == 1 else "choice_devices", [str(used), limit])
-				name_for_reader(meter, t.text("seat_label_one" if limit == 1 else "seat_label", [str(used), limit]))
+				caption.text = t.text("choice_devices_one" if limit == 1 else "choice_devices", [used, limit])
+				name_for_reader(meter, t.text("seat_label_one" if limit == 1 else "seat_label", [used, limit]))
 				out["meter"] = meter
 				out["seat_line"] = seat_line
 				out["used"] = used

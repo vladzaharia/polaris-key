@@ -78,6 +78,9 @@ const TIGHT_CASES := [
 	["gate.channel", "custom", "pixel-art canvas_items 640x360 keep"],
 	["gate.revoked", "native36", "1170x2532@3"],
 	["gate.channel", "native36", "1170x2532@3"],
+	# Expired offers the same wrapped actions as revoked (Use another license, Renew): at 36 px type on a 390 dp phone the
+	# longest word fills the card, so it scrolls a pad press away.
+	["gate.expired", "native36", "1170x2532@3"],
 	["gate.unavailable", "native28", "1170x2532@3"],
 	# A game's 22 px theme with unspaced Japanese on a 390 dp wide phone: the reply's Import is a scroll away.
 	["offline", "custom", "1170x2532@3"],
@@ -258,7 +261,7 @@ const SCREENS := [
 	["gate.device_limit", "gate", "device limit", "full"],
 	["gate.device_limit_qr", "gate", "device limit, replace a device (QR)", "full", "pad"],
 	["gate.error", "gate", "needs-activation after an error", "full"],
-	["gate.expired", "gate", "expired", "full"],
+	["gate.expired", "gate", "expired with renew", "full"],
 	["gate.revoked", "gate", "revoked", "full"],
 	["gate.channel", "gate", "channel-not-entitled", "full"],
 	["gate.update", "gate", "version-too-old with a store action", "full"],

@@ -299,10 +299,10 @@ func _rebuild(t: PKeyUiCopy, state: String) -> void:
 		var caption := label(r4["control"], "Caption", "PKeyMuted")
 		caption.autowrap_mode = TextServer.AUTOWRAP_OFF
 		if devices_limit > 0:
-			caption.text = t.text("seat_caption", [str(maxi(devices_used, 0)), devices_limit]) if devices_used >= 0 else ""
+			caption.text = t.text("seat_caption", [maxi(devices_used, 0), devices_limit]) if devices_used >= 0 else ""
 			meter.set_meta(&"pkey_used", maxi(devices_used, 0))
 			meter.set_meta(&"pkey_limit", devices_limit)
-			name_for_reader(meter, t.text("seat_label_one" if devices_limit == 1 else "seat_label", [str(maxi(devices_used, 0)), devices_limit]))
+			name_for_reader(meter, t.text("seat_label_one" if devices_limit == 1 else "seat_label", [maxi(devices_used, 0), devices_limit]))
 		else:
 			caption.text = str(devices_used)
 			caption.set_meta(DATA_META, true)

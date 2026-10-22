@@ -1869,9 +1869,14 @@ static var _note_copy = null
 
 
 static func _external_note() -> String:
+	return String(catalog().format("a11y.externalLink"))
+
+
+## The shared copy catalog (the model's `.po` tables) in the running locale.
+static func catalog():
 	if _note_copy == null:
 		_note_copy = preload("res://addons/polaris_key/ui/model/copy_format.gd").new({"locale": TranslationServer.get_locale()})
-	return String(_note_copy.format("a11y.externalLink"))
+	return _note_copy
 
 
 ## A 2 px indeterminate bar for a loading state, shown only once `loading` has been true for

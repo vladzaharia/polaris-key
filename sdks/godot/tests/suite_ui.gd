@@ -859,8 +859,30 @@ func _gate(t: PKeyTestContext) -> void:
 	g.show_state({"status": "grace", "grace_until": 0})
 	t.check("gate: grace with allow_grace false blocks", g.screen == "grace-blocked" and g.get_node("Center/Card").visible)
 	g.show_state({"status": "expired"})
-	(g.find_child("Retry", true, false) as Button).pressed.emit()
-	t.check("gate: expired's Retry asks the owner to retry", retried[0] == 1)
+	await _tree().process_frame
+	var other := g.find_child("UseAnotherLicense", true, false) as Button
+	t.check("gate: expired without a renew path offers Use another license alone, as the primary", g.find_child("Renew", true, false).text == "" and other.text == "Use another license" and other.theme_type_variation == &"PKeyPrimary" and g.find_child("Retry", true, false).text == "")
+	other.pressed.emit()
+	await _tree().process_frame
+	t.check("gate: Use another license goes to key entry", g.activation.visible and g.find_child("KeyInput", true, false) != null)
+	g.show_state({"status": "ok"})
+	g.show_state({"status": "expired"})
+	g.renew_url = "http://insecure.example/renew"
+	g.refresh_view()
+	t.check("gate: a non-https renew_url is no renew path", not g.can_renew())
+	g.renew_url = "https://example.com/renew"
+	g.refresh_view()
+	await _tree().process_frame
+	var renew := g.find_child("Renew", true, false) as Button
+	t.check("gate: expired with an https renew_url draws Renew first, with the new-window glyph, and no Try again", renew.text == "Renew" and renew.icon != null and renew.theme_type_variation == &"PKeyPrimary" and g.find_child("UseAnotherLicense", true, false).text == "Use another license" and g.find_child("Retry", true, false).text == "")
+	g.renew_url = ""
+	var renewed := [0]
+	g.renew_requested.connect(func(): renewed[0] += 1)
+	g.refresh_view()
+	await _tree().process_frame
+	t.check("gate: a renew handler alone draws Renew without the glyph", renew.text == "Renew" and renew.icon == null)
+	renew.pressed.emit()
+	t.check("gate: Renew emits renew_requested", renewed[0] == 1)
 	_free(g)
 
 

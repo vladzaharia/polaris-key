@@ -11,7 +11,7 @@ extends RefCounted
 ##   grace-blocked    grace while allow_grace is false: blocks, connect and retry
 ##   activation       needs-activation: the activation panel
 ##   revoked          the device was signed out: say so, and offer sign-in / activation again
-##   expired          ask the player to connect, and retry (sync(true))
+##   expired          Renew (when the host can renew) and Use another license; never Try again
 ##   update-required  version-too-old: "update required", with the outlet's action when known
 ##   not-available    version-too-new, channel-not-entitled: not available on this licence
 ##   error            needs-activation after an activation or sign-in error the gate describes
@@ -92,7 +92,7 @@ static func copy_for(screen: String, status: String, allowed_range: Variant = nu
 static func controls_for(screen: String, has_update_action: bool) -> Dictionary:
 	return {
 		"activation": screen == "activation" or screen == "revoked" or screen == "error" or screen == "not-available",
-		"retry": screen in ["grace-blocked", "expired", "update-required", "not-available", "error"],
+		"retry": screen in ["grace-blocked", "update-required", "not-available", "error"],
 		"update_action": screen == "update-required" and has_update_action,
 		"banner": screen == "grace",
 	}

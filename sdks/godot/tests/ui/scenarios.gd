@@ -86,6 +86,7 @@ func all() -> Array:
 	out.append(["gate", "loading", gate.bind("", true, "")])
 	out.append(["gate", "needs-activation after an error", gate.bind("needs-activation", true, "That license key wasn't accepted.")])
 	out.append(["gate", "version-too-old with a store action", gate_store])
+	out.append(["gate", "expired with renew", gate_renew])
 	out.append(["gate", "network error", gate_network.bind(true)])
 	out.append(["gate", "network error, no lease", gate_network.bind(false)])
 	out.append(["gate", "not available (version-too-new)", gate_not_available])
@@ -233,6 +234,16 @@ func gate(status: String, allow_grace: bool, err: String) -> Control:
 		if status == "version-too-old":
 			s["allowed_range"] = {"min": "1.4.0"}
 		g.show_state(s, err)
+	return g
+
+
+## An expired license on a host that can renew (an https renew_url): Renew, then Use another license.
+func gate_renew() -> Control:
+	var g := PKeyGateView.new()
+	g.renew_url = "https://example.com/renew"
+	g.activation.set_capabilities(PKeyActivationController.capabilities(true, true, false, false))
+	add(g)
+	g.show_state({"status": "expired"})
 	return g
 
 

@@ -10,7 +10,7 @@ Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Connect to keep playing"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "Your license needs an online check."
-Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [focus 1]
+Center/Card/Scroll/Body/Split/Form/Actions/UseAnotherLicense: Button "Use another license" [focus 1]
 == revoked ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
@@ -90,6 +90,13 @@ Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Update required"
 Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "This version is no longer supported."
 Center/Card/Scroll/Body/Split/Form/Actions/UpdateAction: Button "Update" [focus 1]
 Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [focus 2]
+== expired with renew ==
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Connect to keep playing"
+Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "Your license needs an online check."
+Center/Card/Scroll/Body/Split/Form/Actions/Renew: Button "Renew" [focus 1]
+Center/Card/Scroll/Body/Split/Form/Actions/UseAnotherLicense: Button "Use another license" [focus 2]
 == network error ==
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
 Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"

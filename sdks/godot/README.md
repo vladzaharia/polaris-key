@@ -139,7 +139,7 @@ PolarisKey.state_changed.connect(func(s): print(s["status"]))
 or expired license unlocks nothing, even though `get_entitlements()` still reads the last verified
 values. A 401 during a sync re-acquires the token once. `expired` is the cached license document
 outliving its grace window with no successful sync (a device that stayed offline too long): the
-player sees "Connect to keep playing" and Try again. It is not how a license whose term ended
+player sees "Connect to keep playing" with Use another license, and Renew when the game sets the gate's `renew_url` (https) or connects `renew_requested`; never Try again. It is not how a license whose term ended
 shows: the server answers a dead license like a wrong key (401), so a key typed for it gets "That
 license key wasn't accepted.", a sync that finds it ends in `revoked` ("Signed out"), and no
 screen tells a key holder the difference yet.
