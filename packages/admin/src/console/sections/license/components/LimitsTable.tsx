@@ -291,24 +291,24 @@ export function LimitsTable({
               data-service={row.kind === "tracks" ? "release" : undefined}
               data-marked={row.overridden ? "" : undefined}
               className={
-                "border-t border-border align-middle max-sm:grid max-sm:grid-cols-[1fr_auto] max-sm:gap-x-3 max-sm:gap-y-1 max-sm:px-5 max-sm:py-3 [&>td]:px-5 [&>td]:py-3 max-sm:[&>td]:p-0" +
+                "border-t border-border align-middle max-sm:grid max-sm:grid-cols-[1fr_auto] conbig:max-sm:grid-cols-1 max-sm:gap-x-3 max-sm:gap-y-1 max-sm:px-5 max-sm:py-3 [&>td]:px-5 [&>td]:py-3 max-sm:[&>td]:p-0" +
                 (row.overridden
                   ? " bg-surface-sunken shadow-[inset_3px_0_0_var(--pk-fg-strong,currentColor)]"
                   : "")
               }
             >
-              <td className="max-sm:col-start-1 max-sm:row-start-1">
+              <td className="">
                 <span className="inline-flex items-center gap-2 font-medium text-fg-strong">
                   {ICONS[row.kind]}
                   {row.label}
                 </span>
               </td>
-              <td className="max-sm:col-start-2 max-sm:row-start-1 max-sm:text-right">
+              <td className="max-sm:text-right conbig:max-sm:text-left">
                 <strong className="font-semibold tabular-nums text-fg-strong">
                   {row.value}
                 </strong>
               </td>
-              <td className="max-sm:col-start-1 max-sm:row-start-2">
+              <td className="">
                 <span className="flex flex-col">
                   <span
                     className={
@@ -322,8 +322,8 @@ export function LimitsTable({
                   ) : null}
                 </span>
               </td>
-              <td className="text-right max-sm:col-start-2 max-sm:row-start-2 max-sm:self-end">
-                <span className="inline-flex flex-wrap items-center justify-end gap-x-2">
+              <td className="text-right max-sm:self-end conbig:max-sm:self-start conbig:max-sm:text-left">
+                <span className="inline-flex flex-wrap items-center justify-end gap-x-2 conbig:max-sm:justify-start">
                   {row.kind === "fingerprint" ? (
                     row.tierId ? (
                       <Button asChild variant="link" size="sm">

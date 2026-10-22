@@ -46,7 +46,8 @@ describe("license record: header and tabs", () => {
   it("shows the status once, the holder, the id, the tier control and who changed it", async () => {
     bootLicense(REC);
     await header();
-    expect(screen.getAllByText("Active")).toHaveLength(1);
+    // Beside the title; a second copy in the facts strip shows only at 200 % text (CSS, conbig).
+    expect(screen.getAllByText("Active")).toHaveLength(2);
     expect(screen.getByText("ada@x.io")).toBeTruthy();
     // The tier is a control that opens Change tier (licenses.detail).
     expect(

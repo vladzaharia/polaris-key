@@ -33,7 +33,7 @@ const ORIGIN_TITLES = {
   enroll: "Enrollment",
 } as const;
 
-/** One fact: a muted label, the value, and a smaller line under it. */
+/** One fact: a muted label at the start, the value flush at the end, a smaller line under it. */
 function Fact({
   label,
   children,
@@ -44,9 +44,9 @@ function Fact({
   sub?: React.ReactNode;
 }): React.ReactElement {
   return (
-    <div className="grid gap-x-4 gap-y-0.5 px-5 py-3 text-sm sm:grid-cols-[6.5rem_1fr]">
-      <dt className="text-fg-muted">{label}</dt>
-      <dd className="min-w-0 break-words text-fg-strong">
+    <div className="flex items-start justify-between gap-4 px-5 py-3 text-sm">
+      <dt className="shrink-0 text-fg-muted">{label}</dt>
+      <dd className="min-w-0 break-words text-right text-fg-strong">
         {children}
         {sub ? (
           <span className="mt-0.5 block text-xs text-fg-muted">{sub}</span>
@@ -89,7 +89,7 @@ export function DurationCard({
       }
     >
       <div className="space-y-2 px-5 py-4">
-        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 text-sm">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 text-sm conbig:grid-cols-1">
           <span className="text-fg-muted">{formatDate(start)}</span>
           <div
             className="relative h-1.5 rounded-full bg-border"
@@ -295,7 +295,7 @@ export function DevicesCard({
           {shown.map((d) => (
             <li
               key={d.deviceId}
-              className="flex items-center gap-3 px-5 py-3 text-sm"
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 text-sm"
             >
               <span
                 aria-hidden
@@ -307,12 +307,18 @@ export function DevicesCard({
                   <Monitor className="size-4" />
                 )}
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium text-fg-strong">
+              <span className="min-w-0 flex-[1_1_6rem]">
+                <span
+                  className="block truncate font-medium text-fg-strong"
+                  title={d.label || d.deviceId}
+                >
                   {d.label || d.deviceId}
                 </span>
                 {deviceLine(d) ? (
-                  <span className="block truncate text-xs text-fg-muted">
+                  <span
+                    className="block truncate text-xs text-fg-muted"
+                    title={deviceLine(d)}
+                  >
                     {deviceLine(d)}
                   </span>
                 ) : null}

@@ -275,7 +275,7 @@ function LicenseRecordBody({
       iconEnd={<ChevronDown />}
       onClick={() => setDialog("tier")}
     >
-      <span className="text-fg-muted">Tier</span>
+      <span className="text-fg-muted conbig:sr-only">Tier</span>
       {tierLabel ? (
         <span>{tierLabel}</span>
       ) : (
@@ -324,10 +324,16 @@ function LicenseRecordBody({
             {licenseTitle(license)}
           </span>
         }
-        titleAside={<LicenseStatus license={license} />}
+        // At 200 % text the masthead has no room for a third line: the status moves to the
+        // facts strip below the tabs (CSS only; the other copy is `display: none`).
+        titleAside={
+          <span className="conbig:hidden">
+            <LicenseStatus license={license} />
+          </span>
+        }
         // The tier is a control beside the one action (licenses.detail): 50/50 on a phone.
         primaryAction={
-          <div className="grid grid-cols-2 gap-2 sm:flex">
+          <div className="grid grid-cols-2 gap-2 sm:flex [&>button]:min-w-0 conbig:[&>button]:whitespace-nowrap!">
             {tierControl}
             {mainAction}
           </div>
@@ -428,6 +434,9 @@ function LicenseRecordBody({
         data-testid="record-facts"
         className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted"
       >
+        <span className="hidden conbig:inline-flex">
+          <LicenseStatus license={license} />
+        </span>
         <HolderLine slug={slug} license={license} batch={batch} />
         <IdChip value={id} noun="license id" />
         {keyEntries ? (
