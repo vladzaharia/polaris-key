@@ -11,6 +11,7 @@
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
 // @pkey-feature core.presentation
+// @pkey-feature ui.cli.portal
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented is listed as skipped rather than failing,
@@ -272,6 +273,8 @@ async function act(
       out.result = (await client.discover()).kind;
       // core.presentation (HA-13): the member the client exposes after this discovery.
       out.presentation = client.presentation() as JsonValue;
+      // ui.cli.portal (DISC-01): the core.portal member the client holds after this discovery.
+      out.portal = client.portal() as JsonValue;
       break;
     case "sync": {
       const r = await client.sync({ force: step.args.force === true });

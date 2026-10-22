@@ -418,6 +418,12 @@
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
+    "ui.cli.portal": {
+      "status": "na",
+      "runtime": ["android", "jvm"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit) that shows only server or integrator links; the terminal kit's product page link is the headless SDKs' expectation (ui.cli.portal)."
+    },
     "ui.cli.mount": {
       "status": "planned",
       "wp": "UK-54",

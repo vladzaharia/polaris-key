@@ -77,7 +77,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 
 These are output; never edit them:
 
-- `corpus/v2/cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`, `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, `plan-matrix.json`, `feed-url-matrix.json`, `sync-scenarios.json`, `device-label.json`, `presentation-matrix.json`, `ui-matrix.json`, `backend-matrix.json`
+- `corpus/v2/cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`, `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, `plan-matrix.json`, `feed-url-matrix.json`, `sync-scenarios.json`, `device-label.json`, `presentation-matrix.json`, `portal-matrix.json`, `ui-matrix.json`, `backend-matrix.json`
 - `corpus/v2/content/cases.json`
 - the one generator-owned mirror, `sdks/godot/tests/corpus/v2/` (an exported Godot pack reads only `res://`; `content/` is not mirrored)
 

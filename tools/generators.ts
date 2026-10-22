@@ -60,7 +60,7 @@ export const GENERATORS: Generator[] = [
     inputs: [
       "tools/sign-corpus.ts",
       "tools/corpus/**",
-      "tools/{sync-scenarios,presentation-matrix,ui-matrix,gen-content-chunks,gen-content-corpus}.ts",
+      "tools/{sync-scenarios,presentation-matrix,portal-matrix,ui-matrix,gen-content-chunks,gen-content-corpus}.ts",
       "conformance/corpus/v2/content/blobs/**",
       "packages/shared-*/src/**",
       "packages/client-core/src/**",

@@ -59,6 +59,8 @@ _SYNC = frozenset(
         "caps",
         "capabilities",
         "presentation",
+        "portal",
+        "discovery",
         "crash_tags",
         "outlet_id",
         "url",

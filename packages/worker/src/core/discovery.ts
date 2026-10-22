@@ -40,6 +40,13 @@
  * present only when something beyond the name resolves, so a product with nothing to show keeps
  * the document it had. No ETag is added (plans/HA-12.md Q4): `max-age=300` bounds how long a new
  * icon or accent takes to reach a device.
+ *
+ * ── THE PRODUCT PAGE LINK (DISC-01) ─────────────────────────────────────────────────────────
+ *
+ * `core.portal` (WIRE-CONTRACT-V4 §5.7) says whether the product's customer portal is on and, while
+ * it is, the `/activate?product=<slug>` link on the customer origin. A terminal kit draws that
+ * link, or "Contact {developer}" while the portal is off. Unsigned, last in `core`, and read from
+ * the same `portal.enabled` answer as Identity's `accountPortal`.
  */
 
 import { PROTOCOL_VERSION } from "@polaris-key/protocol";
@@ -54,6 +61,7 @@ import {
   type ServiceRegistry,
 } from "./registry.js";
 import { resolvePresentation } from "./presentation.js";
+import { portalEnabled, portalMember } from "./licensing/manageUrl.js";
 import { SERVICE_SLUGS, type ServiceSlug } from "./services.js";
 import { settingsRegistryFor } from "./settings/registry.js";
 
@@ -101,6 +109,8 @@ export async function handleDiscovery(
       now,
     }).hooks,
     settings: settingsRegistryFor(registry),
+    // Read once (DISC-01): `core.portal` and Identity's `accountPortal` share the answer.
+    portalOn: await portalEnabled(db, product.slug),
   };
   // Keys in canonical table order — the order clients read. Every slug gets a fragment.
   const services = {} as Record<ServiceSlug, Record<string, unknown>>;
@@ -138,6 +148,8 @@ export async function handleDiscovery(
           : { register: `${base}/devices/register` }),
       },
       ...(presentation ? { presentation } : {}),
+      // Last in `core` (WIRE-CONTRACT-V4 §5.7): every document says whether the product page exists.
+      portal: portalMember(env, base, product, ctx.portalOn),
     },
     trust: {
       jwksUrl,

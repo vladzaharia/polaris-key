@@ -88,6 +88,8 @@ import type {
   PresentationSource,
   ProductPresentation,
 } from "@polaris-key/client-core/presentation";
+import { PortalStore } from "./core/portal.js";
+import type { ParsedPortal } from "@polaris-key/client-core/portal";
 import {
   discoverProduct,
   type DiscoverProductResult,
@@ -192,6 +194,8 @@ export class PolarisKeyClient {
   private discoveryDoc: ProductDiscoveryDocument | null = null;
   /** Discovery's `core.presentation` and its verified icon (HA-13). */
   private readonly presentationStore: PresentationStore;
+  /** Discovery's `core.portal`, the terminal kits' product page link (DISC-01). */
+  private readonly portalStore: PortalStore;
   /** Whether the host pinned `expectedServices` (then boot skips discovery). */
   private readonly pinnedServices: boolean;
   /** The token store's last `status()`, read at `init()` and before every report, so
@@ -220,6 +224,11 @@ export class PolarisKeyClient {
       product: this.product,
       dir: join(this.core.dirs.cache, "presentation"),
       fetcher: () => this.core.plainFetcher(),
+    });
+    this.portalStore = new PortalStore({
+      product: this.product,
+      baseUrl: this.core.baseUrl,
+      dir: this.core.dirs.cache,
     });
 
     this.devices = new DevicesClient(
@@ -373,6 +382,7 @@ export class PolarisKeyClient {
     await this.tokens.load();
     await this.cache.load();
     await this.presentationStore.load();
+    await this.portalStore.load();
     this.lastStatus = this.license.status().status;
     // Wire v4's update slices go through the same reload path: every committed feed and record
     // is re-verified against what this load trusts, and each channel's `seq` floor comes from
@@ -406,8 +416,21 @@ export class PolarisKeyClient {
       this.discoveryDoc = result.manifest;
       this.core.setServices(result.services);
       await this.presentationStore.accept(result.manifest);
+      await this.portalStore.accept(result.manifest);
     }
     return result;
+  }
+
+  // ── The product page link (core.portal, DISC-01) ───────────────────────────────────────
+  /**
+   * Discovery's `core.portal` (WIRE-CONTRACT-V4 §5.7), normalised by client-core's `parsePortal`:
+   * `{enabled:false}` while the product's portal is off, `{enabled:true, activate}` with the
+   * product page link (or null when none is usable), or null when the Worker said nothing (an
+   * older Worker, or never discovered). Before this session's first discovery it is the last
+   * member persisted (`portal.json`). Unsigned display data: nothing gates on it.
+   */
+  portal(): ParsedPortal | null {
+    return this.portalStore.current();
   }
 
   // ── Presentation (core.presentation, HA-13) ────────────────────────────────────────────

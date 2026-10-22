@@ -30,7 +30,7 @@
 // `sdk-node` or ui-core.
 //
 // The file is ASCII only (sign-corpus writes it through `asciiJson`) and append-only within
-// `uiMatrixVersion` 5: a new row keeps the version; a changed row, input member or rule bumps it
+// `uiMatrixVersion` 6: a new row keeps the version; a changed row, input member or rule bumps it
 // (plans/UK-02b.md §4.8). Version 2 (UK-03): the `elapsedMs` input member and DL7's
 // delayed-response rows (the `dl7-delayed-response` gap of version 1), and the fixture key's
 // secret corrected to the 22 characters every license key has. Version 3 (UK-51): the `cli`
@@ -47,13 +47,16 @@
 // StatusScreen/expired never offers Try again or Reconnect; Paywall/not-available hands off to a
 // valid https `offers.url`; OfflineActivation carries its two-step form in every state but done,
 // with the request QR's own label and no product line; DeviceLimit's TV QR is labelled
-// `a11y.qrManage`.
+// `a11y.qrManage`. Version 6 (DISC-01, WIRE-CONTRACT-V4 §5.7): the product page link comes from
+// discovery's `core.portal`; the `cli` outcomes `status-version-too-new-no-page` and
+// `status-channel-not-entitled-no-page` set up a stub whose discovery says the portal is off and
+// expect `link: "contact"`, and the vocabulary's `contact` is where the kit resolves no page.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const UI_MATRIX_VERSION = 5;
+export const UI_MATRIX_VERSION = 6;
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -3759,6 +3762,10 @@ export const CLI_SITUATIONS: Readonly<Record<string, string>> = {
     "`status`: this version is above the license's allowed range.",
   "status-channel-not-entitled":
     "`status`: the license does not include this build's channel.",
+  "status-version-too-new-no-page":
+    "`status`: this version is above the license's allowed range, and the product's discovery says its portal is off (`core.portal` is `{enabled:false}`).",
+  "status-channel-not-entitled-no-page":
+    "`status`: the license does not include this build's channel, and the product's discovery says its portal is off (`core.portal` is `{enabled:false}`).",
   network:
     "`devices list`: the request fails with the registry code `network`.",
   "key-refused":
@@ -3799,9 +3806,9 @@ const CLI_VOCABULARY = {
     mount:
       "Register the kit's verbs into a host CLI whose own top-level commands are input.host, with input.options. mounted: the commands the host gains, as typed (namespace first). error: the registration error (nothing is mounted): every host command equal to a namespace, a verb's first word or an alias, and the two options that resolve it. skipped: the verbs onCollision skip dropped; the kit warns once, naming them. hidden: the options help hides once config is given. The host's own commands are never renamed, removed or re-described.",
     help: "The root help page's sections in order: the host's, under its headings, then one section whose heading is the kit copy key `copy` with what the mount added at the top level (a namespace is one entry). commands is each section's set; within a section the kit keeps its order.",
-    gate: "requireLicense(handler, {entitlement?}) before the host's command input.command. run: the action runs and exits as it does. flow: the kit's activate or sign-in flow runs inline, then the action. refuse: mark, the title (copy; {command} is input.command; no message line, because the fix follows), then link (portal: the product page, from the kit's portal URL; contact: `status.contact` with the developer's name, where input.portal is false) and the fix verbs as command rows, written once to stream (stderr: no escape off a terminal), the exit; fix is the verbs filtered by input.mounted (absent: the end-user set), and a link stands in when none is left. fail: input.check (the check throws, or answers a status that is not a licenseStatus) draws a cross with copy (title and message), no fix row, exit 4. With --json stdout carries only `result`, the envelope's result line (CLI_JSON_VERSION 1).",
+    gate: "requireLicense(handler, {entitlement?}) before the host's command input.command. run: the action runs and exits as it does. flow: the kit's activate or sign-in flow runs inline, then the action. refuse: mark, the title (copy; {command} is input.command; no message line, because the fix follows), then link (portal: the product page, from the kit's portal URL; contact: `status.contact` with the developer's name, where the kit resolves no product page, WIRE-CONTRACT-V4 section 5.7: input.portal is false) and the fix verbs as command rows, written once to stream (stderr: no escape off a terminal), the exit; fix is the verbs filtered by input.mounted (absent: the end-user set), and a link stands in when none is left. fail: input.check (the check throws, or answers a status that is not a licenseStatus) draws a cross with copy (title and message), no fix row, exit 4. With --json stdout carries only `result`, the envelope's result line (CLI_JSON_VERSION 1).",
     outcomes:
-      "Drive the kit's verb in input.situation (situations) on a Unicode terminal (json false) or with --json, and compare: exit; mark, the outcome's step mark (that symbol is drawn and the other of fail and warn is not); error and code, the result's fields (null: no error); stdout (empty: nothing on stdout; screen: the flow is drawn on stdout; result: only JSON lines, the last the result); fix, the verb ids of the command rows drawn, as a set.",
+      "Drive the kit's verb in input.situation (situations) on a Unicode terminal (json false) or with --json, and compare: exit; mark, the outcome's step mark (that symbol is drawn and the other of fail and warn is not); error and code, the result's fields (null: no error); stdout (empty: nothing on stdout; screen: the flow is drawn on stdout; result: only JSON lines, the last the result); fix, the verb ids of the command rows drawn, as a set; link, the row drawn where no fix verb is (portal: the product page link; contact: `status.contact` with the developer's name, where the kit resolves no product page, WIRE-CONTRACT-V4 section 5.7 - a situation whose name ends -no-page sets up a client whose discovery says the portal is off).",
     stdin:
       "activate with no key, stdin of kind input.stdin (stdinKinds) given input.lines, each followed by a newline (null: nothing is written and the writer stays open). read: prompt (the masked entry), key (the first non-empty line, here the fixture key, without waiting for the writer to close) or none (the copy key, the exit, the error, and with withinMs the run ends, process and all, within that many milliseconds). The none screen is drawn on stdout, like every kit verb's screen (outcomes stdout: screen); stderr is the gate's, because a gated host command's stdout is the host's.",
     capabilities:
@@ -3899,8 +3906,9 @@ export interface CliOutcomeExpect {
   code?: string;
   stdout?: "empty" | "screen" | "result";
   fix?: string[];
-  /** The product page link drawn instead of a fix row the screen cannot draw. */
-  link?: "portal";
+  /** The product page link drawn instead of a fix row the screen cannot draw, or "Contact
+   *  {developer}" where the kit resolves no product page (WIRE-CONTRACT-V4 §5.7). */
+  link?: "portal" | "contact";
 }
 export interface CliStdinExpect {
   read: "prompt" | "key" | "none";
@@ -4339,9 +4347,14 @@ function cliFamily(): CliFamily {
         ]
       : []),
   ];
-  const statusRow = (status: string, fix: string[], link?: "portal") =>
+  const statusRow = (
+    status: string,
+    fix: string[],
+    link?: "portal" | "contact",
+    suffix = "",
+  ) =>
     outcome(
-      `status-${status}`,
+      `status-${status}${suffix}`,
       "status",
       {
         mark: "warn",
@@ -4361,6 +4374,9 @@ function cliFamily(): CliFamily {
     // `status` (H1a).
     ...statusRow("version-too-new", [], "portal"),
     ...statusRow("channel-not-entitled", [], "portal"),
+    // The portal is off (core.portal, DISC-01): the developer's name stands in for the link.
+    ...statusRow("version-too-new", [], "contact", "-no-page"),
+    ...statusRow("channel-not-entitled", [], "contact", "-no-page"),
     ...outcome(
       "network",
       "devices list",
@@ -4660,6 +4676,8 @@ export function checkCli(
     "status-version-too-old",
     "status-version-too-new",
     "status-channel-not-entitled",
+    "status-version-too-new-no-page",
+    "status-channel-not-entitled-no-page",
     "key-refused",
     "device-limit",
     "secret-hidden",
@@ -5356,7 +5374,7 @@ const DESCRIPTION = [
   "theme rows pin UI-KITS §1.2 and §3.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter).",
   "vocabulary.loadingDelay pins DL7's delayed response: a row whose input has elapsedMs below min expects its loading state with no copy; from max, the state's usual copy.",
   "cli is the terminal drop-in contract (plans/UK-51.md), one object rather than component rows: verbs (the end-user set a mount offers, the developer verbs it offers only by name, the aliases), mount and help (what registering into a host CLI mounts, refuses with polaris-verb-collision, skips, hides and lists), gate (every licenseStatus x tty x json x entitled: run, the inline flow, or a refusal that is a triangle with its fix and exits 4), outcomes (a kit verb in a vocabulary.cli.situations situation: its mark, exit, result fields, stdout and fix verbs), stdin (what activate with no key reads, per vocabulary.cli.stdinKinds), capabilities (environment x streams x flags) and exit (the exit table). vocabulary.cli holds the rules; mount, help, gate and capabilities are computed by the generator's references.",
-  "Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 5: a changed row, input member or rule bumps it.",
+  "Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 6: a changed row, input member or rule bumps it.",
 ].join(" ");
 
 export function buildUiMatrix(

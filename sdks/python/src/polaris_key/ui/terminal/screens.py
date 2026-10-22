@@ -12,8 +12,9 @@ from dataclasses import replace
 from typing import Any, List, Optional, Sequence, Tuple
 from urllib.parse import quote
 
-from ...constants_generated import CUSTOMER_ORIGIN_DEFAULT, DEVICE_CODE_PAGE
+from ...constants_generated import DEVICE_CODE_PAGE
 from ...core.context import DEFAULT_BASE
+from ...core.portal import portal_link
 from ..core.models import (
     BOOT_STAGE_COPY,
     ActivateView,
@@ -152,16 +153,39 @@ def _account_rows(k: Kit, v: GateView) -> Lines:
     return k.table(rows)
 
 
-def portal_url(client: Any) -> Optional[str]:
-    """The product's page where a license is checked, renewed or replaced, or ``None`` where the
-    client names no product. A customer sees Polaris Locker, never the console host: the platform
-    default base maps to the customer origin, and a self-hosted base keeps its own host."""
+def portal_url(client: Any, served: Optional[str] = None) -> Optional[str]:
+    """The product's page where a license is checked, renewed or replaced, or ``None`` where
+    there is none (the kit then draws "Contact {developer}"). A customer sees Polaris Locker,
+    never the console host: the response's own link wins; then discovery's ``core.portal`` (the
+    Worker's customer-origin link, or "off"); then, against a Worker that sends none, the legacy
+    guess (WIRE-CONTRACT-V4 §5.7)."""
     product = getattr(client, "product", None)
-    if not product:
-        return None
-    base = str(getattr(getattr(client, "core", None), "base_url", None) or DEFAULT_BASE).rstrip("/")
-    origin = CUSTOMER_ORIGIN_DEFAULT if base == DEFAULT_BASE else base
-    return f"{origin}/activate?product={quote(str(product), safe='')}"
+    fn = getattr(client, "portal", None)
+    member = fn() if callable(fn) else None
+    base = getattr(getattr(client, "core", None), "base_url", None)
+    return portal_link(
+        served,
+        member if isinstance(member, dict) else None,
+        str(base or DEFAULT_BASE),
+        str(product) if product else "",
+    )
+
+
+def ensure_portal(client: Any) -> None:
+    """Load the product's discovery when this session has no portal member and no discovery, even
+    for a build that pinned ``expected_services`` (DISC-01 D4): the screen that draws the link must
+    not guess a dead one. Best effort, within the client's deadline; offline, the link falls back to
+    the persisted member or the legacy guess."""
+    fn = getattr(client, "portal", None)
+    if not callable(fn) or fn() is not None:
+        return
+    core = getattr(client, "core", None)
+    disc = getattr(client, "discovery", None)
+    if getattr(core, "local_only", False) or (callable(disc) and disc() is not None):
+        return
+    try_discover = getattr(client, "try_discover", None)
+    if callable(try_discover):
+        try_discover()
 
 
 def link_row(k: Kit, url: str) -> Lines:

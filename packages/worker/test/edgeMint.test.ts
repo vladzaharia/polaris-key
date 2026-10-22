@@ -745,6 +745,7 @@ describe("P0-12 recipe approval via the Config admin API", () => {
       db,
       base: "https://key.plrs.im/djdl",
       hooks: NO_HOOKS,
+      portalOn: true,
     })) as { mint: { available: boolean } };
     expect(fragment.mint.available).toBe(false);
 
@@ -849,6 +850,7 @@ describe("P0-12 recipe approval via the Config admin API", () => {
       db,
       base: "https://key.plrs.im/djdl",
       hooks: NO_HOOKS,
+      portalOn: true,
     })) as { mint: { available: boolean } };
     expect(fragment.mint.available).toBe(false);
 
@@ -1065,6 +1067,7 @@ describe("P0-12 the approval binds the sign-in trust it was given under", () => 
       db,
       base: "https://key.plrs.im/djdl",
       hooks: NO_HOOKS,
+      portalOn: true,
     })) as { mint: { available: boolean } };
     expect(fragment.mint.available).toBe(false);
 
@@ -1427,6 +1430,7 @@ describe("P0-12 discovery: config.mint.available", () => {
         db,
         base: "https://key.plrs.im/djdl",
         hooks: NO_HOOKS,
+        portalOn: true,
       })) as { mint: { available: boolean } };
 
     expect((await fragment()).mint.available).toBe(false);

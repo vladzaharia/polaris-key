@@ -21,6 +21,7 @@ tools/
     reference/             independent reference implementations that recompute every verdict
   sync-scenarios.ts        sync-scenarios.json (literal data)
   presentation-matrix.ts   presentation-matrix.json
+  portal-matrix.ts         portal-matrix.json
   ui-matrix.ts             ui-matrix.json
   gen-content-corpus.ts    content/cases.json and plan-matrix.json; the only writer of content/blobs
   gen-content-chunks.ts    the reference chunker, bundle packer and chunk applier for the content corpus

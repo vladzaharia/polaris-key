@@ -45,7 +45,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature packs.apply.chunk commerce.receipt
 # @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
 # @pkey-feature license.manage
-# @pkey-feature core.presentation
+# @pkey-feature core.presentation ui.cli.portal
 
 from __future__ import annotations
 
@@ -193,6 +193,8 @@ def _act(
         out["result"] = client.discover().kind
         # core.presentation (HA-13): the normalised member the discovery left, or None.
         out["presentation"] = client.presentation()
+        # ui.cli.portal (DISC-01): the core.portal member the client holds after this discovery.
+        out["portal"] = client.portal()
     elif action == "sync":
         r = client.sync(force=args.get("force") is True)
         out["applied"] = r.applied

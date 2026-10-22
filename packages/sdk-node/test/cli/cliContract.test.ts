@@ -84,7 +84,7 @@ interface Cli {
       code?: string;
       stdout?: "empty" | "screen" | "result";
       fix?: string[];
-      link?: "portal";
+      link?: "portal" | "contact";
     }
   >[];
 }
@@ -378,6 +378,19 @@ const SITUATIONS: Record<string, () => Setup> = {
       status: () => ({ status: "channel-not-entitled" }),
     }),
   }),
+  // DISC-01: discovery says the product's portal is off, so the kit has no page to link.
+  "status-version-too-new-no-page": () => ({
+    client: stubClient({
+      status: () => ({ status: "version-too-new" }),
+      portal: { enabled: false },
+    }),
+  }),
+  "status-channel-not-entitled-no-page": () => ({
+    client: stubClient({
+      status: () => ({ status: "channel-not-entitled" }),
+      portal: { enabled: false },
+    }),
+  }),
   network: () => ({
     client: stubClient({
       listDevices: async () => {
@@ -547,6 +560,11 @@ describe("ui-matrix.json cli: outcomes", () => {
         expect(plain(stdout)).toContain(
           "polaris.locker/activate?product=tidewater",
         );
+      // The portal is off (core.portal): no link, "Contact {developer}" instead.
+      if (e.link === "contact") {
+        expect(plain(stdout)).toMatch(/Contact \S/);
+        expect(plain(stdout)).not.toContain("/activate?product=");
+      }
     },
   );
 });

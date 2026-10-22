@@ -86,6 +86,7 @@ __all__ = [
     "SYNC_SCENARIOS_VERSION",
     "DEVICE_LABEL_VERSION",
     "PRESENTATION_MATRIX_VERSION",
+    "PORTAL_MATRIX_VERSION",
     "UI_MATRIX_VERSION",
     "BACKEND_MATRIX_VERSION",
     "CONTENT_CORPUS_VERSION",
@@ -797,6 +798,7 @@ class Feature:
     UI_CLI: Final = "ui.cli"
     UI_CLI_MOUNT: Final = "ui.cli.mount"
     UI_CLI_CONTRACT: Final = "ui.cli.contract"
+    UI_CLI_PORTAL: Final = "ui.cli.portal"
     UI_GATE: Final = "ui.gate"
     UI_ACTIVATE: Final = "ui.activate"
     UI_SIGNIN: Final = "ui.signin"
@@ -915,6 +917,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "ui.cli",
     "ui.cli.mount",
     "ui.cli.contract",
+    "ui.cli.portal",
     "ui.gate",
     "ui.activate",
     "ui.signin",
@@ -1614,8 +1617,12 @@ DEVICE_LABEL_VERSION: Final[int] = 1
 PRESENTATION_MATRIX_VERSION: Final[int] = 1
 
 
+#: `portalMatrixVersion` of conformance/corpus/v2/portal-matrix.json (WIRE-CONTRACT-V4 §5.7).
+PORTAL_MATRIX_VERSION: Final[int] = 1
+
+
 #: `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-UI_MATRIX_VERSION: Final[int] = 5
+UI_MATRIX_VERSION: Final[int] = 6
 
 
 #: `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
@@ -2015,6 +2022,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.cli": CapabilityRow("implemented", "sdk", ()),
         "ui.cli.mount": CapabilityRow("implemented", "sdk", ()),
         "ui.cli.contract": CapabilityRow("implemented", "sdk", ()),
+        "ui.cli.portal": CapabilityRow("implemented", "core", ()),
         "ui.gate": CapabilityRow("planned", "sdk", ()),
         "ui.activate": CapabilityRow("planned", "sdk", ()),
         "ui.signin": CapabilityRow("planned", "sdk", ()),
@@ -2034,4 +2042,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "5bc6d312624e8daef978dce55397c27091b4d2382072de82fc55c5fd8f05b5b4"
+CAPABILITY_DIGEST: Final[str] = "871c2c1e73864e9bc5f541a458a1049c13b7f41ed1036553843b1ce70d948e40"

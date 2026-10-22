@@ -18,12 +18,8 @@ import type {
 } from "../identity/client.js";
 import type { ActivationResult } from "../license/endpoints.js";
 import { SDK_NAME, SDK_VERSION } from "../version.js";
-import {
-  CUSTOMER_ORIGIN_DEFAULT,
-  ErrorCode,
-  Feature,
-} from "../constants.generated.js";
-import { DEFAULT_BASE } from "../core/context.js";
+import { ErrorCode, Feature } from "../constants.generated.js";
+import { portalLink as resolvePortalLink } from "@polaris-key/client-core/portal";
 import { getConfig } from "./commands.js";
 import type { KitContext } from "./context.js";
 import { eventLine, EXIT, type CliJsonError, type FlowResult } from "./json.js";
@@ -436,6 +432,8 @@ export async function statusFlow(
       : null,
   };
   if (quiet(ctx)) return { exitCode, state: view.state, result };
+  // The link a refusal draws comes from discovery's `core.portal` (DISC-01), also on a pinned build.
+  if (exitCode !== EXIT.ok) await ensurePortal(client);
   const t = ctx.copy.t.bind(ctx.copy);
   const rows: RailRow[] = productHeader(ctx, "status");
   switch (view.component) {
@@ -642,19 +640,41 @@ function deviceLimitRows(
 }
 
 /**
- * The product's page where a license is checked, renewed or replaced. The refusals that carry
- * no `manageUrl` of their own link here. A customer sees Polaris Locker, never the console host:
- * the server's own link wins when the response carried one; otherwise the platform default base
- * maps to the customer origin, and a self-hosted base keeps its own host.
+ * The product's page where a license is checked, renewed or replaced, or `null` where there is
+ * none (the kit then draws "Contact {developer}"). A customer sees Polaris Locker, never the
+ * console host: the response's own link wins; then discovery's `core.portal` (the Worker's
+ * customer-origin link, or "off"); then, against a Worker that sends none, the legacy guess
+ * (WIRE-CONTRACT-V4 §5.7).
  */
-export function portalUrl(
+export function portalLink(
   client: PolarisKeyClient,
   serverLink?: string | null,
-): string {
-  if (serverLink) return serverLink;
-  const base = client.core.baseUrl.replace(/\/+$/, "");
-  const origin = base === DEFAULT_BASE ? CUSTOMER_ORIGIN_DEFAULT : base;
-  return `${origin}/activate?product=${encodeURIComponent(client.product)}`;
+): string | null {
+  const c = client as Partial<PolarisKeyClient>;
+  return resolvePortalLink({
+    served: serverLink ?? null,
+    portal: typeof c.portal === "function" ? c.portal() : null,
+    baseUrl: client.core.baseUrl,
+    product: client.product,
+  });
+}
+
+/**
+ * Load the product's discovery when this session has no portal member and no discovery, even for
+ * a build that pinned `expectedServices` (DISC-01 D4): the screen that draws the link must not
+ * guess a dead one. Best effort, within the client's deadline; offline, the link falls back to
+ * the persisted member or the legacy guess.
+ */
+export async function ensurePortal(client: PolarisKeyClient): Promise<void> {
+  const c = client as Partial<PolarisKeyClient>;
+  if (typeof c.portal !== "function") return;
+  if (c.portal() !== null) return;
+  if (typeof c.discovery === "function" && c.discovery() !== null) return;
+  try {
+    await c.discover?.();
+  } catch {
+    // The link falls back to what the client already believes.
+  }
 }
 
 /** A link on a row of its own, kept whole (the device limit's way). */
@@ -663,14 +683,30 @@ export const linkRow = (url: string): RailRow => ({
   keep: true,
 });
 
-/** The product page as a labelled link: the line says what the page is for, the link follows. */
+/** Where the kit resolves no product page: the developer's name stands in for the link. */
+export function contactRows(ctx: KitContext): RailRow[] {
+  return [
+    textRow(
+      ctx.copy.t("status.contact", {
+        developer: ctx.product.developer ?? ctx.product.name,
+      }),
+    ),
+  ];
+}
+
+/**
+ * The product page as a labelled link: the line says what the page is for, the link follows.
+ * Where there is no page ("Contact {developer}"), the contact row alone.
+ */
 export function portalRows(
   ctx: KitContext,
   client: PolarisKeyClient,
 ): RailRow[] {
+  const url = portalLink(client);
+  if (url === null) return contactRows(ctx);
   return [
     textRow(ctx.copy.t("cli.status.portal", { product: ctx.product.name })),
-    linkRow(portalUrl(client)),
+    linkRow(url),
   ];
 }
 
@@ -678,7 +714,7 @@ export function portalRows(
 function outcomeRows(
   ctx: KitContext,
   o: Exclude<ActivateOutcome, { state: "device-limit" }>,
-  portal: string,
+  portal: string | null,
 ): RailRow[] {
   const t = ctx.copy.t.bind(ctx.copy);
   if (o.state === "done")
@@ -716,7 +752,7 @@ function outcomeRows(
   // outcome, the network's included, is a failure (DL6, DL7).
   return [
     ...problemRows(o.kind === "unauthorized" ? "warn" : "fail", title, message),
-    ...(o.kind === "unauthorized" ? [linkRow(portal)] : []),
+    ...(o.kind === "unauthorized" && portal !== null ? [linkRow(portal)] : []),
   ];
 }
 
@@ -965,7 +1001,12 @@ export async function activateFlow(
     }
     const o = activationOutcome(r, client.license.licenseInfo());
     if (o.state !== "device-limit") {
-      show(ctx, [...hist, ...outcomeRows(ctx, o, portalUrl(client)), endRow()]);
+      if ("kind" in o && o.kind === "unauthorized") await ensurePortal(client);
+      show(ctx, [
+        ...hist,
+        ...outcomeRows(ctx, o, portalLink(client)),
+        endRow(),
+      ]);
       return {
         exitCode: outcomeExit(o),
         state: o.state,
@@ -1039,7 +1080,10 @@ export async function enrollFlow(
   const o = activationOutcome(r, client.license.licenseInfo());
   if (o.state === "device-limit")
     show(ctx, [...deviceLimitRows(ctx, o.deviceLimit), endRow()]);
-  else show(ctx, [...outcomeRows(ctx, o, portalUrl(client)), endRow()]);
+  else {
+    if ("kind" in o && o.kind === "unauthorized") await ensurePortal(client);
+    show(ctx, [...outcomeRows(ctx, o, portalLink(client)), endRow()]);
+  }
   return {
     exitCode: outcomeExit(o),
     state: o.state,

@@ -118,6 +118,10 @@
       "types": "./dist/cloud-sync.d.ts",
       "default": "./dist/cloud-sync.js"
     },
+    "./portal": {
+      "types": "./dist/portal.d.ts",
+      "default": "./dist/portal.js"
+    },
     "./presentation": {
       "types": "./dist/presentation.d.ts",
       "default": "./dist/presentation.js"

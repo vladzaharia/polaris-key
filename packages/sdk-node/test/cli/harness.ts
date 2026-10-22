@@ -294,6 +294,11 @@ export function stubClient(
     config?: Stub;
     capabilities?: Record<string, { enabled: boolean }>;
     listDevices?: () => Promise<unknown[]>;
+    /** Discovery's `core.portal`, as `client.portal()` answers it (DISC-01); default: unknown. */
+    portal?:
+      | { enabled: false }
+      | { enabled: true; activate: string | null }
+      | null;
     extra?: Stub;
   } = {},
 ): PolarisKeyClient {
@@ -329,6 +334,7 @@ export function stubClient(
     supports: () => ({ supported: true }),
     sync: async () => undefined,
     discover: async () => ({ kind: "ok" }),
+    portal: () => over.portal ?? null,
     listDevices: over.listDevices ?? (async () => []),
     renameDevice: async () => undefined,
     deauthorizeDevice: async () => undefined,

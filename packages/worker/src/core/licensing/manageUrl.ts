@@ -41,7 +41,11 @@ import {
   normalizeArchHeader,
   normalizePlatformHeader,
 } from "../clientMetadata.js";
-import { HEADER_ARCH, HEADER_PLATFORM } from "@polaris-key/protocol/core";
+import {
+  HEADER_ARCH,
+  HEADER_PLATFORM,
+  type ProductPortal,
+} from "@polaris-key/protocol/core";
 
 export type ManageRefusal = "device_limit" | "key_entry_limit";
 
@@ -159,6 +163,27 @@ export async function buildManageUrl(
         : `${origin}/activate?product=${slug}&next=free-device${forPart}`;
   }
   return url.length <= MANAGE_URL_MAX_LENGTH ? url : undefined;
+}
+
+/**
+ * `core.portal` (WIRE-CONTRACT-V4 §5.7, DISC-01): whether the product's customer portal is on
+ * and, while it is, the product page link `<customer origin>/activate?product=<slug>`. `on` is
+ * the already-read `portal.enabled`. `activate` is omitted when no origin is usable or the URL
+ * is longer than `MANAGE_URL_MAX_LENGTH`; an off portal is `{enabled:false}` and nothing else.
+ */
+export function portalMember(
+  env: Env,
+  fallbackOrigin: string,
+  product: { slug: string },
+  on: boolean,
+): ProductPortal {
+  if (!on) return { enabled: false };
+  const origin = customerOrigin(env, fallbackOrigin);
+  if (!origin) return { enabled: true };
+  const activate = `${origin}/activate?product=${encode(product.slug)}`;
+  return activate.length <= MANAGE_URL_MAX_LENGTH
+    ? { enabled: true, activate }
+    : { enabled: true };
 }
 
 /**

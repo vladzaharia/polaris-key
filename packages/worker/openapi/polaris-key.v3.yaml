@@ -193,6 +193,9 @@ paths:
                         devices: https://key.plrs.im/djdl/devices
                         report: https://key.plrs.im/djdl/devices/report
                         register: https://key.plrs.im/djdl/devices/register
+                      portal:
+                        enabled: true
+                        activate: https://key.plrs.im/activate?product=djdl
                     trust:
                       jwksUrl: https://key.plrs.im/djdl/.well-known/jwks.json
                       trustManifestUrl: https://key.plrs.im/djdl/.well-known/polaris-trust.jws
@@ -24058,6 +24061,21 @@ components:
               machineUuid: 4Sc9ItiFEQMbGXeAbXVdIw
               boardSerial: HkkgWaC6QKS4SdCUJf1vLQ
               cpuModel: 8UvzXqhwR0mDPPlgKtEQqA
+    ProductPortal:
+      type: object
+      description: >
+        `core.portal` (WIRE-CONTRACT-V4 §5.7, DISC-01): unsigned display data, never authority.
+        Present in every discovery document, last in `core`. `enabled` is the product's
+        `portal.enabled` (default on); while it is false the member is `{enabled:false}` and
+        nothing else. `activate` is the product page `<customer origin>/activate?product=<slug>`
+        (the customer origin of §12.9), omitted when no origin is usable or the URL is longer than
+        2048 characters. A terminal kit draws it as the product page link, or "Contact
+        {developer}" when the portal is off; a client that cannot use `activate` shows no link
+        and never guesses one.
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
+        activate: { type: string, format: uri, maxLength: 2048 }
     ProductPresentation:
       type: object
       description: >
@@ -24168,6 +24186,8 @@ components:
                   description: OMITTED when `registration` is `requires-license`.
             presentation:
               $ref: "#/components/schemas/ProductPresentation"
+            portal:
+              $ref: "#/components/schemas/ProductPortal"
         trust:
           type: object
           required:

@@ -12,6 +12,7 @@ import {
 import {
   discoveryCapabilities,
   discoveryFailure,
+  discoveryPortal,
   discoveryPresentation,
 } from "./discovery.js";
 import { distributionDownloadModel } from "./distribution.js";
@@ -104,6 +105,7 @@ export const SCENARIOS: Scenario[] = [
   keyentryRefusalsOff,
   keyentryIdentityOff,
   discoveryPresentation,
+  discoveryPortal,
   trustSignerRetry,
   keyentryOwned,
   discoveryIdentity,

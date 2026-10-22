@@ -52,6 +52,10 @@
                     "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
                     "devices": "https://key.plrs.im/djdl/devices",
                     "report": "https://key.plrs.im/djdl/devices/report"
+                  },
+                  "portal": {
+                    "enabled": true,
+                    "activate": "https://key.plrs.im/activate?product=djdl"
                   }
                 },
                 "trust": {

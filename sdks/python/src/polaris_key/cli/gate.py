@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from typing import IO, Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar
 
 from ..ui.terminal.exit import EXIT
-from ..ui.terminal.screens import portal_url
+from ..ui.terminal.screens import ensure_portal, portal_url
 
 __all__ = ["require_license", "require_entitlement", "run_gate", "bind_gate", "GateTarget"]
 
@@ -192,6 +192,7 @@ def _run_gate(
                 _air(at)
                 return None
         t = make(command)
+    ensure_portal(client)  # the product page comes from discovery's core.portal (DISC-01)
     out = refusal_outcome(t, command, status, usable, mounted, portal_url(client))
     t.finish(out)
     return flow_exit if flow_exit is not None else EXIT.license_required

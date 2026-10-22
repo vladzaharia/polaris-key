@@ -45,6 +45,10 @@
  * I-08b (WIRE-CONTRACT-V4 §12.5.1, plans/I-08.md D2, approved) added the four `choiceLicenses`,
  * `choiceDevices`, `choiceComplete` and `choiceCancel` endpoints after `token`. Additive keys a
  * client ignores; every Identity-off fragment is unchanged.
+ * DISC-01 (WIRE-CONTRACT-V4 §5.7, plans/DISC-01.md, approved) added `core.portal` last in `core`, in
+ * every document: `{"enabled":true,"activate":"<customer origin>/activate?product=<slug>"}` while
+ * the product's portal is on (all three fixtures; the recording world has no `CUSTOMER_ORIGIN`),
+ * `{"enabled":false}` while it is off. Additive, like `core.presentation`.
  */
 
 import { readFileSync } from "node:fs";

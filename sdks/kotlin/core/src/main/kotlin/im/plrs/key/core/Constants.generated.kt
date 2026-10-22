@@ -649,6 +649,7 @@ public object Feature {
     public const val uiCli: String = "ui.cli"
     public const val uiCliMount: String = "ui.cli.mount"
     public const val uiCliContract: String = "ui.cli.contract"
+    public const val uiCliPortal: String = "ui.cli.portal"
     public const val uiGate: String = "ui.gate"
     public const val uiActivate: String = "ui.activate"
     public const val uiSignin: String = "ui.signin"
@@ -767,6 +768,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "ui.cli",
     "ui.cli.mount",
     "ui.cli.contract",
+    "ui.cli.portal",
     "ui.gate",
     "ui.activate",
     "ui.signin",
@@ -1372,8 +1374,11 @@ public const val DEVICE_LABEL_VERSION: Int = 1
 /** `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json. */
 public const val PRESENTATION_MATRIX_VERSION: Int = 1
 
+/** `portalMatrixVersion` of conformance/corpus/v2/portal-matrix.json (WIRE-CONTRACT-V4 §5.7). */
+public const val PORTAL_MATRIX_VERSION: Int = 1
+
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-public const val UI_MATRIX_VERSION: Int = 5
+public const val UI_MATRIX_VERSION: Int = 6
 
 /** `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14). */
 public const val BACKEND_MATRIX_VERSION: Int = 1
@@ -1691,6 +1696,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "ui.cli" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "ui.cli.mount" to CapabilityRow("planned", "sdk", listOf(CapabilityNa("android", "runtime"))),
     "ui.cli.contract" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
+    "ui.cli.portal" to CapabilityRow("na", "core", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "ui.gate" to CapabilityRow("planned", "sdk", listOf()),
     "ui.activate" to CapabilityRow("planned", "sdk", listOf()),
     "ui.signin" to CapabilityRow("planned", "sdk", listOf()),
@@ -1709,4 +1715,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "e22ebe551d618a2d13521df1cec502605fd2520bb19a6bc7a9ecd3fbcc4d53dd"
+public const val CAPABILITY_DIGEST: String = "2790516e9878a0b1d27afc0e11b4819451621826c0a6169c727829898f5aa5e8"

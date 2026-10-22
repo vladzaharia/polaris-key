@@ -6,6 +6,8 @@ only API (no deprecated aliases).
 
 ## Unreleased
 
+- **The terminal kit's product page link comes from discovery.** `client.portal()` is discovery's `core.portal` (WIRE-CONTRACT-V4 §5.7): the Worker's customer-origin link, or `{"enabled": False}` while the product's portal is off, in which case `status` and the license gate draw "Contact {developer}" and no link. The last member persists as `portal.json` beside the presentation cache, and a refusal screen loads discovery first when the session has none. Against a Worker that sends no member the link is the one printed before. New `polaris_key.core.portal` (`parse_portal`, `portal_link`) and `client.discovery()`.
+
 Kit screens.
 
 - **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Renew and Use another license, and never Try again or Reconnect; the Qt kit has no renew option, so the host handles the Renew press. The TV QR on the device-limit screen is labelled as the device management page. The Qt kit draws the numbered steps with the request QR.

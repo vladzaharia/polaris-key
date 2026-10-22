@@ -254,6 +254,8 @@ def status(client: Any, t: Terminal) -> Outcome:
         developer=t.kit.identity.developer,
     )
     usable = bool(client.is_licensed())
+    if not usable:
+        screens.ensure_portal(client)  # the link a refusal draws comes from discovery (DISC-01)
     lines = screens.gate(t.kit, view, t.verb or "status", screens.portal_url(client))
     data: Dict[str, Any] = {
         "status": st.status,

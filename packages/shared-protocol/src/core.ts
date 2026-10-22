@@ -520,3 +520,12 @@ export interface ProductPresentation {
   accentDark?: string;
   icon?: PresentationIcon;
 }
+
+/**
+ * `core.portal` (WIRE-CONTRACT-V4 §5.7): whether the product's customer portal is on, and the
+ * product page link on the customer origin. Unsigned display data; `{enabled:false}` carries
+ * nothing else.
+ */
+export type ProductPortal =
+  | { enabled: false }
+  | { enabled: true; activate?: string };

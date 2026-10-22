@@ -287,8 +287,10 @@ def test_stdin(row: Dict[str, Any]) -> None:
 class _StatusClient:
     product = "tidewater"
 
-    def __init__(self, status: str) -> None:
+    def __init__(self, status: str, portal: Any = None) -> None:
         self._status = status
+        # Discovery's core.portal as client.portal() answers it (DISC-01); None: unknown.
+        self.portal = lambda: portal
         who = SimpleNamespace(name="Mara Fennick", email="mara@fennick.studio")
         self.license = SimpleNamespace(get_profile=lambda: who, license_info=lambda: SimpleNamespace(tier="pro", tierLabel="Pro"))
         self.identity = SimpleNamespace(current=lambda: who)
@@ -346,6 +348,11 @@ SITUATIONS: Dict[str, Callable[[Terminal], Any]] = {
     "status-version-too-old": lambda t: flows.status(_StatusClient("version-too-old"), t),
     "status-version-too-new": lambda t: flows.status(_StatusClient("version-too-new"), t),
     "status-channel-not-entitled": lambda t: flows.status(_StatusClient("channel-not-entitled"), t),
+    # DISC-01: discovery says the product's portal is off, so the kit has no page to link.
+    "status-version-too-new-no-page": lambda t: flows.status(_StatusClient("version-too-new", {"enabled": False}), t),
+    "status-channel-not-entitled-no-page": lambda t: flows.status(
+        _StatusClient("channel-not-entitled", {"enabled": False}), t
+    ),
     "network": lambda t: flows.devices(SimpleNamespace(product="tidewater", list_devices=_offline), t, ["list"]),
     "key-refused": lambda t: flows.activate(_ActivateClient(ActivationUnauthorized()), t, KEY),
     "device-limit": lambda t: flows.activate(
@@ -421,6 +428,9 @@ def test_outcomes(row: Dict[str, Any]) -> None:
     # Nothing here is fixed by a command: the product page is the way out.
     if e.get("link") == "portal":
         assert "polaris.locker/activate?product=tidewater" in "".join(shown.split())
+    # The portal is off (core.portal): no link, "Contact {developer}" instead.
+    if e.get("link") == "contact":
+        assert "Contact " in shown and "/activate?product=" not in "".join(shown.split())
 
 
 def test_no_osc11_query_under_no_color() -> None:

@@ -18292,6 +18292,67 @@
       "refs": ["design/PORTAL §3, §4.2", "owner request 2026-10-20"],
       "brief": "wp/PX-35-library-shell-trim.md",
       "status": "done"
+    },
+    {
+      "id": "UK-64",
+      "title": "Kit gaps the matrix pins: version-too-new keeps Try again, the paywall portal hand-off, OfflineActivation's two steps",
+      "phase": "UK",
+      "stage": "UX coverage (2026-10-09)",
+      "lane": "parity",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["I-37c"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "corpus",
+        "drift-gate",
+        "all-sdks",
+        "ui-snapshots",
+        "docs-links"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/UIM-05.md (filed as UK-64, D8)",
+        "docs/design/UI-KITS.md DL4, DL5, DL6, DL8, DL14, section 4.1"
+      ],
+      "brief": "wp/UK-64-kit-matrix-gaps.md",
+      "status": "in-review"
+    },
+    {
+      "id": "LK-18",
+      "title": "Discovery core.portal: the terminal kits' product page link from the customer origin, left out while the product's portal is off",
+      "phase": "LK",
+      "stage": "Polaris Locker",
+      "lane": "sdk",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.7],
+      "deps": ["LK-17", "UK-51", "HA-13"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "drift-gate",
+        "corpus",
+        "all-sdks",
+        "threat-model",
+        "rule-10",
+        "docs-generated",
+        "docs-links",
+        "ui-snapshots",
+        "workerd"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/DISC-01.md (approved: D1 to D9 as recommended)",
+        "bug ledger B-115",
+        "docs/security/WIRE-CONTRACT-V4.md section 5.7"
+      ],
+      "brief": "wp/LK-18-portal-link-discovery.md",
+      "status": "in-review"
     }
   ]
 }

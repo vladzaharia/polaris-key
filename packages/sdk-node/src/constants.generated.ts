@@ -647,6 +647,7 @@ export const Feature = {
   uiCli: "ui.cli",
   uiCliMount: "ui.cli.mount",
   uiCliContract: "ui.cli.contract",
+  uiCliPortal: "ui.cli.portal",
   uiGate: "ui.gate",
   uiActivate: "ui.activate",
   uiSignin: "ui.signin",
@@ -766,6 +767,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "ui.cli",
   "ui.cli.mount",
   "ui.cli.contract",
+  "ui.cli.portal",
   "ui.gate",
   "ui.activate",
   "ui.signin",
@@ -1423,8 +1425,11 @@ export const DEVICE_LABEL_VERSION = 1;
 /** `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json. */
 export const PRESENTATION_MATRIX_VERSION = 1;
 
+/** `portalMatrixVersion` of conformance/corpus/v2/portal-matrix.json (WIRE-CONTRACT-V4 §5.7). */
+export const PORTAL_MATRIX_VERSION = 1;
+
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-export const UI_MATRIX_VERSION = 5;
+export const UI_MATRIX_VERSION = 6;
 
 /** `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14). */
 export const BACKEND_MATRIX_VERSION = 1;
@@ -1819,6 +1824,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "ui.cli": { status: "implemented", service: "sdk", na: [] },
   "ui.cli.mount": { status: "implemented", service: "sdk", na: [] },
   "ui.cli.contract": { status: "implemented", service: "sdk", na: [] },
+  "ui.cli.portal": { status: "implemented", service: "core", na: [] },
   "ui.gate": { status: "planned", service: "sdk", na: [] },
   "ui.activate": { status: "planned", service: "sdk", na: [] },
   "ui.signin": { status: "planned", service: "sdk", na: [] },
@@ -1838,4 +1844,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "b4d0ca0d2248e4f9828ded4b26d31be76cc82c835162d10d62da16fc6a551dae";
+  "fdcd993be9afb57d635178aa859ca34422a5a2e888a8b205c35e744d4b19c46c";

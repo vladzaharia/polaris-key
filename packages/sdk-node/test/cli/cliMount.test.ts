@@ -277,7 +277,9 @@ async function runGate(
   const stdin = new FakeStdin(input.tty);
   if (!input.tty) stdin.end();
   let current = input.status;
+  // No product page: discovery says the product's portal is off (DISC-01).
   const stub = stubClient({
+    ...(input.portal === false ? { portal: { enabled: false } } : {}),
     status: () => {
       if (input.check === "throws") throw new Error("the check failed");
       return { status: current };
@@ -291,8 +293,7 @@ async function runGate(
       },
     },
   });
-  // No product page: the client names no product, so the kit has nothing to link to.
-  const client = input.portal === false ? { ...stub, product: "" } : stub;
+  const client = stub;
   const program = new Command("tidewater");
   program.exitOverride();
   let ran = 0;

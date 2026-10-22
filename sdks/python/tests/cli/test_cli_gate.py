@@ -27,7 +27,7 @@ GLYPH = ansi.SYMBOLS["unicode"]
 USABLE = ("ok", "grace", "not-applicable")
 
 
-def _client(status: str, entitled: bool, *, product: str = "tidewater", throws: bool = False) -> Any:
+def _client(status: str, entitled: bool, *, product: str = "tidewater", throws: bool = False, portal: Any = None) -> Any:
     state = {"status": status}
 
     def activate(key: str) -> Any:
@@ -48,13 +48,21 @@ def _client(status: str, entitled: bool, *, product: str = "tidewater", throws: 
         def sync(self) -> None:
             return None
 
+        def portal(self) -> Any:
+            return portal
+
     Client.product = product  # type: ignore[attr-defined]
     return Client()
 
 
 def _run(inp: Dict[str, Any]) -> Dict[str, Any]:
-    # No product page: the client names no product, so the kit has nothing to link to.
-    client = _client(inp["status"], inp["entitled"], product="" if inp.get("portal") is False else "tidewater", throws=inp.get("check") == "throws")
+    # No product page: discovery says the product's portal is off (DISC-01).
+    client = _client(
+        inp["status"],
+        inp["entitled"],
+        throws=inp.get("check") == "throws",
+        portal={"enabled": False} if inp.get("portal") is False else None,
+    )
     flow = inp["tty"] and not inp["json"] and inp["status"] in ("expired", "revoked", "needs-activation")
     keys = _Keys([*KEY, "enter"]) if flow else None
     t = _terminal(inp["command"], json_mode=inp["json"], interactive=bool(inp["tty"]) and not inp["json"], keys=keys)
