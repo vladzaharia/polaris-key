@@ -7,6 +7,7 @@
  * (`in-review` → "In review"), and `null`/`undefined` read "None" (SVC-5, LIC-8, OVR-5).
  */
 
+import { findChannel } from "@polaris-key/manifest";
 import { humanize } from "./status.js";
 
 /** Registration policy (`RegistrationPolicy`). */
@@ -79,44 +80,33 @@ export const IN_APP_LABELS: Record<string, string> = {
 export const MANAGEMENT_LABELS: Record<string, string> = IN_APP_LABELS;
 
 /**
- * Outlet kinds (Distribution). The `direct` kind reads "Polaris Locker" (S-21 §6.8): the id stays
- * `direct` on the wire, in the corpus and in every SDK; only the label changes.
+ * An outlet kind's name, from the channel catalogue (A-19b): `direct` reads "Polaris Locker"
+ * (S-21 §6.8), the id staying `direct` on the wire. An id the catalogue lacks is humanised.
  */
-export const OUTLET_KIND_LABELS: Record<string, string> = {
-  direct: "Polaris Locker",
-  appstore: "App Store",
-  "app-store": "App Store",
-  testflight: "TestFlight",
-  "google-play": "Google Play",
-  play: "Google Play",
-  altstore: "AltStore",
-  "altstore-pal": "AltStore PAL",
-  obtainium: "Obtainium",
-  "fdroid-repo": "F-Droid repository",
-  flathub: "Flathub",
-  scoop: "Scoop",
-  steam: "Steam",
-  itch: "itch.io",
-};
+export function outletKindName(kind: string | null | undefined): string {
+  if (kind === null || kind === undefined || kind === "") return "None";
+  return findChannel(kind)?.label ?? humanize(kind);
+}
 
-/** How a `direct` install was put on the device (`OUTLET_SUBKINDS`). */
-export const OUTLET_SUBKIND_LABELS: Record<string, string> = {
-  homebrew: "Homebrew",
+/** How a `direct` install was put on the device (`OUTLET_SUBKINDS`); a package manager is a catalogue channel. */
+const OUTLET_SUBKIND_LABELS: Record<string, string> = {
   npm: "npm",
   pnpm: "pnpm",
   npx: "npx",
-  scoop: "Scoop",
   chocolatey: "Chocolatey",
   flatpak: "Flatpak",
   appimage: "AppImage",
 };
 
+/** A subkind's name: the catalogue's for a package manager (Homebrew, Scoop), else the local table. */
+export function outletSubkindLabel(subkind: string): string {
+  return findChannel(subkind)?.label ?? label(OUTLET_SUBKIND_LABELS, subkind);
+}
+
 /** An outlet kind's label, with its subkind when there is one: "Polaris Locker · via Homebrew". */
 export function outletLabel(kind: string, subkind?: string | null): string {
-  const head = label(OUTLET_KIND_LABELS, kind);
-  return subkind
-    ? `${head} · via ${label(OUTLET_SUBKIND_LABELS, subkind)}`
-    : head;
+  const head = outletKindName(kind);
+  return subkind ? `${head} · via ${outletSubkindLabel(subkind)}` : head;
 }
 
 /** Deliverable bindings (packs). */

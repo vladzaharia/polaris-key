@@ -3,6 +3,7 @@
  * model, fit report and release notes. Writes go through `mutate` (ADMIN.md §5.4).
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import {
   api,
@@ -92,14 +93,14 @@ export function newIdempotencyKey(): string {
 /** The store labels a listing column is shown with in this area. */
 export const LISTING_GROUP_LABELS: Record<string, string> = {
   masters: "Masters",
-  "app-store": "App Store",
-  play: "Google Play",
-  "ms-store": "Microsoft Store",
-  steam: "Steam",
-  itch: "itch.io",
-  snap: "Snap Store",
-  flathub: "Flathub",
-  winget: "winget",
-  fdroid: "F-Droid",
+  "app-store": channelLabel("app-store"),
+  play: channelLabel("google-play"),
+  "ms-store": channelLabel("microsoft-store"),
+  steam: channelLabel("steam"),
+  itch: channelLabel("itch"),
+  snap: channelLabel("snap"),
+  flathub: channelLabel("flathub"),
+  winget: channelLabel("winget"),
+  fdroid: channelLabel("fdroid"),
   "polaris-key": "Polaris Locker",
 };
