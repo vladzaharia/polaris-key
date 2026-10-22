@@ -11,6 +11,7 @@ var _title: Label
 var _status: Label
 var _bar: ProgressBar
 var phase := ""
+var _fx_state := ""
 
 
 func _init() -> void:
@@ -85,6 +86,10 @@ func show_progress(t: PKeyUiCopy, state: String, fraction: Variant, received: in
 	_status.text = status
 	_status.visible = status != ""
 	_status.theme_type_variation = &"PKeyError" if state == "failed" else &"PKeyMuted"
+	if _fx_state != state:
+		_fx_state = state
+		if state == "failed":
+			PKeyUiFeedback.emit(&"error")
 	_bar.visible = show_bar
 	if indeterminate:
 		_bar.indeterminate = not PKeyUiTheme.reduce_motion()

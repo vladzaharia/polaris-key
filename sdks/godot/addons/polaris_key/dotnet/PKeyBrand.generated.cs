@@ -207,7 +207,7 @@ namespace PolarisKey.Brand
         public const bool HasScrim = true;
         public const float ScrimDarkOpacity = 0.42f;
         public const float ScrimDarkBlur = 0f;
-        public const float ScrimLightOpacity = 0.2f;
+        public const float ScrimLightOpacity = 0.35f;
         public const float ScrimLightBlur = 0f;
 
         public static readonly KitTypeRole Display = new KitTypeRole(36f, 44f, 600, 0f, false);

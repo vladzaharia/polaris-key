@@ -492,10 +492,9 @@ func _render() -> void:
 	show_text(_verdict, t.text(v["copy"], v["args"]) if not v.is_empty() else "")
 	var hint_key := PKeyActivationController.input_hint(input_kind())
 	var hint_text := t.text(hint_key) if hint_key != "" and caps["key_entry"] and mode == "main" else ""
-	# A pad that swaps accept and cancel confirms with B: the words follow the glyph.
-	if hint_key == "hint_pad" and PKeyInputGlyphs.label_for(PKeyInputGlyphs.CONFIRM, PKeyInputGlyphs.PAD) == "B" and hint_text.begins_with("A "):
-		hint_text = "B " + hint_text.substr(2)
 	show_text(_hint, hint_text)
+	# The glyph sits close to its words (the theme's tight gap).
+	_hint.get_parent().add_theme_constant_override("separation", int(role("tight_gap")))
 	_hint_glyph.visible = hint_text != ""
 	_hint_glyph.kind = input_kind() if input_kind() in [PKeyInputGlyphs.KEYBOARD, PKeyInputGlyphs.PAD] else PKeyInputGlyphs.KEYBOARD
 	_hint.get_parent().visible = hint_text != ""
@@ -521,6 +520,7 @@ func _render() -> void:
 			slots[k].remove_meta(DATA_META)
 		(slots[k] as Label).theme_type_variation = &"PKeyMuted" if message_ok or not message_danger else &"PKeyError"
 	_key.theme_type_variation = &"PKeyFieldError" if message != "" and not message_ok and message_danger and message_slot == "key" else &""
+	fx_error(message if message != "" and not message_ok and message_danger else "")
 	_render_limit(t)
 
 

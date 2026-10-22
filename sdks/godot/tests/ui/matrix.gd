@@ -391,6 +391,8 @@ static func apply_preset(preset: String) -> void:
 			PKeyUiTheme.branding = PKeyUiTheme.BRANDING_NONE
 		"custom":
 			PKeyUiTheme.override = custom_theme()
+	# Layout is measured at rest: the fade-in (alpha and a 98 % scale) is the motion tests' business.
+	PKeyUiTheme.reduce_motion_mode = "on"
 	PKeyUiTheme.product_name = "Diceroll"
 	PKeyUiTheme.product_icon = sample_icon()
 

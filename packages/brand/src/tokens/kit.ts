@@ -138,7 +138,7 @@ export const KIT_COMPONENTS: Record<KitPlatform, KitComponentTokens> = {
     cardPad: { default: 44 },
     focus: { width: 3, offset: 2, glow: 8 },
     scrim: {
-      light: { opacity: 0.2, blur: 0 },
+      light: { opacity: 0.35, blur: 0 },
       dark: { opacity: 0.42, blur: 0 },
     },
   },

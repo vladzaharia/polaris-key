@@ -161,6 +161,7 @@ func show_error(code: Variant = "device_list_failed") -> void:
 	loading = false
 	error = {"code": str(code)}
 	_busy = false
+	PKeyUiFeedback.emit(&"error")
 	refresh_view()
 
 

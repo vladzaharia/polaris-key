@@ -54,6 +54,9 @@ signal verify_progress(fraction: float)
 ## and input: the kit never sets `SceneTree.paused`, so a game that wants to pause its own
 ## simulation or mute its action map listens to this.
 signal input_captured(captured: bool)
+## The kit has a sound to play: `open`, `close`, `focus` (navigation only), `confirm`, `back` or
+## `error` (PKeyUiFeedback). The game plays its own sound. Survives `configure()`.
+signal ui_sound(event: StringName)
 ## `in_play` changed.
 signal in_play_changed(playing: bool)
 

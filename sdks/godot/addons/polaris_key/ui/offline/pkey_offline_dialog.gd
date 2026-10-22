@@ -113,6 +113,7 @@ func _build() -> void:
 			_paste.accept_event()
 			_on_import())
 	_step2.add_child(_paste)
+	PKeyFocusRing.attach(_paste)
 	_drop = label(_step2, "DropHint", "PKeyMuted")
 	_message = label(_stack, "Message")
 	loading_bar(_stack)

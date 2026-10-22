@@ -199,6 +199,9 @@ func _notification(what: int) -> void:
 		_sync_capture()
 	elif what == NOTIFICATION_VISIBILITY_CHANGED and _built:
 		_sync_capture()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN and _built:
+		# The OS theme may have changed while the game was in the background.
+		PKeyUiTheme.recheck_system_scheme()
 	elif what == NOTIFICATION_ENTER_TREE and _built:
 		_watch_viewport()
 	elif what == NOTIFICATION_EXIT_TREE and _built and _opener == null:
@@ -263,7 +266,23 @@ func _sync_feedback(open: bool) -> void:
 	_fx_open = open
 	PKeyUiFeedback.emit(&"open" if open else &"close")
 	if open:
+		PKeyUiTheme.recheck_system_scheme()
 		PKeyUiMotion.enter(self)
+	else:
+		PKeyUiMotion.cancel(self)
+
+
+var _fx_error_key := ""
+
+
+## A refusal or a failed action is on screen: `error` once when `key` (what is shown) changes to
+## something, nothing while it stays and when it clears (`key` empty).
+func fx_error(key: String) -> void:
+	if key == _fx_error_key:
+		return
+	_fx_error_key = key
+	if key != "":
+		PKeyUiFeedback.emit(&"error")
 
 
 ## Follow the viewport the view is in now (a view moved into another one, a SubViewport, follows that
@@ -315,6 +334,7 @@ static func ensure_pad_bindings() -> void:
 
 ## The last kind of input, for `pointer_last`; and a modal's input guard.
 func _input(event: InputEvent) -> void:
+	PKeyUiFeedback.note_input(event)
 	if event is InputEventKey or event is InputEventJoypadButton or (event is InputEventJoypadMotion and absf((event as InputEventJoypadMotion).axis_value) > 0.5):
 		pointer_last = false
 		_pointer_known = true
@@ -332,6 +352,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var inside := _has_focus_inside()
 	if event.is_action_pressed("ui_cancel") and (inside or (outer_view() == self and not _focus_elsewhere())):
 		if _cancel():
+			PKeyUiFeedback.emit(&"back")
 			get_viewport().set_input_as_handled()
 		return
 	# Nothing has focus (a screen opened after a pointer): the first direction or accept key
@@ -1453,7 +1474,10 @@ func _scrim_wanted() -> bool:
 ## light edge and a soft shadow, so the game shows through the scrim. A phone's docked sheet, the
 ## full-bleed pages, the game's own (neutral) look, reduced transparency, the web and the
 ## compatibility renderer keep the opaque card (`PKeyUiTheme.glass_opaque()`).
-const GLASS_ALPHA := 0.88
+## Until the blur ships (UI-KITS.md §4.3), the glass is nearly opaque: hard game detail must not show
+## behind the text.
+const GLASS_ALPHA_DARK := 0.94
+const GLASS_ALPHA_LIGHT := 0.96
 const GLASS_META := &"pkey_glass"
 
 
@@ -1479,7 +1503,7 @@ func _apply_glass() -> void:
 		return
 	var box := (base as StyleBoxFlat).duplicate() as StyleBoxFlat
 	var dark := PKeyUiTheme.is_dark(self)
-	box.bg_color.a = GLASS_ALPHA
+	box.bg_color.a = GLASS_ALPHA_DARK if dark else GLASS_ALPHA_LIGHT
 	box.border_color = PKeyKitTokens.HIGHLIGHT_DARK if dark else PKeyKitTokens.HIGHLIGHT_LIGHT
 	box.border_color.a = maxf(box.border_color.a, 0.16)
 	box.shadow_color = PKeyKitTokens.SCRIM_DARK if dark else PKeyKitTokens.SCRIM_LIGHT

@@ -151,6 +151,21 @@ follows the game's own theme. The options are on `PKeyOptions` (`ui_brand_scheme
 [Theming](/docs/build/ui/theming/). `ui_reduce_motion` and `ui_reduce_transparency` follow the
 system's settings by default (`auto`, from Godot 4.5) and can be forced `on` or `off`.
 
+## Game look
+
+A dialog over your game (sign in, the update prompt, settings, offline activation) is glass on a dimmed frame: its card is nearly opaque (94 % dark, 96 % light) until the blur ships, and the scrim is 42 % dark and 35 % light. It is fully opaque on a phone's docked sheet, under `ui_reduce_transparency`, on the web and under the `gl_compatibility` renderer. A dialog fades in from 98 % scale and a pressed button settles to 98 %; neither moves under `ui_reduce_motion`, and neither depends on `Engine.time_scale`. The focus ring has a glow.
+
+| Option                         | Does                                                                                                                                                                       |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ui_brand_scheme = "system"`   | Follows the OS: re-checked when the game regains focus and when a dialog opens, dark where the OS has no preference. The kit never takes your system-theme callback.       |
+| `ui_sound_hook`                | A Callable taking one event. The kit plays no sound itself.                                                                                                                |
+| `PolarisKey.ui_sound` (signal) | The same events, and it survives `configure()`. Use it when the options cannot carry a Callable.                                                                           |
+| `ui_haptics`                   | Off by default. A short vibration on a handheld (Android needs the `VIBRATE` permission) and a weak rumble on the pad last used, for confirm, back, error, open and close. |
+
+The events are `open` and `close` (a dialog; `open` alone, with no focus sound), `focus` (moved by the keyboard or a pad, never by a mouse click), `confirm` (a button that acts), `back` (Cancel, Later, Close, Dismiss, Escape or the pad's back button) and `error` (a refusal shown).
+
+`PKeyInputGlyphs` draws the confirm or back control of the last input device: Enter or Esc, and on a pad the button bound to `ui_accept` or `ui_cancel` (A and B on an Xbox pad, a cross and a circle on a PlayStation pad, B and A on a Nintendo pad). A game that remaps those actions is followed.
+
 ## Powered by Polaris Locker
 
 `ui_powered_by = true` adds the Locker line (the micro mark at 16 px and the phrase) as the last item in the settings scroll; never the gate or boot. `ui_powered_by_style` is `"line"` by default. On a credits or about scene you place, a `PKeyPoweredBy` node with `allow_badge = true` draws the 320 × 104 badge with `"badge"` where 320 px are free, else the line.

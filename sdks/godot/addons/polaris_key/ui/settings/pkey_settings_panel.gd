@@ -767,6 +767,7 @@ func _make_input(parent: Node, r: Dictionary) -> Control:
 			te.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 			tab_leaves(te)
 			te.focus_exited.connect(func(): _write_text(key, te.text))
+			PKeyFocusRing.attach(te)
 			ctl = te
 		"password", "text":
 			var le := LineEdit.new()

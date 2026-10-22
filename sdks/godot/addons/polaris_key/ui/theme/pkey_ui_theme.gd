@@ -336,9 +336,7 @@ static func apply_options(opts: Resource) -> void:
 	product_wordmark = opts.get("ui_product_wordmark") as Texture2D
 	product_art = opts.get("ui_product_art") as Texture2D
 	PKeyUiFeedback.haptics = opts.get("ui_haptics") == true
-	var hk = opts.get("ui_sound_hook")
-	PKeyUiFeedback.hook = hk if typeof(hk) == TYPE_CALLABLE else Callable()
-	_watch_system_scheme()
+	PKeyUiFeedback.use_options_hook(opts.get("ui_sound_hook"))
 	refresh_views()
 
 
@@ -363,16 +361,16 @@ static func _system_dark() -> bool:
 	return true
 
 
-## Follow the OS while `scheme_mode` is "system" (the engine keeps one callback, so a game that
-## sets its own takes it over: call `resolve_scheme()` and `refresh_views()` from it).
-static func _watch_system_scheme() -> void:
-	if scheme_mode == "system" and DisplayServer.has_method("set_system_theme_change_callback"):
-		DisplayServer.call("set_system_theme_change_callback", _on_system_scheme)
-
-
-static func _on_system_scheme() -> void:
-	if scheme_mode == "system":
-		resolve_scheme()
+## Look at the OS again while `scheme_mode` is "system": the kit does this when the game regains
+## focus (the OS theme is changed in another window) and when a dialog opens. The kit never takes
+## the engine's one system-theme callback, so a game's own stays; a game that has one calls this
+## from it to follow the OS the moment it changes.
+static func recheck_system_scheme() -> void:
+	if scheme_mode != "system":
+		return
+	var before := scheme
+	resolve_scheme()
+	if scheme != before:
 		refresh_views()
 
 

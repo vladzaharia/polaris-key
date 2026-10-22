@@ -228,6 +228,7 @@ func show_warning(title: String, consequence := "", actions: Array = []) -> void
 
 ## An error: `error` is an error code, a PKeyResult, or the game's own sentence. It stays until dismissed.
 func show_error(error: Variant, consequence := "", actions: Array = []) -> void:
+	PKeyUiFeedback.emit(&"error")
 	var toast := {"kind": "error", "consequence": consequence, "actions": actions}
 	if error is PKeyResult:
 		toast["code"] = (error as PKeyResult).code

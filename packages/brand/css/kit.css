@@ -481,6 +481,6 @@
 
 [data-theme="light"] [data-pk-platform="godot"],
 [data-theme="light"][data-pk-platform="godot"] {
-  --pk-kit-scrim: rgb(6 9 18 / 0.2);
+  --pk-kit-scrim: rgb(6 9 18 / 0.35);
   --pk-kit-scrim-blur: 0;
 }

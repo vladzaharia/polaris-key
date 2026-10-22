@@ -458,6 +458,7 @@ func _render() -> void:
 		status = t.text("sign_in_copied")
 	show_text(_status, status)
 	_status.theme_type_variation = "PKeyError" if failed and not expired else "PKeyMuted"
+	fx_error(status if failed and not expired else "")
 	set_loading(state == "starting")
 	# Never a fragment above the address. With a QR code (a pad) one whole sentence leads and the
 	# address is on a line of its own below it; without one the code leads and the address follows it
