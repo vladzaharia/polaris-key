@@ -13,7 +13,13 @@ import { PRODUCT_SLUG_RE, SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import type { Db, DbStatement } from "../../db/types.js";
 import { randomToken } from "../../platform/random.js";
 import { AREA_IDS, PRODUCT_AREAS, isAreaId, type AreaId } from "./areas.js";
-import { ROLES, type Grant, type GrantScope, type Role } from "./can.js";
+import {
+  ROLES,
+  type Grant,
+  type GrantScope,
+  type Principal,
+  type Role,
+} from "./can.js";
 
 /** How a binding came to be. Stored; `rowToGrant` passes it to `Grant.source`. */
 export type BindingSource = "grant" | "invite" | "creator";
@@ -160,6 +166,31 @@ export async function listAccountGrants(
     if (g) grants.push(g);
   }
   return grants;
+}
+
+/** The `memberId` of {@link storedPrincipalOf}: it is no one's audit actor and never an account id. */
+const STORED_PRINCIPAL_MEMBER = "stored";
+
+/**
+ * ST-31.9 (`personMayRead`): the principal an account's STORED bindings give it, for a caller that
+ * has no console session (a feed read by a personal token). Stored grants only: the root rule
+ * (Identity-computed) is not visible here, so a root-only Superadmin gets no grants from this.
+ * `null` when the account is not `active` (disabled, deleted, or no such row), so a disabled or
+ * erased account reads nothing through its roles whatever rows survive. Email rows never count.
+ */
+export async function storedPrincipalOf(
+  db: Db,
+  accountId: string,
+): Promise<Principal | null> {
+  const account = await db.first<{ status: string }>(
+    "SELECT status FROM accounts WHERE id = ? AND deleted_at IS NULL",
+    accountId,
+  );
+  if (account?.status !== "active") return null;
+  return {
+    memberId: STORED_PRINCIPAL_MEMBER,
+    grants: await listAccountGrants(db, accountId),
+  };
 }
 
 /** The unexpired invites for a normalised address. */

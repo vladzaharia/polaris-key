@@ -56,6 +56,7 @@ import {
 } from "../../core/products/store.js";
 import {} from "../../core/licensing/store.js";
 import { mintKid } from "../../core/keys.js";
+import { grantCreator } from "../creatorGrant.js";
 import { parseCreateChoices } from "../../core/products/createDefaults.js";
 import { deleteTokenRecord } from "../../platform/kv.js";
 import { deleteProduct } from "../../core/products/store.js";
@@ -266,6 +267,15 @@ export async function handleProducts(
       "product.link",
       { kind: "product", id: result.slug },
       `Linked repo for product ${result.slug}`,
+    );
+    // G6 (ST-31.9): the creator can manage what they just made.
+    await grantCreator(
+      env,
+      db,
+      session,
+      result.slug,
+      (await getProduct(db, result.slug))?.name ?? null,
+      now,
     );
     return adminJson(
       {
@@ -718,6 +728,8 @@ async function manualCreate(
     `Created product ${slug}`,
   );
   const created = await getProduct(db, slug);
+  // G6 (ST-31.9): the creator can manage what they just made.
+  await grantCreator(env, db, session, slug, created?.name ?? null, now);
   return adminJson(
     {
       ok: true,

@@ -50,6 +50,8 @@ import { licenseUsable } from "../../../core/devices.js";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import type { LicenseRow } from "../../../core/repo.js";
 import { listAccountLicenses } from "../../../core/licensing/store.js";
+import { storedPrincipalOf } from "../../../core/rbac/bindings.js";
+import { PLATFORM, can } from "../../../core/rbac/can.js";
 import { licenseHoldsFlags } from "../../../core/licensing/entitledAccess.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
 import {
@@ -378,18 +380,28 @@ export async function authorizeFeedRead(
 }
 
 /**
- * May the account behind a personal token read `owner`'s feed under `mode` (F-33)?
+ * May the account behind a personal token read `owner`'s feed under `mode` (F-33, ST-31.9)?
  *
- *  - The platform's own product admits no customer: its SDK feeds are for console members, who
- *    are resolved from their roles (ST-30/ST-31 add that source here; until a role binding exists
- *    nothing grants it, so the answer is no). A licence in the system product never counts.
- *  - Otherwise the account's licences in the owner's product are judged exactly as a licence-bound
- *    `pkeyr_` is, for each: usable (`authenticated`, `licensed`), and for `entitled` also holding
- *    the deliverable's entitlement flag. One licence that passes is enough. A list document
- *    (`deliverableId` null) needs only a usable licence.
+ * SIGNATURE (stable, F-33b.5 relies on it): `personMayRead(ctx, accountId, owner, mode,
+ * deliverableId, nowMs) => Promise<boolean>`. It is judged only where the mode is not `public`;
+ * `accountId` is a resolved personal token's account, never a request value.
  *
- * A token of a person with no licence in the owner's product reads nothing of it, public feeds
- * excepted (those never get here).
+ *  1. ROLES (ST-31.9). The account's stored bindings (`storedPrincipalOf`, Core; `null` for an
+ *     account that is not active) are judged with `can()`:
+ *       - the system product admits any console member, `can(p, PLATFORM, "console", "view")`;
+ *       - any other owner admits `can(p, product scope, "ship", "view")`, whatever the mode and
+ *         whether or not the account holds a licence. A product admin narrowed away from `ship`
+ *         does not read; `products:*` reads every product but the system one (`can()` rules).
+ *     A root-only Superadmin (no stored binding) is not seen here: root is Identity-computed and
+ *     distribution may not import Identity (D-f2). They read the system feeds through a binding.
+ *  2. LICENCE (unchanged, F-33). Otherwise the platform's own product admits no customer, and for
+ *     any other owner the account's licences in it are judged exactly as a licence-bound `pkeyr_`
+ *     is, for each: usable (`authenticated`, `licensed`), and for `entitled` also holding the
+ *     deliverable's entitlement flag. One licence that passes is enough. A list document
+ *     (`deliverableId` null) needs only a usable licence.
+ *
+ * A token of a person with neither a role that reaches the owner nor a licence in it reads
+ * nothing of it, public feeds excepted (those never get here).
  */
 async function personMayRead(
   ctx: FeedReadContext,
@@ -399,7 +411,20 @@ async function personMayRead(
   deliverableId: string | null,
   nowMs: number,
 ): Promise<boolean> {
-  if (owner === SYSTEM_PRODUCT_SLUG) return false;
+  const system = owner === SYSTEM_PRODUCT_SLUG;
+  const principal = await storedPrincipalOf(ctx.db, accountId);
+  if (principal && principal.grants.length > 0) {
+    const roleAdmits = system
+      ? can(principal, PLATFORM, "console", "view")
+      : can(
+          principal,
+          { kind: "product", slug: owner, system: false },
+          "ship",
+          "view",
+        );
+    if (roleAdmits) return true;
+  }
+  if (system) return false;
   const now = Math.floor(nowMs / 1000);
   const usable = (await listAccountLicenses(ctx.db, accountId, owner)).filter(
     (l) => licenseUsable(l, now),
