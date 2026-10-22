@@ -74,6 +74,8 @@ export default defineConfig({
     react(),
     starlight({
       title: "Polaris Key",
+      // One separator on every page (the worker's own pages use it too): "Page · Polaris Key".
+      titleDelimiter: "·",
       description:
         "Licensing, managed config, releases, distribution, updates and sign-in for apps built on Polaris Key.",
       // The brand (docs/design/BRAND.md §2): tokens and Rubik from @polaris-key/brand, then the

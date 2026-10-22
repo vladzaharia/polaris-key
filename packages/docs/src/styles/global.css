@@ -153,9 +153,14 @@ h4,
 h5,
 h6,
 .sl-markdown-content :is(h1, h2, h3, h4, h5, h6) {
-  font-weight: var(--pk-font-weight-bold);
+  font-weight: var(--pk-font-weight-semibold);
   letter-spacing: var(--pk-tracking-tight);
   color: var(--pk-text-strong);
+}
+
+/* Emphasis in prose is the semibold step, as the headings: the UX bar caps weights at 600. */
+.sl-markdown-content :is(strong, b, th) {
+  font-weight: var(--pk-font-weight-semibold);
 }
 
 /* Rubik has 400 and 700 only; Starlight's 600s use the bold face explicitly. */
@@ -163,7 +168,7 @@ h6,
 .starlight-aside__title,
 .sidebar-content .large,
 .sidebar-content [aria-current="page"] {
-  font-weight: var(--pk-font-weight-bold);
+  font-weight: var(--pk-font-weight-semibold);
 }
 
 :focus-visible {
@@ -270,7 +275,7 @@ h6,
    lockup. The em is the header's own, so it follows the reader's text size, which a window-width
    media query cannot. */
 @supports (container-type: inline-size) {
-  [data-brand="locker"] header.header {
+  header.header {
     container: pk-header / inline-size;
   }
   @container pk-header (max-width: 18em) {

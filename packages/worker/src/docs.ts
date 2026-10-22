@@ -271,6 +271,14 @@ export const DOCS_TIERS: ReadonlyArray<
 /** The tier of a resolved asset path (`docsAssetPath`'s output); `null` (unsafe) is `admin`. */
 export function docsTierOf(assetPath: string | null): DocsTier {
   if (assetPath === null) return "admin";
+  return docsTierRow(assetPath) ?? "admin";
+}
+
+/**
+ * The tier a table names for a path, or `null` when no row and no per-file entry does (the path the
+ * default `admin` gate catches: a new directory, or a mistyped top-level path such as `/docs/strat/`).
+ */
+export function docsTierRow(assetPath: string): DocsTier | null {
   // Per-file tiers the prefixes cannot say (`docsTiers.generated.ts`): a file only gated pages
   // load, and a moved-page redirect page at its target's tier.
   const file = DOCS_ASSET_TIERS[assetPath] ?? DOCS_REDIRECT_TIERS[assetPath];
@@ -282,7 +290,7 @@ export function docsTierOf(assetPath: string | null): DocsTier {
       : assetPath === row[0];
     if (hit && (best === null || row[0].length > best[0].length)) best = row;
   }
-  return best?.[1] ?? "admin";
+  return best?.[1] ?? null;
 }
 
 /** The `can()` area a gated tier needs at platform scope. */
@@ -327,6 +335,18 @@ export async function handleDocs(
 
   const assetPath = docsAssetPath(url.pathname);
   const tier = docsTierOf(assetPath);
+  // A path no tier row names is gated by default, so a mistyped top-level path (`/docs/strat/`)
+  // would send a reader to the sign-in page. When the build has no such file the answer is the
+  // 404, the same for everyone: it says nothing about a gated page, which always sits under a
+  // row's prefix (the member and admin rows) and is answered by the gate whether or not it exists.
+  // A path the build does have stays behind the default gate.
+  if (
+    assetPath !== null &&
+    docsTierRow(assetPath) === null &&
+    env.ASSETS &&
+    !(await assetExists(env.ASSETS, url, assetPath))
+  )
+    return docsNotFound(req, env, url);
   if (tier !== "public") {
     const caller = await resolveConsoleCaller(env, db, req, now);
     if (!caller) return accessRedirect(url.pathname);
@@ -384,6 +404,20 @@ export async function handleDocs(
   headers.set("cache-control", docsCacheControl(assetPath, tier, res.status));
   docsSecurityHeaders(headers);
   return new Response(res.body, { status: res.status, headers });
+}
+
+/** Whether the assets root holds this file. */
+async function assetExists(
+  assets: Fetcher,
+  url: URL,
+  assetPath: string,
+): Promise<boolean> {
+  const probe = new URL(url);
+  probe.pathname = assetPath;
+  probe.search = "";
+  const res = await assets.fetch(new Request(probe, { method: "GET" }));
+  await res.body?.cancel();
+  return res.status !== 404;
 }
 
 /** Serve the site's own styled 404 page (falling back to a plain response without assets). */
