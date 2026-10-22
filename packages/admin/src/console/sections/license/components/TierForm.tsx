@@ -259,7 +259,7 @@ function TierGroup({
     <section
       aria-labelledby={id}
       data-service={service}
-      className="grid gap-x-8 gap-y-4 border-t border-border px-5 py-5 xl:grid-cols-[12.5rem_minmax(0,40rem)]"
+      className="grid gap-x-8 gap-y-4 border-t border-border px-5 py-5 xl:grid-cols-[12.5rem_minmax(0,1fr)]"
     >
       <div>
         <h3 id={id} className="text-sm font-semibold text-fg-strong">
@@ -267,7 +267,11 @@ function TierGroup({
         </h3>
         {hint ? <p className="mt-1 text-xs text-fg-muted">{hint}</p> : null}
       </div>
-      <div className="space-y-5">{children}</div>
+      {/* Fields keep a 40rem measure; on a wide window the column sits flush right, as a
+          settings row does, not short of the row edge. */}
+      <div className="w-full max-w-[40rem] space-y-5 xl:justify-self-end">
+        {children}
+      </div>
     </section>
   );
 }

@@ -317,8 +317,12 @@ export function PageHeader({
                       refreshTrailsPhone || refreshTrailsWide ? "" : undefined
                     }
                     className={cn(
-                      refreshTrailsPhone && "-me-3",
-                      refreshTrailsWide ? "sm:-me-3" : "sm:me-0",
+                      // The overshoot matches the button's padding: big text and the condensed console
+                      // cut it to 8 px (`px-2`), so the margin follows.
+                      refreshTrailsPhone && "-me-3 bigtext:-me-2 conbig:-me-2",
+                      refreshTrailsWide
+                        ? "sm:-me-3 sm:bigtext:-me-2 sm:conbig:-me-2"
+                        : "sm:me-0",
                     )}
                     loading={freshness.refreshing}
                     iconStart={<RefreshCw aria-hidden />}
