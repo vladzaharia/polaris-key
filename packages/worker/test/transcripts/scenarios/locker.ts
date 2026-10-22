@@ -290,13 +290,19 @@ async function playerSignsInAtLocker(
   expect(complete.origin).toBe(CUSTOMER);
   const entry = await dispatchWith(
     new Request(`${CUSTOMER}${complete.pathname}${complete.search}`, {
-      headers: { "sec-fetch-site": "same-origin" },
+      headers: {
+        "sec-fetch-site": "none",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-dest": "document",
+      },
     }),
     w.env,
     w.db,
     now,
   );
   expect(entry.status).toBe(303);
+  // The customer host's own binder, set where the code was opened (B1).
+  const customerBinder = (entry.headers.get("set-cookie") ?? "").split(";")[0]!;
   const hopUrl = new URL(entry.headers.get("location")!);
   expect(hopUrl.origin).toBe(BASE_URL);
   const hop = await browserAt(
@@ -333,11 +339,9 @@ async function playerSignsInAtLocker(
     now,
     "GET",
     toCustomer.pathname + toCustomer.search,
+    { cookie: customerBinder },
   );
   expect(landed.status).toBe(303);
-  const customerBinder = (landed.headers.get("set-cookie") ?? "").split(
-    ";",
-  )[0]!;
   const approvePage = await browserAt(
     w,
     CUSTOMER,

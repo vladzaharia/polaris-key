@@ -367,8 +367,8 @@ async function bindDeviceFlow(
   // only finish where the human confirmed, not in a victim's browser the starter phished.
   const binder = randomToken(32);
   const stamped = await updateArtefact(env, stateKey, {
-    // One stamp per flow: a second confirmation never replaces the binder.
-    expect: { confirmedAt: null, binder: null },
+    // One binder per flow: a second confirmation never replaces it.
+    expect: { binder: null },
     set: {
       confirmedAt: now,
       // The large-type variant follows the person through the IdP and the chooser.

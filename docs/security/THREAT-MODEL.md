@@ -3476,7 +3476,11 @@ an order id, a Steam ID) and is never shown in full on the console.
 **What it is.** `GET`/`POST /<p>/identity/auth/device` is the RFC 8628 code-entry page a TV, a
 console, a game or a CLI sends the player to. The player types (or scans) an eight-character
 user code; the page looks it up server-side and shows a confirmation page naming the product and
-the device; one button press sends the browser to the IdP. The secret `deviceCode` — which,
+the device; one button press sends the browser to the IdP. **With `CUSTOMER_ORIGIN` set (LXF-DEV)
+there is no confirmation page:** the sign-in runs on `polaris.locker`, a live code goes straight
+to the IdP, and the approval page after sign-in is the one decision (code, sign in, confirm; see
+"On the customer host" below). The confirmation page, and (a) and (b) as written for it, remain
+only for a deployment with no customer host. The secret `deviceCode` — which,
 with the device id, is what a poller redeems for a device token — never appears in a URL, a page
 or a form on this path, and the user code is drawn independently of it. Its KV index is keyed by
 a peppered hash (R12-04), lives at most for the flow's 600 s, and is deleted the moment the flow
@@ -3599,6 +3603,38 @@ Five controls make that true. The first, the fourth and the fifth are the ones t
    server failed. It does tell the holder of the device code that the failure was not a refusal, so the one fact it adds is transient (503) versus final (the bare `error`); the cause is never disclosed, and a refusal still cannot be told from another final failure. The put-back keeps the device code's remaining lifetime, not a fresh 600 s, so an orphaned record cannot outlive it; the failure count is a compare-and-set retried on the winner's value, so overlapping polls cannot lose an increment. Tests:
    `oidcEdge.test.ts` › "the device-code completion after approval retries", `R8-oidc.test.ts` ›
    "I-37d the completion attempt budget".
+
+**On the customer host (LXF-DEV).** `GET /device` and `/tv` on `polaris.locker` look the code up in
+the global index and, for a live code, start the sign-in on that request: no page in between.
+
+- _Which requests start one (B3)._ An allowlist, not a denylist: `Sec-Fetch-Site` is `same-origin`
+  (the code form) or `none` (the device's own link, a typed address, a bookmark), `Sec-Fetch-Mode`
+  is `navigate`, `Sec-Fetch-Dest` is `document`, and there is no prefetch purpose (`Sec-Purpose`,
+  `Purpose`, `X-Purpose: preview`, `X-Moz`). `HEAD` and everything else (no Fetch Metadata at all,
+  `cross-site`, `same-site`, an iframe or image load, a link scanner or unfurler) get the form with
+  the code filled in and **unspent**. Tests: `customerDevicePage.test.ts` (no headers, an unfurler,
+  `same-site`, each purpose header). Residual, accepted: a scanner or sandbox that drives a real
+  browser sends `none` and `navigate` like a person and spends the code; the person's device then
+  shows a new code, and nothing is signed in (the approval page needs a signed-in IdP session and
+  a press).
+- _A forwarded `verificationUriComplete`._ Opened by its recipient (`none`) it reaches the IdP with
+  no press of theirs, as the device's own link does. What the recipient can then do is sign in and
+  reach the approval page, which names the app, the account, the device label, the code, and where
+  and when the request started, plus an always-on line asking them to check the device shows this
+  code. That page is the one decision, and Deny is one press. This is an owner UX trade-off (code,
+  sign in, confirm, instead of code, confirm, sign in, confirm); the exposure is R1-07 as reduced
+  by the approval, below.
+- _Typed codes (B2)._ The form is `GET /device` under `form-action 'self'`, which browsers check on
+  every redirect of the submission. A form-started sign-in (`Sec-Fetch-Site: same-origin`)
+  therefore answers `200` (`no-store`, `no-referrer`) with `<meta http-equiv="refresh">` and a plain
+  "Continue" link to the bind hop; `form-action` is not widened. `test-browser/` pins that a typed
+  code reaches the IdP page in Chromium and WebKit.
+- _The binder is set in two places and checked in one._ The customer host sets its own host-only
+  `__Host-pk_lcb` on the response that starts the sign-in; the bind hop sets the API host's on the
+  next. The approval hop (`device-approve` token) is redeemed only by a browser whose customer-host
+  cookie equals the token's binder (constant-time compare); the token never sets that cookie.
+  Hops are in "The cross-host bind hops" (LK-04) below. The API host's old confirm page is
+  forwarded to the customer host (GET and POST, `303`), never served as a second path (N1).
 
 **Cross-site POSTs.** Both device pages carry `referrer-policy: no-referrer`, and under that
 policy a browser sends a same-origin form POST with `Origin: null`. The origin check therefore
@@ -7537,8 +7573,12 @@ The operator terms apply, and HA-06's delete-a-copy (below) takes effect at the 
 **What it is.** `CUSTOMER_ORIGIN` (`https://polaris.locker`; `staging.` and `dev.` elsewhere) is
 the same Worker on a fifth custom domain (plans/LK-00.md §7). `core/customerHost.ts` confines it
 to the customer routes: the root portal (`/`, `/activate`, `/assets/*`, `/login[/…]`, `/callback`,
-`/logout`, `/magic/verify`, `/api/*`, `/media/*`, `/download/<token>`), `/signin`, `/device`, `/tv`,
-and two answers of its own, `/.well-known/polaris-host.json` and `/robots.txt`. `/manage`, `/docs`,
+`/logout`, `/magic/verify`, `/api/*`, `/media/*`, `/download/<token>`), `/signin`, `/device`, `/tv`, `/device/approve`,
+and two answers of its own, `/.well-known/polaris-host.json` and `/robots.txt`. `/device`, `/tv` and
+`/device/approve` run the product's device handlers on this origin through an internal rewrite
+(`dispatch.ts` `viaProduct`): the path is built from a slug the Worker looked up (the global code
+index, or the approval's binder), never from the request, and the product path itself stays the
+not-found here. `/manage`, `/docs`,
 every product route and every webhook are the plain not-found there, with one exception: the public
 storefront feeds (`GET|HEAD /<product>/distribution/{altstore,altstore-pal,obtainium,scoop,flathub,fdroid}/…`,
 admitted by path shape in `isCustomerFeedRoute`) are served too, so the download page can print
@@ -7647,21 +7687,44 @@ peppered hash for 120 seconds and consumed in one atomic step.
 - _Token in logs and Referer._ The response sets `Referrer-Policy: no-referrer` and
   `Cache-Control: no-store`, and the token is dead after the first request.
 
-**The device confirmation does not hop.** An earlier design carried the device flow's binder across
-hosts the same way. That reopens R1-07: an attacker who starts a device flow could confirm it
-without following the redirect and send the victim the token URL, so the victim's browser would
-carry the attacker's binder through a silent IdP login. The device page therefore stays on the API
-host, where the confirming browser itself receives the binder and the callback finds it.
-`/device` and `/tv` on the customer host only look the code up and 302 to the product's page on the
-API host (a fixed origin from configuration). `test/customerDevicePage.test.ts` pins that a
-confirmation sets the binder on the response to the confirming browser only, that a stranger's
-callback is refused, and that the retired continue route answers `404`.
+**The device pages hop (LXF-DEV).** The device sign-in runs on the customer host; the IdP's callback
+lands on the API host, and `__Host-` cookies are host-only, so two single-use bind tokens carry the
+binder across (`core/signInBind.ts`), each 120 s, each the address of a stored artefact:
+
+- `device-start`: the customer host, on starting a sign-in, issues it and sends the browser to
+  `<api>/<slug>/identity/auth/device?bind=…` (a `303`, or the `200` meta-refresh page for a typed
+  code). The API host redeems it, sets the binder cookie on itself and 303s to the authorize URL
+  stored with the token. The customer host's response also sets its own binder cookie.
+- `device-approve`: the callback issues it and 303s to `<customer>/device/approve?bind=…`. That
+  host redeems it **only** if the request carries its own binder cookie equal to the token's
+  binder; it then remembers the slug against the binder's hash (`device-approve-slug`, flow
+  life) and 303s to the clean `/device/approve`. Without the cookie it answers the start-again page
+  and sets nothing.
+- _Replay._ A token works once; a second use is a `303` back to the customer host's start-again
+  page (from configuration, never a key.plrs.im page) and sets nothing. A token for another slug is
+  refused and spent.
+- _Fixation (the B1 attack)._ The starter of a flow can open its own code with curl and forward the
+  `device-start` hop URL. A victim's browser that follows it receives the API-host binder and, with
+  a live IdP session, signs in silently. Before the fix the `device-approve` token then handed the
+  customer-host cookie to that same browser, and the victim landed on the starter's approval page
+  without ever opening a code. Now the customer-host cookie exists only in the browser that opened
+  the code, so the victim's browser, which has none, gets the start-again page at the approval hop;
+  the starter's device stays pending. The residual is the pre-existing R1-07 (a victim who presses
+  Sign in on the approval page after reading it). `customerDevicePage.test.ts` pins both browsers.
+- _Open redirect._ Nothing in a query chooses a target: the `device-start` `Location` is the
+  authorize URL read from the store, the `device-approve` one is `/device/approve`, both hosts come
+  from configuration, and the slug is a value the Worker stored.
+- _Token in logs and Referer._ Every hop response sets `Referrer-Policy: no-referrer` and
+  `Cache-Control: no-store`, and the token is dead after the first request.
+- _The chooser._ A flow with the licence chooser open is sent from the customer host's approval to
+  the API host's chooser (built from configuration) until PX-14b retires it.
 
 Residual risk: a token read from a log or history within its 120 seconds and used before the
 owner does binds the attacker's browser instead of the owner's. The attacker still needs the
 owner's session to finish a sign-in, and the owner's second visit shows the `404`.
 
-Tests: `test/signInBind.test.ts`, `test/customerDevicePage.test.ts`, the `locker-*` transcripts.
+Tests: `test/signInBind.test.ts`, `test/customerDevicePage.test.ts`, `test-browser/customerDeviceForm.test.ts`,
+the `locker-*` transcripts.
 
 ### The console loads product logos from the image host (console product card)
 
