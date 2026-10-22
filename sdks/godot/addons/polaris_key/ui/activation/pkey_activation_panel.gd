@@ -101,8 +101,7 @@ var _submit: Button
 var _msg_key: Label
 ## The live verdict under the field ("Key for <Product>"), and the input hint beside it.
 var _verdict: Label
-var _hint: Label
-var _hint_glyph: PKeyInputGlyphs
+var _hint_bar: PKeyHintBar
 ## The kind of the last input: keyboard, pad or touch (&"" before any; a mouse leaves the hint off).
 var _input_kind: StringName = &""
 var _sign_in_block: VBoxContainer
@@ -199,12 +198,7 @@ func _build() -> void:
 	_msg_key = label(_key_field, "Message")
 	_verdict = label(_key_field, "Verdict", "PKeyMuted")
 	# The hint: the glyph of the confirm control of the last input device, then its words.
-	var hint_row := hbox(_key_field, "HintRow", "PKeyRow")
-	_hint_glyph = PKeyInputGlyphs.new()
-	_hint_glyph.name = "HintGlyph"
-	hint_row.add_child(_hint_glyph)
-	_hint = label(hint_row, "Hint", "PKeyMuted")
-	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hint_bar = hint_bar(_key_field, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "copy": {"keyboard": "hint_activate", "pad": "hint_select"}}])
 	_sign_in_block = vbox(_form, "SignInBlock", "PKeyTight")
 	_sign_in = button(_sign_in_block, "SignIn", _on_sign_in)
 	_msg_sign_in = label(_sign_in_block, "SignInMessage")
@@ -490,16 +484,8 @@ func _render() -> void:
 	# The verdict follows the text as it is typed, and holds back while an error or an answer shows.
 	var v := PKeyActivationController.key_verdict(_key.text) if message == "" and not busy else {}
 	show_text(_verdict, t.text(v["copy"], v["args"]) if not v.is_empty() else "")
-	var hint_key := PKeyActivationController.input_hint(input_kind())
-	var hint_text := t.text(hint_key) if hint_key != "" and caps["key_entry"] and mode == "main" else ""
-	show_text(_hint, hint_text)
-	# The glyph sits close to its words (the theme's tight gap).
-	_hint.get_parent().add_theme_constant_override("separation", int(role("tight_gap")))
-	_hint_glyph.kind = input_kind() if input_kind() in [PKeyInputGlyphs.KEYBOARD, PKeyInputGlyphs.PAD] else PKeyInputGlyphs.KEYBOARD
-	# Never "[B] A to select": the glyph shows only while it agrees with the words (and exists).
-	var spoken_key := PKeyInputGlyphs.label_for(PKeyInputGlyphs.CONFIRM, _hint_glyph.kind)
-	_hint_glyph.visible = hint_text != "" and PKeyInputGlyphs.has_glyph(PKeyInputGlyphs.CONFIRM, _hint_glyph.kind) and spoken_key != "" and hint_text.begins_with(spoken_key + " ")
-	_hint.get_parent().visible = hint_text != ""
+	_hint_bar.follow(input_kind())
+	_hint_bar.enabled = caps["key_entry"] and mode == "main"
 	_submit.text = t.text("key_submit")
 	_sign_in_block.visible = caps["sign_in"]
 	_sign_in.text = t.text("sign_in")

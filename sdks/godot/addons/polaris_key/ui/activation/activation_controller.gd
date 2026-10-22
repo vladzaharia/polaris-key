@@ -93,9 +93,9 @@ static func done_verdict(sdk: Node) -> Dictionary:
 static func input_hint(kind: StringName) -> String:
 	match kind:
 		&"keyboard":
-			return "hint_keyboard"
+			return "hint_activate"
 		&"pad":
-			return "hint_pad"
+			return "hint_select"
 	return ""
 
 

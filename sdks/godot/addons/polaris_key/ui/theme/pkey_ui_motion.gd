@@ -126,6 +126,14 @@ static func press(b: Control, down: bool) -> void:
 	b.set_meta(PRESS_META, tw)
 
 
+## Whether a dialog's entry is still pending or running.
+static func entering(view: Control) -> bool:
+	if not view.has_meta(ENTER_META):
+		return false
+	var m = view.get_meta(ENTER_META)
+	return m is int or (m is Tween and (m as Tween).is_valid() and (m as Tween).is_running())
+
+
 static func _live(view: Variant, token: int) -> bool:
 	return is_instance_valid(view) and (view as Control).is_inside_tree() and view.has_meta(ENTER_META) and view.get_meta(ENTER_META) is int and int(view.get_meta(ENTER_META)) == token
 

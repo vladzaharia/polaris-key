@@ -564,6 +564,9 @@ func _manage_focus() -> void:
 	var visible_now := is_visible_in_tree()
 	var key := _screen_key()
 	var changed := key != _focus_key or (visible_now and not _was_visible)
+	# A step of the same dialog (a code arrived, a result replaced the form): its content crossfades.
+	if outer_view() == self and visible_now and _was_visible and _focus_key != "" and key != _focus_key and not PKeyUiMotion.entering(self):
+		PKeyUiMotion.step(_content())
 	_focus_key = key
 	_was_visible = visible_now
 	if not visible_now:
@@ -1865,6 +1868,17 @@ func button(parent: Node, node_name: String, pressed: Callable, variation := "")
 	if pressed.is_valid():
 		b.pressed.connect(pressed)
 	parent.add_child(b)
+	return b
+
+
+## An input hint bar (PKeyHintBar) under `parent`: glyph and verb for the last device, `items` as
+## PKeyHintBar documents them.
+func hint_bar(parent: Node, node_name: String, items: Array) -> PKeyHintBar:
+	var b := PKeyHintBar.new()
+	b.name = node_name
+	b.view = self
+	parent.add_child(b)
+	b.items = items
 	return b
 
 

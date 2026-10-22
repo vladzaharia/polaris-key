@@ -968,7 +968,12 @@
       "family": null,
       "states": {
         "default": {
-          "copy": ["channel.title"]
+          "copy": [
+            "channel.title",
+            "part.hint.select",
+            "part.hint.activate",
+            "part.hint.back"
+          ]
         },
         "locked": {
           "copy": ["channel.locked", "channel.lockedLicense", "a11y.locked"]

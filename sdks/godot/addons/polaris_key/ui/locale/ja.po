@@ -1085,6 +1085,21 @@ msgstr "現在のバージョン：{version}"
 msgid "update.whatsNew"
 msgstr "新機能"
 
+#. to select
+#. Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control.
+msgid "part.hint.select"
+msgstr "選択"
+
+#. to activate
+#. Input hint bar (Godot kit): the verb after the glyph of the confirm button on the key field.
+msgid "part.hint.activate"
+msgstr "有効化"
+
+#. to go back
+#. Input hint bar (Godot kit): the verb after the glyph of the back button.
+msgid "part.hint.back"
+msgstr "戻る"
+
 #. All changes in {version}
 #. UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1.
 msgid "update.allChanges"

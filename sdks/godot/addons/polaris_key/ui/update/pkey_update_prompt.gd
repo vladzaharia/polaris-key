@@ -113,7 +113,11 @@ func _build() -> void:
 	_actions.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_action = button(_actions, "Action", _on_action, "PKeyPrimary")
 	_dismiss = button(_actions, "Dismiss", _on_dismiss)
+	_hint_bar = hint_bar(words, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "copy": "hint_select"}, {"action": PKeyInputGlyphs.BACK, "copy": "hint_back"}])
 	minimum_size_changed.connect(_queue_fit)
+
+
+var _hint_bar: PKeyHintBar
 
 
 func _floats() -> bool:
@@ -171,6 +175,7 @@ func _apply_width(width: float) -> void:
 
 
 func _arrange(m: Dictionary) -> void:
+	_hint_bar.enabled = _covering and (m["screen"] as Vector2).y >= PKeyHintBar.MIN_SCREEN_HEIGHT
 	var row := _row()
 	set_columns(_card, row)
 	# In a row the actions sit at the end on one line; stacked, they lead under the words.

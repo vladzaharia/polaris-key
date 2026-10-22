@@ -402,6 +402,12 @@
     <string name="common_updateCurrentNoSize">Você tem a %1$s</string>
     <!-- UpdatePrompt: an app update. Label over the release notes. -->
     <string name="update_whatsNew">Novidades</string>
+    <!-- Input hint bar (Godot kit): the verb after the glyph of the confirm button, where the button selects the focused control. -->
+    <string name="part_hint_select">para selecionar</string>
+    <!-- Input hint bar (Godot kit): the verb after the glyph of the confirm button on the key field. -->
+    <string name="part_hint_activate">para ativar</string>
+    <!-- Input hint bar (Godot kit): the verb after the glyph of the back button. -->
+    <string name="part_hint_back">para voltar</string>
     <!-- UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
     <string name="update_allChanges">Todas as mudanças da %1$s</string>
     <string name="update_allChanges__macos">Todas as mudanças da %1$s</string>

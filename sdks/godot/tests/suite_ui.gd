@@ -233,6 +233,7 @@ func _game_look(t: PKeyTestContext) -> void:
 	await _scheme(t)
 	await _focus_ring(t)
 	await _lead_fixes(t)
+	await _slice2(t)
 	PKeyUiTheme.reset()
 
 
@@ -385,7 +386,6 @@ func _glyphs(t: PKeyTestContext) -> void:
 	g.queue_free()
 	var panel: Control = _sc.activation(true, false, false, false)
 	await _tree().process_frame
-	t.check("glyphs: the hint's glyph sits a tight gap from its words", true if panel == null else (panel.find_child("HintRow", true, false) == null or (panel.find_child("HintRow", true, false) as BoxContainer).get_theme_constant("separation") <= 16))
 	if panel != null:
 		_free(panel)
 	# The pad family is the last pad used.
@@ -415,6 +415,104 @@ func _scheme(t: PKeyTestContext) -> void:
 	PKeyUiTheme.apply_options(o)
 	t.check("scheme: an unknown value is dark", PKeyUiTheme.scheme == "dark")
 	t.check("scheme: the light scrim is 0.35 (UI-KITS Godot row)", is_equal_approx(PKeyKitTokens.SCRIM_LIGHT_OPACITY, 0.35) and is_equal_approx(PKeyKitTokens.SCRIM_LIGHT.a, 0.35))
+
+
+## Slice 2: the hint bar's verbs, the step crossfade, the exit tween and the TV title-safe toast.
+func _slice2(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reduce_motion_mode = "off"
+	var before_size := _tree().root.size
+	_tree().root.size = Vector2i(1280, 720)
+	PKeyUiView.pad_only_override = true
+	var d: Control = _sc.sign_in("pending")
+	for i in 30:
+		await _tree().process_frame
+	var bar := d.find_child("HintBar", true, false) as PKeyHintBar
+	t.check("hint bar: a pad-only sign-in shows 'to select' and 'to go back' beside their glyphs", bar != null and bar.visible and _bar_words(bar) == ["to select", "to go back"], str(_bar_words(bar)) if bar != null else "no bar")
+	var touch := InputEventScreenTouch.new()
+	bar._input(touch)
+	t.check("hint bar: touch hides it", not bar.visible)
+	var key := InputEventKey.new()
+	bar._input(key)
+	t.check("hint bar: the keyboard shows Enter and Esc", bar.visible and bar.get_child_count() == 2)
+	PKeyInputGlyphs.family_override = "xbox"
+	var accept := InputMap.action_get_events(&"ui_accept").duplicate()
+	var shoulder := InputEventJoypadButton.new()
+	shoulder.button_index = JOY_BUTTON_START
+	for e in accept:
+		if e is InputEventJoypadButton:
+			InputMap.action_erase_event(&"ui_accept", e)
+	InputMap.action_add_event(&"ui_accept", shoulder)
+	bar._input(InputEventJoypadButton.new())
+	t.check("hint bar: an item whose button has no glyph is left out (Start), the rest stay", _bar_words(bar) == ["to go back"], str(_bar_words(bar)))
+	InputMap.action_erase_event(&"ui_accept", shoulder)
+	for e in accept:
+		if e is InputEventJoypadButton:
+			InputMap.action_add_event(&"ui_accept", e)
+	PKeyInputGlyphs.family_override = null
+	# The step crossfade: a new screen of the same dialog crossfades its content in.
+	PKeyUiTheme.reduce_motion_mode = "off"
+	await _tree().create_timer(0.4, true, false, true).timeout
+	d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
+	await _tree().process_frame
+	var content: Control = d._content()
+	t.check("step: a new screen of a dialog crossfades its content", content != null and content.has_meta(PKeyUiMotion.STEP_META) and content.modulate.a < 1.0, str(content.modulate.a) if content != null else "")
+	await _tree().create_timer(0.4, true, false, true).timeout
+	t.check("step: and ends at full alpha", is_equal_approx(content.modulate.a, 1.0))
+	_free(d)
+	_tree().root.size = before_size
+	PKeyUiView.pad_only_override = null
+	PKeyUiTheme.reduce_motion_mode = "on"
+	var held := Control.new()
+	_tree().root.add_child(held)
+	PKeyUiMotion.step(held)
+	t.check("step: reduced motion changes nothing", is_equal_approx(held.modulate.a, 1.0))
+	held.queue_free()
+	# The exit tween: a settings panel fades out before it is freed.
+	PKeyUiTheme.reduce_motion_mode = "off"
+	var holder := Control.new()
+	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tree().root.add_child(holder)
+	var p := PKeySettingsPanel.open(holder)
+	p.auto_sdk = false
+	p.sdk = await _sc.settings_sdk({})
+	for i in 30:
+		await _tree().process_frame
+	PKeyUiTheme.reduce_motion_mode = "off"
+	p.close()
+	await _tree().create_timer(0.07, true, false, true).timeout
+	t.check("exit: right after close the panel is still there, part way faded", is_instance_valid(p) and p.modulate.a < 1.0 and p.modulate.a > 0.0, str(p.modulate.a) if is_instance_valid(p) else "freed")
+	await _tree().create_timer(0.4, true, false, true).timeout
+	t.check("exit: then it is freed", not is_instance_valid(p))
+	holder.queue_free()
+	# The toast keeps inside 5 % of the screen from every edge at TV size, whatever its anchor.
+	PKeyUiTheme.reduce_motion_mode = "on"
+	for anchor in ["bottom_right", "bottom_center", "top_right"]:
+		var vp := SubViewport.new()
+		vp.size = Vector2i(3840, 2160)
+		vp.size_2d_override = Vector2i(1920, 1080)
+		vp.size_2d_override_stretch = true
+		_tree().root.add_child(vp)
+		var tv: Control = await _sc.toast("update")
+		tv.get_parent().remove_child(tv)
+		tv.toast_anchor = anchor
+		vp.add_child(tv)
+		tv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		for i in 4:
+			await _tree().process_frame
+		var r: Rect2 = tv._card_box.get_global_rect()
+		var m := 0.05 * 1080.0
+		t.check("toast: title-safe at 1920x1080 (%s)" % anchor, r.position.x >= m - 1.0 and r.position.y >= m - 1.0 and r.end.x <= 1920.0 - m + 1.0 and r.end.y <= 1080.0 - m + 1.0, str(r))
+		vp.queue_free()
+	PKeyUiTheme.reduce_motion_mode = "auto"
+
+
+func _bar_words(bar: PKeyHintBar) -> Array:
+	var out := []
+	for row in bar.get_children():
+		for ch in row.get_children():
+			if ch is Label:
+				out.append((ch as Label).text)
+	return out
 
 
 ## Slice 1's lead fix list: echo navigation, error coverage, glyphs that disagree or do not exist,
@@ -457,7 +555,7 @@ func _lead_fixes(t: PKeyTestContext) -> void:
 	InputMap.action_add_event(&"ui_accept", rb)
 	t.check("n3: ui_accept on a shoulder button has no glyph, not a wrong one", not PKeyInputGlyphs.has_glyph(&"confirm", PKeyInputGlyphs.PAD) and PKeyInputGlyphs.has_glyph(&"back", PKeyInputGlyphs.PAD))
 	InputMap.action_erase_event(&"ui_accept", rb)
-	# n5: accept moved to east: the hint's words say A, so the glyph (B) stays hidden.
+	# n5: accept moved to east: the glyph follows the binding (B) and the words are only the verb.
 	var east := InputEventJoypadButton.new()
 	east.button_index = JOY_BUTTON_B
 	InputMap.action_add_event(&"ui_accept", east)
@@ -465,8 +563,7 @@ func _lead_fixes(t: PKeyTestContext) -> void:
 	panel._input_kind = &"pad"
 	panel.refresh_view()
 	await _tree().process_frame
-	var glyph := panel.find_child("HintGlyph", true, false) as Control
-	t.check("n5: with accept on east the glyph is hidden rather than '[B] A to select'", glyph != null and not glyph.visible)
+	t.check("n5: accept on east shows B with 'to select', never '[B] A to select'", panel._hint_bar.visible and _bar_words(panel._hint_bar) == ["to select"] and PKeyInputGlyphs.label_for(&"confirm", PKeyInputGlyphs.PAD) == "B")
 	_free(panel)
 	InputMap.action_erase_event(&"ui_accept", east)
 	for e in accept:
@@ -1660,7 +1757,7 @@ func _kx_identity(t: PKeyTestContext) -> void:
 	var cut := PKeyActivationController.key_verdict("pkey_tidewater_" + "A".repeat(10), true)
 	t.check("verdict: a cut-short key on submit counts its characters", cut.get("copy") == "key_cut_short" and cut["danger"] and cut["args"] == ["pkey_tidewater_", 10, 22], str(cut))
 	t.check("verdict: the tier is unknown before the server answers", PKeyActivationController.done_verdict(null).is_empty())
-	t.check("hints: keyboard, pad, none for touch", PKeyActivationController.input_hint(&"keyboard") == "hint_keyboard" and PKeyActivationController.input_hint(&"pad") == "hint_pad" and PKeyActivationController.input_hint(&"touch") == "" and PKeyActivationController.input_hint(&"") == "")
+	t.check("hints: keyboard activates, a pad selects, touch has none", PKeyActivationController.input_hint(&"keyboard") == "hint_activate" and PKeyActivationController.input_hint(&"pad") == "hint_select" and PKeyActivationController.input_hint(&"touch") == "")
 	PKeyUiTheme.reset()
 	PKeyUiTheme.product_name = "Tidewater"
 	var panel := PKeyActivationPanel.new()
@@ -1668,7 +1765,7 @@ func _kx_identity(t: PKeyTestContext) -> void:
 	panel.set_capabilities({"key_entry": true, "sign_in": false, "continue_free": false, "offline": false})
 	_sc.add(panel)
 	await _tree().process_frame
-	t.check("verdict: nothing under an empty field, no hint before any input", not panel._verdict.visible and not panel._hint.visible)
+	t.check("verdict: nothing under an empty field, no hint before any input", not panel._verdict.visible and not panel._hint_bar.visible)
 	panel._key.text = whole
 	panel._key.text_changed.emit(whole)
 	await _tree().process_frame
@@ -1681,15 +1778,15 @@ func _kx_identity(t: PKeyTestContext) -> void:
 	ev.button_index = JOY_BUTTON_A
 	panel._input(ev)
 	await _tree().process_frame
-	t.check("hints: a pad shows 'A to select'", panel._hint.visible and panel._hint.text == "A to select", panel._hint.text)
+	t.check("hints: a pad shows the A glyph and 'to select'", panel._hint_bar.visible and _bar_words(panel._hint_bar) == ["to select"], str(_bar_words(panel._hint_bar)))
 	var key_ev := InputEventKey.new()
 	panel._input(key_ev)
 	await _tree().process_frame
-	t.check("hints: the keyboard shows Enter", panel._hint.text == "Enter to activate", panel._hint.text)
+	t.check("hints: the keyboard shows the Enter glyph and 'to activate'", _bar_words(panel._hint_bar) == ["to activate"], str(_bar_words(panel._hint_bar)))
 	var touch := InputEventScreenTouch.new()
 	panel._input(touch)
 	await _tree().process_frame
-	t.check("hints: touch shows none", not panel._hint.visible)
+	t.check("hints: touch shows none", not panel._hint_bar.visible)
 	# The panel's _input also tells PKeyUiView what the last input was: leave it as found.
 	PKeyUiView.pointer_last = false
 	PKeyUiView._pointer_known = false
