@@ -390,7 +390,7 @@ export function ConfirmDialog({
       <DialogFooter>
         <Button
           ref={cancelRef}
-          variant="outline"
+          variant="ghost"
           disabled={busy}
           onClick={() => onOpenChange(false)}
         >

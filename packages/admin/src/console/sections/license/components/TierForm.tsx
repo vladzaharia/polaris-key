@@ -272,7 +272,7 @@ function TierGroup({
     <section
       aria-labelledby={id}
       data-service={service}
-      className="grid gap-x-8 gap-y-4 border-t border-border px-5 py-5 xl:grid-cols-[12.5rem_minmax(0,40rem)]"
+      className="grid gap-x-8 gap-y-4 border-t border-border px-5 py-5 xl:grid-cols-[12.5rem_minmax(0,1fr)]"
     >
       <div>
         <h3 id={id} className="text-sm font-semibold text-fg-strong">
