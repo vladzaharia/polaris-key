@@ -219,6 +219,15 @@ function cases(): Case[] {
         await primaryInView(page);
       },
     },
+    // ST-31.13: the Roles tab, and on a phone the tile that picks the matrix column.
+    {
+      name: "global:platform-members?tab=roles",
+      hash: "#/platform/members?tab=roles",
+      act: async (page) => {
+        const tile = page.getByRole("button", { name: /^Console access/ });
+        if (await tile.isVisible()) await tile.click();
+      },
+    },
     {
       name: "global:platform-members?edit-roles",
       hash: "#/platform/members",
@@ -345,6 +354,8 @@ const ZOOM_CASES = [
 const HOME_CASES = ["global:home", "home:table", "djdl:overview"];
 /** The pages the phone-at-200%-text row opens. */
 const TEXT200_CASES = [
+  // ST-31.13: the Roles tab's tiles and one-column matrix.
+  "global:platform-members?tab=roles",
   "djdl:settings",
   "djdl:services",
   "djdl:portal",

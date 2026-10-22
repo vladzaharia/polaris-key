@@ -119,25 +119,34 @@ function productCells(area: AreaId): MatrixRow["cells"] {
   return [TICK, NONE, TICK, NONE];
 }
 
-/** The ten product areas, in `AREAS` order (a Product admin holds them per product). */
-export const PRODUCT_ROWS: readonly MatrixRow[] = PRODUCT_AREAS.map((id) => {
-  const def = AREAS.find((a) => a.id === id)!;
-  return {
-    area: id,
-    id,
-    name: def.name,
-    ...(PRODUCT_DETAIL[id] ? { detail: PRODUCT_DETAIL[id] } : {}),
-    probe: { kind: "product", area: id },
-    cells: productCells(id),
-  } satisfies MatrixRow;
-});
+/**
+ * The ten product areas a Product admin holds per product, in `AREAS` order with Members last:
+ * the product's own areas read first, then who manages it.
+ */
+export const PRODUCT_ROW_ORDER: readonly AreaId[] = [
+  ...PRODUCT_AREAS.filter((a) => a !== "members"),
+  "members",
+];
+
+export const PRODUCT_ROWS: readonly MatrixRow[] = PRODUCT_ROW_ORDER.map(
+  (id) => {
+    const def = AREAS.find((a) => a.id === id)!;
+    return {
+      area: id,
+      id,
+      name: def.name,
+      ...(PRODUCT_DETAIL[id] ? { detail: PRODUCT_DETAIL[id] } : {}),
+      probe: { kind: "product", area: id },
+      cells: productCells(id),
+    } satisfies MatrixRow;
+  },
+);
 
 /** The platform rows: what a role does outside any one product. */
 export const PLATFORM_ROWS: readonly MatrixRow[] = [
   {
     id: "platform-members",
     name: "Members",
-    detail: "Members and SSO rules",
     probe: { kind: "platform", area: "members" },
     cells: [TICK, word("Invite", true, "invite-platform"), NONE, NONE],
   },
