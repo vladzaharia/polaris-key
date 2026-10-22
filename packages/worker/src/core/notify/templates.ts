@@ -941,7 +941,7 @@ export function accessInvitesSentNotice(input: {
 }
 
 /**
- * ST-30c.1: the break-glass console sign-in was used. Sent as Polaris Key to every Superadmin on
+ * ST-30c.1: the break-glass (emergency sign-in) console sign-in was used. Sent as Polaris Key to every Superadmin on
  * every use. Names who, when and from which network; carries no link and no token.
  */
 export function breakGlassUsedNotice(input: {
@@ -956,8 +956,8 @@ export function breakGlassUsedNotice(input: {
   const who = operatorText(input.who, "An operator");
   const when = new Date(input.at * 1000).toISOString().replace(/\.\d+Z$/, "Z");
   const from = input.network ? ` from ${displayValue(input.network, "")}` : "";
-  const subject = "Break-glass console sign-in used";
-  const line = `${who} signed in to the Polaris Key console with break-glass at ${when}${from}.`;
+  const subject = "Emergency sign-in used";
+  const line = `${who} used emergency sign-in to the Polaris Key console at ${when}${from}.`;
   const footer =
     "You get this because you are a Superadmin. If this wasn't expected, rotate ADMIN_SESSION_SECRET and check the audit.";
   return {

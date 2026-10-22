@@ -459,8 +459,8 @@ export function errorCopy(
     // ST-30c.2 (N3): an emergency sign-in names no account and creates no durable credential.
     if (reason === "break_glass_session")
       return {
-        title: "Emergency sign-in can't create tokens",
-        description: "Sign out, then sign in with your account to create one.",
+        title: "Emergency sign-in can't do this",
+        description: "Sign out, then sign in with your account to continue.",
         action: "none",
         details,
       };

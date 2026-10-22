@@ -15,6 +15,7 @@
  * - The store is polled while the panel is up; ReleasesPage announces the release that ends it.
  */
 
+import { useBreakGlassReason } from "../../../access/useCan.js";
 import * as React from "react";
 import { BookOpen, Check, Copy, Pencil, Plus } from "lucide-react";
 import type { ReleaseHealth } from "../../../../api.js";
@@ -86,6 +87,7 @@ export function FirstReleasePanel({
   const tokens = useCiTokens(slug);
   const [editingPublisher, setEditingPublisher] = React.useState(false);
   const [issuing, setIssuing] = React.useState(false);
+  const noMint = useBreakGlassReason();
   const [linking, setLinking] = React.useState(false);
   const { copy, state: copyState } = useCopy();
   const policy = publisher.data ?? null;
@@ -218,6 +220,7 @@ export function FirstReleasePanel({
             size="sm"
             iconStart={<Pencil aria-hidden />}
             onClick={() => setEditingPublisher(true)}
+            disabledReason={noMint}
           >
             Edit…
           </Button>
@@ -234,6 +237,7 @@ export function FirstReleasePanel({
             variant="outline"
             size="sm"
             onClick={() => setEditingPublisher(true)}
+            disabledReason={noMint}
           >
             Allow workflow…
           </Button>
@@ -263,6 +267,7 @@ export function FirstReleasePanel({
             size="sm"
             iconStart={active ? <Plus aria-hidden /> : undefined}
             onClick={() => setIssuing(true)}
+            disabledReason={noMint}
           >
             {active ? "Issue another…" : "Issue a CI token…"}
           </Button>

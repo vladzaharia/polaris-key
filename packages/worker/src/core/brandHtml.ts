@@ -375,17 +375,18 @@ const CONSOLE_PAGE_CSS_TAIL = [
   `.ac-body .field-label{color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:600}`,
   `.chip{display:flex;flex-wrap:wrap;gap:.25rem .75rem;align-items:center;min-width:0;min-height:3rem;padding:.25rem .5rem .25rem .75rem;border:1px solid var(--edge);border-radius:1.75rem;background:transparent;color:var(--strong)}`,
   `.chip .ac-mono{width:1.75rem;height:1.75rem;border-radius:50%;font-size:.75rem}`,
-  `.chip-email{flex:1 1 12rem;min-width:0;overflow-wrap:break-word}`,
+  `.chip-email{flex:1 1 10rem;min-width:0;overflow-wrap:break-word}`,
   `.chip-change{display:inline-flex;align-items:center;flex:none;min-height:2.75rem;padding:0 .5rem;font-size:.875rem;font-weight:600;color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
   `.chip-change:focus-visible{outline-offset:-2px}`,
   // The links row has no separator dots here: a dot cannot be told from a link's name, and one
   // stranded at a wrap reads as a glitch. The gap separates them.
   `[data-brand=console] .ac-links a+a::before{content:none}`,
-  // The lockup at frame 13's size: native 64 px (222 x 64) from 30 rem, 52 px on phones, in rem
-  // so it grows with the text, and "Console" beside it in step.
+  // The lockup at frame 13's size: native 64 px (222 x 64) from 30 rem, in rem so it grows with
+  // the text. On phones both stay in px (and capped by the width) so a scaled root font cannot clip
+  // the row or make "Console" larger than the wordmark.
   `[data-brand=console] .ac-brand svg{width:13.875rem;height:4rem}`,
   `[data-brand=console] .ac-brand .ac-surface{font-size:1.25rem;line-height:1.75rem;font-weight:500}`,
-  `@media (max-width: 30rem){[data-brand=console] .ac-brand svg{width:11.275rem;height:3.25rem}[data-brand=console] .ac-brand .ac-surface{font-size:1rem;line-height:1.5rem;font-weight:400}}`,
+  `@media (max-width: 30rem){[data-brand=console] .ac-brand svg{width:min(180px,52vw);height:auto}[data-brand=console] .ac-brand .ac-surface{font-size:16px;line-height:24px;font-weight:400}}`,
   `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.5rem;background:var(--sunken);color:var(--strong);font:inherit}`,
   `.ac-body input[type=email]::placeholder{color:var(--muted);opacity:1}`,
   `.ac-body .fine{color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,

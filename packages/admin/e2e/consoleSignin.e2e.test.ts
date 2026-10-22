@@ -356,4 +356,65 @@ describe("the chip under large text and the lockup (UX review fixes)", () => {
     expect(big[2]).toBe("40px");
     await closeContext(context);
   });
+
+  it.each([150, 200] as const)(
+    "on a phone at %i %% text the brand row is not clipped and Console stays no larger than the wordmark",
+    async (pct) => {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+      });
+      const page = await context.newPage();
+      await page.goto(`${origin}/manage/login`);
+      await page.evaluate(
+        (p) => document.documentElement.style.setProperty("font-size", `${p}%`),
+        pct,
+      );
+      const m = await page.evaluate(() => {
+        const svg = document
+          .querySelector(".ac-brand svg")!
+          .getBoundingClientRect();
+        const label = document
+          .querySelector(".ac-surface")!
+          .getBoundingClientRect();
+        return {
+          right: label.right,
+          svgH: svg.height,
+          labelFont: parseFloat(
+            getComputedStyle(document.querySelector(".ac-surface")!).fontSize,
+          ),
+          vw: window.innerWidth,
+        };
+      });
+      expect(m.right).toBeLessThanOrEqual(m.vw);
+      expect(m.labelFont).toBe(16);
+      expect(m.svgH).toBeLessThanOrEqual(52);
+      if (process.env.PK_SHOTS_DIR) {
+        await page.screenshot({
+          path: `${process.env.PK_SHOTS_DIR}/brandrow-390-${pct}.png`,
+          clip: { x: 0, y: 0, width: 390, height: 200 },
+        });
+      }
+      await closeContext(context);
+    },
+  );
+
+  it("at 360 px and normal text a typical work address keeps Change on its row", async () => {
+    const context = await browser.newContext({
+      viewport: { width: 360, height: 800 },
+    });
+    await context.setExtraHTTPHeaders({
+      cookie: "__Host-pkey_console_hint=vlad.zaharia%40polaris-eng.dev",
+    });
+    const page = await context.newPage();
+    await page.goto(`${origin}/manage/login`);
+    const email = (await page.locator(".chip-email").boundingBox())!;
+    const change = (await page.locator(".chip-change").boundingBox())!;
+    expect(change.y).toBeLessThan(email.y + email.height);
+    if (process.env.PK_SHOTS_DIR)
+      await page.screenshot({
+        path: `${process.env.PK_SHOTS_DIR}/chip-360-100.png`,
+        clip: { x: 0, y: 0, width: 360, height: 520 },
+      });
+    await closeContext(context);
+  });
 });

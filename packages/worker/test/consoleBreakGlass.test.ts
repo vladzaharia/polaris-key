@@ -297,9 +297,7 @@ describe("the callback", () => {
     const r = await breakGlass();
     expect(r.res.status).toBe(302);
     expect(await noAccountRows()).toEqual(before);
-    const got = mail.filter(
-      (m) => m.subject === "Break-glass console sign-in used",
-    );
+    const got = mail.filter((m) => m.subject === "Emergency sign-in used");
     expect(got.map((m) => m.to).sort()).toEqual([
       "root1@example.com",
       "root2@example.com",
@@ -314,7 +312,7 @@ describe("the callback", () => {
     for (let i = 1; i <= 27; i++) await normalRoot(i);
     await breakGlass();
     expect(
-      mail.filter((m) => m.subject === "Break-glass console sign-in used"),
+      mail.filter((m) => m.subject === "Emergency sign-in used"),
     ).toHaveLength(25);
   });
 
@@ -585,7 +583,7 @@ describe("the notice", () => {
       network: "203.0.113.7",
       origin: "https://key.plrs.im",
     });
-    expect(n.subject).toBe("Break-glass console sign-in used");
+    expect(n.subject).toBe("Emergency sign-in used");
     expect(n.text).toContain("203.0.113.7");
     expect(n.subject).not.toMatch(/[\r\n]/);
     expect(n.text).not.toContain("‮");

@@ -1200,9 +1200,9 @@ describe("the top bar", () => {
     expect(
       within(region).getByRole("button", { name: "Sign out" }),
     ).toBeTruthy();
-    expect(document.querySelector("[data-emergency]")?.textContent).toMatch(
-      /^Emergency\s·\suntil /,
-    );
+    expect(
+      document.querySelector("[data-emergency] .sr-only")?.textContent,
+    ).toMatch(/^Emergency sign-in until /);
     await userEvent.click(
       await screen.findByRole("button", { name: "Account menu" }),
     );

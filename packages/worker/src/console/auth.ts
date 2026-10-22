@@ -897,7 +897,7 @@ async function breakGlassCallback(
     await recordPlatformSecurityEvent(db, {
       action: "admin.signin.refused",
       sub: identity.sub,
-      summary: "Admin break-glass refused: not in the platform admin group",
+      summary: "Emergency sign-in refused: not in the platform admin group",
       now,
     });
     return htmlError(
@@ -917,7 +917,7 @@ async function breakGlassCallback(
     await recordPlatformSecurityEvent(db, {
       action: "admin.signin.refused",
       sub: identity.sub,
-      summary: "Admin break-glass refused: sign-in was not recent",
+      summary: "Emergency sign-in refused: sign-in was not recent",
       now,
     });
     return htmlError(401, "Your provider didn’t ask you to sign in again", {
@@ -932,7 +932,7 @@ async function breakGlassCallback(
   await recordPlatformSecurityEvent(db, {
     action: "rbac.breakglass",
     sub: identity.sub,
-    summary: "Break-glass console sign-in",
+    summary: "Emergency sign-in used",
     now,
   });
   await notifySuperadmins(

@@ -772,7 +772,7 @@ export function RegistryTokensPage({
           <Button
             iconStart={<Plus aria-hidden />}
             onClick={() => setMinting(true)}
-            disabledReason={query.data ? noMint : "Loading"}
+            disabledReason={noMint ?? (query.data ? undefined : "Loading")}
           >
             New token…
           </Button>
@@ -848,7 +848,7 @@ export function LicenseRegistryTokens({
             size="sm"
             iconStart={<Plus aria-hidden />}
             onClick={() => setMinting(true)}
-            disabledReason={query.data ? noMint : "Loading"}
+            disabledReason={noMint ?? (query.data ? undefined : "Loading")}
           >
             New token…
           </Button>

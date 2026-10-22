@@ -475,9 +475,9 @@ describe("an emergency sign-in (ST-30c.2, N3)", () => {
         "break_glass_session",
       ),
     );
-    expect(copy.title).toBe("Emergency sign-in can't create tokens");
+    expect(copy.title).toBe("Emergency sign-in can't do this");
     expect(copy.description).toBe(
-      "Sign out, then sign in with your account to create one.",
+      "Sign out, then sign in with your account to continue.",
     );
     expect(copy.description).not.toMatch(/edit access/);
   });

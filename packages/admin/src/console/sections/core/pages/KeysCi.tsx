@@ -566,6 +566,7 @@ function IssueTokenDialog({
   onOpenChange: (open: boolean) => void;
   onIssued: (t: IssuedCiToken) => void;
 }): React.ReactElement {
+  const noMint = useBreakGlassReason();
   const [label, setLabel] = React.useState("");
   const [scopes, setScopes] = React.useState<string[]>([]);
   const [days, setDays] = React.useState<number | null>(30);
@@ -586,7 +587,7 @@ function IssueTokenDialog({
 
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (saving || daysError || scopes.length === 0) return;
+    if (saving || noMint || daysError || scopes.length === 0) return;
     setSaving(true);
     setFailure(null);
     try {
@@ -663,6 +664,7 @@ function IssueTokenDialog({
             type="submit"
             loading={saving}
             disabled={!!daysError || scopes.length === 0}
+            disabledReason={noMint}
           >
             Issue token
           </Button>

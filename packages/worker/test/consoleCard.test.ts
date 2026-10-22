@@ -549,7 +549,7 @@ describe("the chip, large text and the card's details (UX review)", () => {
       "vlad<wbr>.zaharia<wbr>@polaris-engineering<wbr>.dev",
     );
     expect(html).toMatch(/\.chip\{display:flex;flex-wrap:wrap/);
-    expect(html).toContain(".chip-email{flex:1 1 12rem");
+    expect(html).toContain(".chip-email{flex:1 1 10rem");
     expect(html).toContain(".chip-change:focus-visible{outline-offset:-2px}");
     // The house initials: the first two words of the local part, by code point.
     expect(html).toContain(
@@ -570,7 +570,7 @@ describe("the chip, large text and the card's details (UX review)", () => {
     expect(html).toContain(
       "[data-brand=console] .ac-brand svg{width:13.875rem;height:4rem}",
     );
-    expect(html).toContain("width:11.275rem;height:3.25rem");
+    expect(html).toContain("width:min(180px,52vw);height:auto");
     expect(html).toContain(
       "font-size:1.25rem;line-height:1.75rem;font-weight:500",
     );
@@ -592,5 +592,23 @@ describe("the chip, large text and the card's details (UX review)", () => {
     const html = await r.res.text();
     expect(html).toContain("Emergency sign-in is for Superadmins only.");
     expect(html).not.toMatch(/break-glass/i);
+  });
+
+  it("the audit summary and the Superadmin email say 'emergency sign-in'; identifiers stay", async () => {
+    await normalRoot(1);
+    await breakGlass();
+    const rows = await audit("rbac.breakglass");
+    expect(rows.map((r) => r.summary)).toEqual(["Emergency sign-in used"]);
+    const m = mail.find((x) => x.subject === "Emergency sign-in used")!;
+    expect(m.text).toContain(
+      "used emergency sign-in to the Polaris Key console",
+    );
+    expect(m.text).not.toMatch(/break-glass/i);
+    const refused = await breakGlass({ groups: ["other"] });
+    expect(refused.res.status).toBe(403);
+    const ev = await audit("admin.signin.refused");
+    expect(ev.map((r) => r.summary)).toContain(
+      "Emergency sign-in refused: not in the platform admin group",
+    );
   });
 });
