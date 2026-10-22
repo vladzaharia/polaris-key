@@ -129,4 +129,7 @@ QtObject {
     readonly property int durationBase: 200
     readonly property int durationSlow: 320
     readonly property real pressScale: 0.98
+
+    // The kit glyphs (rule 11): path data on a 24-unit grid; KitGlyph.qml draws them.
+    readonly property var glyphNewWindow: ["M15 3h6v6","M10 14 21 3","M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"]
 }

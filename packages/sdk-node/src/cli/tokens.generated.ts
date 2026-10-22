@@ -43,6 +43,7 @@ export const TERMINAL_SYMBOLS = {
     ellipsis: "…",
     lockerMark: "✦",
     arrows: "↑↓",
+    newWindow: "↗",
   },
   ascii: {
     stepActive: "*",
@@ -61,6 +62,7 @@ export const TERMINAL_SYMBOLS = {
     ellipsis: "...",
     lockerMark: "*",
     arrows: "^v",
+    newWindow: ">",
   },
 } as const;
 

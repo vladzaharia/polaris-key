@@ -14,6 +14,7 @@ import {
   type View,
 } from "@polaris-key/ui-core";
 
+import { KIT_GLYPHS } from "@polaris-key/brand";
 import { encodeQr } from "@polaris-key/node/qr";
 
 import { actionOf, OPENS, placeKeys } from "./contract.js";
@@ -261,7 +262,7 @@ export const GLYPHS = {
     glyph(svg`<path d="M18 6 6 18"/><path d="m6 6 12 12"/>`, cls),
   external: () =>
     glyph(
-      svg`<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>`,
+      svg`${KIT_GLYPHS.newWindow.paths.map((d) => svg`<path d=${d} />`)}`,
     ),
   check: (cls = "check") => glyph(svg`<path d="M20 6 9 17l-5-5"/>`, cls),
   copy: () =>
@@ -480,8 +481,8 @@ export function button(
     <span>${label}</span>
     ${external
       ? html`${GLYPHS.external()}<span class="visually-hidden"
-            >${c.copy.has("a11y.externalLink")
-              ? plain(c, "a11y.externalLink")
+            >${c.copy.has(KIT_GLYPHS.newWindow.copyKey)
+              ? plain(c, KIT_GLYPHS.newWindow.copyKey)
               : ""}</span
           >`
       : nothing}

@@ -17,6 +17,11 @@ import {
 } from "../src/accent.js";
 import { parseHex } from "../src/color.js";
 import {
+  KIT_GLYPH_GRID,
+  KIT_GLYPH_STROKE,
+  KIT_GLYPHS,
+} from "../src/tokens/glyphs.js";
+import {
   DERIVE_VECTORS,
   RESOLVE_VECTORS,
 } from "../src/tokens/accent-vectors.js";
@@ -497,6 +502,14 @@ ${swiftPlatform("ios", "IOS", "iOS, iPadOS, visionOS and tvOS (points).")}
 
 ${swiftPlatform("macos", "MacOS", "macOS (points).")}
 }
+
+/// The kit glyphs (docs/design/UI-KITS.md §1.5 rule 11). Apple kits draw SF Symbols.
+public enum PolarisKitGlyph {
+    /// An action that leaves the app: drawn beside its label, described by the \`${KIT_GLYPHS.newWindow.copyKey}\` line.
+    public static let newWindow = "${KIT_GLYPHS.newWindow.sfSymbol}"
+    /// The kit-copy key that says where a new-window action goes.
+    public static let newWindowCopyKey = "${KIT_GLYPHS.newWindow.copyKey}"
+}
 `;
 }
 
@@ -610,6 +623,53 @@ ${ktPlatform("windows", "Windows", "Windows 11, for Compose Desktop (effective p
 ${ktPlatform("gnome", "Gnome", "GNOME, for Compose Desktop on Linux (logical pixels).")}
 
 ${ktPlatform("macos", "MacOS", "macOS, for Compose Desktop (points).")}
+}
+`;
+}
+
+/**
+ * The kit glyphs as Compose vectors (PolarisKitGlyphs.generated.kt): the same paths the other
+ * kits draw, on the 24-unit grid, stroked in black so a caller tints them (\`Icon(tint = ...)\`).
+ */
+export function kotlinGlyphs(ctx: KitGenContext): string {
+  const g = KIT_GLYPHS.newWindow;
+  const paths = g.paths
+    .map(
+      (d) =>
+        `            addPath(\n                pathData = addPathNodes("${d}"),\n                stroke = SolidColor(Color.Black),\n                strokeLineWidth = ${ktFloat(KIT_GLYPH_STROKE)},\n                strokeLineCap = StrokeCap.Round,\n                strokeLineJoin = StrokeJoin.Round,\n            )`,
+    )
+    .join("\n");
+  return `${ctx.banner("//")}
+
+@file:Suppress("MagicNumber", "MaxLineLength")
+
+package im.plrs.key.ui.brand
+
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.addPathNodes
+import androidx.compose.ui.unit.dp
+
+/** The UI-kit glyphs (docs/design/UI-KITS.md 1.5 rule 11) as vectors on the ${KIT_GLYPH_GRID}-unit grid, 2 px round stroke. */
+public object PolarisKitGlyphs {
+    /** The kit-copy key that describes a new-window action ("Opens in your browser"). */
+    public const val NEW_WINDOW_COPY_KEY: String = "${g.copyKey}"
+
+    /** An action that leaves the app: drawn beside its label, never instead of it. */
+    public val NewWindow: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "PolarisNewWindow",
+            defaultWidth = ${KIT_GLYPH_GRID}.dp,
+            defaultHeight = ${KIT_GLYPH_GRID}.dp,
+            viewportWidth = ${KIT_GLYPH_GRID}f,
+            viewportHeight = ${KIT_GLYPH_GRID}f,
+        ).apply {
+${paths}
+        }.build()
+    }
 }
 `;
 }
@@ -773,6 +833,16 @@ export const KIT_ICONS: Record<
     size: [24, 24],
     svg: '<circle cx="12" cy="12" r="9" fill="{bg}"/><path d="M9 9l6 6M15 9l-6 6" fill="none" stroke="{fg}" stroke-width="2" stroke-linecap="round"/>',
   },
+  // The new-window glyph (UI-KITS.md §1.5 rule 11), from src/tokens/glyphs.ts.
+  new_window: {
+    size: [KIT_GLYPH_GRID, KIT_GLYPH_GRID],
+    svg: KIT_GLYPHS.newWindow.paths
+      .map(
+        (d) =>
+          `<path d="${d}" fill="none" stroke="{fg}" stroke-width="${KIT_GLYPH_STROKE}" stroke-linecap="round" stroke-linejoin="round"/>`,
+      )
+      .join(""),
+  },
 };
 
 export function gdIcons(ctx: KitGenContext): string {
@@ -786,7 +856,7 @@ export function gdIcons(ctx: KitGenContext): string {
 class_name PKeyKitIcons
 extends RefCounted
 ## The Godot kit's engine control icons (docs/design/UI-KITS.md §2.1): checkbox, radio, toggle,
-## chevrons, close and clear, drawn on a 24-unit grid in the kit's line weight. Each is an SVG
+## chevrons, close, clear and the new-window glyph, drawn on a 24-unit grid in the kit's line weight. Each is an SVG
 ## template; {fg}, {bg} and {track} are filled with the theme's colours by svg(), and the kit
 ## rasterises the result (Image.load_svg_from_string) at the scale it needs. Strings, not imported
 ## .svg files, because an import's parameters differ between engine versions.
@@ -1007,6 +1077,11 @@ CAPSULE = "capsule"
 #: The concentric rule: inner radius = outer radius - inset, never below this.
 CONCENTRIC_MIN = ${KIT_CONCENTRIC_MIN}
 
+#: The kit glyphs (UI-KITS.md 1.5 rule 11): SVG path data on a ${KIT_GLYPH_GRID}-unit grid, a ${KIT_GLYPH_STROKE} px round stroke.
+GLYPH_GRID = ${KIT_GLYPH_GRID}
+GLYPH_STROKE = ${KIT_GLYPH_STROKE}
+GLYPHS = ${pyLiteral({ new_window: { paths: [...KIT_GLYPHS.newWindow.paths], copy_key: KIT_GLYPHS.newWindow.copyKey } })}
+
 #: Component measures per desktop platform (px; points on macOS).
 KIT = ${pyLiteral(Object.fromEntries(PY_PLATFORMS.map((p) => [p, pyComponents(p)])))}
 
@@ -1213,6 +1288,9 @@ ${surface}
     readonly property int durationBase: ${parseInt(MOTION.duration.base, 10)}
     readonly property int durationSlow: ${parseInt(MOTION.duration.slow, 10)}
     readonly property real pressScale: ${KIT_MOTION_MEASURES.pressScale}
+
+    // The kit glyphs (rule 11): path data on a ${KIT_GLYPH_GRID}-unit grid; KitGlyph.qml draws them.
+    readonly property var glyphNewWindow: ${JSON.stringify([...KIT_GLYPHS.newWindow.paths])}
 }
 `;
 }

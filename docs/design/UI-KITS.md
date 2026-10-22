@@ -797,7 +797,7 @@ inset, minimum 8.
 stay Godot-saved resources written by `tools/gen_theme.gd` from `PKeyUiTheme` and drift-checked by
 the `brand` suite; the engine control icons are SVG templates in `kit_icons_generated.gd`
 (rasterised at run time) rather than imported `.svg` files, because an import's parameters differ
-between engine versions. UK-01 implemented this table (2026-10-05); the design source is
+between engine versions. The new-window glyph (rule 11) is one source, `packages/brand/src/tokens/glyphs.ts`: the web kits import it, and `pnpm gen brand` writes it into the Godot icon set, the Swift (`PolarisKitGlyph`, the `arrow.up.right.square` symbol), Compose (`PolarisKitGlyphs`) and Python (`GLYPHS`, the Qt theme) token files; the terminal kits keep "↗" (`TERMINAL_SYMBOLS.newWindow`, `>` in ASCII). Each carries `a11y.externalLink` ("Opens in your browser") as its description. between engine versions. UK-01 implemented this table (2026-10-05); the design source is
 `packages/brand/src/tokens/{kit,terminal}.ts` and the renderers are `scripts/gen-kit.ts`.
 
 **Fonts per platform.** Rubik ships as a **variable font** (wght 300–900; about 35 KB as latin
