@@ -66,6 +66,7 @@ BORROWS: Dict[str, Dict[str, str]] = {
         "status.contact": "channel-not-entitled names the developer",
         "cli.fix.signIn": "a revoked device can be fixed with the account's license",
         "cli.status.fixes": "the heading over the fix commands, as the Node kit's",
+        "cli.status.portal": "the label over the product page link (version too new, channel not entitled)",
     },
     "Boot": {
         "status.update": "the blocked boot's fix is the update verb",
@@ -83,6 +84,7 @@ BORROWS: Dict[str, Dict[str, str]] = {
     "SignInHandoff": {
         "signin.cli.headless": "SIGN-IN.md §5.2: the headless code view (D-68)",
         "signin.again": "expired: sign in again (SignIn expired's key)",
+        "cli.nothingChanged": "cancelling is not an error: the block closes on this line (DL7)",
         "signin.handoff.waiting": "the code view waits as the handoff does",
         "cli.signin.waitingCode": "the code view waits for the person, in the Node kit's words",
         "cli.keys.code": "the code view's key hints, in the Node kit's words",
@@ -121,7 +123,7 @@ BORROWS: Dict[str, Dict[str, str]] = {
         "cli.update.readyNoSize": "the finished block's title when the size is not known",
         "cli.update.restart": "the finished block's next step",
         "cli.update.nothingInstalled": "a failed download changed nothing",
-        "cli.update.cancelled": "Esc or Ctrl-C stops the download",
+        # A cancelled download closes on cli.update.nothingInstalled alone (DL7: not an error).
         "cli.update.figures": "the progress line's sizes",
         "cli.update.figuresShort": "the progress line's sizes on a narrow line",
         "cli.update.timeLeft": "the progress line's time left",

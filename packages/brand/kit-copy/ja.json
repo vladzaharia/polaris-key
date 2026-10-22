@@ -573,6 +573,7 @@
     "cli.status.offlineUntil": "{date}まで",
     "cli.status.version": "バージョン",
     "cli.status.fixes": "{product}を引き続き使うには：",
+    "cli.status.portal": "次の手順は{product}のページにあります：",
     "cli.fix.signIn": "アカウントのライセンスを使う",
     "cli.logout.done": "このデバイスで{product}からサインアウトしました。",
     "cli.deactivate.done": "{product}はこのデバイスでライセンスを使用しなくなりました。枠は空いています。",

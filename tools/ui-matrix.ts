@@ -4317,9 +4317,8 @@ function cliFamily(): CliFamily {
       { exit: 2, error: "usage" },
     ),
     ...outcome("interrupt", "activate", { exit: 130, error: "interrupted" }),
-    // A cancel is the person's choice, not a refusal: it keeps the cross.
+    // A cancel is the person's choice, not an error (DL7): it closes with no mark at all.
     ...outcome("sign-in-cancelled", "login", {
-      mark: "fail",
       exit: 1,
       error: null,
       stdout: "screen",

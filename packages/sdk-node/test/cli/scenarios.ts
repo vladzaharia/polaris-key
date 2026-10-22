@@ -849,6 +849,19 @@ export const SCENARIOS: Scenario[] = [
       ),
   },
   {
+    name: "update-prompt-revoked-required-content",
+    data: [...COMMON, "update check", "update apply"],
+    run: (h) =>
+      updateCheckFlow(
+        h.ctx,
+        decision({
+          action: "blocked",
+          reason: "revoked-content",
+          discardStaged: false,
+        }),
+      ),
+  },
+  {
     name: "update-progress-downloading",
     opts: { interactive: true },
     data: [...COMMON, "update apply", "2.5.0", "62"],

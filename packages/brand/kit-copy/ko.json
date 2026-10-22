@@ -573,6 +573,7 @@
     "cli.status.offlineUntil": "{date}까지",
     "cli.status.version": "버전",
     "cli.status.fixes": "{product}을(를) 계속 사용하려면:",
+    "cli.status.portal": "다음 단계는 {product} 페이지에서 확인하세요:",
     "cli.fix.signIn": "계정의 라이선스 사용",
     "cli.logout.done": "이 기기의 {product}에서 로그아웃했어요.",
     "cli.deactivate.done": "이제 이 기기의 {product}에서 라이선스를 사용하지 않아요. 자리가 비었어요.",

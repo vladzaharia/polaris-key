@@ -3452,6 +3452,11 @@ msgstr "버전"
 msgid "cli.status.fixes"
 msgstr "{product}을(를) 계속 사용하려면:"
 
+#. Next step on the {product} page:
+#. Terminal status and gate: the line over the product page link, for a refusal no command fixes (version too new, channel not entitled). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "cli.status.portal"
+msgstr "다음 단계는 {product} 페이지에서 확인하세요:"
+
 #. Use the license on your account
 #. Terminal status: what the login command does as a fix for a blocked license.
 msgid "cli.fix.signIn"

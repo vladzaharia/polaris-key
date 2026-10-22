@@ -680,6 +680,7 @@ export const KIT_COPY: Readonly<
     "cli.status.offlineUntil": "until {date}",
     "cli.status.version": "Version",
     "cli.status.fixes": "To keep using {product}:",
+    "cli.status.portal": "Next step on the {product} page:",
     "cli.fix.signIn": "Use the license on your account",
     "cli.logout.done": "Signed out of {product} on this device.",
     "cli.deactivate.done":
@@ -2247,6 +2248,7 @@ export const KIT_COPY: Readonly<
     "cli.status.offlineUntil": "bis {date}",
     "cli.status.version": "Version",
     "cli.status.fixes": "Um {product} weiter zu verwenden:",
+    "cli.status.portal": "Nächster Schritt auf der Seite von {product}:",
     "cli.fix.signIn": "Die Lizenz Ihres Kontos verwenden",
     "cli.logout.done": "Auf diesem Gerät von {product} abgemeldet.",
     "cli.deactivate.done":
@@ -3854,6 +3856,7 @@ export const KIT_COPY: Readonly<
     "cli.status.offlineUntil": "jusqu’au {date}",
     "cli.status.version": "Version",
     "cli.status.fixes": "Pour continuer à utiliser {product} :",
+    "cli.status.portal": "Prochaine étape sur la page de {product} :",
     "cli.fix.signIn": "Utiliser la licence de votre compte",
     "cli.logout.done": "Déconnecté de {product} sur cet appareil.",
     "cli.deactivate.done":
@@ -5416,6 +5419,7 @@ export const KIT_COPY: Readonly<
     "cli.status.offlineUntil": "hasta el {date}",
     "cli.status.version": "Versión",
     "cli.status.fixes": "Para seguir usando {product}:",
+    "cli.status.portal": "Siguiente paso en la página de {product}:",
     "cli.fix.signIn": "Usar la licencia de tu cuenta",
     "cli.logout.done": "Cerraste sesión en {product} en este dispositivo.",
     "cli.deactivate.done":
@@ -7004,6 +7008,7 @@ export const KIT_COPY: Readonly<
     "cli.status.offlineUntil": "até {date}",
     "cli.status.version": "Versão",
     "cli.status.fixes": "Para continuar usando {product}:",
+    "cli.status.portal": "Próximo passo na página de {product}:",
     "cli.fix.signIn": "Usar a licença da sua conta",
     "cli.logout.done": "Você saiu de {product} neste dispositivo.",
     "cli.deactivate.done":
@@ -8571,6 +8576,7 @@ export const KIT_COPY: Readonly<
     "cli.status.offlineUntil": "fino al {date}",
     "cli.status.version": "Versione",
     "cli.status.fixes": "Per continuare a usare {product}:",
+    "cli.status.portal": "Prossimo passo nella pagina di {product}:",
     "cli.fix.signIn": "Usa la licenza del tuo account",
     "cli.logout.done": "Uscita da {product} effettuata su questo dispositivo.",
     "cli.deactivate.done":
@@ -10150,6 +10156,7 @@ export const KIT_COPY: Readonly<
     "cli.status.offlineUntil": "{date}まで",
     "cli.status.version": "バージョン",
     "cli.status.fixes": "{product}を引き続き使うには：",
+    "cli.status.portal": "次の手順は{product}のページにあります：",
     "cli.fix.signIn": "アカウントのライセンスを使う",
     "cli.logout.done": "このデバイスで{product}からサインアウトしました。",
     "cli.deactivate.done":
@@ -11715,6 +11722,7 @@ export const KIT_COPY: Readonly<
     "cli.status.offlineUntil": "{date}까지",
     "cli.status.version": "버전",
     "cli.status.fixes": "{product}을(를) 계속 사용하려면:",
+    "cli.status.portal": "다음 단계는 {product} 페이지에서 확인하세요:",
     "cli.fix.signIn": "계정의 라이선스 사용",
     "cli.logout.done": "이 기기의 {product}에서 로그아웃했어요.",
     "cli.deactivate.done":
@@ -13198,6 +13206,7 @@ export const KIT_COPY: Readonly<
     "cli.status.offlineUntil": "至{date}",
     "cli.status.version": "版本",
     "cli.status.fixes": "要继续使用{product}：",
+    "cli.status.portal": "下一步请见 {product} 的页面：",
     "cli.fix.signIn": "使用你账户中的许可证",
     "cli.logout.done": "已在此设备上退出登录{product}。",
     "cli.deactivate.done":

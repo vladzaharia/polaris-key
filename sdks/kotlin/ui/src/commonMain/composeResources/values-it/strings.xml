@@ -1302,6 +1302,8 @@
     <string name="cli_status_version">Versione</string>
     <!-- Terminal status: the heading over the commands that fix a blocked license. Arguments: 1=product. -->
     <string name="cli_status_fixes">Per continuare a usare %1$s:</string>
+    <!-- Terminal status and gate: the line over the product page link, for a refusal no command fixes (version too new, channel not entitled). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="cli_status_portal">Prossimo passo nella pagina di %1$s:</string>
     <!-- Terminal status: what the login command does as a fix for a blocked license. -->
     <string name="cli_fix_signIn">Usa la licenza del tuo account</string>
     <!-- Terminal: sign-out finished. Arguments: 1=product. -->

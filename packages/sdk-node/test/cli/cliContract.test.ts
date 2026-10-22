@@ -495,6 +495,9 @@ describe("ui-matrix.json cli: outcomes", () => {
         if (e.mark === "warn") expect(shown).not.toContain(glyph("fail"));
         if (e.mark === "fail") expect(shown).not.toContain(glyph("warn"));
       }
+      // Cancelling is not an error (DL7): nothing on the screen is a cross.
+      if (r.input.situation === "sign-in-cancelled")
+        expect(shown).not.toContain(glyph("fail"));
       // The result's fields: the --json run's result line, or the flow's own result.
       const lines = t.stdout.raw.split("\n").filter((l) => l.trim() !== "");
       const fields: Record<string, unknown> = r.input.json

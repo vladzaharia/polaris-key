@@ -566,6 +566,7 @@
   "cli.status.offlineUntil": "至{date}",
   "cli.status.version": "版本",
   "cli.status.fixes": "要继续使用{product}：",
+  "cli.status.portal": "下一步请见 {product} 的页面：",
   "cli.fix.signIn": "使用你账户中的许可证",
   "cli.logout.done": "已在此设备上退出登录{product}。",
   "cli.deactivate.done": "{product}不再在此设备上使用你的许可证。其席位已释放。",

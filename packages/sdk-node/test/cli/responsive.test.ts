@@ -934,7 +934,7 @@ describe("the end of a flow draws no empty closing row", () => {
     expect(okRows.at(-1)).toMatch(/^✓/);
   });
 
-  it("an update cancelled with Esc says so in a title and a body line", async () => {
+  it("an update cancelled with Esc closes on one neutral line, no cross", async () => {
     const started = deferred<void>();
     const { screen } = await run(
       { columns: 80, rows: 24, interactive: true },
@@ -976,7 +976,7 @@ describe("the end of a flow draws no empty closing row", () => {
       },
     );
     const rows = screen.all().map((r) => r.text);
-    expect(rows.at(-2)).toMatch(/^✗ {2}Update canceled\.$/);
+    expect(rows.join("\n")).not.toContain("✗");
     expect(rows.at(-1)).toMatch(/^└ {2}Nothing was installed\.$/);
   });
 });
@@ -1096,8 +1096,8 @@ describe("a flow's end states leave one result block under one header", () => {
       .all()
       .map((r) => r.text)
       .join("\n");
-    expect(text).toContain("Sign-in canceled");
-    expect(text).toMatch(/tidewater login\n└\s+Sign in again/);
+    expect(text).not.toContain("✗");
+    expect(text).toMatch(/\n└\s+Nothing changed\./);
     expect(text).not.toContain("WDJB-MJHT");
   });
 });

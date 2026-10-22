@@ -283,7 +283,8 @@ describe("login on a device that holds a key license", () => {
   it("Esc at the question ends as a cancelled sign-in", async () => {
     const asked = await login((s) => s.press("escape"));
     expect(asked.attached).toBe(false);
-    expect(plain(asked.text)).toContain("Sign-in canceled");
+    expect(plain(asked.text)).toContain("Nothing changed.");
+    expect(plain(asked.text)).not.toContain("✗");
     expect(plain(asked.text)).not.toContain("✓  Signed in");
   });
 

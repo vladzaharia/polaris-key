@@ -48,7 +48,8 @@ describe.skipIf(!ptyAvailable)("on a real pty", () => {
         .all()
         .map((r) => r.text)
         .join("\n");
-      expect(text, text).toContain("Sign-in canceled");
+      expect(text, text).toContain("Nothing changed.");
+      expect(text).not.toContain("✗");
       expect(text).not.toContain("Code expired");
       expect(code).toBe(1);
       expect(p.osc11Seen).toBe(true);

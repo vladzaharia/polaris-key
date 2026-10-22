@@ -13897,12 +13897,7 @@
           "situation": "sign-in-cancelled",
           "json": false
         },
-        "expect": {
-          "mark": "fail",
-          "exit": 1,
-          "error": null,
-          "stdout": "screen"
-        }
+        "expect": { "exit": 1, "error": null, "stdout": "screen" }
       }
     ],
     "stdin": [
