@@ -11,6 +11,7 @@
  */
 
 import { notFound } from "../core/console/respond.js";
+import { handleChannels } from "./handlers/channels.js";
 import { handleFeedsAdmin } from "./handlers/feeds.js";
 import { handleProductScopedResource } from "./handlers/products.js";
 import { handleActivity } from "./handlers/activity.js";
@@ -58,6 +59,10 @@ export async function handleProductScoped(c: AdminCtx): Promise<Response> {
   // F-11: the Feeds admin API in product scope, `…/distribution/feeds/…`. Spelled under
   // Distribution (its sidebar section), but composed in the admin layer, because a yank writes
   // Release's package rows and the settings are Distribution's (`handlers/feeds.ts` explains).
+  // A-20.4: the channels read model, composed here from Distribution's and Commerce's public
+  // surfaces (neither may read the other).
+  if (resource === "distribution" && rest[1] === "channels" && !rest[2])
+    return handleChannels(c);
   if (resource === "distribution" && rest[1] === "feeds") {
     // The system product's feeds are the platform's: reachable only from Platform → Package feeds
     // (`/manage/api/platform/feeds/…`), never as a product scope.

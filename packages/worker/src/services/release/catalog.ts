@@ -53,6 +53,7 @@ import {
   parseLocations,
   repositoryPublic,
 } from "./source.js";
+import { readAppDeliverable } from "./descriptor.js";
 import { packCatalog } from "./packs/catalog.js";
 import { packageCatalog } from "./packages/catalog.js";
 import { notPackageReleaseSql } from "./model.js";
@@ -331,6 +332,16 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
 
     async knownChannels() {
       return knownChannels(db, slug, await config());
+    },
+
+    async declaredBuilds() {
+      const app = await readAppDeliverable(db, slug);
+      return (app?.artifacts ?? []).map((a) => ({
+        buildId: a.id,
+        platform: a.platform,
+        arch: a.arch,
+        format: a.format,
+      }));
     },
 
     resolve: (q: CatalogResolveQuery) => resolveTarget(ctx, q, config),

@@ -7,6 +7,7 @@ import { cn } from "../../lib/cn.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { useProduct, useProducts } from "../data/hooks.js";
 import { pageOfRoute, slugOfRoute } from "../routes.js";
+import { navFeaturesOf } from "../nav.js";
 import { navigate, useLocation } from "../router.js";
 import { LAND_EVENT } from "../useSettingTarget.js";
 import { Kbd } from "../../ui/Kbd.js";
@@ -49,7 +50,7 @@ function usePaletteContext(me: Me): PaletteContext {
     productName:
       product?.name ?? me.products.find((p) => p.slug === slug)?.name ?? null,
     services: product?.services ?? null,
-    features: product ? { packageFeeds: product.packageFeeds === true } : null,
+    features: navFeaturesOf(product),
     products,
     page: pageOfRoute(route),
     me,

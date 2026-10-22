@@ -66,7 +66,10 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       ownership: "operator",
       confirm: { change: "L0" },
       visibleWhen: VISIBLE,
-      readers: ["core/products/createDefaults.ts"],
+      readers: [
+        "core/products/createDefaults.ts",
+        "services/distribution/facts.ts",
+      ],
       storage: { kind: "scalar" },
       since: "ST-42",
     }),

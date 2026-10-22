@@ -367,6 +367,8 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
     stepUp: true,
   }),
   ...SERVICE_SLUGS.flatMap(serviceRows),
+  // A-20.4: the channels read model (Distribution + Commerce facets), composed in the console layer.
+  ...rows(["GET"], `${P}/distribution/channels`, "ship", product),
   // The Feeds admin is Ship builds, composed in the console layer.
   ...rows(
     ["GET", "PUT", "POST"],

@@ -22,6 +22,12 @@ import { StatusPill } from "../../../ui/StatusPill.js";
 import { ScrollTable } from "../../../ui/ScrollTable.js";
 import { useProduct } from "../../data/hooks.js";
 import { qk } from "../../data/queries.js";
+import {
+  channelInScope,
+  navFeaturesOf,
+  navItems,
+  SECTIONS,
+} from "../../nav.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsSection } from "../../templates/Settings.js";
@@ -35,10 +41,23 @@ import {
   SET_UP_STOREFRONT,
 } from "../core/components/serviceFeatures.js";
 
-const STORES: readonly { id: CommerceStore; label: string }[] = [
-  { id: "app-store", label: channelLabel("app-store") },
-  { id: "play", label: channelLabel("google-play") },
-  { id: "steam", label: channelLabel("steam") },
+/** `channel` is the catalogue channel the store sells through: the scope a row needs (A-20.7). */
+const STORES: readonly {
+  id: CommerceStore;
+  channel: string;
+  label: string;
+}[] = [
+  {
+    id: "app-store",
+    channel: "app-store",
+    label: channelLabel("app-store"),
+  },
+  {
+    id: "play",
+    channel: "google-play",
+    label: channelLabel("google-play"),
+  },
+  { id: "steam", channel: "steam", label: channelLabel("steam") },
 ];
 
 const LINK = "py-1 text-accent-fg underline underline-offset-2";
@@ -88,9 +107,13 @@ export function CommerceOverviewPage({
     queryFn: () => api.commerceView(slug),
   });
   const off = product.data?.services?.commerce?.enabled === false;
+  const features = navFeaturesOf(product.data);
+  // The nav collapses Commerce to this one page when In-app purchases is out of scope: say "Commerce".
+  const alone =
+    navItems(SECTIONS.find((x) => x.key === "commerce")!, features).length <= 1;
 
   let body: React.ReactNode;
-  if (view.isPending) {
+  if (view.isPending || product.isPending || product.isPlaceholderData) {
     // The page's own shape: two sections, no tabs and no header button.
     body = (
       <div
@@ -108,7 +131,9 @@ export function CommerceOverviewPage({
     );
   } else {
     const { setup, products, purchases } = view.data;
-    const rows = STORES.map((s) => ({
+    // Only the stores the product's builds can reach; every store when the scope is unknown.
+    const inScope = STORES.filter((s) => channelInScope(features, s.channel));
+    const rows = inScope.map((s) => ({
       ...s,
       state: storefrontState(setup[s.id], view.data.identity?.[s.id]),
       mapped: products.filter((p) => p.store === s.id).length,
@@ -143,7 +168,9 @@ export function CommerceOverviewPage({
           id="commerce-storefronts"
           title="Storefronts"
           description={
-            ready === 0 ? (
+            rows.length === 0 ? (
+              "No supported store fits this product's platforms."
+            ) : ready === 0 ? (
               <a
                 href={STOREFRONT_DOCS}
                 target="_blank"
@@ -157,101 +184,119 @@ export function CommerceOverviewPage({
             )
           }
         >
-          <div className="space-y-4 px-5 py-4">
-            {off ? null : (
-              <IdentityAttention
-                slug={slug}
-                rows={rows.map((s) => s.identityRow)}
-                hasAppleId={Boolean(view.data.settings?.appStore?.appAppleId)}
-              />
-            )}
-            <ul
-              className="divide-y divide-border sm:hidden"
-              aria-label="Storefronts"
-            >
-              {rows.map((s) => (
-                <li key={s.id} className="space-y-1 py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                    <span
-                      tabIndex={-1}
-                      data-store-row={s.id}
-                      className="font-medium"
-                    >
-                      {s.label}
-                    </span>
-                    <StatusPill domain="storefront" state={s.state} size="sm" />
-                  </div>
-                  <StoreIdentityCell slug={slug} row={s.identityRow} />
-                  <p className="text-sm text-fg-muted">
-                    {s.mapped} mapped {s.mapped === 1 ? "product" : "products"}
-                  </p>
-                </li>
-              ))}
-            </ul>
-            <div className="hidden sm:block">
-              <ScrollTable
-                label="Storefronts table"
-                caption="Storefronts"
-                className="w-full text-start text-sm"
-              >
-                <thead className="text-xs text-fg-muted">
-                  <tr className="border-b border-border">
-                    <th
-                      scope="col"
-                      className="py-2 text-start pe-4 font-medium"
-                    >
-                      Store
-                    </th>
-                    <th
-                      scope="col"
-                      className="py-2 text-start pe-4 font-medium"
-                    >
-                      App
-                    </th>
-                    <th
-                      scope="col"
-                      className="py-2 text-start pe-4 font-medium"
-                    >
-                      Status
-                    </th>
-                    <th scope="col" className="py-2 text-end font-medium">
-                      Mapped products
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {rows.map((s) => (
-                    <tr key={s.id}>
-                      <th
-                        scope="row"
-                        tabIndex={-1}
-                        data-store-row={s.id}
-                        className="py-2 text-start pe-4 font-medium"
-                      >
-                        {s.label}
-                      </th>
-                      <td className="py-2 pe-4">
+          {rows.length > 0 || channelInScope(features, "app-store") ? (
+            <div className="space-y-4 px-5 py-4">
+              {off || rows.length === 0 ? null : (
+                <IdentityAttention
+                  slug={slug}
+                  rows={rows.map((s) => s.identityRow)}
+                  hasAppleId={Boolean(view.data.settings?.appStore?.appAppleId)}
+                />
+              )}
+              {rows.length > 0 ? (
+                <>
+                  <ul
+                    className="divide-y divide-border sm:hidden"
+                    aria-label="Storefronts"
+                  >
+                    {rows.map((s) => (
+                      <li key={s.id} className="space-y-1 py-3">
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                          <span
+                            tabIndex={-1}
+                            data-store-row={s.id}
+                            className="font-medium"
+                          >
+                            {s.label}
+                          </span>
+                          <StatusPill
+                            domain="storefront"
+                            state={s.state}
+                            size="sm"
+                          />
+                        </div>
                         <StoreIdentityCell slug={slug} row={s.identityRow} />
-                      </td>
-                      <td className="py-2 pe-4">
-                        <StatusPill
-                          domain="storefront"
-                          state={s.state}
-                          size="sm"
-                        />
-                      </td>
-                      <td className="py-2 text-end tabular-nums">{s.mapped}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </ScrollTable>
+                        <p className="text-sm text-fg-muted">
+                          {s.mapped} mapped{" "}
+                          {s.mapped === 1 ? "product" : "products"}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="hidden sm:block">
+                    <ScrollTable
+                      label="Storefronts table"
+                      caption="Storefronts"
+                      className="w-full text-start text-sm"
+                    >
+                      <thead className="text-xs text-fg-muted">
+                        <tr className="border-b border-border">
+                          <th
+                            scope="col"
+                            className="py-2 text-start pe-4 font-medium"
+                          >
+                            Store
+                          </th>
+                          <th
+                            scope="col"
+                            className="py-2 text-start pe-4 font-medium"
+                          >
+                            App
+                          </th>
+                          <th
+                            scope="col"
+                            className="py-2 text-start pe-4 font-medium"
+                          >
+                            Status
+                          </th>
+                          <th scope="col" className="py-2 text-end font-medium">
+                            Mapped products
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {rows.map((s) => (
+                          <tr key={s.id}>
+                            <th
+                              scope="row"
+                              tabIndex={-1}
+                              data-store-row={s.id}
+                              className="py-2 text-start pe-4 font-medium"
+                            >
+                              {s.label}
+                            </th>
+                            <td className="py-2 pe-4">
+                              <StoreIdentityCell
+                                slug={slug}
+                                row={s.identityRow}
+                              />
+                            </td>
+                            <td className="py-2 pe-4">
+                              <StatusPill
+                                domain="storefront"
+                                state={s.state}
+                                size="sm"
+                              />
+                            </td>
+                            <td className="py-2 text-end tabular-nums">
+                              {s.mapped}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </ScrollTable>
+                  </div>
+                </>
+              ) : null}
+              {channelInScope(features, "app-store") ? (
+                <p className="text-sm text-fg-muted">
+                  <Link to={r.commerce(slug)} className={LINK}>
+                    Map App Store products
+                  </Link>
+                </p>
+              ) : null}
             </div>
-            <p className="text-sm text-fg-muted">
-              <Link to={r.commerce(slug)} className={LINK}>
-                Map App Store products
-              </Link>
-            </p>
-          </div>
+          ) : null}
         </SettingsSection>
 
         <SettingsSection
@@ -303,19 +348,19 @@ export function CommerceOverviewPage({
                       <tr className="border-b border-border">
                         <th
                           scope="col"
-                          className="py-2 text-start pe-4 font-medium"
+                          className="py-2 pe-4 text-start font-medium"
                         >
                           Store
                         </th>
                         <th
                           scope="col"
-                          className="py-2 text-start pe-4 font-medium"
+                          className="py-2 pe-4 text-start font-medium"
                         >
                           Product
                         </th>
                         <th
                           scope="col"
-                          className="py-2 text-start pe-4 font-medium"
+                          className="py-2 pe-4 text-start font-medium"
                         >
                           State
                         </th>
@@ -359,10 +404,12 @@ export function CommerceOverviewPage({
 
   return (
     <div className="space-y-6" data-template="record">
-      <PageHeader
-        title="Overview"
-        refetching={view.isFetching && !view.isPending}
-      />
+      {product.isPending || product.isPlaceholderData ? null : (
+        <PageHeader
+          title={alone ? "Commerce" : "Overview"}
+          refetching={view.isFetching && !view.isPending}
+        />
+      )}
       {body}
     </div>
   );

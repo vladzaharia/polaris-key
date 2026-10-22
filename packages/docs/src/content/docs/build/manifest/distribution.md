@@ -91,6 +91,8 @@ only when it does not widen those defaults (for example `web` to `altstore`). A 
 Declare a new channel id for the wider kind, so copies already installed through the old one keep
 what they had.
 
+A channel with no build for it draws the `outlet_without_build` warning in `pkey validate` and on link: `app-store` declared when `.pkey/release` declares no `ios` or `macos` build in `deliverables.app.artifacts`. It is silent while no artifact map is declared, and for a bare `direct`. The console hides such a channel unless you declared it. See [Which channels a product sees](/docs/features/ship-builds/channels/#which-channels-a-product-sees) and the [validation codes](/docs/reference/validation-codes/).
+
 ### Identity fields per kind
 
 Each kind reads only its own fields; any other key on the entry is ignored. Every field is

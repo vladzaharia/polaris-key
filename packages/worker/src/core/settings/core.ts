@@ -416,7 +416,10 @@ export const CORE_SLICE: readonly SettingDef[] = [
     merge: "cascade",
     ownership: "operator",
     confirm: { change: "L0" },
-    readers: ["core/settings/setupShape.ts"],
+    readers: [
+      "core/settings/setupShape.ts",
+      "services/distribution/channels.ts",
+    ],
     storage: { kind: "scalar" },
     since: "ST-39",
   }),

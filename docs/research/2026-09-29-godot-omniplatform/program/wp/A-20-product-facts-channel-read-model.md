@@ -61,11 +61,11 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] A Windows-only product sees no Apple channel in console, portal or CLI
-- [ ] An arm64-only Windows build offers no x64 download or winget installer; the Mac App Store channel requires a universal or arm64 build
-- [ ] 'one click' computed from credentials already held
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/channels/*`, rewritten in place (one page per channel; the matrix section at A-21); `reference/channels`.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] A Windows-only product sees no Apple channel in console, portal or CLI
+- [x] An arm64-only Windows build offers no x64 download or winget installer; the Mac App Store channel requires a universal or arm64 build
+- [x] 'one click' computed from credentials already held
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/channels/*`, rewritten in place (one page per channel; the matrix section at A-21); `reference/channels`.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 
@@ -80,3 +80,28 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set A-20 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set A-20 done`.
+
+## Corrections (2026-10-22)
+
+The code is the fact (`_lead/plans/A-20-A-28-slices.md` §0). Where the brief disagrees:
+
+- **A1.** `distribution.intendedPlatforms` already exists: registered at `services/distribution/settings.ts:49` (values `RELEASE_PLATFORMS`), written by `core/products/createDefaults.ts:252`; its `readers` names only createDefaults.
+- **A2.** "Not using" already exists as `core.setup.notUsing` (`core/settings/setupShape.ts`, ST-39).
+- **A3.** The A-18j read `GET …/distribution/storefronts` (`services/distribution/storefronts/admin.ts`) is flow-shaped, behind the platform-admin gate and narrative-only. Renaming it with an alias (integration.md §5.3) collides with the no-alias rule (CM-20 §0, C-54); see D2.
+- **A4.** The catalogue (`tools/channels.json`, 19 entries) had `platforms` and flat `formats` but no arch requirement. `RELEASE_ARCHES` has `universal` and `any`; a build's arch is on `CatalogBuild.arch` and `ManifestArtifactEntry.arch`. A-20.1 adds the optional per-channel `arches` and the pure fit functions (`shared-manifest/src/formats.ts`).
+- **A5.** Builds are already split by arch in three places: the Download page (`page/model.ts:429-458`, `ARCH_PREFERENCE`, `pickBuild`), Scoop (`feeds/render.ts:313`, `SCOOP_ARCH`) and winget (`cli/src/storefronts/winget.ts:44`, `ARCH`). An arm64-only build already yields no x64 entry, so criterion 2 is mostly proofs (A-20.6).
+- **A6.** `/<p>/distribution/download.json` is wire-recorded (transcript `distribution-download-model.json`, SDK replayers). It must not change.
+- **A7.** CM-29 §3.3's `services/commerce/readiness.ts` was never built. `setupOf` (`services/commerce/admin.ts:64`) and `readyStorefronts` (`commerce/public.ts`) stand in.
+- **A8.** No CLI command lists a product's channels. The CLI part of criterion 1 is the validator warning in `pkey validate` (D11).
+- **A9.** The declared artifact map (`.pkey/release deliverables.app.artifacts[]`, `release_deliverables.def_json`) is not reachable through `ReleaseCatalog`. A-20.2 adds one hook member.
+- **A-20.1 data fix.** The catalogue listed winget's formats as `msi, exe, msix`, but the winget adapter installs a `.zip` with a nested portable (`cli/src/storefronts/winget.ts`). `zip` is added to winget's `formats`.
+
+## Closeout (A-20.8, 2026-10-22)
+
+Shipped as A-20.1 to A-20.8: the format and arch table with channel fit; `productPlatforms` with sources; the delivery facet; `GET …/distribution/channels` with the summary's `platforms[]` and `channels[]`; the `outlet_without_build` warning; scope proofs for the customer surfaces; the console hiding out-of-scope channels. Docs: `features/ship-builds/channels/index.md` (which channels a product sees), a scope note in `storefronts.md`, the warning in `build/manifest/distribution.md`, and the generated `reference/channels`. Per-channel pages that do not exist yet are not created (D17: A-19b's check plus A-22).
+
+Deferred, with owners:
+
+- **R6.** An out-of-scope flag on Commerce and Credentials (today they only hide). Owner: A-21.
+- **R7.** The "Out of scope" pill wording and tone, and demoting "Set up" on those rows. Owner: A-21.
+- **Planned-platforms editor.** Setting `distribution.intendedPlatforms` from the console. Owner: UX-53 / A-21.

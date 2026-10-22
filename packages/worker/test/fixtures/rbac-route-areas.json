@@ -59,6 +59,7 @@
   "GET /products/:slug/devices/:id": "core",
   "GET /products/:slug/devices/summary": "core",
   "GET /products/:slug/distribution/**": "ship",
+  "GET /products/:slug/distribution/channels": "ship",
   "GET /products/:slug/distribution/feeds/**": "ship",
   "GET /products/:slug/identity/**": "signin",
   "GET /products/:slug/integration": "core",
