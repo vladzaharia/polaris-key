@@ -440,6 +440,34 @@ describe("api — the settings-backed calls use the generic settings API (ST-05b
     ]);
   });
 
+  it("reads the update settings of a caller who may not see the access mode", async () => {
+    setCsrf("tok");
+    stubFetch((url) =>
+      url.endsWith("update.metadataAccess")
+        ? json({ code: "forbidden", reason: "no_access" }, 403)
+        : json({
+            setting: {
+              key: "x",
+              value: url.endsWith("release.compatWindow")
+                ? { min: "1.0.0", max: "2.0.0" }
+                : { requireSparkleSignature: true },
+              source: "manifest",
+              version: 0,
+            },
+          }),
+    );
+    // The key whose area the caller lacks is left out; the view says so rather than guessing.
+    expect(await api.updateSettings("djdl")).toMatchObject({
+      hidden: true,
+      compatMin: "1.0.0",
+    });
+    // Any other failure is still the caller's to see.
+    stubFetch(() => json({ code: "internal" }, 500));
+    await expect(api.updateSettings("djdl")).rejects.toMatchObject({
+      status: 500,
+    });
+  });
+
   it("serves delivery access and the trust policy from their settings", async () => {
     stubSettings();
     const access = await api.deliveryAccess("djdl");

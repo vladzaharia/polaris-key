@@ -38,15 +38,32 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 const src = join(here, "..", "src");
 
-/** The HTTP method each API method sends, learned by calling it. */
+/**
+ * Methods that read a setting before they write it (ST-05b: the generic settings API carries the
+ * version just read, and a policy patch merges onto the current one) are called with arguments that
+ * reach the write; junk arguments would leave them with nothing to send.
+ */
+const PROBES: Record<string, unknown[]> = {
+  saveUpdateSettings: ["djdl", { metadataAccess: "public" }],
+  revertUpdateSettings: ["djdl", ["access"]],
+  saveDeliveryAccess: ["djdl", { mode: "public" }],
+  revertDeliveryAccess: ["djdl"],
+  updateFingerprintPolicy: ["djdl", {}],
+  revertFingerprintPolicy: ["djdl"],
+};
+
+/** The HTTP method each API method sends, learned by calling it (a write anywhere in a method's
+ *  requests makes it a write, however many reads surround it). */
 async function httpMethods(): Promise<Record<string, string>> {
   const seen: Record<string, string> = {};
   let current = "";
   vi.stubGlobal(
     "fetch",
     vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-      seen[current] = init?.method ?? "GET";
-      return new Response("{}", {
+      const method = init?.method ?? "GET";
+      if (seen[current] === undefined || seen[current] === "GET")
+        seen[current] = method;
+      return new Response(JSON.stringify({ setting: {} }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -58,7 +75,7 @@ async function httpMethods(): Promise<Record<string, string>> {
       name
     ]!;
     try {
-      await fn("djdl", "id_1", "x", {}, null, true);
+      await fn(...(PROBES[name] ?? ["djdl", "id_1", "x", {}, null, true]));
     } catch {
       // A method that throws before fetching is reported by the "classifies every" test.
     }
