@@ -179,6 +179,11 @@ export interface DiscoveryContext {
    * built by hand, where a reader falls back as it documents.
    */
   settings?: SettingsRegistry;
+  /**
+   * The product's `portal.enabled`, read once for the whole document (DISC-01). `core.portal`
+   * and Identity's `accountPortal` both read it from here, so they cannot disagree.
+   */
+  portalOn: boolean;
 }
 
 /**

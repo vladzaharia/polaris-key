@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { makeEnv, seedProduct } from "./seed.js";
+import { makeEnv, seedProduct, setPortalToggles } from "./seed.js";
 import { dispatchWith } from "../src/dispatch.js";
 import {
   customerHostname,
@@ -129,6 +129,31 @@ describe("customer URLs follow CUSTOMER_ORIGIN", () => {
     expect(await accountPortalUrl(env, db, API, { slug: "djdl" })).toBe(
       `${CUSTOMER}/#/p/djdl`,
     );
+  });
+
+  it("core.portal.activate follows CUSTOMER_ORIGIN, and is {enabled:false} while the portal is off (DISC-01)", async () => {
+    const discover = async () =>
+      (
+        (await (
+          await dispatchWith(
+            new Request(`${API}/djdl/.well-known/polaris.json`),
+            env,
+            db,
+            NOW,
+          )
+        ).json()) as { core: { portal: unknown } }
+      ).core.portal;
+    expect(await discover()).toEqual({
+      enabled: true,
+      activate: `${API}/activate?product=djdl`,
+    });
+    env.CUSTOMER_ORIGIN = CUSTOMER;
+    expect(await discover()).toEqual({
+      enabled: true,
+      activate: `${CUSTOMER}/activate?product=djdl`,
+    });
+    await setPortalToggles(db, "djdl", { portalEnabled: false });
+    expect(await discover()).toEqual({ enabled: false });
   });
 
   it("the API host's root is the customer portal with no customer origin and the console's front door once it is set (LK-14)", async () => {

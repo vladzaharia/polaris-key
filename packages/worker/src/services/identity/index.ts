@@ -46,10 +46,7 @@ import { authorizeRegistration } from "./registration.js";
 import { IDENTITY_SETTINGS_SLICE } from "./settings.js";
 import type { IdentityDiscovery } from "@polaris-key/protocol/identity";
 import { keyEntryLimit } from "../../core/licensing/keyEntries.js";
-import {
-  accountPortalUrl,
-  portalEnabled,
-} from "../../core/licensing/manageUrl.js";
+import { accountPortalUrl } from "../../core/licensing/manageUrl.js";
 import { licenseHolderHooks } from "./accounts/holders.js";
 import {
   STOREFRONT_ACTIVATIONS_LISTENER,
@@ -136,8 +133,11 @@ export const identityService: ServiceDescriptor = {
     product,
     base,
     settings,
+    portalOn,
   }: DiscoveryContext) => {
-    const accountPortal = (await portalEnabled(db, product.slug))
+    // `portalOn` is the document's one read of `portal.enabled` (DISC-01): this and `core.portal`
+    // cannot disagree.
+    const accountPortal = portalOn
       ? await accountPortalUrl(env, db, base, product)
       : null;
     const fragment: IdentityDiscovery = {

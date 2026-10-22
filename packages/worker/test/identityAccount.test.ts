@@ -994,4 +994,21 @@ describe("discovery (§12.6)", () => {
     await setIdentity(false);
     expect(await fragment()).toEqual({ enabled: false });
   });
+
+  // DISC-01 (§5.7): `accountPortal` is present exactly when `core.portal.enabled` is true, from
+  // the document's single read of `portal.enabled`.
+  it("accountPortal is present exactly when core.portal.enabled is true", async () => {
+    await setIdentity(true);
+    for (const on of [true, false]) {
+      await setPortalToggles(db, SLUG, { portalEnabled: on });
+      const res = await call("GET", `/${SLUG}/.well-known/polaris.json`);
+      const body = (await res.json()) as {
+        core: { portal: { enabled: boolean; activate?: string } };
+        services: { identity: { endpoints: Record<string, unknown> } };
+      };
+      expect(body.core.portal.enabled).toBe(on);
+      expect("accountPortal" in body.services.identity.endpoints).toBe(on);
+      if (!on) expect(body.core.portal).toEqual({ enabled: false });
+    }
+  });
 });

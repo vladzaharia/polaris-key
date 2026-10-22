@@ -19,6 +19,10 @@
         "trustManifest": "https://key.plrs.im/dflt/.well-known/polaris-trust.jws",
         "devices": "https://key.plrs.im/dflt/devices",
         "report": "https://key.plrs.im/dflt/devices/report"
+      },
+      "portal": {
+        "enabled": true,
+        "activate": "https://key.plrs.im/activate?product=dflt"
       }
     },
     "trust": {
@@ -104,6 +108,10 @@
         "trustManifest": "https://key.plrs.im/full/.well-known/polaris-trust.jws",
         "devices": "https://key.plrs.im/full/devices",
         "report": "https://key.plrs.im/full/devices/report"
+      },
+      "portal": {
+        "enabled": true,
+        "activate": "https://key.plrs.im/activate?product=full"
       }
     },
     "trust": {
@@ -267,6 +275,10 @@
         "devices": "https://key.plrs.im/cfg/devices",
         "report": "https://key.plrs.im/cfg/devices/report",
         "register": "https://key.plrs.im/cfg/devices/register"
+      },
+      "portal": {
+        "enabled": true,
+        "activate": "https://key.plrs.im/activate?product=cfg"
       }
     },
     "trust": {
