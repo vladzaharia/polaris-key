@@ -163,6 +163,11 @@ func all() -> Array:
 	# ── PKeyDeviceList (UI-KITS.md Devices).
 	for c in [["list", "list"], ["list, an unnamed device", "unnamed"], ["list, this device not known", "unknown"], ["renaming", "renaming"], ["confirming a removal", "confirming"], ["empty", "empty"], ["browser mode", "browser"], ["loading", "loading"], ["error: the list could not load", "load-error"], ["error: a rename was refused", "rename-error"], ["error: a removal was refused", "remove-error"], ["list, this device only (from the SDK)", "self-only"]]:
 		out.append(["devices", c[0], devices.bind(c[1])])
+	# ── PKeyPaywall and PKeyDeviceLimit (UI-KITS.md §4.1), the model's states.
+	for c in [["offers, the browser", "offers-portal"], ["offers, the store", "offers-store"], ["offers, with what it includes", "offers-includes"], ["loading", "loading"], ["purchasing", "purchasing"], ["restoring", "restore"], ["purchased", "purchased"], ["not available", "not-available"], ["not available, the portal offered", "not-available-portal"]]:
+		out.append(["paywall", c[0], paywall.bind(c[1])])
+	for c in [["default: replace the least recent", "default"], ["default: the limit is not known", "unknown"], ["browser mode", "browser"], ["browser mode: a QR code on a TV", "browser-tv"], ["busy", "busy"], ["removed", "removed"], ["failed", "failed"]]:
+		out.append(["device_limit", c[0], device_limit.bind(c[1])])
 	# ── PKeyLicenseChoice (UI-KITS.md LicenseChoice): the corpus rows.
 	for c in CHOICE_CASES:
 		out.append(["license_choice", c[0], license_choice.bind(c[1])])
@@ -464,6 +469,76 @@ func settings_account() -> Control:
 
 
 ## A Devices state: the three fixture devices, and what the player did to them.
+func paywall(kind: String) -> Control:
+	var p := PKeyPaywall.new()
+	p.auto_sdk = false
+	p.tier = "Pro"
+	add(p)
+	match kind:
+		"offers-portal":
+			p.offers_url = "https://polaris.locker/activate?product=tidewater"
+		"offers-store":
+			p.store_purchase = true
+			p.can_restore = true
+		"offers-includes":
+			p.offers_url = "https://polaris.locker/activate?product=tidewater"
+			p.includes = PackedStringArray(["Unlimited exports", "Cloud saves", "Every future expansion"])
+			p.redeem_requested.connect(func(): pass)
+		"loading":
+			p.loading = true
+			p._loading_since = Time.get_ticks_msec() - 400
+		"purchasing":
+			p.store_purchase = true
+			p.pending = "purchase"
+		"restore":
+			p.store_purchase = true
+			p.can_restore = true
+			p.pending = "restore"
+		"purchased":
+			p.store_purchase = true
+			p.purchased = true
+		"not-available":
+			p.offers_available = false
+		"not-available-portal":
+			p.offers_available = false
+			p.offers_url = "https://polaris.locker/activate?product=tidewater"
+	p.refresh_view()
+	return p
+
+
+func device_limit(kind: String) -> Control:
+	var d := PKeyDeviceLimit.new()
+	d.auto_sdk = false
+	d.used = 3
+	d.limit = 3
+	d.form_factor = "mac"
+	add(d)
+	match kind:
+		"default":
+			d.devices = DEVICE_ROWS.duplicate(true)
+		"unknown":
+			d.used = -1
+			d.limit = -1
+			d.devices = DEVICE_ROWS.duplicate(true)
+		"browser":
+			d.manage_url = "https://polaris.locker/devices?product=tidewater"
+		"browser-tv":
+			d.manage_url = "https://polaris.locker/devices?product=tidewater"
+			d.form_factor = "tv"
+			d.pad = true
+		"busy":
+			d.devices = DEVICE_ROWS.duplicate(true)
+			d.pending = true
+		"removed":
+			d.outcome = "done"
+			d.replaced_name = "Work laptop"
+		"failed":
+			d.outcome = "failed"
+			d.replaced_name = "Work laptop"
+	d.refresh_view()
+	return d
+
+
 func devices(kind: String) -> Control:
 	var d := PKeyDeviceList.new()
 	d.auto_sdk = false

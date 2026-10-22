@@ -2037,15 +2037,33 @@ func leaves_app(b: Button, leaves := true, px := 16.0) -> void:
 
 
 static var _note_copy = null
+static var _note_locale := ""
 
 
 static func _external_note() -> String:
 	return String(catalog().format("a11y.externalLink"))
 
 
+## Marks a node whose text is a catalog string (formatted from the model's `.po` tables, which carry
+## the real translations), not a PKeyUiCopy default.
+const CATALOG_META := &"pkey_catalog_text"
+
+
+## Show catalog `key` formatted with `args` in `node` (hidden for an empty key). The game's
+## `PKeyUiCopy.overrides` for the key still win, as for every kit string.
+func cat_text(node: Control, key: String, args: Dictionary = {}) -> void:
+	node.set_meta(CATALOG_META, true)
+	if key == "":
+		show_text(node, "")
+		return
+	var o = c().overrides.get(key)
+	show_text(node, o if o is String else String(catalog().format(key, args)))
+
+
 ## The shared copy catalog (the model's `.po` tables) in the running locale.
 static func catalog():
-	if _note_copy == null:
+	if _note_copy == null or _note_locale != TranslationServer.get_locale():
+		_note_locale = TranslationServer.get_locale()
 		_note_copy = preload("res://addons/polaris_key/ui/model/copy_format.gd").new({"locale": TranslationServer.get_locale()})
 	return _note_copy
 

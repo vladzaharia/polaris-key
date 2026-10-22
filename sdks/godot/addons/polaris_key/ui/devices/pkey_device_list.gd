@@ -412,34 +412,14 @@ func _inner_actions(parent: Node) -> BoxContainer:
 	return box
 
 
-## "This Mac" on the row the runtime knows is this device (never "This device" without knowing);
-## "Windows · last used 3 days ago" on every other.
+## "This Mac" on the row the runtime knows is this device; "Windows · last used 3 days ago" on every
+## other (PKeyDevicesController.meta_text).
 func _meta_text(d: Dictionary, t: PKeyUiCopy) -> String:
-	if bool(d.get("current", false)):
-		return t.text(PKeyDevicesController.this_device_key(d))
-	var platform_key := PKeyDevicesController.platform_key(String(d.get("platform", "")))
-	var platform := t.text(platform_key) if platform_key != "" else ""
-	var when := _when(d.get("lastSeenDays"), t)
-	if platform != "" and when != "":
-		return t.text("devices_meta", [platform, when])
-	return platform if platform != "" else when
+	return PKeyDevicesController.meta_text(d, t)
 
 
-## "today", "yesterday", "3 days ago", "2 months ago", "last year": a relative time off whole days.
 func _when(days: Variant, t: PKeyUiCopy) -> String:
-	if not PKeyClaims.is_number(days):
-		return ""
-	var n := int(days)
-	if n <= 0:
-		return t.text("when_today")
-	if n == 1:
-		return t.text("when_yesterday")
-	if n < 45:
-		return t.text("when_days_ago", n)
-	if n < 365:
-		return t.text("when_months_ago", maxi(2, roundi(n / 30.0)))
-	var years := roundi(n / 365.0)
-	return t.text("when_last_year") if years <= 1 else t.text("when_years_ago", years)
+	return PKeyDevicesController.when_text(days, t)
 
 
 ## The destructive confirm reads in the danger colour.

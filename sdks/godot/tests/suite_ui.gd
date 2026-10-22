@@ -234,6 +234,7 @@ func _game_look(t: PKeyTestContext) -> void:
 	await _focus_ring(t)
 	await _lead_fixes(t)
 	await _slice2(t)
+	await _standalone_a(t)
 	PKeyUiTheme.reset()
 
 
@@ -503,6 +504,86 @@ func _slice2(t: PKeyTestContext) -> void:
 		var m := 0.05 * 1080.0
 		t.check("toast: title-safe at 1920x1080 (%s)" % anchor, r.position.x >= m - 1.0 and r.position.y >= m - 1.0 and r.end.x <= 1920.0 - m + 1.0 and r.end.y <= 1080.0 - m + 1.0, str(r))
 		vp.queue_free()
+	PKeyUiTheme.reduce_motion_mode = "auto"
+
+
+## Slice 4: the standalone Paywall and DeviceLimit, on the models.
+func _standalone_a(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reduce_motion_mode = "on"
+	# Paywall: the primary is the store's or the portal's, never an invented checkout.
+	var pw: PKeyPaywall = _sc.paywall("offers-store")
+	var bought := [0]
+	var restored := [0]
+	pw.purchase_requested.connect(func(): bought[0] += 1)
+	pw.restore_requested.connect(func(): restored[0] += 1)
+	await _tree().process_frame
+	t.check("paywall: the store's primary says Upgrade to the tier and asks the game to purchase", pw._primary.text.contains("Upgrade to") and pw._primary.text.contains("Pro"))
+	pw._primary.pressed.emit()
+	pw._restore.pressed.emit()
+	t.check("paywall: purchase_requested and restore_requested fire", bought[0] == 1 and restored[0] == 1)
+	_free(pw)
+	var portal: PKeyPaywall = _sc.paywall("offers-portal")
+	var opened := [0]
+	portal.portal_requested.connect(func(): opened[0] += 1)
+	await _tree().process_frame
+	t.check("paywall: without a store the primary is Buy in your browser, no redeem without a handler", portal._primary.text == "Buy in your browser" and not portal._redeem.visible)
+	portal.offers_url = "http://insecure.example/buy"
+	portal.refresh_view()
+	portal._primary.pressed.emit()
+	t.check("paywall: portal_requested fires; a page that is not https is never opened", opened[0] == 1 and not PKeyOutletAdapter.is_https(portal.offers_url))
+	_free(portal)
+	var done_pw: PKeyPaywall = _sc.paywall("purchased")
+	var finished := [0]
+	done_pw.done.connect(func(): finished[0] += 1)
+	await _tree().process_frame
+	done_pw._primary.pressed.emit()
+	t.check("paywall: purchased shows Done and done fires", done_pw._primary.text == "Done" and finished[0] == 1)
+	_free(done_pw)
+	var busy_pw: PKeyPaywall = _sc.paywall("purchasing")
+	await _tree().process_frame
+	t.check("paywall: purchasing disables the primary", busy_pw._primary.disabled)
+	_free(busy_pw)
+	# The catalog's translations, not English with a mask: German.
+	TranslationServer.set_locale("de")
+	var de_pw: PKeyPaywall = _sc.paywall("offers-portal")
+	await _tree().process_frame
+	var de_title := de_pw._title.text
+	TranslationServer.set_locale("en")
+	t.check("paywall: German reads from the catalog's tables", de_title != "" and not de_title.begins_with("Get more with"), de_title)
+	_free(de_pw)
+	# DeviceLimit: the least recent other device is the one replaced.
+	var dl: PKeyDeviceLimit = _sc.device_limit("default")
+	var replaced: Array = []
+	dl.replace_requested.connect(func(d): replaced.append(d))
+	await _tree().process_frame
+	t.check("device limit: the preselected device is the least recently used other one", dl._pick.visible and dl._pick_name.text.contains("Work laptop"))
+	t.check("device limit: its lede names this device", dl._lede.text.contains("this Mac"), dl._lede.text)
+	dl._primary.pressed.emit()
+	t.check("device limit: Replace and continue hands the game that device", replaced.size() == 1 and replaced[0].get("name") == "Work laptop")
+	_free(dl)
+	var br: PKeyDeviceLimit = _sc.device_limit("browser")
+	var manage := [0]
+	br.manage_opened.connect(func(): manage[0] += 1)
+	await _tree().process_frame
+	t.check("device limit: browser mode offers Open in browser", br._primary.text == "Open in browser")
+	br._primary.pressed.emit()
+	t.check("device limit: manage_opened fires", manage[0] == 1)
+	_free(br)
+	var tv: PKeyDeviceLimit = _sc.device_limit("browser-tv")
+	await _tree().process_frame
+	t.check("device limit: a TV shows a QR code and no browser button", tv._qr.visible and not tv._primary.visible)
+	_free(tv)
+	var fl: PKeyDeviceLimit = _sc.device_limit("failed")
+	var retried := [0]
+	fl.retry_requested.connect(func(): retried[0] += 1)
+	await _tree().process_frame
+	fl._primary.pressed.emit()
+	t.check("device limit: a failed replacement offers Try again", retried[0] == 1)
+	var backs := [0]
+	fl.back_requested.connect(func(): backs[0] += 1)
+	fl._cancel()
+	t.check("device limit: Escape asks to go back", backs[0] == 1)
+	_free(fl)
 	PKeyUiTheme.reduce_motion_mode = "auto"
 
 
@@ -849,7 +930,7 @@ func _copy(t: PKeyTestContext, all: Array) -> void:
 		for pair in PKeyUiSnapshot.texts(v):
 			var n: Node = pair[0]
 			var text: String = pair[1]
-			if n.has_meta(PKeyUiView.DATA_META):
+			if n.has_meta(PKeyUiView.DATA_META) or n.has_meta(PKeyUiView.CATALOG_META):
 				continue
 			if not text.begins_with("⟦"):
 				bad.append("%s \"%s\"" % [v.get_path_to(n), text])

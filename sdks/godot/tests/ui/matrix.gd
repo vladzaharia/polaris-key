@@ -231,6 +231,15 @@ const TIGHT_CASES := [
 	["devices.confirm", "native36", "640x360"],
 	["devices.error", "native36", "640x360"],
 	["devices.rename", "native36", "640x360"],
+	# Paywall and DeviceLimit (slice 4): a game's own type at 28 or 36 px, or 18-22 px type on a 360 px
+	# tall canvas, keeps the primary reachable through the scroll fallback like the gate cards above.
+	["device_limit", "custom", "2532x1170@3"],
+	["device_limit", "custom", "pixel-art canvas_items 640x360 keep"],
+	["device_limit", "native", "2532x1170@3"],
+	["device_limit", "native", "pixel-art canvas_items 640x360 keep"],
+	["device_limit", "native36", "1170x2532@3"],
+	["device_limit.failed", "custom", "pixel-art canvas_items 640x360 keep"],
+	["paywall.na", "native36", "1170x2532@3"],
 ]
 
 ## The looks: the Polaris Key theme (dark, light), the native look over a game's own theme
@@ -287,6 +296,14 @@ const SCREENS := [
 	["settings.account", "settings", "catalog, with the account tab", "full"],
 	["dev_menu", "dev_menu", "steam build", "full"],
 	# Devices, LicenseChoice, AccountAndLicense, UpdateProgress and Toast (UI-KITS.md §4.1).
+	["paywall", "paywall", "offers, with what it includes", "full"],
+	["paywall.store", "paywall", "offers, the store", "full"],
+	["paywall.purchased", "paywall", "purchased", "full"],
+	["paywall.na", "paywall", "not available, the portal offered", "full"],
+	["device_limit", "device_limit", "default: replace the least recent", "full"],
+	["device_limit.browser", "device_limit", "browser mode", "full"],
+	["device_limit.tv", "device_limit", "browser mode: a QR code on a TV", "full", "pad"],
+	["device_limit.failed", "device_limit", "failed", "full"],
 	["devices", "devices", "list", "full"],
 	["devices.rename", "devices", "renaming", "full"],
 	["devices.confirm", "devices", "confirming a removal", "full"],
