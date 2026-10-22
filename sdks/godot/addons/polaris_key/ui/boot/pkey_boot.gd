@@ -26,7 +26,7 @@ extends PKeyUiView
 ## (true: after READY install the stamp's prefetch packs with a corner pill), sync_timeout_seconds
 ## (20, or 45 on a build
 ## without threads, where a bundle verify runs in frame slices: never under 10 s natively or 30 s
-## sliced, S-04), offer_enrollment (false), release_url (""), keep_update_prompt (true: see the
+## sliced, S-04), offer_enrollment (false), release_url (""), renew_url ("": the https page Renew opens on an expired license; connect `gate.renew_requested` to renew in-game), keep_update_prompt (true: see the
 ## property), options (a PKeyOptions used when PolarisKey is not configured yet), host (replaces
 ## PKeyBootHost: tests, a custom pipeline), resolve_on_stop (false: see below), confirm_identity
 ## (false: a sign-in stops at "Is this you?" before handing back), persistent_gate (false: see
@@ -309,6 +309,7 @@ func run(opts: Dictionary = {}) -> PKeyBootResult:
 	gate.offer_enrollment = opts.get("offer_enrollment", false) == true
 	gate.confirm_identity = opts.get("confirm_identity", false) == true
 	gate.release_url = String(opts.get("release_url", ""))
+	gate.renew_url = String(opts.get("renew_url", ""))
 	prompt.release_url = gate.release_url
 	gate.sdk = sdk
 	gate.activation.sdk = sdk
