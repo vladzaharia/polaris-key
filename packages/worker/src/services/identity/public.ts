@@ -12,6 +12,7 @@ export {
   consoleMemberIdForIdpSub,
   consoleSignIn,
   consoleSubject,
+  consoleTokenSubject,
   endConsoleSession,
   type ConsoleIdentity,
   type ConsoleRefusal,
