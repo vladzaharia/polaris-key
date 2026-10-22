@@ -203,6 +203,16 @@ describe("errorCopy: every row of ADMIN.md §5.9", () => {
     );
   });
 
+  it("a 504 names its cause, with no HTTP status in the words", () => {
+    const c = errorCopy(api(504));
+    expect(c.description).toBe(
+      "Polaris Key took too long to answer. Try again.",
+    );
+    expect(c.action).toBe("retry");
+    expect(`${c.title} ${c.description}`).not.toMatch(/504/);
+    expect(c.details).toMatchObject({ status: 504 });
+  });
+
   it("the unknown fallback keeps the details for a support report", () => {
     const d = errorCopy(api(418, { code: "teapot", reason: "short" })).details;
     expect(d).toMatchObject({ status: 418, code: "teapot", reason: "short" });

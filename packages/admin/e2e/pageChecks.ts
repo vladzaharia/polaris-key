@@ -369,3 +369,57 @@ export function pillTextBreaches(page: Page): Promise<string[]> {
     return out;
   });
 }
+
+/**
+ * A row's "Actions for …" menu button must not sit on top of the row's own text (a phone card at
+ * 200 % text once drew the ⋯ over the name). Every visible text line in the same row or card must
+ * clear the button's box.
+ */
+export function rowMenuOverlaps(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const out: string[] = [];
+    const buttons = document.querySelectorAll<HTMLElement>(
+      'button[aria-label^="Actions for "]',
+    );
+    for (const btn of buttons) {
+      if (!btn.checkVisibility({ visibilityProperty: true })) continue;
+      const row = btn.closest("li, tr");
+      if (!row) continue;
+      const b = btn.getBoundingClientRect();
+      const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (!n.textContent?.trim()) continue;
+        const parent = n.parentElement;
+        if (!parent || btn.contains(parent)) continue;
+        if (parent.closest(".sr-only")) continue;
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        for (const r of range.getClientRects()) {
+          if (r.width === 0 || r.height === 0) continue;
+          // Only the part an ancestor leaves on screen (a truncated name ends in "…").
+          let left = r.left;
+          let right = r.right;
+          for (
+            let a: Element | null = parent;
+            a && a !== row;
+            a = a.parentElement
+          ) {
+            if (getComputedStyle(a).overflowX === "visible") continue;
+            const ab = a.getBoundingClientRect();
+            left = Math.max(left, ab.left);
+            right = Math.min(right, ab.right);
+          }
+          const w = Math.min(right, b.right) - Math.max(left, b.left);
+          const h = Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top);
+          if (w > 1 && h > 1) {
+            out.push(
+              `"${(n.textContent ?? "").trim().slice(0, 30)}" is under the ${btn.getAttribute("aria-label")} menu`,
+            );
+            break;
+          }
+        }
+      }
+    }
+    return out;
+  });
+}

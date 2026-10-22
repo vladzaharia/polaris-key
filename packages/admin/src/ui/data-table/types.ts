@@ -84,8 +84,11 @@ export interface Facet<T> {
     counts?: Record<string, number | undefined>;
     pending?: boolean;
   };
-  /** Folded into one "More" menu after the other facet menus (see `FilterBarFacet.secondary`). */
-  secondary?: boolean;
+  /**
+   * Folded into one "More" menu after the other facet menus (see `FilterBarFacet.secondary`).
+   * `"narrow"` folds it only below 1280 px in a compact band, so the band keeps one row.
+   */
+  secondary?: boolean | "narrow";
 }
 
 export interface BulkAction<T> {

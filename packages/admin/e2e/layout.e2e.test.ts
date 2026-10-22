@@ -27,6 +27,7 @@ import {
   lintFindings,
   forcedColourBreaches,
   pillTextBreaches,
+  rowMenuOverlaps,
   shellStateBreaches,
   unlabelledScrollers,
 } from "./pageChecks.js";
@@ -770,6 +771,10 @@ for (const vp of VIEWPORTS) {
             expect(
               await pillTextBreaches(page),
               "status text escapes its pill or chip (N1)",
+            ).toEqual([]);
+            expect(
+              await rowMenuOverlaps(page),
+              "a row menu sits on the row's text (T1)",
             ).toEqual([]);
             expect(
               await emptyStateStarBreaches(page),

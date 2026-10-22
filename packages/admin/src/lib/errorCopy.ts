@@ -563,6 +563,15 @@ export function errorCopy(
       details,
     };
   }
+  if (status === 504 || status === 408) {
+    // A timeout names its cause; the status stays in `details`.
+    return {
+      title: "The server took too long",
+      description: "Polaris Key took too long to answer. Try again.",
+      action: "retry",
+      details,
+    };
+  }
   if (code === "catalog_unavailable") {
     return {
       title: "The catalog couldn't be read",

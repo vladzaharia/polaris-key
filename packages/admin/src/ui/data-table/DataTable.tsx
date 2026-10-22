@@ -468,6 +468,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   // sideways and hide its end-most columns, Actions included.
   const compactBar = toolbarMode === "compact";
   const iconOnlyBar = useMediaQuery("(max-width: 1599px)") && compactBar;
+  const narrowBar = useMediaQuery("(max-width: 1279px)") && compactBar;
   const isCardWidth = useMediaQuery("(max-width: 1023px)");
   const isMobileCards = isCardWidth && mobile === "cards";
 
@@ -986,7 +987,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         ...o,
         count: f.counted
           ? (f.counted.counts?.[o.value] ??
-            (counts && !f.counted.pending
+            (counts && !f.counted.pending && !error
               ? (counts.get(o.value) ?? 0)
               : undefined))
           : counts
@@ -996,7 +997,9 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       ...(f.counted
         ? { counted: { icons: f.counted.icons, pending: f.counted.pending } }
         : {}),
-      ...(f.secondary ? { secondary: true } : {}),
+      ...(f.secondary === true || (f.secondary === "narrow" && narrowBar)
+        ? { secondary: true }
+        : {}),
       // The controls (the menu's checkboxes, a chip's remove button) work on the live selection,
       // so changes made while a transition holds the old view build on each other instead of on
       // a stale copy; only the chips are drawn from the held view, since the chip row moves the
@@ -1571,11 +1574,11 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             data-selected={row.getIsSelected() || undefined}
             onClick={followRow}
             className={cn(
-              "@container relative rounded-lg border border-border bg-surface-raised p-3 max-sm:px-2 data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
+              "@container rounded-lg border border-border bg-surface-raised p-3 max-sm:px-2 data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
               rowHref && "cursor-pointer",
             )}
           >
-            <div className="flex items-start gap-2">
+            <div className="flex flex-wrap items-start gap-2">
               {selection ? (
                 <TriCheckbox
                   checked={row.getIsSelected()}
@@ -1583,7 +1586,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                   label={`Select ${label}`}
                 />
               ) : null}
-              <div className="min-w-0 flex-1 text-sm">
+              <div className="min-w-0 flex-1 text-sm @max-[18rem]:order-last @max-[18rem]:basis-full [&_.truncate]:whitespace-normal [&_.truncate]:[overflow-wrap:anywhere]">
                 {mobileCard
                   ? mobileCard(
                       row.original,
@@ -1594,9 +1597,9 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                     : label}
               </div>
               {rowActions ? (
-                // In a card too narrow to spare a column (a phone at 200 % text), the menu floats
-                // over the card's corner instead of taking width from the name.
-                <div className="shrink-0 @max-[18rem]:absolute @max-[18rem]:end-1 @max-[18rem]:top-1">
+                // The menu keeps its own place on the first line; in a card too narrow to spare a column (a
+                // phone at 200 % text) the name drops to the line below it, full width.
+                <div className="ms-auto shrink-0">
                   <RowMenu
                     label={label}
                     items={rowActions(row.original)}
