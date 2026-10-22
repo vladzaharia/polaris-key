@@ -248,7 +248,11 @@ describe("refusalPatterns (DL6)", () => {
     expect(
       refused("Sign out of Tidewater on another device, then try again."),
     ).toBe(true);
-    expect(refused("Your license is on 3 of 3 devices")).toBe(true);
+    expect(
+      refused(
+        "To use it on this computer, replace one. You can add it back later.",
+      ),
+    ).toBe(true);
     expect(
       refused(
         "This device was signed out. Sign in or activate again to continue.",
@@ -263,5 +267,7 @@ describe("refusalPatterns (DL6)", () => {
     expect(refused("That key is not valid.")).toBe(false);
     expect(refused("Try again")).toBe(false);
     expect(refused("Your license is active.")).toBe(false);
+    expect(refused("Replace and continue")).toBe(false);
+    expect(refused("Work laptop couldn't be replaced. Try again.")).toBe(false);
   });
 });

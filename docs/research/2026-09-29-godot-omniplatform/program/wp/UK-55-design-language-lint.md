@@ -86,6 +86,34 @@ and, where a source pattern or a runtime walk can see it, in every kit `kit-rule
   change for the rule to see it.
 - A source rule that would flag a generated file skips it, as today (the `GENERATED` banner).
 
+## As built (2026-10-22)
+
+The code is the fact where it differs from the text above.
+
+- Already on staging before this package: `accent-as-status`, `state-accent`, `section-index`,
+  `button-glow` (the brief's `no-button-glow`) and `key-nowrap` (`code-no-wrap`). This package
+  added `weights` (replacing `font-weight-700`; every use renamed), `px-font`,
+  `spacing-off-scale`, `polaris-mark`, `mark-size`, `refusal-styling`, `initial-focus`,
+  `link-validation` and `native-accent-tint` to the DOM lint (`src/browser/lint.js`).
+- Margins are checked as authored (a computed margin resolves `auto` to pixels); padding and gap
+  are checked computed against the `--pk-space-*` steps and every `--pk-space-*` / `--kit-*` token
+  the page defines.
+- Board hits are in `rules/dom-debt.json` (distinct hits per board and rule; `pnpm ui:lint --
+--record-dom-debt` shrinks it; a count above or below fails). Pages given to `--html` or
+  `--css` are strict. Kit source hits are in `rules/kit-debt.json`.
+- Kit rule ids are `<kit>-<rule>` with `rule` and `dl` fields; a `scope: "file"` rule
+  (`include` + `require`) covers DL9 initial focus. A `ui-lint: allow <id> <reason>` comment exempts
+  a line (or, for a file rule, the file).
+- `refusal-styling`: the DOM rule finds a refusal through `refusalPatterns()` (the string lint's
+  catalog: `deviceLimit.lede/consequence/browser/scan/noManage` and the core gate and activation
+  refusals); `lintPage()` callers pass `refusals`. The Godot (`tests/support/ui_lint.gd`) and Qt
+  (`tests/ui_lint_qt.py`) helpers walk a rendered tree; Compose already asserts it in
+  `RefusalTest.kt`. A SwiftUI tone test is not written (follow-up for UK-49).
+- The React opener (`kit/links.ts` `safeLink`) has its unit test (`kitOpener.test.ts`). The other
+  kits open links at several call sites rather than through one opener, so their hits are debt;
+  each owner adds the opener and its test when it clears the entry.
+- Not done here: the B6.4 / B6.6 hairline and eyebrow rules (UK-63 runs them on console and portal).
+
 ## Brand transition (2026-10-09)
 
 Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
@@ -146,15 +174,15 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 
 ## Acceptance criteria
 
-- [ ] Each of the eight rules fails on a seeded violation, in the DOM lint and in each kit pattern
+- [x] Each of the eight rules fails on a seeded violation, in the DOM lint and in each kit pattern
       it has.
-- [ ] `pnpm ui:lint` and `node packages/ui-qa/bin/kit-lint.mjs` pass on the branch with the
+- [x] `pnpm ui:lint` and `node packages/ui-qa/bin/kit-lint.mjs` pass on the branch with the
       recorded debt; a new hit fails, and a count above today's fails until re-recorded.
-- [ ] The ledger names the owning package for each kit's debt.
-- [ ] UI-KITS.md §7.3 lists the eight rules.
-- [ ] `state-accent` and `accent-as-status` each fail on a seeded violation (an ink checked box inside Licensing; a green Healthy pill that equals the Distribution accent) and pass on a Config row in a mixed list rendering config yellow.
-- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] The ledger names the owning package for each kit's debt.
+- [x] UI-KITS.md §7.3 lists the eight rules.
+- [x] `state-accent` and `accent-as-status` each fail on a seeded violation (an ink checked box inside Licensing; a green Healthy pill that equals the Distribution accent) and pass on a Config row in a mixed list rendering config yellow.
+- [x] The acceptance in "Design language v2 (2026-10-08)" above holds.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 

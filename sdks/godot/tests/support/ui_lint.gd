@@ -79,7 +79,7 @@ static func refusal_tone(root: Node, patterns: PackedStringArray, danger: Array 
 					c is RichTextLabel and c.get_theme_color("default_color").is_equal_approx(color)):
 				out.append("%s draws a refusal in the danger colour (DL6): %s" % [c.name, text.left(40)])
 				break
-		var parent := n.get_parent()
+		var parent: Node = n.get_parent()
 		if parent != null:
 			for sib in parent.get_children():
 				if sib is Control and (sib as Control).theme_type_variation == INVALID_FIELD:

@@ -521,12 +521,13 @@ export function lintBrandName(
 }
 
 /**
- * The refusal copy (DL6): the device-limit messages and the core gate and activation entries a
+ * The refusal copy (DL6): the device-limit explanations (not the heading, the action buttons or
+ * the "could not be replaced" failure, which is an error) and the core gate and activation entries a
  * person can resolve (device limit, revoked, expired, version too old or too new, channel not
  * entitled, license disabled, key-entry limit, claimed). Found by key, so no kit needs new markup.
  */
 export const REFUSAL_KEY =
-  /^(deviceLimit\.|core\.gate\.(expired|revoked|version-too-old|version-too-new|channel-not-entitled)\.|core\.activation\.(device-limit|license-disabled|license-expired|key-entry-limit|enroll-claimed)\.|core\.codes\.(device_limit|license_disabled|key_entry_limit)\.)/;
+  /^(deviceLimit\.(lede|consequence|browser|scan|noManage)$|core\.gate\.(expired|revoked|version-too-old|version-too-new|channel-not-entitled)\.|core\.activation\.(device-limit|license-disabled|license-expired|key-entry-limit|enroll-claimed)\.|core\.codes\.(device_limit|license_disabled|key_entry_limit)\.)/;
 
 /** Regex sources (for the in-page lint) matching the visible text of every refusal message. */
 export function refusalPatterns(catalog: CatalogMessage[]): string[] {

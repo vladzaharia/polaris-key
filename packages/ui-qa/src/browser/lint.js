@@ -594,6 +594,7 @@
         detail: `window.open(${call}) outside the kit's opener`,
       });
     for (const sc of document.querySelectorAll("script:not([src])")) {
+      if (sc.textContent.includes("__pkUiLint")) continue;
       const m = sc.textContent.match(
         /\b(window\.open\s*\(|(?:window\.|document\.)?location\s*(?:\.href\s*)?=[^=]|location\.(?:assign|replace)\s*\(|\.href\s*=[^=])/,
       );
@@ -741,7 +742,13 @@
     for (const { rule } of styleRules())
       for (let i = 0; i < rule.style.length; i++) {
         const n = rule.style[i];
-        if (/^--[\w-]*(danger|error|destructive)[\w-]*$/.test(n)) names.add(n);
+        // The roles a refusal could wrongly take: text, ground, edge. Not `-on` (the ink drawn on
+        // a solid danger fill), which is white or near-black and shared with ordinary text.
+        if (
+          /^--[\w-]*(danger|error|destructive)[\w-]*$/.test(n) &&
+          !/-on$/.test(n)
+        )
+          names.add(n);
       }
     for (const n of names) {
       probe.style.color = `var(${n})`;

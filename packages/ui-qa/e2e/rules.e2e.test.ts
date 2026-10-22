@@ -475,7 +475,7 @@ describe("the modernity lint (UI-KITS §7.3)", () => {
     const r = await lintPage(p, {
       fonts: ["Rubik"],
       chrome: [".status"],
-      allow: { "font-weight-700": [".host"] },
+      allow: { weights: [".host"] },
     });
     await p.close();
     expect(r.violations).toEqual([]);

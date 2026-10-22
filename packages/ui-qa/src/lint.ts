@@ -56,7 +56,7 @@ export const DL_RULES = [
 ] as const;
 
 export const DOM_DEBT_COMMENT =
-  "Design-language debt on the mockup boards (UK-55; UI-KITS.md DL3, DL5, DL6, DL9, DL11, DL12, DL14): distinct hits per board and rule when the lint landed. The boards are the design reference for the kits, so the owning packages clear it as they redraw them: the web, ios, apple, android, desktop, windows and linux boards by UK-63 (board sync) and each kit's modernisation package (react UK-47 and UK-05; swiftui UK-49, UK-07, UK-08; compose UK-09, UK-10); the godot board by UK-50 and UK-11; the qt board by UK-12; the terminal board by UK-45 and UK-48. The lint fails on a count above these and on a count below (stale). Shrink it with: pnpm ui:lint -- --record-dom-debt.";
+  "Design-language debt on the mockup boards (UK-55; UI-KITS.md DL3, DL5, DL6, DL9, DL11, DL12, DL14): distinct hits per board and rule when the lint landed. A board is the design reference for its kit, so the kit's modernisation packages clear its entries as they redraw it with tokens (rem type, --pk-space-* steps): web and the React kit UK-47 and UK-05; ios and apple, SwiftUI UK-49, UK-07 and UK-08; android, Compose UK-09 and UK-10; godot, UK-50 and UK-11; qt, UK-12; terminal, UK-45 and UK-48; desktop, windows and linux, the platform shell packages of their kits. The lint fails on a count above these and on a count below (stale). Shrink it with: pnpm ui:lint -- --record-dom-debt.";
 
 interface DomDebtFile {
   $comment: string;
