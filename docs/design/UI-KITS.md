@@ -1329,8 +1329,9 @@ Mockups: [web](ui-kits/shots/web-update-dark.png), [iOS banner](ui-kits/shots/io
   - the download progress inline: bar, "Downloading · 38 of 61 MB", and "About 20 seconds left" in
     tabular figures.
 - **Actions:** one dismissal plus the verb the outlet allows, with no X.
-  - **Later** pairs with **Restart when ready**, which queues the restart, so the primary is never
-    disabled during a download. The ready state's verb is "Restart now".
+  - An available update offers **Update now** and **Later**, one primary per state.
+  - While the download runs, **Later** pairs with **Restart when ready**, which queues the restart,
+    so the primary is never disabled during a download. The ready state's verb is "Restart now".
   - The other outlets' verbs: **Update on the App Store**, **Get it on Steam**, **Reload**.
   - macOS uses the platform verbs **Remind Me Later** and **Install and Relaunch**, with **Skip This
     Version** at the leading edge.
