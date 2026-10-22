@@ -169,14 +169,14 @@ export async function handleMyMethodStrong(c: AdminCtx): Promise<Response> {
     return err(
       403,
       ErrorCode.Forbidden,
-      "Only a passkey added from the console can open it.",
+      "Only a passkey saved for this site can open it.",
       { reason: "not_eligible" },
     );
   if (result.status === "already_strong")
     return err(
       409,
       ErrorCode.Forbidden,
-      "That passkey already opens the console.",
+      "That passkey can already sign in here.",
       {
         reason: "already_strong",
       },

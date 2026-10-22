@@ -974,7 +974,7 @@ export function breakGlassUsedNotice(input: {
 }
 
 /**
- * ST-30c.3 (SM-3): a passkey now opens the console. Sent to the account that did it and to every
+ * ST-30c.3 (SM-3): a passkey now opens the console; sent to the account that did it and to every
  * Superadmin. Names who and when; carries no link and no credential detail.
  */
 export function consoleMethodStrongNotice(input: {
