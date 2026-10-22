@@ -174,50 +174,39 @@ internal fun offlineActivationScreen(inputs: KitInputs): KitScreen {
     val offline = inputs.obj("offline") ?: JsonObject(emptyMap())
     val submitted = offline.boolean("submitted") == true
     val file = offline.boolean("file") == true
-    if (submitted && file) {
-        return when (offline.boolean("verified")) {
-            true -> screen(KitComponent.offlineActivation, "done", listOf(context.line("offlineActivation.done")))
-            false -> screen(
-                KitComponent.offlineActivation,
-                "rejected-signature",
-                listOf(
-                    context.line("core.codes.bundle-jws-rejected.title"),
-                    context.line("core.codes.bundle-jws-rejected.message", context.productArgs),
-                ),
-            )
-            null -> screen(KitComponent.offlineActivation, "loaded", listOf(context.line("offlineActivation.submit")))
-        }
-    }
-    if (submitted) {
+    if (submitted && file && offline.boolean("verified") == true) {
         return screen(
             KitComponent.offlineActivation,
-            "loaded",
-            listOf(context.line("offlineActivation.empty"), context.line("offlineActivation.submit")),
+            "done",
+            listOf(context.line("offlineActivation.title"), context.line("offlineActivation.done"), context.line("common.done")),
         )
     }
-    if (file) return screen(KitComponent.offlineActivation, "loaded", listOf(context.line("offlineActivation.submit")))
-    if (offline.boolean("copied") == true) {
-        return screen(
-            KitComponent.offlineActivation,
-            "loaded",
-            listOf(context.line("offlineActivation.codeCopied"), context.line("offlineActivation.submit")),
-        )
-    }
-    return screen(
-        KitComponent.offlineActivation,
-        "default",
-        listOf(
-            context.line("offlineActivation.title"),
-            context.line("offlineActivation.request"),
-            context.line("offlineActivation.product", context.productArgs),
-            context.line("offlineActivation.copyCode"),
-            context.line("offlineActivation.loadHint"),
-            context.line("offlineActivation.loadFile"),
-            context.line("offlineActivation.paste"),
-            context.line("offlineActivation.dropHint"),
-            context.line("offlineActivation.submit"),
-        ),
+    // The two-step form stays in every state but done; the request QR has its own label.
+    val base = listOf(
+        context.line("offlineActivation.title"),
+        context.line("offlineActivation.request"),
+        context.line("offlineActivation.copyCode"),
+        context.line("a11y.qrRequest"),
+        context.line("offlineActivation.loadHint"),
+        context.line("offlineActivation.loadFile"),
+        context.line("offlineActivation.paste"),
+        context.line("offlineActivation.dropHint"),
+        context.line("offlineActivation.submit"),
     )
+    if (submitted && file && offline.boolean("verified") == false) {
+        return screen(
+            KitComponent.offlineActivation,
+            "rejected-signature",
+            base + context.line("core.codes.bundle-jws-rejected.message", context.productArgs),
+        )
+    }
+    if (submitted && file) return screen(KitComponent.offlineActivation, "loaded", base)
+    if (submitted) return screen(KitComponent.offlineActivation, "loaded", base + context.line("offlineActivation.empty"))
+    if (file) return screen(KitComponent.offlineActivation, "loaded", base)
+    if (offline.boolean("copied") == true) {
+        return screen(KitComponent.offlineActivation, "loaded", base + context.line("offlineActivation.codeCopied"))
+    }
+    return screen(KitComponent.offlineActivation, "default", base)
 }
 
 /**

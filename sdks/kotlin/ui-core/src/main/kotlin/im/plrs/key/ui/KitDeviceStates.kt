@@ -66,7 +66,7 @@ internal fun deviceLimitScreen(inputs: KitInputs): KitScreen {
     if (KitLinks.valid(activation.string("manageUrl")) != null) {
         if (inputs.isTv) {
             lines += context.line("deviceLimit.scan")
-            lines += context.line("a11y.qr")
+            lines += context.line("a11y.qrManage")
         } else {
             lines += context.line("deviceLimit.openBrowser")
             lines += context.line("a11y.externalLink")

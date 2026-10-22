@@ -217,12 +217,12 @@ public struct StatusScreenView: View {
                         glyph: line.key == "status.renew" ? "arrow.up.right" : nil
                     ) { onFix(line.key) }
                 }
-                // Try again whenever a refresh can clear the state: no fix the host can run, or
-                // an expiry renewed elsewhere ("connect to the internet or renew").
-                if fixes.isEmpty || screen.state == .expired {
+                // Try again when there is no fix the host can run (version too new lists it): an
+                // expired license offers Renew and Use another license, never Try again.
+                if fixes.isEmpty && screen.state != .expired {
                     KitButton(
                         line: CopyLine("common.tryAgain"),
-                        kind: fixes.isEmpty ? .primary : .secondary,
+                        kind: .primary,
                         action: onTryAgain)
                 }
             }

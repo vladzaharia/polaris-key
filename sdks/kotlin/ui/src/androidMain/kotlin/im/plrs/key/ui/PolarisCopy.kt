@@ -77,6 +77,8 @@ public data class PolarisCopy(
     val versionMax: String = "up to %1\$s",
     val versionRange: String = "%1\$s to %2\$s",
     val reconnect: String = "Reconnect",
+    /** The expired screen's lead action (`status.renew`). */
+    val renew: String = "Renew",
 
     // ── Activation ───────────────────────────────────────────────────────────────────────────
     val activationTitle: String = "Welcome to %1\$s",

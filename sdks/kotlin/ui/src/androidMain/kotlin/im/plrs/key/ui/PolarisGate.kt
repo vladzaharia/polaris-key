@@ -129,6 +129,7 @@ public fun PolarisGateScreen(
     onActivate: () -> Unit = {},
     onSignIn: (() -> Unit)? = null,
     onRetry: () -> Unit = {},
+    onRenew: (() -> Unit)? = null,
     manageAsQr: Boolean = false,
     signIn: PolarisSignInState? = null,
     content: @Composable () -> Unit = {},
@@ -190,15 +191,23 @@ public fun PolarisGateScreen(
                 val stop = status ?: LicenseStatus.expired
                 val message = copy.gateMessage(stop, license?.allowedRange) ?: return@Crossfade
                 PolarisMessageScreen(message) {
-                    PolarisPrimaryButton(
-                        text = if (stop == LicenseStatus.expired) copy.reconnect else copy.retry,
-                        onClick = onRetry,
-                        busy = gate.refreshing,
-                        initialFocus = true,
-                    )
                     if (stop == LicenseStatus.expired) {
-                        // No renew link exists on the device side; another license is the way on.
-                        PolarisSecondaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true })
+                        // Expired leads with Renew only when the host has a renewal to open (onRenew),
+                        // as the Swift kit does; Use another license is always offered. Never Try
+                        // again or Reconnect (the matrix pins both).
+                        if (onRenew != null) {
+                            PolarisPrimaryButton(text = copy.renew, onClick = onRenew, initialFocus = true)
+                            PolarisSecondaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true })
+                        } else {
+                            PolarisPrimaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true }, initialFocus = true)
+                        }
+                    } else {
+                        PolarisPrimaryButton(
+                            text = copy.retry,
+                            onClick = onRetry,
+                            busy = gate.refreshing,
+                            initialFocus = true,
+                        )
                     }
                 }
             }

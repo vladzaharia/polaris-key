@@ -686,9 +686,6 @@
         #endif
 
         func testOfflineCopyAndQRCarryTheShownCode() {
-            XCTAssertEqual(
-                String(format: PolarisKitCopy().offlineProductLabel, "Tidewater Studio"),
-                "Product: Tidewater Studio")
             // The card shows the id, Copy copies it and the QR encodes it: one value.
             XCTAssertEqual(
                 PolarisOfflineSurface.requestCode(deviceId: Self.realDeviceId), Self.realDeviceId)

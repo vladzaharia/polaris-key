@@ -244,37 +244,34 @@ extension KitStates {
         let o = i.offline ?? KitOffline()
         let submitted = o.submitted ?? false
         let file = o.file ?? false
-        if submitted && file {
-            if o.verified == true { return KitScreen(.done, [c.line("offlineActivation.done")]) }
-            if o.verified == false {
-                return KitScreen(
-                    .rejectedSignature,
-                    [
-                        c.line("core.codes.bundle-jws-rejected.title"),
-                        c.line("core.codes.bundle-jws-rejected.message", c.productArg),
-                    ])
-            }
-            return KitScreen(.loaded, [c.line("offlineActivation.submit")])
-        }
-        if submitted {
+        if submitted && file && o.verified == true {
             return KitScreen(
-                .loaded, [c.line("offlineActivation.empty"), c.line("offlineActivation.submit")])
+                .done,
+                [
+                    c.line("offlineActivation.title"), c.line("offlineActivation.done"),
+                    c.line("common.done"),
+                ])
         }
-        if file { return KitScreen(.loaded, [c.line("offlineActivation.submit")]) }
+        // The two-step form stays in every state but done; the request QR has its own label.
+        let base = [
+            c.line("offlineActivation.title"), c.line("offlineActivation.request"),
+            c.line("offlineActivation.copyCode"), c.line("a11y.qrRequest"),
+            c.line("offlineActivation.loadHint"), c.line("offlineActivation.loadFile"),
+            c.line("offlineActivation.paste"), c.line("offlineActivation.dropHint"),
+            c.line("offlineActivation.submit"),
+        ]
+        if submitted && file && o.verified == false {
+            return KitScreen(
+                .rejectedSignature,
+                base + [c.line("core.codes.bundle-jws-rejected.message", c.productArg)])
+        }
+        if submitted && file { return KitScreen(.loaded, base) }
+        if submitted { return KitScreen(.loaded, base + [c.line("offlineActivation.empty")]) }
+        if file { return KitScreen(.loaded, base) }
         if o.copied == true {
-            return KitScreen(
-                .loaded,
-                [c.line("offlineActivation.codeCopied"), c.line("offlineActivation.submit")])
+            return KitScreen(.loaded, base + [c.line("offlineActivation.codeCopied")])
         }
-        return KitScreen(
-            .default,
-            [
-                c.line("offlineActivation.title"), c.line("offlineActivation.request"),
-                c.line("offlineActivation.product", c.productArg),
-                c.line("offlineActivation.copyCode"), c.line("offlineActivation.loadHint"),
-                c.line("offlineActivation.loadFile"), c.line("offlineActivation.paste"),
-                c.line("offlineActivation.dropHint"), c.line("offlineActivation.submit"),
-            ])
+        return KitScreen(.default, base)
     }
 }
 

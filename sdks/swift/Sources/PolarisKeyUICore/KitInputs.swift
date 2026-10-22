@@ -816,14 +816,19 @@ public struct KitOffers: Sendable, Codable, Equatable, Hashable {
     /// without them the kit draws no "{tier} includes" line).
     public var tier: String?
     public var features: [String]?
+    /// The https page that sells the offer outside the app; the not-available hand-off shows
+    /// only when the opener accepts it (DL14).
+    public var url: String?
 
     public init(
-        available: Bool, purchased: Bool? = nil, tier: String? = nil, features: [String]? = nil
+        available: Bool, purchased: Bool? = nil, tier: String? = nil, features: [String]? = nil,
+        url: String? = nil
     ) {
         self.available = available
         self.purchased = purchased
         self.tier = tier
         self.features = features
+        self.url = url
     }
 }
 

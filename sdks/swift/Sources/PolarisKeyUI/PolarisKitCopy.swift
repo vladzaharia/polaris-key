@@ -110,12 +110,14 @@ public struct PolarisKitCopy: Sendable, Equatable {
     // Offline activation.
     /// `offlineActivation.title`.
     public var offlineTitle = "Offline activation"
-    /// `offlineActivation.request` + `offlineActivation.loadHint`.
+    /// `offlineActivation.request`: step 1, which the kit numbers.
     public var offlineRequest = "Send this request code to whoever gave you your license."
-    public var offlineLoadHint = "Then load the activation file you get back, or paste its text."
-    /// `offlineActivation.product`; `%@` is the product name.
-    public var offlineProductLabel = "Product: %@"
-    public var requestCodeLabel = "Request code"
+    /// `offlineActivation.loadHint`: step 2, which the kit numbers.
+    public var offlineLoadHint = "Load the activation file you get back, or paste its text."
+    /// `a11y.qrRequest`: the request QR's label.
+    public var requestQRLabel = "QR code with the request code"
+    /// `common.done`.
+    public var doneButton = "Done"
     public var copyButton = "Copy"
     public var copiedLabel = "Copied"
     /// `offlineActivation.loadFile`.
