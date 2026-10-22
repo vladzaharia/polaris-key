@@ -434,7 +434,7 @@ internal fun productName(copy: PolarisCopy): String? = copy.productName.takeIf {
  * product's name at weight 500, then a section gap. Nothing when there is neither.
  */
 @Composable
-internal fun PolarisProductHeader(presentedName: String? = null) {
+internal fun PolarisProductHeader(presentedName: String? = null, gap: Dp = polarisWindow.section) {
     val theme = PolarisTheme.current
     val name = presentedName?.takeIf { it.isNotBlank() } ?: productName(theme.copy)
     if (name == null && theme.logo == null) return
@@ -448,7 +448,7 @@ internal fun PolarisProductHeader(presentedName: String? = null) {
             )
         }
     }
-    Spacer(Modifier.height(polarisWindow.section))
+    Spacer(Modifier.height(gap))
 }
 
 /**
@@ -725,6 +725,9 @@ internal fun PolarisMessageLayout(
         val align = if (block) TextAlign.Start else TextAlign.Center
         val horizontal = if (block) Alignment.Start else Alignment.CenterHorizontally
         val inner: @Composable ColumnScope.() -> Unit = {
+            // The persistent product header (UI-KITS.md section 1.2): every stop names its product.
+            // A short window gives the gap up first, so the controls stay on screen.
+            PolarisProductHeader(gap = if (window.compactHeight) 4.dp else window.section)
             emblem()
             Spacer(Modifier.height(window.section))
             Text(

@@ -152,7 +152,7 @@ public fun PolarisBootScreen(
     val copy = PolarisTheme.copy
     Crossfade(targetState = bootScreen(ui), modifier = modifier, label = "PolarisBoot") { screen ->
         when (screen) {
-            BootScreen.Progress -> PolarisProgressScreen(copy.bootStageLabel(ui.stage))
+            BootScreen.Progress -> PolarisBootSkeleton(copy.bootStageLabel(ui.stage))
             BootScreen.Gate -> {
                 val waiting = ui.waiting ?: LicenseStatus.needsActivation
                 // The boot's waiting status wins over a stale gate read.
