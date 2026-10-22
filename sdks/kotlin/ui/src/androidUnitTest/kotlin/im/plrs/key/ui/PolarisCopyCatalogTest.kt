@@ -38,6 +38,9 @@ class PolarisCopyCatalogTest {
         check("updateAllChanges", "update.allChanges", "version")
         check("updateSkip", "update.skipVersion")
         check("updateTimeLeft", "update.timeLeft", "time")
+        check("updateCurrentNoSize", "common.updateCurrentNoSize", "version")
+        check("updateTimeMinutes", "common.updateTimeMinutes", "minutes")
+        check("updateTimeLessThanMinute", "common.updateTimeLessThanMinute")
         check("updateAppStore", "update.appStore")
         check("updateGooglePlay", "update.googlePlay")
         check("updateSteam", "update.steam")
@@ -60,7 +63,7 @@ class PolarisCopyCatalogTest {
         check("bootDeclinedTitle", "boot.declined.title")
         check("bootDeclinedBody", "boot.declined.body", "product")
         check("bootRolledBack", "boot.rolledBack")
-        check("bootErrorBody", "boot.error.body")
+        check("bootErrorBody", "boot.error.body", "product")
         check("consentTitle", "boot.consent.title")
         check("consentBody", "boot.consent.body", "product", "size")
         check("consentBodyMetered", "boot.consent.bodyMetered", "product", "size")
@@ -71,7 +74,7 @@ class PolarisCopyCatalogTest {
     fun gateAndActivationLinesAreTheCatalogs() {
         check("gateLoading", "gate.checking")
         check("versionTooOldTitle", "core.gate.version-too-old.title")
-        check("versionTooOldBody", "core.gate.version-too-old.message")
+        check("versionTooOldBody", "core.gate.version-too-old.message", "product")
         check("versionTooNewTitle", "core.gate.version-too-new.title")
         check("versionTooNewBody", "core.gate.version-too-new.message")
         check("channelNotEntitledTitle", "core.gate.channel-not-entitled.title")
@@ -155,7 +158,7 @@ class PolarisCopyCatalogTest {
         check("updateRestartWhenReady", "update.restartWhenReady")
         check("updateDownloading", "update.downloading", "size", "total")
         check("updateReadyTitle", "update.readyTitle", "product", "version")
-        check("updateReadyBody", "update.readyBody", "product")
+        check("updateReadyBody", "update.readyBody")
         check("updateCritical", "update.critical")
     }
 

@@ -162,7 +162,7 @@ internal fun PolarisCopy.updatePromptText(ui: PolarisUpdateUi): Pair<String, Str
     return when {
         // With no product name there is no "{product}" to fill: the banner's wording stands in.
         ui.kind == PolarisUpdateUi.Kind.Restart && productName(this) != null && version != null ->
-            format(updateReadyTitle, productName, version) to format(updateReadyBody, productName)
+            format(updateReadyTitle, productName, version) to updateReadyBody
         ui.kind == PolarisUpdateUi.Kind.Restart -> updateRestart to version?.let { format(updateRestartBody, it) }
         ui.mandatory && productName(this) != null ->
             format(updateMandatoryTitle, productName) to format(updateMandatoryBody, productName)
@@ -246,7 +246,7 @@ private fun PolarisUpdatePromptCard(
                         )
                         ui.secondsLeft?.let {
                             Text(
-                                copy.format(copy.updateTimeLeft, copy.timeLeft(it.toLong())),
+                                copy.timeLeftLine(it.toLong()),
                                 style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

@@ -39,7 +39,7 @@ public data class PolarisCopy(
     val bootOfflineBody: String = "Connect to the internet and try again.",
     val bootOfflinePlayableBody: String = "Some content couldn't be downloaded. You can keep going with what's installed, or connect and try again.",
     val bootErrorTitle: String = "Something went wrong",
-    val bootErrorBody: String = "If this keeps happening, restart the app.",
+    val bootErrorBody: String = "If this keeps happening, restart %1\$s.",
     val bootBlockedUpdateTitle: String = "Update required",
     val bootBlockedUpdateBody: String = "This version can no longer be used. Update to continue.",
     val bootBlockedUnavailableTitle: String = "Not available on your license",
@@ -68,7 +68,7 @@ public data class PolarisCopy(
     /** The expired screen's second action: back to the activation form (a gate-local switch). */
     val useAnotherLicense: String = "Use another license",
     val versionTooOldTitle: String = "Update required",
-    val versionTooOldBody: String = "This version is no longer supported. Update the app to continue.",
+    val versionTooOldBody: String = "This version is no longer supported. Update %1\$s to continue.",
     val versionTooNewTitle: String = "Not available on this license",
     val versionTooNewBody: String = "This build is newer than your license allows.",
     val channelNotEntitledTitle: String = "Channel not included",
@@ -210,7 +210,7 @@ public data class PolarisCopy(
     /** The update prompt once the update is ready: %1$s the product, %2$s the version. */
     val updateReadyTitle: String = "%1\$s %2\$s is ready",
     /** %1$s is the product. */
-    val updateReadyBody: String = "Restart %1\$s to finish updating.",
+    val updateReadyBody: String = "Restart to finish updating.",
     val updateRestartNow: String = "Restart now",
     /** While the download runs, the primary queues the restart: it is never disabled (update.restartWhenReady). */
     val updateRestartWhenReady: String = "Restart when ready",
@@ -219,7 +219,7 @@ public data class PolarisCopy(
     val updateFailed: String = "The update couldn't be installed. Try again later.",
     /** update.current: %1$s the running version, %2$s the size. */
     val updateCurrent: String = "You have %1\$s · %2\$s download",
-    /** The same line when the decision carries no size (no catalog line yet). */
+    /** common.updateCurrentNoSize: the same line when the decision carries no size. */
     val updateCurrentNoSize: String = "You have %1\$s",
     /** update.whatsNew */
     val updateWhatsNew: String = "What's new",
@@ -229,6 +229,10 @@ public data class PolarisCopy(
     val updateSkip: String = "Skip this version",
     /** update.timeLeft: %1$s a duration. */
     val updateTimeLeft: String = "About %1\$s left",
+    /** common.updateTimeMinutes: %1$s the whole minutes left, rounded up. */
+    val updateTimeMinutes: String = "About %1\$s min",
+    /** common.updateTimeLessThanMinute */
+    val updateTimeLessThanMinute: String = "Less than a minute",
     /** update.appStore */
     val updateAppStore: String = "Update on the App Store",
     /** update.googlePlay */
