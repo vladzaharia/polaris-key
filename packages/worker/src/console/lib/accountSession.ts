@@ -35,3 +35,20 @@ export function requireAccountSession(
     });
   return { accountId: session.aid, sid: session.sid };
 }
+
+/**
+ * ST-30c.2 (N3): a break-glass session may not mint a credential that outlives the emergency
+ * hour (admin API, personal, registry, service and CI tokens). Revocation stays allowed. Returns
+ * the 403 `forbidden` / `break_glass_session` refusal, or null for every other session.
+ */
+export function refuseBreakGlass(
+  session: Pick<AdminSession, "breakGlass">,
+): Response | null {
+  if (session.breakGlass !== true) return null;
+  return err(
+    403,
+    ErrorCode.Forbidden,
+    "Break-glass sessions can't create tokens. Sign in normally to do this.",
+    { reason: "break_glass_session" },
+  );
+}

@@ -122,6 +122,37 @@ interface FlowRecord {
 export const ADMIN_FLOW_COOKIE = "__Host-pkey_admin_flow";
 
 /**
+ * ST-30c.2 (D-S5): the last account signed in to the console, so the card can greet the operator
+ * with "email · Change". It is a convenience and never authorises: the value is only ever
+ * validated (`loginHint`), escaped and offered to the IdP as `login_hint`. Set on an account
+ * sign-in (never break-glass), kept after sign-out, cleared by Change.
+ */
+export const CONSOLE_HINT_COOKIE = "__Host-pkey_console_hint";
+const CONSOLE_HINT_TTL_SECONDS = 30 * 86400;
+
+function consoleHintCookie(email: string | null): string {
+  return [
+    `${CONSOLE_HINT_COOKIE}=${email ? encodeURIComponent(email) : ""}`,
+    "Path=/",
+    "HttpOnly",
+    "Secure",
+    "SameSite=Strict",
+    `Max-Age=${email ? CONSOLE_HINT_TTL_SECONDS : 0}`,
+  ].join("; ");
+}
+
+/** The remembered address, or null when absent, malformed or tampered with. */
+function readConsoleHint(req: Request): string | null {
+  const raw = readCookie(req.headers.get("cookie"), CONSOLE_HINT_COOKIE);
+  if (!raw) return null;
+  try {
+    return loginHint(decodeURIComponent(raw));
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Where a sign-in may land after the callback. Default (and the fallback for anything
  * suspicious) is the console itself; the only other destination is the gated docs site,
  * which is what introduced `returnTo` in the first place (docs plan N7 — an unauthenticated
@@ -396,6 +427,9 @@ async function signinCard(
     // an unparsable issuer is shown as configured
   }
   const origins = await idpFormOrigins(rp);
+  // D-S5: "Change" clears the remembered address and shows the empty field.
+  const change = url.searchParams.get("change") === "1";
+  const remembered = change ? null : readConsoleHint(req);
   const known =
     state === "stepUp"
       ? ((
@@ -415,12 +449,15 @@ async function signinCard(
     { brand: "console" },
   );
   allowFormAction(headers, origins);
+  if (change) headers.append("set-cookie", consoleHintCookie(null));
   return new Response(
     renderConsoleSignin({
       state,
       returnTo: ctx.returnTo ?? null,
       issuerHost: host,
       hint: ctx.hint ?? null,
+      // A typed address in the URL wins over the remembered one (it is the retry's field).
+      chip: ctx.hint ? null : remembered,
       knownEmail: known,
     }),
     { status: 200, headers },
@@ -816,12 +853,16 @@ export async function handleAdminCallback(
   // costs nothing and keeps "the callback only ever redirects to an allowlisted path" a local
   // property of this function rather than a cross-file invariant.
   const location = sanitizeReturnTo(flow.returnTo ?? null) ?? "/manage/";
+  const hintEmail = loginHint(signedIn.email || identity.email || null);
   return new Response(null, {
     status: 302,
     headers: new Headers([
       ["location", location],
       ["set-cookie", buildSessionCookie(token)],
       ["set-cookie", clearAccountRealmCookie(ADMIN_FLOW_COOKIE)],
+      ...(hintEmail
+        ? [["set-cookie", consoleHintCookie(hintEmail)] as [string, string]]
+        : []),
       ["cache-control", "no-store"],
     ]),
   });

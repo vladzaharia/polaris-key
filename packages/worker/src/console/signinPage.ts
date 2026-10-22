@@ -17,7 +17,12 @@ export const CONSOLE_CARD_LINKS = [
   { label: "Privacy", href: "/docs/reference/what-apps-collect/" },
 ] as const;
 
-export type SigninState = "signin" | "signedOut" | "ended" | "stepUp";
+export type SigninState =
+  | "signin"
+  | "signedOut"
+  | "ended"
+  | "stepUp"
+  | "breakGlass";
 
 const COPY: Record<SigninState, { h1: string; lede: string; cta: string }> = {
   signin: { h1: "Sign in to the console", lede: "", cta: "Continue" },
@@ -32,9 +37,16 @@ const COPY: Record<SigninState, { h1: string; lede: string; cta: string }> = {
     lede: "This change needs a fresh sign-in.",
     cta: "Sign in again",
   },
+  // ST-30c.2: the break-glass start card (ST-28 §2.6). It starts the PKCE flow with `breakGlass=1`.
+  breakGlass: {
+    h1: "Emergency sign-in",
+    lede: "For when the usual sign-in is broken. Every use is recorded and every Superadmin is emailed.",
+    cta: "Continue",
+  },
 };
 
 export function signinState(url: URL): SigninState {
+  if (url.searchParams.get("breakGlass") === "1") return "breakGlass";
   if (url.searchParams.get("stepUp") === "1") return "stepUp";
   if (url.searchParams.get("ended") === "1") return "ended";
   if (url.searchParams.get("signedOut") === "1") return "signedOut";
@@ -56,29 +68,76 @@ export function renderConsoleSignin(opts: {
   hint?: string | null;
   /** A step-up knows who is signing in again: no field, the address is the IdP's hint. */
   knownEmail?: string | null;
+  /**
+   * ST-30c.2 (D-S5): the last operator's address from the hint cookie, validated by the caller.
+   * It shows as "email · Change" in place of the empty field, carried as the hidden `login_hint`.
+   */
+  chip?: string | null;
 }): string {
   const c = COPY[opts.state];
+  const bg = opts.state === "breakGlass";
+  const ctxQuery = (extra: Record<string, string>) => {
+    const q = new URLSearchParams(extra);
+    if (opts.returnTo) q.set("returnTo", opts.returnTo);
+    return `/manage/login?${q.toString()}`;
+  };
+  const stateFlag: Record<string, string> =
+    opts.state === "signedOut"
+      ? { signedOut: "1" }
+      : opts.state === "ended"
+        ? { ended: "1" }
+        : {};
+  const chip = !bg && opts.state !== "stepUp" && opts.chip ? opts.chip : null;
+  const identifier = bg
+    ? ""
+    : opts.knownEmail
+      ? `${hidden("login_hint", opts.knownEmail)}<p class="fine">Signing in as ${escapeHtml(opts.knownEmail)}</p>`
+      : chip
+        ? `${hidden("login_hint", chip)}<div class="field"><span class="field-label" id="email-label">Email</span>` +
+          `<div class="chip" role="group" aria-labelledby="email-label"><span class="ac-mono" aria-hidden="true">${escapeHtml(initialsOf(chip))}</span>` +
+          `<span class="chip-email">${escapeHtml(chip)}</span>` +
+          `<a class="chip-change" href="${escapeHtml(ctxQuery({ change: "1", ...stateFlag }))}">Change</a></div></div>`
+        : `<div class="field"><label for="email">Email</label>` +
+          `<input id="email" type="email" name="login_hint" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254"${opts.hint ? ` value="${escapeHtml(opts.hint)}"` : ""}></div>`;
   const body = [
     c.lede ? `<p>${escapeHtml(c.lede)}</p>` : "",
     `<form method="post" action="/manage/login" novalidate>`,
     hidden("returnTo", opts.returnTo),
     opts.state === "stepUp" ? hidden("stepUp", "1") : "",
-    opts.knownEmail
-      ? `${hidden("login_hint", opts.knownEmail)}<p class="fine">Signing in as ${escapeHtml(opts.knownEmail)}</p>`
-      : `<div class="field"><label for="email">Email</label>` +
-        `<input id="email" type="email" name="login_hint" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254"${opts.hint ? ` value="${escapeHtml(opts.hint)}"` : ""}></div>`,
+    bg ? hidden("breakGlass", "1") : "",
+    identifier,
     `<button class="button" type="submit">${escapeHtml(c.cta)}${icon("arrow-right")}</button>`,
     `</form>`,
+    bg
+      ? `<p class="fine"><a href="${escapeHtml(ctxQuery({}))}">Back to sign in</a></p>`
+      : "",
     `<p class="fine">Next: sign in at ${escapeHtml(opts.issuerHost)}</p>`,
   ].join("");
+  // The emergency link is quiet: one more item under the card, on the states that start a sign-in.
+  const links =
+    bg || opts.state === "stepUp"
+      ? CONSOLE_CARD_LINKS
+      : [
+          ...CONSOLE_CARD_LINKS,
+          {
+            label: "Emergency sign-in",
+            href: ctxQuery({ breakGlass: "1" }),
+          },
+        ];
   return renderAuthCard({
     brand: "console",
     title: c.h1,
     heading: c.h1,
     body,
     focusHeading: true,
-    links: CONSOLE_CARD_LINKS,
+    links,
   });
+}
+
+/** Two letters for the chip's avatar: the address's first letter and its domain's. */
+function initialsOf(email: string): string {
+  const [local = "", domain = ""] = email.split("@");
+  return ((local[0] ?? "") + (domain[0] ?? "")).toUpperCase();
 }
 
 /** A way forward on a notice: a link, or a POST that carries the context as hidden fields. */

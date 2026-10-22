@@ -373,6 +373,12 @@ const CONSOLE_PAGE_CSS_TAIL = [
   `.ac-body input[type=email]{display:block;width:100%;min-height:3rem;padding:0 .75rem;border:1px solid var(--edge);border-radius:.5rem;background:var(--sunken);color:var(--strong);font:inherit}`,
   `.ac-body input[type=email]::placeholder{color:var(--muted);opacity:1}`,
   `.ac-body .fine{color:var(--muted);font-size:.875rem;line-height:1.25rem;overflow-wrap:anywhere}`,
+  // ST-30c.2 (D-S5): the known operator, "email · Change", in the identifier field's place.
+  `.ac-body .field-label{color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:600}`,
+  `.chip{display:flex;gap:.75rem;align-items:center;min-width:0;min-height:3rem;padding:0 .5rem 0 .75rem;border:1px solid var(--edge);border-radius:.5rem;background:var(--sunken);color:var(--strong)}`,
+  `.chip .ac-mono{width:1.75rem;height:1.75rem;border-radius:50%;font-size:.75rem}`,
+  `.chip-email{flex:1;min-width:0;overflow-wrap:anywhere}`,
+  `.chip-change{display:inline-flex;align-items:center;flex:none;min-height:2.75rem;padding:0 .5rem;font-size:.875rem;font-weight:600;color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
   `.ac-brand .ac-surface{margin-left:.75rem;padding-left:.75rem;border-left:1px solid var(--edge);color:var(--muted);font-size:1rem;line-height:1.5rem}`,
   `@media (forced-colors: active){.ac-brand .ac-surface{color:CanvasText;border-color:CanvasText}}`,
   // On a tall window the card sits near the optical centre (about 40% from the top), not under

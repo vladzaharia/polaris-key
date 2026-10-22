@@ -402,7 +402,12 @@ export async function issueBreakGlassSession(
     sub: identity.sub,
     name: identity.name ?? identity.email ?? identity.sub,
     email: identity.email ?? "",
-    groups: identity.groups,
+    // N2 (ST-30c.2): only the group `holdsRoot` reads, never the IdP's whole list, so the cookie
+    // stays small in an emergency and carries no more than it must. `holdsRoot` is re-checked
+    // against the env on every request.
+    groups: env.PLATFORM_ADMIN_GROUP
+      ? identity.groups.filter((g) => g === env.PLATFORM_ADMIN_GROUP)
+      : [],
     csrf: randomToken(16),
     exp: now + BREAK_GLASS_TTL_SECONDS,
     authAt,

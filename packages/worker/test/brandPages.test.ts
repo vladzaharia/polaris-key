@@ -463,7 +463,7 @@ describe("the console sign-in card (GET /manage/login)", () => {
     expect(html).toContain('name="returnTo" value="/manage/#/p/alpha"');
     // Help and Privacy sit under the card: public Polaris Key pages, never customer Help (operators are not customers).
     expect(html).toContain(
-      '<nav class="ac-links" aria-label="Help and privacy"><a href="/docs/">Help</a><a href="/docs/reference/what-apps-collect/">Privacy</a></nav>',
+      '<nav class="ac-links" aria-label="Help and privacy"><a href="/docs/">Help</a><a href="/docs/reference/what-apps-collect/">Privacy</a><a href="/manage/login?breakGlass=1&amp;returnTo=%2Fmanage%2F%23%2Fp%2Falpha">Emergency sign-in</a></nav>',
     );
     expect(html).toContain("Next: sign in at id.example");
   });
