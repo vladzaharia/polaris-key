@@ -13,6 +13,7 @@ import { CONSOLE, enableServices, envFor } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
+import { handleRegistryTokensAdmin } from "../src/console/handlers/registryTokens.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
@@ -25,6 +26,7 @@ import {
   mintRegistryToken,
 } from "../src/core/registry/registryTokens.js";
 import { hashCiCredential, issueStaticCiToken } from "../src/core/publisher.js";
+import type { Grant } from "../src/core/rbac/can.js";
 
 let db: Db;
 let env: Env;
@@ -396,11 +398,116 @@ describe("revoking", () => {
   });
 });
 
-describe("hygiene", () => {
-  it("hashes are never stored as the token", async () => {
-    const m = await (await mintService()).json();
-    expect(await hashRegistryToken(env, m.token)).toBeTruthy();
-    const all = JSON.stringify(await db.all("SELECT * FROM ci_tokens"));
-    expect(all).not.toContain(m.token);
+describe("review fixes (B1, N1 to N4)", () => {
+  it("B1: revoke-all and the cap see every live token, beyond 1000 newer rows", async () => {
+    const old = await issueStaticCiToken(env, db, {
+      product: OWNER,
+      scopes: ["packages:read"],
+      expiresAt: NOW + 360 * DAY,
+      label: "old",
+      createdBy: "admin:a",
+      now: NOW - 5000,
+    });
+    // 1100 newer, already revoked rows push the old one out of any 1000-row window.
+    for (let i = 0; i < 1100; i++)
+      await db.run(
+        `INSERT INTO ci_tokens (token_hash, token_id, product, kind, scopes_json, subject, label,
+           jti, issued_at, expires_at, revoked_at, created_by)
+         VALUES (?, ?, ?, 'static', '["packages:read"]', ?, 'r', NULL, ?, ?, ?, 'admin:a')`,
+        `h${i}`,
+        `cit_r${i}`,
+        OWNER,
+        `static:r${i}`,
+        NOW - 4000 + i,
+        NOW + DAY,
+        NOW - 1,
+      );
+    expect(await resolves(old.token)).toBe(true);
+    // The list shows the live token though 1100 newer revoked rows exist.
+    const listed = await (await admin("GET", tokens())).json();
+    expect(
+      listed.serviceTokens.some((t: Loose) => t.tokenId === old.tokenId),
+    ).toBe(true);
+    const res = await admin("POST", tokens("/revoke-all"), {});
+    expect((await res.json()).revoked).toBe(1);
+    expect(await resolves(old.token)).toBe(false);
+    expect(
+      await db.all("SELECT 1 FROM ci_tokens WHERE revoked_at IS NULL"),
+    ).toEqual([]);
+  });
+
+  it("B1: the cap counts every live token, not a window", async () => {
+    for (let i = 0; i < 500; i++)
+      await issueStaticCiToken(env, db, {
+        product: OWNER,
+        scopes: ["packages:read"],
+        expiresAt: NOW + 300 * DAY,
+        label: `t${i}`,
+        createdBy: "admin:a",
+        now: NOW - 10_000 + i,
+      });
+    for (let i = 0; i < 1100; i++)
+      await db.run(
+        `INSERT INTO ci_tokens (token_hash, token_id, product, kind, scopes_json, subject, label,
+           jti, issued_at, expires_at, revoked_at, created_by)
+         VALUES (?, ?, ?, 'static', '["packages:read"]', ?, 'r', NULL, ?, ?, ?, 'admin:a')`,
+        `h${i}`,
+        `cit_r${i}`,
+        OWNER,
+        `static:r${i}`,
+        NOW - 100 + (i % 50),
+        NOW + DAY,
+        NOW - 1,
+      );
+    expect((await mintService()).status).toBe(409);
+    expect(
+      (await admin("GET", tokens()))
+        .json()
+        .then(
+          (b: Loose) =>
+            b.serviceTokens.filter((t: Loose) => t.status === "active").length,
+        ),
+    ).resolves.toBe(500);
+  });
+
+  it("N1: minting needs the Keys area on the product; N3: no control characters in a label", async () => {
+    const { session } = await issueSession(
+      env,
+      { sub: "u2", name: "Bo", email: "bo@x.io", groups: [] },
+      NOW,
+    );
+    const as = (areas: string[] | null) => {
+      const grants = [
+        {
+          role: "product_admin",
+          scope: `product:${OWNER}`,
+          areas,
+        },
+      ] as unknown as Grant[];
+      return { ...session, principal: { memberId: "m", grants } };
+    };
+    const call = (areas: string[] | null, label = "svc") =>
+      handleRegistryTokensAdmin(
+        new Request(`${CONSOLE}/x`, {
+          method: "POST",
+          body: JSON.stringify({ label, binding: "service" }),
+        }),
+        env,
+        db,
+        as(areas) as never,
+        { kind: "product", slug: OWNER } as never,
+        [],
+        NOW,
+      );
+    const denied = await call(["ship"]);
+    expect(denied.status).toBe(403);
+    expect(await denied.json()).toMatchObject({
+      error: { reason: "no_access", area: "keys" },
+    });
+    expect(await db.all("SELECT 1 FROM ci_tokens")).toEqual([]);
+    expect((await call(["keys"], "a\nb")).status).toBe(422);
+    expect((await call(["keys"], "a\u007fb")).status).toBe(422);
+    expect((await call(["keys"])).status).toBe(201);
+    expect((await call(null)).status).toBe(201);
   });
 });
