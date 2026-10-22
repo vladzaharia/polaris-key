@@ -213,7 +213,7 @@ public struct SignInView: View {
                     .keyboardShortcut(.defaultAction)
                 }
                 if model.handoff.state == .expired || model.handoff.state == .denied
-                    || model.handoff.state == .cancelled
+                    || model.handoff.state == .failed || model.handoff.state == .cancelled
                 {
                     KitButton(line: CopyLine("signInHandoff.newCode"), kind: .primary) {
                         model.beginSignIn(code: true)
@@ -488,7 +488,7 @@ public struct SignInHandoffView: View {
                     }
                 case .code:
                     codeView(style)
-                case .denied, .expired, .cancelled:
+                case .denied, .failed, .expired, .cancelled:
                     if let message = screen.copy.first(where: {
                         $0.key.hasSuffix(".message") || $0.key == "signin.handoff.cancelled"
                     }) {

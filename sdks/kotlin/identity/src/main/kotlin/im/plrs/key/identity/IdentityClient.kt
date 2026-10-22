@@ -201,7 +201,11 @@ public class IdentityClient(
                 onAcquired?.invoke()
                 SignInPoll.Ready
             }
-            "error" -> SignInPoll.Error("device sign-in failed.", ErrorCode.signInDenied)
+            // A Deny names itself (`reason: access_denied`); a bare `error` failed after approval.
+            "error" -> SignInPoll.Error(
+                "device sign-in failed.",
+                if (body?.get("reason").stringValue == "access_denied") ErrorCode.signInDenied else ErrorCode.signInFailed,
+            )
             else -> SignInPoll.Error("device sign-in failed.")
         }
     }

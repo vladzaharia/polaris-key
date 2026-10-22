@@ -438,7 +438,7 @@ public struct KitSignIn: Sendable, Codable, Equatable, Hashable {
 public enum KitDeviceCodePhase: String, Sendable, Codable, CaseIterable {
     case starting, waiting
     case slowDown = "slow-down"
-    case ok, denied, expired, cancelled
+    case ok, denied, failed, expired, cancelled
 }
 
 /// The device-code poll.

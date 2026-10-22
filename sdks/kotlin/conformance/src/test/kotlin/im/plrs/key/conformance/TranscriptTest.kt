@@ -687,7 +687,7 @@ class TranscriptTest : ConformanceSuite() {
         /** Every transcript this SDK's implemented rows make applicable (P6-06, P6-07 and P6-08). */
         val REQUIRED = listOf(
             "discovery-capabilities", "discovery-failure", "sync-etag-304", "sync-errors",
-            "activate-enroll-deactivate", "config-schema-fetch", "devicecode-denied", "devicecode-expired", "devicecode-happy",
+            "activate-enroll-deactivate", "config-schema-fetch", "devicecode-denied", "devicecode-failed", "devicecode-expired", "devicecode-happy",
             "edge-mint", "register-open", "register-reregister-401", "release-changelog",
             "release-changelog-entitled", "telemetry-report",
             // P6-08: the v4 update decision.
