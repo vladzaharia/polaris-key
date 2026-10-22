@@ -56,7 +56,7 @@ zstdJniAndroid = "1.5.7-12"
 # ZXing's core encoder for the sign-in QR code (pure Java, no Android dependency, no camera), and
 # Roborazzi for the snapshot tests over Robolectric's native graphics (the JVM renders each screen;
 # no emulator).
-composeBom = "2026.06.01"
+composeBom = "2026.09.00"
 zxing = "3.5.4"
 # Compose Multiplatform for the docs snippet lane's desktop recipe (:docs-snippets, SP-45b); 1.8.x builds
 # with Kotlin 2.1.
