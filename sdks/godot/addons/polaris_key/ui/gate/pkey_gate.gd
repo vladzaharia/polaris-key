@@ -353,6 +353,7 @@ func _render() -> void:
 			activation.show_message(error)
 
 	show_text(_update, t.text("update_action") if ctl["update_action"] else "")
+	leaves_app(_update, ctl["update_action"] and PKeyUpdatePromptController.update_url(update_result, _outlet(), release_url) != "")
 	var retry_on: bool = (ctl["retry"] and not inline)
 	show_text(_retry, t.text("retry") if retry_on else "")
 	# A lone action is the primary; beside the update action, or beside a way forward, Try again is not.

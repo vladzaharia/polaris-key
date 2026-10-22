@@ -331,6 +331,7 @@ func _render() -> void:
 		model["behaviour"] = "check"
 	show_text(_action, (t.text("update_checking") if _checking else t.text(model["action"])) if model["action"] != "" else "")
 	_action.disabled = _checking
+	leaves_app(_action, model["action"] != "" and not _checking and model.get("behaviour", "") == PKeyApplyResult.LINK)
 	show_text(_note, _check_note)
 	_dismiss.visible = not locked and model["state"] != "current"
 	_dismiss.text = t.text("update_dismiss")

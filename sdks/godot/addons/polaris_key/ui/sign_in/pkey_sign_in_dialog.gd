@@ -465,6 +465,7 @@ func _render() -> void:
 	# A pad-only device has no browser: the code and the QR code are the screen, with a way to a key.
 	_open.visible = has_link and not pad
 	_open.text = t.text("sign_in_open_browser")
+	leaves_app(_open)
 	_copy.visible = has_link and not pad
 	_copy.text = t.text("sign_in_copy_link")
 	_use_key.visible = (pending or state == "starting") and pad

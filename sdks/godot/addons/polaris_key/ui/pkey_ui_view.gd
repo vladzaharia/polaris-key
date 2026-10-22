@@ -1838,6 +1838,38 @@ func size_glyph(r: TextureRect, px := 24.0, tint := Color.WHITE) -> void:
 	r.modulate = tint
 
 
+## The new-window glyph on an action that leaves the app (UI-KITS.md §1.5 rule 11, DL6): drawn after
+## the label in the button's own text colours (white, tinted by the button's icon colours) at `px`
+## logical pixels, and described to a screen reader as the catalog's `a11y.externalLink` ("Opens in
+## your browser", in the running locale). `leaves` false takes the glyph off again. Call it after
+## the label is set, from the same refresh that sets it: the glyph follows the screen's scale.
+func leaves_app(b: Button, leaves := true, px := 16.0) -> void:
+	if b == null:
+		return
+	if not leaves:
+		b.icon = null
+		return
+	var m := layout_metrics()
+	var k := float(m["scale"]) * float(m["physical"])
+	b.icon = PKeyUiTheme.glyph("new_window", Color.WHITE, px, k * 2.0)
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	b.expand_icon = false
+	b.add_theme_constant_override("icon_max_width", maxi(12, roundi(px * float(m["scale"]))))
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		b.add_theme_color_override("icon_%s_color" % state, b.get_theme_color("font_color" if state == "normal" else "font_%s_color" % state))
+	if "accessibility_description" in b:
+		b.set("accessibility_description", _external_note())
+
+
+static var _note_copy = null
+
+
+static func _external_note() -> String:
+	if _note_copy == null:
+		_note_copy = preload("res://addons/polaris_key/ui/model/copy_format.gd").new({"locale": TranslationServer.get_locale()})
+	return String(_note_copy.format("a11y.externalLink"))
+
+
 ## A 2 px indeterminate bar for a loading state, shown only once `loading` has been true for
 ## 250 ms (UI-KITS.md §1.5 rule 4). `set_loading()` drives it.
 func loading_bar(parent: Node) -> ProgressBar:
