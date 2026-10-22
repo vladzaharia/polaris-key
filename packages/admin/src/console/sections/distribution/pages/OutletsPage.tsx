@@ -6,8 +6,7 @@
  * - An outlet opens in a drawer routed by `?outlet=<id>` (the `EntityLink` "outlet" target).
  * - **Narrow capabilities…** (L1) can only narrow below the kind's default; **Revert to
  *   manifest** (L1) restores the default.
- * - Feeds: for the feed-capable kinds, one public URL per channel, from the documented scheme
- *   (`docs/services/distribution/feeds.md`), with copy.
+ * - Feeds: feed-capable kinds get one public URL per channel (`docs/services/distribution/feeds.md`).
  * - Keys: `GET/PUT/DELETE …/distribution/keys`, the inventory and CI's unmatched observations.
  */
 
@@ -24,6 +23,7 @@ import type {
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { fromSeconds } from "../../../../lib/format.js";
 import { humanize } from "../../../../lib/status.js";
+import { IDENTIFIER_LABELS } from "../../platform/pages/platformStores.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
@@ -387,7 +387,7 @@ function OutletDrawer({
                   <DescriptionList
                     columns={2}
                     items={identity.map(([k, v]) => ({
-                      term: humanize(k),
+                      term: IDENTIFIER_LABELS[k] ?? humanize(k),
                       detail: (
                         <span className="font-mono text-xs">
                           {typeof v === "string" ? v : JSON.stringify(v)}

@@ -105,9 +105,12 @@ export function StoreIdentityCell({
 export function IdentityAttention({
   slug,
   rows,
+  hasAppleId = false,
 }: {
   slug: string;
   rows: readonly StoreIdentityRow[];
+  /** `settings.appStore.appAppleId` is set: Use the assigned app clears it too. */
+  hasAppleId?: boolean;
 }): React.ReactElement | null {
   const gate = useWriteGate("commerce", slug);
   const [fixing, setFixing] = React.useState<StoreIdentityRow | null>(null);
@@ -202,7 +205,7 @@ export function IdentityAttention({
                 inlineCode(
                   `Purchases of \`${fixing.identity!.value}\` are refused.`,
                 ),
-                ...(fixing.id === "app-store"
+                ...(fixing.id === "app-store" && hasAppleId
                   ? ["The typed Apple ID is cleared too."]
                   : []),
                 inlineCode(

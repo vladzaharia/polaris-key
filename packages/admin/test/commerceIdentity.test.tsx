@@ -192,7 +192,6 @@ describe("store identity on the Commerce overview", () => {
     expect(dialog.textContent).toContain(
       "Purchases of com.typo.app are refused.",
     );
-    expect(dialog.textContent).toContain("The typed Apple ID is cleared too.");
     expect(dialog.textContent).toContain(
       "To undo, set commerce.stores again through the API.",
     );
@@ -236,6 +235,58 @@ describe("store identity on the Commerce overview", () => {
     const apple = await row("App Store");
     expect(apple.getByText("App mismatch")).toBeTruthy();
     expect(apple.queryByText("Needs a credential")).toBeNull();
+  });
+
+  it("A-28.6: a mismatched store is not counted as ready", async () => {
+    const v = view();
+    v.identity["app-store"] = {
+      value: "com.typo.app",
+      source: "typed",
+      assigned: "com.djdl.app",
+      mismatch: true,
+      ambiguous: false,
+    };
+    // The server still says configured; play is the only ready store.
+    bootWith(PAGE, { [VIEW_PATH]: v });
+    expect(await screen.findByText("1 storefront ready.")).toBeTruthy();
+  });
+
+  it("A-28.6: the phone rows wrap their pill instead of clipping it", async () => {
+    bootWith(PAGE, { [VIEW_PATH]: view() });
+    const pill = (await row("App Store")).getByText("Ready");
+    const header = pill.closest("li")!.firstElementChild as HTMLElement;
+    expect(header.className).toContain("flex-wrap");
+    expect(header.className).toContain("gap-y-1");
+  });
+
+  it("A-28.6: the Apple ID line shows only when an Apple ID is typed", async () => {
+    const open = async (v: CommerceView) => {
+      bootWith(PAGE, { [VIEW_PATH]: v });
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Use the assigned app" }),
+      );
+      return (await screen.findByRole("alertdialog")).textContent;
+    };
+    const mismatched = (): CommerceView => {
+      const v = view();
+      v.identity["app-store"] = {
+        value: "com.typo.app",
+        source: "typed",
+        assigned: "com.djdl.app",
+        mismatch: true,
+        ambiguous: false,
+      };
+      return v;
+    };
+    expect(await open(mismatched())).not.toContain("Apple ID");
+    cleanup();
+    resetConsole();
+    expect(
+      await open({
+        ...mismatched(),
+        settings: { appStore: { appAppleId: "1234567890" } },
+      }),
+    ).toContain("The typed Apple ID is cleared too.");
   });
 
   it("shows one callout for a store that is mismatched and ambiguous", async () => {

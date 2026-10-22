@@ -2472,6 +2472,8 @@ export interface CommerceStoreIdentity {
 
 export interface CommerceView {
   licenseEnabled: boolean;
+  /** The stored `commerce.stores` blocks (identity fields as typed; null: derived or unset). */
+  settings?: { appStore?: { appAppleId?: string | null } | null };
   identity: Record<CommerceStore, CommerceStoreIdentity>;
   setup: Record<
     CommerceStore,

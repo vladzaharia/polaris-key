@@ -108,7 +108,6 @@ export function CommerceOverviewPage({
     );
   } else {
     const { setup, products, purchases } = view.data;
-    const ready = STORES.filter((s) => setup[s.id].configured).length;
     const rows = STORES.map((s) => ({
       ...s,
       state: storefrontState(setup[s.id], view.data.identity?.[s.id]),
@@ -120,6 +119,8 @@ export function CommerceOverviewPage({
         reason: setup[s.id].reason,
       } satisfies StoreIdentityRow,
     }));
+    // A mismatched store is not ready, whatever the server says about its key.
+    const ready = rows.filter((s) => s.state === "ready").length;
     const latest = purchases.slice(0, 10);
     body = (
       <div className="space-y-6">
@@ -161,6 +162,7 @@ export function CommerceOverviewPage({
               <IdentityAttention
                 slug={slug}
                 rows={rows.map((s) => s.identityRow)}
+                hasAppleId={Boolean(view.data.settings?.appStore?.appAppleId)}
               />
             )}
             <ul
@@ -169,7 +171,7 @@ export function CommerceOverviewPage({
             >
               {rows.map((s) => (
                 <li key={s.id} className="space-y-1 py-3">
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                     <span
                       tabIndex={-1}
                       data-store-row={s.id}
@@ -271,7 +273,7 @@ export function CommerceOverviewPage({
                       key={`${p.store}:${p.purchase}`}
                       className="space-y-1 py-3"
                     >
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                         <span className="font-medium">
                           {storeLabel(p.store)}
                         </span>

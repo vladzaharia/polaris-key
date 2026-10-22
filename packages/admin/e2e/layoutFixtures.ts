@@ -237,19 +237,19 @@ const ROUTES: Record<string, unknown> = {
         area: "commerce",
       },
       {
-        id: `${LONG_SLUG}:channel.identity_mismatch:ios:bundleId`,
+        id: `${LONG_SLUG}:channel.identity_mismatch:app-store:bundleId`,
         product: { slug: LONG_SLUG, name: LONG_NAME },
         kind: "channel.identity_mismatch",
         tone: "warning",
         service: "distribution",
         short: "App mismatch",
         lines: [
-          "The `ios` channel declares bundle ID `com.djdl.typo`; the assigned app is `com.djdl.app`.",
+          "The `app-store` channel declares bundle ID `com.djdl.typo`; the assigned app is `com.djdl.app`.",
         ],
         action: {
           label: "Review",
           page: "outlets",
-          query: { outlet: "ios" },
+          query: { outlet: "app-store" },
         },
         area: "ship",
       },

@@ -673,7 +673,10 @@ describe("Distribution → Storefronts", () => {
     );
     const ids = await screen.findByLabelText("Google Play identifiers");
     const rows = within(ids).getAllByText(/./, { selector: "dt" });
-    expect(rows.map((n) => n.textContent)).toEqual(["Package", "Developer id"]);
+    expect(rows.map((n) => n.textContent)).toEqual([
+      "Package name",
+      "Developer ID",
+    ]);
     expect(within(ids).getByText("gg.djdl.app")).toBeTruthy();
     expect(within(ids).getAllByText("From the assignment")).toHaveLength(1);
     expect(screen.getByRole("heading", { name: "App", level: 3 })).toBeTruthy();
