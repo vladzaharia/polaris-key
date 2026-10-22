@@ -297,7 +297,13 @@ export async function handleAuthDeviceApprove(
   await deleteArtefact(env, indexKey);
   const cookies = [binderClearCookie()];
   if (decision === "deny") return deniedPage(flow, view, cookies);
-  return deviceDonePage(deviceLabelOf(flow), view, cookies);
+  return deviceDonePage(
+    deviceLabelOf(flow),
+    view,
+    cookies,
+    undefined,
+    flow.identity,
+  );
 }
 
 /** The done page (SIGN-IN.md §3.13): "{App} is signed in on {device}", and where to look. */
@@ -306,8 +312,11 @@ export function deviceDonePage(
   view: PageView,
   cookies: string[],
   replaced?: string,
+  /** Who signed in (SIGN-IN.md §3.10): the person row under the heading. */
+  person?: { name?: string | null; email?: string | null } | null,
 ): Response {
   const shown = pageApp(view.app ?? { name: "" });
+  const who = person?.name || person?.email || null;
   const heading = view.app?.name
     ? `${isolate(view.app.name)} is signed in on ${isolate(label)}`
     : `Signed in on ${isolate(label)}`;
@@ -318,11 +327,13 @@ export function deviceDonePage(
     // No app header here (B-105): the heading already names the app, so a header above it said it
     // twice.
     body:
+      (who ? personRow({ name: who, email: person?.email ?? null }) : "") +
       callout(
         "check-circle",
         `Look at ${isolate(label)}: it continues by itself.`,
         replaced ? `${isolate(replaced)} was signed out.` : undefined,
-      ) + `<p class="muted small">You can close this page.</p>`,
+      ) +
+      `<p class="muted small">You can close this page.</p>`,
   });
   const headers = deviceHtmlHeaders(undefined, shown.imgOrigin);
   for (const c of cookies) headers.append("set-cookie", c);
@@ -510,7 +521,13 @@ export async function lostDenyPage(
   const raw = await getArtefact(env, stateKey);
   const now = raw ? parseFlowRecord<FlowRecord>(raw) : null;
   if (now && now.approvedAt !== undefined)
-    return deviceDonePage(deviceLabelOf(now), view, cookies);
+    return deviceDonePage(
+      deviceLabelOf(now),
+      view,
+      cookies,
+      undefined,
+      now.identity,
+    );
   if (now && now.error === FLOW_DENIED) return deniedPage(flow, view, cookies);
   return startAgainPage();
 }

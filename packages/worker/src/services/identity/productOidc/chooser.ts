@@ -598,7 +598,13 @@ export async function completeChoice(
     });
     if (!done.ok) return startAgainPage();
     await audit();
-    return deviceDonePage(c.deviceLabel, view, cookies, replaced);
+    return deviceDonePage(
+      c.deviceLabel,
+      view,
+      cookies,
+      replaced,
+      flow.identity,
+    );
   }
 
   let licenseId: string;

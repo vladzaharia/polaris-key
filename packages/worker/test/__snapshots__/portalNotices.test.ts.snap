@@ -79,6 +79,21 @@ You are receiving this because of a change to your Polaris Locker account. We se
 }
 `;
 
+exports[`notice templates: copy > deviceReplaced: subject and plain text 1`] = `
+{
+  "subject": "Diceroll signed out on Work laptop",
+  "text": "Diceroll signed out on Work laptop
+
+Work laptop was replaced by Mara's Pixel 8 when you signed in to Diceroll on 14 Nov 2023, 22:13 UTC. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.
+
+Open Polaris Locker: https://key.plrs.im/#/p/diceroll/devices
+
+Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
+
+You are receiving this because of a change to your Polaris Locker account. We sent it to every verified email on the account.",
+}
+`;
+
 exports[`notice templates: copy > downloadLink: subject and plain text 1`] = `
 {
   "subject": "Download Mossgarden for macOS",

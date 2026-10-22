@@ -2645,6 +2645,11 @@ msgstr "다른 키 사용"
 msgid "signin.return.yours"
 msgstr "이제 {product}을(를) 이용할 수 있어요"
 
+#. {tier} · in your library
+#. Return step (SIGN-IN.md §3.10): the product row under "<Product> is yours". Arguments: {tier} = the tier's name (never translated).
+msgid "signin.return.product"
+msgstr "{tier} · 라이브러리에 있음"
+
 #. You're signed in to {app}
 #. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.return.signedIn"

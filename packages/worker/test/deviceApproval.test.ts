@@ -987,6 +987,9 @@ describe("the endings are pages", () => {
     // B-105: the heading names the app; there is no header above it saying it again.
     expect(html).not.toContain('<div class="app">');
     expect(html).toContain("it continues by itself.");
+    // The person who signed in (SIGN-IN.md §3.10), with no Not you? once it is done.
+    expect(html).toContain('class="person"');
+    expect(html).not.toContain("Not you?");
     expect(html).toContain("You can close this page.");
     expect(html).not.toContain("<title>Sign in on");
   });

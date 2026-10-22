@@ -434,6 +434,7 @@ export type KitCopyKey =
   | "signin.key.ownedSignIn"
   | "signin.key.differentKey"
   | "signin.return.yours"
+  | "signin.return.product"
   | "signin.return.signedIn"
   | "signin.return.button"
   | "signin.return.timer"

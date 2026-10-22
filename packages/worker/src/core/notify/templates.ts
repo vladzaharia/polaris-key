@@ -318,6 +318,37 @@ export function deviceRemovedNotice(input: {
   });
 }
 
+/**
+ * A Replace from the sign-in card freed a seat (SIGN-IN.md §3.15): `signin.mail.replaced.subject`,
+ * `signin.mail.replaced.body` and **Open Polaris Locker** (`signin.mail.open`).
+ */
+export function deviceReplacedNotice(input: {
+  deviceLabel: string | null | undefined;
+  /** The device that took the seat. */
+  newDeviceLabel: string | null | undefined;
+  productName: string | null | undefined;
+  productSlug: string;
+  at: number;
+  origin: string;
+}): NoticeMessage {
+  const device = displayValue(input.deviceLabel, "A device");
+  const newDevice = displayValue(input.newDeviceLabel, "A new device");
+  const name = displayValue(input.productName, "your product");
+  return buildNotice({
+    subject: `${name} signed out on ${device}`, // signin.mail.replaced.subject
+    paragraphs: [
+      // signin.mail.replaced.body
+      `${device} was replaced by ${newDevice} when you signed in to ${name} on ${emailDate(input.at)}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.`,
+    ],
+    action: {
+      label: "Open Polaris Locker", // signin.mail.open
+      url: appLink(input.origin, productRoute(input.productSlug, "devices")),
+    },
+    secureUrl: appLink(input.origin, "account/methods"),
+    origin: input.origin,
+  });
+}
+
 /** "4 Oct 2026, 14:34 UTC": a unix time for a sentence in an email. */
 function emailDate(at: number): string {
   const d = new Date(at * 1000);

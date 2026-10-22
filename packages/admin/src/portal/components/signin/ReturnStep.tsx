@@ -18,12 +18,15 @@ export function ReturnStep({
   app,
   product,
   yours,
+  tier = null,
   onReturn,
 }: {
   app: string;
   product: string;
   /** A license was added or issued by this sign-in: the one celebration. */
   yours: boolean;
+  /** The new license's tier, for the product row under "<Product> is yours". */
+  tier?: string | null;
   onReturn: () => void;
 }): React.ReactElement {
   const [left, setLeft] = React.useState(RETURN_SECONDS);
@@ -69,6 +72,11 @@ export function ReturnStep({
             ? t("signin.return.yours", { product })
             : t("signin.return.signedIn", { app })}
         </AuthTitle>
+        {yours && tier ? (
+          <p className="text-fg-muted">
+            {t("signin.return.product", { tier })}
+          </p>
+        ) : null}
       </div>
       <Button
         variant="neutral"
@@ -97,6 +105,7 @@ export function ReturnStep({
             </button>
           </p>
         ) : null}
+        {!timerShown ? <p>{t("signin.return.closeTab", { app })}</p> : null}
         {!yours || stopped || !timing ? (
           <p>
             <a

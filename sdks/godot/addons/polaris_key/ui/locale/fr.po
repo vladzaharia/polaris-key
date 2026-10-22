@@ -2663,6 +2663,11 @@ msgstr "Utiliser une autre clé"
 msgid "signin.return.yours"
 msgstr "{product} est à vous"
 
+#. {tier} · in your library
+#. Return step (SIGN-IN.md §3.10): the product row under "<Product> is yours". Arguments: {tier} = the tier's name (never translated).
+msgid "signin.return.product"
+msgstr "{tier} · dans votre bibliothèque"
+
 #. You're signed in to {app}
 #. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.return.signedIn"
