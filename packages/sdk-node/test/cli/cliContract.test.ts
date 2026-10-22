@@ -428,6 +428,30 @@ const SITUATIONS: Record<string, () => Setup> = {
     }),
     drive: (s) => s.press("escape"),
   }),
+  "sign-in-denied": () => ({
+    interactive: true,
+    client: stubClient({
+      identity: {
+        waitForSignIn: async () => ({
+          status: "error",
+          message: "device sign-in was refused.",
+          code: "sign-in-denied",
+        }),
+      },
+    }),
+  }),
+  "sign-in-failed": () => ({
+    interactive: true,
+    client: stubClient({
+      identity: {
+        waitForSignIn: async () => ({
+          status: "error",
+          message: "device sign-in failed.",
+          code: "sign-in-failed",
+        }),
+      },
+    }),
+  }),
 };
 
 const verbOf = (id: string): CliVerb => {

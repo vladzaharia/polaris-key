@@ -294,6 +294,7 @@ export type HandoffState =
   | "link-copied"
   | "finishing"
   | "denied"
+  | "failed"
   | "expired"
   | "cancelled"
   | "hidden";
@@ -357,6 +358,19 @@ export function signInHandoffView(
           copy: [
             "core.codes.sign-in-denied.title",
             "core.codes.sign-in-denied.message",
+            "signInHandoff.newCode",
+          ],
+          args,
+          primary: "signInHandoff.newCode",
+          tone: "danger",
+          errorSlot: "screen",
+        });
+      case "failed":
+        return makeView(ctx, "SignInHandoff", {
+          state: "failed",
+          copy: [
+            "core.codes.sign-in-failed.title",
+            "core.codes.sign-in-failed.message",
             "signInHandoff.newCode",
           ],
           args,

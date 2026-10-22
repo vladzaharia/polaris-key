@@ -95,6 +95,8 @@
   "sign-in-handoff-denied-light.png": "fa7028f9bbef9bd5e408151e22257f18443ad12ddb0259cc77ad095df18a651e",
   "sign-in-handoff-expired-dark.png": "199631a6777b963360bec88d6da229a354d45b02cbd03605b175de5d6c093780",
   "sign-in-handoff-expired-light.png": "58ad0542cefd39666ec208ecbd5366a387539db832a120c3e3cc906f270b6bc6",
+  "sign-in-handoff-failed-dark.png": "1b35f16dc70fb6c8d84609f5594665375b32cc07dde47bca8ecfd02e3595f51c",
+  "sign-in-handoff-failed-light.png": "181d5f784a523bbf07f33420a9d21fa9f904e7f9d79ae7350909dd622e7c7e0b",
   "sign-in-handoff-finishing-attach-dark.png": "f85fe6b33d3e651ab86bd57356be7ad1f11210c2599e6b1884a491d08bd146cc",
   "sign-in-handoff-finishing-attach-light.png": "ab0e8b158cdc2ee43cba6a646cf3c0e7fa049bb917d6db696bba1ca4aa48e226",
   "sign-in-handoff-link-copied-dark.png": "3ef5aa84e2b468b2dec1690c52d2f090836c2a9146f598d497813254809ee00b",
