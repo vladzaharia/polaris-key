@@ -22,6 +22,42 @@ const PINS = [
   { kid: "tb-b", publicKey: "B".repeat(43) },
 ];
 
+describe("renderSdkSetup on a server", () => {
+  const base = {
+    slug: "acme",
+    pins: [{ kid: "k1", publicKey: "AAAA" }],
+    services: ["license"] as const,
+  };
+  it("starts from the framework's drop-in", () => {
+    const s = renderSdkSetup("node", {
+      ...base,
+      fit: { host: "server", target: "server", framework: "hono" },
+    });
+    expect(s.start.id).toBe("licensing.node.server.hono");
+    expect(s.install.map((i) => i.code).join("\n")).toContain(
+      "@polaris-key/server",
+    );
+  });
+  it("falls back to the SDK's first drop-in, and names the Python extra", () => {
+    const s = renderSdkSetup("python", {
+      ...base,
+      fit: { host: "server", target: "none", framework: "flask" },
+    });
+    expect(s.start.id).toBe("licensing.python.server.flask");
+    expect(s.installNote).toContain("polaris-key[flask]");
+    const d = renderSdkSetup("python", {
+      ...base,
+      fit: { host: "server", target: "none", framework: null },
+    });
+    expect(d.start.id).toBe("licensing.python.server.fastapi");
+    const k = renderSdkSetup("kotlin", {
+      ...base,
+      fit: { host: "server", target: "desktop", framework: "spring" },
+    });
+    expect(k.start.id).toBe("licensing.kotlin.server.ktor");
+  });
+});
+
 describe("renderSdkSetup", () => {
   it("renders install, config and a start for every SDK", () => {
     for (const sdk of SDK_IDS) {
