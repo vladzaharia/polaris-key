@@ -310,8 +310,8 @@ export function PageHeader({
                       refreshTrailsPhone || refreshTrailsWide ? "" : undefined
                     }
                     className={cn(
-                      refreshTrailsPhone && "-me-3",
-                      refreshTrailsWide ? "sm:-me-3" : "sm:me-0",
+                      refreshTrailsPhone && "-me-3 conbig:-me-2",
+                      refreshTrailsWide ? "sm:-me-3 sm:conbig:-me-2" : "sm:me-0",
                     )}
                     loading={freshness.refreshing}
                     iconStart={<RefreshCw aria-hidden />}
