@@ -7026,6 +7026,56 @@ admin if the owner wants Superadmin-only disclosure (`superadmin_only`, as `POST
 **Residual.** The roster is unpaginated (bounded). A binding for a disabled account is still listed as a role
 (inert; the account cannot sign in).
 
+### Console grant rules (ST-31.3)
+
+**What arrived.** `core/rbac/grantRules.ts`: pure functions that answer who may hand out, take back
+or edit a console role binding (ST-28 §2.3, §2.5). They are written out apart from `can()`, which
+answers "may this member act" and not "may this member give that away".
+
+**Control.**
+
+- **G1 to G4 as built.** G1: a Product admin grant needs `members` edit at the scope and Product
+  admin there with areas covering every area asked for; NULL (every area) needs a granter whose
+  own coverage there is every area. G2: Superadmin, Platform admin and anything at `products:*`
+  only a Superadmin grants (a Platform admin granting Superadmin to itself is this rule). G3:
+  Console access by anyone with `members` edit at platform scope or on a product other than the
+  system product. G4: `isWidening` marks a new binding, a different role or scope, a wider list
+  and a list turned into NULL as widening (the step-up trigger); `confirmLevel` is L2 for
+  Superadmin, Platform admin and `products:*`.
+- **Every function fails closed.** A `null` granter, a target that `validateGrant` refuses (shape,
+  role, scope, role/scope mismatch, missing `areas`, `product:<system>`, upper case, a slug over
+  the P0-14 rule), or a scope the function does not know is refused. The one exception is a
+  Superadmin revoking a stored row that no longer validates. An unreadable `after` counts as
+  widening and an unreadable `before` as nothing held.
+- **Coverage is a union.** The areas of every product admin grant that reaches a scope (its own
+  `product:<slug>` and `products:*`) add up; NULL comes only from a grant whose `areas` is NULL,
+  never from the sum of lists. The system product's scope is skipped for the `members` check.
+- **D-c rulings.** Revoking or narrowing needs `members` edit at the scope with areas covering the
+  binding's, with three departures. (1) A `products:*` binding is revoked or narrowed by a
+  Superadmin alone (review B1: a `products:*` holder could otherwise strip a peer holder). (2)
+  Console access is revoked only with platform `members`, so a Product admin cannot remove a person
+  from the console. (3) Only a Superadmin removes a row that does not validate. Revoking
+  `product:<slug>` bindings follows the cover rule.
+- **G2's "edit console.access"** is the SSO-rules setting, not the Console access role.
+- **Edits.** `mayChange(granter, before, after)` is `mayRevoke(before)` and, when `isWidening`,
+  `mayGrant(after)`. Checking the grant alone lets `alpha [members, ship]` rewrite
+  `alpha [core, keys]` to `alpha [ship]`, dropping areas it does not hold; `mayChange` refuses it.
+- **Tests:** `test/rbacGrantRules.test.ts` (a hand-written oracle, 8 granters by every target, a
+  soundness cross-check against `can()`, the named cases above); reviewer probes over 1.4M granter
+  and target combinations found no widening beyond `can()`.
+
+**Residual.**
+
+- Nothing calls the engine yet; the grant handlers (ST-31.6 on) do.
+- A handler must combine the checks: `mayChange` for an edit, `mayRevoke` for a delete,
+  `mayGrant` for a create, plus the step-up from `isWidening` and `confirmLevel`. Calling one
+  alone is the gap.
+- The checks never see the grantee or the expiry. They cannot tell who receives a grant or how
+  long it lasts; the handler owns that.
+- **D-g: no self-grants.** A grant whose grantee is the granter is refused. The engine cannot see
+  the grantee, so ST-31.6 enforces it and documents the refusal. Until then the engine would
+  let a Product admin grant itself a second scope or the same areas again.
+
 ### Identity as a per-product service (PX-W17)
 
 One account per person; a product's `identity` toggle gates only sign-in through that product

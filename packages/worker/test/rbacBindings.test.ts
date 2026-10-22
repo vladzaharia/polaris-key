@@ -306,6 +306,9 @@ describe("store", () => {
       source: "grant",
     });
     expect(rowToGrant(row({}))?.areas).toBeNull();
+    // The system product takes no product scope; a 65-character slug is over the slug cap.
+    expect(rowToGrant(row({ scope: "product:polaris-key" }))).toBeNull();
+    expect(rowToGrant(row({ scope: `product:${"a".repeat(65)}` }))).toBeNull();
     expect(rowToGrant(row({ areas_json: '["core","bogus"]' }))).toBeNull();
     expect(rowToGrant(row({ areas_json: "[]" }))).toBeNull();
     expect(rowToGrant(row({ areas_json: "{" }))).toBeNull();
