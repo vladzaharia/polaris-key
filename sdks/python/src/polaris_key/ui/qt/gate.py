@@ -64,6 +64,7 @@ class GateController:
         capabilities: Optional[Mapping[str, bool]] = None,
         offers_free_tier: bool = False,
         open_url: Optional[Callable[[str], bool]] = None,
+        renew_url: Optional[str] = None,
         clipboard: Any = None,
         device_name: Optional[str] = None,
     ) -> None:
@@ -82,6 +83,7 @@ class GateController:
             capabilities=capabilities,
             offers_free_tier=offers_free_tier,
             open_url=open_url,
+            renew_url=renew_url,
             clipboard=clipboard,
             device_name=device_name,
         )
@@ -154,6 +156,7 @@ def run_gate(
     capabilities: Optional[Mapping[str, bool]] = None,
     offers_free_tier: bool = False,
     open_url: Optional[Callable[[str], bool]] = None,
+    renew_url: Optional[str] = None,
     device_name: Optional[str] = None,
 ) -> GateController:
     """Gate ``window`` (a ``QWidget``/``QWindow``, or ``None``) on ``client``'s licence.
@@ -163,7 +166,8 @@ def run_gate(
     gate offers come from the client: sign-in when the product runs Identity, a license key when it
     runs License; ``capabilities`` overrides them, and ``offers_free_tier=True`` adds Continue free
     (``client.license.enroll``). ``open_url`` opens a link in the browser (``QDesktopServices`` by
-    default); ``device_name`` is the label a sign-in page shows."""
+    default); ``renew_url`` is the https page Renew opens on an expired license (without one, Use another
+    license is the only control); ``device_name`` is the label a sign-in page shows."""
     kit = KitView(theme, source=presentation_source(client), size=size)
     handle = getattr(window, "windowHandle", None)
     parent = handle() if callable(handle) else window
@@ -179,5 +183,6 @@ def run_gate(
         capabilities=capabilities,
         offers_free_tier=offers_free_tier,
         open_url=open_url,
+        renew_url=renew_url,
         device_name=device_name,
     )

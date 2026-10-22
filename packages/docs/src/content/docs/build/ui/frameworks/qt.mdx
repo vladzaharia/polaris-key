@@ -129,6 +129,7 @@ def gate_a_tv(app: QApplication, client: PolarisKeyClient, window: QMainWindow) 
 | `capabilities=`     | Overrides the paths the client offers: `signIn`, `keyEntry`, `deviceCode`, `enroll`                |
 | `offers_free_tier=` | Adds Continue free (`client.license.enroll`)                                                       |
 | `open_url=`         | How a link opens: `QDesktopServices.openUrl` by default; return `False` when there is no browser   |
+| `renew_url=`        | The https page Renew opens on an expired license; without it, Use another license stands alone     |
 | `device_name=`      | The label the sign-in page shows for this device                                                   |
 
 `gate.screen` is the view being drawn (Welcome, Activate, SignInHandoff, …), `gate.view` is the

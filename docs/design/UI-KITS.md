@@ -1327,7 +1327,7 @@ mode, titled **Replace a device**. The seat meter and count appear only when the
   no control.
 - **StatusScreen, expired** offers **Renew** and **Use another license**. Every kit draws Renew
   only when the host can renew (a handler or an https renew URL: SwiftUI `renewURL`, Compose
-  `onRenew`, React `renewUrl` / `onRenew`, elements `input.renew`, Godot and Qt `renew_url`), and
+  `onRenew`, React `renewUrl` / `onRenew`, elements `input.renew`, Qt `renew_url`; the Godot gate draws no Renew), and
   otherwise offers Use another license alone as the primary. The ui-matrix row lists Renew; its
   runners play a host that can renew. It never offers Try again or Reconnect. **Version too new** keeps
   **Try again** as its one action and primary (DL4, DL6).

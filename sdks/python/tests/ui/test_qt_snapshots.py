@@ -111,3 +111,13 @@ def test_presentation_change_redraws(kit_app):
         assert kit.bridge.accent != before
     finally:
         kit.close()
+
+
+@pytest.mark.parametrize("scheme", ["dark", "light"])
+def test_expired_without_a_renew_url_baseline(kit_app, scheme):
+    from polaris_key.ui.qt.flow import without_renew
+
+    view = next(v for c, s, _, v in STATES if (c, s) == ("StatusScreen", "expired"))
+    image, spec = _render(kit_app, without_renew(view), scheme)
+    assert [b.text for b in spec.buttons] == ["Use another license"]
+    check(image, SNAPSHOTS / f"statusscreen-expired-no-renew.{scheme}.png")

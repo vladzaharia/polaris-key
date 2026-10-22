@@ -12,8 +12,8 @@ only API (no deprecated aliases).
 
 Kit screens.
 
-- **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Renew and Use another license, and never Try again or Reconnect; the Qt kit has no renew option, so the host handles the Renew press. The TV QR on the device-limit screen is labelled as the device management page. The Qt kit draws the numbered steps with the request QR.
-  Migrating: pass an https `offers.url` in the offers input to get Buy in your browser on the paywall, (Renew needs nothing: the host handles its press).
+- **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Renew and Use another license, and never Try again or Reconnect; the Qt kit draws Renew only when the host passes `renew_url=`. The TV QR on the device-limit screen is labelled as the device management page. The Qt kit draws the numbered steps with the request QR.
+  Migrating: pass an https `offers.url` in the offers input to get Buy in your browser on the paywall, and `renew_url=` on `run_gate` to get Renew (the press opens it); without one an expired license offers Use another license alone.
 
 - **`polaris_key.server` developer pass.** Brings the drop-ins level with `@polaris-key/server`.
   A bad config (none, no `product_slug`, no or empty `trust`, a pin that is not a 43-character
