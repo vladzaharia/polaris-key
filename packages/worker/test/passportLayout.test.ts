@@ -47,9 +47,23 @@ describe("the hosted passport markup", () => {
 
   it("draws no art element and no generated fill without art", () => {
     const html = page(facts);
-    expect(html).toContain('<aside class="ac-passport">');
+    expect(html).toContain('<aside class="ac-passport ac-noart">');
     expect(html).not.toContain('<img class="ac-art"');
     expect(BRAND_PAGE_CSS_LOCKER).not.toMatch(/linear-gradient/);
+  });
+
+  it("centres the icon large in the pane when there is no art, so the pane has no void (N4)", () => {
+    const rule = BRAND_PAGE_CSS_LOCKER.slice(
+      BRAND_PAGE_CSS_LOCKER.indexOf(".ac-passport.ac-noart{"),
+    );
+    expect(rule).toContain(
+      ".ac-passport.ac-noart{justify-content:center;align-items:center;text-align:center}",
+    );
+    expect(rule).toContain("width:96px;height:96px");
+    // With art, the pane keeps its art-first layout.
+    expect(page({ ...facts, artUrl: `${IMG}/djdl/a/bb/640.webp` })).toContain(
+      '<aside class="ac-passport">',
+    );
   });
 
   it("is absent on a page with no app request", () => {
