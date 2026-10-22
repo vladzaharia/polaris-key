@@ -16,21 +16,37 @@ const RAW_TEXT = new Set([
   "noframes",
   "plaintext",
 ]);
-const SPACE = /[\t\n\f\r ]/;
+// Char codes, not one-character strings or regexes: this runs over ~60 MB of built HTML, and the
+// string-indexing form was minutes slow on Node 22 (GC churn), seconds on Node 26.
+// `</name` followed by whitespace, `/`, `>` or the end. Not `html.toLowerCase()`: that is seconds
+// per large page on Node 22.
+const closers = new Map(
+  ["script", ...RAW_TEXT].map((n) => [
+    n,
+    new RegExp(`</${n}(?=[\\t\\n\\f\\r />]|$)`, "gi"),
+  ]),
+);
+const isSpace = (c) => c === 9 || c === 10 || c === 12 || c === 13 || c === 32;
+const isAlpha = (c) => (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
+const QUOTE_D = 34;
+const QUOTE_S = 39;
+const GT = 62;
+const EQ = 61;
+const SLASH = 47;
 
 /** Index just past the `>` that ends the tag whose attributes start at `i`; quoted values may hold `>`. */
 function tagEnd(html, i) {
-  let quote = "";
+  let quote = 0;
   for (; i < html.length; i += 1) {
-    const c = html[i];
+    const c = html.charCodeAt(i);
     if (quote) {
-      if (c === quote) quote = "";
-    } else if (c === '"' || c === "'") {
+      if (c === quote) quote = 0;
+    } else if (c === QUOTE_D || c === QUOTE_S) {
       // A quote opens a value only straight after `=` (whitespace allowed), as in the tokenizer.
       let j = i - 1;
-      while (j >= 0 && SPACE.test(html[j])) j -= 1;
-      if (html[j] === "=") quote = c;
-    } else if (c === ">") return i + 1;
+      while (j >= 0 && isSpace(html.charCodeAt(j))) j -= 1;
+      if (j >= 0 && html.charCodeAt(j) === EQ) quote = c;
+    } else if (c === GT) return i + 1;
   }
   return html.length;
 }
@@ -43,7 +59,7 @@ function attrNames(src) {
   let m;
   let i = 0;
   while (i < src.length) {
-    if (SPACE.test(src[i]) || src[i] === "/") {
+    if (isSpace(src.charCodeAt(i)) || src.charCodeAt(i) === SLASH) {
       i += 1;
       continue;
     }
@@ -61,7 +77,6 @@ function attrNames(src) {
 
 export function inlineScripts(html) {
   const found = [];
-  const lower = html.toLowerCase();
   let i = 0;
   while (i < html.length) {
     const lt = html.indexOf("<", i);
@@ -77,33 +92,38 @@ export function inlineScripts(html) {
       i = end < 0 ? html.length : start > lt + 4 ? end : end + 3;
       continue;
     }
+    const c1 = html.charCodeAt(lt + 1);
+    const closing = c1 === SLASH;
+    const nameStart = lt + (closing ? 2 : 1);
     if (
-      html[lt + 1] === "!" ||
-      html[lt + 1] === "?" ||
-      (html[lt + 1] === "/" && !/[a-z]/i.test(html[lt + 2] ?? ""))
+      c1 === 33 ||
+      c1 === 63 ||
+      (closing && !isAlpha(html.charCodeAt(nameStart)))
     ) {
       i = tagEnd(html, lt + 2); // doctype, CDATA, bogus comment: ends at the next `>`
       continue;
     }
-    const nameMatch = /^<(\/?)([a-z][^\t\n\f\r \/>]*)/i.exec(
-      html.slice(lt, lt + 40),
-    );
-    if (!nameMatch) {
+    if (!isAlpha(html.charCodeAt(nameStart))) {
       i = lt + 1;
       continue;
     }
-    const closing = nameMatch[1] === "/";
-    const name = nameMatch[2].toLowerCase();
-    const attrsStart = lt + nameMatch[0].length;
+    let nameEnd = nameStart;
+    while (nameEnd < html.length) {
+      const c = html.charCodeAt(nameEnd);
+      if (isSpace(c) || c === SLASH || c === GT) break;
+      nameEnd += 1;
+    }
+    const name = html.slice(nameStart, nameEnd).toLowerCase();
+    const attrsStart = nameEnd;
     const end = tagEnd(html, attrsStart);
     if (closing || (name !== "script" && !RAW_TEXT.has(name))) {
       i = end;
       continue;
     }
     // Raw text: the body runs to the first `</name` followed by whitespace, `/` or `>`.
-    const closeRe = new RegExp(`</${name}(?=[\\t\\n\\f\\r />]|$)`, "g");
+    const closeRe = closers.get(name);
     closeRe.lastIndex = end;
-    const close = closeRe.exec(lower);
+    const close = closeRe.exec(html);
     const bodyEnd = close ? close.index : html.length;
     if (name === "script") {
       const body = html.slice(end, bodyEnd);
