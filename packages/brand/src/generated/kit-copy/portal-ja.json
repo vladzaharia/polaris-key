@@ -84,7 +84,7 @@
   "license.key.why": "一部だけの理由",
   "license.expired": "更新すると再び使えます。",
   "license.renew": "{developer}で更新",
-  "license.suspended": "{developer}がこのライセンスを停止しました。理由は連絡して確認してください。",
+  "license.suspended": "{developer}がこのライセンスを停止しました。理由については{developer}にお問い合わせください。",
   "license.switcher": "{count, plural, other {#件のライセンス}} · {tier}",
   "getIt.alsoYoursOn": "他の入手先",
   "getIt.otherWays": "その他のインストール方法",

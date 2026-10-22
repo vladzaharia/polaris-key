@@ -2299,7 +2299,7 @@ msgstr "新規"
 #. All devices in use
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.tag.full"
-msgstr "すべての端末が使用中"
+msgstr "すべてのデバイスが使用中"
 
 #. Keep the license this device uses
 #. Choose a license for this device (SIGN-IN.md §3.6).
@@ -2334,17 +2334,17 @@ msgstr "別のライセンス · 続行すると作成されます"
 #. Your licenses are on all their devices. Replace a device to use one here.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.allFull"
-msgstr "お持ちのライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。"
+msgstr "お持ちのライセンスはすべて、デバイス数が上限に達しています。ここで使うにはデバイスを置き換えてください。"
 
 #. Your licenses are on all their devices. Replace a device, or create a new free license.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.allFullCreate"
-msgstr "お持ちのライセンスはすべてのデバイス枠が使用中です。デバイスを置き換えるか、新しい無料ライセンスを作成してください。"
+msgstr "お持ちのライセンスはすべて、デバイス数が上限に達しています。デバイスを置き換えるか、新しい無料ライセンスを作成してください。"
 
 #. {developer} manages devices for these licenses. Ask {developer} to free one, or use another license.
 #. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated).
 msgid "signin.choice.noneReplaceable"
-msgstr "これらのライセンスのデバイスは{developer}が管理しています。{developer}に枠を空けてもらうか、別のライセンスを使用してください。"
+msgstr "これらのライセンスのデバイスは{developer}が管理しています。{developer}にデバイスを1台解放してもらうか、別のライセンスを使用してください。"
 
 #. Your other {product} items still apply.
 #. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -2369,12 +2369,12 @@ msgstr "代わりにライセンスキーを使う"
 #. Free a device
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.freeDevice"
-msgstr "デバイスの枠を空ける"
+msgstr "デバイスを解放"
 
 #. macos: Free a Device
 msgctxt "macos"
 msgid "signin.choice.freeDevice"
-msgstr "デバイスの枠を空ける"
+msgstr "デバイスを解放"
 
 #. Use this license and continue
 #. Choose a license for this device (SIGN-IN.md §3.6).
@@ -2576,7 +2576,7 @@ msgstr "プロフィールとメールアドレス"
 #. It gets its own id for you, and won't see your other products or how you sign in.
 #. Consent step before returning to the app (SIGN-IN.md §3.8).
 msgid "signin.consent.pairwise"
-msgstr "アプリにはあなた専用のIDが渡され、あなたのほかの製品やサインイン方法が知られることはありません。"
+msgstr "アプリにはこのアプリ専用のIDが渡され、あなたのほかの製品やサインイン方法が知られることはありません。"
 
 #. Not you?
 #. Hosted sign-in card (SIGN-IN.md).
@@ -2611,12 +2611,12 @@ msgstr "追加してこのデバイスで使う"
 #. Keep {product} in an account
 #. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.key.keep"
-msgstr "{product}をアカウントで管理"
+msgstr "{product}をアカウントに保管"
 
 #. macos: Keep {product} in an Account
 msgctxt "macos"
 msgid "signin.key.keep"
-msgstr "{product}をアカウントで管理"
+msgstr "{product}をアカウントに保管"
 
 #. {left} of {limit} key entries left · This will be entry {n}
 #. License key step (SIGN-IN.md §3.9). Arguments: {left} = how many are left, as a number; {limit} = the license's device limit, as a number; {n} = a number.
@@ -2633,7 +2633,7 @@ msgstr[0] "キー入力の残り{left}回"
 #. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
 #. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.key.noEntries"
-msgstr "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりに{product}がサインインします。"
+msgstr "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりにサインインで{product}を使えます。"
 
 #. Skip for now
 #. License key step (SIGN-IN.md §3.9).
@@ -2693,12 +2693,12 @@ msgstr "{s}秒後に自動的に戻ります"
 #. Stay here
 #. Return step (SIGN-IN.md §3.10).
 msgid "signin.return.stay"
-msgstr "このページにとどまる"
+msgstr "ここにとどまる"
 
 #. macos: Stay Here
 msgctxt "macos"
 msgid "signin.return.stay"
-msgstr "このページにとどまる"
+msgstr "ここにとどまる"
 
 #. Start using {product}
 #. Last step of the in-app sign-in form (SIGN-IN.md §3.10). Arguments: {product} = the product's name (never translated).
@@ -2933,7 +2933,7 @@ msgstr "ライブラリを開く"
 #. A device is free on this license now.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.freed"
-msgstr "このライセンスのデバイス枠が1つ空きました。"
+msgstr "このライセンスで、もう1台デバイスを使えるようになりました。"
 
 #. Opens Polaris Locker in your browser
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
@@ -3180,7 +3180,7 @@ msgstr "{device}で{product}がサインアウトされました"
 #. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform.
 msgid "signin.mail.replaced.body"
-msgstr "{date}に{product}にサインインした際、{device}は{newDevice}に置き換えられました。別のデバイスを登録できる空きがあれば、後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。"
+msgstr "{date}に{product}にサインインした際、{device}は{newDevice}に置き換えられました。デバイスを追加できる空きができれば、{device}は後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。"
 
 #. A new device signed in to your Polaris Locker account
 #. Security email (SIGN-IN.md §3.15).
@@ -3290,7 +3290,7 @@ msgstr "無料ライセンスを取得（{product}が提供している場合）
 #. Stop using your license on this device and make room for another
 #. Terminal help: what the deactivate command does.
 msgid "cli.verb.deactivate"
-msgstr "このデバイスでのライセンス使用を停止し、枠を解放"
+msgstr "このデバイスでのライセンスの使用を停止し、別のデバイスで使えるようにする"
 
 #. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
@@ -3335,7 +3335,7 @@ msgstr "デバイスの名前を変更（名前を省略すると消去）"
 #. Remove a device and make room for another
 #. Terminal help: what 'devices deauthorize' does.
 msgid "cli.verb.devicesRemove"
-msgstr "デバイスを削除して枠を解放"
+msgstr "デバイスを削除し、別のデバイスを追加できるようにする"
 
 #. Show one setting and where its value comes from
 #. Terminal help: what 'config get' does.
@@ -3505,7 +3505,7 @@ msgstr "ライセンスキーがありません。ターミナルで{command}を
 #. Free a device, then run {command} again.
 #. Terminal: every device on the license is in use; free one in the browser, then activate again. {command} is a command line.
 msgid "cli.deviceLimit.again"
-msgstr "デバイスの枠を空けてから、もう一度{command}を実行してください。"
+msgstr "デバイスを解放してから、もう一度{command}を実行してください。"
 
 #. License
 #. Terminal status: the row label for the license (tier and holder).
@@ -4325,7 +4325,7 @@ msgstr "または別のアカウントを接続"
 #. Too many codes. Try again in a few minutes.
 #. Rate limit with no wait given.
 msgid "signin.rateLimitedFew"
-msgstr "コードが多すぎます。数分後にもう一度お試しください。"
+msgstr "コードのリクエストが多すぎます。数分後にもう一度お試しください。"
 
 #. Another Polaris Locker account uses this email. Sign in the way you did before.
 #. Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated.
@@ -4405,7 +4405,7 @@ msgstr "クラウド同期"
 #. New: {tier} license, created when you continue
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
 msgid "signin.consent.newLicense"
-msgstr "新規: {tier} ライセンス。続けると作成されます"
+msgstr "新規：{tier}ライセンス（続けると作成されます）"
 
 #. Keep {product} in an account
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -4460,7 +4460,7 @@ msgstr "キーは有効です"
 #. Polaris Locker signs you in for {app}.
 #. PX-14a fix round. Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.footerNoDeveloper"
-msgstr "Polaris Locker が {app} にサインインします。"
+msgstr "Polaris Lockerが{app}へのサインインを行います。"
 
 #. Too many device changes. Try again in {minutes, plural, one {# minute} other {# minutes}}.
 #. PX-14a fix round. Arguments: {minutes} = a number of minutes.
@@ -4587,7 +4587,7 @@ msgstr "新しいコードを{email}に送信しました。"
 #. {email} already belongs to a Polaris Locker account. Use a different email, or sign in to that account first.
 #. Finish: the join offer when the other account is not yet proven. Arguments: {email}.
 msgid "signin.gate.joinOtherLede"
-msgstr "{email}はすでにPolaris Lockerのアカウントで使われています。別のメールを使うか、先にそのアカウントでログインしてください。"
+msgstr "{email}はすでにPolaris Lockerのアカウントで使われています。別のメールアドレスを使うか、先にそのアカウントにサインインしてください。"
 
 #. Enter a screen name.
 #. Finish: the screen name field left empty.
@@ -4856,7 +4856,7 @@ msgstr "{email} とのまとめを元に戻しますか？{date}まで可能で�
 #. Too many tries. Wait a minute, then try again.
 #. Approve dialog: too many tries (429).
 msgid "signin.approve.tooMany"
-msgstr "試行が多すぎます。1分待ってからもう一度お試しください。"
+msgstr "試行回数が多すぎます。1分待ってからもう一度お試しください。"
 
 #. Enter your license key.
 #. Activate dialog: Continue pressed with an empty field.
@@ -4866,7 +4866,7 @@ msgstr "ライセンスキーを入力してください。"
 #. Didn't get a code?
 #. Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a).
 msgid "signin.code.missing"
-msgstr "コードが届きませんか?"
+msgstr "コードが届きませんか？"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
@@ -5036,7 +5036,7 @@ msgstr "デバイスの上限に達しました"
 #. This license is already on all its devices. Replace a device to use it here.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_limit.message"
-msgstr "このライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。"
+msgstr "このライセンスは、すでにデバイス数の上限に達しています。ここで使うにはデバイスを置き換えてください。"
 
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5356,7 +5356,7 @@ msgstr "コードが正しくありません"
 #. That code isn't right. Check the email and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
-msgstr "そのコードは使用できませんでした。メールを確認して、もう一度入力してください。"
+msgstr "コードが正しくありません。メールを確認して、もう一度入力してください。"
 
 #. Code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5366,7 +5366,7 @@ msgstr "コードの有効期限切れ"
 #. That code has expired. Send a new code.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.code_expired.message"
-msgstr "そのコードは有効期限が切れています。新しいコードを送信してください。"
+msgstr "そのコードは有効期限が切れています。新しいコードをリクエストしてください。"
 
 #. Email already in use
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5466,7 +5466,7 @@ msgstr "オファーを利用できません"
 #. This offer isn't available to your account anymore. Refresh and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_eligible.message"
-msgstr "このオファーはお使いのアカウントでは利用できなくなりました。更新して、もう一度お試しください。"
+msgstr "このオファーはお使いのアカウントでは利用できなくなりました。ページを再読み込みして、もう一度お試しください。"
 
 #. Can't remove
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5696,7 +5696,7 @@ msgstr "更新できませんでした"
 #. Your license and settings couldn't be refreshed. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.refresh-failed.message"
-msgstr "ライセンスと設定を更新できませんでした。接続を確認して、もう一度お試しください。"
+msgstr "ライセンスと設定を最新の状態にできませんでした。接続を確認して、もう一度お試しください。"
 
 #. Couldn't check your license
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6611,12 +6611,12 @@ msgstr "ライセンスを確認できませんでした。アプリを再接続
 #. License needs refreshing
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_stale.title"
-msgstr "ライセンスの更新が必要です"
+msgstr "ライセンスの再確認が必要です"
 
 #. Connect to the internet so the app can refresh your license, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_stale.message"
-msgstr "アプリがライセンスを更新できるようにインターネットに接続してから、もう一度お試しください。"
+msgstr "アプリがライセンスを最新の状態にできるよう、インターネットに接続してから、もう一度お試しください。"
 
 #. Sign-in needed
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6736,7 +6736,7 @@ msgstr "デバイスの上限に達しました"
 #. This license is already on all its devices. Replace a device to use it here.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.device-limit.message"
-msgstr "このライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。"
+msgstr "このライセンスは、すでにデバイス数の上限に達しています。ここで使うにはデバイスを置き換えてください。"
 
 #. Device check failed
 #. Core copy (conformance/parity/copy.en.json, activation).

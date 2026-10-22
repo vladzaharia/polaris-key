@@ -71,7 +71,7 @@
     },
     "device_limit": {
       "title": "Gerätelimit erreicht",
-      "message": "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden."
+      "message": "Diese Lizenz hat ihr Gerätelimit bereits erreicht. Ersetzen Sie ein Gerät, um sie hier zu verwenden."
     },
     "key_entry_limit": {
       "title": "Keine Schlüsseleingaben mehr",
@@ -167,11 +167,11 @@
     },
     "unsupported_grant_type": {
       "title": "Anmeldeanfrage ungültig",
-      "message": "Die App hat eine Anmeldeart angefragt, die wir nicht unterstützen. Wende dich an den Entwickler."
+      "message": "Die App hat eine Anmeldeart angefragt, die wir nicht unterstützen. Wenden Sie sich an den Entwickler."
     },
     "invalid_scope": {
       "title": "Zugriff nicht verfügbar",
-      "message": "Die App hat Zugriff angefragt, den diese Anmeldung nicht bietet. Wende dich an den Entwickler."
+      "message": "Die App hat Zugriff angefragt, den diese Anmeldung nicht bietet. Wenden Sie sich an den Entwickler."
     },
     "redirect_uri_mismatch": {
       "title": "Anmeldung kann nicht zur App zurückkehren",
@@ -179,7 +179,7 @@
     },
     "license_choice_required": {
       "title": "Lizenz wählen",
-      "message": "Wähle, welche Lizenz dieses Gerät verwendet, und fahre dann fort."
+      "message": "Wählen Sie, welche Lizenz dieses Gerät verwendet, und fahren Sie dann fort."
     },
     "auth_method_disabled": {
       "title": "Anmeldemethode nicht verfügbar",
@@ -199,7 +199,7 @@
     },
     "invalid_code": {
       "title": "Falscher Code",
-      "message": "Dieser Code hat nicht funktioniert. Prüfen Sie die E-Mail und geben Sie ihn erneut ein."
+      "message": "Dieser Code ist nicht korrekt. Prüfen Sie die E-Mail und geben Sie ihn erneut ein."
     },
     "code_expired": {
       "title": "Code abgelaufen",
@@ -207,7 +207,7 @@
     },
     "email_in_use": {
       "title": "E-Mail-Adresse bereits verwendet",
-      "message": "Ein anderes Polaris Locker-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse."
+      "message": "Ein anderes Polaris Locker-Konto verwendet diese E-Mail-Adresse bereits. Fügen Sie diese Anmeldung dem anderen Konto hinzu oder verwenden Sie eine andere E-Mail-Adresse."
     },
     "terms_required": {
       "title": "Bedingungen nicht akzeptiert",
@@ -238,7 +238,7 @@
       "message": "Dies ist die einzige Anmeldemethode Ihres Kontos. Fügen Sie eine weitere hinzu, bevor Sie sie entfernen."
     },
     "step_up_required": {
-      "title": "Bestätigen Sie, dass Sie es sind",
+      "title": "Identität bestätigen",
       "message": "Melden Sie sich zu Ihrer Sicherheit erneut an, um fortzufahren."
     },
     "not_eligible": {
@@ -755,7 +755,7 @@
     },
     "device-limit": {
       "title": "Gerätelimit erreicht",
-      "message": "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden."
+      "message": "Diese Lizenz hat ihr Gerätelimit bereits erreicht. Ersetzen Sie ein Gerät, um sie hier zu verwenden."
     },
     "fingerprint-required": {
       "title": "Geräteprüfung fehlgeschlagen",

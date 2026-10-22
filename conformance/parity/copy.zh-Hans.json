@@ -151,7 +151,7 @@
     },
     "unknown_app": {
       "title": "登录不可用",
-      "message": "此应用无法登录。"
+      "message": "此应用不支持登录。"
     },
     "invalid_request": {
       "title": "登录请求无效",
@@ -171,7 +171,7 @@
     },
     "invalid_scope": {
       "title": "无法访问",
-      "message": "应用请求的访问权限此次登录不提供。请联系其开发者。"
+      "message": "应用请求了此次登录不提供的访问权限。请联系其开发者。"
     },
     "redirect_uri_mismatch": {
       "title": "登录无法返回应用",
@@ -203,7 +203,7 @@
     },
     "code_expired": {
       "title": "验证码已过期",
-      "message": "该验证码已过期。请发送新的验证码。"
+      "message": "该验证码已过期。请重新获取验证码。"
     },
     "email_in_use": {
       "title": "电子邮件已被使用",
@@ -247,7 +247,7 @@
     },
     "not_removable": {
       "title": "无法移除",
-      "message": "此许可证无法通过许可证密钥重新添加，因此会保留在你的库中。"
+      "message": "此许可证无法通过许可证密钥重新添加，因此会保留在你的资料库中。"
     },
     "download_auth_required": {
       "title": "登录以下载",
@@ -431,7 +431,7 @@
     },
     "invalid-argument": {
       "title": "请求未被接受",
-      "message": "应用发送的请求，许可桥接无法读取。请联系开发者。"
+      "message": "许可桥接无法读取应用发送的请求。请联系开发者。"
     },
     "invoke-not-allowed": {
       "title": "请求不被允许",
@@ -736,7 +736,7 @@
       "message": "此版本已不再受支持。请更新{product}以继续。"
     },
     "version-too-new": {
-      "title": "此许可证不可用",
+      "title": "许可证不支持此版本",
       "message": "此版本比你的许可证允许的版本更新。"
     },
     "channel-not-entitled": {

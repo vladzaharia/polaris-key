@@ -71,7 +71,7 @@
     },
     "device_limit": {
       "title": "Límite de dispositivos alcanzado",
-      "message": "Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí."
+      "message": "Esta licencia ya ha alcanzado su límite de dispositivos. Reemplaza un dispositivo para usarla aquí."
     },
     "key_entry_limit": {
       "title": "No quedan usos de la clave",
@@ -82,15 +82,15 @@
       "message": "Esta licencia se desactivó. Contacta con el desarrollador."
     },
     "license_expired": {
-      "title": "Licencia vencida",
-      "message": "Esta licencia venció. Renuévala para continuar."
+      "title": "Licencia caducada",
+      "message": "Esta licencia ha caducado. Renuévala para continuar."
     },
     "not_entitled": {
       "title": "No incluido",
       "message": "Tu licencia no incluye esto."
     },
     "version_blocked": {
-      "title": "Actualización obligatoria",
+      "title": "Actualización necesaria",
       "message": "Esta versión no se puede usar con tu licencia. Actualiza la app para continuar."
     },
     "channel_not_allowed": {
@@ -158,7 +158,7 @@
       "message": "La app envió una solicitud que no podemos leer. Inténtalo de nuevo."
     },
     "invalid_client": {
-      "title": "No se puede completar el inicio de sesión",
+      "title": "No se puede iniciar sesión",
       "message": "El inicio de sesión de esta app no está bien configurado, así que se detuvo aquí para proteger tu cuenta. Avisa a su desarrollador."
     },
     "invalid_grant": {
@@ -190,7 +190,7 @@
       "message": "El inicio de sesión por correo no está disponible en este momento. Elige otro método de inicio de sesión."
     },
     "turnstile_failed": {
-      "title": "La comprobación no se superó",
+      "title": "Comprobación fallida",
       "message": "La comprobación de seguridad no se superó. Vuelve a cargar la página e inténtalo de nuevo."
     },
     "signin_expired": {
@@ -199,7 +199,7 @@
     },
     "invalid_code": {
       "title": "Código incorrecto",
-      "message": "Ese código no funcionó. Revisa el correo y vuelve a escribirlo."
+      "message": "Ese código no es correcto. Revisa el correo y vuelve a intentarlo."
     },
     "code_expired": {
       "title": "Código caducado",
@@ -243,7 +243,7 @@
     },
     "not_eligible": {
       "title": "Oferta no disponible",
-      "message": "Esta oferta ya no está disponible para tu cuenta. Actualiza la página y vuelve a intentarlo."
+      "message": "Esta oferta ya no está disponible para tu cuenta. Recarga la página y vuelve a intentarlo."
     },
     "not_removable": {
       "title": "No se puede quitar",
@@ -311,7 +311,7 @@
     },
     "bundle-claims-rejected": {
       "title": "Archivo de activación no válido",
-      "message": "El archivo de activación es para otro producto u otro dispositivo, o venció."
+      "message": "El archivo de activación es para otro producto u otro dispositivo, o ha caducado."
     },
     "bundle-trust-rejected": {
       "title": "Archivo de activación no confiable",
@@ -414,8 +414,8 @@
       "message": "Se canceló el inicio de sesión."
     },
     "sign-in-expired": {
-      "title": "Código vencido",
-      "message": "El código venció antes de terminar el inicio de sesión. Vuelve a empezar."
+      "title": "Código caducado",
+      "message": "El código caducó antes de terminar el inicio de sesión. Vuelve a empezar."
     },
     "sign-in-denied": {
       "title": "Inicio de sesión rechazado",
@@ -427,7 +427,7 @@
     },
     "invalid-options": {
       "title": "App no configurada",
-      "message": "Las licencias de la app no están configuradas correctamente. Contacta con el desarrollador."
+      "message": "El sistema de licencias de la app no está configurado correctamente. Contacta con el desarrollador."
     },
     "invalid-argument": {
       "title": "Solicitud no aceptada",
@@ -439,18 +439,18 @@
     },
     "sender-refused": {
       "title": "Ventana no permitida",
-      "message": "Esta ventana no puede usar las licencias de la app. Contacta con el desarrollador."
+      "message": "Esta ventana no puede usar el sistema de licencias de la app. Contacta con el desarrollador."
     },
     "not-configured": {
       "title": "App no configurada",
-      "message": "Las licencias de la app todavía no están configuradas. Contacta con el desarrollador."
+      "message": "El sistema de licencias de la app todavía no está configurado. Contacta con el desarrollador."
     },
     "unsupported": {
       "title": "No disponible aquí",
       "message": "Esto no está disponible aquí."
     },
     "timeout": {
-      "title": "Tiempo de espera agotado",
+      "title": "Tiempo agotado",
       "message": "El servicio tardó demasiado en responder. Revisa tu conexión y vuelve a intentarlo."
     },
     "response-too-large": {
@@ -694,7 +694,7 @@
       "message": "El contenido integrado de esta compilación no es válido. Reinstala la app o contacta con el desarrollador."
     },
     "license_required": {
-      "title": "Se necesita una licencia",
+      "title": "Licencia necesaria",
       "message": "Activa la app y vuelve a intentarlo."
     },
     "license_invalid": {
@@ -716,11 +716,11 @@
       "message": "Tu licencia está activa."
     },
     "grace": {
-      "title": "Periodo de gracia sin conexión",
+      "title": "Periodo de gracia",
       "message": "No se puede conectar con el servicio de licencias. Puedes seguir usando la app hasta que termine el periodo de gracia."
     },
     "expired": {
-      "title": "Licencia vencida",
+      "title": "Licencia caducada",
       "message": "Conéctate a internet o renueva la licencia para continuar."
     },
     "revoked": {
@@ -732,7 +732,7 @@
       "message": "Escribe una clave de licencia o inicia sesión para continuar."
     },
     "version-too-old": {
-      "title": "Actualización obligatoria",
+      "title": "Actualización necesaria",
       "message": "Esta versión ya no es compatible. Actualiza {product} para continuar."
     },
     "version-too-new": {
@@ -755,7 +755,7 @@
     },
     "device-limit": {
       "title": "Límite de dispositivos alcanzado",
-      "message": "Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí."
+      "message": "Esta licencia ya ha alcanzado su límite de dispositivos. Reemplaza un dispositivo para usarla aquí."
     },
     "fingerprint-required": {
       "title": "Error al verificar el dispositivo",
@@ -774,8 +774,8 @@
       "message": "Esta licencia se desactivó. Contacta con el desarrollador."
     },
     "license-expired": {
-      "title": "Licencia vencida",
-      "message": "Esta licencia venció. Renuévala para continuar."
+      "title": "Licencia caducada",
+      "message": "Esta licencia ha caducado. Renuévala para continuar."
     },
     "attestation-required": {
       "title": "Se necesita verificar el dispositivo",

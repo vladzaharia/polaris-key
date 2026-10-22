@@ -847,7 +847,7 @@
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_tag_new">新規</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
-    <string name="signin_choice_tag_full">すべての端末が使用中</string>
+    <string name="signin_choice_tag_full">すべてのデバイスが使用中</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_keep">このデバイスのライセンスを使い続ける</string>
     <string name="signin_choice_keep__macos">このデバイスのライセンスを使い続ける</string>
@@ -859,11 +859,11 @@
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_createMeta">別のライセンス · 続行すると作成されます</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
-    <string name="signin_choice_allFull">お持ちのライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。</string>
+    <string name="signin_choice_allFull">お持ちのライセンスはすべて、デバイス数が上限に達しています。ここで使うにはデバイスを置き換えてください。</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
-    <string name="signin_choice_allFullCreate">お持ちのライセンスはすべてのデバイス枠が使用中です。デバイスを置き換えるか、新しい無料ライセンスを作成してください。</string>
+    <string name="signin_choice_allFullCreate">お持ちのライセンスはすべて、デバイス数が上限に達しています。デバイスを置き換えるか、新しい無料ライセンスを作成してください。</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
-    <string name="signin_choice_noneReplaceable">これらのライセンスのデバイスは%1$sが管理しています。%1$sに枠を空けてもらうか、別のライセンスを使用してください。</string>
+    <string name="signin_choice_noneReplaceable">これらのライセンスのデバイスは%1$sが管理しています。%1$sにデバイスを1台解放してもらうか、別のライセンスを使用してください。</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_choice_combined">%1$sのその他のアイテムも引き続き適用されます。</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
@@ -872,8 +872,8 @@
     <string name="signin_choice_keyInstead">代わりにライセンスキーを使う</string>
     <string name="signin_choice_keyInstead__macos">代わりにライセンスキーを使う</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
-    <string name="signin_choice_freeDevice">デバイスの枠を空ける</string>
-    <string name="signin_choice_freeDevice__macos">デバイスの枠を空ける</string>
+    <string name="signin_choice_freeDevice">デバイスを解放</string>
+    <string name="signin_choice_freeDevice__macos">デバイスを解放</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_continue">このライセンスを使って続ける</string>
     <string name="signin_choice_continue__macos">このライセンスを使って続ける</string>
@@ -950,7 +950,7 @@
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_profile">プロフィールとメールアドレス</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
-    <string name="signin_consent_pairwise">アプリにはあなた専用のIDが渡され、あなたのほかの製品やサインイン方法が知られることはありません。</string>
+    <string name="signin_consent_pairwise">アプリにはこのアプリ専用のIDが渡され、あなたのほかの製品やサインイン方法が知られることはありません。</string>
     <!-- Hosted sign-in card (SIGN-IN.md). -->
     <string name="signin_notYou">別のユーザーですか？</string>
     <string name="signin_notYou__macos">別のユーザーですか？</string>
@@ -962,8 +962,8 @@
     <string name="signin_key_addAndUse">追加してこのデバイスで使う</string>
     <string name="signin_key_addAndUse__macos">追加してこのデバイスで使う</string>
     <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_key_keep">%1$sをアカウントで管理</string>
-    <string name="signin_key_keep__macos">%1$sをアカウントで管理</string>
+    <string name="signin_key_keep">%1$sをアカウントに保管</string>
+    <string name="signin_key_keep__macos">%1$sをアカウントに保管</string>
     <!-- License key step (SIGN-IN.md §3.9). Arguments: {left} = how many are left, as a number; {limit} = the license's device limit, as a number; {n} = a number. Arguments: 1=left, 2=limit, 3=n. -->
     <string name="signin_key_entries">キー入力の残り：%2$s回中%1$s回 · 今回は%3$s回目です</string>
     <!-- License key step (SIGN-IN.md §3.9). Arguments: {left} = how many are left, as a number. Arguments: 1=left. -->
@@ -971,7 +971,7 @@
         <item quantity="other">キー入力の残り%1$d回</item>
     </plurals>
     <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_key_noEntries">このキーは%1$sでの入力回数が残っていません。アカウントに追加すると、代わりに%1$sがサインインします。</string>
+    <string name="signin_key_noEntries">このキーは%1$sでの入力回数が残っていません。アカウントに追加すると、代わりにサインインで%1$sを使えます。</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">今はスキップ</string>
     <string name="signin_key_skip__macos">今はスキップ</string>
@@ -992,8 +992,8 @@
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {s} = a number of seconds. Arguments: 1=s. -->
     <string name="signin_return_timer">%1$s秒後に自動的に戻ります</string>
     <!-- Return step (SIGN-IN.md §3.10). -->
-    <string name="signin_return_stay">このページにとどまる</string>
-    <string name="signin_return_stay__macos">このページにとどまる</string>
+    <string name="signin_return_stay">ここにとどまる</string>
+    <string name="signin_return_stay__macos">ここにとどまる</string>
     <!-- Last step of the in-app sign-in form (SIGN-IN.md §3.10). Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="signin_done_start">%1$sを使い始める</string>
     <string name="signin_done_start__macos">%1$sを使い始める</string>
@@ -1077,7 +1077,7 @@
     <string name="signin_return_library">ライブラリを開く</string>
     <string name="signin_return_library__macos">ライブラリを開く</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
-    <string name="signin_choice_freed">このライセンスのデバイス枠が1つ空きました。</string>
+    <string name="signin_choice_freed">このライセンスで、もう1台デバイスを使えるようになりました。</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_opensBrowser">ブラウザでPolaris Lockerが開きます</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
@@ -1172,7 +1172,7 @@
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
     <string name="signin_mail_replaced_subject">%2$sで%1$sがサインアウトされました</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform. Arguments: 1=device, 2=newDevice, 3=product, 4=date. -->
-    <string name="signin_mail_replaced_body">%4$sに%3$sにサインインした際、%1$sは%2$sに置き換えられました。別のデバイスを登録できる空きがあれば、後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。</string>
+    <string name="signin_mail_replaced_body">%4$sに%3$sにサインインした際、%1$sは%2$sに置き換えられました。デバイスを追加できる空きができれば、%1$sは後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
     <string name="signin_mail_newDevice_subject">Polaris Lockerアカウントに新しいデバイスがサインインしました</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->
@@ -1216,7 +1216,7 @@
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->
     <string name="cli_verb_enroll">無料ライセンスを取得（%1$sが提供している場合）</string>
     <!-- Terminal help: what the deactivate command does. -->
-    <string name="cli_verb_deactivate">このデバイスでのライセンス使用を停止し、枠を解放</string>
+    <string name="cli_verb_deactivate">このデバイスでのライセンスの使用を停止し、別のデバイスで使えるようにする</string>
     <!-- Terminal help: what the status command shows. -->
     <string name="cli_verb_status">ライセンス、デバイス、オフライン時間</string>
     <!-- Terminal help: what the offline-request command does. -->
@@ -1234,7 +1234,7 @@
     <!-- Terminal help: what 'devices rename' does. -->
     <string name="cli_verb_devicesRename">デバイスの名前を変更（名前を省略すると消去）</string>
     <!-- Terminal help: what 'devices deauthorize' does. -->
-    <string name="cli_verb_devicesRemove">デバイスを削除して枠を解放</string>
+    <string name="cli_verb_devicesRemove">デバイスを削除し、別のデバイスを追加できるようにする</string>
     <!-- Terminal help: what 'config get' does. -->
     <string name="cli_verb_configGet">1つの設定とその値の取得元を表示</string>
     <!-- Terminal help: what 'config list' does. -->
@@ -1302,7 +1302,7 @@
     <!-- Terminal: activate ran where it cannot ask for the key (no terminal) and nothing was piped in. Arguments: 1=command. -->
     <string name="cli_activate_noKey">ライセンスキーがありません。ターミナルで%1$sを実行するか、キーをパイプで渡してください。</string>
     <!-- Terminal: every device on the license is in use; free one in the browser, then activate again. {command} is a command line. Arguments: 1=command. -->
-    <string name="cli_deviceLimit_again">デバイスの枠を空けてから、もう一度%1$sを実行してください。</string>
+    <string name="cli_deviceLimit_again">デバイスを解放してから、もう一度%1$sを実行してください。</string>
     <!-- Terminal status: the row label for the license (tier and holder). -->
     <string name="cli_status_license">ライセンス</string>
     <!-- Terminal status: the row label for how long the app works without the internet. -->
@@ -1620,7 +1620,7 @@
     <!-- Group label of the provider buttons when adding a sign-in method. -->
     <string name="signin_provider_connectGroup">または別のアカウントを接続</string>
     <!-- Rate limit with no wait given. -->
-    <string name="signin_rateLimitedFew">コードが多すぎます。数分後にもう一度お試しください。</string>
+    <string name="signin_rateLimitedFew">コードのリクエストが多すぎます。数分後にもう一度お試しください。</string>
     <!-- Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated. -->
     <string name="signin_code_emailInUse">別の Polaris Locker アカウントがこのメールアドレスを使用しています。以前の方法でサインインしてください。</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
@@ -1650,7 +1650,7 @@
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_consent_cloudSync">クラウド同期</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
-    <string name="signin_consent_newLicense">新規: %1$s ライセンス。続けると作成されます</string>
+    <string name="signin_consent_newLicense">新規：%1$sライセンス（続けると作成されます）</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_upgradeTitle">%1$s をアカウントに保管</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
@@ -1670,7 +1670,7 @@
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_key_keyWorks">キーは有効です</string>
     <!-- PX-14a fix round. Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_footerNoDeveloper">Polaris Locker が %1$s にサインインします。</string>
+    <string name="signin_footerNoDeveloper">Polaris Lockerが%1$sへのサインインを行います。</string>
     <!-- PX-14a fix round. Arguments: {minutes} = a number of minutes. Arguments: 1=minutes. -->
     <plurals name="signin_replace_rateLimitedMinutes">
         <item quantity="other">デバイスの変更が多すぎます。%1$d 分後にもう一度お試しください。</item>
@@ -1721,7 +1721,7 @@
     <!-- Finish: the code stage after a resend. Arguments: {email}. Arguments: 1=email. -->
     <string name="signin_gate_resent">新しいコードを%1$sに送信しました。</string>
     <!-- Finish: the join offer when the other account is not yet proven. Arguments: {email}. Arguments: 1=email. -->
-    <string name="signin_gate_joinOtherLede">%1$sはすでにPolaris Lockerのアカウントで使われています。別のメールを使うか、先にそのアカウントでログインしてください。</string>
+    <string name="signin_gate_joinOtherLede">%1$sはすでにPolaris Lockerのアカウントで使われています。別のメールアドレスを使うか、先にそのアカウントにサインインしてください。</string>
     <!-- Finish: the screen name field left empty. -->
     <string name="signin_gate_nameRequired">表示名を入力してください。</string>
     <!-- Finish: lede of the terms-only step. Arguments: {app}. Arguments: 1=app. -->
@@ -1824,11 +1824,11 @@
     <!-- Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}. Arguments: 1=email, 2=date. -->
     <string name="signin_join_undoConfirm">%1$s とのまとめを元に戻しますか？%2$sまで可能です。</string>
     <!-- Approve dialog: too many tries (429). -->
-    <string name="signin_approve_tooMany">試行が多すぎます。1分待ってからもう一度お試しください。</string>
+    <string name="signin_approve_tooMany">試行回数が多すぎます。1分待ってからもう一度お試しください。</string>
     <!-- Activate dialog: Continue pressed with an empty field. -->
     <string name="signin_key_enterKey">ライセンスキーを入力してください。</string>
     <!-- Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a). -->
-    <string name="signin_code_missing">コードが届きませんか?</string>
+    <string name="signin_code_missing">コードが届きませんか？</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">問題が発生しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->
@@ -1896,7 +1896,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_title">デバイスの上限に達しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_limit_message">このライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。</string>
+    <string name="core_codes_device_limit_message">このライセンスは、すでにデバイス数の上限に達しています。ここで使うにはデバイスを置き換えてください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">キーの入力回数が残っていません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2024,11 +2024,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_code_title">コードが正しくありません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_code_message">そのコードは使用できませんでした。メールを確認して、もう一度入力してください。</string>
+    <string name="core_codes_invalid_code_message">コードが正しくありません。メールを確認して、もう一度入力してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_code_expired_title">コードの有効期限切れ</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_code_expired_message">そのコードは有効期限が切れています。新しいコードを送信してください。</string>
+    <string name="core_codes_code_expired_message">そのコードは有効期限が切れています。新しいコードをリクエストしてください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_in_use_title">メールアドレスは使用中です</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2068,7 +2068,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_eligible_title">オファーを利用できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_eligible_message">このオファーはお使いのアカウントでは利用できなくなりました。更新して、もう一度お試しください。</string>
+    <string name="core_codes_not_eligible_message">このオファーはお使いのアカウントでは利用できなくなりました。ページを再読み込みして、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_removable_title">削除できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2160,7 +2160,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_refresh_failed_title">更新できませんでした</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_refresh_failed_message">ライセンスと設定を更新できませんでした。接続を確認して、もう一度お試しください。</string>
+    <string name="core_codes_refresh_failed_message">ライセンスと設定を最新の状態にできませんでした。接続を確認して、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_failed_title">ライセンスを確認できませんでした</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2526,9 +2526,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_invalid_message">ライセンスを確認できませんでした。アプリを再接続してから、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_stale_title">ライセンスの更新が必要です</string>
+    <string name="core_codes_license_stale_title">ライセンスの再確認が必要です</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_stale_message">アプリがライセンスを更新できるようにインターネットに接続してから、もう一度お試しください。</string>
+    <string name="core_codes_license_stale_message">アプリがライセンスを最新の状態にできるよう、インターネットに接続してから、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_required_title">サインインが必要です</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2576,7 +2576,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_device_limit_title">デバイスの上限に達しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
-    <string name="core_activation_device_limit_message">このライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。</string>
+    <string name="core_activation_device_limit_message">このライセンスは、すでにデバイス数の上限に達しています。ここで使うにはデバイスを置き換えてください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_fingerprint_required_title">デバイスの確認に失敗しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
