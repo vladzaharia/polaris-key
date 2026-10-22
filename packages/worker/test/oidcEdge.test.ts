@@ -11,6 +11,7 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct, seedProductSecret } from "./seed.js";
 import { loadProduct, type Product } from "../src/core/products.js";
+import { pollAuthFlow } from "../src/services/identity/productOidc/poll.js";
 import {
   applyProvisioning,
   authorizeAndMint,
@@ -565,13 +566,13 @@ describe("the device-code completion after approval retries (I-37d)", () => {
   let licenseId: string;
   let statements = 0;
   /** The next `nth` statement matching `re` rejects once, as a D1 error; counts every statement. */
-  let fault: { re: RegExp; skip: number } | null = null;
+  let fault: { re: RegExp; skip: number; persist?: boolean } | null = null;
 
   const trap = (sqls: string[]): void => {
     statements += sqls.length;
     if (fault && sqls.some((q) => fault!.re.test(q))) {
       if (fault.skip-- > 0) return;
-      fault = null;
+      if (!fault.persist) fault = null;
       throw new Error("D1_ERROR: unavailable");
     }
   };
@@ -792,6 +793,42 @@ describe("the device-code completion after approval retries (I-37d)", () => {
     expect(res.status).toBe(503);
     const ok = await body(await poll("t9", NOW + 2));
     expect(ok.status).toBe("ready");
+  });
+
+  it("two overlapping polls before the redemption each count their failure: no increment is lost", async () => {
+    await putFlow("t11", { identity: identity(), licenseId });
+    fault = { re: /FROM oidc_config/, skip: 0, persist: true };
+    // Hold each failure's write until both polls have read the flow: the interleaving that would
+    // lose an increment under an absolute write.
+    const ns = singleUseMock(env);
+    const realGet = ns.get.bind(ns);
+    let reads = 0;
+    ns.get = (id) => {
+      const h = realGet(id);
+      return {
+        fetch: async (input, init) => {
+          const b = String(init?.body);
+          if (/"op":"get"/.test(b)) reads += 1;
+          if (/"op":"update".*mintFailures/.test(b))
+            for (let i = 0; i < 100 && reads < 4; i++)
+              await new Promise((r) => setTimeout(r, 1));
+          return h.fetch(input, init);
+        },
+      };
+    };
+    const run = () => pollAuthFlow(env, db, product, "t11", "dev-1", NOW);
+    const both = await Promise.all([run(), run()]);
+    expect(both.map((r) => r.status)).toEqual([503, 503]);
+    expect((await storedFlow("t11"))?.mintFailures).toBe(2);
+  });
+
+  it("the put-back keeps the device code's remaining lifetime, not a fresh 600 s", async () => {
+    await putFlow("t12", { startedAt: NOW - 100 });
+    fault = { re: /INSERT INTO devices/, skip: 0 };
+    expect((await poll("t12", NOW)).status).toBe(503);
+    const ttl = singleUseMock(env).ttlOf(await flowKey(env, "djdl", "t12"));
+    expect(ttl).toBeLessThanOrEqual(500);
+    expect(ttl).toBeGreaterThan(400);
   });
 
   it("the 600 s lapse still ends a flow in its backoff: the device code is gone, so timeout", async () => {

@@ -3596,7 +3596,7 @@ Five controls make that true. The first, the fourth and the fifth are the ones t
    D1 outage adds no D1 load between attempts. The counter and the deadline (`mintFailures`,
    `mintRetryAt`) live on the server-side flow record: nothing in a request sets, resets or skips
    them, and a fresh budget needs a new code and a new approval. The 503 says only that the
-   server failed; it is never a policy outcome, so it discloses no refusal cause. Tests:
+   server failed. It does tell the holder of the device code that the failure was not a refusal, so the one fact it adds is transient (503) versus final (the bare `error`); the cause is never disclosed, and a refusal still cannot be told from another final failure. The put-back keeps the device code's remaining lifetime, not a fresh 600 s, so an orphaned record cannot outlive it; the failure count is a compare-and-set retried on the winner's value, so overlapping polls cannot lose an increment. Tests:
    `oidcEdge.test.ts` › "the device-code completion after approval retries", `R8-oidc.test.ts` ›
    "I-37d the completion attempt budget".
 

@@ -1832,7 +1832,7 @@ and `deviceId`). Nothing here is signed: `PROTOCOL_VERSION` stays 4. The types a
 7. **A client treats every 5xx on the poll as transient**, with or without a JSON body, the
    runtime's own 500 included. It keeps polling at its interval until the code lapses.
    `Retry-After` is advisory, because the Worker enforces the spacing.
-8. The 503 names no cause, and rule 4 still holds.
+8. The 503 names no cause, and rule 4 still holds. It does tell the holder of the device code that the failure was not a refusal, so the one fact a poller can read is transient (503) versus final (the bare `error`); which cause applies is never disclosed.
 
 The route does not use RFC 8628's token-endpoint wire. It maps the RFC's codes to statuses:
 `pending` stands for `authorization_pending`, `timeout` for `expired_token`, and `slow_down` keeps

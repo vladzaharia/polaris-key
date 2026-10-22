@@ -277,7 +277,7 @@ async function transientFailure(
     if (!redeemed) await deleteArtefact(env, stateKey).catch(() => undefined);
     return json({ status: "error" });
   }
-  const wait = DEVICE_MINT_RETRY_SECONDS[failures - 1]!;
+  let wait = DEVICE_MINT_RETRY_SECONDS[failures - 1]!;
   const mintRetryAt = now + wait;
   let kept: boolean;
   if (redeemed) {
@@ -286,18 +286,42 @@ async function transientFailure(
     if (licenseId) back.licenseId = licenseId;
     back.mintFailures = failures;
     back.mintRetryAt = mintRetryAt;
-    kept = await putArtefact(
-      env,
-      stateKey,
-      JSON.stringify(back),
-      FLOW_TTL_SECONDS,
-    ).catch(() => false);
+    // The put-back keeps the device code's original expiry, so an orphaned record can't outlive it.
+    const ttl =
+      typeof flow.startedAt === "number"
+        ? Math.max(1, FLOW_TTL_SECONDS - Math.max(0, now - flow.startedAt))
+        : FLOW_TTL_SECONDS;
+    kept = await putArtefact(env, stateKey, JSON.stringify(back), ttl).catch(
+      () => false,
+    );
   } else {
-    kept = (
-      await updateArtefact(env, stateKey, {
-        set: { mintFailures: failures, mintRetryAt },
-      }).catch(() => ({ ok: false }))
-    ).ok;
+    // A compare-and-set on the count last read, retried on the winner's value: every failed
+    // attempt is counted, so overlapping polls can't lose an increment and run an extra attempt.
+    let seen = flow.mintFailures ?? 0;
+    let count = failures;
+    kept = false;
+    for (let i = 0; i < 4; i++) {
+      if (count > DEVICE_MINT_RETRY_SECONDS.length) {
+        // The overlapping failures spent the budget: this one ends the flow.
+        await deleteArtefact(env, stateKey).catch(() => undefined);
+        return json({ status: "error" });
+      }
+      const set = await updateArtefact(env, stateKey, {
+        expect: { mintFailures: seen === 0 ? null : seen },
+        set: {
+          mintFailures: count,
+          mintRetryAt: now + DEVICE_MINT_RETRY_SECONDS[count - 1]!,
+        },
+      }).catch(() => ({ ok: false, payload: null as string | null }));
+      if (set.ok) {
+        kept = true;
+        wait = DEVICE_MINT_RETRY_SECONDS[count - 1]!;
+        break;
+      }
+      if (set.payload === null) break;
+      seen = parseFlowRecord<FlowRecord>(set.payload)?.mintFailures ?? 0;
+      count = seen + 1;
+    }
   }
   return kept ? unavailable(wait) : json({ status: "error" });
 }
