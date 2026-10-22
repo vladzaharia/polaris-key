@@ -176,7 +176,12 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   {
     method: "POST",
     path: "/products/:slug/distribution/feeds/tokens (body)",
-    why: "mints a service token (binding service), a package-read credential of up to 365 days",
+    why: "mints a registry credential: a service token, a publish token or a license-bound token (every binding)",
+  },
+  {
+    method: "POST",
+    path: "/platform/feeds/tokens (body)",
+    why: "mints a registry credential on the platform's feeds",
   },
 ];
 

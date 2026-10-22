@@ -176,7 +176,7 @@ const NO_REVOCATION: ServiceRevocation = {
  * `revokedBy` and `revokeReason` of the revoked service tokens in `tokens`, read from the audit
  * trail (`ci_tokens` has no such columns and F-33b.5 adds no migration):
  *  - `manual`: the `service_token.revoke` row naming the token;
- *  - `revoke_all`: the product-wide row written at the same second as the token's `revoked_at`.
+ *  - `revoke_all`: the product-wide row of the same second whose summary lists the token's id.
  * A revocation older than the newest 200 audit rows, or made by the platform itself, reads as
  * `null`, which the console shows as no "Revoked by" line.
  */
@@ -202,11 +202,14 @@ async function serviceRevocations(
         r.target_id === t.tokenId &&
         r.at === t.revokedAt,
     );
+    // A product-wide row counts only if it names this token (the ids follow the colon), so a
+    // token revoked alone in the same second is never credited to the revoke-all's actor.
     const all = rows.find(
       (r) =>
         r.target_kind === "product" &&
         r.target_id === owner &&
-        r.at === t.revokedAt,
+        r.at === t.revokedAt &&
+        (r.summary ?? "").split(": ")[1]?.split(" ").includes(t.tokenId),
     );
     const hit = own ?? all;
     const by = hit ? hit.actor_email || hit.actor_sub : null;
@@ -315,6 +318,10 @@ async function create(
   owner: string,
   now: number,
 ): Promise<Response> {
+  // Every mint here leaves a durable credential (service, publish, licence-bound): a fresh
+  // step-up after the dispatcher's area check and before any validation (F-33b.7).
+  const stale = requireStepUp(session, now);
+  if (stale) return stale;
   const body = await readBody(req);
   const unknown = Object.keys(body).filter(
     (k) => !(BODY_KEYS as readonly string[]).includes(k),
@@ -429,9 +436,6 @@ async function createService(
       scope: `product:${owner}`,
       area: "keys",
     });
-  // It leaves a long-lived credential behind: a fresh step-up, as every such mint (stepUp.ts).
-  const stale = requireStepUp(session, now);
-  if (stale) return stale;
   // A service token is product-wide: no ecosystem, licence, URL or scope narrowing exists.
   const extra = ["ecosystems", "licenseId", "presentation", "scopes"].filter(
     (k) => body[k] !== undefined,
@@ -601,7 +605,7 @@ async function revokeAll(
   );
   // Product scope also ends the product's service tokens (a licence filter never does).
   if (!filter.licenseId) {
-    let svc: number;
+    let svc: string[];
     try {
       svc = await revokeAllServiceTokens(db, owner, now);
     } catch (e) {
@@ -620,7 +624,7 @@ async function revokeAll(
       throw e;
     }
     forgetRegistryTokens();
-    if (svc > 0)
+    if (svc.length > 0)
       await record(
         db,
         scope,
@@ -629,9 +633,9 @@ async function revokeAll(
         now,
         "service_token.revoke",
         { kind: "product", id: owner },
-        `Revoked every live service token (${svc})`,
+        `Revoked every live service token (${svc.length}): ${svc.join(" ")}`,
       );
-    n += svc;
+    n += svc.length;
   }
   return adminJson({ ok: true, revoked: n });
 }

@@ -26,6 +26,7 @@ import {
   mintRegistryToken,
 } from "../src/core/registry/registryTokens.js";
 import { hashCiCredential, issueStaticCiToken } from "../src/core/publisher.js";
+import { hashKey, mintAdminApiToken } from "../src/platform/crypto.js";
 import type { Grant } from "../src/core/rbac/can.js";
 
 let db: Db;
@@ -605,5 +606,57 @@ describe("step-up (F-33b.7)", () => {
     const res = await admin("POST", tokens(`/${id}/revoke`));
     expect(res.status).toBe(200);
     expect((await admin("POST", tokens("/revoke-all"), {})).status).toBe(200);
+  });
+
+  it("a pkeya_ admin API token is refused (no scope names the route, so it never reaches the handler)", async () => {
+    const secret = mintAdminApiToken();
+    await db.run(
+      `INSERT INTO admin_api_tokens (id, token_hash, label, scopes_json, created_at, expires_at)
+       VALUES ('apitok_x', ?, 'x', '["bundles:mint"]', ?, ?)`,
+      await hashKey(secret, env.KEY_HASH_PEPPER),
+      NOW - DAY,
+      NOW + DAY,
+    );
+    const full = `/api${tokens()}`;
+    const res = await handleAdmin(
+      new Request(`${CONSOLE}/manage${full}`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${secret}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ label: "x", binding: "service" }),
+      }),
+      env,
+      db,
+      full,
+      { now: NOW },
+    );
+    expect(res.status).toBe(403);
+    expect(await db.all("SELECT 1 FROM ci_tokens")).toEqual([]);
+  });
+
+  it("revoked-by: a token revoked elsewhere in the same second is not credited to the revoke-all", async () => {
+    const x = await (await mintService({ label: "x" })).json();
+    const y = await (await mintService({ label: "y" })).json();
+    // Keys → CI tokens revokes through a different audit action, in the same second.
+    await db.run(
+      "UPDATE ci_tokens SET revoked_at = ? WHERE token_id = ?",
+      NOW,
+      x.view.tokenId,
+    );
+    await admin("POST", tokens("/revoke-all"), {});
+    const listed = (await (await admin("GET", tokens())).json())
+      .serviceTokens as Loose[];
+    const by = (id: string) => listed.find((t) => t.tokenId === id);
+    expect(by(y.view.tokenId)).toMatchObject({
+      revokedBy: "admin:ada@x.io",
+      revokeReason: "revoke_all",
+    });
+    expect(by(x.view.tokenId)).toMatchObject({
+      status: "revoked",
+      revokedBy: null,
+      revokeReason: null,
+    });
   });
 });

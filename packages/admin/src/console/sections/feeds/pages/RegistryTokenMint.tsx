@@ -179,13 +179,14 @@ export function MintDialog({
   // Errors show once the operator has typed in a field or tried to create.
   const [attempted, setAttempted] = React.useState(false);
   const formRef = React.useRef<HTMLFormElement>(null);
-  // Only a service token needs a fresh step-up; its entries survive the sign-in.
+  // Every mint needs a fresh step-up; its entries survive the sign-in (never a token value).
   const stepUp = useStepUpDraft(
     `registry-token:${scope.kind === "product" ? scope.slug : "platform"}`,
     open,
     () => onOpenChange(true),
   );
-  const restoredDays = React.useRef(false);
+  // The days a sign-in saved win over the type's default until the operator edits them.
+  const restoredDays = React.useRef<number | null>(null);
   React.useEffect(() => {
     if (!open) return;
     const saved = stepUp.take();
@@ -193,15 +194,23 @@ export function MintDialog({
       const d = Number(saved.days);
       setAttempted(false);
       setLabel(saved.label ?? "");
-      setEveryFeed(true);
-      setPicked([]);
-      setGodotUrl(false);
-      setAccess("read");
-      setDays(Number.isInteger(d) ? d : data.limits.defaultDays);
-      restoredDays.current = true;
+      setEveryFeed(saved.everyFeed === "1");
+      setPicked(
+        (saved.picked ?? "")
+          .split(",")
+          .filter((e): e is FeedEcosystem =>
+            (ECOSYSTEMS as readonly string[]).includes(e),
+          ),
+      );
+      setGodotUrl(saved.godotUrl === "1");
+      setAccess(saved.access === "publish" ? "publish" : "read");
+      const days = Number.isInteger(d) ? d : data.limits.defaultDays;
+      setDays(days);
+      restoredDays.current = days;
       setFailure(null);
       return;
     }
+    restoredDays.current = null;
     setAttempted(false);
     setLabel("");
     setEveryFeed(true);
@@ -233,9 +242,8 @@ export function MintDialog({
   const binding = licenseId === undefined ? "owner" : "license";
 
   React.useEffect(() => {
-    // The days the sign-in saved win over the type's default, once.
-    if (restoredDays.current) {
-      restoredDays.current = false;
+    if (restoredDays.current !== null) {
+      setDays(restoredDays.current);
       return;
     }
     setDays(
@@ -306,8 +314,15 @@ export function MintDialog({
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     if (saving) return;
-    if (service && stepUp.needed && !invalid) {
-      stepUp.signIn({ label, days: days === null ? "" : String(days) });
+    if (stepUp.needed && !invalid) {
+      stepUp.signIn({
+        label,
+        days: days === null ? "" : String(days),
+        access,
+        everyFeed: everyFeed ? "1" : "",
+        picked: picked.join(","),
+        godotUrl: godotUrl ? "1" : "",
+      });
       return;
     }
     if (invalid) {
@@ -347,7 +362,7 @@ export function MintDialog({
       });
       onMinted(res);
     } catch (err) {
-      if (service && stepUp.check(err)) return;
+      if (stepUp.check(err)) return;
       setFailure(err);
       // A 422 marks fields: focus the first one.
       if (err instanceof ApiError && err.fields?.length)
@@ -494,7 +509,10 @@ export function MintDialog({
             className="w-44"
             required
             value={days}
-            onChange={(v: number | null) => setDays(v)}
+            onChange={(v: number | null) => {
+              restoredDays.current = null;
+              setDays(v);
+            }}
             error={
               refused.includes("expiresInDays")
                 ? "The server refused this expiry. Change it and try again."

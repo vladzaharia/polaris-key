@@ -1850,21 +1850,25 @@ publish-scoped one always has (F-20 Q4), so the entitlement flag is not judged.
   else (`ecosystems`, `licenseId`, `presentation` or `scopes` is a 422), and
   `isServiceTokenScopes` is checked again on every list and revoke.
 
-**Minting: Keys area and a fresh step-up (F-33b.7).** A service mint needs the `keys` area on the
-product (`can(keys, edit)` in the handler, 403 `no_access`) and a console step-up, a sign-in from the
-last 5 minutes (`requireStepUp` in the handler, because only `binding: "service"` of this route
-needs one; `STEP_UP_ROUTES` lists it as `(body)`). The same joins the two other writes that leave
-authority behind: `POST …/ci-tokens` (a static CI token) and `PUT …/ci-publisher` (claiming or
-editing the trusted publisher), both table rows with `stepUp: true`. Before F-33b.7 none had one, so a
-stolen console session could leave a year-long product-wide read credential, or a publisher policy
-that mints publish tokens, behind. Revokes stay without a step-up: cutting access must stay fast.
-The order is the dispatcher's: sign-in, area, step-up, then the handler's own refusals (a system
-product's refusal, validation, the cap). A token has no step-up, so no admin API token can mint one.
-The console answers a 403 `step_up_required` by turning the dialog into "Sign in again" and keeping
+**Minting: a fresh step-up on every durable credential (F-33b.7).** Every mint on
+`POST …/feeds/tokens`, product and platform scope, needs a console step-up (a sign-in from the last
+5 minutes): the service token, an owner-bound `pkeyr_` publish token and a licence-bound token, so
+every binding and scope (`requireStepUp` at the top of `create()`, because the route has one row for
+all of them; `STEP_UP_ROUTES` lists it as `(body)`). `POST …/ci-tokens` (a static CI token) and
+`PUT …/ci-publisher` (claiming or editing the trusted publisher) join it as table rows with
+`stepUp: true`. Before F-33b.7 none had one, so a stolen console session could leave a year-long
+read credential, a 30-day publish token or a publisher policy that mints publish tokens behind.
+Revokes stay without a step-up: cutting access must stay fast. A service mint also needs the `keys`
+area on the product (`can(keys, edit)`, 403 `no_access`). The order is: sign-in, the route's area
+(the dispatcher), step-up, then the handler's own refusals (the system product's 422
+`system_service_tokens`, the keys area, validation, the cap), the same for every mint on the route.
+An admin API token (`pkeya_`) has no step-up and the route names no token scope, so it is refused
+before the handler. The console answers a 403 `step_up_required` by turning the dialog into "Sign in again" and keeping
 its entries across the sign-in (`ui/useStepUpDraft.tsx`: the entries go to `sessionStorage` under
 the page's hash for 15 minutes, never the token). Tests: `test/serviceTokens.test.ts`,
-`test/publishRoutes.test.ts`, `test/rbacRouteMatrix.test.ts`. ST-30c.1's break-glass realm is not in this tree; when it lands, its
-refusal comes before the step-up, with its own reason, and needs a test on these three writes then.
+`test/publishRoutes.test.ts`, `test/rbacRouteMatrix.test.ts`. ST-30c.1's break-glass realm is not in
+this tree; when it lands, its refusal comes before the step-up, with its own reason, and needs a test
+on these writes then.
 
 **Blast radius of a leak.** The token is product-wide (no ecosystem narrowing, D-F1): whoever holds
 it reads every non-public package of that one product until it expires or an operator revokes it
@@ -1887,7 +1891,8 @@ a 404 (Keys → CI tokens still revokes those). Revoke-all on product scope also
 service token of the product (an unbounded select, no row window; their unredeemed upload tickets
 expire as in `revokeCiToken`); a licence filter never does. Both drop this isolate's resolution
 cache; other isolates lag at most 30 seconds. "Revoked by" and its reason (`manual`, `revoke_all`)
-come from the `service_token.revoke` audit rows (F-33b.5), not a column: the newest 200 rows only,
+come from the `service_token.revoke` audit rows (F-33b.5), not a column (a revoke-all row lists the
+ids it revoked, and a token counts as revoked by it only if its id is listed): the newest 200 rows only,
 and a revocation older than that, or the platform's own, shows no line.
 
 **The owner-wide read `pkeyr_` is retired.** `mintRegistryToken` refuses `binding: "owner"` without
@@ -1922,12 +1927,15 @@ product's non-public packages until it expires or is revoked. A per-product cap 
 tokens (counted over every live token, then re-checked after the insert so racing mints cannot both
 stay above it; the loser is revoked) bounds the table. The list returns every live token and the 100
 newest revoked or expired ones. A label refuses control characters. A fresh step-up proves the
-operator's presence, not their intent: an operator with a fresh sign-in can still mint one.
+operator's presence, not their intent: an operator with a fresh sign-in can still mint one. `POST
+…/ci-tokens` mints the same service-token equivalent (a `packages:read`-only static token, up to 365
+days) outside the 500-per-product cap, which counts only the console's service tokens.
 
 **Review triggers.** A second scope accepted by the service mint, or the registry host accepting any
 scope but `packages:read` and `release:publish`; the list or revoke matching on anything but exact
 `["packages:read"]`; an owner-bound read mint returning; a service mint, `POST …/ci-tokens` or
-`PUT …/ci-publisher` losing its step-up, or a revoke gaining one; a null-deliverable route that
+`PUT …/ci-publisher` losing its step-up, or a revoke gaining one; a new mint binding or scope on
+`POST …/feeds/tokens`; a decision to apply the 500 cap to `…/ci-tokens`; a null-deliverable route that
 names packages without `listDocument`; a token or hash reaching an audit row, a log or a list.
 
 ### Native-client publish (F-22)

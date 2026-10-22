@@ -1021,17 +1021,17 @@ export async function revokeServiceToken(
 
 /**
  * Revoke every live read service token of the product, however many there are (no window), and
- * expire their unredeemed tickets; answers how many.
+ * expire their unredeemed tickets; answers their token ids.
  */
 export async function revokeAllServiceTokens(
   db: Db,
   product: string,
   now: number,
-): Promise<number> {
+): Promise<string[]> {
   const live = await liveServiceTokens(db, product, now);
-  if (live.length === 0) return 0;
-  const hashes = await db.all<{ token_hash: string }>(
-    `SELECT token_hash FROM ci_tokens WHERE product = ? AND kind = 'static' AND scopes_json = ?
+  if (live.length === 0) return [];
+  const hashes = await db.all<{ token_hash: string; token_id: string }>(
+    `SELECT token_hash, token_id FROM ci_tokens WHERE product = ? AND kind = 'static' AND scopes_json = ?
         AND revoked_at IS NULL AND expires_at > ?`,
     product,
     SERVICE_TOKEN_SCOPES_JSON,
@@ -1053,7 +1053,7 @@ export async function revokeAllServiceTokens(
   }
   for (let k = 0; k < stmts.length; k += 100)
     await db.batch(stmts.slice(k, k + 100));
-  return hashes.length;
+  return hashes.map((h) => h.token_id);
 }
 
 /** Revoke a token (and every unredeemed ticket it holds). False if no live token had that id. */

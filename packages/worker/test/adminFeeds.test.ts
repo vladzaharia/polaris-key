@@ -49,6 +49,12 @@ interface JsonResponse extends Response {
   json(): Promise<Loose>;
 }
 
+/** A session without a fresh step-up (the default session has one). */
+let stale = false;
+beforeEach(() => {
+  stale = false;
+});
+
 async function admin(
   method: string,
   path: string,
@@ -57,7 +63,13 @@ async function admin(
 ): Promise<JsonResponse> {
   const { token, session } = await issueSession(
     env,
-    { sub: "u1", name: "Ada", email: "ada@x.io", groups },
+    {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups,
+      ...(stale ? {} : { authTime: NOW, stepUp: true }),
+    },
     NOW,
   );
   const full = `/api${path}`;
@@ -1065,5 +1077,46 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
       accessMode: "licensed",
     });
     expect([403, 404]).toContain(put.status);
+  });
+});
+
+describe("every durable mint needs a fresh step-up (F-33b.7)", () => {
+  const tokens = (rest = "") => product(`/tokens${rest}`);
+  const publish = {
+    label: "p",
+    binding: "owner",
+    scopes: ["publish"],
+    ecosystems: ["npm"],
+    expiresInDays: 7,
+  };
+  const licence = { label: "seat", binding: "license", licenseId: "lic_1" };
+
+  it("a publish mint and a licence-bound mint refuse without one, write nothing, then succeed with one", async () => {
+    await db.run(
+      `INSERT INTO licenses (product, id, status, activated_at, modified_at) VALUES (?, 'lic_1', 'active', ?, ?)`,
+      OWNER,
+      NOW,
+      NOW,
+    );
+    stale = true;
+    for (const body of [publish, licence]) {
+      const res = await admin("POST", tokens(), body);
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({
+        error: { code: "step_up_required" },
+      });
+    }
+    expect(await db.all("SELECT 1 FROM registry_tokens")).toEqual([]);
+    stale = false;
+    expect((await admin("POST", tokens(), publish)).status).toBe(201);
+    expect((await admin("POST", tokens(), licence)).status).toBe(201);
+  });
+
+  it("revoking needs none", async () => {
+    const minted = await (await admin("POST", tokens(), publish)).json();
+    stale = true;
+    const res = await admin("POST", tokens(`/${minted.view.tokenId}/revoke`));
+    expect(res.status).toBe(200);
+    expect((await admin("POST", tokens("/revoke-all"), {})).status).toBe(200);
   });
 });

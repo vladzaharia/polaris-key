@@ -519,7 +519,7 @@ function TokensRow({ slug }: { slug: string }): React.ReactElement {
   return (
     <SettingsRow
       label="CI tokens"
-      help="For a CI that is not GitHub Actions. A static token lasts up to 90 days (a read service token, 365)."
+      help="For a CI that is not GitHub Actions. A static token lasts up to 90 days, or 365 with only the read scope."
       footer={
         <div className="mt-4">
           <DataTable<CiTokenDto>
@@ -663,9 +663,12 @@ function IssueTokenDialog({
       setFailure(null);
     }
   }, [open]);
+  // The server's rule (`staticCiTokenMaxTtl`): 365 days when `packages:read` is the only scope.
+  const maxDays =
+    scopes.length === 1 && scopes[0] === "packages:read" ? 365 : 90;
   const daysError =
-    days === null || !Number.isInteger(days) || days < 1 || days > 90
-      ? "Use a whole number of days from 1 to 90."
+    days === null || !Number.isInteger(days) || days < 1 || days > maxDays
+      ? `Use a whole number of days from 1 to ${maxDays}.`
       : undefined;
 
   const submit = async (e: React.FormEvent): Promise<void> => {
@@ -731,7 +734,7 @@ function IssueTokenDialog({
                 integer
                 nullable
                 min={1}
-                max={90}
+                max={maxDays}
                 unit="days"
               />
             )}

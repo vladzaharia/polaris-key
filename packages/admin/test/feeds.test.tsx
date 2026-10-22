@@ -1903,4 +1903,56 @@ describe("minting needs a fresh sign-in (F-33b.7)", () => {
     ).toBeTruthy();
     setStepUpRedirectForTests();
   });
+
+  it("a publish token's dialog does the same and reopens as a publish dialog", async () => {
+    const redirect = vi.fn();
+    setStepUpRedirectForTests(() => redirect());
+    sessionStorage.clear();
+    const limits = {
+      ...(tokensPage().limits as object),
+      publishEcosystems: ["npm"],
+      publishDefaultDays: 7,
+      publishMaxDays: 30,
+    };
+    const routes = () => ({
+      ...feedRoutes(),
+      ...product(true),
+      [TOKENS_URL]: tokensPage({ limits }),
+      [`POST ${TOKENS_URL}`]: new Response(
+        JSON.stringify({
+          error: { code: "step_up_required" },
+          code: "step_up_required",
+        }),
+        { status: 403 },
+      ),
+    });
+    boot("#/p/djdl/distribution/feeds/tokens", { extra: routes() });
+    await tokensTable();
+    let dialog = await openMint();
+    await userEvent.click(
+      within(dialog).getByRole("radio", { name: /Read and publish/ }),
+    );
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /Label/ }),
+      "Release box",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create token" }),
+    );
+    await userEvent.click(
+      await within(dialog).findByRole("button", { name: "Sign in again" }),
+    );
+    expect(redirect).toHaveBeenCalledTimes(1);
+    cleanup();
+    boot("#/p/djdl/distribution/feeds/tokens", { extra: routes() });
+    dialog = await screen.findByRole("dialog", { name: "New publish token" });
+    expect(
+      (
+        within(dialog).getByRole("textbox", {
+          name: /Label/,
+        }) as HTMLInputElement
+      ).value,
+    ).toBe("Release box");
+    setStepUpRedirectForTests();
+  });
 });

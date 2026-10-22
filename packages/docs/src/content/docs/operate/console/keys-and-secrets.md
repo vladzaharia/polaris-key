@@ -156,7 +156,7 @@ The **CI publishing** section holds how your CI proves who it is:
   `GET`/`/manage/api/products/<slug>/ci-publisher` (PUT).
 - **CI tokens** — static tokens for a CI that is not GitHub Actions, and the short-lived tokens
   trusted runs were issued, with their scopes, status and expiry. **Issue token…** shows a new
-  token once (only its hash is stored); it lasts 1 to 90 days, and issuing needs a sign-in from the
+  token once (only its hash is stored); it lasts 1 to 90 days (1 to 365 with only the read scope `packages:read`), and issuing needs a sign-in from the
   last 5 minutes. **Revoke…** needs none: it refuses the token from then on, together with any upload
   tickets it bought and has not used.
   `GET`/`/manage/api/products/<slug>/ci-tokens` (POST), `DELETE .../ci-tokens/<tokenId>`.
