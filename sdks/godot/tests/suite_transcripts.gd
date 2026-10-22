@@ -257,6 +257,9 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 				out["code"] = String(PKeyErrors.SIGN_IN_DENIED)
 			elif p["status"] == "error" and p.get("code") == PKeyErrors.SIGN_IN_FAILED:
 				out["code"] = String(PKeyErrors.SIGN_IN_FAILED)
+			elif p["status"] == "transient":
+				# I-37d: no answer or a 5xx on the poll; a wait loop keeps polling.
+				out["code"] = String(p["code"])
 			if p.has("interval"):
 				out["interval"] = p["interval"]
 		"waitForSignIn":

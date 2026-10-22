@@ -79,6 +79,30 @@ def test_wait_for_sign_in_is_native_and_cancellable(monkeypatch) -> None:
     asyncio.run(main())
 
 
+@pytest.mark.parametrize(
+    "poll,status,code",
+    [
+        ({"status": "error", "reason": "access_denied"}, "error", "sign-in-denied"),
+        ({"status": "error"}, "error", "sign-in-failed"),
+    ],
+)
+def test_wait_for_sign_in_keeps_the_code_of_a_denied_or_failed_sign_in(monkeypatch, poll, status, code) -> None:
+    real_sleep = asyncio.sleep
+
+    async def fast_sleep(_s):
+        await real_sleep(0)
+
+    async def main():
+        c = await _create(_handler([{"status": "pending"}, poll]))
+        monkeypatch.setattr(polaris_key.aio.asyncio, "sleep", fast_sleep)
+        prompt = await c.identity.begin_sign_in()
+        r = await c.identity.wait_for_sign_in(prompt)
+        assert r.status == status and r.code == code
+        await c.aclose()
+
+    asyncio.run(main())
+
+
 def test_cancelling_the_wait_stops_polling() -> None:
     async def main():
         c = await _create(_handler([{"status": "pending"}]))

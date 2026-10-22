@@ -24,8 +24,10 @@ import { FLOW_DENIED } from "./deviceApproval.js";
 import {
   DEVICE_POLL_DENIED,
   type DevicePollResponse,
+  type DevicePollUnavailable,
 } from "@polaris-key/protocol/identity";
 import {
+  DEVICE_MINT_RETRY_SECONDS,
   DEVICE_POLL_INTERVAL_SECONDS,
   type DeviceFlowRecord,
   FLOW_TTL_SECONDS,
@@ -52,6 +54,28 @@ function errorState(
     : { status: "error" };
 }
 
+/** I-37d: HTTP 503 `unavailable` with `Retry-After` (WIRE-CONTRACT-V4 §12.10 rule 5). Names no
+ *  cause (rule 8). */
+function unavailable(seconds: number): Response {
+  const body = {
+    error: "unavailable",
+    message: "try again",
+  } satisfies DevicePollUnavailable;
+  return json(body, {
+    status: 503,
+    headers: { "retry-after": String(Math.max(1, Math.ceil(seconds))) },
+  });
+}
+
+/** A mint the device was refused (seat, fingerprint, hardware, licence). Final: a retry fails
+ *  the same way (I-37d, rule 6). The message is the refusal code. */
+export class MintRefused extends Error {
+  constructor(code: string) {
+    super(code);
+    this.name = "MintRefused";
+  }
+}
+
 /** Authorize a device for a license and mint a per-device token. */
 export async function authorizeAndMint(
   env: Env,
@@ -62,14 +86,14 @@ export async function authorizeAndMint(
   now: number,
 ): Promise<string> {
   const row = await getLicense(db, product.slug, licenseId);
-  if (!row) throw new Error("license not found");
+  if (!row) throw new MintRefused("license not found");
   // I-05: bound by a sign-in. The product-OIDC licence is `sub`-keyed and attached to no account
   // (plans/I-04.md §8 Q6), so no pairwise subject is set here; passthrough sign-in (I-08) does.
   const result = await authorizeDevice(env, db, product, row, deviceId, now, {
     boundBy: "signin",
     adoptAnonymousEnrolled: true,
   });
-  if ("error" in result) throw new Error(result.error);
+  if ("error" in result) throw new MintRefused(result.error);
   return result.token;
 }
 
@@ -143,79 +167,87 @@ export async function pollAuthFlow(
   // activation and the mint, so the poll cannot tell a prober anything else. Unapproved is
   // anything but a numeric `approvedAt`: absent, malformed, or written by an older Worker.
   if (!flowApproved(flow)) return json({ status: "pending" });
-  // N9: the callback refused a subject whose account can no longer sign in, but the account can
-  // be disabled (or its deletion begun) while the flow waits for this poll. Checked again before
-  // anything is shown, activated or minted; the flow is dropped and the answer is the generic
-  // `error` (D8), with nothing written.
-  if (
-    flow.identity &&
-    (await pollAccountRefused(env, db, product, flow.identity.sub, now))
-  ) {
-    await deleteArtefact(env, stateKey);
-    return json({ status: "error" });
-  }
+  // I-37d: a transient failure is waiting out its backoff. The same 503, the seconds left, and
+  // no database read: only the single-use store was touched to get here.
+  if (typeof flow.mintRetryAt === "number" && flow.mintRetryAt > now)
+    return unavailable(flow.mintRetryAt - now);
 
+  // Everything from here to the mint is the post-approval work. A throw is transient unless it is
+  // a `MintRefused` (I-37d): it keeps the flow and answers 503 within a budget, instead of the
+  // runtime's bare 500 without CORS. `redeemed` is set once the flow has been taken (G15).
   let licenseId = flow.licenseId;
-  if (!licenseId) {
-    // The deferred activation of a device-code flow (P1-07). Only `/device/poll` gets here, so
-    // only the device-code holder, polling as the device the flow was started for, decides.
-    const identity = flow.identity!;
-    if (ask.confirmIdentity || ask.attachLicense !== null) {
-      // The decision is honoured only once the device has been shown the identity; until then
-      // it is (re)shown it, and nothing is minted. `attachable` is always false (I-37, D6).
-      if (ask.attachLicense === null || !flow.identityShownAt) {
-        if (!flow.identityShownAt) {
-          flow.identityShownAt = now;
-          await updateArtefact(env, stateKey, {
-            expect: { identityShownAt: null },
-            set: { identityShownAt: now },
-          });
-        }
-        return json({
-          status: "confirm",
-          identity: shownIdentity(identity),
-          attachable: false,
-        });
-      }
-    }
-    const result = await activateFromIdentity(db, product, identity, now, {
-      env,
-    });
-    if ("error" in result) {
-      // The callback checked this; it can still change underneath a waiting flow (the
-      // identity's licence was disabled meanwhile). Same generic answer as every failure (D8).
+  let redeemed: string | null = null;
+  let token: string;
+  try {
+    // N9: the callback refused a subject whose account can no longer sign in, but the account
+    // can be disabled (or its deletion begun) while the flow waits for this poll. Checked again
+    // before anything is shown, activated or minted; the flow is dropped and the answer is the
+    // generic `error` (D8), with nothing written.
+    if (
+      flow.identity &&
+      (await pollAccountRefused(env, db, product, flow.identity.sub, now))
+    ) {
       await deleteArtefact(env, stateKey);
       return json({ status: "error" });
     }
-    licenseId = result.licenseId;
-    // Recorded before minting, so a retried poll after a failed mint reuses this licence and
-    // never runs the activation (or the merge) twice.
-    flow.licenseId = licenseId;
-    await updateArtefact(env, stateKey, { set: { licenseId } });
-    // I-17: the licence joins the account the callback's claim signed this subject in to.
+
+    if (!licenseId) {
+      // The deferred activation of a device-code flow (P1-07). Only `/device/poll` gets here,
+      // so only the device-code holder, polling as the device the flow was started for, decides.
+      const identity = flow.identity!;
+      if (ask.confirmIdentity || ask.attachLicense !== null) {
+        // The decision is honoured only once the device has been shown the identity; until then
+        // it is (re)shown it, and nothing is minted. `attachable` is always false (I-37, D6).
+        if (ask.attachLicense === null || !flow.identityShownAt) {
+          if (!flow.identityShownAt) {
+            flow.identityShownAt = now;
+            await updateArtefact(env, stateKey, {
+              expect: { identityShownAt: null },
+              set: { identityShownAt: now },
+            });
+          }
+          return json({
+            status: "confirm",
+            identity: shownIdentity(identity),
+            attachable: false,
+          });
+        }
+      }
+      const result = await activateFromIdentity(db, product, identity, now, {
+        env,
+      });
+      if ("error" in result) {
+        // The callback checked this; it can still change underneath a waiting flow (the
+        // identity's licence was disabled meanwhile). Same generic answer as every failure (D8).
+        await deleteArtefact(env, stateKey);
+        return json({ status: "error" });
+      }
+      licenseId = result.licenseId;
+      // Recorded before minting, so a retried poll after a failed mint reuses this licence and
+      // never runs the activation (or the merge) twice.
+      flow.licenseId = licenseId;
+      await updateArtefact(env, stateKey, { set: { licenseId } });
+    }
+    // I-17: the licence joins the account the callback's claim signed this subject in to. An
+    // idempotent sync, so it runs on every attempt: a retry after it threw still joins them.
     if (flow.claimAccount)
       await attachClaimedLicenses(db, flow.claimAccount, now);
-  }
 
-  // Redeem the flow atomically BEFORE minting (G15): of two racing polls, exactly one takes the
-  // record and mints; the other sees it gone and answers `timeout`, as it would a moment later.
-  // A mint that then fails puts the record back (with its `licenseId`), so a retried poll
-  // reuses that licence and never runs the activation (or the merge) twice.
-  const redeemed = await consumeArtefact(env, stateKey);
-  if (!redeemed) return json({ status: "timeout" });
-  let token: string;
-  try {
+    // Redeem the flow atomically BEFORE minting (G15): of two racing polls, exactly one takes the
+    // record and mints; the other sees it gone and answers `timeout`, as it would a moment later.
+    // A transiently failed mint puts the record back (with its `licenseId`), so a retried poll
+    // reuses that licence and never runs the activation (or the merge) twice.
+    redeemed = await consumeArtefact(env, stateKey);
+    if (!redeemed) return json({ status: "timeout" });
     token = await authorizeAndMint(env, db, product, licenseId, deviceId, now);
-  } catch {
-    const back = parseFlowRecord<FlowRecord>(redeemed) ?? flow;
-    back.licenseId = licenseId;
-    await putArtefact(
-      env,
-      stateKey,
-      JSON.stringify(back),
-      FLOW_TTL_SECONDS,
-    ).catch(() => undefined);
-    return json({ status: "error" });
+  } catch (e) {
+    // A refusal is final (rule 6): the bare `error` once, the flow dropped (or, past the
+    // redemption, not put back), then `timeout`.
+    if (e instanceof MintRefused) {
+      if (!redeemed) await deleteArtefact(env, stateKey).catch(() => undefined);
+      return json({ status: "error" });
+    }
+    return transientFailure(env, stateKey, flow, redeemed, licenseId, now);
   }
   return json({
     status: "ready",
@@ -226,6 +258,72 @@ export async function pollAuthFlow(
     // player must be able to see that). Device-code flows only.
     ...(flow.identity ? { identity: shownIdentity(flow.identity) } : {}),
   });
+}
+
+/** I-37d: a failure after approval that is not a refusal. Within the budget the flow is kept
+ *  with its counter and deadline and the answer is the 503; the failure after the last retry
+ *  drops the flow and answers the bare `error`. If the flow cannot be kept, no retry can happen,
+ *  so that is the bare `error` too (a 503 would promise one). */
+async function transientFailure(
+  env: Env,
+  stateKey: Parameters<typeof deleteArtefact>[1],
+  flow: FlowRecord,
+  redeemed: string | null,
+  licenseId: string | undefined,
+  now: number,
+): Promise<Response> {
+  const failures = (flow.mintFailures ?? 0) + 1;
+  if (failures > DEVICE_MINT_RETRY_SECONDS.length) {
+    if (!redeemed) await deleteArtefact(env, stateKey).catch(() => undefined);
+    return json({ status: "error" });
+  }
+  let wait = DEVICE_MINT_RETRY_SECONDS[failures - 1]!;
+  const mintRetryAt = now + wait;
+  let kept: boolean;
+  if (redeemed) {
+    // The put-back keeps the `licenseId` the activation recorded.
+    const back = parseFlowRecord<FlowRecord>(redeemed) ?? flow;
+    if (licenseId) back.licenseId = licenseId;
+    back.mintFailures = failures;
+    back.mintRetryAt = mintRetryAt;
+    // The put-back keeps the device code's original expiry, so an orphaned record can't outlive it.
+    const ttl =
+      typeof flow.startedAt === "number"
+        ? Math.max(1, FLOW_TTL_SECONDS - Math.max(0, now - flow.startedAt))
+        : FLOW_TTL_SECONDS;
+    kept = await putArtefact(env, stateKey, JSON.stringify(back), ttl).catch(
+      () => false,
+    );
+  } else {
+    // A compare-and-set on the count last read, retried on the winner's value: every failed
+    // attempt is counted, so overlapping polls can't lose an increment and run an extra attempt.
+    let seen = flow.mintFailures ?? 0;
+    let count = failures;
+    kept = false;
+    for (let i = 0; i < 4; i++) {
+      if (count > DEVICE_MINT_RETRY_SECONDS.length) {
+        // The overlapping failures spent the budget: this one ends the flow.
+        await deleteArtefact(env, stateKey).catch(() => undefined);
+        return json({ status: "error" });
+      }
+      const set = await updateArtefact(env, stateKey, {
+        expect: { mintFailures: seen === 0 ? null : seen },
+        set: {
+          mintFailures: count,
+          mintRetryAt: now + DEVICE_MINT_RETRY_SECONDS[count - 1]!,
+        },
+      }).catch(() => ({ ok: false, payload: null as string | null }));
+      if (set.ok) {
+        kept = true;
+        wait = DEVICE_MINT_RETRY_SECONDS[count - 1]!;
+        break;
+      }
+      if (set.payload === null) break;
+      seen = parseFlowRecord<FlowRecord>(set.payload)?.mintFailures ?? 0;
+      count = seen + 1;
+    }
+  }
+  return kept ? unavailable(wait) : json({ status: "error" });
 }
 
 /** {@link signInAccountRefused} at the poll, which has no resolved OIDC config: the product's

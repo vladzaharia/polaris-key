@@ -1799,17 +1799,18 @@ suite (`test/signInBind.test.ts`, `test/customerDevicePage.test.ts`) pins the re
 
 `POST /<p>/identity/auth/device/poll` (the device-code flow's poll; the request names `deviceCode`
 and `deviceId`). Nothing here is signed: `PROTOCOL_VERSION` stays 4. The types are
-`DevicePollResponse` and `DevicePollSlowDown` in `@polaris-key/protocol/identity`; the transcripts
+`DevicePollResponse`, `DevicePollSlowDown` and `DevicePollUnavailable` in `@polaris-key/protocol/identity`; the transcripts
 `devicecode-*.json` and `locker-devicecode.json` pin it.
 
-| HTTP | Body                                          | Meaning                                                                              | SDK result            |
-| ---- | --------------------------------------------- | ------------------------------------------------------------------------------------ | --------------------- |
-| 200  | `{"status":"pending"}`                        | Not yet confirmed, signed in and approved                                            | keep polling          |
-| 429  | `{"status":"slow_down","interval":n}`         | Polled inside `interval` (a state, not an error body)                                | lengthen the interval |
-| 200  | `confirm` / `ready`                           | Unchanged (I-37: `attachable` is always `false`)                                     | unchanged             |
-| 200  | `{"status":"timeout"}`                        | The flow is gone: expired, redeemed, or dropped after a refusal                      | `expired`             |
-| 200  | `{"status":"error","reason":"access_denied"}` | A person refused: Deny, **Not you?**, the chooser's Cancel, or Deny on the code page | `sign-in-denied`      |
-| 200  | `{"status":"error"}`                          | The sign-in failed after approval; the cause is not said                             | `sign-in-failed`      |
+| HTTP | Body                                                              | Meaning                                                                              | SDK result                               |
+| ---- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------- |
+| 200  | `{"status":"pending"}`                                            | Not yet confirmed, signed in and approved                                            | keep polling                             |
+| 429  | `{"status":"slow_down","interval":n}`                             | Polled inside `interval` (a state, not an error body)                                | lengthen the interval                    |
+| 200  | `confirm` / `ready`                                               | Unchanged (I-37: `attachable` is always `false`)                                     | unchanged                                |
+| 200  | `{"status":"timeout"}`                                            | The flow is gone: expired, redeemed, or dropped after a refusal                      | `expired`                                |
+| 200  | `{"status":"error","reason":"access_denied"}`                     | A person refused: Deny, **Not you?**, the chooser's Cancel, or Deny on the code page | `sign-in-denied`                         |
+| 503  | `{"error":"unavailable","message":"try again"}`, `Retry-After: n` | Approved, but the sign-in could not finish yet. The flow is kept                     | keep polling (`server-error`, transient) |
+| 200  | `{"status":"error"}`                                              | The sign-in failed after approval and will not be retried; the cause is not said     | `sign-in-failed`                         |
 
 1. `reason` appears only on `error`, and `access_denied` is its only value. A client reads an
    unknown `reason` as absent.
@@ -1817,13 +1818,30 @@ and `deviceId`). Nothing here is signed: `PROTOCOL_VERSION` stays 4. The types a
 3. Every refusal gets the same body, whichever page refused and whether or not the person had
    signed in.
 4. No account, identity, provider or licence cause is ever named. These stay the bare `error`.
+5. **The Worker retries a transient failure.**
+   - Any failure after approval that is not a refusal answers the 503 and keeps the flow. That
+     covers a database, store or vault error in the account check, the activation or the mint.
+   - The first poll at or after `Retry-After` attempts the completion again. A poll before then
+     gets the same 503 with the seconds left, and nothing is attempted.
+   - There are four retries, at 2, 4, 8 and 16 s. The fifth failure answers the bare `error` and
+     drops the flow, so the next poll answers `timeout`.
+   - If the code lapses first, the poll answers `timeout`.
+6. **A refusal is never a 503.** A seat, fingerprint, hardware or licence refusal at the mint
+   answers the bare `error` once and drops the flow, then `timeout`. N9 and a refused activation
+   already work this way.
+7. **A client treats every 5xx on the poll as transient**, with or without a JSON body, the
+   runtime's own 500 included. It keeps polling at its interval until the code lapses.
+   `Retry-After` is advisory, because the Worker enforces the spacing.
+8. The 503 names no cause, and rule 4 still holds. It does tell the holder of the device code that the failure was not a refusal, so the one fact a poller can read is transient (503) versus final (the bare `error`); which cause applies is never disclosed.
 
 The route does not use RFC 8628's token-endpoint wire. It maps the RFC's codes to statuses:
 `pending` stands for `authorization_pending`, `timeout` for `expired_token`, and `slow_down` keeps
 the RFC's spelling. `reason: "access_denied"` is §3.5's `access_denied`, and the token §12.4
 returns on Cancel. The member is not named `error`: the flat-error parsers read that key. A build
 before this subsection ignores `reason` and treats every `error` as a refusal; the Worker deploys
-first and nothing else changes for it.
+first and nothing else changes for it. Every SDK since its first device-code build treats a 5xx on
+the poll as transient, so a build that predates rule 5 completes on the retry. The Worker deploys
+first, and nothing else changes for it.
 
 ## 13. Cloud Sync (HTTP, additive)
 

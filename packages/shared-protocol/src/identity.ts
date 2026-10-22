@@ -189,6 +189,12 @@ export interface DevicePollSlowDown {
   interval: number;
 }
 
+/** §12.10 rule 5: the same route at HTTP 503, with `Retry-After` (LEGACY FLAT, as its 400/401/429). */
+export interface DevicePollUnavailable {
+  error: "unavailable";
+  message?: string;
+}
+
 // ── §12.2 Key entry (PX-W9) ─────────────────────────────────────────────────────────────────
 
 /**

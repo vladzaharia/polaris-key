@@ -192,7 +192,11 @@ class _AsyncIdentity(_AsyncFacet):
                 decision = bool(answer) and bool(poll.attachable)
                 continue
             return SignInResult(
-                status=poll.status, message=poll.message, identity=poll.identity, attached=poll.attached
+                status=poll.status,
+                message=poll.message,
+                identity=poll.identity,
+                attached=poll.attached,
+                code=poll.code,
             )
 
     async def sign_in_with_browser(self, **kw: Any) -> SignInResult:

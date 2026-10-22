@@ -142,17 +142,23 @@ enum SwiftReplay {
             ])
         case "pollSignIn":
             guard let prompt = session.prompt else { throw ReplayError("pollSignIn before beginSignIn") }
-            switch try await client.identity.pollSignIn(prompt) {
-            case .pending: out["result"] = .string("pending")
-            case .slowDown(let interval):
-                out["result"] = .string("slow-down")
-                out["interval"] = .int(interval)
-            case .ready: out["result"] = .string("ready")
-            case .confirm: out["result"] = .string("confirm")
-            case .expired: out["result"] = .string("expired")
-            case .error(_, let code):
-                out["result"] = .string("error")
-                if let code { out["code"] = .string(code) }
+            do {
+                switch try await client.identity.pollSignIn(prompt) {
+                case .pending: out["result"] = .string("pending")
+                case .slowDown(let interval):
+                    out["result"] = .string("slow-down")
+                    out["interval"] = .int(interval)
+                case .ready: out["result"] = .string("ready")
+                case .confirm: out["result"] = .string("confirm")
+                case .expired: out["result"] = .string("expired")
+                case .error(_, let code):
+                    out["result"] = .string("error")
+                    if let code { out["code"] = .string(code) }
+                }
+            } catch let e as PolarisError where e.code == "server-error" || e.code == "network-error" {
+                // I-37d: no answer or a 5xx on the poll is transient; a wait loop keeps polling.
+                out["result"] = .string("transient")
+                out["code"] = .string(e.code)
             }
         case "waitForSignIn":
             guard let prompt = session.prompt else { throw ReplayError("waitForSignIn before beginSignIn") }
