@@ -317,7 +317,12 @@ export function ReviewDrawer({
                 />
               )}
               {empty ? null : (
-                <Section title="Who it reaches" headingLevel={3}>
+                <Section
+                  variant="settings"
+                  id="who-it-reaches"
+                  title="Who it reaches"
+                  headingLevel={3}
+                >
                   <ul className="divide-y divide-border text-sm">
                     {(
                       [
@@ -423,7 +428,7 @@ export function ReviewDrawer({
                   className="space-y-1 rounded-md border border-danger-border bg-danger-subtle p-3 text-sm"
                 >
                   <p className="font-semibold text-danger">
-                    Publish didn’t finish
+                    Publish didn't finish
                   </p>
                   <p className="text-fg-strong">{copy.title}</p>
                   <p className="text-fg">{copy.description}</p>

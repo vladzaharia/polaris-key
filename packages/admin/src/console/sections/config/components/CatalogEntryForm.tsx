@@ -354,7 +354,7 @@ export function CatalogEntryForm({
         value={entry.description}
         help={
           productName
-            ? `Shown under the setting in ${productName}’s settings`
+            ? `Shown under the setting in ${productName}'s settings`
             : undefined
         }
       >

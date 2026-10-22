@@ -67,8 +67,8 @@ export function SigningKeyEmpty({
         ) : (
           "this recipe"
         )}{" "}
-        from the provider’s developer account. It is sealed as you add it and
-        can’t be read back.
+        from the provider's developer account. It is sealed as you add it and
+        can't be read back.
       </p>
     </section>
   );

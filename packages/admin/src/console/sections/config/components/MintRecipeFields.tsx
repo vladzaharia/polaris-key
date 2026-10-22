@@ -180,7 +180,7 @@ export function MintRecipeFields({
       {recipe && keyless ? (
         <Callout
           tone="warning"
-          title="Minting hasn’t started: no signing key"
+          title="Minting hasn't started: no signing key"
           action={
             <Button
               size="sm"
@@ -193,8 +193,8 @@ export function MintRecipeFields({
           }
         >
           The recipe is approved, but a repository never holds the key. Until it
-          is added, the app’s{" "}
-          <code className="font-mono text-xs">mintToken(“{entry.key}”)</code>{" "}
+          is added, the app's{" "}
+          <code className="font-mono text-xs">mintToken("{entry.key}")</code>{" "}
           calls fail.
         </Callout>
       ) : null}

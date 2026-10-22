@@ -33,7 +33,7 @@ export function WhereItsSet({
   const valueOf = (id: string): unknown =>
     holders?.holders.find((h) => h.kind === "profile" && h.id === id)?.value;
   return (
-    <Section title="Where it’s set">
+    <Section variant="settings" id="where-set" title="Where it's set">
       <ul className="divide-y divide-border text-sm">
         {u.profiles.map((p) => {
           const v = valueOf(p.id);

@@ -63,6 +63,8 @@ export function EntryPane({
   return (
     <div className="space-y-6">
       <Section
+        variant="settings"
+        id="entry-card"
         title={
           <span className="inline-flex flex-wrap items-center gap-2">
             <span className="font-mono text-base">

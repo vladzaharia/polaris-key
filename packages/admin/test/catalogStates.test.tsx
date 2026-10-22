@@ -371,7 +371,7 @@ describe("Catalog review: a failed publish", () => {
       within(drawer).getByRole("button", { name: "Publish version 10" }),
     );
     const alert = await within(drawer).findByRole("alert");
-    expect(alert.textContent).toContain("Publish didn’t finish");
+    expect(alert.textContent).toContain("Publish didn't finish");
     expect(alert.textContent).toContain(
       "Devices still get v9. Your draft is kept.",
     );
@@ -433,7 +433,7 @@ describe("Minted token with no signing key", () => {
     const key = screen.getByRole("region", { name: "Signing key" });
     expect(key.textContent).toContain("No key yet");
     expect(key.textContent).toContain("3HWR8C2N6T");
-    expect(key.textContent).toContain("can’t be read back");
+    expect(key.textContent).toContain("can't be read back");
     await userEvent.click(screen.getByRole("button", { name: "Add the key…" }));
     const dialog = await screen.findByRole("dialog", {
       name: "Add the signing key",

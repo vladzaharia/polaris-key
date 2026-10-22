@@ -25,6 +25,8 @@ export function MintCards({
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <Section
+        variant="settings"
+        id="approval-history"
         title="Approval history"
         actions={
           <Link
@@ -68,7 +70,7 @@ export function MintCards({
           ) : null}
         </ul>
       </Section>
-      <Section title="Who can get one">
+      <Section variant="settings" id="who-can-get" title="Who can get one">
         <ul className="divide-y divide-border text-sm">
           <li className="flex items-center gap-3 px-4 py-3">
             <Users aria-hidden className="size-4 text-fg-muted" />
