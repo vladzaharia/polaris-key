@@ -84,10 +84,12 @@ describe("manual create with defaults", () => {
     expect(
       await rows(
         db,
-        "SELECT id, profile_id, rank, source FROM tiers WHERE product = ?",
+        "SELECT id, profile_id, rank, source FROM tiers WHERE product = ? ORDER BY id",
         "tonebox",
       ),
     ).toEqual([
+      // LX-33.7: the implicit Default tier is seeded beside the Free starter.
+      { id: "default", profile_id: null, rank: 0, source: "console" },
       { id: "free", profile_id: "default", rank: 0, source: "console" },
     ]);
   });
@@ -143,7 +145,7 @@ describe("manual create with defaults", () => {
     expect(body.defaults.tier).toBeNull();
     expect(
       await rows(db, "SELECT id FROM tiers WHERE product = ?", "tonebox"),
-    ).toEqual([]);
+    ).toEqual([{ id: "default" }]); // LX-33.7: no starter tier, but the Default tier exists
     const setting = await rows(
       db,
       "SELECT value_json, source FROM product_settings WHERE product = ? AND key = ?",

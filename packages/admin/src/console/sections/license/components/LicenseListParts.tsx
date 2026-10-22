@@ -37,8 +37,7 @@ import {
 import { expiresInText } from "../../../../lib/vocab/license.js";
 import { daysUntil, licenseState, type LicenseState } from "./shared.js";
 
-/** The facet value for "no tier" and "not in a batch": only the client can filter on them. */
-export const NO_TIER = "__none__";
+/** The facet value for "not in a batch": only the client can filter on it. */
 export const NO_BATCH = "__none__";
 
 /**
@@ -58,7 +57,7 @@ export function useServerFilter(filters: Record<string, string[]>): {
     };
     const holder = one("holder");
     const batch = one("batch", NO_BATCH);
-    const tier = one("tier", NO_TIER);
+    const tier = one("tier");
     const status = one("status");
     return {
       // The Status facet is the computed state: one value goes to the Worker.
@@ -319,13 +318,13 @@ export function HolderPill({
   );
 }
 
-/** Tier: a pill with the layers glyph; a license with no tier says so, muted (D12). */
+/** Tier: a pill with the layers glyph; a license with no tier reads as the Default tier, muted (D12). */
 export function TierPill({
   label,
 }: {
   label: string | null;
 }): React.ReactElement {
-  if (!label) return <span className="text-fg-muted">No tier</span>;
+  if (!label) return <span className="text-fg-muted">Default</span>;
   return (
     <span
       className="inline-flex h-5 max-w-[9rem] items-center gap-1 rounded-full border border-border bg-surface-sunken px-2 text-xs text-fg"

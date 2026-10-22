@@ -944,6 +944,75 @@ export function stmtInsertConsoleTier(t: {
   };
 }
 
+/** The first free of `default`, `default-2`, ... among `taken` tier ids. */
+export function freeImplicitTierId(taken: Iterable<string>): string {
+  const set = new Set(taken);
+  if (!set.has("default")) return "default";
+  for (let n = 2; ; n++) if (!set.has(`default-${n}`)) return `default-${n}`;
+}
+
+/**
+ * LX-33.7: the product's implicit Default tier, seeded from the product's licence defaults (the
+ * device limit and offline days; every other column empty). The one insert every seed site uses
+ * (ST-42 create, manifest ingest, turning License on). It does nothing when the product already
+ * has an implicit tier or the id is taken, so a second seed, a resync and a re-enable are no-ops.
+ */
+export function stmtInsertImplicitTier(t: {
+  product: string;
+  id: string;
+  deviceLimit: number | null;
+  offlineDays: number | null;
+  now: number;
+}): DbStatement {
+  return {
+    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
+             channels_json, min_version, max_version, policy_fingerprint, rank,
+             policy_offline_grace_days, modified_by, modified_at, source, implicit)
+          SELECT ?, ?, 'Default', NULL, NULL, ?, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, 'console', 1
+           WHERE NOT EXISTS (SELECT 1 FROM tiers WHERE product = ? AND (implicit = 1 OR id = ?))`,
+    params: [
+      t.product,
+      t.id,
+      t.deviceLimit,
+      t.offlineDays,
+      t.now,
+      t.product,
+      t.id,
+    ],
+  };
+}
+
+/**
+ * {@link stmtInsertImplicitTier} for a product that exists: the statement, or null when it
+ * already has its Default tier. Reads the product's defaults and its tier ids.
+ */
+export async function seedImplicitTierStatement(
+  db: Db,
+  product: string,
+  now: number,
+): Promise<DbStatement | null> {
+  const row = await db.first<{
+    default_device_limit: number | null;
+    default_max_offline_days: number | null;
+  }>(
+    "SELECT default_device_limit, default_max_offline_days FROM products WHERE slug = ?",
+    product,
+  );
+  if (!row) return null;
+  const tiers = await db.all<{ id: string; implicit: number }>(
+    "SELECT id, implicit FROM tiers WHERE product = ?",
+    product,
+  );
+  if (tiers.some((t) => t.implicit === 1)) return null;
+  return stmtInsertImplicitTier({
+    product,
+    id: freeImplicitTierId(tiers.map((t) => t.id)),
+    deviceLimit: row.default_device_limit,
+    offlineDays: row.default_max_offline_days,
+    now,
+  });
+}
+
 /**
  * ST-01b: the resync's write of one manifest-declared tier. Inserts it as a `manifest` row, or
  * updates the stored row only while it is still manifest-owned — the guard is the upsert's own

@@ -1471,7 +1471,11 @@ describe("admin services enablement", () => {
       services: { identity: { enabled: true } },
     });
     expect(patched.status).toBe(200);
-    expect(patched.body.facts).toEqual(expected);
+    // LX-33.7: a services write seeds the Default tier of a License product that has none.
+    expect(patched.body.facts).toEqual({
+      ...expected,
+      licensing: { tiers: 3, licenses: 3 },
+    });
 
     const dry = await call(w, "PATCH", "?dryRun=1", {
       services: { identity: { enabled: false } },
@@ -1482,7 +1486,10 @@ describe("admin services enablement", () => {
       (await loadProduct(w.env, w.db, "djdl"))?.services.identity.enabled,
     ).toBe(true);
 
-    expect((await call(w, "POST", "/revert")).body.facts).toEqual(expected);
+    expect((await call(w, "POST", "/revert")).body.facts).toEqual({
+      ...expected,
+      licensing: { tiers: 3, licenses: 3 },
+    });
   });
 
   it("PATCH merges, claims the row, and is visible to loadProduct", async () => {
@@ -1497,7 +1504,7 @@ describe("admin services enablement", () => {
     expect(status).toBe(200);
     expect(body.source).toBe("admin");
     expect(body.facts).toMatchObject({
-      licensing: { tiers: 0, licenses: 0 },
+      licensing: { tiers: 1, licenses: 0 },
       managedConfig: { catalogVersion: 1 },
       shipBuilds: { latest: null },
       commerce: { storefronts: 0, storeGrants: 0 },
@@ -1803,7 +1810,7 @@ describe("admin services enablement", () => {
       config: { enabled: false },
     });
     expect(reverted.body.facts).toMatchObject({
-      licensing: { tiers: 0, licenses: 0 },
+      licensing: { tiers: 1, licenses: 0 },
       managedConfig: { catalogVersion: 1 },
       shipBuilds: { latest: null },
       commerce: { storefronts: 0, storeGrants: 0 },

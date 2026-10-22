@@ -7,6 +7,8 @@
 import type { DbStatement } from "../../db/types.js";
 import {
   countLicensesUsingTier,
+  freeImplicitTierId,
+  stmtInsertImplicitTier,
   stmtDeleteManifestTier,
   stmtInsertTier,
   stmtUpsertManifestTier,
@@ -60,6 +62,18 @@ async function prepare(ctx: IngestContext): Promise<ManifestContribution> {
   } else if (ctx.mode === "create") {
     for (const t of manifest.tiers)
       statements.push(stmtInsertTier(tierInput(ctx, t)));
+    // LX-33.7: the Default tier. A create with ST-42's choices has it from `planCreateDefaults`;
+    // this covers a bare link, which has none. Guarded in SQL, so a repeat does nothing.
+    if (ctx.services.license.enabled && !ctx.create)
+      statements.push(
+        stmtInsertImplicitTier({
+          product: slug,
+          id: freeImplicitTierId(manifest.tiers.map((t) => t.id)),
+          deviceLimit: manifest.product.defaultDeviceLimit,
+          offlineDays: manifest.product.defaultMaxOfflineDays,
+          now,
+        }),
+      );
   } else {
     const { plan } = await ctx.rows();
     const storedTierById = new Map(plan.storedTiers.map((t) => [t.id, t]));

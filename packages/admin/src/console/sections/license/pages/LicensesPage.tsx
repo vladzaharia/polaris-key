@@ -34,7 +34,6 @@ import {
   BulkEnableDialog,
   isForbidden,
   NO_BATCH,
-  NO_TIER,
   BulkKeysButton,
   LicenseCard,
   HOLDER_CHIP_ICONS,
@@ -66,6 +65,7 @@ import { EMPTY, loadDraft, saveDraft } from "../wizard/draft.js";
 import {
   LICENSE_STATE_LABELS,
   LicenseStatus,
+  defaultTierOf,
   licenseState,
   seatLimitOf,
   useLicensePages,
@@ -209,11 +209,9 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
       {
         id: "tier",
         label: "Tier",
-        options: [
-          ...tiers.map((t) => ({ value: t.id, label: t.label || t.id })),
-          { value: NO_TIER, label: "No tier" },
-        ],
-        accessor: (l) => l.tier ?? NO_TIER,
+        options: tiers.map((t) => ({ value: t.id, label: t.label || t.id })),
+        // A license with no tier is on the Default tier (LX-33.7).
+        accessor: (l) => l.tier ?? defaultTierOf(tiers)?.id ?? null,
       },
       {
         id: "origin",
@@ -494,10 +492,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
                     v === "inAccount"
                       ? "in-account"
                       : HOLDER_STATE_LABELS[v as HolderState],
-                  tier: (v) =>
-                    v === NO_TIER
-                      ? "no-tier"
-                      : (tiers.find((t) => t.id === v)?.label ?? v),
+                  tier: (v) => tiers.find((t) => t.id === v)?.label ?? v,
                 }),
               }
         }
@@ -508,7 +503,11 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
             primary={primary}
             now={now}
             seats={seatsOf(l)}
-            tierLabel={l.tier ? tierLabel(l.tier) : null}
+            tierLabel={
+              l.tier
+                ? tierLabel(l.tier)
+                : (defaultTierOf(tiers)?.label ?? "Default")
+            }
           />
         )}
       />

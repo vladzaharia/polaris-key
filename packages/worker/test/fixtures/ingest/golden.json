@@ -1,70 +1,4 @@
 {
-  "7-refuse-issuer": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": false,
-      "error": "oidc.issuer \"https://evil.example\" is not in OIDC_ISSUER_ALLOWLIST; a platform operator must allowlist that host before a repo manifest can point this product's identity provider at it"
-    },
-    "trips": 6
-  },
-  "7-refuse-sparkle": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": false,
-      "error": "manifest replaces the stored Sparkle public key for acme; a repo push may not swap the key that authenticates this product's builds in one step. To rotate it on purpose, push .pkey/release with sparkleEd25519Pub removed (the update feed fails closed while no key is set), then push the new key"
-    },
-    "trips": 9
-  },
-  "7-refuse-binary-validation": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": false,
-      "error": "manifest validation failed",
-      "errors": [
-        "release/release/binaryName: release.binaryName must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ — it is interpolated into the published install.sh."
-      ]
-    },
-    "trips": 5
-  },
-  "7-refuse-declassify": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": false,
-      "error": "invalid catalog in manifest: would remove or declassify stored server-only secret(s): api.key; clear the stored values first"
-    },
-    "trips": 10
-  },
-  "7-refuse-seal": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": false,
-      "error": "manifest would overwrite the sealed stored value of secret \"api.key\" in profile \"standard\"; a repo push may not replace a secret that is already sealed. Change it in the console, or remove the value from the manifest to keep the stored one"
-    },
-    "trips": 23
-  },
-  "7-refuse-publisher": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": false,
-      "error": "could not resolve the repository's ids for publishing.trustedPublisher: repository lookup failed: 502"
-    },
-    "trips": 7
-  },
-  "13-link-secret-default": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": false,
-      "error": "invalid catalog in manifest: api.key: a secret entry cannot carry default or examples"
-    },
-    "trips": 3
-  },
   "1-link-full": {
     "writes": {
       "audit": [
@@ -503,6 +437,11 @@
             null,
             1700000000
           ]
+        },
+        {
+          "table": "tiers",
+          "sql": "INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit, channels_json, min_version, max_version, policy_fingerprint, rank, policy_offline_grace_days, modified_by, modified_at, source, implicit) SELECT ?, ?, 'Default', NULL, NULL, ?, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, 'console', 1 WHERE NOT EXISTS (SELECT 1 FROM tiers WHERE product = ? AND (implicit = 1 OR id = ?))",
+          "params": ["acme", "default", 3, 14, 1700000000, "acme", "default"]
         }
       ]
     },
@@ -834,7 +773,8 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
         },
         {
           "product": "acme",
@@ -851,7 +791,26 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
+        },
+        {
+          "product": "acme",
+          "id": "default",
+          "label": "Default",
+          "profile_id": null,
+          "policy_expiry_days": null,
+          "policy_device_limit": 3,
+          "modified_by": null,
+          "modified_at": 1700000000,
+          "channels_json": null,
+          "min_version": null,
+          "max_version": null,
+          "policy_fingerprint": null,
+          "source": "console",
+          "rank": 0,
+          "policy_offline_grace_days": 14,
+          "implicit": 1
         }
       ]
     },
@@ -880,6 +839,15 @@
       }
     },
     "trips": 14
+  },
+  "13-link-secret-default": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": false,
+      "error": "invalid catalog in manifest: api.key: a secret entry cannot carry default or examples"
+    },
+    "trips": 3
   },
   "2-link-minimal": {
     "writes": {
@@ -1114,6 +1082,11 @@
             null,
             1700000000
           ]
+        },
+        {
+          "table": "tiers",
+          "sql": "INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit, channels_json, min_version, max_version, policy_fingerprint, rank, policy_offline_grace_days, modified_by, modified_at, source, implicit) SELECT ?, ?, 'Default', NULL, NULL, ?, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, 'console', 1 WHERE NOT EXISTS (SELECT 1 FROM tiers WHERE product = ? AND (implicit = 1 OR id = ?))",
+          "params": ["acme", "default", 3, 14, 1700000000, "acme", "default"]
         }
       ]
     },
@@ -1301,7 +1274,26 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
+        },
+        {
+          "product": "acme",
+          "id": "default",
+          "label": "Default",
+          "profile_id": null,
+          "policy_expiry_days": null,
+          "policy_device_limit": 3,
+          "modified_by": null,
+          "modified_at": 1700000000,
+          "channels_json": null,
+          "min_version": null,
+          "max_version": null,
+          "policy_fingerprint": null,
+          "source": "console",
+          "rank": 0,
+          "policy_offline_grace_days": 14,
+          "implicit": 1
         }
       ]
     },
@@ -1533,6 +1525,17 @@
           ]
         }
       ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000060,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
+          ]
+        }
+      ],
       "products": [
         {
           "table": "products",
@@ -1750,17 +1753,6 @@
             0,
             null,
             1700000060
-          ]
-        }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000060,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ]
@@ -2064,7 +2056,8 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
         },
         {
           "product": "acme",
@@ -2081,7 +2074,26 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
+        },
+        {
+          "product": "acme",
+          "id": "default",
+          "label": "Default",
+          "profile_id": null,
+          "policy_expiry_days": null,
+          "policy_device_limit": 3,
+          "modified_by": null,
+          "modified_at": 1700000000,
+          "channels_json": null,
+          "min_version": null,
+          "max_version": null,
+          "policy_fingerprint": null,
+          "source": "console",
+          "rank": 0,
+          "policy_offline_grace_days": 14,
+          "implicit": 1
         }
       ]
     },
@@ -2371,6 +2383,17 @@
           ]
         }
       ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000060,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Sets name \\\"Acme Two\\\", offline grace 21 days, device limit 4\"},{\"area\":\"compat\",\"summary\":\"Compatibility window 1.1.0 to 9.0.0\"},{\"area\":\"catalog\",\"summary\":\"Publishes a new catalog version: adds run.extra\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"tiers\",\"id\":\"team\",\"summary\":\"Tier team added\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
+          ]
+        }
+      ],
       "products": [
         {
           "table": "products",
@@ -2593,17 +2616,6 @@
             0,
             null,
             1700000060
-          ]
-        }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000060,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Sets name \\\"Acme Two\\\", offline grace 21 days, device limit 4\"},{\"area\":\"compat\",\"summary\":\"Compatibility window 1.1.0 to 9.0.0\"},{\"area\":\"catalog\",\"summary\":\"Publishes a new catalog version: adds run.extra\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"tiers\",\"id\":\"team\",\"summary\":\"Tier team added\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ]
@@ -3206,7 +3218,26 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
+        },
+        {
+          "product": "acme",
+          "id": "default",
+          "label": "Default",
+          "profile_id": null,
+          "policy_expiry_days": null,
+          "policy_device_limit": 3,
+          "modified_by": null,
+          "modified_at": 1700000000,
+          "channels_json": null,
+          "min_version": null,
+          "max_version": null,
+          "policy_fingerprint": null,
+          "source": "console",
+          "rank": 0,
+          "policy_offline_grace_days": 14,
+          "implicit": 1
         },
         {
           "product": "acme",
@@ -3223,7 +3254,8 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
         }
       ]
     },
@@ -3468,6 +3500,17 @@
           ]
         }
       ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000060,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[{\"area\":\"product\",\"summary\":\"name, offline grace, device limit stay as set in the console\"},{\"area\":\"compat\",\"summary\":\"Compatibility window stays 1.0.0 to 9.0.0 (set in the console)\"},{\"area\":\"catalog\",\"summary\":\"The catalog stays as set in the console\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro stays as set in the console\"},{\"area\":\"tiers\",\"id\":\"team\",\"summary\":\"Tier team was created in the console and stays; the manifest's tier team is not applied until one of them is renamed\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard stays as set in the console\"},{\"area\":\"access\",\"summary\":\"Release access modes stay as set in the console\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher stays .github/workflows/other.yml in acme-org/acme-app (set in the console)\"}],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
+          ]
+        }
+      ],
       "products": [
         {
           "table": "products",
@@ -3618,17 +3661,6 @@
           "table": "tiers",
           "sql": "DELETE FROM tiers WHERE product = ? AND id = ? AND source = 'manifest'",
           "params": ["acme", "free"]
-        }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000060,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[{\"area\":\"product\",\"summary\":\"name, offline grace, device limit stay as set in the console\"},{\"area\":\"compat\",\"summary\":\"Compatibility window stays 1.0.0 to 9.0.0 (set in the console)\"},{\"area\":\"catalog\",\"summary\":\"The catalog stays as set in the console\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro stays as set in the console\"},{\"area\":\"tiers\",\"id\":\"team\",\"summary\":\"Tier team was created in the console and stays; the manifest's tier team is not applied until one of them is renamed\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard stays as set in the console\"},{\"area\":\"access\",\"summary\":\"Release access modes stay as set in the console\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher stays .github/workflows/other.yml in acme-org/acme-app (set in the console)\"}],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
-          ]
         }
       ]
     },
@@ -4098,7 +4130,26 @@
           "policy_fingerprint": null,
           "source": "console",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
+        },
+        {
+          "product": "acme",
+          "id": "default",
+          "label": "Default",
+          "profile_id": null,
+          "policy_expiry_days": null,
+          "policy_device_limit": 3,
+          "modified_by": null,
+          "modified_at": 1700000000,
+          "channels_json": null,
+          "min_version": null,
+          "max_version": null,
+          "policy_fingerprint": null,
+          "source": "console",
+          "rank": 0,
+          "policy_offline_grace_days": 14,
+          "implicit": 1
         },
         {
           "product": "acme",
@@ -4115,7 +4166,8 @@
           "policy_fingerprint": null,
           "source": "console",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
         }
       ]
     },
@@ -4365,6 +4417,17 @@
           ]
         }
       ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000060,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
+          ]
+        }
+      ],
       "products": [
         {
           "table": "products",
@@ -4561,17 +4624,6 @@
             0,
             null,
             1700000060
-          ]
-        }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000060,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ]
@@ -4919,7 +4971,26 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
+        },
+        {
+          "product": "acme",
+          "id": "default",
+          "label": "Default",
+          "profile_id": null,
+          "policy_expiry_days": null,
+          "policy_device_limit": 3,
+          "modified_by": null,
+          "modified_at": 1700000000,
+          "channels_json": null,
+          "min_version": null,
+          "max_version": null,
+          "policy_fingerprint": null,
+          "source": "console",
+          "rank": 0,
+          "policy_offline_grace_days": 14,
+          "implicit": 1
         }
       ]
     },
@@ -4951,6 +5022,63 @@
       "error": "cannot remove tier free; 1 license(s) still reference it"
     },
     "trips": 14
+  },
+  "7-refuse-issuer": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": false,
+      "error": "oidc.issuer \"https://evil.example\" is not in OIDC_ISSUER_ALLOWLIST; a platform operator must allowlist that host before a repo manifest can point this product's identity provider at it"
+    },
+    "trips": 6
+  },
+  "7-refuse-sparkle": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": false,
+      "error": "manifest replaces the stored Sparkle public key for acme; a repo push may not swap the key that authenticates this product's builds in one step. To rotate it on purpose, push .pkey/release with sparkleEd25519Pub removed (the update feed fails closed while no key is set), then push the new key"
+    },
+    "trips": 9
+  },
+  "7-refuse-binary-validation": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": false,
+      "error": "manifest validation failed",
+      "errors": [
+        "release/release/binaryName: release.binaryName must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ — it is interpolated into the published install.sh."
+      ]
+    },
+    "trips": 5
+  },
+  "7-refuse-declassify": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": false,
+      "error": "invalid catalog in manifest: would remove or declassify stored server-only secret(s): api.key; clear the stored values first"
+    },
+    "trips": 10
+  },
+  "7-refuse-seal": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": false,
+      "error": "manifest would overwrite the sealed stored value of secret \"api.key\" in profile \"standard\"; a repo push may not replace a secret that is already sealed. Change it in the console, or remove the value from the manifest to keep the stored one"
+    },
+    "trips": 23
+  },
+  "7-refuse-publisher": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": false,
+      "error": "could not resolve the repository's ids for publishing.trustedPublisher: repository lookup failed: 502"
+    },
+    "trips": 7
   },
   "8-resync-break-glass": {
     "writes": {
@@ -5173,6 +5301,17 @@
           ]
         }
       ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000100,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000100,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Ends the expired break-glass claim on core.web.origins\"},{\"area\":\"product\",\"summary\":\"Ends the break-glass claim on license.defaults.deviceLimit: the manifest changed it\"},{\"area\":\"product\",\"summary\":\"Sets device limit 9\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
+          ]
+        }
+      ],
       "products": [
         {
           "table": "products",
@@ -5386,17 +5525,6 @@
             0,
             null,
             1700000100
-          ]
-        }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000100,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000100,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Ends the expired break-glass claim on core.web.origins\"},{\"area\":\"product\",\"summary\":\"Ends the break-glass claim on license.defaults.deviceLimit: the manifest changed it\"},{\"area\":\"product\",\"summary\":\"Sets device limit 9\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ]
@@ -5767,7 +5895,8 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
         },
         {
           "product": "acme",
@@ -5784,7 +5913,26 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
+        },
+        {
+          "product": "acme",
+          "id": "default",
+          "label": "Default",
+          "profile_id": null,
+          "policy_expiry_days": null,
+          "policy_device_limit": 3,
+          "modified_by": null,
+          "modified_at": 1700000000,
+          "channels_json": null,
+          "min_version": null,
+          "max_version": null,
+          "policy_fingerprint": null,
+          "source": "console",
+          "rank": 0,
+          "policy_offline_grace_days": 14,
+          "implicit": 1
         }
       ]
     },
@@ -6039,6 +6187,17 @@
           ]
         }
       ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000060,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"services\",\"summary\":\"Services: turns off license\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
+          ]
+        }
+      ],
       "products": [
         {
           "table": "products",
@@ -6242,17 +6401,6 @@
             0,
             null,
             1700000060
-          ]
-        }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000060,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"services\",\"summary\":\"Services: turns off license\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ]
@@ -6611,7 +6759,26 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
+        },
+        {
+          "product": "acme",
+          "id": "default",
+          "label": "Default",
+          "profile_id": null,
+          "policy_expiry_days": null,
+          "policy_device_limit": 3,
+          "modified_by": null,
+          "modified_at": 1700000000,
+          "channels_json": null,
+          "min_version": null,
+          "max_version": null,
+          "policy_fingerprint": null,
+          "source": "console",
+          "rank": 0,
+          "policy_offline_grace_days": 14,
+          "implicit": 1
         }
       ]
     },
@@ -6846,6 +7013,17 @@
           ]
         }
       ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000060,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"services\",\"summary\":\"Services: turns off config\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
+          ]
+        }
+      ],
       "products": [
         {
           "table": "products",
@@ -7049,17 +7227,6 @@
             0,
             null,
             1700000060
-          ]
-        }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000060,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"services\",\"summary\":\"Services: turns off config\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ]
@@ -7418,7 +7585,26 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
+        },
+        {
+          "product": "acme",
+          "id": "default",
+          "label": "Default",
+          "profile_id": null,
+          "policy_expiry_days": null,
+          "policy_device_limit": 3,
+          "modified_by": null,
+          "modified_at": 1700000000,
+          "channels_json": null,
+          "min_version": null,
+          "max_version": null,
+          "policy_fingerprint": null,
+          "source": "console",
+          "rank": 0,
+          "policy_offline_grace_days": 14,
+          "implicit": 1
         }
       ]
     },
@@ -8225,7 +8411,26 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
+        },
+        {
+          "product": "acme",
+          "id": "default",
+          "label": "Default",
+          "profile_id": null,
+          "policy_expiry_days": null,
+          "policy_device_limit": 3,
+          "modified_by": null,
+          "modified_at": 1700000000,
+          "channels_json": null,
+          "min_version": null,
+          "max_version": null,
+          "policy_fingerprint": null,
+          "source": "console",
+          "rank": 0,
+          "policy_offline_grace_days": 14,
+          "implicit": 1
         }
       ]
     },
@@ -8365,6 +8570,17 @@
           "params": [
             "acme",
             "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.keyEntry.claimByKey\"]"
+          ]
+        }
+      ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000060,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"services\",\"summary\":\"Services: turns off distribution\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ],
@@ -8571,17 +8787,6 @@
             0,
             null,
             1700000060
-          ]
-        }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000060,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"services\",\"summary\":\"Services: turns off distribution\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ]
@@ -8883,7 +9088,26 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
+        },
+        {
+          "product": "acme",
+          "id": "default",
+          "label": "Default",
+          "profile_id": null,
+          "policy_expiry_days": null,
+          "policy_device_limit": 3,
+          "modified_by": null,
+          "modified_at": 1700000000,
+          "channels_json": null,
+          "min_version": null,
+          "max_version": null,
+          "policy_fingerprint": null,
+          "source": "console",
+          "rank": 0,
+          "policy_offline_grace_days": 14,
+          "implicit": 1
         }
       ]
     },
@@ -9553,7 +9777,8 @@
           "policy_fingerprint": null,
           "source": "manifest",
           "rank": 0,
-          "policy_offline_grace_days": null
+          "policy_offline_grace_days": null,
+          "implicit": 0
         }
       ]
     },
@@ -9762,818 +9987,6 @@
       "afterWrite": true
     },
     "trips": 30
-  },
-  "12a-dry-create": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": true,
-      "repository": "acme-org/acme-app",
-      "installationId": 4242,
-      "commit": "0123456789abcdef0123456789abcdef01234567",
-      "manifestDigest": "<blob>",
-      "releaseWorkflow": false,
-      "ready": true,
-      "product": {
-        "slug": "acme",
-        "name": "Acme",
-        "presentation": null
-      },
-      "slug": {
-        "slug": "acme",
-        "status": "available"
-      },
-      "registeredAs": null,
-      "services": ["license", "config", "release", "distribution", "identity"],
-      "catalog": {
-        "entries": 2
-      },
-      "platforms": {
-        "values": [],
-        "source": "none"
-      },
-      "secrets": ["OIDC_SECRET__ACME", "MINT_KEY__ACME"],
-      "problems": [],
-      "starterTier": "none"
-    },
-    "trips": 3
-  },
-  "12b-dry-link": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": true,
-      "repository": "acme-org/acme-app",
-      "owner": "acme-org",
-      "repo": "acme-app",
-      "installId": 4242,
-      "commit": "0123456789abcdef0123456789abcdef01234567",
-      "manifestDigest": "<blob>",
-      "manifest": {
-        "product": {
-          "slug": "acme",
-          "name": "Acme",
-          "compatMin": "1.0.0",
-          "compatMax": "9.0.0",
-          "defaultMaxOfflineDays": 14,
-          "defaultDeviceLimit": 3,
-          "adminGroup": "acme-admins"
-        },
-        "catalog": {
-          "schemaVersion": 1,
-          "entries": [
-            {
-              "key": "run.name",
-              "kind": "config",
-              "category": "general",
-              "label": "Name",
-              "description": "",
-              "schema": {
-                "type": "string"
-              }
-            },
-            {
-              "key": "api.key",
-              "kind": "secret",
-              "category": "api",
-              "label": "API key",
-              "description": "",
-              "schema": {
-                "type": "string",
-                "minLength": 8
-              }
-            }
-          ]
-        },
-        "profiles": [],
-        "tiers": [
-          {
-            "id": "pro",
-            "label": "Pro",
-            "profileId": null,
-            "policyExpiryDays": 365,
-            "policyDeviceLimit": null,
-            "policyFingerprint": null,
-            "channels": [],
-            "minVersion": null,
-            "maxVersion": null,
-            "rank": 0,
-            "policyOfflineGraceDays": null
-          }
-        ],
-        "provisioning": [],
-        "edgeMint": [],
-        "services": {
-          "license": {
-            "enabled": true
-          },
-          "config": {
-            "enabled": true
-          },
-          "release": {
-            "enabled": false
-          },
-          "distribution": {
-            "enabled": false
-          },
-          "update": {
-            "enabled": false
-          },
-          "identity": {
-            "enabled": false
-          },
-          "sync": {
-            "enabled": false
-          },
-          "commerce": {
-            "enabled": false
-          }
-        },
-        "webOrigins": [],
-        "release": {
-          "ghOwner": "acme-org",
-          "ghRepo": "acme-app",
-          "binaryName": "acme",
-          "channelWorkflow": "",
-          "betaBranch": "main",
-          "summaryMarker": "pkey:summary",
-          "sparkleEd25519Pub": "",
-          "manualChannels": [],
-          "stableTagPattern": null,
-          "ignoreTags": [],
-          "artifactPolicy": null,
-          "access": {
-            "metadata": "public",
-            "artifacts": "public"
-          },
-          "app": null,
-          "trustedPublisher": null,
-          "releaseKeys": [],
-          "packDeliverables": [],
-          "packageDeliverables": []
-        }
-      },
-      "plan": {
-        "apply": [
-          {
-            "area": "source",
-            "summary": "Source becomes acme-org/acme-app: pushes to its default branch re-apply .pkey/"
-          },
-          {
-            "area": "product",
-            "summary": "Sets name \"Acme\", offline grace 14 days, device limit 3, admin group acme-admins"
-          },
-          {
-            "area": "compat",
-            "summary": "Compatibility window 1.0.0 to 9.0.0"
-          },
-          {
-            "area": "catalog",
-            "summary": "Publishes a new catalog version: adds run.name, api.key"
-          },
-          {
-            "area": "tiers",
-            "id": "pro",
-            "summary": "Tier pro added"
-          },
-          {
-            "area": "release",
-            "summary": "Release settings from .pkey/release"
-          }
-        ],
-        "skipClaimed": [],
-        "delete": [],
-        "conflicts": [],
-        "warnings": [
-          {
-            "file": "product",
-            "path": "/slug",
-            "code": "deprecated_spelling",
-            "message": "slug is a deprecated spelling; write product.slug."
-          },
-          {
-            "file": "product",
-            "path": "/name",
-            "code": "deprecated_spelling",
-            "message": "name is a deprecated spelling; write product.name."
-          },
-          {
-            "file": "product",
-            "path": "/adminGroup",
-            "code": "deprecated_spelling",
-            "message": "adminGroup is a deprecated spelling; write product.adminGroup."
-          },
-          {
-            "file": "product",
-            "path": "/compatMin",
-            "code": "deprecated_spelling",
-            "message": "compatMin is a deprecated spelling; write product.compatMin."
-          },
-          {
-            "file": "product",
-            "path": "/compatMax",
-            "code": "deprecated_spelling",
-            "message": "compatMax is a deprecated spelling; write product.compatMax."
-          },
-          {
-            "file": "product",
-            "path": "/defaultDeviceLimit",
-            "code": "deprecated_spelling",
-            "message": "defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit."
-          },
-          {
-            "file": "product",
-            "path": "/defaultMaxOfflineDays",
-            "code": "deprecated_spelling",
-            "message": "defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays."
-          },
-          {
-            "file": "product",
-            "path": "/tiers",
-            "code": "deprecated_spelling",
-            "message": "tiers is a deprecated spelling; write licensing.tiers."
-          },
-          {
-            "file": "release",
-            "path": "/release/ghOwner",
-            "code": "deprecated_spelling",
-            "message": "release.ghOwner is a deprecated spelling; write release.provider.owner."
-          },
-          {
-            "file": "release",
-            "path": "/release/ghRepo",
-            "code": "deprecated_spelling",
-            "message": "release.ghRepo is a deprecated spelling; write release.provider.repo."
-          }
-        ]
-      },
-      "remainingSecrets": []
-    },
-    "trips": 19
-  },
-  "12c-plan-unchanged": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": true,
-      "repository": "acme-org/acme-app",
-      "commit": "0123456789abcdef0123456789abcdef01234567",
-      "plan": {
-        "apply": [
-          {
-            "area": "tiers",
-            "id": "pro",
-            "summary": "Tier pro replaced from the manifest"
-          },
-          {
-            "area": "tiers",
-            "id": "free",
-            "summary": "Tier free replaced from the manifest"
-          },
-          {
-            "area": "profiles",
-            "id": "standard",
-            "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
-          },
-          {
-            "area": "oidc",
-            "summary": "Sign-in provider https://id.example"
-          },
-          {
-            "area": "release",
-            "summary": "Release settings from .pkey/release"
-          },
-          {
-            "area": "publisher",
-            "summary": "Trusted publisher .github/workflows/release.yml"
-          },
-          {
-            "area": "edgeMint",
-            "summary": "Token recipes applemusic (each waits for approval)"
-          },
-          {
-            "area": "provisioning",
-            "summary": "1 provisioning hook"
-          }
-        ],
-        "skipClaimed": [],
-        "delete": [],
-        "conflicts": [],
-        "warnings": [
-          {
-            "file": "product",
-            "path": "/slug",
-            "code": "deprecated_spelling",
-            "message": "slug is a deprecated spelling; write product.slug."
-          },
-          {
-            "file": "product",
-            "path": "/name",
-            "code": "deprecated_spelling",
-            "message": "name is a deprecated spelling; write product.name."
-          },
-          {
-            "file": "product",
-            "path": "/adminGroup",
-            "code": "deprecated_spelling",
-            "message": "adminGroup is a deprecated spelling; write product.adminGroup."
-          },
-          {
-            "file": "product",
-            "path": "/compatMin",
-            "code": "deprecated_spelling",
-            "message": "compatMin is a deprecated spelling; write product.compatMin."
-          },
-          {
-            "file": "product",
-            "path": "/compatMax",
-            "code": "deprecated_spelling",
-            "message": "compatMax is a deprecated spelling; write product.compatMax."
-          },
-          {
-            "file": "product",
-            "path": "/defaultDeviceLimit",
-            "code": "deprecated_spelling",
-            "message": "defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit."
-          },
-          {
-            "file": "product",
-            "path": "/defaultMaxOfflineDays",
-            "code": "deprecated_spelling",
-            "message": "defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays."
-          },
-          {
-            "file": "product",
-            "path": "/tiers",
-            "code": "deprecated_spelling",
-            "message": "tiers is a deprecated spelling; write licensing.tiers."
-          },
-          {
-            "file": "release",
-            "path": "/release/ghOwner",
-            "code": "deprecated_spelling",
-            "message": "release.ghOwner is a deprecated spelling; write release.provider.owner."
-          },
-          {
-            "file": "release",
-            "path": "/release/ghRepo",
-            "code": "deprecated_spelling",
-            "message": "release.ghRepo is a deprecated spelling; write release.provider.repo."
-          },
-          {
-            "file": "release",
-            "path": "/edgeMint",
-            "code": "deprecated_spelling",
-            "message": "edgeMint is a deprecated spelling; write edgeMint in .pkey/product."
-          }
-        ]
-      },
-      "breakGlass": []
-    },
-    "trips": 20
-  },
-  "12d-plan-changed": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": true,
-      "repository": "acme-org/acme-app",
-      "commit": "0123456789abcdef0123456789abcdef01234567",
-      "plan": {
-        "apply": [
-          {
-            "area": "product",
-            "summary": "Sets name \"Acme Two\", offline grace 21 days, device limit 4"
-          },
-          {
-            "area": "compat",
-            "summary": "Compatibility window 1.1.0 to 9.0.0"
-          },
-          {
-            "area": "catalog",
-            "summary": "Publishes a new catalog version: adds run.extra"
-          },
-          {
-            "area": "tiers",
-            "id": "pro",
-            "summary": "Tier pro replaced from the manifest"
-          },
-          {
-            "area": "tiers",
-            "id": "team",
-            "summary": "Tier team added"
-          },
-          {
-            "area": "profiles",
-            "id": "standard",
-            "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
-          },
-          {
-            "area": "oidc",
-            "summary": "Sign-in provider https://id.example"
-          },
-          {
-            "area": "release",
-            "summary": "Release settings from .pkey/release"
-          },
-          {
-            "area": "publisher",
-            "summary": "Trusted publisher .github/workflows/release.yml"
-          },
-          {
-            "area": "edgeMint",
-            "summary": "Token recipes applemusic (each waits for approval)"
-          },
-          {
-            "area": "provisioning",
-            "summary": "1 provisioning hook"
-          }
-        ],
-        "skipClaimed": [],
-        "delete": [
-          {
-            "area": "tiers",
-            "id": "free",
-            "summary": "Tier free"
-          }
-        ],
-        "conflicts": [],
-        "warnings": [
-          {
-            "file": "product",
-            "path": "/slug",
-            "code": "deprecated_spelling",
-            "message": "slug is a deprecated spelling; write product.slug."
-          },
-          {
-            "file": "product",
-            "path": "/name",
-            "code": "deprecated_spelling",
-            "message": "name is a deprecated spelling; write product.name."
-          },
-          {
-            "file": "product",
-            "path": "/adminGroup",
-            "code": "deprecated_spelling",
-            "message": "adminGroup is a deprecated spelling; write product.adminGroup."
-          },
-          {
-            "file": "product",
-            "path": "/compatMin",
-            "code": "deprecated_spelling",
-            "message": "compatMin is a deprecated spelling; write product.compatMin."
-          },
-          {
-            "file": "product",
-            "path": "/compatMax",
-            "code": "deprecated_spelling",
-            "message": "compatMax is a deprecated spelling; write product.compatMax."
-          },
-          {
-            "file": "product",
-            "path": "/defaultDeviceLimit",
-            "code": "deprecated_spelling",
-            "message": "defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit."
-          },
-          {
-            "file": "product",
-            "path": "/defaultMaxOfflineDays",
-            "code": "deprecated_spelling",
-            "message": "defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays."
-          },
-          {
-            "file": "product",
-            "path": "/tiers",
-            "code": "deprecated_spelling",
-            "message": "tiers is a deprecated spelling; write licensing.tiers."
-          },
-          {
-            "file": "release",
-            "path": "/release/ghOwner",
-            "code": "deprecated_spelling",
-            "message": "release.ghOwner is a deprecated spelling; write release.provider.owner."
-          },
-          {
-            "file": "release",
-            "path": "/release/ghRepo",
-            "code": "deprecated_spelling",
-            "message": "release.ghRepo is a deprecated spelling; write release.provider.repo."
-          },
-          {
-            "file": "release",
-            "path": "/edgeMint",
-            "code": "deprecated_spelling",
-            "message": "edgeMint is a deprecated spelling; write edgeMint in .pkey/product."
-          }
-        ]
-      },
-      "breakGlass": []
-    },
-    "trips": 21
-  },
-  "12e-plan-refused": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": true,
-      "repository": "acme-org/acme-app",
-      "commit": "0123456789abcdef0123456789abcdef01234567",
-      "plan": {
-        "apply": [
-          {
-            "area": "tiers",
-            "id": "pro",
-            "summary": "Tier pro replaced from the manifest"
-          },
-          {
-            "area": "tiers",
-            "id": "free",
-            "summary": "Tier free replaced from the manifest"
-          },
-          {
-            "area": "profiles",
-            "id": "standard",
-            "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
-          },
-          {
-            "area": "oidc",
-            "summary": "Sign-in provider https://id.example"
-          },
-          {
-            "area": "release",
-            "summary": "Release settings from .pkey/release"
-          },
-          {
-            "area": "publisher",
-            "summary": "Trusted publisher .github/workflows/release.yml"
-          },
-          {
-            "area": "edgeMint",
-            "summary": "Token recipes applemusic (each waits for approval)"
-          },
-          {
-            "area": "provisioning",
-            "summary": "1 provisioning hook"
-          }
-        ],
-        "skipClaimed": [],
-        "delete": [],
-        "conflicts": [
-          {
-            "area": "release",
-            "summary": "manifest replaces the stored Sparkle public key for acme; a repo push may not swap the key that authenticates this product's builds in one step. To rotate it on purpose, push .pkey/release with sparkleEd25519Pub removed (the update feed fails closed while no key is set), then push the new key"
-          }
-        ],
-        "warnings": [
-          {
-            "file": "product",
-            "path": "/slug",
-            "code": "deprecated_spelling",
-            "message": "slug is a deprecated spelling; write product.slug."
-          },
-          {
-            "file": "product",
-            "path": "/name",
-            "code": "deprecated_spelling",
-            "message": "name is a deprecated spelling; write product.name."
-          },
-          {
-            "file": "product",
-            "path": "/adminGroup",
-            "code": "deprecated_spelling",
-            "message": "adminGroup is a deprecated spelling; write product.adminGroup."
-          },
-          {
-            "file": "product",
-            "path": "/compatMin",
-            "code": "deprecated_spelling",
-            "message": "compatMin is a deprecated spelling; write product.compatMin."
-          },
-          {
-            "file": "product",
-            "path": "/compatMax",
-            "code": "deprecated_spelling",
-            "message": "compatMax is a deprecated spelling; write product.compatMax."
-          },
-          {
-            "file": "product",
-            "path": "/defaultDeviceLimit",
-            "code": "deprecated_spelling",
-            "message": "defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit."
-          },
-          {
-            "file": "product",
-            "path": "/defaultMaxOfflineDays",
-            "code": "deprecated_spelling",
-            "message": "defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays."
-          },
-          {
-            "file": "product",
-            "path": "/tiers",
-            "code": "deprecated_spelling",
-            "message": "tiers is a deprecated spelling; write licensing.tiers."
-          },
-          {
-            "file": "release",
-            "path": "/release/ghOwner",
-            "code": "deprecated_spelling",
-            "message": "release.ghOwner is a deprecated spelling; write release.provider.owner."
-          },
-          {
-            "file": "release",
-            "path": "/release/ghRepo",
-            "code": "deprecated_spelling",
-            "message": "release.ghRepo is a deprecated spelling; write release.provider.repo."
-          },
-          {
-            "file": "release",
-            "path": "/edgeMint",
-            "code": "deprecated_spelling",
-            "message": "edgeMint is a deprecated spelling; write edgeMint in .pkey/product."
-          }
-        ]
-      },
-      "breakGlass": []
-    },
-    "trips": 20
-  },
-  "14a-dry-create-reserved-name": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": true,
-      "repository": "acme-org/acme-app",
-      "installationId": 4242,
-      "commit": "0123456789abcdef0123456789abcdef01234567",
-      "manifestDigest": "<blob>",
-      "releaseWorkflow": false,
-      "ready": false,
-      "product": null,
-      "slug": null,
-      "registeredAs": null,
-      "services": [],
-      "catalog": null,
-      "platforms": {
-        "values": [],
-        "source": "none"
-      },
-      "secrets": [],
-      "problems": [
-        {
-          "check": "manifest",
-          "file": "product",
-          "path": "/product/name",
-          "message": "product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); an app may not present itself as one. Rename it, or ask the platform operator to approve it."
-        }
-      ],
-      "starterTier": "none"
-    },
-    "trips": 2
-  },
-  "14b-plan-every-refusal": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": true,
-      "repository": "acme-org/acme-app",
-      "commit": "0123456789abcdef0123456789abcdef01234567",
-      "plan": {
-        "apply": [
-          {
-            "area": "tiers",
-            "id": "pro",
-            "summary": "Tier pro replaced from the manifest"
-          },
-          {
-            "area": "tiers",
-            "id": "free",
-            "summary": "Tier free replaced from the manifest"
-          },
-          {
-            "area": "profiles",
-            "id": "standard",
-            "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
-          },
-          {
-            "area": "oidc",
-            "summary": "Sign-in provider https://evil.example"
-          },
-          {
-            "area": "release",
-            "summary": "Release settings from .pkey/release"
-          },
-          {
-            "area": "publisher",
-            "summary": "Trusted publisher .github/workflows/release.yml"
-          },
-          {
-            "area": "edgeMint",
-            "summary": "Token recipes applemusic (each waits for approval)"
-          },
-          {
-            "area": "provisioning",
-            "summary": "1 provisioning hook"
-          }
-        ],
-        "skipClaimed": [],
-        "delete": [],
-        "conflicts": [
-          {
-            "area": "oidc",
-            "summary": "oidc.issuer \"https://evil.example\" is not in OIDC_ISSUER_ALLOWLIST; a platform operator must allowlist that host before a repo manifest can point this product's identity provider at it"
-          },
-          {
-            "area": "release",
-            "summary": "manifest replaces the stored Sparkle public key for acme; a repo push may not swap the key that authenticates this product's builds in one step. To rotate it on purpose, push .pkey/release with sparkleEd25519Pub removed (the update feed fails closed while no key is set), then push the new key"
-          }
-        ],
-        "warnings": [
-          {
-            "file": "product",
-            "path": "/slug",
-            "code": "deprecated_spelling",
-            "message": "slug is a deprecated spelling; write product.slug."
-          },
-          {
-            "file": "product",
-            "path": "/name",
-            "code": "deprecated_spelling",
-            "message": "name is a deprecated spelling; write product.name."
-          },
-          {
-            "file": "product",
-            "path": "/adminGroup",
-            "code": "deprecated_spelling",
-            "message": "adminGroup is a deprecated spelling; write product.adminGroup."
-          },
-          {
-            "file": "product",
-            "path": "/compatMin",
-            "code": "deprecated_spelling",
-            "message": "compatMin is a deprecated spelling; write product.compatMin."
-          },
-          {
-            "file": "product",
-            "path": "/compatMax",
-            "code": "deprecated_spelling",
-            "message": "compatMax is a deprecated spelling; write product.compatMax."
-          },
-          {
-            "file": "product",
-            "path": "/defaultDeviceLimit",
-            "code": "deprecated_spelling",
-            "message": "defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit."
-          },
-          {
-            "file": "product",
-            "path": "/defaultMaxOfflineDays",
-            "code": "deprecated_spelling",
-            "message": "defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays."
-          },
-          {
-            "file": "product",
-            "path": "/tiers",
-            "code": "deprecated_spelling",
-            "message": "tiers is a deprecated spelling; write licensing.tiers."
-          },
-          {
-            "file": "release",
-            "path": "/release/ghOwner",
-            "code": "deprecated_spelling",
-            "message": "release.ghOwner is a deprecated spelling; write release.provider.owner."
-          },
-          {
-            "file": "release",
-            "path": "/release/ghRepo",
-            "code": "deprecated_spelling",
-            "message": "release.ghRepo is a deprecated spelling; write release.provider.repo."
-          },
-          {
-            "file": "release",
-            "path": "/edgeMint",
-            "code": "deprecated_spelling",
-            "message": "edgeMint is a deprecated spelling; write edgeMint in .pkey/product."
-          }
-        ]
-      },
-      "breakGlass": []
-    },
-    "trips": 20
-  },
-  "14c-dry-link-every-refusal": {
-    "writes": {},
-    "state": {},
-    "result": {
-      "ok": false,
-      "status": 422,
-      "check": "policy",
-      "error": "oidc.issuer \"https://evil.example\" is not in OIDC_ISSUER_ALLOWLIST; a platform operator must allowlist that host before a repo manifest can point this product's identity provider at it",
-      "errors": [
-        "oidc.issuer \"https://evil.example\" is not in OIDC_ISSUER_ALLOWLIST; a platform operator must allowlist that host before a repo manifest can point this product's identity provider at it",
-        "invalid catalog in manifest: api.key: a secret entry cannot carry default or examples"
-      ]
-    },
-    "trips": 18
   },
   "11a-deploy-first": {
     "writes": {
@@ -13643,5 +13056,817 @@
       ]
     },
     "trips": 8
+  },
+  "12a-dry-create": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": true,
+      "repository": "acme-org/acme-app",
+      "installationId": 4242,
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "manifestDigest": "<blob>",
+      "releaseWorkflow": false,
+      "ready": true,
+      "product": {
+        "slug": "acme",
+        "name": "Acme",
+        "presentation": null
+      },
+      "slug": {
+        "slug": "acme",
+        "status": "available"
+      },
+      "registeredAs": null,
+      "services": ["license", "config", "release", "distribution", "identity"],
+      "catalog": {
+        "entries": 2
+      },
+      "platforms": {
+        "values": [],
+        "source": "none"
+      },
+      "secrets": ["OIDC_SECRET__ACME", "MINT_KEY__ACME"],
+      "starterTier": "none",
+      "problems": []
+    },
+    "trips": 3
+  },
+  "12b-dry-link": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": true,
+      "repository": "acme-org/acme-app",
+      "owner": "acme-org",
+      "repo": "acme-app",
+      "installId": 4242,
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "manifestDigest": "<blob>",
+      "manifest": {
+        "product": {
+          "slug": "acme",
+          "name": "Acme",
+          "compatMin": "1.0.0",
+          "compatMax": "9.0.0",
+          "defaultMaxOfflineDays": 14,
+          "defaultDeviceLimit": 3,
+          "adminGroup": "acme-admins"
+        },
+        "catalog": {
+          "schemaVersion": 1,
+          "entries": [
+            {
+              "key": "run.name",
+              "kind": "config",
+              "category": "general",
+              "label": "Name",
+              "description": "",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "key": "api.key",
+              "kind": "secret",
+              "category": "api",
+              "label": "API key",
+              "description": "",
+              "schema": {
+                "type": "string",
+                "minLength": 8
+              }
+            }
+          ]
+        },
+        "profiles": [],
+        "tiers": [
+          {
+            "id": "pro",
+            "label": "Pro",
+            "profileId": null,
+            "policyExpiryDays": 365,
+            "policyDeviceLimit": null,
+            "policyFingerprint": null,
+            "channels": [],
+            "minVersion": null,
+            "maxVersion": null,
+            "rank": 0,
+            "policyOfflineGraceDays": null
+          }
+        ],
+        "provisioning": [],
+        "edgeMint": [],
+        "services": {
+          "license": {
+            "enabled": true
+          },
+          "config": {
+            "enabled": true
+          },
+          "release": {
+            "enabled": false
+          },
+          "distribution": {
+            "enabled": false
+          },
+          "update": {
+            "enabled": false
+          },
+          "identity": {
+            "enabled": false
+          },
+          "sync": {
+            "enabled": false
+          },
+          "commerce": {
+            "enabled": false
+          }
+        },
+        "webOrigins": [],
+        "release": {
+          "ghOwner": "acme-org",
+          "ghRepo": "acme-app",
+          "binaryName": "acme",
+          "channelWorkflow": "",
+          "betaBranch": "main",
+          "summaryMarker": "pkey:summary",
+          "sparkleEd25519Pub": "",
+          "manualChannels": [],
+          "stableTagPattern": null,
+          "ignoreTags": [],
+          "artifactPolicy": null,
+          "access": {
+            "metadata": "public",
+            "artifacts": "public"
+          },
+          "app": null,
+          "trustedPublisher": null,
+          "releaseKeys": [],
+          "packDeliverables": [],
+          "packageDeliverables": []
+        }
+      },
+      "plan": {
+        "apply": [
+          {
+            "area": "source",
+            "summary": "Source becomes acme-org/acme-app: pushes to its default branch re-apply .pkey/"
+          },
+          {
+            "area": "product",
+            "summary": "Sets name \"Acme\", offline grace 14 days, device limit 3, admin group acme-admins"
+          },
+          {
+            "area": "compat",
+            "summary": "Compatibility window 1.0.0 to 9.0.0"
+          },
+          {
+            "area": "catalog",
+            "summary": "Publishes a new catalog version: adds run.name, api.key"
+          },
+          {
+            "area": "tiers",
+            "id": "pro",
+            "summary": "Tier pro added"
+          },
+          {
+            "area": "release",
+            "summary": "Release settings from .pkey/release"
+          }
+        ],
+        "skipClaimed": [],
+        "delete": [],
+        "conflicts": [],
+        "warnings": [
+          {
+            "file": "product",
+            "path": "/slug",
+            "code": "deprecated_spelling",
+            "message": "slug is a deprecated spelling; write product.slug."
+          },
+          {
+            "file": "product",
+            "path": "/name",
+            "code": "deprecated_spelling",
+            "message": "name is a deprecated spelling; write product.name."
+          },
+          {
+            "file": "product",
+            "path": "/adminGroup",
+            "code": "deprecated_spelling",
+            "message": "adminGroup is a deprecated spelling; write product.adminGroup."
+          },
+          {
+            "file": "product",
+            "path": "/compatMin",
+            "code": "deprecated_spelling",
+            "message": "compatMin is a deprecated spelling; write product.compatMin."
+          },
+          {
+            "file": "product",
+            "path": "/compatMax",
+            "code": "deprecated_spelling",
+            "message": "compatMax is a deprecated spelling; write product.compatMax."
+          },
+          {
+            "file": "product",
+            "path": "/defaultDeviceLimit",
+            "code": "deprecated_spelling",
+            "message": "defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit."
+          },
+          {
+            "file": "product",
+            "path": "/defaultMaxOfflineDays",
+            "code": "deprecated_spelling",
+            "message": "defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays."
+          },
+          {
+            "file": "product",
+            "path": "/tiers",
+            "code": "deprecated_spelling",
+            "message": "tiers is a deprecated spelling; write licensing.tiers."
+          },
+          {
+            "file": "release",
+            "path": "/release/ghOwner",
+            "code": "deprecated_spelling",
+            "message": "release.ghOwner is a deprecated spelling; write release.provider.owner."
+          },
+          {
+            "file": "release",
+            "path": "/release/ghRepo",
+            "code": "deprecated_spelling",
+            "message": "release.ghRepo is a deprecated spelling; write release.provider.repo."
+          }
+        ]
+      },
+      "remainingSecrets": []
+    },
+    "trips": 19
+  },
+  "12c-plan-unchanged": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": true,
+      "repository": "acme-org/acme-app",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "plan": {
+        "apply": [
+          {
+            "area": "tiers",
+            "id": "pro",
+            "summary": "Tier pro replaced from the manifest"
+          },
+          {
+            "area": "tiers",
+            "id": "free",
+            "summary": "Tier free replaced from the manifest"
+          },
+          {
+            "area": "profiles",
+            "id": "standard",
+            "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
+          },
+          {
+            "area": "oidc",
+            "summary": "Sign-in provider https://id.example"
+          },
+          {
+            "area": "release",
+            "summary": "Release settings from .pkey/release"
+          },
+          {
+            "area": "publisher",
+            "summary": "Trusted publisher .github/workflows/release.yml"
+          },
+          {
+            "area": "edgeMint",
+            "summary": "Token recipes applemusic (each waits for approval)"
+          },
+          {
+            "area": "provisioning",
+            "summary": "1 provisioning hook"
+          }
+        ],
+        "skipClaimed": [],
+        "delete": [],
+        "conflicts": [],
+        "warnings": [
+          {
+            "file": "product",
+            "path": "/slug",
+            "code": "deprecated_spelling",
+            "message": "slug is a deprecated spelling; write product.slug."
+          },
+          {
+            "file": "product",
+            "path": "/name",
+            "code": "deprecated_spelling",
+            "message": "name is a deprecated spelling; write product.name."
+          },
+          {
+            "file": "product",
+            "path": "/adminGroup",
+            "code": "deprecated_spelling",
+            "message": "adminGroup is a deprecated spelling; write product.adminGroup."
+          },
+          {
+            "file": "product",
+            "path": "/compatMin",
+            "code": "deprecated_spelling",
+            "message": "compatMin is a deprecated spelling; write product.compatMin."
+          },
+          {
+            "file": "product",
+            "path": "/compatMax",
+            "code": "deprecated_spelling",
+            "message": "compatMax is a deprecated spelling; write product.compatMax."
+          },
+          {
+            "file": "product",
+            "path": "/defaultDeviceLimit",
+            "code": "deprecated_spelling",
+            "message": "defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit."
+          },
+          {
+            "file": "product",
+            "path": "/defaultMaxOfflineDays",
+            "code": "deprecated_spelling",
+            "message": "defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays."
+          },
+          {
+            "file": "product",
+            "path": "/tiers",
+            "code": "deprecated_spelling",
+            "message": "tiers is a deprecated spelling; write licensing.tiers."
+          },
+          {
+            "file": "release",
+            "path": "/release/ghOwner",
+            "code": "deprecated_spelling",
+            "message": "release.ghOwner is a deprecated spelling; write release.provider.owner."
+          },
+          {
+            "file": "release",
+            "path": "/release/ghRepo",
+            "code": "deprecated_spelling",
+            "message": "release.ghRepo is a deprecated spelling; write release.provider.repo."
+          },
+          {
+            "file": "release",
+            "path": "/edgeMint",
+            "code": "deprecated_spelling",
+            "message": "edgeMint is a deprecated spelling; write edgeMint in .pkey/product."
+          }
+        ]
+      },
+      "breakGlass": []
+    },
+    "trips": 20
+  },
+  "12d-plan-changed": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": true,
+      "repository": "acme-org/acme-app",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "plan": {
+        "apply": [
+          {
+            "area": "product",
+            "summary": "Sets name \"Acme Two\", offline grace 21 days, device limit 4"
+          },
+          {
+            "area": "compat",
+            "summary": "Compatibility window 1.1.0 to 9.0.0"
+          },
+          {
+            "area": "catalog",
+            "summary": "Publishes a new catalog version: adds run.extra"
+          },
+          {
+            "area": "tiers",
+            "id": "pro",
+            "summary": "Tier pro replaced from the manifest"
+          },
+          {
+            "area": "tiers",
+            "id": "team",
+            "summary": "Tier team added"
+          },
+          {
+            "area": "profiles",
+            "id": "standard",
+            "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
+          },
+          {
+            "area": "oidc",
+            "summary": "Sign-in provider https://id.example"
+          },
+          {
+            "area": "release",
+            "summary": "Release settings from .pkey/release"
+          },
+          {
+            "area": "publisher",
+            "summary": "Trusted publisher .github/workflows/release.yml"
+          },
+          {
+            "area": "edgeMint",
+            "summary": "Token recipes applemusic (each waits for approval)"
+          },
+          {
+            "area": "provisioning",
+            "summary": "1 provisioning hook"
+          }
+        ],
+        "skipClaimed": [],
+        "delete": [
+          {
+            "area": "tiers",
+            "id": "free",
+            "summary": "Tier free"
+          }
+        ],
+        "conflicts": [],
+        "warnings": [
+          {
+            "file": "product",
+            "path": "/slug",
+            "code": "deprecated_spelling",
+            "message": "slug is a deprecated spelling; write product.slug."
+          },
+          {
+            "file": "product",
+            "path": "/name",
+            "code": "deprecated_spelling",
+            "message": "name is a deprecated spelling; write product.name."
+          },
+          {
+            "file": "product",
+            "path": "/adminGroup",
+            "code": "deprecated_spelling",
+            "message": "adminGroup is a deprecated spelling; write product.adminGroup."
+          },
+          {
+            "file": "product",
+            "path": "/compatMin",
+            "code": "deprecated_spelling",
+            "message": "compatMin is a deprecated spelling; write product.compatMin."
+          },
+          {
+            "file": "product",
+            "path": "/compatMax",
+            "code": "deprecated_spelling",
+            "message": "compatMax is a deprecated spelling; write product.compatMax."
+          },
+          {
+            "file": "product",
+            "path": "/defaultDeviceLimit",
+            "code": "deprecated_spelling",
+            "message": "defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit."
+          },
+          {
+            "file": "product",
+            "path": "/defaultMaxOfflineDays",
+            "code": "deprecated_spelling",
+            "message": "defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays."
+          },
+          {
+            "file": "product",
+            "path": "/tiers",
+            "code": "deprecated_spelling",
+            "message": "tiers is a deprecated spelling; write licensing.tiers."
+          },
+          {
+            "file": "release",
+            "path": "/release/ghOwner",
+            "code": "deprecated_spelling",
+            "message": "release.ghOwner is a deprecated spelling; write release.provider.owner."
+          },
+          {
+            "file": "release",
+            "path": "/release/ghRepo",
+            "code": "deprecated_spelling",
+            "message": "release.ghRepo is a deprecated spelling; write release.provider.repo."
+          },
+          {
+            "file": "release",
+            "path": "/edgeMint",
+            "code": "deprecated_spelling",
+            "message": "edgeMint is a deprecated spelling; write edgeMint in .pkey/product."
+          }
+        ]
+      },
+      "breakGlass": []
+    },
+    "trips": 21
+  },
+  "12e-plan-refused": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": true,
+      "repository": "acme-org/acme-app",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "plan": {
+        "apply": [
+          {
+            "area": "tiers",
+            "id": "pro",
+            "summary": "Tier pro replaced from the manifest"
+          },
+          {
+            "area": "tiers",
+            "id": "free",
+            "summary": "Tier free replaced from the manifest"
+          },
+          {
+            "area": "profiles",
+            "id": "standard",
+            "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
+          },
+          {
+            "area": "oidc",
+            "summary": "Sign-in provider https://id.example"
+          },
+          {
+            "area": "release",
+            "summary": "Release settings from .pkey/release"
+          },
+          {
+            "area": "publisher",
+            "summary": "Trusted publisher .github/workflows/release.yml"
+          },
+          {
+            "area": "edgeMint",
+            "summary": "Token recipes applemusic (each waits for approval)"
+          },
+          {
+            "area": "provisioning",
+            "summary": "1 provisioning hook"
+          }
+        ],
+        "skipClaimed": [],
+        "delete": [],
+        "conflicts": [
+          {
+            "area": "release",
+            "summary": "manifest replaces the stored Sparkle public key for acme; a repo push may not swap the key that authenticates this product's builds in one step. To rotate it on purpose, push .pkey/release with sparkleEd25519Pub removed (the update feed fails closed while no key is set), then push the new key"
+          }
+        ],
+        "warnings": [
+          {
+            "file": "product",
+            "path": "/slug",
+            "code": "deprecated_spelling",
+            "message": "slug is a deprecated spelling; write product.slug."
+          },
+          {
+            "file": "product",
+            "path": "/name",
+            "code": "deprecated_spelling",
+            "message": "name is a deprecated spelling; write product.name."
+          },
+          {
+            "file": "product",
+            "path": "/adminGroup",
+            "code": "deprecated_spelling",
+            "message": "adminGroup is a deprecated spelling; write product.adminGroup."
+          },
+          {
+            "file": "product",
+            "path": "/compatMin",
+            "code": "deprecated_spelling",
+            "message": "compatMin is a deprecated spelling; write product.compatMin."
+          },
+          {
+            "file": "product",
+            "path": "/compatMax",
+            "code": "deprecated_spelling",
+            "message": "compatMax is a deprecated spelling; write product.compatMax."
+          },
+          {
+            "file": "product",
+            "path": "/defaultDeviceLimit",
+            "code": "deprecated_spelling",
+            "message": "defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit."
+          },
+          {
+            "file": "product",
+            "path": "/defaultMaxOfflineDays",
+            "code": "deprecated_spelling",
+            "message": "defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays."
+          },
+          {
+            "file": "product",
+            "path": "/tiers",
+            "code": "deprecated_spelling",
+            "message": "tiers is a deprecated spelling; write licensing.tiers."
+          },
+          {
+            "file": "release",
+            "path": "/release/ghOwner",
+            "code": "deprecated_spelling",
+            "message": "release.ghOwner is a deprecated spelling; write release.provider.owner."
+          },
+          {
+            "file": "release",
+            "path": "/release/ghRepo",
+            "code": "deprecated_spelling",
+            "message": "release.ghRepo is a deprecated spelling; write release.provider.repo."
+          },
+          {
+            "file": "release",
+            "path": "/edgeMint",
+            "code": "deprecated_spelling",
+            "message": "edgeMint is a deprecated spelling; write edgeMint in .pkey/product."
+          }
+        ]
+      },
+      "breakGlass": []
+    },
+    "trips": 20
+  },
+  "14a-dry-create-reserved-name": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": true,
+      "repository": "acme-org/acme-app",
+      "installationId": 4242,
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "manifestDigest": "<blob>",
+      "releaseWorkflow": false,
+      "ready": false,
+      "product": null,
+      "slug": null,
+      "registeredAs": null,
+      "services": [],
+      "catalog": null,
+      "platforms": {
+        "values": [],
+        "source": "none"
+      },
+      "secrets": [],
+      "starterTier": "none",
+      "problems": [
+        {
+          "check": "manifest",
+          "file": "product",
+          "path": "/product/name",
+          "message": "product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); an app may not present itself as one. Rename it, or ask the platform operator to approve it."
+        }
+      ]
+    },
+    "trips": 2
+  },
+  "14b-plan-every-refusal": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": true,
+      "repository": "acme-org/acme-app",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "plan": {
+        "apply": [
+          {
+            "area": "tiers",
+            "id": "pro",
+            "summary": "Tier pro replaced from the manifest"
+          },
+          {
+            "area": "tiers",
+            "id": "free",
+            "summary": "Tier free replaced from the manifest"
+          },
+          {
+            "area": "profiles",
+            "id": "standard",
+            "summary": "Profile standard replaced from the manifest (secret values set in the console are kept)"
+          },
+          {
+            "area": "oidc",
+            "summary": "Sign-in provider https://evil.example"
+          },
+          {
+            "area": "release",
+            "summary": "Release settings from .pkey/release"
+          },
+          {
+            "area": "publisher",
+            "summary": "Trusted publisher .github/workflows/release.yml"
+          },
+          {
+            "area": "edgeMint",
+            "summary": "Token recipes applemusic (each waits for approval)"
+          },
+          {
+            "area": "provisioning",
+            "summary": "1 provisioning hook"
+          }
+        ],
+        "skipClaimed": [],
+        "delete": [],
+        "conflicts": [
+          {
+            "area": "oidc",
+            "summary": "oidc.issuer \"https://evil.example\" is not in OIDC_ISSUER_ALLOWLIST; a platform operator must allowlist that host before a repo manifest can point this product's identity provider at it"
+          },
+          {
+            "area": "release",
+            "summary": "manifest replaces the stored Sparkle public key for acme; a repo push may not swap the key that authenticates this product's builds in one step. To rotate it on purpose, push .pkey/release with sparkleEd25519Pub removed (the update feed fails closed while no key is set), then push the new key"
+          }
+        ],
+        "warnings": [
+          {
+            "file": "product",
+            "path": "/slug",
+            "code": "deprecated_spelling",
+            "message": "slug is a deprecated spelling; write product.slug."
+          },
+          {
+            "file": "product",
+            "path": "/name",
+            "code": "deprecated_spelling",
+            "message": "name is a deprecated spelling; write product.name."
+          },
+          {
+            "file": "product",
+            "path": "/adminGroup",
+            "code": "deprecated_spelling",
+            "message": "adminGroup is a deprecated spelling; write product.adminGroup."
+          },
+          {
+            "file": "product",
+            "path": "/compatMin",
+            "code": "deprecated_spelling",
+            "message": "compatMin is a deprecated spelling; write product.compatMin."
+          },
+          {
+            "file": "product",
+            "path": "/compatMax",
+            "code": "deprecated_spelling",
+            "message": "compatMax is a deprecated spelling; write product.compatMax."
+          },
+          {
+            "file": "product",
+            "path": "/defaultDeviceLimit",
+            "code": "deprecated_spelling",
+            "message": "defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit."
+          },
+          {
+            "file": "product",
+            "path": "/defaultMaxOfflineDays",
+            "code": "deprecated_spelling",
+            "message": "defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays."
+          },
+          {
+            "file": "product",
+            "path": "/tiers",
+            "code": "deprecated_spelling",
+            "message": "tiers is a deprecated spelling; write licensing.tiers."
+          },
+          {
+            "file": "release",
+            "path": "/release/ghOwner",
+            "code": "deprecated_spelling",
+            "message": "release.ghOwner is a deprecated spelling; write release.provider.owner."
+          },
+          {
+            "file": "release",
+            "path": "/release/ghRepo",
+            "code": "deprecated_spelling",
+            "message": "release.ghRepo is a deprecated spelling; write release.provider.repo."
+          },
+          {
+            "file": "release",
+            "path": "/edgeMint",
+            "code": "deprecated_spelling",
+            "message": "edgeMint is a deprecated spelling; write edgeMint in .pkey/product."
+          }
+        ]
+      },
+      "breakGlass": []
+    },
+    "trips": 20
+  },
+  "14c-dry-link-every-refusal": {
+    "writes": {},
+    "state": {},
+    "result": {
+      "ok": false,
+      "status": 422,
+      "check": "policy",
+      "error": "oidc.issuer \"https://evil.example\" is not in OIDC_ISSUER_ALLOWLIST; a platform operator must allowlist that host before a repo manifest can point this product's identity provider at it",
+      "errors": [
+        "oidc.issuer \"https://evil.example\" is not in OIDC_ISSUER_ALLOWLIST; a platform operator must allowlist that host before a repo manifest can point this product's identity provider at it",
+        "invalid catalog in manifest: api.key: a secret entry cannot carry default or examples"
+      ]
+    },
+    "trips": 18
   }
 }
