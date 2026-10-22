@@ -17,6 +17,7 @@ import { StatusPill } from "../../../ui/StatusPill.js";
 import { ScrollTable } from "../../../ui/ScrollTable.js";
 import { useProduct } from "../../data/hooks.js";
 import { qk } from "../../data/queries.js";
+import { channelInScope, navFeaturesOf } from "../../nav.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsSection } from "../../templates/Settings.js";
@@ -25,10 +26,23 @@ import {
   SET_UP_STOREFRONT,
 } from "../core/components/serviceFeatures.js";
 
-const STORES: readonly { id: CommerceStore; label: string }[] = [
-  { id: "app-store", label: channelLabel("app-store") },
-  { id: "play", label: channelLabel("google-play") },
-  { id: "steam", label: channelLabel("steam") },
+/** `channel` is the catalogue channel the store sells through: the scope a row needs (A-20.7). */
+const STORES: readonly {
+  id: CommerceStore;
+  channel: string;
+  label: string;
+}[] = [
+  {
+    id: "app-store",
+    channel: "app-store",
+    label: channelLabel("app-store"),
+  },
+  {
+    id: "play",
+    channel: "google-play",
+    label: channelLabel("google-play"),
+  },
+  { id: "steam", channel: "steam", label: channelLabel("steam") },
 ];
 
 const LINK = "py-1 text-accent-fg underline underline-offset-2";
@@ -89,8 +103,11 @@ export function CommerceOverviewPage({
     );
   } else {
     const { setup, products, purchases } = view.data;
-    const ready = STORES.filter((s) => setup[s.id].configured).length;
-    const rows = STORES.map((s) => ({
+    // Only the stores the product's builds can reach; every store while the product loads.
+    const features = navFeaturesOf(product.data);
+    const inScope = STORES.filter((s) => channelInScope(features, s.channel));
+    const ready = inScope.filter((s) => setup[s.id].configured).length;
+    const rows = inScope.map((s) => ({
       ...s,
       state: storefrontState(setup[s.id]),
       mapped: products.filter((p) => p.store === s.id).length,
@@ -186,11 +203,13 @@ export function CommerceOverviewPage({
                 </tbody>
               </ScrollTable>
             </div>
-            <p className="mt-3 text-sm text-fg-muted">
-              <Link to={r.commerce(slug)} className={LINK}>
-                Map App Store products
-              </Link>
-            </p>
+            {channelInScope(features, "app-store") ? (
+              <p className="mt-3 text-sm text-fg-muted">
+                <Link to={r.commerce(slug)} className={LINK}>
+                  Map App Store products
+                </Link>
+              </p>
+            ) : null}
           </div>
         </SettingsSection>
 

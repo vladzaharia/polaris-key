@@ -1522,6 +1522,8 @@ export interface ChannelsView {
 export interface ProductChannelSummary {
   id: string;
   label: string;
+  /** In the product's scope (its platforms and deliverables fit); a declared outlet can be out. */
+  inScope: boolean;
   delivery: ChannelDeliveryState;
   notUsing: boolean;
 }

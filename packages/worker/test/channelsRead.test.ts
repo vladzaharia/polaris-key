@@ -298,6 +298,7 @@ describe("the one-product summary (A-20.4)", () => {
     expect(winget).toEqual({
       id: "winget",
       label: "winget",
+      inScope: true,
       delivery: "not_set_up",
       notUsing: false,
     });

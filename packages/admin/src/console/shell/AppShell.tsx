@@ -13,6 +13,7 @@ import {
   groupOf,
   isPageEnabled,
   isPlatformPage,
+  navFeaturesOf,
   isProductPage,
   pageOf,
   PRODUCT_PAGES,
@@ -227,9 +228,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const productQuery = useProduct(slug);
   const products = useProducts();
   const services: ServiceState = productQuery.data?.services ?? null;
-  const features: NavFeatures = productQuery.data
-    ? { packageFeeds: productQuery.data.packageFeeds === true }
-    : null;
+  const features: NavFeatures = navFeaturesOf(productQuery.data);
   const productRef = slug
     ? (me.products.find((p) => p.slug === slug) ?? null)
     : null;

@@ -16412,7 +16412,7 @@ paths:
         through (reason `commerce_off` while Commerce is off). Credential facts are booleans and
         reason codes only: no key id, issuer, credential id or app name. Labels are the catalogue's.
         Read-only; area `ship`; admin session cookie. The one-product read (`GET /products/{product}`)
-        carries only a compact `channels` (`id`, `label`, `delivery` state, `notUsing`) and `platforms`,
+        carries only a compact `channels` (`id`, `label`, `inScope`, `delivery` state, `notUsing`) and `platforms`,
         for a holder of any area; `oneClick` and `commerce` are on this read alone.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }

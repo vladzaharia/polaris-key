@@ -50,6 +50,7 @@ export function compactChannels(view: ChannelsView) {
   return view.channels.map((c) => ({
     id: c.id,
     label: c.label,
+    inScope: c.inScope,
     delivery: c.delivery.state,
     notUsing: c.notUsing,
   }));

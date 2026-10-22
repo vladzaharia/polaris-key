@@ -53,6 +53,8 @@ import { skippedIn } from "../../../wizard/setup.js";
 import { useSetup } from "../../../wizard/useSetup.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { Link, useLocation, useSearchParam } from "../../../router.js";
+import { channelInScope, navFeaturesOf } from "../../../nav.js";
+import { useProduct } from "../../../data/hooks.js";
 import { codecs, globalPage, r } from "../../../routes.js";
 import { Panel } from "../../../templates/Dashboard.js";
 import { useSlots, useStorefronts } from "../data.js";
@@ -134,7 +136,13 @@ function StorePage({
 
 function Catalogue({ slug }: { slug: string }): React.ReactElement {
   const q = useStorefronts(slug);
+  const product = useProduct(slug);
   const gate = useWriteGate("ship", slug);
+  // A-20.7: only the stores the product's builds can reach. Everything shows while that loads.
+  const features = navFeaturesOf(product.data);
+  const stores = (q.data?.stores ?? []).filter((s) =>
+    channelInScope(features, s.id),
+  );
   const [flow] = useSearchParam("flow", flowCodec);
   const root = React.useRef<HTMLDivElement>(null);
   const hadFlow = React.useRef(Boolean(flow));
@@ -180,7 +188,7 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
           onRetry={() => void q.refetch()}
           context={{ area: "distribution", thing: "Storefronts" }}
         />
-      ) : q.data.stores.length === 0 ? (
+      ) : stores.length === 0 ? (
         <EmptyState
           kind="first-run"
           headingLevel={2}
@@ -190,13 +198,13 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
         />
       ) : flow ? (
         // A built-in store has no flow (SETUP.md D48): it is always on.
-        <AddFlow slug={slug} stores={q.data.stores.filter((s) => !s.builtIn)} />
+        <AddFlow slug={slug} stores={stores.filter((s) => !s.builtIn)} />
       ) : (
         <div
           data-top-aligned=""
           className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3"
         >
-          {q.data.stores.map((s) => (
+          {stores.map((s) => (
             <StoreTile
               key={s.id}
               slug={slug}

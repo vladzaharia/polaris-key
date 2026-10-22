@@ -14,7 +14,7 @@
  * Commerce is off for the product. `live` and `attention` are CM-21's.
  */
 
-import { CHANNELS } from "@polaris-key/manifest";
+import { channelLabel } from "@polaris-key/manifest";
 import { adminJson, err, notFound } from "../../core/console/respond.js";
 import { loadProductPublic } from "../../core/products.js";
 import { serviceContext } from "../../core/registry.js";
@@ -29,8 +29,6 @@ import {
 import { storefrontStates } from "../../services/commerce/public.js";
 import type { AdminCtx } from "../routes.js";
 import type { ChannelsView, ChannelView } from "../lib/channelSummary.js";
-
-const LABELS = new Map<string, string>(CHANNELS.map((c) => [c.id, c.label]));
 
 export async function channelsRead(
   env: Env,
@@ -75,7 +73,7 @@ export async function channelsRead(
       const store = stores.get(f.channel);
       return {
         id: f.channel,
-        label: LABELS.get(f.channel) ?? f.channel,
+        label: channelLabel(f.channel),
         inScope: f.inScope,
         declared: f.declared,
         oneClick: f.oneClick,
