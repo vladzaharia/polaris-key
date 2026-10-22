@@ -185,7 +185,8 @@ export const UI_KITS: readonly UiKit[] = [
     sdk: "Python",
     tier: "must",
     package: "polaris-key[qt]",
-    status: { planned: "UK-12" },
+    status: { ships: true },
+    current: { label: "Qt", href: "/docs/build/ui/frameworks/qt/" },
   },
   {
     id: "terminal-python",
