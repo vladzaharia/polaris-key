@@ -86,7 +86,7 @@ describe("secrets stay out of every serialised form", () => {
 });
 
 describe("configuration errors fail at start", () => {
-  const pins = { trust: { pinnedKeys: {} } };
+  const pins = { trust: { pinnedKeys: { k: "A".repeat(43) } } };
   it("a product without the license service", () => {
     expect(() =>
       createPolarisKey({

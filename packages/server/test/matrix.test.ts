@@ -57,11 +57,17 @@ const MATRIX = JSON.parse(
   }[];
 };
 
+/** createPolarisKey refuses an empty pin set (nothing could verify). A row with no keys gets one
+ *  pin that signed nothing, which is the same verdict. */
+const NO_SIGNER = { "unused-pin": "A".repeat(43) };
+const pinsOf = (p: Record<string, string> | undefined) =>
+  p && Object.keys(p).length > 0 ? p : NO_SIGNER;
+
 function coreFor(row: (typeof MATRIX.verdict)[number]) {
   const { options, trust, now } = row.input;
   const configs: PolarisServerConfig[] = options.products.map((p) => ({
     productSlug: p,
-    trust: { pinnedKeys: trust[p] ?? {} },
+    trust: { pinnedKeys: pinsOf(trust[p]) },
   }));
   return createPolarisKey({
     config: configs,
@@ -117,7 +123,10 @@ describe("backend-matrix.json problem rows through refuse()", () => {
           ? []
           : [["Accept-Language", row.input.acceptLanguage]];
       const realmCore = createPolarisKey({
-        config: { productSlug: row.input.realm, trust: { pinnedKeys: {} } },
+        config: {
+          productSlug: row.input.realm,
+          trust: { pinnedKeys: NO_SIGNER },
+        },
         trustRefresh: false,
       });
       const res = realmCore.refuse(row.input.code, headers);

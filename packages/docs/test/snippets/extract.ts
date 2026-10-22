@@ -119,6 +119,7 @@ export function sourceFiles(): string[] {
   for (const readme of [
     "packages/sdk-node/README.md",
     "packages/sdk-react/README.md",
+    "packages/server/README.md",
     "packages/client-core/README.md",
     "sdks/python/README.md",
     "sdks/swift/README.md",

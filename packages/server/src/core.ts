@@ -44,7 +44,48 @@ export interface PolarisServerConfig {
 /** What a route needs of the document, checked at step 6 in the order listed. */
 export type Requirement =
   | { kind: "entitlement"; name: string; test?: (value: unknown) => boolean }
+  | { kind: "tier"; tiers: readonly string[] }
   | { kind: "signIn" };
+
+/**
+ * Builders for the requirements a route lists, for `requireAll(...)`, a route's `require` and the
+ * Next.js middleware's rules:
+ *
+ *   requirement.entitlement("export.pdf")
+ *   requirement.entitlement("seats", (n) => typeof n === "number" && n >= 5)
+ *   requirement.tier("pro", "team")
+ *   requirement.signIn()
+ */
+export const requirement = {
+  /** Boolean entitlement `name` is granted, or `test` accepts a valued entitlement. */
+  entitlement(name: string, test?: (value: any) => boolean): Requirement {
+    return { kind: "entitlement", name, ...(test ? { test } : {}) };
+  },
+  /** The `license.tier` entitlement is one of `tiers`. */
+  tier(...tiers: string[]): Requirement {
+    return { kind: "tier", tiers };
+  },
+  /** A person is signed in on the device (`profile.user.subject`). */
+  signIn(): Requirement {
+    return { kind: "signIn" };
+  },
+} as const;
+
+/** The JSON body of a refusal, with the catalog's localised title and detail (§14.3). */
+export type ProblemBody = Problem["body"];
+
+/**
+ * Whether a request is a CORS preflight: an `OPTIONS` carrying `Access-Control-Request-Method`.
+ * A browser sends no custom header on it, so a gate that refused it would break every
+ * cross-origin call before the real request ran. The drop-ins let it through (`preflight:
+ * "pass"`, the default).
+ */
+export function isCorsPreflight(method: string, input: HeadersInput): boolean {
+  if (method.toUpperCase() !== "OPTIONS") return false;
+  return headerFields(input).some(
+    ([n]) => n.toLowerCase() === "access-control-request-method",
+  );
+}
 
 /** The step group a verdict was decided in, for `onVerdict` (§14.2). */
 export type VerdictStep =
@@ -75,6 +116,16 @@ export interface PolarisKeyOptions {
   debug?: (line: string) => void;
   /** Verified documents kept; default 1000. */
   cacheSize?: number;
+}
+
+/** What every drop-in accepts on top of the core's options. */
+export interface PolarisAdapterOptions extends PolarisKeyOptions {
+  /** `"throw"` passes a `PolarisKeyError` to the framework's error pipeline instead of
+   *  answering. Default `"respond"`. */
+  errors?: "respond" | "throw";
+  /** `"pass"` (default) lets a CORS preflight through every gate; `"gate"` refuses it like any
+   *  other request. */
+  preflight?: "pass" | "gate";
 }
 
 export interface RouteOptions {
@@ -168,21 +219,50 @@ export function headerFields(input: HeadersInput): [string, string][] {
   return bounded(out);
 }
 
+const CONFIG_HINT =
+  "pass the object `pkey sdk --lang node --write` generates: createPolarisKey({ config: polarisConfig })";
+/** A raw Ed25519 public key, base64url: what a pin is. */
+const PIN = /^[A-Za-z0-9_-]{43}$/;
+
 function checkConfig(configs: readonly PolarisServerConfig[]): void {
   if (configs.length === 0)
-    throw new TypeError("createPolarisKey: config names no product");
+    throw new TypeError(
+      `createPolarisKey: config names no product; ${CONFIG_HINT}`,
+    );
   const seen = new Set<string>();
   for (const c of configs) {
-    if (typeof c?.productSlug !== "string" || c.productSlug === "")
-      throw new TypeError("createPolarisKey: config.productSlug is missing");
+    if (typeof c !== "object" || c === null)
+      throw new TypeError(
+        `createPolarisKey: config is missing; ${CONFIG_HINT}`,
+      );
+    if (typeof c.productSlug !== "string" || c.productSlug === "")
+      throw new TypeError(
+        `createPolarisKey: config.productSlug is missing; ${CONFIG_HINT}`,
+      );
     if (seen.has(c.productSlug))
       throw new TypeError(
         `createPolarisKey: product "${c.productSlug}" is configured twice`,
       );
     seen.add(c.productSlug);
-    if (typeof c.trust?.pinnedKeys !== "object" || c.trust.pinnedKeys === null)
+    const pins = c.trust?.pinnedKeys;
+    if (typeof pins !== "object" || pins === null)
       throw new TypeError(
-        `createPolarisKey: config for "${c.productSlug}" has no trust.pinnedKeys`,
+        `createPolarisKey: config for "${c.productSlug}" has no trust.pinnedKeys; run \`pkey sdk --lang node --write\` to write them`,
+      );
+    const entries = Object.entries(pins);
+    // With no pin nothing can verify: every request would be refused license_invalid.
+    if (entries.length === 0)
+      throw new TypeError(
+        `createPolarisKey: trust.pinnedKeys for "${c.productSlug}" is empty, so no license could verify; run \`pkey sdk --lang node --write\` to write the product's keys`,
+      );
+    for (const [kid, key] of entries)
+      if (typeof key !== "string" || !PIN.test(key))
+        throw new TypeError(
+          `createPolarisKey: the pinned key "${kid}" for "${c.productSlug}" is not a raw Ed25519 public key (43 base64url characters); copy it from Core > Keys & secrets or rerun \`pkey sdk\``,
+        );
+    if (c.baseUrl !== undefined && !/^https?:\/\/[^/\s]+/i.test(c.baseUrl))
+      throw new TypeError(
+        `createPolarisKey: baseUrl "${c.baseUrl}" for "${c.productSlug}" is not an http(s) origin such as https://key.plrs.im`,
       );
     // A product with no Licence service issues no licence document: refuse to start rather than
     // refuse every request later.
@@ -202,6 +282,10 @@ interface CacheEntry {
 
 /** Build a product backend core. Throws only on invalid options. */
 export function createPolarisKey(options: PolarisKeyOptions): PolarisKey {
+  if (typeof options !== "object" || options === null || !options.config)
+    throw new TypeError(
+      `createPolarisKey: the options need a config; ${CONFIG_HINT}`,
+    );
   const configs = Array.isArray(options.config)
     ? (options.config as readonly PolarisServerConfig[])
     : [options.config as PolarisServerConfig];
@@ -213,6 +297,14 @@ export function createPolarisKey(options: PolarisKeyOptions): PolarisKey {
       "createPolarisKey: maxAgeSeconds is not a non-negative integer",
     );
   const now = options.now ?? (() => Math.floor(Date.now() / 1000));
+  if (
+    options.trustRefresh !== false &&
+    !options.fetch &&
+    typeof globalThis.fetch !== "function"
+  )
+    throw new TypeError(
+      "createPolarisKey: this runtime has no global fetch for the trust refresh; pass `fetch` or set `trustRefresh: false` to run on the pinned keys alone",
+    );
   const doFetch = options.fetch ?? ((...a) => globalThis.fetch(...a));
   const cacheSize = options.cacheSize ?? DEFAULT_CACHE_SIZE;
   const cache = new Map<string, CacheEntry>();
@@ -402,6 +494,9 @@ export function createPolarisKey(options: PolarisKeyOptions): PolarisKey {
       let code: BackendRefusalCode | null = null;
       if (r.kind === "signIn") {
         if (auth.user === null) code = "sign_in_required";
+      } else if (r.kind === "tier") {
+        const tier = auth.license.tier;
+        if (tier === null || !r.tiers.includes(tier)) code = "not_entitled";
       } else {
         const value = auth.license.value(r.name);
         const granted = r.test

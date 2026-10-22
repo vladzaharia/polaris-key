@@ -65,6 +65,16 @@ async function readBounded(
   return new TextDecoder().decode(all);
 }
 
+/** A short, secret-free reason for a failed fetch: the error's name and message. */
+function errorReason(error: unknown): string {
+  if (error instanceof Error) {
+    const cause = (error as { cause?: unknown }).cause;
+    const inner = cause instanceof Error ? `: ${cause.message}` : "";
+    return `${error.name}: ${error.message}${inner}`.slice(0, 200);
+  }
+  return "unknown error";
+}
+
 const utf8Length = (s: string): number => new TextEncoder().encode(s).length;
 
 export interface ProductTrustOptions {
@@ -135,9 +145,11 @@ export class ProductTrust {
     if (this.inflight) return this.inflight;
     this.lastAttemptAt = this.o.now();
     const run = this.fetchAndInstall()
-      .catch(() => {
-        // A failed fetch keeps the last verified set (§14.4).
-        this.o.debug?.(`trust: fetch failed for ${this.product}`);
+      .catch((error: unknown) => {
+        // A failed fetch keeps the last verified set (§14.4); the pins still verify.
+        this.o.debug?.(
+          `trust: fetch failed for ${this.product} (${errorReason(error)}); keeping the last verified keys and the pins`,
+        );
       })
       .finally(() => {
         this.inflight = null;
@@ -170,7 +182,14 @@ export class ProductTrust {
         redirect: "error",
       },
     );
-    return res.ok ? readBounded(res, MAX_MANIFEST_BYTES) : null;
+    if (!res.ok) {
+      this.o.debug?.(
+        `trust: ${this.o.baseUrl} answered ${res.status} for ${this.product}; check baseUrl and the product slug`,
+      );
+      await res.body?.cancel().catch(() => {});
+      return null;
+    }
+    return readBounded(res, MAX_MANIFEST_BYTES);
   }
 
   private async fetchAndInstall(): Promise<void> {

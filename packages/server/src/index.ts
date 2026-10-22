@@ -5,8 +5,12 @@
 export {
   createPolarisKey,
   headerFields,
+  isCorsPreflight,
   PolarisKeyError,
+  requirement,
   type HeadersInput,
+  type PolarisAdapterOptions,
+  type ProblemBody,
   type PolarisKey,
   type PolarisKeyOptions,
   type PolarisServerConfig,
