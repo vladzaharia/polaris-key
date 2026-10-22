@@ -233,7 +233,11 @@ function cases(): Case[] {
       act: async (page) => {
         const drawer = await openEditDrawer(page);
         await drawer.getByRole("button", { name: "Add a role" }).click();
-        await drawer.getByRole("radio", { name: /^Product admin/ }).waitFor();
+        // The drawer's title changes with the view.
+        await page
+          .getByRole("dialog", { name: /Add a role for Sam Okoye/ })
+          .getByRole("radio", { name: /^Product admin/ })
+          .waitFor();
         await primaryInView(page);
       },
     },
@@ -247,7 +251,10 @@ function cases(): Case[] {
           .first();
         if ((await edit.count()) > 0 && (await edit.isEnabled())) {
           await edit.click();
-          await drawer.getByRole("button", { name: "Save areas" }).waitFor();
+          await page
+            .getByRole("dialog", { name: /Areas for Sam Okoye/ })
+            .getByRole("button", { name: "Save areas" })
+            .waitFor();
           await primaryInView(page);
         }
       },

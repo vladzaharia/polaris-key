@@ -6,8 +6,8 @@
  *
  * Superadmins and Platform admins see the same list; what they may change differs (a Platform admin
  * cannot give or take the platform roles), and the controls say why they are off. The Worker
- * decides every write. Roles, SSO rules (ST-32) and the full invite drawer (ST-31.12) are
- * other slices.
+ * decides every write. Invite and Edit roles are the drawer (`access/InviteDrawer.tsx`, ST-31.12);
+ * the Roles tab and SSO rules are other slices.
  */
 
 import * as React from "react";
