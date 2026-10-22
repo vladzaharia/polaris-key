@@ -353,8 +353,9 @@ export type OwnershipEndReason = "detached" | "relinked" | "account_deleted";
  * its surfaces need; it is the one place the consequence of losing a licence is decided.
  *
  * The hook runs after the ownership move's own batch commits, so a crash between the two leaves
- * the tokens live until the next run of the path; folding the revoke into the move's batch is a
- * follow-up.
+ * the tokens live until they expire, an operator revokes them, or the licence's next ownership
+ * end; folding the revoke into the move's batch is a follow-up. The audit row is best-effort: the
+ * revoke has committed, and a failed audit insert must not stop the caller's remaining steps.
  */
 export async function onLicenseOwnershipEnded(
   db: Db,
@@ -406,6 +407,6 @@ export async function onLicenseOwnershipEnded(
       target_kind: "license",
       target_id: args.licenseId,
       summary: `Ownership ended (${args.reason}): revoked ${operatorCount} operator-minted registry token(s) bound to the licence`,
-    });
+    }).catch(() => undefined);
   return { revokedTokens: (counts[0] ?? 0) + operatorCount };
 }

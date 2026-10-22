@@ -1659,8 +1659,7 @@ are revoked in the erasure batch (`account_deleted`); a disabled or expired lice
 at the next check without a write (`licenseUsable`), and work again if it is re-enabled. The cron
 purges rows 90 days after expiry or revocation. A deleted licence's tokens are
 deleted in its deletion batch (`core/licensing/licenseDelete.ts`). A licence that leaves an
-account revokes its licence-bound tokens (below). A disabled or expired licence's tokens stop at
-the next check (`licenseUsable`).
+account revokes its licence-bound tokens (below).
 
 **The ladder decides; a token only identifies.** A credential is resolved only where the mode is
 not `public`, so a public read never touches `registry_tokens`. A token for another owner, outside
@@ -1695,7 +1694,9 @@ previous owner kept reading the feeds. A licence with no account, and
 every other licence of the product, is untouched. Residuals: an operator can mint a new token for a
 licence that went floating; that is a deliberate act, audited at mint, but the token then passes to
 whoever owns the licence next. The revoke is not in the move's batch: a crash between the two
-leaves the tokens live until the path runs again (folding it into the batch is a follow-up). A
+leaves the tokens live until they expire, an operator revokes them, or the licence's next
+ownership end (folding it into the batch is a follow-up); the audit row after the revoke is
+best-effort. A
 merge undone revokes the operator tokens of each licence handed back, including ones minted before
 the join; that over-revoke fails closed and the operator re-mints. **Review trigger:** a path that
 moves a licence off an account (to another account or to floating), or erases the account, without
