@@ -25,6 +25,11 @@ import {
   doorOf,
   type Tier,
 } from "../src/lib/doors";
+import {
+  HELP_MESSAGES,
+  KNOWN_ENTRIES,
+  pageOfId,
+} from "../src/lib/helpMessages";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dist = join(here, "..", "dist");
@@ -72,6 +77,21 @@ writeFileSync(
 const pages = [...htmlFiles(dist)].filter(
   (f) => !relative(dist, f).startsWith("pagefind"),
 );
+// The search dialog's message-code jump (src/components/search.ts) reads this file from the bundle
+// it loaded, so both hosts serve it at a path they already serve and neither redirects it: id ->
+// the message's heading and the Help page that holds it.
+const codes: Record<string, { title: string; page: string }> = {};
+for (const id of [
+  ...Object.keys(HELP_MESSAGES.messages),
+  ...HELP_MESSAGES.developerOnly,
+].sort()) {
+  const page = pageOfId(HELP_MESSAGES, id);
+  if (page !== undefined)
+    codes[id] = {
+      title: KNOWN_ENTRIES.get(id)?.title ?? id,
+      page: `/docs/help/messages/${page}/`,
+    };
+}
 const counts: string[] = [];
 for (const [dir, tier] of BUNDLES) {
   const out = join(dist, dir);
@@ -94,6 +114,7 @@ for (const [dir, tier] of BUNDLES) {
   }
   const written = await index.writeFiles({ outputPath: out });
   if (written.errors.length) throw new Error(written.errors.join("; "));
+  writeFileSync(join(out, "codes.json"), JSON.stringify(codes));
   counts.push(`${dir}=${n}`);
 }
 await pagefind.close();

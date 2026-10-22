@@ -10,6 +10,7 @@ sidebar:
 
 import HelpTasks from "../../../components/help/HelpTasks.astro";
 import HelpSearch from "../../../components/help/HelpSearch.astro";
+import { HELP_TOP_TASKS } from "../../../lib/suggestions";
 
 Answers for the app you use.
 
@@ -17,40 +18,7 @@ Answers for the app you use.
 
 ## Top tasks
 
-<HelpTasks
-  tasks={[
-    {
-      title: "Activate your app",
-      description: "Use a key or sign in.",
-      href: "/docs/help/activate/",
-    },
-    {
-      title: "Device limit reached",
-      description: "Free a device to continue.",
-      href: "/docs/help/device-limit/",
-    },
-    {
-      title: "Move to a new computer",
-      description: "Remove the old device.",
-      href: "/docs/help/new-computer/",
-    },
-    {
-      title: "Download your app",
-      description: "Find the right download.",
-      href: "/docs/help/download/",
-    },
-    {
-      title: "Your code didn’t arrive",
-      description: "Check sign-in email.",
-      href: "/docs/help/code-didnt-arrive/",
-    },
-    {
-      title: "Refunds",
-      description: "Ask the app developer or store.",
-      href: "/docs/help/refunds/",
-    },
-  ]}
-/>
+<HelpTasks tasks={HELP_TOP_TASKS} />
 
 ## Browse by topic
 

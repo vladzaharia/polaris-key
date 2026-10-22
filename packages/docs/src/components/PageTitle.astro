@@ -51,22 +51,19 @@ const eyebrow = landing
 // What search shows under a result, and the door filter "Help only" uses (Search.astro): the door's
 // name, then the path the page sits in ("Developers › Features › Licensing"). Help names its topic.
 const DOOR_NAMES = { help: "Help", developers: "Developers", operate: "Operate" } as const;
-const words = (s: string): string => {
-  const t = s.replace(/-/g, " ");
-  return t.charAt(0).toUpperCase() + t.slice(1);
-};
 const doorName = door === undefined || door === "landing" ? "developers" : door;
-const parts = route.id.split("/").slice(0, -1);
-if (doorName === "operate" && parts[0] === "operate") parts.shift();
+// The sidebar's own names for the groups the page sits in ("Build › UI kits"), not its slugs; a
+// group named like the door ("Operate") is the door already.
+const names = (nodes: Node[]): string[] => {
+  const g = nodes.find((n) => n.type === "group" && holdsCurrent(n));
+  return g === undefined ? [] : [g.label ?? "", ...names(g.entries ?? [])];
+};
+const path = names(route.sidebar as Node[])
+  .filter((l) => l !== "" && l !== DOOR_NAMES[doorName])
+  .slice(0, 2);
 const trail = [
   DOOR_NAMES[doorName],
-  ...(help
-    ? topic === "Help"
-      ? []
-      : [topic]
-    : parts.slice(0, 2).map((p, i) =>
-        i === 1 && isServiceSection(section) ? section.label : words(p),
-      )),
+  ...(help ? (topic === "Help" ? [] : [topic]) : path),
 ].join(" › ");
 ---
 
@@ -84,7 +81,7 @@ const trail = [
           {route.entry.data.title}
         </h1>
         {route.id !== "help" && (
-          <button type="button" class="pk-help-copy" aria-label="Copy page">
+          <button type="button" class="pk-help-copy" aria-label="Copy page" data-pagefind-ignore>
             <span set:html={HELP_ICONS.copy} />
             <span class="pk-help-copy__label">Copy page</span>
           </button>
@@ -106,7 +103,7 @@ const trail = [
           {route.entry.data.title}
         </h1>
         {door !== undefined && door !== "landing" && (
-          <button type="button" class="pk-help-copy" aria-label="Copy page">
+          <button type="button" class="pk-help-copy" aria-label="Copy page" data-pagefind-ignore>
             <span set:html={HELP_ICONS.copy} />
             <span class="pk-help-copy__label">Copy page</span>
           </button>

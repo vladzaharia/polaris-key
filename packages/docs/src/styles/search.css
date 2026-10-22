@@ -69,10 +69,28 @@ site-search kbd {
   }
   .pk-search-label {
     display: inline;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  site-search button[data-open-modal] {
+    min-width: 0;
   }
   .pk-search-kbd:not([hidden]) {
     display: inline-flex;
     margin-inline-start: auto;
+  }
+}
+
+/* Where the header is crowded (the door tabs, the links), the trigger is the icon and the keys. */
+@media (min-width: 50rem) and (max-width: 66rem) {
+  site-search .pk-search-label {
+    display: none;
+  }
+  site-search button[data-open-modal] {
+    width: auto;
+    flex: none;
   }
 }
 
@@ -279,6 +297,29 @@ dialog.pk-search::backdrop {
   font-size: var(--pk-font-size-xs, 0.75rem);
   overflow-wrap: anywhere;
 }
+.pk-search-row code {
+  margin-inline-start: var(--pk-space-1);
+  padding-inline: var(--pk-space-1);
+  border-radius: var(--pk-radius-sm);
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-muted);
+  font-family: var(--pk-font-mono);
+  font-size: var(--pk-font-size-xs, 0.75rem);
+  font-weight: 400;
+}
+/* One muted line of the page's text around the match. */
+.pk-search-row small.pk-search-excerpt {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+.pk-search-excerpt mark {
+  background: transparent;
+  color: var(--pk-text-strong);
+  font-weight: 600;
+}
 .pk-search-icon {
   display: inline-flex;
   color: var(--pk-text-default);
@@ -294,6 +335,8 @@ dialog.pk-search::backdrop {
 .pk-search-hint,
 .pk-search-empty p {
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: var(--pk-space-4) var(--pk-space-2);
   color: var(--pk-text-muted);
   font-size: var(--sl-text-sm);
@@ -398,6 +441,7 @@ dialog.pk-search::backdrop {
 /* Focus is always visible */
 .pk-search button:focus-visible,
 site-search button[data-open-modal]:focus-visible,
+.pk-search-body:focus-visible,
 .pk-search-row:focus-visible {
   outline: 2px solid var(--pk-focus);
   outline-offset: -2px;

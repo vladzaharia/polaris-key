@@ -315,13 +315,14 @@ describe.skipIf(!enabled)("Help search under the Worker's docs CSP", () => {
         "/docs/help/code/rate_limited/",
       );
       expect(await first.getAttribute("aria-selected")).toBe("true");
-      // Arrow down moves the selection, Escape closes.
+      // The jump stands for the page that holds the message, so it is the only row; the arrow wraps.
+      expect(await page.locator(".pk-search-row").count()).toBe(1);
       await page.keyboard.press("ArrowDown");
       expect(
         await page
           .locator("dialog.pk-search input")
           .getAttribute("aria-activedescendant"),
-      ).toBe("pk-search-o-1");
+      ).toBe("pk-search-o-0");
       await page.keyboard.press("Escape");
       expect(
         await page.locator("dialog.pk-search").evaluate((d: any) => d.open),
@@ -360,6 +361,141 @@ describe.skipIf(!enabled)("Help search under the Worker's docs CSP", () => {
       );
     } finally {
       await close();
+    }
+  }, 90_000);
+
+  it("jumps to a message code on the console host too, from the bundle's own code list", async () => {
+    const { page, requests, close } = await searchOn(
+      "https://key.plrs.im",
+      "rate_limited",
+      undefined,
+      "/docs/start/",
+    );
+    try {
+      const first = page.locator(".pk-search-row").first();
+      await first.waitFor({ timeout: 20000 });
+      expect(await first.getAttribute("href")).toBe(
+        "/docs/help/code/rate_limited/",
+      );
+      expect(await first.locator("code").textContent()).toBe("rate_limited");
+      // The list rides in the loaded bundle; no Help path is fetched across hosts.
+      expect(requests).toContain("/docs/pagefind/codes.json");
+      expect(requests).not.toContain("/docs/help/codes.json");
+    } finally {
+      await close();
+    }
+  }, 90_000);
+
+  it("Try again reloads with ?q= and recovers after a failed engine load", async () => {
+    let failed = 0;
+    const { page, close } = await searchOn(
+      "https://polaris.locker",
+      "device limit",
+      undefined,
+      "/docs/help/",
+      undefined,
+      async (ctx) => {
+        await ctx.route(
+          /\/pagefind-help\/pagefind\.js$/,
+          async (route: any) => {
+            if (failed++ === 0) return route.abort();
+            return route.fallback();
+          },
+        );
+      },
+    );
+    try {
+      await page.locator(".pk-search-failed").waitFor({ timeout: 30000 });
+      await page.locator(".pk-search-retry").click();
+      await page.waitForURL(/[?&]q=device\+limit/);
+      await page.locator(".pk-search-row").first().waitFor({ timeout: 20000 });
+      expect(await page.locator("dialog.pk-search input").inputValue()).toBe(
+        "device limit",
+      );
+      expect(failed).toBeGreaterThan(1);
+    } finally {
+      await close();
+    }
+  }, 90_000);
+
+  // The preselected row is the engine's best hit, whichever door it is in (the review's examples).
+  it.each([
+    ["help a customer", "admin", "/docs/operate/console/help-a-customer/"],
+    ["runbook", "admin", "/docs/operate/platform/runbook/"],
+    [
+      "device limit",
+      "public",
+      /^\/docs\/(build\/ui\/components|features\/licensing)\/device-limit\//,
+    ],
+  ] as const)(
+    "puts the best-ranked page first for %s as %s",
+    async (query, tier, want) => {
+      const me =
+        tier === "admin"
+          ? {
+              permissions: {
+                platform: { view: ["console", "docs"], edit: [] },
+              },
+            }
+          : null;
+      const { page, close } = await searchOn(
+        "https://key.plrs.im",
+        query,
+        undefined,
+        "/docs/start/",
+        undefined,
+        async (ctx) => {
+          if (me === null) return;
+          await ctx.route("https://key.plrs.im/manage/api/me", (route: any) =>
+            route.fulfill({
+              status: 200,
+              contentType: "application/json",
+              body: JSON.stringify(me),
+            }),
+          );
+          // The gated bundles, straight from dist, as the Worker serves them to a session.
+          await ctx.route(/\/docs\/pagefind-(member|admin)\//, (route: any) => {
+            const f = join(
+              dist,
+              new URL(route.request().url()).pathname.replace(/^\/docs\//, ""),
+            );
+            if (!existsSync(f))
+              return route.fulfill({ status: 404, body: "no" });
+            return route.fulfill({
+              status: 200,
+              body: readFileSync(f),
+              contentType: TYPES[extname(f)] ?? "application/octet-stream",
+            });
+          });
+        },
+      );
+      try {
+        const first = page.locator(".pk-search-row").first();
+        await first.waitFor({ timeout: 20000 });
+        const href = (await first.getAttribute("href")) ?? "";
+        if (typeof want === "string") expect(href).toBe(want);
+        else expect(href).toMatch(want);
+        // Enter opens that row.
+        expect(await first.getAttribute("aria-selected")).toBe("true");
+      } finally {
+        await close();
+      }
+    },
+    90_000,
+  );
+
+  it("lists Top tasks on Help and Start here elsewhere before a query", async () => {
+    for (const [origin, path, group] of [
+      ["https://polaris.locker", "/docs/help/", "Top tasks"],
+      ["https://key.plrs.im", "/docs/start/", "Start here"],
+    ] as const) {
+      const { page, close } = await searchOn(origin, "", undefined, path);
+      try {
+        await page.locator(".pk-search-group", { hasText: group }).waitFor();
+        expect(await page.locator(".pk-search-row").count()).toBeGreaterThan(1);
+      } finally {
+        await close();
+      }
     }
   }, 90_000);
 });

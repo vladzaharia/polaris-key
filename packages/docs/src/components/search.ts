@@ -16,6 +16,7 @@ type Tier = "public" | "member" | "admin";
 
 interface PagefindData {
   url: string;
+  excerpt?: string;
   meta?: { title?: string; trail?: string };
   filters?: { door?: string[] };
 }
@@ -31,8 +32,14 @@ interface Row {
   href: string;
   title: string;
   trail: string;
-  door: Door | "jump";
+  door: Door | "jump" | "suggest";
+  /** A message code, drawn as a chip after the title. */
+  code?: string;
+  /** Pagefind's excerpt: escaped text with `<mark>` around the matched words. */
+  excerpt?: string;
 }
+/** The bundle's `codes.json`: message id -> its heading and the Help page that holds it. */
+type Codes = Record<string, { title: string; page: string }>;
 
 const DOORS: readonly { id: Door; label: string }[] = [
   { id: "help", label: "Help" },
@@ -67,12 +74,18 @@ class SiteSearch extends HTMLElement {
   private readonly home: Scope = this.dataset.scope === "help" ? "help" : "all";
   private scope: Scope = this.home;
   private canWiden = false;
-  private engine: Promise<{ pf: Pagefind; widen: boolean }> | null = null;
-  private codes: Promise<string[]> | null = null;
+  private engine: Promise<{
+    pf: Pagefind;
+    widen: boolean;
+    dir: string;
+  }> | null = null;
+  private codes: Promise<Codes> | null = null;
   private seq = 0;
   private rows: Row[] = [];
   private active = -1;
   private grace = 0;
+  /** The opening links are showing: they go the moment a query starts. */
+  private suggesting = false;
 
   private readonly open_ = this.q<HTMLButtonElement>("button[data-open-modal]");
   private readonly dialog = this.q<HTMLDialogElement>("dialog");
@@ -126,9 +139,13 @@ class SiteSearch extends HTMLElement {
       const row = (e.target as Element).closest<HTMLElement>("[role=option]");
       if (row) this.select(Number(row.dataset.i));
     });
+    // The browser caches a failed module import and a failed wasm compile for the page's life, so
+    // trying the same page again can never recover. A reload with `?q=` starts clean and reopens
+    // the dialog on the same query.
     this.q(".pk-search-retry").addEventListener("click", () => {
-      this.engine = null;
-      this.run();
+      const url = new URL(location.href);
+      url.searchParams.set("q", this.input.value.trim());
+      location.assign(url);
     });
     this.widen.addEventListener("click", () => this.setScope("all", true));
     this.scopeBox.addEventListener("click", (e) => {
@@ -219,7 +236,7 @@ class SiteSearch extends HTMLElement {
     }
   }
 
-  private load(): Promise<{ pf: Pagefind; widen: boolean }> {
+  private load(): Promise<{ pf: Pagefind; widen: boolean; dir: string }> {
     this.engine ??= (async () => {
       // Help is the customer host's: it serves Help's own bundle and redirects every other docs
       // path away, which is how a Help page there knows it cannot widen (a redirect is not followed).
@@ -243,7 +260,7 @@ class SiteSearch extends HTMLElement {
         /* @vite-ignore */ `${this.base}/${dir}/pagefind.js`
       )) as Pagefind;
       await pf.init();
-      return { pf, widen: this.home === "help" && !customer };
+      return { pf, widen: this.home === "help" && !customer, dir };
     })();
     this.engine.catch(() => {
       this.engine = null;
@@ -251,10 +268,11 @@ class SiteSearch extends HTMLElement {
     return this.engine;
   }
 
-  private loadCodes(): Promise<string[]> {
-    this.codes ??= fetch(`${this.base}/help/codes.json`)
-      .then((r) => (r.ok ? (r.json() as Promise<string[]>) : []))
-      .catch(() => []);
+  /** The code list rides in the bundle the reader loaded: a path their host serves, never a redirect. */
+  private loadCodes(dir: string): Promise<Codes> {
+    this.codes ??= fetch(`${this.base}/${dir}/codes.json`)
+      .then((r) => (r.ok ? (r.json() as Promise<Codes>) : {}))
+      .catch(() => ({}));
     return this.codes;
   }
 
@@ -262,8 +280,9 @@ class SiteSearch extends HTMLElement {
 
   private panel(
     which: "hint" | "skeleton" | "failed" | "empty" | "list" | "none",
+    hint = false,
   ): void {
-    this.hint.hidden = which !== "hint";
+    this.hint.hidden = which !== "hint" && !hint;
     this.skeleton.hidden = which !== "skeleton";
     this.failed.hidden = which !== "failed";
     this.empty.hidden = which !== "empty";
@@ -279,25 +298,29 @@ class SiteSearch extends HTMLElement {
     this.active = -1;
     this.input.removeAttribute("aria-activedescendant");
     if (query === "") {
-      this.hint.textContent =
-        this.scope === "help"
-          ? "Search Help, or type a message code."
-          : "Search the docs, or type a message code.";
-      this.panel("hint");
+      this.hint.textContent = "Type a message code to jump to it.";
+      this.suggest();
       this.status.textContent = "";
       return;
+    }
+    if (this.suggesting) {
+      this.suggesting = false;
+      this.list.replaceChildren();
+      this.panel("none");
     }
     // Skeleton rows only after a grace, so a quick answer does not flash them.
     this.grace = window.setTimeout(() => {
       if (mine === this.seq) this.panel("skeleton");
     }, 200);
     try {
-      const { pf } = await timeout(this.load());
+      const { pf, dir } = await timeout(this.load());
       const filters: Record<string, string> =
         this.scope === "help" ? { door: "help" } : {};
       const [found, codes] = await Promise.all([
         timeout(pf.debouncedSearch(query, { filters }, 120)),
-        CODE_SHAPE.test(query) ? this.loadCodes() : Promise.resolve([]),
+        CODE_SHAPE.test(query)
+          ? this.loadCodes(dir)
+          : Promise.resolve({} as Codes),
       ]);
       // null: a newer keystroke superseded this search.
       if (found === null || mine !== this.seq) return;
@@ -306,44 +329,78 @@ class SiteSearch extends HTMLElement {
       );
       if (mine !== this.seq) return;
       clearTimeout(this.grace);
-      const rows: Row[] = data.map((d) => {
-        const door =
-          (d.filters?.door?.[0] as Door | undefined) ?? doorOfUrl(d.url);
-        return {
-          // Pagefind has already put the site's base in front of the url.
-          href: d.url,
-          title: d.meta?.title ?? d.url,
-          trail:
-            d.meta?.trail ?? DOORS.find((x) => x.id === door)?.label ?? "Docs",
-          door,
-        };
-      });
-      const id = codes.find((c) => c.toLowerCase() === query.toLowerCase());
-      if (id !== undefined)
-        rows.unshift({
-          href: `${this.base}/help/code/${id}/`,
-          title: id,
-          trail: "Help › Messages",
-          door: "jump",
+      // The Help home answers nearly every Help query and says nothing about it.
+      const rows: Row[] = data
+        .filter((d) => d.url !== `${this.base}/help/`)
+        .map((d) => {
+          const door =
+            (d.filters?.door?.[0] as Door | undefined) ?? doorOfUrl(d.url);
+          return {
+            // Pagefind has already put the site's base in front of the url.
+            href: d.url,
+            title: d.meta?.title ?? d.url,
+            trail:
+              d.meta?.trail ??
+              DOORS.find((x) => x.id === door)?.label ??
+              "Docs",
+            door,
+            excerpt: d.excerpt,
+          };
         });
+      const id = Object.keys(codes).find(
+        (c) => c.toLowerCase() === query.toLowerCase(),
+      );
+      if (id !== undefined) {
+        // The jump row stands for the page that holds the message, so that page's row is dropped.
+        const at = codes[id]!.page.split("#")[0];
+        const kept = rows.filter((r) => r.href.split("#")[0] !== at);
+        rows.length = 0;
+        rows.push(
+          {
+            href: `${this.base}/help/code/${id}/`,
+            title: codes[id]!.title,
+            trail: "Help › Messages",
+            door: "jump",
+            code: id,
+          },
+          ...kept,
+        );
+      }
       this.render(rows, query);
     } catch {
       if (mine !== this.seq) return;
       clearTimeout(this.grace);
       this.panel("failed");
-      this.status.textContent = "";
+      this.status.textContent = this.q(".pk-search-failed").textContent;
     }
   }
 
-  private render(rows: Row[], query: string): void {
-    const groups: { key: Row["door"]; label: string; rows: Row[] }[] = [
-      { key: "jump", label: "Jump to", rows: [] },
-      ...DOORS.map((d) => ({ key: d.id, label: d.label, rows: [] as Row[] })),
-    ];
-    for (const r of rows) {
-      const g = groups.find((x) => x.key === r.door)!;
-      if (g.rows.length < MAX_PER_GROUP) g.rows.push(r);
+  /**
+   * Group the rows. The order is the ranking: "Jump to" first, then each door by where its best row
+   * ranked, so Enter opens the engine's top hit. A Help page lists Help first (its own door).
+   */
+  private groups(
+    rows: Row[],
+  ): { key: Row["door"]; label: string; rows: Row[] }[] {
+    const seen: Row["door"][] = [];
+    for (const r of rows) if (!seen.includes(r.door)) seen.push(r.door);
+    if (this.home === "help" && seen.includes("help")) {
+      seen.splice(seen.indexOf("help"), 1);
+      seen.splice(seen[0] === "jump" ? 1 : 0, 0, "help");
     }
+    return seen.map((key) => ({
+      key,
+      label:
+        key === "jump"
+          ? "Jump to"
+          : (DOORS.find((d) => d.id === key)?.label ?? ""),
+      rows: rows.filter((r) => r.door === key).slice(0, MAX_PER_GROUP),
+    }));
+  }
+
+  private fill(
+    groups: { key: Row["door"]; label: string; rows: Row[] }[],
+  ): void {
     this.list.replaceChildren();
     this.rows = [];
     for (const g of groups) {
@@ -360,8 +417,33 @@ class SiteSearch extends HTMLElement {
       for (const r of g.rows) box.append(this.row(r, this.rows.push(r) - 1));
       this.list.append(box);
     }
+  }
+
+  /** Before a query: the links the page's own landing shows (Search.astro's template). */
+  private suggest(): void {
+    const tpl = this.querySelector<HTMLTemplateElement>(
+      "template[data-suggest]",
+    );
+    const rows: Row[] = [...(tpl?.content.querySelectorAll("a") ?? [])].map(
+      (a) => ({
+        href: a.getAttribute("href") ?? "",
+        title: a.querySelector("strong")?.textContent ?? "",
+        trail: a.querySelector("small")?.textContent ?? "",
+        door: "suggest",
+      }),
+    );
+    this.fill([{ key: "suggest", label: tpl?.dataset.suggest ?? "", rows }]);
+    this.suggesting = rows.length > 0;
+    this.panel(rows.length ? "list" : "hint", true);
+  }
+
+  private render(rows: Row[], query: string): void {
+    this.fill(this.groups(rows));
     if (this.rows.length === 0) {
-      this.emptyText.textContent = `No results for “${query}”.`;
+      this.emptyText.replaceChildren("No results for “");
+      const q = document.createElement("bdi");
+      q.textContent = query;
+      this.emptyText.append(q, "”.");
       this.widen.hidden = !(this.scope === "help" && this.canWiden);
       this.panel("empty");
       this.status.textContent = this.emptyText.textContent;
@@ -385,15 +467,21 @@ class SiteSearch extends HTMLElement {
     const icon = document.createElement("span");
     icon.className = "pk-search-icon";
     const tpl = this.querySelector<HTMLTemplateElement>(
-      `template[data-icon="${r.door === "jump" ? "jump" : `door-${r.door}`}"]`,
+      `template[data-icon="${r.door === "jump" || r.door === "suggest" ? "jump" : `door-${r.door}`}"]`,
     );
     if (tpl) icon.append(tpl.content.cloneNode(true));
     const text = document.createElement("span");
     const title = document.createElement("strong");
     title.textContent = r.title;
+    if (r.code !== undefined) {
+      const code = document.createElement("code");
+      code.textContent = r.code;
+      title.append(" ", code);
+    }
     const trail = document.createElement("small");
     trail.textContent = r.trail;
     text.append(title, trail);
+    if (r.excerpt) text.append(this.excerpt(r.excerpt));
     const enter = document.createElement("kbd");
     enter.setAttribute("aria-hidden", "true");
     enter.textContent = "↵";
@@ -401,9 +489,25 @@ class SiteSearch extends HTMLElement {
     return a;
   }
 
+  /** Pagefind's excerpt is escaped text with `<mark>`; rebuild it from text nodes, never as markup. */
+  private excerpt(html: string): HTMLElement {
+    const out = document.createElement("small");
+    out.className = "pk-search-excerpt";
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    for (const n of doc.body.childNodes) {
+      if (n.nodeName === "MARK") {
+        const m = document.createElement("mark");
+        m.textContent = n.textContent;
+        out.append(m);
+      } else out.append(n.textContent ?? "");
+    }
+    return out;
+  }
+
   private select(i: number): void {
     if (this.rows.length === 0) return;
-    this.active = (i + this.rows.length) % this.rows.length;
+    this.active =
+      ((i % this.rows.length) + this.rows.length) % this.rows.length;
     for (const el of this.list.querySelectorAll<HTMLElement>("[role=option]")) {
       const on = Number(el.dataset.i) === this.active;
       el.setAttribute("aria-selected", String(on));
@@ -418,7 +522,11 @@ class SiteSearch extends HTMLElement {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       if (this.rows.length === 0) return;
       e.preventDefault();
-      this.select(this.active + (e.key === "ArrowDown" ? 1 : -1));
+      const down = e.key === "ArrowDown";
+      // Nothing is selected on the opening links: the first arrow picks the first (or last) one.
+      this.select(
+        this.active < 0 ? (down ? 0 : -1) : this.active + (down ? 1 : -1),
+      );
     } else if (e.key === "Enter") {
       const row = this.rows[this.active];
       if (!row) return;
