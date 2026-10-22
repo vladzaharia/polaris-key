@@ -171,7 +171,7 @@
   "update.readyTitle": "{product} {version} 준비 완료",
   "update.readyBody": "업데이트를 완료하려면 {product}을(를) 재시작하세요.",
   "update.mandatoryTitle": "{product}을(를) 계속 사용하려면 업데이트하세요",
-  "update.mandatoryBody": "이 버전은 지원되는 최소 버전보다 낮아요. {product}을(를) 계속 사용하려면 업데이트하세요.",
+  "update.mandatoryBody": "이 버전은 더 이상 지원되지 않아요.",
   "update.blockedTitle": "이 버전은 더 이상 지원되지 않아요",
   "update.blockedBody": "아직 여기에서 사용할 수 있는 업데이트가 없어요. 당분간 {product}을(를) 계속 사용할 수 있어요.",
   "update.critical": "이 업데이트에는 중요한 보안 수정 사항이 포함되어 있어요.",

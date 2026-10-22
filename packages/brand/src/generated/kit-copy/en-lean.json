@@ -171,7 +171,7 @@
   "update.readyTitle": "{product} {version} is ready",
   "update.readyBody": "Restart {product} to finish updating.",
   "update.mandatoryTitle": "Update to keep using {product}",
-  "update.mandatoryBody": "This version is below the minimum supported version. Update to keep using {product}.",
+  "update.mandatoryBody": "This version is no longer supported.",
   "update.blockedTitle": "This version is no longer supported",
   "update.blockedBody": "No update is available here yet. You can keep using {product} for now.",
   "update.critical": "This update includes an important security fix.",

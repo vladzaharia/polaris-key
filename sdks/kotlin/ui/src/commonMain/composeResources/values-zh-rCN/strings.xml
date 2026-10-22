@@ -420,8 +420,8 @@
     <string name="update_readyBody">重启%1$s以完成更新。</string>
     <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_mandatoryTitle">更新以继续使用%1$s</string>
-    <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="update_mandatoryBody">此版本低于最低支持版本。请更新以继续使用%1$s。</string>
+    <!-- UpdatePrompt: an app update. Mandatory update. -->
+    <string name="update_mandatoryBody">此版本已不再受支持。</string>
     <!-- UpdatePrompt: an app update. No update is available yet. -->
     <string name="update_blockedTitle">此版本已不再受支持</string>
     <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->

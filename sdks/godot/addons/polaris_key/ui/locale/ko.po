@@ -1165,10 +1165,10 @@ msgstr "업데이트를 완료하려면 {product}을(를) 재시작하세요."
 msgid "update.mandatoryTitle"
 msgstr "{product}을(를) 계속 사용하려면 업데이트하세요"
 
-#. This version is below the minimum supported version. Update to keep using {product}.
-#. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. This version is no longer supported.
+#. UpdatePrompt: an app update. Mandatory update.
 msgid "update.mandatoryBody"
-msgstr "이 버전은 지원되는 최소 버전보다 낮아요. {product}을(를) 계속 사용하려면 업데이트하세요."
+msgstr "이 버전은 더 이상 지원되지 않아요."
 
 #. This version is no longer supported
 #. UpdatePrompt: an app update. No update is available yet.

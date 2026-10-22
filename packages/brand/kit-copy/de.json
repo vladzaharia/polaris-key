@@ -178,7 +178,7 @@
     "update.readyTitle": "{product} {version} ist bereit",
     "update.readyBody": "Starten Sie {product} neu, um das Update abzuschließen.",
     "update.mandatoryTitle": "Aktualisieren, um {product} weiter zu verwenden",
-    "update.mandatoryBody": "Diese Version liegt unter der mindestens unterstützten Version. Aktualisieren Sie, um {product} weiter zu verwenden.",
+    "update.mandatoryBody": "Diese Version wird nicht mehr unterstützt.",
     "update.blockedTitle": "Diese Version wird nicht mehr unterstützt",
     "update.blockedBody": "Hier ist noch kein Update verfügbar. Sie können {product} vorerst weiter verwenden.",
     "update.critical": "Dieses Update enthält eine wichtige Sicherheitskorrektur.",

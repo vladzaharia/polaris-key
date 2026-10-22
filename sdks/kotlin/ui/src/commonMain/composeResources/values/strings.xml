@@ -424,8 +424,8 @@
     <string name="update_readyBody">Restart %1$s to finish updating.</string>
     <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_mandatoryTitle">Update to keep using %1$s</string>
-    <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="update_mandatoryBody">This version is below the minimum supported version. Update to keep using %1$s.</string>
+    <!-- UpdatePrompt: an app update. Mandatory update. -->
+    <string name="update_mandatoryBody">This version is no longer supported.</string>
     <!-- UpdatePrompt: an app update. No update is available yet. -->
     <string name="update_blockedTitle">This version is no longer supported</string>
     <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->

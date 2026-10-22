@@ -178,7 +178,7 @@
     "update.readyTitle": "{product} {version} est prêt",
     "update.readyBody": "Redémarrez {product} pour terminer la mise à jour.",
     "update.mandatoryTitle": "Mettez à jour pour continuer à utiliser {product}",
-    "update.mandatoryBody": "Cette version est antérieure à la version minimale prise en charge. Mettez à jour pour continuer à utiliser {product}.",
+    "update.mandatoryBody": "Cette version n’est plus prise en charge.",
     "update.blockedTitle": "Cette version n’est plus prise en charge",
     "update.blockedBody": "Aucune mise à jour n’est encore disponible ici. Vous pouvez continuer à utiliser {product} pour le moment.",
     "update.critical": "Cette mise à jour comprend un correctif de sécurité important.",

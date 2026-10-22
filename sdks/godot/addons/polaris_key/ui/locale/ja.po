@@ -1165,10 +1165,10 @@ msgstr "アップデートを完了するには{product}を再起動してくだ
 msgid "update.mandatoryTitle"
 msgstr "{product}を引き続き使うにはアップデートしてください"
 
-#. This version is below the minimum supported version. Update to keep using {product}.
-#. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. This version is no longer supported.
+#. UpdatePrompt: an app update. Mandatory update.
 msgid "update.mandatoryBody"
-msgstr "このバージョンはサポート対象の最低バージョンを下回っています。{product}を引き続き使うにはアップデートしてください。"
+msgstr "このバージョンはサポートが終了しました。"
 
 #. This version is no longer supported
 #. UpdatePrompt: an app update. No update is available yet.

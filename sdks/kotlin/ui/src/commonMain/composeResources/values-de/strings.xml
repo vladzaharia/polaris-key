@@ -424,8 +424,8 @@
     <string name="update_readyBody">Starten Sie %1$s neu, um das Update abzuschließen.</string>
     <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_mandatoryTitle">Aktualisieren, um %1$s weiter zu verwenden</string>
-    <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="update_mandatoryBody">Diese Version liegt unter der mindestens unterstützten Version. Aktualisieren Sie, um %1$s weiter zu verwenden.</string>
+    <!-- UpdatePrompt: an app update. Mandatory update. -->
+    <string name="update_mandatoryBody">Diese Version wird nicht mehr unterstützt.</string>
     <!-- UpdatePrompt: an app update. No update is available yet. -->
     <string name="update_blockedTitle">Diese Version wird nicht mehr unterstützt</string>
     <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->

@@ -178,7 +178,7 @@
     "update.readyTitle": "{product} {version}の準備ができました",
     "update.readyBody": "アップデートを完了するには{product}を再起動してください。",
     "update.mandatoryTitle": "{product}を引き続き使うにはアップデートしてください",
-    "update.mandatoryBody": "このバージョンはサポート対象の最低バージョンを下回っています。{product}を引き続き使うにはアップデートしてください。",
+    "update.mandatoryBody": "このバージョンはサポートが終了しました。",
     "update.blockedTitle": "このバージョンはサポートが終了しました",
     "update.blockedBody": "ここではまだアップデートを利用できません。当面は{product}を引き続き使用できます。",
     "update.critical": "このアップデートには重要なセキュリティ修正が含まれています。",

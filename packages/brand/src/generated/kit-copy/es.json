@@ -171,7 +171,7 @@
   "update.readyTitle": "{product} {version} está lista",
   "update.readyBody": "Reinicia {product} para terminar de actualizar.",
   "update.mandatoryTitle": "Actualiza para seguir usando {product}",
-  "update.mandatoryBody": "Esta versión es anterior a la versión mínima admitida. Actualiza para seguir usando {product}.",
+  "update.mandatoryBody": "Esta versión ya no es compatible.",
   "update.blockedTitle": "Esta versión ya no es compatible",
   "update.blockedBody": "Todavía no hay ninguna actualización disponible aquí. Por ahora puedes seguir usando {product}.",
   "update.critical": "Esta actualización incluye una corrección de seguridad importante.",

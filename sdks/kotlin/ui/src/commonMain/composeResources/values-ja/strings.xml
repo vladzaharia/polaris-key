@@ -420,8 +420,8 @@
     <string name="update_readyBody">アップデートを完了するには%1$sを再起動してください。</string>
     <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_mandatoryTitle">%1$sを引き続き使うにはアップデートしてください</string>
-    <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="update_mandatoryBody">このバージョンはサポート対象の最低バージョンを下回っています。%1$sを引き続き使うにはアップデートしてください。</string>
+    <!-- UpdatePrompt: an app update. Mandatory update. -->
+    <string name="update_mandatoryBody">このバージョンはサポートが終了しました。</string>
     <!-- UpdatePrompt: an app update. No update is available yet. -->
     <string name="update_blockedTitle">このバージョンはサポートが終了しました</string>
     <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->

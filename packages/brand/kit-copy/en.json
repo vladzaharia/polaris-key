@@ -874,9 +874,9 @@
       "note": "UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "update.mandatoryBody": {
-      "value": "This version is below the minimum supported version. Update to keep using {product}.",
+      "value": "This version is no longer supported.",
       "role": "body",
-      "note": "UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "UpdatePrompt: an app update. Mandatory update."
     },
     "update.blockedTitle": {
       "value": "This version is no longer supported",

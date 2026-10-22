@@ -1168,8 +1168,8 @@ msgstr ""
 msgid "update.mandatoryTitle"
 msgstr ""
 
-#. This version is below the minimum supported version. Update to keep using {product}.
-#. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. This version is no longer supported.
+#. UpdatePrompt: an app update. Mandatory update.
 msgid "update.mandatoryBody"
 msgstr ""
 

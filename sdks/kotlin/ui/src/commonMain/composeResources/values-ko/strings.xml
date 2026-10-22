@@ -420,8 +420,8 @@
     <string name="update_readyBody">업데이트를 완료하려면 %1$s을(를) 재시작하세요.</string>
     <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_mandatoryTitle">%1$s을(를) 계속 사용하려면 업데이트하세요</string>
-    <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="update_mandatoryBody">이 버전은 지원되는 최소 버전보다 낮아요. %1$s을(를) 계속 사용하려면 업데이트하세요.</string>
+    <!-- UpdatePrompt: an app update. Mandatory update. -->
+    <string name="update_mandatoryBody">이 버전은 더 이상 지원되지 않아요.</string>
     <!-- UpdatePrompt: an app update. No update is available yet. -->
     <string name="update_blockedTitle">이 버전은 더 이상 지원되지 않아요</string>
     <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
