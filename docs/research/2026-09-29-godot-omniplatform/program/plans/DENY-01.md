@@ -280,7 +280,7 @@ Python `tests/test_transcripts.py`, Swift `TranscriptTests.swift` and `UIMatrixT
 
 **Out of scope (noted).** A failed mint answers `error` and restores the flow, so a retry could
 succeed. Every SDK treats `error` as terminal, though. It should become a 5xx (a transient that
-SDKs ride out) in its own package.
+SDKs ride out) in its own package. → `plans/MINT-01.md` (I-37d).
 
 ## 10. Order, drift gates and acceptance
 

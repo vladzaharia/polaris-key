@@ -5199,6 +5199,36 @@
       "status": "in-review"
     },
     {
+      "id": "I-37d",
+      "title": "Device-code poll: a transient failure after approval answers `503 unavailable` and the Worker retries; a refused mint ends the flow",
+      "phase": "I",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["I-37c"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "drift-gate",
+        "all-sdks",
+        "threat-model",
+        "rule-10",
+        "docs-generated",
+        "docs-links",
+        "workerd"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/MINT-01.md",
+        "plans/DENY-01.md section 9",
+        "wp/I-37c-device-poll-denied.md"
+      ],
+      "brief": "wp/I-37d-device-mint-retry.md",
+      "status": "in-progress"
+    },
+    {
       "id": "I-38",
       "title": "Dropped (widened 2026-10-19 into I-38a): Hosted passport and Worker CSP image origin",
       "phase": "I",
