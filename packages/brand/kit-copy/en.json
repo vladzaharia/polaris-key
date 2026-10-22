@@ -463,9 +463,9 @@
       "note": "Boot screen, shown while the product starts."
     },
     "boot.error.body": {
-      "value": "If this keeps happening, restart the app.",
+      "value": "If this keeps happening, restart {product}.",
       "role": "body",
-      "note": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics."
+      "note": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "welcome.title": {
       "value": "Welcome to {product}",
@@ -493,9 +493,9 @@
       "note": "Welcome screen, the gate's first screen. Shown when the product only takes license keys."
     },
     "welcome.ledeSignInOnly": {
-      "value": "Sign in to use {product}.",
+      "value": "Sign in to continue.",
       "role": "body",
-      "note": "Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "Welcome screen, the gate's first screen. Shown when the product only takes sign-in. The title already names the product."
     },
     "welcome.signIn": {
       "value": "Sign in",
@@ -807,6 +807,11 @@
       "role": "body",
       "note": "UpdatePrompt: an app update. Arguments: {version} = a version string such as 2.4.1; {size} = a byte size already formatted by the platform (“38 MB”)."
     },
+    "common.updateCurrentNoSize": {
+      "value": "You have {version}",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. The installed version, when the update decision carries no download size (update.current names a size). Arguments: {version} = a version string such as 2.4.1."
+    },
     "update.whatsNew": {
       "value": "What's new",
       "role": "label",
@@ -848,6 +853,11 @@
       "role": "button",
       "note": "UpdatePrompt: an app update."
     },
+    "common.updateDownload": {
+      "value": "Download {version}",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1."
+    },
     "update.downloading": {
       "value": "Downloading · {size} of {total}",
       "role": "label",
@@ -858,15 +868,25 @@
       "role": "label",
       "note": "UpdatePrompt: an app update. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”)."
     },
+    "common.updateTimeMinutes": {
+      "value": "About {minutes} min",
+      "role": "label",
+      "note": "UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more."
+    },
+    "common.updateTimeLessThanMinute": {
+      "value": "Less than a minute",
+      "role": "label",
+      "note": "UpdatePrompt: an app update. Time left on the download when under a minute remains."
+    },
     "update.readyTitle": {
       "value": "{product} {version} is ready",
       "role": "title",
       "note": "UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1."
     },
     "update.readyBody": {
-      "value": "Restart {product} to finish updating.",
+      "value": "Restart to finish updating.",
       "role": "body",
-      "note": "UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "UpdatePrompt: an app update. The title already names the product."
     },
     "update.mandatoryTitle": {
       "value": "Update to keep using {product}",
@@ -969,7 +989,7 @@
       "note": "UpdatePrompt: an app update. Platform-managed update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "update.revokedContent": {
-      "value": "Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going.",
+      "value": "Some of {product}'s content was withdrawn and can't be used. Update to keep going.",
       "role": "body",
       "note": "UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
@@ -1297,9 +1317,9 @@
       "note": "Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated)."
     },
     "paywall.notAvailable": {
-      "value": "Purchases aren't available in this version of {product}.",
+      "value": "Purchases aren't available in this version.",
       "role": "body",
-      "note": "Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product."
     },
     "paywall.portal": {
       "value": "Buy in your browser",
@@ -1427,9 +1447,9 @@
       "note": "Hosted sign-in card, method chooser (SIGN-IN.md §3.3)."
     },
     "signin.methods.ledeApp": {
-      "value": "Use your {product} purchase email or a work or school email.",
+      "value": "Use your purchase email or a work or school email.",
       "role": "body",
-      "note": "Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product."
     },
     "signin.email.label": {
       "value": "Email",

@@ -121,6 +121,15 @@ public enum KitFormat {
         return formatter.string(from: max(1, seconds.rounded(.up))) ?? duration(seconds)
     }
 
+    /// The time left as a catalog line, rounded up to whole minutes: "About 4 min", or "Less than a
+    /// minute" under one. Never a clock reading such as "4:12".
+    public static func timeLeftLine(_ seconds: Double) -> CopyLine {
+        seconds < 60
+            ? CopyLine("common.updateTimeLessThanMinute")
+            : CopyLine(
+                "common.updateTimeMinutes", ["minutes": .number(Int((seconds / 60).rounded(.up)))])
+    }
+
     /// A fraction as a whole percentage.
     public static func percent(_ fraction: Double) -> String {
         "\(Int((max(0, min(1, fraction)) * 100).rounded()))%"

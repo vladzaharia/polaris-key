@@ -92,11 +92,12 @@ public struct UpdatePromptView: View {
 
     private var showsFacts: Bool { screen.state == .available || screen.state == .mandatory }
 
-    /// "You have 2.4.1 · 61 MB download", only once both facts are known.
+    /// "You have 2.4.1 · 61 MB download"; "You have 2.4.1" when the decision carries no size.
     private var currentLine: CopyLine? {
-        guard screen.state == .available, let version = details?.currentVersion,
-            let bytes = details?.sizeBytes
-        else { return nil }
+        guard screen.state == .available, let version = details?.currentVersion else { return nil }
+        guard let bytes = details?.sizeBytes else {
+            return CopyLine("common.updateCurrentNoSize", ["version": .text(version)])
+        }
         return CopyLine(
             "update.current", ["version": .text(version), "size": .text(KitFormat.bytes(bytes))])
     }
@@ -116,12 +117,12 @@ public struct UpdatePromptView: View {
         return KitLinks.valid(details?.notesUrl)
     }
 
-    /// "About 20 seconds left", in words with tabular figures (§4.3).
+    /// "About 4 min" or "Less than a minute", with tabular figures (§4.3).
     private var timeLeftLine: CopyLine? {
         guard let seconds = details?.progress?.secondsLeft else {
             return screen.line("update.timeLeft").flatMap { $0.isComplete() ? $0 : nil }
         }
-        return CopyLine("update.timeLeft", ["time": .text(KitFormat.timeLeft(seconds))])
+        return KitFormat.timeLeftLine(seconds)
     }
 
     private var hasBody: Bool { !noteLines.isEmpty || changesLink != nil }

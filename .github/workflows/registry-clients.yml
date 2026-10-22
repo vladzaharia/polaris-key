@@ -15,6 +15,11 @@ name: Registry clients
 # authenticated ones (`--auth`: the owner's feeds switched to `authenticated`, registry tokens
 # minted into the local D1, and a 401 checked for every ecosystem without a token first).
 #
+# F-33b.6: two rows run a PERSONAL token over two owners instead (`--person`): one `pkeyp_` for
+# an account with a licence in acme and bolt and none in cove; the feeds are `licensed`. They run
+# neither the public nor the `--auth` pass. In `--auth` the header token is a `pkeyci_`
+# `packages:read` service token, and a legacy owner `pkeyr_` read row proves it keeps working.
+#
 # Making it a required check on pull requests that touch these paths is a branch-protection
 # setting (DEPLOYMENT §7).
 
@@ -26,6 +31,8 @@ on:
       - "packages/worker/src/core/registry/registryHostname.ts"
       - "packages/worker/src/core/registry/registryLanding.ts"
       - "packages/worker/src/core/registry/registryTokens.ts"
+      - "packages/worker/src/core/accounts/personalTokens.ts"
+      - "packages/worker/src/core/publisher.ts"
       - "packages/worker/src/services/release/packages/oci*.ts"
       - "packages/worker/scripts/registry-clients/**"
       - "packages/worker/wrangler.toml"
@@ -197,6 +204,17 @@ jobs:
             ecosystem: go
             os: ubuntu-latest
             go: true
+          # F-33b.6: one personal token over two owners (item c). Only `--person` runs these.
+          - client: person-docker
+            name: docker (personal token, two owners)
+            ecosystem: oci
+            os: ubuntu-latest
+            person: true
+          - client: person-swift
+            name: SwiftPM (personal token, two owners)
+            ecosystem: swift
+            os: macos-latest
+            person: true
     # A dispatch with `ecosystem` set runs only that ecosystem's rows; the others pass, empty. (A
     # job-level `if:` cannot read `matrix`, so the filter is a step condition.)
     env:
@@ -242,12 +260,15 @@ jobs:
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
           echo "REQUIRE_GODOTENV=1" >> "$GITHUB_ENV"
       - name: Run the client (public feeds)
-        if: env.PICKED == 'true'
+        if: env.PICKED == 'true' && !matrix.person
         run: |
           if [ -n "${{ matrix.env }}" ]; then export ${{ matrix.env }}; fi
           pnpm --filter @polaris-key/worker registry:clients -- --client ${{ matrix.client }}
       - name: Run the client (authenticated feeds, F-21)
-        if: env.PICKED == 'true'
+        if: env.PICKED == 'true' && !matrix.person
         run: |
           if [ -n "${{ matrix.env }}" ]; then export ${{ matrix.env }}; fi
           pnpm --filter @polaris-key/worker registry:clients -- --client ${{ matrix.client }} --auth
+      - name: Run the client (personal token over two owners, F-33b.6)
+        if: env.PICKED == 'true' && matrix.person
+        run: pnpm --filter @polaris-key/worker registry:clients -- --client ${{ matrix.client }} --person

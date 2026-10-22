@@ -180,6 +180,7 @@ const simpleIndex: RegistryRoute = feedRoute({
   name: "pypi.simple.index",
   ecosystem: "pypi",
   inertDocument: true,
+  listDocument: true,
   match(pathname) {
     const m = new RegExp(`^/pypi/${OWNER}/simple(/?)$`).exec(pathname);
     return m ? { owner: m[1]!, params: { slash: m[2]! } } : null;

@@ -19,6 +19,7 @@ import { MAX_LIVE_PERSONAL_TOKENS } from "./core/accounts/personalTokens.js";
 import {
   OIDC_CI_TOKEN_TTL_SECONDS,
   STATIC_CI_TOKEN_MAX_TTL_SECONDS,
+  STATIC_CI_READ_TOKEN_MAX_TTL_SECONDS,
   TICKET_MAX_TTL_SECONDS,
   MAX_TICKET_OBJECTS,
   MAX_UPLOAD_OBJECT_BYTES,
@@ -172,6 +173,15 @@ export const LIMITS: readonly Limit[] = [
     "The latest expiry a static CI token can be given.",
     "seconds",
     STATIC_CI_TOKEN_MAX_TTL_SECONDS,
+  ),
+  row(
+    "STATIC_CI_READ_TOKEN_MAX_TTL_SECONDS",
+    "core/publisher.ts",
+    "Access",
+    "Longest read-only service token",
+    "The latest expiry a static CI token can be given when its only scope is packages:read.",
+    "seconds",
+    STATIC_CI_READ_TOKEN_MAX_TTL_SECONDS,
   ),
   row(
     "REGISTRY_TOKEN_MAX_DAYS",

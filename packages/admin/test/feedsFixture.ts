@@ -351,6 +351,7 @@ export function registryTokens(scope: "platform" | "product") {
         revokedBy: null,
         revokeReason: null,
         status: "active",
+        ...(scope === "product" ? { legacy: true } : {}),
       },
       {
         tokenId: "rtok_old",
@@ -371,12 +372,47 @@ export function registryTokens(scope: "platform" | "product") {
         status: "revoked",
       },
     ],
+    ...(scope === "product"
+      ? {
+          serviceTokens: [
+            {
+              tokenId: "cit_deploy",
+              label: "Deploy box",
+              scopes: ["packages:read"],
+              createdBy: "admin:ada@x.io",
+              createdAt: T0 - 2 * 86_400,
+              expiresAt: T0 + 88 * 86_400,
+              lastUsedAt: T0 - 600,
+              hint: "R8VQ",
+              revokedAt: null,
+              revokedBy: null,
+              revokeReason: null,
+              status: "active",
+            },
+            {
+              tokenId: "cit_idle",
+              label: "Idle runner",
+              scopes: ["packages:read"],
+              createdBy: "admin:ada@x.io",
+              createdAt: T0 - 5 * 86_400,
+              expiresAt: T0 + 85 * 86_400,
+              lastUsedAt: null,
+              hint: "Zk2m",
+              revokedAt: null,
+              revokedBy: null,
+              revokeReason: null,
+              status: "active",
+            },
+          ],
+        }
+      : {}),
     feeds: ECOS.map((eco) => ({
       ecosystem: eco,
       label: eco,
       enabled: eco === "npm" || eco === "godot",
       accessMode: eco === "npm" ? "licensed" : "public",
       baseUrl: `https://pkg.plrs.im/${eco === "oci" ? "v2" : eco}/${owner}/`,
+      namespace: eco === "npm" ? { scope: "@djdl" } : {},
     })),
     limits: {
       minDays: 1,
@@ -385,6 +421,8 @@ export function registryTokens(scope: "platform" | "product") {
       urlDefaultDays: 30,
       perOwner: 500,
       perLicense: 10,
+      serviceDefaultDays: 90,
+      serviceMaxDays: 365,
     },
   };
 }

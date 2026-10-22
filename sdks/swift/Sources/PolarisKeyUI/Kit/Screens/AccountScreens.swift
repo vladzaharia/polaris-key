@@ -47,14 +47,13 @@ struct ServiceCue: View {
     /// The tile and its glyph grow with Dynamic Type, so a group header never holds a fixed-size
     /// glyph beside text that scales.
     @ScaledMetric(relativeTo: .footnote) private var tile: CGFloat = 20
-    @ScaledMetric(relativeTo: .footnote) private var glyphSize: CGFloat = 11
 
     var body: some View {
         kitStyle { style in
             if style.serviceCues {
                 let (glyph, ring, fill) = Self.look(service, dark: style.dark)
                 Image(systemName: glyph)
-                    .font(.system(size: glyphSize, weight: .semibold))
+                    .font(.caption2.weight(.semibold))
                     .foregroundStyle(ring.color)
                     .frame(width: tile, height: tile)
                     .background(
@@ -558,7 +557,7 @@ public struct DevicesSection: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 20))
+                        .font(.title3)
                         .foregroundStyle(style.palette.textMuted)
                         .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
@@ -834,7 +833,7 @@ public struct SettingsSection: View {
             // A value as text with its lock and its source, never a dimmed control.
             LabeledContent {
                 HStack(spacing: 4) {
-                    Image(systemName: "lock.fill").font(.system(size: 14))
+                    Image(systemName: "lock.fill").font(.subheadline)
                         .accessibilityLabel(strings.string("a11y.locked"))
                     Text(value(row))
                 }

@@ -9,6 +9,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
+import { mintCompat } from "./helpers/legacyOwnerToken.js";
 import { KvMock } from "./kvMock.js";
 import { NOW, TEST_KEK, seedProduct } from "./seed.js";
 import { CONSOLE, enableServices, envFor } from "./releaseRoutesFixture.js";
@@ -49,6 +50,12 @@ interface JsonResponse extends Response {
   json(): Promise<Loose>;
 }
 
+/** A session without a fresh step-up (the default session has one). */
+let stale = false;
+beforeEach(() => {
+  stale = false;
+});
+
 async function admin(
   method: string,
   path: string,
@@ -57,7 +64,13 @@ async function admin(
 ): Promise<JsonResponse> {
   const { token, session } = await issueSession(
     env,
-    { sub: "u1", name: "Ada", email: "ada@x.io", groups },
+    {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups,
+      ...(stale ? {} : { authTime: NOW, stepUp: true }),
+    },
     NOW,
   );
   const full = `/api${path}`;
@@ -686,11 +699,15 @@ describe("platform scope", () => {
     expect(await res.json()).toMatchObject({
       error: { reason: "system_feeds_pipeline_only" },
     });
+    // F-33b.3: no owner read token anywhere, and no service token on the platform scope.
     const read = await admin("POST", platform("/tokens"), {
       label: "x",
       binding: "owner",
     });
-    expect(read.status).toBe(201);
+    expect(read.status).toBe(422);
+    expect(await read.json()).toMatchObject({
+      error: { reason: "owner_read_retired" },
+    });
   });
 
   it("after the bootstrap: the system product's feeds, every owner, and its packages", async () => {
@@ -844,6 +861,7 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
     let res = await admin("POST", tokens(), {
       label: "CI pull",
       binding: "owner",
+      scopes: ["publish"],
       ecosystems: ["npm", "oci"],
       expiresInDays: 30,
     });
@@ -859,17 +877,36 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
       expiresAt: NOW + 30 * 86_400,
       createdBy: "admin:ada@x.io",
     });
-    await admin("POST", tokens(), {
-      label: "Editor",
-      binding: "owner",
-      presentation: "url",
-    });
+    // A token minted before F-33b.3 (an owner read token) is listed as legacy.
+    await mintCompat(
+      env,
+      db,
+      {
+        product: OWNER,
+        label: "Editor",
+        binding: "owner",
+        createdBy: "admin:a",
+      },
+      NOW,
+    );
     res = await admin("GET", tokens());
     expect(res.status).toBe(200);
     const listed = await res.json();
     expect(listed.tokens.map((t: { label: string }) => t.label).sort()).toEqual(
       ["CI pull", "Editor"],
     );
+    expect(
+      listed.tokens.map((t: { label: string; legacy: boolean }) => [
+        t.label,
+        t.legacy,
+      ]),
+    ).toEqual(
+      expect.arrayContaining([
+        ["CI pull", false],
+        ["Editor", true],
+      ]),
+    );
+    expect(listed.serviceTokens).toEqual([]);
     expect(JSON.stringify(listed)).not.toContain(minted.token);
     expect(listed.username).toBe("__token__");
     expect(listed.feeds).toHaveLength(8);
@@ -893,7 +930,6 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
         .sort(),
     ).toEqual(
       [
-        "registry_token.create",
         "registry_token.create",
         "registry_token.revoke",
         "registry_token.revoke_all",
@@ -987,7 +1023,11 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
         })
       ).status,
     ).toBe(201);
-    await admin("POST", tokens(), { label: "owner", binding: "owner" });
+    const ownerRead = await admin("POST", tokens(), {
+      label: "owner",
+      binding: "owner",
+    });
+    expect(ownerRead.status).toBe(422);
     const one = await (await admin("GET", tokens("?license=lic_1"))).json();
     expect(one.tokens.map((t: { label: string }) => t.label)).toEqual(["seat"]);
     expect(
@@ -1096,16 +1136,40 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
   it("the platform's tokens live under the platform scope and audit to platform_audit", async () => {
     expect((await admin("GET", platform("/tokens"))).status).toBe(409);
     expect((await admin("POST", platform("/bootstrap"))).status).toBe(200);
-    const res = await admin("POST", platform("/tokens"), {
-      label: "mirror",
-      binding: "owner",
-    });
-    expect(res.status).toBe(201);
+    // No token can be minted on the platform scope (a service token is refused, D-F3) ...
+    for (const body of [
+      { label: "mirror", binding: "service" },
+      { label: "mirror", binding: "owner" },
+    ])
+      expect((await admin("POST", platform("/tokens"), body)).status).toBe(422);
+    expect(await db.all("SELECT action FROM platform_audit")).toEqual([
+      { action: "feed.bootstrap" },
+    ]);
+    // ... but a legacy one is listed and revoked here, audited to platform_audit.
+    const legacy = await mintCompat(
+      env,
+      db,
+      {
+        product: SYSTEM_PRODUCT_SLUG,
+        label: "mirror",
+        binding: "owner",
+        createdBy: "admin:a",
+      },
+      NOW,
+    );
+    if (!legacy.ok) throw new Error("fixture");
+    const listed = await (await admin("GET", platform("/tokens"))).json();
+    expect(listed.tokens).toHaveLength(1);
+    expect(listed.tokens[0]).toMatchObject({ legacy: true });
+    expect(
+      (await admin("POST", platform(`/tokens/${legacy.view.tokenId}/revoke`)))
+        .status,
+    ).toBe(200);
     expect(
       await db.all(
         "SELECT action FROM platform_audit WHERE action LIKE 'registry_token.%'",
       ),
-    ).toEqual([{ action: "registry_token.create" }]);
+    ).toEqual([{ action: "registry_token.revoke" }]);
     // The system product's access mode cannot change from a product scope.
     const sys = `/products/${SYSTEM_PRODUCT_SLUG}/distribution/feeds/npm/settings`;
     const put = await admin("PUT", sys, {
@@ -1113,5 +1177,46 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
       accessMode: "licensed",
     });
     expect([403, 404]).toContain(put.status);
+  });
+});
+
+describe("every durable mint needs a fresh step-up (F-33b.7)", () => {
+  const tokens = (rest = "") => product(`/tokens${rest}`);
+  const publish = {
+    label: "p",
+    binding: "owner",
+    scopes: ["publish"],
+    ecosystems: ["npm"],
+    expiresInDays: 7,
+  };
+  const licence = { label: "seat", binding: "license", licenseId: "lic_1" };
+
+  it("a publish mint and a licence-bound mint refuse without one, write nothing, then succeed with one", async () => {
+    await db.run(
+      `INSERT INTO licenses (product, id, status, activated_at, modified_at) VALUES (?, 'lic_1', 'active', ?, ?)`,
+      OWNER,
+      NOW,
+      NOW,
+    );
+    stale = true;
+    for (const body of [publish, licence]) {
+      const res = await admin("POST", tokens(), body);
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({
+        error: { code: "step_up_required" },
+      });
+    }
+    expect(await db.all("SELECT 1 FROM registry_tokens")).toEqual([]);
+    stale = false;
+    expect((await admin("POST", tokens(), publish)).status).toBe(201);
+    expect((await admin("POST", tokens(), licence)).status).toBe(201);
+  });
+
+  it("revoking needs none", async () => {
+    const minted = await (await admin("POST", tokens(), publish)).json();
+    stale = true;
+    const res = await admin("POST", tokens(`/${minted.view.tokenId}/revoke`));
+    expect(res.status).toBe(200);
+    expect((await admin("POST", tokens("/revoke-all"), {})).status).toBe(200);
   });
 });

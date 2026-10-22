@@ -38,17 +38,17 @@ Every feed sits under its owner, the product slug, so a product never shadows an
 
 Every read runs one access check before the edge cache: the platform's switch for the ecosystem, then the owner's Distribution and package-feeds switch, then the feed's own switch, then the access mode. The stricter of the feed's mode and the package's delivery access applies.
 
-| Mode      | Who may install                                                                                                                                                                                                |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public    | Anyone. No credential is ever looked up                                                                                                                                                                        |
-| Customers | A registry token (`pkeyr_…`) of this product, or a personal token (`pkeyp_…`) of an account with an active license in it. An owner-bound or CI token passes, and a license-bound token needs an active license |
-| Entitled  | Owner-bound and CI tokens pass. A license-bound or personal token also needs the package's delivery gate flag. A package with no gate admits no license token                                                  |
+| Mode      | Who may install                                                                                                                                                                                          |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public    | Anyone. No credential is ever looked up                                                                                                                                                                  |
+| Customers | A registry token (`pkeyr_…`) of this product, or a personal token (`pkeyp_…`) of an account with an active license in it. An owner-bound or CI token passes; a license-bound one needs an active license |
+| Entitled  | Owner-bound and CI tokens pass. A license-bound or personal token also needs the package's delivery gate flag. A package with no gate admits no license token                                            |
 
 Customers is stored as `authenticated` or `licensed`. They are one strictness. A package stricter than its feed is left out of list documents, so a license holder finds it in Godot search or the PyPI project list only by its exact name.
 
 A token that is absent, malformed, unknown, expired, revoked, another owner's or outside its feeds gets the registry's native `401`. A refused license token is `403`. Device tokens (`pkeyt_…`) and license keys (`pkey_…`) are never registry credentials. Each client sends the token its own way: Bearer for npm, pnpm, Yarn, Bun and SwiftPM; Basic `__token__:<token>` for pip, uv, Poetry, Gradle and Maven; `docker login pkg.plrs.im -u __token__`, traded at `/v2/token` for a 5-minute pull token; the bare token for Cargo; and for the Godot editor, which sends no credentials, a read-only **Godot editor URL** token inside the URL. Setup for each client is under **Private feeds** on [Install the SDKs and the CLI](/docs/build/install/).
 
-Every token expires within a year and is stored only as a hash. A registry token is bound to one owner. A personal token is not: see [Personal tokens](#personal-tokens). A revoked token, a disabled license, a tightened feed and a deleted product all take effect within 30 seconds. docker, SwiftPM and netrc keep one credential per host, so one device holds a token for one owner on `pkg.plrs.im` for those clients.
+Every token expires within a year and is stored only as a hash. A registry token is bound to one owner; a [personal token](#personal-tokens) is not. A revoke, a disabled license, a tightened feed or a deleted product takes effect within 30 seconds. docker, SwiftPM and netrc keep one credential per host: one owner's token per device on `pkg.plrs.im`.
 
 ## Caching
 
@@ -126,15 +126,19 @@ The registry host judges it per owner on every request:
 
 A person revokes their own. A platform admin can list and revoke any, not create one. Erasing an account revokes its tokens; a merge moves them to the account that stays.
 
-### Registry tokens
+### Service tokens
 
-**Tokens** lists the owner's `pkeyr_…` tokens: label, last four characters, feeds, binding, creator, expiry, last use and status. **New token** asks for a label, the feeds, an expiry of 1 to 365 days (90 by default), a binding (the product, or one license), and **Godot editor URL**, a read-only token for the Godot feed that lasts 30 days by default. The token is shown once. **Access** chooses **Read** or **Read and publish**. A publish token is bound to the product, names its feeds explicitly and lasts 1 to 30 days (7 by default). Revoking is a danger confirmation and takes effect within 30 seconds. **Revoke all** revokes every active token of the owner, including those licensees minted. A license's **Keys** tab has a **Registry tokens** panel for the tokens bound to it. Locker mints only a license-bound Godot editor URL token (30 days). Older license-bound tokens work until they expire.
+**Tokens** lists the product's tokens with expiry and last use. **New token** asks for a label and 1 to 365 days (90 by default) and creates a service token: a `pkeyci_…` CI token with the one scope `packages:read`. It reads every private feed of the product. It needs Keys and secrets access and a sign-in from the last 5 minutes; an older one asks you to sign in again and keeps your entries. It is shown once, with each feed's setup.
+
+**Access** can be **Read and publish** instead: a `pkeyr_…` token bound to the product, with named feeds and 1 to 30 days (7 by default). A license's **Keys** tab has a **Registry tokens** panel for tokens bound to it.
+
+A license-bound token (`pkeyr_…`) comes from that license's page. An owner-wide read `pkeyr_…` token is retired: new ones are refused, and existing ones keep working and show **Legacy · works until** their expiry. **Revoke all** revokes every active token of the product. Platform → Package feeds → Tokens has no **New token**: team members use a personal token.
 
 ### Retention
 
-Publishing a version on `stable` prunes the package's builds on the two ephemeral tracks: `X-main.N` from `main`, `X-dev.N` from `dev`, or Python's `X.devN`, for every X at or below the released version. Stable and beta versions stay, and so do builds of a newer version and any version a channel points at. Each pruned version is audited as `package.version.prune` and leaves a tombstone, so the number is never published again.
+Publishing a version on `stable` prunes the package's builds on the two ephemeral tracks: `X-main.N` from `main`, `X-dev.N` from `dev`, or Python's `X.devN`, for every X at or below the released version. Stable and beta versions stay, and so do builds of a newer version and any version a channel points at. Each pruned version is audited as `package.version.prune` and leaves a tombstone: the number is never reused.
 
-Retention is on by default (`release.packages.prunePrereleases`). The first time a product that never chose reaches it, the Worker records what a dry run finds and starts cleanup a week later (`package.prune.notice`). Nothing is deleted before that day. A member's own value applies at once. The platform's own feeds always prune. `pkey feeds prune --product <slug>` is the backfill. It is a dry run unless `--apply`. The token needs `release:yank`, which a member grants.
+Retention is on by default (`release.packages.prunePrereleases`). The first time a product that never chose reaches it, the Worker records what a dry run finds and starts cleanup a week later (`package.prune.notice`). A member's own value applies at once. The platform's own feeds always prune. `pkey feeds prune --product <slug>` is the backfill. It is a dry run unless `--apply`. The token needs `release:yank`, which a member grants.
 
 ### The admin API
 

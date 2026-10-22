@@ -11,6 +11,7 @@
  * still refused after the replay, and a live account's token passing the same gate in the same
  * world.
  */
+import { mintCompat } from "./helpers/legacyOwnerToken.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { dispatchRegistryHost } from "../src/core/registry/registryHost.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
@@ -26,7 +27,6 @@ import {
   forgetRegistryTokens,
   lookupRegistryCredential,
   lookupRegistrySubject,
-  mintRegistryToken,
   signPullToken,
   type MintRegistryTokenInput,
 } from "../src/core/registry/registryTokens.js";
@@ -155,7 +155,7 @@ async function mintFor(
   accountId: string | null,
   over: Partial<MintRegistryTokenInput> = {},
 ): Promise<Minted> {
-  const res = await mintRegistryToken(
+  const res = await mintCompat(
     w.env,
     w.db,
     {

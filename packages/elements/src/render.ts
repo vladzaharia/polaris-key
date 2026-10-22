@@ -91,22 +91,30 @@ function argsOf(
   const developer = c.resolved.identity.developer;
   if (args.developer === undefined && developer) args.developer = developer;
   fillFromInput(c, key, args);
-  // The installed version's line says the size of a download only when it knows one.
-  if (key === "update.current" && args.size === undefined) args.size = "";
   return args;
 }
 
-/** One string of the catalog; "You have 2.4.1 · {size} download" is just "You have 2.4.1" with
- *  no size to say. */
+/** The key to draw: the installed version's line names a download size only when the decision
+ *  carries one; otherwise it is the catalog's "You have {version}". */
+function drawnKey(
+  c: RenderCtx,
+  key: string,
+  args: Record<string, string | number>,
+): string {
+  return key === "update.current" &&
+    args.size === undefined &&
+    c.copy.has("common.updateCurrentNoSize")
+    ? "common.updateCurrentNoSize"
+    : key;
+}
+
+/** One string of the catalog. */
 function formatKey(
   c: RenderCtx,
   key: string,
   args: Record<string, string | number>,
 ): string {
-  const s = c.copy.format(key, args);
-  return key === "update.current" && args.size === ""
-    ? s.split("·")[0]!.trim()
-    : s;
+  return c.copy.format(drawnKey(c, key, args), args);
 }
 
 /** The names of a message's own arguments (`{name}`, `{n, plural, …}`), not those nested in a
@@ -136,9 +144,9 @@ export function missingArgs(
   key: string,
   extra: Record<string, string | number> = {},
 ): string[] {
-  const raw = c.copy.raw(key);
-  if (!raw) return [];
   const args = argsOf(c, key, extra);
+  const raw = c.copy.raw(drawnKey(c, key, args));
+  if (!raw) return [];
   return argNames(raw).filter((n) => args[n] === undefined || args[n] === null);
 }
 
@@ -442,8 +450,8 @@ export function button(
     c.view.state === "available" &&
     c.input.platform?.os === "web" &&
     version &&
-    c.copy.has("boot.consent.download")
-      ? `${c.copy.format("boot.consent.download", {})} ${version}`
+    c.copy.has("common.updateDownload")
+      ? c.copy.format("common.updateDownload", { version })
       : null;
   // Renew opens a page only when the host gave one; otherwise the host handles the press.
   const external =

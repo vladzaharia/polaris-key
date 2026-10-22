@@ -429,7 +429,7 @@ def build_spec(
                 if current and size:
                     body.append(copy(key, version=current, size=format_bytes(size) if isinstance(size, int) else size))
                 elif current:
-                    body.append(copy("account.version", version=current))
+                    body.append(copy("common.updateCurrentNoSize", version=current))
             else:
                 notes = [str(n) for n in (facts.get("notes") or ())][:3]
                 if notes:

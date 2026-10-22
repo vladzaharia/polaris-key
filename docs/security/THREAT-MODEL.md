@@ -1714,9 +1714,9 @@ Q6), and is bound to one owner. Scope is `read`, or `publish` (F-22 and F-23, be
 joins `products.status`, and the deletion batch revokes them); an erased portal account's tokens
 are revoked in the erasure batch (`account_deleted`); a disabled or expired licence's tokens stop
 at the next check without a write (`licenseUsable`), and work again if it is re-enabled. The cron
-purges rows 90 days after expiry or revocation. No licence-delete path or portal link-removal
-path exists today, so those plan-named cascades have nothing to hook (a correction recorded in the
-F-21 brief); the licence status covers them.
+purges rows 90 days after expiry or revocation. A deleted licence's tokens are
+deleted in its deletion batch (`core/licensing/licenseDelete.ts`). A licence that leaves an
+account revokes its licence-bound tokens (below).
 
 **The ladder decides; a token only identifies.** A credential is resolved only where the mode is
 not `public`, so a public read never touches `registry_tokens`. A token for another owner, outside
@@ -1734,6 +1734,31 @@ token into a team's CI as easily as they could share a licence key; the residual
 as sharing the key, bounded by expiry, the per-licence cap, the licence's own status and the
 operator's revoke (per token, per licence, or every token of the owner). Device trust (P6-02)
 does not apply, because a token has no device; this is the portal download's rule.
+
+**Ownership end revokes every licence-bound token of the licence (F-33b.1).** When an account stops
+owning a licence (detach, relink, a merge undone that hands it back, account deletion), every
+live licence-bound token of that licence is revoked by `onLicenseOwnershipEnded`
+(`core/accounts/subjectHooks.ts`), which runs right after the move's own batch commits, not inside
+it: the ones the account minted as
+`portal:<account>`, and the ones an operator minted in the console (`portal_account_id IS NULL`) as
+`system`, reason `link_removed` (`account_deleted` on deletion). The two are separate statements
+behind separate `RegistryTokenFilter` forms (`portalAccountId`, `operatorMinted`), run in one
+`db.batch` so neither half commits alone, and neither filter widens the other. The §8 Q1 loser
+settlement skips the operator half, because the winner still owns the licence. A nonzero operator
+count writes a `registry_token.revoke_all` audit row (actor: the platform) naming the licence and
+the count, never a token. Before this, an operator-minted token outlived a change of owner, and the
+previous owner kept reading the feeds. A licence with no account, and
+every other licence of the product, is untouched. Residuals: an operator can mint a new token for a
+licence that went floating; that is a deliberate act, audited at mint, but the token then passes to
+whoever owns the licence next. The revoke is not in the move's batch: a crash between the two
+leaves the tokens live until they expire, an operator revokes them, or the licence's next
+ownership end (folding it into the batch is a follow-up); the audit row after the revoke is
+best-effort. A
+merge undone revokes the operator tokens of each licence handed back, including ones minted before
+the join; that over-revoke fails closed and the operator re-mints. **Review trigger:** a path that
+moves a licence off an account (to another account or to floating), or erases the account, without
+calling `onLicenseOwnershipEnded`. A merge (same person; tokens repointed) and product deletion
+(product-wide revoke) are the deliberate exceptions.
 
 **Godot URL tokens.** The editor sends no `Authorization`, so a URL token rides in the path
 (`/godot/<owner>/t/<token>/…`): it appears in Cloudflare's own request logs and in the editor's
@@ -1847,6 +1872,141 @@ most hourly, so "last used" lags by up to an hour. A USE is not audited per requ
 scope but `packages:read`; a personal token accepted by a publish path; a licence-free grant in
 `personMayRead`; `personMayRead` admitting `SYSTEM_PRODUCT_SLUG` without a console role; the mint
 losing its step-up or its budget; a token or its hash reaching an audit row, a log or the export.
+
+### Service tokens (F-33b)
+
+One subsection for the product service token and what F-33b.1 to .7 recorded about it. Licence-bound
+tokens are the section above ("Ownership end revokes every licence-bound token", F-33b.1); the
+personal token (`pkeyp_`) is F-33 and F-34's.
+
+**What it is.** A static `pkeyci_` token whose only scope is `packages:read` (`core/ciVocabulary.ts`,
+`CI_SCOPES`; not in `DEFAULT_CI_SCOPES`, so an operator grants it deliberately): the credential of a
+service that installs a product's own non-public packages, a build server or a deploy host. The
+registry host's `principalOf` admits a `ci` resolution holding `packages:read` or `release:publish`
+(`CI_FEED_READ_SCOPES`). The console mints it: Feeds → Tokens (`console/handlers/registryTokens.ts`),
+`POST …/feeds/tokens` with `binding: "service"` calls `issueStaticCiToken` with `["packages:read"]`,
+a label and 1 to 365 days (default 90). The value is in the mint answer only; the row keeps its hash.
+Tests: `test/ciFeedRead.test.ts`, `test/serviceTokens.test.ts`, `test/adminFeeds.test.ts`,
+`test/registryAuth.test.ts`, `test/publisher.test.ts`, `test/registry/godot.test.ts`.
+
+**What it can do.** Read the private, licensed and entitled feeds of its own product on every
+ecosystem that takes a header credential, and mint an OCI pull token (`pull` only, for its own
+product's repositories). A `ci` principal passes every access mode of its own product, the way a
+publish-scoped one always has (F-20 Q4), so the entitlement flag is not judged.
+
+**What it cannot do, each refused where the capability is decided.**
+
+- Publish: `registryPublisher` needs `release:publish` (CI) or an owner-bound `pkeyr_` holding
+  `publish`. `OCI_PUSH_CI_SCOPE` stays `release:publish`, so a `push` scope on `/v2/token` is a 403
+  `DENIED`.
+- Pass a `/ci/*` guard: `requireCiScope` asks for the route's own scope and no route names
+  `packages:read`, so every CI route answers 403 `missing_scope`.
+- Be a Godot path credential: a path presentation accepts a URL-presented `pkeyr_` only.
+- Read another product: a `ci` principal is bound to its product.
+- Be minted with another scope from the console: the body takes a label and an expiry and nothing
+  else (`ecosystems`, `licenseId`, `presentation` or `scopes` is a 422), and
+  `isServiceTokenScopes` is checked again on every list and revoke.
+
+**Minting: a fresh step-up on every durable credential (F-33b.7).** Every mint on
+`POST …/feeds/tokens`, product and platform scope, needs a console step-up (a sign-in from the last
+5 minutes): the service token, an owner-bound `pkeyr_` publish token and a licence-bound token, so
+every binding and scope (`requireStepUp` at the top of `create()`, because the route has one row for
+all of them; `STEP_UP_ROUTES` lists it as `(body)`). `POST …/ci-tokens` (a static CI token) and
+`PUT …/ci-publisher` (claiming or editing the trusted publisher) join it as table rows with
+`stepUp: true`. Before F-33b.7 none had one, so a stolen console session could leave a year-long
+read credential, a 30-day publish token or a publisher policy that mints publish tokens behind.
+Revokes stay without a step-up: cutting access must stay fast. A service mint also needs the `keys`
+area on the product (`can(keys, edit)`, 403 `no_access`). The order is: sign-in, the route's area
+(the dispatcher), step-up, then the handler's own refusals (the system product's 422
+`system_service_tokens`, the keys area, validation, the cap), the same for every mint on the route.
+An admin API token (`pkeya_`) has no step-up and the route names no token scope, so it is refused
+before the handler. The console answers a 403 `step_up_required` by turning the dialog into "Sign in again" and keeping
+its entries across the sign-in (`ui/useStepUpDraft.tsx`: the entries go to `sessionStorage` under
+the page's hash for 15 minutes, never the token). Tests: `test/serviceTokens.test.ts`,
+`test/publishRoutes.test.ts`, `test/rbacRouteMatrix.test.ts`. ST-30c.1's break-glass realm is not in
+this tree; when it lands, its refusal comes before the step-up, with its own reason, and needs a test
+on these writes then.
+
+**Blast radius of a leak.** The token is product-wide (no ecosystem narrowing, D-F1): whoever holds
+it reads every non-public package of that one product until it expires or an operator revokes it
+(the 30-second resolution cache bounds the lag). It reaches no signing key, no licence, no admin
+API, no upload and no other product. That is the read surface a licence-bound or owner-bound read
+token has, with a longer life: **up to 365 days** (default 90) when `packages:read` is the only
+scope, 90 for every other scope set. `issueStaticCiToken` refuses a longer expiry and the console
+route caps it first, so the long life never rides on a publish credential.
+
+**Last used.** `ci_tokens.last_used_at` (migration `ci_tokens_last_used_at`) is written at most
+hourly, through `waitUntil`, on the registry-host lookup path only. A use inside the 30-second
+cache writes nothing, and `/ci/*` use is never recorded (the CI hot path gains no write), so a token
+used only there shows "never". "Hourly" is approximate: parallel isolates can each write once. A
+failed write is swallowed. It is evidence for revoking an idle token, not a control, and carries no
+secret.
+
+**Revoke is scoped to what the page lists.** A `cit_…` id revokes only a token of this product whose
+scopes are exactly `["packages:read"]`; a publish-scoped, mixed-scope or other product's `cit_…` is
+a 404 (Keys → CI tokens still revokes those). Revoke-all on product scope also ends every live
+service token of the product (an unbounded select, no row window; their unredeemed upload tickets
+expire as in `revokeCiToken`); a licence filter never does. Both drop this isolate's resolution
+cache; other isolates lag at most 30 seconds. "Revoked by" and its reason (`manual`, `revoke_all`)
+come from the `service_token.revoke` audit rows (F-33b.5), not a column (a revoke-all row lists the
+ids it revoked, and a token counts as revoked by it only if its id is listed): the newest 200 rows only,
+and a revocation older than that, or the platform's own, shows no line.
+
+**The owner-wide read `pkeyr_` is retired.** `mintRegistryToken` refuses `binding: "owner"` without
+`publish` (422, reason `owner_read_retired`), so no path mints a long-lived owner-wide read secret
+that is not a CI token. Earlier rows stay valid until they expire (no forced revocation), are listed
+with `legacy: true` and stay revocable; owner-bound publish tokens and licence-bound tokens are
+unchanged (D-F2). The platform scope mints no service token (reason `system_service_tokens`, D-F3):
+team members read with a personal token; its legacy tokens are listed and revocable, audited to
+`platform_audit`.
+
+**List documents show a principal only what it may read (F-33b.5).** An owner-level list document
+(one that runs the ladder with `deliverableId: () => null`) is marked `listDocument: true` and
+filters what it names to the packages the presenting principal may read: PyPI's simple index,
+Godot's lists, Swift's identifiers. A public answer, shared by every reader, names only what its own
+cache class may show (Swift identifiers stay in theirs). `test/feedAdapters.test.ts` runs every
+marked route over the principal matrix and fails a null-deliverable route that is neither marked nor
+named there as carrying no package names.
+
+**Verified with real clients (F-33b.6).** The `registry-clients.yml` rows run a personal token over
+two owners (docker, SwiftPM) and a `pkeyci_` service token in `--auth`, beside a legacy `pkeyr_`
+row. SwiftPM sends credentials only over HTTPS and the harness is plain HTTP on loopback, so SwiftPM
+resolution itself could not be verified there; its HTTP-level checks (the login endpoint, the
+release and identifier documents per principal) run, and the resolution step is skipped with a
+message. That gap is a client behaviour, not a Worker one.
+
+**Audit.** `service_token.create` and `service_token.revoke` go to `audit` (product scope) with the
+label, the expiry and the token id; never the token or its hash. Revoke-all adds one
+`service_token.revoke` row with the count.
+
+**Residual.** A service token is product-wide and lives up to a year (D-F1); a leaked one reads the
+product's non-public packages until it expires or is revoked. A per-product cap of 500 live service
+tokens (counted over every live token, then re-checked after the insert so racing mints cannot both
+stay above it; the loser is revoked) bounds the table. The list returns every live token and the 100
+newest revoked or expired ones. A label refuses control characters. A fresh step-up proves the
+operator's presence, not their intent: an operator with a fresh sign-in can still mint one. `POST
+…/ci-tokens` with `packages:read` alone mints the same service-token equivalent and shares the
+500-per-product cap (checked before, and again after the insert with an overflow revoke); other scope
+sets are not counted. The revoke-all audit row lists at most 100 token ids, then "+N more": a token
+in the tail reads as no "Revoked by" line, which is cosmetic.
+
+**Review triggers.** A second scope accepted by the service mint, or the registry host accepting any
+scope but `packages:read` and `release:publish`; the list or revoke matching on anything but exact
+`["packages:read"]`; an owner-bound read mint returning; a service mint, `POST …/ci-tokens` or
+`PUT …/ci-publisher` losing its step-up, or a revoke gaining one; a new mint binding or scope on
+`POST …/feeds/tokens`; the `…/ci-tokens` cap dropping its `packages:read` check; a null-deliverable route that
+names packages without `listDocument`; a token or hash reaching an audit row, a log or a list.
+
+**Owed when ST-30c.1 merges** (its break-glass realm is not in this tree). Tests, not code, unless one
+fails:
+
+- a break-glass session is refused with its own reason, before the step-up, on all four mint paths:
+  `POST …/feeds/tokens` per binding (service, publish, licence-bound) on product and platform scope,
+  `POST …/ci-tokens` and `PUT …/ci-publisher`;
+- a break-glass session carrying a `stepUpAt` is handled deliberately, not admitted by it;
+- revokes are still allowed;
+- `rbacRouteMatrix` and `STEP_UP_ROUTES` stay in sync with any new rows;
+- a `pkeya_` token is still refused.
 
 ### Native-client publish (F-22)
 
@@ -5779,7 +5939,8 @@ replaying an old cookie is a 401 and sign-out ends every cookie that operator ho
 `slug-check` re-read the current `PLATFORM_ADMIN_GROUP`. `session.stepUpAt` is set only by a
 `stepUp=1` flow whose ID token carries `auth_time`. `console/stepUp.ts` lists the gated routes
 (user export, user data delete, licence detach, product delete, break-glass key activation, KEK
-re-seal, relink and holder moves); the portal gates `DELETE /api/me`, licence removal and
+re-seal, relink and holder moves, and since F-33b.7 the service-token mint, the static CI token and
+the trusted-publisher claim: see "Service tokens (F-33b)"); the portal gates `DELETE /api/me`, licence removal and
 registry-token mint on a sign-in from the last 5 minutes (`portal/stepUpGate.ts`). The console's
 ID-token check has the portal's `maxTokenAge`, `clockTolerance` and `requiredClaims`. The admin,
 portal and product browser sessions compare their CSRF tokens in constant time.
@@ -6716,7 +6877,8 @@ item 15 (merge takeover) are the threats; the rules below are what the routes ad
   account would be left with no way to sign in; that guard is the first statement of the undo's
   batch and aborts it, so a removal racing the undo cannot orphan either side (a test). A licence
   that goes back revokes every registry token the kept account minted on it during the window
-  (F-21, `onLicenseOwnershipEnded`) and clears its devices' bindings; the absorbed account's own
+  (F-21, `onLicenseOwnershipEnded`) and every operator-minted token of it (F-33b.1, including ones
+  minted before the join) and clears its devices' bindings; the absorbed account's own
   tokens move back untouched (a test). A join is refused while EITHER account could still undo a
   join of its own (`merge_pending`): absorbing that account would destroy its undo, and absorbing
   into it would hand the second join's data and aliases to the first join's absorbed account on

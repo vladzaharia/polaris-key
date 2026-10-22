@@ -74,7 +74,7 @@ You can also publish with the client your developers already use. Each request b
 | `mvn deploy`, Gradle `maven-publish`               | `PUT` each file, then `maven-metadata.xml`    | When `maven-metadata.xml` is uploaded                       |
 | `docker push`, `podman push`, `crane`, `oras`      | The distribution spec's push workflow         | When a version tag is pushed                                |
 
-1. **Console** Open **Ship builds → Package feeds → Tokens** and select **New token**. Set **Access** to **Read and publish**, name the feeds, and choose an expiry of 1 to 30 days. Copy the token: it is shown once. A read-only or license-bound token is refused with `403`.
+1. **Console** Open **Ship builds → Package feeds → Tokens** and select **New token**. Set **Access** to **Read and publish**, name the feeds, and choose an expiry of 1 to 30 days. Copy the token: it is shown once. A service token (`pkeyci_…`) or a license-bound token is refused with `403`.
 2. **CLI** Put the token in `PKEY_PUBLISH_TOKEN` and point your client at the feed. `pkey feeds setup --ecosystem <ecosystem> --owner <slug> --token-env PKEY_PUBLISH_TOKEN` prints the client lines.
 3. **CLI** Publish with your client. For npm, `npm publish`, or `npm publish --tag beta` for the `beta` channel.
 

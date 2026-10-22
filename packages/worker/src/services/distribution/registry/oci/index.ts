@@ -60,6 +60,8 @@ export const OCI_ADAPTER: FeedAdapter<"oci"> = defineFeedAdapter({
       "oci-push-conformance",
       "oci-push-crane",
       "oci-push-docker",
+      // F-33b.6: one personal token over two owners (`run.mjs --person`).
+      "person-docker",
     ],
   },
 });

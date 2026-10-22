@@ -42,7 +42,10 @@ import { packageStateStatements } from "../../../src/services/release/packages/s
 import { yank } from "../../../src/services/release/policy.ts";
 import type { Env } from "../../../src/platform/env.ts";
 
-export const OWNER = "registry-smoke";
+/** The fixture owner; `--owner <slug>` seeds another (the `--person` run seeds acme, bolt and cove). */
+export const OWNER = argValue("--owner") ?? "registry-smoke";
+/** `--light`: only 1.0.0 and no push repositories (the `--person` owners are pulled from only). */
+const LIGHT = process.argv.includes("--light");
 export const DELIVERABLE = "oci.smoke";
 export const REPOSITORY = "tools/smoke";
 /** F-23: declared, empty repositories the `oci-push-*` clients push to. */
@@ -205,6 +208,9 @@ const VERSIONS: Array<{
 ];
 
 async function main(): Promise<void> {
+  const versions = LIGHT
+    ? VERSIONS.filter((v) => v.version === "1.0.0")
+    : VERSIONS;
   const state = argValue("--persist-to");
   if (!state) {
     console.error("usage: seeds/oci.ts --persist-to <dir>");
@@ -259,7 +265,7 @@ async function main(): Promise<void> {
     );
     // F-23: the repositories the push clients push to, declared and empty (`docker push` never
     // creates a deliverable; products are data).
-    for (const [id, repo] of PUSH_REPOSITORIES) {
+    for (const [id, repo] of LIGHT ? [] : PUSH_REPOSITORIES) {
       const p = stmtUpsertDeliverable(
         {
           product: OWNER,
@@ -280,7 +286,7 @@ async function main(): Promise<void> {
         now,
       );
     }
-    for (const [i, v] of VERSIONS.entries()) {
+    for (const [i, v] of versions.entries()) {
       const dir = layout(work, v.version, v.archs);
       const x = await extractOci({
         declaration,
@@ -350,7 +356,7 @@ async function main(): Promise<void> {
         `seeded ${OWNER}/${REPOSITORY}:${v.version} (${v.channel}, ${files.length} objects, root ${String(x.metadata.root)})`,
       );
     }
-    for (const v of VERSIONS) {
+    for (const v of versions) {
       const releaseId = `${DELIVERABLE}@${v.version}`;
       if (v.state === "yanked") {
         const y = await yank(

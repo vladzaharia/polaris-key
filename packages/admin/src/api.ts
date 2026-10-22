@@ -2439,6 +2439,8 @@ export interface CiTokenDto {
   expiresAt: number;
   revokedAt: number | null;
   createdBy: string;
+  /** Last accepted on the registry host, at hourly resolution; null if never (F-33b.2). */
+  lastUsedAt: number | null;
 }
 
 export interface IssueCiTokenBody {
@@ -4697,6 +4699,28 @@ export interface RegistryTokenDto {
   revokedBy: string | null;
   revokeReason: string | null;
   status: "active" | "expired" | "revoked";
+  /** F-33b.3: an owner-wide read token, retired; it works until it expires. */
+  legacy?: boolean;
+}
+
+/** A read service token (a `pkeyci_` holding only `packages:read`): never the token or its hash. */
+export interface ServiceTokenDto {
+  /** `cit_…`: revoke it with `POST …/tokens/<tokenId>/revoke`. */
+  tokenId: string;
+  label: string;
+  scopes: string[];
+  createdBy: string;
+  createdAt: number;
+  expiresAt: number;
+  lastUsedAt: number | null;
+  /** The token's last four characters; `null` for a token made before F-33b.4. */
+  hint: string | null;
+  revokedAt: number | null;
+  /** From the audit trail: `admin:<who>`, or `null` when it is not there. */
+  revokedBy: string | null;
+  /** `manual` (this token) or `revoke_all` (the product-wide revoke); `null` with `revokedBy`. */
+  revokeReason: string | null;
+  status: "active" | "expired" | "revoked";
 }
 
 export interface RegistryTokenFeed {
@@ -4705,6 +4729,8 @@ export interface RegistryTokenFeed {
   enabled: boolean;
   accessMode: string;
   baseUrl: string | null;
+  /** The feed's namespace (npm `scope`, Maven `groupPrefixes`, …): the setup snippets name it. */
+  namespace?: Record<string, unknown>;
 }
 
 export interface RegistryTokensDto {
@@ -4713,6 +4739,8 @@ export interface RegistryTokensDto {
   /** The username clients send beside the token (`__token__`). */
   username: string;
   tokens: RegistryTokenDto[];
+  /** F-33b.3: the product's read service tokens (none for a licence filter). */
+  serviceTokens?: ServiceTokenDto[];
   feeds: RegistryTokenFeed[];
   limits: {
     minDays: number;
@@ -4722,6 +4750,8 @@ export interface RegistryTokensDto {
     perOwner: number;
     perLicense: number;
     /** F-22: a publish token's default and longest expiry, and the ecosystems it may name. */
+    serviceDefaultDays?: number;
+    serviceMaxDays?: number;
     publishDefaultDays?: number;
     publishMaxDays?: number;
     publishEcosystems?: FeedEcosystem[];
@@ -4732,12 +4762,22 @@ export interface MintRegistryTokenBody {
   label: string;
   ecosystems?: FeedEcosystem[] | null;
   expiresInDays?: number;
-  binding: "owner" | "license";
+  /** `"service"` (F-33b.3) mints a `pkeyci_` read service token: only `label` and
+   *  `expiresInDays` (1 to 365, default 90) apply. `"owner"` is for publish tokens only. */
+  binding: "owner" | "license" | "service";
   licenseId?: string;
   presentation?: "header" | "url";
   /** `["publish"]` for a publish token (owner-bound, named ecosystems): F-22's native clients and
    *  F-23's `docker push`. */
   scopes?: ("read" | "publish")[];
+}
+
+/** The answer to a `binding: "service"` mint. */
+export interface MintedServiceToken {
+  ok: true;
+  /** The `pkeyci_` plaintext: in this answer only. */
+  token: string;
+  view: ServiceTokenDto;
 }
 
 export interface MintedRegistryToken {
@@ -6845,6 +6885,12 @@ const rawApi = {
     ),
   mintRegistryToken: (scope: FeedScope, body: MintRegistryTokenBody) =>
     call<MintedRegistryToken>(`${feedsBase(scope)}/tokens`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /** F-33b.4: a read service token (`binding: "service"`), answered once with the `pkeyci_` value. */
+  mintServiceToken: (scope: FeedScope, body: MintRegistryTokenBody) =>
+    call<MintedServiceToken>(`${feedsBase(scope)}/tokens`, {
       method: "POST",
       body: JSON.stringify(body),
     }),

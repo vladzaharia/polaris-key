@@ -168,6 +168,7 @@ export type WriteMethod =
   | "bootstrapPlatformFeeds"
   | "savePackageFeeds"
   | "mintRegistryToken"
+  | "mintServiceToken"
   | "revokeRegistryToken"
   | "revokeAllRegistryTokens"
   | "acceptListingAsset"
@@ -1046,6 +1047,10 @@ export const MUTATIONS: MutationTable = {
   mintRegistryToken: {
     label: "registry token mint",
     // The scope's token lists (every licence filter) and the feed activity trails.
+    invalidates: (scope) => feeds(scope),
+  },
+  mintServiceToken: {
+    label: "service token mint",
     invalidates: (scope) => feeds(scope),
   },
   revokeRegistryToken: {

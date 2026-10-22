@@ -11,6 +11,7 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { inlineScripts } from "./inline-scripts.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const docsRoot = join(here, "..");
@@ -26,9 +27,9 @@ function* htmlFiles(dir) {
 }
 
 // Inline elements only: a <script> with a `src` attribute is loaded from 'self' and needs no
-// hash. The regexes are adequate for build output (Astro emits well-formed HTML); they are
-// not a general HTML parser and do not need to be.
-const SCRIPT_RE = /<script(?<attrs>[^>]*)>(?<body>[\s\S]*?)<\/script>/gi;
+// hash. Scripts are found by a tokenizer (inline-scripts.mjs), not a regex, so `<script>` text
+// inside an attribute value (a code sample's `data-code`) or a comment is never allowlisted.
+// The style regexes below are adequate for build output; the same caveat is not closed for them.
 const STYLE_RE = /<style[^>]*>(?<body>[\s\S]*?)<\/style>/gi;
 
 // `style="…"` attributes (Expressive Code's per-token colours, Starlight's `--sl-icon-size` and
@@ -54,12 +55,7 @@ let pages = 0;
 for (const file of htmlFiles(dist)) {
   pages += 1;
   const html = readFileSync(file, "utf8");
-  for (const match of html.matchAll(SCRIPT_RE)) {
-    const attrs = match.groups?.attrs ?? "";
-    const body = match.groups?.body ?? "";
-    if (/\ssrc\s*=/i.test(attrs) || body.length === 0) continue;
-    scriptHashes.add(cspHash(body));
-  }
+  for (const body of inlineScripts(html)) scriptHashes.add(cspHash(body));
   for (const match of html.matchAll(STYLE_ATTR_RE)) {
     const value = decode(match.groups?.value ?? "");
     if (value.length > 0) styleAttrHashes.add(cspHash(value));

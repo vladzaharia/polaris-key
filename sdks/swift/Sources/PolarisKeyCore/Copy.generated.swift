@@ -210,7 +210,7 @@ public let COPY_GATE: [String: CopyEntry] = [
     "expired": CopyEntry(title: "License expired", message: "Connect to the internet or renew your license to continue."),
     "revoked": CopyEntry(title: "Signed out", message: "This device was signed out. Sign in or activate again to continue."),
     "needs-activation": CopyEntry(title: "Activate", message: "Enter a license key or sign in to continue."),
-    "version-too-old": CopyEntry(title: "Update required", message: "This version is no longer supported. Update the app to continue."),
+    "version-too-old": CopyEntry(title: "Update required", message: "This version is no longer supported. Update {product} to continue."),
     "version-too-new": CopyEntry(title: "Not available on this license", message: "This build is newer than your license allows."),
     "channel-not-entitled": CopyEntry(title: "Channel not included", message: "Your license doesn't include this channel."),
     "not-applicable": CopyEntry(title: "No license needed", message: "This app doesn't need a license."),

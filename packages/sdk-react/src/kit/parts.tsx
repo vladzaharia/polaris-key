@@ -120,22 +120,27 @@ function withoutBraces(s: string, key: string): string {
     .trim();
 }
 
-/** One string. The installed version's line says the size of a download only when it knows one
- *  (the web prompt does not); there the line is just "You have 2.4.1". */
+/** The key to draw: the installed version's line names a download size only when the decision
+ *  carries one (the web prompt does not); otherwise it is the catalog's "You have {version}". */
+function drawnKey(
+  c: KitCtx,
+  key: string,
+  args: Record<string, string | number>,
+): string {
+  return key === "update.current" &&
+    args.size === undefined &&
+    c.copy.has("common.updateCurrentNoSize")
+    ? "common.updateCurrentNoSize"
+    : key;
+}
+
+/** One string. */
 function formatKey(
   c: KitCtx,
   key: string,
   args: Record<string, string | number>,
 ): string {
-  if (key !== "update.current" || args.size !== undefined)
-    return withoutBraces(c.copy.format(key, args), key);
-  return withoutBraces(
-    c.copy
-      .format(key, { ...args, size: "" })
-      .split("·")[0]!
-      .trim(),
-    key,
-  );
+  return withoutBraces(c.copy.format(drawnKey(c, key, args), args), key);
 }
 
 export function text(
@@ -181,14 +186,7 @@ export function plain(
 /** True when the string still holds a `{name}` argument nothing filled. */
 export function unfilled(c: KitCtx, key: string): boolean {
   const args = argsOf(c, key, {});
-  const raw =
-    key === "update.current" && args.size === undefined
-      ? c.copy
-          .format(key, { ...args, size: "" })
-          .split("·")[0]!
-          .trim()
-      : c.copy.format(key, args);
-  return UNFILLED.test(raw);
+  return UNFILLED.test(c.copy.format(drawnKey(c, key, args), args));
 }
 
 // ── Glyphs (decorative, aria-hidden) ─────────────────────────────────────────────────────────

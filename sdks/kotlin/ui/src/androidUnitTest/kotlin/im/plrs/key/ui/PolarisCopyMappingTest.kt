@@ -58,10 +58,12 @@ class PolarisCopyMappingTest {
 
     @Test
     fun versionBlocksNameTheAllowedWindow() {
-        assertEquals(copy.versionTooOldBody, copy.gateMessage(LicenseStatus.versionTooOld, null)!!.body)
-        assertEquals(copy.versionTooOldBody, copy.gateMessage(LicenseStatus.versionTooOld, AllowedRange())!!.body)
+        val tooOld = copy.format(copy.versionTooOldBody, "Diceroll")
+        assertEquals("This version is no longer supported. Update Diceroll to continue.", tooOld)
+        assertEquals(tooOld, copy.gateMessage(LicenseStatus.versionTooOld, null)!!.body)
+        assertEquals(tooOld, copy.gateMessage(LicenseStatus.versionTooOld, AllowedRange())!!.body)
         assertEquals(
-            "${copy.versionTooOldBody}\nAllowed versions: 2.4.0 or later",
+            "$tooOld\nAllowed versions: 2.4.0 or later",
             copy.gateMessage(LicenseStatus.versionTooOld, AllowedRange(min = "2.4.0"))!!.body,
         )
         assertEquals(
@@ -139,8 +141,8 @@ class PolarisCopyMappingTest {
         assertEquals(copy.bootOfflinePlayableBody, copy.offlineMessage(true).body)
         assertEquals("Couldn't check your license", copy.errorMessage("sync-failed").title)
         assertFalse(copy.errorMessage("sync-failed").body.contains("sync-failed"))
-        assertEquals("If this keeps happening, restart the app.", copy.errorMessage("mystery-code").body)
-        assertEquals("If this keeps happening, restart the app.", PolarisCopy().errorMessage("mystery-code").body)
+        assertEquals("If this keeps happening, restart Diceroll.", copy.errorMessage("mystery-code").body)
+        assertEquals("If this keeps happening, restart this app.", PolarisCopy().errorMessage("mystery-code").body)
     }
 
     @Test

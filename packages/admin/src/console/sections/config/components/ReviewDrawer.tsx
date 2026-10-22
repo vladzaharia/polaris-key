@@ -431,7 +431,7 @@ export function ReviewDrawer({
                   tone="danger"
                   alert
                   title="Publish didn't finish"
-                  action={<CopyDetails copy={copy} />}
+                  action={<CopyDetails copy={copy} always />}
                 >
                   <p>{publishCause(error, copy)}</p>
                   {copy.fieldErrors?.length ? (

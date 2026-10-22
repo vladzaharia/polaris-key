@@ -892,6 +892,14 @@ describe("licence claim rules", () => {
       NOW,
       NOW + 86400,
     );
+    // F-33b.1: a token an operator minted on the licence goes too.
+    await w.db.run(
+      `INSERT INTO registry_tokens (product, token_id, token_hash, hint, label, scopes_json, binding,
+         license_id, created_by, portal_account_id, created_at, expires_at)
+       VALUES ('acme', 'rtok_op', 'h2', 'wxyz', 'ops', '["read"]', 'license', 'lic-1', 'admin:op', NULL, ?, ?)`,
+      NOW,
+      NOW + 86400,
+    );
     expect(
       await detachLicense(w.ctx(), {
         accountId: a.account.id,
@@ -899,6 +907,15 @@ describe("licence claim rules", () => {
         licenseId: "lic-1",
       }),
     ).toEqual({ ok: true });
+    expect(
+      await w.db.first(
+        "SELECT revoked_at, revoked_by, revoke_reason FROM registry_tokens WHERE token_id = 'rtok_op'",
+      ),
+    ).toEqual({
+      revoked_at: NOW,
+      revoked_by: "system",
+      revoke_reason: "link_removed",
+    });
     const lic = await w.db.first<{ account_id: string | null }>(
       "SELECT account_id FROM licenses WHERE id = 'lic-1'",
     );
@@ -936,6 +953,13 @@ describe("licence claim rules", () => {
       NOW,
       attached.subject,
     );
+    await w.db.run(
+      `INSERT INTO registry_tokens (product, token_id, token_hash, hint, label, scopes_json, binding,
+         license_id, created_by, portal_account_id, created_at, expires_at)
+       VALUES ('acme', 'rtok_op', 'h2', 'wxyz', 'ops', '["read"]', 'license', 'lic-1', 'admin:op', NULL, ?, ?)`,
+      NOW,
+      NOW + 86400,
+    );
     const moved = await reassignLicense(w.ctx(), {
       product: "acme",
       licenseId: "lic-1",
@@ -946,6 +970,12 @@ describe("licence claim rules", () => {
     expect(
       (await getDevice(w.db, "acme", "dev-1"))?.subject ?? null,
     ).toBeNull();
+    // F-33b.1: the relink revoked the operator-minted token as well (the real path, not the hook).
+    expect(
+      await w.db.first(
+        "SELECT revoked_by, revoke_reason FROM registry_tokens WHERE token_id = 'rtok_op'",
+      ),
+    ).toEqual({ revoked_by: "system", revoke_reason: "link_removed" });
     const undo = await reassignLicense(w.ctx(), {
       product: "acme",
       licenseId: "lic-1",

@@ -3,6 +3,7 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ProductDetail, SigningKeysResponse } from "../src/api.js";
 import { expectNoAxeViolations, renderAt, resetCore } from "./coreTestUtils.js";
+import { setStepUpRedirectForTests } from "../src/lib/stepUp.js";
 
 const fns = vi.hoisted(() => ({
   product: vi.fn(),
@@ -649,5 +650,89 @@ describe("Keys and secrets → the page", () => {
     await screen.findByText("EDGE_KEY");
     await screen.findAllByText("djdl-a");
     await expectNoAxeViolations(container);
+  });
+});
+
+describe("durable credentials keep their input across the step-up (F-33b.7)", () => {
+  const redirect = vi.fn();
+  beforeEach(() => {
+    redirect.mockReset();
+    setStepUpRedirectForTests(() => redirect());
+    sessionStorage.clear();
+  });
+  afterEach(() => setStepUpRedirectForTests());
+
+  it("Issue token: the dialog turns into Sign in again, and reopens with its input afterwards", async () => {
+    const user = userEvent.setup();
+    fns.issueCiToken.mockRejectedValue(
+      new ApiError(403, undefined, "step_up_required"),
+    );
+    const first = mount();
+    await user.click(
+      await screen.findByRole("button", { name: "Issue token…" }),
+    );
+    let dialog = await screen.findByRole("dialog", {
+      name: "Issue a CI token",
+    });
+    await user.type(within(dialog).getByLabelText("Label"), "Buildkite");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Issue token" }),
+    );
+    const again = await within(dialog).findByRole("button", {
+      name: "Sign in again",
+    });
+    expect(within(dialog).getByText(/last 5 minutes/)).toBeTruthy();
+    await user.click(again);
+    expect(redirect).toHaveBeenCalledTimes(1);
+    // The sign-in leaves the page and returns to it.
+    first.unmount();
+    mount();
+    dialog = await screen.findByRole("dialog", { name: "Issue a CI token" });
+    expect(
+      (within(dialog).getByLabelText("Label") as HTMLInputElement).value,
+    ).toBe("Buildkite");
+    expect(
+      within(dialog).getByRole("button", { name: "Issue token" }),
+    ).toBeTruthy();
+  });
+
+  it("the trusted-publisher drawer keeps its entries and reopens", async () => {
+    const user = userEvent.setup();
+    fns.putCiPublisher.mockRejectedValue(
+      new ApiError(403, undefined, "step_up_required"),
+    );
+    const first = mount();
+    await user.click(
+      await screen.findByRole("button", { name: "Set trusted publisher…" }),
+    );
+    let drawer = await screen.findByRole("dialog", {
+      name: "Set trusted publisher",
+    });
+    await user.type(
+      within(drawer).getByLabelText(/^Repository(?! id)/),
+      "acme/djdl",
+    );
+    await user.clear(within(drawer).getByLabelText(/^Environment/));
+    await user.type(within(drawer).getByLabelText(/^Environment/), "prod");
+    await user.type(within(drawer).getByLabelText(/Repository id/), "11");
+    await user.type(within(drawer).getByLabelText(/Owner id/), "22");
+    await user.click(
+      within(drawer).getByRole("button", { name: "Save publisher" }),
+    );
+    await user.click(
+      await within(drawer).findByRole("button", { name: "Sign in again" }),
+    );
+    expect(redirect).toHaveBeenCalledTimes(1);
+    first.unmount();
+    mount();
+    drawer = await screen.findByRole("dialog", {
+      name: "Set trusted publisher",
+    });
+    const val = (l: RegExp | string) =>
+      (within(drawer).getByLabelText(l) as HTMLInputElement).value;
+    expect(val(/^Repository(?! id)/)).toBe("acme/djdl");
+    expect(val(/^Environment/)).toBe("prod");
+    expect(val(/Repository id/)).toBe("11");
+    expect(val(/Owner id/)).toBe("22");
   });
 });

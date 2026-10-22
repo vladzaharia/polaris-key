@@ -401,6 +401,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     empty,
     noResults: noResultsOverride,
     mobile = "scroll",
+    cardBreakpoint = "(max-width: 1023px)",
     mobileCard,
     toolbarActions,
     toolbarMode = "full",
@@ -469,7 +470,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const compactBar = toolbarMode === "compact";
   const iconOnlyBar = useMediaQuery("(max-width: 1599px)") && compactBar;
   const narrowBar = useMediaQuery("(max-width: 1279px)") && compactBar;
-  const isCardWidth = useMediaQuery("(max-width: 1023px)");
+  const isCardWidth = useMediaQuery(cardBreakpoint);
   const isMobileCards = isCardWidth && mobile === "cards";
 
   const serverSide =
