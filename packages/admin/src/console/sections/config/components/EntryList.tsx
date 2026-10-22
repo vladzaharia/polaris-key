@@ -60,7 +60,7 @@ export function EntryList({
             type="search"
             aria-label="Search entries"
             placeholder="Search entries"
-            className="ps-9"
+            className="ps-10"
             value={query}
             onChange={(e) => onQuery(e.target.value)}
           />

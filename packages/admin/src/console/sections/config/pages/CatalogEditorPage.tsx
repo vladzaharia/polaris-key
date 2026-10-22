@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ArrowRight, Plus } from "lucide-react";
-import type { ConfigEntry, ProductCatalog } from "../../../../api.js";
 import { diffSummary } from "../../../../lib/diff.js";
+import type { ConfigEntry, ProductCatalog } from "../../../../api.js";
 import {
   UNCATEGORISED,
   catalogIssues,
@@ -304,13 +304,17 @@ function Editor({
             <StatusPill tone="neutral" icon={false} size="sm">
               Draft v{nextVersion}
             </StatusPill>
-            <SourceBadge source={source} path={CATALOG_PATH} />
+            {/* With big text on a phone the badge would take a row of its own: the review names the source. */}
+            <span className="@max-xs:hidden">
+              <SourceBadge source={source} path={CATALOG_PATH} />
+            </span>
           </span>
         }
         description={dirty || issues.length > 0 ? summary : undefined}
         toolbar={
           <Unlocked>
             <SegmentedControl<"form" | "json">
+              className="max-sm:hidden"
               aria-label="Editing mode"
               size="sm"
               value={mode}
@@ -322,31 +326,36 @@ function Editor({
             />
           </Unlocked>
         }
-        secondaryActions={
-          dirty
+        secondaryActions={[
+          {
+            label: mode === "form" ? "Edit as JSON" : "Edit as form",
+            phoneOnly: true,
+            onSelect: () => setMode(mode === "form" ? "json" : "form"),
+          },
+          ...(dirty
             ? [
                 {
                   label: "Discard draft",
                   onSelect: () => setConfirmDiscard(true),
                 },
               ]
-            : []
-        }
+            : []),
+        ]}
         primaryAction={
-          <Button
-            // An error does not keep the review shut: it opens with the error pinned to its
-            // entry and Publish waiting (config.catalog-review-states).
-            disabledReason={
-              holdReason ??
-              (dirty || issues.length > 0 ? undefined : "No changes to review.")
-            }
-            iconEnd={<ArrowRight aria-hidden />}
-            onClick={() => setReviewing(true)}
-          >
-            {dirty
-              ? `Review ${diff.all.length} ${diff.all.length === 1 ? "change" : "changes"}`
-              : "Review changes"}
-          </Button>
+          // Nothing to review draws no button: with a clean draft the header is the page's title.
+          dirty || issues.length > 0 ? (
+            <Button
+              // An error does not keep the review shut: it opens with the error pinned to its
+              // entry and Publish waiting (config.catalog-review-states).
+              disabledReason={holdReason}
+              iconEnd={<ArrowRight aria-hidden />}
+              onClick={() => setReviewing(true)}
+            >
+              {dirty
+                ? `Review ${diff.all.length} ${diff.all.length === 1 ? "change" : "changes"}`
+                : "Review changes"}
+            </Button>
+          ) : undefined
         }
       />
 
