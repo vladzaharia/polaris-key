@@ -19,6 +19,7 @@ import type { Term } from "./terminal.js";
 import { CLI_VERSION } from "./version.js";
 
 export type GroupId =
+  | "account"
   | "manifest"
   | "sdk"
   | "bundles"
@@ -32,6 +33,7 @@ export type GroupId =
 
 /** The overview's groups, in order, with their headings. */
 export const GROUPS: ReadonlyArray<readonly [GroupId, string]> = [
+  ["account", "Account"],
   ["manifest", "Manifest"],
   ["sdk", "SDK and tools"],
   ["bundles", "Offline bundles"],
@@ -138,6 +140,63 @@ const STORE_SUBS = ["winget", "homebrew", "scoop", "flathub"] as const;
 
 /** Every command, in overview order. */
 export const COMMANDS: readonly PkeyCommand[] = [
+  {
+    name: "login",
+    group: "account",
+    json: false,
+    context: ["baseUrl"],
+    summary: "Sign in to the console from this terminal",
+    rows: [["login", "Sign in to the console from this terminal"]],
+    usage: ["pkey login [--base-url url]"],
+    about: [
+      {
+        text:
+          "Not available yet. Signing in will keep a personal token in your operating " +
+          "system's credential store, bound to the origin that issued it.",
+      },
+    ],
+  },
+  {
+    name: "whoami",
+    group: "account",
+    json: true,
+    context: ["baseUrl"],
+    summary: "Show who this terminal is signed in as",
+    rows: [["whoami", "Show who this terminal is signed in as"]],
+    usage: ["pkey whoami [--base-url url] [--json]"],
+    about: [
+      {
+        text:
+          "Prints the person, their roles and when the sign-in ends. The token is never " +
+          "printed. It reads the sign-in stored for the origin (--base-url), or " +
+          `${ADMIN_TOKEN_ENV} when that is set to a personal token (pkeyp_).`,
+      },
+    ],
+    env: [
+      {
+        name: ADMIN_TOKEN_ENV,
+        text: "A personal token (pkeyp_), used instead of the stored sign-in.",
+      },
+    ],
+  },
+  {
+    name: "logout",
+    group: "account",
+    json: true,
+    context: ["baseUrl"],
+    summary: "Revoke this terminal's sign-in and remove it",
+    rows: [["logout", "Revoke this terminal's sign-in and remove it"]],
+    usage: ["pkey logout [--base-url url] [--json]"],
+    about: [
+      {
+        text:
+          "Revokes the stored token on the server, then removes it from the credential " +
+          "store. If the server cannot be reached the stored token is still removed, and " +
+          "pkey says it stays valid until it ends. Exit 1 then. It refuses (exit 4) while " +
+          `${ADMIN_TOKEN_ENV} is set: pkey only ends a sign-in it stored.`,
+      },
+    ],
+  },
   {
     name: "init",
     group: "manifest",
@@ -1069,6 +1128,10 @@ export const EXIT_CODES: ReadonlyArray<readonly [string, string]> = [
   [
     "2",
     "Usage: an unknown command or subcommand, or a missing or misused flag. The message shows the command's usage.",
+  ],
+  [
+    "4",
+    "Refused: not signed in, no credential store, or a token the server will not accept. The message names the fix.",
   ],
 ];
 

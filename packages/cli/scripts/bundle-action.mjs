@@ -116,7 +116,9 @@ async function bundle() {
     entryPoints: ["src/bin/standalone.ts"],
     // `pkey listing assets` (A-18d) loads the native sharp library on first use; the bundle runs
     // where none is installed, so it stays external and that one command asks for it.
-    external: ["sharp"],
+    // `@napi-rs/keyring` (ST-34.7, D-8) stays out the same way: only `pkey whoami` and `logout`
+    // load it, on first use. Where it is absent the bundle refuses and names PKEY_ADMIN_TOKEN.
+    external: ["sharp", "@napi-rs/keyring"],
     bundle: true,
     platform: "node",
     format: "esm",

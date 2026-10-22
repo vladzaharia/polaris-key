@@ -7340,9 +7340,9 @@ var require_timestamp = __commonJS({
         const match = str6.match(timestamp.test);
         if (!match)
           throw new Error("!!timestamp expects a date, starting with yyyy-mm-dd");
-        const [, year, month, day, hour, minute, second] = match.map(Number);
+        const [, year, month, day2, hour, minute, second] = match.map(Number);
         const millisec = match[7] ? Number((match[7] + "00").substr(1, 3)) : 0;
-        let date = Date.UTC(year, month - 1, day, hour || 0, minute || 0, second || 0, millisec);
+        let date = Date.UTC(year, month - 1, day2, hour || 0, minute || 0, second || 0, millisec);
         const tz = match[8];
         if (tz && tz !== "Z") {
           let d = parseSexagesimal(tz, false);
@@ -23690,6 +23690,7 @@ function logoLines(term) {
 
 // src/help.ts
 var GROUPS = [
+  ["account", "Account"],
   ["manifest", "Manifest"],
   ["sdk", "SDK and tools"],
   ["bundles", "Offline bundles"],
@@ -23718,6 +23719,54 @@ var COOKIE_ENV = {
 var ciEnvFor = (subs) => ({ ...CI_ENV, subs });
 var STORE_SUBS = ["winget", "homebrew", "scoop", "flathub"];
 var COMMANDS = [
+  {
+    name: "login",
+    group: "account",
+    json: false,
+    context: ["baseUrl"],
+    summary: "Sign in to the console from this terminal",
+    rows: [["login", "Sign in to the console from this terminal"]],
+    usage: ["pkey login [--base-url url]"],
+    about: [
+      {
+        text: "Not available yet. Signing in will keep a personal token in your operating system's credential store, bound to the origin that issued it."
+      }
+    ]
+  },
+  {
+    name: "whoami",
+    group: "account",
+    json: true,
+    context: ["baseUrl"],
+    summary: "Show who this terminal is signed in as",
+    rows: [["whoami", "Show who this terminal is signed in as"]],
+    usage: ["pkey whoami [--base-url url] [--json]"],
+    about: [
+      {
+        text: `Prints the person, their roles and when the sign-in ends. The token is never printed. It reads the sign-in stored for the origin (--base-url), or ${ADMIN_TOKEN_ENV} when that is set to a personal token (pkeyp_).`
+      }
+    ],
+    env: [
+      {
+        name: ADMIN_TOKEN_ENV,
+        text: "A personal token (pkeyp_), used instead of the stored sign-in."
+      }
+    ]
+  },
+  {
+    name: "logout",
+    group: "account",
+    json: true,
+    context: ["baseUrl"],
+    summary: "Revoke this terminal's sign-in and remove it",
+    rows: [["logout", "Revoke this terminal's sign-in and remove it"]],
+    usage: ["pkey logout [--base-url url] [--json]"],
+    about: [
+      {
+        text: `Revokes the stored token on the server, then removes it from the credential store. If the server cannot be reached the stored token is still removed, and pkey says it stays valid until it ends. Exit 1 then. It refuses (exit 4) while ${ADMIN_TOKEN_ENV} is set: pkey only ends a sign-in it stored.`
+      }
+    ]
+  },
   {
     name: "init",
     group: "manifest",
@@ -25472,6 +25521,325 @@ async function fixManifest(manifest, cwd) {
   return moves;
 }
 
+// src/account.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// src/credentials.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var KEYCHAIN_SERVICE = "pkey";
+var CREDENTIAL_SHAPE = /^pkey[ap]_[A-Za-z0-9_-]{43,}$/;
+function isCredentialShape(value) {
+  return CREDENTIAL_SHAPE.test(value);
+}
+var Refusal = class extends Error {
+  constructor(message, fix) {
+    super(message);
+    this.fix = fix;
+    this.name = "Refusal";
+  }
+  fix;
+};
+var NoStoreError = class extends Refusal {
+  constructor() {
+    super(
+      "No credential store on this machine.",
+      `Set ${ADMIN_TOKEN_ENV} instead.`
+    );
+    this.name = "NoStoreError";
+  }
+};
+function originOf(baseUrl) {
+  return new URL(normalizeBaseUrl(baseUrl, ADMIN_TOKEN_ENV)).origin;
+}
+function encode(c) {
+  return JSON.stringify({ t: c.token, e: c.expiresAt });
+}
+function decode(raw) {
+  try {
+    const v = JSON.parse(raw);
+    if (typeof v.t === "string" && isCredentialShape(v.t))
+      return {
+        token: v.t,
+        expiresAt: typeof v.e === "number" && v.e > 0 ? v.e : null
+      };
+  } catch {
+  }
+  return isCredentialShape(raw) ? { token: raw, expiresAt: null } : null;
+}
+async function keyringStore(load = () => import("@napi-rs/keyring")) {
+  let mod;
+  try {
+    mod = await load();
+  } catch {
+    throw new NoStoreError();
+  }
+  const guard = (fn) => {
+    try {
+      return fn();
+    } catch {
+      throw new NoStoreError();
+    }
+  };
+  const entry = (origin) => new mod.Entry(KEYCHAIN_SERVICE, origin);
+  return {
+    get: (origin) => guard(() => {
+      const raw = entry(origin).getPassword();
+      return raw ? decode(raw) : null;
+    }),
+    set: (origin, c) => guard(() => entry(origin).setPassword(encode(c))),
+    delete: (origin) => guard(() => entry(origin).deletePassword())
+  };
+}
+async function adminCredential(opts) {
+  const origin = originOf(opts.baseUrl);
+  const fromEnv = opts.env[ADMIN_TOKEN_ENV]?.trim();
+  if (fromEnv) {
+    if (!isCredentialShape(fromEnv))
+      throw new Refusal(
+        `${ADMIN_TOKEN_ENV} is not a pkeya_ or pkeyp_ token.`,
+        "Copy it again whole."
+      );
+    return { token: fromEnv, source: "env", origin, expiresAt: null };
+  }
+  const stored = (await opts.store()).get(origin);
+  if (!stored)
+    throw new Refusal(
+      `Not signed in to ${new URL(origin).host}.`,
+      "Run pkey login."
+    );
+  return {
+    token: stored.token,
+    source: "store",
+    origin,
+    expiresAt: stored.expiresAt
+  };
+}
+
+// src/account.ts
+var day = (epochSeconds) => new Date(epochSeconds * 1e3).toISOString().slice(0, 10);
+function refusalText(r, t) {
+  const { painter, symbols, caps } = t;
+  const width = Math.max(1, caps.columns - 3);
+  const body = (text, first) => wrapSpans([{ text }], width).map(
+    (l, i) => `${first && i === 0 ? painter.style(symbols.warn, ["warning"]) + "  " : "   "}${painter.line(l)}`
+  ).join("\n");
+  return `${[body(r.message, true), ...r.fix ? [body(r.fix, false)] : []].join("\n")}
+`;
+}
+function note(text, t, kind) {
+  const { painter, symbols, caps } = t;
+  const glyph = kind === "warn" ? painter.style(symbols.warn, ["warning"]) : painter.style(symbols.ok, ["success"]);
+  return wrapSpans([{ text }], Math.max(1, caps.columns - 3)).map((l, i) => `${i === 0 ? `${glyph}  ` : "   "}${painter.line(l)}`).join("\n") + "\n";
+}
+var hostOf2 = (origin) => new URL(origin).host;
+async function call(io, cred, method, path32) {
+  const res = await request(
+    io.fetchImpl ?? fetch,
+    `${cred.origin}/manage/api${path32}`,
+    {
+      method,
+      redirect: "manual",
+      headers: {
+        authorization: `Bearer ${cred.token}`,
+        accept: "application/json"
+      }
+    }
+  );
+  if (res.status >= 300 && res.status < 400)
+    throw new Refusal(
+      `${hostOf2(cred.origin)} answered with a redirect, so pkey sent nothing further.`,
+      "Check --base-url."
+    );
+  return res;
+}
+async function jsonOf(res) {
+  try {
+    const v = await res.json();
+    return v && typeof v === "object" ? v : {};
+  } catch {
+    return {};
+  }
+}
+async function guarded(io, run2) {
+  try {
+    return await run2();
+  } catch (e) {
+    if (e instanceof Refusal) {
+      io.stderr.write(refusalText(e, io.term(io.stderr)));
+      return 4;
+    }
+    throw e;
+  }
+}
+function endedRefusal(cred) {
+  return cred.source === "env" ? new Refusal(
+    `${ADMIN_TOKEN_ENV} was refused. It may have ended or been revoked.`,
+    "Set a current one, or unset it and run pkey login."
+  ) : new Refusal(
+    `Your sign-in to ${hostOf2(cred.origin)} has ended.`,
+    "Run pkey login."
+  );
+}
+function cmdWhoami(io) {
+  return guarded(io, async () => {
+    const cred = await adminCredential({
+      env: io.env,
+      baseUrl: io.baseUrl,
+      store: io.store
+    });
+    if (cred.token.startsWith("pkeya_"))
+      throw new Refusal(
+        `${ADMIN_TOKEN_ENV} is an admin API token (pkeya_), which has no person behind it.`,
+        "Run pkey login for a personal sign-in."
+      );
+    const now = (io.now ?? (() => Math.floor(Date.now() / 1e3)))();
+    if (cred.expiresAt !== null && cred.expiresAt <= now)
+      throw endedRefusal(cred);
+    const res = await call(io, cred, "GET", "/me");
+    if (res.status === 401) throw endedRefusal(cred);
+    if (res.status === 403)
+      throw new Refusal(
+        "The console refused this sign-in, usually because Superadmin access needs a recent console sign-in.",
+        "Sign in to the console, then run pkey whoami again."
+      );
+    if (!res.ok)
+      throw new Error(
+        `Could not read your identity from ${hostOf2(cred.origin)} (HTTP ${res.status}).`
+      );
+    const me = await jsonOf(res);
+    const perms = me["permissions"] ?? {};
+    const roles = [
+      ...new Set(
+        (perms.roles ?? []).map(
+          (r) => `${untrusted(r.role, io.env)} (${untrusted(r.scope, io.env)})`
+        )
+      )
+    ];
+    const superadmin = (perms.roles ?? []).some((r) => r.role === "superadmin");
+    const ends = typeof me["sessionExpiresAt"] === "number" ? me["sessionExpiresAt"] : cred.expiresAt;
+    const name = untrusted(me["name"] ?? "", io.env);
+    const email = untrusted(me["email"] ?? "", io.env);
+    const host = hostOf2(cred.origin);
+    if (io.json) {
+      io.stdout.write(
+        `${JSON.stringify({
+          v: 1,
+          command: "whoami",
+          ok: true,
+          host,
+          name,
+          email,
+          roles: (perms.roles ?? []).map((r) => ({
+            role: untrusted(r.role, io.env),
+            scope: untrusted(r.scope, io.env)
+          })),
+          token: {
+            type: "personal",
+            source: cred.source === "env" ? "environment" : "credential-store",
+            scope: "admin",
+            expiresAt: ends === null ? null : new Date(ends * 1e3).toISOString()
+          }
+        })}
+`
+      );
+      return 0;
+    }
+    const t = io.term(io.stdout);
+    const label = (s) => t.painter.style(s.padEnd(8), ["muted"]);
+    const rows = [
+      ["Host", host],
+      ["Name", name],
+      ["Email", email],
+      ["Roles", roles.length ? roles.join(", ") : "none"],
+      [
+        "Token",
+        `personal (admin)${ends === null ? "" : `, ends ${day(ends)}`}${cred.source === "env" ? `, from ${ADMIN_TOKEN_ENV}` : ""}`
+      ]
+    ];
+    for (const [k, v] of rows) if (v) io.stdout.write(`${label(k)}${v}
+`);
+    if (superadmin)
+      io.stdout.write(
+        note(
+          "Superadmin access lapses without a recent console sign-in. Sign in to the console to keep it.",
+          t,
+          "warn"
+        )
+      );
+    return 0;
+  });
+}
+function cmdLogout(io) {
+  return guarded(io, async () => {
+    const t = io.term(io.stdout);
+    const done = (code, host2, state, text, kind = "ok", fix) => {
+      if (io.json)
+        io.stdout.write(
+          `${JSON.stringify({ v: 1, command: "logout", ok: kind === "ok", host: host2, ...state })}
+`
+        );
+      else
+        (kind === "ok" ? io.stdout : io.stderr).write(
+          kind === "ok" ? note(text, t, "ok") : refusalText(new Refusal(text, fix), io.term(io.stderr))
+        );
+      return code;
+    };
+    if (io.env[ADMIN_TOKEN_ENV]?.trim())
+      throw new Refusal(
+        `${ADMIN_TOKEN_ENV} is set, and pkey only ends a sign-in it stored.`,
+        "Revoke that token in the console, then unset it."
+      );
+    const origin = originOf(io.baseUrl);
+    const store = await io.store();
+    const stored = store.get(origin);
+    if (!stored)
+      return done(
+        0,
+        hostOf2(origin),
+        { revoked: false, cleared: false },
+        `Not signed in to ${hostOf2(origin)}.`
+      );
+    const cred = {
+      token: stored.token,
+      source: "store",
+      origin,
+      expiresAt: stored.expiresAt
+    };
+    const host = hostOf2(origin);
+    let outcome = "revoked";
+    try {
+      const res = await call(io, cred, "DELETE", "/me/personal-tokens/current");
+      if (res.status === 401 || res.status === 404) outcome = "ended";
+      else if (!res.ok) outcome = "unreached";
+    } catch (e) {
+      if (e instanceof Refusal) throw e;
+      outcome = "unreached";
+    }
+    store.delete(cred.origin);
+    if (outcome !== "unreached")
+      return done(
+        0,
+        host,
+        { revoked: outcome === "revoked", cleared: true },
+        outcome === "revoked" ? `Signed out of ${host}. The token is revoked.` : `Signed out of ${host}. The token had already ended.`
+      );
+    const until = cred.expiresAt !== null ? `until ${day(cred.expiresAt)}` : "until it ends";
+    return done(
+      1,
+      host,
+      { revoked: false, cleared: true },
+      `Signed out here, but ${host} could not be reached to revoke the token. It stays valid ${until}.`,
+      "warn",
+      `Revoke it at ${cred.origin}/manage/#/personal-tokens.`
+    );
+  });
+}
+function cmdLogin(io) {
+  return guarded(io, async () => {
+    throw new Refusal("pkey login is not available in this build yet.");
+  });
+}
+
 // src/context.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var BASE_URL_ENV = "PKEY_BASE_URL";
@@ -25753,15 +26121,15 @@ function signV4(input) {
     signedHeaders,
     input.payloadHash
   ].join("\n");
-  const day = input.amzDate.slice(0, 8);
-  const scope = `${day}/${input.region}/${input.service}/aws4_request`;
+  const day2 = input.amzDate.slice(0, 8);
+  const scope = `${day2}/${input.region}/${input.service}/aws4_request`;
   const stringToSign = [
     "AWS4-HMAC-SHA256",
     input.amzDate,
     scope,
     hex(canonicalRequest)
   ].join("\n");
-  const kDate = hmac(`AWS4${input.secretAccessKey}`, day);
+  const kDate = hmac(`AWS4${input.secretAccessKey}`, day2);
   const kRegion = hmac(kDate, input.region);
   const kService = hmac(kRegion, input.service);
   const kSigning = hmac(kService, "aws4_request");
@@ -25887,7 +26255,7 @@ function parseBinary(buf) {
     if (visiting.has(ref)) throw new PlistError("binary plist: cycle");
     visiting.add(ref);
     try {
-      return decode2(offsets[ref], depth);
+      return decode3(offsets[ref], depth);
     } finally {
       visiting.delete(ref);
     }
@@ -25899,7 +26267,7 @@ function parseBinary(buf) {
     const size = 1 << (marker2 & 15);
     return { len: readUInt(buf, at + 2, size), start: at + 2 + size };
   };
-  const decode2 = (at, depth) => {
+  const decode3 = (at, depth) => {
     if (at >= t) throw new PlistError("binary plist: object out of range");
     const marker2 = buf[at];
     const type = marker2 >> 4;
@@ -29503,12 +29871,12 @@ function filesRefOf(b) {
   };
 }
 async function selfCheckPayload(z, b) {
-  const decode2 = (frame) => z.decodeMany([frame])[0];
+  const decode3 = (frame) => z.decodeMany([frame])[0];
   const parsed = await parseFilesIndex(
     b.indexStored.stored,
     { ...filesRefOf(b) },
     { payload: b.payload },
-    { decode: (frame) => decode2(frame), maxBytes: MAX_PUBLISHED_INDEX_BYTES }
+    { decode: (frame) => decode3(frame), maxBytes: MAX_PUBLISHED_INDEX_BYTES }
   );
   if (!parsed.ok)
     throw new Error(
@@ -29538,7 +29906,7 @@ async function selfCheckPayload(z, b) {
     const gaps = b.gaps;
     const gapBytes = open2(
       gaps,
-      gaps.ref.codec === "zstd" ? decode2(gaps.stored) : void 0
+      gaps.ref.codec === "zstd" ? decode3(gaps.stored) : void 0
     );
     const parts = [];
     let g = 0;
@@ -29563,7 +29931,7 @@ async function selfCheckPayload(z, b) {
   }
   const full = open2(
     b.full,
-    b.full.ref.codec === "zstd" ? decode2(b.full.stored) : void 0
+    b.full.ref.codec === "zstd" ? decode3(b.full.stored) : void 0
   );
   if (full.byteLength !== b.full.ref.size || Buffer.compare(full, rebuilt) !== 0)
     throw new Error(
@@ -35337,7 +35705,7 @@ var zdec_default = __toBinaryNode("AGFzbQEAAAABxwEXYAJ/fwF/YAJ/fwBgAX8Bf2ADf39/A
 // pkey-zstd-wasm:zstd-wasm-embedded
 var decoder = null;
 var get = () => decoder ??= createZstdWasm(new WebAssembly.Module(zdec_default));
-var decode = (frame, size) => get().decode(frame, size);
+var decode2 = (frame, size) => get().decode(frame, size);
 
 // ../client-core/dist/version.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -36217,7 +36585,7 @@ function zstdFrameOk(f, size) {
   }
   return p === n;
 }
-function rsccBody(data, decode2 = decode, budget) {
+function rsccBody(data, decode3 = decode2, budget) {
   const n = data.byteLength;
   if (n < 16) return { why: "whose header is truncated" };
   const dv = new DataView(data.buffer, data.byteOffset, n);
@@ -36272,7 +36640,7 @@ function rsccBody(data, decode2 = decode, budget) {
     if (w === 0) continue;
     let out;
     try {
-      out = decode2(frame(i), w);
+      out = decode3(frame(i), w);
     } catch {
       return { why: `whose block ${i} does not decode to ${w} bytes` };
     }
@@ -37360,7 +37728,7 @@ async function buildChunks(z, payload, chunks, base, reuse, opts = {}) {
           `Self-check: chunk ${id.slice(0, 12)}…'s zstd frame declares content size ${fcs ?? "none"}, not ${c.len}; nothing was published.`
         );
       try {
-        data = decode(s.stored, c.len);
+        data = decode2(s.stored, c.len);
       } catch (e) {
         throw new Error(
           `Self-check: chunk ${id.slice(0, 12)}…'s frame does not decode with @polaris-key/zstd-wasm (${e.message}); nothing was published.`
@@ -37438,7 +37806,7 @@ async function buildChunks(z, payload, chunks, base, reuse, opts = {}) {
     params
   };
   const parsed = await parseChunkIndex(index.stored, ref, payload, {
-    decode: (frame, size) => decode(frame, size),
+    decode: (frame, size) => decode2(frame, size),
     maxBytes: maxIndexBytes
   });
   if (!parsed.ok)
@@ -37706,7 +38074,7 @@ async function chunkChainBase(proven, key, gateClass, warn) {
       continue;
     }
     const parsed = await parseChunkIndex(stored, v.chunks, v.payload, {
-      decode: (frame, size) => decode(frame, size),
+      decode: (frame, size) => decode2(frame, size),
       maxBytes: MAX_PUBLISHED_INDEX_BYTES
     });
     if (!parsed.ok) {
@@ -41446,7 +41814,7 @@ function githubClient(o = {}) {
   const f = o.fetchImpl ?? fetch;
   const base = o.apiBase ?? GITHUB_API;
   const sleep = o.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
-  async function call(method, path32, body, allow404 = false) {
+  async function call2(method, path32, body, allow404 = false) {
     const headers = {
       accept: "application/vnd.github+json",
       "x-github-api-version": "2022-11-28",
@@ -41477,15 +41845,15 @@ function githubClient(o = {}) {
   }
   const client = {
     async login() {
-      const u = await call("GET", "/user");
+      const u = await call2("GET", "/user");
       return u.login;
     },
     async defaultBranch(repo) {
-      const r = await call("GET", `/repos/${repo}`);
+      const r = await call2("GET", `/repos/${repo}`);
       return r.default_branch;
     },
     async refSha(repo, branch) {
-      const r = await call(
+      const r = await call2(
         "GET",
         `/repos/${repo}/git/ref/heads/${enc2(branch)}`,
         void 0,
@@ -41494,7 +41862,7 @@ function githubClient(o = {}) {
       return r?.object.sha ?? null;
     },
     async fileText(repo, path32, ref) {
-      const r = await call(
+      const r = await call2(
         "GET",
         `/repos/${repo}/contents/${enc2(path32)}?ref=${encodeURIComponent(ref)}`,
         void 0,
@@ -41504,7 +41872,7 @@ function githubClient(o = {}) {
       return Buffer.from(r.content, "base64").toString("utf8");
     },
     async exists(repo, path32, ref) {
-      const r = await call(
+      const r = await call2(
         "GET",
         `/repos/${repo}/contents/${enc2(path32)}?ref=${encodeURIComponent(ref)}`,
         void 0,
@@ -41513,7 +41881,7 @@ function githubClient(o = {}) {
       return r !== null;
     },
     async pullsFromHead(repo, head) {
-      const r = await call(
+      const r = await call2(
         "GET",
         `/repos/${repo}/pulls?state=all&per_page=20&head=${encodeURIComponent(head)}`
       );
@@ -41521,24 +41889,24 @@ function githubClient(o = {}) {
     },
     async pullsByTitle(repo, phrase) {
       const q3 = `repo:${repo} is:pr in:title "${phrase.replace(/"/g, "")}"`;
-      const r = await call(
+      const r = await call2(
         "GET",
         `/search/issues?per_page=20&q=${encodeURIComponent(q3)}`
       );
       return (r?.items ?? []).map(toPull).filter((p) => p.title.includes(phrase));
     },
     async pull(repo, n) {
-      return toPull(await call("GET", `/repos/${repo}/pulls/${n}`));
+      return toPull(await call2("GET", `/repos/${repo}/pulls/${n}`));
     },
     async fork(repo) {
-      const r = await call(
+      const r = await call2(
         "POST",
         `/repos/${repo}/forks`,
         { default_branch_only: true }
       );
       const name = r.full_name;
       for (let attempt = 0; attempt < 10; attempt++) {
-        const there = await call(
+        const there = await call2(
           "GET",
           `/repos/${name}`,
           void 0,
@@ -41551,16 +41919,16 @@ function githubClient(o = {}) {
     },
     async syncFork(fork, branch) {
       try {
-        await call("POST", `/repos/${fork}/merge-upstream`, { branch });
+        await call2("POST", `/repos/${fork}/merge-upstream`, { branch });
       } catch {
       }
     },
     async commit(repo, parent, files, message) {
-      const c = await call(
+      const c = await call2(
         "GET",
         `/repos/${repo}/git/commits/${parent}`
       );
-      const tree = await call(
+      const tree = await call2(
         "POST",
         `/repos/${repo}/git/trees`,
         {
@@ -41573,7 +41941,7 @@ function githubClient(o = {}) {
           }))
         }
       );
-      const commit = await call(
+      const commit = await call2(
         "POST",
         `/repos/${repo}/git/commits`,
         { message, tree: tree.sha, parents: [parent] }
@@ -41581,20 +41949,20 @@ function githubClient(o = {}) {
       return commit.sha;
     },
     async createBranch(repo, branch, sha) {
-      await call("POST", `/repos/${repo}/git/refs`, {
+      await call2("POST", `/repos/${repo}/git/refs`, {
         ref: `refs/heads/${branch}`,
         sha
       });
     },
     async advanceBranch(repo, branch, sha) {
-      await call("PATCH", `/repos/${repo}/git/refs/heads/${enc2(branch)}`, {
+      await call2("PATCH", `/repos/${repo}/git/refs/heads/${enc2(branch)}`, {
         sha,
         force: false
       });
     },
     async openPull(repo, p) {
       return toPull(
-        await call("POST", `/repos/${repo}/pulls`, {
+        await call2("POST", `/repos/${repo}/pulls`, {
           ...p,
           maintainer_can_modify: true
         })
@@ -43790,9 +44158,9 @@ function renderPruneReport(r, env = {}) {
   );
   const notice = r.retention?.notice;
   if (r.retention?.source === "default") {
-    const day = notice ? new Date(notice.startsAt * 1e3).toISOString().slice(0, 10) : null;
+    const day2 = notice ? new Date(notice.startsAt * 1e3).toISOString().slice(0, 10) : null;
     lines4.push(
-      day ? `Automatic cleanup ${r.prunePrereleases ? "turned on" : "turns on"} ${day}: the first stable release after that deletes what is listed here. Nothing is deleted before then. Turn it off in the feed settings to keep these builds.` : "Automatic cleanup is on by default and starts a week after a first dry-run notice; nothing is deleted before then."
+      day2 ? `Automatic cleanup ${r.prunePrereleases ? "turned on" : "turns on"} ${day2}: the first stable release after that deletes what is listed here. Nothing is deleted before then. Turn it off in the feed settings to keep these builds.` : "Automatic cleanup is on by default and starts a week after a first dry-run notice; nothing is deleted before then."
     );
   }
   for (const p of r.packages) {
@@ -45932,7 +46300,15 @@ async function runCommand(argv2, io) {
       return 2;
     }
     await applyContext(cmd.context, parsed.flags, { cwd, env: ci.env });
-    return await handler(parsed, { cwd, stdout, stderr, ci, g, term });
+    return await handler(parsed, {
+      cwd,
+      stdout,
+      stderr,
+      ci,
+      g,
+      term,
+      store: io.credentialStore ?? defaultStore
+    });
   } catch (err) {
     const message = isInternalError(err) ? internalMessage(err) : networkMessage(err);
     stderr.write(`${untrustedLines(message, ci.env)}
@@ -45944,6 +46320,9 @@ async function runCommand(argv2, io) {
   }
 }
 var HANDLERS = {
+  login: (p, rt) => cmdLogin(accountIo(p, rt)),
+  whoami: (p, rt) => cmdWhoami(accountIo(p, rt)),
+  logout: (p, rt) => cmdLogout(accountIo(p, rt)),
   init: (p, rt) => cmdInit(p, rt.cwd, rt.stdout),
   validate: (p, rt) => cmdValidate(p, rt.cwd, rt.stdout, rt.term(rt.stdout)),
   completion: (p, rt) => cmdCompletion(p, rt.stdout, rt.stderr),
@@ -45967,6 +46346,20 @@ var HANDLERS = {
     { cwd: rt.cwd, stdout: rt.stdout, stderr: rt.stderr, ...rt.ci }
   )
 };
+var osStore;
+var defaultStore = () => osStore ??= keyringStore();
+function accountIo(parsed, rt) {
+  return {
+    baseUrl: flagString(parsed, "base-url") ?? DEFAULT_BASE_URL,
+    json: flagBool(parsed, "json"),
+    env: rt.ci.env,
+    stdout: rt.stdout,
+    stderr: rt.stderr,
+    term: rt.term,
+    store: rt.store,
+    fetchImpl: rt.ci.fetchImpl
+  };
+}
 function unknownCommand(name, term, parent) {
   return failLine(
     parent ? `Unknown ${parent} command "${name.slice(parent.length + 1)}". Run pkey help ${parent} to see its commands.` : `Unknown command "${name}". Run pkey help to see every command.`,

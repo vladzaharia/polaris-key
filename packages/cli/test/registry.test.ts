@@ -113,9 +113,11 @@ describe("the command table", () => {
       "doctor",
       "feeds",
       "listing",
+      "logout",
       "migrate",
       "storefront",
       "validate",
+      "whoami",
     ]);
   });
 

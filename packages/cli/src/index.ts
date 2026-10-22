@@ -36,6 +36,8 @@ import {
   type DevInfo,
 } from "./devCommand.js";
 import { fixManifest, type FixMove } from "./fix.js";
+import { cmdLogin, cmdLogout, cmdWhoami, type AccountIo } from "./account.js";
+import { keyringStore, type CredentialStore } from "./credentials.js";
 import { applyContext, resolveContext, type PkeyContext } from "./context.js";
 import {
   checkRemote,
@@ -531,6 +533,8 @@ export interface CliIo {
   fetchImpl?: typeof fetch;
   /** The back-off seam (tests pass an instant one). */
   sleep?: (ms: number) => Promise<void>;
+  /** The credential store behind login, whoami and logout (tests pass `memoryStore()`). */
+  credentialStore?: () => Promise<CredentialStore>;
 }
 
 interface ParsedArgs {
@@ -657,7 +661,15 @@ async function runCommand(
       return 2;
     }
     await applyContext(cmd.context, parsed.flags, { cwd, env: ci.env });
-    return await handler(parsed, { cwd, stdout, stderr, ci, g, term });
+    return await handler(parsed, {
+      cwd,
+      stdout,
+      stderr,
+      ci,
+      g,
+      term,
+      store: io.credentialStore ?? defaultStore,
+    });
   } catch (err) {
     // An error's message may quote the server (a refusal, a URL it answered, a field it sent):
     // cleaned per line, so it draws no escape and no line of it reads as a workflow command.
@@ -681,6 +693,7 @@ interface Runtime {
   ci: CiIo & { env: CiEnv };
   g: TermFlags;
   term: (out: TermOut) => Term;
+  store: () => Promise<CredentialStore>;
 }
 
 type Handler = (parsed: ParsedArgs, rt: Runtime) => number | Promise<number>;
@@ -691,6 +704,9 @@ type Handler = (parsed: ParsedArgs, rt: Runtime) => number | Promise<number>;
  * listed without running, or run without being listed.
  */
 export const HANDLERS: Readonly<Record<string, Handler>> = {
+  login: (p, rt) => cmdLogin(accountIo(p, rt)),
+  whoami: (p, rt) => cmdWhoami(accountIo(p, rt)),
+  logout: (p, rt) => cmdLogout(accountIo(p, rt)),
   init: (p, rt) => cmdInit(p, rt.cwd, rt.stdout),
   validate: (p, rt) => cmdValidate(p, rt.cwd, rt.stdout, rt.term(rt.stdout)),
   completion: (p, rt) => cmdCompletion(p, rt.stdout, rt.stderr),
@@ -716,6 +732,24 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
       { cwd: rt.cwd, stdout: rt.stdout, stderr: rt.stderr, ...rt.ci },
     ),
 };
+
+/** The OS credential store, opened on first use and only by the account commands. */
+let osStore: Promise<CredentialStore> | undefined;
+const defaultStore = (): Promise<CredentialStore> =>
+  (osStore ??= keyringStore());
+
+function accountIo(parsed: ParsedArgs, rt: Runtime): AccountIo {
+  return {
+    baseUrl: flagString(parsed, "base-url") ?? DEFAULT_BASE_URL,
+    json: flagBool(parsed, "json"),
+    env: rt.ci.env,
+    stdout: rt.stdout,
+    stderr: rt.stderr,
+    term: rt.term,
+    store: rt.store,
+    fetchImpl: rt.ci.fetchImpl,
+  };
+}
 
 /**
  * `✗  Unknown command "bogus". Run pkey help to see every command.` and nothing else: the hundred

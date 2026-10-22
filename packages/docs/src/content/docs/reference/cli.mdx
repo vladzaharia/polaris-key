@@ -29,8 +29,51 @@ Every `pkey` command and flag. Run `pkey help` for the same table in your termin
 | `0` | Success. |
 | `1` | Failure: an invalid manifest, a refused request, a server or network error. The message says what to do next. |
 | `2` | Usage: an unknown command or subcommand, or a missing or misused flag. The message shows the command's usage. |
+| `4` | Refused: not signed in, no credential store, or a token the server will not accept. The message names the fix. |
 
 Errors go to stderr and `--json` results to stdout, so a pipe or a CI log keeps them apart. No command asks a question: with no terminal, or with `CI=true`, `pkey` never waits for input. A stack trace is never printed; set `PKEY_DEBUG=1` to add one to an unexpected error.
+
+## Account
+
+### `pkey login`
+
+Sign in to the console from this terminal.
+
+```text
+pkey login [--base-url url]
+```
+
+Not available yet. Signing in will keep a personal token in your operating system's credential store, bound to the origin that issued it.
+
+No `--json`: the answer is text.
+
+### `pkey whoami`
+
+Show who this terminal is signed in as.
+
+```text
+pkey whoami [--base-url url] [--json]
+```
+
+Prints the person, their roles and when the sign-in ends. The token is never printed. It reads the sign-in stored for the origin (--base-url), or PKEY_ADMIN_TOKEN when that is set to a personal token (pkeyp_).
+
+| Variable | Meaning |
+| --- | --- |
+| `PKEY_ADMIN_TOKEN` | A personal token (pkeyp_), used instead of the stored sign-in. |
+
+`--json`: one JSON line on stdout.
+
+### `pkey logout`
+
+Revoke this terminal's sign-in and remove it.
+
+```text
+pkey logout [--base-url url] [--json]
+```
+
+Revokes the stored token on the server, then removes it from the credential store. If the server cannot be reached the stored token is still removed, and pkey says it stays valid until it ends. Exit 1 then. It refuses (exit 4) while PKEY_ADMIN_TOKEN is set: pkey only ends a sign-in it stored.
+
+`--json`: one JSON line on stdout.
 
 ## Manifest
 
