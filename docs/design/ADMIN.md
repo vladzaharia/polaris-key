@@ -124,7 +124,7 @@ the table.
 | `listing`                     | `#/p/<slug>/distribution/listing`            | Distribution → Listing (`#/p/<slug>/distribution/listing`)                 | live             |
 | `app-store`                   | `#/p/<slug>/distribution/app-store`          | Distribution → App Store (`#/p/<slug>/distribution/app-store`)             | live             |
 | `access`                      | `#/p/<slug>/distribution/access`             | Distribution → Access (`#/p/<slug>/distribution/access`)                   | live             |
-| `package-feeds`               | `#/p/<slug>/distribution/feeds`              | Distribution → Package feeds (`#/p/<slug>/distribution/feeds`)             | live             |
+| `package-feeds`               | `#/p/<slug>/distribution/feeds`              | Distribution → Packages (`#/p/<slug>/distribution/feeds`)                  | live             |
 | `health`                      | `#/p/<slug>/distribution/health`             | Distribution → Health (`#/p/<slug>/distribution/health`)                   | live             |
 | `credentials`                 | `#/p/<slug>/distribution/credentials`        | Distribution → Channel credentials (`#/p/<slug>/distribution/credentials`) | live             |
 | `feed`                        | `#/p/<slug>/update/feed`                     | Update → Feed (`#/p/<slug>/update/feed`)                                   | live             |
