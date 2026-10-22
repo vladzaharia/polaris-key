@@ -862,7 +862,9 @@ describe("the ingest's cost is bounded for untrusted input (R10)", () => {
     // 32 outlet upserts + 1 removal sweep + 1 listing write (PX-W1: upsert, or delete when the
     // document declares none) + 1 transport delete + the (1 + 64) × 32 = 2,080 transport rows
     // P4-05 routes, 25 to an INSERT (four parameters each, inside D1's 100): 84.
-    expect(stmts).toHaveLength(32 + 1 + 1 + 1 + 84);
+    // A-27.4: plus the model sync, one guarded UPDATE per mapped field (7 app + 2 locale fields;
+    // no INSERT of the model rows while the document declares no listing): 9.
+    expect(stmts).toHaveLength(32 + 1 + 1 + 9 + 1 + 84);
     const inserts = stmts.filter((s) =>
       s.sql.includes("INSERT INTO dist_transports"),
     );

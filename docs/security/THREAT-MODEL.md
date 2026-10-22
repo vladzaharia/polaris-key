@@ -1054,6 +1054,34 @@ into `dist_listing_assets`. A new opt-in CI scope, `distribution:listing`, buys 
   reaches a store until an operator accepts it. The images are listing art, so the token holds
   nothing secret.
 
+### The ingest writes the listing model (A-27.4)
+
+**What arrived.** A repo push (link or resync, Distribution on) now also writes the root
+`.pkey/distribution` listing into the shared listing model (`dist_listings`,
+`dist_listing_locales`), not only the `dist_listing` blob. The writer is
+`manifestModelStatements` (`listing/manifestSync.ts`); tests: `test/listingIngest.test.ts`.
+
+- **Which fields.** Only the mapped ones: `name`, `developerName`, `category`, `tint`,
+  `contactEmail`, `urls.website`, `urls.support`, and the default locale's `subtitle` and
+  `description`. No other model column, no override, no asset and no release note is touched.
+- **A push changes a model field only where the manifest owns it.** Each write is one UPDATE
+  whose WHERE clause holds the ownership test, so D1 evaluates it at write time: the field is
+  empty, or its per-field provenance is `manifest`. A value an operator typed (no provenance
+  key) or an import brought in (`app-store`, `play`, `ms-store`, `godot`, `product`) never
+  matches. An operator's edit or an import landing between the ingest's plan and its batch is
+  seen by the UPDATE, not overwritten, because nothing is read first.
+- **Rows with no provenance map** (written before migration 0069) are the operator's: only an
+  empty field of an `admin` row is filled; an `import` row is left alone.
+- **Dropped fields clear only what the manifest wrote.** A field the manifest no longer declares
+  is cleared where its provenance is `manifest`, and its provenance key is removed with it.
+- **Bounded text.** A value the model refuses (over its limit, not https) is skipped and the
+  stored value stays; it is never cut. The text is operator-typed-equivalent data that now
+  reaches customers and discovery; `parsePresentation` still bounds discovery's copy.
+- **Distribution off writes nothing.** The model is written only in the contribution that runs
+  while Distribution is on.
+- **Residual.** A repo writer can set these fields while they are empty or manifest-owned, and
+  an operator who wants a field theirs types it once (that removes the manifest's ownership).
+
 ### The public download page (P2b-06)
 
 **What arrived.** A public, cookie-free download page per product (`services/distribution/
