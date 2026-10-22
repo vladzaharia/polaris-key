@@ -89,8 +89,10 @@ describe("the canvas and the masthead (B4)", () => {
   });
 
   it("draws the 48 px tile aria-hidden on a landing page, and none on a dense data page", async () => {
-    boot("#/p/djdl", { services: ALL_ON });
-    await screen.findByRole("heading", { level: 1 });
+    // Overview's hero is its own masthead (it draws the logo and the title itself), so the
+    // landing page here is Integration.
+    boot("#/p/djdl/integration", { services: ALL_ON });
+    await screen.findByRole("heading", { level: 1, name: "Integration" });
     const tile = document.querySelector("[data-masthead-tile]");
     expect(tile?.getAttribute("aria-hidden")).toBe("true");
     expect(tile?.className).toContain("lg:inline-flex");

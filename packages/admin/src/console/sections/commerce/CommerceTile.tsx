@@ -1,17 +1,21 @@
 import * as React from "react";
 import { r } from "../../routes.js";
-import { Line, TileFrame } from "../core/components/TileFrame.js";
+import { FeatureCard } from "../core/components/TileFrame.js";
 
-/** Commerce's tile on the Overview (CM-29); CM-23 adds the offers and purchases counts. */
-export function CommerceTile({ slug }: { slug: string }): React.ReactElement {
+/** Commerce's card on the Overview (CM-29); CM-23 adds the offers and purchases counts. */
+export function CommerceTile({
+  slug,
+  attention = 0,
+}: {
+  slug: string;
+  attention?: number;
+}): React.ReactElement {
   return (
-    <TileFrame
+    <FeatureCard
       service="commerce"
       href={r.commerceOverview(slug)}
-      linkLabel="Overview"
-      loading={false}
-    >
-      <Line>Store purchases that give licenses and add-ons.</Line>
-    </TileFrame>
+      attention={attention}
+      foot="Store purchases that give licenses and add-ons"
+    />
   );
 }

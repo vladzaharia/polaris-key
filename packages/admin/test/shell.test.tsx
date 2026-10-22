@@ -472,9 +472,9 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
     await ready();
     // Overview's own reads land first: its first visit records what it saw for its one-time
     // moments (MO-11). The sidebar is what this test watches.
-    await screen.findByText("0 keys");
-    await screen.findByText("No releases");
-    await screen.findByText(/of 1 feature verified/);
+    await screen.findByText(/0 settings/);
+    await screen.findByText(/No releases yet/);
+    await screen.findByRole("list", { name: "Integration steps" });
     const before = { ...window.localStorage };
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     await expand("Managed config");

@@ -3,11 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api.js";
 import { formatCount } from "../../../../lib/format.js";
 import { ACCESS_LABELS } from "../../../../lib/labels.js";
-import { StatusPill } from "../../../../ui/StatusPill.js";
 import { qk } from "../../../data/queries.js";
 import { useReleaseHealth } from "../../release/data.js";
 import { r } from "../../../routes.js";
-import { Big, Line, TileFrame } from "./TileFrame.js";
+import { FeatureCard } from "./TileFrame.js";
 
 /** The product's newest app release that has not been yanked. */
 export function latestAppRelease<
@@ -24,17 +23,21 @@ export function latestAppRelease<
 }
 
 /**
- * Ship builds is one feature and one tile (BRAND §14.4), like the sidebar's one group: the version
- * on stable, the rollouts live (Distribution on) and the updater's state (Update on) as its lines.
+ * Ship builds is one feature and one card (BRAND §14.4), like the sidebar's one group: the version
+ * on stable (else the newest release) as its number, the rollouts live (Distribution on) and the
+ * updater's state (Update on) as its foot.
  */
 export function ShipBuildsTile({
   slug,
   distribution,
   update,
+  attention = 0,
 }: {
   slug: string;
   distribution: boolean;
   update: boolean;
+  /** Items the product's attention read holds for this feature. */
+  attention?: number;
 }): React.ReactElement {
   const store = useQuery({
     queryKey: qk.releases(slug),
@@ -58,50 +61,33 @@ export function ShipBuildsTile({
         ?.version
     : undefined;
   const list = rollouts.data?.rollouts ?? [];
-  const count = (s: string) => list.filter((x) => x.state === s).length;
-  const live = count("active");
+  const live = list.filter((x) => x.state === "active").length;
   const failed = [store, rollouts, feed].find((q) => q.isError);
+  const version = stableVersion ?? latest?.version;
+  const foot = [
+    stableVersion && stableVersion !== latest?.version && latest
+      ? `${latest.version} newest`
+      : null,
+    rollouts.data
+      ? `${formatCount(live)} ${live === 1 ? "rollout" : "rollouts"} live`
+      : null,
+    feed.data
+      ? `In-app updates: ${ACCESS_LABELS[feed.data.metadataAccess] ?? feed.data.metadataAccess}`
+      : null,
+  ].filter((x): x is string => x !== null);
   return (
-    <TileFrame
+    <FeatureCard
       service="release"
-      badge={
-        health.data && !health.data.healthy ? (
-          <StatusPill tone="warning" size="sm">
-            Needs setup
-          </StatusPill>
-        ) : undefined
-      }
       href={r.releases(slug)}
-      linkLabel="Releases"
+      attention={attention + (health.data && !health.data.healthy ? 1 : 0)}
       loading={store.isPending}
       error={failed?.error}
       onRetry={() => void failed?.refetch()}
-    >
-      <Big>
-        {latest ? (
-          <span className="font-mono">{latest.version}</span>
-        ) : (
-          "No releases"
-        )}
-      </Big>
-      {stableVersion && stableVersion !== latest?.version ? (
-        <Line>
-          stable → <span className="font-mono">{stableVersion}</span>
-        </Line>
-      ) : null}
-      {rollouts.data ? (
-        <Line>
-          {formatCount(live)} {live === 1 ? "rollout" : "rollouts"} live ·{" "}
-          {formatCount(count("paused"))} paused · {formatCount(count("halted"))}{" "}
-          halted
-        </Line>
-      ) : null}
-      {feed.data ? (
-        <Line>
-          In-app updates:{" "}
-          {ACCESS_LABELS[feed.data.metadataAccess] ?? feed.data.metadataAccess}
-        </Line>
-      ) : null}
-    </TileFrame>
+      number={version}
+      unit={stableVersion ? "stable" : undefined}
+      foot={
+        (version ? foot : ["No releases yet", ...foot]).join(" · ") || undefined
+      }
+    />
   );
 }
