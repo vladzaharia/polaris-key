@@ -31,6 +31,10 @@ export const FLOW_TTL_SECONDS = 600;
 /** The poll cadence advertised by `/identity/auth/device/start`, enforced server-side (R8-02). */
 export const DEVICE_POLL_INTERVAL_SECONDS = 2;
 
+/** I-37d: the Worker's retries of a device-code completion after a transient failure, as the
+ *  seconds to wait before each. The failure after the last one ends the flow. */
+export const DEVICE_MINT_RETRY_SECONDS = [2, 4, 8, 16] as const;
+
 export interface ResolvedOidcConfig {
   row: OidcConfigRow;
   issuer: string;
@@ -49,6 +53,10 @@ export interface FlowRecord {
   deviceId?: string;
   licenseId?: string;
   error?: string;
+  /** I-37d: transient failures of the device-code completion so far. Only the server writes it. */
+  mintFailures?: number;
+  /** I-37d: the earliest `now` (seconds) the next attempt may run; polls before it answer 503. */
+  mintRetryAt?: number;
   /** Stamped when the human confirms the device-code flow. A device flow may only mint after
    *  this is set — the poll must not be able to skip the confirmation (R8-01). */
   confirmedAt?: number;

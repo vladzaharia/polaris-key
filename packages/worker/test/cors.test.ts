@@ -27,6 +27,11 @@ import {
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
+import { artefacts } from "./singleUseMock.js";
+import {
+  deviceFlowKey,
+  flowKey,
+} from "../src/services/identity/productOidc/config.js";
 
 const SLUG = "djdl";
 const LISTED = "https://play.djdl.example";
@@ -464,6 +469,46 @@ describe("responses on covered routes", () => {
     );
     expect(pre.status).toBe(204);
     expect(acHeaders(pre)).toEqual({});
+  });
+
+  it("the device-code poll's 503 (I-37d) carries the listed origin's CORS headers", async () => {
+    await artefacts(env).put(
+      await flowKey(env, SLUG, "st"),
+      JSON.stringify({
+        verifier: "v",
+        nonce: "n",
+        redirectUri: "r",
+        deviceId: "dev-1",
+        licenseId: "lic-1",
+        confirmedAt: NOW,
+        approvedAt: NOW,
+        mintFailures: 1,
+        // dispatch reads the real clock
+        mintRetryAt: Math.floor(Date.now() / 1000) + 600,
+      }),
+    );
+    await artefacts(env).put(
+      await deviceFlowKey(env, SLUG, "dc"),
+      JSON.stringify({
+        state: "st",
+        deviceId: "dev-1",
+        userCode: "BCDF-GHJK",
+        authorizeUrl: "https://id.example/authorize",
+        confirmedAt: NOW,
+      }),
+    );
+    const res = await dispatch(
+      new Request(`${BASE}/${SLUG}/identity/auth/device/poll`, {
+        method: "POST",
+        headers: { Origin: LISTED, "content-type": "application/json" },
+        body: JSON.stringify({ deviceCode: "dc", deviceId: "dev-1" }),
+      }) as unknown as Request,
+      env,
+      db,
+    );
+    expect(res.status).toBe(503);
+    expect(res.headers.get("retry-after")).toBeTruthy();
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe(LISTED);
   });
 
   it("discovery and JWKS answer the listed origin, and survive the secureResponse backstop", async () => {

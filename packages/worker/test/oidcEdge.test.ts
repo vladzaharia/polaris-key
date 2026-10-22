@@ -252,6 +252,7 @@ async function pollState(
   product: Product,
   state: string,
   device = "dev-1",
+  now = NOW,
 ): Promise<Response> {
   const deviceCode = `dc-${state}`;
   await artefacts(env).put(
@@ -276,7 +277,7 @@ async function pollState(
     env,
     db,
     product,
-    NOW,
+    now,
   );
 }
 
@@ -550,6 +551,264 @@ describe("poll states (pollAuthFlow, through /device/poll)", () => {
       NOW,
     );
     expect(res.status).toBe(401);
+  });
+});
+
+/**
+ * I-37d: a transient failure after approval is retried, a refusal is final.
+ * WIRE-CONTRACT-V4 §12.10 rules 5-8.
+ */
+describe("the device-code completion after approval retries (I-37d)", () => {
+  let db: SqliteDb;
+  let env: Env;
+  let product: Product;
+  let licenseId: string;
+  let statements = 0;
+  /** The next `nth` statement matching `re` rejects once, as a D1 error; counts every statement. */
+  let fault: { re: RegExp; skip: number } | null = null;
+
+  const trap = (sqls: string[]): void => {
+    statements += sqls.length;
+    if (fault && sqls.some((q) => fault!.re.test(q))) {
+      if (fault.skip-- > 0) return;
+      fault = null;
+      throw new Error("D1_ERROR: unavailable");
+    }
+  };
+
+  beforeEach(async () => {
+    db = makeTestDb();
+    env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    await seedOidc(db);
+    product = (await loadProduct(env, db, "djdl"))!;
+    const r = await activateFromIdentity(db, product, identity(), NOW);
+    if (!("licenseId" in r)) throw new Error("expected license");
+    licenseId = r.licenseId;
+    statements = 0;
+    fault = null;
+    for (const m of ["all", "first", "run", "runChanges"] as const) {
+      const orig = db[m].bind(db) as (...a: unknown[]) => Promise<unknown>;
+      (db as unknown as Record<string, unknown>)[m] = (
+        sql: string,
+        ...rest: unknown[]
+      ) => {
+        trap([sql]);
+        return orig(sql, ...rest);
+      };
+    }
+    for (const m of ["batch", "batchChanges"] as const) {
+      const orig = db[m]!.bind(db) as (...a: unknown[]) => Promise<unknown>;
+      (db as unknown as Record<string, unknown>)[m] = (
+        list: { sql: string }[],
+      ) => {
+        trap(list.map((x) => x.sql));
+        return orig(list);
+      };
+    }
+  });
+
+  const putFlow = async (
+    state: string,
+    flow: Record<string, unknown> = {},
+  ): Promise<void> => {
+    await artefacts(env).put(
+      await flowKey(env, "djdl", state),
+      JSON.stringify({
+        verifier: "v",
+        nonce: "n",
+        redirectUri: "r",
+        deviceId: "dev-1",
+        confirmedAt: NOW,
+        approvedAt: NOW,
+        licenseId,
+        ...flow,
+      }),
+    );
+  };
+  const poll = (state: string, at: number) =>
+    pollState(env, db, product, state, "dev-1", at);
+  const body = async (res: Response) =>
+    (await res.json()) as { status?: string; error?: string; token?: string };
+  const storedFlow = async (state: string) => {
+    const raw = await artefacts(env).get(await flowKey(env, "djdl", state));
+    return raw
+      ? (JSON.parse(raw) as {
+          licenseId?: string;
+          mintFailures?: number;
+          mintRetryAt?: number;
+        })
+      : null;
+  };
+  const refusals = async () =>
+    (
+      await db.first<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM license_refusals WHERE product = 'djdl'",
+      )
+    )?.n ?? 0;
+
+  it("a transient failure answers 503 unavailable with Retry-After, keeps the licence, and the next attempt after the backoff is ready", async () => {
+    await putFlow("t1");
+    fault = { re: /INSERT INTO devices/, skip: 0 };
+    const res = await poll("t1", NOW);
+    expect(res.status).toBe(503);
+    expect(res.headers.get("retry-after")).toBe("2");
+    expect(await body(res)).toEqual({
+      error: "unavailable",
+      message: "try again",
+    });
+    const kept = await storedFlow("t1");
+    expect(kept).toMatchObject({
+      licenseId,
+      mintFailures: 1,
+      mintRetryAt: NOW + 2,
+    });
+    const ok = await poll("t1", NOW + 2);
+    expect(ok.status).toBe(200);
+    const b = await body(ok);
+    expect(b.status).toBe("ready");
+    expect(b.token?.startsWith("pkeyt_")).toBe(true);
+    expect(await storedFlow("t1")).toBeNull();
+  });
+
+  it("a fault after the seat claim retries without taking a second seat", async () => {
+    await db.run(
+      "UPDATE tiers SET policy_device_limit = ? WHERE product = ? AND id = ?",
+      1,
+      "djdl",
+      "pro",
+    );
+    await putFlow("t2");
+    // The seat claim is the first `devices` insert; the binding's own write is the second.
+    fault = { re: /INSERT INTO devices/, skip: 1 };
+    const first = await poll("t2", NOW);
+    expect(first.status).toBe(503);
+    const ok = await body(await poll("t2", NOW + 2));
+    expect(ok.status).toBe("ready");
+    const n = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM devices WHERE product = 'djdl' AND license_id = ? AND status = 'authorized'",
+      licenseId,
+    );
+    expect(n?.n).toBe(1);
+  });
+
+  it("a poll inside the backoff answers 503 with the seconds left and runs no D1 statement", async () => {
+    await putFlow("t3", { mintFailures: 2, mintRetryAt: NOW + 4 });
+    statements = 0;
+    const res = await poll("t3", NOW + 1);
+    expect(res.status).toBe(503);
+    expect(res.headers.get("retry-after")).toBe("3");
+    expect(statements).toBe(0);
+    expect((await storedFlow("t3"))?.mintFailures).toBe(2);
+  });
+
+  it("the backoff doubles: 2, 4, 8 and 16 s, then the fifth failure is the bare error and the next poll is timeout", async () => {
+    await putFlow("t4");
+    let at = NOW;
+    for (const wait of [2, 4, 8, 16]) {
+      fault = { re: /INSERT INTO devices/, skip: 0 };
+      const res = await poll("t4", at);
+      expect(res.status).toBe(503);
+      expect(res.headers.get("retry-after")).toBe(String(wait));
+      // A poll one second early waits.
+      expect((await poll("t4", at + wait - 1)).status).toBe(503);
+      at += wait;
+    }
+    fault = { re: /INSERT INTO devices/, skip: 0 };
+    const last = await poll("t4", at);
+    expect(last.status).toBe(200);
+    expect(await body(last)).toEqual({ status: "error" });
+    expect(await storedFlow("t4")).toBeNull();
+    expect(await body(await poll("t4", at + 2))).toEqual({
+      status: "timeout",
+    });
+  });
+
+  it("a refused mint (device_limit) answers the bare error once, writes one refusals row, then timeout", async () => {
+    await db.run(
+      "UPDATE tiers SET policy_device_limit = ? WHERE product = ? AND id = ?",
+      1,
+      "djdl",
+      "pro",
+    );
+    await authorizeAndMint(env, db, product, licenseId, "dev-other", NOW);
+    const before = await refusals();
+    await putFlow("t5");
+    const res = await poll("t5", NOW);
+    expect(res.status).toBe(200);
+    expect(await body(res)).toEqual({ status: "error" });
+    expect(await storedFlow("t5")).toBeNull();
+    expect(await body(await poll("t5", NOW + 2))).toEqual({
+      status: "timeout",
+    });
+    expect((await refusals()) - before).toBeLessThanOrEqual(1);
+  });
+
+  it("a deleted licence is a refusal too: the bare error, then timeout", async () => {
+    await putFlow("t6", { licenseId: "lic-gone" });
+    const res = await poll("t6", NOW);
+    expect(res.status).toBe(200);
+    expect(await body(res)).toEqual({ status: "error" });
+    expect(await body(await poll("t6", NOW + 2))).toEqual({
+      status: "timeout",
+    });
+  });
+
+  it("a put-back that cannot be written answers the bare error, not a 503", async () => {
+    await putFlow("t7");
+    fault = { re: /INSERT INTO devices/, skip: 0 };
+    const ns = singleUseMock(env);
+    const realGet = ns.get.bind(ns);
+    ns.get = (id) => {
+      const h = realGet(id);
+      return {
+        fetch: (input, init) =>
+          /"op":"put".*mintFailures/.test(String(init?.body))
+            ? Promise.reject(new Error("down"))
+            : h.fetch(input, init),
+      };
+    };
+    const res = await poll("t7", NOW);
+    expect(res.status).toBe(200);
+    expect(await body(res)).toEqual({ status: "error" });
+  });
+
+  it("a throw in N9's account read answers 503 and is retried", async () => {
+    await putFlow("t8", { identity: identity(), licenseId });
+    fault = { re: /FROM oidc_config/, skip: 0 };
+    const res = await poll("t8", NOW);
+    expect(res.status).toBe(503);
+    expect(res.headers.get("retry-after")).toBe("2");
+    expect((await storedFlow("t8"))?.mintFailures).toBe(1);
+  });
+
+  it("a throw in the activation answers 503, keeps the flow, and the retry activates", async () => {
+    await putFlow("t9", {
+      licenseId: undefined,
+      identity: identity({ sub: "new-sub" }),
+    });
+    fault = { re: /INSERT INTO licenses/, skip: 0 };
+    const res = await poll("t9", NOW);
+    expect(res.status).toBe(503);
+    const ok = await body(await poll("t9", NOW + 2));
+    expect(ok.status).toBe("ready");
+  });
+
+  it("the 600 s lapse still ends a flow in its backoff: the device code is gone, so timeout", async () => {
+    await putFlow("t10", { mintFailures: 3, mintRetryAt: NOW + 8 });
+    // The device record (the poll's first read) lapsed with the code: nothing is attempted.
+    const res = await handleAuthDevicePoll(
+      new Request("https://key.plrs.im/djdl/identity/auth/device/poll", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ deviceCode: "lapsed", deviceId: "dev-1" }),
+      }) as unknown as Request,
+      env,
+      db,
+      product,
+      NOW + 600,
+    );
+    expect(await body(res)).toEqual({ status: "timeout" });
   });
 });
 
