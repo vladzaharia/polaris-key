@@ -26,11 +26,13 @@ import { focusWhenReady } from "../../../shell/palette/focus.js";
 import {
   effectivePolicy,
   useHasLicenses,
+  useInvitations,
   useManualChannels,
   useTiers,
 } from "../components/shared.js";
 import { ErrorBlock } from "../components/InlineFailure.js";
 import { sendKeyRefusal } from "../components/SendKeyDialog.js";
+import { inviteRefusal } from "../components/inviteCopy.js";
 import { DoneBody, doneTitle, needsKeep, type Result } from "./DoneStep.js";
 import {
   EMPTY,
@@ -41,6 +43,7 @@ import {
   deliverySkipped,
   dirty as isDirty,
   firstInvalid,
+  invitesPerson,
   isBatch,
   loadDraft,
   saveDraft,
@@ -79,6 +82,8 @@ export function NewLicenseWizard({
   const manual = useManualChannels(slug);
   const product = useProduct(slug).data;
   const hasLicenses = useHasLicenses(slug);
+  const invitations = useInvitations(slug);
+  const canInvite = invitations?.invitations === true;
   const tiers = React.useMemo(() => tiersQ.data?.tiers ?? [], [tiersQ.data]);
   // A 404 means the service has nothing to give: not a failure.
   const tiersError =
@@ -86,7 +91,10 @@ export function NewLicenseWizard({
       ? null
       : tiersQ.error;
 
-  const [draft, setDraft] = React.useState<Draft>(() => loadDraft(slug));
+  const [draft, setDraft] = React.useState<Draft>(() => ({
+    ...loadDraft(slug),
+    invites: canInvite,
+  }));
   const [errors, setErrors] = React.useState<Errors>({});
   const [moreOpen, setMoreOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
@@ -108,7 +116,7 @@ export function NewLicenseWizard({
   const wasOpen = React.useRef(open);
   React.useEffect(() => {
     if (open && !wasOpen.current) {
-      setDraft(loadDraft(slug));
+      setDraft({ ...loadDraft(slug), invites: canInvite });
       setErrors({});
       setSubmitError(null);
       setResult(null);
@@ -118,6 +126,13 @@ export function NewLicenseWizard({
     if (!open && wasOpen.current) focusPageTitle();
     wasOpen.current = open;
   }, [open, slug]);
+  // Where invitations work, "Someone specific" is invited by default (L5). A server fact: set here,
+  // never stored (`saveDraft` leaves it out).
+  React.useEffect(() => {
+    setDraft((d) =>
+      d.invites === canInvite ? d : { ...d, invites: canInvite },
+    );
+  }, [canInvite]);
   React.useEffect(() => {
     if (open && step !== "done" && !result) saveDraft(slug, draft);
   }, [open, step, result, slug, draft]);
@@ -254,18 +269,38 @@ export function NewLicenseWizard({
         });
       } else {
         const res = await mutate("createLicense", slug, createBody(draft));
+        const invited = invitesPerson(draft);
         const failed = res.delivered?.email === "failed";
         const delivery = deliveryOf(draft);
+        const key = res.key ?? null;
         setResult({
           kind: "single",
           id: res.licenseId,
-          key: res.key,
+          key,
+          invite: invited
+            ? {
+                outcome: res.delivered?.invite ?? "failed",
+                ...(res.delivered?.reason
+                  ? { reason: res.delivered.reason }
+                  : {}),
+              }
+            : null,
           email: draft.who === "person" ? draft.email.trim() : null,
-          // "Email the key" alone never shows it, unless the email did not go out.
-          showKey: delivery !== "email" || failed,
-          // Only then is this screen the one copy: Show it once, or an email that failed.
-          onlyCopy: delivery === "show" || failed,
-          delivered: res.delivered ?? null,
+          // "Email the key" alone never shows it, unless the email did not go out. An invitation
+          // shows a key only when one was asked for, and never emailed it.
+          showKey: key !== null && (invited || delivery !== "email" || failed),
+          // Only then is this screen the one copy: Show it once, an email that failed, or a key
+          // no email carries.
+          onlyCopy: key !== null && (invited || delivery === "show" || failed),
+          delivered:
+            !invited && res.delivered?.email
+              ? {
+                  email: res.delivered.email,
+                  ...(res.delivered.reason
+                    ? { reason: res.delivered.reason }
+                    : {}),
+                }
+              : null,
           first,
           summary,
         });
@@ -280,10 +315,19 @@ export function NewLicenseWizard({
       const field = fields?.find((f) => f in FIELD_STEP);
       if (field) {
         // A refused value goes back to its own step, in words.
+        const reason =
+          err instanceof ApiError && field === "delivery" ? err.reason : null;
         const words =
           field === "tier"
             ? "That tier no longer exists. Choose another."
-            : "This value isn't accepted. Check it and try again.";
+            : reason === "identity_off"
+              ? "Sign-in is off for this product, so it can't send invitations. Choose another delivery."
+              : reason === "auto_link_off"
+                ? "This product's sign-in doesn't add licenses by email, so an invitation can't reach it. Choose another delivery."
+                : "This value isn't accepted. Check it and try again.";
+        // The product can't invite after all: stop offering it (the list is stale).
+        if (reason === "identity_off" || reason === "auto_link_off")
+          setDraft((d) => ({ ...d, invites: false, delivery: null }));
         if (field === "tier") void tiersQ.refetch();
         announce(words);
         goStep(FIELD_STEP[field]!);
@@ -312,8 +356,24 @@ export function NewLicenseWizard({
     setRetrying(true);
     setRetryError(null);
     try {
+      if (result.invite) {
+        // An invitation again: nothing is minted and the key on screen is untouched.
+        const res = await mutate("sendLicenseInvite", slug, result.id);
+        const sent = res.delivered.invite === "sent";
+        setResult({
+          ...result,
+          invite: {
+            outcome: res.delivered.invite,
+            ...(res.delivered.reason ? { reason: res.delivered.reason } : {}),
+          },
+        });
+        if (sent) announce(`Invitation sent to ${result.email}.`);
+        focusHeading();
+        return;
+      }
       // A retry never revokes: the key on screen may already be copied.
       const res = await mutate("sendLicenseKey", slug, result.id, false);
+      if (!res.key) return;
       if (res.delivered.email === "sent") {
         setResult({
           ...result,
@@ -345,7 +405,9 @@ export function NewLicenseWizard({
   const retryWait = Math.max(0, Math.ceil((retryUntil - Date.now()) / 1000));
   const refusal =
     retryError && result?.kind === "single"
-      ? sendKeyRefusal(retryError, result.email ?? "", retryWait || 600)
+      ? result.invite
+        ? inviteRefusal(retryError, result.email ?? "", retryWait || 600)
+        : sendKeyRefusal(retryError, result.email ?? "", retryWait || 600)
       : null;
 
   // ── Footer and body per step ─────────────────────────────────────────────────────────────────
@@ -380,7 +442,9 @@ export function NewLicenseWizard({
     title = doneTitle(result);
     why = result.summary;
     titleIcon =
-      result.kind === "single" && result.delivered?.email === "failed" ? (
+      result.kind === "single" &&
+      (result.delivered?.email === "failed" ||
+        result.invite?.outcome === "failed") ? (
         <TriangleAlert aria-hidden className="size-5 shrink-0 text-warning" />
       ) : (
         <CheckCircle2 aria-hidden className="size-5 shrink-0 text-success" />
@@ -533,9 +597,15 @@ export function NewLicenseWizard({
         />,
       );
     } else if (at === "delivery") {
-      why = "The key is shown here only once either way.";
+      why = invitesPerson(draft)
+        ? "An invitation has no key. A key you ask for is shown here only once."
+        : "The key is shown here only once either way.";
       body = form(
-        <DeliveryStep {...common} productName={product?.name ?? slug} />,
+        <DeliveryStep
+          {...common}
+          productName={product?.name ?? slug}
+          invitationsOff={invitations?.off ?? null}
+        />,
       );
     } else {
       body = (

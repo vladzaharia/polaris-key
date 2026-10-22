@@ -405,7 +405,19 @@ export async function handleLicenses(
             },
             now,
           );
-      return adminJson({ licenses, nextCursor: page.nextCursor, ...totals });
+      // LX-27c.4 (L15): whether an invitation can reach a licence of this product, and why not,
+      // on the first page (the console's wizard and record read this one fact).
+      const invitationsOff = after ? undefined : await inviteRefusal(ctx);
+      return adminJson({
+        licenses,
+        nextCursor: page.nextCursor,
+        ...totals,
+        ...(invitationsOff === undefined
+          ? {}
+          : {
+              holders: { invitations: invitationsOff === null, invitationsOff },
+            }),
+      });
     }
     if (req.method === "POST") {
       const body = await readBody(req);

@@ -19,6 +19,7 @@ import {
   ADA,
   DEFAULT_TIER,
   EDU,
+  LICENSES,
   PRO,
   axe,
   bootLicense,
@@ -26,6 +27,11 @@ import {
   writes,
 } from "./licenseFixture.js";
 import { endOfLocalDay } from "../src/lib/format.js";
+import {
+  deliveriesFor,
+  EMPTY,
+  loadDraft,
+} from "../src/console/sections/license/wizard/draft.js";
 
 beforeEach(() => {
   resetConsole();
@@ -540,6 +546,221 @@ describe("New license wizard", () => {
     await press(dialog, "Continue");
     await within(dialog).findByText("Polaris Key will");
     expect((await axe(document.body)).violations.map((v) => v.id)).toEqual([]);
+  });
+});
+
+/** A product with Identity on and auto-link on: the list's first page says invitations work. */
+const INVITING = {
+  [`${API}/license/licenses`]: {
+    licenses: LICENSES,
+    holders: { invitations: true, invitationsOff: null },
+  },
+};
+
+const refusal = (reason: string) =>
+  new Response(
+    JSON.stringify({ error: "bad_request", fields: ["delivery"], reason }),
+    { status: 422, headers: { "content-type": "application/json" } },
+  );
+
+describe("New license wizard: the invitation (LX-27c.4)", () => {
+  it("offers an invitation first only where Identity and auto-link are on", () => {
+    const person = { ...EMPTY, who: "person" as const };
+    expect(deliveriesFor({ ...person, invites: false })).toEqual([
+      "email-show",
+      "email",
+      "show",
+    ]);
+    expect(deliveriesFor({ ...person, invites: true })).toEqual([
+      "invite",
+      "email-show",
+      "show",
+    ]);
+    expect(deliveriesFor({ ...EMPTY, who: "anyone", invites: true })).toEqual([
+      "show",
+    ]);
+  });
+
+  it("defaults to an invitation and sends key: false unless the box is ticked", async () => {
+    const { log, dialog } = await open({
+      ...INVITING,
+      [`POST ${API}/license/licenses`]: {
+        licenseId: "lic_new",
+        delivered: { invite: "sent" },
+        license: ADA,
+      },
+    });
+    await choose(dialog, /^Pro/);
+    await press(dialog, "Continue");
+    await userEvent.type(within(dialog).getByLabelText(/^Email/), "g@x.io");
+    await press(dialog, "Continue");
+    await press(dialog, "Continue");
+    expect(
+      within(dialog).getByRole("radio", { name: /Email an invitation/ }),
+    ).toHaveProperty("ariaChecked", "true");
+    expect(
+      (
+        within(dialog).getByRole("checkbox", {
+          name: /Also create a key/,
+        }) as HTMLInputElement
+      ).checked,
+    ).toBe(false);
+    const preview = within(dialog).getByLabelText("Email preview");
+    expect(
+      within(preview).getAllByText(/Your .* license is ready/).length,
+    ).toBeGreaterThan(0);
+    expect(within(preview).queryByText(/pkey_/)).toBeNull();
+    await press(dialog, "Continue");
+    expect(within(dialog).getByText("Email an invitation")).toBeTruthy();
+    await press(dialog, "Create and invite");
+    await waitFor(() =>
+      expect(heading(dialog).textContent).toContain("Invitation sent"),
+    );
+    expect(GOT(log, "/license/licenses")[0]!.body).toEqual({
+      email: "g@x.io",
+      tier: "pro",
+      delivery: { invite: true },
+      key: false,
+    });
+    expect(within(dialog).getByText("Invitation sent to g@x.io.")).toBeTruthy();
+    // No key, so nothing to keep: Done is open.
+    expect(within(dialog).queryByText("License key")).toBeNull();
+    expect(primary(dialog, "Done").getAttribute("aria-disabled")).toBeNull();
+  });
+
+  it("Also create a key shows it once, gates Done, and never emails it", async () => {
+    const { log, dialog } = await open({
+      ...INVITING,
+      [`POST ${API}/license/licenses`]: {
+        licenseId: "lic_new",
+        key: "PK-NEWKEY-ONESHOT",
+        delivered: { invite: "sent" },
+        license: ADA,
+      },
+    });
+    await choose(dialog, /^Pro/);
+    await press(dialog, "Continue");
+    await userEvent.type(within(dialog).getByLabelText(/^Email/), "g@x.io");
+    await press(dialog, "Continue");
+    await press(dialog, "Continue");
+    await userEvent.click(
+      within(dialog).getByRole("checkbox", { name: /Also create a key/ }),
+    );
+    await press(dialog, "Continue");
+    await press(dialog, "Create and invite");
+    expect(await within(dialog).findByText("PK-NEWKEY-ONESHOT")).toBeTruthy();
+    expect(GOT(log, "/license/licenses")[0]!.body).toEqual({
+      email: "g@x.io",
+      tier: "pro",
+      delivery: { invite: true },
+    });
+    expect(within(dialog).getByText(/It isn't in the invitation/)).toBeTruthy();
+    expect(primary(dialog, "Done").getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(within(dialog).getByLabelText(/I've stored it/));
+    expect(primary(dialog, "Done").getAttribute("aria-disabled")).toBeNull();
+  });
+
+  it("says why a send failed and tries again through send-invite", async () => {
+    const { log, dialog } = await open({
+      ...INVITING,
+      [`POST ${API}/license/licenses`]: {
+        licenseId: "lic_new",
+        delivered: { invite: "failed", reason: "provider_refused" },
+        license: ADA,
+      },
+      [`POST ${API}/license/licenses/lic_new/send-invite`]: {
+        delivered: { invite: "sent" },
+      },
+    });
+    await choose(dialog, /^Pro/);
+    await press(dialog, "Continue");
+    await userEvent.type(within(dialog).getByLabelText(/^Email/), "g@x.io");
+    await press(dialog, "Continue");
+    await press(dialog, "Continue");
+    await press(dialog, "Continue");
+    await press(dialog, "Create and invite");
+    await waitFor(() =>
+      expect(heading(dialog).textContent).toContain("Invitation not sent"),
+    );
+    expect(
+      within(dialog).getByText(/The email provider didn't accept it/),
+    ).toBeTruthy();
+    // No key exists, so Try again needs no "I've stored it".
+    await userEvent.click(primary(dialog, "Try again"));
+    await waitFor(() => expect(GOT(log, "/send-invite")).toHaveLength(1));
+    await waitFor(() =>
+      expect(
+        within(dialog).getByText("Invitation sent to g@x.io."),
+      ).toBeTruthy(),
+    );
+    expect(GOT(log, "/send-key")).toHaveLength(0);
+  });
+
+  it("keeps the draft without the server fact or any key", async () => {
+    const { dialog } = await open(INVITING);
+    await choose(dialog, /^Pro/);
+    await press(dialog, "Continue");
+    await userEvent.type(within(dialog).getByLabelText(/^Email/), "g@x.io");
+    await press(dialog, "Continue");
+    await press(dialog, "Continue");
+    await userEvent.click(
+      within(dialog).getByRole("checkbox", { name: /Also create a key/ }),
+    );
+    const stored = window.sessionStorage.getItem("pk-new-license:djdl") ?? "";
+    expect(stored).not.toContain("invites");
+    expect(stored).not.toMatch(/pkey_|PK-/);
+    expect(JSON.parse(stored).alsoKey).toBe(true);
+    expect(loadDraft("djdl").invites).toBe(false);
+  });
+
+  it("sends the Delivery step back with the reason when the product can't invite after all", async () => {
+    for (const [reason, words] of [
+      ["auto_link_off", /doesn't add licenses by email/],
+      ["identity_off", /Sign-in is off for this product/],
+    ] as const) {
+      cleanup();
+      window.sessionStorage.clear();
+      const { dialog } = await open({
+        ...INVITING,
+        [`POST ${API}/license/licenses`]: refusal(reason),
+      });
+      await choose(dialog, /^Pro/);
+      await press(dialog, "Continue");
+      await userEvent.type(within(dialog).getByLabelText(/^Email/), "g@x.io");
+      await press(dialog, "Continue");
+      await press(dialog, "Continue");
+      await press(dialog, "Continue");
+      await press(dialog, "Create and invite");
+      await waitFor(() =>
+        expect(heading(dialog).textContent).toContain("Delivery"),
+      );
+      expect(within(dialog).getAllByText(words).length).toBeGreaterThan(0);
+      // The invitation is no longer offered.
+      expect(
+        within(dialog).queryByRole("radio", { name: /Email an invitation/ }),
+      ).toBeNull();
+    }
+  });
+
+  it("says under Email why invitations aren't offered when auto-link is off", async () => {
+    const { dialog } = await open({
+      [`${API}/license/licenses`]: {
+        licenses: LICENSES,
+        holders: { invitations: false, invitationsOff: "auto_link_off" },
+      },
+    });
+    await choose(dialog, /^Pro/);
+    await press(dialog, "Continue");
+    await userEvent.type(within(dialog).getByLabelText(/^Email/), "g@x.io");
+    await press(dialog, "Continue");
+    await press(dialog, "Continue");
+    expect(within(dialog).getByText(/Invitations aren't offered/)).toBeTruthy();
+    expect(
+      within(dialog).getByRole("radio", { name: /Email the key and show it/ }),
+    ).toHaveProperty("ariaChecked", "true");
+    expect(
+      within(dialog).queryByRole("radio", { name: /Email an invitation/ }),
+    ).toBeNull();
   });
 });
 

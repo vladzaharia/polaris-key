@@ -27,7 +27,7 @@ export const STEP_IDS: readonly StepId[] = [
 ];
 
 export type Who = "person" | "anyone";
-export type Delivery = "email-show" | "email" | "show" | "csv";
+export type Delivery = "invite" | "email-show" | "email" | "show" | "csv";
 export type ExpiryMode = "tier" | "none" | "date";
 
 export const MAX_BATCH = 500;
@@ -55,6 +55,16 @@ export interface Draft {
   maxVersion: string;
   /** What the operator chose; `deliveryOf` falls back when it does not fit who and count. */
   delivery: Delivery | null;
+  /**
+   * LX-27c.4: "Also create a key" under an invitation. The key is shown once on Done and never
+   * emailed; off by default, so an invitation mints none.
+   */
+  alsoKey: boolean;
+  /**
+   * The product can invite (Identity on and auto-link on: the licence list's `holders.invitations`).
+   * A server fact the wizard sets, never typed and never stored.
+   */
+  invites: boolean;
 }
 
 export const EMPTY: Draft = {
@@ -74,6 +84,8 @@ export const EMPTY: Draft = {
   minVersion: "",
   maxVersion: "",
   delivery: null,
+  alsoKey: false,
+  invites: false,
 };
 
 export type Errors = Partial<Record<keyof Draft, string>>;
@@ -83,7 +95,11 @@ export const isBatch = (d: Draft): boolean =>
 
 /** The deliveries that fit, in the order they are offered; the first is the default. */
 export function deliveriesFor(d: Draft): Delivery[] {
-  if (d.who === "person") return ["email-show", "email", "show"];
+  // Where invitations work, "Someone specific" is invited by default (L5) and the key is a choice.
+  if (d.who === "person")
+    return d.invites
+      ? ["invite", "email-show", "show"]
+      : ["email-show", "email", "show"];
   // One floating key is shown; a batch is a file. Neither has a choice to make.
   return isBatch(d) ? ["csv"] : ["show"];
 }
@@ -127,6 +143,10 @@ export const deliveryOf = (d: Draft): Delivery => {
 export const emailsKey = (d: Draft): boolean =>
   d.who === "person" &&
   (deliveryOf(d) === "email-show" || deliveryOf(d) === "email");
+
+/** An invitation, not a key, goes to the person. */
+export const invitesPerson = (d: Draft): boolean =>
+  d.who === "person" && deliveryOf(d) === "invite";
 
 export function validateHolder(d: Draft): Errors {
   const e: Errors = {};
@@ -207,6 +227,11 @@ export function createBody(d: Draft): CreateLicenseBody {
     body.email = d.email.trim();
     if (d.name.trim()) body.name = d.name.trim();
     if (emailsKey(d)) body.delivery = { email: true };
+    // An invitation mints no key unless "Also create a key" is ticked (shown once, never emailed).
+    else if (invitesPerson(d)) {
+      body.delivery = { invite: true };
+      if (!d.alsoKey) body.key = false;
+    }
   }
   if (d.tier) body.tier = d.tier;
   return Object.assign(body, terms(d));
@@ -307,12 +332,14 @@ export function loadDraft(slug: string): Draft {
         : [],
       minVersion: str(p.minVersion, ""),
       maxVersion: str(p.maxVersion, ""),
+      alsoKey: p.alsoKey === true,
+      invites: false,
       delivery:
         p.delivery === null || p.delivery === undefined
           ? null
           : pick<Delivery>(
               p.delivery,
-              ["email-show", "email", "show", "csv"],
+              ["invite", "email-show", "email", "show", "csv"],
               "show",
             ),
     };
@@ -324,7 +351,12 @@ export function loadDraft(slug: string): Draft {
 export function saveDraft(slug: string, d: Draft): void {
   try {
     if (!dirty(d)) sessionStorage.removeItem(storeKey(slug));
-    else sessionStorage.setItem(storeKey(slug), JSON.stringify(d));
+    else
+      sessionStorage.setItem(
+        storeKey(slug),
+        // The server fact is re-read on open, never stored.
+        JSON.stringify({ ...d, invites: undefined }),
+      );
   } catch {
     // Storage is a convenience; a refused write only loses the resume.
   }
@@ -332,7 +364,8 @@ export function saveDraft(slug: string, d: Draft): void {
 
 /** Whether the draft holds input worth asking about: the tier alone (preselected) is not. */
 export const dirty = (d: Draft): boolean =>
-  JSON.stringify({ ...d, tier: null, noTier: false }) !== JSON.stringify(EMPTY);
+  JSON.stringify({ ...d, tier: null, noTier: false, invites: false }) !==
+  JSON.stringify(EMPTY);
 
 /** The expiry in words, for Review. */
 export function expiryWords(d: Draft, tierTerm: number | null): string {

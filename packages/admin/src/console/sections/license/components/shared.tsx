@@ -61,6 +61,23 @@ export function useHasLicenses(slug: string): boolean | null {
 }
 
 /**
+ * LX-27c.4 (L15): whether an invitation can reach this product's licences (Identity on and auto-link
+ * on), and why not, from the same one-row page; `null` while unknown or from an older Worker. The
+ * wizard and the record read this one fact.
+ */
+export function useInvitations(slug: string): {
+  invitations: boolean;
+  off: "identity_off" | "auto_link_off" | null;
+} | null {
+  const q = useQuery({
+    queryKey: qk.licensesFirst(slug),
+    queryFn: () => api.licensesPage(slug, { limit: 1 }),
+  });
+  const h = q.data?.holders;
+  return h ? { invitations: h.invitations, off: h.invitationsOff } : null;
+}
+
+/**
  * The Licenses page's rows, one page at a time (P0-29). Pages append in the Worker's order; a
  * licence write refreshes every loaded page (the key sits under `qk.licenses`). `filter` goes to
  * the Worker, which narrows before it pages; `total` and `counts` come with page 1.

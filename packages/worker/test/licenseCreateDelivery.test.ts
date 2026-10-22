@@ -578,6 +578,29 @@ describe("create with deviceLimit and delivery, and send-key (LX-27)", () => {
     });
   });
 
+  it("the licence list's first page says whether invitations are on, and why not", async () => {
+    const first = async () =>
+      (
+        (await (await admin("GET", "")).json()) as {
+          holders?: { invitations: boolean; invitationsOff: string | null };
+        }
+      ).holders;
+    expect(await first()).toEqual({
+      invitations: false,
+      invitationsOff: "identity_off",
+    });
+    await identityOn();
+    expect(await first()).toEqual({ invitations: true, invitationsOff: null });
+    await db.run(
+      `INSERT INTO oidc_config (product, issuer, client_id, provider)
+       VALUES ('djdl', 'https://id.example.com', 'c', 'custom')`,
+    );
+    expect(await first()).toEqual({
+      invitations: false,
+      invitationsOff: "auto_link_off",
+    });
+  });
+
   it("invitation template snapshots: created and assigned, with and without a name and a download", () => {
     const base = {
       productName: "Mossgarden",

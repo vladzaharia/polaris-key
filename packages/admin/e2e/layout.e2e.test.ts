@@ -228,6 +228,23 @@ function cases(): Case[] {
         await page.getByRole("dialog").first().waitFor();
       },
     },
+    // LX-27c.4: the wizard's Delivery step with the invitation, its key box and the email preview.
+    {
+      name: "dialog:new-license-delivery",
+      hash: "#/p/djdl/license/licenses",
+      act: async (page) => {
+        await page.getByRole("button", { name: "New license" }).click();
+        const dialog = page.getByRole("dialog").first();
+        await dialog.waitFor();
+        await dialog.getByRole("button", { name: "Continue" }).click();
+        await dialog.getByLabel(/^Email/).fill("grace@example.com");
+        await dialog.getByRole("button", { name: "Continue" }).click();
+        await dialog.getByRole("button", { name: "Continue" }).click();
+        await dialog
+          .getByRole("radio", { name: /Email an invitation/ })
+          .waitFor();
+      },
+    },
     {
       name: "dialog:set-secret",
       hash: "#/p/djdl/settings/keys",

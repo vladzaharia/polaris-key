@@ -16496,6 +16496,16 @@ paths:
                       expiring: { type: integer }
                       expired: { type: integer }
                       disabled: { type: integer }
+                  holders:
+                    type: object
+                    required: [invitations, invitationsOff]
+                    description: "LX-27c.4: whether an invitation can reach a licence of this product. First page only."
+                    properties:
+                      invitations: { type: boolean }
+                      invitationsOff:
+                        type: [string, "null"]
+                        enum: [identity_off, auto_link_off, null]
+                        description: "Why not: Identity is off for the product, or its auto-link resolves off (a custom issuer). `null` when invitations are on."
         "400":
           description: "`holder` or `state` is not one of its values, `limit` is out of range, or `cursor` is not one this list wrote (`bad_request`, `fields` names it)."
           content:

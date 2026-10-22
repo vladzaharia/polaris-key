@@ -126,6 +126,7 @@ export type WriteMethod =
   | "putLicenseOverrides"
   | "mintKey"
   | "sendLicenseKey"
+  | "sendLicenseInvite"
   | "revokeKey"
   | "deauthorizeDevice"
   | "resetDeviceFingerprint"
@@ -835,6 +836,11 @@ export const MUTATIONS: MutationTable = {
   // LX-27: mints a key and mails it; "Also revoke its other keys" changes the key list too.
   sendLicenseKey: {
     label: "license key send",
+    invalidates: (slug, id) => licenseKey(slug, id),
+  },
+  // LX-27c.2: mails the invitation again; it mints nothing, so only the licence's own reads change.
+  sendLicenseInvite: {
+    label: "license invitation send",
     invalidates: (slug, id) => licenseKey(slug, id),
   },
   revokeKey: {

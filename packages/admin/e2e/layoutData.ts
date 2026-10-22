@@ -1933,7 +1933,11 @@ export const DATA_ROUTES: Record<string, unknown> = {
   [`${PROD}/release/deliverables/${CORE}/releases`]: RELEASES,
   [`${PROD}/release/deliverables/${CORE}/releases/${encodeURIComponent(`${CORE}@1.4.0`)}/files`]:
     FILES,
-  [`${PROD}/license/licenses`]: { licenses: LICENSES },
+  [`${PROD}/license/licenses`]: {
+    licenses: LICENSES,
+    // LX-27c.4: the wizard's Delivery step offers an invitation.
+    holders: { invitations: true, invitationsOff: null },
+  },
   [`${PROD}/license/licenses/lic_1`]: LICENSE_DETAIL,
   [`${PROD}/license/tiers`]: { tiers: TIERS },
   [`${PROD}/license/batches`]: { batches: BATCHES, nextCursor: null },

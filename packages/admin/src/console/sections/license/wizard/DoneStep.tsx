@@ -10,7 +10,11 @@
 
 import * as React from "react";
 import { Download, FileText } from "lucide-react";
-import type { KeyEmailFailure, KeyEmailOutcome } from "../../../../api.js";
+import type {
+  InviteOutcome,
+  KeyEmailFailure,
+  KeyEmailOutcome,
+} from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
@@ -20,14 +24,18 @@ import {
   canRetryKeyEmail,
   keyEmailFailureCopy,
 } from "../components/SendKeyDialog.js";
+import { inviteFailureCopy } from "../components/inviteCopy.js";
 import { csvOf, type CsvRow } from "./draft.js";
 
 export type Result =
   | {
       kind: "single";
       id: string;
-      key: string;
-      /** The address the key was emailed to, or null when no email was asked for. */
+      /** Absent for an invitation without "Also create a key". */
+      key: string | null;
+      /** An invitation was asked for: how it went. Never carries a key. */
+      invite: { outcome: InviteOutcome; reason?: KeyEmailFailure } | null;
+      /** The address the key or invitation was emailed to, or null when no email was asked for. */
       email: string | null;
       /** The key is on screen (not for "Email the key" alone, unless the email failed). */
       showKey: boolean;
@@ -53,6 +61,10 @@ export type Result =
 export function doneTitle(result: Result): string {
   if (result.kind === "batch")
     return `${result.rows.length} ${result.rows.length === 1 ? "key" : "keys"} created`;
+  if (result.invite)
+    return result.invite.outcome === "failed"
+      ? "Invitation not sent"
+      : "Invitation sent";
   return result.delivered?.email === "failed"
     ? "Key not emailed"
     : "License created";
@@ -188,7 +200,8 @@ export function DoneBody({
     );
   }
 
-  const failed = result.delivered?.email === "failed";
+  const inviteFailed = result.invite?.outcome === "failed";
+  const failed = result.delivered?.email === "failed" || inviteFailed;
   const retryReason = !kept
     ? "Tick “I've stored it” first."
     : retryWait > 0
@@ -196,34 +209,49 @@ export function DoneBody({
       : null;
   return (
     <div className="space-y-4">
+      {result.invite && !inviteFailed ? (
+        <Callout tone="success" live>
+          Invitation sent to {result.email}.
+        </Callout>
+      ) : null}
+      {result.invite && inviteFailed ? (
+        <Callout tone="warning" title="The invitation wasn't sent" live>
+          {inviteFailureCopy(result.invite.reason, result.email ?? "")}
+        </Callout>
+      ) : null}
       {result.delivered && !failed ? (
         <Callout tone="success" live>
           Emailed to {result.email}.
         </Callout>
       ) : null}
-      {failed ? (
+      {result.delivered?.email === "failed" ? (
         <Callout tone="warning" live>
           {keyEmailFailureCopy(result.delivered?.reason, result.email ?? "")}
         </Callout>
       ) : null}
       {retryNote}
-      {result.showKey ? (
+      {result.showKey && result.key !== null ? (
         <SecretValue
           label="License key"
           value={result.key}
           hint={
-            result.onlyCopy
-              ? "Shown once. Copy it now."
-              : result.retried
-                ? "Their email has a newer key. This one works too."
-                : "Shown once. It is in their email too."
+            result.invite
+              ? "Shown once. It isn't in the invitation. Copy it now."
+              : result.onlyCopy
+                ? "Shown once. Copy it now."
+                : result.retried
+                  ? "Their email has a newer key. This one works too."
+                  : "Shown once. It is in their email too."
           }
           hideAck={!result.onlyCopy}
           acknowledged={kept}
           onAcknowledgedChange={onKept}
         />
       ) : null}
-      {failed && canRetryKeyEmail(result.delivered?.reason) ? (
+      {failed &&
+      canRetryKeyEmail(
+        result.invite ? result.invite.reason : result.delivered?.reason,
+      ) ? (
         <div className="space-y-1">
           <Button
             variant="outline"
@@ -235,7 +263,10 @@ export function DoneBody({
             Try again
           </Button>
           <p id="new-license-retry-note" className="text-xs text-fg-muted">
-            {retryReason ?? "Emails another new key. This one keeps working."}
+            {retryReason ??
+              (result.invite
+                ? "Sends the invitation again."
+                : "Emails another new key. This one keeps working.")}
           </p>
         </div>
       ) : null}

@@ -3778,6 +3778,11 @@ export const LICENSE_PAGE_MAX = 90;
 export interface LicensePage {
   licenses: LicenseSummary[];
   nextCursor: string | null;
+  /** LX-27c.4: whether an invitation can reach this product's licences, and why not. First page. */
+  holders?: {
+    invitations: boolean;
+    invitationsOff: "identity_off" | "auto_link_off" | null;
+  };
   /** What the filters match, and by state. First page only (the Worker sends them without a cursor). */
   total?: number;
   counts?: {
@@ -4150,8 +4155,11 @@ export interface CreateLicenseBody {
   maxVersion?: string;
   /** LX-27: the licence's own device limit; omitted inherits. */
   deviceLimit?: number;
-  /** LX-27: `email: true` mails the first key to `email` in the same request. */
-  delivery?: { email: boolean };
+  /** LX-27: `email: true` mails the first key to `email` in the same request. LX-27c:
+   *  `invite: true` mails an invitation (a sign-in link, no key) instead; exclusive with `email`. */
+  delivery?: { email?: boolean; invite?: boolean };
+  /** LX-27c: `false` mints no key; valid only with `delivery.invite`. */
+  key?: boolean;
 }
 
 /** LX-28: `POST …/license/batches`: up to 500 floating licences under one label. */
@@ -4169,6 +4177,8 @@ export interface CreateLicenseBatchBody {
 
 /** LX-27: how the key email went. */
 export type KeyEmailOutcome = "sent" | "queued" | "failed";
+/** LX-27c: how an invitation went. */
+export type InviteOutcome = "sent" | "failed";
 /** Why a key email did not go out (`delivered.reason`, and a 409's `reason`). */
 export type KeyEmailFailure =
   | "no_mail_binding"
@@ -6061,8 +6071,13 @@ const rawApi = {
   createLicense: (slug: string, body: CreateLicenseBody) =>
     call<{
       licenseId: string;
-      key: string;
-      delivered?: { email: KeyEmailOutcome; reason?: KeyEmailFailure };
+      /** Absent when the request sent `key: false` (an invitation only). */
+      key?: string;
+      delivered?: {
+        email?: KeyEmailOutcome;
+        invite?: InviteOutcome;
+        reason?: KeyEmailFailure;
+      };
       license: LicenseSummary;
     }>(`${p(slug)}/license/licenses`, {
       method: "POST",
@@ -6170,6 +6185,12 @@ const rawApi = {
       method: "POST",
       body: JSON.stringify({ revokeOthers, ...(context ? { context } : {}) }),
     }),
+  /** LX-27c.2: mail the invitation again to a waiting licence. Mints nothing. */
+  sendLicenseInvite: (slug: string, id: string, context?: "assigned") =>
+    call<{ delivered: { invite: InviteOutcome; reason?: KeyEmailFailure } }>(
+      `${p(slug)}/license/licenses/${enc(id)}/send-invite`,
+      { method: "POST", body: JSON.stringify(context ? { context } : {}) },
+    ),
   revokeKey: (slug: string, id: string, keyHash: string) =>
     call<{ ok: true; hash: string; status: KeyStatus }>(
       `${p(slug)}/license/licenses/${enc(id)}/keys/${enc(keyHash)}/revoke`,
