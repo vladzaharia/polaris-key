@@ -322,7 +322,6 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
               </span>
             ) : undefined
           }
-          description="A halt lands on the next check."
           primaryAction={
             <Button
               iconStart={<Plus aria-hidden />}
@@ -354,6 +353,9 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
       }
     >
       <div className="pk-vt-tabpanel">
+        <p className="mb-4 text-sm text-fg-muted">
+          A halt or pause reaches devices on their next feed check.
+        </p>
         {grid ? (
           <>
             <ReadinessRefreshed
