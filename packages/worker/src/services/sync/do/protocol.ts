@@ -34,10 +34,12 @@ export type CloudSyncOp =
   | (DoPin & {
       op: "push";
       deviceId: string;
-      family?: string;
+      /** The device row's platform family; the object answers 400 without one (SR-1 N1). */
+      family: string;
+      /** The Worker always sends its limits; the object answers 400 without them (SR-1 N1). */
       /** The tier the quota came from, for the directory (U-05.9); absent until U-05.10 sends it. */
       tierId?: string;
-      limits?: PushLimits;
+      limits: PushLimits;
       migrations?: WireMigrations;
       request: PushRequest;
       classified: Classification[];
@@ -64,9 +66,18 @@ export type CloudSyncOp =
       document: ExportDocument;
       policies?: [string, SettingPolicy][];
     })
-  /** `ifSeq`: delete only while the store is still at that sequence (an absorbed object that
-   *  changed since its export is kept, and the caller absorbs again). */
-  | (DoPin & { op: "deleteAll"; ifSeq?: number });
+  /**
+   * `ifSeq` and `ifWrites`: delete only while the store is still at that sequence and write count
+   * (an absorbed object that changed since its export is kept, and the caller absorbs again).
+   * `absorbedInto`, with them, leaves the merge's marker behind (SR-1 N3); a plain `deleteAll` is
+   * an erasure and leaves nothing.
+   */
+  | (DoPin & {
+      op: "deleteAll";
+      ifSeq?: number;
+      ifWrites?: number;
+      absorbedInto?: string;
+    });
 
 /** A stored row as JSON: members become `[name, cell]` pairs, in the engine's order. */
 export type ExportedSetting = Omit<StoredSetting, "members"> & {
@@ -77,6 +88,8 @@ export interface ExportDocument {
   product: string;
   subject: string;
   seq: number;
+  /** The write count (see `SqlStore.writeCount`): `seq` plus the writes that do not move it. */
+  writes: number;
   watermark: number;
   usage: StoreUsage;
   /** Live rows and tombstones, in version order. */
@@ -93,5 +106,10 @@ export type CloudSyncReply =
   | { op: "deleteAll"; deleted: boolean };
 
 export type CloudSyncError = {
-  error: "bad_request" | "pin_mismatch" | "unsupported_schema";
+  error:
+    | "bad_request"
+    | "pin_mismatch"
+    | "unsupported_schema"
+    /** The object was absorbed by an account merge: it takes no more writes (SR-1 N3). */
+    | "absorbed";
 };

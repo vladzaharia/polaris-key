@@ -30,6 +30,7 @@ const SNAPSHOT = "dir_snapshot";
 const DAILY = "dir_daily";
 const FLUSHED_AT = "dir_flushed_at";
 const MARKS = "seq_marks";
+const PENDING = "dir_pending";
 
 /** What the directory row shows beyond the object's own counters, from the last accepted write. */
 export interface DirectorySnapshot {
@@ -56,8 +57,13 @@ function readJson<T>(store: SqlStore, key: string): T | undefined {
   }
 }
 
+/** A flush has been started and D1 has not been confirmed to hold it (`buildFlush`). */
+const hasPending = (store: SqlStore): boolean =>
+  store.getMeta(PENDING) !== undefined;
+
+/** Something is owed to D1: a write since the last flush, or a flush begun and not confirmed. */
 export const isDirty = (store: SqlStore): boolean =>
-  store.getMeta(DIRTY) === "1";
+  store.getMeta(DIRTY) === "1" || hasPending(store);
 
 /** Marks the directory stale (absorb, and any accepted write). Needs the schema. */
 export const markDirty = (store: SqlStore): void => store.setMeta(DIRTY, "1");
@@ -71,7 +77,8 @@ export function recordWrite(
   store: SqlStore,
   w: {
     nowMs: number;
-    quotaBytes: number;
+    /** Absent: keep the previous snapshot's quota (and tier). */
+    quotaBytes?: number | undefined;
     tierId?: string | undefined;
     platform?: string | undefined;
     syncs: number;
@@ -80,7 +87,7 @@ export function recordWrite(
 ): void {
   const prev = readJson<DirectorySnapshot>(store, SNAPSHOT);
   const snap: DirectorySnapshot = {
-    quotaBytes: w.quotaBytes,
+    quotaBytes: w.quotaBytes ?? prev?.quotaBytes ?? 0,
     tierId: w.tierId ?? prev?.tierId ?? null,
     platform: w.platform ?? prev?.platform ?? null,
     activeAt: Math.floor(w.nowMs / 1000),
@@ -131,17 +138,37 @@ export function ageMarks(
   return { throughSeq };
 }
 
+/** What a begun flush owes D1; persisted before the batch so a retry sends the same thing. */
+interface PendingFlush {
+  /** Epoch seconds, the flush's identity: the directory row's `updated_at` once D1 holds it. */
+  t: number;
+  daily: DailyDeltas;
+}
+
 export interface Flush {
   statements: DbStatement[];
-  /** Clears the dirty state once D1 has taken the batch. Synchronous, inside one transaction. */
+  /** Persists the pending flush; call it (in a transaction) before sending the batch. */
+  begin(): void;
+  /** Clears the pending flush once D1 has taken the batch. Synchronous, inside one transaction. */
   commit(nowMs: number): void;
 }
 
+/** The product is not soft-deleted: a flush that races a product's erasure writes nothing. */
+const LIVE = `EXISTS (SELECT 1 FROM products WHERE slug = ? AND status <> 'deleted')`;
+
 /**
- * The D1 batch for a dirty object: one directory upsert and one daily upsert per pending day. The
- * counters are the object's own (`bytes`, `settings`); quota, tier, platform and activity are the
- * last write's snapshot, and an object that was only absorbed into (no write of its own) keeps
- * what the directory already has for them.
+ * The D1 batch for a dirty object: the day's counters, then one directory upsert. The counters
+ * are the object's own (`bytes`, `settings`); quota, tier, platform and activity are the last
+ * write's snapshot, and an object that was only absorbed into (no write of its own) keeps what
+ * the directory already has for them.
+ *
+ * Exactly-once counters under an at-least-once alarm. The alarm may be retried after D1 has
+ * committed (a throw after the batch, a lost reply). The deltas are therefore frozen into a
+ * pending flush `{t, daily}` the first time (`begin`), and a retry reuses the same `t`. The
+ * directory upsert stamps `updated_at = t`, and each daily upsert runs only while no directory
+ * row of this person already carries `updated_at >= t`: statements run in order inside the
+ * batch's transaction, so the first run counts and every repeat finds the stamp and adds nothing.
+ * A batch that failed before committing left no stamp and counts once on its retry.
  */
 export function buildFlush(
   store: SqlStore,
@@ -150,16 +177,46 @@ export function buildFlush(
   nowMs: number,
 ): Flush | null {
   if (!isDirty(store)) return null;
+  let pending = readJson<PendingFlush>(store, PENDING);
+  const fresh = pending === undefined;
+  if (!pending) {
+    pending = {
+      t: Math.floor(nowMs / 1000),
+      daily: readJson<DailyDeltas>(store, DAILY) ?? {},
+    };
+  }
+  const { t, daily } = pending;
   const snap = readJson<DirectorySnapshot>(store, SNAPSHOT);
-  const daily = readJson<DailyDeltas>(store, DAILY) ?? {};
-  const now = Math.floor(nowMs / 1000);
   const statements: DbStatement[] = [];
+  for (const [day, [syncs, conflicts]] of Object.entries(daily)) {
+    if (syncs === 0 && conflicts === 0) continue;
+    statements.push({
+      sql: `INSERT INTO sync_product_daily (product, day, syncs, conflicts)
+            SELECT ?, ?, ?, ?
+            WHERE ${LIVE}
+              AND NOT EXISTS (SELECT 1 FROM sync_directory
+                               WHERE product = ? AND subject = ? AND updated_at >= ?)
+            ON CONFLICT (product, day) DO UPDATE SET
+              syncs = syncs + excluded.syncs, conflicts = conflicts + excluded.conflicts`,
+      params: [
+        pin.product,
+        day,
+        syncs,
+        conflicts,
+        pin.product,
+        pin.product,
+        pin.subject,
+        t,
+      ],
+    });
+  }
   if (snap) {
     statements.push({
       sql: `INSERT INTO sync_directory
               (product, subject, bytes, settings, records, files, revision_bytes, quota_bytes,
                tier_id, platform, last_active_at, updated_at)
-            VALUES (?, ?, ?, ?, 0, 0, 0, ?, ?, ?, ?, ?)
+            SELECT ?, ?, ?, ?, 0, 0, 0, ?, ?, ?, ?, ?
+            WHERE ${LIVE}
             ON CONFLICT (product, subject) DO UPDATE SET
               bytes = excluded.bytes, settings = excluded.settings,
               quota_bytes = excluded.quota_bytes, tier_id = excluded.tier_id,
@@ -175,7 +232,8 @@ export function buildFlush(
         snap.tierId,
         snap.platform,
         snap.activeAt,
-        now,
+        t,
+        pin.product,
       ],
     });
   } else {
@@ -183,28 +241,33 @@ export function buildFlush(
       sql: `INSERT INTO sync_directory
               (product, subject, bytes, settings, records, files, revision_bytes, quota_bytes,
                tier_id, platform, last_active_at, updated_at)
-            VALUES (?, ?, ?, ?, 0, 0, 0, 0, NULL, NULL, ?, ?)
+            SELECT ?, ?, ?, ?, 0, 0, 0, 0, NULL, NULL, ?, ?
+            WHERE ${LIVE}
             ON CONFLICT (product, subject) DO UPDATE SET
               bytes = excluded.bytes, settings = excluded.settings,
               updated_at = excluded.updated_at`,
-      params: [pin.product, pin.subject, usage.bytes, usage.settings, now, now],
-    });
-  }
-  for (const [day, [syncs, conflicts]] of Object.entries(daily)) {
-    if (syncs === 0 && conflicts === 0) continue;
-    statements.push({
-      sql: `INSERT INTO sync_product_daily (product, day, syncs, conflicts)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT (product, day) DO UPDATE SET
-              syncs = syncs + excluded.syncs, conflicts = conflicts + excluded.conflicts`,
-      params: [pin.product, day, syncs, conflicts],
+      params: [
+        pin.product,
+        pin.subject,
+        usage.bytes,
+        usage.settings,
+        t,
+        t,
+        pin.product,
+      ],
     });
   }
   return {
     statements,
-    commit(at) {
-      store.setMeta(DIRTY, "0");
+    begin() {
+      if (!fresh) return;
+      // Freeze what is owed. Writes from here on count toward the next flush.
+      store.setMeta(PENDING, JSON.stringify(pending));
       store.setMeta(DAILY, "{}");
+      store.setMeta(DIRTY, "0");
+    },
+    commit(at) {
+      store.deleteMeta(PENDING);
       store.setMeta(FLUSHED_AT, String(at));
     },
   };

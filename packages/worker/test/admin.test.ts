@@ -47,7 +47,7 @@ import type { FusedSessionDoc } from "../src/services/identity/doc.js";
 import type { ManagedPayload } from "../src/core/licensing/payload.js";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { MAX_DEVICE_LIMIT } from "@polaris-key/manifest";
-import { getTokenRecord } from "../src/platform/kv.js";
+import { getTokenRecord, putTokenRecord } from "../src/platform/kv.js";
 import { hashKey } from "../src/platform/crypto.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -558,6 +558,55 @@ describe("admin api", () => {
         "djdl",
       ),
     ).not.toBeNull();
+  });
+
+  it("product deletion runs the Cloud Sync purge before the per-device token deletes (SR-1 N6)", async () => {
+    const db = makeTestDb();
+    const kv = new KvMock();
+    const env = adminEnv(kv, ["djdl"]);
+    await seedProduct(db, "djdl");
+    await db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, first_seen, last_seen, token_hash)
+       VALUES ('djdl', 'dev-1', 'lic-1', 'authorized', ?, ?, 'th-dev-1')`,
+      NOW,
+      NOW,
+    );
+    await putTokenRecord(env, "djdl", "th-dev-1", {
+      product: "djdl",
+      deviceId: "dev-1",
+      licenseId: "lic-1",
+    });
+    // More objects than one run erases, so the first attempt answers purge_incomplete.
+    await db.batch(
+      Array.from({ length: 405 }, (_, i) => ({
+        sql: `INSERT INTO sync_directory (product, subject, bytes, settings, records, files, revision_bytes,
+                quota_bytes, tier_id, platform, last_active_at, updated_at)
+              VALUES (?, ?, 0, 0, 0, 0, 0, 0, NULL, NULL, 1, 1)`,
+        params: ["djdl", `ps_${String(i).padStart(4, "0")}`],
+      })),
+    );
+    const { cookie, csrf } = await sessionCookie(env, {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: [PLATFORM_GROUP],
+    });
+    const del = () =>
+      dispatch(
+        mkReq("DELETE", "/api/products/djdl", {
+          cookie,
+          csrf,
+          body: { confirmSlug: "djdl" },
+        }),
+        env,
+        db,
+        "/api/products/djdl",
+      );
+    expect((await del()).status).toBe(409);
+    // The bounded purge ran first and was not finished: no token was spent on yet.
+    expect(await getTokenRecord(env, "djdl", "th-dev-1")).not.toBeNull();
+    expect((await del()).status).toBe(200);
+    expect(await getTokenRecord(env, "djdl", "th-dev-1")).toBeNull();
   });
 
   it("creates a license and mints a key returned exactly once", async () => {

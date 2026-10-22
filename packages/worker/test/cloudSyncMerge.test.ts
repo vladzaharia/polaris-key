@@ -7,6 +7,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ABSORBED_RETENTION_MS } from "../src/services/sync/do/cloudSyncDo.js";
 import { describe, expect, it } from "vitest";
 import "../src/index.js";
 import type { SyncMutation } from "@polaris-key/protocol/sync";
@@ -24,6 +25,8 @@ import type {
 import {
   absorbCloudSync,
   callCloudSync,
+  deleteCloudSync,
+  deleteCloudSyncIfUnchanged,
   exportCloudSync,
 } from "../src/services/sync/do/client.js";
 import type { ExportDocument } from "../src/services/sync/do/protocol.js";
@@ -88,7 +91,7 @@ async function push(
       op: "push",
       deviceId: o.deviceId ?? "d1",
       family: "desktop",
-      ...(o.limits ? { limits: o.limits as never } : {}),
+      limits: (o.limits as never) ?? { quotaBytes: 1_000_000_000 },
       request: { clientId: o.clientId ?? C1, cursor: 0, mutations },
       classified,
       serverNow: T0 + 3_600_000,
@@ -152,15 +155,133 @@ describe("absorb: the join", () => {
       lang: { value: "fr" },
     });
     expect(await dump(env, "from")).toBeNull();
+    // What is left of the absorbed object is the pin and the marker: no row, no client binding.
     const gone = ns.instance(`${P}:from`);
+    const db = gone.storage.sql.db;
+    for (const t of ["settings", "tombstones", "setting_members", "clients"])
+      expect(db.prepare(`SELECT count(*) AS n FROM ${t}`).get(), t).toEqual({
+        n: 0,
+      });
+    const meta = Object.fromEntries(
+      (
+        db.prepare("SELECT key, value FROM meta").all() as {
+          key: string;
+          value: string;
+        }[]
+      ).map((r) => [r.key, r.value]),
+    );
+    expect(Object.keys(meta).sort()).toEqual([
+      "absorbed_at",
+      "absorbed_into",
+      "product",
+      "schema_version",
+      "subject",
+    ]);
+    expect(meta).toMatchObject({
+      product: P,
+      subject: "from",
+      absorbed_into: "to",
+    });
+    // The only alarm left is the marker's own cleanup, 30 days on (U-05.9); no flush is owed.
+    expect(gone.storage.alarm).toBe(
+      Number(meta.absorbed_at) + ABSORBED_RETENTION_MS,
+    );
+  });
+
+  it("a merged object refuses every later push and absorb with 410 absorbed, reads empty, and an erasure removes the marker (SR-1 N3)", async () => {
+    const { ns, env } = world();
+    await setOne(env, "from", "a", 1, at(1), C2, "d2");
+    await merge(env, "from", "to");
+    // The late write the survivor never sees is refused, not stored.
+    await expect(
+      setOne(env, "from", "late", 2, at(5), C2, "d2"),
+    ).rejects.toMatchObject({
+      status: 410,
+      code: "absorbed",
+    });
+    const to = (await exportCloudSync(env, { product: P, subject: "to" }))!;
+    expect(to.settings.map((s) => s.key)).toEqual(["a"]);
+    await expect(
+      absorbCloudSync(
+        env,
+        { product: P, subject: "from" },
+        { ...to, subject: "x" },
+      ),
+    ).rejects.toMatchObject({ status: 410, code: "absorbed" });
+    // Reads answer empty; the export is nothing, so a retried merge settles at once.
+    const pulled = await callCloudSync<"pull">(
+      env,
+      { product: P, subject: "from" },
+      {
+        op: "pull",
+        cursor: 0,
+        deviceId: "d2",
+        family: "desktop",
+        clientId: C2,
+      },
+    );
+    expect(pulled.outcome).toMatchObject({ ok: true, changes: [] });
     expect(
-      gone.storage.sql.db
-        .prepare(
+      await exportCloudSync(env, { product: P, subject: "from" }),
+    ).toBeNull();
+    await merge(env, "from", "to");
+    // Erasure removes the marker with everything else; the object can be written afresh.
+    await deleteCloudSync(env, { product: P, subject: "from" });
+    expect(
+      ns
+        .instance(`${P}:from`)
+        .storage.sql.db.prepare(
           "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
         )
         .all(),
     ).toEqual([]);
-    expect(gone.storage.alarm).toBeNull();
+    expect((await setOne(env, "from", "fresh", 3, at(6), C2, "d2")).ok).toBe(
+      true,
+    );
+  });
+
+  it("a write that does not move the sequence (a conflict-only push) between export and delete keeps the object (SR-1 N2)", async () => {
+    const { env } = world();
+    await setOne(env, "from", "k", 1, at(5), C2, "d2");
+    const doc = (await exportCloudSync(env, { product: P, subject: "from" }))!;
+    await absorbCloudSync(env, { product: P, subject: "to" }, doc);
+    // A stale write: a conflict, no seq bump, but the client's last mutation id advances.
+    const r = await push(
+      env,
+      "from",
+      [mut("k", "set", at(1), { value: 0 })],
+      [LAST],
+      {
+        clientId: C2,
+        deviceId: "d2",
+      },
+    );
+    expect(r.ok && r.results[0]?.status).toBe("conflict");
+    expect(
+      await deleteCloudSyncIfUnchanged(
+        env,
+        { product: P, subject: "from" },
+        { seq: doc.seq, writes: doc.writes },
+        "to",
+      ),
+    ).toBe(false);
+    // The merge goes round again and carries the new binding to the survivor.
+    await merge(env, "from", "to");
+    const pulled = await callCloudSync<"pull">(
+      env,
+      { product: P, subject: "to" },
+      {
+        op: "pull",
+        cursor: 0,
+        deviceId: "d2",
+        family: "desktop",
+        clientId: C2,
+      },
+    );
+    expect(pulled.outcome).toMatchObject({
+      ok: true,
+      lastMutationId: nextId - 1,
+    });
   });
 
   it("the survivor's object is created, pinned, when it never held data", async () => {

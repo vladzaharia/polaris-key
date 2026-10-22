@@ -17,6 +17,8 @@ import {
   deleteCloudSyncIfUnchanged,
   exportCloudSync,
 } from "../src/services/sync/do/client.js";
+import { D1Db } from "../src/db/d1.js";
+import { seedProduct } from "./seed.js";
 import { formatHlc } from "../src/services/sync/engine/hlc.js";
 import type { Classification } from "../src/services/sync/engine/types.js";
 
@@ -41,6 +43,7 @@ const pushTo = (pin: { product: string; subject: string }, key: string) =>
     op: "push",
     deviceId: "d1",
     family: "desktop",
+    limits: { quotaBytes: 1_000_000 },
     request: { clientId: C1, cursor: 0, mutations: [set(1, key, "dark")] },
     classified: [LAST_WRITE],
     serverNow: NOW,
@@ -151,12 +154,150 @@ describe("account-merge absorb under workerd (U-05.8)", () => {
     const mine = (await exportCloudSync(env, to))!;
     expect(mine.settings.map((r) => r.key)).toEqual(["theme"]);
     // A stale sequence keeps the source; the current one deletes it.
-    expect(await deleteCloudSyncIfUnchanged(env, from, doc.seq + 1)).toBe(
-      false,
-    );
+    expect(
+      await deleteCloudSyncIfUnchanged(
+        env,
+        from,
+        { seq: doc.seq + 1, writes: doc.writes },
+        to.subject,
+      ),
+    ).toBe(false);
+    expect(
+      await deleteCloudSyncIfUnchanged(
+        env,
+        from,
+        { seq: doc.seq, writes: doc.writes + 1 },
+        to.subject,
+      ),
+    ).toBe(false);
     expect(await exportCloudSync(env, from)).not.toBeNull();
-    expect(await deleteCloudSyncIfUnchanged(env, from, doc.seq)).toBe(true);
+    expect(
+      await deleteCloudSyncIfUnchanged(
+        env,
+        from,
+        { seq: doc.seq, writes: doc.writes },
+        to.subject,
+      ),
+    ).toBe(true);
     expect(await exportCloudSync(env, from)).toBeNull();
+    // The absorbed object is marked: a later push is a 410 absorbed, on real storage.
+    await expect(pushTo(from, "late")).rejects.toMatchObject({
+      status: 410,
+      code: "absorbed",
+    });
+    // The marker's cleanup alarm is set, a day out, on real storage.
+    const stub = env.CLOUD_SYNC.get(
+      env.CLOUD_SYNC.idFromName(cloudSyncObjectName(from)),
+    );
+    const due = await runInDurableObject(stub, (_o, st) =>
+      st.storage.getAlarm(),
+    );
+    expect(due).toBeGreaterThan(Date.now() + 23 * 3_600_000);
+    expect(due).toBeLessThanOrEqual(Date.now() + 24 * 3_600_000);
+    // An erasure removes the marker.
+    await callCloudSync<"deleteAll">(env, from, { op: "deleteAll" });
+    expect((await pushTo(from, "again")).outcome.ok).toBe(true);
+  });
+});
+
+describe("atomic batches and incremental merge writes under workerd (SR-1)", () => {
+  it("an atomic batch with one refusal rolls the nested savepoint back whole and leaves a clean round trip", async () => {
+    const pin = { product: "wd", subject: "sub_atomic" };
+    await pushTo(pin, "kept");
+    const before = await callCloudSync<"usage">(env, pin, { op: "usage" });
+    const r = await callCloudSync<"push">(env, pin, {
+      op: "push",
+      deviceId: "d1",
+      family: "desktop",
+      limits: { quotaBytes: 1_000_000 },
+      request: {
+        clientId: C1,
+        cursor: 0,
+        atomic: true,
+        mutations: [set(2, "first", "x"), set(3, "second", "y")],
+      },
+      classified: [
+        LAST_WRITE,
+        { verdict: "reject", code: "setting_not_synced" },
+      ],
+      serverNow: NOW,
+    });
+    const outcome = r.outcome as {
+      ok: true;
+      results: { status: string }[];
+    };
+    expect(outcome.results.map((x) => x.status)).toEqual([
+      "aborted",
+      "rejected",
+    ]);
+    const after = await callCloudSync<"usage">(env, pin, { op: "usage" });
+    expect(after.seq).toBe(before.seq);
+    expect(after.usage).toEqual(before.usage);
+    const doc = (await exportCloudSync(env, pin))!;
+    expect(doc.settings.map((x) => x.key)).toEqual(["kept"]);
+    // The object still takes the next write (the savepoint stack is clean).
+    const next = await callCloudSync<"push">(env, pin, {
+      op: "push",
+      deviceId: "d1",
+      family: "desktop",
+      limits: { quotaBytes: 1_000_000 },
+      request: {
+        clientId: C1,
+        cursor: 0,
+        atomic: true,
+        mutations: [set(4, "first", "x")],
+      },
+      classified: [LAST_WRITE],
+      serverNow: NOW,
+    });
+    expect(
+      (next.outcome as { results: { status: string }[] }).results[0]?.status,
+    ).toBe("ok");
+  });
+
+  it("a member update on a wide merge row upserts in place: the cell keeps its place and the others are untouched", async () => {
+    const pin = { product: "wd", subject: "sub_wide" };
+    const MERGE: Classification = {
+      verdict: "accept",
+      scope: "user",
+      policy: "merge",
+    };
+    const member = (id: number, name: string) => ({
+      mutationId: id,
+      target: { setting: "tags", scope: "user" as const },
+      op: "setMember" as const,
+      member: name,
+      value: id,
+      editedHlc: formatHlc(NOW - 1000, id),
+    });
+    for (let b = 0; b < 2; b++) {
+      const muts = Array.from({ length: 100 }, (_, i) =>
+        member(b * 100 + i + 1, `m${b * 100 + i}`),
+      );
+      await callCloudSync<"push">(env, pin, {
+        op: "push",
+        deviceId: "d1",
+        family: "desktop",
+        limits: { quotaBytes: 1_000_000 },
+        request: { clientId: C1, cursor: 0, mutations: muts },
+        classified: muts.map(() => MERGE),
+        serverNow: NOW,
+      });
+    }
+    await callCloudSync<"push">(env, pin, {
+      op: "push",
+      deviceId: "d1",
+      family: "desktop",
+      limits: { quotaBytes: 1_000_000 },
+      request: { clientId: C1, cursor: 0, mutations: [member(201, "m0")] },
+      classified: [MERGE],
+      serverNow: NOW,
+    });
+    const doc = (await exportCloudSync(env, pin))!;
+    const row = doc.settings.find((x) => x.key === "tags")!;
+    expect(row.members).toHaveLength(200);
+    expect(row.members![0]![0]).toBe("m0");
+    expect(row.members![0]![1].value).toBe(201);
   });
 });
 
@@ -171,6 +312,11 @@ describe("directory flush alarm under workerd (U-05.9)", () => {
       .first<{ bytes: number; settings: number; platform: string }>();
 
   it("the first write flushes at once: the directory row and the day's counters reach real D1 with no trigger", async () => {
+    // The flush writes for a live product only.
+    await seedProduct(env, new D1Db(env.DB), "wdalarm", {
+      schemaVersion: 1,
+      entries: [],
+    });
     const pin = { product: "wdalarm", subject: "sub_first" };
     await pushTo(pin, "theme");
     // The alarm was set for now; the runtime delivers it by itself (no trigger from here).

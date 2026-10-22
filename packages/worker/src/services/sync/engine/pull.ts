@@ -60,9 +60,6 @@ export type PullOutcome =
 export const pullEtag = (seq: number, lastMutationId: number): string =>
   `"${seq}.${lastMutationId}"`;
 
-const visible = (row: StoredSetting, family: string): boolean =>
-  row.scope === "user" || row.family === family;
-
 function toChange(row: StoredSetting): SettingChange {
   return {
     setting: row.key,
@@ -80,10 +77,9 @@ export function applyPull(store: SyncStore, input: PullInput): PullOutcome {
   if (cursor !== 0 && (cursor < store.getWatermark() || cursor > seq))
     return { ok: false, error: "cursor_expired" };
 
-  const rows = store
-    .settingsAfter(cursor)
-    .filter((r) => visible(r, input.family));
   const size = input.pageSize ?? SYNC_PULL_PAGE_CHANGES;
+  // One row past the page says whether more remain; the store pages in storage (SR-1 N12).
+  const rows = store.settingsPageAfter(cursor, input.family, size + 1);
   const page = rows.slice(0, size);
   const more = rows.length > size;
   const last = page[page.length - 1];
@@ -125,20 +121,30 @@ export function collectTombstones(
 ): number {
   let removed = 0;
   store.transaction(() => {
-    for (const row of store.settingsAfter(0)) {
-      if (row.version > throughSeq) continue;
-      if (row.deleted) {
-        store.deleteSetting(row.key, row.scope, row.family);
-        removed++;
-      } else if (row.members) {
-        const members = new Map(
-          [...row.members].filter(([, cell]) => !cell.removed),
-        );
-        if (members.size !== row.members.size)
-          store.putSetting({ ...row, members });
+    // Paged by version: removing or rewriting a row never moves the cursor, and no more than a
+    // page is in memory (tombstones on open keys are not bounded by the settings budget).
+    let after = 0;
+    for (;;) {
+      const page = store.settingsPageThrough(after, throughSeq, COLLECT_PAGE);
+      for (const row of page) {
+        if (row.deleted) {
+          store.deleteSetting(row.key, row.scope, row.family);
+          removed++;
+        } else if (row.members) {
+          const members = new Map(
+            [...row.members].filter(([, cell]) => !cell.removed),
+          );
+          if (members.size !== row.members.size)
+            store.putSetting({ ...row, members });
+        }
       }
+      if (page.length < COLLECT_PAGE) break;
+      after = page[page.length - 1]?.version ?? throughSeq;
     }
     store.setWatermark(Math.max(store.getWatermark(), throughSeq));
   });
   return removed;
 }
+
+/** Rows read per page by the tombstone collector. */
+const COLLECT_PAGE = 100;

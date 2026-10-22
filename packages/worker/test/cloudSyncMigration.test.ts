@@ -43,6 +43,7 @@ async function seedObject(
       op: "push",
       deviceId: "d1",
       family: "desktop",
+      limits: { quotaBytes: 1_000_000_000 },
       request: {
         clientId: "c_000000000000000client1",
         cursor: 0,

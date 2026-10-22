@@ -13,8 +13,11 @@ import {
   IDLE_RETENTION_SECONDS,
 } from "../src/services/sync/do/directory.js";
 import { syncProductPurge } from "../src/services/sync/productDeletion.js";
+import { ABSORBED_RETENTION_MS } from "../src/services/sync/do/cloudSyncDo.js";
+import { deleteCloudSyncIfUnchanged } from "../src/services/sync/do/client.js";
 import { cloudSyncStore } from "../src/services/sync/subjectStore.js";
 import { makeTestDb } from "./helpers.js";
+import { seedProduct } from "./seed.js";
 import {
   CloudSyncNamespaceMock,
   asCloudSyncNamespace,
@@ -33,21 +36,31 @@ const LAST_WRITE: Classification = {
   policy: "lastWrite",
 };
 
-function world() {
+async function world(flushTimeoutMs?: number) {
   const clock = { t: T0 };
   const inner = makeTestDb();
   const batches: DbStatement[][] = [];
-  const state = { fail: false, gate: null as Promise<void> | null };
+  const state = {
+    fail: false,
+    failAfterCommit: false,
+    gate: null as Promise<void> | null,
+  };
   const db: Db = Object.assign(Object.create(inner) as Db, {
     batch: async (s: DbStatement[]) => {
       batches.push(s);
       if (state.gate) await state.gate;
       if (state.fail) throw new Error("d1 down");
       await inner.batch(s);
+      if (state.failAfterCommit) throw new Error("reply lost");
     },
   });
-  const ns = new CloudSyncNamespaceMock({ db: () => db, now: () => clock.t });
+  const ns = new CloudSyncNamespaceMock({
+    db: () => db,
+    now: () => clock.t,
+    ...(flushTimeoutMs ? { flushTimeoutMs } : {}),
+  });
   const env = { CLOUD_SYNC: asCloudSyncNamespace(ns) };
+  await seedProduct(inner, P);
   return { clock, db: inner, batches, state, ns, env };
 }
 
@@ -66,7 +79,7 @@ const mut = (
 });
 
 async function write(
-  w: ReturnType<typeof world>,
+  w: Awaited<ReturnType<typeof world>>,
   subject: string,
   mutations: SyncMutation[],
   extra: Record<string, unknown> = {},
@@ -89,7 +102,7 @@ async function write(
   return r.outcome;
 }
 
-const dirRow = (w: ReturnType<typeof world>, subject: string) =>
+const dirRow = (w: Awaited<ReturnType<typeof world>>, subject: string) =>
   w.db.first<Record<string, unknown>>(
     "SELECT * FROM sync_directory WHERE product = ? AND subject = ?",
     P,
@@ -98,7 +111,7 @@ const dirRow = (w: ReturnType<typeof world>, subject: string) =>
 
 describe("directory flush (U-05.9)", () => {
   it("the first write schedules an alarm at once, and the alarm makes the directory row", async () => {
-    const w = world();
+    const w = await world();
     await write(w, A, [mut("a", "set", T0 - 1000, { value: "x" })], {
       tierId: "pro",
     });
@@ -127,7 +140,7 @@ describe("directory flush (U-05.9)", () => {
   });
 
   it("later writes coalesce: one alarm per window, one D1 batch for many writes", async () => {
-    const w = world();
+    const w = await world();
     await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
     await w.ns.fireAlarm(NAME(A));
     expect(w.batches).toHaveLength(1);
@@ -146,7 +159,7 @@ describe("directory flush (U-05.9)", () => {
   });
 
   it("a clean alarm does nothing", async () => {
-    const w = world();
+    const w = await world();
     await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
     await w.ns.fireAlarm(NAME(A));
     w.clock.t += FLUSH_WINDOW_MS;
@@ -156,7 +169,7 @@ describe("directory flush (U-05.9)", () => {
   });
 
   it("counts the day's syncs and conflicts, per UTC day, and adds across flushes", async () => {
-    const w = world();
+    const w = await world();
     await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
     // A stale edit loses to the newer one: a conflict.
     await write(w, A, [mut("a", "set", T0 - 90_000, { value: 0 })]);
@@ -184,7 +197,7 @@ describe("directory flush (U-05.9)", () => {
   });
 
   it("platform is the last seen; a push without one keeps it", async () => {
-    const w = world();
+    const w = await world();
     await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
     w.clock.t += 1000;
     await write(w, A, [mut("b", "set", w.clock.t - 500, { value: 1 })], {
@@ -195,7 +208,7 @@ describe("directory flush (U-05.9)", () => {
   });
 
   it("a D1 failure leaves the object dirty and the retry flushes", async () => {
-    const w = world();
+    const w = await world();
     await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
     w.state.fail = true;
     await expect(w.ns.fireAlarm(NAME(A))).rejects.toThrow("d1 down");
@@ -206,7 +219,7 @@ describe("directory flush (U-05.9)", () => {
   });
 
   it("an alarm after deleteAll writes nothing and recreates no row", async () => {
-    const w = world();
+    const w = await world();
     await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
     await callCloudSync<"deleteAll">(
       w.env,
@@ -229,7 +242,7 @@ describe("directory flush (U-05.9)", () => {
   });
 
   it("a deleteAll that races an in-flight flush waits for it, and the object stays erased", async () => {
-    const w = world();
+    const w = await world();
     await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
     let release!: () => void;
     w.state.gate = new Promise<void>((r) => (release = r));
@@ -254,7 +267,7 @@ describe("directory flush (U-05.9)", () => {
   });
 
   it("size falls back to the object until the alarm runs, then the directory answers", async () => {
-    const w = world();
+    const w = await world();
     await write(w, A, [mut("a", "set", T0 - 1000, { value: "xxxx" })]);
     const ctx = { db: w.db, env: w.env as never, now: T0 / 1000 } as never;
     const before = await cloudSyncStore.size!(ctx, { product: P, subject: A });
@@ -267,7 +280,7 @@ describe("directory flush (U-05.9)", () => {
   });
 
   it("a first write is enumerable by the product purge within one alarm", async () => {
-    const w = world();
+    const w = await world();
     await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
     await w.ns.fireAlarm(NAME(A));
     const out = await syncProductPurge({
@@ -288,7 +301,7 @@ describe("directory flush (U-05.9)", () => {
   });
 
   it("an absorb that changed the survivor is flushed", async () => {
-    const w = world();
+    const w = await world();
     await write(w, B, [mut("k", "set", T0 - 1000, { value: 1 })]);
     const doc = (
       await callCloudSync<"exportAll">(
@@ -314,7 +327,7 @@ describe("directory flush (U-05.9)", () => {
 });
 
 describe("housekeeping in the alarm (U-05.9)", () => {
-  const pullAt = (w: ReturnType<typeof world>, cursor: number) =>
+  const pullAt = (w: Awaited<ReturnType<typeof world>>, cursor: number) =>
     callCloudSync<"pull">(
       w.env,
       { product: P, subject: A },
@@ -322,7 +335,7 @@ describe("housekeeping in the alarm (U-05.9)", () => {
     );
 
   it("collects tombstones older than 90 days, never younger, and advances the watermark", async () => {
-    const w = world();
+    const w = await world();
     await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
     w.clock.t += 1000;
     await write(w, A, [mut("a", "clear", w.clock.t - 500)]);
@@ -361,7 +374,7 @@ describe("housekeeping in the alarm (U-05.9)", () => {
   });
 
   it("expires client bindings idle 90 days, and keeps an active one", async () => {
-    const w = world();
+    const w = await world();
     const other = "c_000000000000000client2";
     await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
     w.clock.t = T0 + 50 * DAY;
@@ -394,5 +407,342 @@ describe("housekeeping in the alarm (U-05.9)", () => {
       )
     ).document!;
     expect(doc.clients.map((c) => c.clientId)).toEqual([other]);
+  });
+});
+
+const dailyOf = async (w: Awaited<ReturnType<typeof world>>) =>
+  w.db.first<{ syncs: number; conflicts: number }>(
+    "SELECT SUM(syncs) AS syncs, SUM(conflicts) AS conflicts FROM sync_product_daily WHERE product = ?",
+    P,
+  );
+const metaOf = (
+  w: Awaited<ReturnType<typeof world>>,
+  name: string,
+  key: string,
+) =>
+  (
+    w.ns
+      .instance(name)
+      .storage.sql.db.prepare("SELECT value FROM meta WHERE key = ?")
+      .get(key) as { value: string } | undefined
+  )?.value;
+
+describe("the flush is idempotent under an at-least-once alarm (U-05.9 B1)", () => {
+  it("D1 commits, then the alarm throws: the retry does not double the counters", async () => {
+    const w = await world();
+    await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
+    w.state.failAfterCommit = true;
+    await expect(w.ns.fireAlarm(NAME(A))).rejects.toThrow("reply lost");
+    expect((await dailyOf(w))?.syncs).toBe(1); // D1 holds it
+    w.state.failAfterCommit = false;
+    await w.ns.fireAlarm(NAME(A));
+    expect((await dailyOf(w))?.syncs).toBe(1);
+    expect(w.batches).toHaveLength(2); // the retry did send, and added nothing
+    // Clean now.
+    w.clock.t += FLUSH_WINDOW_MS;
+    await w.ns.fireAlarm(NAME(A));
+    expect(w.batches).toHaveLength(2);
+  });
+
+  it("a failure before the commit counts once on the retry", async () => {
+    const w = await world();
+    await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
+    w.state.fail = true;
+    await expect(w.ns.fireAlarm(NAME(A))).rejects.toThrow("d1 down");
+    expect(await dailyOf(w)).toMatchObject({ syncs: null });
+    w.state.fail = false;
+    await w.ns.fireAlarm(NAME(A));
+    expect((await dailyOf(w))?.syncs).toBe(1);
+  });
+
+  it("writes between retries are counted in the next window, neither lost nor doubled", async () => {
+    const w = await world();
+    await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
+    w.state.failAfterCommit = true;
+    await expect(w.ns.fireAlarm(NAME(A))).rejects.toThrow();
+    w.clock.t += 1000;
+    await write(w, A, [mut("b", "set", w.clock.t - 500, { value: 2 })]);
+    w.state.failAfterCommit = false;
+    await w.ns.fireAlarm(NAME(A)); // the retry: clears the pending flush
+    expect((await dailyOf(w))?.syncs).toBe(1);
+    expect(w.ns.instance(NAME(A)).storage.alarm).not.toBeNull();
+    w.clock.t += FLUSH_WINDOW_MS;
+    await w.ns.fireAlarm(NAME(A));
+    expect((await dailyOf(w))?.syncs).toBe(2);
+    expect((await dirRow(w, A))?.settings).toBe(2);
+  });
+
+  it("a flush that races the product's deletion writes nothing", async () => {
+    const w = await world();
+    await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
+    await w.db.run("UPDATE products SET status = 'deleted' WHERE slug = ?", P);
+    await w.ns.fireAlarm(NAME(A));
+    expect(await dirRow(w, A)).toBeNull();
+    expect((await dailyOf(w))?.syncs).toBeNull();
+    expect(metaOf(w, NAME(A), "dir_pending")).toBeUndefined();
+  });
+});
+
+describe("alarm robustness (U-05.9 N-items)", () => {
+  it("a duplicate or fully refused push neither counts nor dirties the object", async () => {
+    const w = await world();
+    const m = mut("a", "set", T0 - 1000, { value: 1 });
+    await write(w, A, [m]);
+    await w.ns.fireAlarm(NAME(A));
+    w.clock.t += FLUSH_WINDOW_MS;
+    await write(w, A, [m]); // the same mutation id: duplicate
+    expect(metaOf(w, NAME(A), "directory_dirty")).toBe("0");
+    expect(w.ns.instance(NAME(A)).storage.alarm).toBeNull();
+    await w.ns.fireAlarm(NAME(A));
+    expect(w.batches).toHaveLength(1);
+    expect((await dailyOf(w))?.syncs).toBe(1);
+  });
+
+  it("a D1 batch that hangs times out, throws, and stays owed", async () => {
+    const w = await world(20);
+    await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
+    w.state.gate = new Promise<void>(() => {});
+    await expect(w.ns.fireAlarm(NAME(A))).rejects.toThrow("timed out");
+    w.state.gate = null;
+    await w.ns.fireAlarm(NAME(A));
+    expect((await dailyOf(w))?.syncs).toBe(1);
+  });
+
+  it("a setAlarm failure after a committed push does not fail the push", async () => {
+    const w = await world();
+    const st = w.ns.instance(NAME(A)).storage;
+    st.setAlarm = async () => {
+      throw new Error("alarm storage down");
+    };
+    const out = await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
+    expect(out.ok).toBe(true);
+    expect(metaOf(w, NAME(A), "directory_dirty")).toBe("1");
+    // The next write schedules it.
+    st.setAlarm = async (at) => {
+      st.alarm = typeof at === "number" ? at : at.getTime();
+    };
+    w.clock.t += 1000;
+    await write(w, A, [mut("b", "set", w.clock.t - 500, { value: 1 })]);
+    expect(st.alarm).not.toBeNull();
+  });
+
+  it("a bad tierId is refused before anything is stored", async () => {
+    const w = await world();
+    await expect(
+      write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })], {
+        tierId: "x".repeat(300),
+      }),
+    ).rejects.toThrow();
+    expect(w.ns.instance(NAME(A)).storage.alarm).toBeNull();
+  });
+
+  it("an alarm on a v1 object migrates it, then flushes", async () => {
+    const w = await world();
+    await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
+    const raw = w.ns.instance(NAME(A)).storage.sql.db;
+    raw.exec("ALTER TABLE clients DROP COLUMN last_seen");
+    raw.exec("UPDATE meta SET value = '1' WHERE key = 'schema_version'");
+    w.ns.instance(NAME(A)).obj["store"].reset();
+    await w.ns.fireAlarm(NAME(A));
+    expect(metaOf(w, NAME(A), "schema_version")).toBe("2");
+    expect(await dirRow(w, A)).not.toBeNull();
+  });
+});
+
+describe("housekeeping and the SR-1 write guard (U-05.9)", () => {
+  const exportOf = async (w: Awaited<ReturnType<typeof world>>, s: string) =>
+    (
+      await callCloudSync<"exportAll">(
+        w.env,
+        { product: P, subject: s },
+        { op: "exportAll" },
+      )
+    ).document;
+
+  it("expiring a client moves the write count; a replayed push refreshes last_seen", async () => {
+    const w = await world();
+    const m = mut("a", "set", T0 - 1000, { value: 1 });
+    await write(w, A, [m]);
+    const before = (await exportOf(w, A))!.writes;
+    // The client keeps replaying (an unchanged record) and stays bound.
+    w.clock.t = T0 + 80 * DAY;
+    await write(w, A, [m]);
+    w.clock.t = T0 + 100 * DAY;
+    await w.ns.fireAlarm(NAME(A));
+    expect((await exportOf(w, A))!.clients).toHaveLength(1);
+    // An idle one expires, and the guard's counter moves.
+    w.clock.t = T0 + 200 * DAY;
+    const mid = (await exportOf(w, A))!.writes;
+    await w.ns.fireAlarm(NAME(A));
+    const after = await exportOf(w, A);
+    expect(after!.clients).toHaveLength(0);
+    expect(after!.writes).toBeGreaterThan(mid);
+    expect(mid).toBeGreaterThan(before);
+  });
+
+  it("tombstone GC leaves cells and members consistent", async () => {
+    const w = await world();
+    const MERGE: Classification = {
+      verdict: "accept",
+      scope: "user",
+      policy: "merge",
+    };
+    const t = (n: number) => T0 - 10_000 + n;
+    const send = (ms: SyncMutation[]) =>
+      callCloudSync<"push">(
+        w.env,
+        { product: P, subject: A },
+        {
+          op: "push",
+          deviceId: "d1",
+          family: "desktop",
+          limits: { quotaBytes: 1000 },
+          request: { clientId: C1, cursor: 0, mutations: ms },
+          classified: ms.map(() => MERGE),
+          serverNow: w.clock.t,
+        },
+      );
+    await send([
+      mut("keys", "setMember", t(1), { member: "jump", value: "space" }),
+      mut("keys", "setMember", t(2), { member: "run", value: "shift" }),
+    ]);
+    await send([mut("keys", "removeMember", t(3), { member: "jump" })]);
+    await w.ns.fireAlarm(NAME(A));
+    const raw = w.ns.instance(NAME(A)).storage.sql.db;
+    const members = () =>
+      raw
+        .prepare("SELECT member, removed FROM setting_members ORDER BY member")
+        .all();
+    expect(members()).toEqual([
+      { member: "jump", removed: 1 },
+      { member: "run", removed: 0 },
+    ]);
+    w.clock.t = T0 + 91 * DAY;
+    await send([mut("other", "set", w.clock.t - 500, { value: 1 })]);
+    await w.ns.fireAlarm(NAME(A));
+    expect(members()).toEqual([{ member: "run", removed: 0 }]);
+    const doc = (await exportOf(w, A))!;
+    const row = doc.settings.find((r) => r.key === "keys")!;
+    expect((row.members ?? []).map(([n]) => n)).toEqual(["run"]);
+    expect(row.deleted).toBe(false);
+  });
+});
+
+describe("the absorbed marker's lifetime (U-05.9)", () => {
+  it("is erased a day after the merge, does no flush before, and marks nothing dirty", async () => {
+    const w = await world();
+    await write(w, B, [mut("k", "set", T0 - 1000, { value: 1 })]);
+    await w.ns.fireAlarm(NAME(B));
+    const doc = (
+      await callCloudSync<"exportAll">(
+        w.env,
+        { product: P, subject: B },
+        { op: "exportAll" },
+      )
+    ).document!;
+    const flushed = w.batches.length;
+    expect(
+      await deleteCloudSyncIfUnchanged(
+        w.env,
+        { product: P, subject: B },
+        { seq: doc.seq, writes: doc.writes },
+        A,
+      ),
+    ).toBe(true);
+    const st = w.ns.instance(NAME(B)).storage;
+    const due = T0 + ABSORBED_RETENTION_MS;
+    expect(st.alarm).toBe(due);
+    expect(metaOf(w, NAME(B), "absorbed_into")).toBe(A);
+    expect(metaOf(w, NAME(B), "directory_dirty")).toBeUndefined();
+    // An early alarm leaves the marker (and reschedules).
+    w.clock.t = T0 + ABSORBED_RETENTION_MS / 2;
+    await w.ns.fireAlarm(NAME(B));
+    expect(metaOf(w, NAME(B), "absorbed_into")).toBe(A);
+    expect(st.alarm).toBe(due);
+    expect(w.batches).toHaveLength(flushed);
+    // At 30 days it erases itself: no tables, no alarm, no D1 write.
+    w.clock.t = due;
+    await w.ns.fireAlarm(NAME(B));
+    expect(
+      st.sql.db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+        )
+        .all(),
+    ).toEqual([]);
+    expect(st.alarm).toBeNull();
+    expect(w.batches).toHaveLength(flushed);
+  });
+});
+
+describe("merge delete order and paged GC (U-05.9)", () => {
+  it("a crash between the marker and the wipe leaves a marked object, and the retry finishes the wipe", async () => {
+    const w = await world();
+    await write(w, B, [mut("k", "set", T0 - 1000, { value: 1 })]);
+    const doc = (
+      await callCloudSync<"exportAll">(
+        w.env,
+        { product: P, subject: B },
+        { op: "exportAll" },
+      )
+    ).document!;
+    // The state after the marker is written and before the wipe: data and marker together.
+    const raw = w.ns.instance(NAME(B)).storage.sql.db;
+    raw.exec(
+      "INSERT INTO meta (key, value) VALUES ('absorbed_into', 'sub_alice')",
+    );
+    raw.exec("INSERT INTO meta (key, value) VALUES ('absorbed_at', '1')");
+    // It already refuses writes.
+    await expect(
+      write(w, B, [mut("z", "set", T0 - 500, { value: 1 })]),
+    ).rejects.toThrow();
+    expect(
+      await deleteCloudSyncIfUnchanged(
+        w.env,
+        { product: P, subject: B },
+        { seq: doc.seq, writes: doc.writes },
+        A,
+      ),
+    ).toBe(true);
+    expect(raw.prepare("SELECT 1 FROM settings").all()).toEqual([]);
+    expect(metaOf(w, NAME(B), "absorbed_into")).toBe(A);
+  });
+
+  it("collects more tombstones than one page holds", async () => {
+    const w = await world();
+    const keys = Array.from({ length: 130 }, (_, i) => `k${i}`);
+    for (let i = 0; i < keys.length; i += 10) {
+      await write(
+        w,
+        A,
+        keys
+          .slice(i, i + 10)
+          .map((k) => mut(k, "set", T0 - 5000 + i, { value: 1 })),
+      );
+    }
+    await write(
+      w,
+      A,
+      keys.slice(0, 10).map((k) => mut(k, "clear", T0 - 100)),
+    );
+    for (let i = 10; i < 130; i += 10)
+      await write(
+        w,
+        A,
+        keys.slice(i, i + 10).map((k) => mut(k, "clear", T0 - 100)),
+      );
+    await w.ns.fireAlarm(NAME(A));
+    const raw = w.ns.instance(NAME(A)).storage.sql.db;
+    const n = () =>
+      (
+        raw.prepare("SELECT COUNT(*) AS n FROM tombstones").get() as {
+          n: number;
+        }
+      ).n;
+    expect(n()).toBe(130);
+    w.clock.t = T0 + 91 * DAY;
+    await write(w, A, [mut("z", "set", w.clock.t - 500, { value: 1 })]);
+    await w.ns.fireAlarm(NAME(A));
+    expect(n()).toBe(0);
   });
 });

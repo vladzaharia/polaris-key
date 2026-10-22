@@ -99,6 +99,26 @@ export class MemoryStore implements SyncStore {
       .map(cloneRow);
   }
 
+  settingsPageAfter(
+    seq: number,
+    family: string,
+    limit: number,
+  ): StoredSetting[] {
+    return this.settingsAfter(seq)
+      .filter((r) => r.scope === "user" || r.family === family)
+      .slice(0, limit);
+  }
+
+  settingsPageThrough(
+    after: number,
+    through: number,
+    limit: number,
+  ): StoredSetting[] {
+    return this.settingsAfter(after)
+      .filter((r) => r.version <= through)
+      .slice(0, limit);
+  }
+
   isEmpty(): boolean {
     return this.settings.size === 0;
   }

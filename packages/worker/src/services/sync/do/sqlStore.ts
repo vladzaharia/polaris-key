@@ -189,6 +189,11 @@ export class SqlStore implements SyncStore {
     );
   }
 
+  deleteMeta(key: string): void {
+    this.requireWritable();
+    this.run(`DELETE FROM meta WHERE key = ?`, key);
+  }
+
   private num(key: string): number {
     const v = this.getMeta(key);
     return v === undefined ? 0 : Number(v);
@@ -247,8 +252,18 @@ export class SqlStore implements SyncStore {
       : undefined;
   }
 
+  /**
+   * The count of writes that did not move `seq`: a client binding changes without a sequence (a
+   * conflict-only push advances `lastMutationId`). An absorbed object is deleted only while both
+   * `seq` and this are what the export saw (SR-1 N2).
+   */
+  writeCount(): number {
+    return this.num("writes");
+  }
+
   putClient(c: ClientRecord): void {
     this.requireWritable();
+    this.setMeta("writes", String(this.num("writes") + 1));
     this.run(
       `INSERT OR REPLACE INTO clients (client_id, device_id, last_mutation_id, last_seen) VALUES (?, ?, ?, ?)`,
       c.clientId,
@@ -267,6 +282,8 @@ export class SqlStore implements SyncStore {
       cutoff,
     )[0]?.n;
     if (!n) return 0;
+    // A binding leaving is a write that does not move `seq`: the merge's write guard sees it.
+    this.setMeta("writes", String(this.num("writes") + 1));
     this.run(`DELETE FROM clients WHERE last_seen < ?`, cutoff);
     return Number(n);
   }
@@ -306,32 +323,32 @@ export class SqlStore implements SyncStore {
     return undefined;
   }
 
+  /**
+   * Writes the row. The row itself is one upsert (and one delete from the table it left), and the
+   * merge cells of a merged row are written as a diff against what is stored: only a cell that is
+   * new or changed is upserted (its `ord` kept), and only a name the row no longer holds is deleted
+   * (SR-1 B2). A mutation therefore writes O(mutations) rows however many cells the row holds.
+   */
   putSetting(row: StoredSetting): void {
     this.requireWritable();
     const fam = row.scope === "platform" ? (row.family ?? "") : "";
+    const [table, other] = row.deleted
+      ? (["tombstones", "settings"] as const)
+      : (["settings", "tombstones"] as const);
     this.run(
-      `DELETE FROM settings WHERE scope = ? AND family = ? AND key = ?`,
+      `DELETE FROM ${other} WHERE scope = ? AND family = ? AND key = ?`,
       row.scope,
       fam,
       row.key,
     );
-    this.run(
-      `DELETE FROM tombstones WHERE scope = ? AND family = ? AND key = ?`,
-      row.scope,
-      fam,
-      row.key,
-    );
-    this.run(
-      `DELETE FROM setting_members WHERE scope = ? AND family = ? AND key = ?`,
-      row.scope,
-      fam,
-      row.key,
-    );
-    const table = row.deleted ? "tombstones" : "settings";
     this.run(
       `INSERT INTO ${table}
          (scope, family, key, version, hlc, client_id, value_json, is_merge, floor_hlc, floor_client)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (scope, family, key) DO UPDATE SET
+         version = excluded.version, hlc = excluded.hlc, client_id = excluded.client_id,
+         value_json = excluded.value_json, is_merge = excluded.is_merge,
+         floor_hlc = excluded.floor_hlc, floor_client = excluded.floor_client`,
       row.scope,
       fam,
       row.key,
@@ -343,19 +360,54 @@ export class SqlStore implements SyncStore {
       row.floor?.hlc ?? null,
       row.floor?.clientId ?? null,
     );
-    for (const [name, cell] of row.members ?? [])
+    const have = new Map<string, MemberRow>();
+    for (const m of this.all<MemberRow>(
+      `SELECT member, value_json, removed, hlc, client_id FROM setting_members
+         WHERE scope = ? AND family = ? AND key = ?`,
+      row.scope,
+      fam,
+      row.key,
+    ))
+      have.set(m.member, m);
+    const members = row.members ?? new Map<string, MemberCell>();
+    for (const [name, cell] of members) {
+      const json = JSON.stringify(cell.value);
+      const old = have.get(name);
+      have.delete(name);
+      if (
+        old &&
+        old.value_json === json &&
+        (old.removed === 1) === cell.removed &&
+        old.hlc === cell.stamp.hlc &&
+        old.client_id === cell.stamp.clientId
+      )
+        continue;
       this.run(
         `INSERT INTO setting_members
            (scope, family, key, member, value_json, removed, hlc, client_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (scope, family, key, member) DO UPDATE SET
+           value_json = excluded.value_json, removed = excluded.removed,
+           hlc = excluded.hlc, client_id = excluded.client_id`,
         row.scope,
         fam,
         row.key,
         name,
-        JSON.stringify(cell.value),
+        json,
         cell.removed ? 1 : 0,
         cell.stamp.hlc,
         cell.stamp.clientId,
+      );
+    }
+    // What is left in `have` was pruned, cleared or collected.
+    for (const name of have.keys())
+      this.run(
+        `DELETE FROM setting_members
+           WHERE scope = ? AND family = ? AND key = ? AND member = ?`,
+        row.scope,
+        fam,
+        row.key,
+        name,
       );
   }
 
@@ -391,6 +443,51 @@ export class SqlStore implements SyncStore {
         (a.key < b.key ? -1 : a.key > b.key ? 1 : 0),
     );
     return rows.map(([r, dead]) => this.hydrate(r, dead));
+  }
+
+  settingsPageThrough(
+    after: number,
+    through: number,
+    limit: number,
+  ): StoredSetting[] {
+    if (!this.hasSchema()) return [];
+    const rows = this.all<SettingRow & { dead: number }>(
+      `SELECT * FROM (
+         SELECT *, 0 AS dead FROM settings WHERE version > ? AND version <= ?
+         UNION ALL
+         SELECT *, 1 AS dead FROM tombstones WHERE version > ? AND version <= ?)
+       ORDER BY version, scope, family, key LIMIT ?`,
+      after,
+      through,
+      after,
+      through,
+      limit,
+    );
+    return rows.map((r) => this.hydrate(r, r.dead === 1));
+  }
+
+  settingsPageAfter(
+    seq: number,
+    family: string,
+    limit: number,
+  ): StoredSetting[] {
+    if (!this.hasSchema()) return [];
+    const visible = `(scope = 'user' OR family = ?)`;
+    // Versions are unique per row (every write takes the next sequence), so `version` orders the
+    // union; the scope, family and key terms only make an impossible tie deterministic.
+    const rows = this.all<SettingRow & { dead: number }>(
+      `SELECT * FROM (
+         SELECT *, 0 AS dead FROM settings WHERE version > ? AND ${visible}
+         UNION ALL
+         SELECT *, 1 AS dead FROM tombstones WHERE version > ? AND ${visible})
+       ORDER BY version, scope, family, key LIMIT ?`,
+      seq,
+      family,
+      seq,
+      family,
+      limit,
+    );
+    return rows.map((r) => this.hydrate(r, r.dead === 1));
   }
 
   isEmpty(): boolean {

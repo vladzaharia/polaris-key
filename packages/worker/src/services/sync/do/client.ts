@@ -7,8 +7,9 @@
  * write and answers `403 pin_mismatch` to any other. The caller passes the subject it took from
  * `syncAccess` (the authenticated principal); a request body never supplies one.
  *
- * Product slugs are `[a-z0-9-]` and subjects are base32 pairwise ids, neither holds `:`, so two
- * different pairs can never share a name.
+ * Product slugs are `[a-z0-9-]` and subjects are pairwise ids, `ps_` plus base64url
+ * (`[A-Za-z0-9_-]`); neither grammar holds `:`, so two different pairs can never share a name.
+ * `cloudSyncObjectName` asserts both grammars, so a pin that breaks them throws instead of aliasing.
  */
 
 import type { Env } from "../../../platform/env.js";
@@ -21,8 +22,15 @@ import type {
 } from "./protocol.js";
 import type { SettingPolicy } from "../engine/types.js";
 
+const PRODUCT_RE = /^[a-z0-9-]+$/;
+const SUBJECT_RE = /^[A-Za-z0-9_-]+$/;
+
 /** The object's name for one person on one product. */
 export function cloudSyncObjectName(pin: DoPin): string {
+  if (!PRODUCT_RE.test(pin.product) || !SUBJECT_RE.test(pin.subject))
+    throw new Error(
+      "cloud sync: a pin outside the product and subject grammars",
+    );
   return `${pin.product}:${pin.subject}`;
 }
 
@@ -98,15 +106,23 @@ export async function absorbCloudSync(
 }
 
 /**
- * Remove the object's data only if it is still at `seq`; false when it changed meanwhile.
+ * Remove the object's data only if it is still at the exported `seq` and write count; false when
+ * it changed meanwhile. On success the object keeps a marker that refuses every later write
+ * (`absorbedInto` names the survivor); only `deleteCloudSync` (an erasure) removes the marker.
  */
 export async function deleteCloudSyncIfUnchanged(
   env: Pick<Env, "CLOUD_SYNC">,
   pin: DoPin,
-  seq: number,
+  at: { seq: number; writes: number },
+  absorbedInto: string,
 ): Promise<boolean> {
   return (
-    await callCloudSync<"deleteAll">(env, pin, { op: "deleteAll", ifSeq: seq })
+    await callCloudSync<"deleteAll">(env, pin, {
+      op: "deleteAll",
+      ifSeq: at.seq,
+      ifWrites: at.writes,
+      absorbedInto,
+    })
   ).deleted;
 }
 
@@ -116,13 +132,4 @@ export async function deleteCloudSync(
   pin: DoPin,
 ): Promise<void> {
   await callCloudSync<"deleteAll">(env, pin, { op: "deleteAll" });
-}
-
-/** Whether the object holds anything. Reads create nothing. */
-export async function cloudSyncHoldsData(
-  env: Pick<Env, "CLOUD_SYNC">,
-  pin: DoPin,
-): Promise<boolean> {
-  const r = await callCloudSync<"usage">(env, pin, { op: "usage" });
-  return !r.empty;
 }
