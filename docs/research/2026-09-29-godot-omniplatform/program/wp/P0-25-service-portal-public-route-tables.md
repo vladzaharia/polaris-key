@@ -1,16 +1,16 @@
 # P0-25 Service, portal and public route tables
 
-| Field       | Value                                                                                                                                                               |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation B: Foundations (code quality the feature tracks build on))                                               |
-| Size        | 1.2–1.8 engineer-weeks                                                                                                                                              |
-| Depends on  | [P0-16](P0-16-first-party-respond-body-module-console.md), [P0-19](P0-19-descriptor-contributions-services-slug.md), [ST-29](ST-29-admin-route-table-can-usecan.md) |
-| Unblocks    | [P0-30](P0-30-guardrails-test-harness-test-layout.md), [P0-51](P0-51-1-0-readiness-review.md), [U-05](U-05-cloud-sync-do.md)                                        |
-| Role        | `pkey-implementer`                                                                                                                                                  |
-| Plan mode   | no                                                                                                                                                                  |
-| Gates       | `rule-10`                                                                                                                                                           |
-| Human input | none                                                                                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                           |
+| Field       | Value                                                                                                                                                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation B: Foundations (code quality the feature tracks build on))                                                        |
+| Size        | 1.2–1.8 engineer-weeks                                                                                                                                                       |
+| Depends on  | [P0-16](P0-16-first-party-respond-body-module-console.md), [P0-19](P0-19-descriptor-contributions-services-slug.md), [ST-29](ST-29-admin-route-table-can-usecan.md)          |
+| Unblocks    | [P0-25b](P0-25b-portal-public-route-tables.md), [P0-30](P0-30-guardrails-test-harness-test-layout.md), [P0-51](P0-51-1-0-readiness-review.md), [U-05](U-05-cloud-sync-do.md) |
+| Role        | `pkey-implementer`                                                                                                                                                           |
+| Plan mode   | no                                                                                                                                                                           |
+| Gates       | `rule-10`                                                                                                                                                                    |
+| Human input | none                                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                    |
 
 ## Consolidation 2026-10-07
 

@@ -678,6 +678,26 @@
       "status": "in-progress"
     },
     {
+      "id": "P0-25b",
+      "title": "Portal and core public route tables, and the CORS row flag",
+      "phase": "P0",
+      "stage": "DX consolidation B: Foundations (code quality the feature tracks build on)",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.1, 0.15],
+      "deps": ["P0-25"],
+      "planMode": false,
+      "gates": ["rule-10"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Split from P0-25 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
+      ],
+      "brief": "wp/P0-25b-portal-public-route-tables.md",
+      "status": "todo"
+    },
+    {
       "id": "P0-26",
       "title": "Core manifest ingest pipeline",
       "phase": "P0",
@@ -1643,7 +1663,17 @@
         "SP-54b",
         "PX-14a",
         "PX-14b",
-        "PX-28b"
+        "PX-28b",
+        "P0-25b",
+        "A-19b",
+        "F-33b",
+        "ST-30c",
+        "SP-52b",
+        "UK-04b",
+        "SP-65b",
+        "UK-09b",
+        "UK-11b",
+        "UK-12b"
       ],
       "planMode": false,
       "gates": ["docs-links"],
@@ -7094,6 +7124,26 @@
       "status": "in-progress"
     },
     {
+      "id": "F-33b",
+      "title": "`pkeyci_` packages:read, serve-time list filtering, the registry-clients two-owner row, revoke licence-bound tokens on unlink",
+      "phase": "F",
+      "stage": "DX consolidation I: Packages, updates and packs",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.25],
+      "deps": ["F-33"],
+      "planMode": false,
+      "gates": ["migration", "table-owners", "threat-model"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Split from F-33 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
+      ],
+      "brief": "wp/F-33b-service-tokens-list-filtering.md",
+      "status": "todo"
+    },
+    {
       "id": "F-34",
       "title": "Feeds that provision themselves, Customers by default",
       "phase": "F",
@@ -7662,6 +7712,26 @@
       ],
       "brief": "wp/A-19-one-channel-catalogue-tools-channels.md",
       "status": "in-progress"
+    },
+    {
+      "id": "A-19b",
+      "title": "Channel labels from the catalogue everywhere, the store-name literal lint, the per-channel docs check",
+      "phase": "A",
+      "stage": "DX consolidation H: Distribution channels, storefronts and commerce",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.1, 0.15],
+      "deps": ["A-19"],
+      "planMode": false,
+      "gates": [],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Split from A-19 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
+      ],
+      "brief": "wp/A-19b-channel-labels-literal-lint.md",
+      "status": "todo"
     },
     {
       "id": "A-20",
@@ -9871,6 +9941,26 @@
       ],
       "brief": "wp/ST-30-console-sign-in-on-polaris-key-accounts.md",
       "status": "in-progress"
+    },
+    {
+      "id": "ST-30c",
+      "title": "Console sign-in: passkey step-up, break-glass link, known-operator chip, v1 reader removal, lockup",
+      "phase": "ST",
+      "stage": "DX consolidation D: Administration, access control and console identity",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.1, 0.15],
+      "deps": ["ST-30"],
+      "planMode": false,
+      "gates": ["threat-model", "security-review"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Split from ST-30 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
+      ],
+      "brief": "wp/ST-30c-passkey-step-up-break-glass.md",
+      "status": "todo"
     },
     {
       "id": "ST-31",
@@ -12180,6 +12270,26 @@
       "status": "in-progress"
     },
     {
+      "id": "SP-52b",
+      "title": "Swift iOS app footprint: at least 25% smaller than 0.8.33",
+      "phase": "SP",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": ["SP-52"],
+      "planMode": false,
+      "gates": ["ci:macos"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Split from SP-52 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
+      ],
+      "brief": "wp/SP-52b-ios-app-footprint.md",
+      "status": "todo"
+    },
+    {
       "id": "SP-53",
       "title": "Backend credential contract: `X-PKey-License`, the verdict, `backend` codes and copy, `backend-matrix.json`, client-core `backend`",
       "phase": "SP",
@@ -12470,6 +12580,26 @@
       ],
       "brief": "wp/SP-65-end-to-end-ci-client-backend-pkey-dev.md",
       "status": "in-progress"
+    },
+    {
+      "id": "SP-65b",
+      "title": "End-to-end CI: React `usePolarisFetch`, native clients, `requireSignIn` legs",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "cli-ci",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.3],
+      "deps": ["SP-65"],
+      "planMode": false,
+      "gates": ["ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Split from SP-65 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
+      ],
+      "brief": "wp/SP-65b-e2e-react-native-require-sign-in.md",
+      "status": "todo"
     },
     {
       "id": "SP-66",
@@ -13077,6 +13207,26 @@
       "status": "in-progress"
     },
     {
+      "id": "UK-04b",
+      "title": "Elements CDN module `key.plrs.im/elements/<major>/pk.js` and the npm publish",
+      "phase": "UK",
+      "stage": "must",
+      "lane": "ui",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.1, 0.1],
+      "deps": ["UK-04"],
+      "planMode": false,
+      "gates": ["modernity-lint", "rule-10", "threat-model", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Split from UK-04 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
+      ],
+      "brief": "wp/UK-04b-elements-cdn-module.md",
+      "status": "todo"
+    },
+    {
       "id": "UK-05",
       "title": "`@polaris-key/react` rebuilt on ui-core: Polaris look by default, `@layer polaris-key` styling, scoped vars, `<PolarisKeyGate>` one-liner, every missing screen, React 18 and 19",
       "phase": "UK",
@@ -13212,6 +13362,26 @@
       "status": "in-progress"
     },
     {
+      "id": "UK-09b",
+      "title": "Compose kit: Android sample, tabs, M3 Expressive, navigation, tablet list-detail, ChannelPicker, BUILT UX",
+      "phase": "UK",
+      "stage": "must",
+      "lane": "ui",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.3],
+      "deps": ["UK-09"],
+      "planMode": false,
+      "gates": ["modernity-lint", "ci:android", "ci:kotlin", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Split from UK-09 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
+      ],
+      "brief": "wp/UK-09b-compose-android-sample-and-expressive.md",
+      "status": "todo"
+    },
+    {
       "id": "UK-10",
       "title": "Compose Multiplatform kit for JVM desktop: `desktopMain` with the §1.4 desktop dialog model, Windows/macOS/Linux variants, focus rings, desktop density, UpdatePrompt over UK-40's updater",
       "phase": "UK",
@@ -13269,6 +13439,26 @@
       "status": "in-progress"
     },
     {
+      "id": "UK-11b",
+      "title": "Godot kit: game look, five standalone scenes, PNG baselines, UK-59 leftovers, BUILT UX",
+      "phase": "UK",
+      "stage": "must",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [0.3, 0.3],
+      "deps": ["UK-11"],
+      "planMode": false,
+      "gates": ["modernity-lint", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Split from UK-11 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
+      ],
+      "brief": "wp/UK-11b-godot-game-look-scenes-baselines.md",
+      "status": "todo"
+    },
+    {
       "id": "UK-12",
       "title": "Qt Quick kit on polaris_key.ui.core",
       "phase": "UK",
@@ -13293,6 +13483,26 @@
       ],
       "brief": "wp/UK-12-python-qt.md",
       "status": "in-progress"
+    },
+    {
+      "id": "UK-12b",
+      "title": "Qt kit: scrim, Mica, QSS, QAccessible, Flatpak, Qt tabs, BUILT UX",
+      "phase": "UK",
+      "stage": "must",
+      "lane": "ui",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.2],
+      "deps": ["UK-12"],
+      "planMode": false,
+      "gates": ["modernity-lint", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Split from UK-12 (triage 2026-10-22: /Users/vlad/Repos/pk-wt/_lead/triage-2026-10-22.md)"
+      ],
+      "brief": "wp/UK-12b-qt-scrim-mica-tabs.md",
+      "status": "todo"
     },
     {
       "id": "UK-13",
