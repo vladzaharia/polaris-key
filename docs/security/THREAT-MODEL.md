@@ -1735,7 +1735,7 @@ minutes), CSRF-protected, and spends `portalPersonalToken` (20 an hour, fail clo
 The portal mints `packages:read` and refuses anything else with a 422, so a client that asks for
 `admin` learns it did not get it. The registry host resolves a personal token for
 `packages:read` only: a row of any other scope (ST-34's `admin`) resolves to nothing there, and the
-admin API will take `admin` tokens only. A package token therefore cannot reach the admin API, and
+admin API takes `admin` tokens only. A package token therefore cannot reach the admin API, and
 an admin token cannot read a feed, whatever a row says. A personal token never publishes: the
 publish and OCI push paths do not accept the prefix, and a pull token for one grants no `push`.
 
@@ -1778,13 +1778,14 @@ leaves out `revokedBy`, which names the revoking account.
 `revokeAllAccountTokens` is the account-wide store half); by erasure (the erasure stops the account's
 tokens first, reason `account_deleted`, then deletes them in its closing batch, labels included; and the request-time erasure fence refuses a restored token of an
 erased account: a ledger that cannot be read resolves to nothing for that request). A merge moves
-the tokens to the surviving account and its undo moves exactly those back. A revoke takes effect
+its `packages:read` tokens to the surviving account and its undo moves exactly those back; its `admin`
+tokens are revoked (`access_removed`) and stay revoked. A revoke takes effect
 within the registry's 30-second per-isolate window, at once on the isolate that served it. Rows are
 purged 90 days after they ended. Personal tokens appear in the account export (metadata only).
 
 **Residual.** A token pasted into a shared CI is as shareable as the licence behind it; the bound
 is expiry, the per-account cap, the licence's status and revocation. `last_used_at` is written at
-most hourly, so "last used" lags by up to an hour. A USE is not audited per request.
+most hourly, so "last used" lags by up to an hour. A `packages:read` use is not audited per request; an `admin` use is (`account_token.used`, ST-34.3).
 
 **Review triggers.** A second scope on `packages:read`'s path; the registry host accepting any
 scope but `packages:read`; a personal token accepted by a publish path; a licence-free grant in
@@ -7012,7 +7013,7 @@ reads no feed.
   `can()` under the holder's principal (the token adds no authority), so a holder narrowed to `ship`
   gets 403 `{area: "license"}` on the bundle mint on the next request, and a deleted binding ends the
   token's reach at once. The token routes (`/tokens`, `/account-tokens`) carry no flag, so a token
-  cannot mint or list tokens. `test/adminPersonalToken.test.ts` pins the eight rows and that none needs
+  cannot mint or list tokens. `test/adminPersonalToken.test.ts` pins the flagged rows and that none needs
   a step-up.
 - **Step-up is refused.** The session has no `stepUpAt`, so a row with `stepUp` answers 403
   `step_up_required` (and no flagged row has one; the table test fails if one gains the flag).
@@ -7023,7 +7024,9 @@ reads no feed.
   stops being root when the assertion goes stale (403 `console`; `/me` still answers); a token that
   must last needs a stored Superadmin binding, which is the holder's decision with a Superadmin.
 - **Limiter.** `ptok:<token id>` in the `adminApi` bucket (600 a minute), so a CLI loop cannot spend
-  the person's console budget (keyed by the member id) and one token cannot spend another's.
+  the person's console budget (keyed by the member id) and one token cannot spend another's. Since
+  ST-34.4 one more cap spans all of a member's personal tokens (`adminApiPersonal`, 600 a minute), so
+  25 tokens do not multiply the budget, and with it the use rows a holder can write.
 - **Audit (D-15).** Every use that clears the gates writes `account_token.used` before the handler:
   `audit` on the product for a product row, `platform_audit` otherwise. The actor is the member id
   (`mbr_…`); the summary names the label, the last four characters and `METHOD path`; the target is
@@ -7032,10 +7035,49 @@ reads no feed.
 - **A merge** revokes the absorbed account's admin tokens (ST-34.1), and an account that merged away
   answers `consoleTokenSubject` `null`, so its token is a 401 either way.
 
-**Residual.** A stolen admin `pkeyp_` acts as its holder on the eight rows for up to 7 days (30 at
+**Residual.** A stolen admin `pkeyp_` acts as its holder on the flagged rows for up to 7 days (30 at
 most) or until revoked, with no second factor: bounded by the roles, the rows and the use trail, not
 removed. `GET /products` and `/access/admins` disclose names and roles to anyone holding the token.
-The audit row holds the holder's name and email as every console audit row does.
+The audit row holds the holder's name and email as every console audit row does. A stolen token's
+bundle-mint output outlives the token: the mint consumes no device row or seat, has no count limit
+beyond the per-token rate, takes `graceDays` up to 365 (clamped only where the product clamps), and
+revoking the token recalls no bundle.
+
+### Admin-scope personal tokens: own-token routes, self-revoke and the listing import (ST-34.4)
+
+**What arrived.** `GET /me/personal-tokens`, `DELETE /me/personal-tokens/:id` and
+`DELETE /me/personal-tokens/current` (`console/handlers/myTokens.ts`), and a specific row
+`POST /products/:slug/distribution/listing/import` (area `ship`, `personalToken: true`) for
+`pkey listing import`.
+
+**Control.**
+
+- **Own tokens only, no IDOR.** The account is the session's `aid`, never a request field. Every query
+  is `account_id = ? AND id = ?`, so another account's id is a 404, indistinguishable from an absent
+  one, and nothing is revoked or audited. The list and the id revoke carry no `personalToken` flag
+  and so refuse every token (personal or `pkeya_`): a stolen token cannot enumerate or kill its
+  siblings, and cannot learn their labels. A v1 cookie names no account and answers 409 `reauth`. No
+  response carries the account id, a hash, the plaintext or `revokedBy`.
+- **Self-revoke only narrows.** `current` revokes `session.tokenId`, which the dispatcher set from the
+  token it just resolved (a cookie body cannot name one: `verifySession` drops `tokenId`). The row
+  is `personalOnly`, gated on the dispatcher's `personal`, never on `aid` or `tokenId` being present
+  (a token session carries an `aid`): a session is 403, a `packages:read` token is the usual 401. A
+  stolen token can end itself and nothing else. Revoking twice answers the token as it stands and
+  writes no second row.
+- **Audit and caches.** `account_token.revoke` in `platform_audit`, actor the member id, summary the
+  label and last four characters. `forgetRegistryTokens` drops this isolate's 30-second cache; other
+  isolates follow within 30 seconds, and an admin token is re-read on every request anyway.
+- **The listing-import row.** It narrows the `distribution/**` prefix without changing its area, so
+  `can()` runs under the holder's own principal: a holder without `ship` on that product is 403, and
+  every other listing path stays unreachable by token. POST only; the diff and the confirmed apply
+  are one route, and the apply needs the diff's `digest`.
+- **Write amplification (34.3 review).** A de-privileged holder's token reaches only `GET /me`, so its
+  use rows are budgeted like `access.denied` (3 per member per 5 minutes) while the request is still
+  answered, and the per-member cap above bounds the rest. `last_used_at` is written only after every
+  gate has passed, so a refused request leaves no mark.
+
+**Residual.** A holder without a grant can still make requests that write at most the budgeted rows.
+A token whose holder holds no grant cannot end itself (`current` is not a no-grant row, so 403): the holder revokes it in the console instead.
 
 ### Identity as a per-product service (PX-W17)
 
@@ -9752,7 +9794,7 @@ Forge a signed config doc for product P
 Obtain admin authority
 ├── Forge the session cookie ─────────────► needs ADMIN_SESSION_SECRET
 ├── Steal a `pkeya_` token (A16) ─────────► LIVE but BOUNDED: default-deny scoping reaches one route (the bundle mint); the token routes name no scope; minting needs a step-up
-├── Steal an admin `pkeyp_` (A17) ────────► LIVE but BOUNDED by the holder's roles at use time (bindings re-read per request, root only while asserted_at is fresh), eight flagged routes (`personalToken`), no step-up, 7 days (30 at most), revocation (self, Superadmin, merge) and an `account_token.used` row per use
+├── Steal an admin `pkeyp_` (A17) ────────► LIVE but BOUNDED by the holder's roles at use time (bindings re-read per request, root only while asserted_at is fresh), ten flagged routes (`personalToken`), no step-up, 7 days (30 at most), revocation (self, Superadmin, merge) and an `account_token.used` row per use
 ├── Plant your own session in an operator's browser (login CSRF) ► DEAD: the sign-in flow is bound to the browser that started it (`ADMIN_FLOW_COOKIE` hash in the flow record; the portal's `PORTAL_SSO_COOKIE` likewise), so another browser's callback is refused before the code is spent
 ├── Be granted `groups` by the IdP ───────► any IdP group-membership weakness
 ├── XSS on the platform origin ───────────► DEAD for the sign-in error pages: they carry the strict script-free CSP (`htmlError` in `console/auth.ts`)
@@ -9900,7 +9942,7 @@ operator; and denial of service originating from Cloudflare's own network contro
 ## 9. Review triggers
 
 Revisit this document when any of the following changes: a `pkeya_` admin API token gains a scope
-(an entry in `ADMIN_API_SCOPES`) or a route row gains a `tokenScope`, which widens a credential
+(an entry in `ADMIN_API_SCOPES`) or a route row gains a `tokenScope` or `personalToken: true` (the rows an admin `pkeyp_` reaches, A17), which widens a credential
 that exists precisely because it is narrower than a session, and A16 stops being true the moment
 the scope vocabulary stops being one word; a new tenant that is not first-party is
 onboarded; a route writes `licenses.account_id` other than through the compare-and-set claim, an

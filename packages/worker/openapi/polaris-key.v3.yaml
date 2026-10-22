@@ -18428,6 +18428,144 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/personal-tokens:
+    get:
+      operationId: listMyPersonalTokens
+      tags: [admin]
+      summary: List your own personal tokens
+      description: >
+        ST-34.4. The caller's own `pkeyp_` tokens in both scopes (`packages:read`, `admin`), live
+        first, then newest: id, label, the last four characters, scope, times and status. Never a
+        token, a hash, an account id or who revoked it. Admin session cookie only: a token (of
+        either kind) is refused, so a stolen token cannot list its siblings. A pre-account (v1)
+        cookie answers 409 `reauth`.
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: The caller's tokens.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tokens]
+                properties:
+                  tokens:
+                    type: array
+                    items: { $ref: "#/components/schemas/OwnPersonalToken" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "409":
+          description: A pre-account cookie; sign in again (`reauth`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/personal-tokens/{id}:
+    delete:
+      operationId: revokeMyPersonalToken
+      tags: [admin]
+      summary: Revoke one of your own personal tokens
+      description: >
+        ST-34.4. Reason `manual`. Another account's id is a 404, not a 403. Revoking a revoked
+        token answers it as it stands, with no second audit row. Audited in the platform activity
+        log as `account_token.revoke`, naming the label and last four characters. The registry
+        host stops accepting a `packages:read` token at once on this isolate and within 30 seconds
+        on the others. Admin session cookie and CSRF header; a token is refused. To end the token
+        you are presenting, use `DELETE /manage/api/me/personal-tokens/current`.
+      security:
+        - adminSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The token's opaque id (`ptok_…`), from the list.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, token]
+                properties:
+                  ok: { type: boolean }
+                  token: { $ref: "#/components/schemas/OwnPersonalToken" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: The caller holds no token with that id.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: A pre-account cookie; sign in again (`reauth`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/products/{product}/distribution/listing/import:
+    post:
+      operationId: importAdminListing
+      tags: [admin]
+      summary: Import a product's store listing (session or admin personal token)
+      description: >
+        ST-34.4. `{ sources: [{source, outlet?, godot?}] }` (or one `source`), `locale?`,
+        `overwrite?`, `confirm?`, `fields?`. Without `confirm`, the field-by-field diff of an
+        import; with the diff's `digest` as `confirm`, apply it. Needs the Ship builds area on the
+        product. What `pkey listing import` sends: `Authorization: Bearer pkeyp_…` with the admin
+        scope (the holder's own role is checked on every request), or the admin session cookie
+        with the CSRF header.
+      security:
+        - adminSession: []
+        - adminPersonalToken: []
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200":
+          description: The diff, or the applied import.
+          content:
+            application/json:
+              schema: { type: object }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/personal-tokens/current:
+    delete:
+      operationId: revokeCurrentPersonalToken
+      tags: [admin]
+      summary: Revoke the personal token you are presenting
+      description: >
+        ST-34.4. What `pkey logout` calls. Revokes exactly the presenting admin-scope token
+        (reason `manual`) and nothing else; its next use is a 401. A session cookie is refused
+        (403), as is a `packages:read` token (401). Audited as `account_token.revoke`.
+      security:
+        - adminPersonalToken: []
+      responses:
+        "200":
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, token]
+                properties:
+                  ok: { type: boolean }
+                  token: { $ref: "#/components/schemas/OwnPersonalToken" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
   # ── Godot tokenised URLs (F-21) ──
   /godot/{owner}/t/{token}/asset-library/api/configure:
     servers:
@@ -20384,6 +20522,15 @@ components:
         `migrations:report`, the data-migration runner's job list, run report and dry run
         (`/manage/api/platform/migrations`, `.../runs/{runId}`, `.../dry-run`); apply and down need
         a step-up and refuse every token.
+    adminPersonalToken:
+      type: http
+      scheme: bearer
+      bearerFormat: pkeyp_
+      description: >
+        An admin-scope personal token (`pkeyp_…`, ST-34): the holder's own credential for the admin
+        API, an ALTERNATIVE to the session. Default deny: it reaches only the routes that name it,
+        and the holder's own role is checked on every request. It has no step-up, so no route that
+        needs one accepts it. A `packages:read` token is not accepted here.
   parameters:
     TokenId:
       name: tokenId
@@ -24098,6 +24245,37 @@ components:
           enum: [manual, admin, account_deleted, access_removed, null]
         status: { type: string, enum: [active, expired, revoked] }
         email: { type: [string, "null"] }
+    OwnPersonalToken:
+      type: object
+      description: >
+        One of the caller's own personal tokens (ST-34.4). No account id and no `revokedBy`;
+        `revokeReason` says who ended it (`manual` is the owner).
+      required:
+        [
+          id,
+          label,
+          hint,
+          scope,
+          createdAt,
+          expiresAt,
+          lastUsedAt,
+          revokedAt,
+          revokeReason,
+          status,
+        ]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        hint: { type: string }
+        scope: { type: string, enum: ["packages:read", admin] }
+        createdAt: { type: integer }
+        expiresAt: { type: integer }
+        lastUsedAt: { type: [integer, "null"] }
+        revokedAt: { type: [integer, "null"] }
+        revokeReason:
+          type: [string, "null"]
+          enum: [manual, admin, account_deleted, access_removed, null]
+        status: { type: string, enum: [active, expired, revoked] }
     FlatError:
       type: object
       description: >

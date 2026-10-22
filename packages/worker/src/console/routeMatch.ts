@@ -58,6 +58,11 @@ export interface RouteDecl<H> {
    * `can()` for the row's area, read from the stored roles on every request.
    */
   personalToken?: true;
+  /**
+   * ST-34.4: only a personal token may call this row (`DELETE /me/personal-tokens/current`). A
+   * session is refused. Always together with `personalToken: true`.
+   */
+  personalOnly?: true;
   handler: H;
 }
 

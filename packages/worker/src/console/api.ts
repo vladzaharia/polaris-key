@@ -51,6 +51,7 @@ import {
   ADMIN_SCOPE,
   getAccountToken,
   resolvePersonalToken,
+  touchPersonalToken,
 } from "../core/accounts/personalTokens.js";
 import {
   ADMIN_COOKIE,
@@ -275,6 +276,8 @@ async function personalAdminToken(
     presented,
     ADMIN_SCOPE,
     now,
+    // `last_used_at` is written by the dispatcher once the request has cleared every gate.
+    { touch: false },
   );
   if (!resolved) return null;
   const subject = await consoleTokenSubject(env, db, resolved.accountId, now);
@@ -405,6 +408,24 @@ export async function handleAdminApi(
   ) {
     return err(429, "rate_limited", "too many admin API requests");
   }
+  // ST-34.4: and one cap across ALL of a member's personal tokens (up to 25), so many tokens do
+  // not multiply the budget, and with it the `account_token.used` rows a holder can write.
+  if (
+    personal &&
+    !(await rateLimitOk(
+      env,
+      ADMIN_RL_SHARD,
+      {
+        bucket: "adminApiPersonal",
+        id: principal.memberId,
+        limit: 600,
+        windowSec: 60,
+      },
+      now,
+    ))
+  ) {
+    return err(429, "rate_limited", "too many admin API requests");
+  }
 
   // Strip the `/api` prefix; tolerate a trailing slash. HEAD reads as GET.
   let p = path.split(/[?#]/)[0]!;
@@ -432,7 +453,6 @@ export async function handleAdminApi(
   // The answer is the one a `pkeya_` gets, so it reveals nothing about what exists.
   if (personal && !(found.kind === "route" && found.route.personalToken))
     return err(403, "forbidden", "token is not scoped for this route");
-
   // A verified session whose principal holds no grant is not a member: every route answers the
   // same 403, so it learns nothing about what exists. (The sign-in gate mints no such session; one
   // appears when the platform group changes under a live cookie.) A reach into an existing
@@ -451,6 +471,13 @@ export async function handleAdminApi(
     }
     return forbiddenArea(PLATFORM, "console");
   }
+
+  // ST-34.4: a row only a personal token may call (`DELETE /me/personal-tokens/current`, which
+  // revokes the presenting token). Gated on the dispatcher's `personal`, never on `session.aid` or
+  // `tokenId` being present: a token session carries an `aid`, and a cookie body cannot name a
+  // `tokenId`, but neither is what says which credential this request presented.
+  if (found.kind === "route" && found.route.personalOnly && !personal)
+    return err(403, "forbidden", "this route takes a personal token");
 
   // 4. CSRF on every SESSION mutation (double-submit; SameSite=Strict is the primary defense).
   //
@@ -516,7 +543,27 @@ export async function handleAdminApi(
       now,
     );
 
-  if (personal)
+  if (personal) {
+    // Every gate is cleared: only now does the use mark the token.
+    await touchPersonalToken(db, personal.id, now);
+  }
+  // A holder with no grant reaches only `GET /me`: budget its use rows like `access.denied`, so a
+  // de-privileged holder's tokens cannot write a row per request.
+  if (
+    personal &&
+    (can(principal, PLATFORM, "console", "view") ||
+      (await rateLimitOk(
+        env,
+        ADMIN_RL_SHARD,
+        {
+          bucket: "adminPersonalUseNoGrant",
+          id: principal.memberId,
+          limit: 3,
+          windowSec: 300,
+        },
+        now,
+      )))
+  )
     await auditPersonalTokenUse(
       db,
       personal,

@@ -21,8 +21,9 @@
  *
  * Personal-token reach (ST-34.3). An admin-scope personal token (`Bearer pkeyp_`) reaches a row only
  * through `personalToken: true`; default deny, as above. Today: `GET /me`, `GET /access/admins`,
- * `GET /products`, `POST /products/:slug/bundles`, `GET /products/:slug/integration` and the three
- * read-side migration rows. The holder's own principal still passes `can()` per row, and a row
+ * `GET /products`, `POST /products/:slug/bundles`, `GET /products/:slug/integration`, the three
+ * read-side migration rows, `POST /products/:slug/distribution/listing/import` and (personal token
+ * only, ST-34.4) `DELETE /me/personal-tokens/current`. The holder's own principal still passes `can()` per row, and a row
  * that needs a step-up never carries the flag (`test/adminPersonalToken.test.ts` pins it).
  *
  * Drift. `test/fixtures/rbac-route-areas.json` pins every row's `METHOD path → area`; a new or
@@ -55,6 +56,11 @@ import { handlePlatform } from "./handlers/platform.js";
 import { handlePlatformConnections } from "./handlers/platformConnections.js";
 import { handleProducts } from "./handlers/products.js";
 import { handleIntegration } from "./handlers/integration.js";
+import {
+  handleMyTokenList,
+  handleMyTokenRevoke,
+  handleMyTokenRevokeCurrent,
+} from "./handlers/myTokens.js";
 import { handleProductScoped } from "./productScoped.js";
 import {
   handleApiTokenList,
@@ -150,7 +156,7 @@ const product: AdminHandler = (c) =>
 
 type Opts = Pick<
   AdminRoute,
-  "level" | "stepUp" | "tokenScope" | "personalToken"
+  "level" | "stepUp" | "tokenScope" | "personalToken" | "personalOnly"
 >;
 
 function rows(
@@ -175,6 +181,25 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // ── Membership: what every console member may use ─────────────────────────────────────────
   ...rows(["GET"], "/me", "console", me, { personalToken: true }),
   ...rows(["POST"], "/logout", "console", logout),
+  // ST-34.4: the caller's own personal tokens. The list and the id revoke are session-only; `current`
+  // is the one row that ends the presenting token (`pkey logout`), personal token only.
+  ...rows(["GET"], "/me/personal-tokens", "console", handleMyTokenList),
+  ...rows(
+    ["DELETE"],
+    "/me/personal-tokens/current",
+    "console",
+    handleMyTokenRevokeCurrent,
+    {
+      personalToken: true,
+      personalOnly: true,
+    },
+  ),
+  ...rows(
+    ["DELETE"],
+    "/me/personal-tokens/:id",
+    "console",
+    handleMyTokenRevoke,
+  ),
   // Home's Needs attention: composed on the server, filtered by product and by fix area.
   ...rows(["GET"], "/attention", "console", attention),
   // I-41: a support code resolved to {product, subject}; the handler checks the caller's product access.
@@ -388,6 +413,13 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
     "ship",
     product,
   ),
+
+  // ST-34.4: `pkey listing import` presents an admin personal token. The specific row narrows the
+  // distribution prefix: same area, `ship`, so the holder's own principal still has to pass it, and
+  // only POST exists here (the diff and the confirmed apply are one route).
+  ...rows(["POST"], `${P}/distribution/listing/import`, "ship", product, {
+    personalToken: true,
+  }),
 
   // ── One product: Core's resources ─────────────────────────────────────────────────────────
   // Every product setting the registry serves (ST-05b); the handler lists only the keys whose

@@ -1,5 +1,7 @@
 {
   "DELETE /account-tokens/:id": "platform",
+  "DELETE /me/personal-tokens/:id": "console",
+  "DELETE /me/personal-tokens/current": "console",
   "DELETE /platform/alerts/:id": "platform",
   "DELETE /platform/override-migration/notice": "platform",
   "DELETE /platform/settings/:key": "platform",
@@ -26,6 +28,7 @@
   "GET /attention": "console",
   "GET /github/repositories": "platform",
   "GET /me": "console",
+  "GET /me/personal-tokens": "console",
   "GET /platform/activity": "platform",
   "GET /platform/alerts": "platform",
   "GET /platform/deployment": "platform",
@@ -131,6 +134,7 @@
   "POST /products/:slug/devices/:id/fingerprint/reset": "core",
   "POST /products/:slug/distribution/**": "ship",
   "POST /products/:slug/distribution/feeds/**": "ship",
+  "POST /products/:slug/distribution/listing/import": "ship",
   "POST /products/:slug/identity/**": "signin",
   "POST /products/:slug/keys/:action": "keys",
   "POST /products/:slug/license/**": "license",

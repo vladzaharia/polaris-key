@@ -479,7 +479,7 @@ describe("reach is default deny (D-1)", () => {
       ).toBe(403);
   });
 
-  it("flags exactly the eight planned rows, and never a step-up row", () => {
+  it("flags exactly the planned rows, and never a step-up row", () => {
     const flagged = ADMIN_ROUTES.filter((r) => r.personalToken).map(routeKey);
     expect(flagged.sort()).toEqual(
       [
@@ -491,6 +491,9 @@ describe("reach is default deny (D-1)", () => {
         "GET /platform/migrations",
         "GET /platform/migrations/runs/:id",
         "POST /platform/migrations/dry-run",
+        // ST-34.4
+        "POST /products/:slug/distribution/listing/import",
+        "DELETE /me/personal-tokens/current",
       ].sort(),
     );
     expect(ADMIN_ROUTES.filter((r) => r.personalToken && r.stepUp)).toEqual([]);

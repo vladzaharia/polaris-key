@@ -19,6 +19,9 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/manage/api/account-tokens` | admin | List people's personal tokens |
 | GET | `/manage/api/attention` | admin | What needs the operator across every product the session can see |
 | GET | `/manage/api/github/repositories` | admin | The repositories the Polaris Key GitHub App can read |
+| DELETE | `/manage/api/me/personal-tokens/{id}` | admin | Revoke one of your own personal tokens |
+| DELETE | `/manage/api/me/personal-tokens/current` | admin | Revoke the personal token you are presenting |
+| GET | `/manage/api/me/personal-tokens` | admin | List your own personal tokens |
 | POST | `/manage/api/platform/alerts/{id}/test` | admin | Send a test alert to a destination |
 | PATCH | `/manage/api/platform/alerts/{id}` | admin | Change, disable or re-secret an alert destination (step-up) |
 | DELETE | `/manage/api/platform/alerts/{id}` | admin | Remove an alert destination |
@@ -49,6 +52,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | DELETE | `/manage/api/products/{product}/assets/settings/{key}` | admin | Reset one of the product's hosted-asset settings to what it inherits |
 | GET | `/manage/api/products/{product}/assets/usage` | admin | What the product holds against its hosting quotas, and its hosted-asset settings |
 | GET | `/manage/api/products/{product}/assets` | admin | The product's hosted assets, their sources and pull status |
+| POST | `/manage/api/products/{product}/distribution/listing/import` | admin | Import a product's store listing (session or admin personal token) |
 | GET | `/manage/api/products/{product}/integration` | admin | What the product needs wired, and where an SDK has answered it |
 | POST | `/manage/api/products/{product}/license/batches/{batchId}/disable-unused` | admin | Disable every licence of a batch that no device was ever bound to |
 | GET | `/manage/api/products/{product}/license/batches/{batchId}` | admin | One licence batch with its used counts |

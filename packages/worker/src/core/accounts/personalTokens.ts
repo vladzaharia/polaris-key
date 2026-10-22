@@ -505,6 +505,38 @@ export async function purgeAccountTokens(db: Db, now: number): Promise<number> {
 
 // ── Resolution ───────────────────────────────────────────────────────────────────────────────
 
+/** Options of the resolvers. */
+export interface PersonalResolveOpts {
+  waitUntil?: (p: Promise<unknown>) => void;
+  /**
+   * `false`: do not write `last_used_at`. The admin API passes it and calls
+   * {@link touchPersonalToken} once the request has cleared every gate, so a refused request
+   * (wrong route, no reach) leaves no mark.
+   */
+  touch?: boolean;
+}
+
+function stmtTouch(db: Db, id: string, now: number): Promise<unknown> {
+  return db
+    .run(
+      `UPDATE account_tokens SET last_used_at = ?
+        WHERE id = ? AND (last_used_at IS NULL OR last_used_at < ?)`,
+      now,
+      id,
+      now - LAST_USED_GRANULARITY,
+    )
+    .catch(() => undefined);
+}
+
+/** Record a use (at most hourly per token). For a caller that resolved with `touch: false`. */
+export async function touchPersonalToken(
+  db: Db,
+  id: string,
+  now: number,
+): Promise<void> {
+  await stmtTouch(db, id, now);
+}
+
 /** Who a presented personal token is. */
 export interface ResolvedPersonalToken {
   readonly accountId: string;
@@ -528,7 +560,7 @@ export async function resolvePersonalToken(
   presented: string,
   accepts: PersonalTokenScope,
   now: number,
-  opts: { waitUntil?: (p: Promise<unknown>) => void } = {},
+  opts: PersonalResolveOpts = {},
 ): Promise<ResolvedPersonalToken | null> {
   if (!isPersonalToken(presented)) return null;
   const hash = await hashPersonalToken(env, presented);
@@ -545,7 +577,7 @@ export function resolvePersonalTokenById(
   id: string,
   accepts: PersonalTokenScope,
   now: number,
-  opts: { waitUntil?: (p: Promise<unknown>) => void } = {},
+  opts: PersonalResolveOpts = {},
 ): Promise<ResolvedPersonalToken | null> {
   return resolveRow(env, db, "id = ?", id, accepts, now, opts);
 }
@@ -557,7 +589,7 @@ async function resolveRow(
   key: string,
   accepts: PersonalTokenScope,
   now: number,
-  opts: { waitUntil?: (p: Promise<unknown>) => void },
+  opts: PersonalResolveOpts,
 ): Promise<ResolvedPersonalToken | null> {
   let row: PersonalTokenRow | null;
   try {
@@ -575,16 +607,11 @@ async function resolveRow(
   if (!isPersonalTokenScope(row.scope) || row.scope !== accepts) return null;
   if ((await erasureVerdict(env, now, row.account_id)) !== "clear") return null;
   if (
-    row.last_used_at === null ||
-    row.last_used_at < now - LAST_USED_GRANULARITY
+    opts.touch !== false &&
+    (row.last_used_at === null ||
+      row.last_used_at < now - LAST_USED_GRANULARITY)
   ) {
-    const write = db
-      .run(
-        "UPDATE account_tokens SET last_used_at = ? WHERE id = ?",
-        now,
-        row.id,
-      )
-      .catch(() => undefined);
+    const write = stmtTouch(db, row.id, now);
     if (opts.waitUntil) opts.waitUntil(write);
     else await write;
   }
