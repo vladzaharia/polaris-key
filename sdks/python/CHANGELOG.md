@@ -15,7 +15,7 @@ only API (no deprecated aliases).
   result line on `GroupedHelpParser`, click and typer hosts. Result lines name the command by its id
   (`devices list`, `login`), as the Node kit does. `on_collision="skip"` is silent unless `on_skip=`,
   `warn=` or `DEBUG=polaris` asks, as in Node (it printed to stderr before; pass `warn=` to keep a
-  line), and the collision error names `on_collision="skip"` too. Migration: a `config=` that was
+  line), and the collision error names `on_collision="skip"` too. `deactivate` and `logout` take `-y`/`--yes`, as in Node. Migration: a `config=` that was
   a placeholder now fails at registration.
 
 - **The async `wait_for_sign_in` keeps `code`.** `AsyncPolarisKey.identity.wait_for_sign_in` and `sign_in_with_browser` dropped the `code` of an `error` result, so an async caller could not tell `sign-in-denied` from `sign-in-failed`; the sync client already set it. A 503 on the device-code poll (the Worker retrying a transient failure after approval) is a `server-error` the wait loop rides out, as before.
