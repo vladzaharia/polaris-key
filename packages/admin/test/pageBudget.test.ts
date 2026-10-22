@@ -46,7 +46,6 @@ const OVER_BUDGET: Record<string, number> = {
   "sections/release/pages/SimulatorPage.tsx": 766,
   "sections/storefronts/components/PolarisKeyPanel.tsx": 888,
   "sections/storefronts/pages/ListingPage.tsx": 695,
-  "sections/update/pages/UpdateChannelsPage.tsx": 631,
 };
 
 /** Offences for a set of files (path -> line count) against a budget and an allow-list. */
