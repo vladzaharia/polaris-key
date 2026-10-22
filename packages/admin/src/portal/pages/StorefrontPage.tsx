@@ -465,6 +465,9 @@ function StorefrontHeader({
   const [coverFailed, setCoverFailed] = React.useState(false);
   const cover = mediaUrl(product.headerUrl);
   const hasCover = Boolean(cover) && !coverFailed;
+  // On a phone the icon stands for the cover, so the panel's Add reaches the first screen (the
+  // mockup draws the cover there too; the first-viewport rule and storefront.e2e hold it back).
+  const hasIcon = Boolean(mediaUrl(product.iconUrl));
   return (
     <div className="@container">
       {hasCover ? (
@@ -475,14 +478,17 @@ function StorefrontHeader({
           src={cover}
           variant="banner"
           onError={() => setCoverFailed(true)}
-          className="pk-vt-hero aspect-[16/7] rounded-xl desk:max-h-[26rem]"
+          className={cn(
+            "pk-vt-hero aspect-[3/1] rounded-xl desk:aspect-[16/7] desk:max-h-[26rem]",
+            hasIcon && "max-desk:hidden",
+          )}
         />
       ) : null}
       <div
         data-cover={hasCover ? "image" : "none"}
         className={cn(
           "flex flex-col gap-3 @[20rem]:flex-row @[20rem]:items-start @[20rem]:gap-4",
-          hasCover ? "mt-5" : "pt-2",
+          hasCover ? (hasIcon ? "desk:mt-5" : "mt-5") : "pt-2",
         )}
       >
         <ProductIcon

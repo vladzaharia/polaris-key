@@ -19,6 +19,7 @@ import {
   reasonCopy,
   termsLine,
   withAdded,
+  youGetLine,
 } from "../src/portal/model/discover.js";
 import {
   axeViolations,
@@ -315,6 +316,42 @@ describe("Discover (PX-16)", () => {
       ).toBeGreaterThan(1),
     );
     expect((await tile("Mossgarden")).getAttribute("data-state")).toBe("added");
+  });
+
+  it("the decision panel's You'd get row names the product, its tier and how long it lasts", () => {
+    const path = (terms: Parameters<typeof termsLine>[0] | null) => ({
+      kind: "auto_issue",
+      detail: null,
+      label: null,
+      terms,
+      action: "add" as const,
+      reason: "free_with_account",
+    });
+    expect(
+      youGetLine(
+        "Diceroll",
+        path({
+          tier: "standard",
+          tierLabel: "Standard",
+          deviceLimit: 3,
+          expiresAt: null,
+          expiryDays: null,
+        }),
+      ),
+    ).toBe("Diceroll Standard · lifetime");
+    expect(
+      youGetLine(
+        "Lumen RAW",
+        path({
+          tier: "beta",
+          tierLabel: "Beta",
+          deviceLimit: 2,
+          expiresAt: null,
+          expiryDays: 90,
+        }),
+      ),
+    ).toBe("Lumen RAW Beta · 90 days");
+    expect(youGetLine("Driftwood", path(null))).toBe("No license needed");
   });
 
   it("an added tile leads with the build for this device, then Go to the product (portal.discover)", async () => {

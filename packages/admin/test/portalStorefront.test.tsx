@@ -590,7 +590,9 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Aperture Seven no longer gives Lumen RAW to your account.",
     );
-    expect(screen.queryByRole("button", { name: "Add to my library" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Add to my library" }),
+    ).toBeNull();
     expect(window.location.hash).toBe("#/discover/lumen-raw");
     expect(
       screen
@@ -630,7 +632,9 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
     mockFetch(storefrontWorker([STARFALL]));
     renderPortal();
     await screen.findByRole("heading", { level: 1, name: "Starfall Arena" });
-    expect(screen.queryByRole("button", { name: "Add to my library" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Add to my library" }),
+    ).toBeNull();
     expect(screen.queryByRole("region", { name: /Ways to add/ })).toBeNull();
     expect(
       screen
