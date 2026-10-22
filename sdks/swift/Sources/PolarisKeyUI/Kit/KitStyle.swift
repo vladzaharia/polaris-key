@@ -179,6 +179,18 @@ public struct KitResolvedStyle: Sendable, Equatable {
         return Font.custom(name, size: size, relativeTo: spec.textStyle)
     }
 
+    /// The device code's face (UI-KITS §4.3): the kit mono at `size`, weight 500, scaled with
+    /// Dynamic Type from the title style (the iOS token is 28; the hand-off screen sets 40).
+    public func codeFont(size: CGFloat) -> Font {
+        if isNative || typography.family == .system {
+            return Font.system(size: size, weight: .medium, design: .monospaced)
+        }
+        guard let name = KitFonts.monoName(.medium) else {
+            return Font.system(size: size, weight: .medium, design: .monospaced)
+        }
+        return Font.custom(name, size: size * CGFloat(typography.scale), relativeTo: .title)
+    }
+
     /// Whether the copy's locale is written in a CJK script.
     var usesCJK: Bool {
         let language = locale.split(whereSeparator: { $0 == "-" || $0 == "_" }).first.map {

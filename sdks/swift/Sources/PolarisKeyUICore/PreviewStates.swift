@@ -412,7 +412,13 @@ extension PolarisKeyPreviewState {
     static let update: [PolarisKeyPreviewState] = [
         .init(
             .updatePrompt, "available",
-            base { $0.update = KitUpdate(action: "binary", version: "2.5.0") }),
+            base {
+                $0.update = KitUpdate(
+                    action: "binary", version: "2.5.0", currentVersion: "2.4.1",
+                    sizeBytes: 61_000_000,
+                    notes: ["Faster sync across devices.", "Fixes a crash on launch."],
+                    notesUrl: "https://harboraudio.example/tidewater/2.5.0")
+            }),
         .init(
             .updatePrompt, "mandatory",
             base { $0.update = KitUpdate(action: "binary", version: "2.5.0", mandatory: true) }),

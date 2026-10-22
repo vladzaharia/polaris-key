@@ -185,6 +185,7 @@ public struct AccountAndLicenseSection: View {
                     }
                 }
                 .padding(.vertical, 4)
+                .frame(minHeight: 64)
                 .accessibilityElement(children: .combine)
                 if screen.shows("common.manage") {
                     Button(action: onManage) {
@@ -195,6 +196,7 @@ public struct AccountAndLicenseSection: View {
                                 .foregroundStyle(style.palette.textMuted)
                                 .accessibilityLabel(strings.string("a11y.externalLink"))
                         }
+                        .frame(minHeight: 52)
                     }
                 }
                 if screen.shows("account.devices") {
@@ -203,9 +205,11 @@ public struct AccountAndLicenseSection: View {
                     } label: {
                         PaneText(CopyLine("account.devices"), .body, color: .default)
                     }
+                    .frame(minHeight: 52)
                 }
                 if screen.shows("account.cloudSync") {
                     PaneText(CopyLine("account.cloudSync"), .body, color: .default)
+                        .frame(minHeight: 52, alignment: .leading)
                 }
             }
             // A group header only over rows that render (never an empty "Updates").
@@ -219,15 +223,19 @@ public struct AccountAndLicenseSection: View {
                             PaneText(CopyLine("account.autoUpdate"), .body, color: .default)
                         }
                         .tint(style.palette.accentSolid)
+                        .frame(minHeight: 52)
                     }
                     if let version, screen.shows("account.version") {
                         PaneText(
                             CopyLine("account.version", ["version": .text(version)]), .body,
-                            color: .default)
+                            color: .default
+                        )
+                        .frame(minHeight: 52, alignment: .leading)
                     }
                     if screen.shows("update.checkNow") {
                         Button(action: onCheckNow) {
                             PaneText(CopyLine("update.checkNow"), .body, color: .accent)
+                                .frame(minHeight: 52, alignment: .leading)
                         }
                     }
                 } header: {
@@ -243,6 +251,7 @@ public struct AccountAndLicenseSection: View {
                         confirmingSignOut = true
                     } label: {
                         PaneText(CopyLine("common.signOut"), .body, color: .danger)
+                            .frame(minHeight: 52, alignment: .leading)
                     }
                     .confirmationDialog(
                         strings.string("common.signOut"), isPresented: $confirmingSignOut,
@@ -299,8 +308,10 @@ public struct DevicesSection: View {
                         PaneText(line, .body, color: .default)
                     }
                     Button(strings.string("common.tryAgain"), action: onRetry)
+                        .frame(minHeight: 52, alignment: .leading)
                 case .empty:
                     PaneText(CopyLine("devices.empty"), .body, color: .default)
+                        .frame(minHeight: 52, alignment: .leading)
                 case .browserMode:
                     // The sentence and the way there: never a dead end.
                     PaneText(CopyLine("devices.browser"), .body, color: .muted)
@@ -359,50 +370,153 @@ public struct DevicesSection: View {
     }
 }
 
-/// Catalog-driven settings as a section: typed controls, provenance as text, locked rows as text.
+/// Catalog-driven settings as sections: typed controls (a switch for a boolean, a slider for a
+/// bounded number, a stepper for an open one, text otherwise), provenance as group headers
+/// ("From <Developer>", "Managed settings"), locked rows as a value with a lock and "Set by
+/// <org>", never a dimmed switch (UI-KITS §4.3). Rows are at least 52 pt, 64 with a second line.
 public struct SettingsSection: View {
     let screen: KitScreen<SettingsState>
     let rows: [KitConfigRow]
+    var onChange: (String, KitConfigValue) -> Void
+    @State private var edits: [String: KitConfigValue] = [:]
     @Environment(\.polarisKeyStrings) private var strings
 
-    public init(screen: KitScreen<SettingsState>, rows: [KitConfigRow]) {
+    /// `onChange` reports an edit by the row's key; the host saves it (the kit never writes).
+    public init(
+        screen: KitScreen<SettingsState>, rows: [KitConfigRow],
+        onChange: @escaping (String, KitConfigValue) -> Void = { _, _ in }
+    ) {
         self.screen = screen
         self.rows = rows
+        self.onChange = onChange
+    }
+
+    /// The groups, in order: what the person set, the developer's defaults, then the locked rows.
+    enum Group: Equatable {
+        case yours, developer, managed
+    }
+
+    static func group(_ row: KitConfigRow) -> Group {
+        if row.locked { return .managed }
+        return row.source == "default" ? .developer : .yours
+    }
+
+    /// The control a row gets (§4.3): a switch for a boolean, a slider for a bounded number, a
+    /// stepper for an open one, text otherwise; a locked row is always text.
+    enum Control: Equatable { case locked, toggle, slider, stepper, text }
+
+    static func control(_ row: KitConfigRow) -> Control {
+        if row.locked { return .locked }
+        switch (row.type, row.value) {
+        case ("boolean", .bool?): return .toggle
+        case ("number", .number?):
+            if let lo = row.min, let hi = row.max, hi > lo { return .slider }
+            return .stepper
+        default: return .text
+        }
     }
 
     public var body: some View {
         kitStyle { style in
-            Section {
-                ForEach(rows, id: \.key) { row in
-                    LabeledContent {
-                        if row.locked {
-                            HStack(spacing: 4) {
-                                Image(systemName: "lock.fill").font(.system(size: 14))
-                                    .accessibilityLabel(strings.string("a11y.locked"))
-                                Text(value(row))
-                            }
-                            .foregroundStyle(style.palette.textMuted)
-                        } else {
-                            Text(value(row)).foregroundStyle(style.palette.textMuted)
+            ForEach([Group.yours, .developer, .managed], id: \.self) { group in
+                let members = rows.filter { Self.group($0) == group }
+                if !members.isEmpty {
+                    Section {
+                        ForEach(members, id: \.key) { row in
+                            settingRow(row, style)
                         }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(row.label ?? Self.humanize(row.key))
-                            if row.locked {
-                                PaneText(
-                                    row.org.map { CopyLine("settings.setBy", ["org": .text($0)]) }
-                                        ?? CopyLine("settings.setByGuardian"), .footnote,
-                                    color: .muted)
-                            }
+                    } header: {
+                        HStack(spacing: 6) {
+                            if group == .yours { ServiceCue(service: .config) }
+                            PaneText(header(group, style), .footnote, color: .muted)
                         }
                     }
                 }
-            } header: {
-                HStack(spacing: 6) {
-                    ServiceCue(service: .config)
-                    PaneText(CopyLine("settings.title"), .footnote, color: .muted)
+            }
+        }
+    }
+
+    private func header(_ group: Group, _ style: KitResolvedStyle) -> CopyLine {
+        switch group {
+        case .yours: return CopyLine("settings.title")
+        case .developer:
+            return CopyLine(
+                "settings.fromDeveloper",
+                ["developer": .text(style.identity.developer ?? style.identity.name)])
+        case .managed: return CopyLine("account.managedSettings")
+        }
+    }
+
+    private func current(_ row: KitConfigRow) -> KitConfigValue? { edits[row.key] ?? row.value }
+
+    private func set(_ row: KitConfigRow, _ value: KitConfigValue) {
+        edits[row.key] = value
+        onChange(row.key, value)
+    }
+
+    private func title(_ row: KitConfigRow) -> String { row.label ?? Self.humanize(row.key) }
+
+    @ViewBuilder private func settingRow(_ row: KitConfigRow, _ style: KitResolvedStyle)
+        -> some View
+    {
+        if Self.control(row) == .locked {
+            // A value as text with its lock and its source, never a dimmed control.
+            LabeledContent {
+                HStack(spacing: 4) {
+                    Image(systemName: "lock.fill").font(.system(size: 14))
+                        .accessibilityLabel(strings.string("a11y.locked"))
+                    Text(value(row))
+                }
+                .foregroundStyle(style.palette.textMuted)
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title(row))
+                    PaneText(
+                        row.org.map { CopyLine("settings.setBy", ["org": .text($0)]) }
+                            ?? CopyLine("settings.setByGuardian"), .footnote, color: .muted)
                 }
             }
+            .frame(minHeight: 64)
+        } else if Self.control(row) == .toggle, case .bool(let on)? = current(row) {
+            Toggle(
+                title(row),
+                isOn: Binding(get: { on }, set: { set(row, .bool($0)) })
+            )
+            .tint(style.palette.accentSolid)
+            .frame(minHeight: 52)
+        } else if Self.control(row) != .text, case .number(let n)? = current(row) {
+            if Self.control(row) == .slider, let lo = row.min, let hi = row.max {
+                VStack(alignment: .leading, spacing: 2) {
+                    LabeledContent(title(row)) {
+                        Text(n.formatted()).foregroundStyle(style.palette.textMuted)
+                            .monospacedDigit()
+                    }
+                    Slider(
+                        value: Binding(get: { n }, set: { set(row, .number($0.rounded())) }),
+                        in: lo...hi
+                    )
+                    .tint(style.palette.accentSolid)
+                    .accessibilityLabel(title(row))
+                    .accessibilityValue(n.formatted())
+                }
+                .frame(minHeight: 64)
+            } else {
+                Stepper(
+                    value: Binding(get: { n }, set: { set(row, .number($0)) }),
+                    step: 1
+                ) {
+                    LabeledContent(title(row)) {
+                        Text(n.formatted()).foregroundStyle(style.palette.textMuted)
+                            .monospacedDigit()
+                    }
+                }
+                .frame(minHeight: 52)
+            }
+        } else {
+            LabeledContent(title(row)) {
+                Text(value(row)).foregroundStyle(style.palette.textMuted)
+            }
+            .frame(minHeight: 52)
         }
     }
 
@@ -416,7 +530,7 @@ public struct SettingsSection: View {
     }
 
     private func value(_ row: KitConfigRow) -> String {
-        switch row.value {
+        switch current(row) {
         case .bool(let b)?: return strings.string(b ? "settings.on" : "settings.off")
         case .number(let n)?: return n.formatted()
         case .string(let s)?: return s

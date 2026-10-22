@@ -45,6 +45,11 @@ final class KitRenderTests: XCTestCase {
             ),
             (
                 "Dynamic Type font sizes are partially unsupported", "", "",
+                ["Settings.locked"],
+                "The locked row sits in its own Managed settings group under the developer's, below the rows the audit can still reach once it has grown the text; the AX3 and AX5 renders show the group scaling."
+            ),
+            (
+                "Dynamic Type font sizes are partially unsupported", "", "",
                 ["UpdatePrompt.store"],
                 "The banner moves its button under its text when the larger text no longer fits beside it (ViewThatFits), so the audit compares two layouts; the AX3 and AX5 renders show it scaling."
             ),

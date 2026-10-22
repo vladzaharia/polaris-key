@@ -525,6 +525,8 @@ public struct SignInHandoffView: View {
                     }
                 }
             }
+            // "Check the code there matches this one" sits with the code it asks about (§4.3).
+            KitText(CopyLine("signin.handoff.check"), .meta, color: .muted)
             CountdownRing(
                 expiresAt: Date(timeIntervalSince1970: TimeInterval(request.expiresAt)),
                 total: 600)
@@ -588,6 +590,13 @@ public struct LicenseChoiceView: View {
         }
     }
 
+    /// The meter under a license's counter: its seats, muted when the license is full. A row with
+    /// no seats (a key hidden by D-54) draws none.
+    static func meter(for choice: KitLicenseChoice) -> (used: Int, limit: Int, muted: Bool)? {
+        guard let seats = choice.seats, seats.limit > 0 else { return nil }
+        return (seats.used, seats.limit, choice.isFull)
+    }
+
     @ViewBuilder private func tierAndSeats(_ choice: KitLicenseChoice, _ style: KitResolvedStyle)
         -> some View
     {
@@ -629,6 +638,13 @@ public struct LicenseChoiceView: View {
                     // do not; the tier name never breaks inside its capsule ("Pr/o" at AX5).
                     // The tier never breaks inside its capsule ("Pr/o" at AX5); the seats wrap.
                     HStack(spacing: style.space(.xs)) { tierAndSeats(choice, style) }
+                    // The neutral seat meter under the counter; a full license's used segments
+                    // read in text-muted (SIGN-IN.md §3.6).
+                    if let meter = Self.meter(for: choice) {
+                        SeatMeter(
+                            used: meter.used, limit: meter.limit, showsCaption: false,
+                            muted: meter.muted)
+                    }
                     Text(
                         strings.string(
                             "signin.choice.meta",

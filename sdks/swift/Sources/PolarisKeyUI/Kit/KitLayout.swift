@@ -54,6 +54,9 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
     var hero = false
     /// Show the product header strip above the heading (focused steps).
     var header = true
+    /// Name the product once under the hero icon, for a screen whose title does not (DL5: a
+    /// status screen's "License expired"). The one-line header already carries it.
+    var heroName = false
     var tier: String?
     @ViewBuilder let heading: () -> Heading
     @ViewBuilder let content: () -> Content
@@ -121,7 +124,12 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
                     VStack(alignment: hero ? .center : .leading, spacing: style.space(.md)) {
                         if let size = heroIcon(window.height) {
                             ProductIcon(size: size)
-                                .padding(.bottom, style.space(.xs))
+                                .padding(.bottom, heroName ? 0 : style.space(.xs))
+                            if heroName {
+                                ProductHeader(tier: tier, showsIcon: false)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.bottom, style.space(.xs))
+                            }
                         } else if header || hero {
                             ProductHeader(tier: tier)
                                 .frame(maxWidth: .infinity, alignment: hero ? .center : .leading)
@@ -161,7 +169,7 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
                         .frame(maxWidth: .infinity)
                         .frame(height: min(geo.size.height - 96, 560))
                     VStack(alignment: .leading, spacing: style.space(.md)) {
-                        if header {
+                        if header || heroName {
                             ProductHeader(tier: tier, showsIcon: false)
                         }
                         heading()
@@ -187,13 +195,14 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
 
 extension KitScreenScaffold where Footer == EmptyView {
     init(
-        hero: Bool = false, header: Bool = true, tier: String? = nil,
+        hero: Bool = false, header: Bool = true, heroName: Bool = false, tier: String? = nil,
         @ViewBuilder heading: @escaping () -> Heading,
         @ViewBuilder content: @escaping () -> Content,
         @ViewBuilder actions: @escaping () -> Actions
     ) {
         self.init(
-            hero: hero, header: header, tier: tier, heading: heading, content: content,
+            hero: hero, header: header, heroName: heroName, tier: tier, heading: heading,
+            content: content,
             actions: actions, footer: { EmptyView() })
     }
 }

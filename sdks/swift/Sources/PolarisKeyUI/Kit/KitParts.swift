@@ -250,13 +250,17 @@ public struct CodeDisplay: View {
 
     public init(code: String) { self.code = code }
 
+    /// 40 pt at weight 500 with 0.12 em tracking (§4.3); it shrinks only to fit the line (a code
+    /// breaks nowhere), never below the title beside it (DL10).
+    static let size: CGFloat = 40
+    static let tracking: CGFloat = 0.12
+
     public var body: some View {
         kitStyle { style in
             HStack(spacing: style.space(.sm)) {
                 Text(code)
-                    .font(style.font(.code))
-                    .tracking(3)
-                    .monospacedDigit()
+                    .font(style.codeFont(size: CodeDisplay.size))
+                    .tracking(CodeDisplay.size * CodeDisplay.tracking)
                     .foregroundStyle(style.palette.textStrong)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
@@ -342,11 +346,19 @@ public struct CountdownRing: View {
 public struct SeatMeter: View {
     let used: Int
     let limit: Int
+    /// Draw the caption ("3 of 3 in use"). A license row already says "{used} of {limit} devices"
+    /// beside its tier, so its meter is the picture alone, hidden from VoiceOver (SIGN-IN.md §3.6).
+    var showsCaption = true
+    /// A full license's used segments read in `text-muted`, never a warning colour (SIGN-IN.md
+    /// §3.6, Full row).
+    var muted = false
     @Environment(\.polarisKeyStrings) private var strings
 
-    public init(used: Int, limit: Int) {
+    public init(used: Int, limit: Int, showsCaption: Bool = true, muted: Bool = false) {
         self.used = used
         self.limit = limit
+        self.showsCaption = showsCaption
+        self.muted = muted
     }
 
     public var body: some View {
@@ -355,15 +367,21 @@ public struct SeatMeter: View {
                 HStack(spacing: 4) {
                     ForEach(0..<max(1, min(limit, 12)), id: \.self) { index in
                         Capsule()
-                            .fill(style.palette.textStrong.opacity(index < used ? 0.8 : 0.1))
+                            .fill(
+                                (muted ? style.palette.textMuted : style.palette.textStrong)
+                                    .opacity(index < used ? 0.8 : 0.1)
+                            )
                             .frame(width: 24, height: 4)
                     }
                 }
-                KitText(
-                    "part.seatMeter.caption", ["used": .number(used), "limit": .number(limit)],
-                    .meta, color: .muted)
+                if showsCaption {
+                    KitText(
+                        "part.seatMeter.caption", ["used": .number(used), "limit": .number(limit)],
+                        .meta, color: .muted)
+                }
             }
             .accessibilityElement(children: .ignore)
+            .accessibilityHidden(!showsCaption)
             .accessibilityAddTraits(.isImage)
             .accessibilityLabel(
                 strings.string("a11y.seatMeter", ["used": .number(used), "limit": .number(limit)]))
@@ -428,6 +446,8 @@ public struct DeviceRow: View {
                     Text(meta)
                         .font(style.font(.meta))
                         .foregroundStyle(style.palette.textMuted)
+                        // The meta wraps between words and never clips (DL11).
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
                 if selected {

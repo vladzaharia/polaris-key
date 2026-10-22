@@ -691,11 +691,23 @@ public struct KitUpdate: Sendable, Codable, Equatable, Hashable {
     public var mandatory: Bool?
     public var critical: Bool?
     public var progress: KitUpdateProgress?
+    /// The running version and the download's size: "You have 2.4.1 · 61 MB download".
+    public var currentVersion: String?
+    public var sizeBytes: Int?
+    /// The release's notes, plain lines (the prompt draws at most three), and its changes page.
+    public var notes: [String]?
+    public var notesUrl: String?
 
     public init(
         action: String, outlet: String? = nil, reason: String? = nil, version: String? = nil,
-        mandatory: Bool? = nil, critical: Bool? = nil, progress: KitUpdateProgress? = nil
+        mandatory: Bool? = nil, critical: Bool? = nil, progress: KitUpdateProgress? = nil,
+        currentVersion: String? = nil, sizeBytes: Int? = nil, notes: [String]? = nil,
+        notesUrl: String? = nil
     ) {
+        self.currentVersion = currentVersion
+        self.sizeBytes = sizeBytes
+        self.notes = notes
+        self.notesUrl = notesUrl
         self.action = action
         self.outlet = outlet
         self.reason = reason

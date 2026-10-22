@@ -130,6 +130,7 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
         } footer: {
             let extras = Self.extras.compactMap { screen.line($0) }
             if !extras.isEmpty {
+                // 20 pt under the buttons (§4.3): the act stack's 16 plus 4.
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 20) {
                         ForEach(extras, id: \.key) { line in
@@ -146,6 +147,7 @@ public struct WelcomeView<Inline: View, InlineActions: View>: View {
                         }
                     }
                 }
+                .padding(.top, 4)
             }
         }
     }
@@ -175,14 +177,34 @@ public struct StatusScreenView: View {
     /// path); a missing one hides its button.
     var available: Set<String>
     var onTryAgain: () -> Void
+    /// The lines drawn: the state's, or the boot error's own sentence (DL7: a failed start says
+    /// what failed, never an icon and a button alone).
+    let lines: [CopyLine]
 
     public init(
         screen: KitScreen<StatusScreenState>, available: Set<String>,
         onFix: @escaping (String) -> Void, onTryAgain: @escaping () -> Void
     ) {
         self.screen = screen
+        self.lines = screen.copy
         self.available = available
         self.onFix = onFix
+        self.onTryAgain = onTryAgain
+    }
+
+    /// Whether a status title already names the product ("Update to keep using {product}"), so
+    /// the name is not set twice (DL5).
+    static func titleNamesProduct(_ title: CopyLine?) -> Bool {
+        title.map { KitCopy.bundled.argumentNames($0.key).contains("product") } ?? false
+    }
+
+    /// A failed start: `lines` are the gate's error state (its title) and Try again is the one
+    /// primary.
+    public init(errorLines lines: [CopyLine], onTryAgain: @escaping () -> Void) {
+        self.screen = .hidden
+        self.lines = lines
+        self.available = []
+        self.onFix = { _ in }
         self.onTryAgain = onTryAgain
     }
 
@@ -196,10 +218,12 @@ public struct StatusScreenView: View {
     }
 
     public var body: some View {
-        let title = screen.copy.first { $0.key.hasSuffix(".title") }
-        let message = screen.copy.first { $0.key.hasSuffix(".message") }
-        let allowed = screen.copy.first { $0.key.hasPrefix("status.allowed") }
-        KitScreenScaffold(hero: true, header: false) {
+        let title = lines.first { $0.key.hasSuffix(".title") }
+        let message = lines.first { $0.key.hasSuffix(".message") }
+        let allowed = lines.first { $0.key.hasPrefix("status.allowed") }
+        // DL5: the name appears once, in the title when the title names the product, else under
+        // the icon.
+        KitScreenScaffold(hero: true, header: false, heroName: !Self.titleNamesProduct(title)) {
             if let title {
                 KitText(title, .title, color: .strong, alignment: .center)
                     .accessibilityAddTraits(.isHeader)
@@ -304,33 +328,77 @@ struct KitFloatingSurface: ViewModifier {
 
 // MARK: - Toast
 
-/// A toast (UI-KITS §4.1 Toast): one line, at the bottom on phones, gone after 6 s unless it is
-/// an error (an error toast is never the only record of the error).
+/// A toast (UI-KITS §4.1 Toast): one line, full width at the bottom on a phone, with a draining
+/// ring for its 6 s. An error toast never goes away by itself (it is never the only record of the
+/// error); every other tone calls `onDismiss` after 6 s.
 public struct ToastView: View {
     let text: String
     var tone: StatusPill.Tone = .neutral
+    var onDismiss: (() -> Void)?
 
-    public init(text: String, tone: StatusPill.Tone = .neutral) {
+    /// How long a non-error toast stays.
+    public static let lifetime: Double = 6
+
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var draining = false
+
+    public init(text: String, tone: StatusPill.Tone = .neutral, onDismiss: (() -> Void)? = nil) {
         self.text = text
         self.tone = tone
+        self.onDismiss = onDismiss
     }
+
+    /// An error stays until the person dismisses it.
+    static func persists(_ tone: StatusPill.Tone) -> Bool { tone == .danger }
 
     public var body: some View {
         kitStyle { style in
             HStack(spacing: style.space(.xs)) {
-                if tone == .success {
+                switch tone {
+                case .success:
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(style.palette.success)
-                        .accessibilityHidden(true)
+                        .foregroundStyle(style.palette.success).accessibilityHidden(true)
+                case .warning:
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(style.palette.warning).accessibilityHidden(true)
+                case .danger:
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .foregroundStyle(style.palette.danger).accessibilityHidden(true)
+                case .neutral:
+                    EmptyView()
                 }
                 Text(text)
                     .font(style.font(.label))
                     .foregroundStyle(style.palette.textStrong)
+                    .fixedSize(horizontal: false, vertical: true)
+                if sizeClass == .compact { Spacer(minLength: 0) }
+                if !Self.persists(tone), onDismiss != nil {
+                    Circle()
+                        .trim(from: 0, to: draining ? 0 : 1)
+                        .stroke(
+                            style.palette.textMuted,
+                            style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 16, height: 16)
+                        .accessibilityHidden(true)
+                }
             }
             .padding(.horizontal, style.space(.md))
             .padding(.vertical, style.space(.sm))
+            .frame(maxWidth: sizeClass == .compact ? .infinity : nil)
             .modifier(KitFloatingSurface(style: style))
+            .padding(.horizontal, sizeClass == .compact ? style.space(.md) : 0)
+            .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isStaticText)
+            .task {
+                guard !Self.persists(tone), let onDismiss else { return }
+                if !style.reduceMotion {
+                    withAnimation(.linear(duration: Self.lifetime)) { draining = true }
+                }
+                try? await Task.sleep(nanoseconds: UInt64(Self.lifetime * 1_000_000_000))
+                if !Task.isCancelled { onDismiss() }
+            }
         }
     }
 }

@@ -75,8 +75,7 @@ public struct PolarisKeyGate<Content: View>: View {
             BootView(screen: gate)
         case .error:
             StatusScreenView(
-                screen: KitScreen(nil, []), available: [], onFix: { _ in },
-                onTryAgain: { Task { await model.refresh() } })
+                errorLines: gate.copy, onTryAgain: { Task { await model.refresh() } })
         case .needsActivation:
             activation
         case .blocked:
