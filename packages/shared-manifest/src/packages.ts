@@ -209,7 +209,7 @@ export function packageNamespaceProblem(
 /**
  * The narrowest namespace `ecosystem`'s feed fields can express for exactly `names`, the packages
  * a manifest declares (F-34). `owner` is the product slug. Several npm or Swift scopes answer `{}`
- * and an `ambiguous` reason; no names answer `{}`. Pure: nothing calls it yet.
+ * and an `ambiguous` reason; no names answer `{}`. Pure.
  */
 export function deriveFeedNamespace(
   ecosystem: PackageEcosystem,

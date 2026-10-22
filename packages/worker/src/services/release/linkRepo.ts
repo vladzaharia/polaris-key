@@ -26,6 +26,7 @@ import {
   type ManifestDocumentName,
 } from "@polaris-key/manifest";
 import { type Env } from "../../platform/env.js";
+import { feedSkipped } from "./resync.js";
 import { sha256Hex } from "../../platform/hash.js";
 import type { Db } from "../../db/types.js";
 import { getProduct } from "../../core/products/store.js";
@@ -66,6 +67,8 @@ export type LinkRepoResult =
       remainingSecrets: string[];
       /** ST-42: what the create wrote beyond the manifest's own rows. */
       defaults: CreatedDefaults;
+      /** F-34.2: ecosystems whose feed the manifest could not provision, with why. */
+      feedProvisionSkipped?: { ecosystem: string; reason: string }[];
     }
   | {
       ok: false;
@@ -776,6 +779,7 @@ export async function registerFromManifest(
     install,
     remainingSecrets,
     defaults: created.defaults,
+    ...feedSkipped(result.facts),
   };
 }
 

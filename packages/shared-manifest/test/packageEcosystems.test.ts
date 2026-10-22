@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  deriveFeedNamespace,
   PACKAGE_ECOSYSTEMS,
   PACKAGE_ECOSYSTEM_RULES,
   PACKAGE_FILE_TYPES,
@@ -134,5 +135,27 @@ describe("PACKAGE_ECOSYSTEM_RULES", () => {
         fields.length > 0,
       );
     }
+  });
+});
+
+describe("deriveFeedNamespace: names too wide for a prefix list (F-34.2)", () => {
+  it("a one-segment Maven groupId is ambiguous; a dotted one derives", () => {
+    const wide = deriveFeedNamespace("maven", ["com:x"], "acme");
+    expect(wide.namespace).toEqual({});
+    expect(wide.ambiguous).toMatch(/one segment/);
+    expect(deriveFeedNamespace("maven", ["com.acme:x"], "acme")).toEqual({
+      namespace: { groupPrefixes: ["com.acme"] },
+      ambiguous: null,
+    });
+  });
+
+  it("a host-only Go module is ambiguous; a path under a host derives", () => {
+    const wide = deriveFeedNamespace("go", ["github.com"], "acme");
+    expect(wide.namespace).toEqual({});
+    expect(wide.ambiguous).toMatch(/only a host/);
+    expect(deriveFeedNamespace("go", ["github.com/acme/sdk"], "acme")).toEqual({
+      namespace: { modulePrefixes: ["github.com/acme/sdk"] },
+      ambiguous: null,
+    });
   });
 });

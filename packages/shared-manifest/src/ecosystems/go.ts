@@ -82,6 +82,13 @@ export const GO_PACKAGE_RULES: PackageEcosystemRules<"go"> = {
     // sub-paths (`example.com/m` takes `example.com/m/sub`): the narrowest it expresses.
     derive(names) {
       const modules = sortedUnique(names.filter((n) => n !== ""));
+      // A module that is only a host (`github.com`) as a prefix would admit every module there.
+      const wide = modules.filter((m) => !m.includes("/"));
+      if (wide.length > 0)
+        return {
+          namespace: {},
+          ambiguous: `the module ${wide.join(", ")} is only a host, which as a prefix would admit every module on it; an operator sets the namespace`,
+        };
       return {
         namespace: modules.length === 0 ? {} : { modulePrefixes: modules },
         ambiguous: null,
