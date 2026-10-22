@@ -15671,7 +15671,15 @@ paths:
                       type: object
                       additionalProperties: false
                       required:
-                        [product, productName, id, name, email, status, expiresAt]
+                        [
+                          product,
+                          productName,
+                          id,
+                          name,
+                          email,
+                          status,
+                          expiresAt,
+                        ]
                       properties:
                         product: { type: string }
                         productName: { type: string }

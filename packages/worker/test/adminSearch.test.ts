@@ -50,7 +50,12 @@ type World = Awaited<ReturnType<typeof world>>;
 async function search(w: World, q: string, as: keyof typeof PRINCIPALS) {
   const { token } = await issueSession(
     w.env,
-    { sub: PRINCIPALS[as]!.memberId, name: as, email: `${as}@x.test`, groups: [] },
+    {
+      sub: PRINCIPALS[as]!.memberId,
+      name: as,
+      email: `${as}@x.test`,
+      groups: [],
+    },
     NOW,
   );
   const res = await handleAdminApi(
