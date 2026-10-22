@@ -64,6 +64,7 @@ import {
   HANDOFF_WAITING,
 } from "./adapt.js";
 import { withChoice } from "./licenseRows.js";
+import { onLazyLoaded } from "./lazy.js";
 import { renderView, withBase } from "./views.js";
 
 const SYSTEM_FONT_STACK =
@@ -302,6 +303,7 @@ export function useKit(
 
   // Copy packs load on demand; a component showing one redraws when it arrives.
   useEffect(() => onCopyLoaded(force), []);
+  useEffect(() => onLazyLoaded(force), []);
   // Under the native preset the "system" scheme also follows the host page's own ground (a theme
   // toggle on the root or body), which the media queries below never see.
   const followsGround = options.preset === "native";

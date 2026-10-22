@@ -19,6 +19,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "react18",
+          setupFiles: ["test/setupKitParts.ts"],
           include: ["test/**/*.test.{ts,tsx}", "src/**/*.test.{ts,tsx}"],
           exclude: [
             "test/browser/**",

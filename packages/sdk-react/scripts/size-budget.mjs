@@ -40,6 +40,12 @@ const KB = 1000;
  * and the English copy table the web kits bundle leaves out `core.codes.*` and the terminal's
  * `cli.*` (`kit-copy/lean`; they arrive as one lazy table, -6.9 KB). Left to reach 68.5: the
  * steps the gate does not show first (offline, paywall, settings) are still in the entry.
+ *
+ * polaris-key-gate 73.5 -> 68.1 KB (WEB-parity): the QR encoder (-2.0 KB) and the rows of the
+ * screens the gate rarely shows first (OfflineActivation's steps, device rows, release notes,
+ * settings rows, the account pane, the channel picker: -3.4 KB) load on demand (`kit/lazy.ts`,
+ * `kit/rows.tsx`), as a copy pack does. The budget stays at 71.2: the headroom is for the
+ * milestones' growth, not a licence to raise it.
  */
 export const BUDGETS = JSON.parse(
   readFileSync(join(here, "size-budget.json"), "utf8"),

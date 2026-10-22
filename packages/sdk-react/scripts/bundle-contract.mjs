@@ -21,12 +21,17 @@ await build({
     minify: false,
     sourcemap: false,
     lib: {
-      entry: join(root, "src", "kit", "contract.ts"),
+      // qr.js stays its own file: the kit imports it on demand, outside the gate's entry.
+      entry: {
+        contract: join(root, "src", "kit", "contract.ts"),
+        qr: join(root, "src", "kit", "qr.ts"),
+      },
       formats: ["es"],
-      fileName: () => "contract.js",
+      fileName: (_format, name) => `${name}.js`,
     },
     rollupOptions: { external: (id) => external.test(id) },
   },
 });
 rmSync(join(root, "dist", "kit", "contract.js.map"), { force: true });
+rmSync(join(root, "dist", "kit", "qr.js.map"), { force: true });
 rmSync(join(root, "dist", "kit", "contract.d.ts.map"), { force: true });
