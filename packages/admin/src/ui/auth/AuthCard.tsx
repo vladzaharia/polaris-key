@@ -381,7 +381,7 @@ const OUTER = "passport:flex passport:h-full passport:flex-col";
  * Without art the identity block sits in the middle of the pane, so it never has a void under it
  * (M4: icon, request, who and where, between the top and the receipt).
  */
-const OUTER_NO_ART = `${OUTER} passport:justify-center passport:pb-6`;
+const OUTER_NO_ART = `${OUTER} passport:justify-center passport:py-6`;
 
 export function CardHeader(props: CardHeaderProps): React.ReactElement {
   const hasArt = Boolean(props.art);
