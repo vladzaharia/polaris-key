@@ -36,6 +36,7 @@
  * callback's hand-off) live in `oidc.ts`, beside the flow record they change.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import { type DeviceRow, type LicenseRow } from "../../core/repo.js";
 import {
   countActiveDevices,
@@ -196,9 +197,9 @@ export interface LegacyChoiceView {
 export const ACTIVE_NOW_SECONDS = 600;
 
 const STORE_NAMES: Record<string, string> = {
-  "app-store": "App Store",
-  play: "Google Play",
-  steam: "Steam",
+  "app-store": channelLabel("app-store"),
+  play: channelLabel("google-play"),
+  steam: channelLabel("steam"),
 };
 
 /**

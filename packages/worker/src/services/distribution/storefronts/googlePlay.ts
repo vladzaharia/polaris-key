@@ -25,6 +25,7 @@
  * only the typed `submit` step.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import type { StorefrontOp } from "../../../core/storefront/adapter.js";
 import { isProductionTrack } from "../../../core/storefront/rules/googlePlay.js";
 import type { PlayImageType } from "../../../core/storefront/rules/googlePlay.js";
@@ -132,7 +133,7 @@ async function writeText(
   key: string,
 ): Promise<StoreWriteResult[] | RunOutcome> {
   const fit = await projectionFor(c.db, c.product, "play");
-  const blocked = fitBlocker(fit, "Google Play");
+  const blocked = fitBlocker(fit, channelLabel("google-play"));
   if (blocked) return refusal(422, "listing_does_not_fit", blocked);
   const payload = fit!.payload!;
   const out: StoreWriteResult[] = [];
@@ -308,7 +309,7 @@ export const GOOGLE_PLAY_FLOW: FlowRuntime = {
         return {
           label: "Store listing text",
           ...newest(rows, ["listing.update", "details.update"]),
-          blockedBy: blockedBy ?? fitBlocker(fit, "Google Play"),
+          blockedBy: blockedBy ?? fitBlocker(fit, channelLabel("google-play")),
           run: run(stepPath(c.product, op), "Send the listing text", [
             "Google Play receives every locale's title, short and full description, and the contact details, in one edit.",
             "The edit is committed staged: nothing is sent for review until the Submit step.",

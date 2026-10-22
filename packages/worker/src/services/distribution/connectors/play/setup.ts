@@ -43,7 +43,7 @@
  * never selects the sealed column — so resolving the setup opens nothing.
  */
 
-import { effectiveTrackMap } from "@polaris-key/manifest";
+import { effectiveTrackMap, channelLabel } from "@polaris-key/manifest";
 import { parseJsonColumn } from "../../../../platform/json.js";
 import type { Db } from "../../../../db/types.js";
 import type { Env } from "../../../../platform/env.js";
@@ -61,7 +61,7 @@ import {
 export const PLAY_PLATFORM_CREDENTIAL = "google-play.service-account" as const;
 
 export const PLAY_CONNECTOR = "play";
-export const PLAY_LABEL = "Google Play";
+export const PLAY_LABEL = channelLabel("google-play");
 export const PLAY_OUTLET_KINDS = ["play", "play-testing"] as const;
 
 /** The audit actor kind of a vitals auto-halt (`connector:play-vitals`). */
@@ -245,7 +245,7 @@ export async function resolvePlaySetup(
       return inert(
         f.reason,
         platformFallbackMessage(
-          "Google Play",
+          channelLabel("google-play"),
           "google-play",
           "package",
           packageName,

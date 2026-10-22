@@ -4,6 +4,7 @@ import {
   devicesText,
   expiresInText,
 } from "../../lib/vocab/license.js";
+import { channelLabel } from "@polaris-key/manifest";
 import { platformInSentence } from "../../lib/vocab/platforms.js";
 import {
   isEntryItem,
@@ -291,11 +292,11 @@ export function storeName(store: string): string {
 }
 
 const STORE_NAMES: Record<string, string> = {
-  "app-store": "App Store",
-  play: "Google Play",
-  steam: "Steam",
-  "microsoft-store": "Microsoft Store",
-  itch: "itch.io",
+  "app-store": channelLabel("app-store"),
+  play: channelLabel("google-play"),
+  steam: channelLabel("steam"),
+  "microsoft-store": channelLabel("microsoft-store"),
+  itch: channelLabel("itch"),
   "polaris-key": "Polaris Locker",
 };
 

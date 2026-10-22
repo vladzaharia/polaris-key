@@ -4,6 +4,7 @@
  * API answers whatever Commerce's state, so a product with Commerce off still sees its history.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, type CommerceStore, type CommerceView } from "../../../api.js";
@@ -25,9 +26,9 @@ import {
 } from "../core/components/serviceFeatures.js";
 
 const STORES: readonly { id: CommerceStore; label: string }[] = [
-  { id: "app-store", label: "App Store" },
-  { id: "play", label: "Google Play" },
-  { id: "steam", label: "Steam" },
+  { id: "app-store", label: channelLabel("app-store") },
+  { id: "play", label: channelLabel("google-play") },
+  { id: "steam", label: channelLabel("steam") },
 ];
 
 const LINK = "py-1 text-accent-fg underline underline-offset-2";

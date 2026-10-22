@@ -160,7 +160,9 @@ describe("two-way adapter binding", () => {
         c.outlet.kind,
       );
       if (adapter?.id === c.id) {
-        expect(adapter.label.length).toBeGreaterThan(0);
+        // The declaration modules may import only types from the manifest package (boundaries
+        // test), so an adapter spells its label; it must begin with the catalogue's (the service name may extend it).
+        expect(adapter.label.startsWith(c.label), c.id).toBe(true);
         expect(adapter.credential).toBe(c.storefront.credential);
       }
     }

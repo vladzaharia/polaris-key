@@ -17,6 +17,7 @@
  * Never closes the app or deletes its repository.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import { parseDocument, YAMLMap, YAMLSeq, isMap, isSeq, Document } from "yaml";
 import {
   isoDate,
@@ -223,7 +224,7 @@ export function generateMetainfo(
 ): { file: GeneratedFile; warnings: string[] } {
   const appId = flathubAppId(i);
   const release = needRelease(i);
-  const payload = needPayload(i, "Flathub");
+  const payload = needPayload(i, channelLabel("flathub"));
   const warnings: string[] = [];
   const def = i.app.defaultLocale;
   const dl = payload.locales[def] ?? {};

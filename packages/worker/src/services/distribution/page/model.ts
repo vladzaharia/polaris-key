@@ -46,6 +46,7 @@ import {
   APP_DELIVERABLE_ID,
   HOMEBREW_CASK_PATTERN,
   NUMERIC_ID_PATTERN,
+  channelLabel,
 } from "@polaris-key/manifest";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
@@ -589,7 +590,7 @@ export function storeLink(
       const id = idOf(identity.appleId, NUMERIC_ID_PATTERN, 20);
       return id
         ? {
-            label: "App Store",
+            label: channelLabel("app-store"),
             url: `https://apps.apple.com/app/id${id}`,
             deepLink: null,
             command: null,
@@ -601,7 +602,7 @@ export function storeLink(
       const id = idOf(identity.packageName, ANDROID_PACKAGE_RE);
       return id
         ? {
-            label: "Google Play",
+            label: channelLabel("google-play"),
             url: `https://play.google.com/store/apps/details?id=${encodeURIComponent(id)}`,
             deepLink: null,
             command: null,
@@ -613,7 +614,7 @@ export function storeLink(
       const id = idOf(identity.productId, MS_PRODUCT_ID_RE);
       return id
         ? {
-            label: "Microsoft Store",
+            label: channelLabel("microsoft-store"),
             url: `https://apps.microsoft.com/detail/${encodeURIComponent(id)}`,
             deepLink: `ms-windows-store://pdp/?productid=${encodeURIComponent(id)}`,
             command: null,
@@ -625,7 +626,7 @@ export function storeLink(
       const id = idOf(identity.appId, NUMERIC_ID_PATTERN, 20);
       return id
         ? {
-            label: "Steam",
+            label: channelLabel("steam"),
             url: `https://store.steampowered.com/app/${id}/`,
             deepLink: `steam://store/${id}`,
             command: null,
@@ -641,7 +642,7 @@ export function storeLink(
       if (!m) return null;
       const user = m[1]!.toLowerCase().replace(/_/g, "-");
       return {
-        label: "itch.io",
+        label: channelLabel("itch"),
         url: `https://${user}.itch.io/${encodeURIComponent(m[2]!)}`,
         deepLink: null,
         command: null,
@@ -652,7 +653,7 @@ export function storeLink(
       const id = idOf(identity.appId, FLATPAK_ID_RE);
       return id
         ? {
-            label: "Flathub",
+            label: channelLabel("flathub"),
             url: `https://flathub.org/apps/${encodeURIComponent(id)}`,
             deepLink: null,
             command: `flatpak install flathub ${id}`,
@@ -664,7 +665,7 @@ export function storeLink(
       const id = idOf(identity.name, SNAP_NAME_RE);
       return id
         ? {
-            label: "Snap Store",
+            label: channelLabel("snap"),
             url: `https://snapcraft.io/${id}`,
             deepLink: null,
             command: `sudo snap install ${id}`,
@@ -676,7 +677,7 @@ export function storeLink(
       const id = idOf(identity.packageIdentifier, WINGET_ID_RE);
       return id
         ? {
-            label: "winget",
+            label: channelLabel("winget"),
             url: null,
             deepLink: null,
             command: `winget install --id ${id} --exact`,
@@ -789,7 +790,7 @@ export async function buildDownloadModel(
                 kind: "scoop",
                 outletId: outlet.id,
                 platforms: ["windows"],
-                label: "Scoop",
+                label: channelLabel("scoop"),
                 url: null,
                 deepLink: null,
                 command: `scoop install ${feedBase}/scoop/${encodeURIComponent(history.channel)}.json${q}`,
@@ -807,7 +808,7 @@ export async function buildDownloadModel(
                 kind: "homebrew",
                 outletId: outlet.id,
                 platforms: ["macos"],
-                label: "Homebrew",
+                label: channelLabel("homebrew"),
                 url: null,
                 deepLink: null,
                 command: `brew install --cask ${cask}`,

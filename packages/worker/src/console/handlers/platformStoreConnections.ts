@@ -47,6 +47,7 @@
  * (`adminApi` in `routeCoverage.test.ts`), so there is no OpenAPI entry.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
@@ -129,10 +130,10 @@ import { planOwnRepins } from "./outletCredentials.js";
 import { routeAscProvisioning } from "./platformStoreProvisioning.js";
 
 const STORE_LABELS: Record<PlatformStore, string> = {
-  "app-store": "App Store",
-  "google-play": "Google Play",
-  "microsoft-store": "Microsoft Store",
-  steam: "Steam",
+  "app-store": channelLabel("app-store"),
+  "google-play": channelLabel("google-play"),
+  "microsoft-store": channelLabel("microsoft-store"),
+  steam: channelLabel("steam"),
 };
 
 export interface ListerOptions {
