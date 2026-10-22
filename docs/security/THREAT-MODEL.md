@@ -1151,6 +1151,28 @@ feeds). Each created feed writes one `distribution.feed.provision` audit row. Th
 written whether Distribution is on or off; the feed ladder refuses reads and publishes while it
 is off.
 
+**The access move (F-34.4).** The P0-49 job `distribution.feed-access-customers` rewrites a feed
+at `authenticated` or `entitled` to `licensed` (Customers) so the console offers two options. It
+runs only from an operator's request through the migration runner, after a dry run the operator
+read, and it must widen nothing. `authenticated` and `licensed` are one strictness on the ladder,
+so that rewrite changes no answer. An `entitled` feed gated every package with the package's own
+`dist_access.entitlement`, and a package with no own row held no flag, so no licence was admitted.
+Rewriting the feed alone would admit every usable licence, so the job first writes, for each
+package deliverable of the feed's ecosystem (read through Release's catalog hook whatever the
+product's enablement, and refusing when no catalog is mounted), an own `dist_access` row at
+`entitled`, the row's own flag kept (null stays null), `source = 'admin'` so a resync leaves it.
+The rows it can write are only: `dist_registry_access_moves` (the ledger, written first, in the
+same atomic batch); `dist_access` (insert at `entitled`, or raise an existing own row to
+`entitled`); `dist_registry_feeds.access_mode` (`authenticated` or `entitled` to `licensed`).
+Every one is the same strictness or stricter on the ladder. Each guard re-checks the feed is still
+at the mode the plan saw. `down` restores from the ledger, only where a row still reads what the
+job wrote, so it never overwrites an operator's later edit, and it cannot widen past the prior
+state. Two accepted effects, both listed in the dry run: a package declared AFTER the move in a
+formerly entitled feed lands at Customers (decision F4), not fail-closed; and a product whose PS-03
+open access was true turns false once its package rows are written. `test/feedAccessJob.test.ts`
+pins `authorizeFeedRead` identical before and after, for every principal, list and per-deliverable
+read, feed mode, own-row state and app-row state.
+
 **Same-site exposure.** The host is a `*.plrs.im` sibling of the console, so `SameSite` does not
 separate them, exactly as for the bytes host. Its compensations, against `dl.plrs.im`'s:
 

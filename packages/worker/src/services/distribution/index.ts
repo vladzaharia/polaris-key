@@ -45,6 +45,7 @@
  */
 
 import { distributionManifest } from "./ingest.js";
+import { feedAccessCustomersJob } from "./feedAccessJob.js";
 import type { HookContext, OutletCapabilities } from "../../core/hooks.js";
 import type {
   DiscoveryContext,
@@ -177,6 +178,8 @@ export const distributionService: ServiceDescriptor = {
     productDeletion: distributionProductDeletion,
     integration: distributionIntegration,
     maintenance: distributionMaintenance,
+    // P0-49: run by an operator through the migration runner, never by a tick.
+    migrations: [feedAccessCustomersJob],
   },
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: DISTRIBUTION_SETTINGS_SLICE,
