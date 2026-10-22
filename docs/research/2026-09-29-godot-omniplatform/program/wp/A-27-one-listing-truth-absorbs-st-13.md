@@ -99,3 +99,7 @@ The code is the fact; the plan is `_lead/plans/A-27-slices.md`. Phase 1 (A-27.1 
 - **C14.** `services/distribution/index.ts` gets `contributes.migrations` only in F-34.4 (held). A-27's job appends to it.
 
 A-27.1 built the dual read: `listing/resolved.ts` `resolvedListing(db, product)` backs `delivery().listing()`; the model's default locale wins per field and the blob fills the rest (art refs come from the blob only). `listing/feed.ts` shares its row mapping.
+
+A-27.3 mapped the manifest listing once (`manifestListingSnapshot`) and made `manifestSource` read the root listing from Core's manifest snapshot. With no snapshot row for the product it still falls back to the first live outlet's merged copy, as before; phase 2 (A-27.14) removes that fallback.
+
+A-27.4 made the ingest write the model (D4, D14): guarded UPDATEs in `outlets.ts` through `manifestModelStatements`, while Distribution is on; the blob write stays. The over-limit warning on the ingest plan belongs to the validator rule of A-27.5; A-27.4 only skips the value.

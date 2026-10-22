@@ -128,6 +128,55 @@
           "params": ["acme"]
         }
       ],
+      "dist_listing_locales": [
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET subtitle = NULL, provenance_json = json_remove(provenance_json, '$.\"subtitle\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"subtitle\"') = 'manifest' AND subtitle IS NOT NULL",
+          "params": [1700000000, "ingest", "acme", "acme"]
+        },
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET description = NULL, provenance_json = json_remove(provenance_json, '$.\"description\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"description\"') = 'manifest' AND description IS NOT NULL",
+          "params": [1700000000, "ingest", "acme", "acme"]
+        }
+      ],
+      "dist_listings": [
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET name = NULL, provenance_json = json_remove(provenance_json, '$.\"name\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"name\"') = 'manifest' AND name IS NOT NULL",
+          "params": [1700000000, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET developer_name = NULL, provenance_json = json_remove(provenance_json, '$.\"developerName\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"developerName\"') = 'manifest' AND developer_name IS NOT NULL",
+          "params": [1700000000, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET category = NULL, provenance_json = json_remove(provenance_json, '$.\"category\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"category\"') = 'manifest' AND category IS NOT NULL",
+          "params": [1700000000, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET tint = NULL, provenance_json = json_remove(provenance_json, '$.\"tint\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"tint\"') = 'manifest' AND tint IS NOT NULL",
+          "params": [1700000000, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET contact_email = NULL, provenance_json = json_remove(provenance_json, '$.\"contactEmail\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"contactEmail\"') = 'manifest' AND contact_email IS NOT NULL",
+          "params": [1700000000, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.website'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.website\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.website\"') = 'manifest' AND json_extract(urls_json, '$.website') IS NOT NULL",
+          "params": [1700000000, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.support'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.support\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.support\"') = 'manifest' AND json_extract(urls_json, '$.support') IS NOT NULL",
+          "params": [1700000000, "ingest", "acme"]
+        }
+      ],
       "dist_outlets": [
         {
           "table": "dist_outlets",
@@ -549,6 +598,8 @@
         }
       ],
       "dist_listing": [],
+      "dist_listing_locales": [],
+      "dist_listings": [],
       "dist_outlets": [
         {
           "product": "acme",
@@ -1388,6 +1439,55 @@
           "params": ["acme"]
         }
       ],
+      "dist_listing_locales": [
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET subtitle = NULL, provenance_json = json_remove(provenance_json, '$.\"subtitle\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"subtitle\"') = 'manifest' AND subtitle IS NOT NULL",
+          "params": [1700000060, "ingest", "acme", "acme"]
+        },
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET description = NULL, provenance_json = json_remove(provenance_json, '$.\"description\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"description\"') = 'manifest' AND description IS NOT NULL",
+          "params": [1700000060, "ingest", "acme", "acme"]
+        }
+      ],
+      "dist_listings": [
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET name = NULL, provenance_json = json_remove(provenance_json, '$.\"name\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"name\"') = 'manifest' AND name IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET developer_name = NULL, provenance_json = json_remove(provenance_json, '$.\"developerName\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"developerName\"') = 'manifest' AND developer_name IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET category = NULL, provenance_json = json_remove(provenance_json, '$.\"category\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"category\"') = 'manifest' AND category IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET tint = NULL, provenance_json = json_remove(provenance_json, '$.\"tint\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"tint\"') = 'manifest' AND tint IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET contact_email = NULL, provenance_json = json_remove(provenance_json, '$.\"contactEmail\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"contactEmail\"') = 'manifest' AND contact_email IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.website'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.website\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.website\"') = 'manifest' AND json_extract(urls_json, '$.website') IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.support'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.support\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.support\"') = 'manifest' AND json_extract(urls_json, '$.support') IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        }
+      ],
       "dist_outlets": [
         {
           "table": "dist_outlets",
@@ -1530,6 +1630,17 @@
           "params": [
             "acme",
             "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.keyEntry.claimByKey\"]"
+          ]
+        }
+      ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000060,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ],
@@ -1752,17 +1863,6 @@
             1700000060
           ]
         }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000060,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
-          ]
-        }
       ]
     },
     "state": {
@@ -1808,6 +1908,8 @@
         }
       ],
       "dist_listing": [],
+      "dist_listing_locales": [],
+      "dist_listings": [],
       "dist_outlets": [
         {
           "product": "acme",
@@ -2205,6 +2307,55 @@
           "params": ["acme"]
         }
       ],
+      "dist_listing_locales": [
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET subtitle = NULL, provenance_json = json_remove(provenance_json, '$.\"subtitle\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"subtitle\"') = 'manifest' AND subtitle IS NOT NULL",
+          "params": [1700000060, "ingest", "acme", "acme"]
+        },
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET description = NULL, provenance_json = json_remove(provenance_json, '$.\"description\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"description\"') = 'manifest' AND description IS NOT NULL",
+          "params": [1700000060, "ingest", "acme", "acme"]
+        }
+      ],
+      "dist_listings": [
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET name = NULL, provenance_json = json_remove(provenance_json, '$.\"name\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"name\"') = 'manifest' AND name IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET developer_name = NULL, provenance_json = json_remove(provenance_json, '$.\"developerName\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"developerName\"') = 'manifest' AND developer_name IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET category = NULL, provenance_json = json_remove(provenance_json, '$.\"category\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"category\"') = 'manifest' AND category IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET tint = NULL, provenance_json = json_remove(provenance_json, '$.\"tint\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"tint\"') = 'manifest' AND tint IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET contact_email = NULL, provenance_json = json_remove(provenance_json, '$.\"contactEmail\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"contactEmail\"') = 'manifest' AND contact_email IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.website'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.website\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.website\"') = 'manifest' AND json_extract(urls_json, '$.website') IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.support'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.support\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.support\"') = 'manifest' AND json_extract(urls_json, '$.support') IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        }
+      ],
       "dist_outlets": [
         {
           "table": "dist_outlets",
@@ -2368,6 +2519,17 @@
           "params": [
             "acme",
             "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.keyEntry.claimByKey\"]"
+          ]
+        }
+      ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000060,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Sets name \\\"Acme Two\\\", offline grace 21 days, device limit 4\"},{\"area\":\"compat\",\"summary\":\"Compatibility window 1.1.0 to 9.0.0\"},{\"area\":\"catalog\",\"summary\":\"Publishes a new catalog version: adds run.extra\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"tiers\",\"id\":\"team\",\"summary\":\"Tier team added\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ],
@@ -2593,17 +2755,6 @@
             0,
             null,
             1700000060
-          ]
-        }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000060,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Sets name \\\"Acme Two\\\", offline grace 21 days, device limit 4\"},{\"area\":\"compat\",\"summary\":\"Compatibility window 1.1.0 to 9.0.0\"},{\"area\":\"catalog\",\"summary\":\"Publishes a new catalog version: adds run.extra\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"tiers\",\"id\":\"team\",\"summary\":\"Tier team added\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ]
@@ -2934,6 +3085,8 @@
         }
       ],
       "dist_listing": [],
+      "dist_listing_locales": [],
+      "dist_listings": [],
       "dist_outlets": [
         {
           "product": "acme",
@@ -3323,6 +3476,55 @@
           "params": ["acme"]
         }
       ],
+      "dist_listing_locales": [
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET subtitle = NULL, provenance_json = json_remove(provenance_json, '$.\"subtitle\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"subtitle\"') = 'manifest' AND subtitle IS NOT NULL",
+          "params": [1700000060, "ingest", "acme", "acme"]
+        },
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET description = NULL, provenance_json = json_remove(provenance_json, '$.\"description\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"description\"') = 'manifest' AND description IS NOT NULL",
+          "params": [1700000060, "ingest", "acme", "acme"]
+        }
+      ],
+      "dist_listings": [
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET name = NULL, provenance_json = json_remove(provenance_json, '$.\"name\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"name\"') = 'manifest' AND name IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET developer_name = NULL, provenance_json = json_remove(provenance_json, '$.\"developerName\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"developerName\"') = 'manifest' AND developer_name IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET category = NULL, provenance_json = json_remove(provenance_json, '$.\"category\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"category\"') = 'manifest' AND category IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET tint = NULL, provenance_json = json_remove(provenance_json, '$.\"tint\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"tint\"') = 'manifest' AND tint IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET contact_email = NULL, provenance_json = json_remove(provenance_json, '$.\"contactEmail\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"contactEmail\"') = 'manifest' AND contact_email IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.website'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.website\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.website\"') = 'manifest' AND json_extract(urls_json, '$.website') IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.support'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.support\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.support\"') = 'manifest' AND json_extract(urls_json, '$.support') IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        }
+      ],
       "dist_outlets": [
         {
           "table": "dist_outlets",
@@ -3465,6 +3667,17 @@
           "params": [
             "acme",
             "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.keyEntry.claimByKey\"]"
+          ]
+        }
+      ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000060,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[{\"area\":\"product\",\"summary\":\"name, offline grace, device limit stay as set in the console\"},{\"area\":\"compat\",\"summary\":\"Compatibility window stays 1.0.0 to 9.0.0 (set in the console)\"},{\"area\":\"catalog\",\"summary\":\"The catalog stays as set in the console\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro stays as set in the console\"},{\"area\":\"tiers\",\"id\":\"team\",\"summary\":\"Tier team was created in the console and stays; the manifest's tier team is not applied until one of them is renamed\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard stays as set in the console\"},{\"area\":\"access\",\"summary\":\"Release access modes stay as set in the console\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher stays .github/workflows/other.yml in acme-org/acme-app (set in the console)\"}],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ],
@@ -3618,17 +3831,6 @@
           "table": "tiers",
           "sql": "DELETE FROM tiers WHERE product = ? AND id = ? AND source = 'manifest'",
           "params": ["acme", "free"]
-        }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000060,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[{\"area\":\"product\",\"summary\":\"name, offline grace, device limit stay as set in the console\"},{\"area\":\"compat\",\"summary\":\"Compatibility window stays 1.0.0 to 9.0.0 (set in the console)\"},{\"area\":\"catalog\",\"summary\":\"The catalog stays as set in the console\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro stays as set in the console\"},{\"area\":\"tiers\",\"id\":\"team\",\"summary\":\"Tier team was created in the console and stays; the manifest's tier team is not applied until one of them is renamed\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard stays as set in the console\"},{\"area\":\"access\",\"summary\":\"Release access modes stay as set in the console\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher stays .github/workflows/other.yml in acme-org/acme-app (set in the console)\"}],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
-          ]
         }
       ]
     },
@@ -3798,6 +4000,8 @@
         }
       ],
       "dist_listing": [],
+      "dist_listing_locales": [],
+      "dist_listings": [],
       "dist_outlets": [
         {
           "product": "acme",
@@ -4220,6 +4424,55 @@
           "params": ["acme"]
         }
       ],
+      "dist_listing_locales": [
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET subtitle = NULL, provenance_json = json_remove(provenance_json, '$.\"subtitle\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"subtitle\"') = 'manifest' AND subtitle IS NOT NULL",
+          "params": [1700000060, "ingest", "acme", "acme"]
+        },
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET description = NULL, provenance_json = json_remove(provenance_json, '$.\"description\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"description\"') = 'manifest' AND description IS NOT NULL",
+          "params": [1700000060, "ingest", "acme", "acme"]
+        }
+      ],
+      "dist_listings": [
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET name = NULL, provenance_json = json_remove(provenance_json, '$.\"name\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"name\"') = 'manifest' AND name IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET developer_name = NULL, provenance_json = json_remove(provenance_json, '$.\"developerName\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"developerName\"') = 'manifest' AND developer_name IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET category = NULL, provenance_json = json_remove(provenance_json, '$.\"category\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"category\"') = 'manifest' AND category IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET tint = NULL, provenance_json = json_remove(provenance_json, '$.\"tint\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"tint\"') = 'manifest' AND tint IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET contact_email = NULL, provenance_json = json_remove(provenance_json, '$.\"contactEmail\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"contactEmail\"') = 'manifest' AND contact_email IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.website'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.website\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.website\"') = 'manifest' AND json_extract(urls_json, '$.website') IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.support'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.support\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.support\"') = 'manifest' AND json_extract(urls_json, '$.support') IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        }
+      ],
       "dist_outlets": [
         {
           "table": "dist_outlets",
@@ -4362,6 +4615,17 @@
           "params": [
             "acme",
             "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.keyEntry.claimByKey\"]"
+          ]
+        }
+      ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000060,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ],
@@ -4563,17 +4827,6 @@
             1700000060
           ]
         }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000060,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
-          ]
-        }
       ]
     },
     "state": {
@@ -4674,6 +4927,8 @@
         }
       ],
       "dist_listing": [],
+      "dist_listing_locales": [],
+      "dist_listings": [],
       "dist_outlets": [
         {
           "product": "acme",
@@ -5018,6 +5273,55 @@
           "params": ["acme"]
         }
       ],
+      "dist_listing_locales": [
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET subtitle = NULL, provenance_json = json_remove(provenance_json, '$.\"subtitle\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"subtitle\"') = 'manifest' AND subtitle IS NOT NULL",
+          "params": [1700000100, "ingest", "acme", "acme"]
+        },
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET description = NULL, provenance_json = json_remove(provenance_json, '$.\"description\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"description\"') = 'manifest' AND description IS NOT NULL",
+          "params": [1700000100, "ingest", "acme", "acme"]
+        }
+      ],
+      "dist_listings": [
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET name = NULL, provenance_json = json_remove(provenance_json, '$.\"name\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"name\"') = 'manifest' AND name IS NOT NULL",
+          "params": [1700000100, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET developer_name = NULL, provenance_json = json_remove(provenance_json, '$.\"developerName\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"developerName\"') = 'manifest' AND developer_name IS NOT NULL",
+          "params": [1700000100, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET category = NULL, provenance_json = json_remove(provenance_json, '$.\"category\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"category\"') = 'manifest' AND category IS NOT NULL",
+          "params": [1700000100, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET tint = NULL, provenance_json = json_remove(provenance_json, '$.\"tint\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"tint\"') = 'manifest' AND tint IS NOT NULL",
+          "params": [1700000100, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET contact_email = NULL, provenance_json = json_remove(provenance_json, '$.\"contactEmail\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"contactEmail\"') = 'manifest' AND contact_email IS NOT NULL",
+          "params": [1700000100, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.website'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.website\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.website\"') = 'manifest' AND json_extract(urls_json, '$.website') IS NOT NULL",
+          "params": [1700000100, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.support'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.support\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.support\"') = 'manifest' AND json_extract(urls_json, '$.support') IS NOT NULL",
+          "params": [1700000100, "ingest", "acme"]
+        }
+      ],
       "dist_outlets": [
         {
           "table": "dist_outlets",
@@ -5170,6 +5474,17 @@
           "params": [
             "acme",
             "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.keyEntry.claimByKey\"]"
+          ]
+        }
+      ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000100,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000100,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Ends the expired break-glass claim on core.web.origins\"},{\"area\":\"product\",\"summary\":\"Ends the break-glass claim on license.defaults.deviceLimit: the manifest changed it\"},{\"area\":\"product\",\"summary\":\"Sets device limit 9\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ],
@@ -5388,17 +5703,6 @@
             1700000100
           ]
         }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000100,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000100,\"plan\":{\"apply\":[{\"area\":\"product\",\"summary\":\"Ends the expired break-glass claim on core.web.origins\"},{\"area\":\"product\",\"summary\":\"Ends the break-glass claim on license.defaults.deviceLimit: the manifest changed it\"},{\"area\":\"product\",\"summary\":\"Sets device limit 9\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
-          ]
-        }
       ]
     },
     "state": {
@@ -5499,6 +5803,8 @@
         }
       ],
       "dist_listing": [],
+      "dist_listing_locales": [],
+      "dist_listings": [],
       "dist_outlets": [
         {
           "product": "acme",
@@ -5894,6 +6200,55 @@
           "params": ["acme"]
         }
       ],
+      "dist_listing_locales": [
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET subtitle = NULL, provenance_json = json_remove(provenance_json, '$.\"subtitle\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"subtitle\"') = 'manifest' AND subtitle IS NOT NULL",
+          "params": [1700000060, "ingest", "acme", "acme"]
+        },
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET description = NULL, provenance_json = json_remove(provenance_json, '$.\"description\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"description\"') = 'manifest' AND description IS NOT NULL",
+          "params": [1700000060, "ingest", "acme", "acme"]
+        }
+      ],
+      "dist_listings": [
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET name = NULL, provenance_json = json_remove(provenance_json, '$.\"name\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"name\"') = 'manifest' AND name IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET developer_name = NULL, provenance_json = json_remove(provenance_json, '$.\"developerName\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"developerName\"') = 'manifest' AND developer_name IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET category = NULL, provenance_json = json_remove(provenance_json, '$.\"category\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"category\"') = 'manifest' AND category IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET tint = NULL, provenance_json = json_remove(provenance_json, '$.\"tint\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"tint\"') = 'manifest' AND tint IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET contact_email = NULL, provenance_json = json_remove(provenance_json, '$.\"contactEmail\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"contactEmail\"') = 'manifest' AND contact_email IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.website'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.website\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.website\"') = 'manifest' AND json_extract(urls_json, '$.website') IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.support'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.support\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.support\"') = 'manifest' AND json_extract(urls_json, '$.support') IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        }
+      ],
       "dist_outlets": [
         {
           "table": "dist_outlets",
@@ -6036,6 +6391,17 @@
           "params": [
             "acme",
             "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.keyEntry.claimByKey\"]"
+          ]
+        }
+      ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000060,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"services\",\"summary\":\"Services: turns off license\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ],
@@ -6244,17 +6610,6 @@
             1700000060
           ]
         }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000060,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"services\",\"summary\":\"Services: turns off license\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
-          ]
-        }
       ]
     },
     "state": {
@@ -6355,6 +6710,8 @@
         }
       ],
       "dist_listing": [],
+      "dist_listing_locales": [],
+      "dist_listings": [],
       "dist_outlets": [
         {
           "product": "acme",
@@ -6701,6 +7058,55 @@
           "params": ["acme"]
         }
       ],
+      "dist_listing_locales": [
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET subtitle = NULL, provenance_json = json_remove(provenance_json, '$.\"subtitle\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"subtitle\"') = 'manifest' AND subtitle IS NOT NULL",
+          "params": [1700000060, "ingest", "acme", "acme"]
+        },
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET description = NULL, provenance_json = json_remove(provenance_json, '$.\"description\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"description\"') = 'manifest' AND description IS NOT NULL",
+          "params": [1700000060, "ingest", "acme", "acme"]
+        }
+      ],
+      "dist_listings": [
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET name = NULL, provenance_json = json_remove(provenance_json, '$.\"name\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"name\"') = 'manifest' AND name IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET developer_name = NULL, provenance_json = json_remove(provenance_json, '$.\"developerName\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"developerName\"') = 'manifest' AND developer_name IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET category = NULL, provenance_json = json_remove(provenance_json, '$.\"category\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"category\"') = 'manifest' AND category IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET tint = NULL, provenance_json = json_remove(provenance_json, '$.\"tint\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"tint\"') = 'manifest' AND tint IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET contact_email = NULL, provenance_json = json_remove(provenance_json, '$.\"contactEmail\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"contactEmail\"') = 'manifest' AND contact_email IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.website'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.website\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.website\"') = 'manifest' AND json_extract(urls_json, '$.website') IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.support'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.support\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.support\"') = 'manifest' AND json_extract(urls_json, '$.support') IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        }
+      ],
       "dist_outlets": [
         {
           "table": "dist_outlets",
@@ -6843,6 +7249,17 @@
           "params": [
             "acme",
             "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.keyEntry.claimByKey\"]"
+          ]
+        }
+      ],
+      "product_sync_state": [
+        {
+          "table": "product_sync_state",
+          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
+          "params": [
+            "acme",
+            1700000060,
+            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"services\",\"summary\":\"Services: turns off config\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
           ]
         }
       ],
@@ -7051,17 +7468,6 @@
             1700000060
           ]
         }
-      ],
-      "product_sync_state": [
-        {
-          "table": "product_sync_state",
-          "sql": "INSERT INTO product_sync_state (product, source, status, last_checked_at, plan_json) VALUES (?, 'manual', 'ok', ?, ?) ON CONFLICT(product) DO UPDATE SET plan_json = excluded.plan_json",
-          "params": [
-            "acme",
-            1700000060,
-            "{\"v\":1,\"origin\":\"resync\",\"commit\":\"0123456789abcdef0123456789abcdef01234567\",\"plannedAt\":1700000060,\"plan\":{\"apply\":[{\"area\":\"services\",\"summary\":\"Services: turns off config\"},{\"area\":\"tiers\",\"id\":\"pro\",\"summary\":\"Tier pro replaced from the manifest\"},{\"area\":\"profiles\",\"id\":\"standard\",\"summary\":\"Profile standard replaced from the manifest (secret values set in the console are kept)\"},{\"area\":\"oidc\",\"summary\":\"Sign-in provider https://id.example\"},{\"area\":\"release\",\"summary\":\"Release settings from .pkey/release\"},{\"area\":\"publisher\",\"summary\":\"Trusted publisher .github/workflows/release.yml\"},{\"area\":\"edgeMint\",\"summary\":\"Token recipes applemusic (each waits for approval)\"},{\"area\":\"provisioning\",\"summary\":\"1 provisioning hook\"}],\"skipClaimed\":[],\"delete\":[{\"area\":\"tiers\",\"id\":\"free\",\"summary\":\"Tier free\"}],\"conflicts\":[],\"warnings\":[{\"file\":\"product\",\"path\":\"/slug\",\"code\":\"deprecated_spelling\",\"message\":\"slug is a deprecated spelling; write product.slug.\"},{\"file\":\"product\",\"path\":\"/name\",\"code\":\"deprecated_spelling\",\"message\":\"name is a deprecated spelling; write product.name.\"},{\"file\":\"product\",\"path\":\"/adminGroup\",\"code\":\"deprecated_spelling\",\"message\":\"adminGroup is a deprecated spelling; write product.adminGroup.\"},{\"file\":\"product\",\"path\":\"/compatMin\",\"code\":\"deprecated_spelling\",\"message\":\"compatMin is a deprecated spelling; write product.compatMin.\"},{\"file\":\"product\",\"path\":\"/compatMax\",\"code\":\"deprecated_spelling\",\"message\":\"compatMax is a deprecated spelling; write product.compatMax.\"},{\"file\":\"product\",\"path\":\"/defaultDeviceLimit\",\"code\":\"deprecated_spelling\",\"message\":\"defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.\"},{\"file\":\"product\",\"path\":\"/defaultMaxOfflineDays\",\"code\":\"deprecated_spelling\",\"message\":\"defaultMaxOfflineDays is a deprecated spelling; write licensing.defaultMaxOfflineDays.\"},{\"file\":\"product\",\"path\":\"/tiers\",\"code\":\"deprecated_spelling\",\"message\":\"tiers is a deprecated spelling; write licensing.tiers.\"},{\"file\":\"release\",\"path\":\"/release/ghOwner\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghOwner is a deprecated spelling; write release.provider.owner.\"},{\"file\":\"release\",\"path\":\"/release/ghRepo\",\"code\":\"deprecated_spelling\",\"message\":\"release.ghRepo is a deprecated spelling; write release.provider.repo.\"},{\"file\":\"release\",\"path\":\"/edgeMint\",\"code\":\"deprecated_spelling\",\"message\":\"edgeMint is a deprecated spelling; write edgeMint in .pkey/product.\"}]}}"
-          ]
-        }
       ]
     },
     "state": {
@@ -7162,6 +7568,8 @@
         }
       ],
       "dist_listing": [],
+      "dist_listing_locales": [],
+      "dist_listings": [],
       "dist_outlets": [
         {
           "product": "acme",
@@ -7506,6 +7914,55 @@
           "table": "dist_listing",
           "sql": "DELETE FROM dist_listing WHERE product = ?",
           "params": ["acme"]
+        }
+      ],
+      "dist_listing_locales": [
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET subtitle = NULL, provenance_json = json_remove(provenance_json, '$.\"subtitle\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"subtitle\"') = 'manifest' AND subtitle IS NOT NULL",
+          "params": [1700000060, "ingest", "acme", "acme"]
+        },
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET description = NULL, provenance_json = json_remove(provenance_json, '$.\"description\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"description\"') = 'manifest' AND description IS NOT NULL",
+          "params": [1700000060, "ingest", "acme", "acme"]
+        }
+      ],
+      "dist_listings": [
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET name = NULL, provenance_json = json_remove(provenance_json, '$.\"name\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"name\"') = 'manifest' AND name IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET developer_name = NULL, provenance_json = json_remove(provenance_json, '$.\"developerName\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"developerName\"') = 'manifest' AND developer_name IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET category = NULL, provenance_json = json_remove(provenance_json, '$.\"category\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"category\"') = 'manifest' AND category IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET tint = NULL, provenance_json = json_remove(provenance_json, '$.\"tint\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"tint\"') = 'manifest' AND tint IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET contact_email = NULL, provenance_json = json_remove(provenance_json, '$.\"contactEmail\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"contactEmail\"') = 'manifest' AND contact_email IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.website'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.website\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.website\"') = 'manifest' AND json_extract(urls_json, '$.website') IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.support'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.support\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.support\"') = 'manifest' AND json_extract(urls_json, '$.support') IS NOT NULL",
+          "params": [1700000060, "ingest", "acme"]
         }
       ],
       "dist_outlets": [
@@ -7969,6 +8426,8 @@
         }
       ],
       "dist_listing": [],
+      "dist_listing_locales": [],
+      "dist_listings": [],
       "dist_outlets": [
         {
           "product": "acme",
@@ -10627,6 +11086,55 @@
           "params": ["polaris-key"]
         }
       ],
+      "dist_listing_locales": [
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET subtitle = NULL, provenance_json = json_remove(provenance_json, '$.\"subtitle\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"subtitle\"') = 'manifest' AND subtitle IS NOT NULL",
+          "params": [1700000001, "ingest", "polaris-key", "polaris-key"]
+        },
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET description = NULL, provenance_json = json_remove(provenance_json, '$.\"description\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"description\"') = 'manifest' AND description IS NOT NULL",
+          "params": [1700000001, "ingest", "polaris-key", "polaris-key"]
+        }
+      ],
+      "dist_listings": [
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET name = NULL, provenance_json = json_remove(provenance_json, '$.\"name\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"name\"') = 'manifest' AND name IS NOT NULL",
+          "params": [1700000001, "ingest", "polaris-key"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET developer_name = NULL, provenance_json = json_remove(provenance_json, '$.\"developerName\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"developerName\"') = 'manifest' AND developer_name IS NOT NULL",
+          "params": [1700000001, "ingest", "polaris-key"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET category = NULL, provenance_json = json_remove(provenance_json, '$.\"category\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"category\"') = 'manifest' AND category IS NOT NULL",
+          "params": [1700000001, "ingest", "polaris-key"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET tint = NULL, provenance_json = json_remove(provenance_json, '$.\"tint\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"tint\"') = 'manifest' AND tint IS NOT NULL",
+          "params": [1700000001, "ingest", "polaris-key"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET contact_email = NULL, provenance_json = json_remove(provenance_json, '$.\"contactEmail\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"contactEmail\"') = 'manifest' AND contact_email IS NOT NULL",
+          "params": [1700000001, "ingest", "polaris-key"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.website'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.website\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.website\"') = 'manifest' AND json_extract(urls_json, '$.website') IS NOT NULL",
+          "params": [1700000001, "ingest", "polaris-key"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.support'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.support\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.support\"') = 'manifest' AND json_extract(urls_json, '$.support') IS NOT NULL",
+          "params": [1700000001, "ingest", "polaris-key"]
+        }
+      ],
       "dist_outlets": [
         {
           "table": "dist_outlets",
@@ -11431,6 +11939,8 @@
         }
       ],
       "dist_listing": [],
+      "dist_listing_locales": [],
+      "dist_listings": [],
       "dist_outlets": [
         {
           "product": "polaris-key",
@@ -12131,6 +12641,55 @@
           "table": "dist_listing",
           "sql": "DELETE FROM dist_listing WHERE product = ?",
           "params": ["polaris-key"]
+        }
+      ],
+      "dist_listing_locales": [
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET subtitle = NULL, provenance_json = json_remove(provenance_json, '$.\"subtitle\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"subtitle\"') = 'manifest' AND subtitle IS NOT NULL",
+          "params": [1700000100, "ingest", "polaris-key", "polaris-key"]
+        },
+        {
+          "table": "dist_listing_locales",
+          "sql": "UPDATE dist_listing_locales SET description = NULL, provenance_json = json_remove(provenance_json, '$.\"description\"'), modified_at = ?, modified_by = ? WHERE product = ? AND locale = (SELECT default_locale FROM dist_listings WHERE product = ?) AND json_extract(provenance_json, '$.\"description\"') = 'manifest' AND description IS NOT NULL",
+          "params": [1700000100, "ingest", "polaris-key", "polaris-key"]
+        }
+      ],
+      "dist_listings": [
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET name = NULL, provenance_json = json_remove(provenance_json, '$.\"name\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"name\"') = 'manifest' AND name IS NOT NULL",
+          "params": [1700000100, "ingest", "polaris-key"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET developer_name = NULL, provenance_json = json_remove(provenance_json, '$.\"developerName\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"developerName\"') = 'manifest' AND developer_name IS NOT NULL",
+          "params": [1700000100, "ingest", "polaris-key"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET category = NULL, provenance_json = json_remove(provenance_json, '$.\"category\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"category\"') = 'manifest' AND category IS NOT NULL",
+          "params": [1700000100, "ingest", "polaris-key"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET tint = NULL, provenance_json = json_remove(provenance_json, '$.\"tint\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"tint\"') = 'manifest' AND tint IS NOT NULL",
+          "params": [1700000100, "ingest", "polaris-key"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET contact_email = NULL, provenance_json = json_remove(provenance_json, '$.\"contactEmail\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"contactEmail\"') = 'manifest' AND contact_email IS NOT NULL",
+          "params": [1700000100, "ingest", "polaris-key"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.website'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.website\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.website\"') = 'manifest' AND json_extract(urls_json, '$.website') IS NOT NULL",
+          "params": [1700000100, "ingest", "polaris-key"]
+        },
+        {
+          "table": "dist_listings",
+          "sql": "UPDATE dist_listings SET urls_json = NULLIF(json_remove(urls_json, '$.support'), '{}'), provenance_json = json_remove(provenance_json, '$.\"urls.support\"'), modified_at = ?, modified_by = ? WHERE product = ? AND json_extract(provenance_json, '$.\"urls.support\"') = 'manifest' AND json_extract(urls_json, '$.support') IS NOT NULL",
+          "params": [1700000100, "ingest", "polaris-key"]
         }
       ],
       "dist_outlets": [
@@ -12988,6 +13547,8 @@
         }
       ],
       "dist_listing": [],
+      "dist_listing_locales": [],
+      "dist_listings": [],
       "dist_outlets": [
         {
           "product": "polaris-key",
