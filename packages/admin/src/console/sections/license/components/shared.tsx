@@ -533,6 +533,13 @@ export function resolvedDeviceLimit(
 }
 
 /** A tier's policy in one line, for pickers and tables: "365-day term · 5 devices · stable, beta". */
+/** The product's Default tier, if the Worker has seeded one (LX-33.7). */
+export function defaultTierOf(
+  tiers: readonly TierSummary[],
+): TierSummary | undefined {
+  return tiers.find((t) => t.implicit);
+}
+
 export function tierSummary(t: TierSummary): string {
   return [
     t.policyExpiryDays != null ? `${t.policyExpiryDays}-day term` : "No term",

@@ -238,6 +238,7 @@ async function afterCommit(ctx: IngestContext) {
         .services,
       MANIFEST_RESYNC_ACTOR,
       ctx.now,
+      { seedDefaultTier: false },
     );
   }
   // HA-05 (notes/S-20 §6.4): the hosted-asset pulls this manifest owes, enqueued AFTER the batch
@@ -292,6 +293,10 @@ async function prepareCreate(
         },
         declaredProfiles: manifest.profiles.map((p) => p.id),
         declaredTiers: manifest.tiers.map((t) => t.id),
+        licenseDefaults: {
+          deviceLimit: manifest.product.defaultDeviceLimit,
+          offlineDays: manifest.product.defaultMaxOfflineDays,
+        },
         manifestHasPublisher: pub.next !== null,
         publisher: trust.ok ? trust.repo : null,
         author: ctx.create.author ?? "",

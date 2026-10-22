@@ -911,7 +911,8 @@ export function planBackfill(
     items.push(differs(item));
   }
   for (const stored of state.tiers) {
-    if (declaredTiers.has(stored.id)) continue;
+    // LX-33.7: the Default tier belongs to no manifest and to no backfill.
+    if (declaredTiers.has(stored.id) || stored.implicit === 1) continue;
     const console = stored.source === "console";
     items.push({
       kind: "tier",

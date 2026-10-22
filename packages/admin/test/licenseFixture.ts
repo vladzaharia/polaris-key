@@ -119,6 +119,19 @@ export const UNUSED: TierSummary = {
   minVersion: null,
   maxVersion: null,
 };
+/** The product's Default tier (LX-33.7): implicit, used when a license names no tier. */
+export const DEFAULT_TIER: TierSummary = {
+  id: "default",
+  label: "Default",
+  profile: null,
+  policyExpiryDays: null,
+  policyDeviceLimit: 5,
+  channels: [],
+  minVersion: null,
+  maxVersion: null,
+  source: "console",
+  implicit: true,
+};
 export const TIERS = [PRO, EDU, UNUSED];
 
 export const PROFILES = [

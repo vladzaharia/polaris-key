@@ -230,17 +230,20 @@ function LicenseRecordBody({
   const resendable =
     waiting && active && !expired && Boolean(license.email?.trim());
   const tier = license.tier ? tiers.find((t) => t.id === license.tier) : null;
-  const tierLabel = license.tier ? tier?.label || license.tier : null;
+  // A license with no tier is on the Default tier (LX-33.7).
+  const tierLabel = license.tier
+    ? tier?.label || license.tier
+    : (tiers.find((t) => t.implicit)?.label ?? null);
 
   const tabHref = (t: LicenseTab) =>
     r.license(slug, id, t === "overview" ? undefined : t);
 
-  // Tier: X ▾ opens Change tier; with no tier the value is muted "No tier" (CONSOLE-UX D12).
+  // Tier: X ▾ opens Change tier; a tierless license reads "Default" (CONSOLE-UX D12).
   const tierControl = (
     <Button
       variant="outline"
       aria-haspopup="dialog"
-      aria-label={`Tier: ${tierLabel ?? "No tier"}. Change tier`}
+      aria-label={`Tier: ${tierLabel ?? "Default"}. Change tier`}
       iconStart={<Layers />}
       iconEnd={<ChevronDown />}
       onClick={() => setDialog("tier")}
@@ -249,7 +252,7 @@ function LicenseRecordBody({
       {tierLabel ? (
         <span>{tierLabel}</span>
       ) : (
-        <span className="text-fg-muted">No tier</span>
+        <span className="text-fg-muted">Default</span>
       )}
     </Button>
   );

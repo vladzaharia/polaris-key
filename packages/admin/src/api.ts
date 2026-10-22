@@ -4435,6 +4435,9 @@ export interface TierSummary {
   maxVersion: string | null;
   /** ST-01b: `console` once created or edited in the console; a resync leaves it alone. */
   source?: "manifest" | "console";
+  /** LX-33.7: the product's Default tier (used when a license names no tier). Its limits follow
+   *  the product's license defaults and it cannot be deleted. Absent on an older Worker. */
+  implicit?: boolean;
 }
 
 /** A tier create or patch. On a patch, `null` clears a nullable field (A-3). */

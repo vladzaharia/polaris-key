@@ -23,7 +23,11 @@
 
 import { RELEASE_PLATFORMS } from "@polaris-key/manifest";
 import type { DbStatement } from "../../db/types.js";
-import { stmtInsertConsoleTier } from "../licensing/store.js";
+import {
+  freeImplicitTierId,
+  stmtInsertConsoleTier,
+  stmtInsertImplicitTier,
+} from "../licensing/store.js";
 import {
   applyRequirementRule,
   DEFAULT_SERVICES,
@@ -198,6 +202,8 @@ export interface PlanInput {
   /** Profile and tier ids a manifest declares: those win, our default is skipped. */
   declaredProfiles?: readonly string[];
   declaredTiers?: readonly string[];
+  /** The product's licence defaults: the implicit Default tier is seeded from them (LX-33.7). */
+  licenseDefaults?: { deviceLimit: number | null; offlineDays: number | null };
   /** A `.pkey/` that declares a trusted publisher already owns the policy. */
   manifestHasPublisher?: boolean;
   /** Set when a repository is linked and the workflow file exists: the policy to write. */
@@ -248,6 +254,19 @@ export function planCreateDefaults(input: PlanInput): DefaultsPlan {
     );
     created.tier = FREE_TIER_ID;
   }
+
+  // LX-33.7: every License product has its Default tier, whatever the starter choice (`"none"`
+  // means no explicit starter tier; the Default tier still exists).
+  if (input.services.license.enabled && input.licenseDefaults)
+    statements.push(
+      stmtInsertImplicitTier({
+        product,
+        id: freeImplicitTierId(input.declaredTiers ?? []),
+        deviceLimit: input.licenseDefaults.deviceLimit,
+        offlineDays: input.licenseDefaults.offlineDays,
+        now,
+      }),
+    );
 
   if (choices.intendedPlatforms.length > 0) {
     statements.push({

@@ -28,14 +28,22 @@ export function DeleteTierDialog({
         "A tier the manifest declares comes back at the next resync.",
       ]}
       confirmLabel="Delete tier"
-      describeError={(e) =>
-        (e as { status?: number })?.status === 409
-          ? {
-              title: "Licenses are on this tier",
-              description: "Move them to another tier first.",
-            }
-          : errorCopy(e, { thing: "Tier" })
-      }
+      describeError={(e) => {
+        const status = (e as { status?: number })?.status;
+        if (status === 409)
+          return {
+            title: "Licenses are on this tier",
+            description: "Move them to another tier first.",
+          };
+        // LX-33.6/.7: the last tier, and the Default tier, stay.
+        if (status === 422)
+          return {
+            title: "This tier stays",
+            description:
+              "The Default tier and a product's last tier can't be deleted.",
+          };
+        return errorCopy(e, { thing: "Tier" });
+      }}
       onConfirm={async () => {
         if (!tier) return;
         await mutate("deleteTier", slug, tier.id);

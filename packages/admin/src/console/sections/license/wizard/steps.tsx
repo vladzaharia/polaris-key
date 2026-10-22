@@ -51,9 +51,6 @@ export interface StepProps {
   errors: Errors;
 }
 
-/** The "No tier" card's value; a real tier id never looks like this. */
-const NO_TIER = "-";
-
 export const tierName = (t: TierSummary | undefined): string =>
   t ? t.label || t.id : "";
 
@@ -92,23 +89,15 @@ export function TierStep({
       <ChoiceStep
         legend="Tier"
         columns={1}
-        value={draft.tier ?? (draft.noTier ? NO_TIER : null)}
-        onChange={(v) => {
-          set("tier", v === NO_TIER ? null : v);
-          set("noTier", v === NO_TIER);
-        }}
-        choices={[
-          ...tiers.map((t) => ({
-            value: t.id,
-            label: tierName(t),
-            description: tierSummary(t),
-          })),
-          {
-            value: NO_TIER,
-            label: "No tier",
-            description: "The product's own limits apply.",
-          },
-        ]}
+        value={draft.tier}
+        onChange={(v) => set("tier", v)}
+        choices={tiers.map((t) => ({
+          value: t.id,
+          label: tierName(t),
+          description: t.implicit
+            ? `Used when a license names no tier · ${tierSummary(t)}`
+            : tierSummary(t),
+        }))}
       />
       {tiers.length > 0 ? (
         <p className="text-sm">

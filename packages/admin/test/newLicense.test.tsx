@@ -17,6 +17,9 @@ import { resetConsole } from "./consoleHarness.js";
 import {
   API,
   ADA,
+  DEFAULT_TIER,
+  EDU,
+  PRO,
   axe,
   bootLicense,
   failing,
@@ -392,13 +395,29 @@ describe("New license wizard", () => {
       "ariaChecked",
       "true",
     );
-    await choose(dialog, /^No tier/);
+    // There is no "No tier" card (LX-33.7).
+    expect(
+      within(dialog).queryByRole("radio", { name: /^No tier/ }),
+    ).toBeNull();
+    await choose(dialog, /^Edu/);
     await press(dialog, "Continue");
     await press(dialog, "Back");
-    // "No tier" on purpose stays chosen.
+    expect(within(dialog).getByRole("radio", { name: /^Edu/ })).toHaveProperty(
+      "ariaChecked",
+      "true",
+    );
+  });
+
+  it("preselects the Default tier, and bulk keys default to it (LX-33.7)", async () => {
+    const { dialog } = await open({
+      [`${API}/license/tiers`]: { tiers: [PRO, DEFAULT_TIER, EDU] },
+    });
     expect(
-      within(dialog).getByRole("radio", { name: /^No tier/ }),
+      within(dialog).getByRole("radio", { name: /^Default/ }),
     ).toHaveProperty("ariaChecked", "true");
+    expect(
+      within(dialog).getByRole("radio", { name: /^Default/ }).textContent,
+    ).toContain("Used when a license names no tier");
   });
 
   it("Change returns to Review with one press, and the header control is Close (F9, F10)", async () => {
@@ -459,7 +478,7 @@ describe("New license wizard", () => {
     await waitFor(() => expect(document.activeElement?.tagName).toBe("H1"));
   });
 
-  it("a tier lookup that fails is not a dead end: choose No tier and go on (N1)", async () => {
+  it("a tier lookup that fails is retried, not skipped (N1)", async () => {
     bootLicense("#/p/djdl/license/licenses", {
       routes: { [`${API}/license/tiers`]: failing(500) },
     });
@@ -469,19 +488,13 @@ describe("New license wizard", () => {
     );
     const dialog = await screen.findByRole("dialog", { name: "New license" });
     await within(dialog).findByText("Couldn't load tiers");
-    const card = within(dialog).getByRole("radio", { name: /^No tier/ });
-    // Not shown as chosen until the operator chooses it; Continue waits for that.
-    expect(card).toHaveProperty("ariaChecked", "false");
+    expect(
+      within(dialog).queryByRole("radio", { name: /^No tier/ }),
+    ).toBeNull();
     expect(primary(dialog, "Continue")).toHaveProperty("disabled", true);
-    await userEvent.click(card);
-    expect(primary(dialog, "Continue")).toHaveProperty("disabled", false);
-    await press(dialog, "Continue");
-    await waitFor(() =>
-      expect(heading(dialog).textContent).toContain("Who it's for"),
-    );
   });
 
-  it("a product with no tiers has No tier chosen, and Continue works (N1)", async () => {
+  it("a product with no tiers yet goes on to the Worker's Default tier (N1)", async () => {
     bootLicense("#/p/djdl/license/licenses", {
       routes: { [`${API}/license/tiers`]: { tiers: [] } },
     });
@@ -490,10 +503,9 @@ describe("New license wizard", () => {
       screen.getAllByRole("button", { name: "New license" })[0]!,
     );
     const dialog = await screen.findByRole("dialog", { name: "New license" });
+    await within(dialog).findByText("No tiers yet");
     await waitFor(() =>
-      expect(
-        within(dialog).getByRole("radio", { name: /^No tier/ }),
-      ).toHaveProperty("ariaChecked", "true"),
+      expect(primary(dialog, "Continue")).toHaveProperty("disabled", false),
     );
     await press(dialog, "Continue");
     await waitFor(() =>

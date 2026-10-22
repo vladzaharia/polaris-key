@@ -122,8 +122,8 @@ export function NewLicenseWizard({
     if (open && step !== "done" && !result) saveDraft(slug, draft);
   }, [open, step, result, slug, draft]);
 
-  // The first tier is preselected, unless "No tier" was chosen on purpose. A product with no tier
-  // has only "No tier", so that is the choice; a tier deleted since the draft was made is dropped.
+  // The Default tier is preselected, else the first. A product with no tier yet has nothing to
+  // choose (`noTier`): the Worker uses its Default tier. A tier deleted since the draft is dropped.
   React.useEffect(() => {
     if (!open || result || !tiersQ.isSuccess) return;
     if (draft.tier !== null && !tiers.some((t) => t.id === draft.tier))
@@ -131,7 +131,7 @@ export function NewLicenseWizard({
     else if (draft.tier === null && !draft.noTier)
       setDraft((d) =>
         tiers.length > 0
-          ? { ...d, tier: tiers[0]!.id }
+          ? { ...d, tier: (tiers.find((t) => t.implicit) ?? tiers[0]!).id }
           : { ...d, noTier: true },
       );
   }, [open, result, tiersQ.isSuccess, tiers, draft.tier, draft.noTier]);
@@ -234,7 +234,7 @@ export function NewLicenseWizard({
       hasLicenses === false && !momentSeen(momentKey("first-license", slug));
     const summary = summaryOf(
       draft,
-      tier ? tierName(tier) : "No tier",
+      tier ? tierName(tier) : "Default",
       limitLine,
     );
     try {
@@ -463,7 +463,7 @@ export function NewLicenseWizard({
       (tiersQ.isPending
         ? "Loading tiers…"
         : tiersError && !draft.noTier
-          ? "Try the tiers again, or choose No tier."
+          ? "Try the tiers again."
           : undefined);
     footer = {
       later: cancel,
@@ -542,7 +542,7 @@ export function NewLicenseWizard({
         <ReviewStep
           rows={reviewRows(
             draft,
-            tier ? tierName(tier) : "No tier",
+            tier ? tierName(tier) : "Default",
             tier?.policyExpiryDays ?? null,
             limitLine,
           )}

@@ -35,7 +35,7 @@ export const MAX_DEVICE_LIMIT = 1000;
 
 export interface Draft {
   tier: string | null;
-  /** "No tier" was chosen on purpose, so the first tier is not preselected again. */
+  /** The product has no tier to choose yet, so none is preselected again. */
   noTier: boolean;
   who: Who;
   name: string;

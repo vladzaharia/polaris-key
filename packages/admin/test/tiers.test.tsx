@@ -17,6 +17,7 @@ import userEvent from "@testing-library/user-event";
 import { resetConsole } from "./consoleHarness.js";
 import {
   API,
+  DEFAULT_TIER,
   PRO,
   axe,
   bootLicense,
@@ -52,6 +53,30 @@ describe("Tiers", () => {
         .getByRole("link", { name: "Used by 2 licenses" })
         .getAttribute("href"),
     ).toBe("#/p/djdl/license/licenses?tier=pro");
+  });
+
+  it("lists Default first with its note, read-only (LX-33.7)", async () => {
+    const log = bootLicense("#/p/djdl/license/tiers", {
+      routes: { [TIERS]: { tiers: [PRO, DEFAULT_TIER] } },
+    });
+    const l = await list();
+    await within(l).findByText("Pro");
+    const rows = within(l).getAllByRole("listitem");
+    expect(rows[0]!.textContent).toContain("Default");
+    expect(rows[1]!.textContent).toContain("1 of 1");
+    // Default is open: its note, its limit, and no form, menu or save bar.
+    const card = await screen.findByRole("region", { name: "Default" });
+    expect(
+      within(card).getByText(/Used when a license names no tier/),
+    ).toBeTruthy();
+    expect(within(card).getByText("5")).toBeTruthy();
+    expect(
+      within(card).getByText(/follow the product.s license defaults/),
+    ).toBeTruthy();
+    expect(screen.queryByRole("form", { name: "Tier" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Save/ })).toBeNull();
+    expect(writes(log)).toEqual([]);
   });
 
   it("shows a Duration, Limits and Profile record for the open tier", async () => {
