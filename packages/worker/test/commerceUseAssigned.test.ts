@@ -124,6 +124,7 @@ describe("the view's identity", () => {
       source: "typed",
       assigned: BUNDLE_ID,
       mismatch: true,
+      ambiguous: false,
     });
     expect(v.identity.steam.assigned).toBe(STEAM_APP);
     expect(v.settings.appStore.bundleId).toBe(OTHER); // stored values, as typed
@@ -145,6 +146,7 @@ describe("POST …/settings/<store>/use-assigned", () => {
       source: "assigned",
       assigned: BUNDLE_ID,
       mismatch: false,
+      ambiguous: false,
     });
     // The other stores are untouched.
     expect(r.json.settings.play.packageName).toBe("gg.other.play");

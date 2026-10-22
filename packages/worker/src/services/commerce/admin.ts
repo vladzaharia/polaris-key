@@ -49,6 +49,7 @@ import {
   PLATFORM_CREDENTIALS,
   platformCredentialsOf,
   platformPin,
+  storeAppBinding,
   type PlatformStore,
 } from "../../core/platformCredentials.js";
 import { listEvents } from "../../core/stores/events.js";
@@ -58,8 +59,6 @@ import {
   writeCommerceSettings,
   type StoredCommerceSettings,
 } from "./settings.js";
-import { storeAppBinding } from "../../core/platformCredentials.js";
-import type { PlatformStore } from "../../core/platformStoreSettings.js";
 import {
   effectiveCommerceSettings,
   type EffectiveCommerce,
