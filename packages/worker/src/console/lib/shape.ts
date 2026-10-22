@@ -4,6 +4,7 @@
  * `core/activeCatalog.ts`), because services' admin handlers use them too.
  */
 
+import { listAudit } from "../../core/audit.js";
 import { claimsView } from "../../core/settingsClaims.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
@@ -127,7 +128,9 @@ export async function productView(
     packages: {
       declared: await declaredPackages(db, p.slug),
       feedsOn: feeds.enabled,
-      offBy: !feeds.enabled ? feeds.updatedBy : null,
+      offBy: !feeds.enabled
+        ? await offByName(db, p.slug, feeds.updatedBy)
+        : null,
       offAt: !feeds.enabled ? feeds.updatedAt : null,
     },
     releaseSource: p.release_source ?? "manual",
@@ -383,4 +386,26 @@ export async function attentionFactsFor(
       .filter((row) => row.approval !== "approved")
       .map((row) => row.id),
   };
+}
+
+/**
+ * Who turned a product's package feeds off, as a display name: the actor of the latest
+ * `package_feeds.update` audit row, resolved as the activity feed does. Never the raw IdP `sub`
+ * the owner row records; `manifest` stays as is, and a write with no named actor reads as
+ * "an operator".
+ */
+async function offByName(
+  db: Db,
+  slug: string,
+  updatedBy: string | null,
+): Promise<string | null> {
+  if (updatedBy === null) return null;
+  if (updatedBy === "manifest" || updatedBy === "system") return updatedBy;
+  const [row] = await listAudit(db, slug, {
+    action: "distribution.package_feeds.update",
+    targetKind: "package-feeds",
+    targetId: slug,
+    limit: 1,
+  });
+  return row?.actor_name || row?.actor_email || "an operator";
 }

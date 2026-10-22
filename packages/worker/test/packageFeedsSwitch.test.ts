@@ -4,8 +4,12 @@
  * `writeSetting()`), reports who wrote it, rides the product summary, and fails closed: off, every
  * read the ladder answers is the not-found and the publish paths see `ownerEnabled: false`.
  */
+import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
+import { blobKey, recordObject } from "../src/core/assets/blobs.js";
+import { stmtUpsertDeliverable } from "../src/services/release/model.js";
+import { ingestPackageDescriptor } from "../src/services/release/packages/ingest.js";
 import { KvMock } from "./kvMock.js";
 import { NOW, TEST_KEK, seedProduct } from "./seed.js";
 import { CONSOLE, enableServices, envFor } from "./releaseRoutesFixture.js";
@@ -231,7 +235,7 @@ describe("the product summary", () => {
     expect(row.packages).toEqual({
       declared: 1,
       feedsOn: false,
-      offBy: "u1",
+      offBy: "Ada",
       offAt: NOW,
     });
     expect(row.packageFeeds).toBe(false);
@@ -281,8 +285,7 @@ describe("the off state fails closed", () => {
       reason: "incident",
     });
     expect(off.status).toBe(200);
-    // The write drops this isolate's cache; no 30-second window here.
-    forgetRegistrySettings();
+    // The generic route drops this isolate's cache itself; no 30-second window here.
     expect(await read()).toEqual({ ok: false, challenge: "not-found" });
     // The publish paths (native, OCI) and the portal read this field.
     expect((await packageFeedOf(db, OWNER, "npm"))?.ownerEnabled).toBe(false);
@@ -310,5 +313,135 @@ describe("the off state fails closed", () => {
       stmtProvisionFeed(OWNER, "npm", { scope: "@acme" }, NOW + 5),
     ]);
     expect((await packageFeedsOf(db, OWNER)).enabled).toBe(false);
+  });
+});
+
+describe("reset to default", () => {
+  it("writes the switch off, so the audit's Turned off is true", async () => {
+    await admin("PATCH", setting, { value: true, expectedVersion: 0 });
+    expect((await packageFeedsOf(db, OWNER)).enabled).toBe(true);
+    const reset = await admin("DELETE", setting, { expectedVersion: 1 });
+    expect(reset.status).toBe(200);
+    expect(await packageFeedsOf(db, OWNER)).toMatchObject({
+      enabled: false,
+      updatedBy: "u1",
+    });
+    const rows = await db.all<{ summary: string }>(
+      "SELECT summary FROM audit WHERE product = ? AND action = 'distribution.package_feeds.update' ORDER BY rowid",
+      OWNER,
+    );
+    expect(rows.at(-1)?.summary).toContain("Turned off");
+  });
+});
+
+describe("a CI publish with the switch off", () => {
+  async function ingest(off: {
+    enabled: boolean;
+    ownerEnabled: boolean;
+    policyEnabled: boolean;
+  }) {
+    const decl = {
+      kind: "package",
+      id: "npm.sdk",
+      ecosystem: "npm",
+      name: "@acme/sdk",
+      artifacts: { t: { match: "*.tgz" } },
+    };
+    const st = stmtUpsertDeliverable(
+      {
+        product: OWNER,
+        deliverableId: "npm.sdk",
+        kind: "package",
+        defJson: JSON.stringify(decl),
+        ecosystem: "npm",
+        packageName: "@acme/sdk",
+      },
+      NOW,
+    );
+    await db.run(st.sql, ...st.params);
+    const bytes = new TextEncoder().encode("x");
+    const digest = createHash("sha256").update(bytes).digest("hex");
+    await recordObject(
+      db,
+      {
+        storageKey: blobKey(digest),
+        sha256: digest,
+        size: bytes.length,
+        kind: "blob",
+        gated: false,
+      },
+      NOW,
+    );
+    return ingestPackageDescriptor(
+      db,
+      env,
+      OWNER,
+      {
+        descriptorVersion: 1,
+        product: OWNER,
+        deliverable: "npm.sdk",
+        kind: "package",
+        version: "1.0.0",
+        channel: "stable",
+        package: {
+          ecosystem: "npm",
+          name: "@acme/sdk",
+          files: [
+            {
+              name: "acme-sdk-1.0.0.tgz",
+              role: "payload",
+              type: "npm-tarball",
+              sha256: digest,
+              size: bytes.length,
+              locations: [{ provider: "r2", key: blobKey(digest) }],
+            },
+          ],
+          metadata: { name: "@acme/sdk", version: "1.0.0" },
+        },
+      } as Loose,
+      {
+        now: NOW,
+        promoted: [blobKey(digest)],
+        feed: {
+          ecosystem: "npm",
+          ...off,
+          namespace: { scope: "@acme" },
+          maxPackageBytes: 52428800,
+          ext: {},
+        },
+        source: { kind: "static" },
+        digests: async () => new Map(),
+      } as Loose,
+    );
+  }
+  const rows = () =>
+    db.all("SELECT release_id FROM release_packages WHERE product = ?", OWNER);
+
+  it.each([
+    ["the feed", { enabled: false, ownerEnabled: true, policyEnabled: true }],
+    ["the owner", { enabled: true, ownerEnabled: false, policyEnabled: true }],
+    [
+      "the platform",
+      { enabled: true, ownerEnabled: true, policyEnabled: false },
+    ],
+    ["all", { enabled: false, ownerEnabled: false, policyEnabled: false }],
+  ])("is refused 409 package-feed-off when %s is off", async (_n, off) => {
+    const res = await ingest(off);
+    expect(res).toMatchObject({
+      ok: false,
+      status: 409,
+      reason: "package-feed-off",
+    });
+    expect(await rows()).toEqual([]);
+  });
+
+  it("is taken when every level is on", async () => {
+    const res = await ingest({
+      enabled: true,
+      ownerEnabled: true,
+      policyEnabled: true,
+    });
+    expect(res.ok).toBe(true);
+    expect(await rows()).toHaveLength(1);
   });
 });

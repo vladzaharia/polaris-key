@@ -85,6 +85,16 @@ export const DISTRIBUTION_ADAPTERS: Readonly<Record<string, SettingAdapter>> = {
         ctx.now,
         guard,
       ),
+    // A reset hands the switch back to its default, off: the statements must write that, or the
+    // audit's "Turned off" would be untrue.
+    reset: ({ ctx, guard, by }) =>
+      packageFeedsStatements(
+        ctx.product.slug,
+        false,
+        by ?? "system",
+        ctx.now,
+        guard,
+      ),
     audit: ({ slug, after }) => packageFeedsAudit(slug, after === true),
   },
   "distribution.access": {

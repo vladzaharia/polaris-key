@@ -738,6 +738,19 @@ async function writeProduct(
         def.key,
       );
 
+    if (
+      op === "reset" &&
+      def.storage.kind === "rich" &&
+      ctx.registry.adapter(def.key)?.set &&
+      !w.statements
+    )
+      return refuse(
+        409,
+        "no_writer",
+        `${def.key} has no reset writer`,
+        def.key,
+      );
+
     // What the write leaves.
     let after: WrittenSetting["after"];
     const manifestSide = linked ? "manifest" : "default";
