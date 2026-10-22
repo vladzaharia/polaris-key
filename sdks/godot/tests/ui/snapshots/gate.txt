@@ -145,6 +145,32 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOff
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Import/DropHint: Label "You can also drop the file onto this window."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Actions/Close: Button "Close" [focus 5]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Actions/Import: Button "Activate" [focus 4]
+== license choice ==
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
+Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/Head/Titles/Title: Label "Choose a license for this device"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Pick: Button "Pro" [pressed, focus 1]
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Detail/Seats/Caption: Label "1 of 3 devices"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Detail/Meta: Label "Lifetime"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Pick: Button "Pro" [focus 2]
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Detail/Seats/Caption: Label "1 of 3 devices"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_1/Detail/Meta: Label "Until 2027-01-01"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_2/Pick: Button "Standard" [focus 3]
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_2/Detail/Seats/Caption: Label "1 of 3 devices"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_2/Detail/Meta: Label "Added with a key · Lifetime"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_3/Pick: Button "Free" [focus 4]
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_3/Detail/Seats/Caption: Label "0 of 1 device"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_3/Detail/Meta: Label "Free · Lifetime"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_4/Pick: Button "Pro" [focus 5]
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_4/Detail/Seats/Caption: Label "1 of 3 devices"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_4/Detail/Meta: Label "From \u2068Fennick Studio\u2069 · Until 2027-01-01"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Pick: Button "Edu" [disabled]
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Seats/Caption: Label "3 of 3 devices"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Meta: Label "From \u2068Fennick Studio\u2069 · Until 2027-01-01"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Tags/Full: Label "All devices in use"
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/ListScroll/List/Rows/Entry_5/Detail/Replace: Button "Replace a device" [focus 6]
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/Actions/Continue: Button "Use this license and continue" [focus 7]
+Center/Card/Scroll/Body/Split/Form/PKeyLicenseChoice/Card/Scroll/Frame/Actions/Secondary: Button "Use a license key instead" [focus 8]
 == device limit ==
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Monogram/Initial: Label "P"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"

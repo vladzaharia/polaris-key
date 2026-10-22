@@ -13,7 +13,7 @@ extends RefCounted
 const TABLES_PATH := "res://tools/ui_matrix/locales.gd"
 
 ## The kit's DEFAULTS keys whose English text H2 changed.
-const CHANGED_DEFAULTS := ["sign_in_cancelled", "purchase_cancelled", "error_channel_not_allowed", "devices_last_seen"]
+const CHANGED_DEFAULTS := ["sign_in_cancelled", "purchase_cancelled", "error_channel_not_allowed", "devices_rename_failed"]
 
 
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:

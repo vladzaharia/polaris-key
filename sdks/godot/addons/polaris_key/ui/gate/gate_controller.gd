@@ -15,17 +15,21 @@ extends RefCounted
 ##   update-required  version-too-old: "update required", with the outlet's action when known
 ##   not-available    version-too-new, channel-not-entitled: not available on this licence
 ##   error            needs-activation after an activation or sign-in error the gate describes
+##   license-choice   a sign-in found several licenses for this device: PKeyLicenseChoice picks one
 ##
 ## A product without License never sees a gate: not-applicable comes first, before any error.
 
-const SCREENS := ["loading", "usable", "grace", "grace-blocked", "activation", "revoked", "expired", "update-required", "not-available", "error"]
+const SCREENS := ["loading", "usable", "grace", "grace-blocked", "activation", "revoked", "expired", "update-required", "not-available", "error", "license-choice"]
 
 
-static func screen_for(status: String, loading := false, error := "", allow_grace := true) -> String:
+static func screen_for(status: String, loading := false, error := "", allow_grace := true, choosing := false) -> String:
 	if loading:
 		return "loading"
 	if status == "not-applicable":
 		return "usable"
+	# A sign-in that found several licenses asks which this device uses, before anything else.
+	if choosing:
+		return "license-choice"
 	if error != "" and status == "needs-activation":
 		return "error"
 	match status:
@@ -59,6 +63,9 @@ static func copy_for(screen: String, status: String, allowed_range: Variant = nu
 	if screen == "not-available" and status == "channel-not-entitled":
 		return {"title": "channel_not_entitled_title", "body": "channel_not_entitled_body", "detail": ""}
 	match screen:
+		"license-choice":
+			# The choice has its own title and words.
+			return {"title": "", "body": "", "detail": ""}
 		"loading":
 			return {"title": "", "body": "gate_loading", "detail": ""}
 		"grace-blocked":

@@ -36,6 +36,34 @@ const SETTINGS_DOC := {
 }
 
 
+## The ui-matrix.json rows the license-choice scenes are built from (a generator-owned mirror).
+const MATRIX_PATH := "res://tests/corpus/v2/ui-matrix.json"
+## The devices every Devices state lists (ui-matrix.json `devices`; the apostrophe is the typographic one).
+const DEVICE_ROWS := [
+	{"name": "Work laptop", "platform": "windows", "formFactor": "computer", "lastSeenDays": 12, "current": false},
+	{"name": "Mara’s iPad", "platform": "ios", "formFactor": "ipad", "lastSeenDays": 3, "current": false},
+	{"name": "MacBook Pro", "platform": "macos", "formFactor": "mac", "lastSeenDays": 0, "current": true},
+]
+## [state, the signIn-family row it is built from] for PKeyLicenseChoice.
+const CHOICE_CASES := [
+	["loading", "LicenseChoice/loading: past the DL7 delay"],
+	["many", "LicenseChoice/many"],
+	["one", "LicenseChoice/one"],
+	["current", "LicenseChoice/current"],
+	["keep", "LicenseChoice/keep: never merged with create or a new license"],
+	["new", "LicenseChoice/new: a first automatic license"],
+	["create", "LicenseChoice/create: picked on an all-full list"],
+	["all-full", "LicenseChoice/all-full"],
+	["all-full, create offered", "LicenseChoice/all-full: Create offered"],
+	["mixed", "LicenseChoice/mixed: a sign-in license beside a key license"],
+	["replace open", "LicenseChoice/replace-open"],
+	["raced", "LicenseChoice/raced: the seat was taken since the view loaded"],
+	["none (keys)", "LicenseChoice/none-keys"],
+	["none (no keys)", "LicenseChoice/none-no-keys"],
+	["grant expired", "LicenseChoice/grant-expired"],
+]
+
+
 func tree() -> SceneTree:
 	return Engine.get_main_loop() as SceneTree
 
@@ -65,6 +93,8 @@ func all() -> Array:
 	# choosing them on the needs-activation card).
 	out.append(["gate", "sign-in pending", gate_flow.bind("sign-in")])
 	out.append(["gate", "offline activation", gate_flow.bind("offline")])
+	# A sign-in that found several licenses: the gate asks which this device uses.
+	out.append(["gate", "license choice", gate_choice])
 	# The device limit reached through the gate (type a key, Activate, the licence is on every seat).
 	out.append(["gate", "device limit", gate_limit.bind("button")])
 	out.append(["gate", "device limit, replace a device (QR)", gate_limit.bind("qr")])
@@ -127,6 +157,22 @@ func all() -> Array:
 	out.append(["gate", "needs-activation, presented, a long name", gate_presented.bind("long")])
 	out.append(["gate", "needs-activation, presented, a right-to-left name", gate_presented.bind("rtl")])
 	out.append(["settings", "catalog, presented by its developer", settings_presented])
+	out.append(["settings", "catalog, with the account tab", settings_account])
+	# ── PKeyDeviceList (UI-KITS.md Devices).
+	for c in [["list", "list"], ["list, an unnamed device", "unnamed"], ["list, this device not known", "unknown"], ["renaming", "renaming"], ["confirming a removal", "confirming"], ["empty", "empty"], ["browser mode", "browser"], ["loading", "loading"], ["error: the list could not load", "load-error"], ["error: a rename was refused", "rename-error"], ["error: a removal was refused", "remove-error"], ["list, this device only (from the SDK)", "self-only"]]:
+		out.append(["devices", c[0], devices.bind(c[1])])
+	# ── PKeyLicenseChoice (UI-KITS.md LicenseChoice): the corpus rows.
+	for c in CHOICE_CASES:
+		out.append(["license_choice", c[0], license_choice.bind(c[1])])
+	# ── PKeyAccountTab (UI-KITS.md AccountAndLicense).
+	for c in [["signed in", "signed-in"], ["key only", "key-only"], ["offline", "offline"], ["loading", "loading"], ["channel set by the outlet", "locked-channel"], ["on a TV, the email masked", "masked"]]:
+		out.append(["account", c[0], account.bind(c[1])])
+	# ── PKeyUpdateProgress (UI-KITS.md UpdateProgress).
+	for c in [["queued: content", "queued-content"], ["queued: an app update", "queued-app"], ["downloading", "downloading"], ["downloading: no time left known", "downloading-no-eta"], ["downloading: verified, not yet installed", "verified"], ["installing", "installing"], ["paused: a metered connection", "paused"], ["failed", "failed"], ["done", "done"], ["compact", "compact"]]:
+		out.append(["update_progress", c[0], update_progress.bind(c[1])])
+	# ── PKeyToast (UI-KITS.md Toast).
+	for c in [["info: an update is available", "update"], ["success: copied", "copied"], ["warning", "warning"], ["error: stays until dismissed", "error"], ["with progress", "progress"], ["bottom centre", "centre"]]:
+		out.append(["toast", c[0], toast.bind(c[1])])
 	# Every state starts from no presentation and no integrator name (the kit's identity is global).
 	for c in out:
 		c[2] = _isolated.bind(c[2])
@@ -187,6 +233,19 @@ func gate(status: String, allow_grace: bool, err: String) -> Control:
 		if status == "version-too-old":
 			s["allowed_range"] = {"min": "1.4.0"}
 		g.show_state(s, err)
+	return g
+
+
+## The gate on its license-choice screen: the corpus's "many" row, asked of this device.
+func gate_choice() -> Control:
+	var g := PKeyGateView.new()
+	g.activation.set_capabilities(PKeyActivationController.capabilities(true, true, false, false))
+	add(g)
+	g.show_state({"status": "needs-activation"})
+	g.license_choice.device_name = "Living room PC"
+	g.license_choice.developer = "Fennick Studio"
+	var row := matrix_row("signIn", "LicenseChoice/many")
+	g.show_license_choice(row.get("input", {}).get("choices", {}))
 	return g
 
 
@@ -373,6 +432,191 @@ func settings_empty() -> Control:
 	p.config = PKeyConfig.new()
 	add(p)
 	return p
+
+
+## The settings panel with the Account and license section first (the account tab of a game's menu).
+func settings_account() -> Control:
+	var p: PKeySettingsPanel = await settings(false, {})
+	p.account_tab = true
+	p.account.tier = "Pro"
+	p.account.holder = "Mara Lindqvist"
+	p.account.signed_in = true
+	p.account.status = "ok"
+	p.account.devices_used = 2
+	p.account.devices_limit = 3
+	p.account.channel = "stable"
+	p.account.version = "2.5.0"
+	p.account.services = ["license", "config", "release", "distribution", "update", "identity", "commerce"]
+	p.refresh_view()
+	return p
+
+
+## A Devices state: the three fixture devices, and what the player did to them.
+func devices(kind: String) -> Control:
+	var d := PKeyDeviceList.new()
+	d.auto_sdk = false
+	d.now_source = func(): return NOW
+	add(d)
+	var rows: Array = DEVICE_ROWS.duplicate(true)
+	match kind:
+		"list":
+			d.show_devices(rows)
+		"unnamed":
+			rows[2]["name"] = null
+			d.show_devices(rows)
+		"unknown":
+			for r in rows:
+				r["current"] = false
+			d.show_devices(rows)
+		"renaming":
+			d.show_devices(rows)
+			d._start_edit("rename", 0)
+		"confirming":
+			d.show_devices(rows)
+			d._start_edit("remove", 0)
+		"empty":
+			d.show_devices([])
+		"browser":
+			d.show_browser_mode()
+		"loading":
+			d.show_loading()
+			# Past the 250 ms delay (DL7): the label and the shimmer show.
+			d._loading_since = Time.get_ticks_msec() - 400
+			d.refresh_view()
+		"load-error":
+			d.show_error("device_list_failed")
+		"rename-error":
+			d.show_devices(rows)
+			d._start_edit("rename", 0)
+			d.show_error("device_rename_failed")
+		"remove-error":
+			d.show_devices(rows)
+			d._start_edit("remove", 0)
+			d.show_error("device_deauthorize_failed")
+		"self-only":
+			# A roster read through the SDK: this device renames itself, nobody removes anyone.
+			d._self_only = true
+			d.show_devices(rows)
+	return d
+
+
+## The row of ui-matrix.json's `signIn` family named `name`.
+func matrix_row(family: String, name: String) -> Dictionary:
+	var m = PKeyTestFixtures.read_json(MATRIX_PATH)
+	if m is Dictionary:
+		for r in m.get(family, []):
+			if r["name"] == name:
+				return r
+	return {}
+
+
+func license_choice(row_name: String) -> Control:
+	var v := PKeyLicenseChoice.new()
+	v.auto_sdk = false
+	v.device_name = "Living room PC"
+	v.developer = "Fennick Studio"
+	add(v)
+	var row := matrix_row("signIn", row_name)
+	v.show_input(row.get("input", {}))
+	return v
+
+
+func account(kind: String) -> Control:
+	var a := PKeyAccountTab.new()
+	a.auto_sdk = false
+	a.auto_load = false
+	add(a)
+	a.services = ["license", "config", "release", "distribution", "update", "identity", "commerce"]
+	a.tier = "Pro"
+	a.status = "ok"
+	a.channel = "stable"
+	a.version = "2.5.0"
+	a.devices_used = 2
+	a.devices_limit = 3
+	a.auto_update = true
+	match kind:
+		"signed-in":
+			a.signed_in = true
+			a.holder = "Mara Lindqvist"
+		"key-only":
+			a.signed_in = false
+		"offline":
+			a.signed_in = true
+			a.holder = "Mara Lindqvist"
+			a.status = "grace"
+		"loading":
+			a.show_loading()
+			a._loading_since = Time.get_ticks_msec() - 400
+		"locked-channel":
+			a.signed_in = true
+			a.holder = "Mara Lindqvist"
+			a.channel_locked_by = "steam"
+			a.channel = "beta"
+		"masked":
+			a.signed_in = true
+			a.holder = "mara@fennick.studio"
+			a.mask_email = true
+	a.refresh_view()
+	return a
+
+
+## An UpdateProgress state: a stopped clock, ten seconds apart, give the rate and so the time left.
+func update_progress(kind: String) -> Control:
+	var p := PKeyUpdateProgress.new()
+	p.auto_sdk = false
+	var now := [0.0]
+	p.clock = func(): return now[0]
+	p.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	add(p)
+	match kind:
+		"queued-content":
+			p.set_progress("queued", 0, 0, "packs")
+		"queued-app":
+			p.set_progress("queued", 0, 0, "binary", "2.5.0")
+		"downloading":
+			p.set_progress("download", 30_000_000, 91_000_000, "packs")
+			now[0] = 10.0
+			p.set_progress("download", 38_000_000, 91_000_000, "packs")
+		"downloading-no-eta":
+			p.set_progress("download", 38_000_000, 91_000_000, "packs")
+		"verified":
+			p.set_progress("verify", 91_000_000, 91_000_000, "binary", "2.5.0")
+		"installing":
+			p.set_progress("install", 91_000_000, 91_000_000, "binary", "2.5.0")
+		"paused":
+			p.set_progress("paused", 38_000_000, 91_000_000, "binary", "2.5.0")
+		"failed":
+			p.set_progress("failed", 38_000_000, 91_000_000, "packs")
+		"done":
+			p.set_progress("done", 91_000_000, 91_000_000, "binary", "2.5.0")
+		"compact":
+			p.compact = true
+			p.set_progress("download", 38_000_000, 91_000_000, "packs")
+	return p
+
+
+## A toast over the game: a stopped clock, so the timer is full.
+func toast(kind: String) -> Control:
+	var t := PKeyToast.new()
+	t.auto_sdk = false
+	t.clock = func(): return 0.0
+	t.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add(t)
+	match kind:
+		"update":
+			t.show_update("2.5.0")
+		"copied":
+			t.show_copied()
+		"warning":
+			t.show_warning("Autosave is off", "Your progress is not being saved.")
+		"error":
+			t.show_error("network-error")
+		"progress":
+			t.show_progress(38_000_000, 91_000_000, 66.0)
+		"centre":
+			t.toast_anchor = "bottom_center"
+			t.show_update("2.5.0")
+	return t
 
 
 func banner(state: Dictionary, update: bool) -> Control:

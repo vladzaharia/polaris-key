@@ -51,6 +51,9 @@ static func open(parent: Node = null) -> PKeySettingsPanel:
 
 const FREE_ON_CLOSE_META := &"pkey_free_on_close"
 
+## The category of the Account and license section (a group of its own, first in the rail).
+const ACCOUNT := "pkey:account"
+
 ## The number of rows from which the filter shows.
 const SEARCH_FROM := 12
 
@@ -61,6 +64,16 @@ var closable := false:
 		closable = value
 		if _built:
 			refresh_view()
+
+## Add the Account and license pane (PKeyAccountTab: the tier, who is signed in, the seats, updates
+## and Sign out) as the first section, beside the game's own settings (UI-KITS.md §4.3).
+@export var account_tab := false:
+	set(value):
+		account_tab = value
+		if _built:
+			refresh_view()
+## The Account and license pane the section holds; set its properties to drive it without an SDK.
+var account: PKeyAccountTab = null
 
 ## Show advanced rows (the toggle's state).
 var show_advanced := false
@@ -104,6 +117,9 @@ var _writing := false
 
 func _build() -> void:
 	name = "PKeySettingsPanel"
+	account = PKeyAccountTab.new()
+	account.auto_sdk = false
+	account.show_title = false
 	_frame = vbox(card_panel("Card", false), "Frame", "PKeySections")
 	_head = vbox(_frame, "Head", "PKeyStack")
 	_product = product_header(_head, "Product")
@@ -384,12 +400,17 @@ func _set_head_scrolls(on: bool) -> void:
 func _align_advanced_row() -> void:
 	var left := 0
 	var right := 0
-	if not _groups.is_empty():
-		var panel := (_groups[0]["node"] as Control).find_child("List", false, false) as PanelContainer
+	# The first list of the game's own settings: the Account pane's rows pad as they do, but the
+	# switch belongs to the rows it sits under.
+	for g in _groups:
+		if g["category"] == ACCOUNT:
+			continue
+		var panel := (g["node"] as Control).find_child("List", false, false) as PanelContainer
 		if panel != null:
 			var box := panel.get_theme_stylebox("panel")
 			left = roundi(box.get_content_margin(SIDE_LEFT))
 			right = roundi(box.get_content_margin(SIDE_RIGHT))
+			break
 	_advanced_row.add_theme_constant_override("margin_left", left)
 	_advanced_row.add_theme_constant_override("margin_right", right)
 
@@ -452,10 +473,13 @@ func _render() -> void:
 		var q := _search.text.strip_edges().to_lower()
 		shown = shown.filter(func(r): return String(r["label"]).to_lower().contains(q) or String(r["description"]).to_lower().contains(q))
 	var load_failed := failed and not catalogued
-	show_text(_empty, (t.text("settings_loading") if pending else (t.text("settings_offline") if load_failed else t.text("settings_empty"))) if shown.is_empty() else "")
+	# The Account section is something to show: the panel is not empty while it is there.
+	show_text(_empty, (t.text("settings_loading") if pending else (t.text("settings_offline") if load_failed else t.text("settings_empty"))) if shown.is_empty() and not account_tab else "")
 	# A load that failed is an error, never an empty list: with Try again beside it (DL7).
 	show_text(_retry, t.text("retry") if load_failed and shown.is_empty() else "")
-	var sig := JSON.stringify(shown.map(func(r): return [r["key"], r["widget"], r["editable"], r["category"], r["options"].size(), r["min"] > -1e8 and r["max"] < 1e8]))
+	if account.sdk != sdk:
+		account.sdk = sdk
+	var sig := JSON.stringify([account_tab, shown.map(func(r): return [r["key"], r["widget"], r["editable"], r["category"], r["options"].size(), r["min"] > -1e8 and r["max"] < 1e8])])
 	if sig != _signature:
 		_rebuild(shown)
 		_signature = sig
@@ -495,6 +519,9 @@ func _rebuild(shown: Array) -> void:
 		elif focused != null and focused == n["reset"]:
 			focused_key = k
 			focused_part = "reset"
+	# The Account pane outlives the list: it leaves it before the groups are freed.
+	if account.get_parent() != null:
+		account.get_parent().remove_child(account)
 	for child in _list.get_children():
 		_list.remove_child(child)
 		child.queue_free()
@@ -503,6 +530,12 @@ func _rebuild(shown: Array) -> void:
 	_rail_buttons.clear()
 	_controls.clear()
 	_groups.clear()
+	if account_tab:
+		var holder := vbox(_list, "Group_Account", "PKeyTight")
+		var h := label(holder, "Category", "PKeyMuted", true)
+		h.text = _group_name(ACCOUNT)
+		holder.add_child(account)
+		_groups.append({"node": holder, "category": ACCOUNT})
 	var category = null
 	var group: VBoxContainer = null
 	for r in shown:
@@ -552,6 +585,8 @@ func _rebuild(shown: Array) -> void:
 ## A group's heading: the catalog's category (the developer's data, still passed through tr()), or
 ## "Managed settings" for the rows a policy locks.
 func _group_name(category: String) -> String:
+	if category == ACCOUNT:
+		return c().text("account_title")
 	return c().text("settings_managed") if category == PKeySettingsController.MANAGED else tr(category)
 
 
@@ -943,6 +978,8 @@ func _focus_chain() -> Array:
 	var out: Array = [_search, _retry]
 	if _rail_panel.visible:
 		out.append_array(_rail_buttons)
+	if account_tab and account.is_visible_in_tree():
+		out.append_array(account._focus_chain())
 	for k in _controls:
 		var n: Dictionary = _controls[k]
 		var input = n["input"]
