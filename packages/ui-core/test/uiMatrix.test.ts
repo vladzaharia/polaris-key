@@ -251,6 +251,10 @@ const GAPS: Readonly<
     },
     facts: ENTITLEMENT,
   },
+  "Paywall.not-available": {
+    open: { "paywall.title": ["tier"] },
+    facts: ENTITLEMENT,
+  },
   "Paywall.purchasing": {
     open: { "paywall.upgrade": ["tier"] },
     facts: ENTITLEMENT,

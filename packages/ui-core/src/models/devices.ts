@@ -80,7 +80,7 @@ export function deviceLimitView(
         "deviceLimit.title",
         "deviceLimit.browser",
         tv ? "deviceLimit.scan" : "deviceLimit.openBrowser",
-        tv ? "a11y.qr" : "a11y.externalLink",
+        tv ? "a11y.qrManage" : "a11y.externalLink",
       ],
       args,
       primary: tv ? null : "deviceLimit.openBrowser",

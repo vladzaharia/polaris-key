@@ -300,20 +300,33 @@ export function offlineActivationView(
 ): View<"OfflineActivation", OfflineState> {
   if (!ctx.on("license")) return hiddenView(ctx, "OfflineActivation");
   const o = ctx.input.offline ?? {};
-  const product = identityText(ctx).name;
   if (o.submitted && o.file && o.verified === true)
     return makeView(ctx, "OfflineActivation", {
       state: "done",
-      copy: ["offlineActivation.done"],
-      args: { product },
+      copy: [
+        "offlineActivation.title",
+        "offlineActivation.done",
+        "common.done",
+      ],
+      primary: "common.done",
     });
+  // The two-step form stays in every state but done (H1b's base); the request QR fits wherever
+  // the screen has room (DL14, DL3).
+  const base = [
+    "offlineActivation.title",
+    "offlineActivation.request",
+    "offlineActivation.copyCode",
+    "a11y.qrRequest",
+    "offlineActivation.loadHint",
+    "offlineActivation.loadFile",
+    "offlineActivation.paste",
+    "offlineActivation.dropHint",
+    "offlineActivation.submit",
+  ];
   if (o.submitted && o.file && o.verified === false)
     return makeView(ctx, "OfflineActivation", {
       state: "rejected-signature",
-      copy: [
-        "core.codes.bundle-jws-rejected.title",
-        "core.codes.bundle-jws-rejected.message",
-      ],
+      copy: [...base, "core.codes.bundle-jws-rejected.message"],
       primary: "offlineActivation.loadFile",
       tone: "danger",
       errorSlot: "offlineActivation.loadFile",
@@ -324,9 +337,9 @@ export function offlineActivationView(
     return makeView(ctx, "OfflineActivation", {
       state: "loaded",
       copy: [
+        ...base,
         o.copied && !o.submitted && !o.file && "offlineActivation.codeCopied",
         o.submitted && !o.file && "offlineActivation.empty",
-        "offlineActivation.submit",
       ],
       primary: "offlineActivation.submit",
       tone: o.submitted && !o.file ? "danger" : null,
@@ -336,18 +349,7 @@ export function offlineActivationView(
     });
   return makeView(ctx, "OfflineActivation", {
     state: "default",
-    copy: [
-      "offlineActivation.title",
-      "offlineActivation.request",
-      "offlineActivation.product",
-      "offlineActivation.copyCode",
-      "offlineActivation.loadHint",
-      "offlineActivation.loadFile",
-      "offlineActivation.paste",
-      "offlineActivation.dropHint",
-      "offlineActivation.submit",
-    ],
-    args: { product },
+    copy: base,
     primary: "offlineActivation.copyCode",
     qr: true,
   });

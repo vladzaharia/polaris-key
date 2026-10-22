@@ -6,6 +6,7 @@
 
 import type { Context } from "../input.js";
 import { platformClass } from "../input.js";
+import { linkVerdict } from "../link.js";
 import { loadingVisible } from "../loading.js";
 import { hiddenView, identityText, makeView, type View } from "../view.js";
 
@@ -241,13 +242,22 @@ export function paywallView(ctx: Context): View<"Paywall", PaywallState> {
       args,
       primary: "common.done",
     });
-  if (!offers?.available)
+  if (!offers?.available) {
+    // Not sold here: hand off to the page that sells it, only when the opener accepts it (DL14).
+    const portal = linkVerdict(offers?.url, ctx.platform, "purchase");
     return makeView(ctx, "Paywall", {
       state: "not-available",
-      copy: ["paywall.notAvailable"],
+      copy: [
+        "paywall.title",
+        "paywall.notAvailable",
+        portal.url !== null && "paywall.portal",
+      ],
       args,
+      primary: portal.url !== null ? "paywall.portal" : undefined,
+      link: portal.url !== null ? portal : null,
       tone: "neutral",
     });
+  }
   return makeView(ctx, "Paywall", {
     state: "offers",
     copy: ["paywall.title", "paywall.includes", buy, "paywall.redeem"],
