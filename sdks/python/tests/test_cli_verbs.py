@@ -212,3 +212,16 @@ def test_typer_runs_the_table_verbs() -> None:
     assert "run.concurrency" in r.output
     r = CliRunner().invoke(app, ["offline-request", "--product", PRODUCT, "--no-qr"])
     assert r.exit_code == 0 and C("offlineActivation.request") in r.output
+
+
+def test_usage_results_carry_usage_and_message_like_the_node_kit(capsys) -> None:
+    """``devices rename`` with no id, and ``activate --json`` with no key: exit 2, ``error: usage``,
+    the ``usage`` line and a ``message`` (the Node kit's fields)."""
+    code, out = _argparse(["devices", "--product", PRODUCT, "--json", "rename"], _factory(), capsys)
+    r = json.loads(out.strip().splitlines()[-1])
+    assert code == 2 and r["error"] == "usage"
+    assert r["usage"].endswith("devices rename <deviceId> [label...]") and r["message"] == r["usage"]
+    code, out = _argparse(["activate", "--product", PRODUCT, "--json"], _factory(activated=False), capsys)
+    r = json.loads(out.strip().splitlines()[-1])
+    assert code == 2 and r["error"] == "usage"
+    assert r["usage"].endswith(" activate") and r["message"]

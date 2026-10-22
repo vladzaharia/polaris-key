@@ -596,13 +596,19 @@ def devices(client: Any, t: Terminal, words: Sequence[str], *, yes: bool = False
         if code == "device-management-unsupported" or type(e).__name__.startswith("DeviceManagementUnsupported"):
             return Outcome(EXIT.failed, screens.devices(k, DevicesView("Devices", "browser-mode"), verb), {"error": "device-management-unsupported"})
         raise
-    return usage(t, "devices [list | rename <id> <label> | deauthorize <id>]")
+    # The usage line is the verb's own, as the Node kit's (`devices rename <deviceId> [label...]`).
+    if action == "deauthorize":
+        return usage(t, "devices deauthorize <deviceId>")
+    if action == "rename":
+        return usage(t, "devices rename <deviceId> [label...]")
+    return usage(t, "devices [list | rename <deviceId> [label...] | deauthorize <deviceId>]")
 
 
 def usage(t: Terminal, text: str) -> Outcome:
     k = t.kit
     lines = screens.diagnostic(k, t.verb, [("usage:", f"{k.prog} {text}")])
-    return Outcome(EXIT.usage, lines, {"error": "usage", "usage": f"{k.prog} {text}"})
+    # `message` is the usage line, as on the Node kit's usage result.
+    return Outcome(EXIT.usage, lines, {"error": "usage", "usage": f"{k.prog} {text}", "message": f"{k.prog} {text}"})
 
 
 def _plain_rows(k: Any, texts: Sequence[str]) -> List[Line]:
@@ -624,7 +630,7 @@ def no_key(t: Terminal, piped: bool) -> Outcome:
     k = t.kit
     msg = k.t("cli.activate.noKeyPiped", "strong") if piped else k.t("cli.activate.noKey", "strong", command=f"{k.prog} activate")
     lines = [k.header(t.verb)] + ([k.rail()] if k.decor else []) + k.step("warn", [msg]) + screens._gap(k) + _key_fixes(k) + k.end()
-    return Outcome(EXIT.usage, screens._close(k, lines), {"error": "usage"})
+    return Outcome(EXIT.usage, screens._close(k, lines), {"error": "usage", "usage": f"{k.prog} activate", "message": msg.text})
 
 
 def key_file_problem(t: Terminal, path: str, empty: bool) -> Outcome:
