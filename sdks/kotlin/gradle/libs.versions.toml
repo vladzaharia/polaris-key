@@ -29,7 +29,7 @@ coroutines = "1.11.0"
 serialization = "1.8.1"
 okhttp = "4.12.0"
 # The Ktor server plugin (:server-ktor, SP-57): 3.2.x is built with Kotlin 2.1.x.
-ktor = "3.2.3"
+ktor = "3.6.0"
 # The Spring Boot starter (:spring-boot-starter, SP-61): Boot 3.5.x is Spring Security 6.5 on Java 17 and builds with Kotlin 2.1.
 springBoot = "3.5.6"
 springSecurity = "6.5.5"
