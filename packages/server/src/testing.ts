@@ -6,9 +6,17 @@
 //   const jws = await kit.sign({ entitlements: { "export.pdf": true } });
 //   const res = await app.request("/api/export", { headers: kit.headers(jws) });
 //
+// Each verdict, and a fake trust service, with no network:
+//
+//   await kit.headersFor("license_stale")                   // 401 license_stale
+//   await kit.headersFor("not_entitled")                    // a license that grants nothing
+//   const other = kit.trust.addKey("rotated-2027");         // a key only the trust manifest vouches for
+//   const polaris = kit.polarisKey(kit.trust.options());    // refresh on, served by kit.trust.fetch
+//
 // Never import this from production code: the key it makes signs anything.
 
 import { signJws } from "@polaris-key/jws";
+import type { BackendRefusalCode } from "@polaris-key/client-core/backend";
 import { ISSUER, type ManagedEntry } from "@polaris-key/protocol/core";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import {
@@ -60,6 +68,30 @@ export interface SignOptions {
   aud?: string;
 }
 
+/** What `headersFor` can produce: a refusal's code, or a request that passes. */
+export type TestVerdict = BackendRefusalCode | "ok";
+
+/** A key only the fake trust manifest vouches for: its documents verify once the core has
+ *  fetched the manifest (`kit.trust.options()`), and are `license_invalid` before. */
+export interface TestTrustedKey {
+  readonly kid: string;
+  sign(options?: SignOptions): Promise<string>;
+}
+
+/** The fake trust service: a `fetch` that answers `/<product>/.well-known/polaris-trust.jws`. */
+export interface TestTrust {
+  /** Pass as the core's `fetch`. Any other URL answers 404. */
+  readonly fetch: typeof fetch;
+  /** Requests it has seen, in order (URLs). */
+  readonly calls: string[];
+  /** Publish a second signing key in the manifest and return it. */
+  addKey(kid?: string): Promise<TestTrustedKey>;
+  /** True: every fetch fails like an unreachable Polaris Key. Default false. */
+  offline: boolean;
+  /** `{ trustRefresh: true, fetch }` for `kit.polarisKey(...)` or an adapter's options. */
+  options(): Pick<PolarisKeyOptions, "trustRefresh" | "fetch">;
+}
+
 export interface TestKit {
   readonly product: string;
   readonly deviceId: string;
@@ -74,6 +106,23 @@ export interface TestKit {
   headers(jws: string, deviceId?: string): Record<string, string>;
   /** A core on the kit's pins and clock, with the trust refresh off. */
   polarisKey(options?: Partial<PolarisKeyOptions>): PolarisKey;
+  /** The options for an adapter: `polarisKey(kit.options())` in Express or Hono,
+   *  `createNextPolarisKey(kit.options())` in Next. Kit config and clock, trust refresh off. */
+  options(extra?: Partial<PolarisKeyOptions>): PolarisKeyOptions;
+  /** Sign and return the headers in one step. */
+  signedHeaders(options?: SignOptions): Promise<Record<string, string>>;
+  /**
+   * The headers that make a gate answer `verdict` (`{}` for `license_required`). `options` shapes
+   * the document: `"ok"` signs exactly what you pass (so grant the entitlement the route needs),
+   * `"not_entitled"` and `"sign_in_required"` sign a license with no entitlements and no
+   * signed-in account unless you say otherwise.
+   */
+  headersFor(
+    verdict: TestVerdict,
+    options?: SignOptions,
+  ): Promise<Record<string, string>>;
+  /** The fake trust service. */
+  readonly trust: TestTrust;
 }
 
 const b64u = (bytes: Uint8Array): string =>
@@ -124,69 +173,167 @@ export async function createTestKit(
     expectedServices: ["license"],
   };
 
+  const extraKeys: { kid: string; publicKey: string; pem: string }[] = [];
+  const calls: string[] = [];
+  let manifestSeq = 0;
+  const trustFetch: typeof fetch = async (input) => {
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
+    calls.push(url);
+    if (trust.offline) throw new TypeError("fetch failed (kit.trust.offline)");
+    if (!url.includes(`/${product}/.well-known/polaris-trust.jws`))
+      return new Response("not found", { status: 404 });
+    const issuedAt = now + manifestSeq++;
+    const keys = [
+      { kid, publicKey },
+      ...extraKeys.map((k) => ({ kid: k.kid, publicKey: k.publicKey })),
+    ].map((k) => ({
+      kid: k.kid,
+      alg: "EdDSA",
+      kty: "OKP",
+      crv: "Ed25519",
+      publicKey: k.publicKey,
+      status: "active",
+    }));
+    const jws = await signJws(
+      {
+        schemaVersion: 1,
+        aud: product,
+        iss: ISSUER,
+        issuedAt,
+        expiresAt: issuedAt + 300,
+        jwksUrl: `https://key.plrs.im/${product}/.well-known/jwks.json`,
+        cacheSeconds: 300,
+        keys,
+      },
+      pem,
+      kid,
+      "pkey-trust+jws",
+    );
+    return new Response(jws, {
+      status: 200,
+      headers: { "content-type": "application/jose" },
+    });
+  };
+  const trust: TestTrust = {
+    fetch: trustFetch,
+    calls,
+    offline: false,
+    async addKey(newKid = `pkey-test-extra-${extraKeys.length + 1}`) {
+      const k = await newKey();
+      extraKeys.push({ kid: newKid, publicKey: k.publicKey, pem: k.pem });
+      return { kid: newKid, sign: (o) => signWith(k.pem, newKid, o) };
+    },
+    options: () => ({ trustRefresh: true, fetch: trustFetch }),
+  };
+
+  const signWith = async (
+    signingPem: string,
+    signingKid: string,
+    o: SignOptions = {},
+  ): Promise<string> => {
+    const issuedAt = o.issuedAt ?? now;
+    const expiresAt = issuedAt + (o.expiresIn ?? HOUR);
+    const entitlements: Record<string, ManagedEntry> = {};
+    for (const [name, value] of Object.entries(o.entitlements ?? {}))
+      entitlements[name] = {
+        state: "enforced",
+        value,
+        updatedAt: issuedAt,
+      };
+    if (o.tier !== undefined)
+      entitlements["license.tier"] = {
+        state: "enforced",
+        value: o.tier,
+        updatedAt: issuedAt,
+      };
+    const holder =
+      o.holder === undefined
+        ? { name: "Test Holder", email: "holder@example.com" }
+        : o.holder;
+    const doc: LicenseDoc = {
+      iss: ISSUER,
+      aud: o.aud ?? product,
+      deviceId: o.deviceId ?? deviceId,
+      issuedAt,
+      expiresAt,
+      graceUntil: expiresAt + (o.graceFor ?? 30 * DAY),
+      licenseId: o.licenseId ?? "lic_test",
+      ...(holder || o.user
+        ? {
+            profile: {
+              ...(holder
+                ? {
+                    name: holder.name,
+                    firstName: holder.name.split(" ")[0] ?? holder.name,
+                    email: holder.email,
+                  }
+                : {}),
+              activatedAt: issuedAt,
+              ...(o.user ? { user: o.user } : {}),
+            },
+          }
+        : {}),
+      entitlements,
+    } as LicenseDoc;
+    return signJws(doc, signingPem, signingKid, "pkey-license+jws");
+  };
+
+  const headers = (jws: string, device = deviceId): Record<string, string> => ({
+    [HEADER_LICENSE]: jws,
+    [HEADER_DEVICE]: device,
+  });
+  const optionsFor = (
+    extra: Partial<PolarisKeyOptions> = {},
+  ): PolarisKeyOptions => ({
+    config,
+    trustRefresh: false,
+    now: clock.now,
+    ...extra,
+  });
+
   return {
     product,
     deviceId,
     clock,
     pinnedKeys,
     config,
-    async sign(o = {}) {
-      const issuedAt = o.issuedAt ?? now;
-      const expiresAt = issuedAt + (o.expiresIn ?? HOUR);
-      const entitlements: Record<string, ManagedEntry> = {};
-      for (const [name, value] of Object.entries(o.entitlements ?? {}))
-        entitlements[name] = {
-          state: "enforced",
-          value,
-          updatedAt: issuedAt,
-        };
-      if (o.tier !== undefined)
-        entitlements["license.tier"] = {
-          state: "enforced",
-          value: o.tier,
-          updatedAt: issuedAt,
-        };
-      const holder =
-        o.holder === undefined
-          ? { name: "Test Holder", email: "holder@example.com" }
-          : o.holder;
-      const doc: LicenseDoc = {
-        iss: ISSUER,
-        aud: o.aud ?? product,
-        deviceId: o.deviceId ?? deviceId,
-        issuedAt,
-        expiresAt,
-        graceUntil: expiresAt + (o.graceFor ?? 30 * DAY),
-        licenseId: o.licenseId ?? "lic_test",
-        ...(holder || o.user
-          ? {
-              profile: {
-                ...(holder
-                  ? {
-                      name: holder.name,
-                      firstName: holder.name.split(" ")[0] ?? holder.name,
-                      email: holder.email,
-                    }
-                  : {}),
-                activatedAt: issuedAt,
-                ...(o.user ? { user: o.user } : {}),
-              },
-            }
-          : {}),
-        entitlements,
-      } as LicenseDoc;
-      return signJws(doc, pem, kid, "pkey-license+jws");
+    sign: (o) => signWith(pem, kid, o),
+    headers,
+    polarisKey: (extra = {}) => createPolarisKey(optionsFor(extra)),
+    options: optionsFor,
+    signedHeaders: async (o) => headers(await signWith(pem, kid, o)),
+    async headersFor(verdict, o = {}) {
+      switch (verdict) {
+        case "license_required":
+          return {};
+        case "license_invalid": {
+          // A real signature over the real payload, broken: no key can verify it.
+          const jws = await signWith(pem, kid, o);
+          const last = jws.slice(-1) === "A" ? "B" : "A";
+          return headers(jws.slice(0, -1) + last);
+        }
+        case "license_stale":
+          // Past expiresAt plus the 300 s skew, still inside the grace window.
+          return headers(
+            await signWith(pem, kid, {
+              issuedAt: now - 2 * HOUR,
+              expiresIn: HOUR,
+              ...o,
+            }),
+          );
+        case "not_entitled":
+          return headers(await signWith(pem, kid, { user: null, ...o }));
+        case "sign_in_required":
+          return headers(await signWith(pem, kid, { user: null, ...o }));
+        case "ok":
+          return headers(await signWith(pem, kid, o));
+      }
     },
-    headers: (jws, device = deviceId) => ({
-      [HEADER_LICENSE]: jws,
-      [HEADER_DEVICE]: device,
-    }),
-    polarisKey: (extra = {}) =>
-      createPolarisKey({
-        config,
-        trustRefresh: false,
-        now: clock.now,
-        ...extra,
-      }),
+    trust,
   };
 }
