@@ -1437,7 +1437,8 @@ export interface AttentionItemDto {
     | "signing.missing"
     | "mint.pending"
     | "credential.expiring"
-    | "storefront.identity_mismatch";
+    | "storefront.identity_mismatch"
+    | "channel.identity_mismatch";
   tone: "danger" | "warning";
   /** The service the fix belongs to (the row's accent); `null` for the product itself. */
   service: ServiceSlug | null;
@@ -2931,6 +2932,11 @@ export interface StorefrontDto {
   steps: StorefrontStepDto[];
   pushListing: { stageOnly: boolean } | null;
   confirmationLabel: string;
+  /** Identifiers the flow shows; a value the manifest leaves empty is filled from the assignment. */
+  identifiers?: Record<
+    string,
+    { value: string; source: "manifest" | "assigned" }
+  >;
 }
 
 /** `GET …/distribution/storefronts`. */

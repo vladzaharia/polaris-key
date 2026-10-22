@@ -17,7 +17,10 @@ import { getProductSyncState } from "../../core/products/store.js";
 import type { ProductRow } from "../../core/repo.js";
 import type { AreaId, Principal } from "../authz.js";
 import { can, productScope } from "../authz.js";
-import { expiringCredentials } from "../../services/distribution/public.js";
+import {
+  expiringCredentials,
+  outletIdentityMismatches,
+} from "../../services/distribution/public.js";
 import { storefrontIdentityMismatches } from "../../services/commerce/public.js";
 import { parseServices } from "../../core/services.js";
 import { attentionFactsFor } from "./shape.js";
@@ -31,7 +34,8 @@ export type AttentionKind =
   | "signing.missing"
   | "mint.pending"
   | "credential.expiring"
-  | "storefront.identity_mismatch";
+  | "storefront.identity_mismatch"
+  | "channel.identity_mismatch";
 
 /** Where the fix lives: a product page, by the console's page id. */
 export interface AttentionAction {
@@ -234,6 +238,26 @@ export async function productAttention(
         ],
         action: { label: "Review", page: "storefronts" },
         area: "commerce",
+      });
+
+  // Only while Distribution is on; an outlet row left over while it is off is not news.
+  if (
+    parseServices(p.services_json ?? null).services.distribution?.enabled ===
+    true
+  )
+    for (const m of await outletIdentityMismatches(db, p.slug))
+      items.push({
+        id: id("channel.identity_mismatch", `${m.outletId}:${m.field}`),
+        product,
+        kind: "channel.identity_mismatch",
+        tone: "warning",
+        service: "distribution",
+        short: "App mismatch",
+        lines: [
+          `Channel \`${m.outletId}\` names ${m.field} \`${m.declared}\`, not the assigned app \`${m.assigned}\`.`,
+        ],
+        action: { label: "Review", page: "storefronts" },
+        area: "ship",
       });
   return items;
 }

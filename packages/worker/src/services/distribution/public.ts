@@ -50,6 +50,10 @@ export {
   stmtSetPackageFeeds,
 } from "./registryFeeds.js";
 export {
+  outletIdentityMismatches,
+  type OutletIdentityMismatch,
+} from "./outletIdentity.js";
+export {
   expiringCredentials,
   type ExpiringCredential,
   type MissingStoreAccount,

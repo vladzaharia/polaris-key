@@ -36,6 +36,7 @@ import {
   platformPin,
   PLATFORM_CREDENTIALS,
   resolvePlatformCredential,
+  storeAppBinding,
 } from "../../../core/platformCredentials.js";
 import { peekPlatformAppName } from "../../../core/stores/platformApps.js";
 import { listOutlets } from "../outlets.js";
@@ -170,6 +171,11 @@ export interface StoreFlowView {
   pushListing: { stageOnly: boolean } | null;
   /** The store's name in typed confirmations ("the app's name in <label>"). */
   confirmationLabel: string;
+  /** Display only: steps read `StoreFacts.identifiers` (the manifest's), never these. */
+  identifiers: Record<
+    string,
+    { value: string; source: "manifest" | "assigned" }
+  >;
 }
 
 // ── facts ────────────────────────────────────────────────────────────────────────────────────
@@ -458,7 +464,33 @@ export async function storeView(
       ? { stageOnly: runtime.pushListing.stageOnly }
       : null,
     confirmationLabel: adapter.confirmation.label,
+    identifiers: await identifiersView(c, adapter, facts),
   };
+}
+
+/**
+ * The identifiers the store's panel shows: the manifest's own, and for a field it leaves empty the
+ * product's assigned app (`storeAppBinding`). Display only: no step prefill reads this.
+ */
+async function identifiersView(
+  c: FlowContext,
+  adapter: StorefrontAdapter,
+  facts: StoreFacts,
+): Promise<StoreFlowView["identifiers"]> {
+  const out: StoreFlowView["identifiers"] = {};
+  for (const [k, value] of Object.entries(facts.identifiers))
+    out[k] = { value, source: "manifest" };
+  const cred = adapter.credential;
+  if (cred === null || !isPlatformCredentialId(cred)) return out;
+  const binding = await storeAppBinding(
+    c.db,
+    c.product,
+    PLATFORM_CREDENTIALS[cred].store,
+  );
+  for (const [field, f] of Object.entries(binding.fields))
+    if (!(field in out) && f)
+      out[field] = { value: f.value, source: "assigned" };
+  return out;
 }
 
 /** A first-party adapter: no credential, and its operations run on Polaris Key's own tables. */
