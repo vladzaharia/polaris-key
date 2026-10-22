@@ -89,7 +89,9 @@ async function openAdd(user: ReturnType<typeof userEvent.setup>) {
 }
 async function openUse(user: ReturnType<typeof userEvent.setup>) {
   await user.click(
-    await screen.findByRole("button", { name: /^Use iCloud Keychain/ }),
+    await screen.findByRole("button", {
+      name: /^Use for the console: iCloud Keychain/,
+    }),
   );
   return screen.findByRole("alertdialog");
 }
@@ -115,9 +117,7 @@ describe("Sign-in methods: the list", () => {
     ];
     open();
     await heading();
-    expect(
-      screen.getByText("Which of your sign-in methods open the console."),
-    ).toBeTruthy();
+    expect(screen.getByText("Which methods open the console.")).toBeTruthy();
     const opens = await screen.findByRole("region", {
       name: "Opens the console",
     });
@@ -162,7 +162,9 @@ describe("Sign-in methods: the list", () => {
     await heading();
     expect(await screen.findByText("Chrome on macOS (1)")).toBeTruthy();
     expect(screen.getByText("Chrome on macOS (2)")).toBeTruthy();
-    const buttons = screen.getAllByRole("button", { name: /^Use Chrome/ });
+    const buttons = screen.getAllByRole("button", {
+      name: /^Use for the console: Chrome/,
+    });
     expect(new Set(buttons.map((b) => b.getAttribute("aria-label"))).size).toBe(
       2,
     );
@@ -547,6 +549,113 @@ describe("Use for the console", () => {
       expect(posts(log)).toEqual(["/manage/api/me/methods/lnk_pk/strong"]),
     );
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  });
+});
+
+describe("Sign-in methods: focus and resuming", () => {
+  const strongOn = () => {
+    methods = methods.map((x) =>
+      x.id === "lnk_pk" ? { ...x, strong: true, consoleEligible: false } : x,
+    );
+  };
+
+  it("keeps focus on the row after already_strong, once it has moved groups", async () => {
+    const user = userEvent.setup();
+    open({
+      "/manage/api/me/methods/lnk_pk/strong": () => {
+        strongOn();
+        return json(
+          { error: { code: "forbidden", reason: "already_strong" } },
+          409,
+        );
+      },
+    });
+    await heading();
+    await user.click(confirm(await openUse(user), "Use for the console"));
+    await waitFor(() => expect(focusedRow()).toBe("lnk_pk"));
+    const opens = screen.getByRole("region", { name: "Opens the console" });
+    expect(within(opens).getByText("iCloud Keychain")).toBeTruthy();
+  });
+
+  it("keeps focus on the row after Use, in its new group", async () => {
+    const user = userEvent.setup();
+    open({
+      "/manage/api/me/methods/lnk_pk/strong": () => {
+        strongOn();
+        return { ok: true };
+      },
+    });
+    await heading();
+    await user.click(confirm(await openUse(user), "Use for the console"));
+    await waitFor(() => expect(focusedRow()).toBe("lnk_pk"));
+    const opens = screen.getByRole("region", { name: "Opens the console" });
+    expect(opens.contains(document.activeElement)).toBe(true);
+  });
+
+  it("does not count alike across kinds: SSO, Google and Email on one address get no ordinals", async () => {
+    methods = ["oidc", "google", "email"].map((kind) => ({
+      ...IDP,
+      id: `lnk_${kind}`,
+      kind,
+      name: "ada@example.com",
+    }));
+    open();
+    await heading();
+    await screen.findAllByText("ada@example.com");
+    expect(document.body.textContent).not.toMatch(/\(\d\)/);
+  });
+
+  it("moves focus to the heading when Try again removes its own callout", async () => {
+    const user = userEvent.setup();
+    created.fn.mockRejectedValue(new PasskeyError("cancelled"));
+    open({ "/manage/api/me/passkeys/options": OPTIONS });
+    await heading();
+    await user.click(confirm(await openAdd(user), "Add passkey"));
+    await user.click(await screen.findByRole("button", { name: "Try again" }));
+    expect(document.activeElement?.tagName).toBe("H1");
+  });
+
+  it("moves focus to the heading after a 404 on Use", async () => {
+    const user = userEvent.setup();
+    open({
+      "/manage/api/me/methods/lnk_pk/strong": () => {
+        methods = [IDP];
+        return json({ error: "not_found" }, 404);
+      },
+    });
+    await heading();
+    await user.click(confirm(await openUse(user), "Use for the console"));
+    await screen.findByText("This passkey was removed");
+    await waitFor(() => expect(document.activeElement?.tagName).toBe("H1"));
+  });
+
+  it("resumes the add flow, not the Use dialog, when a refused Use went on to Add a passkey and needed a step-up", async () => {
+    const user = userEvent.setup();
+    setStepUpRedirectForTests(() => undefined);
+    const routes = {
+      "/manage/api/me/methods/lnk_pk/strong": refuse(403, {
+        code: "forbidden",
+        reason: "not_eligible",
+      }),
+      "/manage/api/me/passkeys/options": STEP_UP,
+    };
+    open(routes);
+    await heading();
+    const dialog = await openUse(user);
+    await user.click(confirm(dialog, "Use for the console"));
+    await user.click(
+      await within(dialog).findByRole("button", { name: "Add a passkey" }),
+    );
+    await within(dialog).findByText("Sign in again to confirm it's you");
+    await user.click(confirm(dialog, "Sign in again"));
+    cleanup();
+    resetConsole();
+    open(routes);
+    const again = await screen.findByRole("alertdialog");
+    expect(within(again).getByText("Add a passkey?")).toBeTruthy();
+    expect(
+      within(again).queryByRole("button", { name: "Use for the console" }),
+    ).toBeNull();
   });
 });
 

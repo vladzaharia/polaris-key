@@ -279,6 +279,8 @@ const ZOOM_CASES = [
 const HOME_CASES = ["global:home", "home:table", "djdl:overview"];
 /** The pages the phone-at-200%-text row opens. */
 const TEXT200_CASES = [
+  // ST-30c.4: the rows' name column kept its width at 200 % text.
+  "global:sign-in-methods",
   "djdl:settings",
   "djdl:services",
   "djdl:portal",
@@ -393,7 +395,12 @@ const VIEWPORTS: {
       // Forced colours (a Windows contrast theme) and `prefers-contrast: more`: Home, Licenses and
       // Services.
       // UI-KITS.md §7.1's small landscape (a phone on its side, a split window): 640 × 360.
-      { label: "landscape-small", width: 640, height: 360, only: ZOOM_CASES },
+      {
+        label: "landscape-small",
+        width: 640,
+        height: 360,
+        only: [...ZOOM_CASES, "global:sign-in-methods"],
+      },
       // Reduced transparency: the dialog and drawer backdrops lose their blur (UK-63).
       {
         label: "reduced-transparency",

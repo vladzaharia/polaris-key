@@ -304,7 +304,7 @@ const openAdd = async (page: Page) => {
   await page.getByRole("alertdialog").waitFor();
 };
 const openUse = async (page: Page) => {
-  await page.getByRole("button", { name: /^Use .* for the console/ }).click();
+  await page.getByRole("button", { name: /^Use for the console/ }).click();
   await page.getByRole("alertdialog").waitFor();
 };
 const confirm = (page: Page, name: string) =>

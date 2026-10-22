@@ -23,19 +23,20 @@ export function baseTitle(m: ConsoleMethod): string {
  * two rows look alike or share an accessible name.
  */
 export function titles(methods: readonly ConsoleMethod[]): Map<string, string> {
+  // Alike means the same kind and the same title: SSO, Google and Email on one address are not.
+  const key = (m: ConsoleMethod): string => `${m.kind}\u0000${baseTitle(m)}`;
   const count = new Map<string, number>();
-  for (const m of methods)
-    count.set(baseTitle(m), (count.get(baseTitle(m)) ?? 0) + 1);
+  for (const m of methods) count.set(key(m), (count.get(key(m)) ?? 0) + 1);
   const seen = new Map<string, number>();
   const out = new Map<string, string>();
   for (const m of methods) {
     const t = baseTitle(m);
-    if ((count.get(t) ?? 0) < 2) {
+    if ((count.get(key(m)) ?? 0) < 2) {
       out.set(m.id, t);
       continue;
     }
-    const n = (seen.get(t) ?? 0) + 1;
-    seen.set(t, n);
+    const n = (seen.get(key(m)) ?? 0) + 1;
+    seen.set(key(m), n);
     out.set(m.id, `${t} (${n})`);
   }
   return out;

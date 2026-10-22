@@ -71,7 +71,7 @@ export function MethodRow({
             variant="outline"
             size="sm"
             onClick={() => onUse(method)}
-            aria-label={`Use ${title}, added ${formatDateTime(fromSeconds(method.createdAt))}, for the console`}
+            aria-label={`Use for the console: ${title}, added ${formatDateTime(fromSeconds(method.createdAt))}`}
           >
             Use for the console
           </Button>

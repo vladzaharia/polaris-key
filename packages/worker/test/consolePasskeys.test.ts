@@ -243,6 +243,21 @@ describe("SM-3(a): enrolment under a step-up", () => {
     );
   });
 
+  it("tells the owner of an add even when marking it strong fails: exactly one mail, nothing silent", async () => {
+    const a = await operator(1);
+    // Make the strong-marking a no-op, as a lost race or an unreadable link would.
+    await db.run(
+      "CREATE TRIGGER no_strong BEFORE UPDATE OF strong_at ON account_links BEGIN SELECT RAISE(IGNORE); END",
+    );
+    const res = await enrol(a, await SoftAuthenticator.create());
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { passkey: { methodId: string } };
+    expect((await strongAt(body.passkey.methodId))!.strong_at).toBeNull();
+    expect(await audits()).toHaveLength(0);
+    expect(mail.filter((m) => m.to === "op1@example.com")).toHaveLength(1);
+    expect(mail).toHaveLength(1);
+  });
+
   it("without a step-up, or after the window, the route table refuses before anything is written", async () => {
     const none = await operator(1, null);
     const r1 = await call(none, "POST", "/api/me/passkeys/options", {});

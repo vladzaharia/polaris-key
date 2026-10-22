@@ -154,10 +154,11 @@ async function ceremony(
     rest,
     c.now,
   );
-  if (strongLinkId) {
-    await audited(c, strongLinkId, "enrolled");
+  if (strongLinkId) await audited(c, strongLinkId, "enrolled");
+  // Every add is announced, strong or not: I-16's own mail is off on this path (`quietAdd`), so
+  // an add whose strong-marking failed must still tell the owner.
+  if (rest.length === 0 && response.status === 201)
     await announce(c, ctx.accountId);
-  }
   return response;
 }
 

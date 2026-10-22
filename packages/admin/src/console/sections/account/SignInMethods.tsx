@@ -46,6 +46,15 @@ export function useMyMethods() {
   });
 }
 
+/** Focus the page's heading: where focus goes when the control that had it is gone. */
+function focusHeading(): void {
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLElement>("h1")?.focus(),
+    ),
+  );
+}
+
 /** A browser-side ceremony that ended without a passkey. */
 type Ceremony = "cancelled" | "exists" | "unsupported" | "failed";
 
@@ -151,8 +160,18 @@ function Methods({
       ...document.querySelectorAll<HTMLElement>("[data-method-id]"),
     ].find((e) => e.dataset.methodId === focusId);
     if (!row) return;
-    row.focus();
-    setFocusId(null);
+    // After the dialog has closed and given its own focus back (the row may have moved groups).
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => {
+        row.focus();
+        setFocusId(null);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
   }, [focusId, methods.data]);
 
   const askUse = (m: ConsoleMethod): void => {
@@ -245,7 +264,7 @@ function Methods({
     } catch (e) {
       const x = e as { reason?: string; status?: number };
       if (x.reason === "already_strong") {
-        void methods.refetch();
+        await methods.refetch();
         toast.info(`${targetName ?? "This passkey"} already opens the console`);
         setFocusId(useId);
         setUseOpen(false);
@@ -259,6 +278,7 @@ function Methods({
       if (x.status === 404 && !isStepUpRequired(e)) {
         void methods.refetch();
         setUseOpen(false);
+        focusHeading();
         setNotice({
           tone: "warning",
           title: "This passkey was removed",
@@ -268,6 +288,9 @@ function Methods({
       }
       throw e;
     }
+    // The row moves groups on the refetch: focus it once it is where it will stay.
+    if (methods.data) await methods.refetch();
+    else void methods.refetch();
     toast.success(`${targetName ?? "The passkey"} now opens the console`);
     setFocusId(useId);
     setUseOpen(false);
@@ -281,7 +304,7 @@ function Methods({
     <div className="max-w-5xl space-y-6" data-template="settings">
       <PageHeader
         title="Sign-in methods"
-        description="Which of your sign-in methods open the console."
+        description="Which methods open the console."
         refetching={methods.isFetching && !methods.isPending}
         primaryAction={
           <Button
@@ -315,6 +338,8 @@ function Methods({
                 size="sm"
                 onClick={() => {
                   const run = notice.action!.run;
+                  // The callout goes away with its button: focus has to land somewhere.
+                  document.querySelector<HTMLElement>("h1")?.focus();
                   setNotice(null);
                   run();
                 }}
@@ -416,8 +441,18 @@ function Methods({
         confirmLabel={refused ? "Add a passkey" : "Use for the console"}
         closeOnSuccess={false}
         stepUpKey="signin-methods:use"
-        stepUpState={useId ? { id: useId } : undefined}
-        onRestore={(s) => setUseId(s.id ?? null)}
+        // A refused Use turned the dialog into the add flow: the step-up must resume that one.
+        stepUpState={
+          useId ? { id: useId, ...(refused ? { flow: "add" } : {}) } : undefined
+        }
+        onRestore={(s) => {
+          setUseId(s.id ?? null);
+          if (s.flow === "add") {
+            setUseOpen(false);
+            setAddError(null);
+            setAdding(true);
+          }
+        }}
         signedInAt={me.data?.authAt ?? null}
         describeError={refusal}
         onConfirm={usePasskey}
