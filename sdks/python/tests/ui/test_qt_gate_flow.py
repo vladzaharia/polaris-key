@@ -584,12 +584,28 @@ def test_a_revoked_device_offers_sign_in_or_a_different_key(rig):
     assert r.shown == "SignIn.methods"
 
 
-def test_try_again_and_a_changed_status_move_the_gate(rig):
+def test_an_expired_license_offers_use_another_license_alone_without_a_renew_url(rig):
     r = rig(FakeClient(status="expired"))
     assert r.shown == "StatusScreen.expired"
+    assert r.texts() == ["Use another license"]
+    assert r.gate.screen.decisions.primary == "status.useAnotherLicense"
+    r.grab()
+
+
+def test_a_renew_url_draws_renew_and_opens_it_then_rereads_the_license(rig):
+    r = rig(FakeClient(status="expired"), renew_url="https://example.com/renew")
+    assert r.shown == "StatusScreen.expired"
+    assert r.texts() == ["Renew", "Use another license"]
+    assert r.gate.screen.decisions.primary == "status.renew"
     r.client.st = "ok"
-    r.press("status.renew")  # the fix is outside the app: pressing it re-reads the client
+    r.press("status.renew")  # opens the page, then re-reads the client
+    assert r.opener.urls == ["https://example.com/renew"]
     assert r.gate.open and r.opened
+
+
+def test_a_renew_url_that_is_not_https_draws_no_renew(rig):
+    r = rig(FakeClient(status="expired"), renew_url="javascript:alert(1)")
+    assert r.texts() == ["Use another license"]
 
 
 def test_every_screen_of_the_flow_names_its_controls(rig):

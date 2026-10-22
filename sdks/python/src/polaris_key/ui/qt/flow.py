@@ -28,7 +28,7 @@ from ..core import ui_activate, ui_devices, ui_gate, ui_signin
 from ..core.identity import ResolvedIdentity
 from ..core.ui_activate import parse_key
 from ..core.ui_contract import SERVICES, context_of, platform_class
-from ..core.ui_view import View, actions_for
+from ..core.ui_view import View, actions_for, valid_link
 from . import _binding as qt
 
 __all__ = ["GateFlow", "default_open_url", "with_copy"]
@@ -45,6 +45,17 @@ def with_copy(view: View, *add: str, primary: Optional[str] = None) -> View:
     copy = tuple(sorted(set(view.copy) | set(add)))
     decisions = view.decisions if primary is None else dataclasses.replace(view.decisions, primary=primary)
     return dataclasses.replace(view, copy=copy, actions=actions_for(copy, view.actions), decisions=decisions)
+
+
+def without_renew(view: View) -> View:
+    """``view`` without Renew, Use another license the one filled control: a host with no renewal
+    page has nothing for Renew to open."""
+    if "status.renew" not in view.copy:
+        return view
+    copy = tuple(k for k in view.copy if k != "status.renew")
+    primary = view.decisions.primary
+    decisions = dataclasses.replace(view.decisions, primary="status.useAnotherLicense") if primary == "status.renew" else view.decisions
+    return dataclasses.replace(view, copy=copy, actions=view.actions, decisions=decisions)
 
 
 def default_open_url(url: str) -> bool:
@@ -93,6 +104,7 @@ class GateFlow:
         capabilities: Optional[Mapping[str, bool]] = None,
         offers_free_tier: bool = False,
         open_url: Optional[Callable[[str], bool]] = None,
+        renew_url: Optional[str] = None,
         clipboard: Any = None,
         device_name: Optional[str] = None,
         now: Callable[[], float] = time.time,
@@ -102,6 +114,8 @@ class GateFlow:
         self._on_status = on_status
         self.platform = platform
         self._open_url = open_url or default_open_url
+        #: The https page Renew opens; without one an expired license offers Use another license alone.
+        self.renew_url = valid_link(renew_url)
         self._clipboard = clipboard or _Clipboard()
         self._device_name = device_name
         self._now = now
@@ -235,7 +249,8 @@ class GateFlow:
         """The screen for the current route, as ``(view, data)`` for ``KitView.set_view``."""
         route = self.route
         if route == "status":
-            return self._show(ui_gate.status_screen_view(context_of(self._input(gate={"status": self.status}))), None)
+            view = ui_gate.status_screen_view(context_of(self._input(gate={"status": self.status})))
+            return self._show(view if self.renew_url else without_renew(view), None)
         if route == "activate":
             return self._render_activate()
         if route == "signin":
@@ -354,6 +369,7 @@ class GateFlow:
             "common.cancel": self.back,
             "common.back": self.back,
             "deviceLimit.openBrowser": self.open_manage,
+            "status.renew": self.open_renew,
         }.get(key)
         if key == "common.tryAgain" and self.route == "limit":
             self.submit_key()
@@ -465,6 +481,12 @@ class GateFlow:
         if url and self._open_url(url) is not False:
             self.manage_opened = True
         self.redraw()
+
+    def open_renew(self) -> None:
+        """Renew: open the host's renewal page, then re-read the license when the person is back."""
+        if self.renew_url:
+            self._open_url(self.renew_url)
+            self._on_status()
 
     # sign-in
     def sign_in(self) -> None:

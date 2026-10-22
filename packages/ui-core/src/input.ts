@@ -332,6 +332,12 @@ export interface UiInput {
     /** True when the app updates itself. */
     autoUpdate?: boolean;
   };
+  /**
+   * The host can renew an expired license. `url` is the https page Renew opens; left out, the
+   * host handles the press itself (`pk-action` / `onAction`). Without it, StatusScreen draws
+   * Use another license alone.
+   */
+  renew?: { url?: string };
   /** `tier` is the tier that unlocks it ("Pro"), which the paywall and the lock name. */
   entitlement?: { name: string; entitled: boolean; tier?: string };
   offers?: {

@@ -4,7 +4,7 @@
 // `@polaris-key/elements` src/views.ts: the same DOM, so the shared stylesheet draws both alike.
 
 import type { ReactNode } from "react";
-import type { View } from "@polaris-key/ui-core";
+import { withRenew, type View } from "@polaris-key/ui-core";
 import { LAYOUTS, placeKeys, platformLabel, type Layout } from "./contract.js";
 import { rowsOf } from "./lazy.js";
 export type { SettingsRow } from "./contract.js";
@@ -659,7 +659,7 @@ function inline(c: KitCtx, layout: Layout): ReactNode {
 
 /** Draw one view in its component's form; `hidden` draws nothing. */
 export function renderView(c0: KitCtx): ReactNode {
-  const c = { ...c0, view: withBase(c0) };
+  const c = { ...c0, view: withRenew(withBase(c0), c0.input) };
   if (c.view.state === "hidden") return null;
   // DL7: a loading state inside its delay shows nothing at all (its view carries no copy yet).
   if (isLoading(c.view) && c.view.copy.length === 0) return null;

@@ -8,6 +8,7 @@ import { styleMap } from "lit/directives/style-map.js";
 import { html } from "lit";
 import {
   focusOnMount,
+  renewTarget,
   ViewModel,
   type ComponentName,
   type UiInput,
@@ -484,6 +485,10 @@ export abstract class PkElement extends LitElement {
       const id = input.selected ?? input.offers?.items?.[0]?.id;
       if (id) detail.offerId = id;
       if (input.offers?.url) detail.url = input.offers.url;
+    }
+    if (key === "status.renew") {
+      const url = renewTarget(input);
+      if (url) detail.url = url;
     }
     if (view.component === "Settings" && key === "common.save")
       detail.values = Object.fromEntries(

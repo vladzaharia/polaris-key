@@ -16,6 +16,7 @@ import { markSvg, poweredBySvg } from "@polaris-key/brand/svg";
 import { POWERED_BY } from "@polaris-key/brand";
 import {
   countdown,
+  withRenew,
   type LicenseChoiceRow,
   type View,
 } from "@polaris-key/ui-core";
@@ -795,7 +796,7 @@ const CHOICE_STATES: ReadonlySet<string> = new Set([
 /** Drop every key whose own arguments the input leaves unfilled: a missing fact is never drawn
  *  as `{name}`. */
 function fillable(c: RenderCtx): View {
-  const view = withBase(c);
+  const view = withRenew(withBase(c), c.input);
   if (view.component === "ReleaseNotes") return view;
   // A content key is drawn by the component's own rows, which pass its arguments at the call.
   const content = new Set(LAYOUTS[view.component].content ?? []);

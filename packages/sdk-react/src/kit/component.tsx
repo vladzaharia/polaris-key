@@ -22,6 +22,7 @@ import {
 } from "react";
 import {
   focusOnMount,
+  renewTarget,
   ViewModel,
   viewOf,
   type ComponentName,
@@ -125,6 +126,11 @@ export interface KitProps {
   /** Set by the drop-in parts (and the gate): a line whose argument the input does not carry is
    *  left out rather than drawn as `{version}`. A fixture state draws every key it lists. */
   driven?: boolean;
+  /** StatusScreen, expired: the https page Renew opens (the host opens it; `onAction` reports
+   *  the press with `url`). Without `renewUrl`, `onRenew` or `input.renew`, Renew is not drawn. */
+  renewUrl?: string;
+  /** StatusScreen, expired: the host handles Renew; this runs on the press. */
+  onRenew?: () => void;
   /** A control was pressed. */
   onAction?: (action: KitAction) => void;
   /** The person typed in a field (`key`, `rename`). */
@@ -351,7 +357,18 @@ export function useKit(
   const [local, setLocal] = useState<Partial<UiInput>>({});
   const input: UiInput = {
     locale: resolved.locale,
-    ...inputWithIdentity({ ...local, ...(props.input ?? {}) }, resolved),
+    ...inputWithIdentity(
+      {
+        ...local,
+        ...(props.renewUrl !== undefined
+          ? { renew: { url: props.renewUrl } }
+          : props.onRenew
+            ? { renew: {} }
+            : {}),
+        ...(props.input ?? {}),
+      },
+      resolved,
+    ),
   };
 
   // The model: created once, its view read in render; the loading timer redraws through it.
@@ -491,6 +508,7 @@ export function useKit(
           ...l,
           keyField: { text: input.keyField?.text ?? "", submitted: true },
         }));
+      if (key === "status.renew") props.onRenew?.();
       props.onAction?.({
         key,
         action: actionOf(key),
@@ -502,6 +520,9 @@ export function useKit(
           : {}),
         ...(key === "paywall.portal" && input.offers?.url
           ? { url: input.offers.url }
+          : {}),
+        ...(key === "status.renew" && renewTarget(input)
+          ? { url: renewTarget(input) as string }
           : {}),
         ...extra,
       });
