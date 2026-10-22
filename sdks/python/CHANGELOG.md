@@ -6,6 +6,7 @@ only API (no deprecated aliases).
 
 ## Unreleased
 
+- **The async `wait_for_sign_in` keeps `code`.** `AsyncPolarisKey.identity.wait_for_sign_in` and `sign_in_with_browser` dropped the `code` of an `error` result, so an async caller could not tell `sign-in-denied` from `sign-in-failed`; the sync client already set it. A 503 on the device-code poll (the Worker retrying a transient failure after approval) is a `server-error` the wait loop rides out, as before.
 - **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
   Server drop-ins.
 

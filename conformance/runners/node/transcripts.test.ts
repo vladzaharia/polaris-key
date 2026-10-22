@@ -232,10 +232,21 @@ async function act(
       break;
     }
     case "pollSignIn": {
-      const poll = await client.identity.pollSignIn(session.prompt!);
-      out.result = poll.status;
-      if (poll.status === "slow-down") out.interval = poll.interval;
-      if (poll.status === "error" && poll.code) out.code = poll.code;
+      try {
+        const poll = await client.identity.pollSignIn(session.prompt!);
+        out.result = poll.status;
+        if (poll.status === "slow-down") out.interval = poll.interval;
+        if (poll.status === "error" && poll.code) out.code = poll.code;
+      } catch (e) {
+        // I-37d: no answer or a 5xx on the poll is transient; a wait loop keeps polling.
+        if (
+          !(e instanceof PolarisError) ||
+          (e.code !== "server-error" && e.code !== "network-error")
+        )
+          throw e;
+        out.result = "transient";
+        out.code = e.code;
+      }
       break;
     }
     case "waitForSignIn": {

@@ -141,12 +141,20 @@ def _act(
             "deviceName": p.deviceName,
         }
     elif action == "pollSignIn":
-        poll = client.identity.poll_sign_in(session["prompt"])
-        out["result"] = poll.status
-        if poll.status == "slow-down":
-            out["interval"] = poll.interval
-        if poll.status == "error" and poll.code:
-            out["code"] = poll.code
+        try:
+            poll = client.identity.poll_sign_in(session["prompt"])
+        except PolarisError as e:
+            # I-37d: no answer or a 5xx on the poll is transient; a wait loop keeps polling.
+            if e.code not in ("server-error", "network-error"):
+                raise
+            out["result"] = "transient"
+            out["code"] = e.code
+        else:
+            out["result"] = poll.status
+            if poll.status == "slow-down":
+                out["interval"] = poll.interval
+            if poll.status == "error" and poll.code:
+                out["code"] = poll.code
     elif action == "waitForSignIn":
         done = client.identity.wait_for_sign_in(session["prompt"])
         out["result"] = done.status
