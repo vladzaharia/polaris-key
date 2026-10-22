@@ -109,7 +109,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/devices/attest` | core | Raise the device's trust level with App Attest or Play Integrity (P6-02) |
 | POST | `/{product}/devices/register` | core | Keyless device registration (policy-gated) |
 | POST | `/{product}/devices/report` | core | Report device facts (software snapshot + declared probes) |
-| GET | `/{product}/devices` | core | List the devices sharing this device's seat pool |
+| GET | `/{product}/devices` | core | List the devices sharing this device's device pool |
 | GET | `https://polaris.locker/.well-known/polaris-host.json` | customer | Customer host health check (customer host only) |
 | HEAD | `https://polaris.locker/.well-known/polaris-host.json` | customer | Customer host health check, headers only (customer host only) |
 | GET | `https://polaris.locker/robots.txt` | customer | Crawler rules (customer host only) |
@@ -160,7 +160,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/identity/authorize` | identity | Send a person to the sign-in card for an app (OAuth-shaped authorize) |
 | POST | `/{product}/identity/choice/cancel` | identity | End the pending sign-in; nothing is bound |
 | POST | `/{product}/identity/choice/complete` | identity | Finish the sign-in with the person's choice |
-| POST | `/{product}/identity/choice/devices` | identity | The seat-holding devices of a full licence (Replace) |
+| POST | `/{product}/identity/choice/devices` | identity | The devices using a full licence (Replace) |
 | POST | `/{product}/identity/choice/licenses` | identity | A fresh licence choice for the pending sign-in |
 | POST | `/{product}/identity/session/license` | identity | Mint a browser session from a license key |
 | GET | `/{product}/identity/session` | identity | The browser session's fused document |
@@ -243,7 +243,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/api/signin/requests/{request}/cancel` | portal | Cancel the app's sign-in request |
 | GET | `/api/signin/requests/{request}/consent` | portal | What the app gets if the signed-in person continues (app consent) |
 | POST | `/api/signin/requests/{request}/continue` | portal | Continue to the app (issues the authorization code) |
-| GET | `/api/signin/requests/{request}/licenses/{licenseId}/devices` | portal | The seat-holding devices of a full licence (Replace a device) |
+| GET | `/api/signin/requests/{request}/licenses/{licenseId}/devices` | portal | The devices using a full licence (Replace a device) |
 | GET | `/api/signin/requests/{request}/licenses` | portal | The licence choice for the signed-in account (the card's step) |
 | GET | `/api/signin/requests/{request}` | portal | One app sign-in request, as the sign-in card renders it |
 | GET | `/device/approve` | portal | Device sign-in approval, on the customer host (HTML) |

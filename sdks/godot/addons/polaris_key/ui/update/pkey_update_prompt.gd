@@ -107,7 +107,8 @@ func _build() -> void:
 	_notes_head = label(words, "WhatsNew", "PKeySection")
 	_notes_body = label(words, "WhatsNewLines", "PKeyMuted", true)
 	_all_changes = button(words, "AllChanges", _on_all_changes, "PKeyLink")
-	_all_changes.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	# At the start edge in either reading direction (the layout mirrors a shrink-to-start child).
+	_all_changes.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_actions = actions_row(_card, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_actions.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_action = button(_actions, "Action", _on_action, "PKeyPrimary")
@@ -511,8 +512,13 @@ func _fetch_notes(version: String) -> void:
 
 
 func _on_all_changes() -> void:
-	if _notes_url != "":
-		OS.shell_open(_notes_url)
+	_open(_notes_url)
+
+
+## The one place this prompt opens a link: https only, never a file: or custom-scheme URL.
+func _open(url: Variant) -> void:
+	if PKeyOutletAdapter.is_https(url):
+		OS.shell_open(String(url))
 
 
 func _focus_chain() -> Array:
@@ -553,8 +559,8 @@ func _on_action() -> void:
 		_installing = false
 		action_applied.emit(applied)
 		return
-	if model.get("behaviour", "") == PKeyApplyResult.LINK and PKeyOutletAdapter.is_https(model.get("action_url", "")):
-		OS.shell_open(model["action_url"])
+	if model.get("behaviour", "") == PKeyApplyResult.LINK:
+		_open(model.get("action_url", ""))
 	action_taken.emit(result)
 
 

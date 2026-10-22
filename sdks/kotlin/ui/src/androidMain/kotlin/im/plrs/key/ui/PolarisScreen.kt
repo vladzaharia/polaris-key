@@ -25,6 +25,7 @@ package im.plrs.key.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -152,9 +153,10 @@ internal val LocalPolarisActionRow = staticCompositionLocalOf { false }
  * by" badge at the foot, and a layout chosen from the window (see PolarisLayout.kt).
  *
  * On a tall window [content] sits at the top and [actions] dock at the foot. In a short window
- * (under 480 dp, a phone in landscape), on Android TV and in a wide landscape window the two sit
- * side by side, [content] on the start side and [actions] on the end side, each scrolling on its
- * own. A screen without [actions] is always one column, centred.
+ * (under 480 dp, a phone in landscape) and on Android TV the two sit side by side, [content] on
+ * the start side and [actions] on the end side, each scrolling on its own. In a wide landscape
+ * window (a tablet) the start pane is the product art alone and the end pane holds [content] and
+ * [actions] (PolarisTwoPane). A screen without [actions] is always one column, centred.
  *
  * @param showLogo shows the theme's logo (the host's product icon) above [content].
  * @param maxContentWidth caps the single column; unspecified (the default) follows the window:
@@ -190,6 +192,14 @@ internal fun PolarisSurface(
     content: @Composable (window: PolarisWindow, maxHeight: Dp) -> Unit,
 ) {
     val tv = isTelevision()
+    if (LocalPolarisEmbedded.current) {
+        // A pane of a list-detail screen: the host surface already set the background and the insets.
+        BoxWithConstraints(modifier.fillMaxSize()) {
+            val window = PolarisWindow(maxWidth, maxHeight, tv)
+            CompositionLocalProvider(LocalPolarisWindow provides window) { content(window, maxHeight) }
+        }
+        return
+    }
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
             val window = PolarisWindow(maxWidth, maxHeight, tv)
@@ -233,8 +243,35 @@ internal fun PolarisScaffold(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val theme = PolarisTheme.current
+    val artName = LocalPolarisArtName.current
     PolarisSurface(modifier) { window, maxHeight ->
         val logo = theme.logo?.takeIf { showLogo }
+        if (LocalPolarisEmbedded.current) {
+            // The detail pane of a list-detail screen: one start-aligned column that scrolls on its own.
+            CompositionLocalProvider(LocalPolarisTextAlign provides TextAlign.Start) {
+                Column(
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = PolarisSpace.gutter, vertical = window.section),
+                    horizontalAlignment = Alignment.Start,
+                ) {
+                    navigationIcon?.let {
+                        it()
+                        Spacer(Modifier.height(PolarisSpace.tight))
+                    }
+                    content()
+                    detail?.invoke(this)
+                    actions?.let {
+                        Spacer(Modifier.height(window.section))
+                        it()
+                    }
+                }
+            }
+            return@PolarisSurface
+        }
+        val hasArt = theme.logo != null || (artName ?: productName(theme.copy)) != null
+        if (actions != null && window.twoPane && !window.tv && !window.compactHeight) {
+            PolarisTwoPane(window, hasArt, artName, navigationIcon, detail, actions, content)
+            return@PolarisSurface
+        }
         if (actions != null && window.twoPane) {
             CompositionLocalProvider(LocalPolarisTextAlign provides TextAlign.Start) {
                 Box(
@@ -332,6 +369,88 @@ internal fun PolarisScaffold(
                             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, content = actions)
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/** True inside a list-detail pane: screens draw as a plain column, without their own surface, insets or product header. */
+internal val LocalPolarisEmbedded = staticCompositionLocalOf { false }
+
+/** True inside the two-pane layout, where the start pane draws the product art and the content must not repeat it. */
+/** The product name a screen presents when it differs from the theme's (the integrator's name, else the product its lines name). */
+internal val LocalPolarisArtName = staticCompositionLocalOf<String?> { null }
+
+internal val LocalPolarisArtInPane = staticCompositionLocalOf { false }
+
+/** The art in a column (a hero icon, then a section gap); nothing in two panes, whose start pane is the art. */
+@Composable
+internal fun PolarisHeroIcon(name: String? = null) {
+    if (LocalPolarisArtInPane.current) return
+    val window = polarisWindow
+    PolarisProductIcon(if (window.compactHeight) 56.dp else 120.dp, name = name)
+    if (name != null || productName(PolarisTheme.current.copy) != null || PolarisTheme.current.logo != null) Spacer(Modifier.height(window.section))
+}
+
+/**
+ * The shared two-pane layout (UI-KITS.md DL1, decision B10.2) for tablets and landscape windows:
+ * the product art or icon alone on a sunken panel in the start pane; the title, lede, detail and
+ * actions in the end pane, top-aligned. Without any art the end pane sits alone, centred. Android TV
+ * and a short window (under 480 dp: a phone in landscape) keep the content-and-controls split, since
+ * the art, title, lede and controls do not fit one column there.
+ */
+@Composable
+private fun PolarisTwoPane(
+    window: PolarisWindow,
+    hasArt: Boolean,
+    artName: String?,
+    navigationIcon: (@Composable () -> Unit)?,
+    detail: (@Composable ColumnScope.() -> Unit)?,
+    actions: @Composable ColumnScope.() -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    CompositionLocalProvider(LocalPolarisTextAlign provides TextAlign.Start, LocalPolarisArtInPane provides hasArt) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = window.horizontalPadding, vertical = (window.verticalPadding - PolarisSpace.controls).coerceAtLeast(0.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Row(
+                modifier = Modifier.widthIn(max = PolarisTwoPaneMaxWidth).fillMaxWidth().fillMaxHeight(),
+                horizontalArrangement = Arrangement.spacedBy(PolarisSpace.gutter),
+                verticalAlignment = Alignment.Top,
+            ) {
+                if (hasArt) {
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .padding(vertical = PolarisSpace.controls)
+                            .clip(PolarisTheme.cardShape)
+                            .background(MaterialTheme.colorScheme.surfaceContainerLow),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        PolarisProductIcon(if (window.compactHeight) 96.dp else 120.dp, name = artName)
+                    }
+                }
+                Column(
+                    Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(vertical = PolarisSpace.controls),
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = if (hasArt) Arrangement.Top else Arrangement.Center,
+                ) {
+                    navigationIcon?.let {
+                        it()
+                        Spacer(Modifier.height(PolarisSpace.tight))
+                    }
+                    content()
+                    if (detail != null) {
+                        Spacer(Modifier.height(window.section))
+                        detail()
+                    }
+                    Spacer(Modifier.height(window.section))
+                    actions()
                 }
             }
         }
@@ -442,6 +561,7 @@ internal fun productName(copy: PolarisCopy): String? = copy.productName.takeIf {
  */
 @Composable
 internal fun PolarisProductHeader(presentedName: String? = null, gap: Dp = polarisWindow.section) {
+    if (LocalPolarisArtInPane.current) return
     val theme = PolarisTheme.current
     val name = presentedName?.takeIf { it.isNotBlank() } ?: productName(theme.copy)
     if (name == null && theme.logo == null) return

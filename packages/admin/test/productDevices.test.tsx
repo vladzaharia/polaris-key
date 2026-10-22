@@ -247,7 +247,9 @@ describe("Core → Devices", () => {
     );
     const confirm = await screen.findByRole("alertdialog");
     expect(within(confirm).getByText(/can register again/)).toBeTruthy();
-    expect(within(confirm).getByText(/no seat is freed/)).toBeTruthy();
+    expect(
+      within(confirm).getByText(/no device limit is affected/),
+    ).toBeTruthy();
     await user.click(
       within(confirm).getByRole("button", { name: "Deauthorize" }),
     );

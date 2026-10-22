@@ -766,9 +766,11 @@ export function kitComponent(component: ComponentName) {
       download &&
       version &&
       view.state === "available" &&
-      kit.copy.has("boot.consent.download")
+      kit.copy.has("common.updateDownload")
         ? {
-            "update.install": `${kit.copy.format("boot.consent.download", {})} ${version}`,
+            "update.install": kit.copy.format("common.updateDownload", {
+              version,
+            }),
           }
         : undefined;
     const ctx = withChoice(kit.ctxFor(view, labels ? { labels } : undefined));

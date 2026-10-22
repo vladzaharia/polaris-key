@@ -484,7 +484,7 @@ export async function reconcileDeviceHardware(
           target_kind: "device",
           target_id: sibling.device_id,
           parent_id: license.id,
-          summary: `Same hardware re-registered as ${deviceId}; retired the stale device id so one machine holds one seat`,
+          summary: `Same hardware re-registered as ${deviceId}; retired the stale device id so one device is counted once`,
         });
       }
     }

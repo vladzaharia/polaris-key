@@ -116,6 +116,6 @@ class UpdateSurfacesTest {
         show {
             PolarisUpdatePrompt(PolarisUpdateUi("2.5.0", progress = 38_000_000L to 61_000_000L, secondsLeft = 20), onUpdate = {}, onLater = {})
         }
-        rule.onNodeWithText("About 20 seconds left").assertIsDisplayed()
+        rule.onNodeWithText(copy.updateTimeLessThanMinute).assertIsDisplayed()
     }
 }

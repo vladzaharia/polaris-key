@@ -1,8 +1,34 @@
 {
   "$comment": "Baseline states a kit records that name no row of packages/brand/kit-copy/components.json, so no other kit can show a counterpart. Each is genuinely the kit's own; test/report.test.ts fails on any other unmatched state and on an entry that no longer matches.",
   "compose": {
-    "reason": "Compose's own component gallery, which no registry row names: accent (a product accent over a host scheme), focus (the D-pad and keyboard focus ring), powered-by (the optional attribution line and badge), presentation (the public KitSignIn with a product presentation, HA-13) and pack-progress (the content-pack download list, which the registry has no component for). Every state a registry row names is recorded under that row's name, so the report pairs it with the other kits.",
-    "states": ["accent", "focus", "pack-progress", "powered-by", "presentation"]
+    "reason": "Compose's own component gallery, which no registry row names: accent (a product accent over a host scheme), focus (the D-pad and keyboard focus ring), powered-by (the optional attribution line and badge), presentation (the public KitSignIn with a product presentation, HA-13) and pack-progress (the content-pack download list, which the registry has no component for). Every state a registry row names is recorded under that row's name, so the report pairs it with the other kits. Also its own: account-list-detail (the account screen's wide list and detail panes, which the registry draws as separate Settings and Devices screens) and channelPicker-license-locked and channelPicker-error (variants of the registry's default and locked ChannelPicker: a lock by the license rather than a store, and a pick the host refused).",
+    "states": [
+      "accent",
+      "account-list-detail",
+      "channelPicker-error",
+      "channelPicker-license-locked",
+      "focus",
+      "pack-progress",
+      "powered-by",
+      "presentation"
+    ]
+  },
+  "qt": {
+    "reason": "Qt's drop-in pages and dialogs as the host window shows them (run_gate, account_page, settings_page): the whole composed window with the Update dialog over a host window, the signed-in and update-again toasts, and the account page with its release-channel choice. The registry names the parts (UpdatePrompt, Settings, Devices, ChannelPicker, Toast), which Qt records under those names; these shots are the assembled drop-in, so no other kit draws a counterpart.",
+    "states": [
+      "dropin-account-channel-choice",
+      "dropin-account-signed-in",
+      "dropin-devices",
+      "dropin-settings",
+      "dropin-toast-signed-in",
+      "dropin-toast-update-again",
+      "dropin-update-available",
+      "dropin-update-downloading",
+      "dropin-update-failed",
+      "dropin-update-mandatory",
+      "dropin-update-over-host",
+      "dropin-update-plain"
+    ]
   },
   "terminal-node": {
     "reason": "The terminal's own output: exit-code refusals of a gated command and the --help screens, which have no window.",

@@ -32,7 +32,7 @@ COPY: Mapping[str, Mapping[str, tuple]] = {
         'sign_in_required': ('Connexion nécessaire', 'Connectez-vous à votre compte Polaris Locker dans l’app, puis réessayez.'),
     },
     'es': {
-        'license_required': ('Se necesita una licencia', 'Activa la app y vuelve a intentarlo.'),
+        'license_required': ('Licencia necesaria', 'Activa la app y vuelve a intentarlo.'),
         'license_invalid': ('Licencia no aceptada', 'No se pudo verificar tu licencia. Reconecta la app y vuelve a intentarlo.'),
         'license_stale': ('Hay que actualizar la licencia', 'Conéctate a internet para que la app pueda actualizar tu licencia y vuelve a intentarlo.'),
         'not_entitled': ('No incluido', 'Tu licencia no incluye esto.'),
@@ -48,14 +48,14 @@ COPY: Mapping[str, Mapping[str, tuple]] = {
     'ja': {
         'license_required': ('ライセンスが必要です', 'アプリをアクティベートしてから、もう一度お試しください。'),
         'license_invalid': ('ライセンスを受け付けられません', 'ライセンスを確認できませんでした。アプリを再接続してから、もう一度お試しください。'),
-        'license_stale': ('ライセンスの更新が必要です', 'アプリがライセンスを更新できるようにインターネットに接続してから、もう一度お試しください。'),
+        'license_stale': ('ライセンスの再確認が必要です', 'アプリがライセンスを最新の状態にできるよう、インターネットに接続してから、もう一度お試しください。'),
         'not_entitled': ('含まれていません', 'お持ちのライセンスにはこれが含まれていません。'),
         'sign_in_required': ('サインインが必要です', 'アプリでPolaris Lockerアカウントにサインインしてから、もう一度お試しください。'),
     },
     'ko': {
         'license_required': ('라이선스 필요', '앱을 활성화한 후 다시 시도하세요.'),
         'license_invalid': ('라이선스를 확인할 수 없음', '라이선스를 확인하지 못했어요. 앱을 다시 연결한 후 다시 시도하세요.'),
-        'license_stale': ('라이선스 새로 고침 필요', '앱이 라이선스를 새로 고칠 수 있도록 인터넷에 연결한 후 다시 시도하세요.'),
+        'license_stale': ('라이선스 새로고침 필요', '앱이 라이선스를 새로고침할 수 있도록 인터넷에 연결한 후 다시 시도하세요.'),
         'not_entitled': ('포함되지 않음', '라이선스에 포함되지 않은 항목이에요.'),
         'sign_in_required': ('로그인 필요', '앱에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요.'),
     },

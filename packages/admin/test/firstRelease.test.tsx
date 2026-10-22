@@ -152,7 +152,7 @@ describe("Releases → guided first release (UX-23)", () => {
     const list = within(panel).getByRole("list", {
       name: "Before the first release",
     });
-    await within(list).findByText("Polaris Key app installed");
+    await within(list).findByText("Polaris Key GitHub App installed");
     expect(
       within(list)
         .getAllByRole("listitem")
@@ -235,13 +235,15 @@ describe("Releases → guided first release (UX-23)", () => {
       },
     });
     mount();
-    const app = await row("Polaris Key app can't read the repository");
+    const app = await row("Polaris Key GitHub App can't read the repository");
     expect(app.getAttribute("data-step-state")).toBe("failed");
     // Never the raw HTTP error.
     expect(screen.queryByText(/404/)).toBeNull();
     fns.releaseHealth.mockResolvedValue({ health: HEALTH_OK });
     await user.click(within(app).getByRole("button", { name: "Check again" }));
-    expect(await screen.findByText("Polaris Key app installed")).toBeTruthy();
+    expect(
+      await screen.findByText("Polaris Key GitHub App installed"),
+    ).toBeTruthy();
   });
 
   it("offers a manual product a trusted publisher or a CI token, and shows the token once", async () => {
@@ -258,7 +260,7 @@ describe("Releases → guided first release (UX-23)", () => {
     });
     mount();
     const token = await row("Or a CI token");
-    expect(screen.queryByText(/Polaris Key app/)).toBeNull();
+    expect(screen.queryByText(/Polaris Key GitHub App/)).toBeNull();
     expect(await row("Trusted publisher")).toBeTruthy();
     await user.click(
       within(token).getByRole("button", { name: "Issue a CI token…" }),
@@ -365,7 +367,7 @@ describe("Releases → guided first release (UX-23)", () => {
 
   it("passes axe", async () => {
     const { container } = mount();
-    await screen.findByText("Polaris Key app installed");
+    await screen.findByText("Polaris Key GitHub App installed");
     await expectNoAxeViolations(container);
   });
 });

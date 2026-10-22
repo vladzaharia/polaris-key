@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "choice-replace-app",
-  "description": "Replace a device in the app (I-08b, WIRE-CONTRACT-V4 §12.5.1; plans/I-04.md §B, §F.3, §G). The only licence is full: its single seat is held by another device. The SDK reads the licence (state full, Replace offered), lists the seat-holding devices with the grant, and completes with replaceDeviceId. The old device is deauthorized and this one takes its seat in one batch; the answer is token's shape on the licence.",
+  "description": "Replace a device in the app (I-08b, WIRE-CONTRACT-V4 §12.5.1; plans/I-04.md §B, §F.3, §G). The only licence is full: its one-device limit is used by another device. The SDK reads the licence (state full, Replace offered), lists the devices using the licence with the grant, and completes with replaceDeviceId. The old device is deauthorized and this one takes its place in one batch; the answer is token's shape on the licence.",
   "features": ["identity.choice"],
   "requires": [],
   "product": "djdl",
@@ -226,7 +226,7 @@
     },
     {
       "action": "choiceDevices",
-      "note": "choice.devices(grant, licenseId): the seat-holding devices.",
+      "note": "choice.devices(grant, licenseId): the devices using the licence.",
       "args": {
         "grant": "sg__SLMTho8at7yS2I9UvdNBCe1KSV25l3tERcfrWkoCsA",
         "licenseId": "lic_djdl_team"

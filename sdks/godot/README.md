@@ -424,7 +424,7 @@ other kits read (`ui/model/`), each following that model's state for state:
   sets `host_handles`, listens to `rename_requested` / `remove_requested` and answers
   `edit_succeeded()` / `edit_failed()`.
 - **`PKeyLicenseChoice`** (LicenseChoice). Rows carry the tier, the origin and term ("Added with a key
-  · Lifetime"), a seat meter with its count and the "On this device" and "All devices in use" tags;
+  · Lifetime"), a device meter with its count and the "On this device" and "All devices in use" tags;
   **Use this license and continue** is the one primary (`chosen({kind, id})`). A full license is not a
   choice: its action is **Replace a device** (`replace_requested`). `show_choices(view)` takes the
   sign-in session's LicenseChoiceView; `PKeyGateView.show_license_choice(view)` shows it as the gate's
@@ -509,12 +509,12 @@ plugin, run it) on 4.4.1 and 4.7.2 before each zip reaches the feed.
 - **Web** needs the product's origin in the Worker's CORS allowlist. A web build has no
   fingerprint, no keyless enrolment and no `strict` tiers. `user://` is IndexedDB in memory,
   which the browser may clear: that mints a new device id. Keep large packs out of `user://`.
-  **Clearing site data can consume a seat**: the device token goes with it, and with no
+  **Clearing site data can use up a device**: the device token goes with it, and with no
   fingerprint the server cannot tell the browser is the same device, so entering the key again
   activates a new device against the license's device limit. The old one stays listed until it
   is freed in the customer portal (Devices) or in the console. The addon cannot reuse the old
   token on re-entry: `license/token` needs the old bearer and device id, and the clear took
-  both. Avoiding the extra seat needs a server-side rebind by key (not available yet).
+  both. Avoiding the extra device needs a server-side rebind by key (not available yet).
 - **Device-code sign-in sends no fingerprint**, so a `strict` tier refuses that path.
 - **Secrets are not secret in a game.** A `clientScoped` secret is readable by anyone with the
   build (and on web by any same-origin script); use edge-mint (`mint_token`) for third-party API
@@ -659,7 +659,7 @@ func _ready() -> void:
   show (or, without the signed decision, the v3 check found a newer version), otherwise `none`.
   Floors never stop play; a CI-signed revocation of a REQUIRED pack does: decide is then `required` and the boot stops at a confirmed BLOCKED
   `update-required` with the revoked-content copy ("Content withdrawn": "Some of this game's
-  content was withdrawn by its developer and can't be used. Update the app to keep playing."),
+  content was withdrawn by its developer and can't be used. Update the game to keep playing."),
   with the update button when the answer is an offer and none for `blocked`. A `packs` answer is
   `none`; fetch and mount drive packs (see "Packs"), FETCH at its exact releases. `fail` is only for a store failure or an options file that
   cannot configure. The sync stage has one wall-clock deadline (`sync_timeout_seconds`, 20 s, or
@@ -770,7 +770,7 @@ await PolarisKey.identity.sign_out()             # cancel, forget, license.deact
 ```
 
 - **Account calls.** `current()` reads the signed-in person off the verified license's profile.
-  `sign_out()` cancels any sign-in, forgets the identity and releases the seat through
+  `sign_out()` cancels any sign-in, forgets the identity and stops counting the device through
   `license.deactivate()` (best-effort server call, then the mandatory local wipe), so
   `state_changed` fires as for a deactivation. `sign_in_with_browser()` is the interim "Sign in
   with browser": device code with the verification page opened in the system browser. A native
@@ -811,8 +811,8 @@ await PolarisKey.identity.sign_out()             # cancel, forget, license.deact
   token came from `devices.register()` in this process; otherwise it asks `POST /license/token`.
   The token's source is held in memory only, so after a restart a licensed product's device asks
   `license/token`. One attempt per sync pass, whichever route.
-- **When every seat is taken.** A device-limit `PKeyActivationResult` carries `manage_url`, the
-  customer-portal link that frees a seat (the wire contract, v4), validated, and only while the
+- **When the device limit is reached.** A device-limit `PKeyActivationResult` carries `manage_url`, the
+  customer-portal link that makes room for another device (the wire contract, v4), validated, and only while the
   product's portal is on. It is never an auth failure. `PKeyManage.with_key(url, key)` adds
   `#key=` to an `/activate` link and `PKeyManage.with_return(url, return_url)` adds `return=`.
   `PKeyActivationPanel` shows **Replace a device** under the error: a button that calls

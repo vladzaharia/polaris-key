@@ -395,9 +395,20 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
       "src",
     );
     const calls = new Set<string>();
+    // `core/presentation.ts` moved to ui-core's browser adapter (KX-EL-DRIVE); React keeps a
+    // re-export shim, so the scan reads the module that holds the invoke calls.
+    const uiCoreBrowser = join(
+      root,
+      "..",
+      "..",
+      "ui-core",
+      "src",
+      "browser",
+      "sdk",
+    );
     for (const file of [
       join(root, "desktop", "desktopAdapter.ts"),
-      join(root, "core", "presentation.ts"),
+      join(uiCoreBrowser, "core", "presentation.ts"),
     ]) {
       const source = ts.createSourceFile(
         file,

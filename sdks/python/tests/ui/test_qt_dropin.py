@@ -191,7 +191,7 @@ def test_dialog_has_the_facts(gates):
 def test_size_only_when_known(gates):
     g = gates()
     g.offer_update(UpdateOffer("2.5.0", notes=NOTES))
-    assert texts(g._dialog.kit.bridge.screen_spec)[0] == "Version 2.4.1"
+    assert texts(g._dialog.kit.bridge.screen_spec)[0] == "You have 2.4.1"
     assert not any("download" in t for t in texts(g._dialog.kit.bridge.screen_spec))
 
 

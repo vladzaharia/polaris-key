@@ -142,7 +142,7 @@ export const lockerRefusalLinks: Scenario = {
       const r = new TranscriptRecorder({
         id: "locker-refusal-links",
         description:
-          "The refusals' portal links with the customer host on (plans/LK-00.md §3): the same conversations as license-device-limit and keyentry-limit, but manageUrl names https://polaris.locker. A licence whose only seat is taken is refused with device_limit and the portal's activate page; a key already entered by two other devices, at a limit of 2, is refused with key_entry_limit and the same page. Nothing signed changes: the refusals, their codes and the client's state are exactly the twins'. A client treats the link as any https URL and never builds one.",
+          "The refusals' portal links with the customer host on (plans/LK-00.md §3): the same conversations as license-device-limit and keyentry-limit, but manageUrl names https://polaris.locker. A licence at its device limit is refused with device_limit and the portal's activate page; a key already entered by two other devices, at a limit of 2, is refused with key_entry_limit and the same page. Nothing signed changes: the refusals, their codes and the client's state are exactly the twins'. A client treats the link as any https URL and never builds one.",
         features: ["license.manage", "identity.keyentry"],
         requires: ["core.store"],
         product: PRODUCT,
@@ -163,7 +163,7 @@ export const lockerRefusalLinks: Scenario = {
         {
           action: "activate",
           args: { key: a.key },
-          note: "The only seat is taken: device_limit, with the customer host's activate page.",
+          note: "The device limit is reached: device_limit, with the customer host's activate page.",
         },
         async (s) => {
           const res = await refused(s);

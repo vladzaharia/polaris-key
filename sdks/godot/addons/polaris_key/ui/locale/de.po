@@ -618,10 +618,10 @@ msgstr "{product} benötigt {size} an neuen Inhalten, und Sie nutzen eine getakt
 msgid "boot.consent.download"
 msgstr "Herunterladen"
 
-#. If this keeps happening, restart the app.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
+#. If this keeps happening, restart {product}.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "boot.error.body"
-msgstr "Wenn das weiterhin passiert, starten Sie die App neu."
+msgstr "Wenn das weiterhin passiert, starten Sie {product} neu."
 
 #. Welcome to {product}
 #. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -648,10 +648,10 @@ msgstr "Melden Sie sich an oder verwenden Sie einen Lizenzschlüssel, um fortzuf
 msgid "welcome.ledeKeyOnly"
 msgstr "Geben Sie einen Lizenzschlüssel ein, um fortzufahren."
 
-#. Sign in to use {product}.
-#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Sign in to continue.
+#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. The title already names the product.
 msgid "welcome.ledeSignInOnly"
-msgstr "Melden Sie sich an, um {product} zu verwenden."
+msgstr "Melden Sie sich an, um fortzufahren."
 
 #. Sign in
 #. Welcome screen, the gate's first screen. Primary button.
@@ -934,7 +934,7 @@ msgstr "{device} ersetzen?"
 #. {device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "deviceLimit.consequence"
-msgstr "{device} wird von {product} abgemeldet und {thisDevice} tritt an seine Stelle. Wir informieren Sie per E-Mail darüber."
+msgstr "{device} wird von {product} abgemeldet und durch {thisDevice} ersetzt. Wir informieren Sie per E-Mail darüber."
 
 #. Replace and continue
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button.
@@ -1027,7 +1027,7 @@ msgstr "Entfernen"
 #. Remove {device}? It signs out of {product}.
 #. Devices: the list of devices using the license. Inline confirm. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated).
 msgid "devices.removeConfirm"
-msgstr "{device} entfernen? Es wird von {product} abgemeldet."
+msgstr "{device} entfernen? Das Gerät wird von {product} abgemeldet."
 
 #. No devices are using this license yet.
 #. Devices: the list of devices using the license.
@@ -1078,6 +1078,11 @@ msgstr "Ein Update ist verfügbar"
 #. UpdatePrompt: an app update. Arguments: {version} = a version string such as 2.4.1; {size} = a byte size already formatted by the platform (“38 MB”).
 msgid "update.current"
 msgstr "Sie haben {version} · {size} Download"
+
+#. You have {version}
+#. UpdatePrompt: an app update. The installed version, when the update decision carries no download size (update.current names a size). Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateCurrentNoSize"
+msgstr "Sie haben {version}"
 
 #. What's new
 #. UpdatePrompt: an app update. Label over the release notes.
@@ -1144,6 +1149,11 @@ msgctxt "macos"
 msgid "update.install"
 msgstr "Jetzt aktualisieren"
 
+#. Download {version}
+#. UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateDownload"
+msgstr "{version} herunterladen"
+
 #. Downloading · {size} of {total}
 #. UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”).
 msgid "update.downloading"
@@ -1154,15 +1164,25 @@ msgstr "Wird heruntergeladen · {size} von {total}"
 msgid "update.timeLeft"
 msgstr "Noch etwa {time}"
 
+#. About {minutes} min
+#. UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more.
+msgid "common.updateTimeMinutes"
+msgstr "Etwa {minutes} Min."
+
+#. Less than a minute
+#. UpdatePrompt: an app update. Time left on the download when under a minute remains.
+msgid "common.updateTimeLessThanMinute"
+msgstr "Weniger als eine Minute"
+
 #. {product} {version} is ready
 #. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1.
 msgid "update.readyTitle"
 msgstr "{product} {version} ist bereit"
 
-#. Restart {product} to finish updating.
-#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Restart to finish updating.
+#. UpdatePrompt: an app update. The title already names the product.
 msgid "update.readyBody"
-msgstr "Starten Sie {product} neu, um das Update abzuschließen."
+msgstr "Starten Sie neu, um das Update abzuschließen."
 
 #. Update to keep using {product}
 #. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -1269,10 +1289,10 @@ msgstr "Ihr Paketmanager installiert es."
 msgid "update.platform.generic"
 msgstr "Es wird über den Store oder die Plattform installiert, von der Sie {product} haben."
 
-#. Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going.
+#. Some of {product}'s content was withdrawn and can't be used. Update to keep going.
 #. UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "update.revokedContent"
-msgstr "Einige Inhalte von {product} wurden zurückgezogen und können nicht verwendet werden. Aktualisieren Sie {product}, um fortzufahren."
+msgstr "Einige Inhalte von {product} wurden zurückgezogen und können nicht verwendet werden. Aktualisieren Sie, um fortzufahren."
 
 #. You're up to date
 #. UpdatePrompt: an app update.
@@ -1637,10 +1657,10 @@ msgstr "Kauf wird abgeschlossen…"
 msgid "paywall.purchased"
 msgstr "{tier} ist freigeschaltet"
 
-#. Purchases aren't available in this version of {product}.
-#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Purchases aren't available in this version.
+#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "paywall.notAvailable"
-msgstr "In dieser Version von {product} sind keine Käufe möglich."
+msgstr "In dieser Version sind keine Käufe möglich."
 
 #. Buy in your browser
 #. Paywall: what a tier adds, and how to get it.
@@ -1792,10 +1812,10 @@ msgstr "Bei Polaris Locker anmelden"
 msgid "signin.methods.titleApp"
 msgstr "Anmelden"
 
-#. Use your {product} purchase email or a work or school email.
-#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Use your purchase email or a work or school email.
+#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "signin.methods.ledeApp"
-msgstr "Verwenden Sie die E-Mail-Adresse Ihres Kaufs von {product} oder eine Arbeits- oder Schul-E-Mail-Adresse."
+msgstr "Verwenden Sie die E-Mail-Adresse, mit der Sie gekauft haben, oder eine Arbeits- oder Schul-E-Mail-Adresse."
 
 #. Email
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
@@ -1855,12 +1875,12 @@ msgstr "Weiter mit E-Mail"
 #. Have a license key?
 #. Links at the foot of the sign-in card (SIGN-IN.md §3.3).
 msgid "signin.link.key"
-msgstr "Sie haben einen Lizenzschlüssel?"
+msgstr "Lizenzschlüssel vorhanden?"
 
 #. macos: Have a License Key?
 msgctxt "macos"
 msgid "signin.link.key"
-msgstr "Sie haben einen Lizenzschlüssel?"
+msgstr "Lizenzschlüssel vorhanden?"
 
 #. Sign in with another device
 #. Links at the foot of the sign-in card (SIGN-IN.md §3.3).
@@ -1970,12 +1990,12 @@ msgstr "Neuen Code senden"
 #. Send a new code in {time}
 #. Email code step (SIGN-IN.md §3.4). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”).
 msgid "signin.code.resendIn"
-msgstr "Neuen Code senden in {time}"
+msgstr "Neuen Code in {time} senden"
 
 #. macos: Send a New Code in {time}
 msgctxt "macos"
 msgid "signin.code.resendIn"
-msgstr "Neuen Code senden in {time}"
+msgstr "Neuen Code in {time} senden"
 
 #. We sent a new code and link to {email}.
 #. Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address.
@@ -2013,7 +2033,7 @@ msgstr "Ihr Polaris Locker-Code: {code}"
 #. Or sign in with the button. The code and the link work once, for 10 minutes.
 #. Sign-in email body (SIGN-IN.md §3.15).
 msgid "signin.email.body"
-msgstr "Oder melden Sie sich über die Schaltfläche an. Code und Link sind einmal und 10 Minuten lang gültig."
+msgstr "Oder melden Sie sich über die Schaltfläche an. Code und Link gelten einmalig für 10 Minuten."
 
 #. Confirm sign-in, requested at {time} from {place}
 #. Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”); {place} = an approximate place (city, country).
@@ -2153,7 +2173,7 @@ msgstr "Lizenz für dieses Gerät auswählen"
 #. {product} will use it on {device}.
 #. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”.
 msgid "signin.choice.lede"
-msgstr "{product} verwendet sie auf {device}."
+msgstr "{product} verwendet sie für {device}."
 
 #. {product} will use it in this browser.
 #. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -2221,7 +2241,7 @@ msgstr "Mit einem Schlüssel hinzugefügt"
 #. {store} key ending {last6}
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is.
 msgid "signin.choice.origin.storeKey"
-msgstr "{store}-Schlüssel endet auf {last6}"
+msgstr "{store}-Schlüssel mit Endung {last6}"
 
 #. {store} key
 #. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store).
@@ -2321,12 +2341,12 @@ msgstr "Eine separate Lizenz · wird beim Fortfahren erstellt"
 #. Your licenses are on all their devices. Replace a device to use one here.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.allFull"
-msgstr "Ihre Lizenzen sind auf allen zulässigen Geräten belegt. Ersetzen Sie ein Gerät, um hier eine zu verwenden."
+msgstr "Alle Ihre Lizenzen haben ihr Gerätelimit erreicht. Ersetzen Sie ein Gerät, um hier eine davon zu verwenden."
 
 #. Your licenses are on all their devices. Replace a device, or create a new free license.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.allFullCreate"
-msgstr "Ihre Lizenzen sind auf allen zulässigen Geräten belegt. Ersetzen Sie ein Gerät oder erstellen Sie eine neue kostenlose Lizenz."
+msgstr "Alle Ihre Lizenzen haben ihr Gerätelimit erreicht. Ersetzen Sie ein Gerät oder erstellen Sie eine neue kostenlose Lizenz."
 
 #. {developer} manages devices for these licenses. Ask {developer} to free one, or use another license.
 #. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated).
@@ -2421,7 +2441,7 @@ msgstr "Gerät ersetzen"
 #. Choose a device to sign out. {thisDevice} takes its place.
 #. Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice).
 msgid "signin.replace.lede"
-msgstr "Wählen Sie ein Gerät zum Abmelden. {thisDevice} tritt an seine Stelle."
+msgstr "Wählen Sie ein Gerät zum Abmelden. Es wird durch {thisDevice} ersetzt."
 
 #. Replace a device
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title.
@@ -2441,7 +2461,7 @@ msgstr "{platform} · zuletzt verwendet {when}"
 #. Least recent
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
 msgid "signin.replace.leastRecent"
-msgstr "Am längsten nicht verwendet"
+msgstr "Am längsten inaktiv"
 
 #. Active now
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
@@ -2461,7 +2481,7 @@ msgstr "{device} ersetzen?"
 #. {device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "signin.replace.consequence"
-msgstr "{device} wird von {product} abgemeldet und {thisDevice} tritt an seine Stelle. Wir informieren Sie per E-Mail darüber."
+msgstr "{device} wird von {product} abgemeldet und durch {thisDevice} ersetzt. Wir informieren Sie per E-Mail darüber."
 
 #. {device} is in use right now.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
@@ -2529,7 +2549,7 @@ msgstr "Lizenz für dieses Gerät"
 #. {license} · {term} · {device} becomes device {position} of {limit}
 #. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number.
 msgid "signin.consent.licenseLine"
-msgstr "{license} · {term} · {device} wird Gerät {position} von {limit}"
+msgstr "{license} · {term} · für {device} (Gerät {position} von {limit})"
 
 #. {license} · replaces {device}
 #. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”.
@@ -2599,12 +2619,12 @@ msgstr "Hinzufügen und auf diesem Gerät verwenden"
 #. Keep {product} in an account
 #. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.key.keep"
-msgstr "{product} in einem Konto aufbewahren"
+msgstr "{product} in einem Konto behalten"
 
 #. macos: Keep {product} in an Account
 msgctxt "macos"
 msgid "signin.key.keep"
-msgstr "{product} in einem Konto aufbewahren"
+msgstr "{product} in einem Konto behalten"
 
 #. {left} of {limit} key entries left · This will be entry {n}
 #. License key step (SIGN-IN.md §3.9). Arguments: {left} = how many are left, as a number; {limit} = the license's device limit, as a number; {n} = a number.
@@ -2627,12 +2647,12 @@ msgstr "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fü
 #. Skip for now
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"
-msgstr "Vorerst überspringen"
+msgstr "Jetzt nicht"
 
 #. macos: Skip for Now
 msgctxt "macos"
 msgid "signin.key.skip"
-msgstr "Vorerst überspringen"
+msgstr "Jetzt nicht"
 
 #. Sign in to that account
 #. License key step (SIGN-IN.md §3.9).
@@ -2722,7 +2742,7 @@ msgstr "{app} ist auf {device} angemeldet"
 #. Look at {device}: it continues by itself.
 #. Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
 msgid "signin.device.doneLede"
-msgstr "Sehen Sie auf {device} nach: Es fährt automatisch fort."
+msgstr "Sehen Sie auf {device} nach: Dort geht es automatisch weiter."
 
 #. Sign the TV out
 #. Device code approval on a phone or computer (SIGN-IN.md §3.11).
@@ -2752,7 +2772,7 @@ msgstr "Oder öffnen Sie {url}"
 #. Code expires in {time}
 #. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”).
 msgid "signin.handoff.expires"
-msgstr "Code läuft ab in {time}"
+msgstr "Code läuft in {time} ab"
 
 #. Open browser again
 #. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
@@ -2922,7 +2942,7 @@ msgstr "Bibliothek öffnen"
 #. A device is free on this license now.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.freed"
-msgstr "Auf dieser Lizenz ist jetzt ein Gerät frei."
+msgstr "Diese Lizenz hat jetzt Platz für ein weiteres Gerät."
 
 #. Opens Polaris Locker in your browser
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
@@ -2992,12 +3012,12 @@ msgstr "Warten auf Ihre Bestätigung auf dem anderen Gerät…"
 #. Approve a new device?
 #. Sign in with another device (SIGN-IN.md §3.11).
 msgid "signin.approve.ask"
-msgstr "Neues Gerät bestätigen?"
+msgstr "Neues Gerät genehmigen?"
 
 #. Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Locker or a developer will ever ask you for this.
 #. Sign in with another device (SIGN-IN.md §3.11).
 msgid "signin.approve.warning"
-msgstr "Bestätigen Sie nur, wenn Sie dies selbst auf einem Gerät vor Ihnen gestartet haben. Niemand von Polaris Locker oder einem Entwickler wird Sie jemals danach fragen."
+msgstr "Genehmigen Sie nur, wenn Sie dies selbst auf einem Gerät vor Ihnen gestartet haben. Niemand von Polaris Locker oder einem Entwickler wird Sie jemals danach fragen."
 
 #. Check that your device shows this code.
 #. Device approval page (SIGN-IN.md §3.13): always shown above the buttons. Polaris Locker never translated.
@@ -3007,12 +3027,12 @@ msgstr "Prüfen Sie, ob Ihr Gerät diesen Code anzeigt."
 #. Approve and sign it in
 #. Sign in with another device (SIGN-IN.md §3.11).
 msgid "signin.approve.approve"
-msgstr "Bestätigen und anmelden"
+msgstr "Genehmigen und anmelden"
 
 #. macos: Approve and Sign It In
 msgctxt "macos"
 msgid "signin.approve.approve"
-msgstr "Bestätigen und anmelden"
+msgstr "Genehmigen und anmelden"
 
 #. Deny
 #. Sign in with another device (SIGN-IN.md §3.11).
@@ -3072,7 +3092,7 @@ msgstr "Dieser Code oder Link ist abgelaufen"
 #. Codes and links work once, for 10 minutes.
 #. Expired code or link page (SIGN-IN.md §4.12).
 msgid "signin.expired.body"
-msgstr "Codes und Links sind einmal und 10 Minuten lang gültig."
+msgstr "Codes und Links gelten einmalig für 10 Minuten."
 
 #. A new code goes to {email}.
 #. Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail.
@@ -3104,10 +3124,10 @@ msgstr "Melden Sie sich hier an, um {product} in Ihrer Bibliothek zu sehen."
 msgid "signin.signout.title"
 msgstr "Auf diesem Gerät von {product} abmelden?"
 
-#. {product} stops using your {tier} license here and frees its seat.
+#. {product} stops using your {tier} license on this device and frees room for another device.
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
 msgid "signin.signout.released"
-msgstr "{product} verwendet Ihre {tier}-Lizenz hier nicht mehr und gibt den Platz frei."
+msgstr "{product} verwendet Ihre {tier}-Lizenz auf diesem Gerät nicht mehr und schafft Platz für ein weiteres Gerät."
 
 #. {n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number.
@@ -3135,7 +3155,7 @@ msgstr "Sie wurden abgemeldet"
 #. Sign in again to carry on where you were.
 #. Session ended (SIGN-IN.md §4.10).
 msgid "signin.session.toastBody"
-msgstr "Melden Sie sich erneut an, um dort weiterzumachen, wo Sie waren."
+msgstr "Melden Sie sich erneut an, um dort weiterzumachen, wo Sie aufgehört haben."
 
 #. Your sign-in ended. Sign in again to keep using {product}.
 #. Session ended (SIGN-IN.md §4.10). Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -3167,10 +3187,10 @@ msgstr "Bild ändern"
 msgid "signin.mail.replaced.subject"
 msgstr "{product} auf {device} abgemeldet"
 
-#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.
+#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform.
 msgid "signin.mail.replaced.body"
-msgstr "{device} wurde durch {newDevice} ersetzt, als Sie sich am {date} bei {product} angemeldet haben. Es kann sich später wieder anmelden, wenn ein Platz frei ist. Falls Sie das nicht waren, öffnen Sie Polaris Locker und prüfen Sie Ihre Geräte."
+msgstr "{device} wurde durch {newDevice} ersetzt, als Sie sich am {date} bei {product} angemeldet haben. Das Gerät kann sich später wieder anmelden, wenn Platz für ein weiteres Gerät frei ist. Falls Sie das nicht waren, öffnen Sie Polaris Locker und prüfen Sie Ihre Geräte."
 
 #. A new device signed in to your Polaris Locker account
 #. Security email (SIGN-IN.md §3.15).
@@ -3180,7 +3200,7 @@ msgstr "Ein neues Gerät hat sich bei Ihrem Polaris Locker-Konto angemeldet"
 #. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
-msgstr "{device} hat sich am {date} von {place} aus angemeldet. Falls Sie das nicht waren, melden Sie es in Polaris Locker unter „Wo Sie angemeldet sind“ ab."
+msgstr "{device} hat sich am {date} von {place} aus angemeldet. Falls Sie das nicht waren, melden Sie das Gerät in Polaris Locker unter „Wo Sie angemeldet sind“ ab."
 
 #. Open Polaris Locker
 #. Security email (SIGN-IN.md §3.15).
@@ -3277,10 +3297,10 @@ msgstr "Lizenzschlüssel hinzufügen (Eingabe oder über stdin)"
 msgid "cli.verb.enroll"
 msgstr "Kostenlose Lizenz erhalten, falls {product} eine anbietet"
 
-#. Stop using your license on this device and free its seat
+#. Stop using your license on this device and make room for another
 #. Terminal help: what the deactivate command does.
 msgid "cli.verb.deactivate"
-msgstr "Lizenz auf diesem Gerät nicht mehr nutzen, Platz freigeben"
+msgstr "Lizenz auf diesem Gerät nicht mehr nutzen und Platz für ein weiteres Gerät schaffen"
 
 #. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
@@ -3322,10 +3342,10 @@ msgstr "Geräte auflisten, die Ihre Lizenz verwenden"
 msgid "cli.verb.devicesRename"
 msgstr "Gerät umbenennen (ohne Namen wird der Name entfernt)"
 
-#. Remove a device and free its seat
+#. Remove a device and make room for another
 #. Terminal help: what 'devices deauthorize' does.
 msgid "cli.verb.devicesRemove"
-msgstr "Gerät entfernen und seinen Platz freigeben"
+msgstr "Gerät entfernen und Platz für ein weiteres schaffen"
 
 #. Show one setting and where its value comes from
 #. Terminal help: what 'config get' does.
@@ -3537,8 +3557,8 @@ msgstr "Die Lizenz Ihres Kontos verwenden"
 msgid "cli.logout.done"
 msgstr "Auf diesem Gerät von {product} abgemeldet."
 
-#. {product} no longer uses your license on this device. Its seat is free.
-#. Terminal: deactivate finished; the license's seat on this device is released.
+#. {product} no longer uses your license on this device. It no longer counts toward your limit.
+#. Terminal: deactivate finished; the device no longer counts toward the license limit.
 msgid "cli.deactivate.done"
 msgstr "{product} verwendet Ihre Lizenz auf diesem Gerät nicht mehr. Der Platz ist frei."
 
@@ -3562,7 +3582,7 @@ msgstr "Umbenannt in {device}."
 msgid "cli.devices.nameCleared"
 msgstr "{device} hat jetzt keinen Namen."
 
-#. {device} was removed. Its seat is free.
+#. {device} was removed. It no longer counts toward your limit.
 #. Terminal: a device was removed from the license.
 msgid "cli.devices.removed"
 msgstr "{device} wurde entfernt. Der Platz ist frei."
@@ -3895,7 +3915,7 @@ msgstr "Auf stdin ist kein Lizenzschlüssel angekommen."
 #. On a phone or computer where you're signed in, scan the code, or open Account → Approve a new device and type it.
 #. Sign in with another device: under the title (SIGN-IN.md §3.11). Account → Approve a new device is the portal's own menu path.
 msgid "signin.approve.lede"
-msgstr "Scannen Sie auf einem Handy oder Computer, auf dem Sie angemeldet sind, den Code oder öffnen Sie Konto → Neues Gerät genehmigen und geben Sie ihn ein."
+msgstr "Scannen Sie auf einem Telefon oder Computer, auf dem Sie angemeldet sind, den Code oder öffnen Sie Konto → Neues Gerät genehmigen und geben Sie ihn ein."
 
 #. Use another way to sign in
 #. Polaris Locker sign-in card (SIGN-IN.md §3.4, §3.5, §3.11).
@@ -4080,7 +4100,7 @@ msgstr "Ich stimme den {term} zu"
 #. I agree to {term}
 #. Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated.
 msgid "signin.gate.platformTerms"
-msgstr "Ich stimme den {term} zu"
+msgstr "Ich akzeptiere die {term}"
 
 #. That sign-in has expired. Sign in again.
 #. Finish step: the 15-minute sign-in ran out.
@@ -4375,7 +4395,7 @@ msgstr "auf {device}"
 #. this browser
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.thisBrowser"
-msgstr "diesem Browser"
+msgstr "diesen Browser"
 
 #. Don't allow
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
@@ -4390,7 +4410,7 @@ msgstr "Nicht erlauben"
 #. Cloud Sync
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.consent.cloudSync"
-msgstr "Cloud Sync"
+msgstr "Cloud-Synchronisierung"
 
 #. New: {tier} license, created when you continue
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
@@ -4405,7 +4425,7 @@ msgstr "{product} in einem Konto behalten"
 #. In an account you can get it back and move it to a new device yourself.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.key.upgradeLede"
-msgstr "In einem Konto können Sie ihn zurückholen und selbst auf ein neues Gerät übertragen."
+msgstr "In einem Konto können Sie es zurückholen und selbst auf ein neues Gerät übertragen."
 
 #. Create account
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
@@ -4435,7 +4455,7 @@ msgstr "Konto erstellen, um {product} zu behalten"
 #. {product} keeps working on the devices it's already on. Only typing the key again needs an account.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.key.noEntriesKeeps"
-msgstr "{product} läuft weiter auf den Geräten, auf denen es schon ist. Nur die erneute Eingabe des Schlüssels braucht ein Konto."
+msgstr "{product} läuft auf den Geräten weiter, auf denen es bereits installiert ist. Ein Konto ist nur nötig, um den Schlüssel erneut einzugeben."
 
 #. {used} of {limit} key entries used
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {used} and {limit} = numbers.
@@ -4679,12 +4699,12 @@ msgstr "Zusammengeführt. Sie können das 72 Stunden lang rückgängig machen."
 #. Undo join
 #. Link dialog: undo a join.
 msgid "signin.join.undo"
-msgstr "Zusammenführung rückgängig"
+msgstr "Rückgängig machen"
 
 #. macos: Undo Join
 msgctxt "macos"
 msgid "signin.join.undo"
-msgstr "Zusammenführung rückgängig"
+msgstr "Rückgängig machen"
 
 #. Join undone.
 #. Link dialog: join undone.
@@ -5029,7 +5049,7 @@ msgstr "Gerätelimit erreicht"
 #. This license is already on all its devices. Replace a device to use it here.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_limit.message"
-msgstr "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden."
+msgstr "Diese Lizenz hat ihr Gerätelimit bereits erreicht. Ersetzen Sie ein Gerät, um sie hier zu verwenden."
 
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5269,7 +5289,7 @@ msgstr "Anmeldeanfrage ungültig"
 #. The app asked for a sign-in type we don't support. Contact its developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unsupported_grant_type.message"
-msgstr "Die App hat eine Anmeldeart angefragt, die wir nicht unterstützen. Wende dich an den Entwickler."
+msgstr "Die App hat eine Anmeldeart angefragt, die wir nicht unterstützen. Wenden Sie sich an den Entwickler."
 
 #. Access not available
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5279,7 +5299,7 @@ msgstr "Zugriff nicht verfügbar"
 #. The app asked for access this sign-in doesn't offer. Contact its developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_scope.message"
-msgstr "Die App hat Zugriff angefragt, den diese Anmeldung nicht bietet. Wende dich an den Entwickler."
+msgstr "Die App hat Zugriff angefragt, den diese Anmeldung nicht bietet. Wenden Sie sich an den Entwickler."
 
 #. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5299,7 +5319,7 @@ msgstr "Lizenz wählen"
 #. Choose which license this device uses, then continue.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_choice_required.message"
-msgstr "Wähle, welche Lizenz dieses Gerät verwendet, und fahre dann fort."
+msgstr "Wählen Sie, welche Lizenz dieses Gerät verwendet, und fahren Sie dann fort."
 
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5349,7 +5369,7 @@ msgstr "Falscher Code"
 #. That code isn't right. Check the email and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
-msgstr "Dieser Code hat nicht funktioniert. Prüfen Sie die E-Mail und geben Sie ihn erneut ein."
+msgstr "Dieser Code ist nicht korrekt. Prüfen Sie die E-Mail und geben Sie ihn erneut ein."
 
 #. Code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5369,7 +5389,7 @@ msgstr "E-Mail-Adresse bereits verwendet"
 #. Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_in_use.message"
-msgstr "Ein anderes Polaris Locker-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse."
+msgstr "Ein anderes Polaris Locker-Konto verwendet diese E-Mail-Adresse bereits. Fügen Sie diese Anmeldung dem anderen Konto hinzu oder verwenden Sie eine andere E-Mail-Adresse."
 
 #. Terms not accepted
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5444,7 +5464,7 @@ msgstr "Dies ist die einzige Anmeldemethode Ihres Kontos. Fügen Sie eine weiter
 #. Confirm it's you
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.step_up_required.title"
-msgstr "Bestätigen Sie, dass Sie es sind"
+msgstr "Identität bestätigen"
 
 #. For your security, sign in again to continue.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6676,10 +6696,10 @@ msgstr "Geben Sie einen Lizenzschlüssel ein oder melden Sie sich an, um fortzuf
 msgid "core.gate.version-too-old.title"
 msgstr "Update erforderlich"
 
-#. This version is no longer supported. Update the app to continue.
+#. This version is no longer supported. Update {product} to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-old.message"
-msgstr "Diese Version wird nicht mehr unterstützt. Aktualisieren Sie die App, um fortzufahren."
+msgstr "Diese Version wird nicht mehr unterstützt. Aktualisieren Sie {product}, um fortzufahren."
 
 #. Not available on this license
 #. Core copy (conformance/parity/copy.en.json, gate).
@@ -6729,7 +6749,7 @@ msgstr "Gerätelimit erreicht"
 #. This license is already on all its devices. Replace a device to use it here.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.device-limit.message"
-msgstr "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden."
+msgstr "Diese Lizenz hat ihr Gerätelimit bereits erreicht. Ersetzen Sie ein Gerät, um sie hier zu verwenden."
 
 #. Device check failed
 #. Core copy (conformance/parity/copy.en.json, activation).

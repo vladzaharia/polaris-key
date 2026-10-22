@@ -616,10 +616,10 @@ msgstr "{product}需要{size}的新内容，而你正在使用按流量计费的
 msgid "boot.consent.download"
 msgstr "下载"
 
-#. If this keeps happening, restart the app.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
+#. If this keeps happening, restart {product}.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "boot.error.body"
-msgstr "如果问题仍然存在，请重启应用。"
+msgstr "如果问题仍然存在，请重启{product}。"
 
 #. Welcome to {product}
 #. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -646,10 +646,10 @@ msgstr "登录或使用许可证密钥以继续。"
 msgid "welcome.ledeKeyOnly"
 msgstr "输入许可证密钥以继续。"
 
-#. Sign in to use {product}.
-#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Sign in to continue.
+#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. The title already names the product.
 msgid "welcome.ledeSignInOnly"
-msgstr "登录以使用{product}。"
+msgstr "登录以继续。"
 
 #. Sign in
 #. Welcome screen, the gate's first screen. Primary button.
@@ -1075,6 +1075,11 @@ msgstr "有可用的更新"
 msgid "update.current"
 msgstr "当前版本：{version} · 下载大小：{size}"
 
+#. You have {version}
+#. UpdatePrompt: an app update. The installed version, when the update decision carries no download size (update.current names a size). Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateCurrentNoSize"
+msgstr "当前版本：{version}"
+
 #. What's new
 #. UpdatePrompt: an app update. Label over the release notes.
 msgid "update.whatsNew"
@@ -1140,6 +1145,11 @@ msgctxt "macos"
 msgid "update.install"
 msgstr "立即更新"
 
+#. Download {version}
+#. UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateDownload"
+msgstr "下载 {version}"
+
 #. Downloading · {size} of {total}
 #. UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”).
 msgid "update.downloading"
@@ -1150,15 +1160,25 @@ msgstr "正在下载 · {size}/{total}"
 msgid "update.timeLeft"
 msgstr "大约还剩{time}"
 
+#. About {minutes} min
+#. UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more.
+msgid "common.updateTimeMinutes"
+msgstr "大约 {minutes} 分钟"
+
+#. Less than a minute
+#. UpdatePrompt: an app update. Time left on the download when under a minute remains.
+msgid "common.updateTimeLessThanMinute"
+msgstr "不到 1 分钟"
+
 #. {product} {version} is ready
 #. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1.
 msgid "update.readyTitle"
 msgstr "{product} {version}已就绪"
 
-#. Restart {product} to finish updating.
-#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Restart to finish updating.
+#. UpdatePrompt: an app update. The title already names the product.
 msgid "update.readyBody"
-msgstr "重启{product}以完成更新。"
+msgstr "重启以完成更新。"
 
 #. Update to keep using {product}
 #. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -1265,10 +1285,10 @@ msgstr "由你的软件包管理器安装。"
 msgid "update.platform.generic"
 msgstr "通过你获取{product}的商店或平台安装。"
 
-#. Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going.
+#. Some of {product}'s content was withdrawn and can't be used. Update to keep going.
 #. UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "update.revokedContent"
-msgstr "{product}的部分内容已被撤回，无法使用。请更新{product}以继续。"
+msgstr "{product}的部分内容已被撤回，无法使用。请更新以继续。"
 
 #. You're up to date
 #. UpdatePrompt: an app update.
@@ -1632,10 +1652,10 @@ msgstr "正在完成购买…"
 msgid "paywall.purchased"
 msgstr "{tier}已解锁"
 
-#. Purchases aren't available in this version of {product}.
-#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Purchases aren't available in this version.
+#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "paywall.notAvailable"
-msgstr "此版本的{product}不支持购买。"
+msgstr "此版本不支持购买。"
 
 #. Buy in your browser
 #. Paywall: what a tier adds, and how to get it.
@@ -1787,10 +1807,10 @@ msgstr "登录Polaris Locker"
 msgid "signin.methods.titleApp"
 msgstr "登录"
 
-#. Use your {product} purchase email or a work or school email.
-#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Use your purchase email or a work or school email.
+#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "signin.methods.ledeApp"
-msgstr "请使用购买 {product} 时的邮箱，或工作或学校邮箱。"
+msgstr "请使用购买时的邮箱，或工作或学校邮箱。"
 
 #. Email
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
@@ -2653,7 +2673,7 @@ msgstr "{product}已归你所有"
 #. {tier} · in your library
 #. Return step (SIGN-IN.md §3.10): the product row under "<Product> is yours". Arguments: {tier} = the tier's name (never translated).
 msgid "signin.return.product"
-msgstr "{tier} · 已在你的库中"
+msgstr "{tier} · 已在你的资料库中"
 
 #. You're signed in to {app}
 #. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
@@ -2913,7 +2933,7 @@ msgstr "打开你的资料库"
 #. A device is free on this license now.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.freed"
-msgstr "此许可证现在有一台空余设备。"
+msgstr "此许可证现在可以再添加一台设备。"
 
 #. Opens Polaris Locker in your browser
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
@@ -3095,10 +3115,10 @@ msgstr "在此登录即可在你的资料库中看到{product}。"
 msgid "signin.signout.title"
 msgstr "要在此设备上退出登录{product}吗？"
 
-#. {product} stops using your {tier} license here and frees its seat.
+#. {product} stops using your {tier} license on this device and frees room for another device.
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
 msgid "signin.signout.released"
-msgstr "{product}将停止在此使用你的{tier}许可证，并释放其席位。"
+msgstr "{product}将停止在此设备上使用你的{tier}许可证，以便其他设备使用。"
 
 #. {n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number.
@@ -3157,10 +3177,10 @@ msgstr "更换头像"
 msgid "signin.mail.replaced.subject"
 msgstr "{product}已在{device}上退出登录"
 
-#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.
+#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform.
 msgid "signin.mail.replaced.body"
-msgstr "你于{date}登录{product}时，{device}被{newDevice}替换。如有空余席位，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。"
+msgstr "你于{date}登录{product}时，{device}已被{newDevice}替换。如果许可证还能再添加设备，{device}之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。"
 
 #. A new device signed in to your Polaris Locker account
 #. Security email (SIGN-IN.md §3.15).
@@ -3255,7 +3275,7 @@ msgstr "{command}需要许可证"
 #. Your license doesn't include {command}
 #. Terminal: the title when a host command is refused because the person's license does not hold the entitlement it needs. They have a license, so it is never 'needs a license'. {command} is the command they ran, such as 'export'.
 msgid "cli.gate.notIncluded"
-msgstr "您的许可证不包含{command}"
+msgstr "你的许可证不包含{command}"
 
 #. Add a license key (prompted, or piped on stdin)
 #. Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line.
@@ -3267,10 +3287,10 @@ msgstr "添加许可证密钥（提示输入，或通过 stdin）"
 msgid "cli.verb.enroll"
 msgstr "获取免费许可证（如果{product}提供）"
 
-#. Stop using your license on this device and free its seat
+#. Stop using your license on this device and make room for another
 #. Terminal help: what the deactivate command does.
 msgid "cli.verb.deactivate"
-msgstr "停止在此设备上使用你的许可证并释放席位"
+msgstr "停止在此设备上使用你的许可证，以便其他设备使用"
 
 #. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
@@ -3312,10 +3332,10 @@ msgstr "列出使用你的许可证的设备"
 msgid "cli.verb.devicesRename"
 msgstr "重命名设备（不提供名称则清除名称）"
 
-#. Remove a device and free its seat
+#. Remove a device and make room for another
 #. Terminal help: what 'devices deauthorize' does.
 msgid "cli.verb.devicesRemove"
-msgstr "移除设备并释放其席位"
+msgstr "移除设备，以便添加其他设备"
 
 #. Show one setting and where its value comes from
 #. Terminal help: what 'config get' does.
@@ -3527,10 +3547,10 @@ msgstr "使用你账户中的许可证"
 msgid "cli.logout.done"
 msgstr "已在此设备上退出登录{product}。"
 
-#. {product} no longer uses your license on this device. Its seat is free.
-#. Terminal: deactivate finished; the license's seat on this device is released.
+#. {product} no longer uses your license on this device. It no longer counts toward your limit.
+#. Terminal: deactivate finished; the device no longer counts toward the license limit.
 msgid "cli.deactivate.done"
-msgstr "{product}不再在此设备上使用你的许可证。其席位已释放。"
+msgstr "{product}不再在此设备上使用你的许可证。不再计入设备上限。"
 
 #. Nothing changed.
 #. Terminal: the person answered no to a confirmation.
@@ -3552,10 +3572,10 @@ msgstr "已重命名为{device}。"
 msgid "cli.devices.nameCleared"
 msgstr "{device}现在没有名称。"
 
-#. {device} was removed. Its seat is free.
+#. {device} was removed. It no longer counts toward your limit.
 #. Terminal: a device was removed from the license.
 msgid "cli.devices.removed"
-msgstr "{device}已移除。其席位已释放。"
+msgstr "{device}已移除。不再计入设备上限。"
 
 #. Update canceled.
 #. Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it.
@@ -3945,7 +3965,7 @@ msgstr "查找"
 #. Code {code} asks to sign in to your account.
 #. Approve dialog. Arguments: {code} = the 8-letter code, shown as is.
 msgid "signin.approve.askBody"
-msgstr "代码 {code} 请求登录您的账户。"
+msgstr "代码 {code} 请求登录你的账户。"
 
 #. Where
 #. Approve dialog: the request's coarse place, as a row label.
@@ -3970,7 +3990,7 @@ msgstr "未知位置"
 #. It's asking from a different place than you're in now, or from a place we can't tell.
 #. Approve dialog: why the person must confirm it's them first.
 msgid "signin.approve.stepUpWhy"
-msgstr "请求来自与您当前不同的位置，或无法确定的位置。"
+msgstr "请求来自与你当前不同的位置，或无法确定的位置。"
 
 #. approve it
 #. Approve dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
@@ -3995,17 +4015,17 @@ msgstr "未能完成。请重试。"
 #. Your passkey wasn't used. Try again, or use another way.
 #. Passkey prompt closed or timed out.
 msgid "signin.passkey.cancelled"
-msgstr "未使用您的通行密钥。请重试或使用其他方式。"
+msgstr "未使用你的通行密钥。请重试或使用其他方式。"
 
 #. This browser can't use your passkey here. Use another way.
 #. Passkey not usable in this browser.
 msgid "signin.passkey.unsupported"
-msgstr "此浏览器无法在此使用您的通行密钥。请使用其他方式。"
+msgstr "此浏览器无法在此使用你的通行密钥。请使用其他方式。"
 
 #. Your passkey didn't work. Try again, or use another way.
 #. Passkey refused.
 msgid "signin.passkey.failed"
-msgstr "您的通行密钥无效。请重试或使用其他方式。"
+msgstr "你的通行密钥无效。请重试或使用其他方式。"
 
 #. Signed in with {provider}
 #. Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name.
@@ -4030,7 +4050,7 @@ msgstr "使用 {email}"
 #. Your private Apple address
 #. Finish step: marks an Apple private-relay address.
 msgid "signin.gate.relay"
-msgstr "您的 Apple 私密地址"
+msgstr "你的 Apple 私密地址"
 
 #. Use my initials
 #. Finish step: swaps the provider's picture for initials.
@@ -4060,7 +4080,7 @@ msgstr "添加来自 {org} 的出生日期"
 #. Only you can see it. Apps never get it.
 #. Finish step: under the birth date choice.
 msgid "signin.gate.birthdateHelp"
-msgstr "只有您能看到。应用永远不会获得。"
+msgstr "只有你能看到。应用永远不会获得。"
 
 #. I agree to the {term}
 #. Finish step: the product's terms checkbox. Arguments: {product} = the product's name.
@@ -4080,7 +4100,7 @@ msgstr "此次登录已过期。请重新登录。"
 #. Join your accounts
 #. Finish step: the join offer (SIGN-IN.md §3.5).
 msgid "signin.gate.joinTitle"
-msgstr "合并您的账户"
+msgstr "合并你的账户"
 
 #. {email} already belongs to a Polaris Locker account. Join this sign-in to it, or use a different email.
 #. Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated.
@@ -4150,7 +4170,7 @@ msgstr "登录以添加 {product}"
 #. Your key is ready. Sign in or create an account, and {product} joins your library.
 #. Sign-in card when a license key is carried. Arguments: {product} = the product's name.
 msgid "signin.key.carriedLede"
-msgstr "密钥已就绪。登录或创建账户后，{product} 将加入您的库。"
+msgstr "密钥已就绪。登录或创建账户后，{product} 将加入你的资料库。"
 
 #. Sign in without the key
 #. Sign-in card: drops the carried license key.
@@ -4165,7 +4185,7 @@ msgstr "不使用密钥登录"
 #. Paste the key from your receipt email. Sign in next, and it joins your library.
 #. Have a license key? step, under the title.
 msgid "signin.key.onrampLede"
-msgstr "粘贴收据邮件中的密钥。接着登录，它就会加入您的库。"
+msgstr "粘贴收据邮件中的密钥。接着登录，它就会加入你的资料库。"
 
 #. That sign-in has expired. Continue to get a new code.
 #. Sign-in card, back at the email step after the sign-in ran out.
@@ -4190,7 +4210,7 @@ msgstr "使用 {org} 登录"
 #. Required for {host} addresses.
 #. Sign-in card, an enforced connection. Arguments: {host} = the email domain.
 msgid "signin.sso.required"
-msgstr "{host} 地址必须使用。"
+msgstr "{host} 地址必须使用此方式登录。"
 
 #. Email me a code in {time}
 #. Sign-in card, the resend countdown on a routed step. Arguments: {time} = the wait, such as 0:42.
@@ -4295,7 +4315,7 @@ msgstr "以 pkey_ 开头。区分大小写。"
 #. Paste your license key to continue.
 #. Have a license key? step: Continue pressed with an empty field.
 msgid "signin.key.empty"
-msgstr "请粘贴您的许可证密钥以继续。"
+msgstr "请粘贴你的许可证密钥以继续。"
 
 #. Or connect another account
 #. Group label of the provider buttons when adding a sign-in method.
@@ -4305,7 +4325,7 @@ msgstr "或连接其他账户"
 #. Too many codes. Try again in a few minutes.
 #. Rate limit with no wait given.
 msgid "signin.rateLimitedFew"
-msgstr "验证码过多。请几分钟后重试。"
+msgstr "验证码请求过多。请几分钟后重试。"
 
 #. Another Polaris Locker account uses this email. Sign in the way you did before.
 #. Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated.
@@ -4385,7 +4405,7 @@ msgstr "云同步"
 #. New: {tier} license, created when you continue
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
 msgid "signin.consent.newLicense"
-msgstr "新建:{tier} 许可证,继续时创建"
+msgstr "新：{tier}许可证，继续后创建"
 
 #. Keep {product} in an account
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -4395,7 +4415,7 @@ msgstr "将 {product} 保存在账户中"
 #. In an account you can get it back and move it to a new device yourself.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.key.upgradeLede"
-msgstr "保存在账户中后,你可以找回它,也可以自己迁移到新设备。"
+msgstr "保存在账户中后，你可以找回它，也可以自己将它移到新设备。"
 
 #. Create account
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
@@ -4467,7 +4487,7 @@ msgstr "已通过验证码确认"
 #. Use a name from
 #. Finish step: label above the screen-name suggestion chips.
 msgid "signin.gate.nameFrom"
-msgstr "使用来自以下的名称"
+msgstr "使用以下来源的名称"
 
 #. Shown in Polaris Locker and in emails.
 #. Finish step: under the screen name. Polaris Locker is never translated.
@@ -4701,7 +4721,7 @@ msgstr "请重新登录两个账户，然后合并。"
 #. One account was joined in the last 72 hours. Try again after that.
 #. Link dialog: an account was joined in the last 72 hours.
 msgid "signin.join.reasonPending"
-msgstr "其中一个账户在过去 72 小时内已合并。请稍后再试。"
+msgstr "其中一个账户在过去 72 小时内已合并。请在 72 小时后再试。"
 
 #. Cancel the scheduled deletion first, then join.
 #. Link dialog: a scheduled deletion blocks the join.
@@ -4846,7 +4866,7 @@ msgstr "请输入你的许可证密钥。"
 #. Didn't get a code?
 #. Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a).
 msgid "signin.code.missing"
-msgstr "没收到验证码?"
+msgstr "没收到验证码？"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
@@ -5216,7 +5236,7 @@ msgstr "登录不可用"
 #. Sign-in isn't available for this app.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unknown_app.message"
-msgstr "此应用无法登录。"
+msgstr "此应用不支持登录。"
 
 #. Sign-in request invalid
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5266,7 +5286,7 @@ msgstr "无法访问"
 #. The app asked for access this sign-in doesn't offer. Contact its developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_scope.message"
-msgstr "应用请求的访问权限此次登录不提供。请联系其开发者。"
+msgstr "应用请求了此次登录不提供的访问权限。请联系其开发者。"
 
 #. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5346,7 +5366,7 @@ msgstr "验证码已过期"
 #. That code has expired. Send a new code.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.code_expired.message"
-msgstr "该验证码已过期。请发送新的验证码。"
+msgstr "该验证码已过期。请重新获取验证码。"
 
 #. Email already in use
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5456,7 +5476,7 @@ msgstr "无法移除"
 #. This license can't be added back with a key, so it stays in your library.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_removable.message"
-msgstr "此许可证无法通过许可证密钥重新添加，因此会保留在你的库中。"
+msgstr "此许可证无法通过许可证密钥重新添加，因此会保留在你的资料库中。"
 
 #. Sign in to download
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5916,7 +5936,7 @@ msgstr "请求未被接受"
 #. The app sent a request the licensing bridge could not read. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-argument.message"
-msgstr "应用发送的请求，许可桥接无法读取。请联系开发者。"
+msgstr "许可桥接无法读取应用发送的请求。请联系开发者。"
 
 #. Request not allowed
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6663,15 +6683,15 @@ msgstr "请输入许可证密钥或登录以继续。"
 msgid "core.gate.version-too-old.title"
 msgstr "需要更新"
 
-#. This version is no longer supported. Update the app to continue.
+#. This version is no longer supported. Update {product} to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-old.message"
-msgstr "此版本已不再受支持。请更新应用以继续。"
+msgstr "此版本已不再受支持。请更新{product}以继续。"
 
 #. Not available on this license
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-new.title"
-msgstr "此许可证不可用"
+msgstr "许可证不支持此版本"
 
 #. This build is newer than your license allows.
 #. Core copy (conformance/parity/copy.en.json, gate).

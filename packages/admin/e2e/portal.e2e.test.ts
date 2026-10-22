@@ -425,7 +425,7 @@ describe("portal flow conformance (UX-79)", () => {
       await toast.waitFor();
       await expect
         .poll(() => o.page.evaluate(() => document.activeElement?.tagName))
-        .toBe("H1");
+        .toBe("H2");
       // Let the toast's enter settle before measuring.
       await o.page.waitForTimeout(500);
       const box = await toast.boundingBox();
@@ -1022,10 +1022,10 @@ describe("main flows", () => {
     expect(o.requests.some((r) => r.startsWith("DELETE /api/licenses/"))).toBe(
       true,
     );
-    // The row has gone; focus is on the product's h1, never body (FLOWS.md P-7).
+    // The row has gone; focus is on the product's Devices h2, never body (FLOWS.md P-7).
     await expect
       .poll(() => o.page.evaluate(() => document.activeElement?.tagName))
-      .toBe("H1");
+      .toBe("H2");
     expect(await o.violations()).toEqual([]);
     await o.close();
   });

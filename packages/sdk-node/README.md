@@ -347,10 +347,10 @@ needs a browser session) and lands on the hard 401.
 `client.getSyncState()` returns `{ activation, doc, lastSyncUnauthorized, blocked,
 lastVerifiedAt, highWaterMark }` — the snapshot the React bridge renders from.
 
-## When every seat is taken
+## When the device limit is reached
 
 A refused activation or enrolment returns `{ kind: "device-limit", limit, deviceCount, manageUrl? }`.
-`manageUrl` is the Polaris Locker link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while
+`manageUrl` is the Polaris Locker link that makes room for another device (WIRE-CONTRACT-V4 §5.3), present while
 Polaris Locker is on for the product and already validated. It is never an auth failure: nothing is wiped,
 and the app offers it behind a user action.
 
@@ -363,7 +363,7 @@ if (r.kind === "device-limit" && r.manageUrl) {
     withManageKey(r.manageUrl, userEnteredKey),
     "myapp://activated",
   );
-  console.log(`Every seat is taken. Free one up at ${link}`);
+  console.log(`Device limit reached. Make room at ${link}`);
 }
 ```
 
@@ -776,7 +776,7 @@ kit and sign-in), `node-electron` (main, preload and the React kit over the brid
 `ui/terminal-node` (`tidewater`, the terminal kit's sample, on fixtures or `--live`).
 
 - **Device limit reached.** `activateWithKey` answers `device-limit` with `limit` and
-  `deviceCount`. The new device holds no credential, so a seat is freed from Polaris Locker
+  `deviceCount`. The new device holds no credential, so room is made from Polaris Locker
   or from a device that holds one (`client.deauthorizeDevice(id)`, `devices deauthorize <id>`),
   then the key is entered again.
 - **Attestation-gated products.** A product whose device-trust policy requires platform

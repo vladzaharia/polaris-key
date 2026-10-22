@@ -67,7 +67,7 @@ place of initials:
   the policy's tolerance; the binding stands.
 - `device.fingerprint.mismatch` — drift exceeded tolerance; the binding was retired.
 - `device.seat.coalesced` — the same hardware re-registered under a new device id, and the
-  stale sibling was retired so one machine holds one seat.
+  stale sibling was retired so one device is counted once.
 - `license.enroll` — a keyless auto-issued license was minted.
 
 See [Fingerprints](/docs/features/licensing/fingerprints/) for what triggers the first three.

@@ -341,7 +341,7 @@ function ProductBody({
     // data-first-section: a link to the first section keeps the page at its top, as the deep
     // link above does (the router reads it, MO-05).
     <div
-      className="space-y-6 desk:space-y-8"
+      className="space-y-6 desk:space-y-8 desk:lowscreen:space-y-6"
       data-first-section={sections[0] ?? undefined}
     >
       <ProductHeader

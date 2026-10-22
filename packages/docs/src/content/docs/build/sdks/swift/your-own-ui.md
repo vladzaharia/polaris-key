@@ -71,7 +71,7 @@ func refusalScreen(_ result: ActivationResult) -> (message: String, link: String
     case .ok:
         return nil
     case .deviceLimit(let limit, let count, let manageURL):
-        // Replace a device: Polaris Locker frees a seat. Nothing was wiped.
+        // Replace a device: Polaris Locker makes room for another device. Nothing was wiped.
         var params: [String: String] = [:]
         if let limit { params["limit"] = String(limit) }
         if let count { params["deviceCount"] = String(count) }
@@ -95,7 +95,7 @@ func activate(_ client: PolarisKeyClient, key: String) async -> String? {
 | Case                                                                | Meaning                                        | Offer                                      |
 | ------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------ |
 | `.unauthorized`                                                     | The key was not accepted                       | Retry                                      |
-| `.deviceLimit`                                                      | Every seat is taken                            | `manageURL`, then retry the same key       |
+| `.deviceLimit`                                                      | The device limit is reached                    | `manageURL`, then retry the same key       |
 | `.licenseExpired`, `.licenseDisabled`                               | The license ended or an operator disabled it   | Renew, or contact the developer            |
 | `.hardwareMismatch`, `.fingerprintRequired`, `.attestationRequired` | The device check failed                        | Retry; `hardwareMismatch` lists what moved |
 | `.enrollDisabled`, `.enrollClaimed`                                 | No free license, or it is on an account        | Key entry, or sign in                      |
@@ -104,7 +104,7 @@ func activate(_ client: PolarisKeyClient, key: String) async -> String? {
 
 `.ok` carries the device token; its description prints `<redacted>`, so a log line never leaks it.
 Read it with a pattern match, not `print`. `ManageLink.read` returns the URL only when it is valid;
-open it behind a user action, never automatically. A seat a key holds is also freed from a device
+open it behind a user action, never automatically. A device a key counts is also freed from a device
 that still has a credential: `await client.deauthorizeDevice(id)`.
 
 ## Sign-in and who signed in

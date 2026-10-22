@@ -616,10 +616,10 @@ msgstr "{product}에 {size} 크기의 새 콘텐츠가 필요해요. 현재 데�
 msgid "boot.consent.download"
 msgstr "다운로드"
 
-#. If this keeps happening, restart the app.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
+#. If this keeps happening, restart {product}.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "boot.error.body"
-msgstr "문제가 계속되면 앱을 다시 시작해 주세요."
+msgstr "문제가 계속되면 {product}을(를) 다시 시작해 주세요."
 
 #. Welcome to {product}
 #. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -646,10 +646,10 @@ msgstr "계속하려면 로그인하거나 라이선스 키를 사용하세요."
 msgid "welcome.ledeKeyOnly"
 msgstr "계속하려면 라이선스 키를 입력하세요."
 
-#. Sign in to use {product}.
-#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Sign in to continue.
+#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. The title already names the product.
 msgid "welcome.ledeSignInOnly"
-msgstr "{product}을(를) 사용하려면 로그인하세요."
+msgstr "계속하려면 로그인하세요."
 
 #. Sign in
 #. Welcome screen, the gate's first screen. Primary button.
@@ -724,7 +724,7 @@ msgstr "{product}에서 사용할 수 있는 로그인 방법이 없어요. 대�
 #. {method} sign-in didn't finish. Try again.
 #. SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…).
 msgid "signIn.methodError"
-msgstr "{method} 로그인을 완료하지 못했어요. 다시 시도해 주세요."
+msgstr "{method} 로그인을 완료하지 못했어요. 다시 시도하세요."
 
 #. Getting a sign-in code…
 #. SignInHandoff: sign-in continues on another device or in the browser.
@@ -739,7 +739,7 @@ msgstr "휴대폰으로 코드를 스캔하거나 {url}에 접속해 이 코드�
 #. Scan the QR code with your phone, or go to this address and enter the code below.
 #. SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it.
 msgid "signInHandoff.scanTv"
-msgstr "휴대전화로 QR 코드를 스캔하거나, 이 주소로 이동해 아래 코드를 입력하세요."
+msgstr "휴대폰으로 QR 코드를 스캔하거나, 이 주소로 이동해 아래 코드를 입력하세요."
 
 #. Link copied
 #. SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link.
@@ -976,7 +976,7 @@ msgstr "코드를 스캔해 휴대폰에서 기기를 교체하세요."
 #. Sign out of {product} on another device, then try again.
 #. DeviceLimit on the key path when the server sent no link to replace a device: the license is on all its devices, so the fix is to free one first. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "deviceLimit.noManage"
-msgstr "다른 기기에서 {product}에서 로그아웃한 다음 다시 시도하세요."
+msgstr "다른 기기의 {product}에서 로그아웃한 다음 다시 시도하세요."
 
 #. Your devices
 #. Devices: the list of devices using the license.
@@ -1075,6 +1075,11 @@ msgstr "업데이트가 있어요"
 msgid "update.current"
 msgstr "현재 버전 {version} · 다운로드 {size}"
 
+#. You have {version}
+#. UpdatePrompt: an app update. The installed version, when the update decision carries no download size (update.current names a size). Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateCurrentNoSize"
+msgstr "현재 버전 {version}"
+
 #. What's new
 #. UpdatePrompt: an app update. Label over the release notes.
 msgid "update.whatsNew"
@@ -1140,6 +1145,11 @@ msgctxt "macos"
 msgid "update.install"
 msgstr "지금 업데이트"
 
+#. Download {version}
+#. UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateDownload"
+msgstr "{version} 다운로드"
+
 #. Downloading · {size} of {total}
 #. UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”).
 msgid "update.downloading"
@@ -1150,15 +1160,25 @@ msgstr "다운로드 중 · {total} 중 {size}"
 msgid "update.timeLeft"
 msgstr "약 {time} 남음"
 
+#. About {minutes} min
+#. UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more.
+msgid "common.updateTimeMinutes"
+msgstr "약 {minutes}분"
+
+#. Less than a minute
+#. UpdatePrompt: an app update. Time left on the download when under a minute remains.
+msgid "common.updateTimeLessThanMinute"
+msgstr "1분 미만"
+
 #. {product} {version} is ready
 #. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1.
 msgid "update.readyTitle"
 msgstr "{product} {version} 준비 완료"
 
-#. Restart {product} to finish updating.
-#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Restart to finish updating.
+#. UpdatePrompt: an app update. The title already names the product.
 msgid "update.readyBody"
-msgstr "업데이트를 완료하려면 {product}을(를) 재시작하세요."
+msgstr "업데이트를 완료하려면 재시작하세요."
 
 #. Update to keep using {product}
 #. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -1265,10 +1285,10 @@ msgstr "패키지 관리자에서 설치해요."
 msgid "update.platform.generic"
 msgstr "{product}을(를) 받은 스토어나 플랫폼을 통해 설치돼요."
 
-#. Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going.
+#. Some of {product}'s content was withdrawn and can't be used. Update to keep going.
 #. UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "update.revokedContent"
-msgstr "{product}의 일부 콘텐츠가 철회되어 사용할 수 없어요. 계속하려면 {product}을(를) 업데이트하세요."
+msgstr "{product}의 일부 콘텐츠가 철회되어 사용할 수 없어요. 계속하려면 업데이트하세요."
 
 #. You're up to date
 #. UpdatePrompt: an app update.
@@ -1600,7 +1620,7 @@ msgstr "{tier} 포함 기능"
 #. Upgrade to {tier}
 #. Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated).
 msgid "paywall.upgrade"
-msgstr "{tier} 등급으로 업그레이드"
+msgstr "{tier}(으)로 업그레이드"
 
 #. Redeem a code
 #. Paywall: what a tier adds, and how to get it.
@@ -1632,10 +1652,10 @@ msgstr "구매를 완료하는 중…"
 msgid "paywall.purchased"
 msgstr "{tier} 잠금 해제됨"
 
-#. Purchases aren't available in this version of {product}.
-#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Purchases aren't available in this version.
+#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "paywall.notAvailable"
-msgstr "이 버전의 {product}에서는 구매할 수 없어요."
+msgstr "이 버전에서는 구매할 수 없어요."
 
 #. Buy in your browser
 #. Paywall: what a tier adds, and how to get it.
@@ -1787,10 +1807,10 @@ msgstr "Polaris Locker에 로그인"
 msgid "signin.methods.titleApp"
 msgstr "로그인"
 
-#. Use your {product} purchase email or a work or school email.
-#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Use your purchase email or a work or school email.
+#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "signin.methods.ledeApp"
-msgstr "{product} 구매 시 사용한 이메일 또는 직장·학교 이메일을 사용하세요."
+msgstr "구매 시 사용한 이메일 또는 직장·학교 이메일을 사용하세요."
 
 #. Email
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
@@ -2349,12 +2369,12 @@ msgstr "대신 라이선스 키 사용"
 #. Free a device
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.freeDevice"
-msgstr "기기 자리 비우기"
+msgstr "기기 해제"
 
 #. macos: Free a Device
 msgctxt "macos"
 msgid "signin.choice.freeDevice"
-msgstr "기기 자리 비우기"
+msgstr "기기 해제"
 
 #. Use this license and continue
 #. Choose a license for this device (SIGN-IN.md §3.6).
@@ -2913,7 +2933,7 @@ msgstr "내 라이브러리 열기"
 #. A device is free on this license now.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.freed"
-msgstr "이제 이 라이선스에 빈 기기 자리가 있어요."
+msgstr "이제 이 라이선스로 기기를 하나 더 사용할 수 있어요."
 
 #. Opens Polaris Locker in your browser
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
@@ -3068,7 +3088,7 @@ msgstr "코드와 링크는 10분 동안 한 번만 사용할 수 있어요."
 #. A new code goes to {email}.
 #. Expired code or link page (SIGN-IN.md §4.12). Arguments: {email} = an email address, masked by the Worker. The button is signin.code.resend; the way back is signin.code.differentEmail.
 msgid "signin.expired.sendTo"
-msgstr "새 코드를 {email}(으)로 보냅니다."
+msgstr "새 코드를 {email}(으)로 보내요."
 
 #. Sign in again
 #. Expired code or link page (SIGN-IN.md §4.12).
@@ -3095,10 +3115,10 @@ msgstr "여기서 로그인하면 라이브러리에서 {product}을(를) 볼 �
 msgid "signin.signout.title"
 msgstr "이 기기의 {product}에서 로그아웃할까요?"
 
-#. {product} stops using your {tier} license here and frees its seat.
+#. {product} stops using your {tier} license on this device and frees room for another device.
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
 msgid "signin.signout.released"
-msgstr "이 기기의 {product}에서 {tier} 라이선스 사용을 중지하고 자리를 비워요."
+msgstr "{product}이(가) 이 기기에서 {tier} 라이선스 사용을 중지해 다른 기기를 추가할 수 있게 돼요."
 
 #. {n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number.
@@ -3157,10 +3177,10 @@ msgstr "사진 변경"
 msgid "signin.mail.replaced.subject"
 msgstr "{device}에서 {product} 로그아웃됨"
 
-#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.
+#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform.
 msgid "signin.mail.replaced.body"
-msgstr "{date}에 {product}에 로그인하면서 {device} 대신 {newDevice} 기기가 등록됐어요. 자리가 비면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Locker를 열고 기기를 확인하세요."
+msgstr "{date}에 {product}에 로그인하면서 {device}이(가) {newDevice}(으)로 교체됐어요. 기기를 추가할 여유가 생기면 {device}에서 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Locker를 열고 기기를 확인하세요."
 
 #. A new device signed in to your Polaris Locker account
 #. Security email (SIGN-IN.md §3.15).
@@ -3250,12 +3270,12 @@ msgstr "활성화, 로그인, 기기 및 업데이트"
 #. {command} needs a license
 #. Terminal: the title when a host command that needs a license is refused because the person has none (needs-activation), and the first line of the inline activate flow. {command} is the command they ran, such as 'export'.
 msgid "cli.gate.needs"
-msgstr "{command}에는 라이선스가 필요합니다"
+msgstr "{command}에는 라이선스가 필요해요"
 
 #. Your license doesn't include {command}
 #. Terminal: the title when a host command is refused because the person's license does not hold the entitlement it needs. They have a license, so it is never 'needs a license'. {command} is the command they ran, such as 'export'.
 msgid "cli.gate.notIncluded"
-msgstr "라이선스에 {command}이(가) 포함되어 있지 않습니다"
+msgstr "라이선스에 {command}이(가) 포함되어 있지 않아요"
 
 #. Add a license key (prompted, or piped on stdin)
 #. Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line.
@@ -3267,10 +3287,10 @@ msgstr "라이선스 키 추가 (입력하거나 stdin으로)"
 msgid "cli.verb.enroll"
 msgstr "무료 라이선스 받기 ({product}에서 제공하는 경우)"
 
-#. Stop using your license on this device and free its seat
+#. Stop using your license on this device and make room for another
 #. Terminal help: what the deactivate command does.
 msgid "cli.verb.deactivate"
-msgstr "이 기기에서 라이선스 사용을 중지하고 자리 비우기"
+msgstr "이 기기에서 라이선스 사용을 중지해 다른 기기에서 쓸 수 있게 하기"
 
 #. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
@@ -3312,10 +3332,10 @@ msgstr "라이선스를 사용하는 기기 목록 보기"
 msgid "cli.verb.devicesRename"
 msgstr "기기 이름 변경 (이름을 비우면 지워짐)"
 
-#. Remove a device and free its seat
+#. Remove a device and make room for another
 #. Terminal help: what 'devices deauthorize' does.
 msgid "cli.verb.devicesRemove"
-msgstr "기기를 제거하고 자리 비우기"
+msgstr "기기를 제거해 다른 기기를 추가할 수 있게 하기"
 
 #. Show one setting and where its value comes from
 #. Terminal help: what 'config get' does.
@@ -3485,7 +3505,7 @@ msgstr "라이선스 키가 없어요. 터미널에서 실행하거나 키를 �
 #. Free a device, then run {command} again.
 #. Terminal: every device on the license is in use; free one in the browser, then activate again. {command} is a command line.
 msgid "cli.deviceLimit.again"
-msgstr "기기 자리를 비운 다음 다시 실행하세요: {command}"
+msgstr "기기를 해제한 다음 다시 실행하세요: {command}"
 
 #. License
 #. Terminal status: the row label for the license (tier and holder).
@@ -3527,8 +3547,8 @@ msgstr "계정의 라이선스 사용"
 msgid "cli.logout.done"
 msgstr "이 기기의 {product}에서 로그아웃했어요."
 
-#. {product} no longer uses your license on this device. Its seat is free.
-#. Terminal: deactivate finished; the license's seat on this device is released.
+#. {product} no longer uses your license on this device. It no longer counts toward your limit.
+#. Terminal: deactivate finished; the device no longer counts toward the license limit.
 msgid "cli.deactivate.done"
 msgstr "이제 이 기기의 {product}에서 라이선스를 사용하지 않아요. 자리가 비었어요."
 
@@ -3552,7 +3572,7 @@ msgstr "이름을 {device}(으)로 변경했어요."
 msgid "cli.devices.nameCleared"
 msgstr "{device}의 이름을 지웠어요."
 
-#. {device} was removed. Its seat is free.
+#. {device} was removed. It no longer counts toward your limit.
 #. Terminal: a device was removed from the license.
 msgid "cli.devices.removed"
 msgstr "{device}을(를) 제거했어요. 자리가 비었어요."
@@ -3900,7 +3920,7 @@ msgstr "다른 방법으로 로그인"
 #. One minute left on this code.
 #. Announced once when the sign-in code has one minute left (WCAG 2.2.1).
 msgid "signin.approve.minuteLeft"
-msgstr "이 코드는 1분 남았습니다."
+msgstr "이 코드는 1분 남았어요."
 
 #. Getting your code
 #. Busy label while the sign-in code is requested.
@@ -3910,7 +3930,7 @@ msgstr "코드를 가져오는 중"
 #. That account can't sign in. Use another way to sign in.
 #. Sign in with another device or a passkey, for an account that can't sign in.
 msgid "signin.approve.disabled"
-msgstr "이 계정은 로그인할 수 없습니다. 다른 방법으로 로그인하세요."
+msgstr "이 계정은 로그인할 수 없어요. 다른 방법으로 로그인하세요."
 
 #. Approve a new device
 #. Account → Where you're signed in: opens the approve dialog (SIGN-IN.md §3.11).
@@ -3945,7 +3965,7 @@ msgstr "찾기"
 #. Code {code} asks to sign in to your account.
 #. Approve dialog. Arguments: {code} = the 8-letter code, shown as is.
 msgid "signin.approve.askBody"
-msgstr "코드 {code}이(가) 계정에 로그인하려고 합니다."
+msgstr "코드 {code}(으)로 계정 로그인을 요청했어요."
 
 #. Where
 #. Approve dialog: the request's coarse place, as a row label.
@@ -3970,7 +3990,7 @@ msgstr "알 수 없는 위치"
 #. It's asking from a different place than you're in now, or from a place we can't tell.
 #. Approve dialog: why the person must confirm it's them first.
 msgid "signin.approve.stepUpWhy"
-msgstr "현재 위치와 다른 곳이거나 위치를 알 수 없는 곳에서 요청했습니다."
+msgstr "지금 계신 곳과 다른 곳이나 위치를 알 수 없는 곳에서 요청했어요."
 
 #. approve it
 #. Approve dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
@@ -3980,32 +4000,32 @@ msgstr "승인하기"
 #. Approved. {device} is signed in.
 #. Approve dialog outcome. Arguments: {device} = the device label.
 msgid "signin.approve.approved"
-msgstr "승인했습니다. {device}이(가) 로그인되었습니다."
+msgstr "승인했어요. {device}이(가) 로그인됐어요."
 
 #. Denied. Nothing changed.
 #. Approve dialog outcome.
 msgid "signin.approve.deniedDone"
-msgstr "거부했습니다. 변경된 내용이 없습니다."
+msgstr "거부했어요. 변경된 내용은 없어요."
 
 #. That didn't go through. Try again.
 #. Approve dialog: a decision that failed.
 msgid "signin.approve.failed"
-msgstr "처리되지 않았습니다. 다시 시도하세요."
+msgstr "처리되지 않았어요. 다시 시도하세요."
 
 #. Your passkey wasn't used. Try again, or use another way.
 #. Passkey prompt closed or timed out.
 msgid "signin.passkey.cancelled"
-msgstr "패스키가 사용되지 않았습니다. 다시 시도하거나 다른 방법을 사용하세요."
+msgstr "패스키가 사용되지 않았어요. 다시 시도하거나 다른 방법을 사용하세요."
 
 #. This browser can't use your passkey here. Use another way.
 #. Passkey not usable in this browser.
 msgid "signin.passkey.unsupported"
-msgstr "이 브라우저에서는 패스키를 사용할 수 없습니다. 다른 방법을 사용하세요."
+msgstr "이 브라우저에서는 패스키를 사용할 수 없어요. 다른 방법을 사용하세요."
 
 #. Your passkey didn't work. Try again, or use another way.
 #. Passkey refused.
 msgid "signin.passkey.failed"
-msgstr "패스키가 작동하지 않았습니다. 다시 시도하거나 다른 방법을 사용하세요."
+msgstr "패스키가 작동하지 않았어요. 다시 시도하거나 다른 방법을 사용하세요."
 
 #. Signed in with {provider}
 #. Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name.
@@ -4015,7 +4035,7 @@ msgstr "{provider}(으)로 로그인됨"
 #. One more step
 #. Finish step title when only the terms are asked.
 msgid "signin.gate.termsTitle"
-msgstr "한 단계 남았습니다"
+msgstr "한 단계 남았어요"
 
 #. Screen name
 #. Finish step: the screen name field.
@@ -4060,7 +4080,7 @@ msgstr "{org}에서 생년월일 추가"
 #. Only you can see it. Apps never get it.
 #. Finish step: under the birth date choice.
 msgid "signin.gate.birthdateHelp"
-msgstr "본인만 볼 수 있습니다. 앱에는 전달되지 않습니다."
+msgstr "본인만 볼 수 있어요. 앱에는 전달되지 않아요."
 
 #. I agree to the {term}
 #. Finish step: the product's terms checkbox. Arguments: {product} = the product's name.
@@ -4075,7 +4095,7 @@ msgstr "{term}에 동의합니다"
 #. That sign-in has expired. Sign in again.
 #. Finish step: the 15-minute sign-in ran out.
 msgid "signin.gate.expired"
-msgstr "이 로그인은 만료되었습니다. 다시 로그인하세요."
+msgstr "이 로그인은 만료됐어요. 다시 로그인하세요."
 
 #. Join your accounts
 #. Finish step: the join offer (SIGN-IN.md §3.5).
@@ -4085,7 +4105,7 @@ msgstr "계정 통합"
 #. {email} already belongs to a Polaris Locker account. Join this sign-in to it, or use a different email.
 #. Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated.
 msgid "signin.gate.joinLede"
-msgstr "{email}은(는) 이미 Polaris Locker 계정에 속해 있습니다. 이 로그인을 해당 계정에 통합하거나 다른 이메일을 사용하세요."
+msgstr "{email}은(는) 이미 Polaris Locker 계정에 속해 있어요. 이 로그인을 해당 계정에 통합하거나 다른 이메일을 사용하세요."
 
 #. To join, sign in to that account in this browser first, then add this sign-in from Account.
 #. Finish step: the join offer cannot be taken until the other account is proven.
@@ -4095,7 +4115,7 @@ msgstr "통합하려면 먼저 이 브라우저에서 해당 계정에 로그인
 #. We sent a code to {email}.
 #. Finish step, code stage. Arguments: {email} = an address.
 msgid "signin.gate.codeSent"
-msgstr "{email}(으)로 코드를 보냈습니다."
+msgstr "{email}(으)로 코드를 보냈어요."
 
 #. On this browser, last time {when}
 #. HintStep under the usual method. Arguments: {when} = a relative time such as '2 days ago'.
@@ -4105,7 +4125,7 @@ msgstr "이 브라우저에서 마지막으로 {when}"
 #. Welcome back
 #. HintStep title when the browser kept no name.
 msgid "signin.hint.welcomeNoName"
-msgstr "다시 오신 것을 환영합니다"
+msgstr "다시 오신 것을 환영해요"
 
 #. a passkey
 #. HintStep: completes 'You usually sign in with {method}'.
@@ -4150,7 +4170,7 @@ msgstr "{product}을(를) 추가하려면 로그인"
 #. Your key is ready. Sign in or create an account, and {product} joins your library.
 #. Sign-in card when a license key is carried. Arguments: {product} = the product's name.
 msgid "signin.key.carriedLede"
-msgstr "키가 준비되었습니다. 로그인하거나 계정을 만들면 {product}이(가) 라이브러리에 추가됩니다."
+msgstr "키가 준비됐어요. 로그인하거나 계정을 만들면 {product}이(가) 라이브러리에 추가돼요."
 
 #. Sign in without the key
 #. Sign-in card: drops the carried license key.
@@ -4165,22 +4185,22 @@ msgstr "키 없이 로그인"
 #. Paste the key from your receipt email. Sign in next, and it joins your library.
 #. Have a license key? step, under the title.
 msgid "signin.key.onrampLede"
-msgstr "영수증 이메일의 키를 붙여 넣으세요. 이어서 로그인하면 라이브러리에 추가됩니다."
+msgstr "영수증 이메일의 키를 붙여 넣으세요. 이어서 로그인하면 라이브러리에 추가돼요."
 
 #. That sign-in has expired. Continue to get a new code.
 #. Sign-in card, back at the email step after the sign-in ran out.
 msgid "signin.code.expiredRestart"
-msgstr "이 로그인은 만료되었습니다. 계속하여 새 코드를 받으세요."
+msgstr "이 로그인은 만료됐어요. 계속하면 새 코드를 받을 수 있어요."
 
 #. That took too long. Continue to start again.
 #. Sign-in card, back at the email step when the single sign-on step ran out before any code was sent.
 msgid "signin.sso.expiredRestart"
-msgstr "시간이 너무 오래 걸렸습니다. 계속하여 다시 시작하세요."
+msgstr "시간이 너무 오래 걸렸어요. 계속하면 다시 시작해요."
 
 #. No more codes can be sent for this sign-in. The latest code still works.
 #. Code step: the per-sign-in resend cap.
 msgid "signin.code.noMore"
-msgstr "이 로그인에서는 더 이상 코드를 보낼 수 없습니다. 마지막 코드는 계속 사용할 수 있습니다."
+msgstr "이 로그인에서는 더 이상 코드를 보낼 수 없어요. 마지막으로 받은 코드는 계속 사용할 수 있어요."
 
 #. Sign in with {org}
 #. Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name.
@@ -4190,7 +4210,7 @@ msgstr "{org}(으)로 로그인"
 #. Required for {host} addresses.
 #. Sign-in card, an enforced connection. Arguments: {host} = the email domain.
 msgid "signin.sso.required"
-msgstr "{host} 주소에는 필수입니다."
+msgstr "{host} 주소에는 필수예요."
 
 #. Email me a code in {time}
 #. Sign-in card, the resend countdown on a routed step. Arguments: {time} = the wait, such as 0:42.
@@ -4215,27 +4235,27 @@ msgstr "대신 이메일로 코드 받기"
 #. This account can't sign in
 #. Sign-in card: a right code for an account that can't sign in (SIGN-IN.md §3.4).
 msgid "signin.refused.title"
-msgstr "이 계정은 로그인할 수 없습니다"
+msgstr "이 계정은 로그인할 수 없어요"
 
 #. {email} belongs to an account that can't sign in. Try a different email or another way to sign in.
 #. Sign-in card, account disabled. Arguments: {email} = an address.
 msgid "signin.refused.lede"
-msgstr "{email}은(는) 로그인할 수 없는 계정에 속해 있습니다. 다른 이메일이나 다른 방법을 사용해 보세요."
+msgstr "{email}은(는) 로그인할 수 없는 계정에 속해 있어요. 다른 이메일이나 다른 로그인 방법을 사용해 보세요."
 
 #. Sign-in is turned off
 #. Sign-in card: no way to sign in is enabled.
 msgid "signin.off.title"
-msgstr "로그인이 꺼져 있습니다"
+msgstr "로그인이 꺼져 있어요"
 
 #. The security check did not pass. Try again.
 #. Sign-in card: the bot check refused.
 msgid "signin.turnstile.failed"
-msgstr "보안 확인을 통과하지 못했습니다. 다시 시도하세요."
+msgstr "보안 확인을 통과하지 못했어요. 다시 시도하세요."
 
 #. Too many tries. Wait a minute, then try again.
 #. Code step: the verify's 429.
 msgid "signin.code.rateLimited"
-msgstr "시도 횟수가 너무 많습니다. 1분 기다린 후 다시 시도하세요."
+msgstr "시도 횟수가 너무 많아요. 1분 기다린 후 다시 시도하세요."
 
 #. {product} terms
 #. The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name.
@@ -4250,12 +4270,12 @@ msgstr "Polaris Locker 약관 및 개인정보 처리방침"
 #. That code expired. Ask for a new one on the other device.
 #. Approve dialog: the code is spent or expired (410).
 msgid "signin.approve.expiredCode"
-msgstr "이 코드는 만료되었습니다. 다른 기기에서 새 코드를 받으세요."
+msgstr "이 코드는 만료됐어요. 다른 기기에서 새 코드를 받으세요."
 
 #. No sign-in is waiting for that code. Check it on the other device.
 #. Approve dialog: no pending request has this code (404 or 422).
 msgid "signin.approve.notFound"
-msgstr "해당 코드를 기다리는 로그인이 없습니다. 다른 기기에서 확인하세요."
+msgstr "이 코드로 기다리는 로그인이 없어요. 다른 기기에서 코드를 확인하세요."
 
 #. you@example.com
 #. Placeholder of the email field on the sign-in card. Not translated.
@@ -4290,7 +4310,7 @@ msgstr "{product} 키"
 #. Starts with pkey_. Case-sensitive.
 #. Have a license key? step: help under the field.
 msgid "signin.key.help"
-msgstr "pkey_로 시작합니다. 대소문자를 구분합니다."
+msgstr "pkey_로 시작해요. 대소문자를 구분해요."
 
 #. Paste your license key to continue.
 #. Have a license key? step: Continue pressed with an empty field.
@@ -4305,12 +4325,12 @@ msgstr "또는 다른 계정 연결"
 #. Too many codes. Try again in a few minutes.
 #. Rate limit with no wait given.
 msgid "signin.rateLimitedFew"
-msgstr "코드가 너무 많습니다. 몇 분 후 다시 시도하세요."
+msgstr "코드를 너무 많이 요청했어요. 몇 분 후에 다시 시도하세요."
 
 #. Another Polaris Locker account uses this email. Sign in the way you did before.
 #. Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated.
 msgid "signin.code.emailInUse"
-msgstr "다른 Polaris Locker 계정이 이 이메일을 사용하고 있습니다. 이전에 쓰던 방법으로 로그인하세요."
+msgstr "다른 Polaris Locker 계정에서 이 이메일을 사용하고 있어요. 이전에 로그인했던 방법으로 로그인하세요."
 
 #. Choose a license to continue.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
@@ -4335,22 +4355,22 @@ msgstr "교체하고 로그인"
 #. The device you choose signs out of {app}. It can sign in again later if there's room. We'll email you about it.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.choice.replaceSafety"
-msgstr "선택한 기기는 {app}에서 로그아웃됩니다. 여유가 있으면 나중에 다시 로그인할 수 있습니다. 이메일로 알려 드립니다."
+msgstr "선택한 기기는 {app}에서 로그아웃돼요. 여유가 생기면 나중에 다시 로그인할 수 있어요. 이메일로 알려 드려요."
 
 #. Device replaced
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.choice.replacedTitle"
-msgstr "기기를 교체했습니다"
+msgstr "기기를 교체했어요"
 
 #. {device} signed out of {app}. {thisDevice} is signed in.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser".
 msgid "signin.choice.replacedBody"
-msgstr "{device}이(가) {app}에서 로그아웃했습니다. {thisDevice}이(가) 로그인되었습니다."
+msgstr "{device}이(가) {app}에서 로그아웃됐어요. {thisDevice}이(가) 로그인됐어요."
 
 #. This sign-in has ended
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.request.goneTitle"
-msgstr "이 로그인은 종료되었습니다"
+msgstr "이 로그인은 종료됐어요"
 
 #. Go back to the app and start signing in again.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
@@ -4385,7 +4405,7 @@ msgstr "클라우드 동기화"
 #. New: {tier} license, created when you continue
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
 msgid "signin.consent.newLicense"
-msgstr "새 {tier} 라이선스: 계속하면 만들어집니다"
+msgstr "새 {tier} 라이선스: 계속하면 생성돼요"
 
 #. Keep {product} in an account
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -4395,7 +4415,7 @@ msgstr "{product}을(를) 계정에 보관"
 #. In an account you can get it back and move it to a new device yourself.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.key.upgradeLede"
-msgstr "계정에 보관하면 다시 받거나 새 기기로 직접 옮길 수 있습니다."
+msgstr "계정에 보관하면 다시 받거나 새 기기로 직접 옮길 수 있어요."
 
 #. Create account
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
@@ -4425,34 +4445,34 @@ msgstr "{product}을(를) 보관하려면 계정을 만드세요"
 #. {product} keeps working on the devices it's already on. Only typing the key again needs an account.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.key.noEntriesKeeps"
-msgstr "{product}은(는) 이미 설치된 기기에서 계속 작동합니다. 키를 다시 입력할 때만 계정이 필요합니다."
+msgstr "{product}은(는) 이미 사용 중인 기기에서 계속 작동해요. 키를 다시 입력할 때만 계정이 필요해요."
 
 #. {used} of {limit} key entries used
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {used} and {limit} = numbers.
 msgid "signin.key.meter"
-msgstr "키 입력 {limit}회 중 {used}회 사용"
+msgstr "키 등록 {limit}회 중 {used}회 사용"
 
 #. Key works
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.key.keyWorks"
-msgstr "키가 유효합니다"
+msgstr "유효한 키"
 
 #. Polaris Locker signs you in for {app}.
 #. PX-14a fix round. Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.footerNoDeveloper"
-msgstr "Polaris Locker가 {app}에 로그인합니다."
+msgstr "Polaris Locker가 {app} 로그인을 처리해요."
 
 #. Too many device changes. Try again in {minutes, plural, one {# minute} other {# minutes}}.
 #. PX-14a fix round. Arguments: {minutes} = a number of minutes.
 #. Plural on {minutes}.
 msgid "signin.replace.rateLimitedMinutes"
 msgid_plural "signin.replace.rateLimitedMinutes"
-msgstr[0] "기기 변경이 너무 많습니다. {minutes}분 후에 다시 시도하세요."
+msgstr[0] "기기 변경이 너무 많아요. {minutes}분 후에 다시 시도하세요."
 
 #. Too many tries. Wait a moment, then try again.
 #. PX-14a fix round.
 msgid "signin.request.tooMany"
-msgstr "시도가 너무 많습니다. 잠시 기다린 뒤 다시 시도하세요."
+msgstr "시도 횟수가 너무 많아요. 잠시 기다린 후 다시 시도하세요."
 
 #. Confirmed by {provider}
 #. Finish step: beside the Email label when a provider vouches for the address. Arguments: {provider}.
@@ -4472,7 +4492,7 @@ msgstr "다음에서 이름 사용"
 #. Shown in Polaris Locker and in emails.
 #. Finish step: under the screen name. Polaris Locker is never translated.
 msgid "signin.gate.nameHint"
-msgstr "Polaris Locker와 이메일에 표시됩니다."
+msgstr "Polaris Locker와 이메일에 표시돼요."
 
 #. Picture
 #. Finish step: the picture group label.
@@ -4522,7 +4542,7 @@ msgstr "패스키 추가"
 #. Next time is one tap.
 #. Finish: under the passkey step title.
 msgid "signin.gate.passkeyLede"
-msgstr "다음부터는 한 번의 탭으로 됩니다."
+msgstr "다음부터는 한 번만 탭하면 돼요."
 
 #. Add a passkey
 #. Finish: the one-tap button that opens the browser passkey prompt.
@@ -4537,12 +4557,12 @@ msgstr "패스키 추가"
 #. Passkey added.
 #. Finish: passkey outcome, success.
 msgid "signin.gate.passkeyAdded"
-msgstr "패스키를 추가했습니다."
+msgstr "패스키를 추가했어요."
 
 #. No passkey was added. You can add one in Account.
 #. Finish: passkey outcome, none added.
 msgid "signin.gate.passkeyFailed"
-msgstr "패스키가 추가되지 않았습니다. 계정에서 추가할 수 있습니다."
+msgstr "패스키가 추가되지 않았어요. 계정에서 추가할 수 있어요."
 
 #. Skip
 #. Finish: leaves the passkey step.
@@ -4557,17 +4577,17 @@ msgstr "내 업로드"
 #. Your picture wasn't saved. Add one in Account.
 #. Finish: shown on arrival when the picked picture could not be saved.
 msgid "signin.gate.uploadFailed"
-msgstr "사진이 저장되지 않았습니다. 계정에서 추가하세요."
+msgstr "사진이 저장되지 않았어요. 계정에서 추가하세요."
 
 #. We sent a new code to {email}.
 #. Finish: the code stage after a resend. Arguments: {email}.
 msgid "signin.gate.resent"
-msgstr "새 코드를 {email}(으)로 보냈습니다."
+msgstr "새 코드를 {email}(으)로 보냈어요."
 
 #. {email} already belongs to a Polaris Locker account. Use a different email, or sign in to that account first.
 #. Finish: the join offer when the other account is not yet proven. Arguments: {email}.
 msgid "signin.gate.joinOtherLede"
-msgstr "{email}은(는) 이미 Polaris Locker 계정에 속해 있습니다. 다른 이메일을 사용하거나 먼저 그 계정에 로그인하세요."
+msgstr "{email}은(는) 이미 Polaris Locker 계정에 속해 있어요. 다른 이메일을 사용하거나 먼저 그 계정에 로그인하세요."
 
 #. Enter a screen name.
 #. Finish: the screen name field left empty.
@@ -4592,7 +4612,7 @@ msgstr "다른 로그인 방법 추가"
 #. So you can always get back in.
 #. Nudge body.
 msgid "signin.nudge.body"
-msgstr "언제든 다시 로그인할 수 있습니다."
+msgstr "언제든 다시 로그인할 수 있도록요."
 
 #. Add a way
 #. Nudge primary: opens Account → Sign-in methods.
@@ -4622,7 +4642,7 @@ msgstr "기존 계정 연결"
 #. Sign in to your other account to join the two. Nothing moves until you confirm.
 #. Link dialog, before the second sign-in.
 msgid "signin.join.lede"
-msgstr "다른 계정에 로그인해 두 계정을 하나로 합칩니다. 확인하기 전에는 아무것도 옮겨지지 않습니다."
+msgstr "다른 계정에 로그인해 두 계정을 합치세요. 확인하기 전에는 아무것도 옮겨지지 않아요."
 
 #. Sign in to the other account
 #. Link dialog primary: starts the second sign-in.
@@ -4656,12 +4676,12 @@ msgstr[0] "제품 {count}개"
 #. Plural on {count}.
 msgid "signin.join.result"
 msgid_plural "signin.join.result"
-msgstr[0] "라이브러리 하나: 제품 {count}개. 기본 이메일은 {email}로 유지됩니다."
+msgstr[0] "라이브러리 하나: 제품 {count}개. 기본 이메일은 {email}(으)로 유지돼요."
 
 #. Joined. You can undo this for 72 hours.
 #. Link dialog: joined.
 msgid "signin.join.done"
-msgstr "합쳤습니다. 72시간 동안 되돌릴 수 있습니다."
+msgstr "합쳤어요. 72시간 동안 되돌릴 수 있어요."
 
 #. Undo join
 #. Link dialog: undo a join.
@@ -4676,17 +4696,17 @@ msgstr "합치기 되돌리기"
 #. Join undone.
 #. Link dialog: join undone.
 msgid "signin.join.undone"
-msgstr "되돌렸습니다."
+msgstr "합치기를 되돌렸어요."
 
 #. Joined {email}. Undo until {date}.
 #. Link dialog: a join that can still be undone.
 msgid "signin.join.undoable"
-msgstr "{email} 합침. {date}까지 되돌릴 수 있습니다."
+msgstr "{email} 합침. {date}까지 되돌릴 수 있어요."
 
 #. Linking took too long. Start again.
 #. Link dialog: the link flow is gone.
 msgid "signin.join.expired"
-msgstr "연결이 너무 오래 걸렸습니다. 다시 시작하세요."
+msgstr "연결이 너무 오래 걸렸어요. 다시 시작하세요."
 
 #. Sign in to your other account first.
 #. Link dialog: confirm before the second sign-in.
@@ -4701,7 +4721,7 @@ msgstr "두 계정에 다시 로그인한 뒤 합치세요."
 #. One account was joined in the last 72 hours. Try again after that.
 #. Link dialog: an account was joined in the last 72 hours.
 msgid "signin.join.reasonPending"
-msgstr "한 계정이 최근 72시간 안에 합쳐졌습니다. 그 이후에 다시 시도하세요."
+msgstr "최근 72시간 안에 합친 계정이 있어요. 72시간이 지난 후 다시 시도하세요."
 
 #. Cancel the scheduled deletion first, then join.
 #. Link dialog: a scheduled deletion blocks the join.
@@ -4711,12 +4731,12 @@ msgstr "예약된 삭제를 먼저 취소한 뒤 합치세요."
 #. That's the account you started from. Sign in to your other account.
 #. Link dialog: the second sign-in was the same account.
 msgid "signin.join.sameAccount"
-msgstr "처음 시작한 계정입니다. 다른 계정에 로그인하세요."
+msgstr "처음 시작한 계정이에요. 다른 계정에 로그인하세요."
 
 #. Couldn't join. Try again.
 #. Link dialog: a request failed.
 msgid "signin.join.failed"
-msgstr "합치지 못했습니다. 다시 시도하세요."
+msgstr "합치지 못했어요. 다시 시도하세요."
 
 #. If that account is yours too, sign in to it and join the two.
 #. Activate dialog, license_owned refusal, signed in on the portal (SIGN-IN.md D-27).
@@ -4741,7 +4761,7 @@ msgstr "다른 계정에 로그인"
 #. Use any way to sign in to it. You'll come back here to join them.
 #. Link dialog, second sign-in card: what happens next.
 msgid "signin.join.otherLede"
-msgstr "어떤 방법이든 괜찮습니다. 이후 여기로 돌아와 합칩니다."
+msgstr "어떤 방법으로 로그인해도 괜찮아요. 그런 다음 여기로 돌아와 두 계정을 합쳐요."
 
 #. Signed in now
 #. Link dialog: the account this browser is signed in to now.
@@ -4766,12 +4786,12 @@ msgstr "{method}(으)로 확인됨 ({when})"
 #. Every sign-in from both keeps working. You can undo for 72 hours.
 #. Link dialog: reassurance under the result.
 msgid "signin.join.keepsWorking"
-msgstr "두 계정의 모든 로그인이 계속 작동합니다. 72시간 동안 되돌릴 수 있습니다."
+msgstr "두 계정의 모든 로그인 방법을 계속 사용할 수 있어요. 72시간 동안 되돌릴 수 있어요."
 
 #. Joined. You can undo until {date}.
 #. Link dialog: joined.
 msgid "signin.join.doneUntil"
-msgstr "합쳤습니다. {date}까지 되돌릴 수 있습니다."
+msgstr "합쳤어요. {date}까지 되돌릴 수 있어요."
 
 #. Sign in to {email} again
 #. Link dialog: re-prove an account whose sign-in is older than 5 minutes. {email}.
@@ -4796,7 +4816,7 @@ msgstr "다시 시작"
 #. This join can no longer be undone.
 #. Link dialog: the join cannot be undone any more.
 msgid "signin.join.noUndo"
-msgstr "이 합치기는 더 이상 되돌릴 수 없습니다."
+msgstr "이 합치기는 더 이상 되돌릴 수 없어요."
 
 #. Sign-in methods
 #. Link dialog: a link to Account → Sign-in methods.
@@ -4811,7 +4831,7 @@ msgstr "로그인 방법"
 #. Couldn't undo the join. Try again.
 #. Link dialog: an undo failed.
 msgid "signin.join.undoFailed"
-msgstr "합치기를 되돌리지 못했습니다. 다시 시도하세요."
+msgstr "합치기를 되돌리지 못했어요. 다시 시도하세요."
 
 #. Sign in to {email} again, then join.
 #. Link dialog: one account's proof is older than 5 minutes. {email}.
@@ -4826,17 +4846,17 @@ msgstr "5분 넘게 전에 로그인함"
 #. Still signed in as {email}.
 #. After cancelling the other-account sign-in: which account this browser is signed in to.
 msgid "signin.join.stillSignedIn"
-msgstr "계속 {email}(으)로 로그인되어 있습니다."
+msgstr "{email}(으)로 계속 로그인되어 있어요."
 
 #. Undo the join with {email}? You can until {date}.
 #. Link dialog opened from the 72-hour row: confirm the undo. {email}, {date}.
 msgid "signin.join.undoConfirm"
-msgstr "{email}과(와)의 합치기를 되돌릴까요? {date}까지 가능합니다."
+msgstr "{email}과(와)의 합치기를 되돌릴까요? {date}까지 가능해요."
 
 #. Too many tries. Wait a minute, then try again.
 #. Approve dialog: too many tries (429).
 msgid "signin.approve.tooMany"
-msgstr "시도가 너무 많습니다. 1분 기다린 뒤 다시 시도하세요."
+msgstr "시도 횟수가 너무 많아요. 1분 기다린 후 다시 시도하세요."
 
 #. Enter your license key.
 #. Activate dialog: Continue pressed with an empty field.
@@ -5221,12 +5241,12 @@ msgstr "이 앱에서는 로그인을 사용할 수 없어요."
 #. Sign-in request invalid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_request.title"
-msgstr "로그인 요청이 올바르지 않습니다"
+msgstr "잘못된 로그인 요청"
 
 #. The app sent a sign-in request we can't read. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_request.message"
-msgstr "앱이 읽을 수 없는 요청을 보냈습니다. 다시 시도하세요."
+msgstr "앱에서 읽을 수 없는 로그인 요청을 보냈어요. 다시 시도하세요."
 
 #. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5241,32 +5261,32 @@ msgstr "이 앱의 로그인이 올바르게 설정되지 않아 계정을 보�
 #. Sign-in no longer valid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_grant.title"
-msgstr "로그인이 더 이상 유효하지 않습니다"
+msgstr "로그인이 유효하지 않음"
 
 #. That sign-in has expired or was already used. Sign in again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_grant.message"
-msgstr "이 로그인은 만료되었거나 이미 사용되었습니다. 다시 로그인하세요."
+msgstr "이 로그인은 만료됐거나 이미 사용됐어요. 다시 로그인하세요."
 
 #. Sign-in request invalid
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unsupported_grant_type.title"
-msgstr "로그인 요청이 올바르지 않습니다"
+msgstr "잘못된 로그인 요청"
 
 #. The app asked for a sign-in type we don't support. Contact its developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.unsupported_grant_type.message"
-msgstr "앱이 지원하지 않는 로그인 방식을 요청했습니다. 개발자에게 문의하세요."
+msgstr "앱에서 지원하지 않는 로그인 방식을 요청했어요. 개발자에게 문의하세요."
 
 #. Access not available
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_scope.title"
-msgstr "액세스할 수 없습니다"
+msgstr "액세스 불가"
 
 #. The app asked for access this sign-in doesn't offer. Contact its developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_scope.message"
-msgstr "앱이 이 로그인에서 제공하지 않는 액세스를 요청했습니다. 개발자에게 문의하세요."
+msgstr "앱에서 이 로그인으로 제공되지 않는 액세스를 요청했어요. 개발자에게 문의하세요."
 
 #. Sign-in can't return to the app
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5336,7 +5356,7 @@ msgstr "잘못된 코드"
 #. That code isn't right. Check the email and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
-msgstr "그 코드는 작동하지 않았어요. 이메일을 확인하고 다시 입력하세요."
+msgstr "코드가 올바르지 않아요. 이메일을 확인하고 다시 입력하세요."
 
 #. Code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5346,7 +5366,7 @@ msgstr "만료된 코드"
 #. That code has expired. Send a new code.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.code_expired.message"
-msgstr "그 코드는 만료되었어요. 새 코드를 보내세요."
+msgstr "코드가 만료됐어요. 새 코드를 요청하세요."
 
 #. Email already in use
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5356,7 +5376,7 @@ msgstr "이미 사용 중인 이메일"
 #. Another Polaris Locker account already uses this email. Join this sign-in to that account, or use a different email.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_in_use.message"
-msgstr "다른 Polaris Locker 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요."
+msgstr "다른 Polaris Locker 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 합치거나 다른 이메일을 사용하세요."
 
 #. Terms not accepted
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5536,7 +5556,7 @@ msgstr "이미지가 업데이트되지 않음"
 #. An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.asset_unreachable.message"
-msgstr "원본에서 이미지를 가져올 수 없습니다. 이전 사본이 계속 표시되며 자동으로 다시 시도됩니다."
+msgstr "원본에서 이미지를 가져올 수 없어요. 이전 이미지가 계속 표시되며 자동으로 다시 시도해요."
 
 #. Update check unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5581,12 +5601,12 @@ msgstr "이 앱은 오프라인으로 실행 중이라 연결하지 않았어요
 #. Request not sent
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.backend-origin-not-allowed.title"
-msgstr "요청을 보내지 않았습니다"
+msgstr "요청을 보내지 않음"
 
 #. The app can send your license only to its own servers.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.backend-origin-not-allowed.message"
-msgstr "앱은 자체 서버로만 라이선스를 보낼 수 있습니다."
+msgstr "앱은 자체 서버로만 라이선스를 보낼 수 있어요."
 
 #. Insecure connection
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6591,12 +6611,12 @@ msgstr "라이선스를 확인하지 못했어요. 앱을 다시 연결한 후 �
 #. License needs refreshing
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_stale.title"
-msgstr "라이선스 새로 고침 필요"
+msgstr "라이선스 새로고침 필요"
 
 #. Connect to the internet so the app can refresh your license, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_stale.message"
-msgstr "앱이 라이선스를 새로 고칠 수 있도록 인터넷에 연결한 후 다시 시도하세요."
+msgstr "앱이 라이선스를 새로고침할 수 있도록 인터넷에 연결한 후 다시 시도하세요."
 
 #. Sign-in needed
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6663,10 +6683,10 @@ msgstr "계속하려면 라이선스 키를 입력하거나 로그인하세요."
 msgid "core.gate.version-too-old.title"
 msgstr "업데이트 필요"
 
-#. This version is no longer supported. Update the app to continue.
+#. This version is no longer supported. Update {product} to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-old.message"
-msgstr "이 버전은 더 이상 지원되지 않아요. 계속하려면 앱을 업데이트하세요."
+msgstr "이 버전은 더 이상 지원되지 않아요. 계속하려면 {product}을(를) 업데이트하세요."
 
 #. Not available on this license
 #. Core copy (conformance/parity/copy.en.json, gate).

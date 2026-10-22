@@ -144,7 +144,7 @@ export function DeviceTable({
             <span className="text-xs">
               <EntityLink slug={slug} kind="license" id={d.licenseId} />
               {d.seatNo != null ? (
-                <span className="text-fg-muted"> · seat {d.seatNo}</span>
+                <span className="text-fg-muted"> · device {d.seatNo}</span>
               ) : null}
             </span>
           );

@@ -348,6 +348,22 @@ describe("outlet credentials: the admin API", () => {
     expect(res.status).toBe(200);
   });
 
+  it("stores the expiry on the first write, not only on a rotation", async () => {
+    const r = await putOutletCredential(env, db, {
+      product: "djdl",
+      credentialId: "asc",
+      kind: "asc-api-key",
+      outletId: null,
+      value: VALUES["asc-api-key"],
+      expiresAt: NOW + 86_400,
+      actor: "admin-1",
+      now: NOW,
+    });
+    expect(r.ok).toBe(true);
+    const [info] = await listOutletCredentials(db, "djdl");
+    expect(info).toMatchObject({ expiresAt: NOW + 86_400, rotatedAt: null });
+  });
+
   it("re-PUT of the same kind rotates in place and clears health; another kind is refused", async () => {
     await call(env, db, "PUT", `${BASE}/asc`, {
       kind: "asc-api-key",

@@ -310,12 +310,12 @@ export function DevicesPage({
           deauth?.licenseId
             ? [
                 "The device loses access and its token is revoked.",
-                "Its seat on the license is freed.",
+                "It stops counting toward the license's device limit.",
                 "To use the license again it must re-activate.",
               ]
             : [
                 "The device loses access and its token is revoked.",
-                "It holds no license, so no seat is freed.",
+                "It holds no license, so no device limit is affected.",
                 "Under open registration it can register again on its next start.",
               ]
         }

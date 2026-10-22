@@ -574,7 +574,9 @@ export async function statusFlow(
           : problemRows(
               "warn",
               t(`core.gate.${view.state}.title`),
-              t(`core.gate.${view.state}.message`),
+              t(`core.gate.${view.state}.message`, {
+                product: ctx.product.name,
+              }),
             )),
       );
       // A version above the range and a missing channel are fixed on the product's page, not by
@@ -911,7 +913,7 @@ export async function bootFlow(
         ...problemRows(
           "warn",
           t(`core.gate.${refused}.title`),
-          t(`core.gate.${refused}.message`),
+          t(`core.gate.${refused}.message`, { product }),
         ),
         ...(refused === "version-too-old"
           ? [...gap(ctx), ...fix("update apply", "status.update")]
@@ -2194,7 +2196,7 @@ export async function devicesRenameFlow(
   };
 }
 
-/** `devices deauthorize`: remove a device and free its seat. */
+/** `devices deauthorize`: remove a device and make room for another. */
 export async function devicesRemoveFlow(
   ctx: KitContext,
   client: PolarisKeyClient,

@@ -26,10 +26,10 @@ names its profile with `profileId` and sets `policyDeviceLimit: 5` and no expiry
 validate` warns with `tier_ignored_field` for either. A tier's offline grace default is
 `policyOfflineGraceDays` (0 to 365 days; omitted, the product default applies).
 
-A device limit is a whole number of seats: `licensing.defaultDeviceLimit` and a tier's
+A device limit is a whole number of devices: `licensing.defaultDeviceLimit` and a tier's
 `policyDeviceLimit` take 0 to 1000 (`MAX_DEVICE_LIMIT` in `@polaris-key/manifest`). A larger value
 fails validation with `invalid_device_limit` and the whole manifest is refused, never clamped,
-because the number bounds the work every activation does to find a free seat. The console and the
+because the number bounds the work every activation does to find room for another device. The console and the
 settings API hold the same ceiling.
 
 A tier's `rank` (an integer from 0, default 0, not unique) says which tier is better. When an

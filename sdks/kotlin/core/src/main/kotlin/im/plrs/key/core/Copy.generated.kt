@@ -208,7 +208,7 @@ public val COPY_GATE: Map<String, CopyEntry> = mapOf(
     "expired" to CopyEntry("License expired", "Connect to the internet or renew your license to continue."),
     "revoked" to CopyEntry("Signed out", "This device was signed out. Sign in or activate again to continue."),
     "needs-activation" to CopyEntry("Activate", "Enter a license key or sign in to continue."),
-    "version-too-old" to CopyEntry("Update required", "This version is no longer supported. Update the app to continue."),
+    "version-too-old" to CopyEntry("Update required", "This version is no longer supported. Update {product} to continue."),
     "version-too-new" to CopyEntry("Not available on this license", "This build is newer than your license allows."),
     "channel-not-entitled" to CopyEntry("Channel not included", "Your license doesn't include this channel."),
     "not-applicable" to CopyEntry("No license needed", "This app doesn't need a license."),

@@ -10,7 +10,7 @@
 <text x="21" y="60.2" text-anchor="middle" fill="#e5c07b">▲</text>
 <text x="42" y="60.2" textLength="126" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Update required</text>
 <rect x="20.5" y="64.4" width="1" height="16.8" fill="#d7dae0"/>
-<text x="42" y="77" textLength="537.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">This version is no longer supported. Update the app to continue.</text>
+<text x="42" y="77" textLength="613.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">This version is no longer supported. Update Tidewater Studio to continue.</text>
 <rect x="20.5" y="81.2" width="1" height="16.8" fill="#d7dae0"/>
 <text x="42" y="93.8" textLength="268.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Allowed versions: 2.4.0 or later</text>
 <rect x="20.5" y="98" width="1" height="16.8" fill="#d7dae0"/>

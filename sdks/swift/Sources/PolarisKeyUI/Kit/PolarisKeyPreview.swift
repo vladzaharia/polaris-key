@@ -170,8 +170,6 @@ public struct PolarisKeyPreview: View {
                             return i
                         }()), features: offers.features ?? [], onPortal: {}, onRedeem: {})
             }
-        default:
-            PreviewHostApp()
         }
     }
 }

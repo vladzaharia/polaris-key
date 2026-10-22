@@ -533,7 +533,7 @@ describe("New product from a repository", () => {
     await page();
     expect(within(main()).queryByLabelText(/^Name/)).toBeNull();
     const group = await within(main()).findByRole("radiogroup", {
-      name: "Repositories the Polaris Key app can read",
+      name: "Repositories the Polaris Key GitHub App can read",
     });
     const rows = within(group).getAllByRole("radio");
     expect(rows).toHaveLength(3);
@@ -578,7 +578,7 @@ describe("New product from a repository", () => {
     await page();
     expect(
       await within(main()).findByText(
-        "The Polaris Key app is not installed on GitHub",
+        "The Polaris Key GitHub App is not installed on GitHub",
       ),
     ).toBeTruthy();
     expect(
@@ -1013,7 +1013,7 @@ describe("New product: leaving, focus and the edges (re-review)", () => {
     });
     await page();
     const group = await within(main()).findByRole("radiogroup", {
-      name: "Repositories the Polaris Key app can read",
+      name: "Repositories the Polaris Key GitHub App can read",
     });
     expect(within(group).getAllByRole("radio")).toHaveLength(5);
     await userEvent.click(
@@ -1083,7 +1083,7 @@ describe("New product accessibility", () => {
     });
     await page();
     await within(main()).findByRole("radiogroup", {
-      name: "Repositories the Polaris Key app can read",
+      name: "Repositories the Polaris Key GitHub App can read",
     });
     expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);
   });

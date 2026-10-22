@@ -185,9 +185,9 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     service: "platform",
     area: "identity",
     rbacArea: "platform",
-    label: "Polaris Key terms",
+    label: "Polaris Locker terms",
     description:
-      "The version and URLs of Polaris Key's terms and privacy notice. Set, every new account accepts that version of the terms before it is created; unset, no terms step is shown and nothing is recorded.",
+      "The version and URLs of Polaris Locker's terms and privacy notice. Set, every new account accepts that version of the terms before it is created; unset, no terms step is shown and nothing is recorded.",
     keywords: ["terms", "privacy", "legal", "FinishStep", "_platform"],
     docs: "/docs/operate/platform/settings/",
     ownership: "operator",
@@ -1085,7 +1085,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "license",
     label: "Anchor license choice",
     description:
-      "Which of a holder's licenses a device runs on: the highest-ranked tier, the one with the most free seats, or the oldest.",
+      "Which of a holder's licenses a device runs on: the highest-ranked tier, the one with the most room for devices, or the oldest.",
     keywords: ["anchor", "rank", "seats"],
     docs: "/docs/features/licensing/model/",
     ownership: "claimable",

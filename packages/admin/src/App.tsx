@@ -74,7 +74,14 @@ function Boot(): React.ReactElement {
     // A refusal is the server answering: trying again cannot change it (B-015).
     if (me.error instanceof ApiError && me.error.status === 403)
       return <ConsoleRefused />;
-    return <ConsoleOffline onRetry={() => me.refetch()} />;
+    // A 5xx is also the server answering: say it failed, not that it can't be reached (P2).
+    const serverError =
+      me.error instanceof ApiError &&
+      me.error.status >= 500 &&
+      me.error.status < 600;
+    return (
+      <ConsoleOffline serverError={serverError} onRetry={() => me.refetch()} />
+    );
   }
   return <BootScreen />;
 }

@@ -17,15 +17,15 @@ Commands:
 License:
   activate [key]              Add a license key (prompted, or piped on stdin)
   status                      Show your license, devices and offline time
-  deactivate                  Stop using your license on this device and free
-                              its seat
+  deactivate                  Stop using your license on this device and make
+                              room for another
   login                       Sign in with your account in the browser
   logout                      Sign out on this device
   devices list                List the devices using your license
   devices rename <deviceId> [label...]
                               Rename a device (no name clears it)
   devices deauthorize <deviceId>
-                              Remove a device and free its seat
+                              Remove a device and make room for another
   update check                Check for a newer version
   update apply                Download and install the newer version
 
@@ -48,15 +48,15 @@ Commands:
 License:
   activate [key]              Add a license key (prompted, or piped on stdin)
   status                      Show your license, devices and offline time
-  deactivate                  Stop using your license on this device and free
-                              its seat
+  deactivate                  Stop using your license on this device and make
+                              room for another
   login                       Sign in with your account in the browser
   logout                      Sign out on this device
   devices list                List the devices using your license
   devices rename <deviceId> [label...]
                               Rename a device (no name clears it)
   devices deauthorize <deviceId>
-                              Remove a device and free its seat
+                              Remove a device and make room for another
   update check                Check for a newer version
   update apply                Download and install the newer version
 
@@ -79,15 +79,15 @@ Commands:
 License:
   activate [key]              Add a license key (prompted, or piped on stdin)
   status                      Show your license, devices and offline time
-  deactivate                  Stop using your license on this device and free
-                              its seat
+  deactivate                  Stop using your license on this device and make
+                              room for another
   login                       Sign in with your account in the browser
   logout                      Sign out on this device
   devices list                List the devices using your license
   devices rename <deviceId> [label...]
                               Rename a device (no name clears it)
   devices deauthorize <deviceId>
-                              Remove a device and free its seat
+                              Remove a device and make room for another
   update check                Check for a newer version
   update apply                Download and install the newer version
 
@@ -110,15 +110,15 @@ Commands:
 License:
   activate [key]              Add a license key (prompted, or piped on stdin)
   status                      Show your license, devices and offline time
-  deactivate                  Stop using your license on this device and free
-                              its seat
+  deactivate                  Stop using your license on this device and make
+                              room for another
   login                       Sign in with your account in the browser
   logout                      Sign out on this device
   devices list                List the devices using your license
   devices rename <deviceId> [label...]
                               Rename a device (no name clears it)
   devices deauthorize <deviceId>
-                              Remove a device and free its seat
+                              Remove a device and make room for another
   update check                Check for a newer version
   update apply                Download and install the newer version
 
@@ -141,15 +141,15 @@ Commands:
 License:
   activate [key]              Add a license key (prompted, or piped on stdin)
   status                      Show your license, devices and offline time
-  deactivate                  Stop using your license on this device and free
-                              its seat
+  deactivate                  Stop using your license on this device and make
+                              room for another
   login                       Sign in with your account in the browser
   logout                      Sign out on this device
   devices list                List the devices using your license
   devices rename <deviceId> [label...]
                               Rename a device (no name clears it)
   devices deauthorize <deviceId>
-                              Remove a device and free its seat
+                              Remove a device and make room for another
   update check                Check for a newer version
   update apply                Download and install the newer version
 
@@ -175,7 +175,8 @@ License:
   status                      Show your license, devices and
                               offline time
   deactivate                  Stop using your license on
-                              this device and free its seat
+                              this device and make room
+                              for another
   login                       Sign in with your account in
                               the browser
   logout                      Sign out on this device
@@ -185,8 +186,8 @@ License:
                               Rename a device (no name
                               clears it)
   devices deauthorize <deviceId>
-                              Remove a device and free
-                              its seat
+                              Remove a device and make room
+                              for another
   update check                Check for a newer version
   update apply                Download and install the
                               newer version
@@ -213,7 +214,8 @@ License:
   status                      Show your license, devices and
                               offline time
   deactivate                  Stop using your license on
-                              this device and free its seat
+                              this device and make room
+                              for another
   login                       Sign in with your account in
                               the browser
   logout                      Sign out on this device
@@ -223,8 +225,8 @@ License:
                               Rename a device (no name
                               clears it)
   devices deauthorize <deviceId>
-                              Remove a device and free
-                              its seat
+                              Remove a device and make room
+                              for another
   update check                Check for a newer version
   update apply                Download and install the
                               newer version
@@ -251,7 +253,8 @@ License:
   status                      Show your license, devices and
                               offline time
   deactivate                  Stop using your license on
-                              this device and free its seat
+                              this device and make room
+                              for another
   login                       Sign in with your account in
                               the browser
   logout                      Sign out on this device
@@ -261,8 +264,8 @@ License:
                               Rename a device (no name
                               clears it)
   devices deauthorize <deviceId>
-                              Remove a device and free
-                              its seat
+                              Remove a device and make room
+                              for another
   update check                Check for a newer version
   update apply                Download and install the
                               newer version
@@ -289,7 +292,8 @@ License:
   status                      Show your license, devices and
                               offline time
   deactivate                  Stop using your license on
-                              this device and free its seat
+                              this device and make room
+                              for another
   login                       Sign in with your account in
                               the browser
   logout                      Sign out on this device
@@ -299,8 +303,8 @@ License:
                               Rename a device (no name
                               clears it)
   devices deauthorize <deviceId>
-                              Remove a device and free
-                              its seat
+                              Remove a device and make room
+                              for another
   update check                Check for a newer version
   update apply                Download and install the
                               newer version
@@ -327,7 +331,8 @@ License:
   status                      Show your license, devices and
                               offline time
   deactivate                  Stop using your license on
-                              this device and free its seat
+                              this device and make room
+                              for another
   login                       Sign in with your account in
                               the browser
   logout                      Sign out on this device
@@ -337,8 +342,8 @@ License:
                               Rename a device (no name
                               clears it)
   devices deauthorize <deviceId>
-                              Remove a device and free
-                              its seat
+                              Remove a device and make room
+                              for another
   update check                Check for a newer version
   update apply                Download and install the
                               newer version
@@ -375,7 +380,7 @@ License:
     offline time
   deactivate
     Stop using your license on this
-    device and free its seat
+    device and make room for another
   login
     Sign in with your account in
     the browser
@@ -386,7 +391,8 @@ License:
   devices rename <deviceId> [label...]
     Rename a device (no name clears it)
   devices deauthorize <deviceId>
-    Remove a device and free its seat
+    Remove a device and make room
+    for another
   update check
     Check for a newer version
   update apply
@@ -425,7 +431,7 @@ License:
     offline time
   deactivate
     Stop using your license on this
-    device and free its seat
+    device and make room for another
   login
     Sign in with your account in
     the browser
@@ -436,7 +442,8 @@ License:
   devices rename <deviceId> [label...]
     Rename a device (no name clears it)
   devices deauthorize <deviceId>
-    Remove a device and free its seat
+    Remove a device and make room
+    for another
   update check
     Check for a newer version
   update apply
@@ -476,8 +483,8 @@ License:
     and offline time
   deactivate
     Stop using your license on
-    this device and free
-    its seat
+    this device and make room
+    for another
   login
     Sign in with your account in
     the browser
@@ -492,8 +499,8 @@ License:
       clears it)
   devices
     deauthorize <deviceId>
-      Remove a device and free
-      its seat
+      Remove a device and make
+      room for another
   update check
     Check for a newer version
   update apply
@@ -533,8 +540,8 @@ License:
     and offline time
   deactivate
     Stop using your license on
-    this device and free
-    its seat
+    this device and make room
+    for another
   login
     Sign in with your account in
     the browser
@@ -549,8 +556,8 @@ License:
       clears it)
   devices
     deauthorize <deviceId>
-      Remove a device and free
-      its seat
+      Remove a device and make
+      room for another
   update check
     Check for a newer version
   update apply

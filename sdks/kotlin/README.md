@@ -259,10 +259,10 @@ onProgress)` downloads one build of a verified release record (a `binary` decisi
   (a `pkey-release+jws` against the keys the app pins; `:core`'s `verifyReleaseRecord`, which the
   update engine shares).
 
-## When every seat is taken
+## When the device limit is reached
 
 A refused activation returns `ActivationResult.DeviceLimit(limit, deviceCount, manageUrl)`.
-`manageUrl` is the customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while
+`manageUrl` is the customer-portal link that makes room for another device (WIRE-CONTRACT-V4 §5.3), present while
 the product's portal is on and already validated by `ManageLink.read`. It defaults to null, so the
 class stays source-compatible. It is never an auth failure.
 
@@ -613,7 +613,7 @@ quickstart against a real `pkey dev` ([Run Polaris Key locally](https://key.plrs
 backend only. It drives the `PolarisConfig.kt` that `pkey sdk` generated, the SDK's own client over
 its OkHttp transport and the dev server's approval script (Node on PATH): first activation, what
 each of the seven test keys does, a config change event, a device-code sign-in and an update
-decision. It needs a fresh server (it spends device seats and key entries) and three variables:
+decision. It needs a fresh server (it spends devices and key entries) and three variables:
 `PKEY_DEV_BASE_URL` (the server's origin), `PKEY_DEV_CONFIG` (the absolute path of the generated
 file, which Gradle compiles into the test sources) and `PKEY_DEV_APPROVE`
 (`packages/cli/scripts/dev-approve.mjs`).

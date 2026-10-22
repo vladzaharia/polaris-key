@@ -443,7 +443,7 @@ paths:
     get:
       operationId: listDevices
       tags: [core]
-      summary: List the devices sharing this device's seat pool
+      summary: List the devices sharing this device's device pool
       description: >
         A LICENSED caller sees every device on its own license. A device registered WITHOUT
         a license (keyless registration under an `open`/`requires-identity` policy) sees a
@@ -528,7 +528,7 @@ paths:
         rather than being resolved to a single device. There is therefore no per-device
         404 on GET; a client that wants one device filters the roster on `id`. The scope is
         self-service in the sense the roster already is: a licensed caller sees its own
-        license's seats, a registered device sees only itself.
+        license's devices, a registered device sees only itself.
       security: [{ deviceToken: [] }]
       responses:
         "200":
@@ -1229,8 +1229,8 @@ paths:
         "200":
           description: >
             Activation result. `cache-control: no-store`. On a product with Identity on it also
-            carries `keyEntries` (PX-W9, WIRE-CONTRACT-V4 §12.2): a NEW device that takes a seat
-            is one key entry, recorded with the seat claim; an enrolled device's re-entry is not.
+            carries `keyEntries` (PX-W9, WIRE-CONTRACT-V4 §12.2): a NEW device that counts toward the limit
+            is one key entry, recorded with the device claim; an enrolled device's re-entry is not.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ActivationResult" }
@@ -1277,7 +1277,7 @@ paths:
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: >
-            Seat pool exhausted, a `strict`-mode tier with no fingerprint, or no key entries
+            Device limit reached, a `strict`-mode tier with no fingerprint, or no key entries
             left — LEGACY FLAT. `device_limit` carries `limit` and `deviceCount` at the top
             level, plus `manageUrl` (PX-W8) while the product's customer portal is on.
             `key_entry_limit` (PX-W9, WIRE-CONTRACT-V4 §12.2 step 4): an Identity product with
@@ -1469,7 +1469,7 @@ paths:
         "403":
           description: >
             No fingerprint, no anchor, an already-claimed machine license, or the free tier's
-            seat pool is exhausted — LEGACY FLAT. `device_limit` carries `limit`,
+            device limit is reached — LEGACY FLAT. `device_limit` carries `limit`,
             `deviceCount` and, while the product's customer portal is on, `manageUrl`.
           content:
             application/json:
@@ -1649,7 +1649,7 @@ paths:
       tags: [license]
       summary: Self-deauthorize this device
       description: >
-        Retires the calling device from its own seat: the KV token record is deleted and the
+        Stops counting the calling device: the KV token record is deleted and the
         device row flips to `deauthorized`, so the very next request with that token — to any
         route — is a 401. Reads only the bearer token; `X-PKey-Device` is NOT consulted, and
         there is no body and no rate limit.
@@ -6884,8 +6884,8 @@ paths:
         Exchanges a `pkey_<product>_…` key for the session cookie, for products whose portal
         offers key entry beside (or instead of) OIDC. The key may be sent as the body field
         `key` or, if that is absent, as `Authorization: Bearer`. Success is 201, not 200, and
-        the body is `{"ok": true, "keyEntries": {…}}` — the payload is the `Set-Cookie`. Seat
-        accounting applies: a browser session takes a seat like any other device, so an
+        the body is `{"ok": true, "keyEntries": {…}}` — the payload is the `Set-Cookie`. Device-limit
+        accounting applies: a browser session counts toward the limit like any other device, so an
         exhausted pool is a 403 `device_limit` carrying `limit` and `deviceCount` at the top
         level, plus `manageUrl` (PX-W8) while the product's customer portal is on. It is a key
         entry on the `browser` surface (PX-W9, WIRE-CONTRACT-V4 §12.2): the browser device is
@@ -6926,7 +6926,7 @@ paths:
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: >
-            The license's seat pool is exhausted, or (PX-W9, §12.2 step 4) it has no key entries
+            The license's device limit is reached, or (PX-W9, §12.2 step 4) it has no key entries
             left — LEGACY FLAT, with `manageUrl` while the product's customer portal is on, and
             `keyEntries` on `key_entry_limit`. `license_owned` (I-09, §12.2 step 3): the licence
             is in an account, with `signInUrl`; no cookie is set and nothing is counted.
@@ -7729,14 +7729,14 @@ paths:
         2026-10-05). Renders "Choose a license for this device": the product, the device label
         (`deviceName`, or "This browser" for the redirect flow) and one radio row per candidate
         license (the account's usable licenses, plus the identity's own unattached `sub`-keyed
-        license) with its tier, its seat count ("1 of 3 devices", for every license) and its
+        license) with its tier, its device count ("1 of 3 devices", for every license) and its
         origin and term in plain words ("From signing in", "Steam key", "From Steam", "Added
         with a key", then "Lifetime" or "Expires <date>"); no license is labelled by type, since
         every license is account-bound (owner decision 2026-10-05). Only a store's name is
         shown, never an order id or purchase key. The first free row in
         rank-first order (no expiry, then the latest expiry, then the oldest) is preselected.
         A full row is disabled ("All devices in use") and offers **Replace a device** (its
-        seat-holding devices, the least recent preselected, when the account owns it and the
+        devices using the licence, the least recent preselected, when the account owns it and the
         portal is on) and a **Free a device** link to the portal's focused flow. **Create a new
         free license** appears only when the product's policy would auto-issue to this person,
         they have no `sub`-keyed license yet, and every row is full. When a Replace is pending
@@ -8490,7 +8490,7 @@ paths:
     post:
       operationId: identityChoiceDevices
       tags: [identity]
-      summary: The seat-holding devices of a full licence (Replace)
+      summary: The devices using a full licence (Replace)
       description: >
         I-08b (WIRE-CONTRACT-V4 §12.5.1). The pending sign-in grant from `token`'s `choose`
         answer travels in the body, never in a URL, and answers only the device that redeemed
@@ -8509,7 +8509,7 @@ paths:
             schema: { $ref: "#/components/schemas/ChoiceDevicesRequest" }
       responses:
         "200":
-          description: "The licence's seat-holding devices. `cache-control: no-store`."
+          description: "The devices using the licence. `cache-control: no-store`."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ReplaceView" }
@@ -8559,9 +8559,9 @@ paths:
         Only while the product's Identity service is on.
         Consumes the grant and answers exactly what `token` answers (`TokenResponse`, plus
         `keyEntries` after a key). `choice.kind` is `license` (with an optional
-        `replaceDeviceId`, committed in one batch with the seat), `keep` (needs the device's own
+        `replaceDeviceId`, committed in one batch with the device claim), `keep` (needs the device's own
         `Authorization: Bearer`), `create` or `key`. A key is PX-W9's app key entry, counted once
-        with the seat, and refuses with `license_owned` and `key_entry_limit`. A refusal the
+        with the device claim, and refuses with `license_owned` and `key_entry_limit`. A refusal the
         person can retry (`device_limit` with a fresh `view`, a lost mint, a wrong key) leaves
         the grant open for the time it has left.
       security: []
@@ -12138,7 +12138,7 @@ paths:
       description: >
         One entry per product the portal account holds a licence for (portal-enabled products
         only, `kind: license`): the product's presentation from its `.pkey/distribution` root
-        `listing`, the status of its best licence, that licence's summary with seats, and the
+        `listing`, the status of its best licence, that licence's summary with device counts, and the
         support links. Then, PS-04, one per library entry (`kind: entry`): an open product the
         account added from the storefront with no licence behind it (`license: null`,
         `licenseCount: 0`, status always `active`), shown until the account holds any licence
@@ -12156,7 +12156,7 @@ paths:
               schema: { $ref: "#/components/schemas/PortalLibrary" }
               examples:
                 oneProduct:
-                  summary: One product, one licence, two of three seats in use
+                  summary: One product, one licence, two of three devices in use
                   value:
                     products:
                       - product: tidewater
@@ -12241,9 +12241,9 @@ paths:
       description: >
         The product's presentation, its `services` (each service's own toggle, so the page shows
         a section only for a service that is on), its status, and every linked licence, best
-        first (status precedence, then the later expiry), each with its seats, its entitlements
-        and its authorized devices; a device past the dormancy window is `dormant` and holds no
-        seat. Each licence also carries its `purchase` (G8): a store purchase, the developer, a
+        first (status precedence, then the later expiry), each with its device counts, its entitlements
+        and its authorized devices; a device past the dormancy window is `dormant` and does not count
+        toward the limit. Each licence also carries its `purchase` (G8): a store purchase, the developer, a
         sign-in or a free auto-issue, with its store grants. A product the library holds as an
         entry only (PS-04, `kind: entry`) answers with no licences. `404` when the account holds
         neither a licence nor an entry for the product, or the developer has the portal off for
@@ -12667,7 +12667,7 @@ paths:
     get:
       operationId: getSignInLicenseDevices
       tags: [portal]
-      summary: The seat-holding devices of a full licence (Replace a device)
+      summary: The devices using a full licence (Replace a device)
       description: >
         I-08b (WIRE-CONTRACT-V4 §12.4.1). Needs the portal session AND the request's binder
         cookie. One `404` for a licence that is unknown, another account's, not full, or whose
@@ -12683,7 +12683,7 @@ paths:
           schema: { type: string }
       responses:
         "200":
-          description: The licence's seat-holding devices.
+          description: The devices using the licence.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ReplaceView" }
@@ -15493,7 +15493,7 @@ paths:
         no email it is floating again: anyone with the key can add it). An auto-attach block keeps
         it out of THIS account: no later request, sign-in or email verification adds it back, only
         adding its key again. The account's package tokens for it are revoked. Its devices keep
-        running and keep their seats; the ones this account signed in on lose Cloud Sync for it.
+        running and keep counting toward the limit; the ones this account signed in on lose Cloud Sync for it.
         The detach and the block are audited in the account's history. Only a licence its key can
         bring back is removable: it needs an active licence key, and the product must let a key
         add a licence in the portal. `GET /api/licenses` and `GET /api/licenses/{product}/{licenseId}`
@@ -16701,7 +16701,7 @@ paths:
       summary: One licence, with its holder, keys, devices and overrides
       description: >
         The licence record the console shows: the summary (with `holder`, LX-26) plus its keys (by
-        hash), devices, profiles, offline window, seat count and redacted overrides, and (U-03)
+        hash), devices, profiles, offline window, device count and redacted overrides, and (U-03)
         `configOverrides`: where its config and secret overrides live (`phase`: `license`,
         `notice`, `moving`, `moved`), whether an account owns it, the owner's subject and the
         portal's Activate License link offered for a licence with none. Platform admins only;
@@ -22721,10 +22721,10 @@ components:
     PortalLicenseSeats:
       type: object
       description: >
-        One licence's summary with seats (G5). `status` is the portal status; `licenseStatus` the
+        One licence's summary with device counts (G5). `status` is the portal status; `licenseStatus` the
         stored one (`active` or `disabled`). `deviceLimit` is the limit activation enforces;
         `activeSeatCount` the authorized devices inside the dormancy window; `dormantCount` those
-        past it, which hold no seat.
+        past it, which do not count toward the limit.
       required:
         [
           id,
@@ -22755,7 +22755,7 @@ components:
       type: string
       description: >
         A product's status from its best licence, first match wins: `suspended` (the developer
-        disabled the licence), `expired`, `device_limit` (every seat in use), `expires_soon`
+        disabled the licence), `expired`, `device_limit` (the device limit reached), `expires_soon`
         (within 14 days), `active`.
       enum: [suspended, expired, device_limit, expires_soon, active]
     PortalLibrary:
@@ -23240,7 +23240,7 @@ components:
                             lastSeen: { type: integer }
                             dormant:
                               type: boolean
-                              description: Past the dormancy window; holds no seat.
+                              description: Past the dormancy window; does not count toward the limit.
     PortalSupportCode:
       type: object
       additionalProperties: false
@@ -24206,17 +24206,17 @@ components:
         message: { type: string }
         limit:
           type: integer
-          description: On `device_limit` — the seat cap.
+          description: On `device_limit` — the device limit.
         deviceCount:
           type: integer
-          description: On `device_limit` — how many seats are already taken.
+          description: On `device_limit` — how many devices already count.
         manageUrl:
           type: string
           format: uri
           maxLength: 2048
           description: >
             On `device_limit` (PX-W8, WIRE-CONTRACT-V4 §5.3) — the customer-portal link that
-            frees a seat: `<portal>/#/p/<product>/free-device?license=<id>[&for=<label>]` for a
+            makes room for another device: `<portal>/#/p/<product>/free-device?license=<id>[&for=<label>]` for a
             licence attached to an account, else
             `<portal>/activate?product=<product>&next=free-device[&for=<label>]`. On
             `key_entry_limit` (PX-W9, §12.2) — `<portal>/activate?product=<product>`. Present
@@ -24830,7 +24830,7 @@ components:
     DeviceView:
       type: object
       description: >
-        A device row as the wire renders it (`shapeDevice`). The token hash, seat number,
+        A device row as the wire renders it (`shapeDevice`). The token hash, ordinal,
         stored overrides and last telemetry blob are deliberately NOT exposed. `licenseId` is
         the empty string for a device registered without a licence.
       required:
@@ -24870,7 +24870,7 @@ components:
     DeviceRoster:
       type: object
       description: >
-        The seat pool as this caller may see it: every device on the licence for a licensed
+        The device pool as this caller may see it: every device on the licence for a licensed
         token, or a one-element list for a device registered without one.
       required: [currentDeviceId, devices]
       properties:
@@ -25215,7 +25215,7 @@ components:
       type: object
       description: >
         What `/license/activate` and `/license/enroll` both answer with — the same four fields
-        in the same order, so an SDK has one code path for "I now hold a seat". `schemaVersion`
+        in the same order, so an SDK has one code path for "I now count toward the limit". `schemaVersion`
         is the product's CATALOG version, which is what tells the client whether its cached
         catalog is stale.
       required: [token, schemaVersion, device, license]
@@ -25393,7 +25393,7 @@ components:
         freeDeviceUrl: { type: [string, "null"] }
     ReplaceView:
       type: object
-      description: "I-08b (§12.4.1): the seat-holding devices Replace could free."
+      description: "I-08b (§12.4.1): the devices using the licence Replace could free."
       required: [licenseId, seats, devices, replace]
       additionalProperties: false
       properties:

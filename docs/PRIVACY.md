@@ -23,7 +23,7 @@ call site is named.
    comparison baseline: the same hashed components) and software facts are deleted when the
    device they describe is deauthorized, so nothing about a device outlives it. What ages out on
    its own is the log and housekeeping data around it: a nightly maintenance job deletes audit rows
-   after 180 days, releases the seats of devices unseen for 90 days, and removes the other expired
+   after 180 days, stops counting devices unseen for 90 days, and removes the other expired
    records listed under "The nightly maintenance job".
 
 ## What is collected
@@ -345,17 +345,17 @@ One scheduled job deletes what outlives its purpose elsewhere. It is the Worker'
 other trigger, every 15 minutes, only polls store connectors. Each step is bounded and safe to run
 twice. The steps that delete or scrub personal data:
 
-| What                                                                                                                                              | Deleted when                                                                                                                                                                     |
-| ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Console audit rows (`audit`), customer-portal audit rows (`portal_audit`, including those that belong to no product) and the platform audit trail | 180 days after they were written                                                                                                                                                 |
-| Download tokens (`release_download_tokens`)                                                                                                       | Once used, and once expired                                                                                                                                                      |
-| A device's seat and token                                                                                                                         | The seat is released and the token hash cleared 90 days after the device was last seen. The device row, its fingerprint and software facts stay until the device is deauthorized |
-| A holder move's before and after name and email (`license_relinks`)                                                                               | Scrubbed once its 72-hour undo window ends                                                                                                                                       |
-| An account join's undo snapshot (`account_merges`)                                                                                                | Once its undo window ends                                                                                                                                                        |
-| Merge tombstones and subject events                                                                                                               | 90 days and 180 days                                                                                                                                                             |
-| Store connector events                                                                                                                            | 30 days                                                                                                                                                                          |
-| Storefront impression dedupe keys (`storefront_seen`)                                                                                             | After yesterday                                                                                                                                                                  |
-| Lazy-delta demand rows                                                                                                                            | 30 days after the device last reported the pair                                                                                                                                  |
+| What                                                                                                                                              | Deleted when                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Console audit rows (`audit`), customer-portal audit rows (`portal_audit`, including those that belong to no product) and the platform audit trail | 180 days after they were written                                                                                                                                                      |
+| Download tokens (`release_download_tokens`)                                                                                                       | Once used, and once expired                                                                                                                                                           |
+| A device's count and token                                                                                                                        | the device stops counting and the token hash cleared 90 days after the device was last seen. The device row, its fingerprint and software facts stay until the device is deauthorized |
+| A holder move's before and after name and email (`license_relinks`)                                                                               | Scrubbed once its 72-hour undo window ends                                                                                                                                            |
+| An account join's undo snapshot (`account_merges`)                                                                                                | Once its undo window ends                                                                                                                                                             |
+| Merge tombstones and subject events                                                                                                               | 90 days and 180 days                                                                                                                                                                  |
+| Store connector events                                                                                                                            | 30 days                                                                                                                                                                               |
+| Storefront impression dedupe keys (`storefront_seen`)                                                                                             | After yesterday                                                                                                                                                                       |
+| Lazy-delta demand rows                                                                                                                            | 30 days after the device last reported the pair                                                                                                                                       |
 
 The same job also prunes housekeeping tables (operations job runs and heartbeats, the refusal log,
 CI credentials, registry tokens, the blob collector) and runs the account catch-up and erasure
@@ -403,7 +403,7 @@ The device panel shows a device's fingerprint status (`verified` / `unverified`)
 hwid, truncated per-component digests, the component count, and the last drift event — never a
 full digest, so a screenshot of the panel cannot be used to correlate a device elsewhere. An
 admin can clear a device's binding, which is audited and lets the device re-bind on its next
-check-in without losing its seat.
+check-in without losing its place.
 
 A product's **Users** page (Core → Users) shows each person by a random id that exists for that
 product only (`ps_…`); another product's console sees a different id for the same person. It

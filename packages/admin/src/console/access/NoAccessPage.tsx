@@ -135,8 +135,10 @@ function RoleTag({ role, me }: { role: MeRole; me: Me }): React.ReactElement {
 function SignedInLine({ me }: { me: Me }): React.ReactElement {
   const roles = me.permissions?.roles ?? [];
   const useAnother = (): void => {
+    // `go=1&other=1` asks the IdP for its account chooser (`prompt=select_account`): a bare
+    // /manage/login would let a live IdP session sign the same account straight back in.
     void mutate("logout").finally(() => {
-      window.location.href = "/manage/login";
+      window.location.href = "/manage/login?go=1&other=1";
     });
   };
   return (

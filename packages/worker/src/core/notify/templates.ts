@@ -338,7 +338,7 @@ export function deviceReplacedNotice(input: {
     subject: `${name} signed out on ${device}`, // signin.mail.replaced.subject
     paragraphs: [
       // signin.mail.replaced.body
-      `${device} was replaced by ${newDevice} when you signed in to ${name} on ${emailDate(input.at)}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.`,
+      `${device} was replaced by ${newDevice} when you signed in to ${name} on ${emailDate(input.at)}. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices.`,
     ],
     action: {
       label: "Open Polaris Locker", // signin.mail.open

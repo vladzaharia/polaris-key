@@ -1,5 +1,6 @@
 /** Pure model for the Services page: the enabled set, the changes a switch asks for, and fact copy. */
 
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import {
   SERVICE_ERROR_MESSAGES,
   type ServiceFeatureFacts,
@@ -66,7 +67,7 @@ export const COMMERCE_OFF_LIMITS =
   "Store refunds do not land while it is off. Google Play retries notifications for 7 days and lists voided purchases for 31: turn it back on within them or those refunds are missed.";
 
 /** The docs section that sets a storefront up. */
-export const STOREFRONT_DOCS = "/docs/features/commerce/#setting-it-up";
+export const STOREFRONT_DOCS = docsUrl("storefrontSetup");
 export const SET_UP_STOREFRONT = "Set up a storefront";
 
 /** The row's Attention state: store purchases are live but Commerce is off, so refunds miss. */

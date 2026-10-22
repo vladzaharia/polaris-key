@@ -182,7 +182,9 @@ describe("core.copy: English is the generated module", () => {
     }
     for (const [status, e] of Object.entries(COPY_EN.gate)) {
       expect(COPY_GATE[status], status).toEqual(e);
-      expect(copyMessage(status), status).toBe(e.message);
+      expect(copyMessage(status, { params: { product: "DJDL" } }), status).toBe(
+        e.message.replace("{product}", "DJDL"),
+      );
     }
     for (const [result, e] of Object.entries(COPY_EN.activation)) {
       expect(COPY_ACTIVATION[result], result).toEqual(e);
@@ -264,7 +266,9 @@ describe("core.copy: English is the generated module", () => {
       );
     }
     for (const [status, e] of Object.entries(COPY_FR.gate)) {
-      expect(copyMessage(status, { locale: "fr" }), status).toBe(e.message);
+      expect(copyMessage(status, { locale: "fr", params: P }), status).toBe(
+        fill(e.message, status),
+      );
       expect([e.title, COPY_EN.gate[status]!.title], status).toContain(
         copyTitle(status, "fr"),
       );

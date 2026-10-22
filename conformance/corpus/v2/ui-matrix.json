@@ -11436,7 +11436,7 @@
       "locale": "pt-BR",
       "key": "welcome.title",
       "args": { "product": "Tidewater Studio" },
-      "expect": "Boas-vindas ao Tidewater Studio"
+      "expect": "Boas-vindas a Tidewater Studio"
     },
     {
       "name": "it: welcome.title",

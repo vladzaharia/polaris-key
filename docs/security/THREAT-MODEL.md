@@ -1204,7 +1204,7 @@ extractor parses every `Authorization` shape and never logs, stores or echoes it
 **Cache poisoning.** Only a `public` decision reaches the Cache API, and only a 200 with a public
 `Cache-Control` answering a GET is stored; a HEAD may read the GET entry but never writes it. The key is the normalised path, the query names the route reads and,
 for npm and PyPI, `Accept`; any other parameter or header is ignored. Non-public answers are
-`private, no-store` and never stored; not-founds and refusals are `no-store`.
+`private, no-store` and never stored; not-founds and refusals are `no-store`. A list document includes only the packages the answer's own cache class may show, so a shared answer never names a package that only a credential may read.
 
 **Rendered index documents.** Index documents are rendered from D1 into R2 under `registry/`,
 a prefix with no bucket lock and no lifecycle rule, kept apart from the locked `blobs/`,

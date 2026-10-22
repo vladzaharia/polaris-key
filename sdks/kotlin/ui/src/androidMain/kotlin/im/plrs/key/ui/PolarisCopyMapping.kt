@@ -51,7 +51,7 @@ public fun PolarisCopy.gateMessage(status: LicenseStatus, allowedRange: AllowedR
         LicenseStatus.revoked -> coreMessage("revoked", PolarisMessageKind.Blocked)
         LicenseStatus.expired -> coreMessage("expired", PolarisMessageKind.Blocked)
         LicenseStatus.versionTooOld ->
-            PolarisMessageCopy(versionTooOldTitle, withAllowedRange(versionTooOldBody, allowedRange), PolarisMessageKind.Blocked)
+            PolarisMessageCopy(versionTooOldTitle, withAllowedRange(format(versionTooOldBody, productName), allowedRange), PolarisMessageKind.Blocked)
         LicenseStatus.versionTooNew ->
             PolarisMessageCopy(versionTooNewTitle, withAllowedRange(versionTooNewBody, allowedRange), PolarisMessageKind.Blocked)
         LicenseStatus.channelNotEntitled ->
@@ -205,7 +205,7 @@ public fun PolarisCopy.offlineMessage(canPlayOffline: Boolean): PolarisMessageCo
  */
 public fun PolarisCopy.errorMessage(code: String): PolarisMessageCopy =
     if (Copy.hasCopy(code, coreLocale())) coreMessage(code, PolarisMessageKind.Danger)
-    else PolarisMessageCopy(bootErrorTitle, format(bootErrorBody, productLead()), PolarisMessageKind.Danger)
+    else PolarisMessageCopy(bootErrorTitle, format(bootErrorBody, productName), PolarisMessageKind.Danger)
 
 /** The consent card's body for a fetch of [bytes]. */
 public fun PolarisCopy.consentMessage(bytes: Long, metered: Boolean): String =
@@ -248,6 +248,10 @@ public fun PolarisCopy.timeLeft(seconds: Long): String {
         else -> format(durationSeconds, s)
     }
 }
+
+/** "About 4 min", rounded up to whole minutes, or "Less than a minute": the download's time left. */
+public fun PolarisCopy.timeLeftLine(seconds: Long): String =
+    if (seconds < 60) updateTimeLessThanMinute else format(updateTimeMinutes, (seconds + 59) / 60)
 
 /** "5 minutes ago", or "just now" under a minute. */
 public fun PolarisCopy.ago(seconds: Long): String =

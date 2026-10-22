@@ -57,7 +57,7 @@ free of separators.
 The registration policy is derived from the enabled service set; it is not stored or declared
 separately:
 
-| Effective policy    | When it applies                        | `POST /<p>/devices/register` behavior                              |
+| Effective policy    | When it applies                        | `POST /<p>/devices/register` behavior                               |
 | ------------------- | -------------------------------------- | ------------------------------------------------------------------- |
 | `requires-license`  | License is enabled                     | Refuse permanently. Activation and enrollment are the mint paths.   |
 | `requires-identity` | License is off and Identity is enabled | Requires a live product browser session.                            |
@@ -92,9 +92,9 @@ The order of operations is load-bearing:
 5. **Device id.** Missing or malformed is `400 bad_request`.
 6. **The takeover guard.** Re-registering an id that is already _registered_ rotates its token,
    which is what a client that lost its credential needs — including one whose row was
-   deauthorized, since an unlicensed device holds no seat. Re-registering an id bound to a real
+   deauthorized, since an unlicensed device counts toward no limit. Re-registering an id bound to a real
    **license** must never work: registration rewrites `license_id`, so allowing it would let
-   anyone who knows a licensed device's id evict that device from its seat. A product that turned
+   anyone who knows a licensed device's id evict that device from its license. A product that turned
    License off keeps its license-bound devices beside keyless ones, which is why this is a check
    and not an assumption.
 7. **The optional fingerprint**, read from the body. Absent, empty, oversized (over 4 KiB), or
@@ -211,7 +211,7 @@ written, and migrations converged the rows stored before the mapping existed (`0
 is stored as sent, and an empty header leaves the stored value as it was.
 
 What that list contains depends on how the device came to exist. For an **activated** device it
-is the seat pool: the caller paid for those seats and managing them is the point of the
+is the device pool: the caller paid for those devices and managing them is the point of the
 surface. For a **registered** device there is no pool, so the list is exactly itself.
 
 `GET /<p>/devices/<id>` returns the same roster body; the id in the path is not used to narrow

@@ -1,12 +1,4 @@
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
   fireEvent,
@@ -16,6 +8,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
+import { LANDED_EVENT } from "../src/console/useSettingTarget.js";
 import { activeSectionAt } from "../src/console/templates/Settings.js";
 import { platformOverview } from "./feedsFixture.js";
 import {
@@ -41,12 +34,15 @@ const axe = configureAxe({
 // first test does not pay its first transform and evaluation inside a findBy wait (it took ~900 ms
 // of the 1 s budget alone, and missed it in a loaded deploy Verify run). The product's own
 // settings (ST-27, `#/p/djdl/settings`) are the Core section's chunk and miss the same way.
-beforeAll(async () => {
-  await Promise.all([
-    import("../src/console/sections/platform/index.js"),
-    import("../src/console/sections/core/index.js"),
-  ]);
-});
+//
+// This is a top-level await, not a `beforeAll`: the warm-up is ~400 modules of cold transform
+// (about 1 s here, over 10 s on a loaded runner), and a hook is bound by `hookTimeout` (10 s), so
+// a loaded CI run failed the whole file with "Hook timed out" although nothing asserted had run.
+// Loading the file is not time-limited the same way, and the 1 s render budget below still is.
+await Promise.all([
+  import("../src/console/sections/platform/index.js"),
+  import("../src/console/sections/core/index.js"),
+]);
 beforeEach(resetConsole);
 afterEach(() => {
   cleanup();
@@ -654,50 +650,64 @@ describe("Hosted assets (HA-10)", () => {
   });
 });
 
+/**
+ * A deep link lands on its row "at once": `landOn` finds the row on a frame and focuses it after
+ * one 50 ms turn, and only gives up on the row for its section after `rowWaitMs` of wall clock.
+ * Wall-clock budgets in a test measure the runner, not the code, so these tests freeze `Date`
+ * (the clock `landOn` times the fallback with) and wait for the `pk-landed` event instead. With
+ * the clock frozen the fallback can never fire, so landing on the row itself proves the row was
+ * found, not given up on; the event carries the element, so nothing polls a timer. A hang is
+ * bounded by the test timeout, not asserted on.
+ */
+function landing(): Promise<HTMLElement> {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  return new Promise((resolve) => {
+    window.addEventListener(
+      LANDED_EVENT,
+      (e) => resolve((e as CustomEvent<HTMLElement>).detail),
+      { once: true },
+    );
+  });
+}
+
 describe("the ?setting= deep link", () => {
+  afterEach(() => vi.useRealTimers());
+
   it.each([
     ["licensing.reservedNames", "platform-setting-LICENSING_RESERVED_NAMES"],
     ["LAZY_DELTAS", "platform-setting-LAZY_DELTAS"],
   ])("%s lands on its row at once", async (key, id) => {
+    const landed = landing();
     boot(`#/platform/settings?setting=${key}`, { extra: routes() });
+    const el = await landed;
     // A segmented control hands its focus to the checked option inside it.
-    await waitFor(
-      () =>
-        expect(
-          document.getElementById(id)?.contains(document.activeElement),
-        ).toBe(true),
-      { timeout: 1000 },
-    );
+    expect(el.id).toBe(id);
+    expect(el.contains(document.activeElement)).toBe(true);
   });
 });
 
 describe("the ?setting= deep link, stabilization (B-043, B-044, B-048)", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("B-048: a link to a deploy value inside the folded Advanced card opens the fold and lands on the row", async () => {
     HTMLElement.prototype.scrollIntoView = vi.fn();
+    const landed = landing();
     boot("#/platform/settings?setting=PLATFORM_ADMIN_GROUP", {
       extra: routes(),
     });
-    await waitFor(
-      () =>
-        expect(
-          document
-            .getElementById("platform-setting-PLATFORM_ADMIN_GROUP")
-            ?.contains(document.activeElement),
-        ).toBe(true),
-      { timeout: 2000 },
-    );
+    const el = await landed;
+    expect(el.id).toBe("platform-setting-PLATFORM_ADMIN_GROUP");
+    expect(el.contains(document.activeElement)).toBe(true);
   });
 
   it("B-043, B-044: a feed's pointer lands on that ecosystem's switch, and the rail marks the section that holds it", async () => {
     HTMLElement.prototype.scrollIntoView = vi.fn();
+    const landed = landing();
     boot("#/platform/settings?setting=feeds.policy.npm.enabled", {
       extra: routes(),
     });
-    await waitFor(
-      () =>
-        expect(document.activeElement?.id).toBe("platform-feeds-npm-enabled"),
-      { timeout: 2000 },
-    );
+    expect((await landed).id).toBe("platform-feeds-npm-enabled");
+    expect(document.activeElement?.id).toBe("platform-feeds-npm-enabled");
     const pills = await screen.findByRole("navigation", {
       name: "Jump to section",
     });
@@ -2251,9 +2261,16 @@ describe("Product defaults (ST-16)", () => {
 });
 
 describe("Alert destinations in Email and alerts (ST-27)", () => {
-  const NOW_S = Math.floor(Date.now() / 1000);
-  const FRESH = { authAt: NOW_S - 30, stepUpMaxAgeSeconds: 300 };
-  const STALE = { authAt: NOW_S - 3600, stepUpMaxAgeSeconds: 300 };
+  // Read the clock when a test boots, not when the file is collected: on a slow runner this block
+  // starts minutes after collection, and a collection-time "30 s ago" ages past the 300 s step-up.
+  const fresh = () => ({
+    authAt: Math.floor(Date.now() / 1000) - 30,
+    stepUpMaxAgeSeconds: 300,
+  });
+  const stale = () => ({
+    authAt: Math.floor(Date.now() / 1000) - 3600,
+    stepUpMaxAgeSeconds: 300,
+  });
   const ALL = [
     "auto_halt",
     "store_connection",
@@ -2293,7 +2310,7 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
 
   it("lists rows by name, with the reason a delivery failed and never a URL or secret", async () => {
     boot("#/platform/settings", {
-      me: FRESH,
+      me: fresh(),
       extra: routes({
         "/manage/api/platform/alerts": listOf(WEBHOOK, EMAIL),
       }),
@@ -2320,7 +2337,7 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
   it("adds a webhook: checks https on the spot, puts the server's refusal under the field, shows the secret once", async () => {
     let posts = 0;
     const log = boot("#/platform/settings", {
-      me: FRESH,
+      me: fresh(),
       extra: routes({
         "/manage/api/platform/alerts": ALERTS_NONE,
         "POST /manage/api/platform/alerts": () => {
@@ -2382,7 +2399,7 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
 
   it("shows one sign-in callout, only when an action needs it, and sends nothing", async () => {
     const log = boot("#/platform/settings", {
-      me: STALE,
+      me: stale(),
       extra: routes({
         "/manage/api/platform/alerts": listOf(WEBHOOK, EMAIL),
       }),
@@ -2411,7 +2428,7 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
 
   it("asks for a fresh sign-in when Add is pressed, announces it and focuses its link", async () => {
     const log = boot("#/platform/settings", {
-      me: STALE,
+      me: stale(),
       extra: routes({ "/manage/api/platform/alerts": ALERTS_NONE }),
     });
     const email = await section("Email and alerts");
@@ -2438,7 +2455,7 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
       label: `Hook ${i}`,
     }));
     boot("#/platform/settings", {
-      me: FRESH,
+      me: fresh(),
       extra: routes({
         "/manage/api/platform/alerts": listOf(...five),
         "POST /manage/api/platform/alerts/dst_hook000000/test": () =>
@@ -2483,7 +2500,7 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
 
   it("edits kinds and label without asking for the URL again", async () => {
     const log = boot("#/platform/settings", {
-      me: FRESH,
+      me: fresh(),
       extra: routes({
         "/manage/api/platform/alerts": listOf(WEBHOOK),
         "PATCH /manage/api/platform/alerts/dst_hook000001": {
@@ -2522,10 +2539,10 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
 });
 
 describe("Alert destinations: focus and refusals (ST-27)", () => {
-  const FRESH = {
+  const fresh = () => ({
     authAt: Math.floor(Date.now() / 1000) - 30,
     stepUpMaxAgeSeconds: 300,
-  };
+  });
   const MAIL = {
     id: "dst_mail000001",
     scope: "_platform",
@@ -2543,7 +2560,7 @@ describe("Alert destinations: focus and refusals (ST-27)", () => {
 
   it("an empty submit puts focus on the first invalid field", async () => {
     boot("#/platform/settings", {
-      me: FRESH,
+      me: fresh(),
       extra: routes({ "/manage/api/platform/alerts": ALERTS_NONE }),
     });
     const email = await section("Email and alerts");
@@ -2561,7 +2578,7 @@ describe("Alert destinations: focus and refusals (ST-27)", () => {
 
   it("a step-up refusal inside Remove closes it and shows the one sign-in callout", async () => {
     boot("#/platform/settings", {
-      me: FRESH,
+      me: fresh(),
       extra: routes({
         "/manage/api/platform/alerts": { ...ALERTS_NONE, destinations: [MAIL] },
         "DELETE /manage/api/platform/alerts/dst_mail000001": () =>

@@ -82,7 +82,7 @@
   "license.key.last4": "Es werden nur die letzten 4 Zeichen gespeichert, daher lässt sich ein Schlüssel nicht vollständig anzeigen.",
   "license.key.fingerprint": "Polaris Locker speichert nur einen Fingerabdruck Ihres Schlüssels und kann ihn nicht erneut anzeigen. Bewahren Sie die Kopie aus Ihrer E-Mail oder dem Store auf.",
   "license.key.why": "Warum nur ein Teil?",
-  "license.expired": "Verlängern Sie, um sie wieder zu nutzen.",
+  "license.expired": "Verlängern Sie sie, um sie wieder zu nutzen.",
   "license.renew": "Bei {developer} verlängern",
   "license.suspended": "{developer} hat diese Lizenz gesperrt. Fragen Sie dort nach dem Grund.",
   "license.switcher": "{count, plural, one {# Lizenz} other {# Lizenzen}} · {tier}",

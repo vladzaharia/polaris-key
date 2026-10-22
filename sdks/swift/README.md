@@ -129,7 +129,7 @@ import PolarisKey
 
 // `create` throws on a non-https base URL and when the credential store itself is unavailable
 // (locked keychain, unwritable config dir) — the latter used to be swallowed, silently
-// re-activating every launch and burning a seat each time.
+// re-activating every launch and using up a device each time.
 let client = try await PolarisKeyClient.create(options: .init(
     productSlug: "djdl",
     version: "1.4.2",
@@ -372,10 +372,10 @@ floor, `lastVerifiedAt`, each channel's feed `seq` floor) is derived from that r
 content; `core.feedFloors` shows the floors. A record from any other cache
 version is **discarded, never migrated**.
 
-## When every seat is taken
+## When the device limit is reached
 
 A refused activation returns `.deviceLimit(limit:deviceCount:manageURL:)`. `manageURL` is the
-customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while the product's portal
+customer-portal link that makes room for another device (WIRE-CONTRACT-V4 §5.3), present while the product's portal
 is on and already validated by `ManageLink.read`. It is never an auth failure.
 
 ```swift

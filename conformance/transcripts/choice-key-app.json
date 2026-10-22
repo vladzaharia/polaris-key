@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "choice-key-app",
-  "description": "A key entered in the app's sign-in form (I-08b, WIRE-CONTRACT-V4 §12.5.1; plans/I-04.md §G.5). The account holds nothing and the product grants nothing, so the exchange answers a grant with state none and a getLicense member that accepts keys. The SDK completes with a key: PX-W9's app key entry, counted once with the seat claim, then the account is signed in on the device. The answer is token's shape plus keyEntries.",
+  "description": "A key entered in the app's sign-in form (I-08b, WIRE-CONTRACT-V4 §12.5.1; plans/I-04.md §G.5). The account holds nothing and the product grants nothing, so the exchange answers a grant with state none and a getLicense member that accepts keys. The SDK completes with a key: PX-W9's app key entry, counted once with the device claim, then the account is signed in on the device. The answer is token's shape plus keyEntries.",
   "features": ["identity.choice"],
   "requires": [],
   "product": "djdl",
