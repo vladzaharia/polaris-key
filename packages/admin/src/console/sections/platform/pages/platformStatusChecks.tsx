@@ -189,7 +189,12 @@ export function buildChecks({
         "Running"
       ) : (
         <>
-          Live since <Timestamp at={live} format="absolute" />
+          Live since{" "}
+          <Timestamp
+            at={live}
+            format="absolute"
+            className="whitespace-normal"
+          />
         </>
       ),
     },

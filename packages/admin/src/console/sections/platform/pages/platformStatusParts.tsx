@@ -112,7 +112,7 @@ function ListRow({
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm">
       <IconTile icon={icon} />
-      <span className="min-w-[10rem] flex-1 break-words text-fg">
+      <span className="min-w-0 flex-[1_1_10rem] break-words text-fg">
         {children}
       </span>
       {meta ? (
@@ -218,7 +218,7 @@ function QueueRow({
   const n = q.backlogCount ?? 0;
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm">
-      <div className="min-w-[10rem] flex-1">
+      <div className="min-w-0 flex-[1_1_10rem]">
         <div className="font-medium text-fg-strong">{title}</div>
         <div className="text-xs text-fg-muted">
           {!q.bound ? (

@@ -132,12 +132,12 @@ export function PlatformStatus({
           error={ops.isError ? ops.error : null}
           onRetry={() => void ops.refetch()}
         />
-        <QueuesCard
+        <JobsCard
           op={op}
           error={ops.isError ? ops.error : null}
           onRetry={() => void ops.refetch()}
         />
-        <JobsCard
+        <QueuesCard
           op={op}
           error={ops.isError ? ops.error : null}
           onRetry={() => void ops.refetch()}

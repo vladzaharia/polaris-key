@@ -255,8 +255,8 @@ describe("Status", () => {
     ).toEqual([
       "Checks",
       "Health by area",
-      "Queues",
       "Scheduled jobs",
+      "Queues",
       "Storage and schema",
       "Deploys",
     ]);
