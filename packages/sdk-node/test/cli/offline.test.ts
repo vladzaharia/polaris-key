@@ -76,3 +76,42 @@ describe("offline, nothing discovered", () => {
     });
   });
 });
+
+describe("register, server unreachable", () => {
+  it("answers network-error like the Python kit, not unknown", async () => {
+    const client = stubClient({
+      extra: {
+        devices: {
+          register: async () => ({
+            kind: "error",
+            code: "network-error",
+            message: "fetch failed",
+          }),
+        },
+      },
+    });
+    const screen = new Screen();
+    const program = new Command();
+    program.exitOverride();
+    registerPolarisCommands(program, async () => client, {
+      pinnedKeys: {},
+      verbs: "all",
+      productSlug: "tidewater",
+      io: {
+        stdout: screen,
+        stderr: new Screen(),
+        env: {},
+        ticker: frozenTicker,
+        now: () => NOW,
+      },
+      setExitCode: () => undefined,
+    });
+    await program.parseAsync(["register", "--json"], { from: "user" });
+    const last = JSON.parse(screen.raw.trim().split("\n").at(-1)!);
+    expect(last).toMatchObject({
+      ok: false,
+      exit: 1,
+      error: "network-error",
+    });
+  });
+});

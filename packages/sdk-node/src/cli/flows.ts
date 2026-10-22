@@ -1938,7 +1938,11 @@ export async function registerFlow(
         ? "rate_limited"
         : r.kind === "not-configured"
           ? "not_found"
-          : "unknown";
+          : // The Python kit's: the registry code the client answered with (`network-error` when
+            // the server did not answer), never a blanket "unknown".
+            r.kind === "error" && r.code
+            ? r.code
+            : "unknown";
   const error = codeError(ctx, code);
   show(ctx, [...problemRows("fail", error.title, error.message), endRow()]);
   return {
