@@ -1,0 +1,161 @@
+// The gate's input: the SDK's live state mapped onto `UiInput` (UI-KITS.md §4.2, DL18). Both
+// drop-ins (React's `useSdkGate`, elements' `<pk-gate config>`) read it; the models decide every
+// screen and nothing here draws.
+
+import type { UiInput } from "../input.js";
+import type { Pending } from "../vocabulary.js";
+import { isSignInRefusal } from "./sdk/core/adapter.js";
+import type { OidcSignInHandle, PolarisState } from "./sdk/core/index.js";
+import { safeLink } from "./links.js";
+
+/** Which step of the one sign-in form the gate shows while activation is needed. */
+export type GateStep = "home" | "activate" | "handoff";
+
+/** The error fields the gate needs to map a refusal to an input state. */
+export interface ErrorLike {
+  code?: string;
+  wireCode?: string;
+  manageUrl?: string;
+  activation?: {
+    kind: string;
+    code: string;
+    limit?: number;
+    deviceCount?: number;
+    retryAfterSeconds?: number;
+  };
+}
+
+/** `deviceLimit` → `device-limit` (the activation kinds are camelCase, the enum is not). */
+function resultOf(kind: string): string {
+  return kind.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+}
+
+/** The refusal a license error carries for the key step, if it is one. */
+function refusalOf(err: ErrorLike | null | undefined) {
+  const a = err?.activation;
+  if (!err || !a || a.kind === "ok") return undefined;
+  return {
+    result: resultOf(a.kind),
+    code: a.code,
+    ...(a.limit !== undefined ? { limit: a.limit } : {}),
+    ...(a.deviceCount !== undefined ? { deviceCount: a.deviceCount } : {}),
+    ...(err.manageUrl ? { manageUrl: err.manageUrl } : {}),
+  };
+}
+
+/** Whole days left before `graceUntil` (epoch seconds), never negative. */
+function daysLeft(graceUntil: number | undefined): number | undefined {
+  if (graceUntil === undefined) return undefined;
+  return Math.max(0, Math.ceil((graceUntil - Date.now() / 1000) / 86_400));
+}
+
+/** `graceUntil` (epoch seconds) as the date the person reads, in the kit's locale. */
+function dateOf(epochSeconds: number, locale: string | undefined): string {
+  const at = new Date(epochSeconds * 1000);
+  try {
+    return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(at);
+  } catch {
+    // A locale tag Intl does not know reads in the runtime's own.
+    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+      at,
+    );
+  }
+}
+
+/** The provider's state as the gate's models read it. */
+export function gateInput(
+  state: PolarisState,
+  extra: {
+    step: GateStep;
+    key: string;
+    submitted: boolean;
+    handle: OidcSignInHandle | null;
+    secondsLeft: number | undefined;
+    /** The locale the kit speaks: the dates the models show are formatted in it. */
+    locale?: string;
+    /** The refusal the person already left (Back, a different key, an edit): not shown again. */
+    dismissed?: unknown;
+  },
+): UiInput {
+  const caps = state.capabilities;
+  const services = (Object.keys(caps) as (keyof typeof caps)[]).filter(
+    (s) => caps[s].enabled,
+  );
+  const failed =
+    state.phase !== "loading" &&
+    state.status === "needs-activation" &&
+    [state.error.license, state.error.identity].some(
+      (e) => e && !isSignInRefusal(e),
+    );
+  const pending: Pending | undefined = state.busy.license
+    ? extra.step === "activate"
+      ? "activate"
+      : undefined
+    : state.busy.identity && extra.step !== "handoff"
+      ? "sign-in"
+      : undefined;
+  const refusal =
+    extra.step === "activate" &&
+    !state.busy.license &&
+    state.error.license !== extra.dismissed
+      ? refusalOf(state.error.license)
+      : undefined;
+  const range = state.gate.allowedRange;
+  const input: UiInput = {
+    services,
+    capabilities: {
+      signIn: caps.identity.enabled,
+      keyEntry: caps.license.enabled,
+    },
+    gate:
+      state.phase === "loading"
+        ? { checking: true, cached: state.activation !== null }
+        : {
+            status: state.status,
+            ...(state.status === "grace"
+              ? {
+                  graceDaysLeft: daysLeft(state.gate.graceUntil),
+                  ...(state.gate.graceUntil !== undefined
+                    ? {
+                        graceDate: dateOf(state.gate.graceUntil, extra.locale),
+                      }
+                    : {}),
+                }
+              : {}),
+            ...(range
+              ? {
+                  allowed: {
+                    ...(range.min ? { min: range.min } : {}),
+                    ...(range.max ? { max: range.max } : {}),
+                  },
+                }
+              : {}),
+          },
+    ...(failed ? { stage: { stage: "license", outcome: "error" } } : {}),
+    ...(pending ? { pending } : {}),
+    keyField: { text: extra.key, submitted: extra.submitted },
+    ...(refusal ? { activation: refusal } : {}),
+  };
+  const h = extra.handle;
+  if (extra.step === "handoff" && h) {
+    const address = safeLink(h.verificationUri ?? h.verificationUrl);
+    input.signIn = {
+      presentation: "inline",
+      replace: "inline",
+      channel: "device-code",
+      browserOpened: true,
+    };
+    input.deviceCode = {
+      phase:
+        extra.secondsLeft !== undefined && extra.secondsLeft <= 0
+          ? "expired"
+          : "waiting",
+      ...(extra.secondsLeft !== undefined
+        ? { secondsLeft: Math.max(0, Math.ceil(extra.secondsLeft)) }
+        : {}),
+      ...(h.userCode ? { userCode: h.userCode } : {}),
+      ...(address ? { verificationUri: address } : {}),
+    };
+  }
+  return input;
+}
