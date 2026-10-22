@@ -992,11 +992,12 @@ internal const val SEAT_METER_SEGMENTS: Int = 12
  * filled in the strongest text colour at 80 % and the rest at 10 %, with no status colour (a full
  * license is a limit, not an error) and its caption ("3 of 3 in use") under it. The bar is one image
  * to TalkBack, labelled with the count; the caption is the visible text label (rule: never colour alone).
+ * A null [caption] draws the bar alone, for a row that states the count beside it.
  *
  * @param description what TalkBack says for the bar ("3 of 3 devices in use").
  */
 @Composable
-internal fun PolarisSeatMeter(used: Int, limit: Int, caption: String, description: String, modifier: Modifier = Modifier) {
+internal fun PolarisSeatMeter(used: Int, limit: Int, caption: String?, description: String, modifier: Modifier = Modifier) {
     val ink = MaterialTheme.colorScheme.onSurface
     val segments = limit.coerceIn(1, SEAT_METER_SEGMENTS)
     val filled = if (limit <= SEAT_METER_SEGMENTS) used.coerceIn(0, segments) else 0
@@ -1022,10 +1023,12 @@ internal fun PolarisSeatMeter(used: Int, limit: Int, caption: String, descriptio
                 }
             }
         }
-        Text(
-            text = caption,
-            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (caption != null) {
+            Text(
+                text = caption,
+                style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

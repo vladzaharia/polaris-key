@@ -185,6 +185,14 @@ public data class DeviceInfo(
     val lastVerifiedAt: Long? = null,
     val label: String? = null,
     /**
+     * The OS family the roster reports for this device (`macos`, `windows`, `android` ...; the
+     * `X-PKey-Platform` value it last sent), or null when the roster did not say. The Worker's
+     * roster carries no form factor, so a UI derives a glyph from this and never claims "laptop".
+     */
+    val platform: String? = null,
+    /** Epoch MILLIseconds the Worker last saw this device (the roster's `lastSeen`, seconds on the wire), or null. */
+    val lastSeenAt: Long? = null,
+    /**
      * True when the roster could not be fetched (offline, no credential, a refusal) and this is the
      * device alone: a screen can say "offline" instead of showing a one-device roster as the truth.
      */
@@ -782,6 +790,8 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
                 profile = if (isCurrent) current.profile else null,
                 lastVerifiedAt = if (isCurrent) current.lastVerifiedAt else null,
                 label = device.label,
+                platform = device.platform,
+                lastSeenAt = device.lastSeen?.let { it * 1000 },
             )
         }
     }

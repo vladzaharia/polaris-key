@@ -271,7 +271,7 @@ private fun PolarisCodeView(
         noBrowser = !opened
     }
     // Back cancels the sign-in: the screen always backs out (UI-KITS.md DL9).
-    androidx.activity.compose.BackHandler(onBack = onCancel)
+    val back = polarisBack(onBack = onCancel)
     // TalkBack hears the code once, spelled out, when it first appears.
     val view = LocalView.current
     val spoken = copy.format(copy.signInCodeDescription, spelled(ui.prompt.userCode))
@@ -299,7 +299,7 @@ private fun PolarisCodeView(
         }
     }
     PolarisScaffold(
-        modifier = modifier,
+        modifier = modifier.then(back),
         anchor = PolarisAnchor.Top,
         contentAlign = TextAlign.Start,
         content = {

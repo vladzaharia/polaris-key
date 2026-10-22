@@ -3,12 +3,41 @@
 //
 // The headless half is editable (`settingsActions(editable = true)`, notes/SDK-PARITY-PASS.md §3.11):
 // each row the catalog types carries a PolarisSettingEditor, PolarisSettingsState.set/reset persist a
-// local override (`config.set` / `config.clear`), and an enforced row has no editor. The screen still
-// renders the read-only summary: drawing the inputs is the UI-kit program's (docs/design/UI-KITS.md).
+// local override (`config.set` / `config.clear`), and an enforced row has no editor. The screen draws
+// each editor (UI-KITS.md §4.3): a switch for a boolean, a slider with its range for a bounded number
+// (a field otherwise), a select for an enum and a text field, each with "Reset to default" under a
+// change made on this device.
 
 package im.plrs.key.ui
 
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Slider
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import im.plrs.key.ui.brand.PolarisAccent
+import java.math.BigDecimal
+import java.math.RoundingMode
+import kotlin.math.roundToLong
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -28,7 +57,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -274,10 +302,14 @@ internal fun PolarisCopy.settingsFailureMessage(failure: PolarisSettingsFailure?
 internal fun PolarisSettingRow(entry: PolarisSettingEntry, onSet: ((String, JsonElement) -> Unit)? = null, onReset: ((String) -> Unit)? = null) {
     val copy = PolarisTheme.copy
     val locked = entry.source == ConfigSource.enforced || entry.source == ConfigSource.hidden
-    val toggle = (entry.editor as? PolarisSettingEditor.Toggle)?.takeIf { !locked && onSet != null }
-    if (toggle != null) {
-        PolarisSwitchRow(entry, toggle.checked, onSet!!, onReset)
-        return
+    // A locked row is its value as text (never a dimmed control); an editable one draws the control its type implies.
+    val editor = entry.editor?.takeIf { !locked && onSet != null }
+    when (editor) {
+        is PolarisSettingEditor.Toggle -> return PolarisSwitchRow(entry, editor.checked, onSet!!, onReset)
+        is PolarisSettingEditor.Number -> return PolarisNumberRow(entry, editor, onSet!!, onReset)
+        is PolarisSettingEditor.Choice -> return PolarisChoiceRow(entry, editor, onSet!!, onReset)
+        is PolarisSettingEditor.Text -> return PolarisTextRow(entry, editor, onSet!!, onReset)
+        null -> Unit
     }
     // At large font scales the value moves under its name, so neither is squeezed into a sliver.
     val stacked = LocalDensity.current.fontScale >= 1.5f
@@ -327,6 +359,28 @@ internal fun PolarisSettingRow(entry: PolarisSettingEntry, onSet: ((String, Json
     }
 }
 
+/** The label, then the provenance and the catalog's help as quiet text under it. */
+@Composable
+private fun SettingLabel(entry: PolarisSettingEntry, modifier: Modifier = Modifier, extra: String? = null) {
+    val source = PolarisTheme.copy.sourceLabel(entry.source)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(entry.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+        for (line in listOfNotNull(source, entry.description, extra)) {
+            Text(line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** "Reset to default" under a row whose value the person changed on this device. */
+@Composable
+private fun SettingReset(entry: PolarisSettingEntry, onReset: ((String) -> Unit)?) {
+    if (entry.source == ConfigSource.local && onReset != null) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+            PolarisTextButton(KitCopy.bundled.format("settings.reset", kitLocale()), onClick = { onReset(entry.key) })
+        }
+    }
+}
+
 /**
  * A boolean setting as a switch row (UI-KITS.md 4.3: typed controls from the catalog schema): the
  * label and its provenance text at the start, the switch at the end, at least 52 dp and a 48 dp
@@ -335,8 +389,6 @@ internal fun PolarisSettingRow(entry: PolarisSettingEntry, onSet: ((String, Json
  */
 @Composable
 internal fun PolarisSwitchRow(entry: PolarisSettingEntry, checked: Boolean, onSet: (String, JsonElement) -> Unit, onReset: ((String) -> Unit)?) {
-    val copy = PolarisTheme.copy
-    val source = copy.sourceLabel(entry.source)
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier
@@ -346,18 +398,170 @@ internal fun PolarisSwitchRow(entry: PolarisSettingEntry, checked: Boolean, onSe
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(entry.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-                source?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            }
+            SettingLabel(entry, Modifier.weight(1f))
             Spacer(Modifier.width(16.dp))
             // The row is the control (one target, one name): the switch only draws the state.
-            Switch(checked = checked, onCheckedChange = null)
+            PolarisSwitch(checked)
         }
-        if (entry.source == ConfigSource.local && onReset != null) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-                PolarisTextButton(KitCopy.bundled.format("settings.reset", kitLocale()), onClick = { onReset(entry.key) })
+        SettingReset(entry, onReset)
+    }
+}
+
+/**
+ * The kit's switch (UI-KITS.md §1.5 rule 6, one switch everywhere): a light knob (white, with a
+ * 1 dp soft shadow) on the accent track when on and on a neutral track when off, in both themes;
+ * never a dark knob on a coloured track. The one exception is the ink accent of a dark theme, whose
+ * track is itself near-white: there the knob takes the page colour so it stays visible (3:1).
+ * Drawn state only: the row around it is the control.
+ */
+@Composable
+internal fun PolarisSwitch(checked: Boolean, modifier: Modifier = Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    val track = if (checked) scheme.primary else scheme.outline
+    val knob = polarisKnobColor(track, scheme.onPrimary)
+    val travel by animateDpAsState(if (checked) SwitchTravel else 0.dp, animationSpec = tween(150), label = "PolarisSwitch")
+    Box(modifier.size(SwitchTrackWidth, SwitchTrackHeight).background(track, CircleShape).padding(SwitchInset)) {
+        Box(
+            Modifier
+                .offset(x = travel)
+                .size(SwitchTrackHeight - SwitchInset * 2)
+                .shadow(1.dp, CircleShape, clip = false)
+                .background(knob, CircleShape),
+        )
+    }
+}
+
+private val SwitchTrackWidth = 52.dp
+private val SwitchTrackHeight = 32.dp
+private val SwitchInset = 4.dp
+private val SwitchTravel = SwitchTrackWidth - SwitchTrackHeight
+
+/** The knob: white, unless the track is so light that white would vanish on it. */
+internal fun polarisKnobColor(track: Color, onTrack: Color): Color {
+    val white = Color.White // polaris-lint: allow-colour (the spec's light knob)
+    return if (PolarisAccent.contrast(white.toHex(), track.toHex()) >= 3.0) white else onTrack
+}
+
+/**
+ * A number setting. Bounded on both sides it is a slider with its range stated and marked at both
+ * ends (the value above it, whole numbers snapping when the setting is an integer); otherwise a
+ * numeric field. A value commits when the person lets go (slider) or presses Done (field).
+ */
+@Composable
+internal fun PolarisNumberRow(entry: PolarisSettingEntry, editor: PolarisSettingEditor.Number, onSet: (String, JsonElement) -> Unit, onReset: ((String) -> Unit)?) {
+    val min = editor.min
+    val max = editor.max
+    fun json(v: Double): JsonElement = if (editor.integer) JsonPrimitive(v.roundToLong()) else JsonPrimitive(BigDecimal(v).setScale(2, RoundingMode.HALF_UP).toDouble())
+    Column(Modifier.fillMaxWidth()) {
+        if (min != null && max != null && min < max) {
+            var draft by remember(entry.key, editor.value) { mutableFloatStateOf((editor.value.toFloatOrNull() ?: min.toFloat()).coerceIn(min.toFloat(), max.toFloat())) }
+            val shown = if (editor.integer) draft.roundToLong().toString() else BigDecimal(draft.toDouble()).setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+            val range = KitCopy.bundled.format(
+                "settings.range", kitLocale(),
+                mapOf("min" to CopyArgument.Text(numberText(min)), "max" to CopyArgument.Text(numberText(max))),
+            )
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SettingLabel(entry, Modifier.weight(1f), extra = range)
+                    Spacer(Modifier.width(16.dp))
+                    Text(shown, style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"), color = MaterialTheme.colorScheme.onSurface)
+                }
+                Slider(
+                    value = draft,
+                    onValueChange = { draft = if (editor.integer) it.roundToLong().toFloat() else it },
+                    onValueChangeFinished = { onSet(entry.key, json(draft.toDouble())) },
+                    valueRange = min.toFloat()..max.toFloat(),
+                    modifier = Modifier.semantics { contentDescription = entry.label; stateDescription = "$shown. $range" },
+                )
+                // The markers: the bounds, at the two ends of the track.
+                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    val style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum")
+                    Text(numberText(min), style = style, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(numberText(max), style = style, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        } else {
+            var draft by remember(entry.key, editor.value) { mutableStateOf(editor.value) }
+            val parsed = draft.trim().toDoubleOrNull()?.takeIf { (min == null || it >= min) && (max == null || it <= max) && (!editor.integer || it == Math.rint(it)) }
+            val bound = when {
+                min != null -> KitCopy.bundled.format("settings.range", kitLocale(), mapOf("min" to CopyArgument.Text(numberText(min)), "max" to CopyArgument.Text(max?.let(::numberText) ?: "∞")))
+                else -> null
+            }
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SettingLabel(entry, extra = bound.takeIf { max != null })
+                PolarisTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    label = entry.label,
+                    error = null,
+                    keyboardOptions = KeyboardOptions(keyboardType = if (editor.integer) KeyboardType.Number else KeyboardType.Decimal, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { parsed?.let { onSet(entry.key, json(it)) } }),
+                )
             }
         }
+        SettingReset(entry, onReset)
+    }
+}
+
+/** A bound as the reader writes it: "0", not "0.0". */
+private fun numberText(v: Double): String = BigDecimal(v).stripTrailingZeros().toPlainString()
+
+/**
+ * An enumerated setting as a select: the current choice at the end of the row with a chevron, a
+ * menu of the catalog's options beneath it, the current one checked. Whole row is the 48 dp target.
+ */
+@Composable
+internal fun PolarisChoiceRow(entry: PolarisSettingEntry, editor: PolarisSettingEditor.Choice, onSet: (String, JsonElement) -> Unit, onReset: ((String) -> Unit)?) {
+    var open by remember { mutableStateOf(false) }
+    val current = editor.options.getOrNull(editor.selected)?.first ?: entry.value
+    Column(Modifier.fillMaxWidth()) {
+        Box {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp)
+                    .clickable(role = Role.DropdownList, onClickLabel = entry.label) { open = true }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SettingLabel(entry, Modifier.weight(1f))
+                Spacer(Modifier.width(16.dp))
+                Text(current, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                editor.options.forEachIndexed { i, (label, value) ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        trailingIcon = if (i == editor.selected) ({ Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(20.dp)) }) else null,
+                        onClick = {
+                            open = false
+                            if (i != editor.selected) onSet(entry.key, value)
+                        },
+                        modifier = Modifier.semantics { if (i == editor.selected) selected = true },
+                    )
+                }
+            }
+        }
+        SettingReset(entry, onReset)
+    }
+}
+
+/** A text setting: the filled field, committed on Done, held to the catalog's maximum length. */
+@Composable
+internal fun PolarisTextRow(entry: PolarisSettingEntry, editor: PolarisSettingEditor.Text, onSet: (String, JsonElement) -> Unit, onReset: ((String) -> Unit)?) {
+    var draft by remember(entry.key, editor.value) { mutableStateOf(editor.value) }
+    Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            PolarisTextField(
+                value = draft,
+                onValueChange = { draft = editor.maxLength?.let { n -> it.take(n) } ?: it },
+                label = entry.label,
+                supporting = listOfNotNull(PolarisTheme.copy.sourceLabel(entry.source), entry.description),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { if (draft != editor.value) onSet(entry.key, JsonPrimitive(draft)) }),
+            )
+        }
+        SettingReset(entry, onReset)
     }
 }

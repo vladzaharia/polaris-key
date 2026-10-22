@@ -8,6 +8,22 @@ deprecated aliases).
 
 - **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Use another license, and Renew only when you pass `onRenew` to `PolarisGate` or `PolarisGateScreen`; it never offers Try again or Reconnect. The TV QR on the device-limit screen is labelled as the device management page. Compose draws the numbered steps and the request QR.
   Migrating: pass an https `offers.url` in the kit's offers input to get Buy in your browser on the paywall, and `onRenew` to get Renew.
+- **Compose UI kit: the Polaris look is the default, and the spec's remaining parts are drawn**
+  (`:ui`, UI-KITS.md §1.1, §1.4, §1.5, §4.1, §4.3, DL9). `PolarisTheme` now defaults to
+  `PolarisBranding.PolarisKey`; the native preset (everything from your `MaterialTheme`) is the
+  opt-in. **Migration:** to keep the previous look, pass `PolarisTheme(branding = PolarisBranding.None)`
+  wherever you call `PolarisTheme` without a `branding`; nothing else changes. New: typed settings
+  controls (a slider with its range and markers for a bounded number, a field otherwise, a select
+  for an enum, a text field, each with Reset to default); device rows with a glyph per form factor
+  and "<platform> · last used <when>" (`DeviceInfo` gained `platform` and `lastSeenAt`, carried from
+  the roster's existing fields, no wire change); the styled `PolarisLicenseChoice`,
+  `PolarisPaywall`, `PolarisReleaseNotes`, `PolarisEntitlementGate`, `PolarisCloudSyncStatus` and
+  `PolarisAbout` (with `KitRowData` and `redactDiagnostics` in `:ui-core`); the gate places the
+  "Signed in as <name> · <Tier> license" and "Copied" toasts (`PolarisToastSpec`,
+  `PolarisToastHost`); the switch's light knob; predictive back from API 34 (the host sets
+  `android:enableOnBackInvokedCallback="true"`); and on a TV the update prompt focuses Later and
+  ignores input for 250 ms.
+
 - **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
 - **Compose UI kit follows UI-KITS.md** (`:ui`). Welcome keeps the key field behind "Use a license
   key" with Sign in the one primary and "by <Developer>" under the title (`PolarisTheme(developer =

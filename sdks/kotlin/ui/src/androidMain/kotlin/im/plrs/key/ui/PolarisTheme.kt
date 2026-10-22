@@ -1,10 +1,13 @@
 // The kit's theme. One composable, one switch:
 //
-//     PolarisTheme { PolarisBoot(boot) { MyApp() } }                       // neutral: the host's look
-//     PolarisTheme(branding = PolarisBranding.PolarisKey) { ... }          // the Polaris Key look
+//     PolarisTheme { PolarisBoot(boot) { MyApp() } }                       // the Polaris look (the default)
+//     PolarisTheme(branding = PolarisBranding.None) { ... }                // the native preset: the host's look
 //     PolarisTheme(showPoweredBy = true) { ... }                           // adds the attribution, either way
 //
-// NEUTRAL MEANS INHERITED. With PolarisBranding.None (the default) the kit sets no MaterialTheme of
+// THE POLARIS LOOK IS THE DEFAULT (UI-KITS.md §1.1). Every kit renders the Polaris Key design system
+// unless the host opts into the native preset with PolarisBranding.None.
+//
+// NEUTRAL MEANS INHERITED. With PolarisBranding.None (the native preset, opt-in) the kit sets no MaterialTheme of
 // its own: every colour, shape and text style a screen draws comes from the host app's
 // MaterialTheme, so a stock Material 3 app (dynamic colour included) renders the kit as part of
 // itself. Only the status colours Material 3 has no role for (warning, success) are the brand's
@@ -69,10 +72,10 @@ public enum class PolarisPoweredByStyle {
 
 /** The look the kit renders in. */
 public enum class PolarisBranding {
-    /** Neutral (the native preset, the default): everything from the host app's MaterialTheme. */
+    /** Neutral, the native preset (opt-in): everything from the host app's MaterialTheme. */
     None,
 
-    /** The Polaris Key design system: brand palette (dark or light) and Rubik. */
+    /** The Polaris Key design system (the default): brand palette (dark or light) and Rubik. */
     PolarisKey,
 }
 
@@ -180,8 +183,8 @@ internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null 
 /**
  * The kit's theme for [content].
  *
- * @param branding [PolarisBranding.None] (the default) inherits the host's MaterialTheme;
- *   [PolarisBranding.PolarisKey] applies the Polaris Key brand. The one switch.
+ * @param branding [PolarisBranding.PolarisKey] (the default) applies the Polaris Key brand;
+ *   [PolarisBranding.None] is the native preset and inherits the host's MaterialTheme. The one switch.
  * @param showPoweredBy draws "Powered by Polaris Locker" as the last item of [PolarisSettingsScreen] and of the
  *   kit's account pane ([PolarisKitScreen] for the account component), after its controls. Off by
  *   default, and independent of [branding].
@@ -211,7 +214,7 @@ internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null 
  */
 @Composable
 public fun PolarisTheme(
-    branding: PolarisBranding = PolarisBranding.None,
+    branding: PolarisBranding = PolarisBranding.PolarisKey,
     showPoweredBy: Boolean = false,
     poweredByStyle: PolarisPoweredByStyle = PolarisPoweredByStyle.Line,
     copy: PolarisCopy = PolarisCopy.localized(),
@@ -336,6 +339,9 @@ internal fun ColorScheme.withAccent(accent: PolarisAccent.Resolved): ColorScheme
 
 /** The update prompt's bottom sheet: radius 28 on the top edge only (UI-KITS.md 1.4, Android). */
 internal val polarisSheetShape: Shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+
+/** The shape a screen rounds to while the back gesture previews the step it returns to (PolarisBack.kt). */
+internal fun polarisPreviewShape(radius: androidx.compose.ui.unit.Dp): Shape = RoundedCornerShape(radius)
 
 /** The message card's radius 28. */
 private val MessageCardShape: Shape = RoundedCornerShape(28.dp)
