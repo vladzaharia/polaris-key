@@ -12,7 +12,6 @@
 /** CSP source expressions (e.g. `'sha256-…'`) for every inline <script> the docs build emits. */
 export const DOCS_SCRIPT_HASHES: readonly string[] = [
   "'sha256-7eCV4jtsr4t4knb3c4FCRPeu7GGZeOUGE3XvWix0XOQ='",
-  "'sha256-BTd4cOzZsvScjX0+VldqgvoJrJ+nIt+ZDWpO65QmA+0='",
   "'sha256-G2mC5cR7/XhAM4cH/GAX+rcfI0qabK81PCFIFqkaNlE='",
   "'sha256-OizSKqsU+f0G4vojbxNt0Lao3kUpTmCLQSv3y6P7qhQ='",
   "'sha256-SwBaYHTbONGJpZpsvM40lJ8JneCm5m5xRdPkDorRD3k='",
@@ -22,7 +21,6 @@ export const DOCS_SCRIPT_HASHES: readonly string[] = [
   "'sha256-cWzNk5BJWLj7tqXPbljaFnZW2niFgIdv0FiguIWpgg0='",
   "'sha256-g+2oqsv6IzjmqPl2VK3oJbv9821NtQSKdS59oRLIpn8='",
   "'sha256-hP48sUywTAXyg22qvpdOC/cYIA8MfPdKEbPC/mvGk4M='",
-  "'sha256-iXdLe5431SihUeJR7l/K0mD+PcAzDD5BDLAMID+bX5I='",
   "'sha256-pD4AFoLP/IdwBq22YJtB9ZSA58jK2KN4uK3N8Y/0N3o='",
   "'sha256-ucPfdYc9FPIvbmnn9ECv3eLKYLt8/heMPFQ+hNTn6jY='",
   "'sha256-wX2yOADeV+NMngflD5uYi3vl50SHC4sfM1EmylVjlX4='",
