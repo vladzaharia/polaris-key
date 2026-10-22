@@ -1,5 +1,5 @@
 /**
- * Distribution → Listing (A-18j; notes/S-15 §8.2, T3): the shared listing model outside the flow.
+ * Settings → Presentation → Listing (A-18j, moved here by A-27.11; notes/S-15 §8.2, T3): the shared listing model outside the flow.
  * Tabs in the URL (`?tab=`): **Text** (the app's fields and each locale's, with a locale switcher
  * and import), **Fit report** (per store, with per-store overrides), **Images** (the slot board),
  * **Release notes** (per release and locale) and **Push** ("Push listing" per store whose adapter
@@ -53,7 +53,6 @@ const TAB_LABELS: Record<ListingTab, string> = {
 };
 const tabCodec = codecs.oneOf(LISTING_TABS, "text");
 const localeCodec = codecs.string("");
-const storeCodec = codecs.string("");
 
 export type { StorefrontId } from "./ListingPush.js";
 import type { StorefrontId } from "./ListingPush.js";
@@ -79,7 +78,9 @@ export function ListingEditor({
   const q = useListing(slug);
   const sf = useStorefronts(slug);
   const scoped =
-    store === undefined ? null : sf.data?.stores.find((s) => s.id === store);
+    store === undefined
+      ? null
+      : sf.data?.stores.find((s) => s.id === store || s.listingStore === store);
   // The store's listing column (`play`, `ms-store`…); `""` matches no fit row or slot group.
   const column = store === undefined ? undefined : (scoped?.listingStore ?? "");
   return (
@@ -131,8 +132,8 @@ export function ListingEditor({
 }
 
 /**
- * The fit report. Unscoped it has the store switcher, the store in the URL (`?store=`, PS-06);
- * scoped it is that one store's row, with its overrides.
+ * The fit report: every store's row, or the scoped store's alone with its overrides. The store
+ * switcher is the page's (`PresentationListingPage`), not the report's.
  */
 function FitTab({
   slug,
@@ -141,10 +142,11 @@ function FitTab({
   slug: string;
   column: string | undefined;
 }): React.ReactElement {
-  const [store, setStore] = useSearchParam("store", storeCodec);
-  if (column !== undefined) return <FitReport slug={slug} stores={[column]} />;
   return (
-    <FitReport slug={slug} storeFilter={{ value: store, onChange: setStore }} />
+    <FitReport
+      slug={slug}
+      {...(column === undefined ? {} : { stores: [column] })}
+    />
   );
 }
 

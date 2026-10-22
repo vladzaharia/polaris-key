@@ -541,7 +541,7 @@ export const r = {
   storefront: (slug: string, store: string) =>
     productPage(slug, "storefronts", { id: store }),
   listing: (slug: string, query?: QueryInit) =>
-    productPage(slug, "listing", { query }),
+    productPage(slug, "presentation-listing", { query }),
   appStore: (slug: string, query?: QueryInit) =>
     productPage(slug, "app-store", { query }),
   commerce: (slug: string) => productPage(slug, "commerce"),

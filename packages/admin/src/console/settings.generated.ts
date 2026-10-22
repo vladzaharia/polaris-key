@@ -1922,6 +1922,12 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 
 export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
   {
+    thing: "Store listing content",
+    reason:
+      "Listing text, locales, overrides, images and release notes are content the operator writes, not configuration: registering their storage columns as settings would invent keys (A-27, D12).",
+    shows: "Settings → Presentation → Listing",
+  },
+  {
     thing: "Refund, void and chargeback handling",
     reason:
       "Always revokes that one purchase (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation.",

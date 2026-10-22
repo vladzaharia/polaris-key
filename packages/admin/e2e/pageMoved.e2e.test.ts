@@ -48,71 +48,80 @@ afterAll(async () => {
   await new Promise<void>((r) => server?.httpServer.close(() => r()));
 });
 
+/** A moved record address, and (A-27.11) Distribution's old Listing address. */
+const MOVED = [
+  ["", "#/p/djdl/licenses/lic_1?status=disabled"],
+  ["listing-", "#/p/djdl/distribution/listing"],
+] as const;
+
 describe("Page moved in the built console", () => {
-  for (const scheme of ["dark", "light"] as const) {
-    for (const [name, viewport] of Object.entries(SIZES)) {
-      it(`${scheme} at ${name}`, async () => {
-        const ctx = await browser.newContext({ viewport, colorScheme: scheme });
-        await ctx.addInitScript(() => {
-          const w = window as unknown as { __v: string[] };
-          w.__v = [];
-          document.addEventListener("securitypolicyviolation", (e) =>
-            w.__v.push(`${e.violatedDirective} ${e.blockedURI}`),
-          );
-        });
-        await ctx.route("**/*", async (route) => {
-          const url = new URL(route.request().url());
-          const image = fixtureImage(url);
-          if (image)
-            return route.fulfill({
-              body: image,
-              headers: {
-                "content-type": "image/png",
-                "access-control-allow-origin": "*",
-              },
-            });
-          if (url.pathname.startsWith("/manage/api/")) {
-            const body = resolve(url.pathname);
-            return body === undefined
-              ? route.fulfill({ status: 404, json: { error: "not_found" } })
-              : route.fulfill({ json: body });
-          }
-          const res = await route.fetch();
-          const headers = { ...res.headers() };
-          if (url.pathname.endsWith(".html"))
-            headers["content-security-policy"] = CSP;
-          return route.fulfill({ response: res, headers });
-        });
-        const page = await ctx.newPage();
-        const hash = "#/p/djdl/licenses/lic_1?status=disabled";
-        await page.goto(`${base}/manage.html${hash}`);
-        await page
-          .getByRole("heading", { level: 1, name: "Page moved" })
-          .waitFor({ timeout: 15_000 });
-        await page.waitForTimeout(400);
-        expect(await page.locator("h1").count()).toBe(1);
-        await page
-          .getByRole("heading", { level: 2, name: /^This page moved to/ })
-          .waitFor();
-        expect(await page.evaluate(() => location.hash)).toBe(hash);
-        expect(
-          await page.evaluate(
-            () =>
-              document.documentElement.scrollWidth <=
-              document.documentElement.clientWidth,
-          ),
-        ).toBe(true);
-        expect(
-          await page.evaluate(
-            () => (window as unknown as { __v: string[] }).__v,
-          ),
-        ).toEqual([]);
-        if (SHOTS)
-          await page.screenshot({
-            path: `${SHOTS}/page-moved-${scheme}-${name}.png`,
+  for (const [tag, hash] of MOVED)
+    for (const scheme of ["dark", "light"] as const) {
+      for (const [name, viewport] of Object.entries(SIZES)) {
+        it(`${tag}${scheme} at ${name}`, async () => {
+          const ctx = await browser.newContext({
+            viewport,
+            colorScheme: scheme,
           });
-        await closeContext(ctx);
-      });
+          await ctx.addInitScript(() => {
+            const w = window as unknown as { __v: string[] };
+            w.__v = [];
+            document.addEventListener("securitypolicyviolation", (e) =>
+              w.__v.push(`${e.violatedDirective} ${e.blockedURI}`),
+            );
+          });
+          await ctx.route("**/*", async (route) => {
+            const url = new URL(route.request().url());
+            const image = fixtureImage(url);
+            if (image)
+              return route.fulfill({
+                body: image,
+                headers: {
+                  "content-type": "image/png",
+                  "access-control-allow-origin": "*",
+                },
+              });
+            if (url.pathname.startsWith("/manage/api/")) {
+              const body = resolve(url.pathname);
+              return body === undefined
+                ? route.fulfill({ status: 404, json: { error: "not_found" } })
+                : route.fulfill({ json: body });
+            }
+            const res = await route.fetch();
+            const headers = { ...res.headers() };
+            if (url.pathname.endsWith(".html"))
+              headers["content-security-policy"] = CSP;
+            return route.fulfill({ response: res, headers });
+          });
+          const page = await ctx.newPage();
+          await page.goto(`${base}/manage.html${hash}`);
+          await page
+            .getByRole("heading", { level: 1, name: "Page moved" })
+            .waitFor({ timeout: 15_000 });
+          await page.waitForTimeout(400);
+          expect(await page.locator("h1").count()).toBe(1);
+          await page
+            .getByRole("heading", { level: 2, name: /^This page moved to/ })
+            .waitFor();
+          expect(await page.evaluate(() => location.hash)).toBe(hash);
+          expect(
+            await page.evaluate(
+              () =>
+                document.documentElement.scrollWidth <=
+                document.documentElement.clientWidth,
+            ),
+          ).toBe(true);
+          expect(
+            await page.evaluate(
+              () => (window as unknown as { __v: string[] }).__v,
+            ),
+          ).toEqual([]);
+          if (SHOTS)
+            await page.screenshot({
+              path: `${SHOTS}/page-moved-${tag}${scheme}-${name}.png`,
+            });
+          await closeContext(ctx);
+        });
+      }
     }
-  }
 });

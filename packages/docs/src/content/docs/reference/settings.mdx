@@ -180,6 +180,7 @@ Things that look configurable but are not settings, and why. The coverage test (
 
 | Thing | Why it is not a setting | Where it shows |
 | --- | --- | --- |
+| Store listing content | Listing text, locales, overrides, images and release notes are content the operator writes, not configuration: registering their storage columns as settings would invent keys (A-27, D12). | Settings → Presentation → Listing |
 | Refund, void and chargeback handling | Always revokes that one purchase (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation. | Commerce → In-app purchases |
 | Relink undo window (72 hours) | Owner decision (S-16); it bounds a security-sensitive support action. | Docs |
 | Rate-limit buckets, admin session (8 hours), audit retention (180 days), blob lock age, CI and registry token lifetimes, body caps | The S-13 §8.2 deny-list: deploy-time forever. | Docs |

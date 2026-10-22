@@ -36,7 +36,7 @@ const axe = configureAxe({
 });
 
 const PAGE = "#/p/djdl/distribution/storefronts";
-const LISTING = "#/p/djdl/distribution/listing";
+const LISTING = "#/p/djdl/settings/presentation/listing";
 const SF = (path = "") => P(`/distribution/storefronts${path}`);
 
 beforeEach(() => {
