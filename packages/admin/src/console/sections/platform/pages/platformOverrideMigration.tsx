@@ -742,7 +742,7 @@ function RunSection({
   gates: MigrationGates;
 }): React.ReactElement {
   const [confirming, setConfirming] = React.useState(false);
-  const { fresh: steppedUp, markStale } = useStepUp(true);
+  const { fresh: steppedUp, signInGate, markStale } = useStepUp(true);
   const [progress, setProgress] =
     React.useState<OverrideMigrationProgress | null>(null);
   const [continuing, setContinuing] = React.useState(false);
@@ -866,7 +866,7 @@ function RunSection({
             : undefined
         }
         confirmLabel="Run migration"
-        confirmDisabled={!steppedUp}
+        {...signInGate}
         describeError={(e) => refusalCopy(e, "Migration")}
         onConfirm={step}
       >

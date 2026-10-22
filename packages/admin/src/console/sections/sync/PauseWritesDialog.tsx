@@ -5,6 +5,7 @@
  * into its step-up state (D11). Resuming is L1 and needs the reason too (the setting is critical).
  */
 
+import { NEEDS_REASON } from "../../../ui/confirmReasons.js";
 import * as React from "react";
 import { type PlatformSwitchSetting } from "../../../api.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
@@ -100,6 +101,7 @@ export function PauseWritesDialog({
           : "Resume writes"
       }
       confirmDisabled={reason.trim() === ""}
+      confirmDisabledReason={NEEDS_REASON}
       signedInAt={me.data?.authAt}
       stepUpKey={stepUpKeyFor(setting.key, to)}
       stepUpState={{ reason }}

@@ -685,8 +685,10 @@ describe("Reassign… and Make floating… (I-12's relink tool)", () => {
     );
     // Typed and reasoned, still off: the step-up is what is missing.
     expect(
-      within(dialog).getByRole("button", { name: "Make floating" }),
-    ).toHaveProperty("disabled", true);
+      within(dialog)
+        .getByRole("button", { name: "Make floating" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
   });
 });
 

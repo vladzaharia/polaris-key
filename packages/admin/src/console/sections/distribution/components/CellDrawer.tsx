@@ -12,6 +12,7 @@
  * - **Store controls:** the configured connector's rollout verbs for a store-owned rollout.
  */
 
+import { NEEDS_REASON } from "../../../../ui/confirmReasons.js";
 import * as React from "react";
 import type {
   ConnectorStatusDto,
@@ -529,6 +530,7 @@ function ReadinessSection({
         ]}
         confirmLabel={`Override ${version}`}
         confirmDisabled={reason.trim() === ""}
+        confirmDisabledReason={NEEDS_REASON}
         describeError={describe}
         onConfirm={async () => {
           await mutate(

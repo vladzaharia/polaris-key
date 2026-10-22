@@ -1961,7 +1961,7 @@ describe("Product defaults (ST-16)", () => {
       ),
     ).toBeTruthy();
     const confirm = within(dialog).getByRole("button", { name: /^Save/ });
-    expect((confirm as HTMLButtonElement).disabled).toBe(true);
+    expect(confirm.getAttribute("aria-disabled")).toBe("true");
     fail = false;
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Try again" }),

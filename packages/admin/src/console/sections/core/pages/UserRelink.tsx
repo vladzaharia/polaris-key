@@ -14,6 +14,13 @@
  */
 
 import {
+  blocker,
+  confirmBlocked,
+  NEEDS_REASON,
+  NEEDS_SIGN_IN,
+  type ConfirmBlock,
+} from "../../../../ui/confirmReasons.js";
+import {
   SUPPORT_CODE_BAD_CHECK,
   SUPPORT_CODE_LOOKALIKE,
   formatSupportCode,
@@ -90,6 +97,8 @@ export function StepUpCallout({
 /** Is the operator's sign-in fresh enough while `open`; `markStale` after a 403 `step_up_required`. */
 export function useStepUp(open: boolean): {
   fresh: boolean;
+  /** Confirm's props while the sign-in is too old: off, saying so. */
+  signInGate: ConfirmBlock;
   markStale: () => void;
 } {
   const me = useMe().data;
@@ -98,7 +107,11 @@ export function useStepUp(open: boolean): {
     if (open) setStale(false);
   }, [open]);
   const fresh = !stale && isSteppedUp(me, Math.floor(Date.now() / 1000));
-  return { fresh, markStale: () => setStale(true) };
+  return {
+    fresh,
+    signInGate: confirmBlocked([!fresh, NEEDS_SIGN_IN]),
+    markStale: () => setStale(true),
+  };
 }
 
 /** The mandatory reason a relink, a Make floating, a Reassign and an undo ask for (I-12). */
@@ -184,6 +197,11 @@ export function RelinkDialog({
       ]}
       confirmLabel="Relink license"
       confirmDisabled={!fresh || !targetOk || !reasonOk}
+      confirmDisabledReason={blocker(
+        [!fresh, NEEDS_SIGN_IN],
+        [!targetOk, "Enter the other user to continue"],
+        [!reasonOk, NEEDS_REASON],
+      )}
       describeError={(e) =>
         e instanceof ApiError && e.code === "target_not_found"
           ? null
@@ -291,6 +309,10 @@ export function UndoRelinkDialog({
       ]}
       confirmLabel="Undo relink"
       confirmDisabled={!fresh || reason.trim().length === 0}
+      confirmDisabledReason={blocker(
+        [!fresh, NEEDS_SIGN_IN],
+        [reason.trim().length === 0, NEEDS_REASON],
+      )}
       describeError={(e) => errorCopy(e, { thing: "Relink" })}
       onConfirm={async () => {
         try {

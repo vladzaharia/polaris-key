@@ -218,16 +218,18 @@ describe("License → Settings", () => {
     expect(
       within(dialog).getByText(/claims it from \.pkey\/product/),
     ).toBeTruthy();
-    const confirm = within(dialog).getByRole("button", {
-      name: "Turn off clamp offline grace to expiry",
-    });
+    // The button is drawn again when its reason goes: read it afresh each time.
+    const confirm = () =>
+      within(dialog).getByRole("button", {
+        name: "Turn off clamp offline grace to expiry",
+      });
     // A critical setting asks for a reason first.
-    expect((confirm as HTMLButtonElement).disabled).toBe(true);
+    expect(confirm().getAttribute("aria-disabled")).toBe("true");
     await user.type(
       within(dialog).getByRole("textbox", { name: "Reason" }),
       "Offline studios",
     );
-    await user.click(confirm);
+    await user.click(confirm());
     await waitFor(() =>
       expect(writes(log)).toEqual([
         {

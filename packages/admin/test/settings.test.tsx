@@ -503,7 +503,7 @@ describe("Core → Settings", () => {
       name: "Make break-glass claim",
     });
     // A reason is required.
-    expect(confirm.hasAttribute("disabled")).toBe(true);
+    expect(confirm.getAttribute("aria-disabled")).toBe("true");
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(fns.updateProduct).not.toHaveBeenCalled();
 

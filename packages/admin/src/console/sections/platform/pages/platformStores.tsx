@@ -1596,6 +1596,7 @@ function AssignDialog({
       ]}
       confirmLabel="Assign app"
       confirmDisabled={!product}
+      confirmDisabledReason="Choose a product first"
       describeError={(e) => describeAssignError(e, s.label, names)}
       onConfirm={async () => {
         if (!app || !product) return;

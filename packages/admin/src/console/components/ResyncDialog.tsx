@@ -17,6 +17,7 @@
  * `ResyncResultPanel` directly when the result lives elsewhere (the Repo sync drawer).
  */
 
+import { blocker } from "../../ui/confirmReasons.js";
 import * as React from "react";
 import {
   ApiError,
@@ -265,6 +266,10 @@ export function ResyncDialog({
       ]}
       confirmLabel="Resync from repo"
       confirmDisabled={plan.status !== "ready" || conflicts > 0}
+      confirmDisabledReason={blocker(
+        [plan.status !== "ready", "Wait for the plan to be ready"],
+        [conflicts > 0, "Fix the conflicts in .pkey/ first"],
+      )}
       describeError={(e) => errorCopy(e, { thing: "Product" })}
       onConfirm={async () => {
         if (!target) return;

@@ -1,3 +1,4 @@
+import { blocker, NEEDS_REASON } from "../confirmReasons.js";
 import * as React from "react";
 import { errorCopy } from "../../lib/errorCopy.js";
 import { ConfirmDialog } from "../ConfirmDialog.js";
@@ -47,6 +48,8 @@ export interface ConfirmPlan {
   confirmLabel?: string;
   /** Confirm stays off. */
   hold?: boolean;
+  /** Why it stays off ("Wait for the product count"), in the button's tooltip. */
+  holdReason?: string;
 }
 
 export interface SettingWriteOptions {
@@ -275,6 +278,13 @@ export function useSettingWrite(o: SettingWriteOptions) {
         confirmDisabled={
           (needsReason && reason.trim() === "") || plan?.hold === true
         }
+        confirmDisabledReason={blocker(
+          [
+            plan?.hold === true,
+            plan?.holdReason ?? "Wait for the check to finish",
+          ],
+          [needsReason && reason.trim() === "", NEEDS_REASON],
+        )}
         typedConfirmation={
           pending.level === "L3"
             ? { value: o.settingKey, label: "Type to confirm" }

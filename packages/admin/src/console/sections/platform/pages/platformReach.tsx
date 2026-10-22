@@ -139,6 +139,7 @@ export function useReachPlan(
     return q.isError || retrying
       ? {
           hold: true,
+          holdReason: "Try counting the products again first",
           consequences: [line],
           summary: frame(
             <>
@@ -164,6 +165,7 @@ export function useReachPlan(
         }
       : {
           hold: true,
+          holdReason: "Wait for the product count to continue",
           consequences: [line],
           summary: frame(<p>Counting products…</p>),
         };

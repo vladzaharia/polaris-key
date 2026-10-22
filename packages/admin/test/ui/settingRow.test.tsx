@@ -103,15 +103,15 @@ describe("SettingRow states", () => {
     await type("30");
     await userEvent.click(screen.getByRole("button", { name: "Save…" }));
     const dialog = await screen.findByRole("alertdialog");
-    const confirm = within(dialog).getByRole("button", {
-      name: "Save 30 days",
-    });
-    expect((confirm as HTMLButtonElement).disabled).toBe(true);
+    // The button is drawn again when its reason goes: read it afresh each time.
+    const confirm = () =>
+      within(dialog).getByRole("button", { name: "Save 30 days" });
+    expect(confirm().getAttribute("aria-disabled")).toBe("true");
     await userEvent.type(
       within(dialog).getByRole("textbox", { name: "Reason" }),
       "Audit",
     );
-    await userEvent.click(confirm);
+    await userEvent.click(confirm());
     await waitFor(() => expect(save).toHaveBeenCalled());
     expect(save).toHaveBeenCalledWith(30, {
       expectedVersion: 3,
