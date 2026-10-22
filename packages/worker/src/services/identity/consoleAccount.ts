@@ -323,14 +323,16 @@ export async function consoleSubject(
 /**
  * The address the console IdP vouches for at THIS sign-in, normalised, or `null`: the ID token
  * carried an `email` and `email_verified: true` and the provider is one that may vouch. An invite
- * converts only against this (ST-31.8): a claimed or stale address never does.
+ * converts only against this (ST-31.8): a claimed or stale address never does. The address must
+ * be plain ASCII before it is lower-cased, as I-30 requires of platform connections: a lookalike
+ * such as the Kelvin sign would otherwise fold onto another person's invite.
  */
 export function consoleAssertedEmail(
   identity: Pick<ConsoleIdentity, "email" | "emailVerified">,
 ): string | null {
-  const asserted = identity.email?.trim()
-    ? normalizeEmail(identity.email)
-    : null;
+  const raw = identity.email?.trim() ?? "";
+  if (!/^[\x21-\x7e]+$/.test(raw)) return null;
+  const asserted = normalizeEmail(raw);
   return providerVouchesForEmail(
     {
       kind: "oidc",

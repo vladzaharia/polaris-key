@@ -7295,7 +7295,11 @@ new session row and refuses with the same card, before any cookie exists. A repe
 invite left and converts nothing. Also in this slice: a `/products/:slug/*` route answers an unknown
 slug with the same 403 (scope, area) as a real product the caller cannot reach, unless the caller
 holds a product scope that reaches every product (Superadmin, `products:*`), so a member of one
-product no longer learns which other slugs exist.
+product no longer learns which other slugs exist. Residuals: the body is the same, but a real
+unreachable product also costs a context load and a budgeted `access.denied` audit write, a
+timing difference of a few queries; and a slug the caller once held a binding for (a since-deleted
+product) still answers 404, which reveals only the caller's own history. The asserted address
+must be plain ASCII before it is lower-cased, as I-30 requires of platform connections.
 
 **Conversion rules** (REV-ST31-7, one test each in `test/consoleInviteConversion.test.ts`). An invite
 converts only when all hold; a failed check leaves the invite and says nothing:

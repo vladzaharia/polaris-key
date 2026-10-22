@@ -18,6 +18,7 @@ import {
   type IdTokenVerifier,
 } from "../src/console/auth.js";
 import { convertInvites } from "../src/console/inviteConversion.js";
+import { consoleAssertedEmail } from "../src/services/identity/consoleAccount.js";
 import { resetConsoleSessionCache } from "../src/console/consoleSession.js";
 import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
@@ -743,5 +744,22 @@ describe("the slug oracle (404 before 403)", () => {
       { now: NOW + 1 },
     );
     expect(res.status).toBe(404);
+  });
+});
+
+describe("the asserted address is plain ASCII before it is lower-cased (REV-ST31-8 note 1)", () => {
+  it("a Kelvin-sign lookalike asserts nothing, so it cannot fold onto kate@x", () => {
+    expect(
+      consoleAssertedEmail({
+        email: "\u212Aate@example.com",
+        emailVerified: true,
+      }),
+    ).toBeNull();
+    expect(
+      consoleAssertedEmail({ email: "Kate@Example.com", emailVerified: true }),
+    ).toBe("kate@example.com");
+    expect(
+      consoleAssertedEmail({ email: "kate@example.com", emailVerified: false }),
+    ).toBeNull();
   });
 });
