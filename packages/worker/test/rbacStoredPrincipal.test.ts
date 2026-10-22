@@ -32,6 +32,8 @@ import {
 import type { AreaId } from "../src/core/rbac/areas.js";
 import type { GrantScope, Role } from "../src/core/rbac/can.js";
 import { tokenSession } from "../src/console/apiTokens.js";
+import { importHmacKey } from "../src/platform/hash.js";
+import { signHmacToken } from "../src/platform/hmacToken.js";
 import { resolvePrincipal } from "../src/core/rbac/principal.js";
 
 const GROUP = "platform-admins";
@@ -59,10 +61,13 @@ async function person(
   env: Env,
   db: Db,
   who: string,
-  opts: { keepRoot?: boolean } = {},
+  opts: { keepRoot?: boolean; stepUp?: boolean } = {},
 ): Promise<Person> {
   const start = await handleAdminLogin(
-    new Request("https://key.plrs.im/manage/login?go=1") as unknown as Request,
+    new Request(
+      "https://key.plrs.im/manage/login?go=1" +
+        (opts.stepUp ? "&stepUp=1" : ""),
+    ) as unknown as Request,
     env,
   );
   const state = new URL(start.headers.get("location")!).searchParams.get(
@@ -75,6 +80,7 @@ async function person(
       emailVerified: true,
       name: who,
       groups: [GROUP],
+      ...(opts.stepUp ? { authTime: NOW } : {}),
     }),
   };
   const res = await handleAdminCallback(
@@ -119,6 +125,7 @@ async function bind(
     source: extra.source ?? "grant",
     grantedBy: null,
     grantedAt: NOW - 10,
+    ...(accountId === null ? { expiresAt: NOW + 3600 } : {}),
   });
   await db.run(s.sql, ...s.params);
   return id;
@@ -156,9 +163,9 @@ type Refusal = {
 async function refusal(res: Response): Promise<Refusal["error"]> {
   return ((await res.json()) as Refusal).error;
 }
-const SHIP = "/api/products/alpha/distribution/feeds/probe";
-const COMMERCE = "/api/products/alpha/storefronts/x1";
-const LICENSE = "/api/products/alpha/license/probe";
+const SHIP = "/api/products/alpha/distribution/feeds";
+const COMMERCE = "/api/products/alpha/storefronts/polaris-key";
+const LICENSE = "/api/products/alpha/license/licenses";
 const PLATFORM = "/api/platform/version";
 
 let env: Env;
@@ -177,8 +184,8 @@ beforeEach(async () => {
   );
 });
 
-const allowed = (res: Response) =>
-  !(res.status === 401 || res.status === 403) || res.status === undefined;
+// Reached the handler: not refused (401/403), not a missing route (404) and not a crash (500).
+const allowed = (res: Response) => ![401, 403, 404, 500].includes(res.status);
 
 describe("a Product admin narrowed to areas", () => {
   it("passes its areas and is refused the rest, with the area named", async () => {
@@ -461,5 +468,94 @@ describe("credentials without an account", () => {
       NOW,
     );
     expect(named.grants.map((g) => g.role)).toEqual(["platform_admin"]);
+  });
+});
+
+describe("a forged v1 body", () => {
+  it("signed with the right key, aid / sid / root in the body are ignored", async () => {
+    const p = await person(env, db, "forge");
+    await bind(db, p.accountId, "platform_admin", "platform", null);
+    const forged = await signHmacToken(
+      await importHmacKey(env.ADMIN_SESSION_SECRET!),
+      "pkey.admin.v1|",
+      {
+        sub: "op-9",
+        name: "Op",
+        email: "op@x.io",
+        groups: [],
+        csrf: "c",
+        exp: NOW + 3600,
+        aid: p.accountId,
+        sid: "whatever",
+        root: true,
+      },
+    );
+    const res = await handleAdmin(
+      new Request(`https://key.plrs.im/manage${PLATFORM}`, {
+        headers: { cookie: `${ADMIN_COOKIE}=${forged}` },
+      }) as unknown as Request,
+      env,
+      db,
+      PLATFORM,
+      { now: NOW + 1 },
+    );
+    // Neither root (`root: true`) nor the account's platform_admin binding (`aid`) took effect.
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("admin API tokens are Superadmin-minted (the tokenSession carries the root group)", () => {
+  const MINT = { label: "x", expiresInDays: 30 };
+
+  it("a stepped-up platform_admin binding is refused POST /tokens; root gets 201", async () => {
+    const p = await person(env, db, "padm", { stepUp: true });
+    await bind(db, p.accountId, "platform_admin", "platform", null);
+    const res = await call(env, db, p, "POST", "/api/tokens", NOW + 5, MINT);
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as {
+      error: { code: string; reason: string };
+    };
+    expect(body.error.code).toBe("forbidden");
+    expect(body.error.reason).toBe("superadmin_only");
+    const rows = await db.all("SELECT id FROM admin_api_tokens");
+    expect(rows).toHaveLength(0);
+
+    const root = await person(env, db, "rooty", {
+      stepUp: true,
+      keepRoot: true,
+    });
+    const ok = await call(env, db, root, "POST", "/api/tokens", NOW + 5, MINT);
+    expect(ok.status).toBe(201);
+  });
+
+  it("the escalation is closed: the platform_admin cannot obtain a token that writes to a product", async () => {
+    const p = await person(env, db, "esc", { stepUp: true });
+    await bind(db, p.accountId, "platform_admin", "platform", null);
+    expect(
+      (
+        await call(
+          env,
+          db,
+          p,
+          "POST",
+          "/api/products/beta/bundles",
+          NOW + 5,
+          {},
+        )
+      ).status,
+    ).toBe(403);
+    const mint = await call(env, db, p, "POST", "/api/tokens", NOW + 5, MINT);
+    expect(mint.status).toBe(403);
+    expect(((await mint.json()) as { secret?: string }).secret).toBeUndefined();
+  });
+});
+
+describe("the bindings table is absent (deploy order)", () => {
+  it("resolves to no stored grants: root keeps working, a binding-only member is simply a stranger", async () => {
+    const root = await person(env, db, "r0", { keepRoot: true });
+    const other = await person(env, db, "o0");
+    await db.run("DROP TABLE console_role_bindings");
+    expect(allowed(await call(env, db, root, "GET", PLATFORM))).toBe(true);
+    expect((await call(env, db, other, "GET", PLATFORM)).status).toBe(403);
   });
 });

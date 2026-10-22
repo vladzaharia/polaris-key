@@ -80,12 +80,18 @@ export function mergeAreas(
   return AREA_IDS.filter((id) => all.has(id));
 }
 
+/** `product:<slug>`, lower case, a slug of letters, digits and hyphens (never empty). */
+const PRODUCT_SCOPE = /^product:[a-z0-9][a-z0-9-]*$/;
+
 function validScope(scope: string): scope is GrantScope {
   return (
-    scope === "platform" ||
-    scope === "products:*" ||
-    (scope.startsWith("product:") && scope.length > "product:".length)
+    scope === "platform" || scope === "products:*" || PRODUCT_SCOPE.test(scope)
   );
+}
+
+/** Role and scope agree: a product admin is scoped to products, every other role to the platform. */
+function roleScopeAgree(role: string, scope: string): boolean {
+  return role === "product_admin" ? scope !== "platform" : scope === "platform";
 }
 
 /**
@@ -99,9 +105,12 @@ export function rowToGrant(row: BindingRow): Grant | null {
     !SOURCES.includes(row.source)
   )
     return null;
-  if (!validScope(row.scope)) return null;
+  if (!validScope(row.scope) || !roleScopeAgree(row.role, row.scope))
+    return null;
   let areas: AreaId[] | null = null;
   if (row.areas_json !== null) {
+    // Areas narrow a product admin and nothing else.
+    if (row.role !== "product_admin") return null;
     let parsed: unknown;
     try {
       parsed = JSON.parse(row.areas_json);
@@ -109,7 +118,8 @@ export function rowToGrant(row: BindingRow): Grant | null {
       return null;
     }
     if (!Array.isArray(parsed) || parsed.length === 0) return null;
-    if (!parsed.every(isAreaId)) return null;
+    if (!parsed.every((a) => isAreaId(a) && PRODUCT_AREAS.includes(a)))
+      return null;
     areas = AREA_IDS.filter((id) => (parsed as string[]).includes(id));
   }
   return {
@@ -125,10 +135,18 @@ export async function listAccountGrants(
   db: Db,
   accountId: string,
 ): Promise<Grant[]> {
-  const rows = await db.all<BindingRow>(
-    "SELECT * FROM console_role_bindings WHERE account_id = ? ORDER BY granted_at, id",
-    accountId,
-  );
+  let rows: BindingRow[];
+  try {
+    rows = await db.all<BindingRow>(
+      "SELECT * FROM console_role_bindings WHERE account_id = ? ORDER BY granted_at, id",
+      accountId,
+    );
+  } catch (e) {
+    // Deploy order: the code may run before the migration. Stored grants only ever narrow what a
+    // root operator holds, so a missing table means "no stored grants", not a locked-out console.
+    if (/no such table/i.test(String((e as Error)?.message ?? e))) return [];
+    throw e;
+  }
   const grants: Grant[] = [];
   for (const row of rows) {
     const g = rowToGrant(row);
@@ -144,13 +162,27 @@ export async function listPendingInvites(
   now: number,
 ): Promise<BindingRow[]> {
   return db.all<BindingRow>(
-    "SELECT * FROM console_role_bindings WHERE email_norm = ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY granted_at, id",
+    "SELECT * FROM console_role_bindings WHERE email_norm = ? AND expires_at IS NOT NULL AND expires_at > ? ORDER BY granted_at, id",
     emailNorm,
     now,
   );
 }
 
 export function stmtInsertBinding(b: NewBinding): DbStatement {
+  // A second line of defence behind the callers' own validation: refuse what `rowToGrant` would
+  // read as no grant, so a bad row is never written.
+  if (!validScope(b.scope))
+    throw new Error(`invalid binding scope: ${b.scope}`);
+  if (!roleScopeAgree(b.role, b.scope))
+    throw new Error(`role ${b.role} does not fit scope ${b.scope}`);
+  if (b.areas !== null && b.role !== "product_admin")
+    throw new Error("areas apply to a product_admin binding only");
+  const areas = b.areas === null ? null : normalizeAreas(b.areas);
+  if (
+    b.accountId === null &&
+    (b.expiresAt === undefined || b.expiresAt === null)
+  )
+    throw new Error("an email binding needs an expiry");
   return {
     sql: `INSERT INTO console_role_bindings
             (id, account_id, email_norm, role, scope, areas_json, source, granted_by, granted_at, expires_at)
@@ -161,7 +193,7 @@ export function stmtInsertBinding(b: NewBinding): DbStatement {
       b.emailNorm,
       b.role,
       b.scope,
-      b.areas === null ? null : JSON.stringify(b.areas),
+      areas === null ? null : JSON.stringify(areas),
       b.source,
       b.grantedBy,
       b.grantedAt,

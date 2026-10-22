@@ -228,6 +228,8 @@ export async function verifySession(
   // A v1 cookie names no account: stored bindings (ST-31.2) are read for a v2 session only.
   delete session.aid;
   delete session.sid;
+  // `root` is the v2 computed rule, set per request from the account link; a v1 body cannot claim it.
+  delete session.root;
   return session;
 }
 

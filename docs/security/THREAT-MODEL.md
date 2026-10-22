@@ -6930,7 +6930,8 @@ empty / listed / unlisted / http cases, the Locker pointer), `test/adminSessions
 ### Console role bindings: the principal (ST-31.2)
 
 **What arrived.** `console_role_bindings` (ST-31.1: `account_id` or `email_norm`, `role`, `scope`,
-`areas_json`, `source`, no cascade to accounts) existed but nothing read it. The principal was the
+`areas_json`, `source`; `account_id` is `REFERENCES accounts(id) ON DELETE CASCADE`, so deleting or
+merging an account removes its bindings) existed but nothing read it. The principal was the
 root rule alone.
 
 **Control.**
@@ -6943,14 +6944,31 @@ root rule alone.
   binding stops granting on the next request. The only cached part is the 30 s live check of the
   session (`LIVE_CHECK_SECONDS`), which bounds a disabled account, a revoked session and a merge,
   all of which still answer 401 whatever the account's bindings. A cache on the bindings that
-  outlived 30 s would be an ST-28 section 5.3 item 9 trigger.
+  outlived 30 s would be a trigger under ST-28 section 5.3 "New section 9 triggers" (listed in section 9).
 - **`aid` points, it does not grant.** `aid` comes from a v2 cookie whose session row the live check
   resolved to this account (`row.account_id === cookie.aid`). A v1 cookie and a `pkeya_` token session
-  carry none (`verifySession` now deletes `aid` and `sid` from a v1 body as well), so they stay
+  carry none (`verifySession` now deletes `aid`, `sid` and `root` from a v1 body as well), so they stay
   root-only: a token never gains a stored grant. The sign-in gate in `console/auth.ts` still resolves
   the root rule alone and is unchanged, so until ST-31.8 no non-root person can mint a cookie.
-- **Fail closed on a row it cannot read.** `rowToGrant` drops an unknown area, a malformed list, an
-  unknown role, scope or source; NULL `areas_json` means every area, `[]` means none and is dropped.
+- **Fail closed on a row it cannot read.** `rowToGrant` drops an unknown area (checked against
+  `PRODUCT_AREAS`), a malformed list, an unknown role, scope or source, a scope that is not exactly
+  `platform`, `products:*` or lower-case `product:<slug>`, a role that does not fit its scope (only
+  `product_admin` takes a product scope) and areas on any role but `product_admin`; NULL
+  `areas_json` means every area, `[]` means none and is dropped. `stmtInsertBinding` refuses to
+  write any of these, and an email row without an expiry, as a second line of defence.
+  `listPendingInvites` treats a NULL `expires_at` as expired.
+- **A missing table narrows, never locks out.** If `console_role_bindings` does not exist (code
+  deployed before its migration), `listAccountGrants` answers no stored grants, so root operators
+  keep working; a binding-only member is simply a stranger until the migration lands.
+- **Finding 1 (review): a Platform admin binding could mint a root token.** `tokenSession` gives
+  every `pkeya_` token the root group, and `POST /tokens` was a `platform` row with step-up, which
+  Platform admin holds, so a stepped-up `platform_admin` binding could mint a token that then acted
+  as Superadmin on any product. Fix: `handleApiTokenMint` answers 403 `forbidden` with reason
+  `superadmin_only` unless `isSuperadmin(principal)`. Listing and revoking tokens stay `platform`
+  rows (a token row carries no owner, labels and times only, and revoking only narrows). Pinned by
+  `test/rbacStoredPrincipal.test.ts` (refused with a binding, 201 for root, the bundle write
+  through the minted token unreachable). While `tokenSession` carries the root group, this check is
+  the only thing between a Platform admin and root.
 - **`products:*` never covers the system product** (`can()` rule 4 is unchanged: a system product is
   evaluated as the platform). A Product admin sees only its products and areas in the dispatcher,
   `/products`, `/attention`, `/search` and `/me.permissions`; `/me.platformAdmin` stays
@@ -6960,13 +6978,15 @@ root rule alone.
 - **Tests:** `test/rbacStoredPrincipal.test.ts` (narrowed areas with the refusal naming the area,
   `products:*` and the system product, Platform admin, Console access, a stranger, root plus a
   binding, deletion on the next request and at 30 s, a disabled account, email rows, another
-  account's binding, a malformed row, a v1 cookie and a token).
+  account's binding, a malformed row, a v1 cookie and a token, a forged signed v1 body naming `aid` / `sid` / `root`, the
+  token-mint refusal, a missing bindings table).
 
 **Residual.** A binding for an account that is later disabled stays in the table; it is inert
-because the disabled account cannot hold a session (401 within 30 s). An account's `sub` (member
-id) is not its key here: bindings are keyed by the account id, which the principal receives but
-never logs or returns (`accountIdBoundary`). The binding read adds one D1 read to each console
-request. Nothing writes bindings yet (ST-31.3 on).
+because the disabled account cannot hold a session (401 within 30 s), but it grants again if the
+account is re-enabled. An account's `sub` (member id) is not its key here: bindings are keyed by the
+account id, which the subject receives (the principal does not) and which is never logged or
+returned (`accountIdBoundary`). The binding read adds one D1 read to each console request, and
+runs before the rate limiter (ST-31.6). Nothing writes bindings yet (ST-31.6 on).
 
 ### Identity as a per-product service (PX-W17)
 
@@ -9967,6 +9987,11 @@ security-widening key's `rbacArea` leaves `keys` or `settings`; `writeSettings()
 console write without a principal; a docs path under `operate/` or `contribute/`, or the search
 index, becomes public; `GET /access/admins` names a Platform admin, an account id or a product's
 admins to someone without an area of that product.
+
+For stored role bindings (ST-31, ST-28 section 5.3 "New section 9 triggers"): the bindings or the
+principal are cached beyond `LIVE_CHECK_SECONDS`; an account id is taken from anything but a
+live-checked v2 session; an email row grants; a token or a v1 cookie reads stored grants; an admin
+API token is minted by anyone but a Superadmin while `tokenSession` carries the root group.
 
 ### The shared assets root and the docs gate (SEC-WEB-1)
 

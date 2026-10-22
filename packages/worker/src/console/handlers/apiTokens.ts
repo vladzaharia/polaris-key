@@ -41,6 +41,7 @@ import {
   type AdminApiScope,
   type AdminApiTokenRow,
 } from "../apiTokens.js";
+import { isSuperadmin } from "../../core/rbac/can.js";
 import type { AdminCtx } from "../routes.js";
 
 /** `GET /tokens`. */
@@ -51,6 +52,15 @@ export async function handleApiTokenList(c: AdminCtx): Promise<Response> {
 
 /** `POST /tokens`: `{label, expiresInDays, scopes?}`. */
 export async function handleApiTokenMint(c: AdminCtx): Promise<Response> {
+  // `tokenSession` gives every token the root group, so a token acts as Superadmin whoever minted
+  // it. Only a Superadmin may mint one, or a Platform admin binding would escalate to root.
+  if (!isSuperadmin(c.session.principal))
+    return err(
+      403,
+      "forbidden",
+      "only a Superadmin can mint an admin API token",
+      { reason: "superadmin_only" },
+    );
   const body = await readBody(c.req);
   const fields: string[] = [];
 

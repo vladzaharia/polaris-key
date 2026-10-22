@@ -341,6 +341,8 @@ describe("store", () => {
           scope: "product:x",
           areas: normalizeAreas(["settings", "core"]),
           source: "creator",
+          // Distinct from the row before: the read orders by granted_at, then by random id.
+          grantedAt: NOW + 1,
         }),
       ),
       stmtInsertBinding(
@@ -394,6 +396,97 @@ describe("store", () => {
     ]);
     const rows = await listPendingInvites(db, "a@b.c", NOW);
     expect(rows.map((r) => r.role)).toEqual(["console_access"]);
+  });
+
+  it("an invite with no expiry never counts as pending", async () => {
+    const sqlite = new Database(":memory:");
+    for (const f of FILES) sqlite.exec(sql(f));
+    const db = new SqliteDb(sqlite);
+    sqlite
+      .prepare(
+        `INSERT INTO console_role_bindings (id, email_norm, role, scope, source, granted_at)
+         VALUES ('crb_noexp', 'a@b.c', 'console_access', 'platform', 'invite', ?)`,
+      )
+      .run(NOW);
+    expect(await listPendingInvites(db, "a@b.c", NOW)).toEqual([]);
+  });
+
+  it("stmtInsertBinding refuses what the reader would drop", () => {
+    expect(() =>
+      stmtInsertBinding(nb({ role: "platform_admin", areas: ["core"] })),
+    ).toThrow(/areas/);
+    expect(() =>
+      stmtInsertBinding(
+        nb({ role: "product_admin", scope: "product:x", areas: [] }),
+      ),
+    ).toThrow(/empty/);
+    expect(() =>
+      stmtInsertBinding(
+        nb({
+          role: "product_admin",
+          scope: "product:x",
+          areas: ["platform" as never],
+        }),
+      ),
+    ).toThrow(/product area/);
+    expect(() =>
+      stmtInsertBinding(
+        nb({ accountId: null, emailNorm: "a@b.c", source: "invite" }),
+      ),
+    ).toThrow(/expiry/);
+    for (const scope of [
+      "product:X",
+      "product:",
+      "product:a b",
+      "Platform",
+      "products:x",
+      "*",
+    ])
+      expect(() =>
+        stmtInsertBinding(nb({ role: "product_admin", scope: scope as never })),
+      ).toThrow(/scope/);
+    expect(() =>
+      stmtInsertBinding(nb({ role: "platform_admin", scope: "product:x" })),
+    ).toThrow(/scope/);
+    expect(() =>
+      stmtInsertBinding(nb({ role: "product_admin", scope: "platform" })),
+    ).toThrow(/scope/);
+  });
+
+  it("rowToGrant re-checks areas, role/scope agreement and scope spelling", () => {
+    const row = (o: Partial<BindingRow>): BindingRow => ({
+      id: "crb_x",
+      account_id: "acc_1",
+      email_norm: null,
+      role: "product_admin",
+      scope: "product:x",
+      areas_json: null,
+      source: "grant",
+      granted_by: null,
+      granted_at: NOW,
+      expires_at: null,
+      ...o,
+    });
+    expect(rowToGrant(row({}))).not.toBeNull();
+    expect(rowToGrant(row({ areas_json: '["platform"]' }))).toBeNull();
+    expect(rowToGrant(row({ areas_json: '["console"]' }))).toBeNull();
+    expect(
+      rowToGrant(
+        row({
+          role: "platform_admin",
+          scope: "platform",
+          areas_json: '["core"]',
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      rowToGrant(row({ role: "platform_admin", scope: "product:x" })),
+    ).toBeNull();
+    expect(
+      rowToGrant(row({ role: "product_admin", scope: "platform" })),
+    ).toBeNull();
+    expect(rowToGrant(row({ scope: "product:X" }))).toBeNull();
+    expect(rowToGrant(row({ scope: "product:a b" }))).toBeNull();
   });
 
   it("stmtDeleteBinding deletes one row", async () => {
