@@ -1091,6 +1091,19 @@ def truecolor(hex_color: str) -> str:
 
 // ── Qt: Theme.qml, qmldir and the QSS per scheme ─────────────────────────────────────────────
 
+/**
+ * The theme options a component measure answers to in the Qt kit (UI-KITS §3.1): density moves the
+ * control height and the card padding, `radius` scales the platform's radii (a capsule stays a
+ * capsule unless a number is given). The base is the platform's own value.
+ */
+const QT_MEASURE_OPTIONS: Record<string, (base: string) => string> = {
+  controlHeight: (b) =>
+    `(${b}) + (density === "compact" ? -4 : density === "spacious" ? 8 : 0)`,
+  radiusControl: (b) =>
+    `radiusPx >= 0 ? radiusPx : (${b}) < 0 ? -1 : (${b}) * radiusScale`,
+  cardPad: (b) => `Math.round((${b}) * densityScale)`,
+};
+
 export function qtQml(ctx: KitGenContext): string {
   const colorKeys = Object.keys(pyTheme("dark"));
   const camel = (s: string) =>
@@ -1098,7 +1111,7 @@ export function qtQml(ctx: KitGenContext): string {
   const colors = colorKeys
     .map(
       (k) =>
-        `    readonly property color ${camel(k)}: dark ? "${pyTheme("dark")[k]}" : "${pyTheme("light")[k]}"`,
+        `    readonly property color ${camel(k)}: colorOverrides.${camel(k)} !== undefined ? colorOverrides.${camel(k)} : (dark ? "${pyTheme("dark")[k]}" : "${pyTheme("light")[k]}")`,
     )
     .join("\n");
   const pick = (f: (p: (typeof PY_PLATFORMS)[number]) => string) =>
@@ -1120,7 +1133,9 @@ export function qtQml(ctx: KitGenContext): string {
         flatComponents("gnome").find((x) => x.name === n)!.kind === "bool"
           ? "bool"
           : "real";
-      return `    readonly property ${type} ${n}: ${pick(val)}`;
+      const base = pick(val);
+      const wrapped = QT_MEASURE_OPTIONS[n]?.(base) ?? base;
+      return `    readonly property ${type} ${n}: ${wrapped}`;
     })
     .join("\n");
   const typeRoles = KIT_TYPE_ROLES.map((r) => {
@@ -1130,7 +1145,10 @@ export function qtQml(ctx: KitGenContext): string {
     };
     return `    readonly property var type${cap(r)}: ${pick(obj)}`;
   }).join("\n");
-  const surface = `    readonly property real radiusSurface: ${pick((p) => String(KIT_COMPONENTS[p].radiusSurface[PY_SURFACE[p]]))}`;
+  const surfaceBase = pick((p) =>
+    String(KIT_COMPONENTS[p].radiusSurface[PY_SURFACE[p]]),
+  );
+  const surface = `    readonly property real radiusSurface: radiusPx >= 0 ? radiusPx + 6 : (${surfaceBase}) * surfaceScale`;
   return `${ctx.banner("//")}
 pragma Singleton
 import QtQuick
@@ -1147,6 +1165,20 @@ QtObject {
     // "macos", "windows" or "gnome": the platform variant (UI-KITS §3.1 \`platform\`).
     property string platform: Qt.platform.os === "osx" ? "macos" : Qt.platform.os === "windows" ? "windows" : "gnome"
 
+    // The theme options (UI-KITS §3.1), set by polaris_key.ui.qt from the Theme:
+    //   colorOverrides  role -> "#rrggbb" for the scheme in effect (\`colors\`, and the host's own
+    //                   palette under the \`native\` preset); a role not named keeps the token
+    //   density         "compact", "comfortable" or "spacious": control height and spacing only
+    //   radiusScale     the \`radius\` option as a factor on the platform's control radius (sm 0.5,
+    //   surfaceScale    lg 1.5) and on its surface radius; radiusPx is a number given as the radius
+    //                   (-1: none given)
+    property var colorOverrides: ({})
+    property string density: "comfortable"
+    readonly property real densityScale: density === "compact" ? 0.75 : density === "spacious" ? 1.25 : 1
+    property real radiusScale: 1
+    property real surfaceScale: 1
+    property real radiusPx: -1
+
     // The product accent, resolved for the scheme. Ink until a product colour is set (no icon,
     // no accent: never Polaris violet by default).
     property color accent: textStrong
@@ -1162,8 +1194,11 @@ ${colors}
     readonly property color highlight: dark ? Qt.rgba(1, 1, 1, ${KIT_HIGHLIGHT.dark.opacity}) : Qt.rgba(1, 1, 1, ${KIT_HIGHLIGHT.light.opacity})
 
     // Type.
-    readonly property string fontFamily: "Rubik"
-    readonly property string monoFamily: "JetBrains Mono"
+    // \`typography\`: the families are the kit's own unless the theme names others; displayFamily is
+    // the title's face (empty: the family).
+    property string fontFamily: "Rubik"
+    property string monoFamily: "JetBrains Mono"
+    property string displayFamily: ""
     readonly property int weightRegular: 400
     readonly property int weightMedium: 500
     readonly property int weightSemibold: 600

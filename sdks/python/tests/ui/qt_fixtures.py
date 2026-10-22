@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-from polaris_key.ui.core import ui_activate, ui_devices, ui_gate, ui_settings, ui_update
+from polaris_key.ui.core import ui_activate, ui_devices, ui_gate, ui_settings, ui_signin, ui_update
 from polaris_key.ui.core.ui_contract import context_of
 from polaris_key.ui.core.ui_view import View
 
@@ -24,6 +24,8 @@ MODELS = {
     "Welcome": ui_activate.welcome_view,
     "Activate": ui_activate.activate_view,
     "OfflineActivation": ui_activate.offline_activation_view,
+    "SignIn": ui_signin.sign_in_view,
+    "SignInHandoff": ui_signin.sign_in_handoff_view,
     "DeviceLimit": ui_devices.device_limit_view,
     "Devices": ui_devices.devices_view,
     "UpdatePrompt": ui_update.update_prompt_view,
@@ -32,7 +34,12 @@ MODELS = {
     "AccountAndLicense": ui_settings.account_view,
     "Settings": ui_settings.settings_view,
 }
-FAMILIES = ("gate", "activate", "deviceLimit", "devices", "update", "settings")
+FAMILIES = ("gate", "activate", "signIn", "deviceLimit", "devices", "update", "settings")
+
+
+def rows():
+    """Every row of the families the kit draws (signIn's LicenseChoice rows are the grant roster's)."""
+    return [row for family in FAMILIES for row in MATRIX[family] if row["expect"]["component"] in MODELS]
 
 
 class FakeSource:
@@ -76,22 +83,21 @@ def states() -> List[Tuple[str, str, str, View]]:
     """(component, state, row name, view) for the first row of every visible component state."""
     seen = set()
     out: List[Tuple[str, str, str, View]] = []
-    for family in FAMILIES:
-        for row in MATRIX[family]:
-            expected = row["expect"]
-            key = (expected["component"], expected["state"])
-            if expected["state"] == "hidden" or key in seen:
-                continue
-            seen.add(key)
-            view = MODELS[expected["component"]](context_of(with_defaults(row["input"])))
-            out.append((key[0], key[1], str(row["name"]), view))
+    for row in rows():
+        expected = row["expect"]
+        key = (expected["component"], expected["state"])
+        if expected["state"] == "hidden" or key in seen:
+            continue
+        seen.add(key)
+        view = MODELS[expected["component"]](context_of(with_defaults(row["input"])))
+        out.append((key[0], key[1], str(row["name"]), view))
     return out
 
 
 def all_views() -> List[Tuple[str, View]]:
-    """Every row of the six families as (row name, view)."""
-    return [
-        (str(row["name"]), MODELS[row["expect"]["component"]](context_of(with_defaults(row["input"]))))
-        for family in FAMILIES
-        for row in MATRIX[family]
-    ]
+    """Every row of the families the kit draws as (row name, view)."""
+    return [(str(row["name"]), MODELS[row["expect"]["component"]](context_of(with_defaults(row["input"])))) for row in rows()]
+
+
+#: The first view of each (component, state): ``BY_STATE_VIEWS[("Welcome", "default")]``.
+BY_STATE_VIEWS = {(c, s): v for c, s, _, v in states()}

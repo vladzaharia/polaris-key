@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
-__all__ = ["BINDING", "QtCore", "QtGui", "QtQml", "QtQuick", "Signal", "Slot", "Property", "require"]
+__all__ = ["BINDING", "QtCore", "QtGui", "QtQml", "QtQuick", "Signal", "Slot", "Property", "require", "widgets"]
 
 BINDING: str = ""
 try:  # pragma: no cover - which branch runs depends on the environment
@@ -29,3 +29,14 @@ def require() -> Any:
     if not BINDING:
         raise ImportError('The Qt kit needs a Qt binding: pip install "polaris-key[qt]" (PySide6) or PyQt6 with qtpy.')
     return QtCore
+
+
+def widgets() -> Any:
+    """``QtWidgets`` from the same binding, imported on first use: only :meth:`KitView.container`
+    needs it, and a Qt Quick-only app never pays for it."""
+    require()
+    if BINDING == "PySide6":
+        from PySide6 import QtWidgets  # type: ignore[import-not-found]
+    else:  # pragma: no cover - the qtpy branch
+        from qtpy import QtWidgets  # type: ignore[import-not-found,no-redef]
+    return QtWidgets

@@ -239,8 +239,9 @@ The views are `gate_view`, `parse_key`, `activation_view`, `update_view`, `boot_
 
 ## Qt
 
-The [Qt kit](/docs/build/ui/frameworks/qt/) draws the gate, devices, settings and account in a Qt
-Quick view; `run_gate(client, window)` is its drop-in. To draw your own, build the client once, run
+The [Qt kit](/docs/build/ui/frameworks/qt/) draws the gate (with activation and sign-in), devices,
+settings and account in a Qt Quick view; `run_gate(client, window)` is its drop-in, and calls the
+client for you. To draw your own, build the client once, run
 `sync()` and the sign-in wait off the GUI thread (a `QThread`, or `AsyncClient` under `qasync`),
 deliver results to widgets through signals as in [the thread contract](#the-thread-contract), and
 render from `gate_view` and `activation_message` above. Install `polaris-key[keyring]` so the token

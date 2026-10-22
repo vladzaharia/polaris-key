@@ -114,9 +114,9 @@ Each kit has a tab with its badge. A kit that has not built the theme API says *
     <KitStatus kit="qt" />
 
     `Theme` goes to `KitView(theme)` and `run_gate(theme=…)`, and `kit.bridge.set_theme(theme)`
-    switches it later. The kit honours `color_scheme`, `accent`, `product`, `platform`, `motion`,
-    `powered_by` and `copy`; the rest have no effect yet. What each does is on the
-    [framework page](/docs/build/ui/frameworks/qt/#theming).
+    switches it later. The kit honours every field but `symbols`, which is the terminal's: `system`
+    follows the OS appearance live, and `native` takes the application's palette, font and highlight
+    color. What each does is on the [framework page](/docs/build/ui/frameworks/qt/#theming).
 
   </TabItem>
   <TabItem label="Terminal (Node)">
@@ -178,8 +178,8 @@ port must reproduce exactly (`packages/brand/fixtures/accent-vectors.json`):
 - **Compose:** the host's `MaterialTheme`, dynamic color included, with the status colors mapped
   to the host scheme's error and a computed warning.
 - **Godot:** derived from the ancestor or project theme.
-- **Qt:** the platform `QStyle` (or the Qt Quick native style), with only spacing and the type
-  hierarchy applied.
+- **Qt:** the application's palette, highlight color and default font (the kit never sets the
+  application style), with only spacing and the type hierarchy applied.
 
 ## Bring your own design system
 

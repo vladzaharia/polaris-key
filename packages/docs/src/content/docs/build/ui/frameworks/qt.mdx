@@ -1,6 +1,6 @@
 ---
 title: "Qt (Python)"
-description: "The Python Qt kit: a Qt Quick view for PySide6 that gates a window on the license and draws the devices, settings and account screens in the product's identity."
+description: "The Python Qt kit: a Qt Quick view for PySide6 that gates a window on the license, runs activation and sign-in, and draws the devices, settings and account screens in the product's identity."
 sidebar:
   order: 21
 type: "reference"
@@ -67,38 +67,84 @@ raise SystemExit(app.exec())
 from the client's presentation source, so the gate shows the product with nothing to pass.
 
 While the status is `ok`, the gate is hidden. In offline grace it is a window that does not block
-the app and shows the grace banner. Any other status shows the gate over `window`, modal to it, with
-the state's words and its fix. The gate reads `client.status()` when it is created and when you call
-`gate.refresh()`; a Try again or Reconnect press calls it for you. `gate.open` says whether the
-app may proceed, and `on_open=` runs when it may:
+the app and shows the grace banner. Any other status shows the gate over `window`, modal to it. The
+gate reads `client.status()` when it is created and when you call `gate.refresh()`; a Try again or
+Reconnect press calls it for you. `gate.open` says whether the app may proceed, and `on_open=` runs
+when it may.
+
+### What the gate shows
+
+You call nothing: the gate asks the client for a license itself, off the GUI thread, and re-reads
+the client when it gets one.
+
+- **Welcome** names the product and offers the paths the product has: **Sign in** when it runs
+  Identity, **Use a license key** when it runs License, and **Continue free** when you pass
+  `offers_free_tier=True` and the product has a free tier. With one path, the gate opens on it.
+- **License key.** A key field with Paste, checked as it is typed (the prefix, the length, the key
+  being for this product), and Enter or Activate license to submit. A key that is empty or cut short
+  never costs a request. A refusal the person can resolve (the license is disabled or expired, too
+  many attempts, a hardware check) reads in a plain callout under the field with its next step, never
+  in the danger color; only a key the service does not know marks the field itself. The key stays in
+  the field, and editing it clears the message.
+- **Device limit.** The portal link Replace a device opens, then Try again, which is the filled
+  button once you have opened it; coming back to the app tries the key once more. Without a link
+  the gate says to sign out on another device. The SDK has no roster to list without a credential,
+  so the replace is the portal's.
+- **Sign in.** The methods step (Continue in browser, Use a license key instead, Cancel), then Finish
+  in your browser with Open browser again, Use a code instead and Cancel. The code view shows the
+  code in mono with Copy, the address, and the countdown ring, and moves on by itself; at 0:00 the
+  code is gone from the screen and is never polled again. A browser that does not open leaves the
+  screen with Copy link. A declined or failed sign-in names what happened and offers a new code.
+  There is no QR on a desktop (a phone or a computer browses); on a TV or a console the gate opens
+  on the code and draws one (below).
+- **Blocked.** A revoked device offers Sign in or Use a different key; an expired license, a version
+  or a channel the license does not cover say so, with their fix.
+
+### Options
 
 ```python
-from typing import Optional
+from PySide6.QtWidgets import QApplication, QMainWindow
 
 from polaris_key import PolarisKeyClient
-from polaris_key.ui.qt import GateController
+from polaris_key.ui.core import Theme
+from polaris_key.ui.qt import GateController, run_gate
 
 
-def activate(client: PolarisKeyClient, gate: GateController, key: str) -> Optional[str]:
-    """Your own key entry calls the client; the gate redraws from its new state."""
-    client.license.activate_with_key(key)
-    gate.refresh()
-    return None if gate.open else gate.view.state if gate.view is not None else None
+def gate_a_tv(app: QApplication, client: PolarisKeyClient, window: QMainWindow) -> GateController:
+    """A Qt app on a TV or a console: no browser to open, so the gate opens on the code and draws the QR."""
+    return run_gate(
+        client,
+        window,
+        theme=Theme(color_scheme="dark"),
+        platform={"os": "android", "formFactor": "tv"},
+        offers_free_tier=True,
+        device_name="Living room",
+        on_open=lambda: window.show(),
+    )
 ```
 
-The activation and sign-in screens are not part of `run_gate` yet (see
-[What it doesn't do yet](#what-it-doesnt-do-yet)). Until then your window collects the key, or
-starts the sign-in, and calls the client as above.
+| Option              | What it does                                                                                       |
+| ------------------- | -------------------------------------------------------------------------------------------------- |
+| `platform=`         | `{"os", "formFactor"}`: a TV or a console opens on the device code and draws the QR (UI-KITS DL14) |
+| `capabilities=`     | Overrides the paths the client offers: `signIn`, `keyEntry`, `deviceCode`, `enroll`                |
+| `offers_free_tier=` | Adds Continue free (`client.license.enroll`)                                                       |
+| `open_url=`         | How a link opens: `QDesktopServices.openUrl` by default; return `False` when there is no browser   |
+| `device_name=`      | The label the sign-in page shows for this device                                                   |
+
+`gate.screen` is the view being drawn (Welcome, Activate, SignInHandoff, …), `gate.view` is the
+gate's own (`needs-activation`, `licensed`, `grace`) and `gate.flow` is the `GateFlow` that runs the
+screens above, if you want to look.
 
 ## Embed the view
 
-`KitView` is the layer under the gate: one kit screen in a `QQuickView`. Wrap `kit.view` in a
-widget container to put it in a layout, or `show()` it as a window of its own:
+`KitView` is the layer under the gate: one kit screen in a `QQuickView`. `kit.container()` is the
+view as a `QWidget` to put in a layout (it is `QWidget.createWindowContainer` on the view, made once
+and returned every time), or `show()` the view as a window of its own:
 
 ```python
 import sys
 
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget
+from PySide6.QtWidgets import QApplication, QMainWindow
 
 from polaris_key.ui.core import ProductIdentity, Theme
 from polaris_key.ui.qt import KitView
@@ -112,7 +158,7 @@ theme = Theme(
 kit = KitView(theme, size=(480, 640))
 
 window = QMainWindow()
-window.setCentralWidget(QWidget.createWindowContainer(kit.view, window))
+window.setCentralWidget(kit.container())
 window.resize(480, 640)
 window.show()
 raise SystemExit(app.exec())
@@ -120,15 +166,17 @@ raise SystemExit(app.exec())
 
 `KitView` takes these options after the theme:
 
-| Option              | Default      | What it does                                                                            |
-| ------------------- | ------------ | --------------------------------------------------------------------------------------- |
-| `source=`           | `None`       | A presentation source: `client.presentation_source`, or `presentation_source(client)`   |
-| `size=`             | `(520, 640)` | The initial size; call `kit.resize(w, h)` after                                         |
-| `font_scale=`       | `1.0`        | Multiplies every text size, for the app's own text scale                                |
-| `system_scheme=`    | `"dark"`     | What `color_scheme="system"` means: the kit does not read the OS, so pass what you read |
-| `loading_delay_ms=` | `250`        | How long a load shows nothing before the product header and the shimmer                 |
+| Option              | Default      | What it does                                                                          |
+| ------------------- | ------------ | ------------------------------------------------------------------------------------- |
+| `source=`           | `None`       | A presentation source: `client.presentation_source`, or `presentation_source(client)` |
+| `size=`             | `(520, 640)` | The initial size; call `kit.resize(w, h)` after                                       |
+| `font_scale=`       | `1.0`        | Multiplies every text size, for the app's own text scale                              |
+| `system_scheme=`    | `"dark"`     | What `color_scheme="system"` means when the OS reports no appearance (below)          |
+| `loading_delay_ms=` | `250`        | How long a load shows nothing before the product header and the shimmer               |
 
-`kit.close()` tears the QML down before the bridge. Call it when the window closes. `kit.grab()`
+`container()` needs a `QApplication` (a `QGuiApplication` has no widgets). The widget owns the
+window, so use it or `kit.view.show()`, not both. `kit.close()` tears the QML down before the
+bridge, and deletes the container; call it when the window closes. `kit.grab()`
 renders one frame to an image, offscreen-safe, and `render(view, theme)` is the one-shot of the
 same: that is how the kit's baselines are made.
 
@@ -308,13 +356,17 @@ def themed() -> KitView:
     return kit
 ```
 
-- `color_scheme` is `dark` or `light`. `system` uses the `system_scheme` option of the view, which
-  you set from the application palette.
+- `color_scheme` is `dark`, `light` or `system`. `system` reads the OS appearance
+  (`QStyleHints.colorScheme`, Qt 6.5 and later) and follows a change of it live, with nothing for
+  you to call. `system_scheme=` on the view is only what it means when the OS reports no appearance:
+  a platform plugin with none, or Qt before 6.5.
 - `platform` picks the look: `macos`, `windows` or `linux` (the GNOME look). `auto` takes it from the
   OS the app runs on. It sets the measures and the type scale of the screen, not the window frame.
 - `accent` and `product`: the accent for the buttons and the focus ring is, in order, the theme's
   `ProductIdentity`, the SDK's presentation source, one derived from the product's icon, else ink.
   Without an accent the kit draws ink, never Polaris violet. `accent_dark` is the dark scheme's form.
+  `accent="core"` is Polaris violet, and `accent="service"` draws each section's primary in that
+  section's accent (License, Identity, Config, Update) and turns the service cues on.
 - The product header is the product's icon from the presentation source (48 points, at the display's
   scale) with its name beside it, bidi-isolated; with no icon, a monogram tile holds the name's
   initial.
@@ -322,8 +374,58 @@ def themed() -> KitView:
 - `copy` takes a `locale` and overrides, as in the other kits; the table is
   `polaris_key.ui.kit_copy_generated`, falling back to English key by key.
 - `motion` set to `reduced` or `none` stops the animations (below).
-- `preset`, `colors`, `radius`, `typography`, `density`, `ambient`, `service_cues` and `symbols`
-  have no effect in this kit yet.
+- `preset` is `polaris-key` or `native`. `native` keeps the structure, copy and spacing and takes the
+  host's look: the application's palette for the grounds, text and borders, its highlight color as the
+  accent (resolved for contrast like any accent, and an integrator's accent still wins), its default
+  font, and no ambient. Under `native` a `color_scheme` of `system` is the palette's. The kit never
+  sets the application palette or style, so it follows the palette you have set.
+- `colors` overrides palette roles per scheme, as `#rrggbb`: `surfacePage`, `surfaceRaised`,
+  `surfaceSunken`, `textStrong`, `textDefault`, `textMuted`, `textSubtle`, `borderSubtle`,
+  `danger`, `warning`, `success` and the rest of the palette in `Theme.qml`, camelCase or snake_case. A
+  status role also takes its border, subtle fill and label, and `danger` the destructive button. A
+  role the kit does not have is ignored, because the same value drives the terminal's roles.
+- `radius` is `sm`, `md` or `lg`, or a number. The named sizes scale the platform's control radius by
+  0.5, 1 and 1.5 and its surface radius by 0.67, 1 and 1.33; a macOS capsule stays a capsule. A
+  number is the control radius in points, and surfaces take 6 more.
+- `typography` takes `family` (`"system"` for the platform's face, `"inherit"` for the application's
+  default font, or a family name), `display` for the title's face, `monoFamily` (or `mono_family`)
+  for the key and the code, and `scale`, which multiplies `font_scale`.
+- `density` is `compact`, `comfortable` or `spacious`: the control height (30, 34 and 42 on GNOME),
+  the card padding and the spacing, never the component.
+- `ambient` (on by default, off under `native`) draws the accent's tint as two soft glows behind the
+  card. With no accent there is no tint, so no ambient. The blurred product icon that the web draws
+  under it needs a blur effect the software scene graph does not have, and is not drawn.
+- `service_cues` adds the small tinted glyph tile of the service (Config, Update) to the headed
+  groups of the settings and account screens. It is off on product screens.
+- `symbols` has no meaning in this kit and is ignored. It chooses Unicode or ASCII glyphs on a cell
+  grid, which is the terminal's; a Qt Quick screen draws its glyphs as paths.
+
+That is every field of `Theme`. A theme that uses most of them:
+
+```python
+from polaris_key.ui.core import ProductIdentity, Theme
+from polaris_key.ui.qt import KitView
+
+
+def brand_it() -> KitView:
+    theme = Theme(
+        color_scheme="system",
+        accent="service",
+        radius="lg",
+        density="spacious",
+        typography={"family": "inherit", "display": "Georgia", "scale": 1.1},
+        colors={"dark": {"surfacePage": "#10151c"}, "light": {"danger": "#b4231f"}},
+        ambient=True,
+        service_cues=True,
+        product=ProductIdentity(name="Tidewater Studio", developer="Harbor Audio"),
+    )
+    return KitView(theme, system_scheme="dark")
+
+
+def native_look() -> KitView:
+    """The host's palette, font and highlight color, and nothing of the kit's own look."""
+    return KitView(Theme(preset="native"))
+```
 
 The loading state follows the same delay as the other kits: for the first 250 ms a load draws
 nothing, then the product header, a label and a 2 px shimmer. A screen that is a load again (a new
@@ -337,7 +439,7 @@ and its focus and adds an indicator.
 ### Piecemeal
 
 The styled parts are plain QML under `polaris_key/ui/qt/kit/` over the generated `Theme.qml`
-(`KitScreen.qml`, `KitButton.qml`, `KitGroup.qml`, `KitSeatMeter.qml`, `KitGlyph.qml`). Load them in your own scene
+(`KitScreen.qml`, `KitButton.qml`, `KitGroup.qml`, `KitSeatMeter.qml`, `KitCode.qml`, `KitGlyph.qml`). Load them in your own scene
 to compose a screen of your own; they read the same `bridge` object.
 
 ## Accessibility
@@ -362,22 +464,18 @@ to compose a screen of your own; they read the same `bridge` object.
 
 ## What it doesn't do yet
 
-- **Activation and sign-in inside `run_gate`.** The gate shows the state and its fix, and retries.
-  Collecting the key and running the browser or device-code sign-in is yours, with
-  `client.license.activate_with_key` and the sign-in calls on the
-  [Python SDK](/docs/build/sdks/python/your-own-ui/); then call `refresh()`.
-- **The OS color scheme.** `color_scheme="system"` uses the view's `system_scheme` option and does
-  not follow a change of the OS appearance by itself.
-- **Theme fields.** Those listed under [Theming](#theming) as having no effect.
 - **A PyQt6 baseline.** PyQt6 works through `qtpy`, but the kit's tests and baselines run on PySide6.
-- **Widgets.** The screens are QML. A widgets-only app embeds them with a window container, as
-  above; there is no `QWidget` subclass of the kit.
+- **Widgets.** The screens are QML. `kit.container()` puts them in a widgets layout; there is no
+  `QWidget` subclass of the kit.
+- **Provider buttons and passkeys.** Sign-in is the browser and the device code. The logo-only
+  provider row and the passkey and email rows need a provider list and the platform's own sheets,
+  and are not drawn.
 
 ## Baselines
 
 The kit's golden screens, one PNG per state in both schemes, are rendered offscreen with the
 software scene graph, so the same pixels come out on a machine with no display. Record them with
-`PKEY_GOLDEN=record` in `sdks/python`, as `tests/ui/test_qt_snapshots.py` says.
+`PKEY_UPDATE_SNAPSHOTS=1` in `sdks/python`, as `tests/ui/snapshots_util.py` says.
 
 <KitCoverage kit="qt" />
 
