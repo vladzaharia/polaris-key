@@ -139,7 +139,9 @@ class PolarisCopyMappingTest {
         assertEquals(copy.bootOfflinePlayableBody, copy.offlineMessage(true).body)
         assertEquals("Couldn't check your license", copy.errorMessage("sync-failed").title)
         assertFalse(copy.errorMessage("sync-failed").body.contains("sync-failed"))
-        assertEquals("The app couldn't finish starting (mystery-code).", copy.errorMessage("mystery-code").body)
+        assertEquals("Diceroll couldn't finish starting (mystery-code).", copy.errorMessage("mystery-code").body)
+        // A nameless kit starts the sentence with a capital: "This app", never "this app".
+        assertEquals("This app couldn't finish starting (mystery-code).", PolarisCopy().errorMessage("mystery-code").body)
     }
 
     @Test
@@ -179,8 +181,8 @@ class PolarisCopyMappingTest {
         assertEquals("2 GB", copy.bytes(2_000_000_000, Locale.US))
         assertEquals("1,5 MB", copy.bytes(1_500_000, Locale.GERMANY))
         assertEquals(
-            "268.4 MB of new content is needed, and you're on a metered connection.",
-            PolarisCopy().let { c -> c.format(c.consentBodyMetered, c.bytes(268_400_000, Locale.US)) },
+            "Diceroll needs 268.4 MB of new content, and you're on a metered connection.",
+            copy.let { c -> c.format(c.consentBodyMetered, c.productLead(), c.bytes(268_400_000, Locale.US)) },
         )
     }
 

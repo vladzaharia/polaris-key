@@ -119,6 +119,13 @@ public fun PolarisCopy.errorCodeMessage(code: String): String? = when (code) {
 
 internal val DEFAULT_PRODUCT_NAME: String = PolarisCopy().productName
 
+/**
+ * The product's name where a sentence starts with it (`{product} needs ...`): the host's name as it
+ * is, or the "this app" default with a capital, so a nameless kit never starts a sentence in lower case.
+ */
+internal fun PolarisCopy.productLead(): String =
+    if (productName == DEFAULT_PRODUCT_NAME) productName.replaceFirstChar { it.uppercaseChar() } else productName
+
 /** The locale core.copy reads (the default locale; a host registers translations with Copy.registerLocale). */
 internal fun coreLocale(): String = Locale.getDefault().toLanguageTag()
 
@@ -152,7 +159,7 @@ public fun PolarisCopy.blockedMessage(reason: BootEmit.BlockedReason): PolarisMe
     BootEmit.BlockedReason.notAvailable ->
         PolarisMessageCopy(bootBlockedUnavailableTitle, bootBlockedUnavailableBody, PolarisMessageKind.Blocked)
     BootEmit.BlockedReason.contentDeclined ->
-        PolarisMessageCopy(bootDeclinedTitle, bootDeclinedBody, PolarisMessageKind.Info)
+        PolarisMessageCopy(bootDeclinedTitle, format(bootDeclinedBody, productLead()), PolarisMessageKind.Info)
 }
 
 /** The message an offline stop shows; [canPlayOffline] is the playable stop of stage-matrix v3. */
@@ -165,11 +172,11 @@ public fun PolarisCopy.offlineMessage(canPlayOffline: Boolean): PolarisMessageCo
  */
 public fun PolarisCopy.errorMessage(code: String): PolarisMessageCopy =
     if (Copy.hasCopy(code, coreLocale())) coreMessage(code, PolarisMessageKind.Danger)
-    else PolarisMessageCopy(bootErrorTitle, format(bootErrorBody, code), PolarisMessageKind.Danger)
+    else PolarisMessageCopy(bootErrorTitle, format(bootErrorBody, productLead(), code), PolarisMessageKind.Danger)
 
 /** The consent card's body for a fetch of [bytes]. */
 public fun PolarisCopy.consentMessage(bytes: Long, metered: Boolean): String =
-    format(if (metered) consentBodyMetered else consentBody, bytes(bytes))
+    format(if (metered) consentBodyMetered else consentBody, productLead(), bytes(bytes))
 
 /** The settings badge for a licence status. */
 public fun PolarisCopy.entitlementLabel(status: LicenseStatus): String = when (status) {
