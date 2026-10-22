@@ -287,7 +287,7 @@ function DecisionPanel({
       id="get"
       title={t("locker.storefront.get", { product: product.name })}
     >
-      <div className="-mx-5 -mb-5 desk:-mx-6 desk:-mb-6">
+      <div className="-mx-5 -mb-5 bigtext:-mx-3 bigtext:-mb-3 desk:-mx-6 desk:-mb-6">
         {platforms.length || (product.cta === "add" && !several && path) ? (
           <dl className="divide-y divide-border border-t border-border text-sm">
             {platforms.length ? (
