@@ -33,9 +33,9 @@
  *     `setPlatformPin` and `clearPlatformPin` are named only by this module and the Core admin
  *     handlers (`test/outletCredentialReach.test.ts`).
  *   - **One reader, audited.** `openPlatformCredential` is named only here, in
- *     `core/outletTokens.ts`, and in two reviewed Distribution files —
- *     `core/stores/microsoftStore/credentials.ts` (the Entra exchange) and `commerce/steam.ts` (the raw Steam
- *     key per call). Every call appends an audit row: to the product's `audit` for a product open
+ *     `core/outletTokens.ts`, and in two reviewed store-client files —
+ *     `core/stores/microsoftStore/credentials.ts` (the Entra exchange) and `core/stores/steam/publisher.ts` (the raw
+ *     Steam key per call). Every call appends an audit row: to the product's `audit` for a product open
  *     (`platform_credential.use`), to `platform_audit` for a team-wide open (the apps listing).
  *     A token served from a memo or the sealed KV cache is not audited (by design, as for product
  *     credentials) — the pin is checked before every such hit.
@@ -808,7 +808,7 @@ const USE_RE = /^[a-z0-9][a-z0-9:._-]{0,63}$/;
  * source is usable, the product's pin does not match, the value will not open or will not
  * re-validate, or `use` is invalid; never throws for any of those, never says which. Every call
  * appends one audit row (see `PlatformOpenPurpose`) and stamps `last_used_at` on a console row.
- * Named only here, in `core/outletTokens.ts`, `core/stores/microsoftStore/credentials.ts` and `commerce/steam.ts`
+ * Named only here, in `core/outletTokens.ts`, `core/stores/microsoftStore/credentials.ts` and `core/stores/steam/publisher.ts`
  * (the reach test's opener allowlist); the token helpers check the pin and their memo or sealed
  * cache first, so a cache hit opens (and audits) nothing.
  */

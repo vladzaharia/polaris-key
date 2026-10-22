@@ -70,10 +70,10 @@ The code is the fact; these replace any contrary brief text. Source: `_lead/plan
 
 ## Acceptance criteria
 
-- [ ] One adapter module per store
-- [ ] Two-way catalogue conformance test passes
-- [ ] Commerce device transcripts byte-identical
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] One adapter module per store
+- [x] Two-way catalogue conformance test passes
+- [x] Commerce device transcripts byte-identical
+- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches. Not fully green at P0-27.7: `gen --check` constants and action-bundle fail on the held base (A-20.3 attention codes lack `errors.json` rows; `actions/publish/dist` stale), both outside this chain; the lead resolves them when the chains merge.
 
 ## Verify
 

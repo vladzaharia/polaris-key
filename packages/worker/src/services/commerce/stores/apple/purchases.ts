@@ -5,7 +5,7 @@
  * an App Store Server Notifications V2 `signedPayload` and its `signedTransactionInfo` are all
  * ES256 compact JWS whose header carries an `x5c` chain. `verifyAppleJws` ports the App Store
  * Server Library's checks: exactly three certificates, ending byte-for-byte at Apple Root CA - G3
- * (`appleRoot.ts`), the intermediate carrying `1.2.840.113635.100.6.2.1` and the leaf
+ * (`root.ts`), the intermediate carrying `1.2.840.113635.100.6.2.1` and the leaf
  * `1.2.840.113635.100.6.11.1`, every link signed and in validity at the payload's `signedDate`
  * (never in the future), then the JWS signature under the leaf key. An `Xcode` environment —
  * StoreKit Testing's self-signed single-certificate chain — fails the chain and is also refused
