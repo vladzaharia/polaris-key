@@ -296,6 +296,8 @@ const HOME_CASES = ["global:home", "home:table", "djdl:overview"];
 /** The pages the phone-at-200%-text row opens. */
 const TEXT200_CASES = [
   "djdl:settings",
+  // U-05.21: Cloud Sync Setup's tier rows, ceiling meter and pause row.
+  "djdl:sync-setup",
   "djdl:services",
   "djdl:portal",
   "djdl:licenses/record/overview",
