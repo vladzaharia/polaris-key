@@ -15,6 +15,27 @@ ColumnLayout {
     property QtObject kit
     spacing: 8
 
+    // The buttons of one row: real buttons, each named for its row ("Rename Work laptop").
+    component RowButtons: Flow {
+        id: buttons
+        property var row
+        // A row of nothing but buttons draws them as buttons (outlined), not as bare text.
+        property bool solo: false
+        spacing: 8
+        Repeater {
+            model: buttons.row.actions
+            KitButton {
+                required property var modelData
+                text: modelData.text
+                role: buttons.solo && modelData.role === "quiet" ? "secondary" : modelData.role
+                scale_: groupRoot.fs
+                Accessible.name: modelData.name
+                Accessible.description: modelData.describe
+                onClicked: groupRoot.kit.invoke_row(modelData.key, modelData.action, buttons.row.id)
+            }
+        }
+    }
+
     Text {
         visible: text !== ""
         text: groupRoot.group.heading
@@ -53,6 +74,17 @@ ColumnLayout {
                     required property int index
                     readonly property var r: modelData
                     readonly property bool device: r.glyph !== ""
+                    // A row with no words of its own is a button row, start-aligned (UI-KITS 4.1).
+                    readonly property bool lone: r.actions.length > 0 && r.title === "" && r.meta === ""
+                        && r.control === "" && r.value === "" && r.text === "" && !r.seat && !r.radio
+                    // Actions under the text (React: `@container pk (max-width: 30rem)`): confirm and rename
+                    // rows always, and any row whose text and buttons do not fit on one line. The text is
+                    // never squeezed, so no single word is left alone on a line.
+                    readonly property real wordsWidth: Math.max(titleText.implicitWidth + (r.tag !== "" ? 8 + tagPill.implicitWidth : 0), metaText.visible ? metaText.implicitWidth : 0)
+                    readonly property bool fitsInline: wordsWidth + (glyphItem.visible ? glyphItem.width + body.columnSpacing : 0)
+                        + body.columnSpacing + measure.implicitWidth <= body.width
+                    readonly property bool stacked: r.actions.length > 0 && !lone
+                        && (r.kind === "confirm" || r.kind === "edit" || !fitsInline)
                     Layout.fillWidth: true
                     objectName: "row-" + r.id
                     implicitHeight: Math.max((device ? 64 : 52) * groupRoot.fs, body.implicitHeight + 20)
@@ -76,12 +108,14 @@ ColumnLayout {
                         x: 16
                         width: parent.width - 32
                         anchors.verticalCenter: parent.verticalCenter
-                        // A confirm or a rename stacks its buttons under the words; the rest is one line.
-                        columns: (r.kind === "confirm" || r.kind === "edit") ? 1 : 12
+                        // A confirm, a rename or a narrow row stacks its buttons under the words (the text
+                        // column carries them); the rest is one line.
+                        columns: 12
                         columnSpacing: 12
                         rowSpacing: 8
 
                         KitGlyph {
+                            id: glyphItem
                             visible: rowItem.device && r.kind !== "edit"
                             name: r.glyph
                             size: 20 * groupRoot.fs
@@ -92,6 +126,7 @@ ColumnLayout {
                         }
 
                         ColumnLayout {
+                            visible: !rowItem.lone
                             Layout.fillWidth: true
                             spacing: 2
                             // The device name and its tag ("Least recent") share a line.
@@ -99,6 +134,7 @@ ColumnLayout {
                                 visible: r.title !== "" && r.kind !== "edit"
                                 spacing: 8
                                 Text {
+                                    id: titleText
                                     text: r.title
                                     Layout.fillWidth: true
                                     Layout.maximumWidth: body.width
@@ -111,6 +147,7 @@ ColumnLayout {
                                     Accessible.ignored: true
                                 }
                                 Rectangle {
+                                    id: tagPill
                                     visible: r.tag !== ""
                                     implicitWidth: tagText.implicitWidth + 16
                                     implicitHeight: tagText.implicitHeight + 4
@@ -129,6 +166,7 @@ ColumnLayout {
                                 }
                             }
                             Text {
+                                id: metaText
                                 visible: text !== ""
                                 text: r.meta
                                 Layout.fillWidth: true
@@ -223,6 +261,16 @@ ColumnLayout {
                                     border.width: slider.visualFocus ? 2 : 1
                                     border.color: slider.visualFocus ? Theme.focusRing : Theme.borderStrong
                                 }
+                            }
+                            // Narrow, confirm and rename rows: the buttons under the words.
+                            RowButtons {
+                                objectName: "row-actions-stacked"
+                                row: r
+                                visible: rowItem.stacked
+                                Layout.fillWidth: true
+                                Layout.topMargin: 6
+                                // A quiet button's text sits 4 px in: line it up with the words above.
+                                Layout.leftMargin: r.actions[0].role === "quiet" ? -4 : 0
                             }
                         }
 
@@ -331,23 +379,20 @@ ColumnLayout {
                             Accessible.ignored: true
                         }
 
-                        // Row actions: real buttons, each named for its row ("Rename Work laptop").
-                        Flow {
-                            visible: r.actions.length > 0
-                            spacing: 8
-                            Layout.maximumWidth: (r.kind === "confirm" || r.kind === "edit") ? body.width : body.width * 0.55
-                            Repeater {
-                                model: r.actions
-                                KitButton {
-                                    required property var modelData
-                                    text: modelData.text
-                                    role: modelData.role === "danger" ? "quiet" : modelData.role
-                                    scale_: groupRoot.fs
-                                    Accessible.name: modelData.name
-                                    Accessible.description: modelData.describe
-                                    onClicked: groupRoot.kit.invoke_row(modelData.key, modelData.action, r.id)
-                                }
-                            }
+                        // The width the buttons need on one line (never shown).
+                        RowButtons {
+                            id: measure
+                            row: r
+                            visible: false
+                        }
+                        // Row actions at the end of the line, or start-aligned on their own row.
+                        RowButtons {
+                            objectName: "row-actions"
+                            row: r
+                            solo: rowItem.lone
+                            visible: r.actions.length > 0 && !rowItem.stacked
+                            Layout.fillWidth: rowItem.lone
+                            Layout.maximumWidth: rowItem.lone ? body.width : body.width * 0.55
                         }
                     }
 

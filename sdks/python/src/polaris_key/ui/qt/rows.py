@@ -143,7 +143,7 @@ def row_data(source: Any) -> RowData:
 class RowAction:
     """A real button on a row. ``name`` is its accessible name when the visible text alone would be
     ambiguous ("Rename Work laptop"); ``role`` is the kit button role (``quiet``, ``secondary``,
-    ``primary`` or ``danger``)."""
+    ``primary``, ``danger`` (the destructive solid) or ``dangerText`` (outlined, danger text: Sign out))."""
 
     key: str
     text: str
@@ -604,7 +604,7 @@ def _devices(view: View, copy: Copy, data: RowData, args: Mapping[str, Any]) -> 
                     "confirm",
                     text=copy("devices.removeConfirm", device=bidi_isolate(label), product=product),
                     actions=(
-                        RowAction("devices.remove", copy("devices.remove"), "remove", role="primary"),
+                        RowAction("devices.remove", copy("devices.remove"), "remove", role="danger"),
                         RowAction("common.cancel", copy("common.cancel"), "cancel", role="secondary"),
                     ),
                 )
@@ -779,7 +779,7 @@ _ACCOUNT_KEYS = frozenset(
     (
         "account.tier account.holder account.keyOnly account.devices account.cloudSync account.updates "
         "account.autoUpdate account.channel account.version account.managedSettings common.manage "
-        "a11y.externalLink update.checkNow common.signOut signin.choice.devices status.renew"
+        "a11y.externalLink update.checkNow common.signOut signin.choice.devices status.renew license.renew"
     ).split()
 )
 
@@ -811,8 +811,15 @@ def _account(view: View, copy: Copy, data: RowData, args: Mapping[str, Any]) -> 
     elif "account.keyOnly" in keys:
         main.append(Row("key", "account", title=copy("account.keyOnly")))
     if tier and "account.tier" in keys:
+        developer = args.get("developer")
+        # "Renew with {developer}" when the developer is known; a bare "Renew" otherwise.
+        renew_text = (
+            copy("license.renew", developer=developer)
+            if isinstance(developer, str) and developer
+            else copy("status.renew")
+        )
         renew = (
-            (RowAction("status.renew", copy("status.renew"), "renew", external=True),)
+            (RowAction("status.renew", renew_text, "renew", external=True),)
             if acct.get("renew") is True
             else ()
         )
@@ -864,7 +871,7 @@ def _account(view: View, copy: Copy, data: RowData, args: Mapping[str, Any]) -> 
         groups.append(Group("updates", tuple(updates), copy("account.updates") if "account.updates" in keys else ""))
     if "common.signOut" in keys:
         groups.append(
-            Group("session", (Row("signOut", "account", actions=(RowAction("common.signOut", copy("common.signOut"), "sign-out", role="danger"),)),))
+            Group("session", (Row("signOut", "account", actions=(RowAction("common.signOut", copy("common.signOut"), "sign-out", role="dangerText"),)),))
         )
     return RowsSpec(groups=tuple(groups), consumed=_ACCOUNT_KEYS)
 

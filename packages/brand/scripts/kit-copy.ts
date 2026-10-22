@@ -1622,6 +1622,19 @@ const model = (): KitCopyModel => {
   const m = fullModel();
   return { ...m, entries: m.entries.filter((e) => !isPortalKey(e)) };
 };
+/** Portal keys the Python Qt kit draws as well: the account pane's Renew names the developer. Each
+ *  is an existing catalog key; the subset only widens (no copy change, no corpus change). */
+const PYTHON_PORTAL_KEYS: ReadonlySet<string> = new Set(["license.renew"]);
+/** What the Python kit reads: the kit catalog plus `PYTHON_PORTAL_KEYS`. */
+const pythonModel = (): KitCopyModel => {
+  const m = fullModel();
+  return {
+    ...m,
+    entries: m.entries.filter(
+      (e) => !isPortalKey(e) || PYTHON_PORTAL_KEYS.has(e.key),
+    ),
+  };
+};
 /** What the customer portal reads: its own namespaces only. */
 const portalModel = (): KitCopyModel => {
   const m = fullModel();
@@ -1701,12 +1714,12 @@ export const KIT_COPY_TARGETS: KitCopyTarget[] = [
 
   {
     path: `${PY_UI}/kit_copy_generated.py`,
-    render: () => pythonModule(model()),
+    render: () => pythonModule(pythonModel()),
   },
   {
     path: `${PY_UI}/locale/polaris_key_ui.pot`,
     render: () =>
-      gettextFile(model(), null, "Python Qt and terminal kit template"),
+      gettextFile(pythonModel(), null, "Python Qt and terminal kit template"),
   },
 ];
 

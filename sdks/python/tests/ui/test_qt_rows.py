@@ -221,13 +221,44 @@ def test_account_rows_signed_in_and_key_only():
     by = {r.id: r for g in spec.groups for r in g.rows}
     assert plain(by["holder"].title) == "Signed in as Mara" and by["holder"].actions[0].external
     assert plain(by["tier"].title) == "Pro license" and by["tier"].actions[0].action == "renew"
+    assert plain(by["tier"].actions[0].text) == "Renew with Harbor Audio"
     assert by["devices"].value == "2 of 3 devices" and by["devices"].seat.used == 2
     assert by["autoUpdate"].control == "switch" and by["autoUpdate"].on
     assert by["version"].title == "Version 2.4.1" and by["version"].actions[0].action == "check-update"
-    assert by["signOut"].actions[0].role == "danger"
+    assert by["signOut"].actions[0].role == "dangerText"
     key_only = _spec(ui_settings.account_view(context_of(with_defaults({"account": {"signedIn": False}}))))
     titles = [r.title for g in key_only.groups for r in g.rows]
     assert "Activated with a license key" in titles
+
+
+def test_renew_names_the_developer_and_falls_back_to_a_bare_renew():
+    view = _account_view(tier="Pro", renew=True)
+    named = _spec(view)
+    assert plain(next(r for r in _rows(named) if r.id == "tier").actions[0].text) == "Renew with Harbor Audio"
+    from polaris_key.ui.qt.rows import build_rows
+
+    bare = build_rows(view, COPY, row_data(view.rows), {})
+    assert next(r for g in bare.groups for r in g.rows if r.id == "tier").actions[0].text == "Renew"
+    from polaris_key.ui.kit_copy_generated import KIT_COPY
+
+    assert KIT_COPY["en"]["license.renew"] == "Renew with {developer}"
+    assert "license.expired" not in KIT_COPY["en"]  # the portal's other license keys stay out
+
+
+def test_the_remove_confirm_is_the_destructive_style():
+    view = ui_devices.devices_view(context_of(with_defaults({"devices": [_device("A"), _device("B")], "edit": {"kind": "remove", "device": "B"}, "selected": 1})))
+    if view.state != "confirming":
+        pytest.skip("fixture does not reach the confirm state")
+    confirm = next(r for r in _rows(_spec(view)) if r.kind == "confirm")
+    assert [a.role for a in confirm.actions] == ["danger", "secondary"]
+
+
+def test_account_action_rows_have_no_words_of_their_own():
+    spec = _spec(_account_view(tier="Pro", version="2.4.1"))
+    sign_out = next(r for r in _rows(spec) if r.id == "signOut")
+    assert sign_out.title == "" and sign_out.meta == "" and sign_out.control == "" and sign_out.value == ""
+    check = _spec(_account_view(channel="stable"))
+    assert [r.id for r in _rows(check) if r.title == "" and r.actions] == ["manage", "check", "signOut"]
 
 
 def test_account_rows_leave_out_what_the_data_lacks():
@@ -298,7 +329,7 @@ def test_row_buttons_are_real_buttons_named_for_their_row(kit_app):
     view = _devices_view(devices)
     kit = _kit(kit_app, view)
     try:
-        buttons = [b for b in _walk(kit) if b.metaObject().className().startswith("KitButton")]
+        buttons = _buttons(kit)
         names = sorted(str(b.property("text")) for b in buttons)
         assert names.count("Rename") == 2 and names.count("Remove") == 2
         seen: List[Any] = []
@@ -350,3 +381,107 @@ def test_focus_order_is_document_order(kit_app):
         assert visible == sorted(visible) and len(visible) >= 2
     finally:
         kit.close()
+
+
+def _buttons(kit):
+    return [b for b in _walk(kit) if b.metaObject().className().startswith("KitButton") and b.property("visible")]
+
+
+def _rect(item, root):
+    p = item.mapToItem(root, 0, 0)
+    return p.x(), p.y(), item.width(), item.height()
+
+
+def test_lone_action_rows_are_a_start_aligned_button_row(kit_app):
+    view = _account_view(tier="Pro", holder="Mara", channel="stable")
+    kit = _kit(kit_app, view, size=(640, 900))
+    try:
+        root = kit.view.rootObject()
+        names = {str(b.property("text")): b for b in _buttons(kit)}
+        for label in ("Check for updates", "Sign out"):
+            button = names[label]
+            row = button.parentItem()
+            while row is not None and not str(row.objectName()).startswith("row-"):
+                row = row.parentItem()
+            rx, _ry, rw, _rh = _rect(row, root)
+            bx, _by, bw, _bh = _rect(button, root)
+            # at the start of its row (inset 16), not pushed to the trailing edge
+            assert bx - rx <= 20, (label, bx - rx)
+            assert rx + rw - (bx + bw) > rw / 3, (label, rw)
+    finally:
+        kit.close()
+
+
+def test_sign_out_and_remove_confirm_carry_the_destructive_style(kit_app):
+    kit = _kit(kit_app, _account_view(tier="Pro", holder="Mara"))
+    try:
+        sign_out = next(b for b in _buttons(kit) if b.property("text") == "Sign out")
+        assert sign_out.property("role") == "dangerText" and sign_out.property("dangerText") is True
+    finally:
+        kit.close()
+    devices = [_device("A"), _device("B")]
+    view = ui_devices.devices_view(context_of(with_defaults({"devices": devices, "edit": {"kind": "remove", "device": "B"}, "selected": 1})))
+    if view.state == "confirming":
+        kit = _kit(kit_app, view)
+        try:
+            remove = [b for b in _buttons(kit) if b.property("role") == "danger"]
+            assert remove and remove[0].property("danger") is True
+        finally:
+            kit.close()
+
+
+def _meta_and_buttons(kit, needle):
+    root = kit.view.rootObject()
+    meta = next(i for i in _walk(kit) if i.metaObject().className().startswith("QQuickText") and i.property("visible") and needle in str(i.property("text")))
+    row = meta.parentItem()
+    while row is not None and not str(row.objectName()).startswith("row-"):
+        row = row.parentItem()
+    rx, ry, rw, rh = _rect(row, root)
+    inside = [b for b in _buttons(kit) if ry <= _rect(b, root)[1] <= ry + rh]
+    return root, meta, inside
+
+
+def test_device_rows_stack_their_buttons_under_the_text_at_480(kit_app):
+    devices = [_device("Work laptop", platform="windows", days=12), _device("iPad", "ipad", "ios", 3)]
+    kit = _kit(kit_app, _devices_view(devices), size=(480, 900))
+    try:
+        root, meta, buttons = _meta_and_buttons(kit, "last used 12 days ago")
+        # "Windows · last used 12 days ago" is one line, and Rename / Remove sit below it
+        assert meta.property("lineCount") == 1 and meta.property("contentWidth") <= meta.property("width")
+        _mx, my, _mw, mh = _rect(meta, root)
+        assert {str(b.property("text")) for b in buttons} == {"Rename", "Remove"}
+        assert all(_rect(b, root)[1] >= my + mh for b in buttons)
+        # and they start where the text starts
+        assert abs(min(_rect(b, root)[0] for b in buttons) - _rect(meta, root)[0]) < 12
+    finally:
+        kit.close()
+
+
+def test_a_row_whose_words_and_buttons_fit_keeps_them_on_one_line(kit_app):
+    kit = _kit(kit_app, _devices_view([_device("Mac", "mac", "macos", 0, True)]), size=(480, 900))
+    try:
+        root, meta, buttons = _meta_and_buttons(kit, "This")
+        (rename,) = buttons
+        assert _rect(rename, root)[0] > _rect(meta, root)[0] + 60  # at the end of the line
+        assert meta.property("lineCount") == 1
+    finally:
+        kit.close()
+
+
+def test_no_wrapped_row_text_ends_on_a_single_word_at_480_and_200_percent(kit_app):
+    devices = [_device("Work laptop", platform="windows", days=12), _device("A" * 40, platform="macos", days=1)]
+    for text_scale in (1.0, 2.0):
+        kit = KitView(Theme(color_scheme="dark", platform="gnome"), source=FakeSource(TIDEWATER), size=(480, 900), font_scale=text_scale, loading_delay_ms=0)
+        try:
+            kit.set_view(_devices_view(devices))
+            kit.grab()
+            for item in _walk(kit):
+                if item.metaObject().className().startswith("QQuickText") and item.property("visible") and "last used" in str(item.property("text")):
+                    # the words fit their line, or wrap with more than the last word alone: measure the
+                    # last line by the content height of one line fewer
+                    lines = item.property("lineCount")
+                    if lines > 1:
+                        words = str(item.property("text")).split()
+                        assert len(words) > 2, item.property("text")
+        finally:
+            kit.close()

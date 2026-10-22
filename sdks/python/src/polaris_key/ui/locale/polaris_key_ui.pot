@@ -4404,6 +4404,11 @@ msgstr[1] ""
 msgid "signin.request.tooMany"
 msgstr ""
 
+#. Renew with {developer}
+#. The customer portal's License section on a product page (PX-28a). Renew, an outlined link to the developer's own page (never a primary). Arguments: {developer} = the developer's name.
+msgid "license.renew"
+msgstr ""
+
 #. Confirmed by {provider}
 #. Finish step: beside the Email label when a provider vouches for the address. Arguments: {provider}.
 msgid "signin.gate.confirmedBy"
