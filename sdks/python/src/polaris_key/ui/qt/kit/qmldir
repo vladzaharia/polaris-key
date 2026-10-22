@@ -1,3 +1,6 @@
 module PolarisKeyKit
 KitButton 1.0 KitButton.qml
+KitGlyph 1.0 KitGlyph.qml
+KitGroup 1.0 KitGroup.qml
 KitScreen 1.0 KitScreen.qml
+KitSeatMeter 1.0 KitSeatMeter.qml

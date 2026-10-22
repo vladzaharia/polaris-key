@@ -19,6 +19,7 @@ from ..core.ui_loading import LOADING_DELAY_MS
 from ..core.ui_view import View, bidi_isolate
 from . import _binding as qt
 from .layout import ScreenSpec, build_spec
+from .rows import RowData, row_data
 
 __all__ = ["KitBridge", "platform_variant"]
 
@@ -52,6 +53,9 @@ class KitBridge(_Base):  # type: ignore[misc]
         invoked = qt.Signal(str, str)
         #: A text entry changed: the field's catalog key and its text.
         edited = qt.Signal(str, str)
+        #: A row's button or radio: the catalog key, the action (``rename``, ``remove``, ``reset``,
+        #: ``save``, ``cancel``, ``select`` ...) and the row's id (a device's id, a setting's key).
+        row_invoked = qt.Signal(str, str, str)
 
     def __init__(
         self,
@@ -71,6 +75,11 @@ class KitBridge(_Base):  # type: ignore[misc]
         self._font_scale = font_scale
         self._copy = Copy(self._theme.locale, self._theme.copy_overrides, platform="desktop")
         self._view: Optional[View] = None
+        #: What the list-shaped screens draw as rows: given by the host (an input or a rich model), else
+        #: the view's own ``rows``. The chosen row of a radio list and the advanced toggle are UI state.
+        self._data: Any = None
+        self._selected: Optional[str] = None
+        self._advanced = False
         # DL7: a load shows nothing for its first 250 ms, then the identity, a label and the shimmer.
         self._loading_delay = max(0, int(loading_delay_ms))
         self._loading_shown = True
@@ -95,9 +104,20 @@ class KitBridge(_Base):  # type: ignore[misc]
             integrator=self._theme.product, source=self._source, accent=self._theme.accent
         )
 
-    def set_view(self, view: View) -> None:
+    def set_view(self, view: View, data: Any = None) -> None:
+        """Render ``view``. ``data`` is the row data of the settings, devices, seat-meter and account
+        screens when the view does not carry it: a ui-matrix input, or a ``SettingsView``,
+        ``DevicesView``, ``GateView`` or ``ActivateView`` of ``polaris_key.ui.core.models``."""
+        if self._view is None or (view.component, view.state) != (self._view.component, self._view.state):
+            self._selected = None  # a new screen starts at its own preselection
         self._view = view
+        self._data = data
         self.refresh()
+
+    def _rows(self) -> RowData:
+        if self._data is not None:
+            return row_data(self._data)
+        return row_data(self._view.rows) if self._view is not None and self._view.rows else RowData()
 
     def set_theme(self, theme: Theme) -> None:
         self._theme = theme
@@ -113,6 +133,9 @@ class KitBridge(_Base):  # type: ignore[misc]
                 product=bidi_isolate(self._identity.name) if self._identity.name else "",
                 developer=self._identity.developer or "",
                 powered_by=self._powered_by(),
+                data=self._rows(),
+                selected_id=self._selected,
+                advanced=self._advanced,
             )
             self._arm_loading()
         self.changed.emit()
@@ -215,6 +238,28 @@ class KitBridge(_Base):  # type: ignore[misc]
     @qt.Slot(str, str)
     def edit(self, key: str, text: str) -> None:
         self.edited.emit(key, text)
+
+    @qt.Slot(str, str, str)
+    def invoke_row(self, key: str, action: str, row: str) -> None:
+        """A row's own button: its catalog key, the action and which row (a device's id, a setting's key)."""
+        self.row_invoked.emit(key, action, row)
+        self.invoked.emit(key, action)
+
+    @qt.Slot(str)
+    def select(self, row: str) -> None:
+        """Choose a row of a radio list (Replace a device): the confirm under it names it."""
+        if row == self._selected:
+            return
+        self._selected = row
+        self.refresh()
+        self.row_invoked.emit("", "select", row)
+
+    @qt.Slot(bool)
+    def set_advanced(self, shown: bool) -> None:
+        """Show or hide the advanced settings."""
+        if shown != self._advanced:
+            self._advanced = shown
+            self.refresh()
 
     if qt.BINDING:
         spec = qt.Property("QVariant", _get_spec, notify=changed)

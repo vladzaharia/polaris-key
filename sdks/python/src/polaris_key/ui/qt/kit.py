@@ -64,8 +64,10 @@ class KitView:
     def resize(self, width: int, height: int) -> None:
         self.view.resize(width, height)
 
-    def set_view(self, view: View) -> None:
-        self.bridge.set_view(view)
+    def set_view(self, view: View, data: Any = None) -> None:
+        """Show ``view``; ``data`` carries the rows of a settings, devices, seat-meter or account screen
+        (see :meth:`KitBridge.set_view`), else the view's own ``rows`` are drawn."""
+        self.bridge.set_view(view, data)
 
     def grab(self) -> Any:
         """Render one frame to a ``QImage`` (offscreen-safe)."""
