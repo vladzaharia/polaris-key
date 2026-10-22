@@ -266,4 +266,141 @@ describe("ownership end revokes the operator-minted licence-bound tokens too (F-
       (await lookupRegistryCredential(env, db, t.token, AT)).resolved,
     ).toBeNull();
   });
+
+  it("leaves the same licence id on another product alone (every token class)", async () => {
+    await seedProduct(db, "beta");
+    await seedLicenseWithKey(db, "beta", { id: licenseId });
+    await db.run(
+      "UPDATE licenses SET account_id = 'acc-1' WHERE product = 'beta' AND id = ?",
+      licenseId,
+    );
+    const betaOp = await mintRegistryToken(
+      env,
+      db,
+      {
+        product: "beta",
+        label: "x",
+        binding: "license",
+        licenseId,
+        createdBy: "admin:t",
+      },
+      NOW,
+    );
+    const betaMine = await mintRegistryToken(
+      env,
+      db,
+      {
+        product: "beta",
+        label: "x",
+        binding: "license",
+        licenseId,
+        createdBy: "portal:acc-1",
+        portalAccountId: "acc-1",
+      },
+      NOW,
+    );
+    if (!betaOp.ok || !betaMine.ok) throw new Error("mint");
+    const target = await mint(licenseId, null);
+    const res = await onLicenseOwnershipEnded(db, env, {
+      product: "acme",
+      licenseId,
+      accountId: "acc-1",
+      reason: "detached",
+      now: NOW,
+    });
+    expect(res).toEqual({ revokedTokens: 1 });
+    expect((await state(target))?.revoked_at).toBe(NOW);
+    expect((await state(betaOp.view.tokenId))?.revoked_at).toBeNull();
+    expect((await state(betaMine.view.tokenId))?.revoked_at).toBeNull();
+  });
+
+  it("is one batch: a failing statement leaves neither half committed", async () => {
+    const operator = await mint(licenseId, null);
+    const mine = await mint(licenseId, "acc-1");
+    const flaky = new Proxy(db, {
+      get(target, prop, recv) {
+        const v = Reflect.get(target, prop, recv);
+        if (prop === "batchChanges" || prop === "batch")
+          return async (stmts: { sql: string; params: unknown[] }[]) =>
+            v.call(target, [
+              ...stmts,
+              { sql: "UPDATE no_such_table SET x = 1", params: [] },
+            ]);
+        return typeof v === "function" ? v.bind(target) : v;
+      },
+    }) as Db;
+    await expect(
+      onLicenseOwnershipEnded(flaky, env, {
+        product: "acme",
+        licenseId,
+        accountId: "acc-1",
+        reason: "detached",
+        now: NOW,
+      }),
+    ).rejects.toThrow();
+    expect((await state(operator))?.revoked_at).toBeNull();
+    expect((await state(mine))?.revoked_at).toBeNull();
+  });
+
+  it("operatorTokens: false revokes only the account's own tokens", async () => {
+    const operator = await mint(licenseId, null);
+    const mine = await mint(licenseId, "acc-1");
+    const res = await onLicenseOwnershipEnded(db, env, {
+      product: "acme",
+      licenseId,
+      accountId: "acc-1",
+      reason: "relinked",
+      now: NOW,
+      operatorTokens: false,
+    });
+    expect(res).toEqual({ revokedTokens: 1 });
+    expect((await state(operator))?.revoked_at).toBeNull();
+    expect((await state(mine))?.revoked_at).toBe(NOW);
+    expect(
+      await db.first(
+        "SELECT 1 FROM audit WHERE action = 'registry_token.revoke_all'",
+      ),
+    ).toBeNull();
+  });
+
+  it("writes one system audit row naming the licence and the count, never a token", async () => {
+    const a = await mint(licenseId, null);
+    const b = await mint(licenseId, null);
+    await mint(licenseId, "acc-1");
+    await onLicenseOwnershipEnded(db, env, {
+      product: "acme",
+      licenseId,
+      accountId: "acc-1",
+      reason: "detached",
+      now: NOW,
+    });
+    const rows = await db.all<Record<string, unknown>>(
+      "SELECT * FROM audit WHERE action = 'registry_token.revoke_all'",
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      product: "acme",
+      actor_sub: null,
+      actor_name: "Polaris Key",
+      target_kind: "license",
+      target_id: licenseId,
+    });
+    expect(String(rows[0]?.summary)).toContain("revoked 2 operator-minted");
+    const dump = JSON.stringify(rows);
+    expect(dump).not.toContain(a);
+    expect(dump).not.toContain(b);
+    // Nothing to revoke, nothing to audit.
+    await onLicenseOwnershipEnded(db, env, {
+      product: "acme",
+      licenseId,
+      accountId: "acc-1",
+      reason: "detached",
+      now: NOW + 1,
+    });
+    expect(
+      await db.all(
+        "SELECT 1 FROM audit WHERE action = 'registry_token.revoke_all'",
+      ),
+    ).toHaveLength(1);
+  });
 });

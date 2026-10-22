@@ -1657,9 +1657,10 @@ Q6), and is bound to one owner. Scope is `read`, or `publish` (F-22 and F-23, be
 joins `products.status`, and the deletion batch revokes them); an erased portal account's tokens
 are revoked in the erasure batch (`account_deleted`); a disabled or expired licence's tokens stop
 at the next check without a write (`licenseUsable`), and work again if it is re-enabled. The cron
-purges rows 90 days after expiry or revocation. No licence-delete path or portal link-removal
-path exists today, so those plan-named cascades have nothing to hook (a correction recorded in the
-F-21 brief); the licence status covers them.
+purges rows 90 days after expiry or revocation. A deleted licence's tokens are
+deleted in its deletion batch (`core/licensing/licenseDelete.ts`). A licence that leaves an
+account revokes its licence-bound tokens (below). A disabled or expired licence's tokens stop at
+the next check (`licenseUsable`).
 
 **The ladder decides; a token only identifies.** A credential is resolved only where the mode is
 not `public`, so a public read never touches `registry_tokens`. A token for another owner, outside
@@ -1680,16 +1681,26 @@ does not apply, because a token has no device; this is the portal download's rul
 
 **Ownership end revokes every licence-bound token of the licence (F-33b.1).** When an account stops
 owning a licence (detach, relink, a merge undone that hands it back, account deletion), every
-live licence-bound token of that licence is revoked in the same step
-(`onLicenseOwnershipEnded`, `core/accounts/subjectHooks.ts`): the ones the account minted as
+live licence-bound token of that licence is revoked by `onLicenseOwnershipEnded`
+(`core/accounts/subjectHooks.ts`), which runs right after the move's own batch commits, not inside
+it: the ones the account minted as
 `portal:<account>`, and the ones an operator minted in the console (`portal_account_id IS NULL`) as
 `system`, reason `link_removed` (`account_deleted` on deletion). The two are separate statements
-behind separate `RegistryTokenFilter` forms (`portalAccountId`, `operatorMinted`), so neither
-filter widens the other. Before this, an operator-minted token outlived a change of owner and kept
-reading the feeds the new owner's entitlements did not justify. A licence with no account, and
-every other licence of the product, is untouched. Residual: an operator can mint a new token for a
-licence that went floating; that is a deliberate act, audited at mint. **Review trigger:** a path
-that changes `licenses.account_id` without calling `onLicenseOwnershipEnded`.
+behind separate `RegistryTokenFilter` forms (`portalAccountId`, `operatorMinted`), run in one
+`db.batch` so neither half commits alone, and neither filter widens the other. The §8 Q1 loser
+settlement skips the operator half, because the winner still owns the licence. A nonzero operator
+count writes a `registry_token.revoke_all` audit row (actor: the platform) naming the licence and
+the count, never a token. Before this, an operator-minted token outlived a change of owner, and the
+previous owner kept reading the feeds. A licence with no account, and
+every other licence of the product, is untouched. Residuals: an operator can mint a new token for a
+licence that went floating; that is a deliberate act, audited at mint, but the token then passes to
+whoever owns the licence next. The revoke is not in the move's batch: a crash between the two
+leaves the tokens live until the path runs again (folding it into the batch is a follow-up). A
+merge undone revokes the operator tokens of each licence handed back, including ones minted before
+the join; that over-revoke fails closed and the operator re-mints. **Review trigger:** a path that
+moves a licence off an account (to another account or to floating), or erases the account, without
+calling `onLicenseOwnershipEnded`. A merge (same person; tokens repointed) and product deletion
+(product-wide revoke) are the deliberate exceptions.
 
 **Godot URL tokens.** The editor sends no `Authorization`, so a URL token rides in the path
 (`/godot/<owner>/t/<token>/…`): it appears in Cloudflare's own request logs and in the editor's
@@ -6672,7 +6683,8 @@ item 15 (merge takeover) are the threats; the rules below are what the routes ad
   account would be left with no way to sign in; that guard is the first statement of the undo's
   batch and aborts it, so a removal racing the undo cannot orphan either side (a test). A licence
   that goes back revokes every registry token the kept account minted on it during the window
-  (F-21, `onLicenseOwnershipEnded`) and clears its devices' bindings; the absorbed account's own
+  (F-21, `onLicenseOwnershipEnded`) and every operator-minted token of it (F-33b.1, including ones
+  minted before the join) and clears its devices' bindings; the absorbed account's own
   tokens move back untouched (a test). A join is refused while EITHER account could still undo a
   join of its own (`merge_pending`): absorbing that account would destroy its undo, and absorbing
   into it would hand the second join's data and aliases to the first join's absorbed account on

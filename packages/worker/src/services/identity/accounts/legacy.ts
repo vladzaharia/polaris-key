@@ -150,6 +150,8 @@ async function settleLoser(
     accountId: loser.account_id,
     reason: "relinked",
     now,
+    // The winner still owns the licence: its operator-minted tokens stay.
+    operatorTokens: false,
   });
   const settled = await db.first<{ one: number }>(
     `SELECT 1 AS one FROM portal_audit

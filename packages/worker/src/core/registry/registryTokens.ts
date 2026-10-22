@@ -514,6 +514,22 @@ export async function revokeAllRegistryTokens(
   return n;
 }
 
+/** `revokeAllRegistryTokens` as a statement, for a batch that revokes several filters atomically. */
+export function stmtRevokeRegistryTokens(
+  product: string,
+  by: string,
+  reason: RegistryRevokeReason,
+  now: number,
+  filter: RegistryTokenFilter = {},
+): DbStatement {
+  const f = filterSql(filter);
+  return {
+    sql: `UPDATE registry_tokens SET revoked_at = ?, revoked_by = ?, revoke_reason = ?
+           WHERE product = ? AND revoked_at IS NULL${f.sql}`,
+    params: [now, by, reason, product, ...f.params],
+  };
+}
+
 /**
  * The cascade when a portal account is erased: every token it minted, on every product, is
  * revoked (`account_deleted`). A statement, so the erasure batch stays atomic.

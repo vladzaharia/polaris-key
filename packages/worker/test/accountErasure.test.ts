@@ -407,6 +407,40 @@ describe("closing the account closes its credentials", () => {
     expect(after.resolved).toBeNull();
   });
 
+  it("F-33b.1: an operator-minted token on the account's licence is revoked by the erasure itself", async () => {
+    const w = await world();
+    const res = await mintRegistryToken(
+      w.env,
+      w.db,
+      {
+        product: "acme",
+        label: "ops",
+        binding: "license",
+        licenseId: "lic-1",
+        createdBy: "admin:op",
+      },
+      NOW,
+    );
+    if (!res.ok) throw new Error(JSON.stringify(res));
+    expect(await deletion.deleteAccount(w.ctx(), w.id)).toMatchObject({
+      ok: true,
+    });
+    forgetRegistryTokens();
+    expect(
+      (
+        await lookupRegistryCredential(w.env, w.db, res.token, {
+          nowMs: NOW * 1000 + 1000,
+        })
+      ).resolved,
+    ).toBeNull();
+    expect(
+      await w.db.first(
+        "SELECT revoked_by, revoke_reason FROM registry_tokens WHERE token_id = ?",
+        res.view.tokenId,
+      ),
+    ).toEqual({ revoked_by: "system", revoke_reason: "account_deleted" });
+  });
+
   it("F-33: a personal token stops at once while erasing, and its row is gone once the erasure completes", async () => {
     const w = await world();
     const res = await mintAccountToken(

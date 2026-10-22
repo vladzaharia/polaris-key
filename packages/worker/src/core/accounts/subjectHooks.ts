@@ -15,7 +15,11 @@ import {
   ENTITLEMENT_EVENT_STORE,
   entitlementEventStore,
 } from "../licensing/entitlementEvents.js";
-import { revokeAllRegistryTokens } from "../registry/registryTokens.js";
+import {
+  forgetRegistryTokens,
+  stmtRevokeRegistryTokens,
+} from "../registry/registryTokens.js";
+import { appendAudit, SYSTEM_ACTORS } from "../audit.js";
 import { mirrorTokenSubject } from "./accountSubjects.js";
 import { retireDeviceBinding, writeDeviceSubject } from "../devices.js";
 
@@ -342,8 +346,15 @@ export type OwnershipEndReason = "detached" | "relinked" | "account_deleted";
  * is revoked, so a credential never outlives the ownership that justified it. F-33b.1: so is every
  * live licence-bound token an operator minted on the licence (`portal_account_id IS NULL`),
  * revoked by `system`; those were minted for the owner that just went. Two statements, two
- * filters: the account-minted one is unchanged. I-11 extends this hook as its surfaces need; it
- * is the one place the consequence of losing a licence is decided.
+ * filters, in one `db.batch` so neither half commits alone. `operatorTokens: false` skips the
+ * operator half, for a path where the licence stays with another account (`settleLoser`: the
+ * winner still owns it). A nonzero operator count writes a `registry_token.revoke_all` audit row
+ * (actor: the platform) naming the licence and the count, never a token. I-11 extends this hook as
+ * its surfaces need; it is the one place the consequence of losing a licence is decided.
+ *
+ * The hook runs after the ownership move's own batch commits, so a crash between the two leaves
+ * the tokens live until the next run of the path; folding the revoke into the move's batch is a
+ * follow-up.
  */
 export async function onLicenseOwnershipEnded(
   db: Db,
@@ -354,25 +365,47 @@ export async function onLicenseOwnershipEnded(
     accountId: string;
     reason: OwnershipEndReason;
     now: number;
+    operatorTokens?: boolean;
   },
 ): Promise<{ revokedTokens: number }> {
   const reason =
     args.reason === "account_deleted" ? "account_deleted" : "link_removed";
-  const accountMinted = await revokeAllRegistryTokens(
-    db,
-    args.product,
-    `portal:${args.accountId}`,
-    reason,
-    args.now,
-    { licenseId: args.licenseId, portalAccountId: args.accountId },
-  );
-  const operatorMinted = await revokeAllRegistryTokens(
-    db,
-    args.product,
-    "system",
-    reason,
-    args.now,
-    { licenseId: args.licenseId, operatorMinted: true },
-  );
-  return { revokedTokens: accountMinted + operatorMinted };
+  const withOperator = args.operatorTokens !== false;
+  const stmts = [
+    stmtRevokeRegistryTokens(
+      args.product,
+      `portal:${args.accountId}`,
+      reason,
+      args.now,
+      { licenseId: args.licenseId, portalAccountId: args.accountId },
+    ),
+  ];
+  if (withOperator)
+    stmts.push(
+      stmtRevokeRegistryTokens(args.product, "system", reason, args.now, {
+        licenseId: args.licenseId,
+        operatorMinted: true,
+      }),
+    );
+  let counts: number[];
+  if (db.batchChanges) counts = await db.batchChanges(stmts);
+  else {
+    await db.batch(stmts);
+    counts = stmts.map(() => 0);
+  }
+  forgetRegistryTokens();
+  const operatorCount = withOperator ? (counts[1] ?? 0) : 0;
+  if (operatorCount > 0)
+    await appendAudit(db, {
+      product: args.product,
+      at: args.now,
+      actor_sub: SYSTEM_ACTORS.platform.sub,
+      actor_name: SYSTEM_ACTORS.platform.name,
+      actor_email: SYSTEM_ACTORS.platform.email,
+      action: "registry_token.revoke_all",
+      target_kind: "license",
+      target_id: args.licenseId,
+      summary: `Ownership ended (${args.reason}): revoked ${operatorCount} operator-minted registry token(s) bound to the licence`,
+    });
+  return { revokedTokens: (counts[0] ?? 0) + operatorCount };
 }
