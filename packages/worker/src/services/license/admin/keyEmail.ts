@@ -76,6 +76,9 @@ export const SEND_KEY_WINDOW_SECONDS = 600;
 /** The audit actions: the attempt, and its failure (a row whose `parent_id` is the attempt's). */
 export const SEND_KEY_ACTION = "license.key.send";
 export const SEND_KEY_FAILED_ACTION = "license.key.send.failed";
+/** LX-27c.2: send-invite's attempt and failure rows. They share send-key's window (L4). */
+export const SEND_INVITE_ACTION = "license.invite.send";
+export const SEND_INVITE_FAILED_ACTION = "license.invite.send.failed";
 
 /** The product's hosted icon for the email's hero, or null. */
 export async function productIconUrl(
@@ -201,23 +204,27 @@ export async function emailLicenseKey(
 }
 
 /**
- * Seconds until send-key may run again for this licence, or 0 now. Counts attempts that did not fail
+ * Seconds until send-key or send-invite may run again for this licence, or 0 now. Counts attempts that did not fail
  * (a `license.key.send.failed` row with the attempt as its parent frees it), read from the audit trail so it holds across isolates.
  */
 export async function sendKeyRetryAfter(
   ctx: LicenseAdminContext,
   licenseId: string,
 ): Promise<number> {
+  // L4 (LX-27c.2): one window per licence, shared by send-key and send-invite, so a licence cannot
+  // be mailed more than once in 10 minutes by either route. Either action's `.failed` child frees it.
   const row = await ctx.db.first<{ at: number }>(
-    `SELECT a.at FROM audit a WHERE a.product = ? AND a.action = ? AND a.target_id = ?
+    `SELECT a.at FROM audit a WHERE a.product = ? AND a.action IN (?, ?) AND a.target_id = ?
        AND a.at > ?
-       AND NOT EXISTS (SELECT 1 FROM audit f WHERE f.product = a.product AND f.parent_id = a.id AND f.action = ?)
+       AND NOT EXISTS (SELECT 1 FROM audit f WHERE f.product = a.product AND f.parent_id = a.id AND f.action IN (?, ?))
      ORDER BY a.at DESC LIMIT 1`,
     ctx.product.slug,
     SEND_KEY_ACTION,
+    SEND_INVITE_ACTION,
     licenseId,
     ctx.now - SEND_KEY_WINDOW_SECONDS,
     SEND_KEY_FAILED_ACTION,
+    SEND_INVITE_FAILED_ACTION,
   );
   if (!row) return 0;
   return Math.max(0, row.at + SEND_KEY_WINDOW_SECONDS - ctx.now);

@@ -17306,7 +17306,7 @@ paths:
         other active keys in the same batch as the insert. The key is in the email and this answer
         only. A failed send keeps the new key valid (`delivered.email` is `failed`); call again to
         retry, which a failed send does not count against. One send per licence per 10
-        minutes (a failed one frees it). A floating licence is refused (400). Audited `license.key.send` with the key's
+        minutes, shared with send-invite (a failed one frees it). A floating licence is refused (400). Audited `license.key.send` with the key's
         label and whether others were revoked, never the key or the address. Platform admins
         only; admin session cookie and CSRF header.
       parameters:
@@ -17381,6 +17381,92 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "429":
           description: A key was sent for this licence in the last 10 minutes (`rate_limited`, `retryAfter` in seconds, also the `retry-after` header).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/license/licenses/{licenseId}/send-invite:
+    post:
+      operationId: sendAdminLicenseInvite
+      tags: [admin]
+      summary: Email an invitation (a sign-in link, no key) to a waiting licence
+      description: >
+        LX-27c: mails the invitation, "Your <product> license is ready", to the licence's email
+        as "<product> via Polaris Locker". It mints nothing, and carries no key, token or address
+        in any URL. Allowed only for a waiting licence (assigned, with an email, in no account) of
+        a product with Identity on and auto-link resolving on. One mail per licence per 10
+        minutes, shared with send-key (a failed send frees it; `429 rate_limited` with
+        `retryAfter`). A send that goes out stamps the licence's `invitedAt`; a failed one does
+        not. Audited `license.invite.send`, and `license.invite.send.failed` on a failure, never
+        with the address. A floating licence is refused (400). Platform admins only; admin session
+        cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: licenseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  type: string
+                  enum: [assigned]
+                  description: "Worded into the email's footer: the licence was just assigned. Default: the invitation was sent again."
+      responses:
+        "200":
+          description: "The send was attempted. A failed send is a 200 with `invite: failed`."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [delivered]
+                properties:
+                  delivered:
+                    type: object
+                    required: [invite]
+                    properties:
+                      invite: { type: string, enum: [sent, failed] }
+                      reason:
+                        type: string
+                        enum:
+                          [
+                            no_mail_binding,
+                            address_unusable,
+                            suppressed,
+                            daily_cap,
+                            provider_refused,
+                          ]
+                        description: "Present when `invite` is `failed`."
+        "400":
+          description: The licence is floating, so it has no email (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "Refused before any send: the licence is already in an account (`reason: in_account`), disabled (`license_not_active`) or expired (`license_expired`, with `expiresAt`), Identity is off (`identity_off`) or auto-link resolves off (`auto_link_off`), mail is not set up (`no_mail_binding`), the address is unusable (`address_unusable`) or cannot receive our mail (`suppressed`), or the product's daily email cap is spent (`daily_cap`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product or licence.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "`context` is not `assigned`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429":
+          description: A key or an invitation was sent for this licence in the last 10 minutes (`rate_limited`, `retryAfter` in seconds, also the `retry-after` header).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }

@@ -8280,8 +8280,18 @@ as any licence write.
   summary reads "invitation sent" or "invitation failed", never the address.
 - **Residual, accepted.** An operator can still mail an invitation to any address they type, as
   they could already mail a key; the per-product daily cap and suppression bound it. No open
-  tracking and no pixel (a privacy line). The resend route and its per-licence window come in
-  LX-27c.2.
+  tracking and no pixel (a privacy line).
+- **Resend (`POST …/licenses/<id>/send-invite`).** Same session and CSRF. It mints nothing and is
+  allowed only for a waiting licence: a floating licence is refused (400) and one already in an
+  account is `409 in_account` (the holder shows `inAccount` on every read, so the refusal is no
+  new oracle). It also refuses a disabled or expired licence, Identity or auto-link off, and what
+  no retry can fix (no mail binding, an unusable or suppressed address, the daily cap), all before
+  any send. One mail per licence per 10 minutes, SHARED with send-key (`429 rate_limited`,
+  `retryAfter`), read from the audit trail: the attempt row `license.invite.send` is written before
+  the send, so the window holds across isolates and a crash mid-send, and a
+  `license.invite.send.failed` child row frees it. The audit rows carry the licence id and the
+  outcome, never the address. `invited_at` is stamped only after an accepted send. Because the two
+  routes share one window, mixing them cannot double the mail a licence receives.
 
 ### Licence holders: association by email and the auto-attach block (LX-26)
 

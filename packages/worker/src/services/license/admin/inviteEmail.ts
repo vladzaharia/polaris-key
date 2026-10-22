@@ -8,6 +8,11 @@
  * a create is not an oracle for that (D4).
  */
 
+import { actorColumns, actorOf, appendAudit } from "../../../core/audit.js";
+import { ErrorCode } from "../../../core/errors.js";
+import { adminJson, err, readBody } from "../../../core/console/respond.js";
+import { licenseHolder } from "../../../core/licensing/licenseHolders.js";
+import { randomId } from "../../../platform/crypto.js";
 import { deliverEmail } from "../../../core/notify/emailDelivery.js";
 import {
   licenseInvitationEmail,
@@ -21,6 +26,9 @@ import {
   emailLinks,
   keyEmailBlocked,
   productIconUrl,
+  SEND_INVITE_ACTION,
+  SEND_INVITE_FAILED_ACTION,
+  sendKeyRetryAfter,
   type EmailFailure,
 } from "./keyEmail.js";
 
@@ -102,4 +110,110 @@ export async function emailLicenseInvitation(
     // invited_at is display state; the audit row still records the send.
   }
   return { invite: "sent" };
+}
+
+/**
+ * `POST …/licenses/<id>/send-invite {context?: "assigned"}` (LX-27c.2): mail a fresh invitation to
+ * a WAITING licence (assigned, with an email, in no account) and mint nothing. Refused:
+ * a floating licence (400, nothing to send to), a licence already in an account (409 `in_account`;
+ * its holder is already visible on every read, so this is no new oracle), a disabled or expired one,
+ * Identity or auto-link off, and what no retry can fix (no mail binding, an unusable or suppressed
+ * address, the daily cap). One mail per licence per 10 minutes, shared with send-key (429
+ * `rate_limited`, `retryAfter`). The attempt is audited BEFORE the send and a `.failed` child row
+ * frees the window; the audit never carries the address. `invited_at` is stamped only on `sent`.
+ */
+export async function handleSendInvite(
+  ctx: LicenseAdminContext,
+  license: LicenseRow,
+): Promise<Response> {
+  const { req, db, product, session, now } = ctx;
+  if (req.method !== "POST")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const body = await readBody(req);
+  if ("context" in body && body.context !== "assigned")
+    return err(422, ErrorCode.BadRequest, 'context must be "assigned"', {
+      fields: ["context"],
+    });
+  const context: InviteEmailContext =
+    body.context === "assigned" ? "assigned" : "resent";
+  if ((license.account_id ?? null) !== null)
+    return err(
+      409,
+      ErrorCode.BadRequest,
+      "the license is already in an account",
+      { reason: "in_account" },
+    );
+  const to = license.email?.trim();
+  if (licenseHolder(license).kind === "floating" || !to)
+    return err(
+      400,
+      ErrorCode.BadRequest,
+      "a floating license has no email to send an invitation to; assign it first",
+    );
+  if (license.status !== "active")
+    return err(
+      409,
+      ErrorCode.BadRequest,
+      "enable the license before sending an invitation",
+      { reason: "license_not_active" },
+    );
+  if (license.expires_at !== null && license.expires_at <= now)
+    return err(
+      409,
+      ErrorCode.BadRequest,
+      "extend the license before sending an invitation",
+      { reason: "license_expired", expiresAt: license.expires_at },
+    );
+  const refusal = await inviteRefusal(ctx);
+  if (refusal)
+    return err(409, ErrorCode.BadRequest, "an invitation cannot be sent", {
+      reason: refusal,
+    });
+  const retryAfter = await sendKeyRetryAfter(ctx, license.id);
+  if (retryAfter > 0) {
+    const res = err(
+      429,
+      "rate_limited",
+      "a key or invitation was sent for this license in the last 10 minutes",
+      { retryAfter },
+    );
+    res.headers.set("retry-after", String(retryAfter));
+    return res;
+  }
+  const blocked = await keyEmailBlocked(ctx, to);
+  if (blocked)
+    return err(409, ErrorCode.BadRequest, "the invitation cannot be sent", {
+      reason: blocked,
+    });
+  // The attempt is recorded BEFORE the send, so the limit holds even if the send never returns.
+  const attemptId = randomId("aud");
+  const actor = actorColumns(actorOf(session));
+  await appendAudit(db, {
+    product: product.slug,
+    id: attemptId,
+    at: now,
+    ...actor,
+    action: SEND_INVITE_ACTION,
+    target_kind: "license",
+    target_id: license.id,
+    summary: `Sent invitation for ${license.id}`,
+  });
+  const result = await emailLicenseInvitation(ctx, license, context);
+  if (result.invite === "failed")
+    await appendAudit(db, {
+      product: product.slug,
+      at: now,
+      ...actor,
+      action: SEND_INVITE_FAILED_ACTION,
+      target_kind: "license",
+      target_id: license.id,
+      parent_id: attemptId,
+      summary: `Invitation for ${license.id} did not go out (${result.reason ?? "failed"})`,
+    });
+  return adminJson({
+    delivered: {
+      invite: result.invite,
+      ...(result.reason ? { reason: result.reason } : {}),
+    },
+  });
 }

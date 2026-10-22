@@ -111,7 +111,11 @@ import { withIncludedChannels } from "../../../core/channels.js";
 import type { LicenseAdminContext } from "./index.js";
 import { handleKeys } from "./keys.js";
 import { emailLicenseKey, handleSendKey } from "./keyEmail.js";
-import { emailLicenseInvitation, inviteRefusal } from "./inviteEmail.js";
+import {
+  emailLicenseInvitation,
+  handleSendInvite,
+  inviteRefusal,
+} from "./inviteEmail.js";
 import { handleAdminDevices } from "./devices.js";
 import { deletionVerdicts, handleDeleteLicense } from "./deletion.js";
 
@@ -978,6 +982,7 @@ export async function handleLicenses(
 
   // /licenses/<id>/keys ...
   if (sub === "send-key") return handleSendKey(ctx, license);
+  if (sub === "send-invite") return handleSendInvite(ctx, license);
 
   if (sub === "keys") {
     return handleKeys(ctx, id, subId, action);
