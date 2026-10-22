@@ -19,6 +19,9 @@ import {
 } from "./TierForm.js";
 import { reachesText, usedByText } from "./tierSummary.js";
 import { DeleteTierDialog } from "./DeleteTierDialog.js";
+import { ErrorBlock } from "./InlineFailure.js";
+import { Button } from "../../../../ui/Button.js";
+import { errorCopy } from "../../../../lib/errorCopy.js";
 
 export function TierEditor({
   slug,
@@ -95,7 +98,9 @@ export function TierEditor({
                 {
                   label: "Delete tier…",
                   tone: "danger",
-                  disabledReason: used ? usedByText(used) : undefined,
+                  disabledReason: used
+                    ? `${usedByText(used)}. Move them to another tier first.`
+                    : undefined,
                   onSelect: () => setDeleting(true),
                 },
               ]}
@@ -103,6 +108,9 @@ export function TierEditor({
           </div>
           <TierGroups slug={slug} heldChannels={values.channels} />
         </section>
+        {form.submitError && !Object.keys(form.errors).length ? (
+          <SaveFailure error={form.submitError} />
+        ) : null}
         <SaveBar
           form={form}
           saveLabel={`Save ${name}`}
@@ -115,6 +123,32 @@ export function TierEditor({
         tier={deleting ? tier : null}
         onOpenChange={(o) => !o && setDeleting(false)}
         onDeleted={() => navigate(r.tiers(slug))}
+      />
+    </div>
+  );
+}
+
+/** A save that failed, above the bar: the words, Copy details, and Reload when the tier moved. */
+function SaveFailure({ error }: { error: unknown }): React.ReactElement {
+  const copy = errorCopy(error, { thing: "Tier" });
+  const moved = (error as { status?: number })?.status === 409;
+  return (
+    <div className="mb-3">
+      <ErrorBlock
+        error={error}
+        thing="Tier"
+        title={moved ? "This tier changed elsewhere" : "The tier wasn't saved"}
+        action={
+          copy.action === "reload" || moved ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.location.reload()}
+            >
+              Reload
+            </Button>
+          ) : undefined
+        }
       />
     </div>
   );

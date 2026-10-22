@@ -364,7 +364,7 @@ describe("Status", () => {
     expect(
       within(queues).getByText("4 waiting", { exact: false }),
     ).toBeTruthy();
-    expect(within(queues).getByText("0 in dead letters")).toBeTruthy();
+    expect(within(queues).getByText("Empty")).toBeTruthy();
     const jobs = within(page).getByRole("region", { name: "Scheduled jobs" });
     expect(within(jobs).getByText("Daily at 03:17 UTC")).toBeTruthy();
     expect(within(jobs).getByText(/Connector poll, 1 step/)).toBeTruthy();

@@ -13,6 +13,7 @@ import { Timeline, TimelineItem } from "../../../../ui/Timeline.js";
 import { Panel } from "../../../templates/Dashboard.js";
 import { qk } from "../../../data/queries.js";
 import { useMorePages } from "./platformDeployParts.js";
+import { useListCap } from "./platformStatusParts.js";
 
 /** The verb phrase of a platform action; an action without one reads as its code. */
 const ACTION_VERBS: Record<string, string> = {
@@ -38,6 +39,7 @@ export function ActivityPanel(): React.ReactElement {
     (cursor) => api.platformActivity(cursor),
     activity.data,
   );
+  const capped = useListCap(more);
   return (
     <Panel title="Platform activity">
       {activity.isPending ? (
@@ -67,12 +69,12 @@ export function ActivityPanel(): React.ReactElement {
         <>
           <Timeline<PlatformActivityItem>
             label="Platform activity"
-            items={more.items}
+            items={capped.items}
             getKey={(a) => a.id}
             getTime={(a) => fromSeconds(a.at)}
             loadMore={{
-              onLoadMore: more.loadMore,
-              hasMore: more.hasMore,
+              onLoadMore: capped.loadMore,
+              hasMore: capped.hasMore,
               loading: more.loading,
             }}
             renderItem={(a) => (
