@@ -111,7 +111,7 @@
       "id": "react",
       "title": "React",
       "manifest": "packages/sdk-react/parity.json",
-      "constants": "packages/sdk-react/src/constants.generated.ts"
+      "constants": "packages/ui-core/src/browser/sdk/constants.generated.ts"
     },
     {
       "id": "python",
