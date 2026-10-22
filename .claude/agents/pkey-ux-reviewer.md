@@ -63,6 +63,9 @@ repository.
    - state encoded in form as well as words;
    - service accents used only as accents;
    - consistency with the rest of the console or portal.
+   - **The brand-transition bar (UK-63).** Run the rendered-DOM UX bar before you judge by eye, and cite its output:
+     `PK_UXBAR_COLLECT=<file>` with `packages/admin/e2e/portalUxBar.e2e.test.ts` (customer site) or `layout.e2e.test.ts` (console) lists every finding of B6 (glow, coloured shadow, gradient, accent-tinted rim, eyebrow repeating the breadcrumb, tagline, name drawn over art), B7 (weight 700 outside the wordmark) and B17 (a focus ring that is not the element's service ring), per screen. A finding on the screen you review is blocking unless `UX_BAR_DEBT` (`packages/admin/e2e/uxBar.ts`) names its owner.
+   - Then check by hand what the lint cannot: 44 px targets on customer and touch surfaces (24 px with separation in the console); 400 % zoom (320 CSS px) with no page-level sideways scroll; a dense table scrolling only inside a labelled, focusable region; forced-colors and `prefers-contrast: more` (every control keeps a visible boundary, a selected state keeps a non-colour cue); reduced transparency (no blur survives); and the 640 x 360 small-landscape window.
 9. **Then against the mockup.** Walk the mockup's "compare" checklist.
    - For each difference, decide whether it is deliberate and better, deliberate and worse, or drift.
    - A built screen that is better than its mockup is fine. Say so, so the mockup gets updated.
