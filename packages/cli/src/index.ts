@@ -1,10 +1,10 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
-  ADMIN_TOKEN_ENV,
   BUNDLE_USAGE,
   DEFAULT_BASE_URL,
   mintBundle,
+  type TokenSource,
 } from "./bundle.js";
 import {
   internalMessage,
@@ -37,6 +37,7 @@ import {
 } from "./devCommand.js";
 import { fixManifest, type FixMove } from "./fix.js";
 import { cmdLogout, cmdWhoami, type AccountIo } from "./account.js";
+import { withAdminCredential, type AdminIo } from "./adminAuth.js";
 import { cmdLogin, type LoginSeams } from "./login.js";
 import { keyringStore, type CredentialStore } from "./credentials.js";
 import { applyContext, resolveContext, type PkeyContext } from "./context.js";
@@ -134,12 +135,7 @@ import { cmdStorefront } from "./storefronts/command.js";
 import { buildFdroidFeed, FEEDS_USAGE } from "./feeds.js";
 import { feedsSetup, FEEDS_SETUP_USAGE } from "./feedSetup.js";
 import { feedsPrune, FEEDS_PRUNE_USAGE } from "./feedPrune.js";
-import {
-  ADMIN_COOKIE_ENV,
-  formatImport,
-  listingImport,
-  LISTING_USAGE,
-} from "./listing.js";
+import { formatImport, listingImport, LISTING_USAGE } from "./listing.js";
 import { listingAssets, LISTING_ASSETS_USAGE } from "./listingAssets.js";
 import { ASSETS_PUSH_USAGE, pushAssets } from "./assets.js";
 import {
@@ -457,9 +453,6 @@ export {
   type SteamVdfResult,
 } from "./transportSteam.js";
 export {
-  ADMIN_COOKIE_ENV,
-  ADMIN_COOKIE_NAME,
-  CSRF_HEADER,
   formatImport,
   listingImport,
   LISTING_USAGE,
@@ -724,8 +717,14 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
   distribution: (p, rt) =>
     cmdDistribution(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
   doctor: (p, rt) => cmdDoctor(p, rt.cwd, rt.stdout, rt.term(rt.stdout), rt.ci),
-  bundle: (p, rt) => cmdBundle(p, rt.cwd, rt.stdout, rt.ci.env),
-  migrate: (p, rt) => cmdMigrate(p, rt.stdout, rt.ci.env, rt.ci.fetchImpl),
+  bundle: (p, rt) =>
+    withAdminCredential(adminIo(p, rt), "bundle", (token) =>
+      cmdBundle(p, rt.cwd, rt.stdout, rt.ci.env, token, rt.ci.fetchImpl),
+    ),
+  migrate: (p, rt) =>
+    withAdminCredential(adminIo(p, rt), "migrate", (token) =>
+      cmdMigrate(p, rt.stdout, rt.ci.env, token, rt.ci.fetchImpl),
+    ),
   trust: (p, rt) => cmdTrust(p, rt.stdout),
   sdk: (p, rt) => cmdSdk(p, rt.cwd, rt.stdout, rt.stderr, rt.ci.fetchImpl),
   dev: (p, rt) => cmdDev(p, rt),
@@ -734,7 +733,8 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
   release: (p, rt) => cmdRelease(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g),
   manifest: (p, rt) => cmdManifest(p, rt.cwd, rt.stdout),
   feeds: (p, rt) => cmdFeeds(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
-  listing: (p, rt) => cmdListing(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g),
+  listing: (p, rt) =>
+    cmdListing(p, rt.cwd, rt.stdout, rt.stderr, rt.ci, rt.g, adminIo(p, rt)),
   assets: (p, rt) => cmdAssets(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
   transport: (p, rt) => cmdTransport(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
   storefront: (p, rt) =>
@@ -755,6 +755,17 @@ function accountIo(parsed: ParsedArgs, rt: Runtime): AccountIo {
     json: flagBool(parsed, "json"),
     env: rt.ci.env,
     stdout: rt.stdout,
+    stderr: rt.stderr,
+    term: rt.term,
+    store: rt.store,
+    fetchImpl: rt.ci.fetchImpl,
+  };
+}
+
+function adminIo(parsed: ParsedArgs, rt: Runtime): AdminIo {
+  return {
+    baseUrl: flagString(parsed, "base-url") ?? DEFAULT_BASE_URL,
+    env: rt.ci.env,
     stderr: rt.stderr,
     term: rt.term,
     store: rt.store,
@@ -1373,6 +1384,8 @@ async function cmdBundle(
   cwd: string,
   stdout: Pick<NodeJS.WriteStream, "write">,
   env: UntrustedEnv,
+  token: TokenSource,
+  fetchImpl?: typeof fetch,
 ): Promise<number> {
   const product = flagString(parsed, "product");
   const device = flagString(parsed, "device");
@@ -1390,7 +1403,8 @@ async function cmdBundle(
     baseUrl: flagString(parsed, "base-url"),
     out: flagString(parsed, "out"),
     force: flagBool(parsed, "force"),
-    token: env[ADMIN_TOKEN_ENV],
+    token,
+    ...(fetchImpl ? { fetchImpl } : {}),
   });
 
   const rel = path.relative(cwd, result.file);
@@ -1417,6 +1431,7 @@ async function cmdMigrate(
   parsed: ParsedArgs,
   stdout: Pick<NodeJS.WriteStream, "write">,
   env: UntrustedEnv,
+  token: TokenSource,
   fetchImpl?: typeof fetch,
 ): Promise<number> {
   const [verb, target, ...extra] = parsed.positional;
@@ -1430,7 +1445,7 @@ async function cmdMigrate(
     verb,
     target,
     baseUrl: flagString(parsed, "base-url"),
-    token: env[ADMIN_TOKEN_ENV],
+    token,
     fetchImpl,
   });
   stdout.write(
@@ -2290,10 +2305,19 @@ async function cmdListing(
   stderr: TermOut,
   ci: CiIo,
   g: TermFlags,
+  admin: AdminIo,
 ): Promise<number> {
   switch (parsed.positional[0]) {
     case "import":
-      return cmdListingImport(parsed, cwd, stdout, ci);
+      // A dry run reads the project and contacts nothing, so it needs no credential.
+      return flagBool(parsed, "dry-run")
+        ? cmdListingImport(parsed, cwd, stdout, ci, undefined)
+        : withAdminCredential(
+            admin,
+            "listing import",
+            (token) => cmdListingImport(parsed, cwd, stdout, ci, token),
+            true,
+          );
     case "assets": {
       // One spinner line per stage, on stderr, only on an interactive terminal (`terminal.ts`).
       const spinner = new Spinner(stderr, ci.env, g);
@@ -2548,14 +2572,15 @@ function titleize(slug: string): string {
 
 /**
  * `pkey listing import --godot <project>` (A-18c): read the Godot project and import it into the
- * product's shared listing — the diff first, written only with `--apply`. The cookie is read from
- * the environment here, as `pkey bundle` does, so `listing.ts` never touches `process.env`.
+ * product's shared listing — the diff first, written only with `--apply`. The credential is
+ * resolved by the caller (`adminAuth.ts`), so `listing.ts` never touches `process.env`.
  */
 async function cmdListingImport(
   parsed: ParsedArgs,
   cwd: string,
   stdout: Pick<NodeJS.WriteStream, "write">,
   ci: CiIo,
+  token: TokenSource,
 ): Promise<number> {
   const godot = flagString(parsed, "godot");
   if (parsed.positional[0] !== "import" || !godot)
@@ -2578,7 +2603,7 @@ async function cmdListingImport(
       : {}),
     dryRun: flagBool(parsed, "dry-run"),
     baseUrl: flagString(parsed, "base-url"),
-    cookie: (ci.env as Record<string, string | undefined>)[ADMIN_COOKIE_ENV],
+    ...(token ? { token } : {}),
     ...(ci.fetchImpl ? { fetchImpl: ci.fetchImpl } : {}),
   });
   stdout.write(

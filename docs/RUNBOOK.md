@@ -2066,7 +2066,7 @@ under _Entries_ in the change that closes the row. A row with no entry is open.
 
 - No compatibility window exists except break-glass, paths that installed native binaries call, and
   the two-release database contracts. There is none for an SDK, the CLI, the publish Action,
-  cookie mode, `PKEY_ADMIN_COOKIE` or the Pocket ID env override: each goes in the release that
+  cookie mode or the Pocket ID env override: each goes in the release that
   replaces it, and a removed manifest field is a validator error that names its replacement.
 - A drop takes two steps. The first stops every read and write. The second drops the object, after
   a production check that nothing read or wrote it and **14 days** after the Worker that stopped

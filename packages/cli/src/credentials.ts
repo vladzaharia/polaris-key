@@ -18,6 +18,7 @@
  */
 
 import { ADMIN_TOKEN_ENV, normalizeBaseUrl } from "./bundle.js";
+import { RETIRED_COOKIE_REFUSAL, retiredCookieSet } from "./retired.js";
 
 export const KEYCHAIN_SERVICE = "pkey";
 
@@ -158,13 +159,20 @@ export interface ResolvedCredential {
 /**
  * The credential for `baseUrl`: `PKEY_ADMIN_TOKEN` when set, else the store's entry for that
  * origin. `store` is a thunk so the keychain is never touched when the env token answers.
- * Throws `Refusal` when there is none or the env value is not a token.
+ * Throws `Refusal` when there is none, the env value is not a token, or the retired
+ * cookie variable is set (`retired.ts`).
  */
 export async function adminCredential(opts: {
   env: Readonly<Record<string, string | undefined>>;
   baseUrl: string;
   store: () => Promise<CredentialStore>;
 }): Promise<ResolvedCredential> {
+  // Before the origin is read and before the store is opened: nothing is sent, nothing is looked up.
+  if (retiredCookieSet(opts.env))
+    throw new Refusal(
+      RETIRED_COOKIE_REFUSAL.message,
+      RETIRED_COOKIE_REFUSAL.fix,
+    );
   const origin = originOf(opts.baseUrl);
   const fromEnv = opts.env[ADMIN_TOKEN_ENV]?.trim();
   if (fromEnv) {

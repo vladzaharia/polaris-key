@@ -32,6 +32,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { memoryStore } from "../src/credentials.js";
 import { ADMIN_TOKEN_ENV, mintBundle, runPkey } from "../src/index.js";
 
 const PRODUCT = "acme";
@@ -675,17 +676,22 @@ describe("pkey bundle — local refusals", () => {
     expect(m.calls).toHaveLength(0);
   });
 
-  it("names PKEY_ADMIN_TOKEN and how to get it when it is unset", async () => {
+  it("is a refusal, not a failure, when nobody is signed in: exit 4 and pkey login", async () => {
     const cwd = await tempDir();
     const io = capture();
     setTokenEnv(undefined);
     const m = stub(server());
 
-    expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
+    expect(
+      await runPkey(argv(), {
+        cwd,
+        ...io,
+        credentialStore: async () => memoryStore(),
+      }),
+    ).toBe(4);
 
-    expect(io.err()).toContain("PKEY_ADMIN_TOKEN is not set");
-    expect(io.err()).toContain("API tokens");
-    expect(io.err()).toContain("Authorization: Bearer");
+    expect(io.err()).toContain("▲  Not signed in to key.example.");
+    expect(io.err()).toContain("Run pkey login.");
     expect(m.calls).toHaveLength(0);
   });
 
@@ -695,12 +701,10 @@ describe("pkey bundle — local refusals", () => {
     setTokenEnv(COOKIE);
     const m = stub(server());
 
-    expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
+    expect(await runPkey(argv(), { cwd, ...io })).toBe(4);
 
-    // The server answers ONE 401 for malformed / unknown / revoked / expired, so it cannot tell
-    // an operator which; the shape is knowable here, so it is said here.
-    expect(io.err()).toContain("does not look like an admin API token");
-    expect(io.err()).toContain("session cookie is a DIFFERENT credential");
+    expect(io.err()).toContain("PKEY_ADMIN_TOKEN is not a pkeya_ or pkeyp_");
+    expect(io.err()).toContain("Copy it again whole.");
     expect(m.calls).toHaveLength(0);
     // And the value itself is never echoed back into a terminal or a CI log.
     expect(io.err()).not.toContain("session-token-value");
@@ -712,10 +716,10 @@ describe("pkey bundle — local refusals", () => {
     setTokenEnv(TOKEN.slice(0, 20));
     const m = stub(server());
 
-    expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
+    expect(await runPkey(argv(), { cwd, ...io })).toBe(4);
 
-    expect(io.err()).toContain("does not look like an admin API token");
-    expect(io.err()).toContain("got 20 characters");
+    expect(io.err()).toContain("is not a pkeya_ or pkeyp_ token");
+    expect(io.err()).not.toContain(TOKEN.slice(0, 20));
     expect(m.calls).toHaveLength(0);
   });
 });
@@ -777,7 +781,7 @@ describe("pkey bundle — server failures", () => {
 
     // Both causes answer 403 and look identical from the client, so the hint names both.
     expect(io.err()).toContain("bundles:mint");
-    expect(io.err()).toContain("platform admin");
+    expect(io.err()).toContain("not allowed to do this");
   });
 
   it("reports a non-JSON body rather than a bare status", async () => {

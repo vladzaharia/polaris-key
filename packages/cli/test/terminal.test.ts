@@ -226,13 +226,16 @@ describe("per-command help", () => {
 
     const bundle = await run(["help", "bundle"]);
     expect(bundle.out).toContain("PKEY_ADMIN_TOKEN");
-    expect(bundle.out).not.toContain("PKEY_ADMIN_COOKIE");
+    expect(bundle.out).not.toMatch(/cookie/i);
     expect(bundle.out).toContain("--no-config");
 
-    // The import still presents the console session, so its help names the cookie, not the token.
+    // The import takes the same bearer credential (ST-34.9): its help names the token and
+    // pkey login, and no cookie or session at all.
     const listing = await run(["help", "listing", "import"]);
-    expect(listing.out).toContain("PKEY_ADMIN_COOKIE");
-    expect(listing.out).not.toContain("PKEY_ADMIN_TOKEN");
+    expect(listing.out).toContain("PKEY_ADMIN_TOKEN");
+    expect(listing.out).toContain("pkey login");
+    expect(listing.out).toContain("pkeyp_");
+    expect(listing.out).not.toMatch(/cookie|console session/i);
   });
 
   it("help for an unknown command exits 2", async () => {

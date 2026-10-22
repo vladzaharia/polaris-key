@@ -113,17 +113,17 @@ import { UsageError } from "./errors.js";
  */
 export const DEFAULT_BASE_URL = "https://key.plrs.im";
 
-/** The environment variable this command reads its admin API token from. */
+/** The environment variable the admin commands read a token from (`pkeya_` or `pkeyp_`). */
 export const ADMIN_TOKEN_ENV = "PKEY_ADMIN_TOKEN";
 
 /** `pkeya_` — `a` for admin. */
 const ADMIN_TOKEN_PREFIX = "pkeya_";
 
-/** An admin API token: the prefix plus 43 base64url characters (256 bits). Kept character for
- *  character identical to the Worker's shape check — a local check that is STRICTER than the
- *  server's would refuse a credential the platform accepts, which is worse than not checking at
- *  all. */
-const ADMIN_TOKEN = /^pkeya_[A-Za-z0-9_-]{43,}$/;
+/** An admin credential: `pkeya_` (admin API) or `pkeyp_` (personal) plus 43 base64url characters
+ *  (256 bits). Kept character for character identical to the Worker's shape check — a local check
+ *  that is STRICTER than the server's would refuse a credential the platform accepts, which is
+ *  worse than not checking at all. */
+const ADMIN_TOKEN = /^pkey[ap]_[A-Za-z0-9_-]{43,}$/;
 
 /** The grace ceiling in days — `MAX_GRACE_DAYS` in the Worker's `console/handlers/bundles.ts` (§3.3). */
 export const MAX_GRACE_DAYS = 365;
@@ -179,7 +179,8 @@ export interface MintBundleOptions {
   out?: string;
   force?: boolean;
   /** `process.env.PKEY_ADMIN_TOKEN`, read by the caller — this module never touches env. */
-  token?: string;
+  /** The bearer token, or a function that resolves it once the local checks have passed. */
+  token?: TokenSource;
   /** The test seam: `packages/sdk-node/src/discovery.ts` establishes it repo-wide. */
   fetchImpl?: typeof fetch;
   signal?: AbortSignal;
@@ -240,7 +241,7 @@ export async function mintBundle(
   }
 
   const licenseId = opts.licenseId?.trim() || undefined;
-  const token = adminToken(opts.token);
+  const token = await adminTokenFrom(opts.token);
   const baseUrl = normalizeBaseUrl(
     opts.baseUrl?.trim() || DEFAULT_BASE_URL,
     ADMIN_TOKEN_ENV,
@@ -297,20 +298,35 @@ export async function mintBundle(
   };
 }
 
+/** A token, or a function that resolves one (the caller's credential lookup, run last). */
+export type TokenSource = string | undefined | (() => Promise<string>);
+
+export async function adminTokenFrom(
+  source: TokenSource,
+  command: "bundle" | "migrate" | "listing" = "bundle",
+): Promise<string> {
+  return adminToken(
+    typeof source === "function" ? await source() : source,
+    command,
+  );
+}
+
 /** The bearer token, or an error that says exactly what is wrong and how to get a good one. */
 export function adminToken(
   raw: string | undefined,
-  command: "bundle" | "migrate" = "bundle",
+  command: "bundle" | "migrate" | "listing" = "bundle",
 ): string {
   const value = raw?.trim();
   if (!value) {
     throw new Error(
-      `${ADMIN_TOKEN_ENV} is not set.\n` +
+      `${ADMIN_TOKEN_ENV} is not set. Run pkey login, or set a token.\n` +
         `\`pkey ${command}\` calls the admin API, which authenticates it with an ` +
         "admin API token sent as `Authorization: Bearer pkeya_…`.\n" +
         (command === "migrate"
           ? "The token needs the `migrations:report` scope.\n"
-          : "The token needs the `bundles:mint` scope.\n") +
+          : command === "listing"
+            ? "The route takes a personal token (pkeyp_).\n"
+            : "The token needs the `bundles:mint` scope.\n") +
         "Mint one in the console: /manage -> API tokens -> New token. Choose a label that says " +
         "where it will run and an expiry. The value is shown ONCE, at mint — nothing stored can " +
         "reproduce it — so copy it then, and run:\n" +
@@ -325,17 +341,25 @@ export function adminToken(
   if (!ADMIN_TOKEN.test(value)) {
     // Never echo the value itself. It is malformed by definition, but "malformed" is the
     // caller's claim about a secret and the length is enough to diagnose a truncated paste.
-    const prefix = value.startsWith(ADMIN_TOKEN_PREFIX)
+    const prefix = /^pkey[ap]_/.test(value)
       ? ""
       : ` starting \`${clip(value.split(/[=\s]/, 1)[0] ?? "", 12)}\``;
     throw new Error(
-      `${ADMIN_TOKEN_ENV} does not look like an admin API token. Expected \`${ADMIN_TOKEN_PREFIX}\` ` +
+      `${ADMIN_TOKEN_ENV} does not look like an admin token. Expected \`${ADMIN_TOKEN_PREFIX}\` or \`pkeyp_\` ` +
         `followed by 43 base64url characters (A-Z a-z 0-9 - _); got ${value.length} characters${prefix}.\n` +
         "A console session cookie is a DIFFERENT credential and is no longer accepted here. Mint a " +
         "token in the console (/manage -> API tokens) and export that instead.",
     );
   }
   return value;
+}
+
+/**
+ * A token pasted where a URL belongs (`--base-url pkeyp_…`) must not be printed back: every
+ * `pkey…_` credential shape (pkeya_, pkeyp_, pkeyci_, pkeyr_, pkeyt_) becomes `[token]`.
+ */
+function maskTokens(text: string): string {
+  return text.replace(/pkey[a-z]*_[A-Za-z0-9_-]*/g, "[token]");
 }
 
 /**
@@ -351,7 +375,7 @@ export function normalizeBaseUrl(raw: string, credentialEnv: string): string {
     url = new URL(raw);
   } catch {
     throw new UsageError(
-      `--base-url is not a valid URL: ${raw}. Give a full origin, e.g. ${DEFAULT_BASE_URL}.`,
+      `--base-url is not a valid URL: ${maskTokens(raw)}. Give a full origin, e.g. ${DEFAULT_BASE_URL}.`,
     );
   }
   const loopback =
@@ -359,7 +383,7 @@ export function normalizeBaseUrl(raw: string, credentialEnv: string): string {
     LOOPBACK_HOSTS.includes(url.hostname.toLowerCase());
   if (url.protocol !== "https:" && !loopback) {
     throw new UsageError(
-      `--base-url must be https: (got ${url.protocol}//${url.host}). ` +
+      `--base-url must be https: (got ${maskTokens(`${url.protocol}//${url.host}`)}). ` +
         `${credentialEnv} is sent to this origin as a credential, so plaintext http:// ` +
         "is only accepted for localhost/127.0.0.1 during local development.",
     );
@@ -389,7 +413,7 @@ export async function httpError(
   res: Response,
   what: string,
   hintFor: (status: number) => string | undefined = statusHint,
-): Promise<Error> {
+): Promise<HttpFailure> {
   const detail = await errorDetail(res);
   // The server's words: each cleaned (`untrusted.ts`) before it joins pkey's message.
   const u = (v: unknown) => untrusted(v, {});
@@ -401,25 +425,41 @@ export async function httpError(
     ? ` (fields: ${detail.fields.map(u).join(", ")})`
     : "";
   const hint = hintFor(res.status);
-  return new Error(
+  return new HttpFailure(
     `${what} failed (${label})${message}${fields}${hint ? `\n${hint}` : ""}`,
+    res.status,
+    detail,
   );
+}
+
+/**
+ * A non-OK admin response as an `Error`. The extra fields let the admin commands turn a 403 into
+ * the access refusal (`adminAuth.ts`) without parsing the message; nothing prints them raw.
+ */
+export class HttpFailure extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly detail: ErrorDetail,
+  ) {
+    super(message);
+    this.name = "HttpFailure";
+  }
 }
 
 export function statusHint(status: number): string | undefined {
   if (status === 401) {
     return (
-      `The admin API token in ${ADMIN_TOKEN_ENV} was refused. The server answers one 401 for ` +
-      "unknown, revoked and expired alike, on purpose — check the roster in the console " +
-      "(/manage -> API tokens) to see which, and mint a replacement there."
+      `Your sign-in or the token in ${ADMIN_TOKEN_ENV} was refused. The server answers one 401 for ` +
+      "unknown, revoked and expired alike, on purpose. Run pkey login, or check the roster in the " +
+      "console (/manage -> API tokens) and mint a replacement there."
     );
   }
   if (status === 403) {
     return (
       "Authenticated, but not allowed. Two causes look identical from here: the token is not " +
-      "scoped for this route (a `pkeya_` token needs `bundles:mint`, and every admin route " +
-      "outside the bundle mint refuses tokens outright), or the identity behind it is not a " +
-      "platform admin."
+      "scoped for this route (a `pkeya_` token needs `bundles:mint`), or the identity behind it " +
+      "is not allowed to do this."
     );
   }
   if (status === 404) {
@@ -431,10 +471,14 @@ export function statusHint(status: number): string | undefined {
   return undefined;
 }
 
-interface ErrorDetail {
+export interface ErrorDetail {
   code?: string;
   message?: string;
   fields?: string[];
+  /** A 403's `reason` (`no_access`), with the `scope` and `area` it names. */
+  reason?: string;
+  scope?: string;
+  area?: string;
 }
 
 async function errorDetail(res: Response): Promise<ErrorDetail> {
@@ -456,6 +500,12 @@ async function errorDetail(res: Response): Promise<ErrorDetail> {
   if (code) detail.code = code;
   if (message) detail.message = message;
   if (fields) detail.fields = fields;
+  const reason = asString(parsed.reason) ?? asString(nested.reason);
+  const scope = asString(parsed.scope) ?? asString(nested.scope);
+  const area = asString(parsed.area) ?? asString(nested.area);
+  if (reason) detail.reason = reason;
+  if (scope) detail.scope = scope;
+  if (area) detail.area = area;
   return detail;
 }
 

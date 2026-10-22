@@ -16,6 +16,7 @@ import {
   isUsageError,
   networkMessage,
 } from "../src/errors.js";
+import { memoryStore } from "../src/credentials.js";
 import { runPkey } from "../src/index.js";
 
 const TOKEN = `pkeya_${"A".repeat(43)}`;
@@ -47,6 +48,8 @@ async function run(
     env: { CI: "true", ...opts.env },
     stdout: { write: (c: string) => ((out += c), true) },
     stderr: { write: (c: string) => ((err += c), true) },
+    // Never the real keychain: a test machine's own sign-in must not answer for the test.
+    credentialStore: async () => memoryStore(),
     ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
   });
   return { code, out, err };
@@ -309,29 +312,42 @@ describe("flags never swallow the next word", () => {
   });
 });
 
-describe("credentials: the message names the right command and scope", () => {
-  it("pkey migrate without a token talks about migrate, not bundle", async () => {
-    const r = await run(["migrate", "list"]);
-    expect(r.code).toBe(1);
-    expect(r.err).toContain("PKEY_ADMIN_TOKEN is not set");
-    expect(r.err).toContain("`pkey migrate`");
-    expect(r.err).toContain("migrations:report");
-    expect(r.err).not.toContain("`pkey bundle`");
-  });
-
-  it("pkey bundle without a token still names bundles:mint", async () => {
-    const r = await run([
+describe("credentials: a signed-out admin command refuses with the fix", () => {
+  it.each([
+    ["migrate", ["migrate", "list"]],
+    [
       "bundle",
-      "--product",
-      "demo",
-      "--device",
-      "A".repeat(32),
-      "--grace-days",
-      "5",
-    ]);
-    expect(r.err).toContain("`pkey bundle`");
-    expect(r.err).toContain("bundles:mint");
-  });
+      [
+        "bundle",
+        "--product",
+        "demo",
+        "--device",
+        "A".repeat(32),
+        "--grace-days",
+        "5",
+      ],
+    ],
+    [
+      "listing import",
+      [
+        "listing",
+        "import",
+        "--godot",
+        path.join(import.meta.dirname, "fixtures", "godot-listing"),
+        "--product",
+        "demo",
+      ],
+    ],
+  ])(
+    "pkey %s without a sign-in is a refusal: exit 4, pkey login",
+    async (_n, argv) => {
+      const r = await run(argv);
+      expect(r.code).toBe(4);
+      expect(r.err).toContain("▲  Not signed in to key.plrs.im.");
+      expect(r.err).toContain("Run pkey login.");
+      expect(r.out).toBe("");
+    },
+  );
 });
 
 describe("trust refuses a key no SDK could verify with", () => {
