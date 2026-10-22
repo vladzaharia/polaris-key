@@ -29,6 +29,12 @@ beforeEach(async () => {
   await seedProduct(db, "acme");
 });
 
+/** A session without a fresh step-up (the default session has one). */
+let stale = false;
+beforeEach(() => {
+  stale = false;
+});
+
 async function admin(
   method: string,
   path: string,
@@ -36,7 +42,13 @@ async function admin(
 ): Promise<Response> {
   const { token, session } = await issueSession(
     env,
-    { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
+    {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: ["platform-admins"],
+      ...(stale ? {} : { authTime: NOW, stepUp: true }),
+    },
     NOW,
   );
   return handleAdmin(

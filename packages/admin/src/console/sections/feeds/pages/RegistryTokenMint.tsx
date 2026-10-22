@@ -22,6 +22,7 @@ import { Input } from "../../../../ui/Input.js";
 import { NumberInput } from "../../../../ui/NumberInput.js";
 import { RadioCards } from "../../../../ui/RadioCards.js";
 import { Switch } from "../../../../ui/Switch.js";
+import { StepUpNotice, useStepUpDraft } from "../../../../ui/useStepUpDraft.js";
 import { mutate } from "../../../data/mutations.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
@@ -178,8 +179,29 @@ export function MintDialog({
   // Errors show once the operator has typed in a field or tried to create.
   const [attempted, setAttempted] = React.useState(false);
   const formRef = React.useRef<HTMLFormElement>(null);
+  // Only a service token needs a fresh step-up; its entries survive the sign-in.
+  const stepUp = useStepUpDraft(
+    `registry-token:${scope.kind === "product" ? scope.slug : "platform"}`,
+    open,
+    () => onOpenChange(true),
+  );
+  const restoredDays = React.useRef(false);
   React.useEffect(() => {
     if (!open) return;
+    const saved = stepUp.take();
+    if (saved) {
+      const d = Number(saved.days);
+      setAttempted(false);
+      setLabel(saved.label ?? "");
+      setEveryFeed(true);
+      setPicked([]);
+      setGodotUrl(false);
+      setAccess("read");
+      setDays(Number.isInteger(d) ? d : data.limits.defaultDays);
+      restoredDays.current = true;
+      setFailure(null);
+      return;
+    }
     setAttempted(false);
     setLabel("");
     setEveryFeed(true);
@@ -211,6 +233,11 @@ export function MintDialog({
   const binding = licenseId === undefined ? "owner" : "license";
 
   React.useEffect(() => {
+    // The days the sign-in saved win over the type's default, once.
+    if (restoredDays.current) {
+      restoredDays.current = false;
+      return;
+    }
     setDays(
       publish
         ? (data.limits.publishDefaultDays ?? data.limits.defaultDays)
@@ -279,6 +306,10 @@ export function MintDialog({
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     if (saving) return;
+    if (service && stepUp.needed && !invalid) {
+      stepUp.signIn({ label, days: days === null ? "" : String(days) });
+      return;
+    }
     if (invalid) {
       setAttempted(true);
       // Focus the first field the errors mark, once they have rendered.
@@ -316,6 +347,7 @@ export function MintDialog({
       });
       onMinted(res);
     } catch (err) {
+      if (service && stepUp.check(err)) return;
       setFailure(err);
       // A 422 marks fields: focus the first one.
       if (err instanceof ApiError && err.fields?.length)
@@ -480,6 +512,7 @@ export function MintDialog({
               />
             )}
           </FormField>
+          {stepUp.needed ? <StepUpNotice /> : null}
           {limitHit ? (
             <Callout alert tone="danger" title="Too many active tokens">
               {licenseId !== undefined
@@ -503,7 +536,7 @@ export function MintDialog({
             Cancel
           </Button>
           <Button type="submit" loading={saving}>
-            Create token
+            {stepUp.needed ? "Sign in again" : "Create token"}
           </Button>
         </DialogFooter>
       </form>

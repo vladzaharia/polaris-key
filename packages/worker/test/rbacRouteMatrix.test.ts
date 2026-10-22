@@ -373,6 +373,8 @@ describe("negative controls", () => {
         "DELETE /platform/alerts/:id",
         "DELETE /products/:slug/alerts/:id",
         "POST /products/:slug/alerts",
+        "PUT /products/:slug/ci-publisher",
+        "POST /products/:slug/ci-tokens",
       ].sort(),
     );
     for (const r of steps) {

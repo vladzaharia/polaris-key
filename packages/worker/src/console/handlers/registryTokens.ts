@@ -58,6 +58,7 @@ import {
 import { PACKAGES_READ_CI_SCOPE } from "../../core/ciVocabulary.js";
 import { getProduct } from "../../core/products/store.js";
 import { can, productScope } from "../authz.js";
+import { requireStepUp } from "../stepUp.js";
 import { registryOrigin } from "../../core/hosts.js";
 import {
   MAX_LIVE_TOKENS_PER_LICENSE,
@@ -427,6 +428,9 @@ async function createService(
       scope: `product:${owner}`,
       area: "keys",
     });
+  // It leaves a long-lived credential behind: a fresh step-up, as every such mint (stepUp.ts).
+  const stale = requireStepUp(session, now);
+  if (stale) return stale;
   // A service token is product-wide: no ecosystem, licence, URL or scope narrowing exists.
   const extra = ["ecosystems", "licenseId", "presentation", "scopes"].filter(
     (k) => body[k] !== undefined,

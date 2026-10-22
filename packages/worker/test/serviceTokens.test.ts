@@ -49,6 +49,12 @@ interface JsonResponse extends Response {
   json(): Promise<Loose>;
 }
 
+/** A session without a fresh step-up (the default session has one). */
+let stale = false;
+beforeEach(() => {
+  stale = false;
+});
+
 async function admin(
   method: string,
   path: string,
@@ -56,7 +62,13 @@ async function admin(
 ): Promise<JsonResponse> {
   const { token, session } = await issueSession(
     env,
-    { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
+    {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups: ["platform-admins"],
+      ...(stale ? {} : { authTime: NOW, stepUp: true }),
+    },
     NOW,
   );
   const full = `/api${path}`;
@@ -527,7 +539,14 @@ describe("review fixes (B1, N1 to N4)", () => {
   it("N1: minting needs the Keys area on the product; N3: no control characters in a label", async () => {
     const { session } = await issueSession(
       env,
-      { sub: "u2", name: "Bo", email: "bo@x.io", groups: [] },
+      {
+        sub: "u2",
+        name: "Bo",
+        email: "bo@x.io",
+        groups: [],
+        authTime: NOW,
+        stepUp: true,
+      },
       NOW,
     );
     const as = (areas: string[] | null) => {
@@ -563,5 +582,28 @@ describe("review fixes (B1, N1 to N4)", () => {
     expect((await call(["keys"], "a\u007fb")).status).toBe(422);
     expect((await call(["keys"])).status).toBe(201);
     expect((await call(null)).status).toBe(201);
+  });
+});
+
+describe("step-up (F-33b.7)", () => {
+  it("minting needs a fresh step-up: refused without one, nothing written, then admitted", async () => {
+    stale = true;
+    const refused = await mintService();
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).toMatchObject({
+      error: { code: "step_up_required" },
+    });
+    expect(await db.all("SELECT 1 FROM ci_tokens")).toEqual([]);
+    stale = false;
+    expect((await mintService()).status).toBe(201);
+  });
+
+  it("revoking works without one", async () => {
+    const minted = await (await mintService()).json();
+    stale = true;
+    const id = minted.view.tokenId;
+    const res = await admin("POST", tokens(`/${id}/revoke`));
+    expect(res.status).toBe(200);
+    expect((await admin("POST", tokens("/revoke-all"), {})).status).toBe(200);
   });
 });

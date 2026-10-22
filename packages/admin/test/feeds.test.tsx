@@ -12,6 +12,7 @@ import {
 } from "./consoleHarness.js";
 import { feedDetail, feedRoutes } from "./feedsFixture.js";
 import { confirmFor } from "../src/lib/actions.js";
+import { setStepUpRedirectForTests } from "../src/lib/stepUp.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1839,5 +1840,67 @@ describe("Core → Services: the package feeds switch", () => {
         expectedVersion: 2,
       }),
     );
+  });
+});
+
+describe("minting needs a fresh sign-in (F-33b.7)", () => {
+  it("the New service token dialog turns into Sign in again and reopens with its input", async () => {
+    const redirect = vi.fn();
+    setStepUpRedirectForTests(() => redirect());
+    sessionStorage.clear();
+    const refused = () =>
+      new Response(
+        JSON.stringify({
+          error: { code: "step_up_required", message: "sign in again" },
+          code: "step_up_required",
+        }),
+        { status: 403 },
+      );
+    const routes = {
+      ...feedRoutes(),
+      ...product(true),
+      [`POST ${TOKENS_URL}`]: refused(),
+    };
+    boot("#/p/djdl/distribution/feeds/tokens", { extra: routes });
+    await tokensTable();
+    let dialog = await openMint();
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /Label/ }),
+      "CI install",
+    );
+    const days = within(dialog).getByRole("textbox", { name: /Expires after/ });
+    await userEvent.clear(days);
+    await userEvent.type(days, "45");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create token" }),
+    );
+    await userEvent.click(
+      await within(dialog).findByRole("button", { name: "Sign in again" }),
+    );
+    expect(redirect).toHaveBeenCalledTimes(1);
+    // The sign-in returns to the page: the dialog is back, with what was typed.
+    cleanup();
+    boot("#/p/djdl/distribution/feeds/tokens", { extra: routes });
+    dialog = await screen.findByRole("dialog", { name: "New service token" });
+    expect(
+      (
+        within(dialog).getByRole("textbox", {
+          name: /Label/,
+        }) as HTMLInputElement
+      ).value,
+    ).toBe("CI install");
+    await waitFor(() =>
+      expect(
+        (
+          within(dialog).getByRole("textbox", {
+            name: /Expires after/,
+          }) as HTMLInputElement
+        ).value,
+      ).toBe("45"),
+    );
+    expect(
+      within(dialog).getByRole("button", { name: "Create token" }),
+    ).toBeTruthy();
+    setStepUpRedirectForTests();
   });
 });
