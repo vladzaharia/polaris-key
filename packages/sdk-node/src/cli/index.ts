@@ -56,6 +56,7 @@ export {
 export {
   activateFlow,
   changelogFlow,
+  bootFlow,
   checkFlow,
   configGetFlow,
   configListFlow,

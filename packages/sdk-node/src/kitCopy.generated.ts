@@ -657,12 +657,14 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsStatus": "Show installed and downloading content",
     "cli.verb.packsEnsure": "Download and install content, with progress",
     "cli.verb.doctor": "Show what this device can do, for support",
+    "cli.verb.boot": "Run startup, one line per stage",
     "cli.verb.completion": "Print shell completion for bash, zsh or fish",
     "cli.option.json": "JSON output for scripts, on every command",
     "cli.option.noColor": "Plain text (also NO_COLOR=1)",
     "cli.option.ascii": "ASCII symbols only",
     "cli.option.help": "Help for a command",
     "cli.option.yes": "Don't ask before signing out",
+    "cli.option.yesDownload": "Download required content without asking",
     "cli.option.deviceCode":
       "Sign in with a code instead of this computer's browser",
     "cli.option.keyFile": "Read the license key from a file",
@@ -2229,6 +2231,7 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsEnsure":
       "Inhalte mit Fortschritt herunterladen und installieren",
     "cli.verb.doctor": "Anzeigen, was dieses Gerät kann (für den Support)",
+    "cli.verb.boot": "Start ausführen, eine Zeile pro Schritt",
     "cli.verb.completion":
       "Shell-Vervollständigung für bash, zsh oder fish ausgeben",
     "cli.option.json": "JSON-Ausgabe für Skripte, bei jedem Befehl",
@@ -2236,6 +2239,7 @@ export const KIT_COPY: Readonly<
     "cli.option.ascii": "Nur ASCII-Symbole",
     "cli.option.help": "Hilfe zu einem Befehl",
     "cli.option.yes": "Vor dem Abmelden nicht nachfragen",
+    "cli.option.yesDownload": "Erforderliche Inhalte ohne Nachfrage laden",
     "cli.option.deviceCode":
       "Mit Code statt im Browser dieses Computers anmelden",
     "cli.option.keyFile": "Lizenzschlüssel aus einer Datei lesen",
@@ -3845,12 +3849,14 @@ export const KIT_COPY: Readonly<
       "Télécharger et installer du contenu, avec progression",
     "cli.verb.doctor":
       "Afficher ce que cet appareil peut faire, pour l’assistance",
+    "cli.verb.boot": "Lancer le démarrage, une ligne par étape",
     "cli.verb.completion": "Générer la complétion shell pour bash, zsh ou fish",
     "cli.option.json": "Sortie JSON pour les scripts, sur toutes les commandes",
     "cli.option.noColor": "Texte brut (aussi NO_COLOR=1)",
     "cli.option.ascii": "Symboles ASCII uniquement",
     "cli.option.help": "Aide sur une commande",
     "cli.option.yes": "Ne pas demander avant la déconnexion",
+    "cli.option.yesDownload": "Télécharger le contenu requis sans demander",
     "cli.option.deviceCode":
       "Se connecter avec un code au lieu du navigateur local",
     "cli.option.keyFile": "Lire la clé de licence depuis un fichier",
@@ -5447,6 +5453,7 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsEnsure": "Descargar e instalar contenido, con progreso",
     "cli.verb.doctor":
       "Mostrar lo que puede hacer este dispositivo, para soporte",
+    "cli.verb.boot": "Ejecutar el inicio, una línea por etapa",
     "cli.verb.completion":
       "Generar el autocompletado de shell para bash, zsh o fish",
     "cli.option.json": "Salida JSON para scripts, en todos los comandos",
@@ -5454,6 +5461,7 @@ export const KIT_COPY: Readonly<
     "cli.option.ascii": "Solo símbolos ASCII",
     "cli.option.help": "Ayuda de un comando",
     "cli.option.yes": "No preguntar antes de cerrar sesión",
+    "cli.option.yesDownload": "Descargar el contenido necesario sin preguntar",
     "cli.option.deviceCode":
       "Iniciar sesión con un código en vez del navegador local",
     "cli.option.keyFile": "Leer la clave de licencia de un archivo",
@@ -7042,6 +7050,7 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsEnsure": "Baixar e instalar conteúdo, com progresso",
     "cli.verb.doctor":
       "Mostrar o que este dispositivo pode fazer, para suporte",
+    "cli.verb.boot": "Executar a inicialização, uma linha por etapa",
     "cli.verb.completion":
       "Gerar o autocompletar do shell para bash, zsh ou fish",
     "cli.option.json": "Saída JSON para scripts, em todos os comandos",
@@ -7049,6 +7058,7 @@ export const KIT_COPY: Readonly<
     "cli.option.ascii": "Somente símbolos ASCII",
     "cli.option.help": "Ajuda de um comando",
     "cli.option.yes": "Não perguntar antes de sair",
+    "cli.option.yesDownload": "Baixar o conteúdo necessário sem perguntar",
     "cli.option.deviceCode":
       "Entrar com um código, sem o navegador deste computador",
     "cli.option.keyFile": "Ler a chave de licença de um arquivo",
@@ -8618,12 +8628,14 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsEnsure": "Scarica e installa contenuti, con avanzamento",
     "cli.verb.doctor":
       "Mostra cosa può fare questo dispositivo, per l'assistenza",
+    "cli.verb.boot": "Esegui l'avvio, una riga per fase",
     "cli.verb.completion": "Genera il completamento shell per bash, zsh o fish",
     "cli.option.json": "Output JSON per gli script, su ogni comando",
     "cli.option.noColor": "Testo semplice (anche NO_COLOR=1)",
     "cli.option.ascii": "Solo simboli ASCII",
     "cli.option.help": "Aiuto per un comando",
     "cli.option.yes": "Non chiedere conferma prima di uscire",
+    "cli.option.yesDownload": "Scarica i contenuti richiesti senza chiedere",
     "cli.option.deviceCode": "Accedi con un codice invece del browser locale",
     "cli.option.keyFile": "Leggi la chiave di licenza da un file",
     "cli.option.keyStdin": "Leggi la chiave di licenza dallo standard input",
@@ -10203,12 +10215,14 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsEnsure":
       "コンテンツをダウンロードしてインストール（進捗表示）",
     "cli.verb.doctor": "このデバイスでできることを表示（サポート用）",
+    "cli.verb.boot": "起動処理を実行（段階ごとに1行）",
     "cli.verb.completion": "bash、zsh、fish用のシェル補完を出力",
     "cli.option.json": "スクリプト用のJSON出力（全コマンド共通）",
     "cli.option.noColor": "プレーンテキスト（NO_COLOR=1でも可）",
     "cli.option.ascii": "ASCII記号のみ",
     "cli.option.help": "コマンドのヘルプ",
     "cli.option.yes": "サインアウト前に確認しない",
+    "cli.option.yesDownload": "必要なコンテンツを確認せずにダウンロード",
     "cli.option.deviceCode":
       "このコンピュータのブラウザの代わりにコードでサインイン",
     "cli.option.keyFile": "ライセンスキーをファイルから読み込む",
@@ -11777,12 +11791,14 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsStatus": "설치된 콘텐츠와 다운로드 중인 콘텐츠 표시",
     "cli.verb.packsEnsure": "진행률을 표시하며 콘텐츠 다운로드 및 설치",
     "cli.verb.doctor": "이 기기에서 가능한 기능 표시 (지원용)",
+    "cli.verb.boot": "시작 과정을 실행해요(단계마다 한 줄)",
     "cli.verb.completion": "bash, zsh, fish용 셸 자동 완성 출력",
     "cli.option.json": "스크립트용 JSON 출력 (모든 명령 지원)",
     "cli.option.noColor": "일반 텍스트 (NO_COLOR=1도 가능)",
     "cli.option.ascii": "ASCII 기호만 사용",
     "cli.option.help": "명령 도움말",
     "cli.option.yes": "로그아웃 전에 확인하지 않음",
+    "cli.option.yesDownload": "필요한 콘텐츠를 묻지 않고 다운로드",
     "cli.option.deviceCode": "이 컴퓨터의 브라우저 대신 코드로 로그인",
     "cli.option.keyFile": "라이선스 키를 파일에서 읽기",
     "cli.option.keyStdin": "라이선스 키를 표준 입력에서 읽기",
@@ -13267,12 +13283,14 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsStatus": "显示已安装和正在下载的内容",
     "cli.verb.packsEnsure": "下载并安装内容，并显示进度",
     "cli.verb.doctor": "显示此设备支持的功能，供技术支持使用",
+    "cli.verb.boot": "运行启动流程，每个阶段一行",
     "cli.verb.completion": "输出bash、zsh或fish的shell补全脚本",
     "cli.option.json": "供脚本使用的JSON输出，适用于所有命令",
     "cli.option.noColor": "纯文本（也可用NO_COLOR=1）",
     "cli.option.ascii": "仅使用ASCII符号",
     "cli.option.help": "命令帮助",
     "cli.option.yes": "退出登录前不再询问",
+    "cli.option.yesDownload": "无需询问即下载所需内容",
     "cli.option.deviceCode": "使用代码登录，而非此电脑的浏览器",
     "cli.option.keyFile": "从文件读取许可证密钥",
     "cli.option.keyStdin": "从标准输入读取许可证密钥",

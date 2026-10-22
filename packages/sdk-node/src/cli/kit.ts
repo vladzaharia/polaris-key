@@ -33,6 +33,7 @@ import {
   configWriteFlow,
   deactivateFlow,
   devicesListFlow,
+  bootFlow,
   devicesRemoveFlow,
   devicesRenameFlow,
   doctorFlow,
@@ -58,6 +59,7 @@ import {
 import { EXIT, type FlowResult } from "./json.js";
 import {
   activate,
+  boot,
   deactivate,
   enroll,
   getConfig,
@@ -842,6 +844,15 @@ export const CLI_VERBS: readonly CliVerb[] = [
     describeKey: "cli.verb.packsEnsure",
     run: (c, a, io) => packsEnsure(c, many(a[0]), io),
     flow: (ctx, c, a) => packsEnsureFlow(ctx, need(c), many(a[0])),
+  },
+  {
+    group: "core",
+    path: ["boot"],
+    args: [],
+    describe: "Run startup, one line per stage",
+    describeKey: "cli.verb.boot",
+    run: (c) => boot(c),
+    flow: (ctx, c, _a, f) => bootFlow(ctx, need(c), { yes: f.yes === true }),
   },
   {
     group: "core",

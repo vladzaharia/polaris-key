@@ -13,10 +13,13 @@ import { runGate } from "../../src/cli/gate.js";
 import { END_USER } from "../../src/cli/mount.js";
 import {
   activateFlow,
+  bootFlow,
   changelogFlow,
   checkFlow,
   configListFlow,
+  configWriteFlow,
   devicesListFlow,
+  devicesRemoveFlow,
   doctorFlow,
   importBundleFlow,
   loginFlow,
@@ -97,6 +100,33 @@ const statusScenario = (
 const decision = (d: unknown) =>
   stubClient({ update: { decide: async () => ({ decision: d }) } });
 const release = { version: "2.5.0", seq: 7 };
+
+type BootOpts = {
+  onStage?(step: unknown): void;
+  answer?(bytes: number, metered: boolean): Promise<boolean>;
+};
+const stage = (stage: string, previous = "idle") => ({
+  state: {},
+  event: {},
+  emits: [{ type: "stage_changed", stage, previous }],
+});
+/** What `client.boot()` answers: the outcome, where it stopped, the gate's status and the emits. */
+const bootOutcome = (
+  outcome: string,
+  at: string,
+  emits: unknown[] = [],
+  status = "ok",
+  canPlayOffline = false,
+) => ({
+  outcome,
+  state: { stage: at, outcome, canPlayOffline },
+  license: { status },
+  decision: null,
+  guard: null,
+  emits,
+});
+const bootClient = (run: (o: BootOpts) => Promise<unknown>) =>
+  stubClient({ extra: { boot: run } });
 
 /** A host CLI with its own commands and the kit mounted beside them; the golden is its `--help`. */
 const HOST_HELP_DATA = [
@@ -743,18 +773,157 @@ export const SCENARIOS: Scenario[] = [
   statusScenario("polaris-key-gate-licensed", "not-applicable"),
   {
     name: "boot-progress",
+    opts: { interactive: false },
     data: [...COMMON],
     run: async (h) => {
-      const gate = deferred<undefined>();
-      const done = checkFlow(
+      const gate = deferred<unknown>();
+      const done = bootFlow(
         h.ctx,
-        stubClient({ extra: { sync: () => gate.promise } }),
+        bootClient(async (o) => {
+          o.onStage?.(stage("gate", "sync"));
+          return gate.promise;
+        }),
       );
       await settle();
       h.snap();
-      gate.resolve(undefined);
+      gate.resolve(bootOutcome("ready", "ready", [{ type: "boot_ready" }]));
       await done;
     },
+  },
+  {
+    name: "boot-progress-update",
+    data: [...COMMON, "tidewater update apply"],
+    run: (h) =>
+      bootFlow(
+        h.ctx,
+        bootClient(async () =>
+          bootOutcome("ready", "ready", [
+            { type: "update_available" },
+            { type: "boot_ready" },
+          ]),
+        ),
+      ),
+  },
+  {
+    name: "boot-rolled-back",
+    data: [...COMMON],
+    run: (h) =>
+      bootFlow(
+        h.ctx,
+        bootClient(async () =>
+          bootOutcome("ready", "ready", [
+            { type: "boot_rolled_back" },
+            { type: "boot_ready" },
+          ]),
+        ),
+      ),
+  },
+  {
+    name: "boot-consent",
+    opts: { interactive: true },
+    data: [...COMMON, "boot", "y", "n"],
+    run: async (h) => {
+      const done = bootFlow(
+        h.ctx,
+        bootClient(async (o) => {
+          o.onStage?.(stage("fetch", "decide"));
+          await o.answer?.(91_000_000, true);
+          return bootOutcome("ready", "ready", [{ type: "boot_ready" }]);
+        }),
+      );
+      await settle();
+      h.snap();
+      h.stdin.press("y");
+      await done;
+    },
+  },
+  {
+    name: "boot-fetching",
+    data: [...COMMON],
+    run: async (h) => {
+      const gate = deferred<unknown>();
+      const done = bootFlow(
+        h.ctx,
+        bootClient(async (o) => {
+          o.onStage?.({
+            state: {},
+            event: {},
+            emits: [
+              { type: "fetch_progress", done: 38_000_000, total: 91_000_000 },
+            ],
+          });
+          return gate.promise;
+        }),
+      );
+      await settle();
+      h.snap();
+      gate.resolve(bootOutcome("ready", "ready", [{ type: "boot_ready" }]));
+      await done;
+    },
+  },
+  {
+    name: "boot-offline",
+    data: [...COMMON, "boot"],
+    run: (h) =>
+      bootFlow(
+        h.ctx,
+        bootClient(async () =>
+          bootOutcome("offline", "offline", [
+            { type: "offline", canPlayOffline: false },
+          ]),
+        ),
+      ),
+  },
+  {
+    name: "boot-blocked",
+    data: [...COMMON, "boot", "tidewater update apply"],
+    run: (h) =>
+      bootFlow(
+        h.ctx,
+        bootClient(async () =>
+          bootOutcome(
+            "blocked",
+            "blocked",
+            [{ type: "blocked", reason: "update-required" }],
+            "version-too-old",
+          ),
+        ),
+      ),
+  },
+  {
+    name: "boot-declined",
+    opts: { interactive: true },
+    data: [...COMMON, "boot", "y", "n"],
+    run: async (h) => {
+      const done = bootFlow(
+        h.ctx,
+        bootClient(async (o) => {
+          const yes = await o.answer?.(91_000_000, false);
+          return bootOutcome("blocked", "blocked", [
+            {
+              type: "blocked",
+              reason: yes ? "update-required" : "content-declined",
+            },
+          ]);
+        }),
+      );
+      await settle();
+      h.stdin.press("n");
+      await done;
+    },
+  },
+  {
+    name: "boot-error",
+    data: [...COMMON, "boot"],
+    run: (h) =>
+      bootFlow(
+        h.ctx,
+        bootClient(async () =>
+          bootOutcome("error", "error", [
+            { type: "error", code: "fetch-failed" },
+          ]),
+        ),
+      ),
   },
   {
     name: "polaris-key-gate-licensed-boot",
@@ -930,6 +1099,71 @@ export const SCENARIOS: Scenario[] = [
       gate.resolve({ kind: "restartRequired", version: "2.5.0" });
       await done;
     },
+  },
+  {
+    name: "update-progress-queued",
+    opts: { interactive: true },
+    data: [...COMMON, "update apply", "2.5.0", "0"],
+    run: async (h) => {
+      const gate = deferred<unknown>();
+      const done = updateApplyFlow(
+        h.ctx,
+        stubClient({
+          update: {
+            decide: async () => ({
+              decision: {
+                action: "binary",
+                method: "full",
+                release,
+                build: "b",
+                mandatory: false,
+                critical: false,
+                prestage: [],
+                discardStaged: false,
+              },
+            }),
+            install: async (
+              _d: unknown,
+              o: { onProgress(done: number, total: number): void },
+            ) => {
+              o.onProgress(0, 61_000_000);
+              return gate.promise;
+            },
+          },
+        }),
+      );
+      await settle();
+      h.snap();
+      gate.resolve({ kind: "restartRequired", version: "2.5.0" });
+      await done;
+    },
+  },
+  {
+    name: "update-progress-failed",
+    data: [...COMMON, "update apply", "2.5.0", "tidewater update apply"],
+    run: (h) =>
+      updateApplyFlow(
+        h.ctx,
+        stubClient({
+          update: {
+            decide: async () => ({
+              decision: {
+                action: "binary",
+                method: "full",
+                release,
+                build: "b",
+                mandatory: false,
+                critical: false,
+                prestage: [],
+                discardStaged: false,
+              },
+            }),
+            install: async () => {
+              throw Object.assign(new Error("cut short"), { code: "network" });
+            },
+          },
+        }),
+      ),
   },
   {
     name: "update-progress-done",
@@ -1237,6 +1471,67 @@ export const SCENARIOS: Scenario[] = [
     name: "devices-empty",
     data: [...COMMON, "devices list"],
     run: (h) => devicesListFlow(h.ctx, stubClient()),
+  },
+  {
+    name: "devices-confirming",
+    opts: { interactive: true },
+    data: [...COMMON, "devices deauthorize", "Work laptop", "y", "Esc"],
+    run: async (h) => {
+      const done = devicesRemoveFlow(
+        h.ctx,
+        stubClient({
+          listDevices: async () => [
+            {
+              id: "dev_4hQ8",
+              current: false,
+              status: "ok",
+              label: "Work laptop",
+              platform: "linux",
+            },
+          ],
+        }),
+        "dev_4hQ8",
+      );
+      await settle();
+      h.snap();
+      h.stdin.press("escape", { sequence: "\x1b" });
+      await done;
+    },
+  },
+  {
+    name: "settings-saving",
+    data: [...COMMON, "config set", "ui.theme", "light"],
+    run: (h) =>
+      configWriteFlow(
+        h.ctx,
+        stubClient({
+          config: {
+            getConfig: () => "light",
+            getConfigSource: () => "local",
+          },
+        }),
+        "ui.theme",
+        "light",
+      ),
+  },
+  {
+    name: "settings-error",
+    data: [...COMMON, "config set", "telemetry.enabled"],
+    run: (h) =>
+      configWriteFlow(
+        h.ctx,
+        stubClient({
+          config: {
+            set: async () => {
+              throw Object.assign(new Error("managed"), {
+                code: "managed_by_admin",
+              });
+            },
+          },
+        }),
+        "telemetry.enabled",
+        false,
+      ),
   },
   {
     name: "settings-list",
