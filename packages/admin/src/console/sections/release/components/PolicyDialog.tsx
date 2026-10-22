@@ -198,7 +198,7 @@ export function PolicyDialog({
           {action.channel === undefined ? (
             <FormField
               name="policy-channel"
-              label="Channel"
+              label="Release track"
               value={channel}
               onChange={(v: string | null) => setChannel(v)}
               error={
@@ -358,7 +358,7 @@ export function PolicyDialog({
   );
 }
 
-const NO_CHANNEL = "Choose a channel.";
+const NO_CHANNEL = "Choose a release track.";
 const NO_RELEASE = "Choose a release.";
 const NO_VERSION = "Enter a version.";
 const BAD_VERSION = "Use a version such as 2.0.0.";

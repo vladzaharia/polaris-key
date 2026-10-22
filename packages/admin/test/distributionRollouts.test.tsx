@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
-import { resetConsole } from "./consoleHarness.js";
+import { ME, resetConsole } from "./consoleHarness.js";
 import {
   apiError,
   bootWith,
@@ -37,6 +37,41 @@ async function table(): Promise<HTMLElement> {
   await within(t).findAllByRole("link", { name: "2.4.0" });
   return t;
 }
+
+const VIEW_ONLY = {
+  ...ME,
+  platformAdmin: false,
+  permissions: {
+    roles: [],
+    platform: { view: ["console"], edit: [] },
+    products: { djdl: { view: ["core", "ship"], edit: [] } },
+  },
+};
+
+describe("Distribution → Rollouts: a view-only member (M8)", () => {
+  it("sees Start rollout… off with its reason, and the row menu holds no write verb", async () => {
+    bootWith(HASH, { "/manage/api/me": VIEW_ONLY });
+    await table();
+    const start = screen.getByRole("button", { name: "Start rollout…" });
+    expect(start.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(start);
+    expect(
+      screen.queryByRole("dialog", { name: "Start a rollout" }),
+    ).toBeNull();
+    await userEvent.click(
+      screen.getAllByRole("button", { name: /^Actions for / })[0]!,
+    );
+    const menu = await screen.findByRole("menu");
+    expect(
+      within(menu).getByRole("menuitem", { name: "Open rollout" }),
+    ).toBeTruthy();
+    expect(
+      within(menu).queryByRole("menuitem", {
+        name: /Resume|Pause|Halt|Complete|Set percentage/,
+      }),
+    ).toBeNull();
+  });
+});
 
 describe("Distribution → Rollouts", () => {
   it("lists every rollout, halted first, linked, with who changed it", async () => {

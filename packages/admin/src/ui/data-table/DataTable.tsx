@@ -1490,7 +1490,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             data-selected={row.getIsSelected() || undefined}
             onClick={followRow}
             className={cn(
-              "rounded-lg border border-border bg-surface-raised p-3 data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
+              "@container rounded-lg border border-border bg-surface-raised p-3 max-sm:px-2 data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
               rowHref && "cursor-pointer",
             )}
           >
@@ -1510,7 +1510,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
               ) : null}
             </div>
             {rest.length > 0 ? (
-              <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
+              <dl className="mt-2 grid grid-cols-1 gap-x-3 gap-y-0.5 text-xs @[22rem]:grid-cols-[auto_minmax(0,1fr)] @[22rem]:gap-y-1">
                 {rest.map((c) => (
                   <React.Fragment key={c.id}>
                     <dt className="text-fg-muted">
@@ -1519,7 +1519,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                     {/* Term left, value flush right: a card reads like a settings row. */}
                     <dd
                       className={cn(
-                        "flex min-w-0 flex-wrap items-center justify-end gap-x-2 text-end text-fg [&>*]:min-w-0 [&_.whitespace-nowrap]:whitespace-normal",
+                        "flex min-w-0 flex-wrap items-center justify-start gap-x-2 text-start text-fg @[22rem]:justify-end @[22rem]:text-end [&>*]:min-w-0 [&_.whitespace-nowrap]:whitespace-normal",
                         c.column.columnDef.meta?.mono && "font-mono",
                       )}
                     >

@@ -367,6 +367,25 @@ describe("Distribution → Matrix", () => {
     ).toBeTruthy();
   });
 
+  it("moves focus to the first invalid field after an empty submit", async () => {
+    bootWith(MATRIX_HASH);
+    await grid();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Start rollout…" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Start a rollout",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Start rollout" }),
+    );
+    await waitFor(() => {
+      const el = document.activeElement as HTMLElement;
+      expect(dialog.contains(el)).toBe(true);
+      expect(el.getAttribute("aria-invalid")).toBe("true");
+    });
+  });
+
   it("starts a rollout from the header", async () => {
     const { calls } = bootWith(MATRIX_HASH, {
       [`POST ${P("/distribution/rollouts/altstore/beta")}`]: { rollout: {} },

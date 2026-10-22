@@ -325,7 +325,7 @@ async function checkButlerKey(
       "valid",
       "ok",
       `itch.io user ${username}`,
-      "The outlet has no butler target yet, so which game it can push to is not checked.",
+      "The channel has no butler target yet, so which game it can push to is not checked.",
       facts,
     );
   facts.push({ label: "Pushes to", value: `${target.user}/${target.game}` });
@@ -333,7 +333,7 @@ async function checkButlerKey(
     return checked(
       "warning",
       "wrong-account",
-      `This key belongs to ${username}, but the outlet pushes to ${target.user}/${target.game}`,
+      `This key belongs to ${username}, but the channel pushes to ${target.user}/${target.game}`,
       `butler can push with it only if ${username} is an admin of that game. Use a key of ${target.user}, or add ${username} as an admin on the game's page.`,
       facts,
     );
@@ -358,7 +358,7 @@ async function checkButlerKey(
       "invalid",
       "not-found",
       `${username} has no game ${target.game} on itch.io`,
-      `Create the game page first (itch.io → Upload new project) with the URL ${target.user}.itch.io/${target.game}, or fix the outlet's butler target.`,
+      `Create the game page first (itch.io → Upload new project) with the URL ${target.user}.itch.io/${target.game}, or fix the channel's butler target.`,
       facts,
     );
   return checked(

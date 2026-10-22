@@ -36,6 +36,8 @@ export const DOCS_LINKS = {
   ciPublishing: "/docs/features/ship-builds/ci/",
   packDeliverables: "/docs/features/ship-builds/packs/",
   compatSimulator: "/docs/features/ship-builds/releases/compatibility/",
+  rollouts: "/docs/features/ship-builds/channels/rollouts/",
+  releasesHome: "/docs/features/ship-builds/releases/",
   rolloutControl: "/docs/features/ship-builds/channels/",
   storeConnections: "/docs/operate/platform/connections/",
   // PS-06: the built-in storefront's page (listing, audience, ways to add, preview, analytics).

@@ -650,8 +650,8 @@ describe("Release record (T3, ADMIN.md §6.3.2)", () => {
     expect(h1.textContent).toBe("0.4.2");
     // Where it is live is the Status tab's, not a healthy-state pill in the title (§7).
     const live = await screen.findByRole("region", { name: "Where it’s live" });
-    expect(await within(live).findByText("stable channel")).toBeTruthy();
-    expect(within(live).getByText("beta channel")).toBeTruthy();
+    expect(await within(live).findByText("stable release track")).toBeTruthy();
+    expect(within(live).getByText("beta release track")).toBeTruthy();
     expect(within(live).getAllByText("Every platform but iOS")).toHaveLength(2);
     expect(screen.queryByText(/^Live on/)).toBeNull();
     const status = screen.getByRole("link", { name: "Status" });

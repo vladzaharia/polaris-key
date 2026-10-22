@@ -86,7 +86,7 @@ export function StatusPill({
       // Large text (WCAG 1.4.4): a status word is never cut to "E…"; it wraps.
       className={cn(
         // On a phone a status word wraps inside its pill (200 % text) instead of ending in "…".
-        "truncate bigtext:overflow-visible bigtext:whitespace-normal max-sm:overflow-visible max-sm:whitespace-normal max-sm:[overflow-wrap:anywhere]",
+        "truncate bigtext:overflow-visible bigtext:whitespace-normal max-sm:overflow-visible max-sm:whitespace-normal",
         popped && "pk-pop-in",
       )}
     >
@@ -100,7 +100,7 @@ export function StatusPill({
         data-status="text"
         className={cn(
           "pk-pill inline-flex max-w-full shrink-0 items-center gap-1 whitespace-nowrap text-xs font-normal text-success",
-          size === "sm" ? "h-5" : "h-6",
+          size === "sm" ? "min-h-5" : "min-h-6",
           className,
         )}
       >
@@ -119,7 +119,9 @@ export function StatusPill({
       data-status="pill"
       className={cn(
         "pk-pill inline-flex max-w-full shrink-0 items-center gap-1 whitespace-nowrap rounded-full border font-normal",
-        size === "sm" ? "h-5 px-1.5 text-xs" : "h-6 px-2 text-xs",
+        size === "sm"
+          ? "min-h-5 px-1.5 py-0.5 text-xs"
+          : "min-h-6 px-2 py-0.5 text-xs",
         TONE_CLASSES[t],
         className,
       )}

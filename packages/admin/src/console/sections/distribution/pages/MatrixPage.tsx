@@ -12,6 +12,7 @@
  * - Below 768 px the grid becomes a card per release; "View as grid" keeps the grid reachable.
  */
 
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { Grid3x3 } from "lucide-react";
 import type {
@@ -52,7 +53,6 @@ import {
 
 type Release = DistributionMatrix["releases"][number];
 type Outlet = DistributionMatrix["outlets"][number];
-
 const ANY_CHANNEL = "__any__";
 
 /** `releaseId:outletId` (the `cell` query parameter; a release id may hold a colon). */
@@ -573,7 +573,7 @@ export function MatrixBoard({
           headingLevel={2}
           title={`No releases of ${deliverableName} yet`}
           description="A release appears here once CI publishes one. Each channel then reports where it is live."
-          docs="/docs/services/release/"
+          docs={docsUrl("releasesHome")}
         />
       ) : data.outlets.length === 0 ? (
         <EmptyState
@@ -581,7 +581,7 @@ export function MatrixBoard({
           headingLevel={2}
           title="No channels declared"
           description="Channels are the places a release reaches: Polaris Key downloads, the stores, the install sources. Declare them in .pkey/distribution and resync."
-          docs="/docs/services/distribution/"
+          docs={docsUrl("rolloutControl")}
         />
       ) : rows.length === 0 ? (
         <EmptyState

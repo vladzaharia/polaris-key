@@ -319,6 +319,14 @@ export function useAdminForm<T extends FieldValues>(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const FormCtx = React.createContext<AdminForm<any> | null>(null);
 
+/** Focus follows a refused submit: the first field in `root` that renders `aria-invalid`, once the
+ *  errors have rendered. */
+export function focusFirstInvalid(root: Element | null): void {
+  requestAnimationFrame(() =>
+    root?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(),
+  );
+}
+
 /** The surrounding `Form`'s hook, or `null` outside one. */
 export function useFormContext<T extends FieldValues>(): AdminForm<T> | null {
   return React.useContext(FormCtx);

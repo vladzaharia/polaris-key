@@ -144,7 +144,7 @@ export async function resolveSteamSetup(
     }
     return inert(
       "no_outlet",
-      "declare a steam outlet with an appId in .pkey/distribution",
+      "declare a steam channel with an appId in .pkey/distribution",
       null,
     );
   }

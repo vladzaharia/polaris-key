@@ -729,7 +729,7 @@ function StatusTab({
               </LiveTile>
             ))}
             {serving.map((c) => (
-              <LiveTile key={c.channel} label={`${c.channel} channel`}>
+              <LiveTile key={c.channel} label={`${c.channel} release track`}>
                 {c.where}
               </LiveTile>
             ))}

@@ -86,7 +86,7 @@ export function SettingsHub({
     to: productPage(slug, a.page),
     count:
       a.page === "settings-members" && admins.data?.admins
-        ? admins.data.admins.filter((m) => m.role !== "superadmin").length
+        ? admins.data.admins.length
         : undefined,
   }));
   return (

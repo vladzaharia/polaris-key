@@ -520,7 +520,7 @@ export const CONNECTORS = {
       inert: {
         reason: "no_outlet",
         message:
-          "declare an ms-store outlet with a productId in .pkey/distribution",
+          "declare an ms-store channel with a productId in .pkey/distribution",
       },
       setup: null,
       controls: [],

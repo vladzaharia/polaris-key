@@ -6,6 +6,7 @@ import type { ErrorCopy, ErrorFix } from "../../../../lib/errorCopy.js";
 import { cn } from "../../../../lib/cn.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
+import { CopyDetails } from "../../../../ui/CopyDetails.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
 import { ServiceGlyph } from "../../../../ui/ServiceBadge.js";
@@ -421,6 +422,11 @@ export function RefusalCallout({
             onCheckAgain={onCheckAgain}
             installUrl={installUrl}
           />
+        </div>
+      ) : null}
+      {copy.action === "copy-details" ? (
+        <div className="mt-3">
+          <CopyDetails copy={copy} />
         </div>
       ) : null}
     </Callout>
