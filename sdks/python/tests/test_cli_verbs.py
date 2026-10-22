@@ -246,3 +246,11 @@ def test_a_malformed_key_is_refused_locally_without_a_request(capsys) -> None:
     r = json.loads(out.strip().splitlines()[-1])
     assert code == 1 and r["kind"] == "malformed" and r["code"] is None
     assert "not-a-key" not in out
+
+
+def test_status_json_carries_the_tier(capsys) -> None:
+    code, out = _argparse(["status", "--product", PRODUCT, "--json"], _factory(), capsys)
+    r = json.loads(out.strip().splitlines()[-1])
+    info = _factory()(core.ClientOptions(product=PRODUCT)).license.license_info()
+    want = getattr(info, "tierLabel", None) or (info.tier[:1].upper() + info.tier[1:] if info.tier else None)
+    assert code == 0 and "tier" in r and r["tier"] == want

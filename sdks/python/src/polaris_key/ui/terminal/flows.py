@@ -239,6 +239,8 @@ def status(client: Any, t: Terminal) -> Outcome:
     except Exception:
         info = None
     tier = (getattr(info, "tierLabel", None) or getattr(info, "tier", None)) if info is not None else None
+    if tier and not getattr(info, "tierLabel", None):
+        tier = tier[:1].upper() + tier[1:]  # the id with an initial capital, as Node's tierName
     view = gate_view(
         st.status,
         now=_now(),
@@ -267,6 +269,7 @@ def status(client: Any, t: Terminal) -> Outcome:
         "profile": {"name": view.holder, "email": view.email} if profile else None,
         "version": view.version,
         "channel": view.channel,
+        "tier": tier or None,
     }
     return Outcome(EXIT.ok if usable else EXIT.failed, lines, data)
 
