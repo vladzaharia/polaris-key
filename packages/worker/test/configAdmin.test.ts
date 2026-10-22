@@ -186,6 +186,24 @@ describe("catalog history and the expectedVersion guard (A-6)", () => {
     expect(res.status).toBe(422);
   });
 
+  it("refuses a catalog whose default its own schema rejects", async () => {
+    const { call } = await setup();
+    const res = await call("PUT", "config/catalog", {
+      catalog: {
+        schemaVersion: 0,
+        entries: [
+          {
+            ...ENTRY("quality.floor"),
+            schema: { type: "string", enum: ["flac", "mp3-320"] },
+            default: "any",
+          },
+        ],
+      },
+    });
+    expect(res.status).toBe(422);
+    expect(JSON.stringify(await res.json())).toMatch(/default/);
+  });
+
   it("keeps last-writer-wins for a publish without expectedVersion", async () => {
     const { call } = await setup();
     await publish(call, ["a"]);
