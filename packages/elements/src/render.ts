@@ -261,9 +261,7 @@ export const GLYPHS = {
   close: (cls = "glyph") =>
     glyph(svg`<path d="M18 6 6 18"/><path d="m6 6 12 12"/>`, cls),
   external: () =>
-    glyph(
-      svg`${KIT_GLYPHS.newWindow.paths.map((d) => svg`<path d=${d} />`)}`,
-    ),
+    glyph(svg`${KIT_GLYPHS.newWindow.paths.map((d) => svg`<path d=${d} />`)}`),
   check: (cls = "check") => glyph(svg`<path d="M20 6 9 17l-5-5"/>`, cls),
   copy: () =>
     glyph(
