@@ -128,6 +128,28 @@ credential the connector chooses (one bound to a Play channel before an unbound 
 credential's pin never stands in for it. Inviting the account to one app only ([above](#least-privilege-for-the-service-account)) is still
 the best protection if the key is ever stolen.
 
+## Store identity
+
+Commerce needs to know which Google Play app a purchase belongs to (`packageName`). You do not have to type
+it: it comes from the app the product is assigned on Google Play.
+
+- **Where it comes from.** The pin of the product's own active service account, if it has one; otherwise
+  the platform pin a platform admin set under **Platform → Store connections**. A product admin
+  holding `keys` sets the own-key pin, so that person can move the app too.
+- **A typed value wins.** If you type `packageName` in the commerce settings, Commerce uses it. When it
+  differs from the assigned app, Commerce → Overview shows an attention item naming both. **Use the
+  assigned app** drops the typed value and follows the assignment.
+- **Type it once to pin it.** While the field is left out, adding a key with a lower id or
+  re-pinning one moves the app whose purchases unlock the flag, with no change in Commerce. Type
+  the value once to fix it.
+- **Two own keys that name different apps** raise an attention item; the lowest key id is used
+  until you retire one on Keys. An own key with no pin hides the platform pin, and the store stays
+  off (`own_credential_unpinned`).
+- **No app assigned, no store.** A store with no app typed or assigned stays off.
+
+A channel in `.pkey/distribution` that names a different app than the assignment raises the same
+kind of attention item on Ship. More in [Commerce](/docs/features/commerce/#store-identity).
+
 ## What it reads
 
 Every tick opens a **throwaway edit**, lists its tracks, and deletes it:
