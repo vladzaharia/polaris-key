@@ -24,3 +24,7 @@ packages/brand/kit/** binary
 packages/brand/locker-kit/** binary
 packages/brand/fonts/*.woff2 binary
 packages/brand/preview/proofs/*.png binary
+
+# Changelogs are lists of independent entries that parallel branches append to; a union merge keeps
+# both sides instead of stopping every integration on a conflict.
+CHANGELOG.md merge=union
