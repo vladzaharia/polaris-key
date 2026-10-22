@@ -10450,7 +10450,7 @@
         "UX coverage 2026-10-09 (program/ux-coverage.md): screens admin.platform-activity, admin.platform-activity-event had no builder"
       ],
       "brief": "wp/ST-51-platform-activity-page.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-52",

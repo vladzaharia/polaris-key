@@ -489,6 +489,11 @@
       "verdict": "pass",
       "date": "2026-10-22",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/P0-45-cli.md (BUILT terminal review FIX: 4 blocking; all fixed in the one fix round fix/p0-45-review 743cf2f70)"
+    },
+    "ST-51": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/ST-51-activity.md (BUILT review FIX: 4 blocking; fixed in the one fix round fix/st-51-review 75d96b56b)"
     }
   }
 }
