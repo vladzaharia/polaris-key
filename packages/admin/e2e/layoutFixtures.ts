@@ -195,6 +195,8 @@ const ROUTES: Record<string, unknown> = {
         lastUsedAt: NOW - 3600,
         strong: true,
         consoleEligible: false,
+        aaguid: null,
+        addedFrom: null,
       },
       {
         id: "lnk_pk1",
@@ -204,8 +206,12 @@ const ROUTES: Record<string, unknown> = {
         lastUsedAt: null,
         strong: false,
         consoleEligible: true,
+        aaguid: null,
+        addedFrom: "Chrome on macOS",
       },
     ],
+    canAdd: true,
+    reason: null,
   },
   "/manage/api/products": { products: PRODUCTS },
   // Home: what needs attention (`GET /attention`, long names and lines included) and Platform ready.

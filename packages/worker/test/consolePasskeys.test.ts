@@ -226,6 +226,23 @@ describe("SM-3(a): enrolment under a step-up", () => {
     expect(JSON.stringify(body)).not.toContain(a.accountId);
   });
 
+  it("mails a Superadmin who adds one a single notice, the Superadmin copy, and every other Superadmin theirs", async () => {
+    const a = await operator(1);
+    await operator(2);
+    const res = await enrol(a, await SoftAuthenticator.create());
+    expect(res.status).toBe(201);
+    const mine = mail.filter((m) => m.to === "op1@example.com");
+    expect(mine).toHaveLength(1);
+    expect(mine[0]!.text).toContain(
+      "You get this because you are a Superadmin",
+    );
+    expect(mail.filter((m) => m.to === "op2@example.com")).toHaveLength(1);
+    // I-16's own "sign-in method added" mail is not sent on the console path.
+    expect(mail.some((m) => /method (was )?added/i.test(m.subject))).toBe(
+      false,
+    );
+  });
+
   it("without a step-up, or after the window, the route table refuses before anything is written", async () => {
     const none = await operator(1, null);
     const r1 = await call(none, "POST", "/api/me/passkeys/options", {});
@@ -356,6 +373,52 @@ describe("SM-3(a): enrolment under a step-up", () => {
     const full = await call(a, "POST", "/api/me/passkeys/options", {});
     expect(full.status).toBe(403);
     expect(((await full.json()) as { reason: string }).reason).toBe("limit");
+  });
+});
+
+describe("GET /me/methods: what the page needs to name a row and to disable Add", () => {
+  it("returns I-16's aaguid and addedFrom for a passkey, null for other kinds, and never the account id", async () => {
+    const a = await operator(1);
+    const res = await enrol(a, await SoftAuthenticator.create());
+    expect(res.status).toBe(201);
+    const list = await methods(a);
+    const pk = list.find((m) => m.kind === "passkey") as unknown as {
+      aaguid: string | null;
+      addedFrom: string | null;
+    };
+    expect(typeof pk.aaguid === "string" || pk.aaguid === null).toBe(true);
+    expect("addedFrom" in pk).toBe(true);
+    const other = list.find((m) => m.kind !== "passkey") as unknown as {
+      aaguid: string | null;
+      addedFrom: string | null;
+    };
+    expect(other).toMatchObject({ aaguid: null, addedFrom: null });
+  });
+
+  it("answers canAdd with I-16's reason: email_unverified, then limit, then ok", async () => {
+    const a = await operator(1);
+    const get = async () =>
+      (await (await call(a, "GET", "/api/me/methods")).json()) as {
+        canAdd: boolean;
+        reason: string | null;
+      };
+    expect(await get()).toMatchObject({ canAdd: true, reason: null });
+    await db.run(
+      "UPDATE accounts SET primary_email_verified_at = NULL WHERE id = ?",
+      a.accountId,
+    );
+    expect(await get()).toMatchObject({
+      canAdd: false,
+      reason: "email_unverified",
+    });
+    await db.run(
+      "UPDATE accounts SET primary_email_verified_at = ? WHERE id = ?",
+      NOW,
+      a.accountId,
+    );
+    for (let i = 0; i < MAX_PASSKEYS_PER_ACCOUNT; i++)
+      await portalPasskey(a.accountId);
+    expect(await get()).toMatchObject({ canAdd: false, reason: "limit" });
   });
 });
 

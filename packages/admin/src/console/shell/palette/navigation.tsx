@@ -177,9 +177,30 @@ export const productPagesAcrossPaletteSource: PaletteSource = {
 
 export const navigationPaletteSource: PaletteSource = {
   id: "navigation",
-  useItems: (ctx) =>
-    navigationSource(ctx.slug, ctx.productName, ctx.services, ctx.features),
+  useItems: (ctx) => [
+    ...navigationSource(ctx.slug, ctx.productName, ctx.services, ctx.features),
+    ...accountSource(ctx.me.breakGlass === true),
+  ],
 };
+
+/** The signed-in person's own page: not in the sidebar, so ⌘K is how a keyboard reaches it. */
+export function accountSource(emergency: boolean): LinkPaletteItem[] {
+  // An emergency session has no account behind it, so it has no methods to manage.
+  if (emergency) return [];
+  const page = pageOf("sign-in-methods");
+  const Icon = page.icon;
+  return [
+    {
+      id: "nav:sign-in-methods",
+      group: "Pages",
+      label: page.label,
+      detail: "Account",
+      keywords: `account ${page.keywords ?? ""}`,
+      icon: <Icon aria-hidden className="size-4" />,
+      href: globalPage("sign-in-methods"),
+    },
+  ];
+}
 
 export const productsPaletteSource: PaletteSource = {
   id: "products",

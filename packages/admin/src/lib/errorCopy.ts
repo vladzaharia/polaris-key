@@ -362,6 +362,16 @@ function referencesOf(error: ApiError): string[] | undefined {
   return Array.isArray(refs) ? refs.map(String) : undefined;
 }
 
+/** A sentence starts with a capital whatever case the caller's `thing` came in. */
+function sentenceCase(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** "personal tokens" and "sign-in methods" take "are"; "license" and "access" take "is". */
+function isPlural(thing: string): boolean {
+  return /[^su]s$/i.test(thing.trim());
+}
+
 /** Map any thrown value to the console's copy. Total: it never throws. */
 export function errorCopy(
   error: unknown,
@@ -466,7 +476,7 @@ export function errorCopy(
   }
   if (status === 404) {
     return {
-      title: `${thing} not found`,
+      title: `${sentenceCase(thing)} not found`,
       description:
         message ?? "It may have been deleted, or the link may be out of date.",
       action: "none",
@@ -477,7 +487,7 @@ export function errorCopy(
     const references = referencesOf(error);
     if (references || /in use|referenc/i.test(message ?? "")) {
       return {
-        title: `${thing} is still in use`,
+        title: `${sentenceCase(thing)} ${isPlural(thing) ? "are" : "is"} still in use`,
         description: references?.length
           ? `Used by ${references.length} ${references.length === 1 ? "item" : "items"}.`
           : (message ?? "Remove what uses it first."),

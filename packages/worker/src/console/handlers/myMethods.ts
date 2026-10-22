@@ -24,6 +24,7 @@ import { isSteppedUp } from "../../core/console/session.js";
 import { consoleMethodStrongNotice } from "../../core/notify/templates.js";
 import {
   consolePasskeyCeremony,
+  consolePasskeyAddable,
   consoleRpId,
   consoleVerifiedPrimaryEmail,
   listConsoleMethods,
@@ -31,7 +32,7 @@ import {
 } from "../../services/identity/public.js";
 import { requireAccountSession } from "../lib/accountSession.js";
 import { notifySuperadmins, NOTICE_CAP } from "../lib/operatorNotices.js";
-import { sendOperatorNotice } from "./accessShared.js";
+import { sendOperatorNotice, superadminAccountIds } from "./accessShared.js";
 import type { AdminCtx } from "../routes.js";
 
 /** The account, its session row and the console's RP id, or the refusal to return. */
@@ -57,8 +58,19 @@ function context(c: AdminCtx):
 async function announce(c: AdminCtx, accountId: string): Promise<void> {
   const actor = c.session.name || c.session.email;
   const mails = { left: NOTICE_CAP };
+  // A Superadmin gets the Superadmin copy only: it names the same fact, so one mail, not two.
+  let selfIsSuperadmin = false;
   try {
-    const to = await consoleVerifiedPrimaryEmail(c.db, accountId);
+    selfIsSuperadmin = (await superadminAccountIds(c.env, c.db, c.now)).some(
+      (s) => s.id === accountId,
+    );
+  } catch {
+    // Unknown counts as not: the person still gets the notice that names the change.
+  }
+  try {
+    const to = selfIsSuperadmin
+      ? null
+      : await consoleVerifiedPrimaryEmail(c.db, accountId);
     if (to) {
       await sendOperatorNotice(
         c.env,
@@ -113,8 +125,13 @@ async function audited(
 export async function handleMyMethods(c: AdminCtx): Promise<Response> {
   const ctx = context(c);
   if (ctx instanceof Response) return ctx;
+  // `canAdd` and `reason` are I-16's own test (`limit`, `email_unverified`), so the page can
+  // say why Add a passkey is off before anyone meets the refusal.
+  const addable = await consolePasskeyAddable(c.db, ctx.accountId);
   return adminJson({
     methods: await listConsoleMethods(c.db, ctx.accountId, ctx.rpId),
+    canAdd: addable.canAdd,
+    reason: addable.reason,
   });
 }
 

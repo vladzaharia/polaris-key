@@ -25,6 +25,7 @@ export {
   consolePasskeyCeremony,
   consoleRpId,
   listConsoleMethods,
+  consolePasskeyAddable,
   markConsoleMethodStrong,
   type ConsoleMethod,
   type MarkStrongResult,

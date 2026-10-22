@@ -296,6 +296,10 @@ export interface ConsoleMethod {
   strong: boolean;
   /** A passkey added under the console's relying party that "Use for the console" may mark. */
   consoleEligible: boolean;
+  /** A passkey's authenticator model (AAGUID), as I-16 stored it; `null` for other kinds. */
+  aaguid: string | null;
+  /** The browser a passkey was added from, as I-16 stored it; `null` for other kinds. */
+  addedFrom: string | null;
 }
 
 export type AdminApiTokenStatus = "active" | "expired" | "revoked";
@@ -5176,7 +5180,13 @@ const rawApi = {
       { method: "DELETE" },
     ),
   /** The signed-in operator's own sign-in methods (ST-30c.3). */
-  myMethods: () => call<{ methods: ConsoleMethod[] }>("/manage/api/me/methods"),
+  myMethods: () =>
+    call<{
+      methods: ConsoleMethod[];
+      /** I-16's own test: whether a passkey can be added now. */
+      canAdd: boolean;
+      reason: "limit" | "email_unverified" | null;
+    }>("/manage/api/me/methods"),
   /** A passkey registration challenge for the console's relying party; needs a step-up. */
   myPasskeyOptions: () =>
     call<Record<string, unknown>>("/manage/api/me/passkeys/options", {
@@ -5185,10 +5195,13 @@ const rawApi = {
     }),
   /** Finish adding a passkey from the browser's attestation; needs a step-up. */
   myPasskeyAdd: (response: Record<string, unknown>) =>
-    call<Record<string, unknown>>("/manage/api/me/passkeys", {
-      method: "POST",
-      body: JSON.stringify({ response }),
-    }),
+    call<{ ok: true; passkey: { id: string; methodId: string } }>(
+      "/manage/api/me/passkeys",
+      {
+        method: "POST",
+        body: JSON.stringify({ response }),
+      },
+    ),
   /** "Use for the console": mark one of my passkeys strong; needs a step-up. */
   myMethodStrong: (id: string) =>
     call<{ ok: true; id: string; strong: true }>(

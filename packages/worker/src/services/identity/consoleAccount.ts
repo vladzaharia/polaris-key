@@ -65,7 +65,8 @@ import {
   rekeyLegacyPortalIdentities,
 } from "./portal/repo.js";
 import { providerVouchesForEmail } from "./providers/vouch.js";
-import { handleAccountPasskeys } from "./passkeys/routes.js";
+import { handleAccountPasskeys, passkeyAddable } from "./passkeys/routes.js";
+import { parseDetails } from "./passkeys/repo.js";
 import { passkeyRelyingParty } from "./passkeys/webauthn.js";
 import { PASSKEY_ISSUER } from "./accounts/repo.js";
 
@@ -777,6 +778,18 @@ export interface ConsoleMethod {
   strong: boolean;
   /** A passkey enrolled under the console's RP id: "Use for the console" may mark it. */
   consoleEligible: boolean;
+  /** A passkey's authenticator model (AAGUID) as I-16 stored it; null for other kinds. */
+  aaguid: string | null;
+  /** The browser a passkey was added from, as I-16 stored it; null for other kinds. */
+  addedFrom: string | null;
+}
+
+/** Whether a passkey can be added now (I-16's own test), and the reason when not. */
+export async function consolePasskeyAddable(
+  db: Db,
+  accountId: string,
+): Promise<{ canAdd: boolean; reason: "email_unverified" | "limit" | null }> {
+  return passkeyAddable(db, accountId);
 }
 
 /** The account's own sign-in methods. Never another account's; never a secret. */
@@ -796,9 +809,11 @@ export async function listConsoleMethods(
     pk_name: string | null;
     pk_rp_id: string | null;
     pk_last_used_at: number | null;
+    pk_details: string | null;
   }>(
     `SELECT l.id, l.kind, l.email, l.display_name, l.created_at, l.last_used_at, l.strong_at,
-            p.name AS pk_name, p.rp_id AS pk_rp_id, p.last_used_at AS pk_last_used_at
+            p.name AS pk_name, p.rp_id AS pk_rp_id, p.last_used_at AS pk_last_used_at,
+            p.details_json AS pk_details
        FROM account_links l
        LEFT JOIN account_passkeys p
          ON l.kind = 'passkey' AND l.issuer_key = ? AND p.credential_id = l.subject
@@ -808,21 +823,27 @@ export async function listConsoleMethods(
     PASSKEY_ISSUER,
     accountId,
   );
-  return rows.map((r) => ({
-    id: r.id,
-    kind: r.kind,
-    name:
-      r.kind === "passkey"
-        ? r.pk_name && r.pk_name !== ""
-          ? r.pk_name
-          : null
-        : (r.email ?? r.display_name ?? null),
-    createdAt: r.created_at,
-    lastUsedAt: r.kind === "passkey" ? r.pk_last_used_at : r.last_used_at,
-    strong: r.strong_at !== null,
-    consoleEligible:
-      r.kind === "passkey" && r.pk_rp_id === rpId && r.strong_at === null,
-  }));
+  return rows.map((r) => {
+    const details = r.kind === "passkey" ? parseDetails(r.pk_details) : null;
+    return {
+      id: r.id,
+      kind: r.kind,
+      name:
+        r.kind === "passkey"
+          ? r.pk_name && r.pk_name !== ""
+            ? r.pk_name
+            : null
+          : (r.email ?? r.display_name ?? null),
+      createdAt: r.created_at,
+      lastUsedAt: r.kind === "passkey" ? r.pk_last_used_at : r.last_used_at,
+      strong: r.strong_at !== null,
+      consoleEligible:
+        r.kind === "passkey" && r.pk_rp_id === rpId && r.strong_at === null,
+      aaguid: typeof details?.aaguid === "string" ? details.aaguid : null,
+      addedFrom:
+        typeof details?.addedFrom === "string" ? details.addedFrom : null,
+    };
+  });
 }
 
 /**
@@ -849,6 +870,8 @@ export async function consolePasskeyCeremony(
       accountId: caller.accountId,
       authenticatedAt: caller.stepUpAt ?? 0,
       sessionIdHash: await sessionIdHash(env, caller.sid),
+      // The console sends its own notice for a passkey that opens it (never two for one add).
+      quietAdd: true,
     },
     [...rest],
     now,

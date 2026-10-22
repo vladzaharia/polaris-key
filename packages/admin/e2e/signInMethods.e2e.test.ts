@@ -1,7 +1,9 @@
 /**
  * The operator's Sign-in methods (`#/account/sign-in-methods`, ST-30c.4) in real Chromium under the
- * Worker's CSP, every state at 1440 dark and 390 light: no CSP violation, no sideways scroll, and
- * the dialogs inside the window. With PK_SHOTS_DIR set it saves each state.
+ * Worker's CSP, every state at 1440 dark and 390 light: no CSP violation, no sideways scroll, the
+ * dialogs inside the window. A virtual authenticator runs a real `navigator.credentials.create()`
+ * against a registration challenge shaped like I-16's, and the rows are measured at 200 % text.
+ * With PK_SHOTS_DIR set it saves each state.
  */
 
 import { closeContext } from "./teardown.js";
@@ -28,34 +30,97 @@ const ME = {
   customerOrigin: "https://polaris.locker",
   products: [],
 };
-const OIDC = {
-  id: "lnk_oidc",
+interface Method {
+  id: string;
+  kind: string;
+  name: string | null;
+  createdAt: number;
+  lastUsedAt: number | null;
+  strong: boolean;
+  consoleEligible: boolean;
+  aaguid: string | null;
+  addedFrom: string | null;
+}
+const method = (over: Partial<Method>): Method => ({
+  id: "m",
   kind: "oidc",
-  name: "ada@example.com",
+  name: null,
   createdAt: NOW - 90 * 86400,
   lastUsedAt: NOW - 3600,
   strong: true,
   consoleEligible: false,
-};
-const LOCKER_PK = {
+  aaguid: null,
+  addedFrom: null,
+  ...over,
+});
+const OIDC = method({ id: "lnk_oidc" });
+const LOCKER_PK = method({
   id: "lnk_pk",
   kind: "passkey",
-  name: "A deliberately long passkey name for the YubiKey in the Tidewater office",
+  aaguid: "fbfc3007-154e-4ecc-8c0b-6e020557d7bd",
+  addedFrom: "Safari on macOS",
   createdAt: NOW - 30 * 86400,
   lastUsedAt: null,
   strong: false,
   consoleEligible: true,
-};
+});
+const MANY = [
+  OIDC,
+  LOCKER_PK,
+  ...["google", "apple", "steam", "gamecenter", "pgs"].map((kind, i) =>
+    method({
+      id: `lnk_${kind}`,
+      kind,
+      strong: false,
+      createdAt: NOW - i * 86400,
+    }),
+  ),
+  method({
+    id: "lnk_pk2",
+    kind: "passkey",
+    name: "A deliberately long passkey name for the YubiKey in the Tidewater office",
+    strong: false,
+    consoleEligible: true,
+    lastUsedAt: null,
+  }),
+];
 
 type Body = unknown | { status: number; json: unknown };
 interface Scenario {
-  methods?: Body;
+  methods?: Method[];
+  list?: Body;
+  addable?: { canAdd: boolean; reason: string | null };
   options?: Body;
   strong?: Body;
   me?: Record<string, unknown>;
   /** Make `navigator.credentials.create` reject with this DOMException name. */
   browser?: "NotAllowedError";
+  /** Run `create()` for real, against a CDP virtual authenticator. */
+  virtual?: boolean;
+  /** A root font size, as a percentage. */
+  text?: number;
 }
+
+/** I-16's registration challenge: `rp` and `pubKeyCredParams` are what a real `create()` needs. */
+const CHALLENGE = {
+  options: {
+    challenge: "Y2hhbGxlbmdlLWNoYWxsZW5nZQ",
+    rp: { name: "Polaris Key" },
+    user: { id: "dXNlci1hZGE", name: "ada@example.com", displayName: "Ada" },
+    pubKeyCredParams: [
+      { type: "public-key", alg: -8 },
+      { type: "public-key", alg: -7 },
+    ],
+    timeout: 60000,
+    attestation: "none",
+    authenticatorSelection: {
+      residentKey: "required",
+      userVerification: "preferred",
+    },
+    excludeCredentials: [],
+  },
+  expiresIn: 300,
+};
 
 let server: PreviewServer;
 let browser: Browser;
@@ -97,9 +162,10 @@ async function run(
   name: string,
   sc: Scenario,
   drive: (page: Page) => Promise<void>,
+  views: readonly { w: number; h: number; theme: "dark" | "light" }[] = VIEWS,
 ): Promise<void> {
   await Promise.all(
-    VIEWS.map(async (v) => {
+    views.map(async (v) => {
       const ctx = await browser.newContext({
         viewport: { width: v.w, height: v.h },
         colorScheme: v.theme,
@@ -120,39 +186,83 @@ async function run(
         },
         [v.theme, sc.browser ?? null],
       );
-      const routes: Record<string, Body> = {
-        "/manage/api/me": { ...ME, ...sc.me },
-        "/manage/api/products": { products: [] },
-        "/manage/api/attention": { items: [] },
-        "/manage/api/me/methods": sc.methods ?? { methods: [OIDC, LOCKER_PK] },
-        "/manage/api/me/passkeys/options": sc.options ?? {
-          options: {
-            challenge: "YQ",
-            user: { id: "dQ", name: "ada", displayName: "Ada" },
-          },
-        },
-        "/manage/api/me/methods/lnk_pk/strong": sc.strong ?? { ok: true },
-      };
+      const state = { methods: [...(sc.methods ?? [OIDC, LOCKER_PK])] };
       await ctx.route("**/*", async (route) => {
         const url = new URL(route.request().url());
-        if (url.pathname.startsWith("/manage/api/")) {
-          const body = routes[url.pathname];
-          return body === undefined
-            ? route.fulfill({ status: 404, json: { error: "not_found" } })
-            : route.fulfill(reply(body));
+        const p = url.pathname;
+        const post = route.request().method() === "POST";
+        if (p.startsWith("/manage/api/")) {
+          if (p === "/manage/api/me")
+            return route.fulfill({ json: { ...ME, ...sc.me } });
+          if (p === "/manage/api/products")
+            return route.fulfill({ json: { products: [] } });
+          if (p === "/manage/api/attention")
+            return route.fulfill({ json: { items: [] } });
+          if (p === "/manage/api/me/methods")
+            return route.fulfill(
+              reply(
+                sc.list ?? {
+                  methods: state.methods,
+                  ...(sc.addable ?? { canAdd: true, reason: null }),
+                },
+              ),
+            );
+          if (p === "/manage/api/me/passkeys/options")
+            return route.fulfill(reply(sc.options ?? CHALLENGE));
+          if (p === "/manage/api/me/passkeys" && post) {
+            const id = `lnk_new${state.methods.length}`;
+            state.methods = [
+              ...state.methods,
+              method({
+                id,
+                kind: "passkey",
+                addedFrom: "Chrome on macOS",
+                createdAt: NOW,
+                lastUsedAt: null,
+              }),
+            ];
+            return route.fulfill({
+              status: 201,
+              json: { ok: true, passkey: { id: "cred", methodId: id } },
+            });
+          }
+          if (p === "/manage/api/me/methods/lnk_pk/strong")
+            return route.fulfill(reply(sc.strong ?? { ok: true }));
+          return route.fulfill({ status: 404, json: { error: "not_found" } });
         }
         const res = await route.fetch();
         const headers = { ...res.headers() };
-        if (url.pathname.endsWith(".html"))
-          headers["content-security-policy"] = CSP;
+        if (p.endsWith(".html")) headers["content-security-policy"] = CSP;
         return route.fulfill({ response: res, headers });
       });
       const page = await ctx.newPage();
       try {
-        await page.goto(`${base}/manage.html#/account/sign-in-methods`);
+        if (sc.virtual) {
+          const cdp = await ctx.newCDPSession(page);
+          await cdp.send("WebAuthn.enable", { enableUI: false });
+          await cdp.send("WebAuthn.addVirtualAuthenticator", {
+            options: {
+              protocol: "ctap2",
+              transport: "internal",
+              hasResidentKey: true,
+              hasUserVerification: true,
+              isUserVerified: true,
+              automaticPresenceSimulation: true,
+            },
+          });
+        }
+        // A hostname, not an IP: WebAuthn refuses an IP address as the relying-party id.
+        await page.goto(
+          `${base.replace("127.0.0.1", "localhost")}/manage.html#/account/sign-in-methods`,
+        );
         await page
           .getByRole("heading", { level: 1, name: "Sign-in methods" })
           .waitFor();
+        // The house's "text scales with the root font": the root size, as a percentage.
+        if (sc.text)
+          await page.evaluate((pct) => {
+            document.documentElement.style.fontSize = `${pct}%`;
+          }, sc.text);
         await drive(page);
         if (SHOTS)
           await page.screenshot({
@@ -188,13 +298,13 @@ async function run(
 }
 
 const listed = (page: Page) =>
-  page.getByText("Opens the console").first().waitFor();
+  page.getByRole("region", { name: "Opens the console" }).waitFor();
 const openAdd = async (page: Page) => {
   await page.getByRole("button", { name: "Add a passkey" }).first().click();
   await page.getByRole("alertdialog").waitFor();
 };
 const openUse = async (page: Page) => {
-  await page.getByRole("button", { name: /Use .* for the console/ }).click();
+  await page.getByRole("button", { name: /^Use .* for the console/ }).click();
   await page.getByRole("alertdialog").waitFor();
 };
 const confirm = (page: Page, name: string) =>
@@ -202,18 +312,53 @@ const confirm = (page: Page, name: string) =>
 
 describe.concurrent("Sign-in methods", () => {
   it("list", () => run("list", {}, listed));
+  it("list: every kind", () => run("list-many", { methods: MANY }, listed));
   it("empty", () =>
-    run("empty", { methods: { methods: [] } }, (p) =>
+    run("empty", { methods: [] }, (p) =>
       p.getByText("No sign-in methods").waitFor(),
     ));
-  it("error", () =>
-    run("error", { methods: { status: 500, json: { error: "boom" } } }, (p) =>
+  it("loading failed", () =>
+    run("error", { list: { status: 500, json: { error: "boom" } } }, (p) =>
       p.getByRole("button", { name: /Try again/ }).waitFor(),
     ));
   it("add: confirm", () =>
     run("add-confirm", {}, async (p) => {
       await listed(p);
       await openAdd(p);
+    }));
+  it("add: Add a passkey is off, with its reason", () =>
+    run(
+      "add-off-limit",
+      { addable: { canAdd: false, reason: "limit" } },
+      async (p) => {
+        await listed(p);
+        await p
+          .getByText(/Remove one in Polaris Locker/)
+          .first()
+          .waitFor();
+      },
+    ));
+  it("add: a real create() against a virtual authenticator", () =>
+    run("add-virtual", { virtual: true }, async (p) => {
+      await listed(p);
+      await openAdd(p);
+      await confirm(p, "Add passkey");
+      await p.getByRole("alertdialog").waitFor({ state: "detached" });
+      // The new row has focus, with a visible ring.
+      await p
+        .locator("[data-method-id^='lnk_new']")
+        .waitFor({ state: "visible" });
+      await p.waitForFunction(() =>
+        (
+          document.activeElement as HTMLElement | null
+        )?.dataset.methodId?.startsWith("lnk_new"),
+      );
+      const ring = await p.evaluate(() => {
+        const s = getComputedStyle(document.activeElement as HTMLElement);
+        return { style: s.outlineStyle, width: s.outlineWidth };
+      });
+      expect(ring.style).not.toBe("none");
+      expect(parseFloat(ring.width)).toBeGreaterThan(0);
     }));
   it("add: cancelled by the browser", () =>
     run("add-cancelled", { browser: "NotAllowedError" }, async (p) => {
@@ -226,7 +371,10 @@ describe.concurrent("Sign-in methods", () => {
     run(
       "step-up",
       {
-        options: { status: 403, json: { error: { code: "step_up_required" } } },
+        options: {
+          status: 403,
+          json: { error: { code: "step_up_required" } },
+        },
       },
       async (p) => {
         await listed(p);
@@ -253,27 +401,35 @@ describe.concurrent("Sign-in methods", () => {
         await listed(p);
         await openUse(p);
         await confirm(p, "Use for the console");
-        await p.getByText("This passkey can't be used here").waitFor();
-      },
-    ));
-  it("use for the console: already strong", () =>
-    run(
-      "use-already-strong",
-      {
-        strong: {
-          status: 409,
-          json: { error: { code: "forbidden", reason: "already_strong" } },
-        },
-      },
-      async (p) => {
-        await listed(p);
-        await openUse(p);
-        await confirm(p, "Use for the console");
-        await p.getByText("This passkey already signs you in here").waitFor();
+        await p
+          .getByRole("alertdialog")
+          .getByRole("button", { name: "Add a passkey" })
+          .waitFor();
       },
     ));
   it("break-glass", () =>
-    run("break-glass", { me: { breakGlass: true } }, (p) =>
+    run("emergency", { me: { breakGlass: true } }, (p) =>
       p.getByText("Emergency sign-in can't manage sign-in methods").waitFor(),
     ));
+  it("200 % text: the name keeps its width at every window", async () => {
+    for (const w of [1440, 1280, 768, 390]) {
+      await run(
+        `text200-${w}`,
+        { methods: MANY, text: 200 },
+        async (p) => {
+          await listed(p);
+          const narrowest = await p.evaluate(() =>
+            Math.min(
+              ...[
+                ...document.querySelectorAll("[data-method-id] .basis-60"),
+              ].map((e) => e.getBoundingClientRect().width),
+            ),
+          );
+          // A real basis, not a column squeezed to a letter.
+          expect(narrowest).toBeGreaterThanOrEqual(Math.min(w - 64, 150));
+        },
+        [{ w, h: 900, theme: "light" as const }],
+      );
+    }
+  });
 });
