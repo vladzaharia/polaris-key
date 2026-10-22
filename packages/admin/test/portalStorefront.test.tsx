@@ -825,7 +825,7 @@ describe("open products in the Library (PS-05)", () => {
     expect(
       within(get).getByRole("link", { name: /Get it from Tern Studio/ }),
     ).toBeTruthy();
-    expect(screen.getByRole("region", { name: "Need help?" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Help" })).toBeTruthy();
     expect(await axeViolations()).toEqual([]);
 
     const menu = screen.getByRole("button", {

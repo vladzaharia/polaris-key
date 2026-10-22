@@ -494,7 +494,7 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
           devices.locator("[data-count-up] [aria-hidden]").textContent(),
         )
         .toBe("1");
-      expect(await devices.textContent()).toContain("of 3 devices in use");
+      expect(await devices.textContent()).toContain("of 3 in use");
       await devices
         .getByRole("img", { name: "1 of 3 devices in use" })
         .waitFor();

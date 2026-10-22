@@ -23,10 +23,13 @@ export function SeatMeter({
   inUse,
   limit,
   className,
+  neutral = false,
 }: {
   inUse: number;
   limit: number;
   className?: string;
+  /** Used segments draw in neutral ink even when full: a limit, not an error (free-a-device). */
+  neutral?: boolean;
 }): React.ReactElement | null {
   const segmented = limit <= MAX_SEGMENTS;
   const segments = React.useRef<HTMLDivElement>(null);
@@ -40,7 +43,7 @@ export function SeatMeter({
   if (!(limit > 0)) return null;
   const full = inUse >= limit;
   const label = t("a11y.seatMeter", { used: Math.min(inUse, limit), limit });
-  const color = full ? "bg-fg-strong" : "bg-accent";
+  const color = neutral ? "bg-fg-muted" : full ? "bg-fg-strong" : "bg-accent";
   if (segmented) {
     return (
       <div

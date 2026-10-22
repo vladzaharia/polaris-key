@@ -282,7 +282,9 @@ function FreeDevice({
       titleRef={titleRef}
       titleIcon={icon}
       identityMeta={fact ? seatsFact : null}
-      aside={limit > 0 ? <SeatMeter inUse={inUse} limit={limit} /> : null}
+      aside={
+        limit > 0 ? <SeatMeter inUse={inUse} limit={limit} neutral /> : null
+      }
     >
       {children}
     </TaskFrame>
