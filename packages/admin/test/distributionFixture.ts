@@ -90,6 +90,8 @@ export function bootWith(
       if (method !== "GET" && key && !key.includes(" ")) answer = { ok: true };
       if (typeof answer === "function")
         answer = (answer as (c: Call) => unknown)(call);
+      // A function may answer late (a promise), so a test can hold a read open.
+      if (answer instanceof Promise) answer = await answer;
       if (answer instanceof Response) return answer.clone();
       return new Response(JSON.stringify(answer ?? {}), {
         status: 200,

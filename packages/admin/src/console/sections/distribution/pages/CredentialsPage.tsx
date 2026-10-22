@@ -29,7 +29,7 @@ import {
   type PutOutletCredentialBody,
 } from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
-import { scopedKinds, useScope } from "../model/channelScope.js";
+import { useScopedKinds } from "../model/channelScope.js";
 import { ConnectorGrid } from "../components/ConnectorGrid.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { fromSeconds } from "../../../../lib/format.js";
@@ -716,7 +716,7 @@ function SetCredentialDrawer({
   onClose: () => void;
 }): React.ReactElement {
   const outlets = useOutlets(slug);
-  const scope = useScope(slug);
+  const kinds = useScopedKinds(slug, KINDS, existing);
   const [kind, setKind] = React.useState<OutletCredentialKind | null>(
     (rotate?.kind as OutletCredentialKind | undefined) ?? null,
   );
@@ -838,7 +838,7 @@ function SetCredentialDrawer({
                 {...field}
                 ref={undefined}
                 placeholder="Choose a kind"
-                options={scopedKinds(scope, KINDS, existing).map((k) => ({
+                options={kinds.map((k) => ({
                   value: k.value,
                   label: k.label,
                   description: k.description,

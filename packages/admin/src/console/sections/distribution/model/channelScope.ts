@@ -15,6 +15,22 @@ import {
 export const useScope = (slug: string): NavFeatures =>
   navFeaturesOf(useProduct(slug).data);
 
+/** The product read is not in yet, so the scope is unknown: show a skeleton, not everything. */
+export function useScopeLoading(slug: string): boolean {
+  const product = useProduct(slug);
+  return product.isPending || product.isPlaceholderData;
+}
+
+/** The kinds the drawer offers: none until the scope is known, so none appears and then vanishes. */
+export function useScopedKinds<K extends { value: string }>(
+  slug: string,
+  kinds: readonly K[],
+  held: readonly { kind: string }[],
+): K[] {
+  const scope = useScope(slug);
+  return useScopeLoading(slug) ? [] : scopedKinds(scope, kinds, held);
+}
+
 /** The channels a credential kind signs in for. A kind that names none (Sentry) is never hidden. */
 const KIND_CHANNELS: Readonly<Record<string, readonly string[]>> = {
   "asc-api-key": ["app-store", "testflight"],

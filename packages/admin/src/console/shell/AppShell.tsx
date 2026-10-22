@@ -526,6 +526,9 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                       knownProduct={knownProduct}
                       services={services}
                       features={features}
+                      productLoading={
+                        productQuery.isPending || productQuery.isPlaceholderData
+                      }
                       productName={productName ?? routeSlug ?? ""}
                       onOpenPalette={openPalette}
                     />
@@ -679,6 +682,7 @@ function PageContent({
   knownProduct,
   services,
   features,
+  productLoading,
   productName,
   onOpenPalette,
 }: {
@@ -687,6 +691,8 @@ function PageContent({
   knownProduct: boolean;
   services: ServiceState;
   features: NavFeatures;
+  /** The one-product read is not in yet (the list row may stand in): the channel facts are unknown. */
+  productLoading: boolean;
   productName: string;
   onOpenPalette: (query?: string) => void;
 }): React.ReactElement {
@@ -773,11 +779,12 @@ function PageContent({
   // A-20.7: a link to a page of a store outside the product's scope says so, not a bare page.
   const target = PRODUCT_PAGES.find((p) => p.page === route.page);
   const needs = target?.requires;
-  if (
-    needs?.startsWith("channel:") &&
-    features !== null &&
-    features[needs] === false
-  ) {
+  // Until the product's facts are in (the list row stands in as placeholder data, without them), a
+  // channel page shows its loading state: the real page would flash, with the opposite advice,
+  // and fire its reads.
+  if (needs?.startsWith("channel:") && (features === null || productLoading))
+    return <PageLoading route={route} />;
+  if (needs?.startsWith("channel:") && features?.[needs] === false) {
     return (
       <ChannelOutOfScopePage
         section={section}

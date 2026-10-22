@@ -3,7 +3,12 @@ import type {
   ConnectorStatusDto,
   ReleaseStoreResponse,
 } from "../../../../api.js";
-import { scopedConnectors, useScope } from "../model/channelScope.js";
+import { Skeleton } from "../../../../ui/Skeleton.js";
+import {
+  scopedConnectors,
+  useScope,
+  useScopeLoading,
+} from "../model/channelScope.js";
 import { ConnectorCard } from "./StoreControls.js";
 
 /**
@@ -19,7 +24,11 @@ export function ConnectorGrid({
   connectors: ConnectorStatusDto[];
   releases: ReleaseStoreResponse | undefined;
 }): React.ReactElement {
-  const shown = scopedConnectors(useScope(slug), connectors);
+  const scope = useScope(slug);
+  const loading = useScopeLoading(slug);
+  // The scope arrives with the product: until then no card shows, so none appears and vanishes.
+  if (loading) return <Skeleton className="h-32 w-full" />;
+  const shown = scopedConnectors(scope, connectors);
   if (shown.length === 0)
     return (
       <p className="text-sm text-fg-muted">

@@ -368,7 +368,7 @@ export function ChannelOutOfScopePage({
       <EmptyState
         kind="not-found"
         headingLevel={2}
-        title={`The ${channelLabel(channel)} isn't one of this product's channels`}
+        title={`${channelLabel(channel)} isn't one of this product's channels`}
         description="Its platforms and builds don't fit this store."
         primaryAction={
           <Button asChild>

@@ -187,7 +187,7 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
           )
         }
       />
-      {flow ? null : <ScopeLine slug={slug} platforms={platforms} />}
+      {flow ? null : <ScopeLine platforms={platforms} />}
       {q.isPending || product.isPending || product.isPlaceholderData ? (
         flow ? (
           <FlowSkeleton slug={slug} />
@@ -213,7 +213,7 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
         <AddFlow
           slug={slug}
           stores={stores.filter((s) => !s.builtIn)}
-          scoped={features !== null && platforms.length > 0}
+          platforms={features !== null ? platforms : []}
         />
       ) : (
         <div
@@ -235,17 +235,23 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
   );
 }
 
+/** "Windows", "Windows and macOS", "Windows, macOS and Linux". */
+function listNames(names: readonly string[]): string {
+  if (names.length < 2) return names.join("");
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
 // ── The flow ──────────────────────────────────────────────────────────────────────────────────
 
 function AddFlow({
   slug,
   stores,
-  scoped,
+  platforms,
 }: {
   slug: string;
   stores: StorefrontDto[];
-  /** The product's platforms are known, so an empty list means none fits, not "all built in". */
-  scoped: boolean;
+  /** The product's platform names, once known: an empty list of stores then means none fits, not "all built in". */
+  platforms: string[];
 }): React.ReactElement {
   const { route } = useLocation();
   const [step, setStep] = useSearchParam("step", stepCodec, { replace: false });
@@ -400,18 +406,18 @@ function AddFlow({
     return l.length > 0 && l.every((x) => x.state === "done");
   });
 
-  if (stores.length === 0 && scoped)
+  if (stores.length === 0 && platforms.length > 0)
     return (
       <EmptyState
-        kind="first-run"
+        kind="no-results"
         headingLevel={2}
-        title="No other store fits"
-        description="No other store fits this product's platforms."
+        title={`No other store fits ${listNames(platforms)}`}
         primaryAction={
           <Button asChild>
-            <Link to={r.plannedPlatforms(slug)}>Planned platforms</Link>
+            <Link to={r.storefronts(slug)}>Back to storefronts</Link>
           </Button>
         }
+        docs={docsUrl("channels")}
       />
     );
   if (stores.length === 0)

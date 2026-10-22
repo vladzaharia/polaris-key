@@ -214,9 +214,9 @@ describe("Storefronts and the Commerce overview (A-20.7)", () => {
       within(main).queryByRole("region", { name: "Google Play" }),
     ).toBeNull();
     expect(within(main).getByText(/Stores for Windows/)).toBeTruthy();
-    expect(
-      within(main).getByRole("link", { name: "Add a platform" }),
-    ).toBeTruthy();
+    // R1: plain text, no link to an editor the console does not have.
+    expect(within(main).queryByRole("link", { name: /platform/i })).toBeNull();
+    expect(within(main).queryByText(/Add a platform/)).toBeNull();
   });
 
   it("Storefronts lists every store while the product has no channel facts", async () => {
@@ -272,7 +272,7 @@ describe("Direct links, the add flow and the credentials page (A-20.7)", () => {
     bootWith("#/p/djdl/distribution/app-store", PRODUCT(WINDOWS));
     await screen.findByRole("heading", {
       level: 2,
-      name: "The App Store isn't one of this product's channels",
+      name: "App Store isn't one of this product's channels",
     });
     expect(screen.getByRole("link", { name: "Open Storefronts" })).toBeTruthy();
   });
@@ -299,9 +299,12 @@ describe("Direct links, the add flow and the credentials page (A-20.7)", () => {
     );
     expect(screen.queryByRole("table", { name: /Storefronts/ })).toBeNull();
     expect(screen.queryByText(/Set up a storefront/)).toBeNull();
+    // R4: no empty padded band under the Storefronts heading.
+    const section = document.getElementById("commerce-storefronts")!;
+    expect(section.querySelector(".px-5.py-4")).toBeNull();
   });
 
-  it("the add flow with no other store fitting says so and links to Planned platforms", async () => {
+  it("the add flow with no other store fitting says so, quietly, with a way back and the docs", async () => {
     bootWith("#/p/djdl/distribution/storefronts?flow=add", {
       ...PRODUCT([row("polaris-key", true)]),
       "/manage/api/products/djdl/distribution/storefronts": {
@@ -312,10 +315,114 @@ describe("Direct links, the add flow and the credentials page (A-20.7)", () => {
         listing: null,
       },
     });
-    await screen.findByText("No other store fits this product's platforms.");
+    const title = await screen.findByRole("heading", {
+      level: 2,
+      name: "No other store fits Windows",
+    });
+    // R8: the title alone (no repeated description), the quiet style (no first-run sparkle).
+    const empty = title.closest("[data-empty]")!;
+    expect(empty.getAttribute("data-empty")).toBe("no-results");
+    expect(empty.querySelector("p")?.textContent ?? "").not.toMatch(
+      /No other store fits/,
+    );
     expect(
-      screen.getByRole("link", { name: "Planned platforms" }),
-    ).toBeTruthy();
+      within(empty as HTMLElement)
+        .getByRole("link", { name: "Back to storefronts" })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/distribution/storefronts");
+    // R1: no dead Planned platforms link; the docs link instead.
+    expect(
+      screen.queryByRole("link", { name: "Planned platforms" }),
+    ).toBeNull();
+    expect(
+      within(empty as HTMLElement)
+        .getByRole("link", { name: /Docs/ })
+        .getAttribute("href"),
+    ).toBe("/docs/features/ship-builds/channels/");
+  });
+
+  it("the add flow names every platform of the product", async () => {
+    bootWith("#/p/djdl/distribution/storefronts?flow=add", {
+      ...PRODUCT(
+        [row("polaris-key", true)],
+        [
+          ...PLATFORMS,
+          { platform: "macos", arches: [], formats: [], sources: ["builds"] },
+        ],
+      ),
+      "/manage/api/products/djdl/distribution/storefronts": {
+        stores: [{ ...store("polaris-key", "Polaris Locker"), builtIn: true }],
+        listing: null,
+      },
+    });
+    await screen.findByRole("heading", {
+      level: 2,
+      name: "No other store fits Windows and macOS",
+    });
+  });
+
+  it("a direct link to a hidden page shows the loading state, not the real page, while the product loads (R3)", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    // Start on the products list, so the list row stands in as placeholder data (without the
+    // channel facts) when the direct link opens: the case that flashed the real page.
+    const { calls, queryClient } = bootWith("#/products", {
+      "/manage/api/products/djdl": async () => {
+        await gate;
+        return PRODUCT(WINDOWS)["/manage/api/products/djdl"];
+      },
+    });
+    await screen.findByRole("main");
+    await vi.waitFor(() =>
+      expect(queryClient.getQueryData(["products"])).toBeTruthy(),
+    );
+    window.location.hash = "#/p/djdl/distribution/app-store";
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    await new Promise((r) => setTimeout(r, 1500));
+    const main = screen.getByRole("main");
+    expect(
+      within(main).queryByText(/can.t be used for this product yet/),
+    ).toBeNull();
+    expect(within(main).queryByText(/Declare an app-store channel/)).toBeNull();
+    expect(calls.some((c) => c.path.includes("/distribution/app-store"))).toBe(
+      false,
+    );
+    release();
+    await screen.findByRole("heading", {
+      level: 2,
+      name: "App Store isn't one of this product's channels",
+    });
+  });
+
+  it("the Commerce overview shows no title and no cards until the product has loaded (R5)", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    bootWith("#/p/djdl/commerce", {
+      "/manage/api/products/djdl/commerce": {
+        licenseEnabled: true,
+        setup: {
+          "app-store": { configured: false, credential: null, reason: null },
+          play: { configured: false, credential: null, reason: null },
+          steam: { configured: false, credential: null, reason: null },
+        },
+        products: [],
+        purchases: [],
+      },
+      "/manage/api/products/djdl": async () => {
+        await gate;
+        return PRODUCT(WINDOWS)["/manage/api/products/djdl"];
+      },
+    });
+    await screen.findByRole("main");
+    await new Promise((r) => setTimeout(r, 400));
+    expect(
+      screen.queryByRole("heading", { level: 1, name: "Overview" }),
+    ).toBeNull();
+    release();
+    await screen.findByRole("heading", { level: 1, name: "Commerce" });
+    expect(
+      screen.queryByRole("heading", { level: 1, name: "Overview" }),
+    ).toBeNull();
   });
 
   const connector = (kind: string, label: string, outletKinds: string[]) => ({
@@ -347,6 +454,29 @@ describe("Direct links, the add flow and the credentials page (A-20.7)", () => {
     await within(main).findByText("Microsoft Store");
     expect(within(main).queryByText("App Store Connect")).toBeNull();
     expect(within(main).queryByText("Google Play")).toBeNull();
+  });
+
+  it("Channel credentials shows a skeleton, no card, until the product has loaded (R2)", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    bootWith("#/p/djdl/distribution/credentials", {
+      "/manage/api/products/djdl": async () => {
+        await gate;
+        return PRODUCT([
+          row("polaris-key", true),
+          row("microsoft-store", true),
+        ])["/manage/api/products/djdl"];
+      },
+      "/manage/api/products/djdl/distribution/connectors": CONNECTORS,
+    });
+    await screen.findByRole("main");
+    await new Promise((r) => setTimeout(r, 400));
+    const main = screen.getByRole("main");
+    expect(within(main).queryByText("App Store Connect")).toBeNull();
+    expect(within(main).queryByText("Microsoft Store")).toBeNull();
+    release();
+    await within(main).findByText("Microsoft Store");
+    expect(within(main).queryByText("App Store Connect")).toBeNull();
   });
 
   it("Channel credentials shows every card while the scope is unknown", async () => {
