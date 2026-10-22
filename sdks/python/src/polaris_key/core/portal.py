@@ -146,8 +146,9 @@ class PortalStore:
         )
         tmp = f"{path}.tmp-{secrets.token_hex(6)}"
         try:
-            os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(tmp, "wb") as f:
+            os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "wb") as f:
                 f.write(body.encode("utf-8"))
             os.replace(tmp, path)
         except OSError:
