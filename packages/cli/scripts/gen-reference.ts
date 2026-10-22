@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import {
   COMMANDS,
   COMMON_OPTIONS,
+  EXIT_CODES,
   GROUPS,
   STEP,
   type PkeyCommand,
@@ -102,6 +103,16 @@ export function renderPage(): string {
     "| --- | --- |",
     ...COMMON_OPTIONS.map(([t, d]) => `| ${code(t)} | ${cell(d)} |`),
   ];
+  body.push(
+    "",
+    "## Exit codes",
+    "",
+    "| Code | Meaning |",
+    "| --- | --- |",
+    ...EXIT_CODES.map(([c, d]) => `| ${code(c)} | ${cell(d)} |`),
+    "",
+    "Errors go to stderr and `--json` results to stdout, so a pipe or a CI log keeps them apart. No command asks a question: with no terminal, or with `CI=true`, `pkey` never waits for input. A stack trace is never printed; set `PKEY_DEBUG=1` to add one to an unexpected error.",
+  );
   for (const [group, heading] of GROUPS) {
     const cmds = COMMANDS.filter((c) => c.group === group);
     if (!cmds.length) continue;

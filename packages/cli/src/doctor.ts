@@ -14,6 +14,7 @@
  * before it reaches a terminal or a job log.
  */
 
+import { networkMessage } from "./errors.js";
 import type { ValidationResult } from "./manifest.js";
 
 export type DoctorState = "ok" | "warn" | "todo";
@@ -67,7 +68,12 @@ export async function checkRemote(opts: {
   fetchImpl?: typeof fetch;
 }): Promise<RemoteDoctor> {
   const url = `${opts.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
-  const res = await (opts.fetchImpl ?? fetch)(url);
+  let res: Response;
+  try {
+    res = await (opts.fetchImpl ?? fetch)(url);
+  } catch (err) {
+    throw new Error(networkMessage(err, url));
+  }
   if (!res.ok)
     return {
       url,

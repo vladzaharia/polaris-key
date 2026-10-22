@@ -187,7 +187,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
           '"requiredSecrets","warnings","errors"}, each warning and error as ' +
           '{"code","message","at","file"}. When no manifest can be read it is ' +
           '{"v":1,"command":"validate","event":"result","ok":false,"exit":1,' +
-          '"error":"no-manifest","message"}.',
+          '"error":"no-manifest","message"}, or "error":"unreadable-manifest" when a ' +
+          "file is not valid JSON or YAML.",
       },
       {
         text:
@@ -368,7 +369,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
         text:
           "pkey bundle mints one offline activation bundle and writes it to a file (default " +
           "<product>-<first 8 of device id>.pkeybundle; --base-url defaults to " +
-          `${DEFAULT_BASE_URL}). Copy that file to the air-gapped machine and import it there.`,
+          `${DEFAULT_BASE_URL}). Copy that file to the air-gapped device and import it there.`,
       },
       {
         text:
@@ -717,7 +718,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
     usage: [
       "pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a] " +
         "[--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]",
-      "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot --owner slug " +
+      "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot|cargo|go --owner slug " +
         "[--namespace key=value ...] [--package name [--version v]] [--origin url] " +
         "[--token-env NAME] [--json]",
       "pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]",
@@ -1055,9 +1056,26 @@ export const COMMON_OPTIONS: ReadonlyArray<readonly [string, string]> = [
   ["--no-color", "Plain text (also NO_COLOR=1, or a pipe)"],
   ["--ascii", "ASCII symbols only"],
   ["-h, --help", "Help for pkey, or for one command"],
+  ["-V, --version", "Print pkey's version (first word only)"],
 ];
 
-/** Flags that take no value: they swallow the next bare word (the parse note). */
+/** The exit codes every command shares (the reference page and the README render this). */
+export const EXIT_CODES: ReadonlyArray<readonly [string, string]> = [
+  ["0", "Success."],
+  [
+    "1",
+    "Failure: an invalid manifest, a refused request, a server or network error. The message says what to do next.",
+  ],
+  [
+    "2",
+    "Usage: an unknown command or subcommand, or a missing or misused flag. The message shows the command's usage.",
+  ],
+];
+
+/**
+ * Flags that take no value, whatever command they are on: parse never lets one swallow the
+ * next word (`init --force dir`). A command's own `valueless` adds to this list.
+ */
 const VALUELESS = [
   "--dry-run",
   "--force",
@@ -1080,9 +1098,10 @@ export function findCommand(name: string): PkeyCommand | undefined {
 }
 
 /** Every flag the table declares valueless, which parse reads so no flag is listed twice. */
-export const VALUELESS_FLAGS: ReadonlySet<string> = new Set(
-  COMMANDS.flatMap((c) => c.valueless ?? []),
-);
+export const VALUELESS_FLAGS: ReadonlySet<string> = new Set([
+  ...VALUELESS.map((f) => f.slice(2)),
+  ...COMMANDS.flatMap((c) => c.valueless ?? []),
+]);
 
 /**
  * What is wrong with a command table, one sentence each (empty when it is sound). The table is
@@ -1498,31 +1517,6 @@ export function renderCommandHelp(
           rows.map(([n]) => n),
         ),
       ),
-    );
-  }
-  const shown = usage.join(" ");
-  const valueless = VALUELESS.filter((f) =>
-    new RegExp(`${f}(?![\\w-])`).test(shown),
-  );
-  if (valueless.length) {
-    const list =
-      valueless.length === 1
-        ? valueless[0]!
-        : `${valueless.slice(0, -1).join(", ")} and ${valueless.at(-1)}`;
-    out.push(
-      "",
-      ...wrapSpans(
-        [
-          {
-            text:
-              `Note: ${list} ${valueless.length === 1 ? "takes" : "take"} no value. A ` +
-              "valueless flag swallows the next bare word, so pass it last or as " +
-              `${valueless[0]}=true.`,
-            style: ["muted"],
-          },
-        ],
-        term.caps.columns,
-      ).map(line),
     );
   }
   out.push(

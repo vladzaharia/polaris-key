@@ -383,10 +383,21 @@ describe("@polaris-key/cli", () => {
   it("prints trust and SDK snippets", async () => {
     const trust = capture();
     expect(
-      await runPkey(["trust", "--kid", "kid1", "--public-key", "pub1"], trust),
+      await runPkey(
+        [
+          "trust",
+          "--kid",
+          "kid1",
+          "--public-key",
+          "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        ],
+        trust,
+      ),
     ).toBe(0);
     // Every SDK's config module, from the one renderer `pkey sdk` writes with.
-    expect(trust.out()).toContain('"kid1": "pub1"');
+    expect(trust.out()).toContain(
+      '"kid1": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"',
+    );
     for (const file of [
       "polaris.config.ts",
       "polaris_config.py",

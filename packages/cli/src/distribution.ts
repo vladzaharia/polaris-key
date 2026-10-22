@@ -154,7 +154,7 @@ export function reportBody(opts: ReportOptions): Record<string, unknown> {
     throw new Error("--deliverable goes with --version, not --release.");
   if (opts.type === "submission" && (opts.buildId || opts.platformRef))
     throw new Error(
-      "A submission report takes no --build or --platform-ref (a submission is per release).",
+      "--build and --platform-ref go with an availability report; a submission is per release.",
     );
   const since = epochFlag(opts.since);
   const platformRef = jsonObjectFlag("platform-ref", opts.platformRef);

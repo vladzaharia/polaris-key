@@ -36,7 +36,7 @@ export const DEV_KEY_COMMANDS = [
 ] as const;
 
 export const DEV_USAGE = [
-  "pkey dev [--port n] [--auto-approve] [--builtin] [--out file | --no-write]",
+  "Usage: pkey dev [--port n] [--auto-approve] [--builtin] [--out file | --no-write]",
   "pkey dev keys|status",
   `pkey dev ${DEV_KEY_COMMANDS.join("|")} <key>`,
   "pkey dev config <name> <json> [--key <key>]",

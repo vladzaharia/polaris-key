@@ -119,15 +119,21 @@ describe("the command table", () => {
     ]);
   });
 
-  it("reads parse's valueless flags from the table", () => {
-    expect([...VALUELESS_FLAGS].sort()).toEqual([
+  it("reads parse's valueless flags from the table and the shared list", () => {
+    const flags = [...VALUELESS_FLAGS];
+    // The table's own: json, fix, dev, auto-approve, builtin, no-write.
+    for (const f of [
+      "json",
+      "fix",
+      "dev",
       "auto-approve",
       "builtin",
-      "dev",
-      "fix",
-      "json",
       "no-write",
-    ]);
+    ])
+      expect(flags).toContain(f);
+    // The flags every command shares, so none swallows the next word (`init --force dir`).
+    for (const f of ["force", "dry-run", "apply", "check", "write", "strict"])
+      expect(flags).toContain(f);
   });
 
   describe("negative controls: a wrong table fails the check", () => {

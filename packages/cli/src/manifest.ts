@@ -423,8 +423,16 @@ async function findAll(rootDir: string, names: string[]): Promise<string[]> {
 }
 
 function parseFile(file: string, raw: string): unknown {
-  if (file.endsWith(".json")) return JSON.parse(raw) as unknown;
-  return parseYaml(raw) as unknown;
+  const json = file.endsWith(".json");
+  try {
+    return json ? (JSON.parse(raw) as unknown) : (parseYaml(raw) as unknown);
+  } catch (err) {
+    // The parser's first line says what and where; the rest is a code frame.
+    const reason = (err as Error).message.split("\n")[0]!.replace(/:$/, "");
+    throw new Error(
+      `.pkey/${file} is not valid ${json ? "JSON" : "YAML"}: ${reason}. Fix the syntax, then run pkey validate again.`,
+    );
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

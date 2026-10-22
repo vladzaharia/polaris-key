@@ -434,7 +434,7 @@ describe("pkey listing import --godot", () => {
         ],
         refused.io as never,
       ),
-    ).toBe(1);
+    ).toBe(2);
     expect(refused.err()).toContain("--base-url must be https:");
     expect(refused.err()).toContain("http://key.example");
     expect(refused.err()).toContain(
@@ -519,7 +519,7 @@ describe("pkey listing import --godot", () => {
     );
 
     const usage = io(admin.fetchImpl);
-    expect(await runPkey(["listing", "import"], usage.io as never)).toBe(1);
+    expect(await runPkey(["listing", "import"], usage.io as never)).toBe(2);
     expect(usage.err()).toContain("Usage: pkey listing import --godot");
     const fieldsAlone = io(admin.fetchImpl);
     expect(
@@ -536,7 +536,7 @@ describe("pkey listing import --godot", () => {
         ],
         fieldsAlone.io as never,
       ),
-    ).toBe(1);
+    ).toBe(2);
     expect(fieldsAlone.err()).toContain("--fields goes with --apply");
     expect(admin.calls).toEqual([]);
   });

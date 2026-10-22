@@ -720,7 +720,7 @@ describe("pkey auth github-oidc", () => {
       "--base-url",
       "http://key.example.test",
     ]);
-    expect(res.code).toBe(1);
+    expect(res.code).toBe(2);
     expect(res.err).toContain("--base-url must be https");
   });
 });
@@ -850,7 +850,7 @@ describe("pkey release promote|pin|unpin|yank", () => {
       fakeServer(),
       actionsEnv({ PKEY_CI_TOKEN: CI_TOKEN }),
     );
-    expect(res.code).toBe(1);
+    expect(res.code).toBe(2);
     expect(res.err).toContain("needs a release id");
   });
 });

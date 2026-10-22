@@ -5,7 +5,7 @@
  * `POST /manage/api/products/<slug>/bundles`. It signs the licence and/or config documents an
  * air-gapped install would have fetched, wraps them with the trust manifest needed to verify
  * them, and returns one compact `pkey-bundle+jws`. This module performs that call and drops the
- * JWS on disk as a single file an operator can hand-carry to the offline machine.
+ * JWS on disk as a single file an operator can hand-carry to the offline device.
  *
  * ── AUTHENTICATION: AN ADMIN API TOKEN ──────────────────────────────────────────────────────
  *
@@ -61,7 +61,7 @@
  *
  * `--device` and `--grace-days` are checked against the same shapes `bundles.ts` enforces
  * (32 base64url characters; an integer 1…365) BEFORE anything is sent. The server would refuse
- * both with a 400, but a typo in a device id pasted off an offline machine's activation screen
+ * both with a 400, but a typo in a device id pasted off an offline device's activation screen
  * should cost a local error message, not a network round trip that reports `fields:
  * ["deviceId"]`.
  *
@@ -222,7 +222,7 @@ export async function mintBundle(
   if (!DEVICE_ID.test(deviceId)) {
     throw new Error(
       `--device must be 32 base64url characters (A-Z a-z 0-9 - _); got ${deviceId.length}. ` +
-        "Copy it from the offline machine's activation screen exactly, without spaces or line breaks.",
+        "Copy it from the offline device's activation screen exactly, without spaces or line breaks.",
     );
   }
 
@@ -297,20 +297,28 @@ export async function mintBundle(
 }
 
 /** The bearer token, or an error that says exactly what is wrong and how to get a good one. */
-export function adminToken(raw: string | undefined): string {
+export function adminToken(
+  raw: string | undefined,
+  command: "bundle" | "migrate" = "bundle",
+): string {
   const value = raw?.trim();
   if (!value) {
     throw new Error(
       `${ADMIN_TOKEN_ENV} is not set.\n` +
-        "`pkey bundle` mints through the admin API, which authenticates this command with an " +
+        `\`pkey ${command}\` calls the admin API, which authenticates it with an ` +
         "admin API token sent as `Authorization: Bearer pkeya_…`.\n" +
+        (command === "migrate"
+          ? "The token needs the `migrations:report` scope.\n"
+          : "The token needs the `bundles:mint` scope.\n") +
         "Mint one in the console: /manage -> API tokens -> New token. Choose a label that says " +
         "where it will run and an expiry. The value is shown ONCE, at mint — nothing stored can " +
         "reproduce it — so copy it then, and run:\n" +
         `  export ${ADMIN_TOKEN_ENV}='${ADMIN_TOKEN_PREFIX}…'\n` +
-        "It can mint an offline bundle for any product on the platform: do not commit it, and do " +
-        "not export it into a shell other people share. If it leaks, revoke that one token in the " +
-        "console.",
+        (command === "migrate"
+          ? "It reaches the migration job list, reports and dry runs, and nothing else: "
+          : "It can mint an offline bundle for any product on the platform: ") +
+        "do not commit it, and do not export it into a shell other people share. If it leaks, " +
+        "revoke that one token in the console.",
     );
   }
   if (!ADMIN_TOKEN.test(value)) {

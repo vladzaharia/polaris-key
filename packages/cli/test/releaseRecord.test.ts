@@ -361,7 +361,7 @@ describe("pkey release keys generate", () => {
           stderr: io.stderr,
           env: {},
         }),
-      ).toBe(1);
+      ).toBe(2);
       expect(io.err()).toContain("pkey release keys generate");
     }
   });

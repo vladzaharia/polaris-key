@@ -289,7 +289,7 @@ describe("pkey distribution report", () => {
       [...base, "availability", "--outlet", "x"],
     ]) {
       const r = await run(argv, w);
-      expect(r.code, argv.join(" ")).toBe(1);
+      expect(r.code, argv.join(" ")).toBe(2);
     }
     expect(w.seen).toEqual([]);
   });
@@ -412,7 +412,7 @@ describe("pkey distribution rollout|pause|resume|halt|complete", () => {
       ["--outlet", "d", "--release", "v1", "--bp", "100"],
     ]) {
       const r = await run(["distribution", "rollout", ...P, ...argv], w);
-      expect(r.code, argv.join(" ")).toBe(1);
+      expect(r.code, argv.join(" ")).toBe(2);
     }
     expect(w.seen).toEqual([]);
   });

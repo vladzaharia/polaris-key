@@ -135,5 +135,5 @@ PKEY_ADMIN_TOKEN='pkeya_<value>' \
 which origin receives the token. The bundle file is written mode `0600` and a symlink at the
 output path is refused rather than followed.
 
-Valueless flags (`--no-config`, `--force`) swallow the next bare word — pass them last, or as
-`--no-config=true`.
+Valueless flags (`--no-config`, `--force`) never take the next word as a value, so
+`--force dir` keeps `dir` as an argument.

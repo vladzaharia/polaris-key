@@ -723,6 +723,6 @@ describe("pkey mirror", () => {
         stdout: capture().stdout,
         stderr: { write: () => true },
       }),
-    ).toBe(1);
+    ).toBe(2);
   });
 });
