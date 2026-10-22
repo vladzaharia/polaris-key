@@ -478,7 +478,11 @@ exits 1. `login` tells the person's refusal from a failure: a Deny in the browse
 `denied` with the error `sign-in-denied` ("Sign-in declined"), and a sign-in that fails after the
 approval as `failed` with `sign-in-failed` ("Sign-in failed"); each says to sign in again. The
 product page link on `status` is a labelled line ("Next step on the Tidewater page:") over the
-link.
+link. The link comes from the product's discovery (`core.portal`): the customer-origin link, or
+none while the product's portal is off, when the line is "Contact {developer}". Against a Worker
+that sends no `core.portal`, it is the link the kit printed before. The last answer is kept in
+`portal.json` beside the presentation cache, and a screen that draws the link loads discovery
+first when the session has none, also when `expectedServices` is pinned.
 
 Under `--json`, `login` never opens a browser: it prints a `pending` line first, with the code and
 the page for the script to show, then the result line.

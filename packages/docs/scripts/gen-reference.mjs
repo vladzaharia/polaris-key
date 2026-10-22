@@ -522,6 +522,7 @@ function corpusInventory() {
   const syncScenarios = corpusJson("sync-scenarios.json");
   const deviceLabel = corpusJson("device-label.json");
   const presentationMatrix = corpusJson("presentation-matrix.json");
+  const portalMatrix = corpusJson("portal-matrix.json");
   const uiMatrix = corpusJson("ui-matrix.json");
   const backendMatrix = corpusJson("backend-matrix.json");
   const uiFamilies = [
@@ -570,7 +571,7 @@ only corpus. \`corpusVersion ${cases.corpusVersion}\`,
 \`configMatrixVersion ${configMatrix.configMatrixVersion}\`,
 \`updateMatrixVersion ${updateMatrix.updateMatrixVersion}\`, \`outletMatrixVersion ${outletMatrix.outletMatrixVersion}\`,
 \`planMatrixVersion ${planMatrix.planMatrixVersion}\`, \`deviceLabelVersion ${deviceLabel.deviceLabelVersion}\`,
-\`presentationMatrixVersion ${presentationMatrix.presentationMatrixVersion}\`, \`uiMatrixVersion ${uiMatrix.uiMatrixVersion}\`,
+\`presentationMatrixVersion ${presentationMatrix.presentationMatrixVersion}\`, \`portalMatrixVersion ${portalMatrix.portalMatrixVersion}\`, \`uiMatrixVersion ${uiMatrix.uiMatrixVersion}\`,
 \`backendMatrixVersion ${backendMatrix.backendMatrixVersion}\`,
 \`contentCorpusVersion ${content.contentCorpusVersion}\`, \`syncScenariosVersion ${syncScenarios.syncScenariosVersion}\`.
 Wire contract v4 (\`docs/security/WIRE-CONTRACT-V4.md\`) adds the \`feedCases\` and
@@ -627,6 +628,10 @@ runners of SDKs predating packs never read, and the content corpus and \`plan-ma
       `## Product presentation (\`presentation-matrix.json\`): ${presentationMatrix.parseCases?.length ?? "?"} parse, ${presentationMatrix.pickCases?.length ?? "?"} size-choice and ${presentationMatrix.verifyCases?.length ?? "?"} verification cases`,
       "",
       "WIRE-CONTRACT-V4 §5.5 (HA-12): discovery's unsigned `core.presentation`, parsed field by field (a malformed field is dropped, never refusing discovery), the icon size a hero of `px` points at `scale` fetches given the types the platform decodes, and the SHA-256 check before any icon byte is shown. A generator-local reference in `tools/presentation-matrix.ts` recomputes every row and imports nothing it checks; `@polaris-key/client-core/presentation` is checked against the file by its own test, like every SDK. Non-ASCII is written escaped.",
+      "",
+      `## Product page link (\`portal-matrix.json\`): ${portalMatrix.parseCases?.length ?? "?"} parse and ${portalMatrix.linkCases?.length ?? "?"} link cases`,
+      "",
+      "WIRE-CONTRACT-V4 §5.7 (DISC-01): discovery's unsigned `core.portal`, parsed as a whole (an invalid link is no link, never repaired), and the one product page link a terminal kit draws: the response's own link, then the member, then the legacy guess against a Worker that sends none, and no link while the portal is off. A generator-local reference in `tools/portal-matrix.ts` recomputes every row and imports nothing it checks; `@polaris-key/client-core/portal` is checked against the file by its own test, like every SDK.",
       "",
       `## Product backends (\`backend-matrix.json\`): ${backendMatrix.verdict?.length ?? "?"} verdict, ${backendMatrix.problem?.length ?? "?"} problem and ${backendMatrix.client?.length ?? "?"} client rows`,
       "",

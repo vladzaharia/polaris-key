@@ -647,6 +647,7 @@ public enum Feature {
     public static let uiCli = "ui.cli"
     public static let uiCliMount = "ui.cli.mount"
     public static let uiCliContract = "ui.cli.contract"
+    public static let uiCliPortal = "ui.cli.portal"
     public static let uiGate = "ui.gate"
     public static let uiActivate = "ui.activate"
     public static let uiSignin = "ui.signin"
@@ -765,6 +766,7 @@ public let FEATURE_VALUES: [String] = [
     "ui.cli",
     "ui.cli.mount",
     "ui.cli.contract",
+    "ui.cli.portal",
     "ui.gate",
     "ui.activate",
     "ui.signin",
@@ -1672,6 +1674,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.cli.mount": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.cli.contract": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "ui.cli.portal": CapabilityRow(status: "na", service: "core", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.gate": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.activate": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.signin": CapabilityRow(status: "implemented", service: "sdk", na: []),
@@ -1690,4 +1693,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "f9f76d866e982e36c4469691040cc4936a07a0b287394f41842b094227abc9ca"
+public let CAPABILITY_DIGEST = "ab933cf2d77d2c412b66a96625aa97b7bf8eb33f35f982760cd0d801425d72eb"

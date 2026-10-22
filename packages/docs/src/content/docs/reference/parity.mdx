@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 77 | 9 | 28 | 0 |
-| React | `web`, `desktop-bridge` | 82 | 18 | 14 | 0 |
-| Python | `python` | 77 | 9 | 28 | 0 |
-| Swift | `macos`, `ios` | 85 | 8 | 20 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 89 | 8 | 17 | 0 |
-| Kotlin | `android`, `jvm` | 78 | 7 | 28 | 1 |
+| Node | `node` | 78 | 9 | 28 | 0 |
+| React | `web`, `desktop-bridge` | 82 | 19 | 14 | 0 |
+| Python | `python` | 78 | 9 | 28 | 0 |
+| Swift | `macos`, `ios` | 85 | 9 | 20 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 89 | 9 | 17 | 0 |
+| Kotlin | `android`, `jvm` | 78 | 8 | 28 | 1 |
 
 ## Core
 
@@ -164,6 +164,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `ui.cli` | Terminal UI: status, activate, deactivate, sign-in and devices verbs | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
 | `ui.cli.mount` | Terminal drop-ins: the license verbs mounted into the host's CLI framework (namespace, collisions, exit 4) | `ui-matrix.json` `cli` + unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | planned (UK-54); N/A (android: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
 | `ui.cli.contract` | Terminal kit contract: exit codes, refusal marks, piped stdin and the capability table | `ui-matrix.json` `cli` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
+| `ui.cli.portal` | The terminal kits' product page link from discovery (core.portal), left out while the portal is off | `portal-matrix.json` + transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
 | `ui.gate` | Kit states: gate, boot, status screen, grace banner and toasts | `ui-matrix.json` `gate` + snapshot tests | planned (UK-06) | ✓ | planned (UK-12) | ✓ | ✓ | planned (UK-09) | — |
 | `ui.activate` | Kit states: welcome, license key activation and offline activation | `ui-matrix.json` `activate` + snapshot tests | planned (UK-06) | ✓ | planned (UK-12) | ✓ | ✓ | planned (UK-09) | ios, android: outlet |
 | `ui.signin` | Kit states: the one sign-in form, with its license choice and Replace a device | `ui-matrix.json` `signIn` + snapshot tests | planned (UK-06) | ✓ | planned (UK-12) | ✓ | ✓ | planned (UK-09) | — |

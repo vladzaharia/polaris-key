@@ -58,6 +58,8 @@ Locker keeps these query parameters and drops the rest:
 | `for=<label>`      | The device the free-device flow makes room for, up to 64 characters                 |
 | `return=<url>`     | Where to go after: the login card on this origin, or an origin the product declares |
 
+The Worker states the link for each product in its discovery document (`core.portal`): `{"enabled":true,"activate":"https://polaris.locker/activate?product=<slug>"}`, or `{"enabled":false}` while the product's portal is off. The terminal kits print that link on a refusal, and print "Contact {developer}" instead while the portal is off. A discovery cache lag of up to 5 minutes can delay a change.
+
 A `for` or `return` that holds a key is dropped. The older `/activate?key=…` form still works and is dropped the same way, but the key stays in that one request's logs.
 
 ## Emails

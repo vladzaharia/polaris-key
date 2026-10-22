@@ -100,6 +100,12 @@ is checked against the file like any other SDK, by its own test
 (`packages/client-core/test/presentation.test.ts`), because a golden file that shares code with
 the implementation it checks cannot catch a bug in it.
 
+`portal-matrix.json` is built the same way (ASCII only, append-only, `portalMatrixVersion`):
+`tools/portal-matrix.ts` writes the `parseCases` for discovery's `core.portal` and the `linkCases` for
+the product page link, and checks them against its own `refParse` and `refLink`, written from
+WIRE-CONTRACT-V4 §5.7 and importing nothing they check. `client-core/portal` is checked against it
+by `packages/client-core/test/portal.test.ts`.
+
 `ui-matrix.json` is generated from rows authored in
 `tools/ui-matrix.ts`, ASCII only and **append-only** within `uiMatrixVersion` 3: a new row keeps
 the version; a changed row, input member or rule bumps it, and each runner checks the generated

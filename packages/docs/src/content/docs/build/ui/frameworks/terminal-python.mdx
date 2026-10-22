@@ -80,7 +80,10 @@ from the parsed options.
   `license_required` or `not_entitled`). `require_entitlement("export.pdf")` is the same with the
   entitlement first. A license that lacks the entitlement, a missing channel and a version above
   the range lead with the product page (the developer's name where there is none); a check that
-  fails draws ✗ "Couldn't check your license" with no fix, and exits 4 as well.
+  fails draws ✗ "Couldn't check your license" with no fix, and exits 4 as well. The page link
+  comes from the product's discovery (`client.portal()`): the customer-origin link, or none while
+  the product's portal is off. Against a Worker that sends none, it is the link the kit printed
+  before.
 - `secret` and `mint` print their value only with `--reveal`; without it they print nothing on
   stdout and exit 2. In a CI log that would run a line of it as a command (GitHub Actions, Azure
   Pipelines, TeamCity) the value is withheld unless `--allow-workflow-commands`.
@@ -155,7 +158,7 @@ def open_account(client: PolarisKeyClient) -> None:
 | ------------- | ---------------------------------------------------------------------------- |
 | `theme`       | The [theme](/docs/build/ui/theming/); the accent and `preset="native"` apply |
 | `scheme`      | `"dark"` or `"light"`; absent, read from the theme, else the terminal        |
-| `manage_url`  | The product page that Manage opens; absent, the page the client resolves     |
+| `manage_url`  | The product page that Manage opens; absent, the page discovery names         |
 | `support_url` | Where About's Get help opens; absent, the link is left out                   |
 | `privacy_url` | Where About's Privacy opens; absent, the link is left out                    |
 

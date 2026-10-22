@@ -7552,7 +7552,8 @@ it was. It is deploy-time only (`DENIED_PLATFORM_NAMES`).
 **No switch (LK-17).** The host is on exactly when `CUSTOMER_ORIGIN` is usable; there is no
 setting, no `CUSTOMER_HOST` and no console value, so no console session can move customers. The cutover is a deploy
 (a reviewed `wrangler.toml` change). While it is on, `customerOrigin()` (`core/hosts.ts`) is the one
-source of every customer link: refusal `manageUrl` and `signInUrl`, discovery's `accountPortal`, the
+source of every customer link: refusal `manageUrl` and `signInUrl`, discovery's `accountPortal` and
+`core.portal.activate`, the
 device code's `verificationUri`, the choice view's links, the identity-off card redirect, the
 licence-key and account mail links. `test/customerOrigin.test.ts` fails on a customer path literal
 built on any other origin.
@@ -7577,6 +7578,17 @@ configuration.
 - _The health check._ `polaris-host.json` holds `{host: "customer"}` and nothing else: no
   environment, no version. CORS names the console origin only and allows no credentials, so
   another site cannot read it from a browser.
+- _A discovery-named product page (`core.portal.activate`, DISC-01)._ The terminal kits print the
+  link from discovery's unsigned `core.portal` (WIRE-CONTRACT-V4 §5.7), so whoever serves discovery
+  names the host a customer is sent to. That is the party that already supplies `manageUrl`,
+  `signInUrl`, `verificationUri` and `freeDeviceUrl`, which every kit opens behind a button, so the
+  member gives a hostile or compromised Worker nothing new; signing it would add nothing, because
+  that Worker holds the product keys. Every client applies §5.3 rule 4 (https, or http to loopback;
+  no userinfo, backslash, whitespace or control character; at most 2048 characters), treats an
+  invalid link as no link (never repaired, never replaced by a guess), never appends `#key=` to it,
+  prints the whole URL so the host is visible, and never opens it on its own. A persisted member
+  that names another product or base, or does not re-parse to itself, is deleted. There is no host
+  allowlist: one would guard only against a compromised Worker and would break self-hosters.
 - _The console bundle on the customer host._ `/assets/*` is one admin build; the console bundle is
   public code and useless without a console session, which is host-only and never exists there.
 - _Cookies._ Both hosts keep the same `__Host-` names, so each is host-only. The customer realm
