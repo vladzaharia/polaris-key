@@ -378,6 +378,15 @@ const CONSOLE_PAGE_CSS_TAIL = [
   `.chip-email{flex:1 1 10rem;min-width:0;overflow-wrap:break-word}`,
   `.chip-change{display:inline-flex;align-items:center;flex:none;min-height:2.75rem;padding:0 .5rem;font-size:.875rem;font-weight:600;color:var(--strong);text-decoration:underline;text-decoration-color:var(--mb);text-decoration-thickness:2px;text-underline-offset:.2em}`,
   `.chip-change:focus-visible{outline-offset:-2px}`,
+  // The passkey button (ST-30c.6): hidden until the card's script finds WebAuthn; an "or" rule
+  // above it; its refusal sits under it as text. No motion anywhere on the card.
+  `.pk{display:grid;gap:1rem;min-width:0}`,
+  `.pk[hidden]{display:none}`,
+  `.pk .or{display:flex;gap:1rem;align-items:center;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.pk .or::before,.pk .or::after{content:"";flex:1;height:1px;background:var(--rule)}`,
+  `.pk .button[aria-disabled=true]{opacity:.6;cursor:progress}`,
+  `.pk-err{margin:0;color:var(--danger);font-size:.875rem;line-height:1.25rem}`,
+  `.pk-err:empty{display:none}`,
   // The links row has no separator dots here: a dot cannot be told from a link's name, and one
   // stranded at a wrap reads as a glitch. The gap separates them.
   `[data-brand=console] .ac-links a+a::before{content:none}`,

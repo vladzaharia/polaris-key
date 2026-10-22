@@ -38,6 +38,7 @@ import { emailAssetOrigin, renderEmail } from "../src/core/notify/render.js";
 import { sendMagicLink, sendNotice } from "../src/core/notify/send.js";
 import { licenseAddedNotice } from "../src/core/notify/templates.js";
 import type { Env } from "../src/platform/env.js";
+import { SIGNIN_SCRIPT_HASH } from "../src/console/signinScript.js";
 import { artefacts } from "./singleUseMock.js";
 
 /**
@@ -57,6 +58,8 @@ function sha256(text: string): string {
 async function expectBrandedPage(
   res: Response,
   brand: "key" | "locker" | "console" = "locker",
+  /** The console sign-in card alone carries one hash-pinned inline script (ST-30c.6). */
+  opts: { pinnedScript?: string } = {},
 ): Promise<string> {
   const served = secureResponse(res);
   const csp = served.headers.get("content-security-policy")!;
@@ -65,12 +68,18 @@ async function expectBrandedPage(
   expect(csp).toContain("default-src 'none'");
   expect(csp).toContain("font-src 'self'");
   expect(csp).not.toContain("unsafe-inline");
-  expect(csp).not.toMatch(/script-src|connect-src/);
+  if (opts.pinnedScript) {
+    expect(csp).toContain(`script-src ${opts.pinnedScript};`);
+    expect(csp).toContain("connect-src 'self'");
+  } else expect(csp).not.toMatch(/script-src|connect-src/);
   // One stylesheet, allowed by its hash; no style attribute, no script, no handler.
   const styles = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)];
   expect(styles).toHaveLength(1);
   expect(csp).toContain(`'sha256-${sha256(styles[0]![1]!)}'`);
-  expect(html).not.toMatch(/\sstyle=|<script|\son\w+=/i);
+  expect(html).not.toMatch(
+    opts.pinnedScript ? /\sstyle=|\son\w+=/i : /\sstyle=|<script|\son\w+=/i,
+  );
+  if (opts.pinnedScript) expect(html.match(/<script/g)).toHaveLength(1);
   if (brand === "console") {
     // The console card: the compact Key lockup and "Console", never Polaris Locker.
     expect(html).toContain('data-brand="console"');
@@ -112,7 +121,9 @@ async function expectBrandedPage(
     );
   }
   expect(html).not.toContain('class="lockup"');
-  expect(html.replace(styles[0]![0], "")).not.toContain("{");
+  expect(
+    html.replace(styles[0]![0], "").replace(/<script>[\s\S]*?<\/script>/, ""),
+  ).not.toContain("{");
   expect(html.toLowerCase()).not.toContain(BRAND.gold.dark.toLowerCase());
   expect(html.toLowerCase()).not.toContain(BRAND.gold.light.toLowerCase());
   return html;
@@ -451,7 +462,9 @@ describe("the console sign-in card (GET /manage/login)", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("location")).toBeNull();
     expect(res.headers.get("set-cookie")).toBeNull();
-    const html = await expectBrandedPage(res, "console");
+    const html = await expectBrandedPage(res, "console", {
+      pinnedScript: SIGNIN_SCRIPT_HASH,
+    });
     expect(html).toContain("<h1");
     expect(html).toContain("Sign in to the console");
     // SIGN-IN.md §3.13: Continue POSTs, so the address is never in a URL.
@@ -479,7 +492,9 @@ describe("the console sign-in card (GET /manage/login)", () => {
     ["?ended=1", "Your session ended", "Continue"],
     ["?stepUp=1", "Confirm it’s you", "Sign in again"],
   ])("%s", async (query, heading, cta) => {
-    const html = await expectBrandedPage(await get(query), "console");
+    const html = await expectBrandedPage(await get(query), "console", {
+      pinnedScript: SIGNIN_SCRIPT_HASH,
+    });
     expect(html).toContain(heading);
     expect(html).toContain(`>${cta}<`);
   });

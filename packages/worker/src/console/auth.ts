@@ -48,9 +48,11 @@ import { brandedHtmlSecurityHeaders } from "../core/securityHeaders.js";
 import {
   renderConsoleNotice,
   renderConsoleSignin,
+  signinOffersPasskey,
   signinState,
   type NoticeAction,
 } from "./signinPage.js";
+import { SIGNIN_SCRIPT_HASH } from "./signinScript.js";
 import { resolveConsoleCaller } from "./api.js";
 import {
   consoleAssertedEmail,
@@ -446,7 +448,10 @@ async function signinCard(
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
     }),
-    { brand: "console" },
+    {
+      brand: "console",
+      ...(signinOffersPasskey(state) ? { scriptHash: SIGNIN_SCRIPT_HASH } : {}),
+    },
   );
   allowFormAction(headers, origins);
   if (change) headers.append("set-cookie", consoleHintCookie(null));

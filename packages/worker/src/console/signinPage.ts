@@ -7,6 +7,7 @@
  */
 import { escapeHtml } from "../platform/html.js";
 import { callout, icon, renderAuthCard } from "../core/brandHtml.js";
+import { SIGNIN_SCRIPT } from "./signinScript.js";
 
 /**
  * Help and Privacy under the card: public Polaris Key pages that need no session. Operators are
@@ -45,6 +46,10 @@ const COPY: Record<SigninState, { h1: string; lede: string; cta: string }> = {
   },
 };
 
+/** Whether the card carries the passkey button and its script: every state but the emergency one. */
+export const signinOffersPasskey = (state: SigninState): boolean =>
+  state !== "breakGlass";
+
 export function signinState(url: URL): SigninState {
   if (url.searchParams.get("breakGlass") === "1") return "breakGlass";
   if (url.searchParams.get("stepUp") === "1") return "stepUp";
@@ -57,6 +62,21 @@ function hidden(name: string, value: string | null | undefined): string {
   return value
     ? `<input type="hidden" name="${name}" value="${escapeHtml(value)}">`
     : "";
+}
+
+/**
+ * The passkey button, `hidden` until the script finds WebAuthn (so the no-JS card is unchanged).
+ * A step-up has no "or": the button sits beside **Sign in again**. `returnTo` is sanitised.
+ */
+function passkeyBlock(state: SigninState, returnTo: string | null): string {
+  const stepUp = state === "stepUp";
+  return (
+    `<div class="pk" id="pk" hidden${stepUp ? ` data-step-up="1"` : ""}${returnTo ? ` data-return-to="${escapeHtml(returnTo)}"` : ""}>` +
+    (stepUp ? "" : `<div class="or" aria-hidden="true">or</div>`) +
+    `<button class="button secondary" type="button" id="pk-go">${stepUp ? "Use your passkey" : "Sign in with a passkey"}</button>` +
+    `<p class="pk-err" id="pk-err" role="alert"></p>` +
+    `<script>${SIGNIN_SCRIPT}</script></div>`
+  );
 }
 
 /** The card. `returnTo` is already sanitised; `issuerHost` is the IdP's host, shown once. */
@@ -89,6 +109,7 @@ export function renderConsoleSignin(opts: {
       : opts.state === "ended"
         ? { ended: "1" }
         : {};
+  const offerPasskey = signinOffersPasskey(opts.state);
   const chip = !bg && opts.state !== "stepUp" && opts.chip ? opts.chip : null;
   const identifier = bg
     ? ""
@@ -100,7 +121,7 @@ export function renderConsoleSignin(opts: {
           `<span class="chip-email">${escapeHtml(chip).replace(/[@.]/g, "<wbr>$&")}</span>` +
           `<a class="chip-change" href="${escapeHtml(ctxQuery({ change: "1", ...stateFlag }))}">Change</a></div></div>`
         : `<div class="field"><label for="email">Email</label>` +
-          `<input id="email" type="email" name="login_hint"${opts.focusEmail ? " autofocus" : ""} autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254"${opts.hint ? ` value="${escapeHtml(opts.hint)}"` : ""}></div>`;
+          `<input id="email" type="email" name="login_hint"${opts.focusEmail ? " autofocus" : ""} autocomplete="${offerPasskey ? "username webauthn" : "username"}" autocapitalize="none" spellcheck="false" maxlength="254"${opts.hint ? ` value="${escapeHtml(opts.hint)}"` : ""}></div>`;
   const body = [
     c.lede ? `<p>${escapeHtml(c.lede)}</p>` : "",
     // The path is elevated, so it reads that way: the one fact an operator must weigh sits in a
@@ -119,6 +140,7 @@ export function renderConsoleSignin(opts: {
     `<button class="button" type="submit">${escapeHtml(c.cta)}${icon("arrow-right")}</button>`,
     `</form>`,
     `<p class="fine">Next: sign in at ${escapeHtml(opts.issuerHost)}</p>`,
+    offerPasskey ? passkeyBlock(opts.state, opts.returnTo) : "",
   ].join("");
   // The emergency link is quiet: one more item under the card, on the states that start a sign-in.
   const links =
