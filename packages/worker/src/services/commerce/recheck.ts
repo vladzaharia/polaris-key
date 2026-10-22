@@ -18,7 +18,7 @@
 
 import type { ScheduledServiceContext } from "../../core/registry.js";
 import { pk as kvKey } from "../../platform/kv.js";
-import { readCommerceSettings } from "./settings.js";
+import { effectiveCommerceSettings } from "./identity.js";
 import {
   acknowledgeOnce,
   appleContext,
@@ -68,7 +68,8 @@ export async function runCommerceTick(
     errors: [],
   };
   if (!ctx.storeGrants || !ctx.product.services.license?.enabled) return out;
-  const settings = await readCommerceSettings(ctx.db, ctx.product.slug);
+  const settings = (await effectiveCommerceSettings(ctx.db, ctx.product.slug))
+    .settings;
   const record = {
     db: ctx.db,
     product: ctx.product.slug,

@@ -1909,7 +1909,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "commerce",
     label: "Commerce",
     description:
-      "Which store purchases unlock what, and whether sandbox and test purchases count. Operator-only by design: a repo push must never decide which purchases unlock a flag.",
+      "Which stores sell, and whether sandbox and test purchases count. Each store sells for the app typed here or, when left out, the app the product is assigned on that store. Operator-only by design: a repo push must never decide which purchases unlock a flag.",
     keywords: ["purchases", "iap", "steam", "sandbox"],
     docs: "/docs/features/commerce/",
     ownership: "operator",

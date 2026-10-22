@@ -168,7 +168,7 @@ One value per product. A service's settings are product settings whose key start
 
 | Key | Setting | Value | Default | Merge | Ownership | Manifest | Confirm | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `commerce.stores` | [Commerce](/docs/features/commerce/): Which store purchases unlock what, and whether sandbox and test purchases count. Operator-only by design: a repo push must never decide which purchases unlock a flag. | structured (commerce settings (settings.ts)) | unset | cascade | operator | — | L1 on change | reason required |
+| `commerce.stores` | [Commerce](/docs/features/commerce/): Which stores sell, and whether sandbox and test purchases count. Each store sells for the app typed here or, when left out, the app the product is assigned on that store. Operator-only by design: a repo push must never decide which purchases unlock a flag. | structured (commerce settings (settings.ts)) | unset | cascade | operator | — | L1 on change | reason required |
 
 ## Entity
 

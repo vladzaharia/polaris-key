@@ -6,7 +6,7 @@
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { setupOf } from "./admin.js";
-import { readCommerceSettings } from "./settings.js";
+import { effectiveCommerceSettings } from "./identity.js";
 
 /** The stores that can sell now: their settings are saved and the credential resolves. The same
  *  answer as the Commerce overview's per-store status (`setupOf`). */
@@ -17,7 +17,7 @@ export async function readyStorefronts(
 ): Promise<number> {
   const setup = await setupOf(
     { env, db, product: { slug } },
-    await readCommerceSettings(db, slug),
+    await effectiveCommerceSettings(db, slug),
   );
   return Object.values(setup).filter((s) => s.configured).length;
 }

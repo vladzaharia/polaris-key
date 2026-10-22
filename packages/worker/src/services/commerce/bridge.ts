@@ -84,7 +84,8 @@ import {
   verifySteamClaim,
   type SteamContext,
 } from "./steam.js";
-import { readCommerceSettings, type CommerceSettings } from "./settings.js";
+import { type CommerceSettings } from "./settings.js";
+import { effectiveCommerceSettings } from "./identity.js";
 import {
   bindingFor,
   getPurchase,
@@ -250,7 +251,8 @@ export async function handleBinding(ctx: ServiceContext): Promise<Response> {
     who.licenseId,
     ctx.now,
   );
-  const settings = await readCommerceSettings(ctx.db, ctx.product.slug);
+  const settings = (await effectiveCommerceSettings(ctx.db, ctx.product.slug))
+    .settings;
   const enabled = (s: Store) =>
     s === "app-store"
       ? settings.appStore !== null
@@ -393,7 +395,7 @@ export async function handleClaim(
     );
   const store = body.store;
 
-  const settings = await readCommerceSettings(db, product.slug);
+  const settings = (await effectiveCommerceSettings(db, product.slug)).settings;
   const storeCtx =
     store === "app-store"
       ? await appleContext(ctx, settings)
@@ -526,7 +528,7 @@ export async function handleAppStoreHook(
   ctx: ServiceContext,
 ): Promise<Response | null> {
   const { env, db, product, now } = ctx;
-  const settings = await readCommerceSettings(db, product.slug);
+  const settings = (await effectiveCommerceSettings(db, product.slug)).settings;
   const actx = await appleContext(ctx, settings);
   if (!actx) return null;
   // Unverified traffic is limited per client IP only; the product-wide bucket below counts only
@@ -652,7 +654,7 @@ export async function handlePlayHook(
   ctx: ServiceContext,
 ): Promise<Response | null> {
   const { env, db, product, now } = ctx;
-  const settings = await readCommerceSettings(db, product.slug);
+  const settings = (await effectiveCommerceSettings(db, product.slug)).settings;
   const pctx = await playContext(ctx, settings);
   if (!pctx) return null;
   // Unverified traffic is limited per client IP; the product bucket counts verified pushes only.

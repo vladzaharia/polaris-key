@@ -3393,6 +3393,22 @@ the flag and the store, never a token.
   the account's own (`ownersteamid` = `steamid`: a Family Sharing borrower gets nothing) and not a
   timed trial.
 
+**Derived store identity (A-28.2, CM-20 D12).** The identity fields of `commerce.stores`
+(`bundleId`, `packageName`, `appId`) are optional. The app whose purchases unlock a flag is the
+typed value when present, otherwise the app the product is assigned on that store
+(`storeAppBinding`: the pin of its own active credential, else its platform pin; operator-set,
+metadata only). A typed value that differs from the assignment still wins and is reported as a
+mismatch (surfaced in A-28.3). The assignment is the operator's, not proof a key exists:
+`deletePlatformCredential` keeps pins, so a derived identity stays in force while the credential is
+gone, and every verification call keeps its own credential check and fails as before. Only the
+operator can move the assignment (platform admin, audited), so no new party chooses the app; a
+manifest or repo push still cannot. A store with no `commerce.stores` block stays off, and so does
+a block with neither a typed value nor an assignment (`no_app_assigned`). The derived Apple ID
+check on Production notifications applies only when the bundle id in force is the assigned app's.
+Residual: re-assigning a product's pin on the platform, or changing which own credential is
+active, changes which app's purchases unlock the flag with no commerce write; both are operator
+actions with their own audit rows.
+
 **Licence merges (LX-03).** When an identity sign-in retires an anonymous enrolled licence into
 the identity's licence, the retired licence's grants and purchases move to the survivor and its
 binding becomes an alias of the survivor (`dist_purchase_binding_aliases`, read before

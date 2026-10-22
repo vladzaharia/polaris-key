@@ -39,12 +39,11 @@ import {
   type Store,
 } from "../../core/licensing/storeGrants.js";
 import { listEvents } from "../../core/stores/events.js";
+import { validateCommerceSettings, writeCommerceSettings } from "./settings.js";
 import {
-  readCommerceSettings,
-  validateCommerceSettings,
-  writeCommerceSettings,
-  type CommerceSettings,
-} from "./settings.js";
+  effectiveCommerceSettings,
+  type EffectiveCommerce,
+} from "./identity.js";
 import {
   deleteStoreProduct,
   isDeliverableId,
@@ -63,7 +62,7 @@ type AdminCtx = ServiceContext & { session: AdminSession };
 
 export async function setupOf(
   ctx: Pick<AdminCtx, "env" | "db"> & { product: { slug: string } },
-  settings: CommerceSettings,
+  eff: EffectiveCommerce,
 ): Promise<
   Record<
     Store,
@@ -71,7 +70,9 @@ export async function setupOf(
   >
 > {
   const slug = ctx.product.slug;
+  const { settings, stored } = eff;
   const one = async (
+    block: boolean,
     configured: boolean,
     credential: () => Promise<string | null>,
     what: string,
@@ -80,7 +81,8 @@ export async function setupOf(
       return {
         configured: false,
         credential: null,
-        reason: "no settings for this store",
+        // A block whose identity is neither typed nor assigned (A-28.2); no block: off (D13).
+        reason: block ? "no_app_assigned" : "no settings for this store",
       };
     const id = await credential();
     return {
@@ -94,17 +96,20 @@ export async function setupOf(
   };
   return {
     "app-store": await one(
+      stored.appStore !== null,
       settings.appStore !== null,
       () =>
         appStoreCredential(ctx.env, ctx.db, slug, settings.appStore!.bundleId),
       "app-store-server-key",
     ),
     play: await one(
+      stored.play !== null,
       settings.play !== null,
       () => playCredential(ctx.env, ctx.db, slug, settings.play!.packageName),
       "google-service-account",
     ),
     steam: await one(
+      stored.steam !== null,
       settings.steam !== null,
       () => steamCredential(ctx.env, ctx.db, slug, settings.steam!.appId),
       "steam-publisher-key",
@@ -114,7 +119,7 @@ export async function setupOf(
 
 async function view(ctx: AdminCtx) {
   const slug = ctx.product.slug;
-  const settings = await readCommerceSettings(ctx.db, slug);
+  const eff = await effectiveCommerceSettings(ctx.db, slug);
   const events = [
     ...(await listEvents(ctx.db, slug, APP_STORE_EVENTS, 25)),
     ...(await listEvents(ctx.db, slug, PLAY_EVENTS, 25)),
@@ -129,8 +134,9 @@ async function view(ctx: AdminCtx) {
     }));
   return {
     licenseEnabled: ctx.product.services.license?.enabled === true,
-    settings,
-    setup: await setupOf(ctx, settings),
+    // As stored: the identity fields are what the operator typed (null: derived or unset).
+    settings: eff.stored,
+    setup: await setupOf(ctx, eff),
     products: (await listStoreProducts(ctx.db, slug)).map((p) => ({
       store: p.store,
       productId: p.store_product_id,
