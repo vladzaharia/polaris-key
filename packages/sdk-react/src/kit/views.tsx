@@ -194,9 +194,8 @@ function progressFor(c: KitCtx): ReactNode {
     (view.component === "UpdateProgress" &&
       (view.state === "downloading" || view.state === "paused"))
   )
-    return progressBar(c, p?.fraction ?? 0);
-  if (view.copy.includes("a11y.progress"))
-    return progressBar(c, p?.fraction ?? 0);
+    return progressBar(c, p?.fraction);
+  if (view.copy.includes("a11y.progress")) return progressBar(c, p?.fraction);
   // A counted download draws its bar wherever its line shows (a toast, the inline progress).
   if (
     p?.fraction !== undefined &&

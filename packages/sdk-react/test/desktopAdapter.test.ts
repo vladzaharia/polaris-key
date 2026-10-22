@@ -7,6 +7,8 @@ import { resolveBridge } from "../src/desktop/bridge.js";
 import type {
   BridgeActivation,
   BridgeOidcPoll,
+  BridgeState,
+  BridgeUpdateProgress,
   PolarisBridge,
 } from "../src/desktop/bridge.js";
 import {
@@ -567,5 +569,106 @@ describe("DesktopAdapter — the bridge's refusal codes stay typed (B-152)", () 
         adapter.releaseFetch({ record: "r" } as never, { to: "a/b" }),
       ).rejects.toMatchObject({ code });
     }
+  });
+});
+
+// UK-06.3: real install progress, pushed by a v4 host to the window that started the install.
+describe("DesktopAdapter — installUpdate progress and host facts (UK-06.3)", () => {
+  const binary = {
+    action: "binary",
+    method: "direct",
+    release: { version: "2.0.0" },
+    build: "b2",
+    mandatory: false,
+    critical: false,
+    prestage: [],
+    discardStaged: false,
+  } as unknown as Parameters<DesktopAdapter["installUpdate"]>[0];
+
+  function host(opts: { push?: boolean } = {}) {
+    const subs = new Set<(p: BridgeUpdateProgress) => void>();
+    const bridge: PolarisBridge = {
+      ...makeFakeBridge(emptyBridgeState()),
+      version: 4,
+      invoke: async (_s: string, method: string) => {
+        if (method === "install") {
+          for (const cb of subs) cb({ done: 10, total: 100, version: "2.0.0" });
+          for (const cb of subs) cb({ done: 20, total: null });
+          for (const cb of subs) cb({ done: 30, total: 0 });
+          return { kind: "handedOff", version: "2.0.0" };
+        }
+        return undefined;
+      },
+      ...(opts.push === false
+        ? {}
+        : {
+            onUpdateProgress: (cb: (p: BridgeUpdateProgress) => void) => {
+              subs.add(cb);
+              return () => void subs.delete(cb);
+            },
+          }),
+    };
+    return { bridge, subs };
+  }
+
+  it("feeds onProgress the host's bytes, null for an unknown total, and unsubscribes", async () => {
+    const { bridge, subs } = host();
+    const a = desktopAdapter({ bridge, now: () => NOW_SEC });
+    const seen: Array<[number, number | null]> = [];
+    const out = await a.installUpdate(binary, {
+      onProgress: (d, t) => seen.push([d, t]),
+    });
+    expect(out).toMatchObject({ kind: "handedOff" });
+    expect(seen).toEqual([
+      [10, 100],
+      [20, null],
+      [30, null],
+    ]);
+    expect(subs.size).toBe(0);
+    a.dispose();
+  });
+
+  it("unsubscribes when the install fails, and subscribes only when asked", async () => {
+    const { bridge, subs } = host();
+    (bridge as { invoke: unknown }).invoke = async () => {
+      throw new Error("boom");
+    };
+    const a = desktopAdapter({ bridge, now: () => NOW_SEC });
+    await expect(
+      a.installUpdate(binary, { onProgress: () => undefined }),
+    ).rejects.toThrow();
+    expect(subs.size).toBe(0);
+    a.dispose();
+  });
+
+  it("an older host (no push) installs as before and never calls onProgress", async () => {
+    const { bridge } = host({ push: false });
+    const a = desktopAdapter({ bridge, now: () => NOW_SEC });
+    const onProgress = vi.fn();
+    expect(await a.installUpdate(binary, { onProgress })).toMatchObject({
+      kind: "handedOff",
+    });
+    expect(onProgress).not.toHaveBeenCalled();
+    a.dispose();
+  });
+
+  it("a state without host keeps today's snapshot", async () => {
+    const withHost = {
+      ...okBridgeState(),
+      host: { os: "windows", accentColor: "#112233" },
+    } as BridgeState;
+    const a = desktopAdapter({
+      bridge: makeFakeBridge(okBridgeState()),
+      now: () => NOW_SEC,
+    });
+    const b = desktopAdapter({
+      bridge: makeFakeBridge(withHost),
+      now: () => NOW_SEC,
+    });
+    await ready(a);
+    await ready(b);
+    expect(b.snapshot().status).toBe(a.snapshot().status);
+    a.dispose();
+    b.dispose();
   });
 });

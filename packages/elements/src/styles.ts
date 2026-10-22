@@ -1074,6 +1074,19 @@ bdi {
   transition: inline-size var(--pk-duration-base) var(--pk-ease-standard);
 }
 
+/* Unknown size (a desktop install whose driver reports no total): a sweep, never a percentage.
+   Standing still, centred, under reduced motion. */
+.progress[data-indeterminate] > span {
+  position: relative;
+  inline-size: 40%;
+  transition: none;
+  animation: pk-sweep var(--pk-duration-shimmer) var(--pk-ease-standard) infinite;
+}
+.pk-root[data-motion="reduced"] .progress[data-indeterminate] > span {
+  animation: none;
+  inset-inline-start: 30%;
+}
+
 /* §1.5 rule 4: the indeterminate 2 px shimmer along the container's top edge. */
 .shimmer {
   position: absolute;

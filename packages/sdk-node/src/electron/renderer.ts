@@ -15,6 +15,7 @@ import {
   POLARIS_BRIDGE_VERSION,
   channelOf,
   stateChannel,
+  updateProgressChannel,
   type BridgeEnvelope,
   type BridgeMethod,
 } from "./protocol.js";
@@ -67,6 +68,16 @@ export interface PreloadPolarisBridge {
   fetchSchema(): Promise<never>;
   importBundle(jws: string): Promise<never>;
   on(event: "stateChanged", cb: (state: never) => void): () => void;
+  /** v4 (UK-06.3): progress of an `update.install` this window started. */
+  onUpdateProgress(cb: (p: PreloadUpdateProgress) => void): () => void;
+}
+
+/** One pushed update-install progress event, as `@polaris-key/react`'s `BridgeUpdateProgress`. */
+export interface PreloadUpdateProgress {
+  done: number;
+  total?: number | null;
+  version?: string;
+  phase?: "download";
 }
 
 function unwrap(raw: unknown): unknown {
@@ -99,6 +110,28 @@ export function createPreloadBridge(
       }
     }
   };
+  const progressListeners = new Set<(p: PreloadUpdateProgress) => void>();
+  const onProgress = (_event: unknown, raw: unknown): void => {
+    // Only the three counted fields cross to the page, whatever the main process sent.
+    const r = (raw ?? {}) as Record<string, unknown>;
+    if (typeof r.done !== "number" || !Number.isFinite(r.done)) return;
+    const p: PreloadUpdateProgress = {
+      done: r.done,
+      total:
+        typeof r.total === "number" && Number.isFinite(r.total)
+          ? r.total
+          : null,
+      phase: "download",
+    };
+    if (typeof r.version === "string") p.version = r.version;
+    for (const cb of [...progressListeners]) {
+      try {
+        cb(p);
+      } catch {
+        // A renderer listener's failure is its own.
+      }
+    }
+  };
   // `never` in the declared returns lets the object satisfy the renderer's richer types (the
   // values are whatever the main process sent); the casts below are the one place that says so.
   const bridge = {
@@ -117,6 +150,16 @@ export function createPreloadBridge(
       call("invoke", service, method, args),
     fetchSchema: () => call("fetchSchema") as Promise<never>,
     importBundle: (jws: string) => call("importBundle", jws) as Promise<never>,
+    onUpdateProgress(cb: (p: PreloadUpdateProgress) => void): () => void {
+      progressListeners.add(cb);
+      if (progressListeners.size === 1)
+        ipc.on(updateProgressChannel(prefix), onProgress);
+      return () => {
+        if (!progressListeners.delete(cb)) return;
+        if (progressListeners.size === 0)
+          ipc.removeListener(updateProgressChannel(prefix), onProgress);
+      };
+    },
     on(event: "stateChanged", cb: (state: never) => void): () => void {
       if (event !== "stateChanged") return () => undefined;
       listeners.add(cb);

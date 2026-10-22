@@ -6,7 +6,12 @@
 //     row is renamed, confirmed or saved;
 //   * a refusal is shown once, under the field that caused it.
 
-import { viewOf, type UiInput, type View } from "@polaris-key/ui-core";
+import {
+  formatBytes,
+  viewOf,
+  type UiInput,
+  type View,
+} from "@polaris-key/ui-core";
 
 const union = (...lists: readonly (readonly string[])[]): string[] => [
   ...new Set(lists.flat()),
@@ -241,4 +246,22 @@ export function withoutLede(view: View): View {
   return view.component === "Devices" && view.copy.includes("devices.lede")
     ? patched(view, { copy: view.copy.filter((k) => k !== "devices.lede") })
     : view;
+}
+
+/** `update.progress` for UpdateProgress from the bytes a desktop host reports
+ *  (`installUpdate(decision, { onProgress })`). A known total gives the fraction and both sizes;
+ *  an unknown one (`null`) gives neither a fraction nor a total, so the bar is indeterminate
+ *  and no percentage is made up. */
+export function installProgressInput(
+  done: number,
+  total: number | null,
+  locale?: string,
+): NonNullable<NonNullable<UiInput["update"]>["progress"]> {
+  const counted = total !== null && total > 0 && total >= done;
+  return {
+    phase: "download",
+    ...(counted ? { fraction: done / total } : {}),
+    size: formatBytes(done, locale),
+    ...(counted ? { total: formatBytes(total, locale) } : {}),
+  };
 }

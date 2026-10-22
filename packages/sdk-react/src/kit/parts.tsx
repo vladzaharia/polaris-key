@@ -579,9 +579,15 @@ export function seatMeter(
   );
 }
 
-/** ProgressBar: determinate only for counted bytes (DL7). */
-export function progressBar(c: KitCtx, fraction: number): ReactNode {
-  const pct = Math.round(Math.max(0, Math.min(1, fraction)) * 100);
+/** ProgressBar: determinate only for counted bytes (DL7). No `fraction` (the size is unknown)
+ *  draws the indeterminate bar: no value, no percentage, a sweep that stands still under
+ *  reduced motion. */
+export function progressBar(
+  c: KitCtx,
+  fraction: number | undefined,
+): ReactNode {
+  const indeterminate = fraction === undefined;
+  const pct = Math.round(Math.max(0, Math.min(1, fraction ?? 0)) * 100);
   const own = c.view.copy.find(
     (k) => !k.startsWith("a11y.") && !k.startsWith("common."),
   );
@@ -597,10 +603,15 @@ export function progressBar(c: KitCtx, fraction: number): ReactNode {
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={pct}
+      aria-valuenow={indeterminate ? undefined : pct}
       aria-label={label}
       data-key={label ? "a11y.progress" : undefined}
-      style={{ ["--pk-fraction" as string]: String(pct / 100) }}
+      data-indeterminate={indeterminate ? "" : undefined}
+      style={
+        indeterminate
+          ? undefined
+          : { ["--pk-fraction" as string]: String(pct / 100) }
+      }
     >
       <span />
     </div>

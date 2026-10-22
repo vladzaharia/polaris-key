@@ -226,14 +226,18 @@ export interface BridgeHost {
   reducedTransparency?: boolean;
 }
 
-/** v4 (UK-06): one pushed update-install progress event (`onUpdateProgress`). */
+/** v4 (UK-06): one pushed update-install progress event (`onUpdateProgress`). Sent to the window
+ *  that started the install only. `total` is `null` when the driver does not know the size: the
+ *  renderer then draws an indeterminate bar and invents no percentage. */
 export interface BridgeUpdateProgress {
   /** Bytes received so far. */
   done: number;
-  /** Total bytes, when the driver knows it. */
-  total?: number;
+  /** Total bytes, or `null` when the driver does not know it. */
+  total?: number | null;
   /** The release being installed. */
   version?: string;
+  /** What the bytes are for. The host sends `download`. */
+  phase?: "download";
 }
 
 /** v4 (UK-06): a view the host can ask the renderer to open (`onOpen`). */
