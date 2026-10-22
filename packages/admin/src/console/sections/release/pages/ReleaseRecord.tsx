@@ -699,7 +699,7 @@ function StatusTab({
       >
         <h2
           id="release-live"
-          className="border-b border-border px-5 py-3.5 text-base font-semibold text-fg-strong"
+          className="border-b border-border px-5 py-3 text-base font-semibold text-fg-strong"
         >
           Where it's live
         </h2>
@@ -745,7 +745,7 @@ function StatusTab({
             ) : null}
           </dl>
         ) : (
-          <p className="px-5 py-3.5 text-sm text-fg-muted">
+          <p className="px-5 py-3 text-sm text-fg-muted">
             {release.yank
               ? `${release.version} is yanked: only a pin serves it.`
               : `No release track or channel offers ${release.version}.`}

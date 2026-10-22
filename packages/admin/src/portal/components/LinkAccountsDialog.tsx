@@ -585,7 +585,7 @@ function AccountCard({
   const methods = account.methods.map(methodName).join(", ");
   const by = account.proven.by ? methodName(account.proven.by) : null;
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-border bg-surface-sunken px-3 py-2.5">
+    <div className="flex items-start gap-3 rounded-xl border border-border bg-surface-sunken px-3 py-2">
       {account.avatarUrl ? (
         <img
           src={account.avatarUrl}

@@ -202,7 +202,7 @@ function SignInEmailOnly({
       </h3>
       <ul className="divide-y divide-border border-b border-border -mx-4 desk:-mx-5 bigtext:max-sm:mx-0 [&>li]:px-4 desk:[&>li]:px-5 bigtext:max-sm:[&>li]:px-0">
         <li className="flex items-center gap-3 py-3">
-          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
+          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
             <Mail aria-hidden className="size-5" />
           </span>
           <p className="min-w-0 flex-1 break-words font-medium [overflow-wrap:anywhere] text-fg-strong">
@@ -844,7 +844,7 @@ function ConnectRow({
   return (
     <li className="py-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong [&_svg]:size-5">
+        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong [&_svg]:size-5">
           {kind === "apple" ? (
             <AppleGlyph />
           ) : kind === "google" ? (
@@ -873,12 +873,12 @@ function ConnectRow({
         )}
       </div>
       {error ? (
-        <p role="alert" className="mt-2 text-sm text-danger sm:ps-13">
+        <p role="alert" className="mt-2 text-sm text-danger sm:ps-12">
           {error}
         </p>
       ) : null}
       {stepUp ? (
-        <div className="mt-3 space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ms-13">
+        <div className="mt-3 space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ms-12">
           <StepUp
             verb={t("locker.verb.connect", { name })}
             view={view}
@@ -1067,7 +1067,7 @@ function AddEmail({
         <Button
           ref={buttonRef}
           variant="link"
-          className="h-11 font-medium ms-13 bigtext:max-sm:ms-0"
+          className="h-11 font-medium ms-12 bigtext:max-sm:ms-0"
           iconStart={<Plus aria-hidden />}
           aria-expanded={false}
           onClick={() => setStep({ kind: "enter" })}
@@ -1085,7 +1085,7 @@ function AddEmail({
           })
         }
       >
-        <div className="space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ms-13">
+        <div className="space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ms-12">
           <h4 className="font-semibold text-fg-strong">
             {t("locker.methods.addEmail")}
           </h4>
@@ -1315,7 +1315,7 @@ function AddPasskey({
         <Button
           ref={buttonRef}
           variant="link"
-          className="h-11 font-medium ms-13 bigtext:max-sm:ms-0"
+          className="h-11 font-medium ms-12 bigtext:max-sm:ms-0"
           iconStart={<KeyRound aria-hidden />}
           loading={busy}
           aria-disabled={reason ? true : undefined}
@@ -1328,22 +1328,22 @@ function AddPasskey({
         </Button>
       )}
       {reason && prompt ? (
-        <p id={reasonId} className="text-sm text-fg-muted sm:ps-13">
+        <p id={reasonId} className="text-sm text-fg-muted sm:ps-12">
           {reason}
         </p>
       ) : null}
       {ready && !stepUp && !error ? (
-        <p role="status" className="text-sm text-fg sm:ps-13">
+        <p role="status" className="text-sm text-fg sm:ps-12">
           {t("locker.methods.passkeyReady")}
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="mt-1 text-sm text-danger sm:ps-13">
+        <p role="alert" className="mt-1 text-sm text-danger sm:ps-12">
           {error}
         </p>
       ) : null}
       {stepUp ? (
-        <div className="space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ms-13">
+        <div className="space-y-3 rounded-lg border border-border bg-surface-sunken p-4 sm:ms-12">
           <StepUp
             verb={t("locker.verb.addPasskey")}
             view={view}

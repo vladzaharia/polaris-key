@@ -516,7 +516,7 @@ export function Dialog({
                 <DialogPrimitive.Title
                   ref={setTitle}
                   tabIndex={-1}
-                  className="text-lg font-semibold leading-tight text-fg-strong outline-hidden forced-colors:outline-none max-sm:pe-10 @max-[18rem]:pe-[52px] @max-[18rem]:text-base console:text-xl console:leading-7"
+                  className="text-lg font-semibold leading-tight text-fg-strong outline-hidden forced-colors:outline-none max-sm:pe-10 @max-[18rem]:pe-12 @max-[18rem]:text-base console:text-xl console:leading-7"
                 >
                   {title}
                 </DialogPrimitive.Title>

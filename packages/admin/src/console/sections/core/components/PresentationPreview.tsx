@@ -87,7 +87,7 @@ function PreviewBody({
       className="grid gap-4 rounded-md bg-surface-page p-4 text-fg lg:grid-cols-3 xl:grid-cols-1 [&>*]:min-w-0"
     >
       <Frame caption="Sign-in card">
-        <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+        <div className="flex items-center gap-2 border-b border-border px-3 py-2">
           <ProductLogo name={name} presentation={presentation} size={24} />
           <span className="min-w-0 text-sm [overflow-wrap:anywhere]">
             <strong className="font-semibold text-fg-strong">{name}</strong>{" "}
@@ -112,7 +112,7 @@ function PreviewBody({
       </Frame>
       <Frame caption="Library tile">
         <Art src={heroUrl} />
-        <div className="flex items-center gap-2 px-3 py-2.5">
+        <div className="flex items-center gap-2 px-3 py-2">
           <ProductLogo name={name} presentation={presentation} size={24} />
           <strong className="min-w-0 flex-1 truncate text-sm font-semibold text-fg-strong">
             {name}
@@ -124,7 +124,7 @@ function PreviewBody({
       </Frame>
       <Frame caption="Discover card">
         <Art src={heroUrl} />
-        <div className="flex items-start gap-2 px-3 py-2.5">
+        <div className="flex items-start gap-2 px-3 py-2">
           <ProductLogo name={name} presentation={presentation} size={24} />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-fg-strong">

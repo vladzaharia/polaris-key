@@ -87,7 +87,7 @@ export function ActivityTable({
     "px-4 py-3 text-start text-xs font-semibold text-fg-strong max-sm:sr-only";
   // Phone: each row stacks, every cell under its own label.
   const td =
-    "px-4 py-3.5 align-middle text-sm max-sm:flex max-sm:gap-3 max-sm:py-1 max-sm:before:w-16 max-sm:before:shrink-0 max-sm:before:text-xs max-sm:before:text-fg-muted max-sm:before:content-[attr(data-label)]";
+    "px-4 py-3 align-middle text-sm max-sm:flex max-sm:gap-3 max-sm:py-1 max-sm:before:w-16 max-sm:before:shrink-0 max-sm:before:text-xs max-sm:before:text-fg-muted max-sm:before:content-[attr(data-label)]";
   return (
     <div
       role="region"

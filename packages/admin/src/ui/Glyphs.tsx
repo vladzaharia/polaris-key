@@ -111,7 +111,7 @@ export function PlatformGlyphs({
       aria-label={label}
       title={label}
       className={cn(
-        "inline-flex items-center gap-2.5 text-fg-muted",
+        "inline-flex items-center gap-2 text-fg-muted",
         className,
       )}
     >

@@ -356,7 +356,7 @@ function CandidateList({
       <p className="text-fg">{heading}</p>
       <ul className="max-h-56 divide-y divide-border overflow-y-auto rounded-md border border-border bg-surface-sunken text-xs">
         {items.map((c) => (
-          <li key={c.id} className="flex items-start gap-2 px-2.5 py-2">
+          <li key={c.id} className="flex items-start gap-2 px-2 py-2">
             <StatusPill
               tone={skipped ? "neutral" : "warning"}
               icon={false}

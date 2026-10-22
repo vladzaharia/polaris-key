@@ -147,12 +147,12 @@ export function DiscoverTile({
             />
           ) : null}
         </ProductArt>
-        <div className="flex flex-1 flex-col px-3 pb-3 desk:px-3.5 desk:pb-3.5">
+        <div className="flex flex-1 flex-col px-3 pb-3 desk:px-3 desk:pb-3">
           <div
             // No cover: the row starts at the same 4 px under the art as the icon's row does, and
             // keeps its height, so a tile without an icon sits level with its neighbours (B-079).
             className={cn(
-              "flex items-start gap-2.5",
+              "flex items-start gap-2",
               noArt ? "mt-1 min-h-5" : "-mt-4",
             )}
           >
@@ -228,8 +228,8 @@ export function DiscoverTile({
               <span>{error}</span>
             </p>
           ) : reason && ReasonIcon ? (
-            <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-md bg-surface-sunken px-2.5 py-1.5 text-sm text-fg-strong">
-              <span className="flex min-w-0 flex-1 gap-2.5">
+            <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-md bg-surface-sunken px-2 py-1.5 text-sm text-fg-strong">
+              <span className="flex min-w-0 flex-1 gap-2">
                 <ReasonIcon
                   aria-hidden
                   className="mt-0.5 size-4 shrink-0 self-start text-accent-fg"

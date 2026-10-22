@@ -128,7 +128,7 @@ export function TiersPage({
                   <Link
                     to={r.tier(slug, t.id)}
                     aria-current={current ? "page" : undefined}
-                    className="min-w-0 flex-1 px-3 py-2.5 outline-offset-[-2px] hover:bg-hover"
+                    className="min-w-0 flex-1 px-3 py-2 outline-offset-[-2px] hover:bg-hover"
                   >
                     <span
                       className="block truncate text-sm font-medium text-fg-strong"

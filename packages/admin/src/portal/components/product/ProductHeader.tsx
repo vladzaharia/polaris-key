@@ -54,7 +54,7 @@ export function ProductHeader({
     <div className="@container space-y-0">
       <a
         href={href.library()}
-        className="mb-6 mt-3.5 inline-flex min-h-6 items-center gap-2 rounded-sm text-sm text-fg underline decoration-accent-fg decoration-1 underline-offset-4 hover:text-fg-strong pointer-coarse:min-h-11"
+        className="mb-6 mt-3 inline-flex min-h-6 items-center gap-2 rounded-sm text-sm text-fg underline decoration-accent-fg decoration-1 underline-offset-4 hover:text-fg-strong pointer-coarse:min-h-11"
       >
         <ArrowLeft aria-hidden className="size-4" />
         {t("locker.library.title")}
@@ -99,7 +99,7 @@ export function ProductHeader({
             // the tile's icon flies into it with the art and the name (MO-05).
             "pk-vt-hero-icon relative z-10",
             // Half the tile over the cover: pinned to the row's top, not its end, on desktop.
-            hasCover && "-mt-7 desk:self-start short:mt-0 short:self-auto",
+            hasCover && "-mt-6 desk:self-start short:mt-0 short:self-auto",
           )}
         />
         <div className="min-w-0 flex-1 space-y-2 desk:pb-1">

@@ -214,7 +214,7 @@ export function DestinationRow({
         : null;
   const showError = d.enabled && d.lastError && d.lastStatus !== "ok";
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-4 py-2.5 @[16rem]:grid-cols-[auto_minmax(0,1fr)_auto]">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-4 py-2 @[16rem]:grid-cols-[auto_minmax(0,1fr)_auto]">
       <Glyph
         aria-hidden
         className={cn(

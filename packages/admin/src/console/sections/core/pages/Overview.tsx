@@ -850,7 +850,7 @@ function RecentActivity({
               return (
                 <li
                   key={i.id}
-                  className="flex items-center gap-3 py-2.5 text-sm first:pt-0 last:pb-0"
+                  className="flex items-center gap-3 py-2 text-sm first:pt-0 last:pb-0"
                 >
                   <span
                     aria-hidden

@@ -445,7 +445,7 @@ function TokenRow({
               {expiry.soon ? (
                 <span
                   className={cn(
-                    "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium",
+                    "inline-flex h-7 items-center gap-1.5 rounded-full border px-2 text-xs font-medium",
                     active
                       ? "border-warning-border bg-warning-subtle text-warning"
                       : "border-border bg-surface-sunken text-fg-muted",

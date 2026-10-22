@@ -71,10 +71,10 @@ function Rows({
     <table className="w-full text-start" aria-label={label}>
       <thead className="max-sm:sr-only">
         <tr className="border-b border-border bg-surface-sunken text-sm text-fg-strong">
-          <th scope="col" className="px-5 py-2.5 text-start font-medium">
+          <th scope="col" className="px-5 py-2 text-start font-medium">
             Member
           </th>
-          <th scope="col" className="w-48 px-5 py-2.5 text-start font-medium">
+          <th scope="col" className="w-48 px-5 py-2 text-start font-medium">
             Role
           </th>
         </tr>

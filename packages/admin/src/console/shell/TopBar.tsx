@@ -76,7 +76,7 @@ export function TopBar({
           aria-label="Search or jump to"
           aria-keyshortcuts="Meta+K Control+K"
           className={cn(
-            "flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm text-fg-muted sm:px-2.5",
+            "flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm text-fg-muted sm:px-2",
             "hover:bg-hover hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus",
           )}
         >

@@ -296,7 +296,7 @@ function RotationStep({
   return (
     <li
       aria-current={state === "current" ? "step" : undefined}
-      className="flex min-w-0 items-start gap-2.5"
+      className="flex min-w-0 items-start gap-2"
     >
       <span
         aria-hidden

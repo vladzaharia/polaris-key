@@ -315,7 +315,7 @@ export function Sidebar({
               onClick={onToggleRail}
               aria-label={rail ? "Expand the sidebar" : "Collapse the sidebar"}
               className={cn(
-                "flex min-h-10 w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-fg-muted hover:bg-hover hover:text-fg-strong",
+                "flex min-h-10 w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-fg-muted hover:bg-hover hover:text-fg-strong",
                 "focus-visible:outline-2 focus-visible:outline-focus",
                 rail && "justify-center px-0",
               )}
@@ -610,7 +610,7 @@ export function SidebarItem({
       onMouseEnter={onPrefetch}
       onFocus={onPrefetch}
       className={cn(
-        "relative flex min-h-10 items-center gap-2.5 overflow-hidden rounded-md px-3 py-2 text-sm transition-colors",
+        "relative flex min-h-10 items-center gap-2 overflow-hidden rounded-md px-3 py-2 text-sm transition-colors",
         "focus-visible:outline-2 focus-visible:outline-accent-fg",
         rail && "justify-center px-0",
         // The selected row: a subtle accent fill and a 3 px inset marker, never a solid pill.

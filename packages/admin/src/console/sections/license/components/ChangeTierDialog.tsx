@@ -246,7 +246,7 @@ function ChangeTierForm({
             >
               <h3
                 id="tier-diff"
-                className="border-b border-border px-4 py-2.5 text-sm font-semibold text-fg-strong"
+                className="border-b border-border px-4 py-2 text-sm font-semibold text-fg-strong"
               >
                 What changes
               </h3>
@@ -256,7 +256,7 @@ function ChangeTierForm({
                     <div
                       key={c.key}
                       data-service={c.key === "tracks" ? "release" : undefined}
-                      className="grid gap-x-4 gap-y-0.5 px-4 py-2.5 sm:grid-cols-[9rem_1fr]"
+                      className="grid gap-x-4 gap-y-0.5 px-4 py-2 sm:grid-cols-[9rem_1fr]"
                     >
                       <dt className="text-fg-muted">{c.label}</dt>
                       <dd className="min-w-0">

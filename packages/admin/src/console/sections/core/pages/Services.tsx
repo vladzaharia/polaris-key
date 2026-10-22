@@ -199,7 +199,7 @@ function ServicesForm({
       >
         <div
           aria-hidden
-          className="hidden items-center gap-x-4 border-b border-border bg-surface-sunken px-5 py-2.5 text-sm font-medium text-fg-strong sm:grid sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,18rem)_auto]"
+          className="hidden items-center gap-x-4 border-b border-border bg-surface-sunken px-5 py-2 text-sm font-medium text-fg-strong sm:grid sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,18rem)_auto]"
         >
           <span className="w-8" />
           <span>Feature</span>
