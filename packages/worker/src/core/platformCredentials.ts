@@ -59,7 +59,10 @@ import {
   type OutletCredentialMeta,
   type OutletCredentialValues,
 } from "./outletCredentials.js";
-import type { PlatformStore } from "./platformStoreSettings.js";
+import {
+  PLATFORM_STORES,
+  type PlatformStore,
+} from "./platformStoreSettings.js";
 import {
   appendPlatformEvent,
   PLATFORM_SYSTEM_ACTOR,
@@ -67,8 +70,6 @@ import {
 } from "./ops/platformEvents.js";
 
 // ── the registry ─────────────────────────────────────────────────────────────────────────────
-
-import { PLATFORM_STORES } from "./platformStoreSettings.js";
 
 export {
   isPlatformStore,
@@ -707,7 +708,7 @@ export interface StoreAppBinding {
     >
   >;
   /** Fields whose active own credentials carry pins that disagree (the lowest id won). */
-  ambiguous: string[];
+  ambiguous: StoreAppField[];
 }
 
 /**
