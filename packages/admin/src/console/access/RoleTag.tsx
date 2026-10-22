@@ -51,7 +51,8 @@ export function RoleGlyph({
         ? "product"
         : "products"
       : role.role;
-  const Icon = ROLE_GLYPHS[key];
+  // A role this console does not know still draws a glyph.
+  const Icon = ROLE_GLYPHS[key] ?? ROLE_GLYPHS.console_access;
   return <Icon className={cls} aria-hidden="true" />;
 }
 
