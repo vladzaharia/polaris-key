@@ -1,13 +1,13 @@
 ---
-title: "Operations"
-description: "What the Operations page reports about cron runs, consumers, queues, storage and store connectors, and what Healthy, Degraded and Failed mean."
+title: "Platform status"
+description: "What the Status page reports about cron runs, consumers, queues, storage and store connectors, and what Healthy, Degraded and Failed mean."
 type: "reference"
 lastReviewed: "2026-10-16"
 sidebar:
   order: 14
 ---
 
-**Platform → Operations** is the instance's own account of its background work. It reads one
+**Platform → Status** is the instance's own account of its build and its background work. It reads one
 platform-admin endpoint, `/manage/api/platform/operations` (GET), which answers from the Worker's
 bindings and from rows the Worker writes about itself. It needs no Cloudflare API token, and it
 makes no outbound call.
@@ -76,7 +76,7 @@ their size and the age of the oldest. The figures come from the queues' own metr
   in staging expire after a day and are not counted.
 - **Required indexes** compares the database with the indexes this build needs. Each missing
   index is listed by name and the section is Degraded. The cause is almost always a migration that
-  has not been applied: check [Platform → Deployment](/docs/operate/platform/deploy/).
+  has not been applied: check **Platform → Status**, and [Deploy Polaris Key](/docs/operate/platform/deploy/).
 
 ## Store connectors
 

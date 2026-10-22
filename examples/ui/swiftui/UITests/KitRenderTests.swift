@@ -106,7 +106,7 @@ final class KitRenderTests: XCTestCase {
         "StatusScreen.expired", "StatusScreen.version-too-old", "StatusScreen.version-too-new",
         "StatusScreen.channel-not-entitled", "GraceBanner.days-left", "GraceBanner.last-day",
         "UpdatePrompt.available", "UpdatePrompt.mandatory", "UpdatePrompt.store",
-        "UpdatePrompt.ready", "UpdateProgress.downloading", "ReleaseNotes.list",
+        "UpdatePrompt.ready", "Toast.info", "Toast.success", "UpdateProgress.downloading", "ReleaseNotes.list",
         "AccountAndLicense.signed-in", "AccountAndLicense.key-only", "AccountAndLicense.offline",
         "Settings.list", "Settings.locked", "Devices.list", "Devices.empty", "Devices.error",
         "Devices.browser-mode", "Paywall.offers", "Paywall.not-available",

@@ -61,7 +61,7 @@ Entries are ordered by how often they happen. Every code is in the [error codes]
 
 **Cause** The algorithm is unsupported, the signing secret is missing, unopenable or doesn't have usage `edge-mint`, the claims template is corrupt, or `requires: licensed` is set on a product without License.
 
-**Fix** Set the secret's usage to `edge-mint` under **Keys & secrets**, check the key matches the `alg`, and use `requires: registered` on a config-only product.
+**Fix** Set the secret's usage to `edge-mint` under **Keys and secrets**, check the key matches the `alg`, and use `requires: registered` on a config-only product.
 
 **Check it works** The token route returns `200`.
 

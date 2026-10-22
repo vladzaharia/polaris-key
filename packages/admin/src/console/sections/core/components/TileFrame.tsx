@@ -1,7 +1,6 @@
 import * as React from "react";
 import { ArrowRight } from "lucide-react";
 import type { ServiceSlug } from "../../../../services.generated.js";
-import { cn } from "../../../../lib/cn.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { FEATURES } from "../../../../services.generated.js";
 import { ServiceGlyph } from "../../../../ui/ServiceBadge.js";
@@ -88,8 +87,8 @@ export function FeatureCard({
       data-feature=""
       className="relative flex min-w-0 flex-col justify-center rounded-xl border border-border bg-surface-raised px-4 py-3 hover:bg-hover has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-accent"
     >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5">
-        <span className="relative">
+      <div className="flex items-start gap-3">
+        <span className="relative mt-0.5 shrink-0">
           <span className="inline-flex size-8 items-center justify-center rounded-md bg-accent-subtle">
             <ServiceGlyph id={service} />
           </span>
@@ -101,42 +100,44 @@ export function FeatureCard({
             />
           ) : null}
         </span>
-        <h3 className="min-w-0 text-base font-medium text-fg-strong">
-          <Link
-            to={href}
-            aria-label={
-              attention > 0
-                ? `${title}: ${attention} needs attention`
-                : undefined
-            }
-            className="outline-none after:absolute after:inset-0 after:rounded-[inherit]"
-          >
-            {title}
-          </Link>
-        </h3>
-        {loading ? (
-          <Skeleton className="h-6 w-12" />
-        ) : number !== undefined ? (
-          <span className="text-2xl/8 font-semibold tabular-nums text-fg-strong">
-            {number}
-            {unit ? (
-              <small className="ms-1 text-sm font-normal text-fg-muted">
-                {unit}
-              </small>
+        <div className="min-w-0 flex-1">
+          {/* The key number wraps under the name when the card is narrow (a phone at 200% text). */}
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+            <h3 className="min-w-[8ch] max-w-full break-words text-base font-medium text-fg-strong">
+              <Link
+                to={href}
+                aria-label={
+                  attention > 0
+                    ? `${title}: ${attention} needs attention`
+                    : undefined
+                }
+                className="outline-none after:absolute after:inset-0 after:rounded-[inherit]"
+              >
+                {title}
+              </Link>
+            </h3>
+            {loading ? (
+              <Skeleton className="h-6 w-12" />
+            ) : number !== undefined ? (
+              <span className="ms-auto text-2xl/8 font-semibold tabular-nums text-fg-strong">
+                {number}
+                {unit ? (
+                  <small className="ms-1 text-sm font-normal text-fg-muted">
+                    {unit}
+                  </small>
+                ) : null}
+              </span>
             ) : null}
-          </span>
-        ) : (
-          <span />
-        )}
-        <span />
-        <div className={cn("col-span-2 min-w-0 text-sm text-fg-muted")}>
-          {error ? (
-            <ErrorState compact error={error} onRetry={onRetry} />
-          ) : loading ? (
-            <Skeleton className="h-4 w-32" />
-          ) : (
-            foot
-          )}
+          </div>
+          <div className="min-w-0 text-sm text-fg-muted">
+            {error ? (
+              <ErrorState compact error={error} onRetry={onRetry} />
+            ) : loading ? (
+              <Skeleton className="h-4 w-32" />
+            ) : (
+              foot
+            )}
+          </div>
         </div>
       </div>
     </article>

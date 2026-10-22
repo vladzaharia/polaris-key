@@ -1,0 +1,38 @@
+---
+title: "Gate a Django route with the license"
+description: "Refuse a request to your Django view unless the device's license allows it. Verified offline, with no call to Polaris Key."
+type: "how-to"
+lastReviewed: "2026-10-22"
+lanes: ["server"]
+sidebar:
+  order: 8
+---
+
+import Snippet from "../../../../components/docs/Snippet.astro";
+
+The Python drop-in reads the device's license document from the `X-PKey-License` header, verifies it offline against your pinned keys and refuses the request when the license doesn't allow it. A route with no gate stays open. The contract is on [Verify licenses on your server](/docs/build/servers/).
+
+Requires the License feature and the config file `pkey sdk --lang python --write` writes. The app sends `X-PKey-License` and `X-PKey-Device` with each call to your server.
+
+## Steps
+
+1. **Server** Install the SDK with the extra: `pip install "polaris-key[django]"`, and generate the config file with `pkey sdk --lang python --write`.
+2. **Server** In `settings.py`, add `polaris_key.server.django.PolarisKeyMiddleware` to `MIDDLEWARE` and point `POLARIS_KEY` at the config module.
+3. **Server** Decorate each view with a gate: `require_license`, `require_entitlement`, `require_tier` or `require_sign_in`.
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/python/server/licensing.django.py"
+  title="views.py"
+/>
+
+The gates wrap a sync or async function view. On a class-based view, wrap the method with Django's `method_decorator`. `POLARIS_KEY` also takes `MAX_AGE_SECONDS`, `ERRORS`, `ON_REFUSAL`, `PREFLIGHT`, `TRUST_REFRESH` and `PRODUCTS`; an unknown key raises `PolarisKeySetupError`. The middleware is optional for function views and sets `Cache-Control: private` on gated responses.
+
+## Require a signed-in account
+
+`require_sign_in()` refuses with `sign_in_required` (403) while no account is signed in on the device. Decorate the view the same way as `require_entitlement`.
+
+## More
+
+- Refusal shapes, several requirements, your own status codes and tests without a network: [Python server reference](/docs/features/licensing/server-python/).
+- Freshness, revocation and replay: [Verify licenses on your server](/docs/build/servers/).
+- The codes a refused request carries: [Error codes](/docs/reference/error-codes/).

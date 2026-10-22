@@ -499,7 +499,7 @@ html[data-shell="console"] [data-pk-backdrop] {
     text-wrap: balance;
   }
 
-  /* Emphasis is semibold; the brand has no 700 (the lint's `font-weight-700`). */
+  /* Emphasis is semibold; the brand has no 700 (the lint's `weights`). */
   strong,
   b {
     font-weight: 600;

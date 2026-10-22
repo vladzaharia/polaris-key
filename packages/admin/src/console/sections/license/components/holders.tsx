@@ -212,7 +212,7 @@ export function HolderLine({
  */
 export function useHolderCounts(slug: string) {
   return useQuery({
-    queryKey: [...qk.licensesPages(slug), "holderCounts"],
+    queryKey: qk.licenseHolderCounts(slug),
     queryFn: async (): Promise<Partial<Record<HolderState, number>>> => {
       const pages = await Promise.all(
         HOLDER_STATES.map((holder) =>

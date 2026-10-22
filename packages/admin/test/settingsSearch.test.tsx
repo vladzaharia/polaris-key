@@ -91,7 +91,7 @@ describe("palette from Home: across the operator's products", () => {
       ]),
     );
     const row = rows.find((r) => r.id === "setting:djdl:core.keys")!;
-    expect(row.detail).toBe("DJDL · Keys & secrets");
+    expect(row.detail).toBe("DJDL · Keys and secrets");
     expect(row.detail).not.toMatch(/\bCore\b|License\b|Identity/);
   });
 

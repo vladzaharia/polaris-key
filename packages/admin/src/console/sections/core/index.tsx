@@ -16,7 +16,7 @@ import "./pages/accountOverridesSlot.js";
 import type { SectionPageProps } from "../../pages/types.js";
 
 /** Core: Overview, Services, Devices (with the routed device drawer), Users (I-12), Presentation (HA-06),
- *  Keys & secrets, Activity and Settings (ADMIN.md §2.3, §6.2, §6.7–§6.9). */
+ *  Keys and secrets, Activity and Settings (ADMIN.md §2.3, §6.2, §6.7–§6.9). */
 export default function CorePages({
   route,
 }: SectionPageProps): React.ReactElement | null {

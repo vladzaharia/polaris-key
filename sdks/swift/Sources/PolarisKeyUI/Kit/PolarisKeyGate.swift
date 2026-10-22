@@ -14,6 +14,7 @@ public struct PolarisKeyGate<Content: View>: View {
     @State private var model: PolarisKeyGateModel
     private let providers: [KitProvider]
     private let content: () -> Content
+    private let handlers: KitGateHandlers
 
     @Environment(\.polarisKeyTheme) private var theme
     @Environment(\.scenePhase) private var scenePhase
@@ -22,14 +23,16 @@ public struct PolarisKeyGate<Content: View>: View {
 
     @State private var graceDismissed = false
     @State private var manageOpened = false
-    @State private var toastShown = false
 
     /// Gate `content` on `client`'s license.
     public init(
         _ client: PolarisKeyClient, options: KitGateOptions = KitGateOptions(),
-        providers: [KitProvider] = [.apple], @ViewBuilder content: @escaping () -> Content
+        providers: [KitProvider] = [.apple], handlers: KitGateHandlers = KitGateHandlers(),
+        @ViewBuilder content: @escaping () -> Content
     ) {
-        _model = State(initialValue: PolarisKeyGateModel(client: client, options: options))
+        _model = State(
+            initialValue: PolarisKeyGateModel(client: client, options: options, handlers: handlers))
+        self.handlers = handlers
         self.providers = providers
         self.content = content
     }
@@ -37,9 +40,11 @@ public struct PolarisKeyGate<Content: View>: View {
     /// Gate `content` with a model the host holds (previews, its own composition).
     public init(
         model: PolarisKeyGateModel, providers: [KitProvider] = [.apple],
+        handlers: KitGateHandlers = KitGateHandlers(),
         @ViewBuilder content: @escaping () -> Content
     ) {
         _model = State(initialValue: model)
+        self.handlers = handlers
         self.providers = providers
         self.content = content
     }
@@ -51,9 +56,21 @@ public struct PolarisKeyGate<Content: View>: View {
                 overlays
             }
         }
+        .sheet(isPresented: mandatoryUpdate) {
+            // No dismiss (§4.3): no drag, no Escape, no close button; only the verb.
+            PolarisKeyScope(model: model) {
+                UpdatePromptView(
+                    screen: model.updatePrompt, details: model.inputs.update,
+                    onUpdate: performUpdate, onLater: {})
+            }
+            .interactiveDismissDisabled()
+        }
         .task { model.start() }
         .onChange(of: theme) { _, theme in model.options.integrator = theme.integrator }
-        .onAppear { model.options.integrator = theme.integrator }
+        .onAppear {
+            model.options.integrator = theme.integrator
+            if !handlers.isEmpty { model.handlers = handlers }
+        }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
             if manageOpened, model.activate.state == .deviceLimit {
@@ -133,7 +150,15 @@ public struct PolarisKeyGate<Content: View>: View {
         WelcomeView(
             screen: model.welcome, onSignIn: { model.beginSignIn() },
             onUseKey: { model.useLicenseKey() },
-            onExtra: { key in if key == "welcome.offline" { model.useOffline() } },
+            onExtra: { key in
+                switch key {
+                case "welcome.offline": model.useOffline()
+                case "welcome.trial": model.handlers.trial?()
+                case "welcome.restore": model.handlers.restore?()
+                case "welcome.continueFree": model.handlers.continueFree?()
+                default: break
+                }
+            },
             inline: {
                 if model.welcome.shows("welcome.ledeKeyOnly") {
                     ActivateBody(
@@ -149,12 +174,71 @@ public struct PolarisKeyGate<Content: View>: View {
             })
     }
 
+    /// The licensed app is showing: the only time the banner and the update sheet draw.
+    private var appShowing: Bool {
+        model.gate.state == .licensed || model.gate.state == .grace
+    }
+
+    /// A mandatory update owns the screen as a sheet with no dismiss (§4.3).
+    private var mandatoryUpdate: Binding<Bool> {
+        Binding(
+            get: {
+                guard appShowing else { return false }
+                let state = model.updatePrompt.state
+                return state == .mandatory || state == .revokedRequiredContent
+            },
+            set: { _ in })
+    }
+
+    private func performUpdate() {
+        if let update = model.handlers.update {
+            update()
+        } else if let link = KitLinks.valid(model.inputs.update?.notesUrl) {
+            openURL(link)
+        }
+    }
+
     @ViewBuilder private var overlays: some View {
         let grace = model.graceBanner
-        if grace.state == .daysLeft || grace.state == .lastDay, !graceDismissed {
-            GraceBannerView(
-                screen: grace, onReconnect: { Task { await model.refresh() } },
-                onDismiss: { graceDismissed = true })
+        VStack(spacing: 8) {
+            if grace.state == .daysLeft || grace.state == .lastDay, !graceDismissed {
+                GraceBannerView(
+                    screen: grace, onReconnect: { Task { await model.refresh() } },
+                    onDismiss: { graceDismissed = true })
+            }
+            updateOverlay
+            if let toast = model.toast {
+                GateToastView(toast: toast) { model.dismissToast(toast.id) }
+                    .id(toast.id)
+            }
+        }
+    }
+
+    /// The optional offer: the glass banner (with its download inline), or the compact
+    /// UpdateProgress row once the download pauses, fails, installs or finishes.
+    @ViewBuilder private var updateOverlay: some View {
+        let prompt = model.updatePrompt
+        let phase = model.inputs.update?.progress?.phase
+        if appShowing, !model.updateDismissed || phase != nil {
+            switch prompt.state {
+            case .mandatory, .revokedRequiredContent, .none, .upToDate, .blocked:
+                EmptyView()
+            default:
+                if let phase, ["paused", "failed", "install", "done"].contains(phase) {
+                    UpdateProgressView(
+                        screen: KitStates.updateProgress(model.inputs),
+                        fraction: model.inputs.update?.progress?.fraction,
+                        onRetry: performUpdate
+                    )
+                    .padding()
+                    .modifier(KitFloatingProgressSurface())
+                } else {
+                    UpdatePromptView(
+                        screen: prompt, fraction: model.inputs.update?.progress?.fraction,
+                        details: model.inputs.update, onUpdate: performUpdate,
+                        onLater: { model.deferUpdate() })
+                }
+            }
         }
     }
 
@@ -232,9 +316,9 @@ extension View {
     /// ```
     public func polarisKeyGate(
         _ client: PolarisKeyClient, options: KitGateOptions = KitGateOptions(),
-        providers: [KitProvider] = [.apple]
+        providers: [KitProvider] = [.apple], handlers: KitGateHandlers = KitGateHandlers()
     ) -> some View {
-        PolarisKeyGate(client, options: options, providers: providers) { self }
+        PolarisKeyGate(client, options: options, providers: providers, handlers: handlers) { self }
     }
 
     /// The one sign-in form as a sheet (`presentation: "sheet"`, D-79): every step morphs inside

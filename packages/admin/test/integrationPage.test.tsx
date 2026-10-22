@@ -9,7 +9,7 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { lastAnnouncement } from "../src/ui/LiveRegion.js";
 import { boot } from "./consoleHarness.js";
-import { expectNoAxeViolations } from "./coreTestUtils.js";
+import { expectNoAxeViolations, shimDom } from "./coreTestUtils.js";
 
 const NOW = Math.floor(Date.now() / 1000);
 const API = "/manage/api/products/djdl";
@@ -304,6 +304,99 @@ describe("Core → Integration", () => {
     expect(card.textContent).toContain("Swift has no server snippet");
   });
 
+  it("the server card shows the picked framework's drop-in with the product's entitlement and two docs links (SP-64)", async () => {
+    shimDom();
+    boot("#/p/djdl/integration?sdk=python&server=flask", {
+      extra: { [`${API}/integration`]: view() },
+    });
+    await page();
+    const card = (
+      await screen.findByRole("heading", { level: 2, name: "Your server" })
+    ).closest("section")!;
+    expect(card.textContent).toContain("polaris_key.server.flask");
+    expect(card.textContent).toContain("require_entitlement");
+    expect(
+      within(card)
+        .getByRole("link", { name: /Verify on your server/ })
+        .getAttribute("href"),
+    ).toBe("/docs/build/servers/");
+    expect(
+      within(card)
+        .getByRole("link", { name: /Use the core directly/ })
+        .getAttribute("href"),
+    ).toBe("/docs/build/servers/#use-the-core-directly");
+    // The framework is a picker; picking one is in the hash and swaps the snippet.
+    await userEvent.click(
+      within(card).getByRole("combobox", { name: "Framework" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Django" }),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toContain("server=django"),
+    );
+    await waitFor(() =>
+      expect(card.textContent).toContain("polaris_key.server.django"),
+    );
+  });
+
+  it("offers Node's frameworks, and a Verified server adds the app's one backend line (SP-64)", async () => {
+    boot("#/p/djdl/integration?sdk=node", {
+      extra: {
+        [`${API}/integration`]: view({
+          server: [seenOn("node-server", "node-server", "0.9.1")],
+        }),
+      },
+    });
+    await page();
+    const card = (
+      await screen.findByRole("heading", { level: 2, name: "Your server" })
+    ).closest("section")!;
+    expect(card.textContent).toContain("@polaris-key/server/express");
+    expect(within(card).getByText("Verified")).toBeTruthy();
+    const aside = screen
+      .getByRole("heading", { level: 2, name: "Your app" })
+      .closest("aside")!;
+    expect(aside.textContent).toContain("client.backend.fetch");
+  });
+
+  it("the app card has no backend line before a server is in the picture, and no line where the SDK has none (SP-64)", async () => {
+    boot("#/p/djdl/integration?sdk=node", {
+      extra: { [`${API}/integration`]: view() },
+    });
+    await page();
+    const aside = (
+      await screen.findByRole("heading", { level: 2, name: "Your app" })
+    ).closest("aside")!;
+    expect(aside.textContent).not.toContain("client.backend");
+  });
+
+  it("the CLI card mounts the verbs and gates a command for the picked framework (SP-64)", async () => {
+    boot("#/p/djdl/integration?sdk=python&cli=click", {
+      extra: { [`${API}/integration`]: view() },
+    });
+    await page();
+    const card = (
+      await screen.findByRole("heading", { level: 2, name: "Your CLI" })
+    ).closest("section")!;
+    expect(card.textContent).toContain("register_click");
+    expect(card.textContent).toContain("require_license");
+    expect(
+      within(card).getByRole("link", { name: /Customize the screens/ }),
+    ).toBeTruthy();
+  });
+
+  it("has no CLI card for an SDK with no terminal kit framework (SP-64)", async () => {
+    boot("#/p/djdl/integration?sdk=swift", {
+      extra: { [`${API}/integration`]: view() },
+    });
+    await page();
+    await screen.findByRole("heading", { level: 2, name: "Your server" });
+    expect(
+      screen.queryByRole("heading", { level: 2, name: "Your CLI" }),
+    ).toBeNull();
+  });
+
   it("leads with the SDK last seen and folds the rest under More (F7)", async () => {
     boot("#/p/djdl/integration", { extra: { [`${API}/integration`]: view() } });
     await page();
@@ -354,7 +447,9 @@ describe("Core → Integration", () => {
       await screen.findByRole("button", { name: "Hide Integration" }),
     );
     await waitFor(() =>
-      expect(document.body.textContent).toMatch(/permission|allowed|couldn/i),
+      expect(document.body.textContent).toContain(
+        "You need edit access to do this.",
+      ),
     );
     expect(
       screen.getByRole("button", { name: "Hide Integration" }),

@@ -62,10 +62,12 @@ KEYRING_SERVICE_PREFIX = "pkey:"
 class InMemoryStore:
     """In-memory store for tests."""
 
-    def __init__(self, product_slug: str = "test") -> None:
+    def __init__(self, product_slug: str = "test", device_id: Optional[str] = None) -> None:
         self._token: Optional[str] = None
         self._cache: Optional[CacheRecord] = None
-        self._device_id = derive_device_id(product_slug)
+        #: ``device_id`` pins the id (a server whose id must outlive its container,
+        #: ``server_client()``); omitted, one is derived from the host.
+        self._device_id = device_id if device_id is not None else derive_device_id(product_slug)
 
     def get_token(self) -> Optional[str]:
         return self._token

@@ -454,8 +454,8 @@
       "note": "require_sign_in() / has_sign_in() read profile.user.subject through license_user; the verdict rows replay in tests/test_server_matrix.py."
     },
     "server.config": {
-      "status": "planned",
-      "wp": "SP-63"
+      "status": "implemented",
+      "note": "server_client() (polaris_key.server_client): the normal client over an InMemoryStore pinned to PKEY_DEVICE_ID (or a 0600 file on a volume, PKEY_DEVICE_ID_FILE), the key from PKEY_LICENSE_KEY activated at start, device_reports=False (no devices/report, on sync or explicitly) and the refresh thread. tests/test_server_client.py."
     },
     "server.webhooks": {
       "status": "planned",

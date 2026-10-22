@@ -10,6 +10,7 @@ lanes: ["kit"]
 
 import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
 import KitFacts from "../../../../../components/ui/KitFacts.astro";
+import Snippet from "../../../../../components/docs/Snippet.astro";
 
 The Node SDK's terminal kit. One call adds the Polaris Key verbs to a commander or yargs program
 and draws each one on a rail: the product chip in the product's accent, clack-style prompts with
@@ -236,6 +237,26 @@ program
 A commander program reads its own options wherever they are typed, so one that declares `--json`,
 `--no-color` or `--ascii` itself either makes its options positional, as above, or hands them to
 the verb in a `preAction` hook, as the [sample](#sample) does.
+
+## Your CLI framework
+
+Each framework mounts the same verbs and gates a command of your own. Pick yours.
+
+### commander
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/node/kit/licensing.commander.ts"
+  title="cli.ts"
+/>
+
+### yargs
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/node/kit/licensing.yargs.ts"
+  title="cli.ts"
+/>
+
+oclif and Ink have no adapter yet: build on the [headless views](#headless) and `requireLicense`. A CLI that also serves requests gates them with a [server drop-in](/docs/build/servers/).
 
 ## Piecemeal
 

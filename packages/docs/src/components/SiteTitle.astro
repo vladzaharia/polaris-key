@@ -63,7 +63,7 @@ const themes = ["dark", "light"] as const;
             ))}
           </span>
         </a>
-        {locker && <span class="pk-help-tag" data-miss-brand={miss ? kind : undefined}>Help</span>}
+        <span class="pk-help-tag" data-miss-brand={miss ? kind : undefined}>{locker ? "Help" : "Docs"}</span>
       </>
     );
   })

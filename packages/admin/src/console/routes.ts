@@ -452,6 +452,10 @@ export const r = {
   platformConnectionNew: (query?: QueryInit) =>
     globalPage("platform-connections", query, { id: "new" }),
   platformFeeds: () => globalPage("platform-feeds"),
+  platformActivity: (query?: QueryInit) =>
+    globalPage("platform-activity", query),
+  platformActivityEvent: (id: string, query?: QueryInit) =>
+    globalPage("platform-activity", query, { id }),
   platformOverrideMigration: () => globalPage("platform-override-migration"),
   platformFeed: (eco: string, tab?: string) =>
     globalPage("platform-feeds", undefined, { id: eco, tab }),
@@ -553,6 +557,7 @@ export const r = {
     }),
   feed: (slug: string) => productPage(slug, "feed"),
   appSignIn: (slug: string) => productPage(slug, "app-sign-in"),
+  syncSetup: (slug: string) => productPage(slug, "sync-setup"),
   syncData: (slug: string) => productPage(slug, "sync-data"),
 };
 

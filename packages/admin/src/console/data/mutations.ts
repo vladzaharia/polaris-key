@@ -45,6 +45,7 @@ const exact = (key: QueryKey): Target => ({ key, exact: true });
 
 /** The API methods that write. Kept in step with `api.ts` by `test/mutations.test.ts`. */
 export type WriteMethod =
+  | "search"
   | "logout"
   | "patchPlatformSetting"
   | "revertPlatformSetting"
@@ -313,6 +314,11 @@ const hostedAssets = (slug: string): Target[] => [
 ];
 
 export const MUTATIONS: MutationTable = {
+  search: {
+    label: "palette search",
+    invalidates: () => [],
+    why: "A read sent as POST so a pasted key stays out of the URL; it writes nothing.",
+  },
   logout: {
     label: "sign out",
     invalidates: () => [],

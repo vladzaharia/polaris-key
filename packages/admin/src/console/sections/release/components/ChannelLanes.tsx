@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AlertTriangle, Info, Pin } from "lucide-react";
+import { AlertTriangle, Info, Pin, Users } from "lucide-react";
 import type {
   ChannelPolicyDto,
   ReleaseChannelFloorDto,
@@ -114,6 +114,35 @@ export interface LaneContext {
   onAction: (action: PolicyAction) => void;
   /** Is Distribution on (the Matrix link exists)? */
   distributionOn: boolean;
+  /** Every lane of the deliverable (to find the track a lane falls back to). */
+  channels?: ChannelPolicyDto[];
+}
+
+/**
+ * The track a lane falls back to when its own newest build is older than that track's head
+ * (computed from the lanes and their releases; the server's resolution is not recomputed).
+ */
+export function olderThanFallback(
+  c: ChannelPolicyDto,
+  ctx: Pick<LaneContext, "releases" | "channels">,
+): { channel: string; version: string } | null {
+  const own = ctx.releases
+    .filter((x) => x.channel === c.channel && !x.yanked && x.publishedAt)
+    .sort((a, b) => b.publishedAt! - a.publishedAt!)[0];
+  if (!own) return null;
+  const includes = c.includes ?? (c.channel === "beta" ? ["stable"] : []);
+  for (const name of includes) {
+    const other = ctx.channels?.find((x) => x.channel === name);
+    const head = other
+      ? ctx.releases.find(
+          (x) => x.releaseId === (other.pointer ?? other.resolved),
+        )
+      : undefined;
+    if (head?.publishedAt && head.publishedAt > own.publishedAt!) {
+      return { channel: name, version: head.version };
+    }
+  }
+  return null;
 }
 
 function versionIn(releases: ReleaseOption[], id: string | null): string {
@@ -157,6 +186,7 @@ export function ChannelLane({
   const floor = isApp
     ? ctx.floors.find((f) => f.channel === c.channel)
     : undefined;
+  const behind = olderThanFallback(c, ctx);
   const headingId = `lane-${c.deliverable}-${c.channel}`.replace(
     /[^\w-]/g,
     "-",
@@ -302,6 +332,19 @@ export function ChannelLane({
             </span>
           )}
         </Row>
+        {behind ? (
+          <div className="space-y-1 py-2 text-sm text-fg">
+            <p className="flex items-center gap-2">
+              <Info aria-hidden className="size-3.5 shrink-0 text-fg-muted" />
+              Older than {behind.channel} {behind.version}
+            </p>
+            <p className="flex items-center gap-2">
+              <Users aria-hidden className="size-3.5 shrink-0 text-fg-muted" />
+              {c.channel.charAt(0).toUpperCase() + c.channel.slice(1)} licenses
+              get {behind.channel} until a newer {c.channel} publishes
+            </p>
+          </div>
+        ) : null}
         <Row term="Includes">
           {c.includes === null
             ? c.channel === "beta"

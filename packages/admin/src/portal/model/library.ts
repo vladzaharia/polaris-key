@@ -19,7 +19,7 @@ import {
   type PortalStatus,
   type PortalStoreLink,
 } from "../api.js";
-import { PLATFORM_ORDER, type PlatformKey } from "../components/Glyphs.js";
+import { PLATFORM_ORDER, type PlatformKey } from "../../ui/Glyphs.js";
 import { t } from "../../lib/copy.js";
 import { formatDay } from "../date.js";
 

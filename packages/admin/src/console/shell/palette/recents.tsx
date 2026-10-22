@@ -26,6 +26,30 @@ export function readRecents(): string[] {
   return readPref(PREF_KEYS.recentCommands, stringArray, []);
 }
 
+/** The names kept for records opened from the palette: console hash → name, newest last. */
+const NAMES_MAX = 20;
+function readNames(): Record<string, string> {
+  return readPref(
+    PREF_KEYS.recentNames,
+    (raw) =>
+      raw && typeof raw === "object" && !Array.isArray(raw)
+        ? (Object.fromEntries(
+            Object.entries(raw).filter(([, v]) => typeof v === "string"),
+          ) as Record<string, string>)
+        : undefined,
+    {},
+  );
+}
+
+/** Keep the name the operator picked for the record at `href` (Recent shows it, not the id). */
+export function rememberRecordName(href: string, name: string): void {
+  const rest = Object.entries(readNames()).filter(([h]) => h !== href);
+  writePref(
+    PREF_KEYS.recentNames,
+    Object.fromEntries([...rest, [href, name]].slice(-NAMES_MAX)),
+  );
+}
+
 /** Put `id` first, keeping the list unique and at most `RECENT_MAX` long. */
 export function pushRecent(id: string, list = readRecents()): string[] {
   const next = [id, ...list.filter((x) => x !== id)].slice(0, RECENT_MAX);
@@ -67,7 +91,7 @@ export function recordItem(
   const childNoun = route.child && record.child ? record.child.noun : null;
   const name = route.child
     ? `${childNoun ?? record.noun} ${route.child.ids.join("/")}`
-    : `${record.noun} ${route.id}`;
+    : (readNames()[href] ?? `${record.noun} ${route.id}`);
   let where = page.label;
   if (route.kind === "product") {
     const product = products.find((p) => p.slug === route.slug);

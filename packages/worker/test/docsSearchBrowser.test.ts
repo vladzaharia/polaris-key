@@ -70,7 +70,9 @@ async function searchOn(
   mutate?: (headers: Record<string, string>) => void,
   path = "/docs/help/",
   viewport?: { width: number; height: number },
-): Promise<{ page: any; close: () => Promise<void> }> {
+  setup?: (ctx: any, requests: string[]) => Promise<void>,
+  tweakEnv?: (env: any) => void,
+): Promise<{ page: any; requests: string[]; close: () => Promise<void> }> {
   const require = createRequire(join(here, "..", "..", "docs", "package.json"));
   // playwright is the docs package's dependency, not the worker's: resolved from there, untyped here.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -80,6 +82,7 @@ async function searchOn(
   env.CONSOLE_ORIGIN = "https://key.plrs.im";
   env.CUSTOMER_ORIGIN = "https://polaris.locker";
   env.ASSETS = assets();
+  tweakEnv?.(env);
   const browser = await chromium.launch();
   const ctx = await browser.newContext(viewport ? { viewport } : {});
   await ctx.route(`${origin}/**`, async (route: any) => {
@@ -99,11 +102,14 @@ async function searchOn(
       body: Buffer.from(await res.arrayBuffer()),
     });
   });
+  const requests: string[] = [];
+  ctx.on("request", (r: any) => requests.push(new URL(r.url()).pathname));
+  await setup?.(ctx, requests);
   const page = await ctx.newPage();
   await page.goto(`${origin}${path}`);
-  await page.locator("button[data-open-modal]").first().click();
-  await page.locator("#starlight__search input").fill(query);
-  return { page, close: () => browser.close() };
+  await page.locator("button[data-open-modal]:not([disabled])").first().click();
+  await page.locator("dialog.pk-search input").fill(query);
+  return { page, requests, close: () => browser.close() };
 }
 
 describe.skipIf(!enabled)("Help search under the Worker's docs CSP", () => {
@@ -121,16 +127,16 @@ describe.skipIf(!enabled)("Help search under the Worker's docs CSP", () => {
         path,
       );
       try {
-        const first = page.locator(".pagefind-ui__result-link").first();
+        const first = page.locator(".pk-search-row").first();
         await first.waitFor({ timeout: 20000 });
         expect(await first.getAttribute("href")).toMatch(
           new RegExp(`^${prefix}`),
         );
-        expect(await page.locator(".pk-search-failed").count()).toBe(0);
+        expect(await page.locator(".pk-search-failed").isVisible()).toBe(false);
         if (origin.endsWith("polaris.locker")) {
           // Help's own bundle: no developer page in the list.
           const hrefs: string[] = await page
-            .locator(".pagefind-ui__result-link")
+            .locator(".pk-search-row")
             .evaluateAll((a: any[]) => a.map((x) => x.getAttribute("href")));
           expect(hrefs.every((h) => h.startsWith("/docs/help/"))).toBe(true);
         }
@@ -196,6 +202,141 @@ describe.skipIf(!enabled)("Help search under the Worker's docs CSP", () => {
     90_000,
   );
 
+  it("groups All docs by door on the console host and never fetches a gated bundle without a session", async () => {
+    const { page, requests, close } = await searchOn(
+      "https://key.plrs.im",
+      "licence",
+      undefined,
+      "/docs/start/",
+    );
+    try {
+      await page.locator(".pk-search-row").first().waitFor({ timeout: 20000 });
+      const groups: string[] = await page
+        .locator(".pk-search-group")
+        .evaluateAll((a: any[]) => a.map((x) => x.textContent));
+      expect(groups.length).toBeGreaterThan(0);
+      expect(groups).toContain("Developers");
+      // One bundle, the public one: no gated bundle, and never a second one merged in.
+      expect(requests.some((p) => /\/pagefind-(member|admin)\//.test(p))).toBe(
+        false,
+      );
+      expect(requests.some((p) => p.startsWith("/docs/pagefind-help/"))).toBe(
+        false,
+      );
+      expect(requests).toContain("/manage/api/me");
+    } finally {
+      await close();
+    }
+  }, 90_000);
+
+  it("asks for the highest bundle the session may read", async () => {
+    const { requests, close } = await searchOn(
+      "https://key.plrs.im",
+      "console",
+      undefined,
+      "/docs/start/",
+      undefined,
+      async (ctx) => {
+        await ctx.route("https://key.plrs.im/manage/api/me", (route: any) =>
+          route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              permissions: { platform: { view: ["console"], edit: [] } },
+            }),
+          }),
+        );
+      },
+    );
+    try {
+      await new Promise((r) => setTimeout(r, 4000));
+      expect(requests.some((p) => p.startsWith("/docs/pagefind-member/"))).toBe(
+        true,
+      );
+      expect(requests.some((p) => p.startsWith("/docs/pagefind/"))).toBe(false);
+    } finally {
+      await close();
+    }
+  }, 90_000);
+
+  it("keeps Help's default to Help on the console host, and widens on request", async () => {
+    const { page, close } = await searchOn(
+      "https://key.plrs.im",
+      "licensing",
+      undefined,
+      "/docs/help/",
+      undefined,
+      undefined,
+      // No customer host: Help is served on the console host too.
+      (env) => delete env.CUSTOMER_ORIGIN,
+    );
+    try {
+      const widen = page.locator("[data-scope=all]");
+      await widen.waitFor({ timeout: 20000 });
+      await page.waitForTimeout(1500);
+      const door = async (): Promise<string[]> =>
+        page
+          .locator(".pk-search-group")
+          .evaluateAll((a: any[]) => a.map((x) => x.textContent));
+      expect(await door()).not.toContain("Developers");
+      await widen.click();
+      await page
+        .locator(".pk-search-group", { hasText: "Developers" })
+        .waitFor({
+          timeout: 20000,
+        });
+    } finally {
+      await close();
+    }
+  }, 90_000);
+
+  it("offers no widening on the customer host", async () => {
+    const { page, close } = await searchOn(
+      "https://polaris.locker",
+      "device limit",
+    );
+    try {
+      await page.locator(".pk-search-row").first().waitFor({ timeout: 20000 });
+      expect(await page.locator("[data-scope=all]").isVisible()).toBe(false);
+    } finally {
+      await close();
+    }
+  }, 90_000);
+
+  it("jumps to a message code, opens from ?q=, and works from the keyboard", async () => {
+    const { page, close } = await searchOn(
+      "https://polaris.locker",
+      "rate_limited",
+    );
+    try {
+      const first = page.locator(".pk-search-row").first();
+      await first.waitFor({ timeout: 20000 });
+      expect(await first.getAttribute("href")).toBe(
+        "/docs/help/code/rate_limited/",
+      );
+      expect(await first.getAttribute("aria-selected")).toBe("true");
+      // Arrow down moves the selection, Escape closes.
+      await page.keyboard.press("ArrowDown");
+      expect(
+        await page
+          .locator("dialog.pk-search input")
+          .getAttribute("aria-activedescendant"),
+      ).toBe("pk-search-o-1");
+      await page.keyboard.press("Escape");
+      expect(
+        await page.locator("dialog.pk-search").evaluate((d: any) => d.open),
+      ).toBe(false);
+      await page.goto("https://polaris.locker/docs/help/?q=device+limit");
+      await page.locator("dialog.pk-search[open]").waitFor({ timeout: 20000 });
+      expect(await page.locator("dialog.pk-search input").inputValue()).toBe(
+        "device limit",
+      );
+      await page.locator(".pk-search-row").first().waitFor({ timeout: 20000 });
+    } finally {
+      await close();
+    }
+  }, 90_000);
+
   it("says so, instead of spinning, when the engine cannot start", async () => {
     // The pre-fix policy: no 'wasm-unsafe-eval'.
     const { page, close } = await searchOn(
@@ -213,7 +354,10 @@ describe.skipIf(!enabled)("Help search under the Worker's docs CSP", () => {
       const note = page.locator(".pk-search-failed");
       await note.waitFor({ timeout: 30000 });
       expect(await note.textContent()).toContain("isn\u2019t working");
-      expect(await page.locator(".pagefind-ui__result-link").count()).toBe(0);
+      expect(await page.locator(".pk-search-row").count()).toBe(0);
+      expect(await page.locator("text=Try again").first().isVisible()).toBe(
+        true,
+      );
     } finally {
       await close();
     }

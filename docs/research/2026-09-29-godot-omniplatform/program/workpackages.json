@@ -10360,7 +10360,7 @@
         "UX coverage 2026-10-09 (program/ux-coverage.md): screens admin.platform-activity, admin.platform-activity-event had no builder"
       ],
       "brief": "wp/ST-51-platform-activity-page.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "ST-52",
@@ -10381,7 +10381,7 @@
         "docs/design/EXPERIENCE.md J-1"
       ],
       "brief": "wp/ST-52-palette-search.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "LX-01",
@@ -12361,7 +12361,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-60)"
       ],
       "brief": "wp/SP-60-node-server-fastify-nestjs-koa.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-61",
@@ -12421,7 +12421,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-63)"
       ],
       "brief": "wp/SP-63-server-client-config.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-64",
@@ -12449,7 +12449,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-64)"
       ],
       "brief": "wp/SP-64-framework-drop-ins-integration-and-docs.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-65",
@@ -15376,7 +15376,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-02b-chrome.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-02c",
@@ -15397,7 +15397,7 @@
         "docs/research/2026-10-08-docs/style-guide.md"
       ],
       "brief": "wp/DOC-02c-search.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "DOC-03a",
@@ -16837,7 +16837,7 @@
         "docs/design/UI-KITS.md §7.3"
       ],
       "brief": "wp/UK-55-design-language-lint.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "UK-56",

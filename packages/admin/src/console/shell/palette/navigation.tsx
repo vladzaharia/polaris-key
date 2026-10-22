@@ -27,7 +27,7 @@ export function sectionWords(section: NavSection): string {
 
 /**
  * One product's pages as palette rows: every page of its enabled sections, then the settings
- * hub's tabs (Features, Keys & secrets, Members…), which are not sidebar items but are pages a
+ * hub's tabs (Features, Keys and secrets, Members…), which are not sidebar items but are pages a
  * person types for. `across` is for a product that is not on screen (the palette opened from
  * Home): the product leads the detail and its name and slug are searchable.
  */
@@ -146,7 +146,7 @@ export const ACROSS_PRODUCTS_MAX = 8;
 
 /**
  * From Home (no product on screen) a typed query also finds product pages and settings tabs in
- * any of the operator's products: "secret" finds Keys & secrets, each row naming its product.
+ * any of the operator's products: "secret" finds Keys and secrets, each row naming its product.
  * Typed only, best first, capped.
  */
 export function productPagesAcross(

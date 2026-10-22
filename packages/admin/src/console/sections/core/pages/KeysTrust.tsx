@@ -1,5 +1,5 @@
 /**
- * Keys & secrets → Device trust (ST-12; S-18 §2.2, §4.15 item 8). The product's device trust
+ * Keys and secrets → Device trust (ST-12; S-18 §2.2, §4.15 item 8). The product's device trust
  * policy: which operations need an attested device, whether a miss is refused or only logged,
  * and the App Attest and Play Integrity anchors.
  *
@@ -20,7 +20,6 @@ import { Pencil } from "lucide-react";
 import {
   ApiError,
   api,
-  startStepUp,
   type TrustPolicyDto,
   type TrustPolicyResponse,
 } from "../../../../api.js";
@@ -215,7 +214,6 @@ function PolicyDrawer({
     null,
   );
   const [reloading, setReloading] = React.useState(false);
-  const [stepUp, setStepUp] = React.useState(false);
 
   // A fresh open starts from what is stored; a reload after a conflict keeps the edits.
   React.useEffect(() => {
@@ -259,10 +257,8 @@ function PolicyDrawer({
         );
         return;
       }
-      setStepUp(needsStepUp(e));
       throw e;
     }
-    setStepUp(false);
     setPending(null);
     setReason("");
     setConflict(null);
@@ -511,7 +507,6 @@ function PolicyDrawer({
             if (!o) {
               setPending(null);
               setReason("");
-              setStepUp(false);
             }
           }}
           intent={relax ? "danger" : "caution"}
@@ -561,15 +556,6 @@ function PolicyDrawer({
                 Required. Kept in the activity log.
               </p>
             </div>
-          ) : null}
-          {stepUp ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => startStepUp()}
-            >
-              Sign in again
-            </Button>
           ) : null}
         </ConfirmDialog>
       ) : null}

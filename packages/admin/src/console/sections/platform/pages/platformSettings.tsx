@@ -65,10 +65,6 @@ import { EditableRow } from "./platformSettingRow.js";
 export { fetchPlatformKek } from "./platformKeyring.js";
 export { fetchPlatformReservedNames } from "./platformLicensing.js";
 
-export function fetchPlatformSettings(): Promise<PlatformSettingsView> {
-  return api.platformSettings();
-}
-
 type SectionId =
   | "platform-ready"
   | "platform-defaults"
@@ -236,7 +232,7 @@ function ViewOnlyNotice(): React.ReactElement | null {
 export function PlatformSettingsPage(): React.ReactElement {
   const query = useQuery({
     queryKey: qk.platformSettings(),
-    queryFn: fetchPlatformSettings,
+    queryFn: () => api.platformSettings(),
   });
   const view = query.data;
   useSettingTarget(view !== undefined, platformRowId);

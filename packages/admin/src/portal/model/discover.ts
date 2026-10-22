@@ -6,7 +6,7 @@ import type {
   PortalObtainPath,
   PortalStorefrontStore,
 } from "../api.js";
-import { PLATFORM_ORDER, type PlatformKey } from "../components/Glyphs.js";
+import { PLATFORM_ORDER, type PlatformKey } from "../../ui/Glyphs.js";
 import {
   formatDay,
   normalisePlatform,

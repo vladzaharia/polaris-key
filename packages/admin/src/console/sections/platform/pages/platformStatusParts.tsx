@@ -35,6 +35,7 @@ import {
 } from "./platformOperationsAssess.js";
 import { buildLabel } from "./platformDeployParts.js";
 import { Hash } from "../../../../ui/Hash.js";
+import { useListCap } from "./useListCap.js";
 
 const HEALTH_WORD: Record<Health, string> = {
   healthy: "OK",
@@ -72,20 +73,22 @@ function Skeleton(): React.ReactElement {
   );
 }
 
-/** A card whose snapshot has not landed (a skeleton) or failed (its own error), else the body. */
+/**
+ * A card whose snapshot has not landed (a skeleton) or failed, else the body. A failed read is
+ * said once, by the Checks row (with Try again); the card only says it did not read.
+ */
 function Loaded({
   data,
   error,
-  onRetry,
   children,
 }: {
   data: unknown;
   error: unknown;
-  onRetry: () => void;
+  onRetry?: () => void;
   children: React.ReactNode;
 }): React.ReactElement {
   if (data) return <>{children}</>;
-  if (error) return <ErrorState compact error={error} onRetry={onRetry} />;
+  if (error) return <p className="text-sm text-fg-muted">Not read</p>;
   return <Skeleton />;
 }
 
@@ -225,6 +228,8 @@ function QueueRow({
             "Not bound"
           ) : q.ok === false ? (
             (q.error ?? "Its backlog could not be read.")
+          ) : dead && n === 0 ? (
+            "Empty"
           ) : (
             <>
               {formatCount(n)} {waiting}
@@ -349,6 +354,19 @@ export function JobsCard({
                 </strong>
                 : {jobLabel(run.job)}, {formatCount(run.steps.length)}{" "}
                 {run.steps.length === 1 ? "step" : "steps"}
+                {run.outcome === "failed"
+                  ? run.steps
+                      .filter((st) => st.outcome === "failed")
+                      .map((st) => (
+                        <span
+                          key={st.step}
+                          className="mt-1 block text-xs text-danger"
+                        >
+                          <span className="font-mono">{st.step}</span>:{" "}
+                          {st.error ?? "No message recorded"}
+                        </span>
+                      ))
+                  : null}
               </ListRow>
             ))}
             {(op.heartbeats ?? []).map((beat) => {
@@ -375,16 +393,28 @@ export function JobsCard({
                 </ListRow>
               );
             })}
-            {(op.jobs?.failures ?? []).slice(0, 3).map((f) => (
-              <ListRow
-                key={`${f.runId}:${f.step}`}
-                icon={TriangleAlert}
-                meta={<Timestamp at={f.startedAt} format="relative" />}
-              >
-                <span className="font-mono text-xs">{f.step}</span>:{" "}
-                {f.error ?? "No message recorded"}
-              </ListRow>
-            ))}
+            {(op.jobs?.failures ?? [])
+              .filter(
+                (f) =>
+                  !runs.some(
+                    (run) =>
+                      run.runId === f.runId &&
+                      run.steps.some(
+                        (st) => st.step === f.step && st.outcome === "failed",
+                      ),
+                  ),
+              )
+              .slice(0, 3)
+              .map((f) => (
+                <ListRow
+                  key={`${f.runId}:${f.step}`}
+                  icon={TriangleAlert}
+                  meta={<Timestamp at={f.startedAt} format="relative" />}
+                >
+                  <span className="font-mono text-xs">{f.step}</span>:{" "}
+                  {f.error ?? "No message recorded"}
+                </ListRow>
+              ))}
           </CardRows>
         ) : null}
       </Loaded>
@@ -491,6 +521,7 @@ export function DeploysCard({
   error: unknown;
   onRetry: () => void;
 }): React.ReactElement {
+  const capped = useListCap(deploys);
   return (
     <Panel title="Deploys">
       <Loaded data={deployment} error={error} onRetry={onRetry}>
@@ -500,7 +531,7 @@ export function DeploysCard({
           </p>
         ) : (
           <CardRows label="Deploys">
-            {deploys.items.map((d) => (
+            {capped.items.map((d) => (
               <ListRow
                 key={d.id}
                 icon={Rocket}
@@ -550,13 +581,13 @@ export function DeploysCard({
             onRetry={deploys.loadMore}
           />
         ) : null}
-        {deploys.hasMore ? (
+        {capped.hasMore ? (
           <div className="mt-3">
             <Button
               variant="outline"
               size="sm"
               loading={deploys.loading}
-              onClick={deploys.loadMore}
+              onClick={capped.loadMore}
             >
               Load more
             </Button>

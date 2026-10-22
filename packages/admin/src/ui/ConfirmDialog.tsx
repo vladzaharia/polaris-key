@@ -1,6 +1,13 @@
 import * as React from "react";
-import { AlertTriangle, CircleAlert, OctagonAlert } from "lucide-react";
+import {
+  AlertTriangle,
+  CircleAlert,
+  Fingerprint,
+  OctagonAlert,
+} from "lucide-react";
+import { startStepUp } from "../lib/stepUp.js";
 import { cn } from "../lib/cn.js";
+import { formatRelative } from "../lib/format.js";
 import { Button, type ButtonVariant } from "./Button.js";
 import { CopyDetails } from "./CopyDetails.js";
 import { Dialog, DialogBody, DialogFooter } from "./Dialog.js";
@@ -17,6 +24,14 @@ import { Dialog, DialogBody, DialogFooter } from "./Dialog.js";
  * - While `onConfirm`'s promise is pending the confirm button shows `loading` and the dialog
  *   cannot be dismissed. A rejection keeps the dialog open with the error inline under the
  *   consequences; pressing confirm again retries. On success the dialog closes.
+ * - Step-up (D11): any `step_up_required` answer (a 403 from `onConfirm`, or the caller's `error`)
+ *   turns the dialog into its step-up state: "Sign in again to confirm it's you" under the
+ *   unchanged consequences, the primary button reading "Sign in again", Cancel unchanged. The sign-in
+ *   leaves the page, so a typed confirmation word is kept in `sessionStorage` (under `stepUpKey`,
+ *   default the title when it is text) and put back when the dialog opens again after the return.
+ *   The caller's own fields (a reason) ride along: `stepUpState` is saved with the word and handed
+ *   back to `onRestore` when the dialog opens again. The dialog also opens itself on the page it
+ *   left (same `#` route, within 15 minutes) when it holds a saved state for its `stepUpKey`.
  * - The confirm label repeats the verb ("Disable license"), never "Confirm".
  * - Focus lands on Cancel, the least destructive button (`focusTyped` puts it on the typed field).
  */
@@ -59,6 +74,16 @@ export interface ConfirmDialogProps {
     action?: string;
     details?: Record<string, unknown>;
   } | null;
+  /** Where the typed word waits while the operator signs in again. Default: the title, when text. */
+  stepUpKey?: string;
+  /** The caller's own fields (a required reason), saved with the typed word across the sign-in. */
+  stepUpState?: Record<string, string>;
+  /** Puts `stepUpState` back when the dialog opens again after the sign-in. */
+  onRestore?: (state: Record<string, string>) => void;
+  /** Sends the operator to sign in again. Default: the console's step-up sign-in. */
+  onStepUp?: () => void;
+  /** When they last signed in (epoch seconds, `Me.authAt`): the step-up state says how long ago. */
+  signedInAt?: number | null;
   /** Close after `onConfirm` resolves. Default true; the legacy views close it themselves. */
   closeOnSuccess?: boolean;
   /** Legacy: overrides the confirm button's variant. Prefer `intent`. */
@@ -79,6 +104,74 @@ function defaultDescribe(error: unknown): {
 } {
   if (error instanceof Error && error.message) return { title: error.message };
   return { title: "Something went wrong. Try again." };
+}
+
+/** The Worker's answer to a gated action whose sign-in is too old (D11). */
+export function isStepUpRequired(error: unknown): boolean {
+  const e = error as { status?: unknown; code?: unknown } | null;
+  return !!e && e.status === 403 && e.code === "step_up_required";
+}
+
+const STEP_UP_TTL_MS = 15 * 60 * 1000;
+const stepUpStorageKey = (key: string): string => `pkey:step-up:${key}`;
+
+interface Stash {
+  typed: string;
+  fields: Record<string, string>;
+}
+
+function stashStepUp(
+  key: string | undefined,
+  typed: string,
+  fields: Record<string, string> = {},
+): void {
+  if (!key) return;
+  try {
+    sessionStorage.setItem(
+      stepUpStorageKey(key),
+      JSON.stringify({
+        typed,
+        fields,
+        page: window.location.hash,
+        at: Date.now(),
+      }),
+    );
+  } catch {
+    // No storage: the word is typed again.
+  }
+}
+
+function readStash(key: string | undefined, remove: boolean): Stash | null {
+  if (!key) return null;
+  try {
+    const raw = sessionStorage.getItem(stepUpStorageKey(key));
+    if (raw === null) return null;
+    if (remove) sessionStorage.removeItem(stepUpStorageKey(key));
+    const v = JSON.parse(raw) as {
+      typed?: unknown;
+      fields?: unknown;
+      page?: unknown;
+      at?: unknown;
+    };
+    if (
+      typeof v.at !== "number" ||
+      Date.now() - v.at >= STEP_UP_TTL_MS ||
+      (typeof v.page === "string" && v.page !== window.location.hash)
+    )
+      return null;
+    const fields: Record<string, string> = {};
+    if (v.fields && typeof v.fields === "object")
+      for (const [k, x] of Object.entries(v.fields))
+        if (typeof x === "string") fields[k] = x;
+    return { typed: typeof v.typed === "string" ? v.typed : "", fields };
+  } catch {
+    return null;
+  }
+}
+
+/** Whether a step-up sign-in left a saved dialog for `key` on this page (it reopens). */
+export function hasSavedStepUp(key: string): boolean {
+  return readStash(key, false) !== null;
 }
 
 const ICON: Record<ConfirmIntent, React.ReactNode> = {
@@ -104,6 +197,11 @@ export function ConfirmDialog({
   children,
   describeError = defaultDescribe,
   closeOnSuccess = true,
+  stepUpKey,
+  onStepUp,
+  stepUpState,
+  onRestore,
+  signedInAt,
   confirmVariant,
   focusTyped = false,
   loading = false,
@@ -117,14 +215,24 @@ export function ConfirmDialog({
   const typedId = React.useId();
   const errorId = React.useId();
 
-  // A fresh dialog every time it opens.
+  const storeKey = stepUpKey ?? (typeof title === "string" ? title : undefined);
+
+  // A fresh dialog every time it opens; a word typed before a step-up sign-in comes back.
   React.useEffect(() => {
     if (open) {
       setError(null);
-      setTyped("");
+      const saved = readStash(storeKey, true);
+      setTyped(typedConfirmation && saved ? saved.typed : "");
+      if (saved && Object.keys(saved.fields).length > 0)
+        onRestore?.(saved.fields);
       setPending(false);
     }
-  }, [open]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The page came back from the sign-in: show the dialog again, with what was typed.
+  React.useEffect(() => {
+    if (!open && storeKey && hasSavedStepUp(storeKey)) onOpenChange(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const busy = pending || loading;
   const typedOk =
@@ -132,11 +240,22 @@ export function ConfirmDialog({
     (typedConfirmation.ignoreCase
       ? typed.trim().toLowerCase() === typedConfirmation.value.toLowerCase()
       : typed === typedConfirmation.value);
-  const variant: ButtonVariant =
-    confirmVariant ?? (intent === "danger" ? "danger" : "primary");
+  // `null`: the caller shows this error itself (at a field), so no banner.
+  const shown = error ?? callerError;
+  const stepUp = isStepUpRequired(shown);
+  // Signing in again is a request, not a danger: the ink primary whatever the intent.
+  const variant: ButtonVariant = stepUp
+    ? "primary"
+    : (confirmVariant ?? (intent === "danger" ? "danger" : "primary"));
 
   const confirm = async (): Promise<void> => {
-    if (busy || !typedOk || confirmDisabled) return;
+    if (busy) return;
+    if (stepUp) {
+      stashStepUp(storeKey, typed, stepUpState);
+      (onStepUp ?? startStepUp)();
+      return;
+    }
+    if (!typedOk || confirmDisabled) return;
     setError(null);
     setPending(true);
     try {
@@ -149,9 +268,7 @@ export function ConfirmDialog({
     }
   };
 
-  // `null`: the caller shows this error itself (at a field), so no banner.
-  const shown = error ?? callerError;
-  const err = shown ? describeError(shown) : null;
+  const err = shown && !stepUp ? describeError(shown) : null;
 
   return (
     <Dialog
@@ -175,7 +292,12 @@ export function ConfirmDialog({
       closeButton={closeButton}
       initialFocusRef={typedConfirmation && focusTyped ? typedRef : cancelRef}
     >
-      {lead || consequences?.length || children || err || typedConfirmation ? (
+      {lead ||
+      consequences?.length ||
+      children ||
+      err ||
+      stepUp ||
+      typedConfirmation ? (
         <DialogBody className="space-y-4 text-sm max-sm:flex-none max-sm:overflow-y-visible">
           {lead}
           {consequences?.length && lead ? (
@@ -208,6 +330,28 @@ export function ConfirmDialog({
                   <p className="text-fg">{err.description}</p>
                 ) : null}
                 <CopyDetails copy={err} />
+              </div>
+            </div>
+          ) : null}
+          {stepUp ? (
+            <div
+              id={errorId}
+              role="status"
+              className="flex gap-2 rounded-md border border-border bg-surface-sunken p-3"
+            >
+              <Fingerprint
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-fg-muted"
+              />
+              <div className="space-y-0.5">
+                <p className="font-semibold text-fg-strong">
+                  Sign in again to confirm it&apos;s you
+                </p>
+                {typeof signedInAt === "number" ? (
+                  <p className="text-fg">
+                    You signed in {formatRelative(signedInAt * 1000)}.
+                  </p>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -257,16 +401,16 @@ export function ConfirmDialog({
           // A long label (a count in it) wraps on a phone rather than spill out of the button.
           className="max-sm:h-auto max-sm:min-h-9 max-sm:whitespace-normal max-sm:py-2 max-sm:text-balance"
           loading={busy}
-          disabled={confirmDisabled}
+          disabled={confirmDisabled && !stepUp}
           disabledReason={
-            !typedOk && typedConfirmation
+            !stepUp && !typedOk && typedConfirmation
               ? `Type ${typedConfirmation.value} to confirm`
               : undefined
           }
-          aria-describedby={err ? errorId : undefined}
+          aria-describedby={err || stepUp ? errorId : undefined}
           onClick={() => void confirm()}
         >
-          {confirmLabel}
+          {stepUp ? "Sign in again" : confirmLabel}
         </Button>
       </DialogFooter>
     </Dialog>

@@ -388,7 +388,7 @@ export function LinkRepositoryDrawer({
                       <span className="font-mono text-fg">{n}</span>
                     </React.Fragment>
                   ))}{" "}
-                  in Keys &amp; secrets: the manifest names{" "}
+                  in Keys and secrets: the manifest names{" "}
                   {checked.remainingSecrets.length === 1 ? "it" : "them"} but
                   doesn't carry the values.
                 </p>

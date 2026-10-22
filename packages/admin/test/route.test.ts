@@ -283,7 +283,7 @@ describe("section roots redirect to the section's first page", () => {
   it("only an old tab, or an old tab and an id its page has records for, is moved", () => {
     for (const hash of [
       "#/p/djdl/nope",
-      "#/p/djdl/secrets/x", // Keys & secrets has no records
+      "#/p/djdl/secrets/x", // Keys and secrets has no records
       "#/p/djdl/licenses/lic_1/keys", // the old URLs had no record tabs
       "#/p/djdl/constructor",
       "#/p/djdl/config/nope",
@@ -500,6 +500,7 @@ describe("the nav model (nav.ts)", () => {
       "platform-status",
       "platform-stores",
       "platform-feeds",
+      "platform-activity",
       "platform-override-migration",
       "package-feeds",
       "overview",
@@ -542,6 +543,7 @@ describe("the nav model (nav.ts)", () => {
       "credentials",
       "feed",
       "app-sign-in",
+      "sync-setup",
       "sync-data",
     ];
     expect(ALL_PAGES.map((p) => p.page).sort()).toEqual([...expected].sort());
@@ -721,6 +723,7 @@ describe("global pages", () => {
       "platform-connections",
       "platform-stores",
       "platform-feeds",
+      "platform-activity",
       "platform-override-migration",
     ]);
     for (const p of PLATFORM_GROUP.items) {
@@ -743,6 +746,7 @@ describe("global pages", () => {
       "platform-connections",
       "platform-stores",
       "platform-feeds",
+      "platform-activity",
     ]);
     expect(
       parseLocation("#/platform/override-migration").redirect,

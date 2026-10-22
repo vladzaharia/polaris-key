@@ -1,5 +1,4 @@
 import * as React from "react";
-import { CHANNEL_STABLE } from "@polaris-key/protocol/core";
 import { channelOptions, HINT_DEV, HINT_PR } from "../lib/channels.js";
 import { cn } from "../lib/cn.js";
 import { Checkbox } from "./Checkbox.js";
@@ -20,15 +19,15 @@ export interface ChannelPickerProps {
   manual?: readonly string[];
   /** The value when the form opened, so an unticked held grant stays listed. */
   held?: readonly string[];
+  /**
+   * Channels held whatever the value says (a tier's `stable`): drawn first, checked and disabled
+   * with "Always included" (a dashed chip whose tooltip says so on hover or focus), and never part
+   * of the value or of what `onChange` returns.
+   */
+  fixed?: readonly string[];
   id?: string;
   disabled?: boolean;
   readOnly?: boolean;
-  /**
-   * `stable` is always included: the Worker entitles it whatever a license or tier names. It is
-   * drawn ticked and locked, as a dashed chip with an "Always included" tooltip, and the picker
-   * never adds it to the value. Default true.
-   */
-  lockStable?: boolean;
   className?: string;
   ref?: React.Ref<HTMLDivElement>;
   "aria-labelledby"?: string;
@@ -46,16 +45,18 @@ export function ChannelPicker({
   onChange,
   manual = [],
   held,
+  fixed = [],
   id,
   disabled,
   readOnly,
-  lockStable = true,
   className,
   ref,
   ...aria
 }: ChannelPickerProps): React.ReactElement {
   const selected = value ?? [];
-  const options = channelOptions(manual, held ?? selected);
+  const options = channelOptions(manual, held ?? selected).filter(
+    (o) => !fixed.includes(o.name),
+  );
   const reactId = React.useId();
   const base = id ?? `ch-${reactId.replace(/:/g, "")}`;
   return (
@@ -66,45 +67,48 @@ export function ChannelPicker({
       className={cn("flex flex-col gap-2", className)}
       {...aria}
     >
-      {options.map((o) => {
-        const locked = lockStable && o.name === CHANNEL_STABLE;
-        return (
-          <Checkbox
-            key={o.name}
-            id={`${base}-${o.name}`}
-            label={
-              locked ? (
-                <Tooltip content="Always included" side="top">
-                  {/* Focusable, so the keyboard reaches the reason a disabled box cannot give. */}
-                  <span
-                    tabIndex={0}
-                    data-locked
-                    data-ui-static
-                    className="inline-flex min-h-6 min-w-6 cursor-default items-center justify-center rounded-sm border border-dashed border-border-strong px-1.5 font-mono text-xs focus-visible:outline-2 focus-visible:outline-focus"
-                  >
-                    {o.name}
-                  </span>
-                </Tooltip>
-              ) : (
-                <span className="font-mono text-xs">{o.name}</span>
-              )
-            }
-            description={SEMANTICS[o.name] ?? o.hint}
-            checked={locked || selected.includes(o.name)}
-            disabled={disabled || locked}
-            readOnly={readOnly}
-            onCheckedChange={(on) => {
-              const next = on
-                ? [...selected, o.name]
-                : selected.filter((c) => c !== o.name);
-              // Keep the picker's order, not the click order.
-              onChange?.(
-                options.map((x) => x.name).filter((n) => next.includes(n)),
-              );
-            }}
-          />
-        );
-      })}
+      {fixed.map((name) => (
+        <Checkbox
+          key={name}
+          id={`${base}-${name}`}
+          label={
+            <Tooltip content="Always included" side="top">
+              {/* Focusable, so the keyboard reaches the reason a disabled box cannot give. */}
+              <span
+                tabIndex={0}
+                data-locked
+                data-ui-static
+                className="inline-flex min-h-6 min-w-6 cursor-default items-center justify-center rounded-sm border border-dashed border-border-strong px-1.5 font-mono text-xs focus-visible:outline-2 focus-visible:outline-focus"
+              >
+                {name}
+              </span>
+            </Tooltip>
+          }
+          description="Always included"
+          checked
+          disabled
+        />
+      ))}
+      {options.map((o) => (
+        <Checkbox
+          key={o.name}
+          id={`${base}-${o.name}`}
+          label={<span className="font-mono text-xs">{o.name}</span>}
+          description={SEMANTICS[o.name] ?? o.hint}
+          checked={selected.includes(o.name)}
+          disabled={disabled}
+          readOnly={readOnly}
+          onCheckedChange={(on) => {
+            const next = on
+              ? [...selected, o.name]
+              : selected.filter((c) => c !== o.name);
+            // Keep the picker's order, not the click order.
+            onChange?.(
+              options.map((x) => x.name).filter((n) => next.includes(n)),
+            );
+          }}
+        />
+      ))}
     </div>
   );
 }

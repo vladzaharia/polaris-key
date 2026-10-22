@@ -51,6 +51,7 @@ import type { ManagementState, ProductCatalog } from "@polaris-key/catalog";
 import type { ArtifactRole } from "@polaris-key/manifest";
 import type { LicenseTerms } from "../../worker/src/core/licensing/terms.js";
 import type { ServiceSlug } from "./services.generated.js";
+import { startStepUp } from "./lib/stepUp.js";
 import { RELEASE_POLICY_ERROR_MESSAGES } from "./lib/releasePolicyMessages.js";
 
 // ── identity ──────────────────────────────────────────────────────────────────
@@ -213,12 +214,25 @@ export interface PlatformActivityItem {
   id: string;
   /** Epoch seconds. */
   at: number;
+  /**
+   * The product the event belongs to; `null` for a platform event. Only a read that names a
+   * `product` can return product events: without one the feed is the platform's alone.
+   */
+  product?: string | null;
   actor: { sub: string; name: string; email: string };
   action: string;
   target: { kind: string; id: string } | null;
   summary: string;
   before: unknown;
   after: unknown;
+}
+
+/** The platform feed's filters: a product feed's, plus which trails to read (ST-51). */
+export interface PlatformActivityFilters extends ActivityFilters {
+  /** `all` (every product and the platform), `platform`, or a product slug. */
+  product?: string;
+  /** One event, by id (a deep link to its drawer). */
+  id?: string;
 }
 
 export interface PlatformActivityPage {
@@ -630,6 +644,8 @@ export interface PlatformSettingWrite {
   value: string | number;
   expectedVersion: number;
   confirm?: string;
+  /** Why (a critical setting needs one; the Worker records it in the trail). */
+  reason?: string;
 }
 
 /** `GET /manage/api/products/kek`: the keyring (kid names and per-kid counts, never key material). */
@@ -4800,25 +4816,8 @@ export function setCsrf(token: string): void {
   csrf = token;
 }
 
-/** A gated action refused for a stale step-up goes to the step-up sign-in and back. */
-let redirectToStepUp = (): void => {
-  const back = `/manage/${window.location.hash}`;
-  window.location.href = `/manage/login?stepUp=1&returnTo=${encodeURIComponent(back)}`;
-};
-/** Override the step-up redirect (tests pass a spy; call with no arg to restore the default). */
-export function setStepUpRedirectForTests(fn?: () => void): void {
-  redirectToStepUp =
-    fn ??
-    (() => {
-      const back = `/manage/${window.location.hash}`;
-      window.location.href = `/manage/login?stepUp=1&returnTo=${encodeURIComponent(back)}`;
-    });
-}
-
-/** Send the operator to the step-up sign-in, back to this page (a write that needs a fresh one). */
-export function startStepUp(): void {
-  redirectToStepUp();
-}
+// A gated action refused for a stale step-up goes to the step-up sign-in and back.
+export { setStepUpRedirectForTests, startStepUp } from "./lib/stepUp.js";
 
 /**
  * The 401 sign-in. The Worker marks a session that existed and no longer holds
@@ -4987,7 +4986,7 @@ async function send(
       code === "step_up_required" &&
       opts.stepUpRedirect
     )
-      redirectToStepUp();
+      startStepUp();
     throw error;
   }
   return res;
@@ -5056,10 +5055,25 @@ const rawApi = {
   platformOperations: () =>
     call<PlatformOperations>("/manage/api/platform/operations"),
   /** `platform_audit`, newest first (keyset `cursor`). */
-  platformActivity: (cursor?: PlatformCursor | null) =>
-    call<PlatformActivityPage>(
-      `/manage/api/platform/activity${cursorQuery(cursor)}`,
-    ),
+  platformActivity: (
+    cursor?: PlatformCursor | null,
+    filters: PlatformActivityFilters = {},
+    limit?: number,
+  ) => {
+    const search = new URLSearchParams();
+    if (limit) search.set("limit", String(limit));
+    if (cursor) {
+      search.set("beforeAt", String(cursor.beforeAt));
+      search.set("beforeId", cursor.beforeId);
+    }
+    for (const [k, v] of Object.entries(filters)) {
+      if (v !== undefined && v !== null && v !== "") search.set(k, String(v));
+    }
+    const qs = search.toString();
+    return call<PlatformActivityPage>(
+      `/manage/api/platform/activity${qs ? `?${qs}` : ""}`,
+    );
+  },
   // ── admin API tokens (platform, not product-scoped) ─────────────────────────
   /** The roster. Never carries a secret or a hash: see `AdminApiToken`. */
   apiTokens: () => call<{ tokens: AdminApiToken[] }>("/manage/api/tokens"),
@@ -5366,6 +5380,16 @@ const rawApi = {
     call<{ product: string; subject: string }>(
       `/manage/api/support-codes/${enc(code)}`,
     ),
+  /**
+   * ST-52: the palette's entity search. The query goes in the body, never the URL: a pasted key
+   * must not reach request logs. A pasted licence key resolves to `key` (its licence) and is never
+   * echoed; a key the member may not read answers `key: null`, like an unknown one.
+   */
+  search: (q: string) =>
+    call<SearchDto>("/manage/api/search", {
+      method: "POST",
+      body: JSON.stringify({ q }),
+    }),
   /** Platform ready: the first-run checklist (platform admins). */
   platformReady: () => call<PlatformReadyDto>("/manage/api/platform/ready"),
   product: (slug: string) => call<{ product: ProductDetail }>(p(slug)),
@@ -5406,14 +5430,10 @@ const rawApi = {
    * (fixes PRD-4: an auto-filled guard guards nothing).
    */
   deleteProduct: (slug: string, confirmSlug: string) =>
-    call<{ ok: true; slug: string }>(
-      p(slug),
-      {
-        method: "DELETE",
-        body: JSON.stringify({ confirmSlug }),
-      },
-      { stepUpRedirect: true },
-    ),
+    call<{ ok: true; slug: string }>(p(slug), {
+      method: "DELETE",
+      body: JSON.stringify({ confirmSlug }),
+    }),
   resyncProduct: (slug: string) =>
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
   /** The resync's dry run: reads the manifest and plans. Writes nothing. */
@@ -5569,7 +5589,7 @@ const rawApi = {
     }),
   rotateProductKey: (slug: string) =>
     call<RotateKeyResult>(`${p(slug)}/keys/rotate`, { method: "POST" }),
-  // ── Keys & secrets (chunk 5): inventories and the signing-key lifecycle ─────
+  // ── Keys and secrets (chunk 5): inventories and the signing-key lifecycle ─────
   /** A-4: every signing key with its lifecycle state. */
   productKeys: (slug: string) => call<SigningKeysResponse>(`${p(slug)}/keys`),
   /** Promote a staged key. `breakGlass` skips the trust-cache window. */
@@ -5580,7 +5600,6 @@ const rawApi = {
         method: "POST",
         body: JSON.stringify(breakGlass ? { kid, breakGlass } : { kid }),
       },
-      { stepUpRedirect: true },
     ),
   retireProductKey: (slug: string, kid: string) =>
     call<{ ok: true; kid: string; status: "retired" }>(
@@ -6362,7 +6381,6 @@ const rawApi = {
     call<{ ok: true; stores: string[] }>(
       `${p(slug)}/users/${enc(subject)}/data/delete`,
       { method: "POST" },
-      { stepUpRedirect: true },
     ),
   detachProductUserLicense: (
     slug: string,
@@ -6372,7 +6390,6 @@ const rawApi = {
     call<{ ok: true }>(
       `${p(slug)}/users/${enc(subject)}/licenses/${enc(licenseId)}/detach`,
       { method: "POST" },
-      { stepUpRedirect: true },
     ),
   /** Needs a step-up (403 `step_up_required` otherwise). */
   relinkProductUserLicense: (
@@ -6672,3 +6689,27 @@ export type AdminApi = typeof rawApi;
  * `test/mutations.test.ts` fails if a view calls a write on `api` directly.
  */
 export const api: AdminApi = rawApi;
+
+/** `GET /manage/api/search` (ST-52; worker `console/handlers/search.ts`). */
+export interface SearchLicenseDto {
+  product: string;
+  productName: string;
+  id: string;
+  name: string | null;
+  email: string | null;
+  status: string;
+  expiresAt: number | null;
+  tier: string | null;
+}
+
+export interface SearchDto {
+  key: (SearchLicenseDto & { licenseId: string }) | null;
+  licenses: SearchLicenseDto[];
+  people: {
+    product: string;
+    productName: string;
+    subject: string;
+    name: string | null;
+    email: string | null;
+  }[];
+}

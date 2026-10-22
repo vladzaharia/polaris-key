@@ -112,13 +112,13 @@ function SessionList({
   const others = ordered.filter((s) => !s.current).length;
   return (
     <>
-      <ul className="divide-y divide-border border-y border-border">
+      <ul className="divide-y divide-border border-y border-border -mx-4 desk:-mx-5 bigtext:max-sm:mx-0 [&>li]:px-4 desk:[&>li]:px-5 bigtext:max-sm:[&>li]:px-0">
         {ordered.map((s) => (
           <SessionRow key={s.id} session={s} />
         ))}
       </ul>
       <Everywhere others={others} open={open} onClose={onClose} />
-      <div className="mt-1">
+      <div className="ms-13 mt-1 bigtext:max-sm:ms-0">
         <Button
           variant="link"
           className="h-auto min-h-11 pointer-coarse:min-h-11 max-w-full whitespace-normal py-2 text-start font-medium [overflow-wrap:anywhere]"

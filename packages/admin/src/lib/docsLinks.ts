@@ -66,6 +66,9 @@ export const DOCS_LINKS = {
   // screens" opens the kit's page, "Integrate directly with the library" the SDK's own-UI page.
   // A path may end in a #fragment; the docs build's slug manifest checks it names a heading.
   notSeenYet: "/docs/build/troubleshooting/#not-seen-yet",
+  // The server card (SP-64): the contract, then the framework-free core.
+  serverVerify: "/docs/build/servers/",
+  serverCore: "/docs/build/servers/#use-the-core-directly",
   nodeCustomiseCli: "/docs/build/ui/frameworks/terminal-node/#piecemeal",
   nodeOwnUiCli: "/docs/build/sdks/node/your-own-ui/#cli",
   nodeCustomiseElectron: "/docs/build/ui/frameworks/react/",

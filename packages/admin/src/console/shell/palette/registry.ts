@@ -14,6 +14,7 @@ import {
   productPagesAcrossPaletteSource,
   productsPaletteSource,
 } from "./navigation.js";
+import { entitiesPaletteSource } from "./entities.js";
 import { settingsPaletteSource } from "./settings.js";
 import { supportCodePaletteSource } from "./supportCode.js";
 import { dedupe, type PaletteGroupSpec } from "./rank.js";
@@ -26,10 +27,15 @@ import type { PaletteContext, PaletteItem, PaletteSource } from "./types.js";
  * actions, settings after actions.
  */
 export const PALETTE_GROUPS: readonly PaletteGroupSpec[] = [
+  // ST-52: a pasted licence key resolves above everything.
+  { heading: "Pasted key", order: 0 },
   { heading: "Recent", order: 5 },
   // I-41: a support code typed into the palette, resolved by the Worker.
   { heading: "Support code", order: 10 },
   { heading: "Pages", order: 20 },
+  // ST-52: server-side entity search across the products the member can read.
+  { heading: "Licenses", order: 30 },
+  { heading: "Users", order: 35 },
   { heading: "Actions", order: 40 },
   // ST-10: the generated settings index, shown for typed text only.
   { heading: "Settings", order: 50 },
@@ -40,6 +46,7 @@ export const PALETTE_GROUPS: readonly PaletteGroupSpec[] = [
 /** The sources, in the order their rows are merged. A module constant: see `PaletteSource`. */
 export const PALETTE_SOURCES: readonly PaletteSource[] = [
   supportCodePaletteSource,
+  entitiesPaletteSource,
   navigationPaletteSource,
   productPagesAcrossPaletteSource,
   actionsPaletteSource,

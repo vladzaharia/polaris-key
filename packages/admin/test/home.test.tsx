@@ -1020,7 +1020,7 @@ describe("a member with narrow access (ST-29)", () => {
     const extra = registry();
     extra["/manage/api/attention"] = {
       items: [
-        // Keys & secrets is not theirs; Releases is.
+        // Keys and secrets is not theirs; Releases is.
         item({ id: "djdl:secret.missing:K" }),
         item({
           id: "djdl:sync.failed",

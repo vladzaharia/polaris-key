@@ -9,7 +9,9 @@ describe("ChannelPicker locked stable", () => {
   it("draws stable ticked and locked, with Always included on focus", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    render(<ChannelPicker value={["beta"]} onChange={onChange} />);
+    render(
+      <ChannelPicker value={["beta"]} onChange={onChange} fixed={["stable"]} />,
+    );
     const stable = screen.getByRole("checkbox", { name: "stable" });
     expect(stable.getAttribute("aria-checked")).toBe("true");
     expect((stable as HTMLButtonElement).disabled).toBe(true);
@@ -28,13 +30,13 @@ describe("ChannelPicker locked stable", () => {
   it("never adds stable to the value", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    render(<ChannelPicker value={[]} onChange={onChange} />);
+    render(<ChannelPicker value={[]} onChange={onChange} fixed={["stable"]} />);
     await user.click(screen.getByRole("checkbox", { name: "beta" }));
     expect(onChange).toHaveBeenCalledWith(["beta"]);
   });
 
-  it("lockStable=false keeps stable an ordinary option", () => {
-    render(<ChannelPicker value={[]} lockStable={false} />);
+  it("without fixed, stable is an ordinary option", () => {
+    render(<ChannelPicker value={[]} />);
     expect(
       (screen.getByRole("checkbox", { name: "stable" }) as HTMLButtonElement)
         .disabled,

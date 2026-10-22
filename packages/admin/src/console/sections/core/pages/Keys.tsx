@@ -1,5 +1,5 @@
 /**
- * Core → Keys & secrets (T4; docs/design/ADMIN.md §6.7). Signing keys, write-only product
+ * Core → Keys and secrets (T4; docs/design/ADMIN.md §6.7). Signing keys, write-only product
  * secrets and CI publishing credentials, one section each (SEC-1).
  *
  * - **Signing keys** (gold: this is where it means the most). The full lifecycle from A-4:

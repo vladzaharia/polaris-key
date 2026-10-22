@@ -24,17 +24,22 @@ const V099_PAGE_IDS = [
   "storefronts", "sync-data", "tiers", "users",
 ]; // prettier-ignore
 
+/** Pages added after v0.9.9: each has a live row, so a later move or removal has its answer. */
+const ADDED_PAGE_IDS = ["platform-activity"]; // ST-51
+
 const inNav = (id: string): boolean =>
   [...GLOBAL_PAGES, ...PRODUCT_PAGES].some((p) => p.page === id);
 const hash = (scope: string, from: string, rest = ""): string =>
   (scope === "product" ? "#/p/djdl/" : "#/") + from + rest;
 
 describe("ROUTE_LEDGER", () => {
-  it("has one row for every 0.9 page id, and no other page id", () => {
+  it("has one row for every 0.9 page id and every page added since, and no other page id", () => {
     const ids = ROUTE_LEDGER.filter((r) => !r.id.startsWith("tab:")).map(
       (r) => r.id,
     );
-    expect([...ids].sort()).toEqual([...V099_PAGE_IDS].sort());
+    expect([...ids].sort()).toEqual(
+      [...V099_PAGE_IDS, ...ADDED_PAGE_IDS].sort(),
+    );
     expect(new Set(ROUTE_LEDGER.map((r) => r.id)).size).toBe(
       ROUTE_LEDGER.length,
     );

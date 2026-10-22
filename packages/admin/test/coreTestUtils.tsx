@@ -1,5 +1,5 @@
 /**
- * Shared set-up for the Core page suites (Overview, Services, Devices, Keys & secrets, Activity,
+ * Shared set-up for the Core page suites (Overview, Services, Devices, Keys and secrets, Activity,
  * Settings): render one page at a hash with the providers it needs, the jsdom shims Radix wants,
  * and the axe configuration the kit suite uses.
  */

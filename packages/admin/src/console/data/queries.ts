@@ -39,6 +39,8 @@ export const qk = {
   products: (): QueryKey => ["products"],
   /** I-41: a support code resolved to its product and user. */
   supportCode: (code: string): QueryKey => ["support-code", code],
+  /** ST-52: the palette's entity search (memory only; a pasted key can be the query). */
+  search: (q: string): QueryKey => ["palette-search", q],
   /** New product (ST-43): W22 repositories, W23 create check, W24 slug check. */
   githubRepositories: (q: string): QueryKey => ["new-product", "repos", q],
   createCheck: (repo: string): QueryKey => ["new-product", "check", repo],
@@ -52,6 +54,19 @@ export const qk = {
   platformVersion: (): QueryKey => ["platform", "version"],
   platformDeployment: (): QueryKey => ["platform", "deployment"],
   platformActivity: (): QueryKey => ["platform", "activity"],
+  /** ST-51: Platform → Activity's feed for one filter set, and one event by id. */
+  platformActivityFeed: (filters: string): QueryKey => [
+    "platform",
+    "activity",
+    "feed",
+    filters,
+  ],
+  platformActivityEvent: (id: string): QueryKey => [
+    "platform",
+    "activity",
+    "event",
+    id,
+  ],
   platformSettings: (): QueryKey => ["platform", "settings"],
   /** ST-16: the reach of a product default or bound, per proposed value. */
   platformReach: (key: string, value?: number): QueryKey => [
@@ -177,6 +192,9 @@ export const qk = {
   /** The Licenses page's loaded pages (P0-29); under the licenses prefix, so every licence write refreshes them. */
   licensesPages: (slug: string) =>
     product(slug, "license", "licenses", "_pages"),
+  /** The Licenses band's holder-state counts; under the licenses prefix, so every licence write refreshes them. */
+  licenseHolderCounts: (slug: string) =>
+    product(slug, "license", "licenses", "_holderCounts"),
   /** One row of the list, to learn whether the product has any licence; under the licenses prefix. */
   licensesFirst: (slug: string) =>
     product(slug, "license", "licenses", "_first"),

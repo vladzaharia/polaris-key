@@ -5,7 +5,7 @@ import { toast } from "../../../ui/toast.js";
 import { useEmailDownload } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
 import { GET_IT_COPY as C, emailName, emailSent } from "../../copy/getIt.js";
-import type { PlatformKey } from "../Glyphs.js";
+import type { PlatformKey } from "../../../ui/Glyphs.js";
 import { osName } from "../../model/library.js";
 import { t } from "../../../lib/copy.js";
 

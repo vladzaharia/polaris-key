@@ -1,5 +1,5 @@
 /**
- * T4 · Settings, a sectioned form (ADMIN.md §3): Services, Keys & secrets, Settings, Enrollment,
+ * T4 · Settings, a sectioned form (ADMIN.md §3): Services, Keys and secrets, Settings, Enrollment,
  * Access, Feed, Portal, and Platform → Settings (S-13 §9.1).
  *
  * - Sections are cards of settings rows: label and help left, the control flush right

@@ -123,6 +123,8 @@ const RECORD_IDS: Record<string, { id: string; child?: string[] }> = {
   "platform-feeds": { id: "npm", child: ["polaris-key", "@polaris-key/node"] },
   // PS-06: the built-in storefront's own page.
   storefronts: { id: "polaris-key" },
+  // ST-51: an event's drawer, over the list (the id is one the layout fixture's feed holds).
+  "platform-activity": { id: "pax1" },
 };
 
 function cases(): Case[] {
@@ -186,6 +188,10 @@ function cases(): Case[] {
       },
     },
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
+    {
+      name: "global:platform-activity?timeline",
+      hash: "#/platform/activity?view=timeline",
+    },
     {
       name: "djdl:rollouts?view=matrix&cell",
       hash: "#/p/djdl/distribution/rollouts?view=matrix&cell=rel_240:altstore",

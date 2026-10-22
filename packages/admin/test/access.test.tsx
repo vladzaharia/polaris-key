@@ -213,7 +213,7 @@ describe("NoAccessPage", () => {
     await waitFor(() =>
       expect(within(nav).getByRole("link", { name: "Releases" })).toBeTruthy(),
     );
-    for (const name of ["Overview", "Licenses", "Catalog", "Keys & secrets"])
+    for (const name of ["Overview", "Licenses", "Catalog", "Keys and secrets"])
       expect(within(nav).queryByRole("link", { name }), name).toBeNull();
   });
 
