@@ -15630,8 +15630,8 @@ paths:
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
   /manage/api/search:
-    get:
-      operationId: getAdminSearch
+    post:
+      operationId: searchAdmin
       tags: [admin]
       summary: Command palette search across the products the caller may read
       description: >
@@ -15639,14 +15639,21 @@ paths:
         by email or name (products where the caller holds Core), at most 20 of each, newest first.
         A query shorter than two characters answers empty. A query that is a licence key
         (`pkey_<product>_<22>`) is not searched as text: its hash is looked up in `keys_index` and
-        `key` names the licence. A key that is unknown and a key of a licence the caller may not
+        `key` is that licence, shaped like a `licenses` row plus `licenseId`. The query travels in
+        the JSON body, never the URL, so a pasted key does not reach request logs. Products whose
+        Licensing is off are left out of licence results. A key that is unknown and a key of a licence the caller may not
         read answer the same `key: null`, so the route is no way to learn another product's keys;
         the key is never echoed. Rate-limited per operator (120 a minute). Admin session cookie.
-      parameters:
-        - name: q
-          in: query
-          required: true
-          schema: { type: string, maxLength: 200 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [q]
+              properties:
+                q: { type: string, maxLength: 200 }
       responses:
         "200":
           description: The matches.
@@ -15661,10 +15668,28 @@ paths:
                     nullable: true
                     type: object
                     additionalProperties: false
-                    required: [product, licenseId]
+                    required:
+                      [
+                        product,
+                        productName,
+                        id,
+                        licenseId,
+                        name,
+                        email,
+                        status,
+                        expiresAt,
+                        tier,
+                      ]
                     properties:
                       product: { type: string }
+                      productName: { type: string }
+                      id: { type: string }
                       licenseId: { type: string }
+                      name: { type: string, nullable: true }
+                      email: { type: string, nullable: true }
+                      status: { type: string }
+                      expiresAt: { type: integer, nullable: true }
+                      tier: { type: string, nullable: true }
                   licenses:
                     type: array
                     items:

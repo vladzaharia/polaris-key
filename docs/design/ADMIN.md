@@ -241,9 +241,12 @@ instead.
 ### Navigation aids
 
 The top bar supplies product switching, environment information when provided, theme and account
-menus, help, and keyboard shortcuts. `Cmd/Ctrl+K` opens the command palette. The palette currently
-contains navigation, product results, and registered safe actions; it does not make an unregistered
-server capability available.
+menus, help, and keyboard shortcuts. `Cmd/Ctrl+K` opens the command palette. The palette
+contains navigation, product results, registered safe actions, settings, and entity search
+(ST-52): licenses and users across the products the member may read, and a pasted license key
+resolved to its license, through `POST /manage/api/search` (the query is in the body so a key never
+reaches a URL or a request log). Up to 5 rows per group, then "Show all N". It does not make an
+unregistered server capability available.
 
 The product switcher keeps the same product page when the destination product enables its service;
 otherwise it opens that product's Overview. It never carries a record identifier or record tab into
@@ -283,13 +286,12 @@ shapes are not automatically shipped. Use the program graph or the `uxRows` map 
 describing any of the following as present. The console sign-in card (P0-38, shipped by ST-30) and
 the settings hub with its search (ST-10, ST-39) are shipped and no longer listed:
 
-| Area                                                                | Status                                                                                                                             |
-| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Entity search in the palette                                        | **Parked — UX-06b**; revive when settings search and the product switcher are no longer enough (a third product or a support desk) |
-| Launch path and the proposed guided first-run setup                 | **Planned — ST-41** (`UX-21`, `UX-50`, `UX-51`, `UX-63`–`UX-65`)                                                                   |
-| Channel/storefront automation and the proposed per-store setup flow | **Planned — A-19 through A-25** (`UX-52`–`UX-58`, `UX-68`, `UX-70`, `UX-71`)                                                       |
-| The redesigned New Product flow beyond the shipped route            | **Planned — ST-43** (`UX-73`, `UX-74`, `UX-76`); `UX-72` is recorded built in the UX-row map                                       |
-| Role-request workflow and further access-policy changes             | **Planned — ST-33**; the shipped console has no request workflow                                                                   |
+| Area                                                                | Status                                                                                       |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Launch path and the proposed guided first-run setup                 | **Planned — ST-41** (`UX-21`, `UX-50`, `UX-51`, `UX-63`–`UX-65`)                             |
+| Channel/storefront automation and the proposed per-store setup flow | **Planned — A-19 through A-25** (`UX-52`–`UX-58`, `UX-68`, `UX-70`, `UX-71`)                 |
+| The redesigned New Product flow beyond the shipped route            | **Planned — ST-43** (`UX-73`, `UX-74`, `UX-76`); `UX-72` is recorded built in the UX-row map |
+| Role-request workflow and further access-policy changes             | **Planned — ST-33**; the shipped console has no request workflow                             |
 
 This table is deliberately not a second backlog. It prevents a design proposal from being reported
 as a shipped console capability.

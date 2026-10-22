@@ -200,7 +200,7 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // Home's Needs attention (UX-12) and Platform ready (UX-67).
     ["/manage/api/attention", ["get"]],
     // I-41: a support code resolved to its product and user.
-    ["/manage/api/search", ["get"]],
+    ["/manage/api/search", ["post"]],
     ["/manage/api/support-codes/{code}", ["get"]],
     ["/manage/api/platform/ready", ["get"]],
     // U-03: the licence-override migration (notes/S-17 §5.12, decision 21).

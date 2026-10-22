@@ -5369,10 +5369,15 @@ const rawApi = {
       `/manage/api/support-codes/${enc(code)}`,
     ),
   /**
-   * ST-52: the palette's entity search. A pasted licence key resolves to `key` (its licence) and is
-   * never echoed; a key the member may not read answers `key: null`, like an unknown one.
+   * ST-52: the palette's entity search. The query goes in the body, never the URL: a pasted key
+   * must not reach request logs. A pasted licence key resolves to `key` (its licence) and is never
+   * echoed; a key the member may not read answers `key: null`, like an unknown one.
    */
-  search: (q: string) => call<SearchDto>(`/manage/api/search?q=${enc(q)}`),
+  search: (q: string) =>
+    call<SearchDto>("/manage/api/search", {
+      method: "POST",
+      body: JSON.stringify({ q }),
+    }),
   /** Platform ready: the first-run checklist (platform admins). */
   platformReady: () => call<PlatformReadyDto>("/manage/api/platform/ready"),
   product: (slug: string) => call<{ product: ProductDetail }>(p(slug)),
@@ -6681,17 +6686,20 @@ export type AdminApi = typeof rawApi;
 export const api: AdminApi = rawApi;
 
 /** `GET /manage/api/search` (ST-52; worker `console/handlers/search.ts`). */
+export interface SearchLicenseDto {
+  product: string;
+  productName: string;
+  id: string;
+  name: string | null;
+  email: string | null;
+  status: string;
+  expiresAt: number | null;
+  tier: string | null;
+}
+
 export interface SearchDto {
-  key: { product: string; licenseId: string } | null;
-  licenses: {
-    product: string;
-    productName: string;
-    id: string;
-    name: string | null;
-    email: string | null;
-    status: string;
-    expiresAt: number | null;
-  }[];
+  key: (SearchLicenseDto & { licenseId: string }) | null;
+  licenses: SearchLicenseDto[];
   people: {
     product: string;
     productName: string;
