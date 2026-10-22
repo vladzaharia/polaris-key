@@ -364,7 +364,7 @@ export function AttentionList({
           // message takes the spare width (its text stops at 72ch) and the action sits in the last
           // column at the card's far edge, so every subject and message starts at one x whatever
           // its pill word and every action lines up.
-          "divide-y divide-border @xl:grid @xl:grid-cols-[max-content_minmax(8rem,fit-content(11rem))_minmax(0,1fr)_max-content]",
+          "divide-y divide-border @xl:grid @xl:grid-cols-[max-content_fit-content(11rem)_minmax(0,1fr)_max-content]",
           motion.className,
         )}
       >

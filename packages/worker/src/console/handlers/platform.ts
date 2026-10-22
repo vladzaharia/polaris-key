@@ -361,7 +361,8 @@ export async function handlePlatform(
   if (req.method !== "GET")
     return err(405, "method_not_allowed", "method not allowed");
   if (resource === "version") return adminJson(identity(env));
-  if (resource === "ready") return adminJson(await platformReady(env, db, now, session.principal));
+  if (resource === "ready")
+    return adminJson(await platformReady(env, db, now, session.principal));
   if (resource === "deployment") return deployment(req, env, db);
   if (resource === "operations")
     return adminJson(

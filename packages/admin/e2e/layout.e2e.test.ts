@@ -991,6 +991,57 @@ async function axeWithin(page: Page, selector: string): Promise<string[]> {
   }, selector);
 }
 
+// ── Needs attention rows keep their shape (ST-44b.3) ───────────────────────────────────────────
+// A grid template the browser drops (it did once: `fit-content()` inside `minmax()`) stacks every
+// row and still passes the overflow checks, so the shape itself is pinned: at a laptop width the
+// pill, the subject and the action share one line.
+describe("Needs attention rows are one line at 1440 and stack on a phone (ST-44b.3)", () => {
+  const HOME: Case = { name: "global:home", hash: "#/" };
+  for (const theme of THEMES) {
+    it(`${theme}`, async () => {
+      const desk = await open(HOME, theme, { width: 1440, height: 900 });
+      try {
+        const rows = desk.page.locator("[data-attention-list] ul > li");
+        const n = await rows.count();
+        expect(n).toBeGreaterThan(1);
+        for (let i = 0; i < n; i++) {
+          const row = rows.nth(i);
+          const tops = await row.evaluate((li) => {
+            const top = (el: Element | null) =>
+              el ? el.getBoundingClientRect().top : NaN;
+            return [
+              top(li.querySelector("[class*=pill], [data-tone], span")),
+              top(li.querySelector("[title]")),
+              top([...li.querySelectorAll("a[href], button")].pop() ?? null),
+              li.getBoundingClientRect().height,
+            ];
+          });
+          const [pill, subject, action] = tops as number[];
+          expect(Math.abs(subject! - pill!), `row ${i} subject`).toBeLessThan(
+            8,
+          );
+          expect(Math.abs(action! - pill!), `row ${i} action`).toBeLessThan(10);
+        }
+      } finally {
+        await closeContext(desk.page.context());
+      }
+      const phone = await open(HOME, theme, { width: 390, height: 844 });
+      try {
+        const li = phone.page.locator("[data-attention-list] ul > li").first();
+        const [pill, action] = await li.evaluate((el) => [
+          el.querySelector("span")!.getBoundingClientRect().top,
+          [...el.querySelectorAll("a[href], button")]
+            .pop()!
+            .getBoundingClientRect().top,
+        ]);
+        expect(action! - pill!).toBeGreaterThan(20);
+      } finally {
+        await closeContext(phone.page.context());
+      }
+    });
+  }
+});
+
 describe("Home's product card (owner polish 2026-10-07)", () => {
   const HOME: Case = { name: "global:home", hash: "#/" };
   const CARDS = 'main [aria-label="Products"]';
