@@ -724,8 +724,13 @@ async function createInvites(
       continue;
     }
     const existing = await findInvite(c.db, t.email, spec.role, spec.scope);
-    // D-c: an invite this writer could not cancel is not theirs to re-scope or re-own.
-    if (existing && !mayRevoke(c.session.principal, specOfRow(existing))) {
+    // D-c: a live invite this writer could not cancel is not theirs to re-scope or re-own. An
+    // expired one grants nothing and is not listed, so it may be replaced.
+    if (
+      existing &&
+      (existing.expires_at ?? 0) > c.now &&
+      !mayRevoke(c.session.principal, specOfRow(existing))
+    ) {
       r.status = "exists";
       r.bindingId = existing.id;
       continue;
