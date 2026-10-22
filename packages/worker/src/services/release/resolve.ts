@@ -736,7 +736,8 @@ export const STORE_VIEW_HIDES_ABSENT = false;
 
 /**
  * The release ids a view does not offer. Legacy: every row the sync did not list (tagless and
- * GitHub-less rows) and every row seen gone upstream, as GitHub's list is today's input. Store:
+ * GitHub-less rows), every tagless-shaped row even when GitHub lists it, and every row seen gone
+ * upstream, as GitHub's list is today's input. Store:
  * only the undescribed rows seen gone upstream (a described release owns its files), and only
  * while `hideAbsent` is on. A pack has no sync listing, so it hides nothing.
  */
@@ -751,8 +752,11 @@ export function hiddenFor(
   const out = new Set<string>();
   if (state.deliverableId !== APP_DELIVERABLE_ID) return out;
   if (view === "legacy") {
+    // A GitHub release tagged in the tagless shape (`app@1.2.3`) is listed but has no tag, so the
+    // floor and the stable tag pattern would skip it: legacy never offers a tagless-shaped row (D5).
     for (const r of state.rows)
-      if (!state.listed.has(r.release_id)) out.add(r.release_id);
+      if (!state.listed.has(r.release_id) || tagOf(r) === null)
+        out.add(r.release_id);
     for (const id of state.absent) out.add(id);
   } else if (hideAbsent) {
     for (const id of state.absent) if (!state.described.has(id)) out.add(id);
