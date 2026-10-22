@@ -18619,6 +18619,7 @@ paths:
               type: object
               required: [role, scope]
               additionalProperties: false
+              oneOf: [{ required: [member] }, { required: [emails] }]
               properties:
                 member: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
                 emails:
@@ -18767,10 +18768,13 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [ok, bindingId, notified]
+                required: [ok, bindingId]
                 properties:
                   ok: { type: boolean }
                   bindingId: { type: string }
+                  invite:
+                    type: boolean
+                    description: "True when the binding was an invitation that was cancelled."
                   notified: { $ref: "#/components/schemas/ConsoleNotified" }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
@@ -20469,6 +20473,7 @@ paths:
             schema:
               type: object
               additionalProperties: false
+              oneOf: [{ required: [member] }, { required: [emails] }]
               properties:
                 member: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
                 emails:
@@ -20603,10 +20608,13 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [ok, bindingId, notified]
+                required: [ok, bindingId]
                 properties:
                   ok: { type: boolean }
                   bindingId: { type: string }
+                  invite:
+                    type: boolean
+                    description: "True when the binding was an invitation that was cancelled."
                   notified: { $ref: "#/components/schemas/ConsoleNotified" }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }

@@ -230,6 +230,44 @@ export async function accountsVerifyingEmail(
 }
 
 /**
+ * The ACTIVE accounts whose VERIFIED PRIMARY email is `email` (ST-31.7 N9): what the console's
+ * invitation matches a member by. A verified secondary link address does not count: it can be
+ * stale, and the conversion of an invite (ST-31.8) reads the primary email too.
+ */
+export async function accountsWithVerifiedPrimaryEmail(
+  db: Db,
+  email: string,
+): Promise<string[]> {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return [];
+  const rows = await db.all<{ id: string }>(
+    `SELECT id FROM accounts
+      WHERE primary_email = ? AND primary_email_verified_at IS NOT NULL AND status = 'active'
+      ORDER BY id`,
+    normalized,
+  );
+  return rows.map((r) => r.id);
+}
+
+/**
+ * Every address on one account, verified or not: all link emails and the primary email (ST-31.7
+ * D-g at creation: an address you hold, even one not yet verified, is not yours to invite).
+ */
+export async function accountAddresses(
+  db: Db,
+  accountId: string,
+): Promise<string[]> {
+  const rows = await db.all<{ email: string }>(
+    `SELECT email FROM account_links WHERE account_id = ? AND email IS NOT NULL
+     UNION
+     SELECT primary_email AS email FROM accounts WHERE id = ? AND primary_email IS NOT NULL`,
+    accountId,
+    accountId,
+  );
+  return rows.map((r) => r.email);
+}
+
+/**
  * Which OTHER account already uses `email`: as an email sign-in method, or as its verified
  * primary email. The login card's join offer starts here (S-16 §5.1); nothing is ever attached on
  * this answer alone ("never by email match").

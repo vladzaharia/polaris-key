@@ -1,6 +1,6 @@
 /**
- * What the grant writes (`./bindings.ts`), the invite writes (`./invites.ts`) and the Members
- * reads (`./productMembers.ts`, `./access.ts`) share, so none of them imports another
+ * What the grant writes and the invite writes (both in `./bindings.ts`) and the Members reads
+ * (`./productMembers.ts`, `./access.ts`) share, so none of them imports another
  * (ST-31.6 follow-up: the old bindings <-> productMembers import cycle).
  */
 
@@ -37,6 +37,10 @@ export async function superadminAccountIds(
  * budget. Best effort: `false` for email off, an address that is suppressed or refused, a notice
  * over budget, a limiter outage (the budget fails closed) or any error. The address is hashed for
  * the budget; nothing is stored.
+ *
+ * `priority` skips the budget (ST-31.7 B1): the G5 notice of an L2 change (Superadmin, Platform
+ * admin or `products:*`) must not be silenced by ten cheap invitations spending a Superadmin's
+ * hour. Only Superadmin step-up writes, bounded by `adminGrantWrite`, set it.
  */
 export async function sendOperatorNotice(
   env: Env,
@@ -44,20 +48,23 @@ export async function sendOperatorNotice(
   to: string,
   message: NoticeMessage,
   now: number,
+  priority = false,
 ): Promise<boolean> {
   try {
     if (!env.EMAIL) return false;
-    const within = await rateLimitOk(
-      env,
-      "_admin",
-      {
-        bucket: "emailOperatorNoticeHour",
-        id: await recipientHash(env, to),
-        limit: OPERATOR_NOTICE_PER_RECIPIENT_HOUR,
-        windowSec: 3600,
-      },
-      now,
-    );
+    const within =
+      priority ||
+      (await rateLimitOk(
+        env,
+        "_admin",
+        {
+          bucket: "emailOperatorNoticeHour",
+          id: await recipientHash(env, to),
+          limit: OPERATOR_NOTICE_PER_RECIPIENT_HOUR,
+          windowSec: 3600,
+        },
+        now,
+      ));
     if (!within) return false;
     const r = await deliverEmail(
       env,

@@ -753,6 +753,21 @@ export function licenseAssignedToYouNotice(input: {
 // ── Operator notices (Polaris Key, the console side) ─────────────────────────────────────────
 
 /**
+ * Writer-controlled text (an inviter's display name, a product name) in a mail from the Polaris
+ * Key sender to an address the writer chose (ST-31.7 N3). {@link displayValue}, then: a URL scheme
+ * is dropped and the dot of a domain-like token is defanged (`example[.]com`), so a mail client
+ * does not auto-link it and the sender's reputation does not carry a phishing line.
+ */
+export function operatorText(
+  raw: string | null | undefined,
+  fallback: string,
+): string {
+  return displayValue(raw, fallback)
+    .replace(/\b[a-z][a-z0-9+.-]*:\/\/\/*/gi, "")
+    .replace(/(?<=[\p{L}\p{N}-])\.(?=\p{L}{2,})/gu, "[.]");
+}
+
+/**
  * ST-31.6 (ST-28 G5): a console role was granted, changed or taken back. Sent as Polaris Key
  * (`sender.audience: "operator"`) to the person it concerns and to every Superadmin, so a stolen
  * session that hands out access cannot do it silently. It names the role, the scope, the areas
@@ -771,9 +786,9 @@ export function accessChangedNotice(input: {
   areas: readonly string[] | null;
   origin: string | null | undefined;
 }): NoticeMessage {
-  const member = displayValue(input.member, "A member");
-  const actor = displayValue(input.actor, "An operator");
-  const scope = displayValue(input.scopeLabel, "the platform");
+  const member = operatorText(input.member, "A member");
+  const actor = operatorText(input.actor, "An operator");
+  const scope = operatorText(input.scopeLabel, "the platform");
   const verb =
     input.change === "granted"
       ? "was given"
@@ -830,8 +845,8 @@ export function accessInviteNotice(input: {
   link: string;
   origin: string | null | undefined;
 }): NoticeMessage {
-  const inviter = displayValue(input.inviter, "An operator");
-  const scope = displayValue(input.scopeLabel, "the platform");
+  const inviter = operatorText(input.inviter, "An operator");
+  const scope = operatorText(input.scopeLabel, "the platform");
   const subject = "You are invited to the Polaris Key console";
   const line = `${inviter} invited you to the Polaris Key console as ${input.roleLabel} on ${scope}${
     input.areas ? `, limited to ${input.areas.join(", ")}` : ""
@@ -867,8 +882,8 @@ export function accessInvitesSentNotice(input: {
   areas: readonly string[] | null;
   origin: string | null | undefined;
 }): NoticeMessage {
-  const actor = displayValue(input.actor, "An operator");
-  const scope = displayValue(input.scopeLabel, "the platform");
+  const actor = operatorText(input.actor, "An operator");
+  const scope = operatorText(input.scopeLabel, "the platform");
   const subject = `Console invitations sent: ${input.count}`;
   const line = `${actor} invited ${input.count} ${input.count === 1 ? "person" : "people"} to the Polaris Key console as ${input.roleLabel} on ${scope}${
     input.areas ? `, limited to ${input.areas.join(", ")}` : ""

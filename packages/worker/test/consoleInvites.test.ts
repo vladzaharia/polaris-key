@@ -1015,3 +1015,238 @@ describe("erasure of an invitee", () => {
     ]);
   });
 });
+
+describe("REV-ST31-7 fix round", () => {
+  async function addLink(
+    accountId: string,
+    id: string,
+    email: string,
+    verified: number,
+  ) {
+    await db.run(
+      `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind, email, email_verified, created_at, last_used_at)
+       VALUES (?, ?, 'https://other', '', ?, 'oidc', ?, ?, ?, ?)`,
+      id,
+      accountId,
+      `s-${id}`,
+      email,
+      verified,
+      NOW,
+      NOW,
+    );
+  }
+
+  it("B1: an L2 grant still mails every Superadmin after the budget is spent; L1 stays budgeted", async () => {
+    const root = await rootWriter();
+    await person(env, db, "sa2", { keepRoot: true });
+    const bob = await person(env, db, "bob");
+    await bind(db, bob.accountId, "console_access", "platform", null);
+    for (let i = 0; i < 10; i++)
+      await send(root, "POST", "/api/bindings", {
+        emails: [`burn${i}@example.com`],
+        role: "console_access",
+        scope: "platform",
+      });
+    const before = mail.filter((m) => m.to === "sa2@example.com").length;
+    expect(before).toBe(10);
+    // L1 member grant: the Superadmin's budget is spent, so it is not told.
+    const carol = await person(env, db, "carol");
+    await bind(db, carol.accountId, "console_access", "platform", null);
+    await send(root, "POST", "/api/bindings", {
+      member: carol.memberId,
+      ...alphaShip,
+    });
+    expect(mail.filter((m) => m.to === "sa2@example.com")).toHaveLength(10);
+    // L2: still told, grantee included.
+    const g = await send(root, "POST", "/api/bindings", {
+      member: bob.memberId,
+      role: "superadmin",
+      scope: "platform",
+      confirm: "L2",
+    });
+    expect(g.status).toBe(201);
+    expect(mail.filter((m) => m.to === "sa2@example.com")).toHaveLength(11);
+    expect(mail.filter((m) => m.to === "bob@example.com").length).toBe(1);
+    // The per-request digest of L2 invitations is priority too.
+    const inv = await send(root, "POST", "/api/bindings", {
+      emails: ["new-sa@example.com"],
+      role: "superadmin",
+      scope: "platform",
+      confirm: "L2",
+    });
+    expect(inv.status).toBe(201);
+    expect(mail.filter((m) => m.to === "sa2@example.com")).toHaveLength(12);
+  });
+
+  it("B2: with the invite budget spent a member and a stranger both answer 429", async () => {
+    const root = await rootWriter();
+    const bob = await person(env, db, "bob");
+    await bind(db, bob.accountId, "console_access", "platform", null);
+    for (let r = 0; r < 5; r++)
+      expect(
+        (
+          await send(root, "POST", "/api/bindings", {
+            emails: Array.from(
+              { length: 20 },
+              (_, i) => `u${r}-${i}@example.com`,
+            ),
+            role: "console_access",
+            scope: "platform",
+          })
+        ).status,
+      ).toBe(201);
+    const member = await send(root, "POST", "/api/bindings", {
+      emails: ["bob@example.com"],
+      role: "console_access",
+      scope: "platform",
+    });
+    const stranger = await send(root, "POST", "/api/bindings", {
+      emails: ["stranger@example.com"],
+      role: "console_access",
+      scope: "platform",
+    });
+    expect([member.status, stranger.status]).toEqual([429, 429]);
+    expect(member.b.error?.reason ?? member.b.reason).toBe("invite_budget");
+  });
+
+  it("B3: a narrowed Product admin cannot re-scope or re-own an invite it cannot cancel", async () => {
+    const root = await rootWriter();
+    const pa = await person(env, db, "pa", { stepUp: true });
+    await bind(db, pa.accountId, "console_access", "platform", null);
+    await bind(db, pa.accountId, "product_admin", "product:alpha", [
+      "ship",
+      "members",
+    ]);
+    const made = await send(root, "POST", "/api/bindings", {
+      emails: ["x@example.com"],
+      role: "product_admin",
+      scope: "product:alpha",
+      areas: null,
+    });
+    const id = made.b.results![0]!.bindingId!;
+    const mailsBefore = mail.length;
+    const auditBefore = (await rows("SELECT id FROM platform_audit")).length;
+    const re = await send(pa, "POST", "/api/products/alpha/members", {
+      emails: ["x@example.com"],
+      areas: ["ship"],
+    });
+    expect(re.status).toBe(200);
+    expect(re.b.results![0]).toMatchObject({ status: "exists", bindingId: id });
+    const row = (await invites())[0]!;
+    expect(row.areas_json).toBeNull();
+    expect(row.granted_by).toBe(root.memberId);
+    expect(mail.length).toBe(mailsBefore);
+    expect((await rows("SELECT id FROM platform_audit")).length).toBe(
+      auditBefore,
+    );
+  });
+
+  it("N8: a refresh by a writer who may cancel it audits the before", async () => {
+    const root = await rootWriter();
+    await send(root, "POST", "/api/bindings", {
+      emails: ["r@example.com"],
+      ...alphaShip,
+    });
+    await send(root, "POST", "/api/bindings", {
+      emails: ["r@example.com"],
+      role: "product_admin",
+      scope: "product:alpha",
+      areas: ["ship", "members"],
+    });
+    const a = await rows(
+      "SELECT before_json FROM platform_audit WHERE action = 'rbac.invite'",
+    );
+    expect(a).toHaveLength(2);
+    expect(a.filter((x) => x.before_json !== null)).toHaveLength(1);
+  });
+
+  it("D-g at creation: the writer's own unverified link address is refused", async () => {
+    const root = await rootWriter();
+    await addLink(root.accountId, "l-unv", "mine-later@example.com", 0);
+    const r = await send(root, "POST", "/api/bindings", {
+      emails: ["mine-later@example.com"],
+      role: "superadmin",
+      scope: "platform",
+      confirm: "L2",
+    });
+    expect(r.status).toBe(403);
+    expect(await invites()).toHaveLength(0);
+  });
+
+  it("N9: a stale verified secondary link does not pull a grant; the verified primary does", async () => {
+    const root = await rootWriter();
+    const bob = await person(env, db, "bob");
+    await bind(db, bob.accountId, "console_access", "platform", null);
+    await addLink(bob.accountId, "l-sec", "old@example.com", 1);
+    const r = await send(root, "POST", "/api/bindings", {
+      emails: ["old@example.com", "bob@example.com"],
+      ...alphaShip,
+    });
+    expect(r.b.results!.map((x) => x.status)).toEqual(["invited", "updated"]);
+  });
+
+  it("N2: erasing an account that only claimed the address (unverified) keeps the invite", async () => {
+    env.BLOBS = asR2(new R2Mock());
+    const root = await rootWriter();
+    await send(root, "POST", "/api/bindings", {
+      emails: ["victim@example.com"],
+      role: "console_access",
+      scope: "platform",
+    });
+    const s = await signIn(
+      db,
+      { issuerKey: "email", subject: "attacker@example.com", kind: "email" },
+      NOW,
+      { env },
+    );
+    if (s.status !== "signed_in") throw new Error("sign-in failed");
+    await addLink(s.account.id, "l-claim", "victim@example.com", 0);
+    const res = await deleteAccount(
+      { db, env, now: NOW + 5, origin: "https://key.plrs.im" },
+      s.account.id,
+    );
+    expect(res.ok).toBe(true);
+    expect((await invites()).map((i) => i.email_norm)).toEqual([
+      "victim@example.com",
+    ]);
+  });
+
+  it("N3: writer-controlled text is defanged in the operator notices", async () => {
+    const { accessInviteNotice, accessChangedNotice, accessInvitesSentNotice } =
+      await import("../src/core/notify/templates.js");
+    const evil = "Visit https://evil.example.com/login or www.evil.io now";
+    const inv = accessInviteNotice({
+      inviter: evil,
+      roleLabel: "Console access",
+      scopeLabel: evil,
+      areas: null,
+      link: "https://key.plrs.im/manage/login?login_hint=a%40b.co",
+      origin: "https://key.plrs.im",
+    });
+    const changed = accessChangedNotice({
+      change: "granted",
+      member: evil,
+      actor: evil,
+      roleLabel: "Console access",
+      scopeLabel: evil,
+      areas: null,
+      origin: null,
+    });
+    const sent = accessInvitesSentNotice({
+      actor: evil,
+      count: 1,
+      roleLabel: "Console access",
+      scopeLabel: evil,
+      areas: null,
+      origin: null,
+    });
+    for (const m of [inv, changed, sent]) {
+      const body = m.text.replace(/Sign in: \S+/, "");
+      expect(body).not.toContain("https://evil");
+      expect(body).not.toMatch(/evil\.example|evil\.io/);
+      expect(body).toContain("evil[.]example[.]com");
+      expect(body).toContain("www[.]evil[.]io");
+      expect(m.html).not.toMatch(/evil\.example|evil\.io/);
+    }
+  });
+});

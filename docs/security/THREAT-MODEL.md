@@ -7191,8 +7191,11 @@ six rows against the eight principals), `rbacRouteAreas`, `routeCoverage`, `acco
   5 minutes per member, which alone would be about 9,000 mails an hour. ST-31.7 closes it with a
   per-recipient budget on every operator notice (`emailOperatorNoticeHour`, 10 notices per address
   per hour, sharded, failing closed): a notice over budget counts as not sent in `notified`, and
-  the change stands. A Superadmin's inbox therefore receives at most 10 notices an hour, whoever
-  causes them.
+  the change stands. The G5 notice of an L2 change (a grant, widening or revocation of Superadmin,
+  Platform admin or `products:*`) is sent with `priority` and skips that budget, so cheap invitations
+  cannot silence it; those writes are Superadmin-only, step-up and bounded by the write budget. The
+  residual is L1: a Superadmin's inbox receives at most 10 L1 notices an hour (member grants,
+  invitations and their digests) plus the L2 notices, whoever causes them.
 
 ### Console invitations (ST-31.7)
 
@@ -7209,16 +7212,23 @@ shape, `mayGrant`, target, L2 `confirm`), so an invitation is held to exactly wh
 
 1. **Shape.** At most 20 addresses; each one `strictEmail` (trimmed, lower-cased); a repeat is
    `merged`, a non-address `invalid`; a non-string is a 422 for the whole request.
-2. **D-g.** The writer's session address, or any address verified on the writer's account, refuses the
-   whole request (`self_grant`): an invitation to yourself is a grant to yourself.
-3. **D-e.** An address verified on exactly one active, ledger-clear account that already holds a
+2. **D-g.** The writer's session address, or any address on the writer's account (every link email
+   and the primary email, verified or not, read through Identity's `public.ts`), refuses the whole
+   request (`self_grant`): an invitation to yourself is a grant to yourself. A D-e match on the
+   writer's own account is refused the same way. D-g at creation is partial (an address linked
+   later is not seen); conversion re-checks it (31.8).
+3. **D-e.** An address that is the verified primary email of exactly one active, ledger-clear account that already holds a
    binding or the root rule gets an account binding (`updated`, or `exists`). Anything else is
    `invited`, including an address that matches two members (not guessed at), an unverified
    address, a disabled account and an erased one. An erasure-ledger outage is a 503 and writes
    nothing.
-4. **Invitation budget.** `adminInviteAddress`: 100 invited addresses per member per hour, counted
-   per address, failing closed; a request that would pass it is refused whole (429
-   `invite_budget`) and writes nothing.
+4. **Invitation budget.** `adminInviteAddress`: 100 addresses per member per hour, counted per
+   distinct valid address whether or not it is a member (so the 429 does not reveal membership),
+   failing closed; a request that would exceed it is refused whole (429 `invite_budget`) and
+   writes nothing.
+5. **Re-invite.** Inviting an address that already has an invite renews it only for a writer who
+   could cancel it (D-c, `mayRevoke`); otherwise the answer is `exists` and nothing is written or
+   mailed. A renewal audits the `before`.
 
 **Commit and audit.** One batch: the rows and one `rbac.invite` (invite) or `rbac.grant` (update)
 audit row each, to `platform_audit` and, for a product scope or route, the product's `audit`. An
@@ -7237,7 +7247,7 @@ The same link is returned in the response when the mail did not go out (email of
 over budget), so it is not a secret either. The Superadmins get one count-only digest per request
 (no address). Every operator mail is within the per-recipient hourly budget.
 
-**Abuse controls.** (a) 20 addresses a request; (b) 100 invited addresses per member per hour;
+**Abuse controls.** (a) 20 addresses a request; (b) 100 addresses per member per hour;
 (c) the 30-writes-per-5-minutes write budget; (d) 10 operator notices per recipient per hour, so an
 invitee cannot be mail-bombed by repeated invitations and an inbox cannot be flooded by many
 inviters; (e) the platform sender's own suppression list and Apple relay rules; (f) a Superadmin
@@ -7262,6 +7272,13 @@ binding anyway.
 - A forwarded invitation mail reveals that a Polaris Key console invitation exists for that
   address, nothing more.
 - The invitation budget is per member, not platform-wide.
+- **Sub-addressing** (`a+1@`, `a+2@`) gets past the per-recipient cap for one mailbox; it is bounded
+  by the per-member invitation budget.
+- **Writer-controlled text in mail** (the inviter's name, a product name) is neutralised by
+  `operatorText`: URL schemes are dropped and domain-like tokens are defanged (`example[.]com`) so
+  mail clients do not auto-link them. Residual: plain prose can still mislead.
+- **Erasure** deletes invites only for the erased account's verified addresses; an address the
+  account merely claimed leaves the invitee's invite alone.
 
 **Tests:** `test/consoleInvites.test.ts`; `test/consoleBindingWrites.test.ts` (the per-recipient
 budget on G5 notices, fail-closed guarded writes); `routeCoverage`, `accountIdBoundary`, `scheduled`.

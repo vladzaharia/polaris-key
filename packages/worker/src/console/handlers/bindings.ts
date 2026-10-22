@@ -56,10 +56,10 @@ import {
   accessInvitesSentNotice,
   consoleInviteLink,
 } from "../../core/notify/templates.js";
-import { verifiedAccountEmails } from "../../core/accounts/verifiedEmails.js";
 import { strictEmail } from "../../core/strictEmail.js";
 import { normalizeEmail } from "../../platform/email.js";
 import { getProduct } from "../../core/products/store.js";
+import { usableOrigin } from "../../core/hosts.js";
 import {
   bindingUnchangedSql,
   findAccountBinding,
@@ -88,7 +88,8 @@ import {
   type GrantSpec,
 } from "../../core/rbac/grantRules.js";
 import {
-  accountsVerifyingEmail,
+  accountAddresses,
+  accountsWithVerifiedPrimaryEmail,
   consoleDirectory,
   consoleRootHolders,
   type ConsoleDirectoryEntry,
@@ -383,7 +384,14 @@ async function notify(
     });
     const results = await Promise.all(
       recipients.map((addr) =>
-        sendOperatorNotice(c.env, c.db, addr, message, c.now),
+        sendOperatorNotice(
+          c.env,
+          c.db,
+          addr,
+          message,
+          c.now,
+          confirmLevel(spec) === "L2",
+        ),
       ),
     );
     const sent = results.filter(Boolean).length;
@@ -552,7 +560,10 @@ interface InviteResult {
 
 /** The origin the console is served from: the configured one, else the one this request used. */
 function consoleOrigin(c: AdminCtx): string {
-  return c.env.CONSOLE_ORIGIN || new URL(c.req.url).origin;
+  return (
+    usableOrigin(c.env.CONSOLE_ORIGIN?.trim() ?? "") ??
+    new URL(c.req.url).origin
+  );
 }
 
 /** The opaque stand-in for an invited address in the audit trail. */
@@ -598,10 +609,12 @@ async function createInvites(
     }
   }
 
-  // D-g, for an address as for a member id: your own is a grant to yourself.
+  // D-g, for an address as for a member id: your own is a grant to yourself. Every address on
+  // the writer's account counts, verified or not; this is partial (an address linked later is
+  // caught when the invite converts, ST-31.8).
   if (todo.length > 0) {
     const mine = new Set(
-      (await verifiedAccountEmails(c.db, w.accountId)).map(normalizeEmail),
+      (await accountAddresses(c.db, w.accountId)).map(normalizeEmail),
     );
     if (c.session.email) mine.add(normalizeEmail(c.session.email));
     if (todo.some((t) => mine.has(t.email))) return selfGrant();
@@ -613,7 +626,11 @@ async function createInvites(
     let roots: Set<string> | null = null;
     for (const t of todo) {
       const found: string[] = [];
-      for (const cand of await accountsVerifyingEmail(c.db, t.email)) {
+      for (const candId of await accountsWithVerifiedPrimaryEmail(
+        c.db,
+        t.email,
+      )) {
+        const cand = { accountId: candId };
         const verdict = await erasureVerdict(c.env, c.now, cand.accountId);
         if (verdict === "unavailable")
           return err(503, "unavailable", "try again in a moment", {
@@ -627,13 +644,14 @@ async function createInvites(
         )
           found.push(cand.accountId);
       }
+      if (found.includes(w.accountId)) return selfGrant();
       if (found.length === 1) memberOf.set(t.email, found[0]!);
     }
   }
 
-  // The mail budget, per member, counted per address that will be invited. All or nothing.
-  const toInvite = todo.filter((t) => !memberOf.has(t.email));
-  for (let i = 0; i < toInvite.length; i++) {
+  // The mail budget, per member, counted per distinct valid address, members included, so the
+  // 429 does not depend on whether an address is a member. All or nothing.
+  for (let i = 0; i < todo.length; i++) {
     const ok = await rateLimitOk(
       c.env,
       "_admin",
@@ -706,6 +724,12 @@ async function createInvites(
       continue;
     }
     const existing = await findInvite(c.db, t.email, spec.role, spec.scope);
+    // D-c: an invite this writer could not cancel is not theirs to re-scope or re-own.
+    if (existing && !mayRevoke(c.session.principal, specOfRow(existing))) {
+      r.status = "exists";
+      r.bindingId = existing.id;
+      continue;
+    }
     const id = existing?.id ?? newBindingId();
     r.bindingId = id;
     r.expiresAt = expiresAt;
@@ -737,6 +761,20 @@ async function createInvites(
           source: "invite",
           expiresAt,
         },
+        ...(existing
+          ? {
+              before: {
+                bindingId: id,
+                role: existing.role,
+                scope: existing.scope,
+                areas: rowToGrant(existing)?.areas
+                  ? [...rowToGrant(existing)!.areas!]
+                  : null,
+                source: "invite",
+                expiresAt: existing.expires_at,
+              },
+            }
+          : {}),
       }),
     );
   }
@@ -789,6 +827,7 @@ async function createInvites(
         origin: c.env.CONSOLE_ORIGIN,
       }),
       mails,
+      confirmLevel(spec) === "L2",
     );
     sent += n.sent;
     of += n.of;
@@ -832,6 +871,7 @@ async function notifySuperadmins(
   c: AdminCtx,
   message: ReturnType<typeof accessInvitesSentNotice>,
   mails: { left: number },
+  priority = false,
 ): Promise<{ sent: number; of: number }> {
   try {
     const ids = (await superadminAccountIds(c.env, c.db, c.now)).map(
@@ -853,7 +893,9 @@ async function notifySuperadmins(
     );
     mails.left -= recipients.length;
     const ok = await Promise.all(
-      recipients.map((a) => sendOperatorNotice(c.env, c.db, a, message, c.now)),
+      recipients.map((a) =>
+        sendOperatorNotice(c.env, c.db, a, message, c.now, priority),
+      ),
     );
     return { sent: ok.filter(Boolean).length, of: recipients.length };
   } catch {

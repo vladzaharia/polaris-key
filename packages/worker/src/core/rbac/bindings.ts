@@ -456,6 +456,27 @@ export function stmtUpsertInvite(b: {
   };
 }
 
+/**
+ * ST-31.7 erasure: delete the invites addressed to the erased account's VERIFIED addresses (a
+ * verified link email, or a primary email once verified). An address the account only claimed is
+ * not its to erase: the invitee may be someone else. Returned as a statement for the erasure
+ * batch; this file stays the one store for the table.
+ */
+export function stmtDeleteInvitesOfVerifiedAddresses(
+  accountId: string,
+): DbStatement {
+  return {
+    sql: `DELETE FROM console_role_bindings
+           WHERE email_norm IS NOT NULL
+             AND (email_norm IN (SELECT lower(trim(email)) FROM account_links
+                                  WHERE account_id = ? AND email IS NOT NULL AND email_verified = 1)
+                  OR email_norm IN (SELECT lower(trim(primary_email)) FROM accounts
+                                     WHERE id = ? AND primary_email IS NOT NULL
+                                       AND primary_email_verified_at IS NOT NULL))`,
+    params: [accountId, accountId],
+  };
+}
+
 /** Whether the account holds any stored binding (it is a console member besides the root rule). */
 export async function hasAccountBinding(
   db: Db,
