@@ -44,15 +44,19 @@ struct PaneText: View {
 /// default, never a fill, a status or a large surface; the service's own accent at 20 pt.
 struct ServiceCue: View {
     let service: KitService
+    /// The tile and its glyph grow with Dynamic Type, so a group header never holds a fixed-size
+    /// glyph beside text that scales.
+    @ScaledMetric(relativeTo: .footnote) private var tile: CGFloat = 20
+    @ScaledMetric(relativeTo: .footnote) private var glyphSize: CGFloat = 11
 
     var body: some View {
         kitStyle { style in
             if style.serviceCues {
                 let (glyph, ring, fill) = Self.look(service, dark: style.dark)
                 Image(systemName: glyph)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: glyphSize, weight: .semibold))
                     .foregroundStyle(ring.color)
-                    .frame(width: 20, height: 20)
+                    .frame(width: tile, height: tile)
                     .background(
                         RoundedRectangle(cornerRadius: 5, style: .continuous).fill(fill.color)
                     )
@@ -148,6 +152,8 @@ public struct AccountAndLicenseSection: View {
     /// Check now in flight, and its one-line answer.
     var checking = false
     var checkNote: CopyLine?
+    /// The check failed: its note is the failure line, with Try again under it.
+    var checkFailed = false
     /// Which groups to draw: the whole pane, or the part above or below the Devices and Settings
     /// sections `PolarisKeySettings` puts between them.
     var part: Part = .all
@@ -163,8 +169,10 @@ public struct AccountAndLicenseSection: View {
         onManage: @escaping () -> Void, onSignOut: @escaping () -> Void,
         onCheckNow: @escaping () -> Void = {}, canManage: Bool = true, canAutoUpdate: Bool = true,
         channel: KitChannelState = .hidden, onChannel: ((String) -> Void)? = nil,
-        checking: Bool = false, checkNote: CopyLine? = nil, part: Part = .all
+        checking: Bool = false, checkNote: CopyLine? = nil, checkFailed: Bool = false,
+        part: Part = .all
     ) {
+        self.checkFailed = checkFailed
         self.canManage = canManage
         self.canAutoUpdate = canAutoUpdate
         self.channel = channel
@@ -212,6 +220,7 @@ public struct AccountAndLicenseSection: View {
                             PaneText(CopyLine("account.keyOnly"), .meta, color: .muted)
                         } else if screen.shows("account.offline") {
                             StatusPill(CopyLine("part.status.grace"), tone: .warning)
+                            PaneText(CopyLine("account.offline"), .meta, color: .muted)
                         }
                     }
                 }
@@ -229,6 +238,7 @@ public struct AccountAndLicenseSection: View {
                         }
                         .frame(minHeight: 52)
                     }
+                    .tint(style.palette.accentFg)
                 }
                 if screen.shows("account.devices"), devices != nil {
                     LabeledContent {
@@ -238,9 +248,29 @@ public struct AccountAndLicenseSection: View {
                     }
                     .frame(minHeight: 52)
                 }
-                if screen.shows("account.cloudSync") {
-                    PaneText(CopyLine("account.cloudSync"), .body, color: .default)
+                // Cloud Sync has no value and no destination here yet (CloudSyncStatus is the
+                // second wave): no row, rather than a label that does nothing.
+                if screen.state == .offline {
+                    // Everything that needs no network stays; Try again is the way out.
+                    if let version {
+                        PaneText(
+                            CopyLine("account.version", ["version": .text(version)]), .body,
+                            color: .default
+                        )
                         .frame(minHeight: 52, alignment: .leading)
+                    }
+                    Button(action: onCheckNow) {
+                        HStack {
+                            PaneText(CopyLine("common.tryAgain"), .body, color: .accent)
+                            Spacer()
+                            if checking {
+                                ProgressView().accessibilityLabel(strings.string("a11y.busy"))
+                            }
+                        }
+                        .frame(minHeight: 52, alignment: .leading)
+                    }
+                    .tint(style.palette.accentFg)
+                    .disabled(checking)
                 }
             }
             // A group header only over rows that render (never an empty "Updates").
@@ -277,11 +307,20 @@ public struct AccountAndLicenseSection: View {
                             }
                             .frame(minHeight: 52, alignment: .leading)
                         }
+                        .tint(style.palette.accentFg)
                         .disabled(checking)
                     }
                     if let checkNote {
-                        PaneText(checkNote, .footnote, color: .muted)
-                            .frame(minHeight: 52, alignment: .leading)
+                        PaneText(checkNote, .footnote, color: checkFailed ? .danger : .muted)
+                            .frame(minHeight: 44, alignment: .leading)
+                        if checkFailed {
+                            Button(action: onCheckNow) {
+                                PaneText(CopyLine("common.tryAgain"), .body, color: .accent)
+                                    .frame(minHeight: 52, alignment: .leading)
+                            }
+                            .tint(style.palette.accentFg)
+                            .disabled(checking)
+                        }
                     }
                 } header: {
                     HStack(spacing: 6) {
@@ -388,6 +427,9 @@ public struct DevicesSection: View {
     /// The device being renamed, and the name typed so far.
     @State private var renaming: KitDevice?
     @State private var draft = ""
+    @FocusState private var focused: Bool
+    /// The last rename sent, to reopen on a failure.
+    @State private var lastRename: (KitDevice, String)?
     @Environment(\.polarisKeyStrings) private var strings
 
     public init(
@@ -420,6 +462,7 @@ public struct DevicesSection: View {
                         PaneText(line, .body, color: .default)
                     }
                     Button(strings.string("common.tryAgain"), action: onRetry)
+                        .tint(style.palette.accentFg)
                         .frame(minHeight: 52, alignment: .leading)
                 case .empty:
                     PaneText(CopyLine("devices.empty"), .body, color: .default)
@@ -453,6 +496,14 @@ public struct DevicesSection: View {
             } header: {
                 PaneText(CopyLine("devices.title"), .footnote, color: .muted)
             }
+            .onChange(of: failure) { _, line in
+                guard line?.key == "devices.renameFailed", let (device, typed) = lastRename else {
+                    return
+                }
+                draft = typed
+                renaming = device
+                focused = true
+            }
             .confirmationDialog(
                 removing.map {
                     strings.string(
@@ -480,43 +531,54 @@ public struct DevicesSection: View {
     }
 
     @ViewBuilder private func row(_ device: KitDevice, _ style: KitResolvedStyle) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        HStack(spacing: 0) {
+            // The current device says so where "last used" would go, under its name.
             DeviceRow(
                 name: device.name, formFactor: device.formFactor.rawValue,
-                meta: strings.string(
-                    "devices.meta",
-                    [
-                        "platform": .text(KitFormat.platformName(device.platform)),
-                        "when": .text(KitFormat.daysAgo(device.lastSeenDays)),
-                    ])
+                meta: device.current
+                    ? strings.string(
+                        "part.thisDeviceTitle", ["formFactor": .text(device.formFactor.rawValue)])
+                    : strings.string(
+                        "devices.meta",
+                        [
+                            "platform": .text(KitFormat.platformName(device.platform)),
+                            "when": .text(KitFormat.daysAgo(device.lastSeenDays)),
+                        ])
             )
-            if device.current {
-                PaneText(
-                    CopyLine("part.thisDeviceTitle", ["formFactor": .text(device.formFactor.rawValue)]),
-                    .footnote, color: .muted
-                )
-                .padding(.bottom, style.space(.xs))
+            if onRename != nil || !device.current {
+                // Rename and Remove are visible, not only a swipe or a long press away.
+                Menu {
+                    if onRename != nil {
+                        Button(strings.string("devices.rename")) { beginRename(device) }
+                    }
+                    if !device.current {
+                        Button(strings.string("devices.remove"), role: .destructive) {
+                            removing = device
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(style.palette.textMuted)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel(name(device))
             }
         }
+        .frame(minHeight: 64)
         .swipeActions {
             if !device.current {
                 Button(strings.string("devices.remove"), role: .destructive) { removing = device }
+                    .tint(style.palette.danger)
                     .accessibilityLabel(
                         strings.string("a11y.removeDevice", ["device": .text(name(device))]))
             }
             if onRename != nil {
                 Button(strings.string("devices.rename")) { beginRename(device) }
-                    .tint(.accentColor)
+                    .tint(style.palette.accentSolid)
                     .accessibilityLabel(
                         strings.string("a11y.renameDevice", ["device": .text(name(device))]))
-            }
-        }
-        .contextMenu {
-            if onRename != nil {
-                Button(strings.string("devices.rename")) { beginRename(device) }
-            }
-            if !device.current {
-                Button(strings.string("devices.remove"), role: .destructive) { removing = device }
             }
         }
     }
@@ -524,34 +586,79 @@ public struct DevicesSection: View {
     private func beginRename(_ device: KitDevice) {
         draft = device.name ?? ""
         renaming = device
+        focused = true
     }
 
-    /// The row as a field: Return or Save keeps the name, Cancel puts the old one back.
+    /// The row as a field: Return or Save keeps the name, Cancel puts the old one back. The field
+    /// is focused on begin, and a failed save brings it back with what was typed.
     @ViewBuilder private func renameRow(_ device: KitDevice, _ style: KitResolvedStyle)
         -> some View
     {
         VStack(alignment: .leading, spacing: style.space(.xs)) {
             TextField(strings.string("devices.renameLabel"), text: $draft)
                 .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled()
                 .submitLabel(.done)
+                .focused($focused)
                 .onSubmit { commitRename(device) }
+                .frame(minHeight: 44)
             HStack {
-                Button(strings.string("common.cancel")) { renaming = nil }
-                    .frame(minWidth: 44, minHeight: 44)
+                // The frame and the hit shape live inside the label: outside a borderless
+                // button they pad the layout, not the tappable area.
+                Button {
+                    renaming = nil
+                } label: {
+                    Text(strings.string("common.cancel"))
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
                 Spacer()
-                Button(strings.string("common.save")) { commitRename(device) }
-                    .fontWeight(.semibold)
-                    .frame(minWidth: 44, minHeight: 44)
+                Button {
+                    commitRename(device)
+                } label: {
+                    Text(strings.string("common.save"))
+                        .fontWeight(.semibold)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
             }
             .buttonStyle(.borderless)
+            .tint(style.palette.accentFg)
         }
         .padding(.vertical, style.space(.xs))
         .frame(minHeight: 64)
+        .onAppear { focused = true }
     }
 
     private func commitRename(_ device: KitDevice) {
+        // Closed at once; a failed save reopens it with this name (EXPERIENCE §7.3: input
+        // survives a failed save).
+        lastRename = (device, draft)
         onRename?(device, draft)
         renaming = nil
+    }
+}
+
+/// A text setting: its title is the visible label (the row reads "Display name  Mara"), the
+/// field is at least 44 pt, and the value is kept when focus leaves it, not only on Return.
+struct SettingsFieldRow: View {
+    let title: String
+    @Binding var text: String
+    var commit: () -> Void
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        LabeledContent(title) {
+            TextField("", text: $text)
+                .multilineTextAlignment(.trailing)
+                .focused($focused)
+                .submitLabel(.done)
+                .onSubmit(commit)
+                .frame(minHeight: 44)
+                .accessibilityLabel(title)
+        }
+        .frame(minHeight: 52)
+        .onChange(of: focused) { _, now in if !now { commit() } }
     }
 }
 
@@ -569,6 +676,8 @@ public struct SettingsSection: View {
     /// Reset a changed row to its default; nil: no Reset is drawn.
     var onReset: ((String) -> Void)?
     @State private var edits: [String: KitConfigValue] = [:]
+    /// What was reported per row, so a commit never repeats.
+    @State private var log = KitCommitLog()
     @State private var query = ""
     @Environment(\.polarisKeyStrings) private var strings
 
@@ -641,15 +750,21 @@ public struct SettingsSection: View {
                 if !members.isEmpty {
                     Section {
                         ForEach(members, id: \.key) { row in
+                            // Reset to default is an action on the row (swipe, long press, and
+                            // VoiceOver's actions), not a second row of loose accent text.
+                            let canReset = row.source == "local" && !row.locked && onReset != nil
                             settingRow(row, style)
-                            if row.source == "local", !row.locked, let onReset {
-                                Button(strings.string("settings.reset")) {
-                                    edits[row.key] = nil
-                                    onReset(row.key)
+                                .swipeActions {
+                                    if canReset {
+                                        Button(strings.string("settings.reset")) { reset(row) }
+                                            .tint(style.palette.accentSolid)
+                                    }
                                 }
-                                .font(.footnote)
-                                .frame(minHeight: 44, alignment: .leading)
-                            }
+                                .contextMenu {
+                                    if canReset {
+                                        Button(strings.string("settings.reset")) { reset(row) }
+                                    }
+                                }
                         }
                     } header: {
                         head(group, style)
@@ -664,11 +779,27 @@ public struct SettingsSection: View {
         }
     }
 
-    private func head(_ group: Group, _ style: KitResolvedStyle) -> some View {
-        HStack(spacing: 6) {
-            if group == .yours { ServiceCue(service: .config) }
+    /// The person's own group has no header: it sits under the host's own "Settings" title, and
+    /// the developer's and the managed groups say whose they are.
+    @ViewBuilder private func head(_ group: Group, _ style: KitResolvedStyle) -> some View {
+        if group != .yours {
             PaneText(header(group, style), .footnote, color: .muted)
         }
+    }
+
+    private func reset(_ row: KitConfigRow) {
+        edits[row.key] = nil
+        log.forget(row.key)
+        onReset?(row.key)
+    }
+
+    /// Report an edit once: Return and leaving the field both land here, and the same value is
+    /// never sent twice.
+    private func commit(_ row: KitConfigRow) {
+        guard log.shouldCommit(key: row.key, value: edits[row.key], rowValue: row.value),
+            let value = edits[row.key]
+        else { return }
+        onChange(row.key, value)
     }
 
     private func matches(_ row: KitConfigRow) -> Bool {
@@ -731,16 +862,12 @@ public struct SettingsSection: View {
             .tint(style.palette.accentSolid)
             .frame(minHeight: 52)
         } else if Self.control(row, options: options) == .field {
-            TextField(
-                title(row),
+            SettingsFieldRow(
+                title: title(row),
                 text: Binding(
                     get: { if case .string(let s)? = current(row) { return s } else { return "" } },
                     set: { edits[row.key] = .string($0) }),
-                prompt: nil
-            )
-            .onSubmit { if let value = edits[row.key] { onChange(row.key, value) } }
-            .submitLabel(.done)
-            .frame(minHeight: 52)
+                commit: { commit(row) })
         } else if Self.control(row, options: options) == .toggle, case .bool(let on)? = current(row) {
             Toggle(
                 title(row),
@@ -755,9 +882,11 @@ public struct SettingsSection: View {
                         Text(n.formatted()).foregroundStyle(style.palette.textMuted)
                             .monospacedDigit()
                     }
+                    // The value shows as it moves; the host hears it once, on release.
                     Slider(
-                        value: Binding(get: { n }, set: { set(row, .number($0.rounded())) }),
-                        in: lo...hi
+                        value: Binding(get: { n }, set: { edits[row.key] = .number($0.rounded()) }),
+                        in: lo...hi,
+                        onEditingChanged: { editing in if !editing { commit(row) } }
                     )
                     .tint(style.palette.accentSolid)
                     .accessibilityLabel(title(row))

@@ -111,6 +111,8 @@ public final class PolarisKeySettingsModel {
     /// Check now in flight, and its answer: "You're up to date", or nothing when an offer arrived.
     public private(set) var checking = false
     public private(set) var checkResult: CopyLine?
+    /// The last check failed: `checkResult` is the failure line and the row offers Try again.
+    public private(set) var checkFailed = false
     public private(set) var hasLoaded = false
 
     private var servicesOn: Set<KitService>?
@@ -126,7 +128,6 @@ public final class PolarisKeySettingsModel {
     private var saveFailed = false
     private var accountSignedIn = false
     private var developer: String?
-    private var offered = false
     private var observation: Task<Void, Never>?
 
     /// A live model over `client`.
@@ -191,7 +192,6 @@ public final class PolarisKeySettingsModel {
             await self?.load()
             for await event in stream {
                 guard let self else { return }
-                if case .updateAvailable = event { self.offered = true }
                 await self.reloadAccount()
             }
         }
@@ -274,8 +274,8 @@ public final class PolarisKeySettingsModel {
             await loadDevices()
         } catch {
             deviceFailure = CopyLine(
-                "devices.removeFailed", ["device": .text(device.name ?? "")])
-            }
+                "devices.removeFailed", ["device": Self.deviceArgument(device.name)])
+        }
     }
 
     /// Rename a device in place; an empty name clears the label.
@@ -289,8 +289,14 @@ public final class PolarisKeySettingsModel {
             await loadDevices()
         } catch {
             deviceFailure = CopyLine(
-                "devices.renameFailed", ["device": .text(device.name ?? label)])
-            }
+                "devices.renameFailed", ["device": Self.deviceArgument(device.name ?? label)])
+        }
+    }
+
+    /// A device in a sentence: its name, else "Unnamed device" (never an empty gap).
+    public static func deviceArgument(_ name: String?) -> CopyArgument {
+        if let name, !name.isEmpty { return .text(name) }
+        return .line(CopyLine("devices.unnamed"))
     }
 
     public func retryDevices() async {
@@ -404,19 +410,45 @@ public final class PolarisKeySettingsModel {
 
     // MARK: Account
 
-    /// Check now: a fresh sync; an offer reaches the gate's banner, otherwise the row says so.
+    /// What a check found, from the sync's answer and, when the host runs a signed update
+    /// decision, the update service's own.
+    public enum CheckOutcome: Sendable, Equatable {
+        case failed, offered, upToDate
+
+        /// Any failed document (network and server included), a refusal, or an update check that
+        /// could not be answered is a failure, never "up to date".
+        public static func resolve(sync: SyncResult, probe: CoreContext.UpdateProbe?) -> CheckOutcome {
+            if sync.unauthorized || sync.blocked || sync.deviceCap
+                || sync.documents.values.contains(.error)
+            {
+                return .failed
+            }
+            switch probe {
+            case .failed?: return .failed
+            case .offered?: return .offered
+            case .upToDate?, nil: return .upToDate
+            }
+        }
+    }
+
+    /// Check now: a fresh sync, then the update service's answer. An offer reaches the gate's
+    /// banner; otherwise the row says "You're up to date", or that the check failed with Try again.
     public func checkNow() async {
         guard let client, !checking else { return }
         checking = true
         checkResult = nil
-        offered = false
+        checkFailed = false
         let result = await client.sync(force: true)
-        // The offer, if any, arrives on the event stream just after the sync.
-        try? await Task.sleep(nanoseconds: 300_000_000)
+        var probe: CoreContext.UpdateProbe?
+        if let ask = client.core.updateProbe.current { probe = await ask() }
         checking = false
-        if result.unauthorized || result.blocked {
-            checkResult = CopyLine("common.tryAgain")
-        } else if !offered {
+        switch CheckOutcome.resolve(sync: result, probe: probe) {
+        case .failed:
+            checkFailed = true
+            checkResult = CopyLine("core.codes.refresh-failed.message")
+        case .offered:
+            break
+        case .upToDate:
             checkResult = CopyLine("update.upToDate")
         }
     }

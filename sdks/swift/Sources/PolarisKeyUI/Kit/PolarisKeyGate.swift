@@ -61,7 +61,7 @@ public struct PolarisKeyGate<Content: View>: View {
             PolarisKeyScope(model: model) {
                 UpdatePromptView(
                     screen: model.updatePrompt, details: model.inputs.update,
-                    onUpdate: performUpdate, onLater: {})
+                    onUpdate: updateAction, onLater: {})
             }
             .interactiveDismissDisabled()
         }
@@ -190,11 +190,15 @@ public struct PolarisKeyGate<Content: View>: View {
             set: { _ in })
     }
 
-    private func performUpdate() {
-        if let update = model.handlers.update {
-            update()
-        } else if let link = KitLinks.valid(model.inputs.update?.notesUrl) {
-            openURL(link)
+    /// What "Update now" does: the host's handler, else the store listing the decision named.
+    /// Never the release notes page; with neither there is no verb (decision 7).
+    private var updateAction: (() -> Void)? {
+        switch KitUpdateRoute.resolve(
+            hasHandler: model.handlers.update != nil, update: model.inputs.update)
+        {
+        case .handler: return { model.handlers.update?() }
+        case .open(let link): return { openURL(link) }
+        case .none: return nil
         }
     }
 
@@ -208,8 +212,11 @@ public struct PolarisKeyGate<Content: View>: View {
             }
             updateOverlay
             if let toast = model.toast {
-                GateToastView(toast: toast) { model.dismissToast(toast.id) }
-                    .id(toast.id)
+                GateToastView(
+                    toast: toast, onDismiss: { model.dismissToast(toast.id) },
+                    onUpdate: { model.reofferUpdate() }
+                )
+                .id(toast.id)
             }
         }
     }
@@ -228,18 +235,25 @@ public struct PolarisKeyGate<Content: View>: View {
                     UpdateProgressView(
                         screen: KitStates.updateProgress(model.inputs),
                         fraction: model.inputs.update?.progress?.fraction,
-                        onRetry: performUpdate
+                        title: progressTitle, onRetry: { updateAction?() }
                     )
                     .padding()
                     .modifier(KitFloatingProgressSurface())
                 } else {
                     UpdatePromptView(
                         screen: prompt, fraction: model.inputs.update?.progress?.fraction,
-                        details: model.inputs.update, onUpdate: performUpdate,
+                        details: model.inputs.update, onUpdate: updateAction,
                         onLater: { model.deferUpdate() })
                 }
             }
         }
+    }
+
+    /// What is downloading, for the progress row's title.
+    private var progressTitle: CopyLine? {
+        guard let version = model.inputs.update?.version else { return nil }
+        return CopyLine(
+            "update.title", ["product": .text(model.identity.name), "version": .text(version)])
     }
 
     private var replaceDevice: (() -> Void)? {

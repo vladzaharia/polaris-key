@@ -344,6 +344,9 @@ public final class PolarisKeyGateModel {
     private func offerUpdate(version: String, action: String, mandatory: Bool) async {
         var offer = KitUpdate(
             action: action, version: version, mandatory: mandatory, currentVersion: currentVersion)
+        // The store listing the decision named, read before anything awaits (a newer offer
+        // overwrites it).
+        if action == "store" { offer.listingUrl = client?.core.offerListingUrl.current }
         if let old = update, old.version == version {
             offer.progress = old.progress
             offer.sizeBytes = old.sizeBytes
@@ -375,6 +378,13 @@ public final class PolarisKeyGateModel {
     public func deferUpdate() {
         deferredVersion = update?.version
         updateDismissed = true
+    }
+
+    /// "Update" on the re-offer toast: the banner comes back.
+    public func reofferUpdate() {
+        deferredVersion = nil
+        updateDismissed = false
+        toast = nil
     }
 
     /// The host's updater reports a download: its progress and, when known, the size.
