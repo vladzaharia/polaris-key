@@ -41,6 +41,7 @@ import {
   Refusal,
   type ResolvedCredential,
 } from "./credentials.js";
+import { readCappedText } from "./httpRead.js";
 import type { ValidationResult } from "./manifest.js";
 import type { Term } from "./terminal.js";
 import { untrusted, type UntrustedEnv } from "./untrusted.js";
@@ -72,33 +73,14 @@ export interface RemoteDoctor {
   facts: DoctorFact[];
 }
 
-/** The most a response body may be before it is read (64 KiB), as the admin commands cap theirs. */
-export const READ_LIMIT = 64 * 1024;
-
-// TODO(merge): use the shared reader from fix A (the 64 KiB capped JSON reader).
-/** A response's JSON, refusing a body over `limit` bytes before it is parsed. */
-export async function readCapped(
-  res: Response,
-  limit: number = READ_LIMIT,
-): Promise<unknown> {
-  const declared = Number(res.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > limit)
-    throw new Error("The answer was too large to read.");
-  const reader = res.body?.getReader();
-  if (!reader) return JSON.parse(await res.text()) as unknown;
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > limit) {
-      await reader.cancel().catch(() => {});
-      throw new Error("The answer was too large to read.");
-    }
-    chunks.push(value);
-  }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+/**
+ * A response's JSON through the shared 64 KiB cap (`httpRead.ts`). Unlike `readCappedJson`, a body
+ * over the cap or not JSON throws, so discovery can report it as unreadable.
+ */
+export async function readCapped(res: Response): Promise<unknown> {
+  const text = await readCappedText(res);
+  if (text === null) throw new Error("The answer was too large to read.");
+  return JSON.parse(text) as unknown;
 }
 
 const plural = (n: number, word: string): string =>

@@ -27092,27 +27092,10 @@ async function applyContext(keys, flags, input) {
 // src/doctor.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var DOCTOR_TIMEOUT_MS = 15e3;
-var READ_LIMIT = 64 * 1024;
-async function readCapped(res, limit = READ_LIMIT) {
-  const declared = Number(res.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > limit)
-    throw new Error("The answer was too large to read.");
-  const reader = res.body?.getReader();
-  if (!reader) return JSON.parse(await res.text());
-  const chunks = [];
-  let size = 0;
-  for (; ; ) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > limit) {
-      await reader.cancel().catch(() => {
-      });
-      throw new Error("The answer was too large to read.");
-    }
-    chunks.push(value);
-  }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+async function readCapped(res) {
+  const text2 = await readCappedText(res);
+  if (text2 === null) throw new Error("The answer was too large to read.");
+  return JSON.parse(text2);
 }
 var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 function manifestFact(result, problem, fileWarnings = []) {
@@ -27759,7 +27742,7 @@ function sessionJson(s) {
     integration: i.state === "ok" ? { ...i, ci: i.ci ? { firstAt: iso2(i.ci.firstAt) } : null } : { ...i }
   };
 }
-var STACK_BELOW = 36;
+var STACK_BELOW2 = 36;
 var WIDE = 60;
 var VALUE_COL = 30;
 var NAME_CAP = 24;
@@ -27796,27 +27779,27 @@ function flow2(pieces2, width, sep) {
   const lines4 = [];
   let cur = null;
   for (const piece of pieces2) {
-    const wrapped2 = wrapSpans(piece, Math.max(1, width));
-    if (!wrapped2.length) continue;
+    const wrapped = wrapSpans(piece, Math.max(1, width));
+    if (!wrapped.length) continue;
     const joint = glued.has(piece) ? space : bar;
     const jw = lineWidth(joint);
-    if (cur && wrapped2.length === 1 && lineWidth(cur) + jw + lineWidth(wrapped2[0]) <= width) {
-      cur = [...cur, ...joint, ...wrapped2[0]];
+    if (cur && wrapped.length === 1 && lineWidth(cur) + jw + lineWidth(wrapped[0]) <= width) {
+      cur = [...cur, ...joint, ...wrapped[0]];
       continue;
     }
     if (cur) lines4.push(cur);
-    lines4.push(...wrapped2.slice(0, -1));
-    cur = wrapped2[wrapped2.length - 1];
+    lines4.push(...wrapped.slice(0, -1));
+    cur = wrapped[wrapped.length - 1];
   }
   if (cur) lines4.push(cur);
   return lines4;
 }
-function renderReport(report, t, runMs) {
+function renderReport(report2, t, runMs) {
   const { painter, symbols, caps } = t;
   const cyan = new Painter(caps, null, {}, false);
   const width = Math.max(20, caps.columns);
   const wide = width >= WIDE;
-  const stackAll = width < STACK_BELOW;
+  const stackAll = width < STACK_BELOW2;
   const sep = symbols.separator;
   const arrow = caps.unicode ? "→" : "->";
   const out = [];
@@ -27913,7 +27896,7 @@ function renderReport(report, t, runMs) {
       );
     }
   };
-  const h = report.header;
+  const h = report2.header;
   const headPieces = [
     [
       { text: h.name, style: ["strong"] },
@@ -27922,7 +27905,7 @@ function renderReport(report, t, runMs) {
     [{ text: h.host, style: ["muted"] }]
   ];
   for (const l of flow2(headPieces, width, sep)) out.push(paint(l));
-  for (const sec of report.sections) {
+  for (const sec of report2.sections) {
     out.push("");
     if (sec.collapsed && sec.title) {
       collapsed(sec.title, sec.collapsed);
@@ -27940,14 +27923,14 @@ function renderReport(report, t, runMs) {
   const summary = [
     [
       {
-        text: `${report.todo} to do`,
-        style: [report.todo ? "danger" : "success"]
+        text: `${report2.todo} to do`,
+        style: [report2.todo ? "danger" : "success"]
       }
     ],
     [
       {
-        text: plural(report.warnings, "warning"),
-        style: [report.warnings ? "warning" : "muted"]
+        text: plural(report2.warnings, "warning"),
+        style: [report2.warnings ? "warning" : "muted"]
       }
     ],
     [{ text: `${(runMs / 1e3).toFixed(1)} s`, style: ["muted"] }]
@@ -27956,10 +27939,10 @@ function renderReport(report, t, runMs) {
   return `${out.join("\n")}
 `;
 }
-function reportJson(report) {
+function reportJson(report2) {
   return {
-    facts: report.facts,
-    summary: { todo: report.todo, warnings: report.warnings }
+    facts: report2.facts,
+    summary: { todo: report2.todo, warnings: report2.warnings }
   };
 }
 async function checkConfigFiles(opts) {
@@ -49247,7 +49230,7 @@ async function cmdDoctor(parsed, cwd, stdout, term, ci, admin) {
     host: hostOf3(ctx.baseUrl.url),
     exposed: reached ? remote.keys : null
   });
-  const report = buildReport({
+  const report2 = buildReport({
     product: ctx.product,
     baseUrl: ctx.baseUrl.url,
     manifest,
@@ -49258,20 +49241,20 @@ async function cmdDoctor(parsed, cwd, stdout, term, ci, admin) {
   });
   if (flagBool(parsed, "json")) {
     stdout.write(
-      envelope("doctor", report.exit, {
+      envelope("doctor", report2.exit, {
         product: ctx.product?.slug ?? null,
         baseUrl: maskTokens(ctx.baseUrl.url),
-        ...reportJson(report),
+        ...reportJson(report2),
         services: remote?.services ?? [],
         signing: remote?.signing ?? null,
         keys: remote?.keys ?? [],
         ...sessionJson(session)
       })
     );
-    return report.exit;
+    return report2.exit;
   }
-  stdout.write(renderReport(report, term, performance.now() - started));
-  return report.exit;
+  stdout.write(renderReport(report2, term, performance.now() - started));
+  return report2.exit;
 }
 async function cmdBundle(parsed, cwd, stdout, term, env, token, fetchImpl) {
   const product = flagString(parsed, "product");
