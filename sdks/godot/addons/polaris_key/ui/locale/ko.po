@@ -928,10 +928,10 @@ msgstr "이 TV에서 사용하려면 기기 하나를 교체하세요. 나중에
 msgid "deviceLimit.confirmTitle"
 msgstr "{device}을(를) 교체할까요?"
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "deviceLimit.consequence"
-msgstr "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요."
+msgstr "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 대신 사용돼요. 이 내용은 이메일로 알려 드려요."
 
 #. Replace and continue
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button.
@@ -1762,6 +1762,11 @@ msgstr "릴리스 채널"
 msgid "channel.locked"
 msgstr "{store}에서 채널을 설정해요."
 
+#. Your license includes this channel only.
+#. ChannelPicker: the license allows one release channel, so the choice is locked.
+msgid "channel.lockedLicense"
+msgstr "라이선스에 이 채널만 포함되어 있어요."
+
 #. Undo
 #. Toast action.
 msgid "toast.undo"
@@ -2361,10 +2366,10 @@ msgctxt "macos"
 msgid "signin.choice.continue"
 msgstr "이 라이선스로 계속"
 
-#. That seat was just taken. Choose again.
+#. That device was just replaced. Choose again.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.raced"
-msgstr "방금 다른 기기가 그 자리를 차지했어요. 다시 선택하세요."
+msgstr "그 기기는 방금 교체됐어요. 다시 선택하세요."
 
 #. The code on {device} expired. Get a new code there and scan it again.
 #. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
@@ -2406,10 +2411,10 @@ msgctxt "macos"
 msgid "signin.replace.open"
 msgstr "기기 교체"
 
-#. Choose a device to sign out. {thisDevice} takes its seat.
+#. Choose a device to sign out. {thisDevice} takes its place.
 #. Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice).
 msgid "signin.replace.lede"
-msgstr "로그아웃할 기기를 선택하세요. {thisDevice}이(가) 그 자리를 사용해요."
+msgstr "로그아웃할 기기를 선택하세요. {thisDevice}이(가) 대신 사용돼요."
 
 #. Replace a device
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title.
@@ -2446,10 +2451,10 @@ msgstr "이 브라우저"
 msgid "signin.replace.title"
 msgstr "{device}을(를) 교체할까요?"
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "signin.replace.consequence"
-msgstr "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요."
+msgstr "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 대신 사용돼요. 이 내용은 이메일로 알려 드려요."
 
 #. {device} is in use right now.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
@@ -2493,15 +2498,15 @@ msgid "signin.replace.rateLimited"
 msgid_plural "signin.replace.rateLimited"
 msgstr[0] "기기 변경이 너무 많아요. {seconds}초 후에 다시 시도하세요."
 
-#. Someone took that seat first. Choose again.
+#. Someone replaced that device first. Choose again.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
 msgid "signin.replace.raced"
-msgstr "다른 사람이 먼저 그 자리를 차지했어요. 다시 선택하세요."
+msgstr "다른 사람이 먼저 그 기기를 교체했어요. 다시 선택하세요."
 
-#. {device} was removed, but someone took the seat first. Choose again.
+#. {device} was removed, but someone signed in first. Choose again.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
 msgid "signin.replace.racedAfterFree"
-msgstr "{device}을(를) 제거했지만 다른 사람이 먼저 자리를 차지했어요. 다시 선택하세요."
+msgstr "{device}을(를) 제거했지만 다른 기기가 먼저 로그인했어요. 다시 선택하세요."
 
 #. Continue to {app} as {name}?
 #. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated); {name} = the person's display name.
@@ -3367,6 +3372,11 @@ msgstr "진행률을 표시하며 콘텐츠 다운로드 및 설치"
 msgid "cli.verb.doctor"
 msgstr "이 기기에서 가능한 기능 표시 (지원용)"
 
+#. Run startup, one line per stage
+#. Terminal help: what the boot command does.
+msgid "cli.verb.boot"
+msgstr "시작 과정을 실행해요(단계마다 한 줄)"
+
 #. Print shell completion for bash, zsh or fish
 #. Terminal help: what the completion command does. bash, zsh and fish are shell names; keep them.
 msgid "cli.verb.completion"
@@ -3396,6 +3406,11 @@ msgstr "명령 도움말"
 #. Terminal help: what the --yes flag does.
 msgid "cli.option.yes"
 msgstr "로그아웃 전에 확인하지 않음"
+
+#. Download required content without asking
+#. Terminal help: what the --yes flag does on boot.
+msgid "cli.option.yesDownload"
+msgstr "필요한 콘텐츠를 묻지 않고 다운로드"
 
 #. Sign in with a code instead of this computer's browser
 #. Terminal help: what the --device-code flag does.
@@ -4312,10 +4327,10 @@ msgctxt "macos"
 msgid "signin.choice.replaceAndSignIn"
 msgstr "교체하고 로그인"
 
-#. The device you choose signs out of {app}. It can sign in again later if a seat is free. We'll email you about it.
+#. The device you choose signs out of {app}. It can sign in again later if there's room. We'll email you about it.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.choice.replaceSafety"
-msgstr "선택한 기기는 {app}에서 로그아웃됩니다. 자리가 나면 나중에 다시 로그인할 수 있습니다. 이메일로 알려 드립니다."
+msgstr "선택한 기기는 {app}에서 로그아웃됩니다. 여유가 있으면 나중에 다시 로그인할 수 있습니다. 이메일로 알려 드립니다."
 
 #. Device replaced
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).

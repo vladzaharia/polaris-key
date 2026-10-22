@@ -31,8 +31,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -537,7 +535,7 @@ public fun PolarisGraceBanner(
                     .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
             ) {
                 Row(verticalAlignment = Alignment.Top) {
-                    Icon(Icons.Filled.Warning, contentDescription = null, tint = status.warning, modifier = Modifier.size(24.dp))
+                    Icon(PolarisSymbols.Warning, contentDescription = null, tint = status.warning, modifier = Modifier.size(24.dp))
                     Spacer(Modifier.width(12.dp))
                     Column(
                         modifier = Modifier.weight(1f).padding(end = 8.dp).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },

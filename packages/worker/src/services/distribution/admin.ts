@@ -9,10 +9,6 @@
  *     GET  …/distribution/rollouts                             every outlet rollout (P2b-04)
  *     POST …/distribution/rollouts/<outlet>/<channel>          start / set the percentage
  *     POST …/distribution/rollouts/<outlet>/<channel>/{pause,resume,halt,complete}
- *     GET  …/distribution/access                               delivery access per deliverable
- *     PUT  …/distribution/access                               set (and claim) one deliverable's
- *     POST …/distribution/access/revert                        hand the `app` row back to the
- *                                                              manifest
  *     GET  …/distribution/availability?release=<id>            one release per outlet (P2b-03),
  *                                                              derived records included
  *     GET  …/distribution/submissions[?release=<id>]           submission states (P2b-03)
@@ -83,12 +79,11 @@
  * The outlets themselves are manifest-owned (`.pkey/distribution`); only the capability override
  * is the operator's, and only in the narrowing direction — `capabilities.ts` explains why. The
  * rollout verbs are the same implementation CI reaches (`rollouts.ts`); delivery access is
- * `access.ts`; availability, submissions and the key inventory are `availability.ts` — the first
+ * the `distribution.access` setting (`access.ts`, `settingsAdapters.ts`); availability, submissions and the key inventory are `availability.ts` — the first
  * two read-only here (CI and, later, connectors write them), the inventory operator-owned.
  */
 
 import { parseJsonColumn } from "../../platform/json.js";
-import { ENTITLEMENT_PATTERN } from "@polaris-key/protocol/packs";
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
 import type { AdminSession } from "../../core/console/session.js";
@@ -114,14 +109,6 @@ import {
   type DistOutletRow,
   type DistTransportRow,
 } from "./outlets.js";
-import {
-  ACCESS_MODES,
-  accessModeOf,
-  isAccessMode,
-  listAccess,
-  revertAccess,
-  setAccess,
-} from "./access.js";
 import {
   applyRollout,
   isRolloutVerb,
@@ -209,7 +196,6 @@ export async function handleDistributionAdmin(
   const { req, db, product, session, now, rest } = ctx;
   const slug = product.slug;
   if (rest[0] === "rollouts") return handleRolloutsAdmin(ctx);
-  if (rest[0] === "access") return handleAccessAdmin(ctx);
   if (rest[0] === "availability" || rest[0] === "submissions")
     return handleAvailabilityAdmin(ctx);
   if (rest[0] === "keys") return handleKeysAdmin(ctx);
@@ -360,122 +346,6 @@ async function handleRolloutsAdmin(
       },
     );
   return adminJson({ rollout: result.rollout });
-}
-
-// ── Delivery access (P2b-04) ─────────────────────────────────────────────────────────────────
-
-async function accessView(
-  ctx: Pick<ServiceContext, "db" | "product">,
-): Promise<Record<string, unknown>> {
-  const slug = ctx.product.slug;
-  const rows = await listAccess(ctx.db, slug);
-  return {
-    modes: ACCESS_MODES,
-    /** The `app` deliverable's mode in force, row or not (`entitled`, fail-closed, with none). */
-    app: {
-      deliverableId: APP_DELIVERABLE_ID,
-      mode: await accessModeOf(ctx.db, slug, APP_DELIVERABLE_ID),
-      source:
-        rows.find((r) => r.deliverable_id === APP_DELIVERABLE_ID)?.source ??
-        "manifest",
-    },
-    deliverables: rows.map((r) => ({
-      deliverableId: r.deliverable_id,
-      mode: r.mode,
-      entitlement: r.entitlement,
-      source: r.source,
-      modifiedAt: r.modified_at,
-    })),
-  };
-}
-
-async function handleAccessAdmin(
-  ctx: ServiceContext & { session: AdminSession },
-): Promise<Response | null> {
-  const { req, db, product, session, now, rest, hooks } = ctx;
-  const slug = product.slug;
-  const revert = rest.length === 2 && rest[1] === "revert";
-  if (rest.length !== 1 && !revert) return null;
-
-  if (!revert && req.method === "GET") return adminJson(await accessView(ctx));
-  if (revert ? req.method !== "POST" : req.method !== "PUT")
-    return err(405, ErrorCode.BadRequest, "method not allowed");
-
-  const body = await readBody(req);
-  const deliverable =
-    body.deliverable === undefined ? APP_DELIVERABLE_ID : body.deliverable;
-  if (typeof deliverable !== "string")
-    return err(422, ErrorCode.BadRequest, "deliverable must be a string", {
-      fields: ["deliverable"],
-    });
-  // A mode for a deliverable Release does not know would gate nothing, and mislead the operator.
-  const known = (await hooks.releaseCatalog()?.deliverables()) ?? [];
-  if (
-    deliverable !== APP_DELIVERABLE_ID &&
-    !known.some((d) => d.id === deliverable)
-  )
-    return err(422, ErrorCode.BadRequest, `no deliverable ${deliverable}`, {
-      fields: ["deliverable"],
-    });
-
-  if (revert) {
-    if (deliverable !== APP_DELIVERABLE_ID)
-      return err(
-        422,
-        ErrorCode.BadRequest,
-        "only the app deliverable's access has a manifest spelling to return to",
-        { fields: ["deliverable"] },
-      );
-    await revertAccess(db, slug, deliverable, now);
-    await audit(
-      db,
-      slug,
-      session,
-      now,
-      "distribution.access.revert",
-      { kind: "deliverable", id: deliverable },
-      `Returned the ${deliverable} delivery access of ${slug} to manifest control`,
-    );
-    return adminJson(await accessView(ctx));
-  }
-
-  if (!isAccessMode(body.mode))
-    return err(
-      422,
-      ErrorCode.BadRequest,
-      `mode must be one of ${ACCESS_MODES.join(", ")}`,
-      { fields: ["mode"] },
-    );
-  let entitlement: string | null | undefined;
-  if (body.entitlement !== undefined) {
-    if (
-      body.entitlement === null ||
-      (typeof body.entitlement === "string" &&
-        ENTITLEMENT_PATTERN.test(body.entitlement))
-    )
-      entitlement = body.entitlement as string | null;
-    else
-      return err(
-        422,
-        ErrorCode.BadRequest,
-        "entitlement must be a short identifier or null",
-        { fields: ["entitlement"] },
-      );
-  }
-  const before = await accessModeOf(db, slug, deliverable);
-  await setAccess(db, slug, deliverable, body.mode, entitlement, now);
-  await audit(
-    db,
-    slug,
-    session,
-    now,
-    "distribution.access.update",
-    { kind: "deliverable", id: deliverable },
-    before === body.mode
-      ? `Claimed the ${deliverable} delivery access of ${slug} (${body.mode})`
-      : `Set the ${deliverable} delivery access of ${slug} from ${before} to ${body.mode}`,
-  );
-  return adminJson(await accessView(ctx));
 }
 
 // ── Availability and submissions (P2b-03) ────────────────────────────────────────────────────

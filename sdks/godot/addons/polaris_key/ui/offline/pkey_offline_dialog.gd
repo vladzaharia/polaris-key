@@ -299,6 +299,7 @@ func _close_dialog() -> void:
 func _on_copy() -> void:
 	DisplayServer.clipboard_set(_device_id())
 	_set_message(c().text("offline_copied"), true)
+	note_copied()
 
 
 func _on_load() -> void:

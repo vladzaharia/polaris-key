@@ -159,12 +159,12 @@ export function LibraryToolbar({
         data-library-view-row=""
         className="flex min-w-0 flex-wrap items-center justify-between gap-3 max-sm:basis-full max-sm:justify-end sm:ms-auto"
       >
-        <label className="flex items-center">
+        <label className="flex min-w-0 max-w-full items-center">
           <span className="sr-only">{t("locker.library.sort")}</span>
           <select
             value={sort}
             onChange={(e) => onChange({ sort: e.target.value as LibrarySort })}
-            className="h-9 pointer-coarse:h-11 rounded-md border border-border-strong bg-surface-page px-3 text-md text-fg-strong"
+            className="h-9 pointer-coarse:h-11 min-w-0 max-w-full rounded-md border border-border-strong bg-surface-page px-3 text-md text-fg-strong"
           >
             <option value="recent">{t("locker.library.sortRecent")}</option>
             <option value="name">{t("locker.library.sortName")}</option>

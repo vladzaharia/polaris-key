@@ -20,7 +20,7 @@ const list = document.getElementById("gate-states")!;
 for (const s of STATES) {
   const li = document.createElement("li");
   const a = document.createElement("a");
-  a.href = `./index.html?state=${s}`;
+  a.href = `./play.html?state=${s}`;
   a.textContent = s;
   li.append(a);
   list.append(li);

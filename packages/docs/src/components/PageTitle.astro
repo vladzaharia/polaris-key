@@ -47,11 +47,31 @@ const eyebrow = landing
         ? "Operate"
         : `Operate › ${groupName}`
       : groupName;
+
+// What search shows under a result, and the door filter "Help only" uses (Search.astro): the door's
+// name, then the path the page sits in ("Developers › Features › Licensing"). Help names its topic.
+const DOOR_NAMES = { help: "Help", developers: "Developers", operate: "Operate" } as const;
+const doorName = door === undefined || door === "landing" ? "developers" : door;
+// The sidebar's own names for the groups the page sits in ("Build › UI kits"), not its slugs; a
+// group named like the door ("Operate") is the door already.
+const names = (nodes: Node[]): string[] => {
+  const g = nodes.find((n) => n.type === "group" && holdsCurrent(n));
+  return g === undefined ? [] : [g.label ?? "", ...names(g.entries ?? [])];
+};
+const path = names(route.sidebar as Node[])
+  .filter((l) => l !== "" && l !== DOOR_NAMES[doorName])
+  .slice(0, 2);
+const trail = [
+  DOOR_NAMES[doorName],
+  ...(help ? (topic === "Help" ? [] : [topic]) : path),
+].join(" › ");
 ---
 
 {
   route.id === "404" ? null : help ? (
     <div class="pk-help-header">
+      <meta data-pagefind-filter="door[content]" content={doorName} />
+      <meta data-pagefind-meta="trail[content]" content={trail} />
       <p class="pk-eyebrow pk-help-eyebrow">
         <span class="pk-eyebrow__marker" aria-hidden="true" />
         {topic}
@@ -61,7 +81,7 @@ const eyebrow = landing
           {route.entry.data.title}
         </h1>
         {route.id !== "help" && (
-          <button type="button" class="pk-help-copy" aria-label="Copy page">
+          <button type="button" class="pk-help-copy" aria-label="Copy page" data-pagefind-ignore>
             <span set:html={HELP_ICONS.copy} />
             <span class="pk-help-copy__label">Copy page</span>
           </button>
@@ -70,6 +90,8 @@ const eyebrow = landing
     </div>
   ) : (
     <div class="pk-doc-header">
+      <meta data-pagefind-filter="door[content]" content={doorName} />
+      <meta data-pagefind-meta="trail[content]" content={trail} />
       {eyebrow && (
         <p class="pk-eyebrow">
           <span class="pk-eyebrow__marker" aria-hidden="true" />
@@ -81,7 +103,7 @@ const eyebrow = landing
           {route.entry.data.title}
         </h1>
         {door !== undefined && door !== "landing" && (
-          <button type="button" class="pk-help-copy" aria-label="Copy page">
+          <button type="button" class="pk-help-copy" aria-label="Copy page" data-pagefind-ignore>
             <span set:html={HELP_ICONS.copy} />
             <span class="pk-help-copy__label">Copy page</span>
           </button>

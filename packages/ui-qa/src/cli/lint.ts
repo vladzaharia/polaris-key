@@ -1,6 +1,6 @@
 // pnpm ui:lint [--board=web,ios] [--theme=dark|light] [--css=<file>]... [--html=<path|url>]...
 //              [--size=1920x1080[,320x256@4]]   window sizes for --html pages (default 3200x2000)
-//              [--no-strings] [--no-kits] [--record-string-debt] [--json]
+//              [--no-strings] [--no-kits] [--record-string-debt] [--record-dom-debt] [--json]
 import { failed, format, runLint } from "../lint.ts";
 
 const args = process.argv.slice(2).filter((a) => a !== "--");
@@ -24,6 +24,7 @@ const run = await runLint({
   strings: !args.includes("--no-strings"),
   kits: !args.includes("--no-kits") && !onlyFiles,
   recordStringDebt: args.includes("--record-string-debt"),
+  recordDomDebt: args.includes("--record-dom-debt"),
 });
 
 if (args.includes("--json")) console.log(JSON.stringify(run, null, 2));
@@ -32,6 +33,7 @@ const n =
   run.violations.length +
   run.strings.length +
   run.staleDebt.length +
+  run.staleDomDebt.length +
   run.kits.length +
   run.consoleErrors.length;
 console.log(n ? `ui:lint: ${n} finding(s)` : "ui:lint: clean");

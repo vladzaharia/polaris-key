@@ -178,8 +178,9 @@ describe("per-command help", () => {
       const cwd = await tempDir();
       const r = await run(argv, { cwd });
       expect(r.code).toBe(0);
-      expect(r.out).toContain(`[--modules ${SERVICE_SLUGS.join(",")}]`);
-      expect(r.out).toContain("pkey init scaffolds .pkey/");
+      expect(r.out).toContain("[--modules slugs]");
+      expect(r.out.replace(/\s+/g, " ")).toContain(SERVICE_SLUGS.join(", "));
+      expect(r.out).toContain("Writes product.yaml");
       expect(r.out).not.toContain("Created");
       expect(await readdir(cwd)).toEqual([]);
     }
@@ -261,7 +262,7 @@ describe("pkey validate [path]", () => {
     const r = await run(["validate", "game"], { cwd });
     expect(r.code).toBe(0);
     expect(r.out).toContain("Manifest: valid");
-    expect(r.out).toContain("Modules: license, config");
+    expect(r.out).toContain("Features: license, config");
     // The working directory itself has no .pkey/: without the path that is a failure.
     const here = await run(["validate"], { cwd });
     expect(here.code).toBe(1);

@@ -1,14 +1,13 @@
 /**
  * License → Tiers (licenses.tiers): the tiers beside the open tier's record. From 1024 px the list
  * is a column (272 px, 300 from 1280) and the record fills the rest; below that a select picks
- * the tier above the record. Rows open the tier (`/tiers/<id>`; `/tiers` opens the first). Each
- * row's menu has Delete, disabled with its reason while the tier is used. Create is a one-pane
+ * the tier above the record. Rows open the tier (`/tiers/<id>`; `/tiers` opens the first) and
+ * show its rank ("1 of 4", best first). Delete lives in the record's menu. Create is a one-pane
  * drawer (TIR-8). Reordering, Includes and the other mockup fields wait for LX-44, LX-34, LX-41.
  */
 
 import * as React from "react";
 import { Plus } from "lucide-react";
-import type { TierSummary } from "../../../../api.js";
 import { mutate } from "../../../data/mutations.js";
 import { r } from "../../../routes.js";
 import { Link, navigate } from "../../../router.js";
@@ -17,7 +16,6 @@ import { CollectionTemplate } from "../../../templates/Collection.js";
 import { cn } from "../../../../lib/cn.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
-import { ActionMenu } from "../../../../ui/ActionMenu.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
@@ -27,7 +25,6 @@ import { Form, useAdminForm } from "../../../../ui/form.js";
 import { Select } from "../../../../ui/Select.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { toast } from "../../../../ui/toast.js";
-import { DeleteTierDialog } from "../components/DeleteTierDialog.js";
 import {
   EMPTY_TIER,
   TierFields,
@@ -36,11 +33,7 @@ import {
   type TierValues,
 } from "../components/TierForm.js";
 import { TierEditor } from "../components/TierEditor.js";
-import {
-  licenseCountText,
-  usedByText,
-  useTierUsage,
-} from "../components/tierSummary.js";
+import { licenseCountText, useTierUsage } from "../components/tierSummary.js";
 import { useTiers } from "../components/shared.js";
 
 export function TiersPage({
@@ -54,7 +47,6 @@ export function TiersPage({
   const tiersQ = useTiers(slug);
   const usage = useTierUsage(slug);
   const [createOpen, setCreateOpen] = React.useState(false);
-  const [deleting, setDeleting] = React.useState<TierSummary | null>(null);
   const tiers = React.useMemo(() => tiersQ.data?.tiers ?? [], [tiersQ.data]);
   const open =
     selectedId === undefined
@@ -120,7 +112,7 @@ export function TiersPage({
           className="hidden overflow-hidden rounded-lg border border-border bg-surface-raised lg:sticky lg:top-4 lg:block"
         >
           <ul className="divide-y divide-border">
-            {tiers.map((t) => {
+            {tiers.map((t, i) => {
               const used = usage?.get(t.id) ?? 0;
               const current = t.id === open?.id;
               return (
@@ -145,20 +137,10 @@ export function TiersPage({
                       {t.label || t.id}
                     </span>
                     <span className="block text-xs text-fg-muted">
-                      {usage ? licenseCountText(used) : "\u00a0"}
+                      {`${i + 1} of ${tiers.length}`}
+                      {usage ? ` · ${licenseCountText(used)}` : ""}
                     </span>
                   </Link>
-                  <ActionMenu
-                    label={`Actions for ${t.label || t.id}`}
-                    items={[
-                      {
-                        label: "Delete…",
-                        tone: "danger",
-                        disabledReason: used > 0 ? usedByText(used) : undefined,
-                        onSelect: () => setDeleting(t),
-                      },
-                    ]}
-                  />
                 </li>
               );
             })}
@@ -196,14 +178,6 @@ export function TiersPage({
         open={createOpen}
         onOpenChange={setCreateOpen}
         existingIds={tiers.map((t) => t.id)}
-      />
-      <DeleteTierDialog
-        slug={slug}
-        tier={deleting}
-        onOpenChange={(o) => !o && setDeleting(null)}
-        onDeleted={() => {
-          if (deleting?.id === selectedId) navigate(r.tiers(slug));
-        }}
       />
     </CollectionTemplate>
   );

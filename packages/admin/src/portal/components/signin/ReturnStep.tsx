@@ -105,7 +105,6 @@ export function ReturnStep({
             </button>
           </p>
         ) : null}
-        {!timerShown ? <p>{t("signin.return.closeTab", { app })}</p> : null}
         {!yours || stopped || !timing ? (
           <p>
             <a

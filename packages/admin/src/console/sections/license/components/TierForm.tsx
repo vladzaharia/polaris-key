@@ -25,6 +25,12 @@ import { VersionInput } from "../../../../ui/VersionInput.js";
 import { InlineFailure } from "./InlineFailure.js";
 import { useManualChannels, useProfiles } from "./shared.js";
 
+/**
+ * Every license holds `stable` whatever its tier lists ("none means stable only", terms.ts), so
+ * the form never edits it: it is drawn checked and disabled, and kept out of the draft and the diff.
+ */
+const CHANNEL_STABLE = "stable";
+
 /** The manifest's tier id rule. */
 export const TIER_ID_RE = /^[a-z0-9][a-z0-9_-]*$/;
 
@@ -58,7 +64,7 @@ export function tierValues(t: TierSummary): TierValues {
     profile: t.profile,
     policyExpiryDays: t.policyExpiryDays,
     policyDeviceLimit: t.policyDeviceLimit,
-    channels: t.channels,
+    channels: t.channels.filter((c) => c !== CHANNEL_STABLE),
     minVersion: t.minVersion ?? "",
     maxVersion: t.maxVersion ?? "",
   };
@@ -236,7 +242,14 @@ export function TierFields({
         group
         className="sm:col-span-2"
       >
-        {(f) => <ChannelPicker {...f} manual={manual} held={heldChannels} />}
+        {(f) => (
+          <ChannelPicker
+            {...f}
+            manual={manual}
+            held={heldChannels}
+            fixed={[CHANNEL_STABLE]}
+          />
+        )}
       </FormField>
     </div>
   );
@@ -259,7 +272,7 @@ function TierGroup({
     <section
       aria-labelledby={id}
       data-service={service}
-      className="grid gap-x-8 gap-y-4 border-t border-border px-5 py-5 xl:grid-cols-[12.5rem_minmax(0,40rem)]"
+      className="grid gap-x-8 gap-y-4 border-t border-border px-5 py-5 xl:grid-cols-[12.5rem_minmax(0,1fr)]"
     >
       <div>
         <h3 id={id} className="text-sm font-semibold text-fg-strong">
@@ -334,7 +347,12 @@ export function TierGroups({
             group
           >
             {(f) => (
-              <ChannelPicker {...f} manual={manual} held={heldChannels} />
+              <ChannelPicker
+                {...f}
+                manual={manual}
+                held={heldChannels}
+                fixed={[CHANNEL_STABLE]}
+              />
             )}
           </FormField>
         </div>

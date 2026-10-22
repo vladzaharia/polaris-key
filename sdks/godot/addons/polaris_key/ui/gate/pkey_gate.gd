@@ -126,6 +126,29 @@ func _bleeds() -> bool:
 	return true
 
 
+## A gate over the game holds the input; one embedded in the boot is the boot's to report.
+func _captures_input() -> bool:
+	return true
+
+
+func _on_child_copied() -> void:
+	if sdk != null and is_instance_valid(sdk) and sdk.has_method("toasts"):
+		sdk.toasts().show_copied()
+
+
+## "Signed in as <name>" and the tier, as a toast that outlives the gate (the shared toast host).
+func _on_signed_in(r: PKeySignInResult) -> void:
+	if not r.ok or sdk == null or not is_instance_valid(sdk) or not sdk.has_method("toasts"):
+		return
+	var t := c()
+	var facts := PKeyAccountController.facts(sdk)
+	var who := String(r.identity.get("name", r.identity.get("email", ""))) if r.identity is Dictionary else ""
+	if who == "":
+		who = String(facts["holder"])
+	var tier := String(facts["tier"])
+	sdk.toasts().show_success(t.text("account_holder", PKeyUiTheme.isolate(who)) if who != "" else t.text("sign_in_ok"), t.text("account_tier", PKeyUiTheme.isolate(tier)) if tier != "" else "")
+
+
 ## The gate squeezes for the dialog it holds (sign-in, offline activation, the device limit).
 func squeeze_max() -> int:
 	return 4
@@ -169,6 +192,7 @@ func _build() -> void:
 	activation.confirm_identity = confirm_identity
 	activation.show_product = false
 	activation.activated.connect(_on_activated)
+	activation.sign_in_dialog.finished.connect(_on_signed_in)
 	# Sign-in and offline activation take the whole card: the gate re-renders around them.
 	activation.mode_changed.connect(func(_m: String) -> void: refresh_view())
 	_main.add_child(activation)

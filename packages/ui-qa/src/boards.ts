@@ -136,7 +136,7 @@ export const CHROME: Record<string, BoardMarks> = {
     allow: {
       // Controller glyphs are drawn as letters in the mockup; the kit draws them as icon
       // textures from the brand theme, so their weight is not type.
-      "font-weight-700": [".pad"],
+      weights: [".pad"],
     },
   },
   terminal: {

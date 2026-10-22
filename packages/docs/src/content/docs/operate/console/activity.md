@@ -2,7 +2,7 @@
 title: "Activity"
 description: "What lands in a product's audit log, and how the console pages through it."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-22"
 sidebar:
   order: 10
 ---
@@ -124,8 +124,8 @@ the cursor, so paging is stable even while new rows are still being written.
 
 ## Scope and retention
 
-Audit rows are product-scoped — there is no cross-product activity view (platform-level
-actions have [their own trail](#the-platform-trail)) — and they **survive** a
+Audit rows are product-scoped (platform-level actions have [their own trail](#the-platform-trail))
+and they **survive** a
 product being disabled: [deleting a product](/docs/operate/console/product-actions/#what-deleting-a-product-actually-does)
 tombstones the row and scrubs license PII, but never touches `audit`. A scheduled sweep prunes
 rows older than **180 days**, the same cutoff applied to the customer portal's own audit table.
@@ -142,24 +142,39 @@ names the product whose ref it dropped), and it carries storage keys, never pers
 
 ## The platform trail
 
-Actions on the platform as a whole, which belong to no product, are recorded in a separate
-table, `platform_audit`. The KEK re-seal sweep writes one row there per run, with the
-remaining-row counts before and after as JSON; it still writes its per-product `kek.reseal` row
-into each product it touched, so a product's own log keeps showing it. Every change to a
-runtime platform setting (platform admins) writes a `platform.setting.set` or
-`platform.setting.revert` row there too, with the stored and effective value before and after.
-Each row has the same actor, action, target and summary
-fields as `audit`, plus `before` and `after` values, which never hold a secret. The same
-**180-day** sweep prunes it.
+**Platform → Activity** (`#/platform/activity`, platform admins) is the log of actions that
+belong to no product: runtime platform setting changes, key encryption re-seals, API and personal
+token changes, console sign-ins, store connections and channel credentials, trust policy and
+platform package feeds. It shows platform events by default; the **Product** filter shows one
+product's events, or **Any product**, instead.
+
+- **Table** lists When, Who, What and Product; **Timeline** groups the same events by day.
+  Choose an event to open it beside the list: for a setting change, the title names the setting
+  ("Blob collector grace period changed"), **Before** and **After** show the values as the setting
+  shows them ("30 days", "14 days"; a secret reads Set or Not set), and **Open the setting** goes
+  to its row in Platform → Settings. The event has its own link.
+- **Actor**, **Action**, **Target kind**, **Date range** and **Product** are applied by the
+  server and kept in the page URL, so a filtered view is a link. The Action and Target lists name
+  the platform's own areas.
+- **Load more** fetches the next 50 events. The count is of what is loaded: the log has no
+  total. **Export** saves the loaded events as CSV, with the actor's name and the formatted values.
+
+The platform trail is a separate table, `platform_audit`. The KEK re-seal sweep writes one row
+there per run, with the remaining-row counts before and after; it still writes its per-product
+`kek.reseal` row into each product it touched, so a product's own log keeps showing it. Each row
+has the same actor, action, target and summary fields as `audit`, plus `before` and `after`
+values, which never hold a secret. A setting change stores its snapshot: the stored and effective
+value, its version and where it came from. The same **180-day** sweep prunes it.
 
 ```http
 /manage/api/platform/activity (GET)?limit=50&beforeAt=<epoch>&beforeId=<id>
 ```
 
 The endpoint is for platform admins only (403 otherwise). It pages newest first, with the same
-`(at, id)` cursor as the product feed, and returns
-`{ items: [{ id, at, actor, action, target, summary, before, after }], nextCursor }`. The
-console's Platform section does not show it; call it directly.
+`(at, id)` cursor as the product feed, and accepts `action`, `actor`, `targetKind`, `targetId`,
+`since`, `until` and `id` as the product feed does, plus `product`: `platform` (the default),
+`all`, or a product slug. It returns
+`{ items: [{ id, at, product, actor, action, target, summary, before, after }], nextCursor }`.
 
 ## Reference
 

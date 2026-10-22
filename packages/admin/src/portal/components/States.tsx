@@ -1,8 +1,10 @@
 import * as React from "react";
 import { AlertCircle, ArrowLeft, RefreshCw } from "lucide-react";
 import { Button } from "../../ui/Button.js";
+import { CopyDetails } from "../../ui/CopyDetails.js";
 import { StationaryStar } from "../../ui/EmptyState.js";
 import { cn } from "../../lib/cn.js";
+import { PortalApiError } from "../api.js";
 import { portalErrorCopy } from "../errors.js";
 import { href } from "../router.js";
 import { t } from "../../lib/copy.js";
@@ -76,6 +78,9 @@ export function ErrorPanel({
           {t("signin.retry")}
         </Button>
       ) : null}
+      <CopyDetails
+        copy={{ action: "copy-details", details: errorDetails(error) }}
+      />
       {backToLibrary ? (
         <a
           href={href.library()}
@@ -96,6 +101,15 @@ export function ErrorPanel({
       {panel}
     </div>
   );
+}
+
+/** What a bug report needs from a failed load: the refusal's code and status, or the error's name and message. */
+function errorDetails(error: unknown): Record<string, unknown> {
+  if (error instanceof PortalApiError)
+    return { code: error.code, status: error.status, message: error.message };
+  if (error instanceof Error)
+    return { name: error.name, message: error.message };
+  return { message: String(error) };
 }
 
 /** A centred screen with the stationary star: boot, network errors and other no-context states. */

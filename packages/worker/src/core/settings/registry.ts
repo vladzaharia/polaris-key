@@ -18,6 +18,7 @@
 import type { ServiceSlug } from "../services.js";
 import type {
   ServiceSettingsSlice,
+  SettingAdapter,
   SettingColumnAdapter,
   SettingDef,
   SettingScope,
@@ -25,6 +26,7 @@ import type {
 import { PLATFORM_SLICE } from "./platform.js";
 import { CORE_SLICE } from "./core.js";
 import { CORE_COLUMN_ADAPTERS } from "./columns.js";
+import { CORE_ADAPTERS } from "./adapters.js";
 
 export { setting } from "./define.js";
 
@@ -58,6 +60,11 @@ export interface SettingsRegistry {
    * (`columns.ts`), else the one the owning slice contributed (`ServiceSettingsSlice.columns`).
    */
   columnAdapter(key: string): SettingColumnAdapter | undefined;
+  /**
+   * The generic routes' adapter for a product-scope key (ST-05b): Core's for Core's keys
+   * (`adapters.ts`), else the one the owning slice contributed (`ServiceSettingsSlice.adapters`).
+   */
+  adapter(key: string): SettingAdapter | undefined;
 }
 
 /**
@@ -116,6 +123,17 @@ export function buildSettingsRegistry(
       )
         adapters.set(key, adapter);
 
+  const settingAdapters = new Map<string, SettingAdapter>(
+    Object.entries(CORE_ADAPTERS),
+  );
+  for (const c of contributors_)
+    for (const [key, adapter] of Object.entries(c.settings?.adapters ?? {}))
+      if (
+        !settingAdapters.has(key) &&
+        (c.settings?.entries ?? []).some((e) => e.key === key)
+      )
+        settingAdapters.set(key, adapter);
+
   const canonicalKey = (k: string): string | undefined => {
     if (entries.some((e) => e.key === k)) return k;
     return aliasTo.get(k);
@@ -126,6 +144,7 @@ export function buildSettingsRegistry(
     slices,
     canonicalKey,
     columnAdapter: (key) => adapters.get(key),
+    adapter: (key) => settingAdapters.get(key),
     get(keyOrAlias, scope) {
       const key = canonicalKey(keyOrAlias);
       if (key === undefined) return undefined;

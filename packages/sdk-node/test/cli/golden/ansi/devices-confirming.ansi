@@ -1,0 +1,59 @@
+#### truecolor-80-dark
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · devices deauthorize[22m
+[2m│[22m
+[33m▲[39m  [1mRemove Work laptop? It signs out of Tidewater Studio.[22m
+[2m└[22m  [1my[22m[2m Remove[22m[2m · [22m[1mEsc[22m[2m Cancel[22m
+
+#### truecolor-80-light
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · devices deauthorize[22m
+[2m│[22m
+[33m▲[39m  [1mRemove Work laptop? It signs out of Tidewater Studio.[22m
+[2m└[22m  [1my[22m[2m Remove[22m[2m · [22m[1mEsc[22m[2m Cancel[22m
+
+#### ansi16-80
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · devices deauthorize[22m
+[2m│[22m
+[33m▲[39m  [1mRemove Work laptop? It signs out of Tidewater Studio.[22m
+[2m└[22m  [1my[22m[2m Remove[22m[2m · [22m[1mEsc[22m[2m Cancel[22m
+
+#### no-color-80
+┌  [7m Tidewater Studio [27m · devices deauthorize
+│
+▲  [1mRemove Work laptop? It signs out of Tidewater Studio.[22m
+└  [1my[22m Remove · [1mEsc[22m Cancel
+
+#### ascii-80
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - devices deauthorize[22m
+[2m|[22m
+[33m![39m  [1mRemove Work laptop? It signs out of Tidewater Studio.[22m
+[2m`[22m  [1my[22m[2m Remove[22m[2m - [22m[1mEsc[22m[2m Cancel[22m
+
+#### truecolor-60-dark
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · devices deauthorize[22m
+[2m│[22m
+[33m▲[39m  [1mRemove Work laptop? It signs out of Tidewater Studio.[22m
+[2m└[22m  [1my[22m[2m Remove[22m[2m · [22m[1mEsc[22m[2m Cancel[22m
+
+#### truecolor-60-light
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · devices deauthorize[22m
+[2m│[22m
+[33m▲[39m  [1mRemove Work laptop? It signs out of Tidewater Studio.[22m
+[2m└[22m  [1my[22m[2m Remove[22m[2m · [22m[1mEsc[22m[2m Cancel[22m
+
+#### ansi16-60
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · devices deauthorize[22m
+[2m│[22m
+[33m▲[39m  [1mRemove Work laptop? It signs out of Tidewater Studio.[22m
+[2m└[22m  [1my[22m[2m Remove[22m[2m · [22m[1mEsc[22m[2m Cancel[22m
+
+#### no-color-60
+┌  [7m Tidewater Studio [27m · devices deauthorize
+│
+▲  [1mRemove Work laptop? It signs out of Tidewater Studio.[22m
+└  [1my[22m Remove · [1mEsc[22m Cancel
+
+#### ascii-60
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - devices deauthorize[22m
+[2m|[22m
+[33m![39m  [1mRemove Work laptop? It signs out of Tidewater Studio.[22m
+[2m`[22m  [1my[22m[2m Remove[22m[2m - [22m[1mEsc[22m[2m Cancel[22m

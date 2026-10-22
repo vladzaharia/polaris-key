@@ -23,13 +23,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  api,
-  ApiError,
-  type LicenseBatch,
-  type LicenseDetail,
-  type TierSummary,
-} from "../../../../api.js";
+import { api, ApiError, type LicenseDetail } from "../../../../api.js";
 import { useMe, useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
@@ -77,14 +71,11 @@ import { SendKeyDialog, type UnsentKey } from "../components/SendKeyDialog.js";
 import { ExpiryDialog, ProfilesDialog } from "./LicenseTerms.js";
 import { LicenseActivity } from "./LicenseActivity.js";
 import { ChangeTierDialog } from "../components/ChangeTierDialog.js";
-import { LimitsTable } from "../components/LimitsTable.js";
 import {
-  AnyoneWithKeyCard,
-  DevicesCard,
-  DurationCard,
-  InvitationCard,
-  OriginCard,
-} from "../components/LicenseRail.js";
+  StatusTab,
+  useFocusTitleAfterUndo,
+  type RecordDialog,
+} from "../components/LicenseRecordParts.js";
 import {
   actorName,
   daysUntil,
@@ -218,32 +209,11 @@ function LicenseRecordBody({
   const moves = useLicenseHolderMoves(slug, id).data?.relinks;
   const undoable = undoableMove(moves);
   const [undoing, setUndoing] = React.useState<typeof undoable>(null);
-  // ADMIN.md §5.6: an undo removes the callout whose button opened it; once it has gone, focus
-  // moves to the page's heading rather than dropping to <body>.
-  const focusAfterUndo = React.useRef(false);
-  const undoableId = undoable?.id ?? null;
-  const undoOpen = undoing !== null;
-  React.useEffect(() => {
-    // Wait for both: the note gone (the refetch) and the dialog closed (its focus scope released).
-    if (!focusAfterUndo.current || undoableId !== null || undoOpen) return;
-    focusAfterUndo.current = false;
-    let tries = 0;
-    let frame = 0;
-    const attempt = (): void => {
-      const title = document.querySelector<HTMLElement>("h1[data-page-title]");
-      const active = document.activeElement;
-      // Only where focus was lost: never steal it from something that took it on purpose.
-      if (title && (!active || active === document.body)) {
-        if (!title.hasAttribute("tabindex"))
-          title.setAttribute("tabindex", "-1");
-        title.focus({ preventScroll: true });
-      }
-      if (document.activeElement !== title && ++tries < 10)
-        frame = requestAnimationFrame(attempt);
-    };
-    frame = requestAnimationFrame(attempt);
-    return () => cancelAnimationFrame(frame);
-  }, [undoableId, undoOpen]);
+  // ADMIN.md §5.6: an undo removes the callout whose button opened it (see the hook).
+  const focusAfterUndo = useFocusTitleAfterUndo(
+    undoable?.id ?? null,
+    undoing !== null,
+  );
   // PX-W9: a licence with no account counts the devices that entered its key (Identity on).
   const keyEntries = inAccount ? null : (license.keyEntries ?? null);
   // LX-14a: the limit the Worker enforces and where it comes from.
@@ -680,82 +650,4 @@ function HeaderStatus({
       </StatusPill>
     );
   return <LicenseStatus license={license} />;
-}
-
-type RecordDialog =
-  | "holder"
-  | "assign"
-  | "reassign"
-  | "floating"
-  | "bundle"
-  | "mint"
-  | "deviceLimit"
-  | "tier"
-  | "expiry"
-  | "profiles"
-  | "send"
-  | "disable"
-  | "enable"
-  | "delete"
-  | null;
-
-/**
- * The Status tab (licenses.detail): the main column is Limits and the Devices summary, led for a
- * waiting or floating license by its holder card; the rail is Duration and Origin, first below
- * 1280 px (two cards side by side) and sticky beside the main column from there.
- */
-function StatusTab({
-  slug,
-  license,
-  tiers,
-  product,
-  seats,
-  batch,
-  me,
-  onDialog,
-}: {
-  slug: string;
-  license: LicenseDetail;
-  tiers: TierSummary[];
-  product: ReturnType<typeof useProduct>["data"];
-  seats: ReturnType<typeof seatLimitOf>;
-  batch: LicenseBatch | null;
-  me: ReturnType<typeof useMe>["data"];
-  onDialog: (d: RecordDialog) => void;
-}): React.ReactElement {
-  const holder = holderOf(license);
-  const floating = holder.kind === "floating";
-  const waiting = holder.kind === "assigned" && !holder.inAccount;
-  return (
-    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] 2xl:grid-cols-[minmax(0,1fr)_25rem]">
-      <div className="min-w-0 space-y-6 xl:col-start-1 xl:row-start-1">
-        {waiting ? (
-          <InvitationCard
-            email={license.email?.trim() ?? ""}
-            onChangeEmail={() => onDialog("reassign")}
-          />
-        ) : null}
-        {floating ? <AnyoneWithKeyCard devices={license.devices} /> : null}
-        <LimitsTable
-          slug={slug}
-          license={license}
-          tiers={tiers}
-          product={product}
-          onDeviceLimit={() => onDialog("deviceLimit")}
-        />
-        <DevicesCard slug={slug} license={license} seats={seats} />
-      </div>
-      <div
-        className={
-          "grid gap-6 sm:grid-cols-2 xl:sticky xl:top-[88px] xl:col-start-2 xl:row-start-1 xl:grid-cols-1" +
-          (waiting || floating
-            ? " order-last xl:order-none"
-            : " order-first xl:order-none")
-        }
-      >
-        <DurationCard license={license} onChange={() => onDialog("expiry")} />
-        <OriginCard slug={slug} license={license} batch={batch} me={me} />
-      </div>
-    </div>
-  );
 }

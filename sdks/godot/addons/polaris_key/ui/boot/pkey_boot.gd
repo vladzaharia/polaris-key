@@ -150,6 +150,17 @@ var prompt: PKeyUpdatePrompt
 var _overlay: Control
 
 
+## The boot screen holds the input while it is up.
+func _captures_input() -> bool:
+	return true
+
+
+## A code or link copied in the sign-in or offline dialog under the boot: a Copied toast over it.
+func _on_child_copied() -> void:
+	if sdk != null and is_instance_valid(sdk) and sdk.has_method("toasts"):
+		sdk.toasts().show_copied()
+
+
 func _apply_width(_width: float) -> void:
 	var side_by_side := not _shell.vertical
 	_side.custom_minimum_size.x = card_width(role("card_width")) if not side_by_side else minf(role("card_width"), content_room().x * 0.62)

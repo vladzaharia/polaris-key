@@ -108,6 +108,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 - [ ] Console access alone shows NoAccessPage with the scope's admins to contact
 - [ ] A product admin sees only their products; an area-narrowed one sees only those areas
 - [ ] Roles matrix is generated and drift-gated; security review before merge
+- [ ] Role-granted products and console-member access answer in `personMayRead` (`services/distribution/registry/authorize.ts`), from the bindings this package adds (taken over from F-33, 2026-10-22)
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
@@ -123,3 +124,7 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set ST-31 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set ST-31 done`.
+
+## Consolidation 2026-10-22 (triage)
+
+F-33 was split and set done. Its "role-granted and console-member access in `personMayRead`" item moves here: this package owns the bindings that source it, and the acceptance above carries it.

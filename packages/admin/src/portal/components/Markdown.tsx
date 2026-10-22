@@ -41,7 +41,8 @@ function MarkdownBlock({ block: b }: { block: Block }): React.ReactElement {
       );
     case "ul":
       return (
-        <ul className="list-disc space-y-1.5 ps-5">
+        // Dash bullets, never discs (UI-KITS §1.5 rule 6).
+        <ul className="list-['–_'] space-y-1.5 ps-5 marker:text-fg-muted">
           {b.items.map((item, i) => (
             <li key={i}>
               <Lines lines={item} />

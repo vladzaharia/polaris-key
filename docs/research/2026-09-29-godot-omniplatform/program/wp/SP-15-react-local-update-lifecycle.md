@@ -62,7 +62,7 @@ P1-09 ported the launch decision to client-core, but React has no slots, no coun
 ## Acceptance criteria
 
 - [x] `@pkey-feature core.local` unit tests prove the adapter never touches the network.
-- [ ] `@pkey-feature update.driver` tests cover the service-worker hand-off with a fake registration and the bridge forwarding path. Not met: the device proof (a recorded run in a browser and in the Electron sample, noted in the PR) is not recorded. The Electron half is blocked on SP-31 (Node bridge v4 verbs `update.install`, `update.markBootAttempt`, `update.confirmBoot` are not in `packages/sdk-node`).
+- [ ] `@pkey-feature update.driver` tests cover the service-worker hand-off with a fake registration and the bridge forwarding path. Not met: the device proof (a recorded run in a browser and in the Electron sample, noted in the PR) is not recorded. SP-31 has merged, so the Electron half is no longer blocked: the bridge verbs `update.install`, `update.markBootAttempt` and `update.confirmBoot` are in `packages/sdk-node/src/electron/main.ts` (forwarding and forged-offer refusal are unit-tested in `electronBridge.test.ts`, the SW hand-off in `updateDriver.test.ts` with a fake registration). Checked 2026-10-22: no automated test runs a real browser service worker or the Electron sample (no `electron` binary here, no SW test under `packages/sdk-react/test/browser/`), so only the owner-run steps in Verify remain.
 - [x] `@pkey-feature update.bootguard` tests replay every guard case of `stage-matrix.json` with persisted slots, rollback and confirmation.
 - [x] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
 - [x] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
@@ -77,6 +77,26 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs gen -- --check
 mise exec node@22 -- pnpm parity:check
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen -- --check
 ```
+
+### Owner-run device proof (the one open box)
+
+Record the run in the PR (a screen capture or the console logs; one note per half).
+
+Browser, the service-worker hand-off:
+
+1. Serve any app that uses `@polaris-key/react` with a registered service worker over HTTPS or `localhost` (Chrome and Safari; Firefox if available). Load it once so version A is active.
+2. Deploy version B of the worker file (change a byte), reload the page once without closing the tab: DevTools, Application, Service Workers shows B as "waiting".
+3. Trigger the update offer from the kit's update prompt (or `client.update.decide()` returning a `platform` decision), choose Update.
+4. Expect: the page posts `SKIP_WAITING`, B takes control, the page reloads once, and the hand-off answers `handedOff`; the prompt does not reappear for B.
+
+Electron, the update path (`examples/node-electron`):
+
+1. `mise exec node@22 -- pnpm install && cd examples/node-electron && mise exec node@22 -- pnpm start` on a machine with a display; point `src/polaris.config.ts` at a dev server (`pkey dev`) whose release feed offers a newer signed version.
+2. Expect on launch: `markBootAttempt` runs before the window shows (the boot guard counts the launch), then `confirmBoot` after the first healthy render.
+3. In the window choose Update: `update.install` goes through the bridge, the installer stages and the app offers Restart (`update.restart`); relaunch and confirm the new version boots and the attempt counter resets.
+4. Failure path: kill the app before `confirmBoot` three times (the guard's limit in `stage-matrix.json`) and expect the rollback case on the next launch.
+
+When both halves are recorded, tick the box and run `--set SP-15 done`. If the owner accepts the unit evidence instead, file SP-15b for the recorded run and tick the box with that note.
 
 ## Hand-off
 

@@ -78,7 +78,7 @@ describe("offline, nothing discovered", () => {
 });
 
 describe("register, server unreachable", () => {
-  it("answers network-error like the Python kit, not unknown", async () => {
+  it("answers network like the Python kit, not unknown", async () => {
     const client = stubClient({
       extra: {
         devices: {
@@ -111,7 +111,7 @@ describe("register, server unreachable", () => {
     expect(last).toMatchObject({
       ok: false,
       exit: 1,
-      error: "network-error",
+      error: "network",
     });
   });
 });

@@ -1,16 +1,16 @@
 # P0-25 Service, portal and public route tables
 
-| Field       | Value                                                                                                                                                               |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation B: Foundations (code quality the feature tracks build on))                                               |
-| Size        | 1.2–1.8 engineer-weeks                                                                                                                                              |
-| Depends on  | [P0-16](P0-16-first-party-respond-body-module-console.md), [P0-19](P0-19-descriptor-contributions-services-slug.md), [ST-29](ST-29-admin-route-table-can-usecan.md) |
-| Unblocks    | [P0-30](P0-30-guardrails-test-harness-test-layout.md), [P0-51](P0-51-1-0-readiness-review.md), [U-05](U-05-cloud-sync-do.md)                                        |
-| Role        | `pkey-implementer`                                                                                                                                                  |
-| Plan mode   | no                                                                                                                                                                  |
-| Gates       | `rule-10`                                                                                                                                                           |
-| Human input | none                                                                                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                           |
+| Field       | Value                                                                                                                                                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation B: Foundations (code quality the feature tracks build on))                                                        |
+| Size        | 1.2–1.8 engineer-weeks                                                                                                                                                       |
+| Depends on  | [P0-16](P0-16-first-party-respond-body-module-console.md), [P0-19](P0-19-descriptor-contributions-services-slug.md), [ST-29](ST-29-admin-route-table-can-usecan.md)          |
+| Unblocks    | [P0-25b](P0-25b-portal-public-route-tables.md), [P0-30](P0-30-guardrails-test-harness-test-layout.md), [P0-51](P0-51-1-0-readiness-review.md), [U-05](U-05-cloud-sync-do.md) |
+| Role        | `pkey-implementer`                                                                                                                                                           |
+| Plan mode   | no                                                                                                                                                                           |
+| Gates       | `rule-10`                                                                                                                                                                    |
+| Human input | none                                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                    |
 
 ## Consolidation 2026-10-07
 
@@ -53,10 +53,10 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] routeCoverage generated from the tables
-- [ ] Every device transcript byte-identical
-- [ ] No hand dispatch left in migrated services
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] routeCoverage generated from the tables
+- [x] Every device transcript byte-identical (slice 1 oracle: 1,800 requests, 9 listed 405 tightenings)
+- [x] No hand dispatch left in migrated services (the seven service tables; the portal and core public routes are P0-25b)
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 
@@ -113,3 +113,7 @@ pages that changed on integ/next).
 first rows; the portal API is the larger one (its own path walk, CSRF and session gates).
 `CORS_SERVICE_PATHS` (`core/cors.ts`) is still a third copy of the service path list and should
 become a flag on the rows. I-08's authorize/token rows go straight into `IDENTITY_ROUTES`.
+
+## Split 2026-10-22 (triage)
+
+Set done on slice 1 (a44b8921e): the service tables, `SYNC_ROUTES` (U-05's rows), routeCoverage derived. U-05, P0-30 and P0-51 need only that. Slice 2 (portal `handlePortal`, the core public routes in `dispatch.ts`, the `CORS_SERVICE_PATHS` row flag) is **[P0-25b](P0-25b-portal-public-route-tables.md)**.

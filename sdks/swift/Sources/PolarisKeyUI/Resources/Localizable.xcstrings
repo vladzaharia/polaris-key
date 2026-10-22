@@ -4195,6 +4195,66 @@
         }
       }
     },
+    "channel.lockedLicense": {
+      "comment": "ChannelPicker: the license allows one release channel, so the choice is locked.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your license includes this channel only."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Lizenz umfasst nur diesen Kanal."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre licence n’inclut que ce canal."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu licencia solo incluye este canal."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua licença inclui apenas este canal."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua licenza include solo questo canale."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスにはこのチャンネルのみ含まれます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스에 이 채널만 포함되어 있어요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的许可证仅包含此渠道。"
+          }
+        }
+      }
+    },
     "channel.title": {
       "comment": "ChannelPicker: the release channel choice.",
       "extractionState": "manual",
@@ -8335,6 +8395,66 @@
         }
       }
     },
+    "cli.option.yesDownload": {
+      "comment": "Terminal help: what the --yes flag does on boot.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download required content without asking"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erforderliche Inhalte ohne Nachfrage laden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Télécharger le contenu requis sans demander"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar el contenido necesario sin preguntar"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baixar o conteúdo necessário sem perguntar"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scarica i contenuti richiesti senza chiedere"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "必要なコンテンツを確認せずにダウンロード"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "필요한 콘텐츠를 묻지 않고 다운로드"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无需询问即下载所需内容"
+          }
+        }
+      }
+    },
     "cli.output.workflowCommand": {
       "comment": "Terminal: the secret or mint command did not print its value (a secret or a token) because the build server reading the output would treat a line of it as an instruction. {command} is a command line (the same command with --allow-workflow-commands). Arguments: 1=command.",
       "extractionState": "manual",
@@ -11031,6 +11151,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "添加许可证密钥（提示输入，或通过 stdin）"
+          }
+        }
+      }
+    },
+    "cli.verb.boot": {
+      "comment": "Terminal help: what the boot command does.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run startup, one line per stage"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start ausführen, eine Zeile pro Schritt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lancer le démarrage, une ligne par étape"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ejecutar el inicio, una línea por etapa"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Executar a inicialização, uma linha por etapa"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esegui l'avvio, una riga per fase"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "起動処理を実行（段階ごとに1行）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시작 과정을 실행해요(단계마다 한 줄)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运行启动流程，每个阶段一行"
           }
         }
       }
@@ -38342,55 +38522,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ signs out of %2$@ and %3$@ takes its seat. We'll email you about it."
+            "value": "%1$@ signs out of %2$@ and %3$@ takes its place. We'll email you about it."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ wird von %2$@ abgemeldet und %3$@ übernimmt den Platz. Wir informieren Sie per E-Mail darüber."
+            "value": "%1$@ wird von %2$@ abgemeldet und %3$@ tritt an seine Stelle. Wir informieren Sie per E-Mail darüber."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ sera déconnecté de %2$@ et %3$@ prendra sa place. Nous vous enverrons un e-mail à ce sujet."
+            "value": "%1$@ sera déconnecté de %2$@ et %3$@ le remplacera. Nous vous enverrons un e-mail à ce sujet."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se cerrará la sesión de %2$@ en %1$@ y %3$@ ocupará su plaza. Te lo notificaremos por correo."
+            "value": "Se cerrará la sesión de %2$@ en %1$@ y %3$@ ocupará su lugar. Te lo notificaremos por correo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ sai de %2$@ e %3$@ ocupa a vaga. Enviaremos um e-mail sobre isso."
+            "value": "%1$@ sai de %2$@ e %3$@ entra no lugar dele. Enviaremos um e-mail sobre isso."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ esce da %2$@ e %3$@ ne prende il posto. Ti invieremo un'email al riguardo."
+            "value": "%1$@ esce da %2$@ e %3$@ lo sostituisce. Ti invieremo un'email al riguardo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@は%2$@からサインアウトし、%3$@がその枠を使用します。この件についてはメールでお知らせします。"
+            "value": "%1$@は%2$@からサインアウトされ、代わりに%3$@が使われます。この件についてはメールでお知らせします。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@은(는) %2$@에서 로그아웃되고 %3$@이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요."
+            "value": "%1$@은(는) %2$@에서 로그아웃되고 %3$@이(가) 대신 사용돼요. 이 내용은 이메일로 알려 드려요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@将退出登录%2$@，%3$@将占用它的席位。我们会通过电子邮件通知你。"
+            "value": "%1$@将退出登录%2$@，由%3$@取代。我们会通过电子邮件通知你。"
           }
         }
       }
@@ -51920,55 +52100,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "That seat was just taken. Choose again."
+            "value": "That device was just replaced. Choose again."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dieser Platz wurde gerade belegt. Wählen Sie erneut."
+            "value": "Dieses Gerät wurde gerade ersetzt. Wählen Sie erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cette place vient d’être prise. Faites un autre choix."
+            "value": "Cet appareil vient d’être remplacé. Faites un autre choix."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alguien acaba de ocupar esa plaza. Vuelve a elegir."
+            "value": "Ese dispositivo acaba de reemplazarse. Vuelve a elegir."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Essa vaga acabou de ser ocupada. Escolha novamente."
+            "value": "Esse dispositivo acabou de ser substituído. Escolha novamente."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quel posto è appena stato occupato. Scegli di nuovo."
+            "value": "Quel dispositivo è appena stato sostituito. Scegli di nuovo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "その枠はたった今使用されました。もう一度選択してください。"
+            "value": "そのデバイスはたった今置き換えられました。もう一度選択してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "방금 다른 기기가 그 자리를 차지했어요. 다시 선택하세요."
+            "value": "그 기기는 방금 교체됐어요. 다시 선택하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "该席位刚刚被占用。请重新选择。"
+            "value": "该设备刚刚已被替换。请重新选择。"
           }
         }
       }
@@ -52052,55 +52232,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The device you choose signs out of %1$@. It can sign in again later if a seat is free. We'll email you about it."
+            "value": "The device you choose signs out of %1$@. It can sign in again later if there's room. We'll email you about it."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das gewählte Gerät wird von %1$@ abgemeldet. Es kann sich später wieder anmelden, wenn ein Platz frei ist. Wir benachrichtigen Sie per E-Mail."
+            "value": "Das gewählte Gerät wird von %1$@ abgemeldet. Es kann sich später wieder anmelden, wenn Platz ist. Wir benachrichtigen Sie per E-Mail."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L’appareil choisi sera déconnecté de %1$@. Il pourra se reconnecter plus tard si une place est libre. Nous vous préviendrons par e-mail."
+            "value": "L’appareil choisi sera déconnecté de %1$@. Il pourra se reconnecter plus tard s’il y a de la place. Nous vous préviendrons par e-mail."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El dispositivo que elijas cerrará sesión en %1$@. Podrá iniciar sesión de nuevo más tarde si hay un puesto libre. Te avisaremos por correo."
+            "value": "El dispositivo que elijas cerrará sesión en %1$@. Podrá iniciar sesión de nuevo más tarde si hay espacio. Te avisaremos por correo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O dispositivo escolhido sai de %1$@. Ele poderá entrar de novo mais tarde se houver uma vaga livre. Avisaremos você por e-mail."
+            "value": "O dispositivo escolhido sai de %1$@. Ele poderá entrar de novo mais tarde se houver espaço. Avisaremos você por e-mail."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il dispositivo scelto esce da %1$@. Potrà accedere di nuovo più tardi se c'è un posto libero. Ti avviseremo via e-mail."
+            "value": "Il dispositivo scelto esce da %1$@. Potrà accedere di nuovo più tardi se c'è spazio. Ti avviseremo via e-mail."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "選んだデバイスは %1$@ からサインアウトされます。空きがあれば、後でもう一度サインインできます。メールでお知らせします。"
+            "value": "選んだデバイスは %1$@ からサインアウトされます。台数に余裕があれば、後でもう一度サインインできます。メールでお知らせします。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "선택한 기기는 %1$@에서 로그아웃됩니다. 자리가 나면 나중에 다시 로그인할 수 있습니다. 이메일로 알려 드립니다."
+            "value": "선택한 기기는 %1$@에서 로그아웃됩니다. 여유가 있으면 나중에 다시 로그인할 수 있습니다. 이메일로 알려 드립니다."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你选择的设备将退出 %1$@。如有空位，它之后可以重新登录。我们会通过电子邮件通知你。"
+            "value": "你选择的设备将退出 %1$@。如果设备数量未达上限，它之后可以重新登录。我们会通过电子邮件通知你。"
           }
         }
       }
@@ -70160,55 +70340,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ signs out of %2$@ and %3$@ takes its seat. We'll email you about it."
+            "value": "%1$@ signs out of %2$@ and %3$@ takes its place. We'll email you about it."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ wird von %2$@ abgemeldet und %3$@ übernimmt den Platz. Wir informieren Sie per E-Mail darüber."
+            "value": "%1$@ wird von %2$@ abgemeldet und %3$@ tritt an seine Stelle. Wir informieren Sie per E-Mail darüber."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ sera déconnecté de %2$@ et %3$@ prendra sa place. Nous vous enverrons un e-mail à ce sujet."
+            "value": "%1$@ sera déconnecté de %2$@ et %3$@ le remplacera. Nous vous enverrons un e-mail à ce sujet."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se cerrará la sesión de %2$@ en %1$@ y %3$@ ocupará su plaza. Te lo notificaremos por correo."
+            "value": "Se cerrará la sesión de %2$@ en %1$@ y %3$@ ocupará su lugar. Te lo notificaremos por correo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ sai de %2$@ e %3$@ ocupa a vaga. Enviaremos um e-mail sobre isso."
+            "value": "%1$@ sai de %2$@ e %3$@ entra no lugar dele. Enviaremos um e-mail sobre isso."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ esce da %2$@ e %3$@ ne prende il posto. Ti invieremo un'email al riguardo."
+            "value": "%1$@ esce da %2$@ e %3$@ lo sostituisce. Ti invieremo un'email al riguardo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@は%2$@からサインアウトし、%3$@がその枠を使用します。この件についてはメールでお知らせします。"
+            "value": "%1$@は%2$@からサインアウトされ、代わりに%3$@が使われます。この件についてはメールでお知らせします。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@은(는) %2$@에서 로그아웃되고 %3$@이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요."
+            "value": "%1$@은(는) %2$@에서 로그아웃되고 %3$@이(가) 대신 사용돼요. 이 내용은 이메일로 알려 드려요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@将退出登录%2$@，%3$@将占用它的席位。我们会通过电子邮件通知你。"
+            "value": "%1$@将退出登录%2$@，由%3$@取代。我们会通过电子邮件通知你。"
           }
         }
       }
@@ -70460,55 +70640,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose a device to sign out. %1$@ takes its seat."
+            "value": "Choose a device to sign out. %1$@ takes its place."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wählen Sie ein Gerät zum Abmelden. %1$@ übernimmt seinen Platz."
+            "value": "Wählen Sie ein Gerät zum Abmelden. %1$@ tritt an seine Stelle."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choisissez un appareil à déconnecter. %1$@ prend sa place."
+            "value": "Choisissez un appareil à déconnecter. %1$@ le remplace."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elige un dispositivo para cerrar su sesión. %1$@ ocupará su plaza."
+            "value": "Elige un dispositivo para cerrar su sesión. %1$@ ocupará su lugar."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Escolha um dispositivo para desconectar. %1$@ fica com a vaga dele."
+            "value": "Escolha um dispositivo para desconectar. %1$@ entra no lugar dele."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scegli un dispositivo da disconnettere. %1$@ ne prende il posto."
+            "value": "Scegli un dispositivo da disconnettere. %1$@ lo sostituisce."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "サインアウトするデバイスを選んでください。%1$@がその枠を使用します。"
+            "value": "サインアウトするデバイスを選んでください。代わりに%1$@が使われます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로그아웃할 기기를 선택하세요. %1$@이(가) 그 자리를 사용해요."
+            "value": "로그아웃할 기기를 선택하세요. %1$@이(가) 대신 사용돼요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择要退出登录的设备。%1$@将占用其席位。"
+            "value": "选择要退出登录的设备。由%1$@取代。"
           }
         }
       }
@@ -70772,55 +70952,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Someone took that seat first. Choose again."
+            "value": "Someone replaced that device first. Choose again."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Jemand anderes hat diesen Platz zuerst belegt. Wählen Sie erneut."
+            "value": "Jemand anderes hat dieses Gerät zuerst ersetzt. Wählen Sie erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quelqu’un a pris cette place avant vous. Faites un autre choix."
+            "value": "Quelqu’un a remplacé cet appareil avant vous. Faites un autre choix."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alguien ocupó esa plaza antes. Vuelve a elegir."
+            "value": "Alguien reemplazó ese dispositivo antes. Vuelve a elegir."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Outra pessoa ocupou essa vaga antes. Escolha novamente."
+            "value": "Outra pessoa substituiu esse dispositivo antes. Escolha novamente."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Qualcun altro ha occupato prima quel posto. Scegli di nuovo."
+            "value": "Qualcun altro ha sostituito prima quel dispositivo. Scegli di nuovo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "先に別のデバイスがその枠を使用しました。もう一度選択してください。"
+            "value": "先に別の人がそのデバイスを置き換えました。もう一度選択してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다른 사람이 먼저 그 자리를 차지했어요. 다시 선택하세요."
+            "value": "다른 사람이 먼저 그 기기를 교체했어요. 다시 선택하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "有人先占用了该席位。请重新选择。"
+            "value": "有人先替换了该设备。请重新选择。"
           }
         }
       }
@@ -70832,55 +71012,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ was removed, but someone took the seat first. Choose again."
+            "value": "%1$@ was removed, but someone signed in first. Choose again."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ wurde entfernt, aber jemand anderes hat den Platz zuerst belegt. Wählen Sie erneut."
+            "value": "%1$@ wurde entfernt, aber jemand hat sich zuerst angemeldet. Wählen Sie erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ a été retiré, mais quelqu’un a pris la place avant vous. Faites un autre choix."
+            "value": "%1$@ a été retiré, mais quelqu’un s’est connecté avant vous. Faites un autre choix."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se quitó %1$@, pero alguien ocupó la plaza antes. Vuelve a elegir."
+            "value": "Se quitó %1$@, pero alguien inició sesión antes. Vuelve a elegir."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ foi removido, mas outra pessoa ocupou a vaga antes. Escolha novamente."
+            "value": "%1$@ foi removido, mas outra pessoa entrou antes. Escolha novamente."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ è stato rimosso, ma qualcun altro ha occupato prima il posto. Scegli di nuovo."
+            "value": "%1$@ è stato rimosso, ma qualcun altro ha effettuato l'accesso prima. Scegli di nuovo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@は削除されましたが、先に別のデバイスがその枠を使用しました。もう一度選択してください。"
+            "value": "%1$@は削除されましたが、先に別のデバイスがサインインしました。もう一度選択してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@을(를) 제거했지만 다른 사람이 먼저 자리를 차지했어요. 다시 선택하세요."
+            "value": "%1$@을(를) 제거했지만 다른 기기가 먼저 로그인했어요. 다시 선택하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@已移除，但有人先占用了该席位。请重新选择。"
+            "value": "%1$@已移除，但有人先登录了。请重新选择。"
           }
         }
       }

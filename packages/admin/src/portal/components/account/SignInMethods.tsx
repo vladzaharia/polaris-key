@@ -66,7 +66,7 @@ import {
   ProviderGlyph,
   SteamGlyph,
   WindowsGlyph,
-} from "../Glyphs.js";
+} from "../../../ui/Glyphs.js";
 import { ErrorPanel } from "../States.js";
 import { AccountCard as SectionCard } from "./AccountCard.js";
 import { MethodRow } from "./MethodRow.js";
@@ -174,6 +174,7 @@ export function SignInMethods({
           account
           error={methods.error}
           onRetry={() => void methods.refetch()}
+          message={t("locker.error.loadFailedMethods")}
           className="border-0 p-0 shadow-none"
         />
       ) : (

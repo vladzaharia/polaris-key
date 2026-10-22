@@ -20,6 +20,7 @@ import {
   loadAllow,
   loadCatalog,
   normalise,
+  refusalPatterns,
   stateOf,
   type StringFinding,
 } from "./strings.ts";
@@ -36,12 +37,44 @@ export function parseSize(size: string): {
   return { width: +m[1]!, height: +m[2]!, ratio: m[3] ? +m[3] : 1 };
 }
 
+export const DOM_DEBT = "packages/ui-qa/rules/dom-debt.json";
+
+/**
+ * The design-language rules (UK-55) that fire on the mockup boards today. Their hits are recorded
+ * per board and rule in dom-debt.json (a ratchet like the string and kit ledgers); every other rule,
+ * and every page given to --html or --css, is strict.
+ */
+export const DL_RULES = [
+  "spacing-off-scale",
+  "weights",
+  "polaris-mark",
+  "mark-size",
+  "refusal-styling",
+  "initial-focus",
+  "link-validation",
+  "px-font",
+] as const;
+
+export const DOM_DEBT_COMMENT =
+  "Design-language debt on the mockup boards (UK-55; UI-KITS.md DL3, DL5, DL6, DL9, DL11, DL12, DL14): distinct hits per board and rule when the lint landed. A board is the design reference for its kit, so the kit's modernisation packages clear its entries as they redraw it with tokens (rem type, --pk-space-* steps): web and the React kit UK-47 and UK-05; ios and apple, SwiftUI UK-49, UK-07 and UK-08; android, Compose UK-09 and UK-10; godot, UK-50 and UK-11; qt, UK-12; terminal, UK-45 and UK-48; desktop, windows and linux, the platform shell packages of their kits. The lint fails on a count above these and on a count below (stale). Shrink it with: pnpm ui:lint -- --record-dom-debt.";
+
+interface DomDebtFile {
+  $comment: string;
+  debt: Array<{ board: string; rule: string; count: number }>;
+}
+
 export const STRING_DEBT = "packages/ui-qa/rules/strings.debt.json";
 
 export interface LintRun {
   violations: Array<Violation & { board: string; theme: string }>;
   strings: StringFinding[];
   staleDebt: Array<{ board: string; state: string; text: string }>;
+  staleDomDebt: Array<{
+    board: string;
+    rule: string;
+    recorded: number;
+    now: number;
+  }>;
   kits: KitFinding[];
   consoleErrors: string[];
 }
@@ -56,6 +89,7 @@ export interface LintArgs {
   strings?: boolean;
   kits?: boolean;
   recordStringDebt?: boolean;
+  recordDomDebt?: boolean;
   root?: string;
   /** Boards are read from this directory (tests point it at a seeded copy). */
   boardsDir?: string;
@@ -67,6 +101,7 @@ interface DebtFile {
 }
 
 function boardTarget(
+  refusals: string[],
   base: string,
   dir: string,
   b: Board,
@@ -82,6 +117,7 @@ function boardTarget(
       touch: c.touch ?? [],
       allow: c.allow ?? {},
       allowWeight700: b.allowWeight700 ?? [],
+      refusals,
     },
   };
 }
@@ -103,24 +139,28 @@ export async function runLint(
     violations: [],
     strings: [],
     staleDebt: [],
+    staleDomDebt: [],
     kits: [],
     consoleErrors: [],
   };
   try {
     const targets: PageTarget[] = [];
+    const refusals = refusalPatterns(loadCatalog(root));
     for (const b of boards)
-      for (const t of themes) targets.push(boardTarget(srv.base, dir, b, t));
+      for (const t of themes)
+        targets.push(boardTarget(refusals, srv.base, dir, b, t));
     for (const file of args.css ?? [])
       targets.push({
         name: file,
         url: cssPageUrl(resolve(root, file)),
-        options: { allRules: true },
+        options: { allRules: true, refusals },
       });
     for (const page of args.html ?? [])
       for (const size of args.sizes?.length ? args.sizes : [undefined]) {
         const s = size ? parseSize(size) : undefined;
         targets.push({
           name: s ? `${page} @ ${size}` : page,
+          options: { refusals },
           url: /^https?:/.test(page)
             ? page
             : `${srv.base}/${page.replace(/^\/+/, "")}`,
@@ -146,6 +186,63 @@ export async function runLint(
           `${r.target.name} ${r.target.theme ?? ""}: ${e}`,
         );
     }
+    // The design-language ledger for the boards: hits within the recorded count pass.
+    const boardNames = new Set(boards.map((b) => b.name));
+    const dlKey = (board: string, rule: string) => `${board}\u0000${rule}`;
+    const distinct = new Map<string, Set<string>>();
+    for (const v of run.violations) {
+      if (
+        !boardNames.has(v.board) ||
+        !(DL_RULES as readonly string[]).includes(v.rule)
+      )
+        continue;
+      const k = dlKey(v.board, v.rule);
+      const set = distinct.get(k) ?? new Set<string>();
+      set.add(`${v.scope}|${v.target}|${v.detail}`);
+      distinct.set(k, set);
+    }
+    const domFile = resolve(root, DOM_DEBT);
+    if (args.recordDomDebt) {
+      const debt = [...distinct]
+        .map(([k, set]) => {
+          const [board, rule] = k.split("\u0000");
+          return { board: board!, rule: rule!, count: set.size };
+        })
+        .sort((a, b) =>
+          `${a.board}${a.rule}`.localeCompare(`${b.board}${b.rule}`),
+        );
+      const out: DomDebtFile = { $comment: DOM_DEBT_COMMENT, debt };
+      writeFileSync(domFile, JSON.stringify(out, null, 2) + "\n");
+      run.violations = run.violations.filter(
+        (v) => !distinct.has(dlKey(v.board, v.rule)),
+      );
+    } else {
+      const ledger: DomDebtFile = existsSync(domFile)
+        ? (JSON.parse(readFileSync(domFile, "utf8")) as DomDebtFile)
+        : { $comment: "", debt: [] };
+      const allowed = new Map(
+        ledger.debt.map((d) => [dlKey(d.board, d.rule), d.count]),
+      );
+      run.violations = run.violations.filter((v) => {
+        const k = dlKey(v.board, v.rule);
+        if (!distinct.has(k)) return true;
+        return distinct.get(k)!.size > (allowed.get(k) ?? 0);
+      });
+      // Counts compare only when both themes ran, since a theme can add or hide a hit.
+      if (themes.length === 2)
+        for (const d of ledger.debt) {
+          if (!boardNames.has(d.board)) continue;
+          const now = distinct.get(dlKey(d.board, d.rule))?.size ?? 0;
+          if (now < d.count)
+            run.staleDomDebt.push({
+              board: d.board,
+              rule: d.rule,
+              recorded: d.count,
+              now,
+            });
+        }
+    }
+
     // One theme's strings are enough: the copy does not change with the theme.
     if (args.strings !== false && boards.length) {
       const first = themes[0];
@@ -242,6 +339,15 @@ export function format(run: LintRun): string {
     for (const s of run.staleDebt)
       lines.push(`    ${s.board} · ${s.state} · "${s.text}"`);
   }
+  if (run.staleDomDebt.length) {
+    lines.push(
+      `✗ design-language: stale debt (${run.staleDomDebt.length}); re-record with --record-dom-debt`,
+    );
+    for (const d of run.staleDomDebt)
+      lines.push(
+        `    ${d.board} · ${d.rule} · ${d.now} hits now, ${d.recorded} recorded`,
+      );
+  }
   if (run.kits.length) {
     lines.push(`✗ kit-source (${run.kits.length})`);
     for (const k of run.kits)
@@ -261,6 +367,7 @@ export function failed(run: LintRun): boolean {
     run.violations.length +
       run.strings.length +
       run.staleDebt.length +
+      run.staleDomDebt.length +
       run.kits.length +
       run.consoleErrors.length >
     0

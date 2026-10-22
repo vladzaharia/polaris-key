@@ -27,6 +27,8 @@ export type ErrorAction =
   | "none";
 
 export interface ErrorContext {
+  /** The request only reads: a 403 is "no access", never "you need edit access". */
+  read?: boolean;
   /** The thing the request was about, for "{Thing} not found": "License", "Profile". */
   thing?: string;
   /** Where that thing's collection lives, for the not-found link. */
@@ -448,6 +450,13 @@ export function errorCopy(
         details,
       };
     }
+    if (context.read)
+      return {
+        title: "You don't have access to this",
+        description: "Ask a platform admin to give you access.",
+        action: "none",
+        details,
+      };
     // ST-29: the route table's refusal (`reason: "no_access"`): the member lacks the area.
     if (reason === "no_access")
       return {

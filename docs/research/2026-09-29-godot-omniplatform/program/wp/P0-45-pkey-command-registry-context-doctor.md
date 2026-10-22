@@ -135,7 +135,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 ## Acceptance criteria
 
 - [x] reference/cli.mdx generated with --check
-- [ ] pkey doctor reports the same Verified facts as ST-40 (not met: ST-40 is not merged; see the corrections above)
+- [ ] pkey doctor reports the same Verified facts as ST-40: moved to ST-34 (2026-10-22); not a P0-45 criterion any more
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
@@ -159,3 +159,7 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - Screen acceptance block (terminal help output)
 - pkey-ux-reviewer BUILT pass
 - Green gate item
+
+## Consolidation 2026-10-22 (triage)
+
+"`pkey doctor` reports the same Verified facts as ST-40" moves to [ST-34](ST-34-admin-scope-personal-tokens-pkey-login.md): it needs `pkey login`, and ST-34 depends on this package. What remains here is the BUILT UX pass on `pkey help` and `pkey doctor`, and the green gate.

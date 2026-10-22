@@ -30,6 +30,8 @@ import {
   shellStateBreaches,
   unlabelledScrollers,
 } from "./pageChecks.js";
+import { reduceTransparency } from "../../ui-qa/src/index.ts";
+import { staleUxDebt, uxBarChecked } from "./uxBar.js";
 import {
   probeLayout,
   type LayoutViolation,
@@ -123,6 +125,8 @@ const RECORD_IDS: Record<string, { id: string; child?: string[] }> = {
   "platform-feeds": { id: "npm", child: ["polaris-key", "@polaris-key/node"] },
   // PS-06: the built-in storefront's own page.
   storefronts: { id: "polaris-key" },
+  // ST-51: an event's drawer, over the list (the id is one the layout fixture's feed holds).
+  "platform-activity": { id: "pax1" },
 };
 
 function cases(): Case[] {
@@ -186,6 +190,10 @@ function cases(): Case[] {
       },
     },
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
+    {
+      name: "global:platform-activity?timeline",
+      hash: "#/platform/activity?view=timeline",
+    },
     {
       name: "djdl:rollouts?view=matrix&cell",
       hash: "#/p/djdl/distribution/rollouts?view=matrix&cell=rel_240:altstore",
@@ -317,6 +325,8 @@ const VIEWPORTS: {
   /** Emulate a Windows contrast theme, or `prefers-contrast: more`. */
   forcedColors?: "active";
   contrast?: "more";
+  /** Emulate `prefers-reduced-transparency: reduce` (no blur survives; UK-63). */
+  reducedTransparency?: boolean;
 }[] = process.env.PK_LAYOUT_VIEWPORTS
   ? process.env.PK_LAYOUT_VIEWPORTS.split(",").map((v) => {
       const [width, height] = v.split("x").map(Number) as [number, number];
@@ -386,6 +396,21 @@ const VIEWPORTS: {
       },
       // Forced colours (a Windows contrast theme) and `prefers-contrast: more`: Home, Licenses and
       // Services.
+      // UI-KITS.md §7.1's small landscape (a phone on its side, a split window): 640 × 360.
+      { label: "landscape-small", width: 640, height: 360, only: ZOOM_CASES },
+      // Reduced transparency: the dialog and drawer backdrops lose their blur (UK-63).
+      {
+        label: "reduced-transparency",
+        width: 1440,
+        height: 900,
+        reducedTransparency: true,
+        only: [
+          "global:home",
+          "djdl:licenses",
+          "djdl:services",
+          "dialog:set-secret",
+        ],
+      },
       {
         label: "forced-colors",
         width: 1440,
@@ -464,6 +489,13 @@ afterAll(async () => {
         `MASTHEAD_DEBT entries that no longer match a violation (delete them): ${paid.map((d) => `${d.cases} (${d.owner})`).join(", ")}`,
       );
   }
+  if (!ONLY && !ONLY_CASES && !process.env.PK_LAYOUT_VIEWPORTS) {
+    const stale = staleUxDebt("console");
+    if (stale.length)
+      throw new Error(
+        `UX_BAR_DEBT entries that no longer match a finding (delete them): ${stale.join(", ")}`,
+      );
+  }
   await browser?.close();
   await new Promise<void>((r) => server?.httpServer.close(() => r()));
   const lines: string[] = ["", "── Layout lint report ──"];
@@ -512,6 +544,7 @@ async function open(
     rootFontPercent?: number;
     forcedColors?: "active";
     contrast?: "more";
+    reducedTransparency?: boolean;
   },
 ): Promise<{ page: Page; gaps: string[]; errors: string[] }> {
   const ctx = await browser.newContext({
@@ -561,6 +594,7 @@ async function open(
     return route.fulfill({ response: res, headers });
   });
   const page = await ctx.newPage();
+  if (viewport.reducedTransparency) await reduceTransparency(page);
   page.on("pageerror", (e) => errors.push(e.message));
   if (viewport.rootFontPercent)
     await ctx.addInitScript((pct) => {
@@ -687,6 +721,21 @@ for (const vp of VIEWPORTS) {
                 "ui:lint findings",
               ).toEqual([]);
             }
+            if (
+              [
+                "desktop",
+                "phone",
+                "landscape-small",
+                "reduced-transparency",
+              ].includes(vp.label)
+            )
+              // B6, B7, B17 over the render (UK-63); the focus-ring walk once per page.
+              expect(
+                await uxBarChecked(page, c.name, {
+                  focus: vp.label === "desktop" && theme === "dark",
+                }),
+                "UX bar (B6, B7, B17)",
+              ).toEqual([]);
             if (
               ["desktop", "phone", "rail"].includes(vp.label) &&
               (await page.locator("header[data-masthead]").count()) > 0

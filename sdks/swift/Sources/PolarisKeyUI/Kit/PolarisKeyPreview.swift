@@ -102,6 +102,11 @@ public struct PolarisKeyPreview: View {
                         details: model.inputs.update, onUpdate: {}, onLater: {})
                 }
             }
+        case .toast:
+            ZStack(alignment: .bottom) {
+                PreviewHostApp()
+                PreviewToast(screen: KitStates.toast(model.inputs))
+            }
         case .updateProgress:
             PreviewSettingsHost {
                 Section {
@@ -116,6 +121,9 @@ public struct PolarisKeyPreview: View {
                     screen: KitStates.releaseNotes(model.inputs),
                     notes: model.inputs.releaseNotes ?? [], onRetry: {})
             }
+        case .accountAndLicense where state.variant != nil:
+            // The drop-in `PolarisKeySettings`, over a still model.
+            PreviewSettingsHost { PolarisKeySettings(model: settingsModel) }
         case .accountAndLicense:
             PreviewSettingsHost {
                 AccountAndLicenseSection(
@@ -127,12 +135,18 @@ public struct PolarisKeyPreview: View {
             PreviewSettingsHost {
                 DevicesSection(
                     screen: KitStates.devices(model.inputs), devices: model.inputs.devices ?? [],
-                    onRemove: { _ in }, onRetry: {})
+                    onRemove: { _ in }, onRetry: {},
+                    onRename: model.inputs.edit?.kind == "rename" ? { _, _ in } : nil,
+                    renaming: model.inputs.edit?.kind == "rename"
+                        ? model.inputs.devices?.first { $0.name == model.inputs.edit?.device } : nil)
             }
         case .settings:
             PreviewSettingsHost {
                 SettingsSection(
-                    screen: KitStates.settings(model.inputs), rows: model.inputs.config ?? [])
+                    screen: KitStates.settings(model.inputs), rows: model.inputs.config ?? [],
+                    options: state.variant == "controls"
+                        ? ["render.quality": ["Low", "Medium", "High"]] : [:],
+                    onRetry: {}, onReset: state.variant == "controls" ? { _ in } : nil)
             }
         case .paywall:
             PaywallView(
@@ -155,6 +169,42 @@ public struct PolarisKeyPreview: View {
             }
         default:
             PreviewHostApp()
+        }
+    }
+}
+
+extension PolarisKeyPreview {
+    /// The still model of a `PolarisKeySettings` preview: who is signed in, and what the host can do.
+    var settingsModel: PolarisKeySettingsModel {
+        let channel: KitChannelState
+        var handlers = KitSettingsHandlers(manage: {}, autoUpdate: { _ in })
+        switch state.variant {
+        case "channel-locked":
+            channel = .locked(
+                current: "stable",
+                reason: CopyLine("channel.locked", ["store": .text("App Store")]))
+        case "channel-license":
+            channel = .locked(current: "stable", reason: CopyLine("channel.lockedLicense"))
+        default:
+            channel = .choose(current: "stable", options: ["stable", "beta"])
+            handlers.selectChannel = { _ in }
+        }
+        return PolarisKeySettingsModel(
+            preview: state.inputs, tier: "Pro", holder: "Mara Fennick", channel: channel,
+            seats: "2 of 3", handlers: handlers, options: KitSettingsOptions(version: "2.4.1"),
+            selectOptions: ["render.quality": ["Low", "Medium", "High"]])
+    }
+}
+
+/// A toast over the host, as the gate draws it (no timer in a still).
+struct PreviewToast: View {
+    let screen: KitScreen<ToastState>
+    @Environment(\.polarisKeyStrings) private var strings
+
+    var body: some View {
+        if let line = screen.copy.first {
+            ToastView(
+                text: strings.string(line), tone: screen.state == .success ? .success : .neutral)
         }
     }
 }

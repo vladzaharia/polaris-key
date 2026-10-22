@@ -4,7 +4,7 @@
 //
 // PolarisKeyApp composes the kit's existing pieces, unchanged: the boot shell over
 // `client.bootHost()` (guard, sync, gate, decide, pack fetch, mount, launch confirmation), the gate
-// for its activation stop, pack progress, and the update banner over `client.updateActions()` (a
+// for its activation stop, pack progress, and the update sheet or card (the banner only for "Restart to finish") over `client.updateActions()` (a
 // Play flexible update's progress and "Restart to finish" included). It also provides the client
 // to the tree through LocalPolarisKey, so screens read it with polarisKey() and the remember*
 // helpers instead of threading it through every composable.
@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import im.plrs.key.core.BootOptions
 import im.plrs.key.core.LicenseState
 import im.plrs.key.sdk.bootHost
@@ -112,11 +113,24 @@ public fun PolarisKeyApp(
     } else {
         null
     }
+    val prefs = LocalContext.current.getSharedPreferences("pkey_ui_update", android.content.Context.MODE_PRIVATE)
+    remember(update, prefs) {
+        update.skippedVersion = prefs.getString("skipped_version", null)
+        update.onSkip = { prefs.edit().putString("skipped_version", it).apply() }
+    }
     LaunchedEffect(client, bootOptions) {
         client.start()
         gate.start()
         update.follow(updateActions, this)
-        boot.launch(this, withContext(Dispatchers.IO) { client.bootHost(onCheck = update::show) })
+        // The facts load beside the boot, never inside the builder's scope (which would wait for them).
+        val effects = this
+        val host = withContext(Dispatchers.IO) {
+            client.bootHost(onCheck = { check ->
+                update.show(check)
+                effects.launch { update.loadFacts(client) }
+            })
+        }
+        boot.launch(this, host)
     }
     PolarisKeyProvider(client) {
         PolarisBoot(
@@ -130,7 +144,8 @@ public fun PolarisKeyApp(
         ) {
             val offer by update.offer.collectAsState()
             Column {
-                offer?.let { ui ->
+                // Restart to finish is the banner's; an offered version is the sheet or card's (decision 9).
+                offer?.takeIf { it.kind == PolarisUpdateUi.Kind.Restart }?.let { ui ->
                     PolarisUpdateBanner(
                         ui,
                         onUpdate = { update.install(updateActions, scope) },
@@ -138,6 +153,14 @@ public fun PolarisKeyApp(
                     )
                 }
                 content()
+            }
+            offer?.takeIf { it.kind == PolarisUpdateUi.Kind.Install }?.let { ui ->
+                PolarisUpdatePromptDialog(
+                    ui,
+                    onUpdate = { update.install(updateActions, scope) },
+                    onLater = update::dismiss,
+                    onSkip = if (ui.mandatory) null else update::skip,
+                )
             }
         }
     }

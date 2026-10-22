@@ -487,7 +487,7 @@
       "code": "network",
       "kind": "client",
       "service": "core",
-      "description": "React: the request failed, or the server answered with an unexpected status."
+      "description": "React: the request failed, or the server answered with an unexpected status. Node and Python terminal kits: discovery could not be reached, so a service that looks off reads as offline (not \"Not available\")."
     },
     {
       "code": "refresh-failed",

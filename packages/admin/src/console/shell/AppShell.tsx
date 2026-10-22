@@ -27,6 +27,7 @@ import {
 import { navigate, useLocation } from "../router.js";
 import { portalHandOff } from "../portalHandOff.js";
 import {
+  opensRecordInDrawer,
   pageOfRoute,
   productPage,
   r,
@@ -88,7 +89,12 @@ export function pageTitle(route: Route): string {
   }
   if (route.page === "storefronts" && route.id === "polaris-key")
     return "Polaris Locker";
-  if (route.id !== undefined && page.record) {
+  // A drawer over the list keeps the list's title: the route focus and scroll stay where they are.
+  if (
+    route.id !== undefined &&
+    page.record &&
+    !(route.kind === "global" && opensRecordInDrawer(route.page))
+  ) {
     return `${page.record.noun} ${route.id}`;
   }
   return page.label;

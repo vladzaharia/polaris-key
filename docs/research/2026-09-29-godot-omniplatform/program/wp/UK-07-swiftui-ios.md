@@ -272,8 +272,8 @@ from here.
    only the iPhone's are committed (about 21 MB; the same again per device).
 4. iOS 18 renders on a real iOS 18 runtime (only the fallback forced on 26, `-pkeyMaterial`, so
    far), and their baselines.
-5. Boot's consent, offline, blocked, declined, rolled-back and error screens as designed views;
-   OfflineActivation's view (off on iOS by default; UK-08 for the Mac).
+5. ~~Boot's consent, offline, blocked, declined, rolled-back and error screens as designed views~~ (done 2026-10-22);
+   OfflineActivation's view (done separately, f67babaa1) (off on iOS by default; UK-08 for the Mac).
 6. The in-app license choice and Replace a device on live data once the SDK carries I-04's grant
    (I-10a); native Apple sign-in behind the logo (`SignInWithAppleButton`, I-13); Google and Steam
    logos with their assets.
@@ -289,5 +289,20 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 
 - Re-apply held-back glass tint and banner inset changes (ca57805e7), re-record all baselines
 - Rest of the UX review plus a second review (Settings controls, AccountAndLicense, device rows, SignIn.choose etc.); record in ux-reviews.json
-- OfflineActivation view and Boot non-progress stages
+- ~~OfflineActivation view and Boot non-progress stages~~ (done; see Done 2026-10-22)
 - ui-matrix v3 alignment and remaining acceptance items
+
+## Done 2026-10-22: Boot stop states (KX-SW-BOOT)
+
+Branch `feat/kx-swift-boot`. `BootView(boot:)` now draws the stage machine's stops (consent with
+metered Download / Not now, offline with Continue offline when playable, blocked, declined, error)
+as title, sentence and one primary, ported by hand onto the current kit; progress, fetching and
+rolled-back keep the skeleton. Copy keys follow the UI matrix `Boot/*` rows and the terminal boot.
+Previews, `KitRenderTests` ids and dark and light baselines on iphone-440x956 exist for all eight
+Boot states; `PreviewStateTests` covers the state mapping.
+
+- [x] Boot's non-progress stages as designed views (this item and the open UX-review item 5).
+- [x] Boot previews and baselines in both schemes.
+
+`wp/UK-07-continue` (commit 32bb8464f) is superseded (its tint commit by 1b1b5696e, its
+OfflineActivation by f67babaa1, its Boot screens by this branch) and can be deleted.

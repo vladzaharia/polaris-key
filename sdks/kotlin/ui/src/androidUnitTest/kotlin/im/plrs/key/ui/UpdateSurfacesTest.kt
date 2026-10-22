@@ -80,4 +80,42 @@ class UpdateSurfacesTest {
         assertEquals(1, restarts)
         rule.onNodeWithText(copy.updateLater).assertIsDisplayed()
     }
+
+    @Test
+    fun theOfferedPromptSaysWhatYouHaveWhatIsNewAndWhereTheVerbGoes() {
+        var skipped = 0
+        val ui = PolarisUpdateUi(
+            "2.5.0",
+            currentVersion = "2.4.1",
+            size = 61_000_000L,
+            notes = listOf("Faster sync", "Fixes a crash on resume"),
+            notesUrl = "https://example.com/r/2.5.0",
+            outlet = "play",
+        )
+        show { PolarisUpdatePromptDialog(ui, onUpdate = {}, onLater = {}, onSkip = { skipped++ }) }
+        rule.onNodeWithText("You have 2.4.1 · 61 MB download").assertIsDisplayed()
+        rule.onNodeWithText(copy.updateWhatsNew).assertIsDisplayed()
+        rule.onNodeWithText("Faster sync").assertIsDisplayed()
+        rule.onNodeWithText("All changes in 2.5.0").assertIsDisplayed()
+        rule.onNodeWithText(copy.updateGooglePlay).assertIsDisplayed()
+        rule.onNodeWithText(copy.updateNow).assertDoesNotExist()
+        rule.onNodeWithText(copy.updateSkip).performClick()
+        assertEquals(1, skipped)
+    }
+
+    @Test
+    fun noNotesHidesTheWhatsNewLabelAndNoSizeDropsTheDownload() {
+        show { PolarisUpdatePromptDialog(PolarisUpdateUi("2.5.0", currentVersion = "2.4.1"), onUpdate = {}, onLater = {}) }
+        rule.onNodeWithText("You have 2.4.1").assertIsDisplayed()
+        rule.onNodeWithText(copy.updateWhatsNew).assertDoesNotExist()
+        rule.onNodeWithText(copy.updateSkip).assertDoesNotExist()
+    }
+
+    @Test
+    fun whileDownloadingItSaysHowLongIsLeft() {
+        show {
+            PolarisUpdatePrompt(PolarisUpdateUi("2.5.0", progress = 38_000_000L to 61_000_000L, secondsLeft = 20), onUpdate = {}, onLater = {})
+        }
+        rule.onNodeWithText("About 20 seconds left").assertIsDisplayed()
+    }
 }

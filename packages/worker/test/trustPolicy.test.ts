@@ -1,7 +1,9 @@
-// P6-02 — the platform-admin trust-policy resource (`console/handlers/trustPolicy.ts`):
-// `GET|PUT|DELETE /manage/api/products/<slug>/trust-policy`. Platform admins only, validated
-// field by field (an invalid body writes nothing), every write audited, and `source` tracking who
-// owns the row (`default` until an admin sets it).
+// P6-02 — the device trust policy as an admin resource. Since ST-05b it is the registry setting
+// `core.trustPolicy`, served by the generic settings routes (`console/handlers/productSettings.ts`,
+// `GET|PATCH|DELETE /manage/api/products/<slug>/settings/core.trustPolicy`, its adapter in
+// `core/settings/adapters.ts`). Platform admins only, validated field by field (an invalid body
+// writes nothing), every write audited, and `source` tracking who owns the row (`default` until an
+// admin sets it). `call` keeps this file's verbs: GET reads, PUT writes a policy, DELETE resets.
 
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
@@ -51,16 +53,34 @@ async function call(
     },
     NOW,
   );
-  const full = `/api/products/${SLUG}/trust-policy${opts.path ?? ""}`;
+  const full = `/api/products/${SLUG}/settings/core.trustPolicy${opts.path ?? ""}`;
+  // The generic routes: PUT is a PATCH of `{ value, expectedVersion, reason, confirm }` (the body
+  // is the whole policy, or an envelope around it), DELETE is a DELETE with the guard.
+  const generic = (): unknown => {
+    if (method === "PUT") {
+      const raw = (opts.body ?? {}) as Record<string, unknown>;
+      const enveloped =
+        typeof raw.policy === "object" &&
+        raw.policy !== null &&
+        !Array.isArray(raw.policy);
+      const { policy, ...meta } = raw;
+      return enveloped ? { value: policy, ...meta } : { value: raw };
+    }
+    return opts.body;
+  };
+  const verb = method === "PUT" ? "PATCH" : method;
+  const body = generic();
   const res = await handleAdmin(
     new Request(`${CONSOLE}/manage${full}`, {
-      method,
+      method: verb,
       headers: {
         cookie: `${ADMIN_COOKIE}=${token}`,
         [CSRF_HEADER]: session.csrf,
         "content-type": "application/json",
       },
-      ...(opts.body !== undefined ? { body: JSON.stringify(opts.body) } : {}),
+      ...(body !== undefined && verb !== "GET"
+        ? { body: JSON.stringify(body) }
+        : {}),
     }),
     w.env,
     w.db,
@@ -68,13 +88,27 @@ async function call(
     { now: NOW },
   );
   const text = await res.text();
-  let body: Record<string, unknown> = {};
+  let parsed: Record<string, unknown> = {};
   try {
-    body = JSON.parse(text) as Record<string, unknown>;
+    parsed = JSON.parse(text) as Record<string, unknown>;
   } catch {
-    body = { raw: text };
+    parsed = { raw: text };
   }
-  return { status: res.status, body };
+  // The old resource's answer: `{ policy, source, version }`.
+  const setting = parsed.setting as
+    | { value: unknown; source: string; version: number }
+    | undefined;
+  return {
+    status: res.status,
+    body: setting
+      ? {
+          ...parsed,
+          policy: setting.value,
+          source: setting.source === "console" ? "admin" : setting.source,
+          version: setting.version,
+        }
+      : parsed,
+  };
 }
 
 async function stored(db: Db) {
@@ -165,7 +199,7 @@ describe("trust-policy admin resource", () => {
     expect((await loadProduct(w.env, w.db, SLUG))!.trustPolicy).toEqual(POLICY);
   });
 
-  it("an unknown member or a malformed teamId is 400 and writes nothing", async () => {
+  it("an unknown member or a malformed teamId is 422 and writes nothing", async () => {
     const w = await world();
     for (const body of [
       { ...POLICY, surprise: true },
@@ -181,7 +215,7 @@ describe("trust-policy admin resource", () => {
       },
     ]) {
       const r = await call(w, "PUT", { body });
-      expect(r.status, JSON.stringify(body)).toBe(400);
+      expect(r.status, JSON.stringify(body)).toBe(422);
     }
     expect(await stored(w.db)).toEqual({
       trust_policy_json: null,
@@ -255,7 +289,7 @@ describe("stored policies from a later build", () => {
   it("are still refused by the PUT", async () => {
     const w = await world();
     const r = await call(w, "PUT", { body: LATER });
-    expect(r.status).toBe(400);
+    expect(r.status).toBe(422);
     expect(await stored(w.db)).toEqual({
       trust_policy_json: null,
       trust_policy_source: "default",
@@ -311,7 +345,9 @@ describe("guarded writes", () => {
       const body = { policy: RELAXED, ...g } as Record<string, unknown>;
       delete body[drop];
       const r = await call(w, "PUT", { body, stepUp: true });
-      expect(r.status, drop).toBe(400);
+      // The version is `writeSetting()`'s own check (a 422 like the route's other inputs); the
+      // reason and the typed key are the relaxing gate's (400).
+      expect(r.status, drop).toBe(drop === "expectedVersion" ? 422 : 400);
       expect(r.body.reason, drop).toBe(reason);
     }
     const wrong = await call(w, "PUT", {
@@ -392,11 +428,14 @@ describe("guarded writes", () => {
 
   it("DELETE of a non-default policy is L2; of the default it is not", async () => {
     const w = await world();
-    expect((await call(w, "DELETE")).status).toBe(200);
+    // Resetting the default relaxes nothing: the area is enough (and the version it read).
+    expect(
+      (await call(w, "DELETE", { body: { expectedVersion: 0 } })).status,
+    ).toBe(200);
     await seed(w);
     const bare = await call(w, "DELETE", { stepUp: true });
     expect(bare.status).toBe(400);
-    expect(bare.body.reason).toBe("expected_version_required");
+    expect(bare.body.reason).toBe("reason_required");
     const noStep = await call(w, "DELETE", { body: GUARD(1) });
     expect(noStep.body.code).toBe("step_up_required");
   });
@@ -416,6 +455,30 @@ describe("guarded writes", () => {
     expect(JSON.parse((await stored(w.db))!.trust_policy_json!).mint).toBe(
       "basic",
     );
+  });
+
+  it("a relax is tied to the version it read: a tighten that raced it is not undone", async () => {
+    const w = await world();
+    await seed(w);
+    // A racing request tightens (version 1 -> 2) before the relax, which read version 1.
+    const tighten = await call(w, "PUT", {
+      body: { policy: { ...POLICY, mint: "basic" }, ...GUARD(1) },
+      stepUp: true,
+    });
+    expect(tighten.status).toBe(200);
+    const relax = await call(w, "PUT", {
+      body: { policy: POLICY, ...GUARD(1) },
+      stepUp: true,
+    });
+    expect(relax.status).toBe(409);
+    expect(relax.body.reason).toBe("version_conflict");
+    expect(JSON.parse((await stored(w.db))!.trust_policy_json!).mint).toBe(
+      "basic",
+    );
+    // And the DELETE (a reset relaxes too) is judged the same way.
+    const reset = await call(w, "DELETE", { stepUp: true, body: GUARD(1) });
+    expect(reset.status).toBe(409);
+    expect(reset.body.reason).toBe("version_conflict");
   });
 
   it("the first App Attest setup is L2: a bare PUT from the default is refused", async () => {

@@ -55,7 +55,7 @@ internal object MatrixCases {
                 }
                 val inputs = KitInputs.of(merged)
                 val screen = KitStates.resolve(component, inputs)
-                val id = "${component.name}-${screen.state}"
+                val id = "${component.id.replaceFirstChar { it.lowercase() }}-${screen.state}"
                 // An entitled gate draws its children, which the matrix does not have: no picture.
                 val draws = !(component == KitComponent.entitlementGate && screen.state == "entitled")
                 if (!screen.isHidden && draws) seen.putIfAbsent(id, MatrixCase(id, screen, KitRowData.from(inputs), inputs, component))

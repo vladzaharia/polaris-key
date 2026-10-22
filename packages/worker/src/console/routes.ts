@@ -376,10 +376,11 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ),
 
   // ── One product: Core's resources ─────────────────────────────────────────────────────────
-  // Every row-backed key; the handler lists only the keys whose area the caller holds.
+  // Every product setting the registry serves (ST-05b); the handler lists only the keys whose
+  // area the caller holds, and `byKey` takes a key's own area.
   ...rows(["GET"], `${P}/settings/effective`, "core", product),
   ...rows(["GET"], `${P}/settings/drift`, "core", product),
-  ...rows(["PATCH", "DELETE"], `${P}/settings/:key`, "byKey", product),
+  ...rows(["GET", "PATCH", "DELETE"], `${P}/settings/:key`, "byKey", product),
   ...rows(["GET", "POST"], `${P}/settings/backfill`, "settings", product),
   ...rows(["GET"], `${P}/settings/backfill/:reportId`, "settings", product),
   ...rows(["DELETE"], `${P}/claims/:key`, "byKey", product),
@@ -467,7 +468,6 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET", "PUT"], `${P}/ci-publisher`, "keys", product),
   ...rows(["GET", "POST"], `${P}/ci-tokens`, "keys", product),
   ...rows(["DELETE"], `${P}/ci-tokens/:id`, "keys", product),
-  ...rows(["GET", "PUT", "DELETE"], `${P}/trust-policy`, "keys", product),
 ];
 
 /** True for a row under `/products/:slug` (product scope). */

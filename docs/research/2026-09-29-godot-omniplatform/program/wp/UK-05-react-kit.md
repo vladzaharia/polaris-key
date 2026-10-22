@@ -398,3 +398,7 @@ tidy fix and needs `pnpm gen brand`. Method order: the first method is ui-core's
 rows pin it), so the order is not changed here; "Polaris Key" ahead of the product is the lead's
 call. Still open: the revoked and expired ledes, the four-sentence Replace callout and the grace
 banner's wording (catalog), the versus-mockup items, pixel baselines.
+
+## Consolidation 2026-10-22 (triage)
+
+The remaining copy calls (revoked/expired ledes, Replace callout, grace banner, waiting-line kit key at `adapt.ts:93`) are not criteria of this package: they go to the lead's COPY PASS.

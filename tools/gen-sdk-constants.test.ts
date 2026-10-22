@@ -926,7 +926,7 @@ describe("the core copy (core.copy, plans/SP-00.md §4)", () => {
   it("one separate copy module per SDK, at the paths the plan names", () => {
     expect(COPY_TARGETS.map((t) => [t.sdk, t.path])).toEqual([
       ["node", "packages/sdk-node/src/copy.generated.ts"],
-      ["react", "packages/sdk-react/src/copy.generated.ts"],
+      ["react", "packages/ui-core/src/browser/sdk/copy.generated.ts"],
       ["python", "sdks/python/src/polaris_key/copy_generated.py"],
       ["swift", "sdks/swift/Sources/PolarisKeyCore/Copy.generated.swift"],
       ["godot", "sdks/godot/addons/polaris_key/core/copy_generated.gd"],

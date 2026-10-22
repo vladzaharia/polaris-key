@@ -14,9 +14,9 @@
  * on every link and resync, WHATEVER Distribution's enablement: switching Distribution on runs
  * no ingest, so the row must already be the manifest's answer by then. A manifest with no release
  * block only seeds a missing row as `public` (the value `release_config` took on link) and
- * never rewrites an existing one. An operator who sets a mode (`PUT …/distribution/access`) claims the row
- * (`source = 'admin'`) and the ingest skips it until `POST …/distribution/access/revert` hands it
- * back. `entitled` has no manifest spelling, so without the claim the next push would downgrade
+ * never rewrites an existing one. An operator who sets a mode (`PATCH …/settings/distribution.access`) claims the row
+ * (`source = 'admin'`) and the ingest skips it until `DELETE …/settings/distribution.access` hands
+ * it back. `entitled` has no manifest spelling, so without the claim the next push would downgrade
  * it. A pack row has no manifest spelling at all; it is operator-owned from the start.
  *
  * Resolution: the deliverable's own row, else the `app` row, else `entitled` — FAIL-CLOSED. So a
@@ -36,6 +36,7 @@ import {
 import { APP_DELIVERABLE_ID, type ParsedManifest } from "@polaris-key/manifest";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { Db, DbStatement } from "../../db/types.js";
+import type { SqlGuard } from "../../core/settings/types.js";
 
 /** The registry key the delivery-access audit rows are written under. */
 const DISTRIBUTION_ACCESS_SETTING = "distribution.access";
@@ -193,53 +194,58 @@ export async function openAccessOf(db: Db, product: string): Promise<boolean> {
   });
 }
 
-/** Set (and claim for the operator) one deliverable's mode. `entitlement` undefined = keep. */
-export async function setAccess(
-  db: Db,
+/**
+ * The statements that set (and claim for the operator) one deliverable's mode, each ANDing the
+ * generic write's `guard` into its `WHERE`. `entitlement` undefined = keep.
+ */
+export function setAccessStatements(
   product: string,
   deliverable: string,
   mode: ReleaseAccess,
   entitlement: string | null | undefined,
   now: number,
-): Promise<void> {
-  await db.run(
-    `INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at)
-     VALUES (?, ?, ?, ?, 'admin', ?)
-     ON CONFLICT (product, deliverable_id) DO UPDATE SET
-       mode = excluded.mode,
-       entitlement = CASE WHEN ? THEN excluded.entitlement ELSE dist_access.entitlement END,
-       source = 'admin',
-       modified_at = excluded.modified_at`,
-    product,
-    deliverable,
-    mode,
-    entitlement ?? null,
-    now,
-    entitlement === undefined ? 0 : 1,
-  );
+  guard: SqlGuard,
+): DbStatement[] {
+  return [
+    {
+      sql: `INSERT INTO dist_access (product, deliverable_id, mode, entitlement, source, modified_at)
+            SELECT ?, ?, ?, ?, 'admin', ? WHERE (${guard.sql})
+            ON CONFLICT (product, deliverable_id) DO UPDATE SET
+              mode = excluded.mode,
+              entitlement = CASE WHEN ? THEN excluded.entitlement ELSE dist_access.entitlement END,
+              source = 'admin',
+              modified_at = excluded.modified_at`,
+      params: [
+        product,
+        deliverable,
+        mode,
+        entitlement ?? null,
+        now,
+        ...guard.params,
+        entitlement === undefined ? 0 : 1,
+      ],
+    },
+  ];
 }
 
 /**
- * Hand a row back to the manifest. Only the owner flips; the mode stays as the operator left it
- * until the next resync re-applies `.pkey/release` (the `revertReleaseAccessToManifest` contract:
- * reverting never reaches out to GitHub on the spot). Only the `app` row has a manifest spelling,
- * so a pack row cannot be reverted. Returns false when there is nothing to revert.
+ * The statement that hands the `app` row back to the manifest. Only the owner flips; the mode
+ * stays as the operator left it until the next resync re-applies `.pkey/release` (the
+ * `revertReleaseAccessToManifest` contract: reverting never reaches out to GitHub on the spot).
+ * Only the `app` row has a manifest spelling, so a pack row cannot be reverted.
  */
-export async function revertAccess(
-  db: Db,
+export function revertAccessStatements(
   product: string,
-  deliverable: string,
   now: number,
-): Promise<boolean> {
-  if (deliverable !== APP_DELIVERABLE_ID) return false;
-  const changed = await db.runChanges(
-    `UPDATE dist_access SET source = 'manifest', modified_at = ?
-      WHERE product = ? AND deliverable_id = ? AND source = 'admin'`,
-    now,
-    product,
-    deliverable,
-  );
-  return changed > 0;
+  guard: SqlGuard,
+): DbStatement[] {
+  return [
+    {
+      sql: `UPDATE dist_access SET source = 'manifest', modified_at = ?
+             WHERE product = ? AND deliverable_id = ? AND source = 'admin' AND (${guard.sql})`,
+      params: [now, product, APP_DELIVERABLE_ID, ...guard.params],
+    },
+  ];
 }
 
 /**

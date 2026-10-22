@@ -239,6 +239,16 @@ public fun PolarisCopy.duration(seconds: Long): String {
     }
 }
 
+/** "20 seconds" under a minute, else [duration]: the figure in "About 20 seconds left". */
+public fun PolarisCopy.timeLeft(seconds: Long): String {
+    val s = seconds.coerceAtLeast(1)
+    return when {
+        s >= 60 -> duration(s)
+        s == 1L -> durationSecond
+        else -> format(durationSeconds, s)
+    }
+}
+
 /** "5 minutes ago", or "just now" under a minute. */
 public fun PolarisCopy.ago(seconds: Long): String =
     if (seconds < 60) timeJustNow else format(timeAgo, duration(seconds))

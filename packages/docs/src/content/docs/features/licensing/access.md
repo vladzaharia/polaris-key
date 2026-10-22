@@ -81,7 +81,7 @@ The fallbacks differ on purpose: a malformed fingerprint policy must never take 
 - Any `PATCH` claims the fingerprint policy. The access policy is claimed only when the body includes `autoIssue`.
 - Revert sets the owner back to `manifest` for both policies and restores no values. The next resync reapplies the manifest.
 
-The admin endpoint is `/manage/api/products/<slug>/license/policy`, with `GET`, `PATCH` and a `revert` sub-path. A rejected `PATCH` is `422` with every failing field path in `fields`, and it writes nothing. Probes are validated by running the runtime parser: a probe it would drop, such as one with no `id`, is refused. Enabling access policy against a tier that doesn't exist is refused. `pkey validate` reports the same rules as manifest codes; see [Validation codes](/docs/reference/validation-codes/).
+The two policies are the settings `license.fingerprint` and `license.autoIssue`, at `/manage/api/products/<slug>/settings/<key>` (`GET`, `PATCH` with the whole policy as `value`, and `DELETE` to revert). A rejected `PATCH` is `422` with every failing member in `fields`, and it writes nothing. Probes are validated by running the runtime parser: a probe it would drop, such as one with no `id`, is refused. Enabling access policy against a tier that doesn't exist is refused. `pkey validate` reports the same rules as manifest codes; see [Validation codes](/docs/reference/validation-codes/).
 
 To clear a false-positive drift lockout without costing the user a seat, reset the device's fingerprint with the endpoint below (a `POST`). It clears the binding and leaves the device authorized.
 

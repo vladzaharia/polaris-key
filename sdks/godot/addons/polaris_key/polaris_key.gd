@@ -49,6 +49,13 @@ signal boot_finished(result: PKeyBootResult)
 ## A sliced bundle verify's progress, 0.0 to 1.0 (web builds without threads, where a bundle
 ## verify takes seconds in frame slices; S-04). PKeyBoot drives its progress bar from it.
 signal verify_progress(fraction: float)
+## The kit took (true) or gave back (false) the player's input: a dialog, the gate or the boot is
+## now (or no longer) the screen that answers the pad, keyboard and pointer. The game owns pause
+## and input: the kit never sets `SceneTree.paused`, so a game that wants to pause its own
+## simulation or mute its action map listens to this.
+signal input_captured(captured: bool)
+## `in_play` changed.
+signal in_play_changed(playing: bool)
 
 ## The drop-in boot scene `boot()` shows when no view is given.
 const BOOT_SCENE := "res://addons/polaris_key/ui/boot/pkey_boot.tscn"
@@ -105,6 +112,29 @@ var boot_gate: Node:
 		return null
 
 var _boot_layer: CanvasLayer = null
+
+## Whether the player is in the middle of play (true) or in a menu, a results screen or a pause
+## screen (false, the default). While it is true an available update is only a toast at the
+## toast anchor and the modal prompt waits; the game sets it (UI-KITS.md §4.3 Games).
+var in_play := false:
+	set(value):
+		if value == in_play:
+			return
+		in_play = value
+		in_play_changed.emit(value)
+
+var _capturers := {}
+
+## Where the kit's toasts sit over the game: "bottom_center" (the default, above the hints),
+## "bottom_right" or "top_right". They stay inside the title-safe area. The game sets it once.
+var toast_anchor := "bottom_center":
+	set(value):
+		toast_anchor = value
+		if _toaster != null and is_instance_valid(_toaster):
+			_toaster.toast_anchor = value
+
+var _toaster: PKeyToast = null
+var _toast_layer: CanvasLayer = null
 
 var _timer: Timer = null
 var _syncing := false
@@ -367,6 +397,57 @@ func _on_license_acquired() -> PKeySyncResult:
 func _on_license_wiped() -> void:
 	_emit_state()
 	config.refresh()
+
+
+func _init() -> void:
+	# The kit's nodes keep running while the game pauses the tree (a sign-in opened from a pause
+	# menu must not freeze). Children inherit it; a game overrides it by setting `process_mode`.
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
+## The one toast host the kit's screens share (the update prompt in play, the gate's and boot's
+## "Signed in" and "Copied"): a PKeyToast on its own canvas layer above the game's UI, created on
+## first use and kept for the session. It never takes focus from play.
+func toasts() -> PKeyToast:
+	if _toaster == null or not is_instance_valid(_toaster):
+		_toast_layer = CanvasLayer.new()
+		_toast_layer.name = "PKeyToastLayer"
+		_toast_layer.layer = 101
+		add_child(_toast_layer)
+		_toaster = PKeyToast.new()
+		_toaster.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_toaster.sdk = self
+		_toaster.toast_anchor = toast_anchor
+		_toast_layer.add_child(_toaster)
+	return _toaster
+
+
+## Whether any kit screen holds the player's input now.
+func is_input_captured() -> bool:
+	_prune_capturers()
+	return not _capturers.is_empty()
+
+
+## A kit view reports that it takes (`on`) or releases the player's input. `input_captured` is
+## emitted when the first view takes it and when the last gives it back.
+func capture_input(owner: Object, on: bool) -> void:
+	if owner == null:
+		return
+	var was := is_input_captured()
+	var id := owner.get_instance_id()
+	if on:
+		_capturers[id] = true
+	else:
+		_capturers.erase(id)
+	var now := is_input_captured()
+	if now != was:
+		input_captured.emit(now)
+
+
+func _prune_capturers() -> void:
+	for id in _capturers.keys():
+		if not is_instance_id_valid(id):
+			_capturers.erase(id)
 
 
 func _enter_tree() -> void:

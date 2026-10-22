@@ -53,10 +53,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -357,11 +353,11 @@ internal fun Typography.scaled(factor: Float): Typography {
 
 /** The icon a message kind shows. */
 internal fun PolarisMessageKind.icon(): ImageVector = when (this) {
-    PolarisMessageKind.Info -> Icons.Filled.Info
-    PolarisMessageKind.Warning, PolarisMessageKind.Danger -> Icons.Filled.Warning
-    PolarisMessageKind.Offline -> Icons.Filled.Refresh
+    PolarisMessageKind.Info -> PolarisSymbols.Info
+    PolarisMessageKind.Warning, PolarisMessageKind.Danger -> PolarisSymbols.Warning
+    PolarisMessageKind.Offline -> PolarisSymbols.Refresh
     // DL6: a refusal the person can resolve carries no error glyph.
-    PolarisMessageKind.Blocked, PolarisMessageKind.Locked -> Icons.Filled.Info
+    PolarisMessageKind.Blocked, PolarisMessageKind.Locked -> PolarisSymbols.Info
 }
 
 /** The container and text colours of a message kind's notice. */
@@ -951,13 +947,19 @@ public fun PolarisProgress(label: String, modifier: Modifier = Modifier, progres
     }
 }
 
-/** The kit's indeterminate wait ring (40 dp, on a visible track), for the waits with no known end. */
+/**
+ * The kit's wait indicator for the waits with no known end (UI-KITS.md DL7, §1.5 rule 4): the 2 dp
+ * shimmer, a soft band sweeping a muted track every `shimmer` token; still under reduced motion.
+ */
 @Composable
 internal fun PolarisWaitIndicator(modifier: Modifier = Modifier) {
-    val track = MaterialTheme.colorScheme.surfaceContainerHighest
-    Box(modifier) {
-        CircularProgressIndicator(modifier = Modifier.size(40.dp), trackColor = track)
-    }
+    val scheme = MaterialTheme.colorScheme
+    SkeletonBar(
+        phase = rememberShimmerPhase(),
+        base = scheme.surfaceContainerHighest,
+        sweep = scheme.primary.copy(alpha = 0.5f),
+        modifier = modifier.width(120.dp).height(2.dp),
+    )
 }
 
 /** An inline, neutral notice: one announced line on the highest container (no status colour). */

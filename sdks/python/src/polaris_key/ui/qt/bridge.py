@@ -144,6 +144,8 @@ class KitBridge(_Base):  # type: ignore[misc]
         #: What the list-shaped screens draw as rows: given by the host (an input or a rich model), else
         #: the view's own ``rows``. The chosen row of a radio list and the advanced toggle are UI state.
         self._data: Any = None
+        #: What an offered update adds to its prompt (``current``, ``size``, ``notes``); see build_spec.
+        self._facts: Optional[Mapping[str, Any]] = None
         self._selected: Optional[str] = None
         self._advanced = False
         # DL7: a load shows nothing for its first 250 ms, then the identity, a label and the shimmer.
@@ -187,7 +189,7 @@ class KitBridge(_Base):  # type: ignore[misc]
         """The OS appearance or the application palette changed: draw again."""
         self.refresh()
 
-    def set_view(self, view: View, data: Any = None) -> None:
+    def set_view(self, view: View, data: Any = None, facts: Optional[Mapping[str, Any]] = None) -> None:
         """Render ``view``. ``data`` is the row data of the settings, devices, seat-meter and account
         screens when the view does not carry it: a ui-matrix input, or a ``SettingsView``,
         ``DevicesView``, ``GateView`` or ``ActivateView`` of ``polaris_key.ui.core.models``."""
@@ -195,6 +197,7 @@ class KitBridge(_Base):  # type: ignore[misc]
             self._selected = None  # a new screen starts at its own preselection
         self._view = view
         self._data = data
+        self._facts = facts
         self.refresh()
 
     def _rows(self) -> RowData:
@@ -227,6 +230,7 @@ class KitBridge(_Base):  # type: ignore[misc]
                 selected_id=self._selected,
                 advanced=self._advanced,
                 request_code=self._request_code or str(getattr(self._source, "request_code", "") or ""),
+                facts=self._facts,
             )
             self._arm_loading()
         self.changed.emit()

@@ -48,7 +48,8 @@ function commandSection(c: PkeyCommand): string[] {
     ...c.usage,
     "```",
   ];
-  for (const p of c.about ?? []) out.push("", prose(p.text));
+  for (const p of [...(c.about ?? []), ...(c.reference ?? [])])
+    out.push("", prose(p.text));
   if (c.env?.length) {
     out.push("", "| Variable | Meaning |", "| --- | --- |");
     for (const e of c.env) out.push(`| ${code(e.name)} | ${cell(e.text)} |`);

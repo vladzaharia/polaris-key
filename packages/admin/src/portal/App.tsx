@@ -9,6 +9,7 @@ import { ActivateProvider, useActivate } from "./activate.js";
 import { JumpIconButton, JumpPalette } from "./components/JumpPalette.js";
 import { PortalShell } from "./components/PortalShell.js";
 import { useLibrary } from "./library.js";
+import { PortalErrorBoundary } from "./components/PortalErrorBoundary.js";
 import { SCALE_THRESHOLD } from "./model/libraryView.js";
 import { StarScreen } from "./components/States.js";
 import { announceSignedIn } from "./session.js";
@@ -124,11 +125,14 @@ function Boot(): React.ReactElement {
   // A load that is already signed in keeps the browser's own start (the skip link). An app's
   // sign-in (`/signin?request=`) manages its own focus.
   const sawSignedOut = React.useRef(false);
+  // The same for an app's sign-in, whose card is not mounted yet: its first step takes the focus.
+  const [signedInHere, setSignedInHere] = React.useState(false);
   React.useEffect(() => {
     if (session.data === null) sawSignedOut.current = true;
     else if (session.data && sawSignedOut.current) {
       sawSignedOut.current = false;
       if (window.location.pathname !== "/signin") focusPageHeading();
+      else setSignedInHere(true);
     }
   }, [session.data]);
   if (session.isPending) {
@@ -159,7 +163,13 @@ function Boot(): React.ReactElement {
   if (window.location.pathname === "/signin") {
     const handle = requestHandleFromUrl();
     if (handle)
-      return <RequestFlow account={session.data.account} handle={handle} />;
+      return (
+        <RequestFlow
+          account={session.data.account}
+          handle={handle}
+          focusOnArrival={signedInHere}
+        />
+      );
   }
   if (second)
     return (
@@ -219,7 +229,25 @@ function SignedIn({ account }: { account: PortalAccount }): React.ReactElement {
       />
     );
   }
-  return <SignedInShell account={account} route={route} />;
+  // The Library's data is read in SignedInShell, so a malformed field throws above the page
+  // outlet: the boundary's fallback is the shell itself, with the header and menus intact.
+  return (
+    <PortalErrorBoundary
+      resetKey={window.location.hash}
+      frame={(body) => (
+        <PortalShell
+          account={account}
+          route={route}
+          libraryCount={null}
+          discoverCount={null}
+        >
+          {body}
+        </PortalShell>
+      )}
+    >
+      <SignedInShell account={account} route={route} />
+    </PortalErrorBoundary>
+  );
 }
 
 function SignedInShell({

@@ -163,7 +163,12 @@ function AppAccess({
     values: { mode: access.app.mode },
     mapServerErrors: serverFieldErrors,
     onSubmit: async (v) => {
-      await mutate("saveDeliveryAccess", slug, { mode: v.mode });
+      await mutate(
+        "saveDeliveryAccess",
+        slug,
+        { mode: v.mode },
+        access.version,
+      );
       toast.success(`App access set to ${ACCESS_LABELS[v.mode] ?? v.mode}`);
     },
   });
@@ -227,7 +232,7 @@ function AppAccess({
         confirmLabel="Revert to manifest"
         describeError={describe}
         onConfirm={async () => {
-          await mutate("revertDeliveryAccess", slug);
+          await mutate("revertDeliveryAccess", slug, access.version);
           toast.success(
             "The app's access returns to the manifest on the next resync",
           );
@@ -268,16 +273,21 @@ function PackAccess({
         : {},
     onSubmit: async (v) => {
       const entitlement = v.entitlement.trim();
-      await mutate("saveDeliveryAccess", slug, {
-        mode: v.mode,
-        deliverable: id,
-        entitlement:
-          v.mode === "entitled"
-            ? entitlement === ""
-              ? null
-              : entitlement
-            : undefined,
-      });
+      await mutate(
+        "saveDeliveryAccess",
+        slug,
+        {
+          mode: v.mode,
+          deliverable: id,
+          entitlement:
+            v.mode === "entitled"
+              ? entitlement === ""
+                ? null
+                : entitlement
+              : undefined,
+        },
+        access.version,
+      );
       toast.success(`${id} access set to ${ACCESS_LABELS[v.mode] ?? v.mode}`);
     },
   });

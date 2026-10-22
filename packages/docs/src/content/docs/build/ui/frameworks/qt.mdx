@@ -131,10 +131,89 @@ def gate_a_tv(app: QApplication, client: PolarisKeyClient, window: QMainWindow) 
 | `open_url=`         | How a link opens: `QDesktopServices.openUrl` by default; return `False` when there is no browser   |
 | `renew_url=`        | The https page Renew opens on an expired license; without it, Use another license stands alone     |
 | `device_name=`      | The label the sign-in page shows for this device                                                   |
+| `on_update=`        | What Update now does; the button draws only with one (below)                                       |
+| `current_version=`  | The running app's version for the update facts, when the client does not hold it                   |
+| `toasts=`           | `False` turns off the "Signed in as" toast                                                         |
 
 `gate.screen` is the view being drawn (Welcome, Activate, SignInHandoff, …), `gate.view` is the
 gate's own (`needs-activation`, `licensed`, `grace`) and `gate.flow` is the `GateFlow` that runs the
 screens above, if you want to look.
+
+### Updates and the sign-in toast
+
+An update is a dialog over your window: a scrim, the product's name and the new version, the facts, **Update now** and
+**Later**. Ask the product for its decision with `gate.check_for_update()`, or offer a version you
+already know with `gate.offer_update(UpdateOffer("2.5.0"))`.
+
+```python
+from polaris_key import PolarisKeyClient
+from polaris_key.ui.qt import GateController, UpdateOffer, run_gate
+
+
+def gate_with_updates(client: PolarisKeyClient, window, install) -> GateController:
+    """Update now runs your updater; report its progress and the dialog follows."""
+
+    def update_now(offer: UpdateOffer) -> None:
+        install(offer.version, on_progress=lambda done, total: gate.update_progress(done / total))
+
+    gate = run_gate(client, window, on_update=update_now)
+    gate.check_for_update()
+    return gate
+```
+
+The facts come from the product, not from you. The running version is the client's. Up to three lines
+of the release summary come from the product's changelog (fetched off the GUI thread), with the
+release page as **All changes**. The size shows only when you pass it (`UpdateOffer(size=...)`), and
+with no summary the notes and their label are gone. A mandatory update has no Later. **Later** is
+remembered for that version: offered again, it is a toast, and a newer version opens the dialog again.
+`gate.update_progress(fraction, phase="download")` fills the bar (`verify`, `install`, `paused`, `failed`
+and `done` are the other phases; leave `fraction` out when you do not know it).
+
+Update now, and Try again after a failed download, draw only when you pass `on_update=`: the kit
+never offers an action your app cannot run. `check_for_update()` offers a binary update; a store
+listing or a platform install is yours to show.
+
+After a sign-in the gate ran, a toast over your window says "Signed in as Ada · Pro license" and
+goes after a few seconds, or on Dismiss.
+
+## The account and settings page
+
+`account_page(client)` returns an `AccountPage`: a Qt Quick page over the client with the account and
+license (name, tier, version, Sign out), the devices (rename, remove) and the catalog settings (a
+switch, a slider or a field per setting, the source of each, Reset to default, and the ones an
+organization locks). The account links to the other two with Review; each has a Back.
+`settings_page(client)` opens on the settings.
+
+```python
+from PySide6.QtWidgets import QMainWindow, QTabWidget
+
+from polaris_key import PolarisKeyClient
+from polaris_key.ui.qt import account_page, settings_page
+
+
+def add_account_tab(client: PolarisKeyClient, window: QMainWindow, tabs: QTabWidget, portal: str) -> None:
+    page = account_page(
+        client,
+        on_manage=lambda: print("open", portal),
+        renew_url=portal,
+    )
+    tabs.addTab(page.container(tabs), "Account")
+    tabs.addTab(settings_page(client).container(tabs), "Settings")
+```
+
+The page owns no event loop and inherits nothing from your widgets: put `page.container()` in your own
+layout, or `page.show()` it as a window. What only your app can do draws only when you pass it:
+
+| Option                         | Draws                                 |
+| ------------------------------ | ------------------------------------- |
+| `on_manage=`                   | Manage, beside the account name       |
+| `on_check_update=`             | Check for updates, beside the version |
+| `renew_url=`                   | Renew, on an expired license          |
+| `channels=` with `on_channel=` | The release channel as a choice       |
+
+Without those the release channel is locked, and says why: a store that fixes it ("Steam sets the
+channel."), else your product ("Tidewater Studio sets the channel."). Sign out runs the client's.
+`on_sign_out=` tells you when it is done.
 
 ## Embed the view
 
@@ -466,6 +545,8 @@ to compose a screen of your own; they read the same `bridge` object.
 ## What it doesn't do yet
 
 - **A PyQt6 baseline.** PyQt6 works through `qtpy`, but the kit's tests and baselines run on PySide6.
+- **Update progress by itself.** The dialog shows the progress you report with `update_progress`;
+  the Python SDK installs through your updater, not through the kit.
 - **Widgets.** The screens are QML. `kit.container()` puts them in a widgets layout; there is no
   `QWidget` subclass of the kit.
 - **Provider buttons and passkeys.** Sign-in is the browser and the device code. The logo-only

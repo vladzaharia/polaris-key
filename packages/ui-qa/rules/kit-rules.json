@@ -269,6 +269,358 @@
       "pattern": "fontSize:\\s*[\"']?[0-9.]+px",
       "spec": "§4.7 DL11",
       "says": "Type is sized in rem or a type-scale step, never px, so it follows the person's text size."
+    },
+    {
+      "id": "swiftui-spacing-off-scale",
+      "kit": "swiftui",
+      "rule": "spacing-off-scale",
+      "dl": "DL3",
+      "pattern": "\\.padding\\(\\s*(\\[?\\s*\\.[A-Za-z]+(\\s*,\\s*\\.[A-Za-z]+)*\\s*\\]?\\s*,\\s*)?-?[1-9][0-9.]*\\s*\\)|\\bspacing:\\s*-?[1-9]",
+      "spec": "DL3, §7.3",
+      "says": "Every margin, padding and gap is a --pk-space-* step or a generated kit token, never a literal number."
+    },
+    {
+      "id": "swiftui-weights",
+      "kit": "swiftui",
+      "rule": "weights",
+      "dl": "DL12",
+      "pattern": "\\.bold\\(\\)|\\.fontWeight\\(\\s*\\.(?!regular\\b|medium\\b|semibold\\b)|\\bweight:\\s*\\.(bold|heavy|black|light|thin|ultraLight)\\b",
+      "spec": "DL12, §7.3",
+      "says": "Three weights only: 400, 500 and 600 (700 only in the game wordmark fallback)."
+    },
+    {
+      "id": "swiftui-polaris-mark",
+      "kit": "swiftui",
+      "rule": "polaris-mark",
+      "dl": "DL5",
+      "pattern": "\\bPolarisMark\\(|\\bPolarisLockerMicroMark\\(|\\bbrandImage\\(",
+      "spec": "DL5, §7.3",
+      "says": "The Polaris mark appears only in the opt-in Powered-by line or badge, never elsewhere on a screen.",
+      "exclude": [
+        "PolarisBrandMarks\\.swift$",
+        "BrandMarks\\.generated\\.swift$",
+        "BrandVector\\.swift$"
+      ]
+    },
+    {
+      "id": "swiftui-initial-focus",
+      "kit": "swiftui",
+      "rule": "initial-focus",
+      "dl": "DL9",
+      "scope": "file",
+      "include": "/Kit/Screens/[A-Za-z]+Screens\\.swift$",
+      "require": "\\.defaultFocus\\(|@FocusState",
+      "spec": "DL9, §7.3",
+      "says": "A screen file sets initial focus (the primary, or the first sign-in method)."
+    },
+    {
+      "id": "swiftui-catalog-string",
+      "kit": "swiftui",
+      "rule": "catalog-string",
+      "dl": "DL8",
+      "pattern": "\\b(Text|Button|Label|Toggle|Link)\\(\\s*\"[^\"\\\\]*[A-Za-z]|\\.navigationTitle\\(\\s*\"",
+      "spec": "DL8, §7.3",
+      "says": "A visible string comes from the generated catalogs, not a literal in the source.",
+      "exclude": ["Preview"]
+    },
+    {
+      "id": "swiftui-link-validation",
+      "kit": "swiftui",
+      "rule": "link-validation",
+      "dl": "DL14",
+      "pattern": "(?<![@.\\w])openURL\\(|\\bUIApplication\\.shared\\.open\\(|\\bNSWorkspace\\.shared\\.open\\(",
+      "spec": "DL14, §7.3",
+      "says": "A link is opened only through the kit's one validating opener (https, loopback http aside)."
+    },
+    {
+      "id": "swiftui-px-font",
+      "kit": "swiftui",
+      "rule": "px-font",
+      "dl": "DL11",
+      "pattern": "\\.system\\(\\s*size:|\\bFont\\.custom\\((?![^)]*relativeTo:)[^)]*size:",
+      "spec": "DL11, §7.3",
+      "says": "Type scales with the person's text-size setting: no fixed pixel font size or scale override."
+    },
+    {
+      "id": "compose-spacing-off-scale",
+      "kit": "compose",
+      "rule": "spacing-off-scale",
+      "dl": "DL3",
+      "pattern": "\\bpadding\\([^)]*\\b-?[1-9][0-9]*(\\.[0-9]+)?\\.dp|\\bspacedBy\\(\\s*-?[1-9][0-9]*(\\.[0-9]+)?\\.dp|\\bSpacer\\([^)]*(height|width)\\(\\s*-?[1-9][0-9]*(\\.[0-9]+)?\\.dp",
+      "spec": "DL3, §7.3",
+      "says": "Every margin, padding and gap is a --pk-space-* step or a generated kit token, never a literal number."
+    },
+    {
+      "id": "compose-weights",
+      "kit": "compose",
+      "rule": "weights",
+      "dl": "DL12",
+      "pattern": "\\bFontWeight\\.(Bold|ExtraBold|Black|Light|ExtraLight|Thin|W(100|200|300|700|800|900))\\b|\\bFontWeight\\(\\s*(100|200|300|700|800|900)\\s*\\)",
+      "spec": "DL12, §7.3",
+      "says": "Three weights only: 400, 500 and 600 (700 only in the game wordmark fallback)."
+    },
+    {
+      "id": "compose-polaris-mark",
+      "kit": "compose",
+      "rule": "polaris-mark",
+      "dl": "DL5",
+      "pattern": "\\bPolarisMark\\(",
+      "spec": "DL5, §7.3",
+      "says": "The Polaris mark appears only in the opt-in Powered-by line or badge, never elsewhere on a screen.",
+      "exclude": ["PolarisBrandMarks\\.kt$"]
+    },
+    {
+      "id": "compose-initial-focus",
+      "kit": "compose",
+      "rule": "initial-focus",
+      "dl": "DL9",
+      "scope": "file",
+      "include": "/ui/(PolarisScreen|PolarisGate|PolarisSignIn|PolarisUpdate|PolarisDevices|PolarisSettings|PolarisBoot|PolarisKitScreen)\\.kt$",
+      "require": "requestFocus\\(",
+      "spec": "DL9, §7.3",
+      "says": "A screen file sets initial focus (the primary, or the first sign-in method)."
+    },
+    {
+      "id": "compose-catalog-string",
+      "kit": "compose",
+      "rule": "catalog-string",
+      "dl": "DL8",
+      "pattern": "\\bText\\(\\s*(text\\s*=\\s*)?\"[^\"$]*[A-Za-z]",
+      "spec": "DL8, §7.3",
+      "says": "A visible string comes from the generated catalogs, not a literal in the source."
+    },
+    {
+      "id": "compose-link-validation",
+      "kit": "compose",
+      "rule": "link-validation",
+      "dl": "DL14",
+      "pattern": "\\buriHandler::openUri|\\buriHandler\\.openUri\\(|\\bstartActivity\\(|\\bIntent\\.ACTION_VIEW\\b",
+      "spec": "DL14, §7.3",
+      "says": "A link is opened only through the kit's one validating opener (https, loopback http aside)."
+    },
+    {
+      "id": "compose-px-font",
+      "kit": "compose",
+      "rule": "px-font",
+      "dl": "DL11",
+      "pattern": "\\bDensity\\(|\\bfontScale\\s*=|\\bLocalDensity\\s+provides\\b",
+      "spec": "DL11, §7.3",
+      "says": "Type scales with the person's text-size setting: no fixed pixel font size or scale override."
+    },
+    {
+      "id": "godot-spacing-off-scale",
+      "kit": "godot",
+      "rule": "spacing-off-scale",
+      "dl": "DL3",
+      "pattern": "(add_theme_constant_override\\(\\s*\"(margin_(left|right|top|bottom)|h_separation|v_separation|separation)\"\\s*,\\s*-?[1-9])|(theme_override_constants/(margin_(left|right|top|bottom)|h_separation|v_separation|separation)\\s*=\\s*-?[1-9])",
+      "spec": "DL3, §7.3",
+      "says": "Every margin, padding and gap is a --pk-space-* step or a generated kit token, never a literal number."
+    },
+    {
+      "id": "godot-weights",
+      "kit": "godot",
+      "rule": "weights",
+      "dl": "DL12",
+      "pattern": "\\bbold(_italics)?_font\\b|\\bvariation_embolden\\b|\\bfont_bold\\b|\"[^\"\\n]*\\[/?b\\]",
+      "spec": "DL12, §7.3",
+      "says": "Three weights only: 400, 500 and 600 (700 only in the game wordmark fallback)."
+    },
+    {
+      "id": "godot-polaris-mark",
+      "kit": "godot",
+      "rule": "polaris-mark",
+      "dl": "DL5",
+      "pattern": "\\b(PINNED_K|STAR_CUT)[A-Z_]*\\b|\\bbrand_marks_generated\\b",
+      "spec": "DL5, §7.3",
+      "says": "The Polaris mark appears only in the opt-in Powered-by line or badge, never elsewhere on a screen.",
+      "exclude": ["brand_marks_generated\\.gd$"]
+    },
+    {
+      "id": "godot-initial-focus",
+      "kit": "godot",
+      "rule": "initial-focus",
+      "dl": "DL9",
+      "scope": "file",
+      "include": "/ui/(gate/pkey_gate|activation/pkey_activation_panel|sign_in/pkey_sign_in_dialog|update/pkey_update_prompt|devices/pkey_device_list|settings/pkey_settings_panel|boot/pkey_boot|license_choice/pkey_license_choice|offline/pkey_offline_dialog)\\.gd$",
+      "require": "_initial_focus\\(",
+      "spec": "DL9, §7.3",
+      "says": "A screen file sets initial focus (the primary, or the first sign-in method)."
+    },
+    {
+      "id": "godot-catalog-string",
+      "kit": "godot",
+      "rule": "catalog-string",
+      "dl": "DL8",
+      "pattern": "\\.(text|title|tooltip_text|placeholder_text)\\s*=\\s*\"[^\"%]*[A-Za-z]",
+      "spec": "DL8, §7.3",
+      "says": "A visible string comes from the generated catalogs, not a literal in the source."
+    },
+    {
+      "id": "godot-link-validation",
+      "kit": "godot",
+      "rule": "link-validation",
+      "dl": "DL14",
+      "pattern": "\\bOS\\.shell_open\\(",
+      "spec": "DL14, §7.3",
+      "says": "A link is opened only through the kit's one validating opener (https, loopback http aside)."
+    },
+    {
+      "id": "godot-px-font",
+      "kit": "godot",
+      "rule": "px-font",
+      "dl": "DL11",
+      "pattern": "\\badd_theme_font_size_override\\(\\s*\"font_size\"\\s*,\\s*[0-9]|theme_override_font_sizes/font_size\\s*=\\s*[0-9]",
+      "spec": "DL11, §7.3",
+      "says": "Type scales with the person's text-size setting: no fixed pixel font size or scale override."
+    },
+    {
+      "id": "qt-spacing-off-scale",
+      "kit": "qt",
+      "rule": "spacing-off-scale",
+      "dl": "DL3",
+      "pattern": "\\bsetContentsMargins\\(\\s*[1-9]|\\bsetSpacing\\(\\s*[1-9]|\\bspacing\\s*:\\s*[1-9]|\\b(margin|padding)(-(top|bottom|left|right))?\\s*:\\s*[1-9][0-9]*px|\\banchors\\.\\w*[mM]argin\\s*:\\s*[1-9]|\\bmargins\\s*:\\s*[1-9]",
+      "spec": "DL3, §7.3",
+      "says": "Every margin, padding and gap is a --pk-space-* step or a generated kit token, never a literal number."
+    },
+    {
+      "id": "qt-weights",
+      "kit": "qt",
+      "rule": "weights",
+      "dl": "DL12",
+      "pattern": "\\bsetBold\\(\\s*True|\\bQFont\\.(Bold|Black|ExtraBold|Light|Thin|ExtraLight)\\b|\\bfont\\.bold\\s*:\\s*true|\\bFont\\.(Bold|Black|ExtraBold|Light|Thin|ExtraLight)\\b|\\bfont-weight\\s*:",
+      "spec": "DL12, §7.3",
+      "says": "Three weights only: 400, 500 and 600 (700 only in the game wordmark fallback)."
+    },
+    {
+      "id": "qt-polaris-mark",
+      "kit": "qt",
+      "rule": "polaris-mark",
+      "dl": "DL5",
+      "pattern": "\\b(pinned_?k|star_?cut)\\b|\\bpolaris-mark\\b",
+      "spec": "DL5, §7.3",
+      "says": "The Polaris mark appears only in the opt-in Powered-by line or badge, never elsewhere on a screen."
+    },
+    {
+      "id": "qt-initial-focus",
+      "kit": "qt",
+      "rule": "initial-focus",
+      "dl": "DL9",
+      "scope": "file",
+      "include": "/qt/(gate\\.py|kit/KitScreen\\.qml)$",
+      "require": "\\bfocus\\s*:\\s*true|forceActiveFocus\\(|\\bsetFocus\\(",
+      "spec": "DL9, §7.3",
+      "says": "A screen file sets initial focus (the primary, or the first sign-in method)."
+    },
+    {
+      "id": "qt-catalog-string",
+      "kit": "qt",
+      "rule": "catalog-string",
+      "dl": "DL8",
+      "pattern": "\\btext\\s*:\\s*\"[^\"]*[A-Za-z]|\\b(QLabel|QPushButton)\\(\\s*[\"'][^\"']*[A-Za-z]|\\.setText\\(\\s*[\"'][^\"']*[A-Za-z]",
+      "spec": "DL8, §7.3",
+      "says": "A visible string comes from the generated catalogs, not a literal in the source."
+    },
+    {
+      "id": "qt-link-validation",
+      "kit": "qt",
+      "rule": "link-validation",
+      "dl": "DL14",
+      "pattern": "\\bQDesktopServices\\.openUrl\\(|\\bwebbrowser\\.open\\(|\\bQt\\.openUrlExternally\\(",
+      "spec": "DL14, §7.3",
+      "says": "A link is opened only through the kit's one validating opener (https, loopback http aside).",
+      "exclude": ["/qt/flow\\.py$"]
+    },
+    {
+      "id": "qt-px-font",
+      "kit": "qt",
+      "rule": "px-font",
+      "dl": "DL11",
+      "pattern": "\\bfont\\.pixelSize\\s*:(?![^\\n]*Theme\\.)|\\bsetPixelSize\\(|\\bfont-size\\s*:\\s*[0-9.]+px",
+      "spec": "DL11, §7.3",
+      "says": "Type scales with the person's text-size setting: no fixed pixel font size or scale override."
+    },
+    {
+      "id": "react-spacing-off-scale",
+      "kit": "react",
+      "rule": "spacing-off-scale",
+      "dl": "DL3",
+      "pattern": "\\b(margin|padding|gap|rowGap|columnGap)([A-Z][A-Za-z]*)?:\\s*-?[1-9][0-9]*(\\s*[,}]|px)",
+      "spec": "DL3, §7.3",
+      "says": "Every margin, padding and gap is a --pk-space-* step or a generated kit token, never a literal number."
+    },
+    {
+      "id": "react-weights",
+      "kit": "react",
+      "rule": "weights",
+      "dl": "DL12",
+      "pattern": "\\bfontWeight:\\s*[\"']?(bold|bolder|lighter|[1-35-9]00\\b)",
+      "spec": "DL12, §7.3",
+      "says": "Three weights only: 400, 500 and 600 (700 only in the game wordmark fallback)."
+    },
+    {
+      "id": "react-polaris-mark",
+      "kit": "react",
+      "rule": "polaris-mark",
+      "dl": "DL5",
+      "pattern": "<PolarisMark\\b|<PolarisLockup\\b",
+      "spec": "DL5, §7.3",
+      "says": "The Polaris mark appears only in the opt-in Powered-by line or badge, never elsewhere on a screen.",
+      "exclude": ["/kit/parts\\.tsx$"]
+    },
+    {
+      "id": "react-catalog-string",
+      "kit": "react",
+      "rule": "catalog-string",
+      "dl": "DL8",
+      "pattern": ">\\s*[A-Z][a-z]+(\\s+[A-Za-z']+)+\\s*<\\/",
+      "spec": "DL8, §7.3",
+      "says": "A visible string comes from the generated catalogs, not a literal in the source."
+    },
+    {
+      "id": "react-link-validation",
+      "kit": "react",
+      "rule": "link-validation",
+      "dl": "DL14",
+      "pattern": "\\bwindow\\.open\\(|\\blocation\\.(href|assign|replace)\\b|\\bwindow\\.location\\s*=",
+      "spec": "DL14, §7.3",
+      "says": "A link is opened only through the kit's one validating opener (https, loopback http aside).",
+      "exclude": ["/kit/links\\.ts$"]
+    },
+    {
+      "id": "terminal-node-catalog-string",
+      "kit": "terminal-node",
+      "rule": "catalog-string",
+      "dl": "DL8",
+      "pattern": "\\b(write|line|print)\\(\\s*[\"'`][A-Za-z]",
+      "spec": "DL8, §7.3",
+      "says": "A visible string comes from the generated catalogs, not a literal in the source."
+    },
+    {
+      "id": "terminal-python-catalog-string",
+      "kit": "terminal-python",
+      "rule": "catalog-string",
+      "dl": "DL8",
+      "pattern": "\\bprint\\(\\s*f?[\"'][A-Za-z]|\\.write\\(\\s*f?[\"'][A-Za-z]",
+      "spec": "DL8, §7.3",
+      "says": "A visible string comes from the generated catalogs, not a literal in the source."
+    },
+    {
+      "id": "terminal-node-link-validation",
+      "kit": "terminal-node",
+      "rule": "link-validation",
+      "dl": "DL14",
+      "pattern": "\\b(spawn|exec|execFile)\\w*\\(\\s*[\"'](open|xdg-open|start)[\"']",
+      "spec": "DL14, §7.3",
+      "says": "A link is opened only through the kit's one validating opener (https, loopback http aside)."
+    },
+    {
+      "id": "terminal-python-link-validation",
+      "kit": "terminal-python",
+      "rule": "link-validation",
+      "dl": "DL14",
+      "pattern": "\\bwebbrowser\\.open\\(",
+      "spec": "DL14, §7.3",
+      "says": "A link is opened only through the kit's one validating opener (https, loopback http aside)."
     }
   ]
 }

@@ -40,23 +40,6 @@
   line-height: 1;
 }
 
-/* Search starts over the article's column and reads "Search help". Starlight's own label says
-   "Search", and its translations are shared with the developer doors, so Help's word is drawn here;
-   the button keeps its accessible name. */
-[data-brand="locker"]
-  site-search
-  button[data-open-modal]
-  > span[aria-hidden="true"] {
-  font-size: 0;
-}
-[data-brand="locker"]
-  site-search
-  button[data-open-modal]
-  > span[aria-hidden="true"]::after {
-  content: "Search help";
-  font-size: var(--sl-text-sm);
-}
-
 [data-brand="locker"] .social-icons::after {
   display: none;
 }
@@ -414,6 +397,24 @@
   border-inline-start: 3px solid var(--pk-accent);
   border-radius: var(--pk-radius-lg);
   background-color: var(--pk-surface-raised);
+}
+/* A narrow window or large text: the card, the quote and the button each give back their room, so a
+   line keeps its words (320 px at 200 % text left about five characters). */
+@media (max-width: 30rem) {
+  [data-brand="locker"] .pk-help-message {
+    padding-inline: var(--pk-space-3);
+  }
+  [data-brand="locker"] .pk-help-message .pk-help-message__shown {
+    padding-inline: 0;
+    border-inline-start: 0;
+    background-color: transparent;
+  }
+}
+[data-brand="locker"] .pk-help-message .pk-portal-link {
+  height: auto;
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
 }
 [data-brand="locker"] .pk-help-message > .sl-heading-wrapper {
   margin-top: 0.5rem;

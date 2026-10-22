@@ -88,6 +88,8 @@ internal val sampleSettings = PolarisSettingsUi(
     ),
 )
 
+internal val sampleChannel = PolarisChannelUi(current = "stable", options = listOf("stable", "beta"))
+
 internal val samplePacks = PolarisPackProgressUi(
     listOf(
         PolarisPackRow("base", PolarisPackRow.Phase.Done, 48_000_000, 48_000_000),
@@ -118,7 +120,19 @@ internal val deviceLimitTv: @Composable () -> Unit = {
 /** The update prompt in its dialog, as an app shows it over its own screen. */
 internal val updateDialog: @Composable () -> Unit = {
     SampleProduct()
-    PolarisUpdatePromptDialog(PolarisUpdateUi("2.5.0"), onUpdate = {}, onLater = {})
+    PolarisUpdatePromptDialog(
+        PolarisUpdateUi(
+        "2.5.0",
+        currentVersion = "2.4.1",
+        size = 61_000_000L,
+        notes = listOf("Faster sync on slow networks", "Fixes a crash when resuming"),
+        notesUrl = "https://example.com/releases/2.5.0",
+        outlet = "play",
+    ),
+        onUpdate = {},
+        onLater = {},
+        onSkip = {},
+    )
 }
 
 /** Every screen the kit ships, by snapshot name. */
@@ -132,15 +146,15 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
         PolarisBootScreen(bootUi(BootStage.blocked, BootOutcome.blocked).copy(blocked = BootEmit.BlockedReason.updateRequired), onUpdate = {})
     },
     "boot-error" to { PolarisBootScreen(bootUi(BootStage.error, BootOutcome.error).copy(errorCode = "sync-failed")) },
-    "gate-activation" to { PolarisGateScreen(gateUi(LicenseStatus.needsActivation), PolarisActivationUi(), onSignIn = {}) },
-    "gate-activation-error" to {
+    "polarisKeyGate-needs-activation" to { PolarisGateScreen(gateUi(LicenseStatus.needsActivation), PolarisActivationUi(), onSignIn = {}) },
+    "activate-device-limit" to {
         PolarisGateScreen(
             gateUi(LicenseStatus.needsActivation),
             PolarisActivationUi(key = "pkey_9f2c-77ab", error = PolarisActivationError.Refused(ActivationResult.DeviceLimit(3, 3))),
         )
     },
     // PX-W8: a device-limit refusal with the portal link — a button, and a QR code on a TV.
-    "gate-device-limit-manage" to {
+    "deviceLimit-browser-mode" to {
         PolarisGateScreen(
             gateUi(LicenseStatus.needsActivation),
             PolarisActivationUi(
@@ -150,50 +164,62 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
             ),
         )
     },
-    "gate-revoked" to { PolarisGateScreen(gateUi(LicenseStatus.revoked), PolarisActivationUi(), onSignIn = {}) },
-    "gate-expired" to { PolarisGateScreen(gateUi(LicenseStatus.expired), PolarisActivationUi()) },
-    "gate-version-too-old" to {
+    "statusScreen-revoked" to { PolarisGateScreen(gateUi(LicenseStatus.revoked), PolarisActivationUi(), onSignIn = {}) },
+    "statusScreen-expired" to { PolarisGateScreen(gateUi(LicenseStatus.expired), PolarisActivationUi()) },
+    "statusScreen-version-too-old" to {
         PolarisGateScreen(gateUi(LicenseStatus.versionTooOld, AllowedRange(min = "2.4.0")), PolarisActivationUi())
     },
-    "gate-version-too-new" to {
+    "statusScreen-version-too-new" to {
         PolarisGateScreen(gateUi(LicenseStatus.versionTooNew, AllowedRange(min = "2.0.0", max = "2.9.9")), PolarisActivationUi())
     },
-    "gate-channel-not-entitled" to { PolarisGateScreen(gateUi(LicenseStatus.channelNotEntitled), PolarisActivationUi()) },
-    "gate-grace" to {
+    "statusScreen-channel-not-entitled" to { PolarisGateScreen(gateUi(LicenseStatus.channelNotEntitled), PolarisActivationUi()) },
+    "polarisKeyGate-grace" to {
         PolarisGateScreen(gateUi(LicenseStatus.grace, graceUntil = NOW + 3 * 86_400 + 600), PolarisActivationUi()) { SampleProduct() }
     },
-    "sign-in" to { PolarisSignInScreen(PolarisSignInUi.Showing(samplePrompt, NOW)) },
-    "sign-in-starting" to { PolarisSignInScreen(PolarisSignInUi.Starting) },
+    "signInHandoff-code" to { PolarisSignInScreen(PolarisSignInUi.Showing(samplePrompt, NOW)) },
+    "signInHandoff-starting" to { PolarisSignInScreen(PolarisSignInUi.Starting) },
     "sign-in-expired" to { PolarisSignInScreen(PolarisSignInUi.Expired) },
-    "sign-in-failed" to { PolarisSignInScreen(PolarisSignInUi.Failed) },
-    "sign-in-denied" to { PolarisSignInScreen(PolarisSignInUi.Denied) },
-    "settings" to { PolarisSettingsScreen(sampleSettings, onSet = { _, _ -> }, onReset = {}) },
-    "devices" to { PolarisDevicesScreen(PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000)) },
-    "update-banner" to {
+    "signInHandoff-failed" to { PolarisSignInScreen(PolarisSignInUi.Failed) },
+    "signInHandoff-denied" to { PolarisSignInScreen(PolarisSignInUi.Denied) },
+    "settings-list" to { PolarisSettingsScreen(sampleSettings, onSet = { _, _ -> }, onReset = {}) },
+    "devices-list" to { PolarisDevicesScreen(PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000)) },
+    "updatePrompt-ready" to {
         Column(Modifier.fillMaxSize()) {
-            PolarisUpdateBanner(PolarisUpdateUi("2.5.0", critical = true), onDismiss = {})
+            PolarisUpdateBanner(PolarisUpdateUi("2.5.0", kind = PolarisUpdateUi.Kind.Restart), onDismiss = {})
             Box(Modifier.weight(1f)) { SampleProduct() }
         }
     },
-    "update-prompt" to {
+    "updatePrompt-available" to {
         PolarisScreen(showLogo = false) {
-            PolarisUpdatePrompt(PolarisUpdateUi("2.5.0"), Modifier.padding(0.dp), onLater = {})
+            PolarisUpdatePrompt(
+                PolarisUpdateUi(
+            "2.5.0",
+            currentVersion = "2.4.1",
+            size = 61_000_000L,
+            notes = listOf("Faster sync on slow networks", "Fixes a crash when resuming"),
+            notesUrl = "https://example.com/releases/2.5.0",
+            outlet = "play",
+        ),
+                Modifier.padding(0.dp),
+                onLater = {},
+                onSkip = {},
+            )
         }
     },
     "pack-progress" to { PolarisPackProgressScreen(samplePacks) },
     // The styled parts (UI-KITS.md 4.1), from the matrix's own rows.
-    "license-choice" to { MatrixCases.case("licenseChoice-many").let { PolarisLicenseChoice(it.screen, it.rows.choices!!) } },
-    "license-choice-full" to { MatrixCases.case("licenseChoice-all-full").let { PolarisLicenseChoice(it.screen, it.rows.choices!!) } },
-    "paywall" to { samplePaywall().let { (screen, rows) -> PolarisPaywall(screen, rows.features) } },
-    "release-notes" to { MatrixCases.case("releaseNotes-list").let { PolarisReleaseNotes(it.screen, it.rows.releaseNotes) } },
-    "entitlement-locked" to {
+    "licenseChoice-many" to { MatrixCases.case("licenseChoice-many").let { PolarisLicenseChoice(it.screen, it.rows.choices!!) } },
+    "licenseChoice-all-full" to { MatrixCases.case("licenseChoice-all-full").let { PolarisLicenseChoice(it.screen, it.rows.choices!!) } },
+    "paywall-offers" to { samplePaywall().let { (screen, rows) -> PolarisPaywall(screen, rows.features) } },
+    "releaseNotes-list" to { MatrixCases.case("releaseNotes-list").let { PolarisReleaseNotes(it.screen, it.rows.releaseNotes) } },
+    "entitlementGate-not-entitled" to {
         PolarisScreen(showLogo = false) {
             PolarisTitle("Export")
             Spacer(Modifier.height(16.dp))
             PolarisEntitlementLocked("Pro", onUnlock = {})
         }
     },
-    "cloud-sync" to {
+    "cloudSyncStatus-synced" to {
         PolarisScreen(showLogo = false) {
             PolarisTitle("Cloud Sync")
             Spacer(Modifier.height(16.dp))
@@ -204,7 +230,22 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
             PolarisCloudSyncStatus(PolarisCloudSync.Error, onRetry = {})
         }
     },
-    "about" to {
+    // The release channel choice (UI-KITS.md §4.1 ChannelPicker): the switchable list, and the lock with its reason.
+    "channelPicker-default" to {
+        PolarisScreen(showLogo = false) {
+            PolarisTitle("Settings")
+            Spacer(Modifier.height(16.dp))
+            PolarisChannelPicker(sampleChannel, onSelect = {})
+        }
+    },
+    "channelPicker-locked" to {
+        PolarisScreen(showLogo = false) {
+            PolarisTitle("Settings")
+            Spacer(Modifier.height(16.dp))
+            PolarisChannelPicker(sampleChannel.copy(lockedBy = "play"))
+        }
+    },
+    "about-default" to {
         PolarisAbout(
             PolarisAboutInfo(version = "2.4.1", build = "build 241", diagnostics = "Diceroll 2.4.1 (241)\nAndroid 15"),
             onPrivacy = {}, onSupport = {}, onLicenses = {},

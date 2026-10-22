@@ -365,7 +365,7 @@ describe("Library on today's data (PX-02)", () => {
     // purchase (B-075).
     expect(
       within(strip).getByText(
-        "Bought on Steam? Open the app from Steam and choose Restore purchase.",
+        "On Steam? Restore in the app.",
       ),
     ).toBeTruthy();
     expect(within(strip).queryByRole("link", { name: /Steam/ })).toBeNull();

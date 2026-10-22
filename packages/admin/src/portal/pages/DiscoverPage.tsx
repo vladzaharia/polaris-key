@@ -210,6 +210,7 @@ export function DiscoverPage({
         <ErrorPanel
           error={discover.error}
           onRetry={() => void discover.refetch()}
+          message={t("locker.error.loadFailedDiscover")}
         />
       ) : empty ? (
         <section

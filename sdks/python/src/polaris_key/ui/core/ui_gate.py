@@ -345,6 +345,21 @@ def toast_view(ctx: Context) -> View:
             args={"version": update.get("version")},
             focus=None,
         )
+    if kind == "signedIn":
+        # After a sign-in the gate ran: "Signed in as Ada · Pro license" (UI-KITS 1198-1200, D-63..D-65);
+        # without a tier, "Signed in as Ada". Not in the ui-matrix: a kit that shows it says so.
+        name, tier = toast.get("name"), toast.get("tier")
+        if not isinstance(name, str) or not name:
+            return hidden_view(ctx, "Toast")
+        if isinstance(tier, str) and tier:
+            return make_view(
+                ctx, "Toast", "success", ("signin.desktop.toast", "common.dismiss", "a11y.toastTimer"),
+                args={"name": name, "tier": tier}, focus=None,
+            )
+        return make_view(
+            ctx, "Toast", "success", ("account.holder", "common.dismiss", "a11y.toastTimer"),
+            args={"name": name}, focus=None,
+        )
     if kind == "copied":
         return make_view(ctx, "Toast", "success", ("common.copied",), focus=None)
     if kind == "warning":

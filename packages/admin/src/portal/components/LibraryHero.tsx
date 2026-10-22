@@ -5,7 +5,7 @@ import type { LibraryProduct, QuickAction } from "../model/library.js";
 import { devicesText } from "../../lib/vocab/license.js";
 import { tierLabel } from "../model/library.js";
 import { href } from "../router.js";
-import { PlatformGlyphs } from "./Glyphs.js";
+import { PlatformGlyphs } from "../../ui/Glyphs.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
 import { ProductStatusPill } from "./ProductStatus.js";

@@ -558,6 +558,7 @@ func _on_copy() -> void:
 		return
 	DisplayServer.clipboard_set(prompt.verification_uri_complete)
 	copied = true
+	note_copied()
 	refresh_view()
 
 

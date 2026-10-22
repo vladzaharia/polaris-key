@@ -239,7 +239,7 @@ export function AnyoneWithKeyCard({
   return (
     <Section id="anyone" title="Anyone with the key" variant="settings">
       <dl className="divide-y divide-border">
-        <Fact label="Key">Can’t be shown again</Fact>
+        <Fact label="Key">Can't be shown again</Fact>
         <Fact label="First used">
           {first ? formatDate(fromSeconds(first.firstSeen)) : "Not used yet"}
         </Fact>
@@ -293,7 +293,7 @@ export function DevicesCard({
     >
       {shown.length === 0 ? (
         <p className="px-5 py-4 text-sm text-fg-muted">
-          A device appears here once it activates with one of this license’s
+          A device appears here once it activates with one of this license's
           keys.
         </p>
       ) : (

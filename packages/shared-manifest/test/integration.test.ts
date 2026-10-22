@@ -54,7 +54,13 @@ describe("renderSdkSetup on a server", () => {
       ...base,
       fit: { host: "server", target: "desktop", framework: "spring" },
     });
-    expect(k.start.id).toBe("licensing.kotlin.server.ktor");
+    expect(k.start.id).toBe("licensing.kotlin.server.spring");
+    expect(k.installNote).toContain("polaris-key-spring-boot-starter");
+    const kt = renderSdkSetup("kotlin", {
+      ...base,
+      fit: { host: "server", target: "desktop", framework: "ktor" },
+    });
+    expect(kt.start.id).toBe("licensing.kotlin.server.ktor");
   });
 });
 
@@ -196,7 +202,9 @@ describe("renderUsage", () => {
     ).toBeNull();
     // A server framework with no drop-in yet.
     expect(renderUsage("licensing", "node", "server", "fastify")).toBeNull();
-    expect(renderUsage("licensing", "kotlin", "server", "spring")).toBeNull();
+    expect(
+      renderUsage("licensing", "kotlin", "server", "micronaut"),
+    ).toBeNull();
   });
 
   it("renders each shipped server drop-in under its framework, with its docs page", () => {
@@ -212,7 +220,7 @@ describe("renderUsage", () => {
       "django",
       "drf",
     ]);
-    expect(usageFrameworks("kotlin", "server")).toEqual(["ktor"]);
+    expect(usageFrameworks("kotlin", "server")).toEqual(["ktor", "spring"]);
     for (const [sdk, fw] of [
       ["node", "express"],
       ["node", "hono"],
@@ -223,6 +231,7 @@ describe("renderUsage", () => {
       ["python", "django"],
       ["python", "drf"],
       ["kotlin", "ktor"],
+      ["kotlin", "spring"],
     ] as const) {
       const b = renderUsage("licensing", sdk, "server", fw, {
         entitlement: "vpn",
@@ -283,6 +292,12 @@ describe("sdkFit frameworks", () => {
     [{ python: ["Django"] }, "python", "server", "django"],
     [{ python: ["djangorestframework"] }, "python", "server", "drf"],
     [{ gradle: ["io.ktor:ktor-server-core:3"] }, "kotlin", "server", "ktor"],
+    [
+      { gradle: ["org.springframework.boot:spring-boot-starter-web:3.5.0"] },
+      "kotlin",
+      "server",
+      "spring",
+    ],
     [{ npm: ["commander"] }, "node", "cli", "commander"],
     [{ npm: ["yargs"] }, "node", "cli", "yargs"],
     [{ python: ["click"] }, "python", "cli", "click"],

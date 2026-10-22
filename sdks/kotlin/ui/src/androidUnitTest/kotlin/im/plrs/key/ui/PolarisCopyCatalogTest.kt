@@ -33,6 +33,17 @@ class PolarisCopyCatalogTest {
         check("reconnect", "common.reconnect")
         check("updateDismiss", "common.dismiss")
         check("updateLater", "update.later")
+        check("updateCurrent", "update.current", "version", "size")
+        check("updateWhatsNew", "update.whatsNew")
+        check("updateAllChanges", "update.allChanges", "version")
+        check("updateSkip", "update.skipVersion")
+        check("updateTimeLeft", "update.timeLeft", "time")
+        check("updateAppStore", "update.appStore")
+        check("updateGooglePlay", "update.googlePlay")
+        check("updateSteam", "update.steam")
+        check("updateTestflight", "update.testflight")
+        check("updateAltstore", "update.altstore")
+        check("updateReload", "update.reload")
     }
 
     @Test

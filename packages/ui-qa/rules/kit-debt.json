@@ -1,40 +1,166 @@
 {
-  "$comment": "Per-kit source-lint debt (bin/kit-lint.mjs): hits per rule and file that existed when the lint landed (UK-15), owned by each kit's modernisation work package (swiftui UK-07, compose UK-09, godot UK-11, qt UK-12, react UK-05). The lint fails on any hit beyond these counts and on a count above today's. Shrink it with: node packages/ui-qa/bin/kit-lint.mjs --record.",
+  "$comment": "Per-kit source-lint debt (bin/kit-lint.mjs): hits per rule and file that existed when the lint landed (UK-15), owned by each kit's modernisation work package (swiftui UK-49, UK-07 and UK-08; compose UK-09 and UK-10; godot UK-50 and UK-11; qt UK-12; react UK-47 and UK-05; terminal-node UK-45; terminal-python UK-48). The design-language rules (UK-55: spacing-off-scale DL3, weights DL12, polaris-mark DL5, initial-focus DL9, catalog-string DL8, link-validation DL14, px-font DL11) record today's hits per rule and file; the owning package clears its kit's entries and re-records. The lint fails on any hit beyond these counts and on a count above today's. Shrink it with: node packages/ui-qa/bin/kit-lint.mjs --record.",
   "debt": [
     {
       "kit": "compose",
-      "rule": "compose-legacy-icons",
+      "rule": "compose-initial-focus",
       "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisBoot.kt",
-      "count": 4
+      "count": 1
     },
     {
       "kit": "compose",
-      "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisDevices.kt",
-      "count": 2
+      "rule": "compose-initial-focus",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisKitScreen.kt",
+      "count": 1
     },
     {
       "kit": "compose",
-      "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisGate.kt",
-      "count": 2
+      "rule": "compose-initial-focus",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisSettings.kt",
+      "count": 1
     },
     {
       "kit": "compose",
-      "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisScreen.kt",
-      "count": 7
+      "rule": "compose-initial-focus",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisSignIn.kt",
+      "count": 1
     },
     {
       "kit": "compose",
-      "rule": "compose-legacy-icons",
+      "rule": "compose-initial-focus",
       "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisUpdate.kt",
+      "count": 1
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-link-validation",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisGate.kt",
+      "count": 1
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-link-validation",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisSignIn.kt",
+      "count": 1
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-spacing-off-scale",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisBoot.kt",
+      "count": 3
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-spacing-off-scale",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisBrandMarks.kt",
+      "count": 1
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-spacing-off-scale",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisDevices.kt",
+      "count": 9
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-spacing-off-scale",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisGate.kt",
+      "count": 9
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-spacing-off-scale",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisKitScreen.kt",
+      "count": 6
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-spacing-off-scale",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisPackProgress.kt",
       "count": 4
     },
     {
       "kit": "compose",
-      "rule": "compose-stock-spinner",
+      "rule": "compose-spacing-off-scale",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisParts.kt",
+      "count": 18
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-spacing-off-scale",
       "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisScreen.kt",
+      "count": 8
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-spacing-off-scale",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisSettings.kt",
+      "count": 24
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-spacing-off-scale",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisSignIn.kt",
+      "count": 2
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-spacing-off-scale",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisToast.kt",
+      "count": 6
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-spacing-off-scale",
+      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisUpdate.kt",
+      "count": 17
+    },
+    {
+      "kit": "godot",
+      "rule": "godot-link-validation",
+      "file": "sdks/godot/addons/polaris_key/ui/activation/pkey_activation_panel.gd",
+      "count": 1
+    },
+    {
+      "kit": "godot",
+      "rule": "godot-link-validation",
+      "file": "sdks/godot/addons/polaris_key/ui/boot/pkey_boot.gd",
+      "count": 1
+    },
+    {
+      "kit": "godot",
+      "rule": "godot-link-validation",
+      "file": "sdks/godot/addons/polaris_key/ui/devices/pkey_device_list.gd",
+      "count": 1
+    },
+    {
+      "kit": "godot",
+      "rule": "godot-link-validation",
+      "file": "sdks/godot/addons/polaris_key/ui/gate/pkey_gate.gd",
+      "count": 2
+    },
+    {
+      "kit": "godot",
+      "rule": "godot-link-validation",
+      "file": "sdks/godot/addons/polaris_key/ui/license_choice/pkey_license_choice.gd",
+      "count": 1
+    },
+    {
+      "kit": "godot",
+      "rule": "godot-link-validation",
+      "file": "sdks/godot/addons/polaris_key/ui/settings/pkey_account_tab.gd",
+      "count": 1
+    },
+    {
+      "kit": "godot",
+      "rule": "godot-link-validation",
+      "file": "sdks/godot/addons/polaris_key/ui/sign_in/pkey_sign_in_dialog.gd",
+      "count": 1
+    },
+    {
+      "kit": "godot",
+      "rule": "godot-link-validation",
+      "file": "sdks/godot/addons/polaris_key/ui/update/pkey_update_prompt.gd",
       "count": 1
     },
     {
@@ -47,6 +173,276 @@
       "kit": "godot",
       "rule": "godot-rtl",
       "file": "sdks/godot/addons/polaris_key/ui/settings/pkey_settings_panel.gd",
+      "count": 1
+    },
+    {
+      "kit": "godot",
+      "rule": "godot-weights",
+      "file": "sdks/godot/addons/polaris_key/ui/theme/pkey_ui_theme.gd",
+      "count": 3
+    },
+    {
+      "kit": "qt",
+      "rule": "qt-initial-focus",
+      "file": "sdks/python/src/polaris_key/ui/qt/gate.py",
+      "count": 1
+    },
+    {
+      "kit": "qt",
+      "rule": "qt-initial-focus",
+      "file": "sdks/python/src/polaris_key/ui/qt/kit/KitScreen.qml",
+      "count": 1
+    },
+    {
+      "kit": "qt",
+      "rule": "qt-px-font",
+      "file": "sdks/python/src/polaris_key/ui/qt/kit/KitGroup.qml",
+      "count": 1
+    },
+    {
+      "kit": "qt",
+      "rule": "qt-px-font",
+      "file": "sdks/python/src/polaris_key/ui/qt/kit/KitScreen.qml",
+      "count": 1
+    },
+    {
+      "kit": "qt",
+      "rule": "qt-spacing-off-scale",
+      "file": "sdks/python/src/polaris_key/ui/qt/kit/KitButton.qml",
+      "count": 1
+    },
+    {
+      "kit": "qt",
+      "rule": "qt-spacing-off-scale",
+      "file": "sdks/python/src/polaris_key/ui/qt/kit/KitCode.qml",
+      "count": 4
+    },
+    {
+      "kit": "qt",
+      "rule": "qt-spacing-off-scale",
+      "file": "sdks/python/src/polaris_key/ui/qt/kit/KitGroup.qml",
+      "count": 6
+    },
+    {
+      "kit": "qt",
+      "rule": "qt-spacing-off-scale",
+      "file": "sdks/python/src/polaris_key/ui/qt/kit/KitScreen.qml",
+      "count": 8
+    },
+    {
+      "kit": "qt",
+      "rule": "qt-spacing-off-scale",
+      "file": "sdks/python/src/polaris_key/ui/qt/kit/KitSeatMeter.qml",
+      "count": 2
+    },
+    {
+      "kit": "qt",
+      "rule": "qt-spacing-off-scale",
+      "file": "sdks/python/src/polaris_key/ui/qt/kit/KitStep.qml",
+      "count": 2
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-initial-focus",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/AccountScreens.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-initial-focus",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/ActivateScreens.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-initial-focus",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/GateScreens.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-initial-focus",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/SignInScreens.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-initial-focus",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/UpdateScreens.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-link-validation",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/PolarisKeyGate.swift",
+      "count": 2
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-link-validation",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/SignInScreens.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-link-validation",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/UpdateScreens.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-link-validation",
+      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisLoginView.swift",
+      "count": 2
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-link-validation",
+      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisSignIn.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-polaris-mark",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/KitParts.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-px-font",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/KitParts.swift",
+      "count": 2
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-px-font",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/KitStyle.swift",
+      "count": 3
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-px-font",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/AccountScreens.swift",
+      "count": 2
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-px-font",
+      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisKitChrome.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-px-font",
+      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisLoginView.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-px-font",
+      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisTypography.swift",
+      "count": 3
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/KitBanner.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/KitButtons.swift",
+      "count": 5
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/KitLayout.swift",
+      "count": 3
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/KitParts.swift",
+      "count": 5
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/PolarisKeyGate.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/AccountScreens.swift",
+      "count": 7
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/ActivateScreens.swift",
+      "count": 6
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/GateScreens.swift",
+      "count": 5
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/SignInScreens.swift",
+      "count": 3
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/Screens/UpdateScreens.swift",
+      "count": 2
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisBrandMarks.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisKitChrome.swift",
+      "count": 1
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisLoginView.swift",
+      "count": 2
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-weights",
+      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisTypography.swift",
+      "count": 2
+    },
+    {
+      "kit": "terminal-node",
+      "rule": "terminal-node-catalog-string",
+      "file": "packages/sdk-node/src/cli/kit.ts",
+      "count": 1
+    },
+    {
+      "kit": "terminal-python",
+      "rule": "terminal-python-link-validation",
+      "file": "sdks/python/src/polaris_key/ui/terminal/device.py",
+      "count": 1
+    },
+    {
+      "kit": "terminal-python",
+      "rule": "terminal-python-link-validation",
+      "file": "sdks/python/src/polaris_key/ui/terminal/textual_app.py",
       "count": 1
     }
   ]

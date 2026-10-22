@@ -17,6 +17,11 @@ export interface PageAction {
   disabledReason?: string;
   /** Left out of the phone's "More actions" menu: the page draws it another way there. */
   hideOnPhone?: boolean;
+  /**
+   * `ghost` draws a quiet inline action (no border) for a link-like destination beside the
+   * outline ones (Licenses' Batches). Default `outline`.
+   */
+  variant?: "outline" | "ghost";
 }
 
 export interface PageHeaderProps {
@@ -348,8 +353,10 @@ export function PageHeader({
                       refreshTrailsPhone || refreshTrailsWide ? "" : undefined
                     }
                     className={cn(
-                      refreshTrailsPhone && "-me-3",
-                      refreshTrailsWide ? "sm:-me-3" : "sm:me-0",
+                      refreshTrailsPhone && "-me-3 conbig:-me-2",
+                      refreshTrailsWide
+                        ? "sm:-me-3 sm:conbig:-me-2"
+                        : "sm:me-0",
                     )}
                     loading={freshness.refreshing}
                     iconStart={<RefreshCw aria-hidden />}
@@ -371,7 +378,7 @@ export function PageHeader({
             {inline.map((a) => (
               <Button
                 key={a.label}
-                variant="outline"
+                variant={a.variant ?? "outline"}
                 className="hidden sm:inline-flex"
                 iconStart={a.icon}
                 disabledReason={a.disabledReason}

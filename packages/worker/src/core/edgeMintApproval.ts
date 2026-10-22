@@ -281,7 +281,7 @@ const WIDENING_TEXT: Record<MintWidening, string> = {
  * The call before the first write catches a widening the previous ingest's sweep missed.
  *
  * The console calls it too, before every write of an approval input (`console/handlers/servicesAdmin.ts`
- * for `services_json`, `services/license/admin/policy.ts` for `auto_issue_json`; `oidc_config`
+ * for `services_json`, `services/license/settingsAdapters.ts` for `auto_issue_json`; `oidc_config`
  * is written only by the ingest). The guarantee rests on THAT pre-write sweep, not on the
  * ingest's `finally`: a `finally` covers a throw, not a Worker killed after the push's
  * un-batched widening writes (CPU limit, a cancelled request), and an approve can race a push's

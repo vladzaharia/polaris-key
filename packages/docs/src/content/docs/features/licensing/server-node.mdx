@@ -143,7 +143,7 @@ app.get("/api/team", { preHandler: requireTier("pro", "team") }, async () => ({
 await app.listen({ port: 3000 });
 ```
 
-The plugin sets `req.polaris` on every request and never refuses. Each gate is a `preHandler` hook. It works with Fastify 4 and 5, and the plugin covers the whole app, not just the scope that registers it.
+The plugin sets `req.polaris` on every request and never refuses. Each gate is a `preHandler` hook. It works with Fastify 4 and 5, and the plugin covers the whole app, not only the scope that registers it.
 
 ## Koa
 

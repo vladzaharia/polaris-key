@@ -1,22 +1,133 @@
 ---
 title: "Web components"
-description: "@polaris-key/elements: every Polaris Key UI component as a pk-* element on Lit 3. Not built yet."
+description: "@polaris-key/elements: <pk-gate config> as the two-line drop-in for any web page, every catalog component as a pk-* element on Lit 3, and the headless models, in the Polaris Key look and your product's accent."
 type: "reference"
-status: "stub"
+lastReviewed: "2026-10-22"
 sidebar:
-  hidden: true
-pagefind: false
-head:
-  - tag: meta
-    attrs:
-      name: robots
-      content: noindex
+  order: 3
+lanes: ["kit"]
 ---
 
 import KitFacts from "../../../../../components/ui/KitFacts.astro";
 
-The web components kit is not built yet. [All frameworks](/docs/build/ui/frameworks/) lists the kits that are, and the [React kit](/docs/build/ui/frameworks/react/) covers the web.
-
-The theme's `poweredBy` (`PolarisKey.theme({ poweredBy: "line" })`) adds the Polaris Locker line at the foot of the account pane and About; `"badge"` draws the 320 × 104 badge on About where 320 px are free. Off by default; never on a gate.
+The web components kit is `@polaris-key/elements`. It runs in any page, Angular, Vue, Svelte or htmx
+app, with no framework of its own. Every catalog component is a `pk-*` element over the shared
+headless layer, and draws the same DOM under the same stylesheet as the [React kit](/docs/build/ui/frameworks/react/),
+so a state looks the same in both. The kit takes its product identity from the SDK. The package
+and its CDN module are not published yet.
 
 <KitFacts kit="elements" />
+
+## The two-line flow
+
+Layer (a): `<pk-gate>` with a `config` starts itself. The module registers every element and adds
+its own styles and fonts.
+
+```html
+<script type="module" src="https://key.plrs.im/elements/1/pk.js"></script>
+<pk-gate config='{"product":"tidewater"}'><my-app></my-app></pk-gate>
+```
+
+From the package, `import "@polaris-key/elements"` is the script line.
+
+The gate builds the browser client from `config`, and never shows sign-in while a cached session is
+checked. It renders your app in its default slot once the license holds, under the grace banner
+while offline grace runs. Until then it owns the window and runs Welcome, sign-in in the browser,
+Use a license key, the device limit and the blocking states with their fixes (Try again,
+Reconnect, Sign out). A device limit is a neutral callout whose one primary, Replace a device,
+opens the license's page with the app's address and the typed key; the key is tried again when the
+person comes back. Escape backs out of a step, and focus follows each new screen. When the product
+publishes a newer build, an update dialog opens over the app with up to three lines from that
+release's changelog entry, the version you have, and All changes. Every control also raises
+`pk-action` on the gate.
+
+| `config` member    | What it sets                                                                                 |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| `product`          | The product's slug (required)                                                                |
+| `baseUrl`          | The control-plane origin; default `https://key.plrs.im`                                      |
+| `version`          | The app's version: reported with the device, and what the update dialog says you have        |
+| `auth`             | `"cookie"`, `"bearer"` or `"auto"` (the default); a page on another origin signs in by token |
+| `trust`            | `{ "pinnedKeys": {…} }`, the keys a bearer page verifies documents against                   |
+| `expectedServices` | The services the app expects until the product answers                                       |
+| `returnUrl`        | The app's address, added to the device-limit link as `return=`                               |
+
+`config` wins over `input`; a bad config raises `pk-error` (`detail.code` is `invalid-options`) and
+draws nothing.
+
+A control only the host can answer draws only when the host says so. `handles` names them:
+`trial`, `restore`, `continue-free` and `renew`. Without it Welcome offers Sign in and Use a license
+key, and an expired license offers Use another license alone.
+
+```html
+<pk-gate config='{"product":"tidewater"}' handles="trial renew">…</pk-gate>
+<script type="module">
+  document.querySelector("pk-gate").addEventListener("pk-action", (e) => {
+    if (e.detail.key === "welcome.trial") startTrial();
+    if (e.detail.key === "status.renew") location.assign("/pricing");
+  });
+</script>
+```
+
+## Piecemeal
+
+Layer (b): every catalog component is an element, `pk-welcome`, `pk-activate`, `pk-devices`,
+`pk-settings`, `pk-update-prompt` and the rest of the [catalog](/docs/build/ui/). It draws the state
+its `input` property describes (a `UiInput`: what your app knows now) and reports each control as
+a `pk-action` event instead of calling the SDK.
+
+| Property or event | What it does                                                                                               |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| `input`           | The state to draw                                                                                          |
+| `pk-action`       | A control was pressed: `detail.key` (its copy key), `detail.action`, `detail.component` and `detail.state` |
+| `pk-input`        | The person typed in a field (`detail.field`, `detail.value`)                                               |
+| `pk-select`       | The person picked a row: a device, a license                                                               |
+| `bare`            | An embedded pane without its own frame                                                                     |
+| `fill`            | A blocking screen that owns the window                                                                     |
+
+```html
+<pk-devices id="devices" bare></pk-devices>
+<script type="module">
+  const el = document.getElementById("devices");
+  el.input = { devices: [{ id: "d1", name: "Studio Mac", current: true }] };
+  el.addEventListener("pk-action", (e) => console.log(e.detail.key));
+</script>
+```
+
+## The sign-in form
+
+`pk-sign-in` is the one sign-in form. Its body morphs in place through the steps: the methods, the
+browser hand-off or its code, the license choice, a license key, then Done. Set `presentation` to
+`"inline"` (default), `"sheet"` (a modal dialog, a bottom sheet on a narrow window) or `"browser"`,
+and `primitives` to the SDK's sign-in primitives; without them it draws its `input`.
+
+## Styling and presentation
+
+Theme the whole page with `PolarisKey.theme({ … })`, a subtree with `<pk-provider theme='{…}'>`, or
+one element with its `theme` property; an inner layer wins over an outer one. When the theme leaves
+them unset, the gate takes the product's name, accent and verified icon from the SDK. Colors, radii,
+type and spacing are `--pk-*` variables, and every part is a `::part` (`primary`, `secondary`,
+`card`, …) carrying a `data-key`. The page's own CSS reaches the parts without `!important`:
+
+```css
+pk-gate::part(primary) {
+  border-radius: 999px;
+}
+```
+
+The theme's `poweredBy` (`PolarisKey.theme({ poweredBy: "line" })`) adds the Polaris Locker line at
+the foot of the account pane and About; `"badge"` draws the 320 × 104 badge on About where 320 px are
+free. Off by default; never on a gate.
+
+A page with a Content-Security-Policy allows `img-src blob:` for the product's icon.
+
+## Headless
+
+Layer (c): `@polaris-key/elements/headless` re-exports ui-core's models. `viewOf(component, input)`
+returns a component's `View`: its state, the copy keys it shows, the actions its controls perform and
+its decisions. For the browser client and the gate's controller, `@polaris-key/ui-core/browser`
+exports `createBrowserClient`, `GateDriver` and `parseGateConfig`, the module both web kits share.
+
+## Sample
+
+`examples/ui/elements/` is Tidewater Studio: `index.html` is the two lines, `play.html` runs the
+same gate on fixtures with no Worker, and `states.html` indexes the gate's states and panes.

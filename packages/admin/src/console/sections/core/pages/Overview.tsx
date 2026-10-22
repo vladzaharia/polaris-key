@@ -51,13 +51,17 @@ import {
   type MomentObservation,
 } from "../../../components/Moment.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
-import { serviceLabel } from "../../../../ui/ServiceBadge.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { useAttention, useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { OverviewAttention } from "../components/OverviewAttention.js";
 import { Link, navigate } from "../../../router.js";
-import { FeatureCard, OffCard, SectionHead } from "../components/TileFrame.js";
+import {
+  FeatureCard,
+  OffCard,
+  SectionHead,
+  tileTitle,
+} from "../components/TileFrame.js";
 import {
   ShipBuildsTile,
   latestAppRelease,
@@ -175,13 +179,23 @@ function OverviewBody({
   // Show Integration puts the pane back and the pane takes focus; nothing else moves it.
   const [justShown, setJustShown] = React.useState(false);
   const paneShown = enabled.length > 0 && !hidden;
+  // Hide unmounts its own button: focus goes to ⋯ More, where Show Integration now lives.
+  const focusHeroMenu = (): void => {
+    requestAnimationFrame(() =>
+      document
+        .querySelector<HTMLElement>(
+          '[data-testid="overview-hero"] button[aria-label="More"]',
+        )
+        ?.focus(),
+    );
+  };
   const attention = productAttentionItems(
     slug,
     serverAttention.data,
     licenses.data?.licenses,
   );
   const step = heroStep(attention, next, (service) =>
-    service ? serviceLabel(service as ServiceSlug) : "Core",
+    service ? tileTitle(service as ServiceSlug) : "Core",
   );
   const attentionOf = (s: ServiceSlug): number =>
     attention.filter((i) => i.service === s).length;
@@ -299,7 +313,10 @@ function OverviewBody({
                 hide={
                   canHide
                     ? {
-                        onHide: () => void setup.setIntegrationHidden(true),
+                        onHide: () =>
+                          void setup.setIntegrationHidden(true).then((ok) => {
+                            if (ok) focusHeroMenu();
+                          }),
                         disabledReason: setup.allowed
                           ? undefined
                           : setup.disabledReason,
@@ -721,8 +738,13 @@ function IdentityTile({
       loading={portal.isPending}
       error={portal.isError ? portal.error : undefined}
       onRetry={() => void portal.refetch()}
-      number={s ? (s.portalEnabled ? "On" : "Off") : undefined}
-      foot={s ? "Sign-in by email code and passkeys" : undefined}
+      foot={
+        s
+          ? s.portalEnabled
+            ? "Sign-in by email code and passkeys"
+            : "Sign-in is off"
+          : undefined
+      }
     />
   );
 }

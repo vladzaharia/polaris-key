@@ -1,0 +1,64 @@
+#### truecolor-80-dark
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · config set[22m
+[2m│[22m
+[31m✗[39m  [1mSet by your organization[22m
+[2m└[22m  This setting is managed by your organization and can't be changed here.
+
+#### truecolor-80-light
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · config set[22m
+[2m│[22m
+[31m✗[39m  [1mSet by your organization[22m
+[2m└[22m  This setting is managed by your organization and can't be changed here.
+
+#### ansi16-80
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · config set[22m
+[2m│[22m
+[31m✗[39m  [1mSet by your organization[22m
+[2m└[22m  This setting is managed by your organization and can't be changed here.
+
+#### no-color-80
+┌  [7m Tidewater Studio [27m · config set
+│
+✗  [1mSet by your organization[22m
+└  This setting is managed by your organization and can't be changed here.
+
+#### ascii-80
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - config set[22m
+[2m|[22m
+[31mx[39m  [1mSet by your organization[22m
+[2m`[22m  This setting is managed by your organization and can't be changed here.
+
+#### truecolor-60-dark
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · config set[22m
+[2m│[22m
+[31m✗[39m  [1mSet by your organization[22m
+[2m│[22m  This setting is managed by your organization and can't be
+[2m└[22m  changed here.
+
+#### truecolor-60-light
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · config set[22m
+[2m│[22m
+[31m✗[39m  [1mSet by your organization[22m
+[2m│[22m  This setting is managed by your organization and can't be
+[2m└[22m  changed here.
+
+#### ansi16-60
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · config set[22m
+[2m│[22m
+[31m✗[39m  [1mSet by your organization[22m
+[2m│[22m  This setting is managed by your organization and can't be
+[2m└[22m  changed here.
+
+#### no-color-60
+┌  [7m Tidewater Studio [27m · config set
+│
+✗  [1mSet by your organization[22m
+│  This setting is managed by your organization and can't be
+└  changed here.
+
+#### ascii-60
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - config set[22m
+[2m|[22m
+[31mx[39m  [1mSet by your organization[22m
+[2m|[22m  This setting is managed by your organization and can't be
+[2m`[22m  changed here.

@@ -62,6 +62,12 @@ export const IGNORED: Record<NativeLang, Set<string>> = {
     "clientOptions",
     "CompletableFuture", // a JDK type
     "StateFlow",
+    // Spring and Spring Security types the Spring Boot section names (the starter adds none of them).
+    "SecurityFilterChain",
+    "AuthenticationEntryPoint",
+    "AccessDeniedHandler",
+    "ControllerAdvice",
+    "AuthenticationPrincipal",
     "SharedFlow",
     "MaterialTheme",
     "LaunchedEffect",

@@ -329,7 +329,7 @@ function Icon({
         "shrink-0 passport:ms-6 passport:w-fit passport:rounded-[14px]",
         art
           ? "passport:-mt-7 passport:ring-4 passport:ring-surface-sunken"
-          : "passport:mt-8",
+          : "passport:mt-0",
       )}
     >
       {children}
@@ -343,16 +343,19 @@ const PANE_TEXT = "passport:px-6";
 
 function Where({
   where,
+  centered = false,
 }: {
   where:
     | { glyph: "globe" | "device" | "phone" | "tv"; text: string }
     | null
     | undefined;
+  /** No art: the pane centres its identity block. */
+  centered?: boolean;
 }): React.ReactElement | null {
   if (!where) return null;
   const Glyph = WHERE_GLYPH[where.glyph];
   return (
-    <p className={WHERE}>
+    <p className={cn(WHERE, centered && "passport:justify-center")}>
       <Glyph aria-hidden className="mt-0.5 size-4 shrink-0" />
       <span className="min-w-0 [overflow-wrap:anywhere]">{where.text}</span>
     </p>
@@ -377,13 +380,19 @@ export function HeaderSkeleton(): React.ReactElement {
 }
 
 const OUTER = "passport:flex passport:h-full passport:flex-col";
+/**
+ * Without art the identity block sits in the middle of the pane, so it never has a void under it
+ * (M4: icon, request, who and where, between the top and the receipt), centred, the icon large:
+ * the one no-art rule, as the Worker's pages draw it (`ac-noart`).
+ */
+const OUTER_NO_ART = `${OUTER} passport:items-center passport:justify-center passport:py-6 passport:text-center`;
 
 export function CardHeader(props: CardHeaderProps): React.ReactElement {
   const hasArt = Boolean(props.art);
   if (props.variant === "context") {
     const { variant, icon, name, developer, where, art } = props;
     return (
-      <div data-header={variant} className={OUTER}>
+      <div data-header={variant} className={hasArt ? OUTER : OUTER_NO_ART}>
         <PaneArt src={art} />
         <div className="flex items-center gap-4 px-5 py-4 sm:px-7 passport:contents">
           <Icon art={hasArt}>{icon}</Icon>
@@ -402,7 +411,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
                 {t("signin.header.contextLine")}
               </p>
             )}
-            <Where where={where} />
+            <Where where={where} centered={!hasArt} />
           </div>
         </div>
       </div>
@@ -410,7 +419,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
   }
   const { variant, icon, name, developer, where, code, art } = props;
   return (
-    <div data-header={variant} className={OUTER}>
+    <div data-header={variant} className={hasArt ? OUTER : OUTER_NO_ART}>
       <PaneArt src={art} />
       <div className="px-5 py-4 sm:px-7 passport:contents">
         <div className="flex items-center gap-4 passport:contents">
@@ -442,7 +451,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
                 {developer}
               </p>
             ) : null}
-            <Where where={where} />
+            <Where where={where} centered={!hasArt} />
           </div>
         </div>
         {code ? (

@@ -52,34 +52,49 @@ Done when every row holds for each screen and state this package ships, checked 
 (not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
 apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
 
-- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+- [x] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
       Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
       when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
       changes neither.
-- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+- [x] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
       linked (aria-describedby); one polite announcement per change, none while typing; tables use
       th with scope; status is a word and an icon, never colour alone.
-- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+- [x] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
       no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
       targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
-- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+- [ ] Themes (dark and light rendered and contrast-measured, 7.7:1 or better for the smallest text; forced-colors and reduced-transparency rules written, not rendered; no custom product accent on this surface): dark and light; a custom product accent on a light and a dark ground (kits, hosted
       sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
-- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+- [x] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
       expired or stale, network and API error with Try again, partial failure, success; input survives a
       failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
       Reload.
-- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+- [x] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
       without moving content; progress is real (no invented percentage, nothing loops after a failure);
       no celebration on refunds, revocation, removal, deletion or consent.
-- [ ] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
+- [x] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
       sign-in; the product accent in kits); focus, selected, hover, checked and context
       borders take the accent of the service the element references (data-service; -fg for
       text and edges, base for fills; a non-colour cue stays); status colours (success,
       warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
       taglines; no text drawn over customer art.
-- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+- [x] Native (kits): not applicable (a web dialog; no kit ships this). Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
+## Corrections (verified against the code, DOC-02c build)
+
+- The plan's per-door bundles are amended to **one public bundle with a door filter**: `pagefind`
+  holds Help and the developer door, and every page carries a `door` filter
+  (`data-pagefind-filter`, PageTitle.astro). "Help only" is that filter. The Help-only bundle
+  `pagefind-help` (LX-help) stays for the customer host, which serves nothing else; no
+  `pagefind/developers` bundle is built.
+- Starlight's Pagefind UI is replaced (`components.Search`, src/components/Search.astro and
+  search.ts) and the `pk-help-search-bundle` Vite rewrite is gone; the dialog speaks to the JS API.
+- The reader's tier comes from `/manage/api/me` (`permissions.platform.view`: `docs` is admin,
+  `console` is member), asked only when the dialog opens on the console host. The customer host is
+  detected by a `redirect: "manual"` probe of the public bundle (an opaque redirect).
+- The code jump reads `codes.json` inside the loaded Pagefind bundle (written by scripts/build-search-bundles.ts; DOC-02c-fix: the old `/docs/help/codes.json` redirected off the console host and the CSP blocked it), served at each bundle's public path and
+  fetched only when the query looks like a message id.
 
 ## Steps
 
@@ -88,11 +103,11 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 
 ## Acceptance criteria
 
-- [ ] The common definition of done in the docs plan §6.3 holds.
-- [ ] Keyboard-only test.
-- [ ] A gated bundle is never fetched without a session.
-- [ ] The bundles are nested (public in member in admin): load exactly one bundle per tier, the highest the reader can fetch, and never `mergeIndex` them (a merge returns each public page twice). The "Help only" default is a filter on that bundle (the public bundle also holds the developer door). Carried from the DOC-03b review.
-- [ ] The plan's per-door bundles (`pagefind/help`, `pagefind/developers`) are built, or the plan is amended to one public bundle with a door filter.
+- [x] The common definition of done in the docs plan §6.3 holds.
+- [x] Keyboard-only test.
+- [x] A gated bundle is never fetched without a session.
+- [x] The bundles are nested (public in member in admin): load exactly one bundle per tier, the highest the reader can fetch, and never `mergeIndex` them (a merge returns each public page twice). The "Help only" default is a filter on that bundle (the public bundle also holds the developer door). Carried from the DOC-03b review.
+- [x] The plan's per-door bundles (`pagefind/help`, `pagefind/developers`) are built, or the plan is amended to one public bundle with a door filter.
 - [ ] `pkey-ux-reviewer` passes the rendered pages in built mode, both themes and phone (§6.3).
 - [ ] `pkey-wp-reviewer` passes the package.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.

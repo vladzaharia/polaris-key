@@ -8,6 +8,7 @@ import { href, type PortalRoute } from "../router.js";
 import { AccountMenu } from "./AccountMenu.js";
 import { HeaderBrand } from "./Lockup.js";
 import { MissingLicense } from "./MissingLicense.js";
+import { PortalErrorBoundary } from "./PortalErrorBoundary.js";
 import { t } from "../../lib/copy.js";
 import { formatDay } from "../date.js";
 
@@ -61,7 +62,9 @@ export function PortalShell({
   const onLibrary = route.kind === "library" || route.kind === "product";
   // A storefront product page (PS-05) lives inside Discover: its tab stays current there.
   const onDiscover = route.kind === "discover" || route.kind === "storefront";
-  const showDiscover = discoverCount !== null;
+  // Reserved while the Library loads (libraryCount null), so the tab doesn't pop in; it leaves only
+  // when the Library answered without Discover.
+  const showDiscover = discoverCount !== null || libraryCount === null;
   const mainRef = React.useRef<HTMLElement>(null);
   usePhoneBarToastInset();
   useLargeTextFlag();
@@ -161,7 +164,9 @@ export function PortalShell({
             : "pb-[calc(3.25rem+1px+env(safe-area-inset-bottom)+1.5rem)] desk:pb-12",
         )}
       >
-        {children}
+        <PortalErrorBoundary resetKey={window.location.hash}>
+          {children}
+        </PortalErrorBoundary>
       </main>
       {/* The Library's sticky footer, static help every state of it has (PX-35). */}
       {route.kind === "library" ? (

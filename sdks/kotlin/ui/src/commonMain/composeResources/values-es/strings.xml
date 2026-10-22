@@ -340,7 +340,7 @@
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block under the selected device. On macOS the kit wraps {device} in curly quotes. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="deviceLimit_confirmTitle">¿Reemplazar %1$s?</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="deviceLimit_consequence">Se cerrará la sesión de %2$s en %1$s y %3$s ocupará su plaza. Te lo notificaremos por correo.</string>
+    <string name="deviceLimit_consequence">Se cerrará la sesión de %2$s en %1$s y %3$s ocupará su lugar. Te lo notificaremos por correo.</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button. -->
     <string name="deviceLimit_primary">Reemplazar y continuar</string>
     <string name="deviceLimit_primary__macos">Reemplazar y continuar</string>
@@ -656,6 +656,8 @@
     <string name="channel_title">Canal de versiones</string>
     <!-- ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
     <string name="channel_locked">%1$s establece el canal.</string>
+    <!-- ChannelPicker: the license allows one release channel, so the choice is locked. -->
+    <string name="channel_lockedLicense">Tu licencia solo incluye este canal.</string>
     <!-- Toast action. -->
     <string name="toast_undo">Deshacer</string>
     <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
@@ -882,7 +884,7 @@
     <string name="signin_choice_continue">Usar esta licencia y continuar</string>
     <string name="signin_choice_continue__macos">Usar esta licencia y continuar</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
-    <string name="signin_choice_raced">Alguien acaba de ocupar esa plaza. Vuelve a elegir.</string>
+    <string name="signin_choice_raced">Ese dispositivo acaba de reemplazarse. Vuelve a elegir.</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_choice_codeExpired">El código de %1$s venció. Obtén un código nuevo allí y vuelve a escanearlo.</string>
     <!-- No license in this account (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -898,7 +900,7 @@
     <string name="signin_replace_open">Reemplazar un dispositivo</string>
     <string name="signin_replace_open__macos">Reemplazar un dispositivo</string>
     <!-- Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice). Arguments: 1=thisDevice. -->
-    <string name="signin_replace_lede">Elige un dispositivo para cerrar su sesión. %1$s ocupará su plaza.</string>
+    <string name="signin_replace_lede">Elige un dispositivo para cerrar su sesión. %1$s ocupará su lugar.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title. -->
     <string name="signin_replace_heading">Reemplazar un dispositivo</string>
     <!-- Replace a device in a system dialog (SIGN-IN.md §3.7). -->
@@ -914,7 +916,7 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_title">¿Reemplazar %1$s?</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="signin_replace_consequence">Se cerrará la sesión de %2$s en %1$s y %3$s ocupará su plaza. Te lo notificaremos por correo.</string>
+    <string name="signin_replace_consequence">Se cerrará la sesión de %2$s en %1$s y %3$s ocupará su lugar. Te lo notificaremos por correo.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_inUse">%1$s se está usando ahora mismo.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -934,9 +936,9 @@
         <item quantity="other">Demasiados cambios de dispositivo. Vuelve a intentarlo en %1$d segundos.</item>
     </plurals>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
-    <string name="signin_replace_raced">Alguien ocupó esa plaza antes. Vuelve a elegir.</string>
+    <string name="signin_replace_raced">Alguien reemplazó ese dispositivo antes. Vuelve a elegir.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
-    <string name="signin_replace_racedAfterFree">Se quitó %1$s, pero alguien ocupó la plaza antes. Vuelve a elegir.</string>
+    <string name="signin_replace_racedAfterFree">Se quitó %1$s, pero alguien inició sesión antes. Vuelve a elegir.</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated); {name} = the person's display name. Arguments: 1=app, 2=name. -->
     <string name="signin_consent_title">¿Continuar a %1$s como %2$s?</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
@@ -1267,6 +1269,8 @@
     <string name="cli_verb_packsEnsure">Descargar e instalar contenido, con progreso</string>
     <!-- Terminal help: what the doctor command does. -->
     <string name="cli_verb_doctor">Mostrar lo que puede hacer este dispositivo, para soporte</string>
+    <!-- Terminal help: what the boot command does. -->
+    <string name="cli_verb_boot">Ejecutar el inicio, una línea por etapa</string>
     <!-- Terminal help: what the completion command does. bash, zsh and fish are shell names; keep them. -->
     <string name="cli_verb_completion">Generar el autocompletado de shell para bash, zsh o fish</string>
     <!-- Terminal help: what the -json flag does. -->
@@ -1279,6 +1283,8 @@
     <string name="cli_option_help">Ayuda de un comando</string>
     <!-- Terminal help: what the -yes flag does. -->
     <string name="cli_option_yes">No preguntar antes de cerrar sesión</string>
+    <!-- Terminal help: what the -yes flag does on boot. -->
+    <string name="cli_option_yesDownload">Descargar el contenido necesario sin preguntar</string>
     <!-- Terminal help: what the -device-code flag does. -->
     <string name="cli_option_deviceCode">Iniciar sesión con un código en vez del navegador local</string>
     <!-- Terminal help: what the -key-file flag of the activate command does. -->
@@ -1635,7 +1641,7 @@
     <string name="signin_choice_replaceAndSignIn">Reemplazar e iniciar sesión</string>
     <string name="signin_choice_replaceAndSignIn__macos">Reemplazar e iniciar sesión</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_choice_replaceSafety">El dispositivo que elijas cerrará sesión en %1$s. Podrá iniciar sesión de nuevo más tarde si hay un puesto libre. Te avisaremos por correo.</string>
+    <string name="signin_choice_replaceSafety">El dispositivo que elijas cerrará sesión en %1$s. Podrá iniciar sesión de nuevo más tarde si hay espacio. Te avisaremos por correo.</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_choice_replacedTitle">Dispositivo reemplazado</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser". Arguments: 1=device, 2=app, 3=thisDevice. -->

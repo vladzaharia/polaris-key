@@ -1,0 +1,100 @@
+{
+  "$comment": "Design-language debt on the mockup boards (UK-55; UI-KITS.md DL3, DL5, DL6, DL9, DL11, DL12, DL14): distinct hits per board and rule when the lint landed. A board is the design reference for its kit, so the kit's modernisation packages clear its entries as they redraw it with tokens (rem type, --pk-space-* steps): web and the React kit UK-47 and UK-05; ios and apple, SwiftUI UK-49, UK-07 and UK-08; android, Compose UK-09 and UK-10; godot, UK-50 and UK-11; qt, UK-12; terminal, UK-45 and UK-48; desktop, windows and linux, the platform shell packages of their kits. The lint fails on a count above these and on a count below (stale). Shrink it with: pnpm ui:lint -- --record-dom-debt.",
+  "debt": [
+    {
+      "board": "android",
+      "rule": "px-font",
+      "count": 56
+    },
+    {
+      "board": "android",
+      "rule": "spacing-off-scale",
+      "count": 62
+    },
+    {
+      "board": "apple",
+      "rule": "px-font",
+      "count": 36
+    },
+    {
+      "board": "apple",
+      "rule": "spacing-off-scale",
+      "count": 69
+    },
+    {
+      "board": "desktop",
+      "rule": "px-font",
+      "count": 32
+    },
+    {
+      "board": "desktop",
+      "rule": "spacing-off-scale",
+      "count": 121
+    },
+    {
+      "board": "godot",
+      "rule": "px-font",
+      "count": 30
+    },
+    {
+      "board": "godot",
+      "rule": "spacing-off-scale",
+      "count": 45
+    },
+    {
+      "board": "ios",
+      "rule": "px-font",
+      "count": 53
+    },
+    {
+      "board": "ios",
+      "rule": "spacing-off-scale",
+      "count": 69
+    },
+    {
+      "board": "linux",
+      "rule": "px-font",
+      "count": 13
+    },
+    {
+      "board": "linux",
+      "rule": "spacing-off-scale",
+      "count": 5
+    },
+    {
+      "board": "qt",
+      "rule": "px-font",
+      "count": 33
+    },
+    {
+      "board": "qt",
+      "rule": "spacing-off-scale",
+      "count": 6
+    },
+    {
+      "board": "terminal",
+      "rule": "spacing-off-scale",
+      "count": 31
+    },
+    {
+      "board": "web",
+      "rule": "px-font",
+      "count": 60
+    },
+    {
+      "board": "web",
+      "rule": "spacing-off-scale",
+      "count": 216
+    },
+    {
+      "board": "windows",
+      "rule": "px-font",
+      "count": 12
+    },
+    {
+      "board": "windows",
+      "rule": "spacing-off-scale",
+      "count": 9
+    }
+  ]
+}

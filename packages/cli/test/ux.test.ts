@@ -182,10 +182,13 @@ describe("a failed request says what to check", () => {
       fetchImpl: refused(),
     });
     expect(r.code).toBe(1);
-    expect(r.err).toContain("Could not reach http://127.0.0.1:1/demo/");
-    expect(r.err).toContain("the connection was refused");
-    expect(r.err).toContain("--base-url");
-    expect(r.err).not.toContain("fetch failed");
+    expect(r.out).toContain(
+      "✗  error Live product: Could not reach http://127.0.0.1:1/demo/",
+    );
+    expect(r.out).toContain("the connection was refused");
+    expect(r.out).toContain("→ Check the network and --base-url");
+    expect(r.out).not.toContain("fetch failed");
+    expect(r.err).toBe("");
   });
 
   it("doctor --json keeps the same sentence in the discovery fact", async () => {
@@ -231,7 +234,7 @@ describe("a failed request says what to check", () => {
         new Response("", { status: 404 })) as typeof fetch,
     });
     expect(r.code).toBe(1);
-    expect(r.out).toContain("Is the product registered");
+    expect(r.out).toContain("→ Is demo registered at key.plrs.im?");
   });
 });
 
@@ -399,9 +402,10 @@ describe("a manifest that does not parse names the file", () => {
     const cwd = await badYaml();
     const r = await run(["validate"], { cwd });
     expect(r.code).toBe(1);
-    expect(r.err).toContain(".pkey/product.yaml is not valid YAML:");
-    expect(r.err).toContain("line 2, column 1");
-    expect(r.err).toContain("pkey validate again");
+    expect(r.err).toContain(
+      "✗  .pkey/product.yaml line 2: not valid YAML (an unclosed [).",
+    );
+    expect(r.err).not.toContain(cwd);
     expect(r.err).not.toContain("^");
   });
 

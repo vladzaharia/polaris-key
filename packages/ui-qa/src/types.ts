@@ -18,6 +18,10 @@ export interface LintOptions {
   minTouch?: number;
   /** rule id → selectors where that rule is allowed (each with its reason in config). */
   allow?: Record<string, string[]>;
+  /** Regex sources matching the text of a refusal copy key (`refusalPatterns()`); DL6. */
+  refusals?: string[];
+  /** The kit root that must hold focus once a full-window state mounts (DL9); default `[data-pk-fullwindow]`. */
+  initialFocus?: string;
   /** Check every authored style rule, not only those that match a linted element (kit CSS). */
   allRules?: boolean;
 }

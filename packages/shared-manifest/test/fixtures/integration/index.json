@@ -559,6 +559,19 @@
     "compiled": false
   },
   {
+    "id": "licensing.kotlin.server.spring",
+    "file": "kotlin/server/licensing.spring.kt",
+    "feature": "licensing",
+    "sdk": "kotlin",
+    "lane": "server",
+    "framework": "spring",
+    "language": "kotlin",
+    "title": "Gate a route with the license",
+    "docs": "/docs/build/servers/spring/",
+    "status": "available",
+    "compiled": false
+  },
+  {
     "id": "licensing.godot.kit",
     "file": "godot/kit/licensing.gd",
     "feature": "licensing",

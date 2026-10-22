@@ -209,7 +209,7 @@ export const STAMP_TARGETS = [
   // The browser bundle cannot read package.json, so @polaris-key/react carries its version as a
   // literal (sdk-node reads package.json at runtime and needs no target).
   {
-    file: "packages/sdk-react/src/version.ts",
+    file: "packages/ui-core/src/browser/sdk/version.ts",
     pattern: /^(export const SDK_VERSION = ")[^"]*(";)$/m,
   },
 ];

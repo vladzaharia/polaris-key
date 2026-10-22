@@ -403,7 +403,12 @@ describe("pkey doctor against a hostile discovery document", () => {
           services: Object.fromEntries(
             [...HOSTILE, "release"].map((k) => [k, { enabled: true }]),
           ),
-          signing: { [CSI8]: ALL, kid: "\u0085::error::x" },
+          trust: {
+            keys: [
+              { kid: CSI8, status: ALL },
+              { kid: "\u0085::error::x", status: "active" },
+            ],
+          },
         })) as typeof fetch);
       const io = capture();
       const code = await runPkey(
@@ -411,8 +416,8 @@ describe("pkey doctor against a hostile discovery document", () => {
         { cwd, ...io, env: actions ? { ...ACTIONS } : {} },
       );
       expect(code).toBe(0);
-      expect(io.out()).toContain("Remote discovery: ok");
-      expect(io.out()).toMatch(/Services enabled: .*release/);
+      expect(io.out()).toContain("Live product");
+      expect(io.out()).toMatch(/Live features +.*release/);
       expectInert(`${io.out()}${io.err()}`, actions);
     });
 

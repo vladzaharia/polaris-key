@@ -20,8 +20,8 @@
  *
  * ── WHO WRITES THE POLICY ───────────────────────────────────────────────────────────────────
  *
- * Only a platform admin, through `PUT /manage/api/products/<slug>/trust-policy`
- * (`console/handlers/trustPolicy.ts`), which sets `trust_policy_source = 'admin'`. No manifest
+ * Only a platform admin, through `PATCH /manage/api/products/<slug>/settings/core.trustPolicy`
+ * (`core/settings/adapters.ts`), which sets `trust_policy_source = 'admin'`. No manifest
  * field, ingest or resync writes it: a repo writer could otherwise point the App Attest Team ID
  * at an app they control or relax enforcement (THREAT-MODEL.md, "Device trust levels").
  */

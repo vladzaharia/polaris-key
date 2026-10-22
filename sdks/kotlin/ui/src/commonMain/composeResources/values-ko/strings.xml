@@ -334,7 +334,7 @@
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block under the selected device. On macOS the kit wraps {device} in curly quotes. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="deviceLimit_confirmTitle">%1$s을(를) 교체할까요?</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="deviceLimit_consequence">%1$s은(는) %2$s에서 로그아웃되고 %3$s이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요.</string>
+    <string name="deviceLimit_consequence">%1$s은(는) %2$s에서 로그아웃되고 %3$s이(가) 대신 사용돼요. 이 내용은 이메일로 알려 드려요.</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button. -->
     <string name="deviceLimit_primary">교체하고 계속</string>
     <string name="deviceLimit_primary__macos">교체하고 계속</string>
@@ -646,6 +646,8 @@
     <string name="channel_title">릴리스 채널</string>
     <!-- ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
     <string name="channel_locked">%1$s에서 채널을 설정해요.</string>
+    <!-- ChannelPicker: the license allows one release channel, so the choice is locked. -->
+    <string name="channel_lockedLicense">라이선스에 이 채널만 포함되어 있어요.</string>
     <!-- Toast action. -->
     <string name="toast_undo">실행 취소</string>
     <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
@@ -868,7 +870,7 @@
     <string name="signin_choice_continue">이 라이선스로 계속</string>
     <string name="signin_choice_continue__macos">이 라이선스로 계속</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
-    <string name="signin_choice_raced">방금 다른 기기가 그 자리를 차지했어요. 다시 선택하세요.</string>
+    <string name="signin_choice_raced">그 기기는 방금 교체됐어요. 다시 선택하세요.</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_choice_codeExpired">%1$s의 코드가 만료됐어요. 그 기기에서 새 코드를 받아 다시 스캔하세요.</string>
     <!-- No license in this account (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -884,7 +886,7 @@
     <string name="signin_replace_open">기기 교체</string>
     <string name="signin_replace_open__macos">기기 교체</string>
     <!-- Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice). Arguments: 1=thisDevice. -->
-    <string name="signin_replace_lede">로그아웃할 기기를 선택하세요. %1$s이(가) 그 자리를 사용해요.</string>
+    <string name="signin_replace_lede">로그아웃할 기기를 선택하세요. %1$s이(가) 대신 사용돼요.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title. -->
     <string name="signin_replace_heading">기기 교체</string>
     <!-- Replace a device in a system dialog (SIGN-IN.md §3.7). -->
@@ -900,7 +902,7 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_title">%1$s을(를) 교체할까요?</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="signin_replace_consequence">%1$s은(는) %2$s에서 로그아웃되고 %3$s이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요.</string>
+    <string name="signin_replace_consequence">%1$s은(는) %2$s에서 로그아웃되고 %3$s이(가) 대신 사용돼요. 이 내용은 이메일로 알려 드려요.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_inUse">%1$s에서 지금 사용 중이에요.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -918,9 +920,9 @@
         <item quantity="other">기기 변경이 너무 많아요. %1$d초 후에 다시 시도하세요.</item>
     </plurals>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
-    <string name="signin_replace_raced">다른 사람이 먼저 그 자리를 차지했어요. 다시 선택하세요.</string>
+    <string name="signin_replace_raced">다른 사람이 먼저 그 기기를 교체했어요. 다시 선택하세요.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
-    <string name="signin_replace_racedAfterFree">%1$s을(를) 제거했지만 다른 사람이 먼저 자리를 차지했어요. 다시 선택하세요.</string>
+    <string name="signin_replace_racedAfterFree">%1$s을(를) 제거했지만 다른 기기가 먼저 로그인했어요. 다시 선택하세요.</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated); {name} = the person's display name. Arguments: 1=app, 2=name. -->
     <string name="signin_consent_title">%1$s에서 %2$s 님으로 계속할까요?</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
@@ -1247,6 +1249,8 @@
     <string name="cli_verb_packsEnsure">진행률을 표시하며 콘텐츠 다운로드 및 설치</string>
     <!-- Terminal help: what the doctor command does. -->
     <string name="cli_verb_doctor">이 기기에서 가능한 기능 표시 (지원용)</string>
+    <!-- Terminal help: what the boot command does. -->
+    <string name="cli_verb_boot">시작 과정을 실행해요(단계마다 한 줄)</string>
     <!-- Terminal help: what the completion command does. bash, zsh and fish are shell names; keep them. -->
     <string name="cli_verb_completion">bash, zsh, fish용 셸 자동 완성 출력</string>
     <!-- Terminal help: what the -json flag does. -->
@@ -1259,6 +1263,8 @@
     <string name="cli_option_help">명령 도움말</string>
     <!-- Terminal help: what the -yes flag does. -->
     <string name="cli_option_yes">로그아웃 전에 확인하지 않음</string>
+    <!-- Terminal help: what the -yes flag does on boot. -->
+    <string name="cli_option_yesDownload">필요한 콘텐츠를 묻지 않고 다운로드</string>
     <!-- Terminal help: what the -device-code flag does. -->
     <string name="cli_option_deviceCode">이 컴퓨터의 브라우저 대신 코드로 로그인</string>
     <!-- Terminal help: what the -key-file flag of the activate command does. -->
@@ -1615,7 +1621,7 @@
     <string name="signin_choice_replaceAndSignIn">교체하고 로그인</string>
     <string name="signin_choice_replaceAndSignIn__macos">교체하고 로그인</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_choice_replaceSafety">선택한 기기는 %1$s에서 로그아웃됩니다. 자리가 나면 나중에 다시 로그인할 수 있습니다. 이메일로 알려 드립니다.</string>
+    <string name="signin_choice_replaceSafety">선택한 기기는 %1$s에서 로그아웃됩니다. 여유가 있으면 나중에 다시 로그인할 수 있습니다. 이메일로 알려 드립니다.</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_choice_replacedTitle">기기를 교체했습니다</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser". Arguments: 1=device, 2=app, 3=thisDevice. -->

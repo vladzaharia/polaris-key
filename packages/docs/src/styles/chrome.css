@@ -51,22 +51,6 @@
   display: none;
 }
 
-/* "Search the docs": Starlight's label says "Search" and is shared with Help's, so the words are
-   drawn here (as help.css does for "Search help"); the button keeps its accessible name. */
-.pk-section:not([data-brand="locker"])
-  site-search
-  button[data-open-modal]
-  > span[aria-hidden="true"] {
-  font-size: 0;
-}
-.pk-section:not([data-brand="locker"])
-  site-search
-  button[data-open-modal]
-  > span[aria-hidden="true"]::after {
-  content: "Search the docs";
-  font-size: var(--sl-text-sm);
-}
-
 .pk-doc-link {
   display: inline-flex;
   align-items: center;

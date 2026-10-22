@@ -23725,11 +23725,14 @@ var COMMANDS = [
     summary: "Scaffold .pkey/ in this directory",
     rows: [["init", "Scaffold .pkey/ in this directory"]],
     usage: [
-      `pkey init [--product slug] [--name name] [--modules ${SERVICE_SLUGS.join(",")}] [--admin-group group] [--release-owner owner] [--release-repo repo] [--force]`
+      "pkey init [--product slug] [--name name] [--modules slugs] [--admin-group group] [--release-owner owner] [--release-repo repo] [--force]"
     ],
     about: [
       {
-        text: "pkey init scaffolds .pkey/ in the current directory: product.yaml and schema.yaml always, release.yaml when Release is on. --modules takes the service slugs or the legacy module names (licensing, releases, oidc, edgeMint) and writes service slugs; without it you get license,config. --product (or --slug) defaults to the directory's name and --name to a titleized slug. Existing files are never overwritten without --force."
+        text: "Writes product.yaml and schema.yaml, and release.yaml when Release is on. A file that exists is kept unless you pass --force."
+      },
+      {
+        text: `--modules takes feature slugs (${SERVICE_SLUGS.join(", ")}); the default is license,config. The old names licensing, releases, oidc and edgeMint still work. --product (or --slug) defaults to the directory name, --name to that name in title case.`
       }
     ]
   },
@@ -23745,13 +23748,18 @@ var COMMANDS = [
     usage: ["pkey validate [path] [--fix] [--json]"],
     about: [
       {
-        text: "pkey validate reads the .pkey/ under path (relative to the current directory; default the current directory) and runs it through the validator repo-link and resync apply. It prints a verdict, the services the manifest enables, any required secret names, then every warning and error with its document, JSON pointer and the file it was read from, and exits 1 when the manifest is invalid."
+        text: "Checks .pkey/ with the rules the platform applies. Prints the verdict, the features it turns on and the secrets it needs, then each warning and error with the file and field it points at. Exits 1 when it is invalid. path is relative to here; the default is here."
       },
       {
-        text: `--json prints one JSON line on stdout instead, the terminal kits' result line, its fields beside the envelope's: {"v":1,"command":"validate","event":"result","ok","exit","valid","modules","requiredSecrets","warnings","errors"}, each warning and error as {"code","message","at","file"}. When no manifest can be read it is {"v":1,"command":"validate","event":"result","ok":false,"exit":1,"error":"no-manifest","message"}, or "error":"unreadable-manifest" when a file is not valid JSON or YAML.`
+        text: "--fix moves a field written in an old spelling to its new place when that place is empty. It keeps your comments, never overwrites a value, and prints each move."
       },
       {
-        text: `--fix repairs what it safely can before it validates: a field written in an old spelling moves to its canonical place when that place is empty (the deprecated_spelling warnings), keeping YAML comments. It never overwrites a value and leaves a conflict for you. It prints each move, or "Nothing to fix." With --json the moves are the result's "fixed" list.`
+        text: "--json prints one line instead; its shape is at /docs/reference/cli/#validate."
+      }
+    ],
+    reference: [
+      {
+        text: `--json prints one JSON line on stdout, the terminal kits' result line, its fields beside the envelope's: {"v":1,"command":"validate","event":"result","ok","exit","valid","modules","requiredSecrets","warnings","errors"}, each warning and error as {"code","message","at","file"}. With --fix, "fixed" lists the moves. When no manifest can be read it is {"v":1,"command":"validate","event":"result","ok":false,"exit":1,"error":"no-manifest","message"}, or "error":"unreadable-manifest" when a file is not valid JSON or YAML.`
       }
     ]
   },
@@ -23761,15 +23769,20 @@ var COMMANDS = [
     json: true,
     valueless: ["json"],
     context: ["product", "baseUrl"],
-    summary: "Validate, then check the live product's discovery",
-    rows: [["doctor", "Validate, then check the live product's discovery"]],
+    summary: "Check .pkey/ and the live product",
+    rows: [["doctor", "Check .pkey/ and the live product"]],
     usage: ["pkey doctor [--product slug] [--base-url url] [--json]"],
     about: [
       {
-        text: "pkey doctor runs validate first. When a product is known (--product, else the nearest .pkey/product) it also fetches <base-url>/<product>/.well-known/polaris.json (--base-url, else $PKEY_BASE_URL, else key.plrs.im) and reports whether discovery answers, which services it enables and which signing keys it exposes; a failed remote check exits 1. Without a product the remote checks are skipped and it says so."
+        text: "Checks .pkey/ like validate, then asks the live product what it has: whether it answers, its features and its signing keys. It flags features that differ from .pkey/. Exits 1 while anything is to do."
       },
       {
-        text: '--json prints one result line: {"v":1,"command":"doctor","event":"result","ok","exit","product","baseUrl","facts","services","signing"}, each fact as {"id","state","detail"} with id manifest, discovery, services or signing-keys and state ok, warn or todo. It exits 1 while any fact is todo.'
+        text: "Waits up to 10 s. With no product it skips the live checks and says so. --json prints one line instead; its shape is at /docs/reference/cli/#doctor."
+      }
+    ],
+    reference: [
+      {
+        text: '--json prints one result line: {"v":1,"command":"doctor","event":"result","ok","exit","product","baseUrl","facts","services","signing"}, each fact as {"id","state","detail","fix"} with id manifest, discovery, services, signing-keys or in-sync and state ok, warn or todo; signing is a list of {"kid","status"}. It exits 1 while any fact is todo.'
       }
     ]
   },
@@ -23843,7 +23856,7 @@ var COMMANDS = [
     ],
     about: [
       {
-        text: "pkey dev runs the Worker's real router in this process (Node 22.13 or newer; no account, no secrets, no install) on 127.0.0.1:8787. It seeds the product in ./.pkey/, else the built-in Tidewater Studio, with throwaway signing and release keys, a licence key for each state (ok, expired, disabled, revoked, device-limit-full, key-entry-limit, floating), a fake identity provider, and a signed release on stable and beta. It writes polaris-key.json and prints the pins; nothing outlives the process. --auto-approve signs people in without the approval page; --builtin ignores ./.pkey/. The control commands act on a running server: --url names it (default: the baseUrl in ./polaris-key.json, else http://127.0.0.1:8787). Run Polaris Key locally: /docs/build/local/."
+        text: "pkey dev runs the Worker's real router in this process (Node 22.13 or newer; no account, no secrets, no install) on 127.0.0.1:8787. It seeds the product in ./.pkey/, else the built-in Tidewater Studio, with throwaway signing and release keys, a license key for each state (ok, expired, disabled, revoked, device-limit-full, key-entry-limit, floating), a fake identity provider, and a signed release on stable and beta. It writes polaris-key.json and prints the pins; nothing outlives the process. --auto-approve signs people in without the approval page; --builtin ignores ./.pkey/. The control commands act on a running server: --url names it (default: the baseUrl in ./polaris-key.json, else http://127.0.0.1:8787). Run Polaris Key locally: /docs/build/local/."
       }
     ]
   },
@@ -24448,7 +24461,7 @@ function hereLines(here, width, separator) {
   const joined = ` ${separator} ${url}`;
   if (used + cellWidth(joined) <= room)
     tail.push({ text: joined, style: ["muted"] });
-  else lines4.push([{ text: url, style: ["muted"] }]);
+  else lines4.push([{ text: `${separator} ${url}`, style: ["muted"] }]);
   return lines4.map(
     (l, i) => [
       i === 0 ? { text: "Here".padEnd(LABEL_WIDTH), style: ["muted"] } : { text: " ".repeat(LABEL_WIDTH) },
@@ -24837,27 +24850,34 @@ function normalizeModules2(raw) {
   return servicesOf(parsed);
 }
 async function findProductManifest(cwd) {
+  const file = await findProductFile(cwd);
+  if (!file) return null;
+  try {
+    const doc = parseFile(file, await readFile2(file, "utf8"));
+    if (!isRecord7(doc)) return null;
+    const wrapped = isRecord7(doc.product) ? doc.product : doc;
+    const slug = wrapped.slug;
+    if (typeof slug !== "string" || !slug.trim()) return null;
+    const name = wrapped.name;
+    return {
+      slug: slug.trim(),
+      ...typeof name === "string" && name.trim() ? { name: name.trim() } : {},
+      file
+    };
+  } catch {
+    return null;
+  }
+}
+async function findProductFile(cwd) {
   for (let dir = path3.resolve(cwd); ; dir = path3.dirname(dir)) {
     const file = await findExisting(path3.join(dir, ".pkey"), PRODUCT_FILES);
-    if (file) {
-      try {
-        const doc = parseFile(file, await readFile2(file, "utf8"));
-        if (!isRecord7(doc)) return null;
-        const wrapped = isRecord7(doc.product) ? doc.product : doc;
-        const slug = wrapped.slug;
-        if (typeof slug !== "string" || !slug.trim()) return null;
-        const name = wrapped.name;
-        return {
-          slug: slug.trim(),
-          ...typeof name === "string" && name.trim() ? { name: name.trim() } : {},
-          file
-        };
-      } catch {
-        return null;
-      }
-    }
+    if (file) return file;
     if (path3.dirname(dir) === dir) return null;
   }
+}
+async function findManifestRoot(cwd) {
+  const file = await findProductFile(cwd);
+  return file ? path3.dirname(path3.dirname(file)) : cwd;
 }
 async function loadManifest(cwd) {
   const rootDir = path3.join(cwd, ".pkey");
@@ -25071,14 +25091,39 @@ async function findAll(rootDir, names) {
   }
   return out;
 }
+function yamlReason(err) {
+  const first = err.message.split("\n")[0];
+  if (/end with a \]/.test(first)) return "an unclosed [";
+  if (/end with a \}/.test(first)) return "an unclosed {";
+  switch (err.code) {
+    case "BAD_INDENT":
+      return "the indentation is off";
+    case "TAB_AS_INDENT":
+      return "a tab where spaces go";
+    case "DUPLICATE_KEY":
+      return "a key is written twice";
+    case "MISSING_CHAR":
+      return "an unclosed quote or bracket";
+    default:
+      return "the syntax is off here";
+  }
+}
+var ManifestSyntaxError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ManifestSyntaxError";
+  }
+};
 function parseFile(file, raw) {
   const json = file.endsWith(".json");
   try {
     return json ? JSON.parse(raw) : (0, import_yaml2.parse)(raw);
   } catch (err) {
-    const reason = err.message.split("\n")[0].replace(/:$/, "");
-    throw new Error(
-      `.pkey/${file} is not valid ${json ? "JSON" : "YAML"}: ${reason}. Fix the syntax, then run pkey validate again.`
+    const e = err;
+    const line = e.linePos?.[0]?.line;
+    const why = json ? "the JSON is malformed" : yamlReason(e);
+    throw new ManifestSyntaxError(
+      `.pkey/${path3.basename(file)}${line ? ` line ${line}` : ""}: not valid ${json ? "JSON" : "YAML"} (${why}).`
     );
   }
 }
@@ -25507,6 +25552,7 @@ async function applyContext(keys, flags, input) {
 
 // src/doctor.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
+var DISCOVERY_TIMEOUT_MS = 1e4;
 function manifestFact(result, problem) {
   if (!result)
     return {
@@ -25520,59 +25566,243 @@ function manifestFact(result, problem) {
       state: "todo",
       detail: `${result.errors.length} error${result.errors.length === 1 ? "" : "s"}`
     };
+  const fixable = result.warnings.some((w) => w.code === "deprecated_spelling");
   return {
     id: "manifest",
     state: result.warnings.length ? "warn" : "ok",
-    detail: result.warnings.length ? `${result.warnings.length} warning${result.warnings.length === 1 ? "" : "s"}` : "valid"
+    detail: result.warnings.length ? `${result.warnings.length} warning${result.warnings.length === 1 ? "" : "s"}` : "valid",
+    ...fixable ? { fix: "pkey validate --fix" } : {}
   };
 }
+var NETWORK_FIX = "Check the network and --base-url (or $PKEY_BASE_URL).";
+function todo(id, detail, fix, rest = {}, url = "") {
+  return {
+    url,
+    services: [],
+    signing: [],
+    ...rest,
+    facts: [{ id, state: "todo", detail, fix }]
+  };
+}
+var isRecord8 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+function keysOf(body) {
+  const trust = isRecord8(body.trust) ? body.trust : {};
+  const signing = isRecord8(body.signing) ? body.signing : {};
+  const raw = Array.isArray(trust.keys) ? trust.keys : Array.isArray(signing.keys) ? signing.keys : [];
+  return raw.flatMap(
+    (k) => isRecord8(k) && typeof k.kid === "string" ? [
+      {
+        kid: k.kid,
+        status: typeof k.status === "string" ? k.status : k.active === true ? "active" : "unknown"
+      }
+    ] : []
+  );
+}
 async function checkRemote(opts) {
-  const url = `${opts.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
-  let res;
+  const base = opts.baseUrl.replace(/\/+$/, "");
+  const url = `${base}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
+  const host = base.replace(/^https?:\/\//, "");
+  const timeoutMs = opts.timeoutMs ?? DISCOVERY_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timedOut = () => todo(
+    "discovery",
+    `${host} did not answer in ${Math.round(timeoutMs / 1e3)} s.`,
+    NETWORK_FIX,
+    {},
+    url
+  );
   try {
-    res = await (opts.fetchImpl ?? fetch)(url);
-  } catch (err) {
-    throw new Error(networkMessage(err, url));
-  }
-  if (!res.ok)
+    let res;
+    let text;
+    try {
+      res = await (opts.fetchImpl ?? fetch)(url, { signal: controller.signal });
+      text = res.ok ? await res.text() : "";
+    } catch (err) {
+      if (controller.signal.aborted) return timedOut();
+      const message = networkMessage(err, url);
+      const cut = message.match(/^(.*?\.) Check your network/s);
+      return todo("discovery", cut ? cut[1] : message, NETWORK_FIX, {}, url);
+    }
+    if (!res.ok) {
+      const fix = res.status === 404 ? `Is ${opts.product} registered at ${host}?` : res.status >= 500 ? "The server failed; try again." : `Check --base-url (or $PKEY_BASE_URL) and ${opts.product}.`;
+      return todo(
+        "discovery",
+        res.status === 404 ? "not found (404)" : res.status >= 500 ? `server error (${res.status})` : `failed (${res.status})`,
+        fix,
+        { status: res.status },
+        url
+      );
+    }
+    let body;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = null;
+    }
+    if (!isRecord8(body))
+      return todo(
+        "discovery",
+        `${host} did not answer with discovery JSON.`,
+        "Check --base-url (or $PKEY_BASE_URL); it must be the Polaris Key origin.",
+        {},
+        url
+      );
+    const services = Object.entries(
+      isRecord8(body.services) ? body.services : {}
+    ).filter(([, service]) => isRecord8(service) && service.enabled === true).map(([slug]) => slug);
+    const signing = keysOf(body);
     return {
       url,
-      status: res.status,
-      services: [],
-      signing: null,
+      services,
+      signing,
       facts: [
+        { id: "discovery", state: "ok", detail: "answers" },
         {
-          id: "discovery",
-          state: "todo",
-          detail: `failed (${res.status})`
+          id: "services",
+          state: services.length ? "ok" : "warn",
+          detail: services.length ? services.join(", ") : "none enabled",
+          ...services.length ? {} : { fix: "Enable a feature for this product in the console." }
+        },
+        {
+          id: "signing-keys",
+          state: signing.length ? "ok" : "todo",
+          detail: signing.length ? `${signing.length} key${signing.length === 1 ? "" : "s"}` : "none",
+          ...signing.length ? {} : { fix: "Create a signing key for this product in the console." }
         }
       ]
     };
-  const body = await res.json();
-  const services = Object.entries(body.services ?? {}).filter(([, service]) => service?.enabled === true).map(([slug]) => slug);
-  const signing = body.signing ?? body.trust ?? {};
-  const keys = signing !== null && typeof signing === "object" ? Object.keys(signing).length : 0;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+function syncFact(manifest, live) {
+  const onlyManifest = manifest.filter((s) => !live.includes(s));
+  const onlyLive = live.filter((s) => !manifest.includes(s));
+  if (!onlyManifest.length && !onlyLive.length) return null;
+  const parts = [
+    onlyManifest.length ? `only in .pkey/: ${onlyManifest.join(", ")}` : "",
+    onlyLive.length ? `only live: ${onlyLive.join(", ")}` : ""
+  ].filter(Boolean);
   return {
-    url,
-    services,
-    signing,
-    facts: [
-      { id: "discovery", state: "ok", detail: "answers" },
-      {
-        id: "services",
-        state: services.length ? "ok" : "warn",
-        detail: services.length ? services.join(", ") : "none enabled"
-      },
-      {
-        id: "signing-keys",
-        state: keys ? "ok" : "warn",
-        detail: keys ? `${keys} exposed` : "none exposed"
-      }
-    ]
+    id: "in-sync",
+    state: "warn",
+    detail: `${parts.join("; ")}.`,
+    fix: "Resync the product from .pkey/ in the console."
   };
 }
 function doctorOk(facts) {
   return facts.every((f) => f.state !== "todo");
+}
+async function gatherDoctor(opts) {
+  const now = opts.now ?? Date.now;
+  const started = now();
+  const { ctx } = opts;
+  let loaded2 = null;
+  let result = null;
+  let problem;
+  try {
+    loaded2 = await loadManifest(await findManifestRoot(opts.cwd));
+    result = validateLoadedManifest(loaded2);
+  } catch (e) {
+    const message = e.message;
+    problem = e instanceof ManifestSyntaxError ? { id: "manifest", state: "todo", detail: message } : message.startsWith("No .pkey/product") ? {
+      id: "manifest",
+      state: "todo",
+      detail: "No .pkey/product here or above.",
+      fix: "Run pkey init."
+    } : { id: "manifest", state: "todo", detail: message };
+  }
+  const manifest = problem ?? manifestFact(result);
+  const facts = [manifest];
+  let services = [];
+  let signing = null;
+  if (ctx.product) {
+    opts.onStage?.(`Checking ${ctx.baseUrl.url.replace(/^https?:\/\//, "")}…`);
+    const remote = await checkRemote({
+      baseUrl: ctx.baseUrl.url,
+      product: ctx.product.slug,
+      fetchImpl: opts.fetchImpl,
+      timeoutMs: opts.timeoutMs
+    });
+    opts.onStage?.("");
+    facts.push(...remote.facts);
+    if (remote.facts.every((f) => f.id !== "discovery" || f.state === "ok")) {
+      services = remote.services;
+      signing = remote.signing;
+      const differ = result ? syncFact(result.enabledModules, remote.services) : null;
+      if (differ) facts.push(differ);
+    }
+  } else {
+    facts.push({
+      id: "discovery",
+      state: "warn",
+      detail: "skipped: no product",
+      fix: "Pass --product, or run where .pkey/product is."
+    });
+  }
+  return {
+    product: ctx.product ? {
+      slug: ctx.product.slug,
+      ...ctx.product.name ? { name: ctx.product.name } : {}
+    } : null,
+    baseUrl: ctx.baseUrl.url,
+    loaded: loaded2,
+    result,
+    facts,
+    services,
+    signing,
+    ms: now() - started
+  };
+}
+function doctorCounts(model) {
+  const r = model.result;
+  let todo2 = 0;
+  let warnings = 0;
+  for (const f of model.facts) {
+    if (f.id === "manifest" && r) {
+      todo2 += r.errors.length;
+      warnings += r.warnings.length;
+    } else if (f.state === "todo") todo2 += 1;
+    else if (f.state === "warn") warnings += 1;
+  }
+  warnings += model.loaded?.fileWarnings?.length ?? 0;
+  return { todo: todo2, warnings };
+}
+
+// src/suggest.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+function nearest(word, candidates) {
+  let best;
+  let bestDistance = Infinity;
+  for (const c of candidates) {
+    const d = distance(word, c);
+    if (d < bestDistance) {
+      best = c;
+      bestDistance = d;
+    }
+  }
+  return best !== void 0 && bestDistance <= Math.min(2, Math.floor(Math.max(word.length, 3) / 2)) ? best : void 0;
+}
+function distance(a, b) {
+  const rows = [];
+  for (let i = 0; i <= a.length; i++) {
+    rows[i] = [i];
+    for (let j = 1; j <= b.length; j++) rows[i][j] = i === 0 ? j : 0;
+  }
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let d = Math.min(
+        rows[i - 1][j] + 1,
+        rows[i][j - 1] + 1,
+        rows[i - 1][j - 1] + cost
+      );
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+        d = Math.min(d, rows[i - 2][j - 2] + 1);
+      rows[i][j] = d;
+    }
+  return rows[a.length][b.length];
 }
 
 // src/terminal.ts
@@ -32099,6 +32329,38 @@ var KOTLIN_KTOR = {
     )
   })
 };
+var KOTLIN_SPRING = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "SecurityConfig.kt",
+    language: "kotlin",
+    code: lines2(
+      `import im.plrs.key.server.spring.PolarisKey`,
+      `import im.plrs.key.server.spring.polarisKey`,
+      `import org.springframework.context.annotation.Bean`,
+      `import org.springframework.context.annotation.Configuration`,
+      `import org.springframework.security.config.annotation.web.builders.HttpSecurity`,
+      `import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity`,
+      `import org.springframework.security.web.SecurityFilterChain`,
+      ``,
+      `@Configuration(proxyBeanMethods = false)`,
+      `@EnableWebSecurity`,
+      `class SecurityConfig {`,
+      `    @Bean`,
+      `    fun api(http: HttpSecurity): SecurityFilterChain {`,
+      `        http.csrf { it.disable() }`,
+      `        http.polarisKey()`,
+      `        http.authorizeHttpRequests {`,
+      `            it.requestMatchers("/health").permitAll()`,
+      `                .requestMatchers("/api/pro").access(PolarisKey.entitlement(${q2(c.entitlement)}))`,
+      `                .anyRequest().denyAll()`,
+      `        }`,
+      `        return http.build()`,
+      `    }`,
+      `}`
+    )
+  })
+};
 var NODE_YARGS = {
   licensing: (c) => ({
     title: "Mount the Polaris Key verbs and gate a command",
@@ -32215,7 +32477,7 @@ var TABLE = {
   kotlin: {
     kit: { _: KOTLIN_KIT },
     library: { _: KOTLIN_LIBRARY },
-    server: { ktor: KOTLIN_KTOR }
+    server: { ktor: KOTLIN_KTOR, spring: KOTLIN_SPRING }
   },
   godot: { kit: { _: GODOT_KIT }, library: { _: GODOT_LIBRARY } }
 };
@@ -32307,7 +32569,7 @@ function sdkInstallNote(sdk, host = "app", framework = null) {
     if (sdk === "python")
       return `Install the extra for your framework: polaris-key[${framework ?? "fastapi"}].`;
     if (sdk === "kotlin")
-      return "Add im.plrs.key:polaris-key-server-ktor from the same feed.";
+      return framework === "spring" ? "Add im.plrs.key:polaris-key-spring-boot-starter from the same feed." : "Add im.plrs.key:polaris-key-server-ktor from the same feed.";
   }
   if (sdk === "godot")
     return "Then install the Polaris Key addon from the editor's asset library and enable it under Project Settings, Plugins.";
@@ -32429,7 +32691,7 @@ function parseReleaseKeyFlags(values) {
     return { kid: v.slice(0, eq), publicKey: v.slice(eq + 1) };
   });
 }
-function isRecord8(v) {
+function isRecord9(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 async function resolveSdkFacts(opts) {
@@ -32458,7 +32720,7 @@ async function resolveSdkFacts(opts) {
   } catch {
     throw new Error(`${discoveryUrl} did not answer JSON.`);
   }
-  if (!isRecord8(doc)) throw new Error(`${discoveryUrl} is not an object.`);
+  if (!isRecord9(doc)) throw new Error(`${discoveryUrl} is not an object.`);
   if (doc.product !== opts.product)
     throw new Error(
       `Discovery names product ${shown(JSON.stringify(doc.product))}, not ${opts.product}.`
@@ -32467,8 +32729,8 @@ async function resolveSdkFacts(opts) {
     throw new Error(
       `Discovery speaks protocol ${shown(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`
     );
-  const trust = isRecord8(doc.trust) ? doc.trust : {};
-  const pins = isRecord8(trust.pinnedKeys) ? trust.pinnedKeys : {};
+  const trust = isRecord9(doc.trust) ? doc.trust : {};
+  const pins = isRecord9(trust.pinnedKeys) ? trust.pinnedKeys : {};
   const pinnedKeys = {};
   for (const kid of Object.keys(pins).sort()) {
     const key = pins[kid];
@@ -32487,12 +32749,12 @@ async function resolveSdkFacts(opts) {
         `Discovery does not pin ${kid} with the key you gave (--kid/--public-key); nothing was written. Compare the console's signing keys with ${discoveryUrl}.`
       );
   }
-  const services = isRecord8(doc.services) ? doc.services : {};
+  const services = isRecord9(doc.services) ? doc.services : {};
   const enabled = SERVICE_SLUGS.filter((slug) => {
     const s = services[slug];
-    return isRecord8(s) && s.enabled === true;
+    return isRecord9(s) && s.enabled === true;
   });
-  const release = isRecord8(services.release) ? services.release : {};
+  const release = isRecord9(services.release) ? services.release : {};
   const advertised = Array.isArray(release.releaseKeyFingerprints) ? release.releaseKeyFingerprints.filter(
     (f) => typeof f === "string"
   ) : [];
@@ -45869,7 +46131,8 @@ async function runCommand(argv2, io) {
   const ci = {
     env: io.env,
     fetchImpl: io.fetchImpl,
-    sleep: io.sleep
+    sleep: io.sleep,
+    doctorTimeoutMs: io.doctorTimeoutMs
   };
   const g = { color: global.flags.color, ascii: global.flags.ascii };
   const term = (out) => termFor(out, ci.env, g);
@@ -45902,6 +46165,10 @@ async function runCommand(argv2, io) {
     await applyContext(cmd.context, parsed.flags, { cwd, env: ci.env });
     return await handler(parsed, { cwd, stdout, stderr, ci, g, term });
   } catch (err) {
+    if (err instanceof ManifestSyntaxError) {
+      stderr.write(failLine(untrustedLines(err.message, ci.env), term(stderr)));
+      return 1;
+    }
     const message = isInternalError(err) ? internalMessage(err) : networkMessage(err);
     stderr.write(`${untrustedLines(message, ci.env)}
 `);
@@ -45913,10 +46180,10 @@ async function runCommand(argv2, io) {
 }
 var HANDLERS = {
   init: (p, rt) => cmdInit(p, rt.cwd, rt.stdout),
-  validate: (p, rt) => cmdValidate(p, rt.cwd, rt.stdout, rt.term(rt.stdout)),
+  validate: (p, rt) => cmdValidate(p, rt.cwd, rt.stdout, rt.stderr, rt.term(rt.stdout)),
   completion: (p, rt) => cmdCompletion(p, rt.stdout, rt.stderr),
   distribution: (p, rt) => cmdDistribution(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
-  doctor: (p, rt) => cmdDoctor(p, rt.cwd, rt.stdout, rt.term(rt.stdout), rt.ci),
+  doctor: (p, rt) => cmdDoctor(p, rt.cwd, rt.stdout, rt.stderr, rt.term(rt.stdout), rt.ci, rt.g),
   bundle: (p, rt) => cmdBundle(p, rt.cwd, rt.stdout, rt.ci.env),
   migrate: (p, rt) => cmdMigrate(p, rt.stdout, rt.ci.env, rt.ci.fetchImpl),
   trust: (p, rt) => cmdTrust(p, rt.stdout),
@@ -45936,8 +46203,14 @@ var HANDLERS = {
   )
 };
 function unknownCommand(name, term, parent) {
+  const sub = parent ? name.slice(parent.length + 1) : name;
+  const near = nearest(
+    sub,
+    parent ? Object.keys(findCommand(parent)?.tree ?? {}) : COMMANDS.map((c) => c.name)
+  );
+  const hint2 = near ? ` Did you mean ${parent ? `${parent} ${near}` : near}?` : "";
   return failLine(
-    parent ? `Unknown ${parent} command "${name.slice(parent.length + 1)}". Run pkey help ${parent} to see its commands.` : `Unknown command "${name}". Run pkey help to see every command.`,
+    parent ? `Unknown ${parent} command "${sub}".${hint2} Run pkey help ${parent} to see its commands.` : `Unknown command "${name}".${hint2} Run pkey help to see every command.`,
     term
   );
 }
@@ -46043,7 +46316,12 @@ async function cmdInit(parsed, cwd, stdout) {
   return 0;
 }
 var VALIDATE_USAGE = "Usage: pkey validate [path] [--fix] [--json]";
-async function cmdValidate(parsed, cwd, stdout, term) {
+async function cmdValidate(parsed, cwd, stdout, stderr, term) {
+  const bad = checkFlags(parsed, "validate", ["fix", "json"], term);
+  if (bad) {
+    stderr.write(bad);
+    return 2;
+  }
   if (parsed.positional.length > 1) throw new Error(VALIDATE_USAGE);
   const target = parsed.positional[0];
   const dir = target === void 0 ? cwd : path30.resolve(cwd, target);
@@ -46074,7 +46352,22 @@ function writeFixed(moves, stdout, term) {
 async function validateText(dir, cwd, stdout, term) {
   const manifest = await loadManifest(dir);
   const result = validateLoadedManifest(manifest);
+  writeRows(validateRows(manifest, result, cwd, term), stdout, term);
+  return result.ok ? 0 : 1;
+}
+function writeRows(rows, stdout, term) {
   const { painter, symbols, caps } = term;
+  const gap = " ".repeat(2);
+  for (const row2 of rows) {
+    const lines4 = caps.tty ? wrapSpans(row2.spans, Math.max(1, caps.columns - 3), symbols.ellipsis) : [row2.spans];
+    lines4.forEach(
+      (l, i) => stdout.write(`${i === 0 ? row2.mark : " "}${gap}${painter.line(l)}
+`)
+    );
+  }
+}
+function validateRows(manifest, result, cwd, term) {
+  const { painter, symbols } = term;
   const rows = [];
   const mark = (glyph, role) => painter.style(glyph, [role]);
   rows.push({
@@ -46089,7 +46382,7 @@ async function validateText(dir, cwd, stdout, term) {
   rows.push({
     mark: " ",
     spans: [
-      { text: "Modules: ", style: ["muted"] },
+      { text: "Features: ", style: ["muted"] },
       {
         text: result.enabledModules.length ? result.enabledModules.join(", ") : "none"
       }
@@ -46124,15 +46417,7 @@ async function validateText(dir, cwd, stdout, term) {
     rows.push(
       message("error", pointerSpans(manifest, cwd, error), error.message)
     );
-  const gap = " ".repeat(2);
-  for (const row2 of rows) {
-    const lines4 = caps.tty ? wrapSpans(row2.spans, Math.max(1, caps.columns - 3), symbols.ellipsis) : [row2.spans];
-    lines4.forEach(
-      (l, i) => stdout.write(`${i === 0 ? row2.mark : " "}${gap}${painter.line(l)}
-`)
-    );
-  }
-  return result.ok ? 0 : 1;
+  return rows;
 }
 async function validateJson(dir, cwd, stdout, fixed) {
   const envelope = (exit, rest) => `${JSON.stringify({ v: 1, command: "validate", event: "result", ok: exit === 0, exit, ...rest }).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}
@@ -46143,7 +46428,7 @@ async function validateJson(dir, cwd, stdout, fixed) {
   } catch (e) {
     stdout.write(
       envelope(1, {
-        error: /is not valid (?:JSON|YAML)/.test(e.message) ? "unreadable-manifest" : "no-manifest",
+        error: /not valid (?:JSON|YAML)/.test(e.message) ? "unreadable-manifest" : "no-manifest",
         message: e.message
       })
     );
@@ -46281,97 +46566,175 @@ async function cmdDistributionCi(parsed, stdout, stderr, ci) {
   });
   return 0;
 }
-async function cmdDoctor(parsed, cwd, stdout, term, ci) {
-  const u = (v) => untrusted(v, ci.env);
+async function cmdDoctor(parsed, cwd, stdout, stderr, term, ci, g) {
+  const bad = checkFlags(
+    parsed,
+    "doctor",
+    ["product", "base-url", "json"],
+    term
+  );
+  if (bad) {
+    stderr.write(bad);
+    return 2;
+  }
+  const json = flagBool(parsed, "json");
   const ctx = await resolveContext({
     cwd,
     env: ci.env,
     product: flagString(parsed, "product"),
     baseUrl: flagString(parsed, "base-url")
   });
-  if (flagBool(parsed, "json")) return doctorJson(ctx, cwd, stdout, ci);
-  const localCode = await validateText(cwd, cwd, stdout, term);
-  if (!ctx.product) {
-    stdout.write(
-      "\nRemote checks skipped. No product: pass --product, or run where .pkey/product is.\n"
-    );
-    return localCode;
+  const spinner = new Spinner(stderr, ci.env, g);
+  let model;
+  try {
+    model = await gatherDoctor({
+      ctx,
+      cwd,
+      fetchImpl: ci.fetchImpl,
+      timeoutMs: ci.doctorTimeoutMs,
+      onStage: (label) => json ? void 0 : spinner.stage(label)
+    });
+  } finally {
+    spinner.stop();
   }
-  const remote = await checkRemote({
-    baseUrl: ctx.baseUrl.url,
-    product: ctx.product.slug,
-    fetchImpl: ci.fetchImpl
+  const exit = doctorOk(model.facts) ? 0 : 1;
+  if (json) {
+    stdout.write(doctorJson(model, exit));
+    return exit;
+  }
+  writeDoctorText(model, cwd, stdout, term, ci.env);
+  return exit;
+}
+function doctorJson(model, exit) {
+  return `${untrustedJson({
+    v: 1,
+    command: "doctor",
+    event: "result",
+    ok: exit === 0,
+    exit,
+    product: model.product?.slug ?? null,
+    baseUrl: model.baseUrl,
+    facts: model.facts,
+    services: model.services,
+    signing: model.signing
+  }).replace(
+    /[\u007f-\uffff]/g,
+    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`
+  )}
+`;
+}
+var FACT_LABEL = {
+  manifest: "Manifest",
+  discovery: "Live product",
+  services: "Live features",
+  "signing-keys": "Signing key",
+  "in-sync": "Features differ"
+};
+function writeDoctorText(model, cwd, stdout, term, env) {
+  const { painter, symbols } = term;
+  const u = (v) => untrusted(v, env);
+  const origin = shortUrl(model.baseUrl);
+  const who = model.product ? model.product.name ? `${model.product.name} (${model.product.slug})` : model.product.slug : "no product";
+  const rows = [];
+  const fix = (text) => rows.push({
+    mark: " ",
+    spans: [
+      { text: `${term.caps.unicode ? "→" : "->"} ${text}`, style: ["muted"] }
+    ]
   });
-  if (remote.status !== void 0) {
-    stdout.write(
-      `
-Remote discovery: failed (${remote.status}) ${remote.url}
-Is the product registered, and is --base-url (or $PKEY_BASE_URL) the right origin?
-`
-    );
-    return 1;
-  }
-  stdout.write(`
-Remote discovery: ok ${remote.url}
-`);
-  const enabled = remote.services.map((slug) => u(slug));
+  const mark = (state) => painter.style(
+    state === "ok" ? symbols.ok : state === "warn" ? symbols.warn : symbols.fail,
+    [state === "ok" ? "success" : state === "warn" ? "warning" : "danger"]
+  );
   stdout.write(
-    `Services enabled: ${enabled.length ? enabled.join(", ") : "none"}
+    `${wrapSpans(
+      [
+        { text: u(who), style: ["strong"] },
+        { text: ` ${symbols.separator} ${u(origin)}`, style: ["muted"] }
+      ],
+      term.caps.columns
+    ).map((l) => painter.line(l)).join("\n")}
 `
   );
-  stdout.write(`Signing keys exposed: ${u(JSON.stringify(remote.signing))}
-`);
-  return localCode;
-}
-async function doctorJson(ctx, cwd, stdout, ci) {
-  let result = null;
-  let problem;
-  try {
-    result = validateLoadedManifest(await loadManifest(cwd));
-  } catch (e) {
-    problem = e.message;
-  }
-  const facts = [manifestFact(result, problem)];
-  let services = [];
-  let signing = null;
-  if (ctx.product) {
-    try {
-      const remote = await checkRemote({
-        baseUrl: ctx.baseUrl.url,
-        product: ctx.product.slug,
-        fetchImpl: ci.fetchImpl
+  for (const f of model.facts) {
+    if (f.id === "manifest" && model.loaded && model.result) {
+      rows.push(...validateRows(model.loaded, model.result, cwd, term));
+      if (f.fix) fix(f.fix);
+      continue;
+    }
+    const label = FACT_LABEL[f.id];
+    if (f.id === "signing-keys" && model.signing?.length) {
+      model.signing.forEach(
+        (k, i) => rows.push({
+          mark: i === 0 ? mark("ok") : " ",
+          spans: i === 0 ? [
+            { text: `${label}  ` },
+            { text: `${u(k.kid)}, ${u(k.status)}`, style: ["muted"] }
+          ] : [{ text: `${u(k.kid)}, ${u(k.status)}`, style: ["muted"] }]
+        })
+      );
+      continue;
+    }
+    if (f.id === "services" && f.state === "ok")
+      rows.push({
+        mark: mark("ok"),
+        spans: [
+          { text: `${label}  ` },
+          { text: model.services.map(u).join(", "), style: ["muted"] }
+        ]
       });
-      facts.push(...remote.facts);
-      services = remote.services;
-      signing = remote.signing;
-    } catch (e) {
-      facts.push({
-        id: "discovery",
-        state: "todo",
-        detail: e.message
+    else if (f.state === "ok")
+      rows.push({
+        mark: mark("ok"),
+        spans: [
+          { text: `${label}  ` },
+          { text: u(f.detail), style: ["muted"] }
+        ]
+      });
+    else {
+      const role2 = f.state === "warn" ? "warning" : "danger";
+      const word = f.state === "warn" ? "warning" : "error";
+      rows.push({
+        mark: mark(f.state),
+        spans: f.id === "manifest" ? [{ text: `${word} `, style: [role2] }, { text: u(f.detail) }] : [
+          { text: `${word} `, style: [role2] },
+          { text: `${label}: ${u(f.detail)}` }
+        ]
       });
     }
+    if (f.fix) fix(u(f.fix));
   }
-  const exit = doctorOk(facts) ? 0 : 1;
+  writeRows(rows, stdout, term);
+  const { todo: todo2, warnings } = doctorCounts(model);
+  const secs = `${(model.ms / 1e3).toFixed(1)} s`;
+  const role = todo2 ? "danger" : warnings ? "warning" : "success";
   stdout.write(
-    `${untrustedJson({
-      v: 1,
-      command: "doctor",
-      event: "result",
-      ok: exit === 0,
-      exit,
-      product: ctx.product?.slug ?? null,
-      baseUrl: ctx.baseUrl.url,
-      facts,
-      services,
-      signing
-    }).replace(
-      /[\u007f-\uffff]/g,
-      (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`
-    )}
+    `
+${painter.line([
+      {
+        text: `${todo2} to do ${symbols.separator} ${warnings} warning${warnings === 1 ? "" : "s"} ${symbols.separator} ${secs}`,
+        style: [role]
+      }
+    ])}
 `
   );
-  return exit;
+}
+function checkFlags(parsed, command, known, term) {
+  const unknown = Object.keys(parsed.flags).find((k) => !known.includes(k));
+  if (unknown !== void 0) {
+    const near = nearest(unknown, known);
+    return failLine(
+      `Unknown option --${unknown}.${near ? ` Did you mean --${near}?` : ` Run pkey help ${command} to see the options.`}`,
+      term
+    );
+  }
+  const valueless = new Set(
+    findCommand(command)?.valueless ?? []
+  );
+  const missing = known.find((k) => parsed.bare.has(k) && !valueless.has(k));
+  if (missing !== void 0)
+    return failLine(`Option --${missing} needs a value.`, term);
+  return null;
 }
 async function cmdBundle(parsed, cwd, stdout, env) {
   const product = flagString(parsed, "product");

@@ -1,17 +1,18 @@
 import * as React from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Code } from "lucide-react";
 import { SUPPORTED_FORMATS, userSettingIssues } from "@polaris-key/catalog";
 import type {
   ConfigEntry,
   ConfigKind,
   ManagementState,
 } from "../../../../api.js";
+import { cn } from "../../../../lib/cn.js";
 import { IN_APP_LABELS } from "../../../../lib/labels.js";
 import { MintRecipeFields } from "./MintRecipeFields.js";
 import {
   ENTRY_TYPE_LABELS,
   TYPE_LABELS,
-  TYPE_HELP,
+  TYPE_CARD_HELP,
   codeOnlyText,
   entryType,
   inAppHelp,
@@ -28,6 +29,7 @@ import { Checkbox } from "../../../../ui/Checkbox.js";
 import { formatJson } from "../../../../ui/CodeEditor.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
+import { RadioCards } from "../../../../ui/RadioCards.js";
 import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
 import { Select } from "../../../../ui/Select.js";
 import { Textarea } from "../../../../ui/Textarea.js";
@@ -43,7 +45,9 @@ import {
 
 export { conflictOptionsFor };
 import { retiredNotes } from "../model/entryNotes.js";
-import { RemovedValues, type Removal } from "./RemovedValues.js";
+import { AllowedValuesField } from "./AllowedValuesField.js";
+import type { KeyHolders, Removal } from "./RemovedValues.js";
+import { TypeGlyph } from "./EditorParts.js";
 
 type Json = Record<string, unknown>;
 
@@ -140,6 +144,8 @@ export function CatalogEntryForm({
   flagKeys = [],
   baseEntry,
   removal,
+  holders,
+  productName,
   onChange,
 }: {
   entry: ConfigEntry;
@@ -159,6 +165,10 @@ export function CatalogEntryForm({
   baseEntry?: ConfigEntry;
   /** The removed allowed values and who still holds one. */
   removal?: Removal;
+  /** Who sets this key and to what, for the tags on the allowed values. */
+  holders?: KeyHolders;
+  /** The product's name, for "Shown under the setting in …". */
+  productName?: string;
   onChange: (next: ConfigEntry) => void;
 }): React.ReactElement {
   const schema = (entry.schema ?? {}) as Json;
@@ -178,7 +188,6 @@ export function CatalogEntryForm({
   };
   const listId = React.useId();
   const removalNote = React.useId();
-  const [enumRaw, setEnumRaw] = React.useState<string | null>(null);
 
   const [advanced, setAdvanced] = React.useState(false);
   const [schemaText, setSchemaText] = React.useState(() =>
@@ -196,7 +205,6 @@ export function CatalogEntryForm({
     setSchemaTextError(null);
   }, [schema]);
 
-  const enumValues = Array.isArray(schema.enum) ? schema.enum : null;
   const secret = entry.kind === "secret";
   const minted = entryType(entry) === "minted";
   const codeOnly = secret;
@@ -217,23 +225,8 @@ export function CatalogEntryForm({
     () => hasRules || schemaProblem !== undefined,
   );
   React.useEffect(() => {
-    if (schemaProblem || removal) setValidationOpen(true);
-  }, [schemaProblem, removal]);
-  // Undo: the value goes back where the published list had it.
-  const restoreValue = (v: unknown): void => {
-    const was = ((baseEntry?.schema as Json | undefined)?.enum ??
-      []) as unknown[];
-    const now = enumValues ?? [];
-    const keep = (x: unknown): boolean =>
-      JSON.stringify(x) === JSON.stringify(v) ||
-      now.some((n) => JSON.stringify(n) === JSON.stringify(x));
-    setSchemaField("enum", [
-      ...was.filter(keep),
-      ...now.filter(
-        (n) => !was.some((w) => JSON.stringify(w) === JSON.stringify(n)),
-      ),
-    ]);
-  };
+    if (schemaProblem) setValidationOpen(true);
+  }, [schemaProblem]);
   const userIssue = issue("user");
   const [userOpen, setUserOpen] = React.useState(
     () => entry.user !== undefined || userIssue !== undefined,
@@ -266,135 +259,167 @@ export function CatalogEntryForm({
     onChange({ ...entry, schema: nextSchema, default: guess.value });
   };
 
+  const pickType = (picked: EntryType): void => {
+    const kind: ConfigKind =
+      picked === "setting" ? "config" : picked === "flag" ? "flag" : "secret";
+    // A minted token is a secret delivered as edgeMint; the other types carry no delivery of
+    // their own (a secret then means clientScoped). Fields the new type does not use stay on the
+    // entry, so picking the earlier type puts them back; the publish drops them
+    // (`applicableEntry`).
+    onChange(
+      withField(
+        { ...entry, kind },
+        "delivery",
+        picked === "minted" ? "edgeMint" : undefined,
+      ),
+    );
+  };
+  const toggleAdvanced = (on: boolean): void => {
+    setAdvanced(on);
+    if (on) setValidationOpen(true);
+    const pretty = formatJson(JSON.stringify(schema));
+    setSchemaText((pretty ?? "{}").trimEnd());
+    setSchemaTextError(null);
+  };
+
   return (
     <div className="space-y-6">
+      {fresh ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField
+            name="key"
+            label="Key"
+            required
+            value={entry.key}
+            error={issue("key")}
+          >
+            {(f) => (
+              <Input
+                {...f}
+                mono
+                value={entry.key}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(e) => changeKey(e.target.value)}
+              />
+            )}
+          </FormField>
+        </div>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField
-          name="key"
-          label="Key"
+          name="label"
+          label="Label"
           required
-          value={entry.key}
-          error={issue("key")}
+          value={entry.label}
+          error={issue("label")}
         >
           {(f) => (
             <Input
               {...f}
-              mono
-              value={entry.key}
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(e) => changeKey(e.target.value)}
+              value={entry.label}
+              placeholder={labelFromKey(entry.key) || undefined}
+              onChange={(e) => onChange({ ...entry, label: e.target.value })}
             />
           )}
         </FormField>
         <FormField
-          name="kind"
-          label="Type"
-          group
-          help={TYPE_HELP[entryType(entry)]}
-          value={entry.kind}
-          error={issue("kind")}
+          name="category"
+          label="Category"
+          value={entry.category}
+          error={issue("category")}
         >
           {(f) => (
-            <SegmentedControl<EntryType>
-              wrap
-              className="w-fit self-start"
-              aria-labelledby={f["aria-labelledby"]}
-              value={entryType(entry)}
-              onChange={(picked) => {
-                const kind: ConfigKind =
-                  picked === "setting"
-                    ? "config"
-                    : picked === "flag"
-                      ? "flag"
-                      : "secret";
-                // A minted token is a secret delivered as edgeMint; the other types carry no
-                // delivery of their own (a secret then means clientScoped). Fields the new type
-                // does not use stay on the entry, so picking the earlier type puts them back;
-                // the publish drops them (`applicableEntry`).
-                const next: ConfigEntry = withField(
-                  { ...entry, kind },
-                  "delivery",
-                  picked === "minted" ? "edgeMint" : undefined,
-                );
-                onChange(next);
-              }}
-              options={(
-                [
-                  "setting",
-                  "secret",
-                  "minted",
-                  ...(entry.kind === "flag" ? (["flag"] as const) : []),
-                ] as const
-              ).map((k) => ({
-                value: k,
-                label: ENTRY_TYPE_LABELS[k],
-              }))}
-            />
+            <>
+              <Input
+                {...f}
+                list={listId}
+                value={entry.category}
+                onChange={(e) =>
+                  onChange({ ...entry, category: e.target.value })
+                }
+              />
+              <datalist id={listId}>
+                {categories.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </>
           )}
         </FormField>
       </div>
+      <FormField
+        name="description"
+        label="Description"
+        value={entry.description}
+        help={
+          productName
+            ? `Shown under the setting in ${productName}'s settings`
+            : undefined
+        }
+      >
+        {(f) => (
+          <Textarea
+            {...f}
+            rows={2}
+            value={entry.description ?? ""}
+            onChange={(e) =>
+              onChange({ ...entry, description: e.target.value })
+            }
+          />
+        )}
+      </FormField>
+
+      <FormField
+        name="kind"
+        label="Type"
+        group
+        value={entry.kind}
+        error={issue("kind")}
+      >
+        {(f) => (
+          <RadioCards<EntryType>
+            columns={entry.kind === "flag" ? 4 : 3}
+            indicator="check"
+            aria-labelledby={f["aria-labelledby"]}
+            value={entryType(entry)}
+            onChange={pickType}
+            options={(
+              [
+                "setting",
+                "secret",
+                "minted",
+                ...(entry.kind === "flag" ? (["flag"] as const) : []),
+              ] as const
+            ).map((k) => ({
+              value: k,
+              label: ENTRY_TYPE_LABELS[k],
+              icon: (
+                <span aria-hidden>
+                  <TypeGlyph type={k} />
+                </span>
+              ),
+              description: TYPE_CARD_HELP[k],
+            }))}
+          />
+        )}
+      </FormField>
       {entry.kind === "config" ? (
-        <FormField
-          name="managementDefault"
-          label="In the app"
-          group
-          help={inAppHelp(
-            entry.managementDefault ?? "default",
-            syncEnabled && entry.user?.sync !== "local",
-          )}
-          value={entry.managementDefault ?? "default"}
-        >
-          {(f) => (
-            <SegmentedControl<ManagementState>
-              className="w-fit self-start"
-              aria-labelledby={f["aria-labelledby"]}
-              value={entry.managementDefault ?? "default"}
-              onChange={(v) =>
-                set("managementDefault", v === "default" ? undefined : v)
-              }
-              options={MANAGEMENT_STATES.map((s) => ({
-                value: s.value,
-                label: IN_APP_LABELS[s.value] ?? s.label,
-              }))}
-            />
-          )}
-        </FormField>
-      ) : codeOnly ? (
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-fg-strong">In the app</p>
-          <p className="text-sm text-fg-muted">
-            {codeOnlyText(entryType(entry), entry.key)}
-          </p>
-        </div>
-      ) : null}
-      {minted && slug ? (
-        <MintRecipeFields
+        <AllowedValuesField
           entry={entry}
-          flagKeys={flagKeys}
-          slug={slug}
-          error={issue("mint")}
-          onChange={onChange}
+          type={type}
+          advanced={advanced}
+          baseEntry={baseEntry}
+          removal={removal}
+          holders={holders}
+          slug={slug ?? ""}
+          describedBy={removalNote}
+          onEnum={(next) => setSchemaField("enum", next)}
+          onEditJson={() => toggleAdvanced(true)}
         />
       ) : null}
-      {retiredNotes(entry).map((note) => (
-        <p
-          key={note}
-          role="status"
-          className="flex items-start gap-2 text-sm text-warning"
-        >
-          <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
-          <span>{note}</span>
-        </p>
-      ))}
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        {minted ? (
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-fg-strong">Value type</p>
-            <p className="text-sm text-fg-muted">Text, a signed token</p>
-          </div>
-        ) : (
+      <div className={cn("grid gap-4 sm:grid-cols-2", minted && "hidden")}>
+        {minted ? null : (
           <FormField
             name="type"
             label="Value type"
@@ -473,63 +498,63 @@ export function CatalogEntryForm({
             ) : null}
           </div>
         )}
+      </div>
+      {entry.kind === "config" ? (
         <FormField
-          name="label"
-          label="Label"
-          required
-          value={entry.label}
-          error={issue("label")}
+          name="managementDefault"
+          label="In the app"
+          group
+          help={inAppHelp(
+            entry.managementDefault ?? "default",
+            syncEnabled && entry.user?.sync !== "local",
+          )}
+          value={entry.managementDefault ?? "default"}
         >
           {(f) => (
-            <Input
-              {...f}
-              value={entry.label}
-              placeholder={labelFromKey(entry.key) || undefined}
-              onChange={(e) => onChange({ ...entry, label: e.target.value })}
+            <SegmentedControl<ManagementState>
+              className="w-fit self-start"
+              aria-labelledby={f["aria-labelledby"]}
+              value={entry.managementDefault ?? "default"}
+              onChange={(v) =>
+                set("managementDefault", v === "default" ? undefined : v)
+              }
+              options={MANAGEMENT_STATES.map((s) => ({
+                value: s.value,
+                label: IN_APP_LABELS[s.value] ?? s.label,
+              }))}
             />
           )}
         </FormField>
-        <FormField
-          name="category"
-          label="Category"
-          value={entry.category}
-          error={issue("category")}
+      ) : codeOnly ? (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-fg-strong">In the app</p>
+          <p className="flex items-center gap-2 rounded-lg border border-dashed border-border-strong px-3 py-2 text-sm text-fg-muted">
+            <Code aria-hidden className="size-4 shrink-0" />
+            <span>
+              {codeOnlyText(entryType(entry), entry.key, productName)}
+            </span>
+          </p>
+        </div>
+      ) : null}
+      {minted && slug ? (
+        <MintRecipeFields
+          entry={entry}
+          flagKeys={flagKeys}
+          slug={slug}
+          error={issue("mint")}
+          onChange={onChange}
+        />
+      ) : null}
+      {retiredNotes(entry).map((note) => (
+        <p
+          key={note}
+          role="status"
+          className="flex items-start gap-2 text-sm text-warning"
         >
-          {(f) => (
-            <>
-              <Input
-                {...f}
-                list={listId}
-                value={entry.category}
-                onChange={(e) =>
-                  onChange({ ...entry, category: e.target.value })
-                }
-              />
-              <datalist id={listId}>
-                {categories.map((c) => (
-                  <option key={c} value={c} />
-                ))}
-              </datalist>
-            </>
-          )}
-        </FormField>
-      </div>
-      <FormField
-        name="description"
-        label="Description"
-        value={entry.description}
-      >
-        {(f) => (
-          <Textarea
-            {...f}
-            rows={2}
-            value={entry.description ?? ""}
-            onChange={(e) =>
-              onChange({ ...entry, description: e.target.value })
-            }
-          />
-        )}
-      </FormField>
+          <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>{note}</span>
+        </p>
+      ))}
 
       {entry.kind === "flag" ? (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -625,49 +650,6 @@ export function CatalogEntryForm({
                     )}
                   </FormField>
                 ) : null}
-                <FormField
-                  name="enum"
-                  label="Allowed values"
-                  help="Comma-separated. Leave empty to allow any value."
-                  value={enumValues}
-                >
-                  {(f) => (
-                    <Input
-                      {...f}
-                      value={
-                        enumRaw ??
-                        (enumValues ? enumValues.map(String).join(", ") : "")
-                      }
-                      onBlur={() => setEnumRaw(null)}
-                      onChange={(e) => {
-                        // Keep what is typed (a trailing comma) until the box loses focus.
-                        setEnumRaw(e.target.value);
-                        const parts = e.target.value
-                          .split(",")
-                          .map((p) => p.trim())
-                          .filter((p) => p !== "");
-                        setSchemaField(
-                          "enum",
-                          type === "string"
-                            ? parts
-                            : parts
-                                .map(Number)
-                                .filter((n) => Number.isFinite(n)),
-                        );
-                      }}
-                    />
-                  )}
-                </FormField>
-                {removal ? (
-                  <div className="sm:col-span-2">
-                    <RemovedValues
-                      slug={slug ?? ""}
-                      removal={removal}
-                      describedBy={removalNote}
-                      onUndo={restoreValue}
-                    />
-                  </div>
-                ) : null}
                 {type === "integer" || type === "number" ? (
                   <>
                     <NumberKeyword
@@ -730,12 +712,7 @@ export function CatalogEntryForm({
             <Checkbox
               label="Edit the schema as JSON"
               checked={advanced}
-              onCheckedChange={(on) => {
-                setAdvanced(on);
-                const pretty = formatJson(JSON.stringify(schema));
-                setSchemaText((pretty ?? "{}").trimEnd());
-                setSchemaTextError(null);
-              }}
+              onCheckedChange={toggleAdvanced}
             />
           </Group>
         )}

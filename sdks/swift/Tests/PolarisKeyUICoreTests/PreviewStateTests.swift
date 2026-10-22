@@ -14,6 +14,48 @@ final class PreviewStateTests: XCTestCase {
         }
     }
 
+    /// Boot's stop states each name the state and give the next step (UI-KITS §4.1 Boot).
+    func testBootStopsCarryTheirTitleSentenceAndNextStep() {
+        func keys(_ id: String) -> [String] {
+            PolarisKeyPreviewState.all.first { $0.id == id }?.screen.copy.map(\.key) ?? []
+        }
+        XCTAssertEqual(
+            keys("Boot.consent"),
+            ["boot.consent.title", "boot.consent.bodyMetered", "boot.consent.download", "common.notNow"])
+        XCTAssertEqual(
+            keys("Boot.offline"),
+            ["boot.offline.title", "boot.offline.playable", "boot.continueOffline", "common.tryAgain"])
+        XCTAssertEqual(
+            keys("Boot.blocked"),
+            [
+                "core.gate.version-too-old.title", "core.gate.version-too-old.message",
+                "status.update",
+            ])
+        XCTAssertEqual(
+            keys("Boot.declined"),
+            ["boot.declined.title", "boot.declined.body", "common.tryAgain"])
+        XCTAssertEqual(
+            keys("Boot.error"), ["gate.error.title", "boot.error.body", "common.tryAgain"])
+    }
+
+    func testBootOfflineWithoutPlayOffersOnlyTryAgain() {
+        var inputs = KitInputs()
+        inputs.stage = KitStage(
+            stage: "offline", outcome: "offline", emit: KitStageEmit(type: "offline"))
+        let screen = KitStates.boot(inputs)
+        XCTAssertEqual(screen.state, .offline)
+        XCTAssertFalse(screen.shows("boot.continueOffline"))
+        XCTAssertEqual(screen.copy.map(\.key).last, "common.tryAgain")
+    }
+
+    func testBootConsentNotMeteredUsesThePlainSentence() {
+        var inputs = KitInputs()
+        inputs.stage = KitStage(
+            stage: "fetch", outcome: "waiting",
+            emit: KitStageEmit(type: "consent_needed", bytes: 1_048_576, metered: false))
+        XCTAssertTrue(KitStates.boot(inputs).shows("boot.consent.body"))
+    }
+
     func testPreviewIdsAreUnique() {
         let ids = PolarisKeyPreviewState.all.map(\.id)
         XCTAssertEqual(Set(ids).count, ids.count)
