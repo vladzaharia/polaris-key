@@ -770,8 +770,8 @@ export async function putOutletCredential(
     await db.run(
       `INSERT INTO outlet_credentials
          (product, credential_id, kind, outlet_id, enc_value_json, meta_json, status,
-          created_at, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
+          created_at, created_by, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`,
       input.product,
       input.credentialId,
       input.kind,
@@ -780,6 +780,7 @@ export async function putOutletCredential(
       meta,
       input.now,
       input.actor,
+      input.expiresAt,
     );
   }
   return { ok: true, id: input.credentialId, created: !existing, pinChange };
