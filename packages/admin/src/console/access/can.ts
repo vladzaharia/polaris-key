@@ -82,6 +82,7 @@ const PRODUCT_PAGE_AREAS: Record<ProductPageId, AreaId> = {
   feed: "ship",
   "app-sign-in": "signin",
   "sync-setup": "sync",
+  "sync-usage": "sync",
   "sync-data": "sync",
 };
 

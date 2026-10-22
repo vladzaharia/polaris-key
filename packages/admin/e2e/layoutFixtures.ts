@@ -24,6 +24,61 @@ const NOW = Math.floor(Date.now() / 1000);
 const DAY = 86_400;
 const P = "/manage/api/products/djdl";
 
+const MIB = 1024 ** 2;
+const GIB = 1024 ** 3;
+const SYNC_USAGE = {
+  enabled: true,
+  usage: {
+    bytes: 18.4 * GIB,
+    people: 4812,
+    settingsBytes: 0.2 * GIB,
+    recordBytes: 3.1 * GIB,
+    fileBytes: 8.5 * GIB,
+    revisionBytes: 6.6 * GIB,
+    computedAt: NOW - 240,
+    breakdown: {
+      byTier: [
+        {
+          tierId: "free",
+          people: 3120,
+          bytes: 9.5 * GIB,
+          medianBytes: 2.6 * MIB,
+          over80: 41,
+        },
+        {
+          tierId: "standard",
+          people: 1402,
+          bytes: 5.5 * GIB,
+          medianBytes: 3.4 * MIB,
+          over80: 3,
+        },
+        {
+          tierId: "deluxe",
+          people: 290,
+          bytes: 3.4 * GIB,
+          medianBytes: 9.8 * MIB,
+          over80: 0,
+        },
+        { tierId: null, people: 0, bytes: 0, medianBytes: 0, over80: 0 },
+      ],
+      byKind: { settings: 0, records: 0, files: 0, revisions: 0 },
+      byPlatform: [
+        { platform: "ios", peopleThisWeek: 2214, lastSyncAt: NOW - 60 },
+        { platform: "android", peopleThisWeek: 1689, lastSyncAt: NOW - 60 },
+        { platform: "windows", peopleThisWeek: 931, lastSyncAt: NOW - 240 },
+        { platform: null, peopleThisWeek: 12, lastSyncAt: NOW - 3 * 3600 },
+      ],
+    },
+  },
+  today: { day: "2026-10-22", syncs: 61240, conflicts: 37 },
+  tiers: [
+    { id: "free", label: "Free", bytes: null },
+    { id: "standard", label: "Standard", bytes: 512 * MIB },
+    { id: "deluxe", label: "Deluxe", bytes: 2 * GIB },
+  ],
+  defaultBytes: 256 * MIB,
+};
+
 export const LONG_NAME =
   "Northwind Broadcast Audio Workstation — Enterprise Edition for Studios";
 export const LONG_SLUG = "northwind-broadcast-audio-workstation";
@@ -183,6 +238,9 @@ const ROUTES: Record<string, unknown> = {
     })),
   },
   [`${P}/config/catalog/usage`]: { keys: {} },
+  // U-05.20: Cloud Sync → Usage. Four tiers (one on the default, one with nobody), a no-license
+  // row, a platform nobody has synced from, and a tier with people over 80 % of its limit.
+  [`${P}/sync/usage`]: SYNC_USAGE,
   [`${P}/config/mint`]: {
     registration: "requires-license",
     anonymousEnroll: false,
@@ -282,6 +340,13 @@ export function resolve(pathname: string): unknown {
   if (pathname.startsWith(`${empty}/`)) {
     const src = ROUTES[`${P}${pathname.slice(empty.length)}`];
     if (pathname === `${empty}/services`) return src;
+    // Nobody has synced: the aggregate is all zero (`emptied` leaves a number alone).
+    if (pathname === `${empty}/sync/usage`)
+      return {
+        ...SYNC_USAGE,
+        usage: { ...SYNC_USAGE.usage, bytes: 0, people: 0, computedAt: 0 },
+        today: { day: SYNC_USAGE.today.day, syncs: 0, conflicts: 0 },
+      };
     return src === undefined ? undefined : emptied(src);
   }
   for (const p of PRODUCTS) {
