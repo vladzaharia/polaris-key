@@ -3133,10 +3133,10 @@ msgstr "Inicia sesión aquí para ver {product} en tu biblioteca."
 msgid "signin.signout.title"
 msgstr "¿Cerrar sesión en {product} en este dispositivo?"
 
-#. {product} stops using your {tier} license here and frees its seat.
+#. {product} stops using your {tier} license on this device and frees room for another device.
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
 msgid "signin.signout.released"
-msgstr "{product} dejará de usar aquí tu licencia {tier} y liberará su plaza."
+msgstr "{product} dejará de usar aquí tu licencia {tier} y liberará espacio para otro dispositivo."
 
 #. {n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number.
@@ -3197,10 +3197,10 @@ msgstr "Cambiar imagen"
 msgid "signin.mail.replaced.subject"
 msgstr "Se cerró la sesión de {product} en {device}"
 
-#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.
+#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform.
 msgid "signin.mail.replaced.body"
-msgstr "{newDevice} reemplazó a {device} cuando iniciaste sesión en {product} el {date}. {device} podrá volver a iniciar sesión más tarde si hay una plaza libre. Si no fuiste tú, abre Polaris Locker y revisa tus dispositivos."
+msgstr "{newDevice} reemplazó a {device} cuando iniciaste sesión en {product} el {date}. {device} podrá volver a iniciar sesión más tarde si hay espacio para otro dispositivo. Si no fuiste tú, abre Polaris Locker y revisa tus dispositivos."
 
 #. A new device signed in to your Polaris Locker account
 #. Security email (SIGN-IN.md §3.15).
