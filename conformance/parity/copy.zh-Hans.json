@@ -245,6 +245,10 @@
       "title": "未同步",
       "message": "此设置不会同步到你的账户。"
     },
+    "collection_unknown": {
+      "title": "未知的集合",
+      "message": "此集合不可用。"
+    },
     "quota_exceeded": {
       "title": "存储空间已满",
       "message": "你的同步存储空间已满。请释放一些空间后再试。"

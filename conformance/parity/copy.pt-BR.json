@@ -245,6 +245,10 @@
       "title": "Não sincronizada",
       "message": "Esta configuração não é sincronizada com sua conta."
     },
+    "collection_unknown": {
+      "title": "Coleção desconhecida",
+      "message": "Esta coleção não está disponível."
+    },
     "quota_exceeded": {
       "title": "Armazenamento cheio",
       "message": "Seu armazenamento sincronizado está cheio. Libere espaço e tente de novo."

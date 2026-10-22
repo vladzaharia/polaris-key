@@ -941,6 +941,8 @@
   "core.codes.op_invalid_for_policy.message": "Cette modification n'est pas autorisée pour ce réglage.",
   "core.codes.setting_not_synced.title": "Non synchronisé",
   "core.codes.setting_not_synced.message": "Ce réglage n'est pas synchronisé avec votre compte.",
+  "core.codes.collection_unknown.title": "Collection inconnue",
+  "core.codes.collection_unknown.message": "Cette collection n'est pas disponible.",
   "core.codes.quota_exceeded.title": "Stockage plein",
   "core.codes.quota_exceeded.message": "Votre stockage synchronisé est plein. Libérez de l'espace, puis réessayez.",
   "core.codes.writes_paused.title": "Synchronisation en pause",

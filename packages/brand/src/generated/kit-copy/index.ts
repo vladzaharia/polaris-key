@@ -955,6 +955,8 @@ export type KitCopyKey =
   | "core.codes.op_invalid_for_policy.message"
   | "core.codes.setting_not_synced.title"
   | "core.codes.setting_not_synced.message"
+  | "core.codes.collection_unknown.title"
+  | "core.codes.collection_unknown.message"
   | "core.codes.quota_exceeded.title"
   | "core.codes.quota_exceeded.message"
   | "core.codes.writes_paused.title"

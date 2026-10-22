@@ -245,6 +245,10 @@
       "title": "No sincronizado",
       "message": "Este ajuste no se sincroniza con tu cuenta."
     },
+    "collection_unknown": {
+      "title": "Colección desconocida",
+      "message": "Esta colección no está disponible."
+    },
     "quota_exceeded": {
       "title": "Almacenamiento lleno",
       "message": "Tu almacenamiento sincronizado está lleno. Libera espacio e inténtalo de nuevo."

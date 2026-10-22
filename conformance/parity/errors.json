@@ -358,6 +358,12 @@
       "description": "A per-mutation result, not an HTTP status: the key is a declared non-`config` or `local` setting, or the wrong scope for it (WIRE-CONTRACT-V4 §13.1, §13.3, §13.9; U-05). Replaces the retired `setting_unknown`."
     },
     {
+      "code": "collection_unknown",
+      "kind": "wire",
+      "service": "sync",
+      "description": "A per-mutation result, not an HTTP status: the record target names a collection the catalog does not declare (WIRE-CONTRACT-V4 §13.2, §13.3, §13.9; U-09). Emitted by the push engine for any record target until U-09 adds collections."
+    },
+    {
       "code": "quota_exceeded",
       "kind": "wire",
       "service": "sync",

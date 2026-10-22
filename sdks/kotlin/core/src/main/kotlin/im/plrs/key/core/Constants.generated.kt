@@ -72,6 +72,7 @@ public object ErrorCode {
     public const val valueInvalid: String = "value_invalid"
     public const val opInvalidForPolicy: String = "op_invalid_for_policy"
     public const val settingNotSynced: String = "setting_not_synced"
+    public const val collectionUnknown: String = "collection_unknown"
     public const val quotaExceeded: String = "quota_exceeded"
     public const val writesPaused: String = "writes_paused"
     public const val emailMismatch: String = "email_mismatch"
@@ -258,6 +259,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "value_invalid",
     "op_invalid_for_policy",
     "setting_not_synced",
+    "collection_unknown",
     "quota_exceeded",
     "writes_paused",
     "email_mismatch",
@@ -444,6 +446,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "value_invalid" to "wire",
     "op_invalid_for_policy" to "wire",
     "setting_not_synced" to "wire",
+    "collection_unknown" to "wire",
     "quota_exceeded" to "wire",
     "writes_paused" to "wire",
     "email_mismatch" to "wire",

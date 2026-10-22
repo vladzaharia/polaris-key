@@ -1148,6 +1148,8 @@ export const KIT_COPY: Readonly<
     "core.codes.setting_not_synced.title": "Not synced",
     "core.codes.setting_not_synced.message":
       "This setting isn't synced to your account.",
+    "core.codes.collection_unknown.title": "Unknown collection",
+    "core.codes.collection_unknown.message": "This collection isn't available.",
     "core.codes.quota_exceeded.title": "Storage full",
     "core.codes.quota_exceeded.message":
       "Your synced storage is full. Free some space, then try again.",
@@ -2786,6 +2788,9 @@ export const KIT_COPY: Readonly<
     "core.codes.setting_not_synced.title": "Nicht synchronisiert",
     "core.codes.setting_not_synced.message":
       "Diese Einstellung wird nicht mit Ihrem Konto synchronisiert.",
+    "core.codes.collection_unknown.title": "Unbekannte Sammlung",
+    "core.codes.collection_unknown.message":
+      "Diese Sammlung ist nicht verfügbar.",
     "core.codes.quota_exceeded.title": "Speicher voll",
     "core.codes.quota_exceeded.message":
       "Ihr synchronisierter Speicher ist voll. Geben Sie Platz frei und versuchen Sie es erneut.",
@@ -4423,6 +4428,9 @@ export const KIT_COPY: Readonly<
     "core.codes.setting_not_synced.title": "Non synchronisé",
     "core.codes.setting_not_synced.message":
       "Ce réglage n'est pas synchronisé avec votre compte.",
+    "core.codes.collection_unknown.title": "Collection inconnue",
+    "core.codes.collection_unknown.message":
+      "Cette collection n'est pas disponible.",
     "core.codes.quota_exceeded.title": "Stockage plein",
     "core.codes.quota_exceeded.message":
       "Votre stockage synchronisé est plein. Libérez de l'espace, puis réessayez.",
@@ -6053,6 +6061,9 @@ export const KIT_COPY: Readonly<
     "core.codes.setting_not_synced.title": "No sincronizado",
     "core.codes.setting_not_synced.message":
       "Este ajuste no se sincroniza con tu cuenta.",
+    "core.codes.collection_unknown.title": "Colección desconocida",
+    "core.codes.collection_unknown.message":
+      "Esta colección no está disponible.",
     "core.codes.quota_exceeded.title": "Almacenamiento lleno",
     "core.codes.quota_exceeded.message":
       "Tu almacenamiento sincronizado está lleno. Libera espacio e inténtalo de nuevo.",
@@ -7659,6 +7670,9 @@ export const KIT_COPY: Readonly<
     "core.codes.setting_not_synced.title": "Não sincronizada",
     "core.codes.setting_not_synced.message":
       "Esta configuração não é sincronizada com sua conta.",
+    "core.codes.collection_unknown.title": "Coleção desconhecida",
+    "core.codes.collection_unknown.message":
+      "Esta coleção não está disponível.",
     "core.codes.quota_exceeded.title": "Armazenamento cheio",
     "core.codes.quota_exceeded.message":
       "Seu armazenamento sincronizado está cheio. Libere espaço e tente de novo.",
@@ -9263,6 +9277,9 @@ export const KIT_COPY: Readonly<
     "core.codes.setting_not_synced.title": "Non sincronizzata",
     "core.codes.setting_not_synced.message":
       "Questa impostazione non viene sincronizzata con il tuo account.",
+    "core.codes.collection_unknown.title": "Raccolta sconosciuta",
+    "core.codes.collection_unknown.message":
+      "Questa raccolta non è disponibile.",
     "core.codes.quota_exceeded.title": "Spazio pieno",
     "core.codes.quota_exceeded.message":
       "Lo spazio sincronizzato è pieno. Libera spazio e riprova.",
@@ -10882,6 +10899,9 @@ export const KIT_COPY: Readonly<
     "core.codes.setting_not_synced.title": "同期されません",
     "core.codes.setting_not_synced.message":
       "この設定はアカウントと同期されません。",
+    "core.codes.collection_unknown.title": "不明なコレクション",
+    "core.codes.collection_unknown.message":
+      "このコレクションは利用できません。",
     "core.codes.quota_exceeded.title": "容量がいっぱいです",
     "core.codes.quota_exceeded.message":
       "同期用の容量がいっぱいです。空きを作ってから、もう一度お試しください。",
@@ -12451,6 +12471,8 @@ export const KIT_COPY: Readonly<
     "core.codes.setting_not_synced.title": "동기화되지 않음",
     "core.codes.setting_not_synced.message":
       "이 설정은 계정과 동기화되지 않습니다.",
+    "core.codes.collection_unknown.title": "알 수 없는 컬렉션",
+    "core.codes.collection_unknown.message": "이 컬렉션은 사용할 수 없습니다.",
     "core.codes.quota_exceeded.title": "저장 공간이 가득 찼습니다",
     "core.codes.quota_exceeded.message":
       "동기화 저장 공간이 가득 찼습니다. 공간을 확보한 뒤 다시 시도하세요.",
@@ -13926,6 +13948,8 @@ export const KIT_COPY: Readonly<
     "core.codes.op_invalid_for_policy.message": "此设置不允许该更改。",
     "core.codes.setting_not_synced.title": "未同步",
     "core.codes.setting_not_synced.message": "此设置不会同步到你的账户。",
+    "core.codes.collection_unknown.title": "未知的集合",
+    "core.codes.collection_unknown.message": "此集合不可用。",
     "core.codes.quota_exceeded.title": "存储空间已满",
     "core.codes.quota_exceeded.message":
       "你的同步存储空间已满。请释放一些空间后再试。",

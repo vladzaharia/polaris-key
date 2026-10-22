@@ -293,6 +293,10 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Not synced",
     message: "This setting isn't synced to your account.",
   },
+  collection_unknown: {
+    title: "Unknown collection",
+    message: "This collection isn't available.",
+  },
   quota_exceeded: {
     title: "Storage full",
     message: "Your synced storage is full. Free some space, then try again.",

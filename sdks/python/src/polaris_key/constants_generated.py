@@ -238,6 +238,7 @@ class ErrorCode:
     VALUE_INVALID: Final = "value_invalid"
     OP_INVALID_FOR_POLICY: Final = "op_invalid_for_policy"
     SETTING_NOT_SYNCED: Final = "setting_not_synced"
+    COLLECTION_UNKNOWN: Final = "collection_unknown"
     QUOTA_EXCEEDED: Final = "quota_exceeded"
     WRITES_PAUSED: Final = "writes_paused"
     EMAIL_MISMATCH: Final = "email_mismatch"
@@ -424,6 +425,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "value_invalid",
     "op_invalid_for_policy",
     "setting_not_synced",
+    "collection_unknown",
     "quota_exceeded",
     "writes_paused",
     "email_mismatch",
@@ -612,6 +614,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "value_invalid": "wire",
         "op_invalid_for_policy": "wire",
         "setting_not_synced": "wire",
+        "collection_unknown": "wire",
         "quota_exceeded": "wire",
         "writes_paused": "wire",
         "email_mismatch": "wire",

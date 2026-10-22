@@ -77,6 +77,7 @@ const COPY_CODES := {
 	"value_invalid": {"title": "Setting not saved", "message": "That value isn't valid for this setting."},
 	"op_invalid_for_policy": {"title": "Change not allowed", "message": "That change isn't allowed for this setting."},
 	"setting_not_synced": {"title": "Not synced", "message": "This setting isn't synced to your account."},
+	"collection_unknown": {"title": "Unknown collection", "message": "This collection isn't available."},
 	"quota_exceeded": {"title": "Storage full", "message": "Your synced storage is full. Free some space, then try again."},
 	"writes_paused": {"title": "Sync paused", "message": "Syncing is paused for a moment. Your changes are kept and will sync later."},
 	"email_mismatch": {"title": "Email not verified", "message": "This license belongs to an email address your account hasn't verified. Add and verify that email, then try again."},

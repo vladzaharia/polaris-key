@@ -5474,6 +5474,16 @@ msgstr "Non sincronizzata"
 msgid "core.codes.setting_not_synced.message"
 msgstr "Questa impostazione non viene sincronizzata con il tuo account."
 
+#. Unknown collection
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.collection_unknown.title"
+msgstr "Raccolta sconosciuta"
+
+#. This collection isn't available.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.collection_unknown.message"
+msgstr "Questa raccolta non è disponibile."
+
 #. Storage full
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.quota_exceeded.title"
