@@ -7,15 +7,13 @@
  *
  * LX-30 (S-24 §8.8): the holder variants. A license **waiting** for its holder leads with an
  * Invitation card and **Resend invitation**; a **floating** one with Anyone with the key and
- * **Assign to a person**, and "Key entries 3 of 10" beside the holder line (PX-W9). Reassign and
- * Make floating are I-12's relink tool (L3 typed). The newest move shows with its **Undo…** while
- * its 72 hours run.
+ * **Assign to a person**. Reassign and Make floating are I-12's relink tool (L3 typed); the
+ * newest move shows its **Undo…** for 72 hours.
  */
 
 import * as React from "react";
 import {
   ChevronDown,
-  Hourglass,
   KeyRound,
   Layers,
   Power,
@@ -34,15 +32,13 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { PageTabs } from "../../../components/PageTabs.js";
 import { LicenseRegistryTokens } from "../../feeds/pages/RegistryTokens.js";
 import { confirmFor } from "../../../../lib/actions.js";
-import { fromSeconds, formatRelative } from "../../../../lib/format.js";
+import { fromSeconds } from "../../../../lib/format.js";
 import { SIGN_IN_LABELS } from "../../../../lib/labels.js";
 import { Button } from "../../../../ui/Button.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
-import { IdChip } from "../../../../ui/IdChip.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
-import { StatusPill } from "../../../../ui/StatusPill.js";
 import { toast } from "../../../../ui/toast.js";
 import { LicenseConfig } from "./LicenseConfig.js";
 import { LicenseDevices } from "./LicenseDevices.js";
@@ -72,6 +68,8 @@ import { ExpiryDialog, ProfilesDialog } from "./LicenseTerms.js";
 import { LicenseActivity } from "./LicenseActivity.js";
 import { ChangeTierDialog } from "../components/ChangeTierDialog.js";
 import {
+  HeaderStatus,
+  RecordFacts,
   StatusTab,
   useFocusTitleAfterUndo,
   type RecordDialog,
@@ -80,8 +78,6 @@ import {
   actorName,
   daysUntil,
   expiryText,
-  LicenseStatus,
-  licenseState,
   seatLimitOf,
   seatLimitText,
   useTiers,
@@ -199,7 +195,7 @@ function LicenseRecordBody({
 
   const id = license.id;
   const active = license.status === "active";
-  // Status stays "active" past expiresAt; a key emailed then would not activate anything.
+  // Status stays "active" past expiresAt, but a key emailed then would not activate.
   const expired =
     license.expiresAt != null && fromSeconds(license.expiresAt) <= Date.now();
   const holder = holderOf(license);
@@ -241,7 +237,7 @@ function LicenseRecordBody({
   const tierControl = (
     <Button
       variant="outline"
-      // 200 % text on a phone has no room for a second action row: Change tier… is in More actions.
+      // Not at 200 % text on a phone: Change tier… is in More actions.
       className="max-sm:conbig:hidden"
       aria-haspopup="dialog"
       aria-label={`Tier: ${tierLabel ?? "No tier"}. Change tier`}
@@ -285,38 +281,19 @@ function LicenseRecordBody({
     </Button>
   );
 
-  // The facts line, drawn in two places (under the title; under the tabs on a phone and at
-  // 200 % text): only the first carries the test ids, and only the second the status.
+  // Drawn twice, CSS picks one: under the title, or under the tabs (phone, 200 % text, short).
   const facts = (primary: boolean): React.ReactElement => (
-    <span
-      data-testid={primary ? "record-facts" : undefined}
-      className="flex flex-wrap items-center gap-x-3 gap-y-1"
-    >
-      {primary ? null : (
-        <span className="hidden conbig:inline-flex">
-          <HeaderStatus license={license} waiting={waiting} />
-        </span>
-      )}
-      {inAccount ? (
-        <span data-testid={primary ? "record-holder" : undefined}>
-          {[holder.kind === "assigned" ? holder.email : "", "In an account"]
-            .filter(Boolean)
-            .join(" · ")}
-        </span>
-      ) : null}
-      <IdChip value={id} noun="license id" />
-      {keyEntries ? (
-        <span data-testid={primary ? "record-key-entries" : undefined}>
-          Key entries {keyEntries.used} of {keyEntries.limit}
-        </span>
-      ) : null}
-      {license.modifiedAt ? (
-        <span>
-          Changed {relativeWhen(fromSeconds(license.modifiedAt))}
-          {changedBy ? ` by ${changedBy}` : ""}
-        </span>
-      ) : null}
-    </span>
+    <RecordFacts
+      primary={primary}
+      license={license}
+      waiting={waiting}
+      holderEmail={
+        inAccount && holder.kind === "assigned" ? holder.email : null
+      }
+      inAccount={inAccount}
+      keyEntries={keyEntries}
+      changedBy={changedBy}
+    />
   );
 
   return (
@@ -346,8 +323,6 @@ function LicenseRecordBody({
         }
         // The tier is a control beside the one action (licenses.detail): 50/50 on a phone.
         primaryAction={
-          // On a phone the two take a row each at 200 % text and their labels wrap; from 640 px
-          // they sit side by side on one line.
           <div className="grid grid-cols-2 gap-2 max-sm:conbig:grid-cols-1 sm:flex [&>button]:min-w-0 max-sm:[&>button]:whitespace-normal conbig:sm:[&>button]:whitespace-nowrap!">
             {tierControl}
             {mainAction}
@@ -409,11 +384,6 @@ function LicenseRecordBody({
             disabledReason: deletionBlockedReason(license.deletion),
           },
         ]}
-        // Under the title: the facts the cards below do not carry (an assigned license's email
-        // and state, the id, key entries, the last change). The name is the title, the waiting
-        // email is the Invitation card's, the batch is the Origin card's. A phone and 200 % text
-        // have no room for a third masthead line (nor a short window), so they read it under the
-        // tabs instead.
         factsRow={
           <span className="hidden sm:flex conbig:hidden short:hidden">
             {facts(true)}
@@ -627,27 +597,4 @@ function LicenseRecordBody({
       />
     </div>
   );
-}
-
-/** "now" reads "just now" after "Changed"; any other age is as formatted. */
-function relativeWhen(ms: number): string {
-  const text = formatRelative(ms);
-  return text === formatRelative(Date.now()) ? "just now" : text;
-}
-
-/** The header pill. A license still waiting for its holder says so; its other states stand. */
-function HeaderStatus({
-  license,
-  waiting,
-}: {
-  license: LicenseDetail;
-  waiting: boolean;
-}): React.ReactElement {
-  if (waiting && licenseState(license) === "active")
-    return (
-      <StatusPill tone="info" icon={Hourglass}>
-        Waiting
-      </StatusPill>
-    );
-  return <LicenseStatus license={license} />;
 }
