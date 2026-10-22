@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from ..core.copy import Copy
 from ..core.ui_contract import ACTION_KEYS
 from ..core.ui_loading import DELAYED_LOADING_STATES
 from ..core.ui_view import View, bidi_isolate, format_bytes
+from .rows import Group, RowData, Seat, build_rows
 
 __all__ = ["Button", "Field", "ScreenSpec", "build_spec", "button_role", "is_button_key"]
 
@@ -60,16 +61,18 @@ _FIELD_PARTS = frozenset(
     for key in (label, parts["placeholder"], *parts["hint"], *parts["error"])
     if key
 )
-#: Fragments of a row (a setting's source, an account line's label, a device's meta). A row's data
-#: lives in the rich models, so a bare view carries none, and the label alone would dangle with no
-#: value after it. They are left out rather than drawn as sentences.
+#: Fragments of a row (a setting's source, an account line's label, a device's meta). Their data
+#: lives in the view's ``rows`` (or the rich models), drawn by ``rows.py``; a state with no row data
+#: would show the label alone with no value after it, so they are left out rather than drawn as
+#: sentences.
 _ROW_FRAGMENTS = frozenset(
     (
         "settings.off settings.on settings.range settings.source.default settings.source.env "
         "settings.source.local settings.reset settings.fromDeveloper account.autoUpdate account.channel "
         "account.cloudSync account.devices account.managedSettings account.tier account.holder "
         "account.version account.updates devices.meta devices.remove devices.rename "
-        "part.thisDeviceTitle signin.replace.meta signin.replace.leastRecent part.seatMeter.caption"
+        "part.thisDeviceTitle signin.replace.meta signin.replace.leastRecent part.seatMeter.caption "
+        "settings.search settings.advanced signin.choice.devices"
     ).split()
 )
 #: Components whose lone action is not the screen's primary (a dismissal, a banner's own control).
@@ -148,6 +151,12 @@ class ScreenSpec:
     #: The attribution (UI-KITS §1.6): ``""`` (off), ``"line"`` or ``"badge"``, with its text.
     powered_by: str = ""
     powered_by_text: str = ""
+    #: The seat meter, the search field's placeholder and the grouped rows (settings, devices, the
+    #: account), with the sentences that follow the list (the Replace confirm; ``True`` marks the bold one).
+    seat: Optional[Seat] = None
+    search: str = ""
+    groups: List[Group] = field(default_factory=list)
+    after: List[Tuple[str, bool]] = field(default_factory=list)
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -170,8 +179,15 @@ class ScreenSpec:
             "focus": self.focus,
             "poweredBy": self.powered_by,
             "poweredByText": self.powered_by_text,
+            "seat": self.seat.as_dict() if self.seat is not None else None,
+            "search": self.search,
+            "groups": [g.as_dict() for g in self.groups],
+            "after": [{"text": text, "strong": strong} for text, strong in self.after],
             "hidden": self.state == "hidden"
-            or not (self.title or self.body or self.buttons or self.fields or self.progress is not None),
+            or not (
+                self.title or self.body or self.buttons or self.fields or self.groups or self.seat
+                or self.progress is not None
+            ),
         }
 
 
@@ -188,19 +204,33 @@ def _open(text: str) -> bool:
 
 
 def build_spec(
-    view: View, copy: Copy, *, product: str = "", developer: str = "", powered_by: str = ""
+    view: View,
+    copy: Copy,
+    *,
+    product: str = "",
+    developer: str = "",
+    powered_by: str = "",
+    data: Optional[RowData] = None,
+    selected_id: Optional[str] = None,
+    advanced: bool = False,
 ) -> ScreenSpec:
     """Lay one view out. Heading, then sentences, then the buttons in catalog order with the
     model's primary first among equals; at most one filled button.
 
     The identity fills ``{product}``/``{app}``/``{developer}``. A sentence whose data the view does not
     carry (a file size, a row's name) is left out rather than drawn with its braces: rows and meters
-    come from the rich models in ``polaris_key.ui.core.models``."""
+    come from the rich models in ``polaris_key.ui.core.models`` or the view's own ``rows``, which
+    ``data`` (a :class:`~.rows.RowData`) replaces; with them the list, the seat meter and the account
+    rows are laid out too (``rows.py``)."""
     args = {**({"product": product, "app": product} if product else {}), **_args(view)}
     if developer:
         args.setdefault("developer", bidi_isolate(developer))
     if isinstance(args.get("size"), int) and not isinstance(args.get("size"), bool):
         args["size"] = format_bytes(args["size"])  # a byte count reads "50 MB", never 52428800
+    rows = build_rows(view, copy, data, args, selected_id=selected_id, advanced=advanced) if data is not None else None
+    consumed = rows.consumed if rows is not None else frozenset()
+    if rows is not None and rows.args:
+        args = {**args, **rows.args}
     primary = view.decisions.primary
     title = ""
     open_heading = False
@@ -209,6 +239,7 @@ def build_spec(
     progress: Optional[float] = None
     busy = False
     parts: Dict[str, str] = {}
+    keyed: Dict[str, str] = {}
     for key in view.copy:
         if key == "common.byDeveloper":  # the identity header draws it
             continue
@@ -216,6 +247,8 @@ def build_spec(
             continue
         if key.startswith("a11y."):
             busy = busy or key in ("a11y.busy", "a11y.progress")
+            continue
+        if key in consumed:  # a row draws it, with its data
             continue
         if key in _PROGRESS and args.get("fraction") is None and not args.get("total"):
             progress = -1.0
@@ -240,8 +273,18 @@ def build_spec(
         text = copy(key, **args)
         if not _open(text):
             body.append(text)
+            keyed[key] = text
+    after: List[Tuple[str, bool]] = []
+    if rows is not None and rows.before is not None:
+        # The list sits between the sentences that introduce it and the ones that follow it.
+        placed = set(rows.before) | set(rows.after)
+        rest = [text for key, text in keyed.items() if key not in placed]
+        body = [keyed[k] for k in rows.before if k in keyed] + rest
+        after = [(keyed[k], k == "deviceLimit.confirmTitle") for k in rows.after if k in keyed]
     if open_heading and not title:
         title = copy(_FALLBACK_TITLE)  # never a screen with a button and no words
+    if rows is not None and not title and rows.title_key:
+        title = copy(rows.title_key)
     fields = [
         Field(
             label,
@@ -313,4 +356,8 @@ def build_spec(
         focus=view.decisions.focus or "",
         powered_by=attribution,
         powered_by_text=copy("part.poweredBy") if attribution else "",
+        seat=rows.seat if rows is not None else None,
+        search=rows.search if rows is not None else "",
+        groups=list(rows.groups) if rows is not None else [],
+        after=after,
     )

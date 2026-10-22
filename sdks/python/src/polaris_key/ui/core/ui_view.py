@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import math
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
 from ...core.manage import is_manage_url
 from .ui_contract import ACTION_KEYS, Context, can_browse, coarse_pointer, platform_class
 
 __all__ = [
+    "ROW_INPUT_KEYS",
     "Decisions",
     "IdentityText",
     "LinkVerdict",
@@ -44,6 +45,8 @@ _OPENERS = frozenset(
 )
 _ISOLATED_ARGS = frozenset(("product", "app", "developer", "device", "thisDevice", "name", "org", "tier"))
 _MISSING = object()
+#: The members of a model's input a row-drawing renderer reads (View.rows).
+ROW_INPUT_KEYS = ("config", "devices", "licenses", "account", "activation", "edit", "selected", "platform")
 _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 
 
@@ -81,10 +84,15 @@ class View:
     args: Mapping[str, Any]
     isolate: Tuple[str, ...]
     decisions: Decisions
+    #: The data a list-shaped screen draws as rows (settings, devices, the account, the seat count):
+    #: the slice of the model's input it read. It does not take part in equality; a renderer that
+    #: draws rows reads it, the others ignore it.
+    rows: Mapping[str, Any] = field(default_factory=dict, compare=False, repr=False)
 
     def as_dict(self) -> Dict[str, Any]:
         """A QML/JSON friendly representation without framework objects."""
         result = asdict(self)
+        result.pop("rows", None)
         result["copy"] = list(self.copy)
         result["actions"] = list(self.actions)
         result["isolate"] = list(self.isolate)
@@ -195,6 +203,7 @@ def make_view(
             link=link,
             qr=resolved_qr,
         ),
+        rows={key: ctx.input[key] for key in ROW_INPUT_KEYS if key in ctx.input},
     )
 
 

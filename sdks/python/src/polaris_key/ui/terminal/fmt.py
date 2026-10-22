@@ -6,6 +6,8 @@ from __future__ import annotations
 import time
 from typing import Optional
 
+from ..core.format import relative_days
+
 __all__ = ["countdown", "date", "duration", "relative", "size", "size_pair"]
 
 #: Seconds and minutes, per launch locale.
@@ -86,20 +88,6 @@ def date(epoch: Optional[int], locale: str = "en") -> str:
     return f"{t.tm_mday} {month}"
 
 
-#: "today", "yesterday" and "N days ago", per launch locale (as ``Intl.RelativeTimeFormat`` writes them).
-_RELATIVE = {
-    "en": ("today", "yesterday", "{n} days ago"),
-    "de": ("heute", "gestern", "vor {n} Tagen"),
-    "fr": ("aujourd’hui", "hier", "il y a {n} jours"),
-    "es": ("hoy", "ayer", "hace {n} días"),
-    "pt-BR": ("hoje", "ontem", "há {n} dias"),
-    "it": ("oggi", "ieri", "{n} giorni fa"),
-    "ja": ("今日", "昨日", "{n}日前"),
-    "ko": ("오늘", "어제", "{n}일 전"),
-    "zh-Hans": ("今天", "昨天", "{n}天前"),
-}
-
-
 def relative(epoch: Optional[float], now: float, locale: str = "en") -> str:
     """When something last happened, in whole days: ``today``, ``yesterday``, ``3 days ago``.
     ``epoch`` is epoch seconds; a value too large to be seconds is read as the milliseconds it is
@@ -108,8 +96,7 @@ def relative(epoch: Optional[float], now: float, locale: str = "en") -> str:
         return ""
     seconds = epoch / 1000 if epoch > 1e11 else epoch
     days = max(0, int(round((now - seconds) / 86_400)))
-    today, yesterday, ago = _RELATIVE.get(locale, _RELATIVE["en"])
-    return today if days < 1 else yesterday if days == 1 else ago.format(n=days)
+    return relative_days(days, locale)
 
 
 def size_pair(done: int, total: int, locale: str = "en") -> "tuple[str, str]":

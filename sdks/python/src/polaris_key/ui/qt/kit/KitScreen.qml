@@ -159,6 +159,67 @@ Rectangle {
                     }
                 }
 
+                // The seat meter (rule 9), under the lede and above the list.
+                KitSeatMeter {
+                    objectName: "seatMeter"
+                    visible: !!spec.seat
+                    seat: spec.seat
+                    fs: root.fs
+                    Layout.fillWidth: true
+                }
+
+                TextField {
+                    id: searchField
+                    objectName: "search"
+                    visible: spec.search !== ""
+                    Layout.fillWidth: true
+                    placeholderText: spec.search
+                    placeholderTextColor: Theme.textSubtle
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.typeBody.size * root.fs
+                    color: Theme.textStrong
+                    activeFocusOnTab: true
+                    implicitHeight: Math.max(Theme.controlHeight * root.fs, 36)
+                    onTextEdited: kit.edit("search", text)
+                    Accessible.role: Accessible.EditableText
+                    Accessible.name: spec.search
+                    background: Rectangle {
+                        radius: Theme.radiusControl < 0 ? height / 2 : Theme.radiusControl
+                        color: Theme.surfaceSunken
+                        border.width: searchField.activeFocus ? 2 : 1
+                        border.color: searchField.activeFocus ? Theme.focusRing : Theme.borderSubtle
+                    }
+                }
+
+                // Grouped rows: settings, devices, the account (UI-KITS 4.1, 4.3).
+                Repeater {
+                    model: spec.groups
+                    KitGroup {
+                        required property var modelData
+                        group: modelData
+                        fs: root.fs
+                        kit: root.kit
+                        Layout.fillWidth: true
+                    }
+                }
+
+                // The sentences that follow a list: the Replace confirm, its first line bold.
+                Repeater {
+                    model: spec.after
+                    Text {
+                        required property var modelData
+                        text: modelData.text
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.typeBody.size * root.fs
+                        font.weight: modelData.strong ? Theme.weightSemibold : Theme.weightRegular
+                        color: modelData.strong ? Theme.textStrong : Theme.textDefault
+                        Accessible.role: Accessible.StaticText
+                        Accessible.name: modelData.text
+                    }
+                }
+
                 // DL7: a text entry, its hint or its error directly under it. Only an input that is
                 // itself wrong takes the danger stroke; the message is read with the field.
                 Repeater {
