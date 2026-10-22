@@ -6,7 +6,8 @@ only API (no deprecated aliases).
 
 ## Unreleased
 
-Server drop-ins.
+- **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
+  Server drop-ins.
 
 - **`polaris_key.server` (`server.license`, `server.signin`).** `PolarisKey` verifies `X-PKey-License` per WIRE-CONTRACT-V4 §14 (the six-step verdict, the problem body, the signed trust manifest refreshed every 900 s and once a minute on an unknown `kid`), with adapters for FastAPI/Starlette, Django and DRF, and Flask. Extras: `starlette`, `fastapi`, `flask`, `django`, `drf`. Replays `backend-matrix.json`.
 

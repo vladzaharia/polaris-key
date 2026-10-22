@@ -6,6 +6,7 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
 - **Client backend (`core.backend`, SP-59).** `client.backend.install(OkHttpClient.Builder())` sends
   `X-PKey-License` and `X-PKey-Device` to the app's own backend, only to `backendOrigins`. The
   network half checks every hop's origin before it is sent (OkHttp keeps custom headers across a

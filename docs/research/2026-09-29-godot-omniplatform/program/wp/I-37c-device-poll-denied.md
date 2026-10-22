@@ -46,8 +46,8 @@ Godot), then the docs in plan section 10 step 6.
 
 - [x] Contract, Worker, transcripts, corpus and THREAT-MODEL (phase 1).
 - [x] Every device-code transcript except `devicecode-denied` and the new `devicecode-failed` is byte-identical.
-- [ ] No SDK still maps a bare `error` to `sign-in-denied`; each replays both transcripts and the new ui-matrix rows (phase 2).
-- [ ] The docs and CHANGELOG notes (phase 2).
+- [x] No SDK still maps a bare `error` to `sign-in-denied`; each replays both transcripts and the new ui-matrix rows (phase 2).
+- [x] The docs and CHANGELOG notes (phase 2).
 - [ ] The green gate passes (`AGENTS.md`).
 
 ## Verify

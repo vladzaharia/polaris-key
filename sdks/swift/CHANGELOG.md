@@ -6,6 +6,7 @@ deprecated aliases).
 
 ## Unreleased (LK-16)
 
+- **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
 - **Breaking: Powered by Polaris Locker.** `PolarisPoweredByBadge` draws the Locker `powered-by` badge
   (320 × 104 points minimum); its `Layout` and `Treatment` options and `PolarisPoweredByBadge.size(layout:width:)`
   are gone (`size(width:)` replaces it). `PolarisPoweredBy` and `PolarisTheme(poweredBy:)` are removed (the legacy

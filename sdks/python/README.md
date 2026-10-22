@@ -494,7 +494,7 @@ lands: it begins a device-code sign-in, opens `verificationUriComplete` with
 The attach opt-in (`confirm_identity=True`, `on_confirm`, `accept_sign_in(..., attach_license=True)`)
 is retired: `attachable` is always `False` and nothing is claimed or merged. The person approving
 presses Sign in or Deny on the Polaris Locker page; a Deny ends the poll as `status="error"` with
-`code="sign-in-denied"`. It polls `/identity/auth/device/poll` like any device-code sign-in; the old `/identity/auth/poll` route is
+`code="sign-in-denied"`; a sign-in that fails after approval ends as `code="sign-in-failed"`. It polls `/identity/auth/device/poll` like any device-code sign-in; the old `/identity/auth/poll` route is
 retired and the Worker no longer serves it.
 
 The prompt's `repr` leaves out `deviceCode`, and a `MintedToken`'s leaves out `token`, so
