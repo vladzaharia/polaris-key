@@ -3,7 +3,9 @@ import QtQuick.Controls.Basic
 import ".."
 
 // One kit button. `role` is "primary" (the one filled action, in the product accent), "secondary"
-// (outlined) or "quiet" (text). The ring draws on visualFocus only (keyboard), never on a click.
+// (outlined), "quiet" (text), "danger" (the destructive action: the danger solid with a white label,
+// as the other kits' danger variant) or "dangerText" (outlined, in danger text: Sign out, UI-KITS 4.1).
+// The ring draws on visualFocus only (keyboard), never on a click.
 Button {
     id: control
     property string role: "secondary"
@@ -13,6 +15,8 @@ Button {
     property bool animate: true
     readonly property bool primary: role === "primary"
     readonly property bool quiet: role === "quiet"
+    readonly property bool danger: role === "danger"
+    readonly property bool dangerText: role === "dangerText"
 
     implicitHeight: Math.max(Theme.controlHeight * scale_, 24)
     implicitWidth: quiet ? contentItem.implicitWidth + 8 : Math.max(contentItem.implicitWidth + 2 * 16, 88)
@@ -24,10 +28,14 @@ Button {
 
     contentItem: Item {
         id: content
-        implicitWidth: row.implicitWidth
+        // The label's own width, not the row's: the row clamps the label to this item, which would
+        // make the button as wide as its clamped (elided) text.
+        implicitWidth: label.implicitWidth + (control.busy ? spinner.width + row.spacing : 0)
         implicitHeight: row.implicitHeight
         readonly property color ink: !control.enabled ? Theme.actionDisabledOn
              : control.primary ? Theme.accentOn
+             : control.danger ? Theme.dangerSolidOn
+             : control.dangerText ? Theme.danger
              : control.quiet ? (control.hovered ? Theme.textStrong : Theme.textMuted)
              : Theme.textStrong
         Row {
@@ -64,6 +72,7 @@ Button {
                 }
             }
             Text {
+                id: label
                 text: control.text
                 width: Math.min(implicitWidth, content.width - (control.busy ? spinner.width + row.spacing : 0))
                 font.family: Theme.fontFamily
@@ -80,10 +89,11 @@ Button {
     background: Rectangle {
         radius: Theme.radiusControl < 0 ? height / 2 : Theme.radiusControl
         color: control.quiet ? "transparent"
+             : control.danger ? (control.down ? Qt.darker(Theme.dangerSolid, 1.15) : control.hovered ? Qt.lighter(Theme.dangerSolid, 1.08) : Theme.dangerSolid)
              : control.primary ? (control.down ? Qt.darker(Theme.accent, 1.15) : control.hovered ? Qt.lighter(Theme.accent, 1.08) : Theme.accent)
              : (control.down ? Theme.surfaceSunken : Theme.surfaceOverlay)
-        border.width: control.primary || control.quiet ? 0 : 1
-        border.color: control.hovered ? Theme.borderStrong : Theme.borderSubtle
+        border.width: control.primary || control.danger || control.quiet ? 0 : 1
+        border.color: control.dangerText ? Theme.dangerBorder : control.hovered ? Theme.borderStrong : Theme.borderSubtle
         scale: control.down ? Theme.pressScale : 1
         Behavior on scale { NumberAnimation { duration: Theme.durationFast; easing.type: Easing.OutCubic } }
         Behavior on color { ColorAnimation { duration: Theme.durationFast } }
