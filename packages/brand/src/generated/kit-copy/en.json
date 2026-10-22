@@ -90,7 +90,7 @@
   "boot.consent.body": "{product} needs {size} of new content.",
   "boot.consent.bodyMetered": "{product} needs {size} of new content, and you're on a metered connection.",
   "boot.consent.download": "Download",
-  "boot.error.body": "{product} couldn't finish starting ({code}).",
+  "boot.error.body": "{product} couldn't finish starting. Try again.",
   "welcome.title": "Welcome to {product}",
   "common.welcomeNoProductTitle": "Welcome",
   "common.signInToContinue": "Sign in to continue.",

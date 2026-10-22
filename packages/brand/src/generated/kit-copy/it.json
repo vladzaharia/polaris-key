@@ -90,7 +90,7 @@
   "boot.consent.body": "{product} ha bisogno di {size} di nuovi contenuti.",
   "boot.consent.bodyMetered": "{product} ha bisogno di {size} di nuovi contenuti e stai usando una connessione a consumo.",
   "boot.consent.download": "Scarica",
-  "boot.error.body": "Impossibile completare l'avvio di {product} ({code}).",
+  "boot.error.body": "Impossibile completare l'avvio di {product}. Riprova.",
   "welcome.title": "Ti diamo il benvenuto in {product}",
   "common.welcomeNoProductTitle": "Ti diamo il benvenuto",
   "common.signInToContinue": "Accedi per continuare.",

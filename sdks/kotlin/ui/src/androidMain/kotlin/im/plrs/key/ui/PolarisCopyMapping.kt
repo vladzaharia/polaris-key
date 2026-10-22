@@ -208,7 +208,7 @@ public fun PolarisCopy.offlineMessage(canPlayOffline: Boolean): PolarisMessageCo
  */
 public fun PolarisCopy.errorMessage(code: String): PolarisMessageCopy =
     if (Copy.hasCopy(code, coreLocale())) coreMessage(code, PolarisMessageKind.Danger)
-    else PolarisMessageCopy(bootErrorTitle, format(bootErrorBody, productLead(), code), PolarisMessageKind.Danger)
+    else PolarisMessageCopy(bootErrorTitle, format(bootErrorBody, productLead()), PolarisMessageKind.Danger)
 
 /** The consent card's body for a fetch of [bytes]. */
 public fun PolarisCopy.consentMessage(bytes: Long, metered: Boolean): String =

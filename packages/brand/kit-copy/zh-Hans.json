@@ -97,7 +97,7 @@
     "boot.consent.body": "{product}需要{size}的新内容。",
     "boot.consent.bodyMetered": "{product}需要{size}的新内容，而你正在使用按流量计费的网络。",
     "boot.consent.download": "下载",
-    "boot.error.body": "{product}未能完成启动（{code}）。",
+    "boot.error.body": "{product}未能完成启动。请重试。",
     "welcome.title": "欢迎使用{product}",
     "common.welcomeNoProductTitle": "欢迎",
     "common.signInToContinue": "登录以继续。",

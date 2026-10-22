@@ -3536,61 +3536,61 @@
       }
     },
     "boot.error.body": {
-      "comment": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. Arguments: {product} = the product's name from ProductIdentity (never translated); {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=product, 2=code.",
+      "comment": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ couldn't finish starting (%2$@)."
+            "value": "%1$@ couldn't finish starting. Try again."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ konnte den Start nicht abschließen (%2$@)."
+            "value": "%1$@ konnte den Start nicht abschließen. Versuchen Sie es erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ n’a pas pu terminer son démarrage (%2$@)."
+            "value": "%1$@ n’a pas pu terminer son démarrage. Réessayez."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ no pudo terminar de iniciarse (%2$@)."
+            "value": "%1$@ no pudo terminar de iniciarse. Inténtalo de nuevo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível concluir a inicialização de %1$@ (%2$@)."
+            "value": "Não foi possível concluir a inicialização de %1$@. Tente novamente."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile completare l'avvio di %1$@ (%2$@)."
+            "value": "Impossibile completare l'avvio di %1$@. Riprova."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@の起動を完了できませんでした（%2$@）。"
+            "value": "%1$@の起動を完了できませんでした。もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 시작을 완료하지 못했어요(%2$@)."
+            "value": "%1$@ 시작을 완료하지 못했어요. 다시 시도해 주세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@未能完成启动（%2$@）。"
+            "value": "%1$@未能完成启动。请重试。"
           }
         }
       }

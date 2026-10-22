@@ -90,7 +90,7 @@
   "boot.consent.body": "{product} a besoin de {size} de nouveau contenu.",
   "boot.consent.bodyMetered": "{product} a besoin de {size} de nouveau contenu, et votre connexion est facturée à l’usage.",
   "boot.consent.download": "Télécharger",
-  "boot.error.body": "{product} n’a pas pu terminer son démarrage ({code}).",
+  "boot.error.body": "{product} n’a pas pu terminer son démarrage. Réessayez.",
   "welcome.title": "Bienvenue dans {product}",
   "common.welcomeNoProductTitle": "Bienvenue",
   "common.signInToContinue": "Connectez-vous pour continuer.",

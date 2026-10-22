@@ -34,7 +34,7 @@ describe("formatBytes", () => {
 });
 
 describe("the arguments a model fills from what it holds", () => {
-  it("names the product on the boot and gate errors, and the code the boot stage ended with", () => {
+  it("names the product on the boot and gate errors, and keeps the code the boot stage ended with off the copy", () => {
     const error = {
       stage: {
         stage: "error",
@@ -47,7 +47,11 @@ describe("the arguments a model fills from what it holds", () => {
     });
     expect(en.strings(viewOf("Boot", { ...base, ...error }))).toMatchObject({
       "boot.error.body":
-        "Tidewater Studio couldn't finish starting (sync-failed).",
+        "Tidewater Studio couldn't finish starting. Try again.",
+    });
+    // The code stays on the view for logs and diagnostics; it is not in the copy.
+    expect(viewOf("Boot", { ...base, ...error }).args).toMatchObject({
+      code: "sync-failed",
     });
   });
 

@@ -230,8 +230,8 @@
     <string name="boot_consent_bodyMetered">%1$s a besoin de %2$s de nouveau contenu, et votre connexion est facturée à l’usage.</string>
     <!-- Boot screen, shown while the product starts. -->
     <string name="boot_consent_download">Télécharger</string>
-    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. Arguments: {product} = the product's name from ProductIdentity (never translated); {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=product, 2=code. -->
-    <string name="boot_error_body">%1$s n’a pas pu terminer son démarrage (%2$s).</string>
+    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="boot_error_body">%1$s n’a pas pu terminer son démarrage. Réessayez.</string>
     <!-- Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="welcome_title">Bienvenue dans %1$s</string>
     <!-- Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}. -->

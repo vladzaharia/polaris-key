@@ -97,7 +97,7 @@
     "boot.consent.body": "{product}에 {size} 크기의 새 콘텐츠가 필요해요.",
     "boot.consent.bodyMetered": "{product}에 {size} 크기의 새 콘텐츠가 필요해요. 현재 데이터 종량제 네트워크에 연결되어 있어요.",
     "boot.consent.download": "다운로드",
-    "boot.error.body": "{product} 시작을 완료하지 못했어요({code}).",
+    "boot.error.body": "{product} 시작을 완료하지 못했어요. 다시 시도해 주세요.",
     "welcome.title": "{product}에 오신 것을 환영해요",
     "common.welcomeNoProductTitle": "환영해요",
     "common.signInToContinue": "계속하려면 로그인하세요.",

@@ -139,9 +139,9 @@ class PolarisCopyMappingTest {
         assertEquals(copy.bootOfflinePlayableBody, copy.offlineMessage(true).body)
         assertEquals("Couldn't check your license", copy.errorMessage("sync-failed").title)
         assertFalse(copy.errorMessage("sync-failed").body.contains("sync-failed"))
-        assertEquals("Diceroll couldn't finish starting (mystery-code).", copy.errorMessage("mystery-code").body)
+        assertEquals("Diceroll couldn't finish starting. Try again.", copy.errorMessage("mystery-code").body)
         // A nameless kit starts the sentence with a capital: "This app", never "this app".
-        assertEquals("This app couldn't finish starting (mystery-code).", PolarisCopy().errorMessage("mystery-code").body)
+        assertEquals("This app couldn't finish starting. Try again.", PolarisCopy().errorMessage("mystery-code").body)
     }
 
     @Test
