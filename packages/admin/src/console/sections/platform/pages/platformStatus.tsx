@@ -83,7 +83,8 @@ export function PlatformStatus(): React.ReactElement {
         stamps.length > 0
           ? {
               updatedAt: Math.min(...stamps),
-              verb: "Checked",
+              verb:
+                deployment.isError || ops.isError ? "Last checked" : "Checked",
               onRefresh: refetchAll,
               refreshing: deployment.isFetching || ops.isFetching,
               pause: { paused: !auto, onToggle },
