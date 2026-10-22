@@ -35,6 +35,22 @@ Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usabili
 
 - It unblocks Python's `update.check()` against the real Worker, and SP-44.
 
+## Corrections (2026-10-22)
+
+The code is the fact; the plan wins on substance. Recorded by P2-12.1 (lead decisions L-P1 to L-P5 accepted 2026-10-22).
+
+1. **Moved anchors.**
+   - In `services/release/gateway.ts`: `serveReleaseSurface` is at `:322`, `installationToken` `:474`, `policyChannelOf` `:498`, `resolveSelector` `:531`, `resolveMovingSelector` `:644`, `floorRelease` `:792`, `channelTagsFor` `:826`.
+   - In `services/release/resolve.ts`: `resolveCandidates` `:283`, `channelMembers` `:339`, `DeliverableState` `:488`, `loadDeliverableState` `:502`, `resolveInState` `:572`, `legacyPolicyFor` `:728`.
+   - Elsewhere: `cachedResolution` is at `ghCache.ts:103`; the sync's metadata write is at `store.ts:960-964`; descriptor ingest's `json_set` is at `descriptor.ts:920`.
+   - The validator checks are at `shared-manifest/src/index.ts:2284-2296`. The schema has the root (`:31-38`), the wrapped (`:121-126`) properties and `$defs` `:217`.
+   - The registry entries are at `manifestSettings.ts:110-157` and `settingsColumns.ts:80-81`. The system product is now `console/systemProduct.ts`.
+2. **d2e14bb27 (2026-10-12), after the plan.** A per-product `releaseUpstream` budget of 4,000 GitHub calls an hour (`meterUpstreamCalls`, `gateway.ts:137-215`) and a 503 `upstream_rate_limited` answer on legacy surfaces. The comparison job's old-path probes and the freshness syncs are charged to it (L-P3); `UpstreamRateLimitedError` maps to `upstream-error` and pauses the job. The `R6-release` and `R10-dos` tests must account for it, and their resolution rows move to byte reads in P2-12.10/.11.
+3. **`/release/dl` is Release's:** `services/release/source.ts:295` `serveLegacyDownload`. `/distribution/dl` is Distribution's through `releaseCatalog` and is not touched.
+4. **Signed release records** (`pkey-release+jws`) are stored in `release_records` and never rewritten (`records.ts:18`). `listedAssets` lives in `release_metadata.metadata_json` only.
+
+P2-08's `dev` selector is done (3f3eaf34e): `policyChannelOf` already has `dev`, which satisfies §7's condition.
+
 ## Goal
 
 One update resolver: retire the GitHub-resolved appcast and version path, as scoped below. Done when every acceptance criterion holds and the green gate passes.
