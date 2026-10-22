@@ -32,6 +32,12 @@ import {
   displayNameOptions,
 } from "../src/core/accounts/reservedDisplayNames.js";
 import { clientRecordFor } from "../src/services/identity/passthrough/client.js";
+import { withDefaultHead } from "./githubHead.js";
+import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
+import { prepareLink } from "../src/services/release/linkExisting.js";
+import { createFromDocuments } from "../src/core/ingest/fromDocuments.js";
+import { ingestFor } from "../src/core/ingest/pipeline.js";
+import { SERVICES } from "../src/mount.js";
 import { loadProductPublic } from "../src/core/products.js";
 
 let db: Db;
@@ -229,5 +235,94 @@ describe("an approved product", () => {
     expect(audit).toEqual([
       { action: "setting.update", setting_key: "identity.displayNameApproved" },
     ]);
+  });
+});
+
+/** A GitHub that serves `.pkey/` for acme/acme: the installation, a token, the three documents. */
+function repoFetch(name: string) {
+  const docs: Record<string, string> = {
+    "product.json": JSON.stringify({
+      slug: ACME,
+      name,
+      compatMin: "1.0.0",
+      compatMax: "9.0.0",
+      defaultMaxOfflineDays: 14,
+      defaultDeviceLimit: 3,
+    }),
+    "schema.json": JSON.stringify({ schemaVersion: 1, entries: [] }),
+    "release.json": JSON.stringify({
+      release: { ghOwner: "acme", ghRepo: "acme", binaryName: "acme" },
+    }),
+  };
+  return withDefaultHead(async (input) => {
+    const url = String(input);
+    if (url.includes("/installation"))
+      return new Response(JSON.stringify({ id: 4242 }), { status: 200 });
+    if (url.includes("/access_tokens"))
+      return new Response(JSON.stringify({ token: "ghs_t" }), { status: 200 });
+    for (const [f, body] of Object.entries(docs))
+      if (url.includes(`/contents/.pkey/${f}`))
+        return new Response(
+          JSON.stringify({
+            content: Buffer.from(body, "utf8").toString("base64"),
+            encoding: "base64",
+          }),
+          { status: 200 },
+        );
+    if (url.includes("/releases")) return new Response("[]", { status: 200 });
+    return new Response("not found", { status: 404 });
+  });
+}
+
+describe("linking an existing product to a repository", () => {
+  const link = (name: string) => {
+    env.GITHUB_APP_ID = "12345";
+    env.GITHUB_APP_PRIVATE_KEY = TEST_RSA_PKCS8;
+    return prepareLink(
+      env,
+      db,
+      ACME,
+      "https://github.com/acme/acme",
+      NOW,
+      repoFetch(name),
+      ingestFor(SERVICES),
+    );
+  };
+
+  it("refuses an extra term at error severity, and the product's approval lets it through", async () => {
+    expect((await link("Zephyr Launcher")).ok).toBe(true);
+    await addTerm(["zephyr"]);
+    const refused = await link("Zephyr Launcher");
+    expect(refused).toMatchObject({ ok: false, check: "manifest" });
+    expect(JSON.stringify(refused)).toContain("reserved platform or store");
+    await approve(ACME);
+    expect((await link("Zephyr Launcher")).ok).toBe(true);
+  });
+});
+
+describe("creating a product from documents", () => {
+  const create = (name: string) =>
+    createFromDocuments(env, db, ingestFor(SERVICES), {
+      slug: "fresh",
+      name,
+      choices: {
+        services: [],
+        intendedPlatforms: [],
+        starterTier: null,
+        trustReleaseWorkflow: false,
+      },
+      author: "ada",
+      now: NOW,
+    });
+
+  it("judges the name by the floor and the extra terms, with no approval", async () => {
+    const floor = await create("Steam Deck Companion");
+    expect(floor).toMatchObject({ ok: false, status: 422 });
+    expect(JSON.stringify(floor)).toContain("reserved platform or store");
+    expect(await create("Zephyr Launcher")).not.toMatchObject({ status: 422 });
+    await addTerm(["zephyr"]);
+    const refused = await create("Zephyr Launcher");
+    expect(refused).toMatchObject({ ok: false, status: 422 });
+    expect(JSON.stringify(refused)).toContain("reserved platform or store");
   });
 });

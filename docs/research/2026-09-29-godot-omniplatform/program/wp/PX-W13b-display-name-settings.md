@@ -135,3 +135,13 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
   or a route entry, and an admin row with screenshots and the layout e2e). The product approval
   is served by the generic product-settings API now that it is live; its admin presentation
   needs the same UX review.
+
+## Fix round (review)
+
+- Link-existing (`services/release/linkExisting.ts`) and create-from-documents
+  (`core/ingest/fromDocuments.ts`) now parse with `displayNameOptions`, so ingest agrees with the
+  sign-in card on every path. A product being created has no approval; it reads `false`.
+  Tests: `displayNamePolicy.test.ts` (link-existing and create-from-documents).
+- The console editors (the Platform -> Settings terms-list editor and the product approval's admin
+  presentation) are deferred to a follow-up; the green-gate box stays unticked until then.
+- The approval is per product (Q4): it covers every name the product uses, not one name.
