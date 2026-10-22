@@ -763,7 +763,7 @@ describe("the Feeds overview", () => {
     const page = within(await mainReady());
     expect(await page.findByText(/Package feeds are off for/)).toBeTruthy();
     expect(await page.findByText(/Nothing was deleted/)).toBeTruthy();
-    expect(page.getByText(/Turned off on/)).toBeTruthy();
+    expect(page.getByText(/Off since/)).toBeTruthy();
     expect(page.queryByRole("link", { name: "Open Features" })).toBeNull();
     expect(
       page.getByRole("button", { name: "Turn on package feeds" }),
@@ -1918,9 +1918,24 @@ describe("Core → Services: the package feeds switch", () => {
     expect(
       within(section).queryByRole("button", { name: "Save package feeds" }),
     ).toBeNull();
+    // One confirm for one action: the same typed dialog as the Packages page.
     const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText("Turn off package feeds for DJDL?"),
+    ).toBeTruthy();
+    await userEvent.type(
+      within(dialog).getByLabelText(/Type the product slug/),
+      "djdl",
+    );
+    await waitFor(() =>
+      expect(
+        within(dialog)
+          .getByRole("button", { name: "Turn off package feeds" })
+          .getAttribute("aria-disabled"),
+      ).not.toBe("true"),
+    );
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Turn off Packages" }),
+      within(dialog).getByRole("button", { name: "Turn off package feeds" }),
     );
     await waitFor(() =>
       expect(log.calls.find((c) => c.method === "PUT")?.json).toEqual({
@@ -1934,9 +1949,11 @@ describe("Core → Services: the package feeds switch", () => {
 describe("Packages: feeds off and Turn off package feeds (F-34.8)", () => {
   const SWITCH = "/manage/api/products/djdl/distribution/package-feeds";
   const OFF_AT = 1_790_000_000;
+  // The owner row's `updatedBy` is a session subject: it must never render.
+  const MBR = "mbr_01J9ZANALIMA";
 
   /** The product row with the F-34.3 summary: `offBy` is a display name. */
-  function offProduct(on: boolean): Record<string, unknown> {
+  function offProduct(on: boolean, offBy: string | null = "Ana Lima") {
     return {
       "/manage/api/products/djdl": {
         product: {
@@ -1945,22 +1962,56 @@ describe("Packages: feeds off and Turn off package feeds (F-34.8)", () => {
           packages: {
             declared: 3,
             feedsOn: on,
-            offBy: on ? null : "Ana Lima",
+            offBy: on ? null : offBy,
             offAt: on ? null : OFF_AT,
           },
         },
       },
     };
   }
-  const OWNER_ROW = { enabled: false, version: 7, updatedAt: OFF_AT };
+  const OWNER_ROW = {
+    enabled: false,
+    version: 7,
+    updatedAt: OFF_AT,
+    updatedBy: MBR,
+  };
+  const VIEW_ONLY = {
+    platformAdmin: false,
+    permissions: {
+      roles: [],
+      platform: { view: ["console"], edit: [] },
+      products: {
+        djdl: { view: ["core", "ship"], edit: [] },
+        acme: { view: ["core"], edit: [] },
+      },
+    },
+  } as never;
   const putCalls = (log: ReturnType<typeof boot>) =>
     log.calls.filter((c) => c.method === "PUT" && c.path === SWITCH);
+  const noMember = () => expect(document.body.textContent).not.toMatch(/mbr_/);
+  const enabled = async (el: HTMLElement) =>
+    waitFor(() => expect(el.getAttribute("aria-disabled")).not.toBe("true"), {
+      timeout: 8000,
+    });
+  const conflict = (row: Record<string, unknown>) =>
+    new Response(
+      JSON.stringify({
+        error: "bad_request",
+        reason: "version_conflict",
+        packageFeeds: row,
+      }),
+      { status: 409 },
+    );
 
-  function bootOff(put: unknown): ReturnType<typeof boot> {
+  function bootOff(
+    put: unknown,
+    opts: { offBy?: string | null; me?: Record<string, unknown> } = {},
+  ): ReturnType<typeof boot> {
     return boot("#/p/djdl/distribution/feeds", {
+      ...(opts.me ? { me: opts.me } : {}),
       extra: {
         ...feedRoutes(),
-        ...offProduct(false),
+        ...offProduct(false, opts.offBy ?? "Ana Lima"),
         [SWITCH]: { packageFeeds: OWNER_ROW },
         // The generic settings counter is a different number on purpose.
         "/manage/api/products/djdl/settings/distribution.packageFeeds": {
@@ -1970,36 +2021,63 @@ describe("Packages: feeds off and Turn off package feeds (F-34.8)", () => {
       },
     });
   }
+  async function turnOnButton(): Promise<HTMLElement> {
+    const page = within(await mainReady());
+    await waitFor(
+      () =>
+        expect(
+          page
+            .getByRole("button", { name: "Turn on package feeds" })
+            .getAttribute("aria-disabled"),
+        ).not.toBe("true"),
+      { timeout: 8000 },
+    );
+    return page.getByRole("button", { name: "Turn on package feeds" });
+  }
 
-  it("the off card says who turned the feeds off and when, and lists the feeds as refusing", async () => {
+  it("the off card is one solid card: who and when once, nothing deleted, the feeds inside", async () => {
     bootOff({ ok: true });
     const page = within(await mainReady());
     expect(
       await page.findByText(/Package feeds are off for DJDL/),
     ).toBeTruthy();
-    expect(await page.findByText(/Turned off by Ana Lima on/)).toBeTruthy();
-    expect(page.getByText(/Nothing was deleted/)).toBeTruthy();
     expect(
-      page.getByRole("button", { name: "Turn on package feeds" }),
+      page.getByText("Installs and CI publishes are refused."),
     ).toBeTruthy();
-    const list = page.getByRole("list", {
-      name: "Feeds refusing installs and publishes",
-    });
     expect(
-      within(list).getAllByText("Refusing installs and publishes").length,
-    ).toBeGreaterThan(0);
+      await page.findByText(
+        /Turned off by Ana Lima on .* · Nothing was deleted\./,
+      ),
+    ).toBeTruthy();
+    // Not the first-run box: no dashed empty state.
+    expect(main().querySelector("[data-empty]")).toBeNull();
+    const card = main().querySelector("[data-feeds-off]") as HTMLElement;
+    const list = within(card).getByRole("list", { name: "Feeds" });
+    expect(within(list).getAllByRole("listitem").length).toBeGreaterThan(0);
+    // The refusal is stated once, not per row.
+    expect(card.textContent).not.toMatch(/Refusing/);
+    expect(within(list).getByText("no packages yet")).toBeTruthy();
+    // The header keeps the registry tokens action.
+    expect(page.getByRole("button", { name: /Registry tokens/ })).toBeTruthy();
+    noMember();
     expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);
   });
 
-  it("Turn on round-trips with the owner-row version, not the settings one", async () => {
+  it("a manifest or unnamed actor reads as 'Off since', never 'turned off by the manifest'", async () => {
+    bootOff({ ok: true }, { offBy: "manifest" });
+    const page = within(await mainReady());
+    expect(
+      await page.findByText(/^Off since .* · Nothing was deleted/),
+    ).toBeTruthy();
+    expect(main().textContent).not.toMatch(/turned off by/i);
+  });
+
+  it("Turn on round-trips with the owner-row version and puts focus on the page title", async () => {
     const log = bootOff({
       ok: true,
       packageFeeds: { enabled: true, version: 8, updatedAt: OFF_AT + 5 },
     });
-    const page = within(await mainReady());
-    await userEvent.click(
-      await page.findByRole("button", { name: "Turn on package feeds" }),
-    );
+    await userEvent.click(await turnOnButton());
     await waitFor(() => expect(putCalls(log)).toHaveLength(1));
     expect(putCalls(log)[0]!.json).toEqual({
       enabled: true,
@@ -2007,28 +2085,46 @@ describe("Packages: feeds off and Turn off package feeds (F-34.8)", () => {
     });
   });
 
-  it("Turn on after a 409 shows the current state and retries with the fresh version", async () => {
+  it("Turn on stays disabled until the switch row has loaded", async () => {
+    boot("#/p/djdl/distribution/feeds", {
+      extra: {
+        ...feedRoutes(),
+        ...offProduct(false),
+        [SWITCH]: PENDING,
+      },
+    });
+    const page = within(await mainReady());
+    const b = await page.findByRole("button", {
+      name: "Turn on package feeds",
+    });
+    expect(b.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("a view-only member gets a soft-disabled Turn on with the house reason", async () => {
+    const log = bootOff({ ok: true }, { me: VIEW_ONLY });
+    const page = within(await mainReady());
+    const b = await page.findByRole("button", {
+      name: "Turn on package feeds",
+    });
+    expect(b.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(b);
+    expect(putCalls(log)).toHaveLength(0);
+  });
+
+  it("Turn on after a 409 (still off) says so, shows no member id, and retries with the fresh version", async () => {
     let n = 0;
     const log = bootOff(() => {
       n += 1;
       return n === 1
-        ? new Response(
-            JSON.stringify({
-              error: "bad_request",
-              reason: "version_conflict",
-              packageFeeds: { enabled: false, version: 9, updatedAt: OFF_AT },
-            }),
-            { status: 409 },
-          )
+        ? conflict({ ...OWNER_ROW, version: 9 })
         : { ok: true, packageFeeds: { enabled: true, version: 10 } };
     });
+    await userEvent.click(await turnOnButton());
     const page = within(await mainReady());
-    await userEvent.click(
-      await page.findByRole("button", { name: "Turn on package feeds" }),
-    );
     expect(
       await page.findByText(/Package feeds changed since you opened this/),
     ).toBeTruthy();
+    noMember();
     await userEvent.click(
       page.getByRole("button", { name: "Turn on package feeds" }),
     );
@@ -2039,13 +2135,54 @@ describe("Packages: feeds off and Turn off package feeds (F-34.8)", () => {
     });
   });
 
+  it("Turn on after a 409 that says it is already on refetches the product and tells the user", async () => {
+    const log = bootOff(() =>
+      conflict({
+        enabled: true,
+        version: 9,
+        updatedAt: OFF_AT,
+        updatedBy: MBR,
+      }),
+    );
+    await userEvent.click(await turnOnButton());
+    expect(
+      await screen.findByText("Package feeds were already turned on"),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        log.calls.filter(
+          (c) => c.method === "GET" && c.path === "/manage/api/products/djdl",
+        ).length,
+      ).toBeGreaterThan(1),
+    );
+    noMember();
+  });
+
+  it("a failed Turn on is an inline error with Copy details, inside the card", async () => {
+    bootOff(
+      new Response(JSON.stringify({ error: "internal" }), { status: 500 }),
+    );
+    await userEvent.click(await turnOnButton());
+    const card = main().querySelector("[data-feeds-off]") as HTMLElement;
+    const alert = await within(card).findByRole("alert");
+    expect(
+      within(alert).getByRole("button", { name: /Copy details/ }),
+    ).toBeTruthy();
+  });
+
   /** Packages with the feeds on, ready to open the Turn off dialog. */
-  async function openTurnOff(put: unknown) {
+  async function openTurnOff(
+    put: unknown,
+    opts: { me?: Record<string, unknown>; sw?: unknown } = {},
+  ) {
     const log = boot("#/p/djdl/distribution/feeds", {
+      ...(opts.me ? { me: opts.me } : {}),
       extra: {
         ...feedRoutes(),
         ...offProduct(true),
-        [SWITCH]: { packageFeeds: { ...OWNER_ROW, enabled: true } },
+        [SWITCH]: opts.sw ?? {
+          packageFeeds: { ...OWNER_ROW, enabled: true },
+        },
         [`PUT ${SWITCH}`]: put,
       },
     });
@@ -2054,29 +2191,63 @@ describe("Packages: feeds off and Turn off package feeds (F-34.8)", () => {
       name: "Turn off package feeds",
     });
     await userEvent.click(opener);
-    const dialog = await screen.findByRole("alertdialog");
-    return { log, opener, dialog: within(dialog) };
+    const dialog = within(await screen.findByRole("alertdialog"));
+    return { log, opener, dialog };
+  }
+  async function typeAndConfirm(dialog: ReturnType<typeof within>) {
+    await userEvent.type(
+      dialog.getByLabelText(/Type the product slug/),
+      "djdl",
+    );
+    const confirm = dialog.getByRole("button", {
+      name: "Turn off package feeds",
+    });
+    await enabled(confirm);
+    await userEvent.click(confirm);
   }
 
   it("the confirmation names what stops and what is kept, and needs the product slug", async () => {
     const { log, dialog } = await openTurnOff({ ok: true });
     expect(dialog.getByText("Turn off package feeds for DJDL?")).toBeTruthy();
-    expect(dialog.getByText(/Installs:/)).toBeTruthy();
-    expect(dialog.getByText(/CI publishes:/)).toBeTruthy();
-    expect(dialog.getByText(/Service tokens/)).toBeTruthy();
-    expect(dialog.getByText(/Kept:/)).toBeTruthy();
+    expect(dialog.getByText("Installs").tagName).toBe("STRONG");
+    expect(
+      dialog.getByText(/answer not found, within 30 seconds/),
+    ).toBeTruthy();
+    expect(dialog.getByText("pkey release publish").tagName).toBe("CODE");
+    expect(dialog.getByText("Service tokens")).toBeTruthy();
+    expect(dialog.getByText(/versions, tokens and access/)).toBeTruthy();
+    // One fact once: no separate "Nothing is deleted" line beside Kept.
+    expect(dialog.queryByText(/Nothing is deleted/)).toBeNull();
+    // 3 feeds, the packages the fixture holds.
+    expect(dialog.getByText(/packages on 3 feeds answer/)).toBeTruthy();
     const confirm = dialog.getByRole("button", {
       name: "Turn off package feeds",
     });
-    expect(confirm.getAttribute("aria-disabled")).toBe("true");
+    await waitFor(() =>
+      expect(confirm.getAttribute("aria-disabled")).toBe("true"),
+    );
     await userEvent.click(confirm);
     expect(putCalls(log)).toHaveLength(0);
-    await userEvent.type(dialog.getByLabelText(/Type djdl to confirm/), "djdl");
+    await userEvent.type(
+      dialog.getByLabelText(/Type the product slug/),
+      "djdl",
+    );
+    await enabled(
+      dialog.getByRole("button", { name: "Turn off package feeds" }),
+    );
+  });
+
+  it("the Confirm button waits for the switch row to load", async () => {
+    const { dialog } = await openTurnOff({ ok: true }, { sw: PENDING });
+    await userEvent.type(
+      dialog.getByLabelText(/Type the product slug/),
+      "djdl",
+    );
+    const b = dialog.getByRole("button", { name: "Turn off package feeds" });
     expect(
-      dialog
-        .getByRole("button", { name: "Turn off package feeds" })
-        .getAttribute("aria-disabled"),
-    ).not.toBe("true");
+      b.getAttribute("aria-disabled") === "true" ||
+        (b as HTMLButtonElement).disabled,
+    ).toBe(true);
   });
 
   it("Escape backs out without a write and focus returns to the opener", async () => {
@@ -2087,15 +2258,25 @@ describe("Packages: feeds off and Turn off package feeds (F-34.8)", () => {
     await waitFor(() => expect(document.activeElement).toBe(opener));
   });
 
-  it("sends the owner-row version, never the settings one", async () => {
+  it("a view-only member gets a soft-disabled Turn off", async () => {
+    boot("#/p/djdl/distribution/feeds", {
+      me: VIEW_ONLY,
+      extra: { ...feedRoutes(), ...offProduct(true) },
+    });
+    const b = await within(await mainReady()).findByRole("button", {
+      name: "Turn off package feeds",
+    });
+    expect(b.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(b);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("sends the owner-row version, never the settings one, and focuses the off card's title", async () => {
     const { log, dialog } = await openTurnOff({
       ok: true,
       packageFeeds: { enabled: false, version: 8, updatedAt: OFF_AT },
     });
-    await userEvent.type(dialog.getByLabelText(/Type djdl to confirm/), "djdl");
-    await userEvent.click(
-      dialog.getByRole("button", { name: "Turn off package feeds" }),
-    );
+    await typeAndConfirm(dialog);
     await waitFor(() => expect(putCalls(log)).toHaveLength(1));
     expect(putCalls(log)[0]!.json).toEqual({
       enabled: false,
@@ -2107,48 +2288,50 @@ describe("Packages: feeds off and Turn off package feeds (F-34.8)", () => {
     const { log, dialog } = await openTurnOff(
       new Response(JSON.stringify({ error: "internal" }), { status: 500 }),
     );
-    const input = dialog.getByLabelText(/Type djdl to confirm/);
-    await userEvent.type(input, "djdl");
-    await userEvent.click(
-      dialog.getByRole("button", { name: "Turn off package feeds" }),
-    );
+    await typeAndConfirm(dialog);
     await waitFor(() => expect(putCalls(log)).toHaveLength(1));
     expect(await dialog.findByRole("alert")).toBeTruthy();
     expect(
-      (dialog.getByLabelText(/Type djdl to confirm/) as HTMLInputElement).value,
+      (dialog.getByLabelText(/Type the product slug/) as HTMLInputElement)
+        .value,
     ).toBe("djdl");
   });
 
-  it("a 409 shows the current state in the dialog and the retry sends the fresh version", async () => {
+  it("a 409 that finds the feeds already off ends the flow: no member id, the product refetched, no second confirm", async () => {
+    const { log, dialog } = await openTurnOff(() =>
+      conflict({ ...OWNER_ROW, version: 9 }),
+    );
+    await typeAndConfirm(dialog);
+    expect(
+      await screen.findByText("Package feeds are already off"),
+    ).toBeTruthy();
+    // The dialog is gone, so there is nothing left to confirm a second time.
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(putCalls(log)).toHaveLength(1);
+    noMember();
+    // The console shows the true state: the product was refetched.
+    await waitFor(() =>
+      expect(
+        log.calls.filter(
+          (c) => c.method === "GET" && c.path === "/manage/api/products/djdl",
+        ).length,
+      ).toBeGreaterThan(1),
+    );
+  });
+
+  it("a 409 with the feeds still on shows the current state in the dialog and retries with the fresh version", async () => {
     let n = 0;
     const { log, dialog } = await openTurnOff(() => {
       n += 1;
       return n === 1
-        ? new Response(
-            JSON.stringify({
-              error: "bad_request",
-              reason: "version_conflict",
-              packageFeeds: {
-                enabled: false,
-                version: 9,
-                updatedAt: OFF_AT,
-                updatedBy: "Ana Lima",
-              },
-            }),
-            { status: 409 },
-          )
+        ? conflict({ ...OWNER_ROW, enabled: true, version: 9 })
         : { ok: true, packageFeeds: { enabled: false, version: 10 } };
     });
-    await userEvent.type(dialog.getByLabelText(/Type djdl to confirm/), "djdl");
-    await userEvent.click(
-      dialog.getByRole("button", { name: "Turn off package feeds" }),
-    );
+    await typeAndConfirm(dialog);
     expect(
       await dialog.findByText(/changed since you opened this/),
     ).toBeTruthy();
-    expect(
-      dialog.getByText(/already off, turned off by Ana Lima/),
-    ).toBeTruthy();
+    noMember();
     await userEvent.click(
       dialog.getByRole("button", { name: "Turn off package feeds" }),
     );

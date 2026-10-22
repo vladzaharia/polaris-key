@@ -34,6 +34,7 @@ import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { mutate } from "../../../data/mutations.js";
@@ -52,8 +53,7 @@ import {
   isEcosystem,
   overviewHref,
   tokensHref,
-  offByLabel,
-  packageFeedsConflict,
+  afterWrite,
   type FeedScope,
 } from "../model/model.js";
 import { BootstrapEmpty, OwnersPanel } from "./FeedsOwners.js";
@@ -64,6 +64,7 @@ import {
   PackagesFoot,
   provisionedFeeds,
 } from "./PackagesOverview.js";
+import { PackageFeedsOff } from "./PackageFeedsOff.js";
 import { TurnOffFeeds } from "./TurnOffFeeds.js";
 import { RegistryTokensPage } from "./RegistryTokens.js";
 
@@ -117,143 +118,6 @@ export function FeedsArea({
     );
   }
   return <FeedPage scope={scope} eco={eco} tab={tab} />;
-}
-
-function PackageFeedsOff({
-  slug,
-  name,
-}: {
-  slug: string;
-  name: string;
-}): React.ReactElement {
-  const queryClient = useQueryClient();
-  const sw = useQuery({
-    queryKey: qk.packageFeedsSwitch(slug),
-    queryFn: () => api.packageFeeds(slug),
-  });
-  const overview = useFeedsOverview({ kind: "product", slug });
-  // Only feeds that were set up: what the registry refuses now and keeps for later.
-  const feeds = (overview.data?.feeds ?? []).filter((f) => f.configured);
-  const product = useProduct(slug);
-  const [busy, setBusy] = React.useState(false);
-  const [failure, setFailure] = React.useState<unknown>(null);
-  // The owner row's counter, never the generic settings one; a 409 hands back the fresh row.
-  const version = React.useRef(0);
-  version.current = sw.data?.packageFeeds.version ?? 0;
-  const turnOn = async (): Promise<void> => {
-    setBusy(true);
-    setFailure(null);
-    try {
-      const result = await mutate("savePackageFeeds", slug, {
-        enabled: true,
-        expectedVersion: version.current,
-      });
-      queryClient.setQueryData(qk.packageFeedsSwitch(slug), {
-        packageFeeds: result.packageFeeds,
-      });
-      toast.success("Package feeds turned on");
-    } catch (e) {
-      const current = packageFeedsConflict(e);
-      if (current) {
-        queryClient.setQueryData(qk.packageFeedsSwitch(slug), {
-          packageFeeds: current,
-        });
-        void queryClient.invalidateQueries({
-          queryKey: qk.product(slug),
-          exact: true,
-        });
-      }
-      setFailure(e);
-    } finally {
-      setBusy(false);
-    }
-  };
-  const summary = product.data?.packages;
-  const at = summary?.offAt ?? sw.data?.packageFeeds.updatedAt ?? null;
-  const by = offByLabel(summary?.offBy);
-  const conflict = packageFeedsConflict(failure);
-  const failureCopy = conflict
-    ? {
-        title: "Package feeds changed since you opened this",
-        description: conflict.enabled
-          ? "They are on now."
-          : "They are still off. Turn them on to continue.",
-      }
-    : failure
-      ? errorCopy(failure, { area: "distribution", thing: "Package feeds" })
-      : null;
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Packages" />
-      <EmptyState
-        kind="first-run"
-        service="distribution"
-        title={`Package feeds are off for ${name}`}
-        description={
-          <>
-            Declared packages aren't served: installs and CI publishes on its{" "}
-            {feeds.length > 1 ? `${feeds.length} feeds` : "feeds"} are refused.
-            {at || by ? (
-              <>
-                {" "}
-                Turned off
-                {by ? ` by ${by}` : ""}
-                {at ? (
-                  <>
-                    {" "}
-                    on <Timestamp at={fromSeconds(at)} format="absolute" />
-                  </>
-                ) : null}
-                .
-              </>
-            ) : null}{" "}
-            Nothing was deleted.
-          </>
-        }
-        primaryAction={
-          <Button onClick={() => void turnOn()} disabled={busy}>
-            Turn on package feeds
-          </Button>
-        }
-        docs={docsUrl("packageFeeds")}
-      />
-      {failureCopy ? (
-        <p role="alert" className="text-sm text-danger">
-          {failureCopy.title}
-          {failureCopy.description ? `. ${failureCopy.description}` : ""}
-        </p>
-      ) : null}
-      {feeds.length ? (
-        <ul
-          aria-label="Feeds refusing installs and publishes"
-          className="divide-y divide-border rounded-lg border border-border text-fg-muted"
-        >
-          {feeds.map((f) => {
-            const Icon = ECOSYSTEM_ICONS[f.ecosystem];
-            return (
-              <li
-                key={f.ecosystem}
-                className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-sm"
-              >
-                <Icon aria-hidden className="size-4 shrink-0" />
-                <span className="font-medium">
-                  {ECOSYSTEM_LABELS[f.ecosystem]}
-                </span>
-                <span>
-                  {f.packages
-                    ? `${formatCount(f.packages)} ${f.packages === 1 ? "package" : "packages"}`
-                    : "no package yet"}
-                </span>
-                <span className="ms-auto text-xs">
-                  Refusing installs and publishes
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
-    </div>
-  );
 }
 
 /**
@@ -459,6 +323,23 @@ export function FeedsOverview({
   const product = useProduct(scope.kind === "product" ? scope.slug : null);
   useLoadingAnnouncement("package feeds", query.isPending);
   const [turningOff, setTurningOff] = React.useState(false);
+  const gate = useWriteGate(
+    "ship",
+    scope.kind === "product" ? scope.slug : null,
+  );
+  // After Turn on moved the page back to its cards: focus the page title.
+  React.useEffect(() => {
+    if (afterWrite.focus !== "page" || !query.data) return;
+    afterWrite.focus = null;
+    const id = requestAnimationFrame(() => {
+      const h1 = document.querySelector<HTMLElement>("main h1");
+      if (h1) {
+        h1.tabIndex = -1;
+        h1.focus();
+      }
+    });
+    return () => cancelAnimationFrame(id);
+  }, [query.data]);
   const columns = React.useMemo(() => overviewColumns(scope), [scope]);
   const data = query.data;
   const host = data?.registryOrigin
@@ -516,7 +397,10 @@ export function FeedsOverview({
         {feeds.length ? (
           <>
             <FeedCards scope={scope} feeds={feeds} />
-            <PackagesFoot onTurnOff={() => setTurningOff(true)} />
+            <PackagesFoot
+              onTurnOff={() => setTurningOff(true)}
+              disabledReason={gate.disabledReason}
+            />
             <TurnOffFeeds
               open={turningOff}
               onOpenChange={setTurningOff}

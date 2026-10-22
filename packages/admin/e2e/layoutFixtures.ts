@@ -316,7 +316,7 @@ export function resolve(pathname: string): unknown {
         enabled: false,
         version: 4,
         updatedAt: FEEDS_OFF_AT,
-        updatedBy: "Ana Lima",
+        updatedBy: "mbr_01J9ZANALIMA",
       },
     };
   if (pathname.startsWith(`${FEEDS_OFF}/`))

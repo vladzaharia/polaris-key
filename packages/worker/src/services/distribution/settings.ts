@@ -152,7 +152,7 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
     }),
     // F-34.3: the owner's `packageFeeds` switch, the one off switch of every package feed of the
     // product (reads, publishes, renders). The manifest provisions the row on (F-34.2) only for a
-    // product that has none; it never turns it back on. Operator-owned: turning it off is L1.
+    // product that has none; it never turns it back on. Operator-owned: turning it off is typed (L3: every install of every customer stops).
     setting({
       key: "distribution.packageFeeds",
       scope: "product",
@@ -167,7 +167,7 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       defaultValue: false,
       merge: "cascade",
       ownership: "operator",
-      confirm: { on: "L0", off: "L1" },
+      confirm: { on: "L0", off: "L3" },
       visibleWhen: VISIBLE,
       readers: [
         "services/distribution/registryFeeds.ts",

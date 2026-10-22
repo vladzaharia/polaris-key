@@ -303,10 +303,37 @@ export function packageFeedsConflict(
     : null;
 }
 
-/** "Ana Lima", or what a row the ingest or the system wrote reads as. */
-export function offByLabel(by: string | null | undefined): string | null {
-  if (!by) return null;
-  if (by === "manifest") return "the manifest";
-  if (by === "system") return "the system";
-  return by;
+/**
+ * Where focus goes after a write moved the page to its other state (the old control unmounted):
+ * the off card's title after Turn off, the page title after Turn on. Read once by the page that
+ * mounts next.
+ */
+export const afterWrite: { focus: "off-card" | "page" | null } = {
+  focus: null,
+};
+
+/** The house short absolute form: "Oct 7, 2:05 PM", with the year only when it is not this one. */
+export function shortWhen(ms: number): string {
+  const sameYear = new Date(ms).getFullYear() === new Date().getFullYear();
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(ms);
+}
+
+/**
+ * "Turned off by Ana Lima on Oct 7, 2:05 PM". A person is named; an unnamed actor, the manifest
+ * or the system (which only ever provision a row) reads "Off since …".
+ */
+export function offWhen(
+  by: string | null | undefined,
+  at: number | null | undefined,
+): string | null {
+  if (!at) return null;
+  const when = shortWhen(at * 1000);
+  const person = by && by !== "manifest" && by !== "system" ? by : null;
+  return person ? `Turned off by ${person} on ${when}` : `Off since ${when}`;
 }

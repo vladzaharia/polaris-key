@@ -206,7 +206,7 @@ export const ACTION_LEVELS = {
   "feed.rebuild": 0,
   "feed.disable": 1,
   "feed.bootstrap": 1,
-  "packageFeeds.disable": 1,
+  "packageFeeds.disable": 3,
   "package.unyank": 1,
   "package.deprecate": 1,
   "package.undeprecate": 1,
@@ -228,6 +228,7 @@ export type ActionId = keyof typeof ACTION_LEVELS;
 /** What an L3 action asks the operator to type. */
 const TYPED: Partial<Record<ActionId, ActionPolicy["typed"]>> = {
   "product.delete": "slug",
+  "packageFeeds.disable": "slug",
   "signing.revoke": "kid",
   "signing.breakGlassActivate": "kid",
   "kek.reseal": "reseal",

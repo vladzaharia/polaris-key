@@ -256,6 +256,15 @@ function cases(): Case[] {
         await page.getByRole("alertdialog").waitFor();
       },
     },
+    // M6: the Services switch opens the same typed dialog.
+    {
+      name: "dialog:turn-off-feeds-services",
+      hash: "#/p/djdl/settings/features",
+      act: async (page) => {
+        await page.getByRole("switch", { name: /Packages/ }).click();
+        await page.getByRole("alertdialog").waitFor();
+      },
+    },
     {
       name: "dialog:turn-off-feeds-409",
       hash: "#/p/djdl/distribution/feeds",
@@ -264,7 +273,7 @@ function cases(): Case[] {
           .getByRole("button", { name: "Turn off package feeds" })
           .click();
         const dialog = page.getByRole("alertdialog");
-        await dialog.getByLabel(/Type djdl to confirm/).fill("djdl");
+        await dialog.getByRole("textbox").fill("djdl");
         await dialog
           .getByRole("button", { name: "Turn off package feeds" })
           .click();
@@ -640,10 +649,10 @@ async function open(
             error: "bad_request",
             reason: "version_conflict",
             packageFeeds: {
-              enabled: false,
+              enabled: true,
               version: 4,
               updatedAt: Math.floor(Date.now() / 1000) - 60,
-              updatedBy: "Ana Lima",
+              updatedBy: "mbr_01J9ZANALIMA",
             },
           },
         });
