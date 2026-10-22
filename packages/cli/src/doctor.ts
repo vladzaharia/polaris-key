@@ -22,7 +22,12 @@
  * a job log. The text and `--json` are both drawn from the facts below.
  */
 
-import { cellWidth, wrapSpans } from "@polaris-key/node/terminal";
+import {
+  cellWidth,
+  Painter,
+  wrapSpans,
+  type Line,
+} from "@polaris-key/node/terminal";
 import { day, glyphOf } from "./account.js";
 import {
   accessInfo,
@@ -30,13 +35,12 @@ import {
   type AccessInfo,
   type AdminIo,
 } from "./adminAuth.js";
-import { httpError, request } from "./bundle.js";
+import { httpError, maskTokens, request } from "./bundle.js";
 import {
   adminCredential,
   Refusal,
   type ResolvedCredential,
 } from "./credentials.js";
-import { networkMessage } from "./errors.js";
 import type { ValidationResult } from "./manifest.js";
 import type { Term } from "./terminal.js";
 import { untrusted, type UntrustedEnv } from "./untrusted.js";
@@ -47,14 +51,20 @@ export const DOCTOR_TIMEOUT_MS = 15_000;
 export type DoctorState = "ok" | "warn" | "todo";
 
 export interface DoctorFact {
-  id: "manifest" | "discovery" | "services" | "signing-keys";
+  id: "manifest" | "discovery" | "services" | "signing-keys" | "config-file";
   state: DoctorState;
   /** One plain sentence; for a remote fact it quotes the server, so it is cleaned on output. */
   detail: string;
+  /** A machine code for a failure with a name: `network` when the server could not be reached. */
+  code?: string;
 }
 
 export interface RemoteDoctor {
+  /** The discovery URL, with any pkey token in it masked: it is shown and put in `--json`. */
   url: string;
+  host: string;
+  /** The signing key ids discovery exposes, in the server's order (never the keys themselves). */
+  keys: string[];
   /** The HTTP status when the server answered with a refusal. */
   status?: number;
   services: string[];
@@ -62,10 +72,43 @@ export interface RemoteDoctor {
   facts: DoctorFact[];
 }
 
+/** The most a response body may be before it is read (64 KiB), as the admin commands cap theirs. */
+export const READ_LIMIT = 64 * 1024;
+
+// TODO(merge): use the shared reader from fix A (the 64 KiB capped JSON reader).
+/** A response's JSON, refusing a body over `limit` bytes before it is parsed. */
+export async function readCapped(
+  res: Response,
+  limit: number = READ_LIMIT,
+): Promise<unknown> {
+  const declared = Number(res.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > limit)
+    throw new Error("The answer was too large to read.");
+  const reader = res.body?.getReader();
+  if (!reader) return JSON.parse(await res.text()) as unknown;
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel().catch(() => {});
+      throw new Error("The answer was too large to read.");
+    }
+    chunks.push(value);
+  }
+  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+}
+
+const plural = (n: number, word: string): string =>
+  `${n} ${word}${n === 1 ? "" : "s"}`;
+
 /** The manifest fact from a validation, or from the reason no manifest could be read. */
 export function manifestFact(
   result: ValidationResult | null,
   problem?: string,
+  fileWarnings: readonly string[] = [],
 ): DoctorFact {
   if (!result)
     return {
@@ -77,63 +120,98 @@ export function manifestFact(
     return {
       id: "manifest",
       state: "todo",
-      detail: `${result.errors.length} error${result.errors.length === 1 ? "" : "s"}`,
+      detail: plural(result.errors.length, "error"),
     };
+  const warnings = result.warnings.length + fileWarnings.length;
   return {
     id: "manifest",
-    state: result.warnings.length ? "warn" : "ok",
-    detail: result.warnings.length
-      ? `${result.warnings.length} warning${result.warnings.length === 1 ? "" : "s"}`
-      : "valid",
+    state: warnings ? "warn" : "ok",
+    detail: warnings ? plural(warnings, "warning") : "valid",
   };
 }
 
-/** Fetch the product's discovery document and read the remote facts out of it. */
+/** The host of a URL for the output, with any pkey token masked. */
+export function hostOf(url: string): string {
+  try {
+    return maskTokens(new URL(url).host);
+  } catch {
+    return maskTokens(url);
+  }
+}
+
+/**
+ * Fetch the product's discovery document and read the remote facts out of it. Nothing here
+ * throws for a network failure or a refusal: each is a `todo` discovery fact, so the report goes on
+ * to Signed in, Integration and the summary.
+ */
 export async function checkRemote(opts: {
   baseUrl: string;
   product: string;
   fetchImpl?: typeof fetch;
   signal?: AbortSignal;
 }): Promise<RemoteDoctor> {
-  const url = `${opts.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
+  const raw = `${opts.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
+  const url = maskTokens(raw);
+  const host = hostOf(raw);
+  const down = (
+    detail: string,
+    code?: string,
+    status?: number,
+  ): RemoteDoctor => ({
+    url,
+    host,
+    keys: [],
+    ...(status === undefined ? {} : { status }),
+    services: [],
+    signing: null,
+    facts: [
+      {
+        id: "discovery",
+        state: "todo",
+        detail,
+        ...(code ? { code } : {}),
+      },
+    ],
+  });
   let res: Response;
   try {
     res = await (opts.fetchImpl ?? fetch)(
-      url,
+      raw,
       opts.signal ? { signal: opts.signal } : undefined,
     );
   } catch (err) {
-    throw new Error(networkMessage(err, url));
+    if (opts.signal?.aborted)
+      return down("The server did not answer in time.", "timeout");
+    void err;
+    return down(`Can't reach ${host}.`, "network");
   }
   if (!res.ok)
-    return {
-      url,
-      status: res.status,
-      services: [],
-      signing: null,
-      facts: [
-        {
-          id: "discovery",
-          state: "todo",
-          detail: `failed (${res.status})`,
-        },
-      ],
-    };
-  const body = (await res.json()) as {
-    signing?: unknown;
-    trust?: unknown;
-    services?: Record<string, { enabled?: unknown } | undefined>;
-  };
-  const services = Object.entries(body.services ?? {})
-    .filter(([, service]) => service?.enabled === true)
+    return down(
+      `Answered ${res.status} at ${host}`,
+      "discovery-failed",
+      res.status,
+    );
+  let body: unknown;
+  try {
+    body = await readCapped(res);
+  } catch {
+    return down(
+      `${host} did not answer with discovery.`,
+      "discovery-unreadable",
+    );
+  }
+  const services = Object.entries(rec(rec(body)["services"]))
+    .filter(([, service]) => rec(service)["enabled"] === true)
     .map(([slug]) => slug);
-  const signing = body.signing ?? body.trust ?? {};
+  const signing = rec(body)["signing"] ?? rec(body)["trust"] ?? {};
   const keys =
-    signing !== null && typeof signing === "object"
-      ? Object.keys(signing).length
-      : 0;
+    signing !== null && typeof signing === "object" && !Array.isArray(signing)
+      ? Object.keys(signing)
+      : [];
   return {
     url,
+    host,
+    keys,
     services,
     signing,
     facts: [
@@ -145,16 +223,11 @@ export async function checkRemote(opts: {
       },
       {
         id: "signing-keys",
-        state: keys ? "ok" : "warn",
-        detail: keys ? `${keys} exposed` : "none exposed",
+        state: keys.length ? "ok" : "warn",
+        detail: keys.length ? `${keys.length} exposed` : "none exposed",
       },
     ],
   };
-}
-
-/** `ok` unless a fact is still to do; the process exits 1 when this is false. */
-export function doctorOk(facts: readonly DoctorFact[]): boolean {
-  return facts.every((f) => f.state !== "todo");
 }
 
 // ── signed in and integration ────────────────────────────────────────────────────────────────
@@ -203,6 +276,8 @@ export interface IntegrationFacts {
   platforms: Array<{ id: string; label: string }>;
   /** First release by CI, when the view says; null when it carries no such fact. */
   ci: { firstAt: number | null } | null;
+  /** The release key ids the app pins, from the view's snippet. */
+  releaseKeys: string[];
   /** Commerce is a feature when the product has it on. */
   commerce: "on" | "off";
   /** True while Licensing is off too, since Commerce needs it. */
@@ -214,7 +289,7 @@ export type IntegrationFact =
   | ({ state: "ok" } & IntegrationFacts)
   | { state: "skipped"; reason: "signed-out" | "no-product" | "ended" }
   | { state: "denied"; reason: string; access: AccessInfo | null }
-  | { state: "unavailable"; detail: string };
+  | { state: "unavailable"; detail: string; fix: string };
 
 export interface DoctorSession {
   signedIn: SignedIn;
@@ -262,6 +337,12 @@ const platformLabel = (id: string): string =>
 const asArray = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 const rec = (v: unknown): Record<string, unknown> =>
   v && typeof v === "object" ? (v as Record<string, unknown>) : {};
+
+/** A refusal's fix as a bare command: "Run pkey login once." is `pkey login`. */
+export function bareFix(fix: string | undefined): string {
+  const m = /^Run (pkey [^.]*?)(?: once| again)?\.?$/.exec(fix ?? "");
+  return m?.[1] ?? fix ?? "pkey login";
+}
 
 /** The facts out of the Integration view; the view is the server's, so every field is checked. */
 export function integrationFacts(
@@ -344,10 +425,15 @@ export function integrationFacts(
             : null,
       };
   }
+  const releaseKeys = asArray(rec(rec(view)["snippet"])["releaseKeys"])
+    .map((k) => rec(k)["kid"])
+    .filter((k): k is string => typeof k === "string" && k !== "")
+    .map(u);
   return {
     features: out,
     platforms,
     ci,
+    releaseKeys,
     commerce: have.has("commerce") ? "on" : "off",
     commerceNeedsLicensing: !have.has("licensing"),
     todo,
@@ -380,12 +466,12 @@ export async function gatherSession(opts: {
     });
   } catch (e) {
     if (!(e instanceof Refusal)) throw e;
-    const out = e.message.startsWith("Not signed in");
+    const out = e.code === "not-signed-in";
     return {
       signedIn: {
         state: "out",
-        detail: out ? "Not signed in" : e.message,
-        fix: out ? "pkey login" : (e.fix ?? "pkey login"),
+        detail: out ? "Integration needs it" : maskTokens(e.message),
+        fix: bareFix(e.fix),
       },
       integration: { state: "skipped", reason: "signed-out" },
     };
@@ -400,10 +486,21 @@ export async function gatherSession(opts: {
       },
     });
   const api = cred.token.startsWith("pkeya_");
+  const host = hostOf(cred.origin);
   const reach = (): string =>
     signal?.aborted
       ? "The console did not answer in time."
-      : `Could not reach ${new URL(cred.origin).host}.`;
+      : `Can't reach ${host}.`;
+  const reachFix = (): string =>
+    signal?.aborted ? "pkey doctor" : "Check your network, or --base-url.";
+  const ended = (): DoctorSession => ({
+    signedIn: {
+      state: "ended",
+      detail: `Your sign-in to ${host} has ended.`,
+      fix: "pkey login",
+    },
+    integration: { state: "skipped", reason: "ended" },
+  });
 
   let signedIn: SignedIn;
   if (api) {
@@ -415,22 +512,15 @@ export async function gatherSession(opts: {
   } else {
     try {
       const res = await get("/me");
-      if (res.status === 401)
-        return {
-          signedIn: {
-            state: "ended",
-            detail: "Your sign-in has ended",
-            fix: "pkey login",
-          },
-          integration: { state: "skipped", reason: "ended" },
-        };
+      if (res.status === 401) return ended();
       if (!res.ok) {
         signedIn = {
           state: "unreadable",
-          detail: `Could not read your identity (HTTP ${res.status})`,
+          detail: `The console answered HTTP ${res.status} for your identity.`,
+          fix: "pkey doctor",
         };
       } else {
-        const me = rec(await res.json());
+        const me = rec(await readCapped(res));
         const ends =
           typeof me["sessionExpiresAt"] === "number"
             ? (me["sessionExpiresAt"] as number)
@@ -444,7 +534,11 @@ export async function gatherSession(opts: {
         };
       }
     } catch {
-      signedIn = { state: "unreadable", detail: reach() };
+      signedIn = {
+        state: "unreadable",
+        detail: reach(),
+        fix: reachFix(),
+      };
     }
   }
 
@@ -455,15 +549,7 @@ export async function gatherSession(opts: {
     };
   try {
     const res = await get(`/products/${encodeURIComponent(slug)}/integration`);
-    if (res.status === 401)
-      return {
-        signedIn: {
-          state: "ended",
-          detail: "Your sign-in has ended",
-          fix: "pkey login",
-        },
-        integration: { state: "skipped", reason: "ended" },
-      };
+    if (res.status === 401) return ended();
     if (res.status === 403) {
       const failure = await httpError(res, "Integration");
       if (failure.detail.reason === "no_access")
@@ -494,43 +580,451 @@ export async function gatherSession(opts: {
         integration: {
           state: "unavailable",
           detail: `The console answered HTTP ${res.status}.`,
+          fix: "pkey doctor",
         },
       };
     return {
       signedIn,
       integration: {
         state: "ok",
-        ...integrationFacts(await res.json(), slug, cred.origin, io.env),
+        ...integrationFacts(await readCapped(res), slug, cred.origin, io.env),
       },
     };
   } catch {
     return {
       signedIn,
-      integration: { state: "unavailable", detail: reach() },
+      integration: { state: "unavailable", detail: reach(), fix: reachFix() },
     };
   }
 }
 
-// ── the same facts, as text and as JSON ──────────────────────────────────────────────────────
+// ── the one report: facts → rows → text and JSON ─────────────────────────────────────────────
 
-/** Warnings the session adds to the summary: a ▲ row each. */
-export function sessionWarnings(s: DoctorSession): number {
-  return (
-    (s.signedIn.state === "in" ? 0 : 1) +
-    (s.integration.state === "denied" || s.integration.state === "unavailable"
-      ? 1
-      : 0)
-  );
+/** What a row's glyph says. `todo` is a ✗ and counts to the exit code; `warn` is a ▲. */
+export type RowMark = "ok" | "warn" | "todo" | "wait" | "none";
+
+/** One run of a row's detail: dim by default, `plain` for the value itself (a key id). */
+export interface Part {
+  text: string;
+  role?: "plain" | "muted" | "accent" | "success";
+  /** Joined to the part before with a space, so a name and its email stay together. */
+  glue?: boolean;
 }
 
-const iso = (seconds: number | null | undefined): string | null =>
-  typeof seconds === "number" ? new Date(seconds * 1000).toISOString() : null;
+export interface ReportRow {
+  /** The glyph before the name (`  ✓ name`). */
+  lead?: RowMark;
+  name: string;
+  /** The glyph and word after the name (a feature's state). */
+  state?: { mark: RowMark; word: string };
+  /** The detail, parts joined by the separator and never broken at it. */
+  parts?: Part[];
+  /** Extra lines under the row, each a list of parts. */
+  notes?: Part[][];
+  /** One fix, a bare command (or a short instruction). */
+  fix?: string;
+  /** A console link, shown without its scheme and broken after `/` and `#`. */
+  link?: string;
+}
+
+export interface ReportSection {
+  title?: string;
+  /** One line for the whole section: every row in it has this state (M10). */
+  collapsed?: { mark: RowMark | null; word: string };
+  rows: ReportRow[];
+}
+
+export interface DoctorReport {
+  header: { name: string; slug: string | null; host: string };
+  sections: ReportSection[];
+  facts: DoctorFact[];
+  /** Rows marked ✗ and rows marked ▲: the numbers on the summary line. */
+  todo: number;
+  warnings: number;
+  /** 1 while anything is to do. The summary's colour and this follow the same count. */
+  exit: 0 | 1;
+}
+
+/** The manifest, as the report needs it. */
+export type ManifestInput =
+  | { state: "missing"; problem: string }
+  | {
+      state: "read";
+      result: ValidationResult;
+      fileWarnings: string[];
+    };
+
+export interface ConfigFileCheck {
+  /** The folders that hold a `polaris-key.json`, `./` for the current one. */
+  dirs: string[];
+  /** The hosts the files point at that are not the base URL's. */
+  elsewhere: string[];
+  /** Pins in a file that discovery does not expose; null when discovery did not say. */
+  stalePins: string[] | null;
+}
+
+export interface ReportInput {
+  product: { slug: string; name?: string } | null;
+  baseUrl: string;
+  manifest: ManifestInput;
+  /** Null when no product is known, so there is nothing to ask. */
+  remote: RemoteDoctor | null;
+  session: DoctorSession;
+  config: ConfigFileCheck;
+  env: UntrustedEnv;
+}
+
+const STATE_WORD: Readonly<Record<FeatureState, string>> = {
+  verified: "Verified",
+  waiting: "Waiting",
+  unseen: "Not seen yet",
+};
+const STATE_MARK: Readonly<Record<FeatureState, RowMark>> = {
+  verified: "ok",
+  waiting: "wait",
+  unseen: "none",
+};
+const featureState = (st: FeatureState): { mark: RowMark; word: string } => ({
+  mark: STATE_MARK[st],
+  word: STATE_WORD[st],
+});
+
+const dim = (text: string): Part => ({ text });
+const plain = (text: string): Part => ({ text, role: "plain" });
+
+/** The report, from the same facts that set the exit code: one list, text and JSON alike. */
+export function buildReport(input: ReportInput): DoctorReport {
+  const { session: s, remote, config } = input;
+  const u = (v: unknown) => untrusted(v, input.env);
+  const facts: DoctorFact[] = [];
+  const sections: ReportSection[] = [];
+  const hostName = hostOf(input.baseUrl);
+
+  // Manifest: the `.pkey/` verdict, what the server enables, who is signed in, the config file.
+  const manifest: ReportRow[] = [];
+  const m = input.manifest;
+  if (m.state === "missing") {
+    facts.push(manifestFact(null, m.problem));
+    manifest.push({
+      lead: "todo",
+      name: ".pkey/",
+      parts: [
+        dim(/^No \.pkey\//.test(m.problem) ? "Not found here" : u(m.problem)),
+      ],
+      fix: /^No \.pkey\//.test(m.problem) ? "pkey init" : "pkey validate",
+    });
+  } else {
+    facts.push(manifestFact(m.result, undefined, m.fileWarnings));
+    const r = m.result;
+    if (r.ok)
+      manifest.push({
+        lead: "ok",
+        name: ".pkey/",
+        parts: [
+          dim("valid"),
+          ...(r.enabledModules.length
+            ? [dim(r.enabledModules.join(", "))]
+            : []),
+        ],
+      });
+    for (const w of m.fileWarnings)
+      manifest.push({
+        lead: "warn",
+        name: ".pkey/",
+        parts: [dim(u(w))],
+      });
+    for (const w of r.warnings)
+      manifest.push({
+        lead: "warn",
+        name: u(`${w.file}${w.path}`),
+        parts: [dim(u(w.message))],
+      });
+    for (const e of r.errors)
+      manifest.push({
+        lead: "todo",
+        name: u(`${e.file}${e.path}`),
+        parts: [dim(u(e.message))],
+        fix: "pkey validate",
+      });
+  }
+
+  const signed = s.signedIn;
+  if (signed.state === "in") {
+    const person: Part[] =
+      signed.tokenType === "api"
+        ? [dim("API token, no person")]
+        : signed.name && signed.email
+          ? [dim(signed.name), { text: `(${signed.email})`, glue: true }]
+          : [dim(signed.name || signed.email || "yes")];
+    manifest.push({
+      lead: "ok",
+      name: "Signed in",
+      parts: [
+        ...person,
+        ...(signed.endsAt
+          ? [dim(`ends ${day(signed.endsAt, input.env)}`)]
+          : []),
+      ],
+    });
+  } else
+    manifest.push({
+      lead: "warn",
+      name:
+        signed.state === "out" && signed.detail === "Integration needs it"
+          ? "Not signed in"
+          : "Signed in",
+      parts: [dim(u(signed.detail ?? "Not signed in"))],
+      ...(signed.fix ? { fix: signed.fix } : {}),
+    });
+
+  if (config.dirs.length) {
+    const bad = config.elsewhere.length || config.stalePins?.length;
+    facts.push({
+      id: "config-file",
+      state: bad ? "warn" : "ok",
+      detail: bad ? "does not match the base URL" : "matches",
+    });
+    manifest.push({
+      lead: bad ? "warn" : "ok",
+      name: "polaris-key.json",
+      parts: [
+        dim(config.dirs.join(" and ")),
+        dim(
+          config.elsewhere.length
+            ? `points at ${config.elsewhere.map(u).join(", ")}, not ${hostName}`
+            : config.stalePins?.length
+              ? `pins ${config.stalePins.map(u).join(", ")} are not exposed by ${hostName}`
+              : config.stalePins
+                ? `pins match ${hostName}`
+                : `points at ${hostName}`,
+        ),
+      ],
+      ...(bad ? { fix: "pkey help sdk" } : {}),
+    });
+  } else
+    manifest.push({
+      lead: "none",
+      name: "polaris-key.json",
+      parts: [dim("Not found here")],
+    });
+
+  // Discovery.
+  const keys: ReportRow[] = [];
+  if (remote) {
+    facts.push(...remote.facts);
+    const d = remote.facts[0]!;
+    if (d.state === "todo") {
+      keys.push({
+        lead: "todo",
+        name: "Discovery",
+        parts: [dim(d.detail)],
+        fix:
+          d.code === "network" || d.code === "timeout"
+            ? "Check your network, or --base-url."
+            : "Check --base-url, or register the product in the console.",
+      });
+    } else {
+      const svc = remote.facts.find((f) => f.id === "services")!;
+      manifest.splice(1, 0, {
+        lead: svc.state === "ok" ? "ok" : "warn",
+        name: "Services",
+        parts: [
+          dim(
+            remote.services.length
+              ? remote.services.map(u).join(", ")
+              : "none enabled",
+          ),
+        ],
+      });
+      if (!remote.keys.length)
+        keys.push({
+          lead: "warn",
+          name: "Signing key",
+          parts: [dim("none exposed")],
+        });
+      for (const kid of remote.keys)
+        keys.push({
+          lead: "ok",
+          name: "Signing key",
+          parts: [plain(u(kid)), dim("active")],
+        });
+    }
+  } else
+    manifest.push({
+      lead: "none",
+      name: "Discovery",
+      parts: [dim("Needs a product: pass --product")],
+    });
+  if (s.integration.state === "ok")
+    for (const kid of s.integration.releaseKeys)
+      keys.push({
+        lead: "ok",
+        name: "Release key",
+        parts: [plain(kid), dim("pinned")],
+      });
+
+  sections.push({ title: "Manifest", rows: manifest });
+  if (keys.length) sections.push({ title: "Keys", rows: keys });
+
+  // Integration.
+  const i = s.integration;
+  if (i.state === "denied") {
+    if (i.access) {
+      const a = i.access;
+      const notes: Part[][] = [
+        [
+          dim(
+            a.roles.length
+              ? `Your roles: ${a.roles.map(u).join(", ")}.`
+              : "You have no role here.",
+          ),
+        ],
+        [
+          dim(
+            a.people.length
+              ? "Ask one of these people:"
+              : "Ask an admin to give you access.",
+          ),
+        ],
+        ...a.people.map((p) => [
+          dim(u(p.name)),
+          { text: u(p.email), glue: true },
+          dim(u(p.role)),
+        ]),
+      ];
+      sections.push({
+        rows: [
+          {
+            lead: "warn",
+            name: "Integration",
+            parts: [
+              dim(`You don't have access to ${u(a.product)} (${u(a.area)}).`),
+            ],
+            notes,
+          },
+        ],
+      });
+    } else
+      sections.push({
+        rows: [
+          {
+            lead: "warn",
+            name: "Integration",
+            parts: [
+              dim(
+                `Isn't available to ${i.reason === "api_token" ? "API" : "personal"} tokens.`,
+              ),
+            ],
+            fix: "pkey login",
+          },
+        ],
+      });
+  } else if (i.state === "unavailable") {
+    sections.push({
+      rows: [
+        {
+          lead: "warn",
+          name: "Integration",
+          parts: [dim(i.detail)],
+          fix: i.fix,
+        },
+      ],
+    });
+  } else if (i.state === "skipped" && i.reason === "no-product") {
+    manifest.push({
+      lead: "none",
+      name: "Integration",
+      parts: [dim("Needs a product: pass --product")],
+    });
+  } else if (i.state === "ok") {
+    const block = (
+      title: string,
+      pick: (f: IntegrationFeatureFact) => FeatureState,
+    ): ReportSection => {
+      const states = i.features.map(pick);
+      return states.length && states.every((x) => x === states[0])
+        ? { title, collapsed: featureState(states[0]!), rows: [] }
+        : {
+            title,
+            rows: i.features.map((f) => ({
+              name: f.label,
+              state: featureState(pick(f)),
+            })),
+          };
+    };
+    if (i.features.length) {
+      if (!i.platforms.length)
+        sections.push(block("Integration", (f) => f.state));
+      for (const p of i.platforms)
+        sections.push(
+          block(
+            `Integration on ${p.label}`,
+            (f) => f.platforms[p.id] ?? "unseen",
+          ),
+        );
+    }
+    if (i.ci)
+      sections.push({
+        title: "CI",
+        rows: [
+          {
+            lead: "ok",
+            name: "First release",
+            parts: i.ci.firstAt ? [dim(day(i.ci.firstAt, input.env))] : [],
+          },
+        ],
+      });
+    sections.push({
+      title: "Commerce",
+      collapsed:
+        i.commerce === "on"
+          ? { mark: "ok", word: "on" }
+          : {
+              mark: null,
+              word: i.commerceNeedsLicensing ? "off, needs Licensing" : "off",
+            },
+      rows: [],
+    });
+    if (i.todo.length)
+      sections.push({
+        title: "Left to do",
+        rows: i.todo.map((step) => ({
+          lead: "todo",
+          name: step.label,
+          parts: [dim(`${step.feature} needs it`)],
+          link: step.link,
+        })),
+      });
+  }
+
+  let todo = 0;
+  let warnings = 0;
+  for (const sec of sections)
+    for (const row of sec.rows) {
+      if (row.lead === "todo") todo++;
+      if (row.lead === "warn") warnings++;
+    }
+  return {
+    header: {
+      name: input.product?.name ?? input.product?.slug ?? "Polaris Key",
+      slug: input.product?.name ? input.product.slug : null,
+      host: hostName,
+    },
+    sections,
+    facts,
+    todo,
+    warnings,
+    exit: todo ? 1 : 0,
+  };
+}
 
 /** The `signedIn` and `integration` members of `pkey doctor --json`. */
 export function sessionJson(s: DoctorSession): {
   signedIn: Record<string, unknown>;
   integration: Record<string, unknown>;
 } {
+  const iso = (seconds: number | null | undefined): string | null =>
+    typeof seconds === "number" ? new Date(seconds * 1000).toISOString() : null;
   const { endsAt, ...rest } = s.signedIn;
   const i = s.integration;
   return {
@@ -545,8 +1039,14 @@ export function sessionJson(s: DoctorSession): {
   };
 }
 
+// ── drawing it ───────────────────────────────────────────────────────────────────────────────
+
+/** Below this the state goes under the feature name (M7). */
+const STACK_BELOW = 36;
+/** At this width the value column is fixed, as in the mockup. */
 const WIDE = 60;
-const NAME_W = 24;
+const VALUE_COL = 30;
+const NAME_CAP = 24;
 
 /** `text` broken after `/` or `#` into lines of at most `width` columns, never shortened. */
 function breakLink(text: string, width: number): string[] {
@@ -575,194 +1075,315 @@ function breakLink(text: string, width: number): string[] {
   return lines;
 }
 
-/** The report's text, drawn from the session's facts (DL6-DL8; 80 columns, re-wrapped narrow). */
-export function sessionText(
-  s: DoctorSession,
+/** Pieces that join the one before with a space, not the separator (a name and its email). */
+const glued = new WeakSet<Line>();
+
+const lineWidth = (l: Line): number =>
+  l.reduce((n, sp) => n + cellWidth(sp.text), 0);
+
+/**
+ * Pieces joined by the separator on as few lines as `width` allows: a piece that does not fit
+ * starts a line of its own, so the separator never starts or ends one (m15).
+ */
+function flow(pieces: Line[], width: number, sep: string): Line[] {
+  const bar: Line = [{ text: ` ${sep} `, style: ["muted"] }];
+  const space: Line = [{ text: " " }];
+  const lines: Line[] = [];
+  let cur: Line | null = null;
+  for (const piece of pieces) {
+    const wrapped = wrapSpans(piece, Math.max(1, width));
+    if (!wrapped.length) continue;
+    const joint = glued.has(piece) ? space : bar;
+    const jw = lineWidth(joint);
+    if (
+      cur &&
+      wrapped.length === 1 &&
+      lineWidth(cur) + jw + lineWidth(wrapped[0]!) <= width
+    ) {
+      cur = [...cur, ...joint, ...wrapped[0]!];
+      continue;
+    }
+    if (cur) lines.push(cur);
+    lines.push(...wrapped.slice(0, -1));
+    cur = wrapped[wrapped.length - 1]!;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+/** The report as lines: one wrapping row renderer for every line (DL6-DL8, DL12). */
+export function renderReport(
+  report: DoctorReport,
   t: Term,
-  env: UntrustedEnv = {},
+  runMs: number,
 ): string {
   const { painter, symbols, caps } = t;
+  const cyan = new Painter(caps, null, {}, false);
   const width = Math.max(20, caps.columns);
   const wide = width >= WIDE;
+  const stackAll = width < STACK_BELOW;
+  const sep = symbols.separator;
+  const arrow = caps.unicode ? "→" : "->";
   const out: string[] = [];
-  const mark = {
-    ok: glyphOf(t, "ok"),
-    warn: glyphOf(t, "warn"),
-    fail: glyphOf(t, "fail"),
-    wait: painter.style(symbols.radioOn, ["strong"]),
-    none: painter.style(symbols.radioOff, ["muted"]),
-  };
-  const text = (v: string, roles: string[] = []) =>
-    roles.length ? painter.style(v, roles) : v;
-  const heading = (v: string) => out.push(painter.style(v, ["strong"]));
-  const wrapAt = (v: string, indent: number): string[] =>
-    wrapSpans([{ text: v }], Math.max(1, width - indent)).map((l) =>
-      painter.line(l),
+  const glyph = (mark: RowMark): string =>
+    mark === "ok"
+      ? painter.style(symbols.ok, ["success"])
+      : mark === "warn"
+        ? painter.style(symbols.warn, ["warning"])
+        : mark === "todo"
+          ? painter.style(symbols.fail, ["danger"])
+          : mark === "wait"
+            ? cyan.style(symbols.radioOn, ["accent"])
+            : painter.style(symbols.radioOff, ["muted"]);
+  /** A leading glyph's cell: one column, or the three of the ASCII radio "( )". */
+  const glyphCells = caps.unicode ? 1 : 3;
+  const glyphWidth = (mark: RowMark): number =>
+    cellWidth(
+      mark === "ok"
+        ? symbols.ok
+        : mark === "warn"
+          ? symbols.warn
+          : mark === "todo"
+            ? symbols.fail
+            : mark === "wait"
+              ? symbols.radioOn
+              : symbols.radioOff,
     );
-  /** `  ✓ name   value`, the value wrapped under itself. */
-  const row = (m: string, name: string, value: string, nameW = NAME_W) => {
-    if (wide) {
-      const indent = 4 + nameW + 2;
-      wrapAt(value, indent).forEach((l, i) =>
+  const piece = (p: Part): Line => {
+    const line: Line = [
+      {
+        text: p.text,
+        ...(p.role === "plain" ? {} : { style: [p.role ?? "muted"] }),
+      },
+    ];
+    if (p.glue) glued.add(line);
+    return line;
+  };
+  const stateText = (st: { mark: RowMark | null; word: string }): string =>
+    st.mark === null
+      ? painter.style(st.word, ["muted"])
+      : `${glyph(st.mark)} ${
+          st.mark === "wait"
+            ? cyan.style(st.word, ["accent"])
+            : st.mark === "ok"
+              ? painter.style(st.word, ["success"])
+              : st.mark === "none"
+                ? painter.style(st.word, ["muted"])
+                : st.word
+        }`;
+  const heading = (v: string) => painter.style(v, ["strong"]);
+  const paint = (l: Line) => painter.line(l);
+
+  /** The state's width in cells: the glyph (as the symbol set draws it), a space, the word. */
+  const stateWidth = (st: { mark: RowMark | null; word: string }) =>
+    st.mark === null
+      ? cellWidth(st.word)
+      : cellWidth(
+          st.mark === "ok"
+            ? symbols.ok
+            : st.mark === "warn"
+              ? symbols.warn
+              : st.mark === "todo"
+                ? symbols.fail
+                : st.mark === "wait"
+                  ? symbols.radioOn
+                  : symbols.radioOff,
+        ) +
+        1 +
+        cellWidth(st.word);
+
+  /** Heading, then its state on the same line when it fits, else under it. */
+  const collapsed = (
+    title: string,
+    st: { mark: RowMark | null; word: string },
+  ) => {
+    const col = wide ? VALUE_COL : cellWidth(title) + 2;
+    if (!stackAll && col + stateWidth(st) <= width)
+      out.push(
+        `${heading(title)}${" ".repeat(Math.max(2, col - cellWidth(title)))}${stateText(st)}`,
+      );
+    else {
+      out.push(heading(title));
+      out.push(`  ${stateText(st)}`);
+    }
+  };
+
+  const row = (r: ReportRow, nameW: number) => {
+    const ns = r.lead ? 3 + glyphCells : 2;
+    const prefix = `  ${r.lead ? `${glyph(r.lead)}${" ".repeat(glyphCells + 1 - glyphWidth(r.lead))}` : ""}`;
+    const valuePieces: Line[] = (r.parts ?? []).map(piece);
+    const stateWords = r.state ? stateText(r.state) : null;
+    const valueCol = wide ? VALUE_COL : ns + nameW + 2;
+    const avail = width - valueCol;
+    // The value as lines (the state's glyph and word are one unbreakable piece in front).
+    const valueLines = (w: number): string[] => {
+      const lines = flow(
+        valuePieces,
+        w - (r.state ? stateWidth(r.state) + 1 : 0),
+        sep,
+      ).map(paint);
+      if (!r.state) return lines;
+      const lead = stateWords!;
+      if (!lines.length) return [lead];
+      const [first, ...rest] = lines;
+      return [`${lead} ${first}`, ...rest];
+    };
+    const hasValue = valuePieces.length > 0 || r.state;
+    let used = false;
+    if (
+      hasValue &&
+      !(stackAll && r.state) &&
+      cellWidth(r.name) <= (wide ? VALUE_COL - ns - 2 : nameW) &&
+      avail >= 12
+    ) {
+      const lines = valueLines(avail);
+      if (wide || lines.length === 1) {
+        const pad = " ".repeat(Math.max(2, valueCol - ns - cellWidth(r.name)));
+        lines.forEach((l, n) =>
+          out.push(
+            n === 0
+              ? `${prefix}${r.name}${pad}${l}`
+              : `${" ".repeat(valueCol)}${l}`,
+          ),
+        );
+        used = true;
+      }
+    }
+    if (!used) {
+      const nameLines = wrapSpans([{ text: r.name }], Math.max(1, width - ns));
+      nameLines.forEach((l, n) =>
         out.push(
-          i === 0
-            ? `  ${m} ${painter.style(name.padEnd(nameW), ["strong"])}  ${l}`
-            : `${" ".repeat(indent)}${l}`,
+          n === 0 ? `${prefix}${paint(l)}` : `${" ".repeat(ns)}${paint(l)}`,
         ),
       );
-      return;
+      if (hasValue) for (const l of valueLines(width - 4)) out.push(`    ${l}`);
     }
-    if (4 + cellWidth(name) + 2 + cellWidth(value) <= width)
-      out.push(`  ${m} ${painter.style(name, ["strong"])}  ${value}`);
-    else {
-      out.push(`  ${m} ${painter.style(name, ["strong"])}`);
-      for (const l of wrapAt(value, 4)) out.push(`    ${l}`);
-    }
-  };
-  const fix = (v: string) => {
-    for (const [i, l] of wrapAt(v, wide ? 8 : 6).entries())
-      out.push(`${" ".repeat(wide ? 6 : 4)}${i === 0 ? "→ " : "  "}${l}`);
-  };
-  const stateWord = (st: FeatureState) =>
-    st === "verified"
-      ? `${mark.ok} Verified`
-      : st === "waiting"
-        ? `${mark.wait} Waiting`
-        : `${mark.none} Not seen yet`;
-  const stateMark = (st: FeatureState) =>
-    st === "verified" ? mark.ok : st === "waiting" ? mark.wait : mark.none;
-  const stateText = (st: FeatureState) =>
-    st === "verified"
-      ? "Verified"
-      : st === "waiting"
-        ? "Waiting"
-        : "Not seen yet";
-  const blank = () => out.push("");
-
-  // Signed in.
-  const si = s.signedIn;
-  if (si.state === "in") {
-    const who =
-      si.tokenType === "api"
-        ? "API token, no person"
-        : [
-            si.name && si.email
-              ? `${si.name} (${si.email})`
-              : si.name || si.email,
-            si.endsAt ? `ends ${day(si.endsAt, env)}` : "",
-          ]
-            .filter(Boolean)
-            .join(" · ");
-    row(mark.ok, "Signed in", who || "yes");
-  } else {
-    row(mark.warn, "Signed in", si.detail ?? "Not signed in");
-    if (si.fix) fix(si.fix);
-  }
-
-  // Integration.
-  const i = s.integration;
-  if (i.state === "denied") {
-    blank();
-    if (i.access) out.push(accessText(i.access, t).trimEnd());
-    else
-      row(
-        mark.warn,
-        "Integration",
-        `Isn't available to ${i.reason === "api_token" ? "API" : "personal"} tokens.`,
+    for (const note of r.notes ?? [])
+      for (const l of flow(note.map(piece), width - 4, sep))
+        out.push(`    ${paint(l)}`);
+    const fixIndent = stackAll ? 4 : 6;
+    if (r.fix)
+      wrapSpans([{ text: r.fix }], Math.max(1, width - fixIndent - 2)).forEach(
+        (l, n) =>
+          out.push(
+            `${" ".repeat(fixIndent)}${n === 0 ? `${arrow} ` : "  "}${paint(l)}`,
+          ),
       );
-  } else if (i.state === "unavailable") {
-    blank();
-    row(mark.warn, "Integration", i.detail);
-  } else if (i.state === "ok") {
-    /** A platform where nothing is verified: one line, at heading level. */
-    const collapsed = (label: string, st: FeatureState) => {
-      if (wide)
+    if (r.link) {
+      const link = r.link.replace(/^https?:\/\//, "");
+      breakLink(link, width - fixIndent - 2).forEach((l, n) =>
         out.push(
-          `${painter.style(label.padEnd(NAME_W + 6), ["strong"])}${stateWord(st)}`,
-        );
-      else {
-        heading(label);
-        out.push(`  ${stateWord(st)}`);
-      }
-    };
-    const featureRows = (pick: (f: IntegrationFeatureFact) => FeatureState) => {
-      const nameW = Math.max(
-        NAME_W - 2,
-        ...i.features.map((f) => cellWidth(f.label)),
-      );
-      for (const f of i.features) {
-        if (wide) {
-          out.push(
-            `  ${painter.style(f.label.padEnd(NAME_W + 2), ["strong"])}  ${stateWord(pick(f))}`,
-          );
-        } else {
-          const w = Math.min(nameW, 16);
-          const st = pick(f);
-          out.push(
-            `  ${stateMark(st)} ${painter.style(f.label.padEnd(w), ["strong"])} ${stateText(st)}`,
-          );
-        }
-      }
-    };
-    if (i.features.length) {
-      if (!i.platforms.length) {
-        blank();
-        heading("Integration");
-        featureRows((f) => f.state);
-      }
-      for (const p of i.platforms) {
-        blank();
-        const mine = i.features.map((f) => f.platforms[p.id] ?? "unseen");
-        if (!mine.includes("verified")) {
-          const st: FeatureState = mine.includes("waiting")
-            ? "waiting"
-            : "unseen";
-          collapsed(`Integration on ${p.label}`, st);
-          continue;
-        }
-        heading(`Integration on ${p.label}`);
-        featureRows((f) => f.platforms[p.id] ?? "unseen");
-      }
-    }
-    if (i.ci) {
-      blank();
-      heading("CI");
-      out.push(
-        `  ${mark.ok} First release${i.ci.firstAt ? `, ${day(i.ci.firstAt, env)}` : ""}`,
+          `${" ".repeat(fixIndent)}${n === 0 ? `${arrow} ` : "  "}${painter.style(l, ["muted"])}`,
+        ),
       );
     }
-    if (i.commerce === "off") {
-      blank();
-      const note = i.commerceNeedsLicensing ? "off, needs Licensing" : "off";
-      out.push(
-        wide
-          ? `${painter.style("Commerce".padEnd(NAME_W + 6), ["strong"])}${text(note, ["muted"])}`
-          : `${painter.style("Commerce", ["strong"])}  ${text(note, ["muted"])}`,
-      );
+  };
+
+  // Header: the product, its slug and the host.
+  const h = report.header;
+  const headPieces: Line[] = [
+    [
+      { text: h.name, style: ["strong"] },
+      ...(h.slug ? [{ text: ` (${h.slug})`, style: ["muted"] }] : []),
+    ],
+    [{ text: h.host, style: ["muted"] }],
+  ];
+  for (const l of flow(headPieces, width, sep)) out.push(paint(l));
+
+  for (const sec of report.sections) {
+    out.push("");
+    if (sec.collapsed && sec.title) {
+      collapsed(sec.title, sec.collapsed);
+      continue;
     }
-    if (i.todo.length) {
-      blank();
-      heading("Left to do");
-      for (const step of i.todo) {
-        row(mark.fail, step.label, `${step.feature} needs it`);
-        const link = step.link.replace(/^https?:\/\//, "");
-        for (const [n, l] of breakLink(link, width - (wide ? 8 : 6)).entries())
-          out.push(
-            `${" ".repeat(wide ? 6 : 4)}${n === 0 ? "→ " : "  "}${text(l, ["muted"])}`,
-          );
-      }
-    }
+    if (sec.title) out.push(heading(sec.title));
+    // A name too long for the column stacks its value; it does not widen the column for the rest.
+    const room = Math.min(NAME_CAP, width - 4 - 2 - 14);
+    const nameW = Math.max(
+      8,
+      ...sec.rows.map((r) => cellWidth(r.name)).filter((w) => w <= room),
+    );
+    for (const r of sec.rows) row(r, nameW);
   }
 
-  // Summary.
-  const todo = todoCount(i);
-  const warnings = sessionWarnings(s);
-  blank();
-  out.push(
-    painter.style(
-      `${todo} to do · ${warnings} warning${warnings === 1 ? "" : "s"}`,
-      [todo ? "danger" : warnings ? "warning" : "success"],
-    ),
-  );
+  // Summary: the counts the exit code follows, then how long the run took.
+  out.push("");
+  const summary: Line[] = [
+    [
+      {
+        text: `${report.todo} to do`,
+        style: [report.todo ? "danger" : "success"],
+      },
+    ],
+    [
+      {
+        text: plural(report.warnings, "warning"),
+        style: [report.warnings ? "warning" : "muted"],
+      },
+    ],
+    [{ text: `${(runMs / 1000).toFixed(1)} s`, style: ["muted"] }],
+  ];
+  for (const l of flow(summary, width, sep)) out.push(paint(l));
   return `${out.join("\n")}\n`;
+}
+
+/** The report's header facts for the `--json` line. */
+export function reportJson(report: DoctorReport): {
+  facts: DoctorFact[];
+  summary: { todo: number; warnings: number };
+} {
+  return {
+    facts: report.facts,
+    summary: { todo: report.todo, warnings: report.warnings },
+  };
+}
+
+/** Where the SDK config files are, and whether they match the base URL and the exposed keys. */
+export async function checkConfigFiles(opts: {
+  cwd: string;
+  host: string;
+  exposed: string[] | null;
+}): Promise<ConfigFileCheck> {
+  const { readdir, readFile } = await import("node:fs/promises");
+  const path = await import("node:path");
+  const found: Array<{ dir: string; file: unknown }> = [];
+  const tryRead = async (dir: string, label: string) => {
+    try {
+      const text = await readFile(path.join(dir, "polaris-key.json"), "utf8");
+      found.push({ dir: label, file: JSON.parse(text) as unknown });
+    } catch {
+      // no file here, or not JSON
+    }
+  };
+  await tryRead(opts.cwd, "./");
+  try {
+    const entries = await readdir(opts.cwd, { withFileTypes: true });
+    for (const e of entries.sort((a, b) => a.name.localeCompare(b.name)))
+      if (
+        e.isDirectory() &&
+        !e.name.startsWith(".") &&
+        e.name !== "node_modules"
+      )
+        await tryRead(path.join(opts.cwd, e.name), `${e.name}/`);
+  } catch {
+    // an unreadable folder has nothing to report
+  }
+  const elsewhere: string[] = [];
+  const pinned = new Set<string>();
+  for (const { file } of found) {
+    const base = rec(file)["baseUrl"];
+    if (typeof base === "string") {
+      const host = hostOf(base);
+      if (host !== opts.host && !elsewhere.includes(host)) elsewhere.push(host);
+    }
+    for (const k of Object.keys(rec(rec(rec(file)["trust"])["pinnedKeys"])))
+      pinned.add(k);
+  }
+  return {
+    dirs: found.map((f) => f.dir),
+    elsewhere,
+    stalePins: opts.exposed
+      ? [...pinned].filter((k) => !opts.exposed!.includes(k))
+      : null,
+  };
 }

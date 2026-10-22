@@ -1,4 +1,4 @@
-// `pkey doctor` shows Signed in and ST-40's Integration (ST-34.10).
+// `pkey doctor` shows Signed in and ST-40's Integration (ST-34.10), as one report (ST-34-INTEG fix B).
 //
 // Pinned here:
 //   * a fixture view in the shape of `GET /manage/api/products/<slug>/integration` renders the
@@ -16,7 +16,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { memoryStore } from "../src/credentials.js";
-import { gatherSession, integrationFacts } from "../src/doctor.js";
+import { bareFix, gatherSession, integrationFacts } from "../src/doctor.js";
 import { runPkey } from "../src/index.js";
 
 const ORIGIN = "https://key.example";
@@ -31,13 +31,18 @@ afterEach(async () => {
   );
 });
 
-async function repo(): Promise<string> {
+async function bare(): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), "pkey-doctor-"));
   dirs.push(dir);
+  return dir;
+}
+
+async function repo(opts: { name?: boolean } = {}): Promise<string> {
+  const dir = await bare();
   await mkdir(path.join(dir, ".pkey"));
   await writeFile(
     path.join(dir, ".pkey", "product.yaml"),
-    "apiVersion: pkey.dev/v1\nproduct:\n  slug: djdl\n  name: DJDL\nmodules:\n  license:\n    enabled: true\n",
+    `apiVersion: pkey.dev/v1\nproduct:\n  slug: djdl\n${opts.name === false ? "" : "  name: DJDL\n"}modules:\n  license:\n    enabled: true\n`,
   );
   await writeFile(
     path.join(dir, ".pkey", "schema.yaml"),
@@ -75,7 +80,12 @@ const feature = (
 const VIEW = {
   product: "djdl",
   now: 1_700_000_100,
-  snippet: { slug: "djdl", services: [], pins: [], releaseKeys: [] },
+  snippet: {
+    slug: "djdl",
+    services: [],
+    pins: [],
+    releaseKeys: [{ kid: "djdl-rk-2026", publicKey: "k" }],
+  },
   features: [
     feature("licensing", "verified"),
     feature("config", "verified"),
@@ -164,6 +174,9 @@ async function run(
     fetchImpl: typeof fetch;
     columns?: number;
     cwd?: string;
+    /** Leave --product off, so the product is the repository's, if any. */
+    noProduct?: boolean;
+    baseUrl?: string;
   },
 ) {
   let out = "";
@@ -174,7 +187,13 @@ async function run(
       : { [ORIGIN]: { token: TOKEN, expiresAt: FAR } },
   );
   const code = await runPkey(
-    ["doctor", "--base-url", ORIGIN, "--product", "djdl", ...argv],
+    [
+      "doctor",
+      "--base-url",
+      opts.baseUrl ?? ORIGIN,
+      ...(opts.noProduct ? [] : ["--product", "djdl"]),
+      ...argv,
+    ],
     {
       cwd: opts.cwd ?? (await repo()),
       env: { CI: "true", NO_COLOR: "1", TERM: "xterm-256color", ...opts.env },
@@ -200,22 +219,61 @@ const words = (out: string): string =>
     .join(" ");
 /** Colour and weight escapes off, so frames compare as text. */
 const plain = (out: string): string => out.replace(/\u001b\[[0-9;]*m/g, "");
-/** The part of the report this slice adds: from Signed in on. */
-const body = (out: string): string =>
+/** The frame: colour off, and the run time (which varies) taken off the summary line. */
+const frame = (out: string): string =>
   plain(out)
-    .slice(plain(out).indexOf("Signing keys exposed"))
-    .split("\n")
-    .slice(2)
-    .join("\n")
+    .replace(/ · \d+\.\d s$/m, "")
+    .replace(/\n\d+\.\d s$/, "")
     .trimEnd();
+const deny403 = (url: string): Response | undefined => {
+  if (url.endsWith("/manage/api/me"))
+    return json(200, {
+      name: "Ada",
+      email: "ada@example.com",
+      permissions: { roles: [{ role: "console_access", scope: "platform" }] },
+    });
+  if (url.includes("/access/admins"))
+    return json(200, {
+      admins: [
+        { name: "Grace", email: "grace@example.com", role: "product_admin" },
+      ],
+    });
+  return undefined;
+};
 
-describe("pkey doctor: Signed in and Integration", () => {
-  it("renders the mockup's facts from a fixture view (80 columns)", async () => {
+const answering =
+  (view: (url: string) => Response) =>
+  (url: string): Response =>
+    url.endsWith("/.well-known/polaris.json")
+      ? json(200, DISCOVERY)
+      : url.endsWith("/manage/api/me")
+        ? json(200, { name: "Ada", email: "ada@example.com" })
+        : view(url);
+
+/** A fetch that cannot reach the server at all, the way undici fails. */
+const unreachable = (): never => {
+  throw Object.assign(new TypeError("fetch failed"), {
+    cause: { code: "ENOTFOUND", message: "getaddrinfo ENOTFOUND" },
+  });
+};
+
+describe("pkey doctor: one report, one count", () => {
+  it("renders the mockup's report at 80 columns", async () => {
     const s = server();
     const r = await run([], { fetchImpl: s.f, columns: 80 });
     expect(r.code).toBe(1); // open console steps
-    expect(body(r.out)).toMatchInlineSnapshot(`
-      "  ✓ Signed in                 Ada Lindqvist (ada@example.com) · ends 2026-10-26
+    expect(frame(r.out)).toMatchInlineSnapshot(`
+      "DJDL (djdl) · key.example
+
+      Manifest
+        ✓ .pkey/                    valid · license
+        ✓ Services                  license
+        ✓ Signed in                 Ada Lindqvist (ada@example.com) · ends 2026-10-26
+        ○ polaris-key.json          Not found here
+
+      Keys
+        ✓ Signing key               djdl-2026 · active
+        ✓ Release key               djdl-rk-2026 · pinned
 
       Integration on macOS
         Licensing                   ✓ Verified
@@ -225,7 +283,13 @@ describe("pkey doctor: Signed in and Integration", () => {
         Cloud Sync                  ○ Not seen yet
         Content packs               ○ Not seen yet
 
-      Integration on Windows        ● Waiting
+      Integration on Windows
+        Licensing                   ○ Not seen yet
+        Managed config              ○ Not seen yet
+        Ship builds                 ● Waiting
+        Sign-in                     ● Waiting
+        Cloud Sync                  ○ Not seen yet
+        Content packs               ○ Not seen yet
 
       Commerce                      off
 
@@ -237,13 +301,644 @@ describe("pkey doctor: Signed in and Integration", () => {
 
       2 to do · 0 warnings"
     `);
-    expect(r.out).toContain("Remote discovery: ok");
     expect(s.calls.map((c) => c.url)).toEqual([
       `${ORIGIN}/djdl/.well-known/polaris.json`,
       `${ORIGIN}/manage/api/me`,
       `${ORIGIN}/manage/api/products/djdl/integration`,
     ]);
     expect(s.calls[1]!.auth).toBe(`Bearer ${TOKEN}`);
+  });
+
+  it("40 columns: every fact kept, links whole", async () => {
+    const r = await run([], { fetchImpl: server().f, columns: 40 });
+    const text = frame(r.out);
+    expect(text).toMatchInlineSnapshot(`
+      "DJDL (djdl) · key.example
+
+      Manifest
+        ✓ .pkey/            valid · license
+        ✓ Services          license
+        ✓ Signed in
+          Ada Lindqvist (ada@example.com)
+          ends 2026-10-26
+        ○ polaris-key.json  Not found here
+
+      Keys
+        ✓ Signing key  djdl-2026 · active
+        ✓ Release key  djdl-rk-2026 · pinned
+
+      Integration on macOS
+        Licensing       ✓ Verified
+        Managed config  ✓ Verified
+        Ship builds     ● Waiting
+        Sign-in         ● Waiting
+        Cloud Sync      ○ Not seen yet
+        Content packs   ○ Not seen yet
+
+      Integration on Windows
+        Licensing       ○ Not seen yet
+        Managed config  ○ Not seen yet
+        Ship builds     ● Waiting
+        Sign-in         ● Waiting
+        Cloud Sync      ○ Not seen yet
+        Content packs   ○ Not seen yet
+
+      Commerce  off
+
+      Left to do
+        ✗ A published catalog
+          Cloud Sync needs it
+            → key.example/manage/#/p/djdl/
+              config/catalog
+        ✗ A channel
+          Content packs needs it
+            → key.example/manage/#/p/djdl/
+              distribution/outlets
+
+      2 to do · 0 warnings"
+    `);
+    for (const line of text.split("\n"))
+      expect([...line].length).toBeLessThanOrEqual(40);
+    const joined = text.replace(/\n\s+(→\s+)?/g, "");
+    expect(joined).toContain("key.example/manage/#/p/djdl/config/catalog");
+    expect(joined).toContain(
+      "key.example/manage/#/p/djdl/distribution/outlets",
+    );
+  });
+
+  it("32 columns: the state goes under the feature name", async () => {
+    const r = await run([], { fetchImpl: server().f, columns: 32 });
+    const text = frame(r.out);
+    expect(text).toMatchInlineSnapshot(`
+      "DJDL (djdl) · key.example
+
+      Manifest
+        ✓ .pkey/     valid · license
+        ✓ Services   license
+        ✓ Signed in
+          Ada Lindqvist
+          (ada@example.com)
+          ends 2026-10-26
+        ○ polaris-key.json
+          Not found here
+
+      Keys
+        ✓ Signing key
+          djdl-2026 · active
+        ✓ Release key
+          djdl-rk-2026 · pinned
+
+      Integration on macOS
+        Licensing
+          ✓ Verified
+        Managed config
+          ✓ Verified
+        Ship builds
+          ● Waiting
+        Sign-in
+          ● Waiting
+        Cloud Sync
+          ○ Not seen yet
+        Content packs
+          ○ Not seen yet
+
+      Integration on Windows
+        Licensing
+          ○ Not seen yet
+        Managed config
+          ○ Not seen yet
+        Ship builds
+          ● Waiting
+        Sign-in
+          ● Waiting
+        Cloud Sync
+          ○ Not seen yet
+        Content packs
+          ○ Not seen yet
+
+      Commerce
+        off
+
+      Left to do
+        ✗ A published catalog
+          Cloud Sync needs it
+          → key.example/manage/#/p/
+            djdl/config/catalog
+        ✗ A channel
+          Content packs needs it
+          → key.example/manage/#/p/
+            djdl/distribution/outlets
+
+      2 to do · 0 warnings"
+    `);
+    for (const line of text.split("\n"))
+      expect([...line].length).toBeLessThanOrEqual(32);
+    expect(text).toMatch(/^ {2}Licensing\n {4}✓ Verified$/m);
+  });
+
+  it("24 columns: nothing overflows and no line starts with a separator", async () => {
+    const r = await run([], { fetchImpl: server().f, columns: 24 });
+    const text = frame(r.out);
+    expect(text).toMatchInlineSnapshot(`
+      "DJDL (djdl)
+      key.example
+
+      Manifest
+        ✓ .pkey/
+          valid · license
+        ✓ Services
+          license
+        ✓ Signed in
+          Ada Lindqvist
+          (ada@example.com)
+          ends 2026-10-26
+        ○ polaris-key.json
+          Not found here
+
+      Keys
+        ✓ Signing key
+          djdl-2026 · active
+        ✓ Release key
+          djdl-rk-2026
+          pinned
+
+      Integration on macOS
+        Licensing
+          ✓ Verified
+        Managed config
+          ✓ Verified
+        Ship builds
+          ● Waiting
+        Sign-in
+          ● Waiting
+        Cloud Sync
+          ○ Not seen yet
+        Content packs
+          ○ Not seen yet
+
+      Integration on Windows
+        Licensing
+          ○ Not seen yet
+        Managed config
+          ○ Not seen yet
+        Ship builds
+          ● Waiting
+        Sign-in
+          ● Waiting
+        Cloud Sync
+          ○ Not seen yet
+        Content packs
+          ○ Not seen yet
+
+      Commerce
+        off
+
+      Left to do
+        ✗ A published catalog
+          Cloud Sync needs it
+          → key.example/
+            manage/#/p/djdl/
+            config/catalog
+        ✗ A channel
+          Content packs
+          needs it
+          → key.example/
+            manage/#/p/djdl/
+            distribution/
+            outlets
+
+      2 to do · 0 warnings
+      0.0 s"
+    `);
+    for (const line of text.split("\n")) {
+      expect([...line].length).toBeLessThanOrEqual(24);
+      expect(line.trim().startsWith("·")).toBe(false);
+    }
+  });
+
+  it("B1: a manifest error with no console steps is '1 to do' in red, and exit 1", async () => {
+    const cwd = await repo({ name: false });
+    const view = answering(() => json(200, { ...VIEW, features: [] }));
+    const s = server(view);
+    const env = { NO_COLOR: "", FORCE_COLOR: "1", TERM: "xterm-256color" };
+    const r = await run([], { fetchImpl: s.f, columns: 80, cwd, env });
+    expect(r.code).toBe(1);
+    expect(frame(r.out)).toContain("1 to do · 0 warnings");
+    expect(r.out).toContain("\u001b[31m1 to do");
+    const j = await run(["--json"], { fetchImpl: s.f, cwd });
+    const line = JSON.parse(j.out);
+    expect(j.code).toBe(1);
+    expect(line.ok).toBe(false);
+    expect(line.summary).toEqual({ todo: 1, warnings: 0 });
+    expect(line.facts[0]).toMatchObject({ id: "manifest", state: "todo" });
+  });
+
+  it("B1 at 40 columns: a long manifest pointer stacks without widening the column", async () => {
+    const cwd = await repo({ name: false });
+    const r = await run([], {
+      fetchImpl: server(answering(() => json(200, { ...VIEW, features: [] })))
+        .f,
+      columns: 40,
+      cwd,
+    });
+    expect(r.code).toBe(1);
+    expect(frame(r.out)).toMatchInlineSnapshot(`
+      "djdl · key.example
+
+      Manifest
+        ✗ product/product/name
+          Add product.name.
+            → pkey validate
+        ✓ Services              license
+        ✓ Signed in
+          Ada (ada@example.com)
+          ends 2096-10-02
+        ○ polaris-key.json      Not found here
+
+      Keys
+        ✓ Signing key  djdl-2026 · active
+        ✓ Release key  djdl-rk-2026 · pinned
+
+      Commerce  off, needs Licensing
+
+      1 to do · 0 warnings"
+    `);
+  });
+
+  it("the summary is red exactly when the exit is 1, from the same count", async () => {
+    const red = "\u001b[31m";
+    const env = { NO_COLOR: "", FORCE_COLOR: "1", TERM: "xterm-256color" };
+    const todo = await run([], { fetchImpl: server().f, columns: 80, env });
+    expect(todo.code).toBe(1);
+    expect(todo.out).toContain(`${red}2 to do`);
+    const clear = await run([], {
+      fetchImpl: server((url) =>
+        answering(() => json(200, { ...VIEW, features: [] }))(url),
+      ).f,
+      columns: 80,
+      env,
+    });
+    expect(clear.code).toBe(0);
+    expect(clear.out).not.toContain(`${red}0 to do`);
+    expect(clear.out).toContain("\u001b[32m0 to do");
+  });
+
+  it("M8: a network failure is a row and the report goes on to Signed in and the summary", async () => {
+    const f = (async (url: string) =>
+      url.endsWith("/.well-known/polaris.json")
+        ? unreachable()
+        : server().f(url)) as typeof fetch;
+    const r = await run([], { fetchImpl: f, columns: 80 });
+    expect(r.code).toBe(1);
+    expect(frame(r.out)).toMatchInlineSnapshot(`
+      "DJDL (djdl) · key.example
+
+      Manifest
+        ✓ .pkey/                    valid · license
+        ✓ Signed in                 Ada Lindqvist (ada@example.com) · ends 2026-10-26
+        ○ polaris-key.json          Not found here
+
+      Keys
+        ✗ Discovery                 Can't reach key.example.
+            → Check your network, or --base-url.
+        ✓ Release key               djdl-rk-2026 · pinned
+
+      Integration on macOS
+        Licensing                   ✓ Verified
+        Managed config              ✓ Verified
+        Ship builds                 ● Waiting
+        Sign-in                     ● Waiting
+        Cloud Sync                  ○ Not seen yet
+        Content packs               ○ Not seen yet
+
+      Integration on Windows
+        Licensing                   ○ Not seen yet
+        Managed config              ○ Not seen yet
+        Ship builds                 ● Waiting
+        Sign-in                     ● Waiting
+        Cloud Sync                  ○ Not seen yet
+        Content packs               ○ Not seen yet
+
+      Commerce                      off
+
+      Left to do
+        ✗ A published catalog       Cloud Sync needs it
+            → key.example/manage/#/p/djdl/config/catalog
+        ✗ A channel                 Content packs needs it
+            → key.example/manage/#/p/djdl/distribution/outlets
+
+      3 to do · 0 warnings"
+    `);
+    const j = JSON.parse((await run(["--json"], { fetchImpl: f })).out);
+    expect(j.facts.find((x: { id: string }) => x.id === "discovery")).toEqual({
+      id: "discovery",
+      state: "todo",
+      detail: "Can't reach key.example.",
+      code: "network",
+    });
+    expect(j.signedIn.state).toBe("in");
+    expect(j.integration.state).toBe("ok");
+  });
+
+  it("M8: a discovery 404 continues to Signed in, Integration and the summary", async () => {
+    const f = server((url) =>
+      url.endsWith("/.well-known/polaris.json")
+        ? json(404, {})
+        : answering(() => json(200, VIEW))(url),
+    ).f;
+    const r = await run([], { fetchImpl: f, columns: 80 });
+    expect(r.code).toBe(1);
+    const text = frame(r.out);
+    expect(text).toContain("✗ Discovery");
+    expect(text).toContain("Answered 404 at key.example");
+    expect(text).toContain("Signed in");
+    expect(text).toContain("Integration on macOS");
+    expect(text).toMatch(/\d+ to do · 0 warnings$/);
+  });
+
+  it("M8: outside a repository it checks sign-in, the base URL and polaris-key.json", async () => {
+    const cwd = await bare();
+    await writeFile(
+      path.join(cwd, "polaris-key.json"),
+      JSON.stringify({ baseUrl: "https://elsewhere.example", trust: {} }),
+    );
+    const s = server();
+    const r = await run([], {
+      fetchImpl: s.f,
+      columns: 80,
+      cwd,
+      noProduct: true,
+    });
+    expect(r.code).toBe(1);
+    expect(frame(r.out)).toMatchInlineSnapshot(`
+      "Polaris Key · key.example
+
+      Manifest
+        ✗ .pkey/                    Not found here
+            → pkey init
+        ✓ Signed in                 Ada Lindqvist (ada@example.com) · ends 2026-10-26
+        ▲ polaris-key.json          ./ · points at elsewhere.example, not key.example
+            → pkey help sdk
+        ○ Discovery                 Needs a product: pass --product
+        ○ Integration               Needs a product: pass --product
+
+      1 to do · 1 warning"
+    `);
+    expect(s.calls.map((c) => c.url)).toEqual([`${ORIGIN}/manage/api/me`]);
+    const j = JSON.parse(
+      (await run(["--json"], { fetchImpl: server().f, cwd, noProduct: true }))
+        .out,
+    );
+    expect(j.product).toBeNull();
+    expect(j.signedIn.state).toBe("in");
+    expect(j.facts.map((x: { id: string }) => x.id)).toEqual([
+      "manifest",
+      "config-file",
+    ]);
+  });
+
+  it("M9: the header, then Manifest, Keys, Integration, CI, Commerce and Left to do", async () => {
+    const view = { ...VIEW, features: VIEW.features.map((f) => ({ ...f })) };
+    const s = server((url) =>
+      answering(() =>
+        json(200, {
+          ...view,
+          features: [
+            ...view.features.slice(0, 4),
+            feature("sync", "blocked", {
+              prerequisites: [{ id: "catalog", met: false }],
+              facts: { packages: 2, firstPackageAt: 1_700_000_000 },
+            }),
+          ],
+        }),
+      )(url),
+    );
+    const r = await run([], { fetchImpl: s.f, columns: 80 });
+    const text = frame(r.out);
+    const order = [
+      "DJDL (djdl) · key.example",
+      "Manifest",
+      "Keys",
+      "Integration on macOS",
+      "CI",
+      "Commerce",
+      "Left to do",
+    ].map((h) => text.indexOf(h));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(text).toContain("✓ Signing key               djdl-2026 · active");
+    expect(text).toContain("✓ Release key               djdl-rk-2026 · pinned");
+    expect(text).not.toContain("MCowBQ"); // key ids, never key material
+    expect(text).not.toContain("{");
+  });
+
+  it("M9: bold is for headings only (DL12), and the Waiting dot is cyan", async () => {
+    const env = { NO_COLOR: "", FORCE_COLOR: "1", TERM: "xterm-256color" };
+    const r = await run([], { fetchImpl: server().f, columns: 80, env });
+    const bold = [...r.out.matchAll(/\u001b\[1m([^\u001b]*)\u001b/g)].map(
+      (m) => m[1],
+    );
+    expect(bold).toContain("Manifest");
+    expect(bold).toContain("DJDL");
+    for (const feature of [
+      "Licensing",
+      "Managed config",
+      "Signed in",
+      "Cloud Sync",
+    ])
+      expect(bold).not.toContain(feature);
+    expect(r.out).toContain("\u001b[36m●");
+  });
+
+  it("M10: a platform collapses only when every feature has one state", async () => {
+    const mixed = {
+      ...VIEW,
+      features: VIEW.features.map((f) =>
+        f.id === "licensing"
+          ? { ...f, verifiedOn: [verifiedOn("macos"), verifiedOn("windows")] }
+          : f,
+      ),
+    };
+    const r = await run([], {
+      fetchImpl: server(answering(() => json(200, mixed))).f,
+      columns: 80,
+    });
+    const text = frame(r.out);
+    expect(text).toMatch(
+      /Integration on Windows\n {2}Licensing +✓ Verified\n {2}Managed config +○ Not seen yet/,
+    );
+    const uniform = {
+      ...VIEW,
+      features: VIEW.features.slice(0, 2),
+    };
+    const same = frame(
+      (
+        await run([], {
+          fetchImpl: server(answering(() => json(200, uniform))).f,
+          columns: 80,
+        })
+      ).out,
+    );
+    expect(same).toMatch(/Integration on Windows +○ Not seen yet\n/);
+  });
+
+  it("m2: the ASCII fallback draws → and · from the symbol set", async () => {
+    const r = await run(["--ascii"], {
+      fetchImpl: server().f,
+      stored: false,
+      columns: 80,
+    });
+    expect(r.out).not.toMatch(/[→·✓✗▲●○]/);
+    expect(r.out).toContain("-> pkey");
+  });
+
+  it("m5: signed out reads 'Not signed in', fix is a bare command", async () => {
+    const s = server();
+    const r = await run([], { fetchImpl: s.f, stored: false, columns: 80 });
+    expect(r.code).toBe(0);
+    expect(frame(r.out)).toContain(
+      "  ▲ Not signed in             Integration needs it\n      → pkey login\n",
+    );
+    expect(s.calls.map((c) => c.url)).toEqual([
+      `${ORIGIN}/djdl/.well-known/polaris.json`,
+    ]);
+    // A refusal's "Run pkey login once." is drawn as the bare command.
+    expect(bareFix("Run pkey login once.")).toBe("pkey login");
+    expect(bareFix("Run pkey login.")).toBe("pkey login");
+    expect(bareFix("Copy it again whole.")).toBe("Copy it again whole.");
+  });
+
+  it("m5: an ended sign-in names the host", async () => {
+    const f = server((url) =>
+      url.endsWith("/.well-known/polaris.json")
+        ? json(200, DISCOVERY)
+        : json(401, {}),
+    ).f;
+    const r = await run([], { fetchImpl: f, columns: 80 });
+    expect(r.code).toBe(0);
+    expect(frame(r.out)).toContain("Your sign-in to key.example has ended.");
+    expect(frame(r.out)).toContain("→ pkey login");
+  });
+
+  it("m6: a 403 is in doctor's row grammar and says it concerns Integration", async () => {
+    const s = server((url) => {
+      if (url.endsWith("/.well-known/polaris.json"))
+        return json(200, DISCOVERY);
+      const d = deny403(url);
+      if (d) return d;
+      if (url.endsWith("/integration"))
+        return json(403, {
+          error: { code: "forbidden", message: "no" },
+          reason: "no_access",
+          scope: "product:djdl",
+          area: "core",
+        });
+      return json(404, {});
+    });
+    const r = await run([], { fetchImpl: s.f, columns: 80 });
+    expect(r.code).toBe(0);
+    const text = frame(r.out);
+    expect(text).toContain(
+      "▲ Integration               You don't have access to djdl (Core).",
+    );
+    expect(text).toContain("Ask one of these people:");
+    expect(text).toContain("Grace grace@example.com · djdl admin");
+    expect(text).toContain("0 to do · 1 warning");
+    expect(text).not.toContain("Left to do");
+    const narrow = await run([], { fetchImpl: s.f, columns: 40 });
+    for (const line of frame(narrow.out).split("\n"))
+      expect([...line].length).toBeLessThanOrEqual(40);
+  });
+
+  it("m6: the 403 for a token type and a 500 each carry a fix", async () => {
+    const reach = await run([], {
+      fetchImpl: server((url) =>
+        answering(() =>
+          json(403, { error: { code: "forbidden", message: "no" } }),
+        )(url),
+      ).f,
+      columns: 80,
+    });
+    expect(frame(reach.out)).toContain(
+      "▲ Integration               Isn't available to personal tokens.\n      → pkey login",
+    );
+    const down = await run([], {
+      fetchImpl: server((url) => answering(() => json(500, {}))(url)).f,
+      columns: 80,
+    });
+    expect(frame(down.out)).toContain(
+      "▲ Integration               The console answered HTTP 500.\n      → pkey doctor",
+    );
+  });
+
+  it("m6: house wording, 'Can't reach' everywhere", async () => {
+    const f = server((url) =>
+      url.endsWith("/.well-known/polaris.json")
+        ? json(200, DISCOVERY)
+        : url.endsWith("/manage/api/me")
+          ? json(500, {})
+          : unreachable(),
+    ).f;
+    const r = await run([], { fetchImpl: f, columns: 80 });
+    const text = frame(r.out);
+    expect(text).not.toMatch(/Could not/);
+    expect(text).toContain("The console answered HTTP 500 for your identity.");
+    expect(text).toContain("Can't reach key.example.");
+    expect(text).toContain("Check your network, or --base-url.");
+  });
+
+  it("m12: the --json shape in doctor's help wraps within 80 and 40 columns", async () => {
+    for (const columns of [80, 40]) {
+      let out = "";
+      await runPkey(["help", "doctor"], {
+        cwd: await bare(),
+        env: { CI: "true", NO_COLOR: "1", TERM: "xterm-256color" },
+        stdout: {
+          write: (s: string) => ((out += s), true),
+          isTTY: true,
+          columns,
+        },
+        stderr: { write: () => true },
+      });
+      expect(out).toContain('"command":"doctor"');
+      for (const line of plain(out).split("\n"))
+        expect([...line].length).toBeLessThanOrEqual(columns);
+    }
+  });
+
+  it("security: a token in --base-url is never printed, in text or --json", async () => {
+    const polluted = `${ORIGIN}/${TOKEN}`;
+    for (const flags of [[], ["--json"]]) {
+      const ok = await run(flags, {
+        fetchImpl: server().f,
+        columns: 80,
+        baseUrl: polluted,
+      });
+      expect(ok.out + ok.err).not.toContain(TOKEN);
+      const down = await run(flags, {
+        fetchImpl: (async () => unreachable()) as typeof fetch,
+        columns: 80,
+        baseUrl: polluted,
+      });
+      expect(down.out + down.err).not.toContain(TOKEN);
+      expect(down.code).toBe(1);
+    }
+    const j = JSON.parse(
+      (await run(["--json"], { fetchImpl: server().f, baseUrl: polluted })).out,
+    );
+    expect(j.baseUrl).toContain("[token]");
+  });
+
+  it("an oversize discovery body is a failed discovery, not a crash", async () => {
+    const huge = new Response("x".repeat(70 * 1024), { status: 200 });
+    const f = server((url) =>
+      url.endsWith("/.well-known/polaris.json") ? huge : json(200, VIEW),
+    ).f;
+    const r = await run(["--json"], { fetchImpl: f });
+    const line = JSON.parse(r.out);
+    expect(
+      line.facts.find((x: { id: string }) => x.id === "discovery").state,
+    ).toBe("todo");
   });
 
   it("the counts match Integration: verified, waiting, not seen, to do", async () => {
@@ -256,119 +951,10 @@ describe("pkey doctor: Signed in and Integration", () => {
     expect(facts.features.filter((f) => f.state === "unseen")).toHaveLength(2);
     expect(facts.todo.map((t) => t.id)).toEqual(["catalog", "channels"]);
     expect(facts.commerce).toBe("off");
+    expect(facts.releaseKeys).toEqual(["djdl-rk-2026"]);
     const r = await run([], { fetchImpl: server().f, columns: 80 });
     expect(r.out).toContain("2 to do · 0 warnings");
     expect(plain(r.out).match(/✓ Verified/g)).toHaveLength(2);
-    expect(plain(r.out).match(/● Waiting/g)).toHaveLength(3); // Ship builds, Sign-in, Windows
-  });
-
-  it("re-wraps at 40 columns and keeps every fact and link whole", async () => {
-    const narrow = await run([], { fetchImpl: server().f, columns: 40 });
-    const text = body(narrow.out);
-    expect(text).toMatchInlineSnapshot(`
-      "  ✓ Signed in
-          Ada Lindqvist (ada@example.com)
-          ends 2026-10-26
-
-      Integration on macOS
-        ✓ Licensing        Verified
-        ✓ Managed config   Verified
-        ● Ship builds      Waiting
-        ● Sign-in          Waiting
-        ○ Cloud Sync       Not seen yet
-        ○ Content packs    Not seen yet
-
-      Integration on Windows
-        ● Waiting
-
-      Commerce  off
-
-      Left to do
-        ✗ A published catalog
-          Cloud Sync needs it
-          → key.example/manage/#/p/djdl/
-            config/catalog
-        ✗ A channel  Content packs needs it
-          → key.example/manage/#/p/djdl/
-            distribution/outlets
-
-      2 to do · 0 warnings"
-    `);
-    for (const line of text.split("\n"))
-      expect([...line].length).toBeLessThanOrEqual(40);
-    const joined = text.replace(/\n\s+(→\s+)?/g, "");
-    expect(joined).toContain("key.example/manage/#/p/djdl/config/catalog");
-    expect(joined).toContain(
-      "key.example/manage/#/p/djdl/distribution/outlets",
-    );
-    for (const w of ["Licensing", "Managed config", "Ship builds", "Sign-in"])
-      expect(text).toContain(w);
-  });
-
-  it("signed out: a warning with the fix, no console request, the exit code unchanged", async () => {
-    const s = server();
-    const r = await run([], { fetchImpl: s.f, stored: false, columns: 80 });
-    expect(r.code).toBe(0);
-    expect(body(r.out)).toMatchInlineSnapshot(`
-      "  ▲ Signed in                 Not signed in
-            → pkey login
-
-      0 to do · 1 warning"
-    `);
-    expect(s.calls.map((c) => c.url)).toEqual([
-      `${ORIGIN}/djdl/.well-known/polaris.json`,
-    ]);
-  });
-
-  it("a 403 is a warning with the access copy, not a to-do", async () => {
-    const s = server((url) => {
-      if (url.endsWith("/.well-known/polaris.json"))
-        return json(200, DISCOVERY);
-      if (url.endsWith("/manage/api/me"))
-        return json(200, {
-          name: "Ada",
-          email: "ada@example.com",
-          permissions: {
-            roles: [{ role: "console_access", scope: "platform" }],
-          },
-        });
-      if (url.includes("/access/admins"))
-        return json(200, {
-          admins: [
-            {
-              name: "Grace",
-              email: "grace@example.com",
-              role: "product_admin",
-            },
-          ],
-        });
-      if (url.endsWith("/integration"))
-        return json(403, {
-          error: { code: "forbidden", message: "no" },
-          reason: "no_access",
-          scope: "product:djdl",
-          area: "core",
-        });
-      return json(404, {});
-    });
-    const r = await run([], { fetchImpl: s.f, columns: 80 });
-    expect(r.code).toBe(0);
-    expect(plain(r.out)).toContain("▲  You don't have access to djdl → Core.");
-    expect(r.out).toContain("grace@example.com");
-    expect(r.out).toContain("0 to do · 1 warning");
-    expect(r.out).not.toContain("Left to do");
-  });
-
-  it("an ended sign-in is a warning that says so", async () => {
-    const s = server((url) =>
-      url.endsWith("/.well-known/polaris.json")
-        ? json(200, DISCOVERY)
-        : json(401, {}),
-    );
-    const r = await run([], { fetchImpl: s.f });
-    expect(r.code).toBe(0);
-    expect(r.out).toContain("Your sign-in has ended");
-    expect(r.out).toContain("→ pkey login");
   });
 
   it("discovery, /me and the view share one deadline", async () => {
@@ -407,6 +993,7 @@ describe("pkey doctor: Signed in and Integration", () => {
     expect(session.integration).toEqual({
       state: "unavailable",
       detail: "The console did not answer in time.",
+      fix: "pkey doctor",
     });
   });
 
@@ -422,7 +1009,7 @@ describe("pkey doctor: Signed in and Integration", () => {
       columns: 80,
       env,
     });
-    expect(out.out).toContain("\u001b[33m"); // the ▲ is the warning colour
+    expect(out.out).toContain("\u001b[33m▲"); // the ▲ is the warning colour
   });
 
   it("--json carries the same facts as the text", async () => {
@@ -431,6 +1018,7 @@ describe("pkey doctor: Signed in and Integration", () => {
     const line = JSON.parse(r.out);
     expect(r.code).toBe(1);
     expect(line.ok).toBe(false);
+    expect(line.summary).toEqual({ todo: 2, warnings: 0 });
     expect(line.signedIn).toMatchObject({
       state: "in",
       tokenType: "personal",
@@ -447,16 +1035,19 @@ describe("pkey doctor: Signed in and Integration", () => {
       { id: "macos", label: "macOS" },
       { id: "windows", label: "Windows" },
     ]);
-    expect(line.integration.commerce).toBe("off");
+    expect(line.keys).toEqual(["djdl-2026"]);
     for (const f of line.integration.features)
       expect(text.out).toContain(f.label);
     for (const t of line.integration.todo) expect(text.out).toContain(t.label);
-    expect(line.facts.map((f: { id: string }) => f.id)).toEqual([
-      "manifest",
-      "discovery",
-      "services",
-      "signing-keys",
-    ]);
+    expect(line.facts.map((f: { id: string }) => f.id)).toEqual(
+      [
+        "manifest",
+        "discovery",
+        "services",
+        "signing-keys",
+        "config-file",
+      ].filter((id) => id !== "config-file"),
+    );
   });
 
   it("--json signed out: signedIn out, integration skipped, exit unchanged", async () => {

@@ -509,7 +509,8 @@ describe("pkey doctor", () => {
       expect(line.facts).toContainEqual({
         id: "discovery",
         state: "todo",
-        detail: "failed (404)",
+        detail: "Answered 404 at key.plrs.im",
+        code: "discovery-failed",
       });
     } finally {
       globalThis.fetch = real;
@@ -552,10 +553,9 @@ describe("pkey doctor", () => {
     try {
       const out = await run(["doctor"], { cwd });
       expect(out.code).toBe(0);
-      expect(out.out).toContain(
-        "Remote discovery: ok https://key.plrs.im/djdl/.well-known/polaris.json",
-      );
-      expect(out.out).toContain("Services enabled: license");
+      expect(out.out).toContain("DJDL (djdl) · key.plrs.im");
+      expect(out.out).toMatch(/✓ Services +license/);
+      expect(out.out).toMatch(/✓ Signing key +djdl-2026 · active/);
     } finally {
       globalThis.fetch = real;
     }
