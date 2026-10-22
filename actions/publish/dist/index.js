@@ -32099,6 +32099,38 @@ var KOTLIN_KTOR = {
     )
   })
 };
+var KOTLIN_SPRING = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "SecurityConfig.kt",
+    language: "kotlin",
+    code: lines2(
+      `import im.plrs.key.server.spring.PolarisKey`,
+      `import im.plrs.key.server.spring.polarisKey`,
+      `import org.springframework.context.annotation.Bean`,
+      `import org.springframework.context.annotation.Configuration`,
+      `import org.springframework.security.config.annotation.web.builders.HttpSecurity`,
+      `import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity`,
+      `import org.springframework.security.web.SecurityFilterChain`,
+      ``,
+      `@Configuration(proxyBeanMethods = false)`,
+      `@EnableWebSecurity`,
+      `class SecurityConfig {`,
+      `    @Bean`,
+      `    fun api(http: HttpSecurity): SecurityFilterChain {`,
+      `        http.csrf { it.disable() }`,
+      `        http.polarisKey()`,
+      `        http.authorizeHttpRequests {`,
+      `            it.requestMatchers("/health").permitAll()`,
+      `                .requestMatchers("/api/pro").access(PolarisKey.entitlement(${q2(c.entitlement)}))`,
+      `                .anyRequest().denyAll()`,
+      `        }`,
+      `        return http.build()`,
+      `    }`,
+      `}`
+    )
+  })
+};
 var NODE_YARGS = {
   licensing: (c) => ({
     title: "Mount the Polaris Key verbs and gate a command",
@@ -32215,7 +32247,7 @@ var TABLE = {
   kotlin: {
     kit: { _: KOTLIN_KIT },
     library: { _: KOTLIN_LIBRARY },
-    server: { ktor: KOTLIN_KTOR }
+    server: { ktor: KOTLIN_KTOR, spring: KOTLIN_SPRING }
   },
   godot: { kit: { _: GODOT_KIT }, library: { _: GODOT_LIBRARY } }
 };
@@ -32307,7 +32339,7 @@ function sdkInstallNote(sdk, host = "app", framework = null) {
     if (sdk === "python")
       return `Install the extra for your framework: polaris-key[${framework ?? "fastapi"}].`;
     if (sdk === "kotlin")
-      return "Add im.plrs.key:polaris-key-server-ktor from the same feed.";
+      return framework === "spring" ? "Add im.plrs.key:polaris-key-spring-boot-starter from the same feed." : "Add im.plrs.key:polaris-key-server-ktor from the same feed.";
   }
   if (sdk === "godot")
     return "Then install the Polaris Key addon from the editor's asset library and enable it under Project Settings, Plugins.";

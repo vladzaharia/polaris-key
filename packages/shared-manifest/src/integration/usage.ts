@@ -1069,6 +1069,39 @@ const KOTLIN_KTOR: Partial<Record<IntegrationFeature, Maker>> = {
   }),
 };
 
+const KOTLIN_SPRING: Partial<Record<IntegrationFeature, Maker>> = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "SecurityConfig.kt",
+    language: "kotlin",
+    code: lines(
+      `import im.plrs.key.server.spring.PolarisKey`,
+      `import im.plrs.key.server.spring.polarisKey`,
+      `import org.springframework.context.annotation.Bean`,
+      `import org.springframework.context.annotation.Configuration`,
+      `import org.springframework.security.config.annotation.web.builders.HttpSecurity`,
+      `import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity`,
+      `import org.springframework.security.web.SecurityFilterChain`,
+      ``,
+      `@Configuration(proxyBeanMethods = false)`,
+      `@EnableWebSecurity`,
+      `class SecurityConfig {`,
+      `    @Bean`,
+      `    fun api(http: HttpSecurity): SecurityFilterChain {`,
+      `        http.csrf { it.disable() }`,
+      `        http.polarisKey()`,
+      `        http.authorizeHttpRequests {`,
+      `            it.requestMatchers("/health").permitAll()`,
+      `                .requestMatchers("/api/pro").access(PolarisKey.entitlement(${q(c.entitlement)}))`,
+      `                .anyRequest().denyAll()`,
+      `        }`,
+      `        return http.build()`,
+      `    }`,
+      `}`,
+    ),
+  }),
+};
+
 // ── CLI frameworks beyond the first: yargs, click, typer ─────────────────────────────────────
 
 const NODE_YARGS: Partial<Record<IntegrationFeature, Maker>> = {
@@ -1205,7 +1238,7 @@ const TABLE: Table = {
   kotlin: {
     kit: { _: KOTLIN_KIT },
     library: { _: KOTLIN_LIBRARY },
-    server: { ktor: KOTLIN_KTOR },
+    server: { ktor: KOTLIN_KTOR, spring: KOTLIN_SPRING },
   },
   godot: { kit: { _: GODOT_KIT }, library: { _: GODOT_LIBRARY } },
 };
@@ -1223,7 +1256,7 @@ export function usageFrameworks(sdk: SdkId, lane: IntegrationLane): string[] {
  * `commander` and `electron`; Python's `argparse`); an unknown framework renders `null`, so a page
  * never shows another framework's code under its name. The `server` lane has the framework-free
  * core (Node) and one variant per shipped drop-in: Express, Hono, Next.js, FastAPI, Starlette,
- * Flask, Django, DRF and Ktor. A framework with no drop-in yet (Fastify, NestJS, Koa, Spring,
+ * Flask, Django, DRF, Ktor and Spring Boot. A framework with no drop-in yet (Fastify, NestJS, Koa,
  * Vapor) renders `null`.
  */
 export function renderUsage(

@@ -132,7 +132,9 @@ export function sdkInstallNote(
     if (sdk === "python")
       return `Install the extra for your framework: polaris-key[${framework ?? "fastapi"}].`;
     if (sdk === "kotlin")
-      return "Add im.plrs.key:polaris-key-server-ktor from the same feed.";
+      return framework === "spring"
+        ? "Add im.plrs.key:polaris-key-spring-boot-starter from the same feed."
+        : "Add im.plrs.key:polaris-key-server-ktor from the same feed.";
   }
   if (sdk === "godot")
     return "Then install the Polaris Key addon from the editor's asset library and enable it under Project Settings, Plugins.";

@@ -61,3 +61,7 @@ Each acceptance item's test in its lane, then the full green gate in `AGENTS.md`
 
 The role agent sets `--set SP-61 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set SP-61 done`.
+
+## Release wiring (SP-61b)
+
+`maven.spring-boot-starter` is in `.pkey/release.yaml`, the `publish-sdks.yml` expected list and matrix, and `ci.yml`'s local publication step. Spring is a Kotlin server framework in the integration pipeline (`usage.ts`, `setup.ts`, fixtures, goldens). The ingest golden's deploy-hook entries (11a, 11b) were re-captured for the new deliverable.
