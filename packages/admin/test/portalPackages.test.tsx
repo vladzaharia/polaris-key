@@ -199,6 +199,43 @@ describe("Account → Packages (F-33)", () => {
     );
   });
 
+  it("at the limit with an admin token, the disabled reason names the console's admin tokens", async () => {
+    mockFetch(
+      routes({
+        [ME]: tokens({
+          tokens: [token({ id: "pt_cli", scope: "admin" })],
+          limits: { ...tokens().limits, perAccount: 1 },
+        }),
+      }),
+    );
+    renderPortal();
+    const c = await card();
+    const create = within(c).getByRole("button", {
+      name: /Create personal token/,
+    });
+    const reason =
+      create.getAttribute("aria-description") ??
+      document.getElementById(create.getAttribute("aria-describedby") ?? "")
+        ?.textContent ??
+      create.getAttribute("title") ??
+      "";
+    expect(reason).toMatch(/admin tokens are in the console/);
+  });
+
+  it("puts the pointer line directly under the token list", async () => {
+    mockFetch(
+      routes({
+        [ME]: tokens({
+          tokens: [token(), token({ id: "pt_cli", scope: "admin" })],
+        }),
+      }),
+    );
+    renderPortal();
+    const c = await card();
+    const pointer = within(c).getByText("Admin tokens are in the console.");
+    expect(pointer.previousElementSibling?.tagName).toBe("UL");
+  });
+
   it("leaves Packages out when the account has no feed, token or per-app token", async () => {
     mockFetch(routes({ [ME]: tokens({ feeds: [], tokens: [] }) }));
     renderPortal();

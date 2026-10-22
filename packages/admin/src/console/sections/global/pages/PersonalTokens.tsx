@@ -1,8 +1,8 @@
 /**
  * Personal tokens (`#/personal-tokens`), reached from the account menu (ST-34.11, D-9).
  *
- * Every member sees Yours: their own tokens, both scopes, with Revoke. A Superadmin also gets
- * Everyone: the F-33 roster of people's tokens. The server enforces both lists; the tab is a view.
+ * Every member sees Yours: their own tokens, both scopes, with Revoke. Whoever holds the platform
+ * area (the one `/account-tokens` asks for) also gets Everyone: the F-33 roster of people's tokens. The server enforces both lists; the tab is a view.
  */
 
 import * as React from "react";
@@ -10,6 +10,8 @@ import { docsUrl } from "../../../../lib/docsLinks.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
 import { useCan } from "../../../access/useCan.js";
+import { navigate, useRoute } from "../../../router.js";
+import { r } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
 import { OwnPersonalTokens } from "./OwnPersonalTokens.js";
 import { PersonalTokensRoster } from "./PersonalTokensRoster.js";
@@ -18,8 +20,10 @@ type Tab = "yours" | "everyone";
 
 export function PersonalTokens(): React.ReactElement {
   const everyone = useCan("platform");
-  const [tab, setTab] = React.useState<Tab>("yours");
-  const shown: Tab = everyone ? tab : "yours";
+  // The tab is in the route (`?who=everyone`), so Back, reload and links keep it.
+  const route = useRoute();
+  const shown: Tab =
+    everyone && route.query.get("who") === "everyone" ? "everyone" : "yours";
   return (
     <CollectionTemplate
       header={
@@ -50,7 +54,9 @@ export function PersonalTokens(): React.ReactElement {
             { value: "everyone", label: "Everyone" },
           ]}
           value={shown}
-          onChange={setTab}
+          onChange={(t) =>
+            navigate(r.personalTokens(t === "everyone" ? t : undefined))
+          }
         />
       ) : null}
       {shown === "everyone" ? <PersonalTokensRoster /> : <OwnPersonalTokens />}

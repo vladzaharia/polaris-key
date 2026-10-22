@@ -164,7 +164,7 @@ export function PackagesCard(): React.ReactElement | null {
         />
       ) : (
         <div className="space-y-6">
-          {hasPersonal || listed.length > 0 ? (
+          {hasPersonal || listed.length > 0 || hasAdmin ? (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3
@@ -183,9 +183,12 @@ export function PackagesCard(): React.ReactElement | null {
                     onClick={() => setCreating(true)}
                     disabledReason={
                       atLimit
-                        ? t("locker.packages.atLimit", {
-                            count: data.limits.perAccount,
-                          })
+                        ? t(
+                            hasAdmin
+                              ? "locker.packages.atLimitAdmin"
+                              : "locker.packages.atLimit",
+                            { count: data.limits.perAccount },
+                          )
                         : undefined
                     }
                   >
@@ -245,12 +248,12 @@ export function PackagesCard(): React.ReactElement | null {
                   {t("locker.packages.showAll", { count: listed.length })}
                 </Button>
               ) : null}
+              {hasAdmin ? (
+                <p className="text-sm text-fg-muted">
+                  {t("locker.packages.adminPointer")}
+                </p>
+              ) : null}
             </div>
-          ) : null}
-          {hasAdmin ? (
-            <p className="text-sm text-fg-muted">
-              {t("locker.packages.adminPointer")}
-            </p>
           ) : null}
           {legacy.length > 0 ? (
             <PerAppTokens

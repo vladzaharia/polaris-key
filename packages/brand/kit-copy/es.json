@@ -1211,6 +1211,7 @@
     "locker.packages.subtitle": "Un token personal es una credencial de solo lectura que instala todos los paquetes que incluyen tus licencias.",
     "locker.packages.tokensTitle": "Tus tokens personales",
     "locker.packages.atLimit": "Como máximo {count} tokens personales. Revoca uno primero",
+    "locker.packages.atLimitAdmin": "Como máximo {count} tokens personales, incluidos los de administrador. Revoca uno primero; los de administrador están en la consola",
     "locker.packages.create": "Crear token personal",
     "locker.packages.none": "Aún no hay tokens personales. Crea uno para cada ordenador o servidor de compilación.",
     "locker.packages.adminPointer": "Los tokens de administrador están en la consola.",

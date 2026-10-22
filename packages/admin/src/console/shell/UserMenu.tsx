@@ -64,6 +64,9 @@ export function UserMenu({
   onSignOut: () => void;
 }): React.ReactElement {
   const narrow = useMediaQuery(NARROW_BAR_QUERY);
+  // Picking a page: its heading keeps the focus the route gave it, not the menu button Radix
+  // would restore.
+  const navigated = React.useRef(false);
   const initials = (me.name || me.email || "")
     .split(/\s+/)
     .map((s) => s[0])
@@ -80,7 +83,15 @@ export function UserMenu({
           </span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-60">
+      <DropdownMenuContent
+        align="end"
+        className="min-w-60"
+        onCloseAutoFocus={(e) => {
+          if (!navigated.current) return;
+          navigated.current = false;
+          e.preventDefault();
+        }}
+      >
         <DropdownMenuLabel>
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-medium text-fg-strong">
@@ -109,7 +120,10 @@ export function UserMenu({
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuItem asChild>
-          <Link to={r.personalTokens()}>
+          <Link
+            to={r.personalTokens()}
+            onClick={() => (navigated.current = true)}
+          >
             <KeyRound aria-hidden />
             Personal tokens
           </Link>

@@ -9,12 +9,13 @@
  */
 
 import * as React from "react";
+import { LogIn } from "lucide-react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { api, ApiError, type OwnPersonalToken } from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
-import { fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
+import { Callout } from "../../../../ui/Callout.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import {
   DataTable,
@@ -25,12 +26,26 @@ import {
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
-import { Timestamp } from "../../../../ui/Timestamp.js";
+import { CopyButton } from "../../../../ui/CopyButton.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
+import { r } from "../../../routes.js";
 import { qk } from "../../../data/queries.js";
 import { useTableUrlState } from "../../../useTableUrlState.js";
 import { intentOf } from "../../core/pages/confirmGate.js";
+import {
+  AccountPackagesLink,
+  PackagesNote,
+  ScopeTag,
+  TokenCard,
+  TokenCell,
+  STATUS_PILL,
+  expiresColumn,
+  focusActionsAfter,
+  lastUsedColumn,
+  revokeCopy,
+  scopeName,
+} from "./personalTokenParts.js";
 
 export function useMyPersonalTokens(): UseQueryResult<OwnPersonalToken[]> {
   return useQuery({
@@ -40,26 +55,6 @@ export function useMyPersonalTokens(): UseQueryResult<OwnPersonalToken[]> {
     retry: (n, e) => !(e instanceof ApiError && e.status === 409) && n < 2,
   });
 }
-
-/** The host a `pkey login` token was made on, from its label "pkey on <host>"; else null. */
-export function hostOfLabel(label: string): string | null {
-  const m = /^pkey on (.+)$/.exec(label);
-  return m ? m[1]!.trim() || null : null;
-}
-
-const SCOPE_TAG: Record<OwnPersonalToken["scope"], string> = {
-  admin: "Admin",
-  "packages:read": "Packages",
-};
-
-const STATUS_PILL: Record<
-  OwnPersonalToken["status"],
-  { tone: "success" | "warning" | "neutral"; label: string }
-> = {
-  active: { tone: "success", label: "Active" },
-  expired: { tone: "warning", label: "Expired" },
-  revoked: { tone: "neutral", label: "Revoked" },
-};
 
 const FACETS: Facet<OwnPersonalToken>[] = [
   {
@@ -73,36 +68,21 @@ const FACETS: Facet<OwnPersonalToken>[] = [
   },
 ];
 
+/** Token, Scope, Status, Last used, Expires: the same order as Everyone, less its Account. */
 const COLUMNS: DataColumn<OwnPersonalToken>[] = [
   {
     id: "label",
     header: "Token",
     accessorFn: (t) => t.label,
     meta: { priority: 1, primary: true, alwaysVisible: true, label: "Token" },
-    cell: ({ row }) => (
-      <span className="inline-flex min-w-0 max-w-[18rem] flex-col">
-        <span
-          className="truncate max-sm:whitespace-normal max-sm:break-words"
-          title={row.original.label}
-        >
-          {row.original.label}
-        </span>
-        <span className="font-mono text-xs text-fg-muted">
-          pkeyp_…{row.original.hint}
-        </span>
-      </span>
-    ),
+    cell: ({ row }) => <TokenCell t={row.original} />,
   },
   {
     id: "scope",
     header: "Scope",
-    accessorFn: (t) => SCOPE_TAG[t.scope] ?? t.scope,
+    accessorFn: (t) => scopeName(t.scope),
     meta: { priority: 1, label: "Scope" },
-    cell: ({ row }) => (
-      <StatusPill tone={row.original.scope === "admin" ? "info" : "neutral"}>
-        {SCOPE_TAG[row.original.scope] ?? row.original.scope}
-      </StatusPill>
-    ),
+    cell: ({ row }) => <ScopeTag scope={row.original.scope} />,
   },
   {
     id: "status",
@@ -115,70 +95,22 @@ const COLUMNS: DataColumn<OwnPersonalToken>[] = [
       </StatusPill>
     ),
   },
-  {
-    id: "lastUsedAt",
-    header: "Last used",
-    accessorFn: (t) => t.lastUsedAt ?? 0,
-    meta: { numeric: true, priority: 2, label: "Last used" },
-    cell: ({ row }) =>
-      row.original.lastUsedAt === null ? (
-        <span className="text-fg-muted">Never</span>
-      ) : (
-        <Timestamp at={fromSeconds(row.original.lastUsedAt)} />
-      ),
-  },
-  {
-    id: "expiresAt",
-    header: "Expires",
-    accessorKey: "expiresAt",
-    meta: { numeric: true, priority: 2, label: "Expires" },
-    cell: ({ row }) =>
-      row.original.status === "revoked" && row.original.revokedAt !== null ? (
-        <span>
-          Revoked <Timestamp at={fromSeconds(row.original.revokedAt)} />
-        </span>
-      ) : (
-        <Timestamp at={fromSeconds(row.original.expiresAt)} />
-      ),
-  },
+  lastUsedColumn<OwnPersonalToken>(),
+  expiresColumn<OwnPersonalToken>(),
 ];
-
-/** What the confirm says stops: the CLI on a host, or installs. */
-export function revokeCopy(t: OwnPersonalToken): {
-  action: "ownToken.revokeAdmin" | "ownToken.revokePackages";
-  consequences: string[];
-} {
-  if (t.scope === "admin") {
-    const host = hostOfLabel(t.label);
-    return {
-      action: "ownToken.revokeAdmin",
-      consequences: [
-        host
-          ? `pkey on ${host} stops working.`
-          : `${t.label} stops working: pkey and any automation using it.`,
-        "Run pkey login to sign in again.",
-      ],
-    };
-  }
-  return {
-    action: "ownToken.revokePackages",
-    consequences: [
-      `Installs using ${t.label} stop within 30 seconds.`,
-      "Make a new one in Account → Packages.",
-    ],
-  };
-}
 
 export function OwnPersonalTokens(): React.ReactElement {
   const tokens = useMyPersonalTokens();
-  const [state, setState] = useTableUrlState("own-personal-tokens", {
+  // Two tables share the page's query across the tabs: each keeps its own keys.
+  const [state, setState] = useTableUrlState("yours", {
     facets: ["status"],
+    namespace: true,
   });
   const [revoking, setRevoking] = React.useState<OwnPersonalToken | null>(null);
   const rowActions = (t: OwnPersonalToken): RowActionItem[] =>
-    t.status === "revoked"
-      ? []
-      : [{ label: "Revoke…", tone: "danger", onSelect: () => setRevoking(t) }];
+    t.status === "active"
+      ? [{ label: "Revoke…", tone: "danger", onSelect: () => setRevoking(t) }]
+      : [];
   const reauth =
     tokens.error instanceof ApiError &&
     tokens.error.status === 409 &&
@@ -186,23 +118,24 @@ export function OwnPersonalTokens(): React.ReactElement {
   const copy = revoking ? revokeCopy(revoking) : null;
   if (tokens.isError && !tokens.data) {
     return reauth ? (
-      <EmptyState
-        kind="not-found"
+      <Callout
+        tone="info"
         title="Sign in again to see your tokens"
-        description="This session can't tell which tokens are yours. Sign out and back in."
-        primaryAction={
+        action={
           <Button
-            variant="outline"
+            iconStart={<LogIn aria-hidden />}
             onClick={() =>
               void mutate("logout").finally(() => {
-                window.location.href = "/manage/login?signedOut=1";
+                window.location.href = `/manage/login?returnTo=${encodeURIComponent(`/manage/${r.personalTokens()}`)}`;
               })
             }
           >
-            Sign out
+            Sign in again
           </Button>
         }
-      />
+      >
+        Your session is older than this page.
+      </Callout>
     ) : (
       <ErrorState
         error={tokens.error}
@@ -214,8 +147,8 @@ export function OwnPersonalTokens(): React.ReactElement {
   return (
     <>
       <DataTable<OwnPersonalToken>
-        id="own-personal-tokens"
-        caption="Your personal tokens"
+        id="yours"
+        caption="Personal tokens"
         data={tokens.data ?? []}
         columns={COLUMNS}
         getRowId={(t) => t.id}
@@ -228,12 +161,28 @@ export function OwnPersonalTokens(): React.ReactElement {
         loading={tokens.isPending}
         exportCsv={false}
         mobile="cards"
+        mobileCard={(t, primary) => <TokenCard t={t} primary={primary} />}
         empty={
           <EmptyState
             kind="first-run"
-            title="No tokens yet"
-            description="Run pkey login in a terminal for an admin token, or make a packages token in Account → Packages."
-            docs={docsUrl("packageFeeds")}
+            title="No personal tokens yet"
+            description={
+              <>
+                Sign in from a terminal with{" "}
+                <span className="inline-flex items-center gap-1 align-middle">
+                  <code className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-xs">
+                    pkey login
+                  </code>
+                  <CopyButton value="pkey login" label="Copy pkey login" />
+                </span>
+                , or{" "}
+                <AccountPackagesLink>
+                  create a personal token
+                </AccountPackagesLink>{" "}
+                for installs.
+              </>
+            }
+            docs={docsUrl("cliReference")}
           />
         }
       />
@@ -241,29 +190,20 @@ export function OwnPersonalTokens(): React.ReactElement {
         open={revoking !== null}
         onOpenChange={(o) => !o && setRevoking(null)}
         intent={copy ? intentOf(copy.action) : "neutral"}
-        title={`Revoke ${revoking?.label ?? "token"}?`}
+        title={
+          <span className="text-balance">{copy?.title ?? "Revoke token?"}</span>
+        }
         consequences={copy?.consequences}
         confirmLabel="Revoke token"
         describeError={(e) => errorCopy(e)}
         onConfirm={async () => {
           await mutate("revokeMyPersonalToken", revoking!.id);
           toast.success("Token revoked");
-          const at = (tokens.data ?? []).findIndex(
-            (t) => t.id === revoking!.id,
-          );
-          requestAnimationFrame(() =>
-            requestAnimationFrame(() => {
-              const buttons = document.querySelectorAll<HTMLElement>(
-                'table button[aria-label^="Actions for"]',
-              );
-              (
-                buttons[Math.min(Math.max(at, 0), buttons.length - 1)] ??
-                document.querySelector<HTMLElement>("h1")
-              )?.focus();
-            }),
-          );
+          focusActionsAfter(tokens.data ?? [], revoking!.id);
         }}
-      />
+      >
+        {copy?.packagesNote ? <PackagesNote /> : null}
+      </ConfirmDialog>
     </>
   );
 }

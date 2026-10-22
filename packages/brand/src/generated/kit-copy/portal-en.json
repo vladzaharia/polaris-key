@@ -386,6 +386,7 @@
   "locker.packages.atLimit": "At most {count} personal tokens. Revoke one first",
   "locker.packages.create": "Create personal token",
   "locker.packages.none": "No personal tokens yet. Create one for each computer or build server.",
+  "locker.packages.atLimitAdmin": "At most {count} personal tokens, admin tokens included. Revoke one first; admin tokens are in the console",
   "locker.packages.adminPointer": "Admin tokens are in the console.",
   "locker.packages.reconnectPersonal": "Create a new one and set it again to reconnect.",
   "locker.packages.showAll": "Show all {count}",

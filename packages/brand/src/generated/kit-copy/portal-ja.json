@@ -386,6 +386,7 @@
   "locker.packages.atLimit": "個人トークンは最大{count}個です。先に1つ取り消してください",
   "locker.packages.create": "個人トークンを作成",
   "locker.packages.none": "個人トークンはまだありません。コンピュータやビルドサーバーごとに作成してください。",
+  "locker.packages.atLimitAdmin": "個人トークンは管理トークンを含めて最大{count}個です。先に1つ取り消してください(管理トークンはコンソールにあります)",
   "locker.packages.adminPointer": "管理トークンはコンソールにあります。",
   "locker.packages.reconnectPersonal": "新しく作成して設定し直すと、再接続できます。",
   "locker.packages.showAll": "{count}件すべて表示",

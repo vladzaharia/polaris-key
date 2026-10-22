@@ -1,13 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { OwnPersonalToken } from "../src/api.js";
-import { hostOfLabel } from "../src/console/sections/global/pages/OwnPersonalTokens.js";
+import type { AdminPersonalToken, OwnPersonalToken } from "../src/api.js";
+import {
+  hostOfLabel,
+  revokeCopy,
+} from "../src/console/sections/global/pages/personalTokenParts.js";
 import { boot, resetConsole } from "./consoleHarness.js";
 
-/** A member's own Personal tokens page: the Yours tab (ST-34.11). */
+/** The Personal tokens page: Yours and Everyone (ST-34.11, and its UX fix round). */
 
 const ME_PATH = "/manage/api/me/personal-tokens";
+const ALL_PATH = "/manage/api/account-tokens";
 const admin: OwnPersonalToken = {
   id: "pt_cli",
   label: "pkey on ada-mbp.local",
@@ -28,45 +32,105 @@ const packages: OwnPersonalToken = {
   scope: "packages:read",
   lastUsedAt: null,
 };
+const expired: OwnPersonalToken = {
+  ...packages,
+  id: "pt_exp",
+  label: "Old CI",
+  status: "expired",
+  expiresAt: 1_700_000_000,
+};
 let mine: OwnPersonalToken[] = [];
+let everyone: AdminPersonalToken[] = [];
 const PRODUCT_ADMIN = { platformAdmin: false };
 
 beforeEach(() => {
   resetConsole();
   mine = [admin, packages];
+  everyone = [
+    { ...admin, email: "ada@example.com" },
+    { ...packages, id: "pt_lu", email: "lucia@example.com" },
+  ];
 });
 afterEach(() => cleanup());
 
 const lists = () => ({
   [ME_PATH]: () => ({ tokens: mine }),
-  "/manage/api/account-tokens": () => ({
-    tokens: [{ ...packages, email: "ada@example.com" }],
-  }),
+  [ALL_PATH]: () => ({ tokens: everyone }),
 });
 
+const yours = () => screen.findByRole("table", { name: "Personal tokens" });
+async function openActions(
+  table: HTMLElement,
+  who: string,
+  user: ReturnType<typeof userEvent.setup>,
+) {
+  await user.click(
+    await within(table).findByRole("button", { name: `Actions for ${who}` }),
+  );
+  await user.click(await screen.findByRole("menuitem", { name: /Revoke/ }));
+  return screen.findByRole("alertdialog");
+}
+
 describe("Personal tokens: Yours", () => {
-  it("lists both scopes with a scope tag, last used and status", async () => {
+  it("lists both scopes with a neutral scope tag, the host as the title, last used and status", async () => {
     boot("#/personal-tokens", { extra: lists() });
-    const table = await screen.findByRole("table", {
-      name: "Your personal tokens",
-    });
-    await within(table).findByText("pkey on ada-mbp.local");
+    const table = await yours();
+    await within(table).findByText("ada-mbp.local");
+    // A `pkey login` token: the host is the title, the second line says where it came from.
+    expect(within(table).getByText(/pkey login · pkeyp_…Hq2a/)).toBeTruthy();
     expect(within(table).getByText("CI build server")).toBeTruthy();
     expect(within(table).getByText("Admin")).toBeTruthy();
     expect(within(table).getByText("Packages")).toBeTruthy();
     expect(within(table).getByText("Never")).toBeTruthy();
     expect(within(table).getAllByText("Active").length).toBe(2);
+    // Scope is a tag, not a status pill: no status tone on it.
+    expect(within(table).getByText("Admin").closest("[data-tone]")).toBeNull();
+    // Labels follow the text's own direction.
+    expect(within(table).getByText("CI build server").getAttribute("dir")).toBe(
+      "auto",
+    );
   });
 
-  it("shows the Everyone tab to a Superadmin, which loads the roster", async () => {
+  it("puts the tab in the route and keeps each table's search to itself", async () => {
     const user = userEvent.setup();
     const log = boot("#/personal-tokens", { extra: lists() });
     await screen.findByText("CI build server");
     await user.click(screen.getByRole("radio", { name: "Everyone" }));
-    await screen.findByRole("table", { name: "Personal tokens" });
-    expect(log.calls.some((c) => c.path === "/manage/api/account-tokens")).toBe(
-      true,
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/personal-tokens?who=everyone"),
     );
+    const table = await yours();
+    await within(table).findByText("lucia@example.com");
+    expect(log.calls.some((c) => c.path === ALL_PATH)).toBe(true);
+    await user.type(
+      screen.getByPlaceholderText(/Search label or account/),
+      "lucia",
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toMatch(/everyone\.q=lucia/),
+    );
+    await user.click(screen.getByRole("radio", { name: "Yours" }));
+    await waitFor(() =>
+      expect(window.location.hash).not.toMatch(/who=everyone/),
+    );
+    // Yours is not filtered by Everyone's search.
+    await screen.findByText("CI build server");
+    expect(
+      (screen.getByPlaceholderText("Search label") as HTMLInputElement).value,
+    ).toBe("");
+  });
+
+  it("opens Everyone from a link for a Superadmin, and Yours for a Product admin", async () => {
+    boot("#/personal-tokens?who=everyone", { extra: lists() });
+    await screen.findByText("lucia@example.com");
+    cleanup();
+    resetConsole();
+    boot("#/personal-tokens?who=everyone", {
+      me: PRODUCT_ADMIN,
+      extra: lists(),
+    });
+    await screen.findByText("CI build server");
+    expect(screen.queryByRole("radio", { name: "Everyone" })).toBeNull();
   });
 
   it("gives a Product admin no Everyone tab and never asks for the roster", async () => {
@@ -74,14 +138,12 @@ describe("Personal tokens: Yours", () => {
       me: PRODUCT_ADMIN,
       extra: lists(),
     });
-    await screen.findByRole("table", { name: "Your personal tokens" });
+    await yours();
     expect(screen.queryByRole("radio", { name: "Everyone" })).toBeNull();
-    expect(log.calls.some((c) => c.path === "/manage/api/account-tokens")).toBe(
-      false,
-    );
+    expect(log.calls.some((c) => c.path === ALL_PATH)).toBe(false);
   });
 
-  it("opens from the account menu", async () => {
+  it("opens from the account menu, leaves the sidebar without it, and the heading keeps focus", async () => {
     const user = userEvent.setup();
     boot("#/", { extra: lists() });
     await user.click(
@@ -90,20 +152,55 @@ describe("Personal tokens: Yours", () => {
     await user.click(
       await screen.findByRole("menuitem", { name: /Personal tokens/ }),
     );
-    await screen.findByRole("table", { name: "Your personal tokens" });
+    await yours();
     expect(window.location.hash).toBe("#/personal-tokens");
-    // The sidebar no longer carries it.
     expect(
       document.querySelector("nav a[href='#/personal-tokens']"),
     ).toBeNull();
+    await waitFor(() => expect(document.activeElement?.tagName).toBe("H1"));
   });
 
-  it("names the command and Account → Packages when there is none", async () => {
+  it("is found by the command palette", async () => {
+    const user = userEvent.setup();
+    boot("#/", { extra: lists() });
+    await screen.findByRole("button", { name: "Account menu" });
+    await user.keyboard("{Meta>}k{/Meta}");
+    await user.keyboard("personal");
+    expect(await screen.findByText("Personal tokens")).toBeTruthy();
+  });
+
+  it("names the command and the portal page in the first-run state", async () => {
     mine = [];
+    boot("#/personal-tokens", {
+      me: { customerOrigin: "https://polaris.locker" },
+      extra: lists(),
+    });
+    await screen.findByText("No personal tokens yet");
+    expect(screen.getByText("pkey login")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Copy pkey login" }),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByRole("link", { name: "create a personal token" })
+        .getAttribute("href"),
+    ).toBe("https://polaris.locker/#/account/packages");
+    // Docs point at the CLI reference.
+    expect(
+      document.querySelector("a[href='/docs/reference/cli/']"),
+    ).toBeTruthy();
+    expect(screen.queryByText(/packages token/)).toBeNull();
+  });
+
+  it("says nothing matches without 'your', and keeps the caption plain", async () => {
+    const user = userEvent.setup();
     boot("#/personal-tokens", { extra: lists() });
-    await screen.findByText("No tokens yet");
-    expect(screen.getByText(/pkey login/)).toBeTruthy();
-    expect(screen.getByText(/Account → Packages/)).toBeTruthy();
+    await screen.findByText("CI build server");
+    await user.type(screen.getByPlaceholderText("Search label"), "zzz");
+    expect(
+      await screen.findByText(/No personal tokens match these filters/),
+    ).toBeTruthy();
+    expect(screen.queryByText(/No your/)).toBeNull();
   });
 
   it("says what failed and retries", async () => {
@@ -121,10 +218,10 @@ describe("Personal tokens: Yours", () => {
     const retry = await screen.findByRole("button", { name: "Try again" });
     fail = false;
     await user.click(retry);
-    await screen.findByRole("table", { name: "Your personal tokens" });
+    await yours();
   });
 
-  it("asks to sign in again for a v1 cookie (409 reauth)", async () => {
+  it("asks to sign in again for a v1 cookie (409 reauth), once and with the right button", async () => {
     boot("#/personal-tokens", {
       extra: {
         ...lists(),
@@ -136,11 +233,13 @@ describe("Personal tokens: Yours", () => {
       },
     });
     await screen.findByText("Sign in again to see your tokens");
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sign in again" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.queryByText(/Sign out and back in/)).toBeNull();
   });
 
-  it("revokes an admin token behind an L2 confirm that names the host", async () => {
+  it("revokes an admin token behind an L2 confirm that says what stops and when", async () => {
     const user = userEvent.setup();
     const log = boot("#/personal-tokens", {
       extra: {
@@ -155,20 +254,17 @@ describe("Personal tokens: Yours", () => {
         },
       },
     });
-    const table = await screen.findByRole("table", {
-      name: "Your personal tokens",
-    });
-    await user.click(
-      await within(table).findByRole("button", {
-        name: "Actions for pkey on ada-mbp.local",
-      }),
-    );
-    await user.click(await screen.findByRole("menuitem", { name: /Revoke/ }));
-    const dialog = await screen.findByRole("alertdialog");
+    const table = await yours();
+    const dialog = await openActions(table, "pkey on ada-mbp.local", user);
     expect(
-      within(dialog).getByText("pkey on ada-mbp.local stops working."),
+      within(dialog).getByText("Revoke pkey on ada-mbp.local?"),
     ).toBeTruthy();
-    // L2: the confirm button is the danger one; nothing is sent yet.
+    expect(
+      within(dialog).getByText("pkey on that computer stops working at once."),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText("Run pkey login there to sign in again."),
+    ).toBeTruthy();
     expect(
       within(dialog).getByRole("button", { name: "Revoke token" }).className,
     ).toMatch(/danger/);
@@ -186,35 +282,118 @@ describe("Personal tokens: Yours", () => {
     );
   });
 
-  it("revokes a packages token behind an L1 confirm that names installs", async () => {
+  it("revokes a packages token behind an L1 confirm with the quoted name and a linked next step", async () => {
     const user = userEvent.setup();
-    boot("#/personal-tokens", { extra: lists() });
-    const table = await screen.findByRole("table", {
-      name: "Your personal tokens",
+    boot("#/personal-tokens", {
+      me: { customerOrigin: "https://polaris.locker" },
+      extra: lists(),
     });
-    await user.click(
-      await within(table).findByRole("button", {
-        name: "Actions for CI build server",
-      }),
-    );
-    await user.click(await screen.findByRole("menuitem", { name: /Revoke/ }));
-    const dialog = await screen.findByRole("alertdialog");
+    const table = await yours();
+    const dialog = await openActions(table, "CI build server", user);
     expect(
-      within(dialog).getByText(/Installs using CI build server stop/),
+      within(dialog).getByText(
+        /Installs using “CI build server” stop within 30 seconds/,
+      ),
     ).toBeTruthy();
     expect(within(dialog).queryByText(/stops working/)).toBeNull();
-    // L1: caution, not the danger button.
+    expect(
+      within(dialog)
+        .getByRole("link", { name: "Account → Packages" })
+        .getAttribute("href"),
+    ).toBe("https://polaris.locker/#/account/packages");
     expect(
       within(dialog).getByRole("button", { name: "Revoke token" }).className,
     ).not.toMatch(/danger/);
-    expect(within(dialog).getByText(/Account → Packages/)).toBeTruthy();
+  });
+
+  it("offers Revoke only on an active token", async () => {
+    const user = userEvent.setup();
+    mine = [packages, expired];
+    boot("#/personal-tokens", { extra: lists() });
+    const table = await yours();
+    await within(table).findByText("Old CI");
+    expect(
+      within(table).queryByRole("button", { name: "Actions for Old CI" }),
+    ).toBeNull();
+    expect(
+      within(table).getByRole("button", {
+        name: "Actions for CI build server",
+      }),
+    ).toBeTruthy();
+    void user;
   });
 });
 
-describe("hostOfLabel", () => {
+describe("Personal tokens: Everyone", () => {
+  it("shows Scope and the same column order as Yours", async () => {
+    const user = userEvent.setup();
+    boot("#/personal-tokens?who=everyone", { extra: lists() });
+    const table = await yours();
+    await within(table).findByText("ada@example.com");
+    const heads = within(table)
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent?.trim());
+    expect(heads.slice(0, 6)).toEqual([
+      "Token",
+      "Account",
+      "Scope",
+      "Status",
+      "Last used",
+      "Expires",
+    ]);
+    expect(within(table).getByText("Admin")).toBeTruthy();
+    void user;
+  });
+
+  it("says what an admin token's revoke really stops, for whom", async () => {
+    const user = userEvent.setup();
+    boot("#/personal-tokens?who=everyone", { extra: lists() });
+    const table = await yours();
+    const dialog = await openActions(table, "pkey on ada-mbp.local", user);
+    expect(
+      within(dialog).getByText(
+        "pkey on that computer stops working at once, for ada@example.com.",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText("They run pkey login there to sign in again."),
+    ).toBeTruthy();
+    expect(within(dialog).queryByText(/Installs using/)).toBeNull();
+  });
+
+  it("says a packages token's revoke stops installs, for its owner", async () => {
+    const user = userEvent.setup();
+    boot("#/personal-tokens?who=everyone", { extra: lists() });
+    const table = await yours();
+    const dialog = await openActions(table, "CI build server", user);
+    expect(
+      within(dialog).getByText(
+        /Installs using “CI build server” stop within 30 seconds, for lucia@example.com/,
+      ),
+    ).toBeTruthy();
+    expect(within(dialog).getByText(/Its owner makes a new one/)).toBeTruthy();
+  });
+
+  it("no longer says the tokens come only from Account → Packages when empty", async () => {
+    everyone = [];
+    boot("#/personal-tokens?who=everyone", { extra: lists() });
+    await screen.findByText("No personal tokens");
+    expect(screen.getByText("pkey login")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Account → Packages" }),
+    ).toBeTruthy();
+  });
+});
+
+describe("revoke copy", () => {
   it("reads the host back from pkey login's label", () => {
     expect(hostOfLabel("pkey on ada-mbp.local")).toBe("ada-mbp.local");
     expect(hostOfLabel("CI build server")).toBeNull();
     expect(hostOfLabel("pkey on ")).toBeNull();
+  });
+  it("falls back to 'This admin token' for a label with no host", () => {
+    const c = revokeCopy({ scope: "admin", label: "pkey on " });
+    expect(c.title).toBe("Revoke this admin token?");
+    expect(c.consequences[0]).toBe("This admin token stops working at once.");
   });
 });

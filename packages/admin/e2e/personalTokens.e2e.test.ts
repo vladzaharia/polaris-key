@@ -77,6 +77,15 @@ const OWN = [
   }),
 ];
 
+const ALL = [
+  ...TOKENS,
+  row({
+    id: "pt_cli",
+    label: "pkey on ada-lovelace-macbook-pro.studio.example.com",
+    scope: "admin",
+  }),
+];
+
 let server: PreviewServer;
 let browser: Browser;
 let base: string;
@@ -144,15 +153,14 @@ describe.concurrent("Personal tokens roster", () => {
       });
       const page = await ctx.newPage();
       try {
-        await page.goto(`${base}/manage.html#/personal-tokens`);
+        await page.goto(`${base}/manage.html#/personal-tokens?who=everyone`);
         await page
           .getByRole("heading", { level: 1, name: "Personal tokens" })
           .waitFor();
-        await page.getByRole("radio", { name: "Everyone" }).click();
         await page.getByText("Ada laptop").first().waitFor();
         if (SHOTS)
           await page.screenshot({
-            path: `${SHOTS}/console.personal-tokens-${s.w}-${s.theme}.png`,
+            path: `${SHOTS}/everyone-${s.w}-${s.theme}.png`,
             fullPage: true,
           });
         expect(
@@ -200,6 +208,9 @@ describe.concurrent("Personal tokens: Yours", () => {
       "empty",
       "confirm-admin",
       "confirm-packages",
+      "text200",
+      "everyone",
+      "everyone-confirm-admin",
     ] as const) {
       it(`${mode} at ${s.w}`, async () => {
         const ctx = await browser.newContext({
@@ -214,7 +225,7 @@ describe.concurrent("Personal tokens: Yours", () => {
           "/manage/api/me": ME,
           "/manage/api/products": { products: [] },
           "/manage/api/attention": { items: [] },
-          "/manage/api/account-tokens": { tokens: TOKENS },
+          "/manage/api/account-tokens": { tokens: ALL },
           "/manage/api/me/personal-tokens": {
             tokens: mode === "empty" ? [] : OWN,
           },
@@ -235,17 +246,59 @@ describe.concurrent("Personal tokens: Yours", () => {
         });
         const page = await ctx.newPage();
         try {
-          await page.goto(`${base}/manage.html#/personal-tokens`);
+          const everyone = mode.startsWith("everyone");
+          await page.goto(
+            `${base}/manage.html#/personal-tokens${everyone ? "?who=everyone" : ""}`,
+          );
           await page
             .getByRole("heading", { level: 1, name: "Personal tokens" })
             .waitFor();
-          if (mode === "empty") await page.getByText("No tokens yet").waitFor();
+          if (mode === "empty")
+            await page.getByText("No personal tokens yet").waitFor();
+          else if (everyone)
+            await page.getByText("Ada laptop").first().waitFor();
           else await page.getByText("CI build server").first().waitFor();
-          if (mode.startsWith("confirm")) {
-            const who =
-              mode === "confirm-admin"
-                ? "pkey on ada-lovelace-macbook-pro.studio.example.com"
-                : "CI build server";
+          if (mode === "text200") {
+            await page.evaluate(() => {
+              document.documentElement.style.fontSize = "200%";
+            });
+            await page.waitForTimeout(200);
+            // The label never runs under the card's Actions button.
+            const overlap = await page.evaluate(() => {
+              const out: string[] = [];
+              for (const card of document.querySelectorAll("li[data-row-id]")) {
+                const btn = card.querySelector(
+                  "button[aria-label^='Actions for']",
+                );
+                const label = card.querySelector("[dir='auto']");
+                if (!btn || !label) continue;
+                const a = btn.getBoundingClientRect();
+                const b = label.getBoundingClientRect();
+                if (
+                  a.left < b.right &&
+                  a.right > b.left &&
+                  a.top < b.bottom &&
+                  a.bottom > b.top
+                )
+                  out.push(label.textContent ?? "");
+              }
+              return out;
+            });
+            expect(overlap).toEqual([]);
+          }
+          if (s.w < 1024 && mode === "yours") {
+            // Phone cards keep Last used and Expires.
+            const text = await page
+              .locator("li[data-row-id]")
+              .first()
+              .innerText();
+            expect(text).toMatch(/Last used/);
+            expect(text).toMatch(/Expires/);
+          }
+          if (mode.includes("confirm")) {
+            const who = mode.endsWith("confirm-admin")
+              ? "pkey on ada-lovelace-macbook-pro.studio.example.com"
+              : "CI build server";
             await page
               .getByRole("button", { name: `Actions for ${who}` })
               .click();
@@ -255,7 +308,7 @@ describe.concurrent("Personal tokens: Yours", () => {
           if (SHOTS)
             await page.screenshot({
               path: `${SHOTS}/own-${mode}-${s.w}-${s.theme}.png`,
-              fullPage: mode === "yours" || mode === "empty",
+              fullPage: !mode.includes("confirm"),
             });
           expect(
             await page.evaluate(

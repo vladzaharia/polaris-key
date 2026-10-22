@@ -1211,6 +1211,7 @@
     "locker.packages.subtitle": "Un jeton personnel est un identifiant en lecture seule qui installe tous les paquets inclus dans vos licences.",
     "locker.packages.tokensTitle": "Vos jetons personnels",
     "locker.packages.atLimit": "{count} jetons personnels au maximum. Révoquez-en d’abord un",
+    "locker.packages.atLimitAdmin": "{count} jetons personnels au maximum, jetons d’administration compris. Révoquez-en d’abord un ; ceux d’administration sont dans la console",
     "locker.packages.create": "Créer un jeton personnel",
     "locker.packages.none": "Aucun jeton personnel pour l’instant. Créez-en un pour chaque ordinateur ou serveur de build.",
     "locker.packages.adminPointer": "Les jetons d’administration sont dans la console.",

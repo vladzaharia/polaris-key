@@ -1211,6 +1211,7 @@
     "locker.packages.subtitle": "個人トークンは、ライセンスに含まれるすべてのパッケージをインストールできる読み取り専用の認証情報です。",
     "locker.packages.tokensTitle": "個人トークン",
     "locker.packages.atLimit": "個人トークンは最大{count}個です。先に1つ取り消してください",
+    "locker.packages.atLimitAdmin": "個人トークンは管理トークンを含めて最大{count}個です。先に1つ取り消してください(管理トークンはコンソールにあります)",
     "locker.packages.create": "個人トークンを作成",
     "locker.packages.none": "個人トークンはまだありません。コンピュータやビルドサーバーごとに作成してください。",
     "locker.packages.adminPointer": "管理トークンはコンソールにあります。",
