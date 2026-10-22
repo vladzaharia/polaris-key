@@ -25,6 +25,7 @@ import im.plrs.key.core.saturatingAdd
 import im.plrs.key.core.stringValue
 import im.plrs.key.core.verifyLicenseDoc
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 
 /** The headers a backend reads (§14.1) and its limits. `Authorization`, cookies and queries are never read. */
 public object BackendWire {
@@ -52,13 +53,79 @@ public enum class BackendRefusal(public val code: String, public val status: Int
     }
 }
 
-/** One requirement of a route, checked at step 6 in the order the route lists them. */
+/** One requirement of a route, checked at step 6 in the order the route lists them. Build them with [Require]. */
 public sealed interface BackendRequirement {
-    /** Boolean entitlement [name] must be true. */
-    public data class Entitlement(val name: String) : BackendRequirement
+    /**
+     * Entitlement [name] is granted: boolean `true`, or, when [test] is set, a value [test] accepts
+     * (a valued entitlement such as a seat count). A [test] that throws refuses.
+     */
+    public data class Entitlement @JvmOverloads constructor(val name: String, val test: ((JsonElement) -> Boolean)? = null) : BackendRequirement
+
+    /** The `license.tier` entitlement is one of [tiers]. */
+    public data class Tier(val tiers: List<String>) : BackendRequirement {
+        init {
+            require(tiers.isNotEmpty() && tiers.all { it.isNotEmpty() }) { "Require.tier(...) names no tier; pass the tiers that may use the route, for example Require.tier(\"pro\", \"team\")" }
+        }
+    }
 
     /** A signed-in account's pairwise subject must be present. */
     public data object SignIn : BackendRequirement
+}
+
+/**
+ * Builders for the requirements a route lists, for `requireAll(...)` and [BackendOptions.require]:
+ *
+ *     Require.entitlement("export.pdf")
+ *     Require.entitlement("seats") { it.jsonPrimitive.intOrNull.let { n -> n != null && n >= 5 } }
+ *     Require.tier("pro", "team")
+ *     Require.signIn()
+ */
+public object Require {
+    /** Boolean entitlement [name] is granted, or [test] accepts a valued entitlement. */
+    @JvmStatic
+    @JvmOverloads
+    public fun entitlement(name: String, test: ((JsonElement) -> Boolean)? = null): BackendRequirement = BackendRequirement.Entitlement(name, test)
+
+    /** The `license.tier` entitlement is one of [tiers]. */
+    @JvmStatic
+    public fun tier(vararg tiers: String): BackendRequirement = BackendRequirement.Tier(tiers.toList())
+
+    /** A person is signed in on the device (`profile.user.subject`). */
+    @JvmStatic
+    public fun signIn(): BackendRequirement = BackendRequirement.SignIn
+}
+
+/**
+ * Step 6 for one request: the first of [requirements], in order, that the licence does not meet,
+ * or null. The one implementation behind [backendVerdict] and the framework adapters.
+ */
+internal fun unmetRequirement(
+    requirements: List<BackendRequirement>,
+    tier: String?,
+    signedIn: Boolean,
+    entitlement: (String) -> JsonElement?,
+): BackendRefusal? {
+    for (requirement in requirements) {
+        when (requirement) {
+            is BackendRequirement.Entitlement -> {
+                val value = entitlement(requirement.name)
+                val test = requirement.test
+                val granted = if (test == null) {
+                    value.boolValue == true
+                } else {
+                    value != null && value !is JsonNull && try {
+                        test(value)
+                    } catch (e: Exception) {
+                        false
+                    }
+                }
+                if (!granted) return BackendRefusal.NotEntitled
+            }
+            is BackendRequirement.Tier -> if (tier == null || tier !in requirement.tiers) return BackendRefusal.NotEntitled
+            BackendRequirement.SignIn -> if (!signedIn) return BackendRefusal.SignInRequired
+        }
+    }
+    return null
 }
 
 public data class BackendOptions @JvmOverloads constructor(
@@ -244,14 +311,7 @@ internal fun decide(
         user = doc.profile?.user,
     )
     // 6. The route's requirements, in order.
-    for (requirement in options.require) {
-        when (requirement) {
-            is BackendRequirement.Entitlement -> {
-                val entry = doc.entitlements[requirement.name]
-                if (entry == null || entry.value.boolValue != true) return refused(BackendRefusal.NotEntitled, 6, context, doc)
-            }
-            BackendRequirement.SignIn -> if (context.user == null) return refused(BackendRefusal.SignInRequired, 6, context, doc)
-        }
-    }
+    val unmet = unmetRequirement(options.require, tier, context.user != null) { name -> doc.entitlements[name]?.value }
+    if (unmet != null) return refused(unmet, 6, context, doc)
     return BackendVerdict(200, null, context, doc, 0)
 }

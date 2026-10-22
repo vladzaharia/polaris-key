@@ -11,6 +11,7 @@ import im.plrs.key.core.Base64Url
 import im.plrs.key.core.CLOCK_SKEW_SECONDS
 import im.plrs.key.core.Endpoints
 import im.plrs.key.core.OkHttpTransport
+import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisRequest
 import im.plrs.key.core.PolarisTransport
 import im.plrs.key.core.SdkId
@@ -38,13 +39,44 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 
-/** One product this backend serves. Build it from the app's generated `PolarisConfig`. */
+private const val CONFIG_HINT = "build it from the file `pkey sdk --lang kotlin --write` generates: " +
+    "PolarisProduct(PolarisConfig.PRODUCT_SLUG, PolarisConfig.pinnedKeys, PolarisConfig.BASE_URL)"
+
+/** A raw Ed25519 public key, base64url: what a pin is. */
+private val PIN = Regex("^[A-Za-z0-9_-]{43}$")
+
+/**
+ * One product this backend serves. Build it from the app's generated `PolarisConfig`:
+ * `PolarisProduct(PolarisConfig.PRODUCT_SLUG, PolarisConfig.pinnedKeys, PolarisConfig.BASE_URL)`.
+ * A product that could never verify a document (no slug, no pin, a malformed pin, a bad base URL)
+ * throws `IllegalArgumentException` here, at startup, with the fix.
+ */
 public data class PolarisProduct @JvmOverloads constructor(
     val slug: String,
     /** The pinned trust set: the only root. */
     val pinnedKeys: TrustSet,
     val baseUrl: String = "https://key.plrs.im",
-)
+) {
+    init {
+        require(slug.isNotEmpty()) { "PolarisProduct: the product slug is empty; $CONFIG_HINT" }
+        require(pinnedKeys.isNotEmpty()) {
+            "PolarisProduct: the pinned keys for \"$slug\" are empty, so no license could verify; run `pkey sdk --lang kotlin --write` to write the product's keys"
+        }
+        for ((kid, key) in pinnedKeys) {
+            require(PIN.matches(key)) {
+                "PolarisProduct: the pinned key \"$kid\" for \"$slug\" is not a raw Ed25519 public key (43 base64url characters); copy it from Core > Keys & secrets or rerun `pkey sdk --lang kotlin --write`"
+            }
+        }
+        try {
+            Endpoints(baseUrl, slug)
+        } catch (e: PolarisException) {
+            throw IllegalArgumentException(
+                "PolarisProduct: baseUrl \"$baseUrl\" for \"$slug\" is not an https origin such as https://key.plrs.im (http only on localhost): ${e.message}",
+                e,
+            )
+        }
+    }
+}
 
 public data class PolarisServerOptions @JvmOverloads constructor(
     /** The products served, in order; a document's `aud` picks its trust set. The first is the challenge's realm. */
@@ -60,19 +92,31 @@ public data class PolarisServerOptions @JvmOverloads constructor(
     /** Reports every verdict: the code (null for a pass) and the step. Carries no header and no document. */
     val onVerdict: ((code: String?, step: Int) -> Unit)? = null,
     val cacheSize: Int = 1000,
+    /**
+     * Debug lines: the step, the key id, the audience and a short device hash per verdict, and why a
+     * trust fetch failed. Never the header, the document or the holder. Null: silent.
+     */
+    val debug: ((line: String) -> Unit)? = null,
 ) {
     init {
-        require(products.isNotEmpty()) { "products names no product" }
-        require(products.map { it.slug }.toSet().size == products.size) { "products repeats a slug" }
-        require(cacheSize >= 0) { "cacheSize is negative" }
+        require(products.isNotEmpty()) { "PolarisServerOptions: products names no product; $CONFIG_HINT" }
+        val slugs = products.map { it.slug }
+        require(slugs.toSet().size == slugs.size) { "PolarisServerOptions: products repeats the slug \"${slugs.first { s -> slugs.count { it == s } > 1 }}\"" }
+        require(maxAgeSeconds == null || maxAgeSeconds >= 0) { "PolarisServerOptions: maxAgeSeconds is negative; pass seconds of age to accept, or null for the document's own window" }
+        require(cacheSize >= 0) { "PolarisServerOptions: cacheSize is negative" }
     }
 }
 
 /** A refusal raised into the framework's own error pipeline (`errors = throw`). */
 public class PolarisKeyError(public val problem: BackendProblem) : RuntimeException(problem.code) {
+    /** The refusal's code, for example `not_entitled`. */
+    public val code: String get() = problem.code
     public val status: Int get() = problem.status
     public val headers: Map<String, String> get() = problem.headers
 }
+
+/** The refusal a gate sends: status, headers, the localized title and detail, and the JSON body. */
+public typealias PolarisProblem = BackendProblem
 
 /** What a passing document gives the route. Its [toString] never carries the holder. */
 public class PolarisLicense internal constructor(
@@ -91,6 +135,10 @@ public class PolarisLicense internal constructor(
 
     /** The entitlement [name]'s value, or null. */
     public fun value(name: String): JsonElement? = entitlements[name]?.takeIf { it !is JsonNull }
+
+    /** The first of [requirements], in order, that this licence does not meet, or null. */
+    public fun unmet(requirements: List<BackendRequirement>): BackendRefusal? =
+        unmetRequirement(requirements, tier, user != null) { entitlements[it] }
 
     override fun toString(): String = "PolarisLicense(product=$product, tier=$tier)"
 }
@@ -175,7 +223,43 @@ public class PolarisServer(public val options: PolarisServerOptions) : AutoClose
             }
         }
         options.onVerdict?.invoke(verdict.code, verdict.step)
+        options.debug?.let { debug -> debug(verdictLine(fields, verdict)) }
         return verdict
+    }
+
+    /**
+     * Step 6 on an already authenticated request: the problem for the first of [requirements] that
+     * [license] does not meet, in [acceptLanguage]'s locale, or null. Reports a refusal to
+     * `onVerdict`; [authenticate] has already reported the pass.
+     */
+    public fun refusalFor(license: PolarisLicense, requirements: List<BackendRequirement>, acceptLanguage: String? = null): BackendProblem? {
+        val unmet = license.unmet(requirements) ?: return null
+        options.onVerdict?.invoke(unmet.code, 6)
+        return problem(unmet.code, acceptLanguage)
+    }
+
+    private fun verdictLine(fields: List<Pair<String, String>>, v: BackendVerdict): String {
+        val jws = backendHeaderElements(fields, BackendWire.HEADER_LICENSE).firstOrNull()
+        val kid = jws?.takeIf { it.length <= BackendWire.LICENSE_MAX_BYTES }?.let(::jwsHeaderKid)
+        val step = when (v.refusal) {
+            null -> "pass"
+            BackendRefusal.LicenseRequired -> "credential"
+            BackendRefusal.LicenseInvalid -> "verify"
+            BackendRefusal.LicenseStale -> "fresh"
+            else -> "require"
+        }
+        val ctx = v.context
+        return "polaris-key: $step ${v.code ?: "ok"} kid=${kid ?: "-"} aud=${ctx?.license?.product ?: "-"} device=${ctx?.let { shortHash(it.license.deviceId) } ?: "-"}"
+    }
+
+    /** Eight hex characters of an FNV-1a fold of [s]: it only lets a log line tell devices apart. */
+    private fun shortHash(s: String): String {
+        var h = 0x811c9dc5L
+        for (c in s) {
+            h = (h xor c.code.toLong()) and 0xffffffffL
+            h = (h * 0x01000193L) and 0xffffffffL
+        }
+        return h.toString(16).padStart(8, '0')
     }
 
     /** [verdict], shaped as the request's [PolarisAuth]; the problem is in [acceptLanguage]'s locale. */
@@ -244,17 +328,20 @@ public class PolarisServer(public val options: PolarisServerOptions) : AutoClose
         if (unknownKid && clock() - t.lastFetchAt < 60) return@withLock false
         t.lastFetchAt = clock()
         val endpoints = Endpoints(t.product.baseUrl, t.product.slug)
-        val first = fetch(endpoints.trustManifest) ?: return@withLock false
+        val first = fetch(t, endpoints.trustManifest) ?: return@withLock false
         var applied = apply(t, first)
         if (!applied) {
             val usable = usablePins(t.product.pinnedKeys, t.tombstones)
             for (signer in trustSignerOrder(usable, jwsHeaderKid(first))) {
-                val retry = fetch(endpoints.trustManifest + "?signer=" + java.net.URLEncoder.encode(signer, "UTF-8").replace("+", "%20")) ?: continue
+                val retry = fetch(t, endpoints.trustManifest + "?signer=" + java.net.URLEncoder.encode(signer, "UTF-8").replace("+", "%20")) ?: continue
                 if (apply(t, retry)) {
                     applied = true
                     break
                 }
             }
+        }
+        if (!applied) {
+            options.debug?.invoke("trust: the manifest for ${t.product.slug} was not accepted (not signed by a pinned key, for another product, or no newer than the last); keeping the last verified keys and the pins")
         }
         applied
     }
@@ -281,15 +368,30 @@ public class PolarisServer(public val options: PolarisServerOptions) : AutoClose
         return true
     }
 
-    private suspend fun fetch(url: String): String? {
+    private suspend fun fetch(t: ProductTrust, url: String): String? {
         val response = try {
             transport.send(PolarisRequest(url = url, headers = mapOf("accept" to "application/jose", HeaderName.sdkName to SdkId.kotlinServer), maxBodyBytes = MAX_MANIFEST_BYTES + 1))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            options.debug?.invoke("trust: fetch failed for ${t.product.slug} (${reasonOf(e)}); keeping the last verified keys and the pins")
             return null
         }
-        return if (response.isOk && response.body.size <= MAX_MANIFEST_BYTES) response.text else null
+        if (!response.isOk) {
+            options.debug?.invoke("trust: ${t.product.baseUrl} answered ${response.status} for ${t.product.slug}; check baseUrl and the product slug")
+            return null
+        }
+        if (response.body.size > MAX_MANIFEST_BYTES) {
+            options.debug?.invoke("trust: the manifest for ${t.product.slug} is larger than $MAX_MANIFEST_BYTES bytes; ignoring it")
+            return null
+        }
+        return response.text
+    }
+
+    /** A short, secret-free reason for a failed fetch: the exception's name and message. */
+    private fun reasonOf(e: Exception): String {
+        val inner = e.cause?.let { ": ${it.message ?: it.javaClass.simpleName}" } ?: ""
+        return "${e.javaClass.simpleName}: ${e.message ?: "no message"}$inner".take(200)
     }
 
     private companion object {
