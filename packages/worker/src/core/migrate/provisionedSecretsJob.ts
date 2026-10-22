@@ -540,11 +540,13 @@ export async function downProduct(
   // `added` ledger row stays while that has not happened (a retry must still find it).
   const settled = new Set<string>();
   for (const [id, r] of groupAdded) {
-    if (pending.has(id)) continue;
+    // `keep` before `pending`: a kept licence's ledger row is gone after this call, so a retry of
+    // the pending one must not find a group that looks complete and remove the entry.
     if (keep.has(id)) {
       settled.add(id); // the entry stays by design; nothing left to remove
       continue;
     }
+    if (pending.has(id)) continue;
     let finished = false;
     for (let attempt = 0; attempt < CAS_ATTEMPTS && !finished; attempt++) {
       const accountRow = await getAccountOverrides(db, product, r.subject);
