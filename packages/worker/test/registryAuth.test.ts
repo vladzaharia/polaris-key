@@ -5,6 +5,7 @@
  * `test/registry/godot.test.ts`, beside that feed's fixture.
  */
 
+import { mintCompat } from "./helpers/legacyOwnerToken.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { dispatchRegistryHost } from "../src/core/registry/registryHost.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
@@ -118,9 +119,9 @@ async function seedOwner(slug: string): Promise<void> {
 }
 
 async function mint(
-  over: Partial<Parameters<typeof mintRegistryToken>[2]> = {},
+  over: Partial<Parameters<typeof mintCompat>[2]> = {},
 ): Promise<string> {
-  const res = await mintRegistryToken(
+  const res = await mintCompat(
     env,
     db,
     {
@@ -170,7 +171,7 @@ describe("registry tokens: the store (§6.1)", () => {
   const now = NOW;
 
   it("mints pkeyr_ + 256 bits, stores only the peppered hash and a hint, and shows the token once", async () => {
-    const res = await mintRegistryToken(
+    const res = await mintCompat(
       env,
       db,
       {
@@ -199,7 +200,8 @@ describe("registry tokens: the store (§6.1)", () => {
     ).not.toContain(res.token);
   });
 
-  it("enforces the mint rules: expiry 1..365 days, URL tokens godot-only for 30 days, licence tokens read-only", async () => {
+  it("enforces the mint rules: expiry 1..365 days, URL tokens godot-only for 30 days, licence tokens read-only, no owner read", async () => {
+    const { licenseId } = await seedLicenseWithKey(db, OWNER);
     const m = (over: Record<string, unknown>) =>
       mintRegistryToken(
         env,
@@ -207,7 +209,8 @@ describe("registry tokens: the store (§6.1)", () => {
         {
           product: OWNER,
           label: "x",
-          binding: "owner",
+          binding: "license",
+          licenseId,
           createdBy: "admin:a",
           ...over,
         } as Parameters<typeof mintRegistryToken>[2],
@@ -220,19 +223,34 @@ describe("registry tokens: the store (§6.1)", () => {
     expect((await m({ label: "x".repeat(65) })).ok).toBe(false);
     expect((await m({ ecosystems: ["nuget"] })).ok).toBe(false);
     expect((await m({ ecosystems: [] })).ok).toBe(false);
-    // F-22: `publish` must name its publish ecosystems (registryPublish.test.ts has the rest);
-    // it implies `read` (F-23's push tokens are the same scope, naming OCI).
-    expect((await m({ scopes: ["publish"] })).ok).toBe(false);
-    const pub = await m({ scopes: ["publish"], ecosystems: ["npm"] });
-    expect(pub.ok && pub.view.scopes).toEqual(["publish", "read"]);
-    expect((await m({ scopes: ["publish"], ecosystems: ["oci"] })).ok).toBe(
-      true,
-    );
     expect((await m({ scopes: ["delete"] })).ok).toBe(false);
     expect((await m({ scopes: ["write"] })).ok).toBe(false);
     const url = await m({ presentation: "url", ecosystems: ["npm"] });
     expect(url.ok && url.view.ecosystems).toEqual(["godot"]);
     expect(url.ok && url.view.expiresAt).toBe(now + 30 * 86_400);
+    // F-22: `publish` is owner-bound only, names its publish ecosystems (registryPublish.test.ts
+    // has the rest) and implies `read` (F-23's push tokens are the same scope, naming OCI).
+    const o = (over: Record<string, unknown>) =>
+      m({ binding: "owner", licenseId: undefined, ...over });
+    expect((await o({ scopes: ["publish"] })).ok).toBe(false);
+    const pub = await o({ scopes: ["publish"], ecosystems: ["npm"] });
+    expect(pub.ok && pub.view.scopes).toEqual(["publish", "read"]);
+    expect((await o({ scopes: ["publish"], ecosystems: ["oci"] })).ok).toBe(
+      true,
+    );
+    expect(await m({ scopes: ["publish"], ecosystems: ["npm"] })).toMatchObject(
+      {
+        ok: false,
+        reason: "license_tokens_read_only",
+      },
+    );
+    // F-33b.3: an owner-wide READ token is retired, whatever else it asks for.
+    for (const over of [{}, { scopes: ["read"] }, { ecosystems: ["npm"] }])
+      expect(await o(over)).toMatchObject({
+        ok: false,
+        status: 422,
+        reason: "owner_read_retired",
+      });
     // A licence-bound token names an existing licence of the owner.
     expect(
       await m({ binding: "license", licenseId: "lic_nope" }),
@@ -240,7 +258,7 @@ describe("registry tokens: the store (§6.1)", () => {
       ok: false,
       status: 404,
     });
-    expect((await m({ binding: "license" })).ok).toBe(false);
+    expect((await m({ licenseId: undefined })).ok).toBe(false);
   });
 
   it("caps live tokens per licence at 10", async () => {
@@ -248,7 +266,7 @@ describe("registry tokens: the store (§6.1)", () => {
     for (let i = 0; i < 10; i++)
       expect(
         (
-          await mintRegistryToken(
+          await mintCompat(
             env,
             db,
             {
@@ -263,7 +281,7 @@ describe("registry tokens: the store (§6.1)", () => {
         ).ok,
       ).toBe(true);
     expect(
-      await mintRegistryToken(
+      await mintCompat(
         env,
         db,
         {
@@ -475,7 +493,7 @@ describe("the credential ladder (§6.2), through the registry host", () => {
 
   it("another owner's token, a token narrowed away from OCI and a URL token are no credential here", async () => {
     await setMode("authenticated");
-    const other = await mintRegistryToken(
+    const other = await mintCompat(
       env,
       db,
       { product: OTHER, label: "x", binding: "owner", createdBy: "admin:a" },

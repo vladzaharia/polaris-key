@@ -915,7 +915,11 @@ export async function listCiTokens(
     product,
     limit,
   );
-  return rows.map((r) => ({
+  return rows.map(listingOf);
+}
+
+function listingOf(r: CiTokenRow): CiTokenListing {
+  return {
     tokenId: r.token_id,
     kind: r.kind === "static" ? "static" : "oidc",
     scopes: parseScopes(r.scopes_json),
@@ -926,7 +930,70 @@ export async function listCiTokens(
     revokedAt: r.revoked_at,
     createdBy: r.created_by,
     lastUsedAt: r.last_used_at ?? null,
-  }));
+  };
+}
+
+/** True for a read service token's scopes: exactly `["packages:read"]` (F-33b.3). */
+export function isServiceTokenScopes(scopes: readonly string[]): boolean {
+  return scopes.length === 1 && scopes[0] === PACKAGES_READ_CI_SCOPE;
+}
+
+/**
+ * A product's read service tokens (F-33b.3): its static `pkeyci_` tokens whose scopes are
+ * exactly `["packages:read"]`, newest first. Never a hash, never a token.
+ */
+export async function listServiceTokens(
+  db: Db,
+  product: string,
+  limit = 100,
+): Promise<CiTokenListing[]> {
+  const rows = await db.all<CiTokenRow>(
+    `SELECT * FROM ci_tokens WHERE product = ? AND kind = 'static' AND scopes_json = ?
+      ORDER BY issued_at DESC, token_id DESC LIMIT ?`,
+    product,
+    JSON.stringify([PACKAGES_READ_CI_SCOPE]),
+    limit,
+  );
+  return rows.map(listingOf).filter((t) => isServiceTokenScopes(t.scopes));
+}
+
+/**
+ * Revoke one of the product's read service tokens. `null` when no such token exists in the
+ * product or it is not a `packages:read`-only static token (a publish token is not listed on
+ * the page that calls this); otherwise the token as it now stands (already revoked included).
+ */
+export async function revokeServiceToken(
+  db: Db,
+  product: string,
+  tokenId: string,
+  now: number,
+): Promise<CiTokenListing | null> {
+  const row = await db.first<CiTokenRow>(
+    "SELECT * FROM ci_tokens WHERE product = ? AND token_id = ? AND kind = 'static'",
+    product,
+    tokenId,
+  );
+  if (!row || !isServiceTokenScopes(parseScopes(row.scopes_json))) return null;
+  if (row.revoked_at === null) await revokeCiToken(db, product, tokenId, now);
+  const after = await db.first<CiTokenRow>(
+    "SELECT * FROM ci_tokens WHERE product = ? AND token_id = ?",
+    product,
+    tokenId,
+  );
+  return after ? listingOf(after) : null;
+}
+
+/** Revoke every live read service token of the product; answers how many. */
+export async function revokeAllServiceTokens(
+  db: Db,
+  product: string,
+  now: number,
+): Promise<number> {
+  const live = (await listServiceTokens(db, product, 1000)).filter(
+    (t) => t.revokedAt === null && t.expiresAt > now,
+  );
+  for (const t of live) await revokeCiToken(db, product, t.tokenId, now);
+  return live.length;
 }
 
 /** Revoke a token (and every unredeemed ticket it holds). False if no live token had that id. */

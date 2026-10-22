@@ -13,6 +13,7 @@
  *   - the bounded parsers (`multipart.ts`, `npmBody.ts`, `swiftArchive.ts`).
  */
 
+import { mintCompat } from "./helpers/legacyOwnerToken.js";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -34,7 +35,6 @@ import { REGISTRY_ROUTES, SERVICES } from "../src/mount.js";
 import { forgetRegistrySettings } from "../src/services/distribution/registry/settings.js";
 import {
   forgetRegistryTokens,
-  mintRegistryToken,
   revokeRegistryToken,
 } from "../src/core/registry/registryTokens.js";
 import { authorizeRegistryPublish } from "../src/core/registry/registryPublish.js";
@@ -144,9 +144,9 @@ async function feed(eco: string, namespace: unknown, ext: unknown = {}) {
 }
 
 async function mint(
-  over: Partial<Parameters<typeof mintRegistryToken>[2]> = {},
+  over: Partial<Parameters<typeof mintCompat>[2]> = {},
 ): Promise<string> {
-  const res = await mintRegistryToken(
+  const res = await mintCompat(
     env,
     db,
     {
@@ -254,8 +254,8 @@ async function packageRow(eco: string, version: string) {
 // ── Publish tokens ───────────────────────────────────────────────────────────────────────────
 
 describe("publish tokens (F-22)", () => {
-  async function m(over: Partial<Parameters<typeof mintRegistryToken>[2]>) {
-    return mintRegistryToken(
+  async function m(over: Partial<Parameters<typeof mintCompat>[2]>) {
+    return mintCompat(
       env,
       db,
       {
@@ -397,7 +397,7 @@ describe("the platform's own SDK feeds (F-10: pipeline only)", () => {
       binding: "owner" as const,
       createdBy: "admin:t",
     };
-    const res = await mintRegistryToken(
+    const res = await mintCompat(
       env,
       db,
       { ...input, scopes: ["publish"], ecosystems: ["npm"] },

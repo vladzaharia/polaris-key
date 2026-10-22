@@ -308,6 +308,15 @@ export async function mintRegistryToken(
       "the platform's SDK feeds are published by the deploy pipeline only",
       ["scopes"],
     );
+  // F-33b.3: an owner-wide READ token is retired; a read service token is a `pkeyci_`
+  // `packages:read` CI token (`issueStaticCiToken`). Owner-bound tokens remain only to publish.
+  if (binding === "owner" && !publish)
+    return refuse(
+      422,
+      "owner_read_retired",
+      "an owner-wide read token is retired; mint a service token instead",
+      ["binding"],
+    );
   if (binding === "license" && scopes.some((s) => s !== "read"))
     return refuse(
       422,

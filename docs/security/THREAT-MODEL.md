@@ -1851,9 +1851,52 @@ refuses a longer expiry and the console route caps it first; a token with anothe
 keeps 90, so the long life never rides on a publish credential.
 
 **Last used.** `ci_tokens.last_used_at` (migration `ci_tokens_last_used_at`) is written at most
-hourly, through `waitUntil`, on the registry lookup path only (never the `/ci/*` guards, so the CI
-hot path gains no write). A failed write is swallowed. It is the operator's evidence for revoking
-an idle token; it is not a security control and carries no secret.
+hourly, through `waitUntil`, on the registry-host lookup path only. A use inside the 30-second
+resolution cache writes nothing, and `/ci/*` use is never recorded (so the CI hot path gains no
+write); a token used only against `/ci/*` shows "never". "At most hourly" is approximate: parallel
+isolates can each write once in the same hour. A failed write is swallowed. It is the operator's
+evidence for revoking an idle token; it is not a security control and carries no secret.
+
+### Console service tokens (F-33b.3)
+
+**What it is.** Feeds → Tokens (`console/handlers/registryTokens.ts`) mints the F-33b.2 credential:
+`POST …/feeds/tokens` with `binding: "service"` calls `issueStaticCiToken` with scopes
+`["packages:read"]`, a label and 1 to 365 days (default 90). The `pkeyci_` value is in the mint
+answer only; the row keeps its hash. The same page lists `serviceTokens` (static `ci_tokens` of the
+product whose scopes are exactly `["packages:read"]`) and revokes them. Tests:
+`test/serviceTokens.test.ts`, `test/adminFeeds.test.ts`, `test/registryAuth.test.ts`.
+
+**Who can mint.** The same console session and role as every other registry token on that page;
+the route is unchanged in the route table, the RBAC area map and the spec (narrative, response
+fields only). The body accepts a label and an expiry and nothing else: an `ecosystems`, `licenseId`,
+`presentation` or `scopes` field is a 422, so the console cannot mint a service token with another
+scope, and `isServiceTokenScopes` is checked again on every list and revoke.
+
+**Revoke is scoped to what the page lists.** A `cit_…` id revokes only a token of this product whose
+scopes are exactly `["packages:read"]`; a publish-scoped, mixed-scope or other product's `cit_…` is
+a 404 and nothing changes (the Keys → CI tokens page still revokes those). Revoke-all on product
+scope also ends the product's service tokens; a licence filter never does. Both drop this isolate's
+resolution cache; other isolates lag at most 30 seconds, as for every registry token.
+
+**The owner-wide read `pkeyr_` is retired.** `mintRegistryToken` refuses `binding: "owner"` without
+`publish` (422, reason `owner_read_retired`), so no path mints a long-lived owner-wide read secret
+that is not a CI token. Rows minted earlier stay valid until they expire (no forced revocation),
+are listed with `legacy: true` and stay revocable; owner-bound publish tokens are unchanged (D-F2).
+Licence-bound tokens are unchanged.
+
+**The platform scope mints none.** The system product's feeds take no service token (reason
+`system_service_tokens`, D-F3); team members read with a personal token. Legacy tokens there are
+listed and revocable, audited to `platform_audit`.
+
+**Audit.** `service_token.create` and `service_token.revoke` go to `audit` (product scope), carrying
+the label, the expiry and the token id; never the token or its hash. Revoke-all adds one
+`service_token.revoke` row with the count.
+
+**Residual.** A service token is product-wide and lives up to a year (D-F1); a leaked one reads the
+product's non-public packages until it expires or is revoked. A per-product cap of 500 live service
+tokens bounds the table. **Review triggers:** a second scope accepted by the service mint; the
+revoke or list matching on anything but exact `["packages:read"]`; an owner-bound read mint
+returning; a token or hash reaching an audit row, a log or the list.
 
 ### Native-client publish (F-22)
 

@@ -6,6 +6,7 @@
  * it after the back-off and the final batch removes every row; a double invoke is harmless; a
  * subject minted while the hooks ran is not orphaned.
  */
+import { mintCompat } from "./helpers/legacyOwnerToken.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,7 +27,6 @@ import {
 import {
   forgetRegistryTokens,
   lookupRegistryCredential,
-  mintRegistryToken,
 } from "../src/core/registry/registryTokens.js";
 import {
   PACKAGES_READ_SCOPE,
@@ -372,7 +372,7 @@ describe("SEC-PRV-1: erasure survives a failing store hook", () => {
 describe("closing the account closes its credentials", () => {
   it("a portal (licence-bound) registry token stops authenticating at once, while erasing", async () => {
     const w = await world();
-    const res = await mintRegistryToken(
+    const res = await mintCompat(
       w.env,
       w.db,
       {
@@ -409,7 +409,7 @@ describe("closing the account closes its credentials", () => {
 
   it("F-33b.1: an operator-minted token on the account's licence is revoked by the erasure itself", async () => {
     const w = await world();
-    const res = await mintRegistryToken(
+    const res = await mintCompat(
       w.env,
       w.db,
       {
