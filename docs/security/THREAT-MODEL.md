@@ -7250,7 +7250,7 @@ at T16, so T17 here is the plan's: a push that outlives the data it must not rec
   what its people write inside one aggregate window (up to 15 minutes), which is acceptable for a
   cost control and is the reason the object, not the aggregate, enforces the per-person quota.
   `cloudSync.writesPaused` is the operator's kill switch (platform scope, `policyBound: lock`);
-  a push is refused and a pull still answers. **Push limits (U-05.14, `services/sync/limits.ts`):**
+  a push is refused and a pull still answers. The console's attention read (`GET /manage/api/attention`, ST-44b) surfaces the pause as one platform item (`product: null`, id `@platform:sync.paused`) that ignores product visibility and is gated on `can(PLATFORM, "platform", "edit")`, so a Platform admin with no product grant sees it and a product role never does; its `since`, `by` (a display name, never an id) and `reason` go only to that audience, and the "a product has Cloud Sync on" check counts every non-system product without naming one. **Push limits (U-05.14, `services/sync/limits.ts`):**
   right after the pause and before the trust audit, the body, classification, the aggregate read
   and the object, so a limited push costs none of them: 60 pushes a minute per device
   (`syncPushDevice`, charged first, so an over-limit device never spends the product's budget) and

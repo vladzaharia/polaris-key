@@ -11,6 +11,7 @@ import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
 import { listProducts } from "../src/core/products/store.js";
 import { attentionAcross } from "../src/console/lib/attention.js";
+import { canSeeProduct } from "../src/console/authz.js";
 import { PRINCIPALS } from "./rbacFixtures.js";
 import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
 import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
@@ -149,24 +150,55 @@ describe("Cloud Sync writes paused (U-05.21)", () => {
       slug,
     );
 
-  it("appears only while paused, for a product with Cloud Sync on, and goes on resume", async () => {
+  const auditOn = (actor: string | null, reason: string | null, at = NOW) =>
+    db.run(
+      `INSERT INTO platform_audit (id, at, actor_sub, actor_name, action, summary, after_json, reason, setting_key)
+       VALUES (?, ?, 'mbr_x', ?, 'setting.update', 's', '{"value":"on"}', ?, 'cloudSync.writesPaused')`,
+      `a-${Math.random()}`,
+      at,
+      actor,
+      reason,
+    );
+  type PItem = Omit<Item, "product"> & {
+    product: { slug: string } | null;
+    action: { label: string; page: string; query?: Record<string, string> };
+    area: string;
+    since?: number | null;
+    by?: string | null;
+    reason?: string | null;
+  };
+  const across = async (name: keyof typeof PRINCIPALS) => {
+    const all = (await listProducts(db)).filter((p) => !p.system);
+    const seen = all.filter((p) => canSeeProduct(PRINCIPALS[name], p));
+    return (await attentionAcross(
+      db,
+      seen,
+      PRINCIPALS[name],
+      NOW,
+      adminEnv(),
+      all,
+    )) as PItem[];
+  };
+  const platformOf = (items: PItem[]) =>
+    items.filter((i) => i.product === null);
+
+  it("appears only while paused, once, with the platform page as its action, and goes on resume", async () => {
     await syncOn("djdl");
     expect((await get("/api/attention")).json).toEqual({ items: [] });
 
     await setPaused("on");
-    const items = (await get("/api/attention")).json.items as (Item & {
-      action: { label: string; page: string };
-      area: string;
-    })[];
-    expect(items.map((i) => [i.kind, i.tone, i.product.slug])).toEqual([
-      ["sync.paused", "warning", "djdl"],
+    await auditOn("Ana Lima", "Provider maintenance");
+    const items = (await get("/api/attention")).json.items as PItem[];
+    expect(items.map((i) => [i.id, i.kind, i.tone, i.product])).toEqual([
+      ["@platform:sync.paused", "sync.paused", "warning", null],
     ]);
     expect(items[0]!.lines[0]).toBe(
       "Cloud Sync writes are paused for every product.",
     );
-    expect(items[0]!.action).toMatchObject({
+    expect(items[0]!.action).toEqual({
       label: "Resume writes",
-      page: "sync-setup",
+      page: "platform-settings",
+      query: { setting: "cloudSync.writesPaused" },
     });
     expect(items[0]!.area).toBe("platform");
 
@@ -174,17 +206,108 @@ describe("Cloud Sync writes paused (U-05.21)", () => {
     expect((await get("/api/attention")).json).toEqual({ items: [] });
   });
 
-  it("is the platform's to fix: a product admin without Platform access does not see it", async () => {
+  it("1: one item with product null for Superadmin and Platform admin, however many products have Cloud Sync", async () => {
+    await seedProduct(db, "alpha");
+    await syncOn("djdl");
+    await syncOn("alpha");
+    await setPaused("on");
+    for (const name of ["root", "platformAdmin"] as const) {
+      const items = await across(name);
+      expect(platformOf(items)).toHaveLength(1);
+      expect(items.filter((i) => i.kind === "sync.paused")).toHaveLength(1);
+    }
+  });
+
+  it("2: a Platform admin with no product grant gets it", async () => {
+    await syncOn("djdl");
+    await setPaused("on");
+    const items = await across("platformAdmin");
+    expect(items.map((i) => i.id)).toEqual(["@platform:sync.paused"]);
+  });
+
+  it("3: a Product admin of a Cloud Sync product gets no platform item and keeps their own", async () => {
     await seedProduct(db, "alpha");
     await syncOn("alpha");
     await setPaused("on");
-    const products = await listProducts(db);
-    const kinds = async (name: "alphaAdmin" | "platformAdmin") =>
-      (
-        await attentionAcross(db, products, PRINCIPALS[name], NOW, adminEnv())
-      ).map((i) => `${i.product.slug}:${i.kind}`);
-    expect(await kinds("alphaAdmin")).toEqual([]);
-    expect(await kinds("platformAdmin")).toEqual(["alpha:sync.paused"]);
+    await db.run(
+      `INSERT INTO product_sync_state (product, source, status, last_checked_at, message)
+            VALUES ('alpha', 'manual', 'error', ?, 'x')`,
+      NOW,
+    );
+    for (const name of ["alphaAdmin", "allProducts", "alphaShip"] as const) {
+      const items = await across(name);
+      expect(platformOf(items)).toEqual([]);
+    }
+    expect((await across("alphaAdmin")).map((i) => i.id)).toEqual([
+      "alpha:sync.failed",
+    ]);
+  });
+
+  it("4: a Console-access-only member gets nothing", async () => {
+    await syncOn("djdl");
+    await setPaused("on");
+    expect(await across("consoleOnly")).toEqual([]);
+    expect(await across("stranger")).toEqual([]);
+  });
+
+  it("5: not paused, no item", async () => {
+    await syncOn("djdl");
+    await setPaused("off");
+    expect(await across("root")).toEqual([]);
+  });
+
+  it("6: paused with no product on Cloud Sync, no item", async () => {
+    await setPaused("on");
+    expect(await across("root")).toEqual([]);
+  });
+
+  it("7: since, by and reason come from the audit row; a row with no name answers by null", async () => {
+    await syncOn("djdl");
+    await setPaused("on");
+    await auditOn("Ana Lima", "Provider maintenance", NOW - 600);
+    let [item] = platformOf(await across("platformAdmin"));
+    expect(item).toMatchObject({
+      since: NOW - 600,
+      by: "Ana Lima",
+      reason: "Provider maintenance",
+    });
+    await db.run("DELETE FROM platform_audit");
+    await auditOn(null, null, NOW - 300);
+    [item] = platformOf(await across("platformAdmin"));
+    expect(item).toMatchObject({ since: NOW - 300, by: null, reason: null });
+  });
+
+  it("8 and 9: no product item has kind sync.paused, and the id never looks like a slug id", async () => {
+    await seedProduct(db, "alpha");
+    await syncOn("djdl");
+    await syncOn("alpha");
+    await setPaused("on");
+    const items = await across("root");
+    expect(
+      items.filter((i) => i.product !== null && i.kind === "sync.paused"),
+    ).toEqual([]);
+    for (const i of platformOf(items)) expect(i.id).not.toMatch(/^[a-z0-9-]+:/);
+  });
+
+  it("counts a Cloud Sync product the caller cannot see, and reveals none", async () => {
+    await seedProduct(db, "alpha");
+    await syncOn("alpha");
+    await setPaused("on");
+    const platformOnly = {
+      memberId: "m-p",
+      grants: PRINCIPALS.platformAdmin.grants,
+    };
+    const all = (await listProducts(db)).filter((p) => !p.system);
+    const items = await attentionAcross(
+      db,
+      [],
+      platformOnly,
+      NOW,
+      adminEnv(),
+      all,
+    );
+    expect(JSON.stringify(items)).not.toContain("alpha");
+    expect(items.map((i) => i.id)).toEqual(["@platform:sync.paused"]);
   });
 });
 

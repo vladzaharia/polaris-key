@@ -2,7 +2,8 @@
  * `GET /manage/api/attention` (UX-12, ST-44): what needs the operator across every product the
  * session can see, composed on the server (`console/lib/attention.ts`). Visibility is the registry
  * list's (`canSeeProduct`), then each item's own area (`can()`), so a member never learns of a
- * problem whose fix they cannot open. Read-only; the session, CSRF and rate limit ran first.
+ * problem whose fix they cannot open. Platform items (`product: null`) ignore product visibility
+ * and need the Platform area. Read-only; the session, CSRF and rate limit ran first.
  */
 
 import type { Env } from "../../platform/env.js";
@@ -24,10 +25,18 @@ export async function handleAttention(
   if (rest.length > 0) return notFound();
   if (req.method !== "GET")
     return err(405, "method_not_allowed", "attention is read-only");
-  const products = (await listProducts(db)).filter(
-    (p) => !p.system && canSeeProduct(session.principal, p),
-  );
+  // The platform items' existence check counts every non-system product, whatever the caller can
+  // see; `platformAttention` answers nothing about which one, and only to a Platform editor.
+  const all = (await listProducts(db)).filter((p) => !p.system);
+  const products = all.filter((p) => canSeeProduct(session.principal, p));
   return adminJson({
-    items: await attentionAcross(db, products, session.principal, now, env),
+    items: await attentionAcross(
+      db,
+      products,
+      session.principal,
+      now,
+      env,
+      all,
+    ),
   });
 }

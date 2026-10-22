@@ -17,7 +17,7 @@ deleting are on [Product actions](/docs/operate/console/product-actions/).
 - **Needs attention**: what is broken across your products, one fact per line, each with the one
   link that fixes it. A failed resync, a required secret with no value, a missing signing key, an
   edge-mint recipe awaiting approval, a store credential expiring within 14 days and, for platform
-  admins, paused Cloud Sync writes (with **Resume**) appear. What a
+  admins, paused Cloud Sync writes (one item for the whole platform, with **Resume**) appear. What a
   product has not set up yet does not: that is its Overview. You see only items whose fix you can
   open.
 - **Platform ready**, for platform admins until every step is done: the open steps with their fix,
@@ -209,6 +209,7 @@ server call, `GET /manage/api/attention`, recomputed on every read. It lists bro
 | **Needs approval**    | An edge-mint recipe is not [approved](/docs/features/managed-config/edge-mint/#approving-a-recipe) as it stands. |
 | **Resync failed**     | The most recent manifest resync errored.                                                                         |
 | **Credential**        | A store credential has expired or expires within the window.                                                     |
+| **Writes paused**     | Cloud Sync writes are paused for every product (platform admins; one item).                                      |
 
 Each item links to the page that fixes it. The **required secrets** list on
 [Keys and secrets](/docs/operate/console/keys-and-secrets/) is drawn from the same configuration.
