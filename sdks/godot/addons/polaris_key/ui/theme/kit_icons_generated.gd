@@ -7,7 +7,7 @@
 class_name PKeyKitIcons
 extends RefCounted
 ## The Godot kit's engine control icons (docs/design/UI-KITS.md §2.1): checkbox, radio, toggle,
-## chevrons, close and clear, drawn on a 24-unit grid in the kit's line weight. Each is an SVG
+## chevrons, close, clear and the new-window glyph, drawn on a 24-unit grid in the kit's line weight. Each is an SVG
 ## template; {fg}, {bg} and {track} are filled with the theme's colours by svg(), and the kit
 ## rasterises the result (Image.load_svg_from_string) at the scale it needs. Strings, not imported
 ## .svg files, because an import's parameters differ between engine versions.
@@ -28,6 +28,7 @@ const ICONS := {
 	"cloud_off": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\"><path d=\"M7 18h10a4 4 0 0 0 1.2-7.8A6 6 0 0 0 7.3 9.2 4.5 4.5 0 0 0 7 18z\" fill=\"none\" stroke=\"{fg}\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M4 4l16 16\" fill=\"none\" stroke=\"{fg}\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>",
 	"warning": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\"><path d=\"M12 4l9 16H3z\" fill=\"none\" stroke=\"{fg}\" stroke-width=\"2\" stroke-linejoin=\"round\"/><path d=\"M12 10v4.5\" fill=\"none\" stroke=\"{fg}\" stroke-width=\"2\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"17.2\" r=\"1.1\" fill=\"{fg}\"/></svg>",
 	"clear": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"{bg}\"/><path d=\"M9 9l6 6M15 9l-6 6\" fill=\"none\" stroke=\"{fg}\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>",
+	"new_window": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\"><path d=\"M15 3h6v6\" fill=\"none\" stroke=\"{fg}\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M10 14 21 3\" fill=\"none\" stroke=\"{fg}\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\" fill=\"none\" stroke=\"{fg}\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>",
 }
 
 

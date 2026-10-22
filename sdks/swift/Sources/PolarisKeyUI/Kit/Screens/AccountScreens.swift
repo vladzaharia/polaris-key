@@ -192,7 +192,7 @@ public struct AccountAndLicenseSection: View {
                         HStack {
                             PaneText(CopyLine("common.manage"), .body, color: .default)
                             Spacer()
-                            Image(systemName: "arrow.up.right")
+                            Image(systemName: PolarisKitGlyph.newWindow)
                                 .foregroundStyle(style.palette.textMuted)
                                 .accessibilityLabel(strings.string("a11y.externalLink"))
                         }
@@ -320,7 +320,7 @@ public struct DevicesSection: View {
                             HStack {
                                 PaneText(CopyLine("devices.manage"), .body, color: .accent)
                                 Spacer()
-                                Image(systemName: "arrow.up.right")
+                                Image(systemName: PolarisKitGlyph.newWindow)
                                     .foregroundStyle(style.palette.textMuted)
                                     .accessibilityLabel(strings.string("a11y.externalLink"))
                             }
@@ -598,7 +598,7 @@ public struct PaywallView: View {
             KitActionStack {
                 if screen.shows("paywall.portal") {
                     KitButton(
-                        line: CopyLine("paywall.portal"), kind: .primary, glyph: "arrow.up.right",
+                        line: CopyLine("paywall.portal"), kind: .primary, glyph: PolarisKitGlyph.newWindow,
                         action: onPortal)
                 }
                 if screen.shows("paywall.redeem") {

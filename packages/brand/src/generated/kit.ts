@@ -669,6 +669,7 @@ export const KIT_TOKENS = {
         ellipsis: "…",
         lockerMark: "✦",
         arrows: "↑↓",
+        newWindow: "↗",
       },
       ascii: {
         stepActive: "*",
@@ -687,6 +688,7 @@ export const KIT_TOKENS = {
         ellipsis: "...",
         lockerMark: "*",
         arrows: "^v",
+        newWindow: ">",
       },
     },
     spinner: {

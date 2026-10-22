@@ -536,6 +536,7 @@ func _render_limit(t: PKeyUiCopy) -> void:
 	var how := manage_presentation()
 	var has_link := manage_url != ""
 	_manage.text = t.text("free_device")
+	leaves_app(_manage)
 	# A QR code only on a pad-only device (a TV, a console), where there is no browser to open; every
 	# other device has the button.
 	var as_qr := how == "qr"

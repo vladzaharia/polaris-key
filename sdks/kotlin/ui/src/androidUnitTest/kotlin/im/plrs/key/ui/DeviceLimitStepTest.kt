@@ -68,7 +68,7 @@ class DeviceLimitStepTest {
             useUnmergedTree = true,
         ).assertCountEquals(1)
         // One primary, the new-window glyph, no key field in this step.
-        rule.onNodeWithText(copy.openInBrowserAction).assertIsDisplayed()
+        rule.onNodeWithText(copy.openInBrowser).assertIsDisplayed()
         rule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
     }
 
@@ -92,6 +92,6 @@ class DeviceLimitStepTest {
         show(ActivationResult.DeviceLimit(2, 2))
         rule.onNodeWithText(copy.format(copy.deviceLimitNoManage, "Diceroll")).assertIsDisplayed()
         rule.onNodeWithText(copy.retry).assertIsDisplayed()
-        rule.onNodeWithText(copy.openInBrowserAction).assertDoesNotExist()
+        rule.onNodeWithText(copy.openInBrowser).assertDoesNotExist()
     }
 }

@@ -30,7 +30,8 @@ ColumnLayout {
                 role: buttons.solo && modelData.role === "quiet" ? "secondary" : modelData.role
                 scale_: groupRoot.fs
                 Accessible.name: modelData.name
-                Accessible.description: modelData.describe
+                external: modelData.external
+                externalNote: modelData.describe
                 onClicked: groupRoot.kit.invoke_row(modelData.key, modelData.action, buttons.row.id)
             }
         }

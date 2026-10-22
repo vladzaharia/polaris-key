@@ -110,7 +110,7 @@ class FlowTest {
         rule.setContent {
             StockHost(false) { PolarisTheme(copy = sampleCopy, darkTheme = false) { kitScreen("gate-device-limit-manage")() } }
         }
-        rule.onNodeWithText(sampleCopy.openInBrowserAction).performClick()
+        rule.onNodeWithText(sampleCopy.openInBrowser).performClick()
         rule.waitForIdle()
         rule.onNodeWithText(sampleCopy.signInNoBrowser).assertExists()
         rule.onNodeWithText(sampleCopy.signInCopyLink).assertExists()
@@ -360,7 +360,7 @@ class FlowTest {
             }
         }
         rule.waitForIdle()
-        rule.onNodeWithText(sampleCopy.openInBrowserAction).performClick()
+        rule.onNodeWithText(sampleCopy.openInBrowser).performClick()
         rule.waitForIdle()
         assertEquals(sampleCopy.signInCopyLink, focusedText())
     }

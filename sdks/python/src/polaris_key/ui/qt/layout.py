@@ -98,6 +98,17 @@ _NOT_FILLED = frozenset(("Toast", "GraceBanner"))
 _FALLBACK_TITLE = "core.fallback.title"
 
 
+#: Controls that leave the app: the same keys the web kits' OPENS holds.
+_LEAVES = frozenset(
+    {key for action in ("open-card", "open-browser", "open-manage-url") for key in ACTION_KEYS[action]}
+    | {
+        "status.renew", "status.update", "update.appStore", "update.googlePlay", "update.steam",
+        "update.openStore", "paywall.portal", "signin.none.get", "common.manage", "about.licenses",
+        "deviceLimit.title",
+    }
+)
+
+
 def is_button_key(key: str, primary: Optional[str] = None) -> bool:
     if key == primary or key in _ACTION_KEYS:
         return True
@@ -121,9 +132,18 @@ class Button:
     action: Optional[str] = None
     #: A busy control keeps its label and focus and adds the indicator (DL4).
     busy: bool = False
+    #: The control leaves the app (UI-KITS §1.5 rule 11): drawn with the new-window glyph.
+    external: bool = False
 
     def as_dict(self) -> Dict[str, Any]:
-        return {"key": self.key, "text": self.text, "role": self.role, "action": self.action or "", "busy": self.busy}
+        return {
+            "key": self.key,
+            "text": self.text,
+            "role": self.role,
+            "action": self.action or "",
+            "busy": self.busy,
+            "external": self.external,
+        }
 
 
 @dataclass(frozen=True)
@@ -247,6 +267,8 @@ class ScreenSpec:
     callout: List[str] = field(default_factory=list)
     #: The catalog key of the screen's one filled button (what Enter in a field does), or ``""``.
     primary_key: str = ""
+    #: What a new-window button says it does ("Opens in your browser"), or ``""`` when none leaves the app.
+    external_note: str = ""
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -277,6 +299,7 @@ class ScreenSpec:
             "code": self.code.as_dict() if self.code is not None else None,
             "callout": list(self.callout),
             "primaryKey": self.primary_key,
+            "externalNote": self.external_note,
             "hidden": self.state == "hidden"
             or not (
                 self.title or self.body or self.steps or self.buttons or self.fields or self.groups or self.seat
@@ -487,7 +510,7 @@ def build_spec(
     actions = {key: action for action, keys in ACTION_KEYS.items() for key in keys}
     # A button the kit adds for the model's primary names its action only if the view lists it.
     buttons = [
-        Button(b.key, b.text, b.role, actions.get(b.key) if actions.get(b.key) in view.actions else None, busy_primary and b.role == "primary")
+        Button(b.key, b.text, b.role, actions.get(b.key) if actions.get(b.key) in view.actions else None, busy_primary and b.role == "primary", b.key in _LEAVES)
         for b in buttons
     ]
     isolated_product = bidi_isolate(product) if product else ""
@@ -532,4 +555,5 @@ def build_spec(
         code=code,
         callout=callout,
         primary_key=next((b.key for b in buttons if b.role == "primary"), ""),
+        external_note=copy("a11y.externalLink") if any(b.external for b in buttons) else "",
     )

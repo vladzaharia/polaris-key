@@ -150,3 +150,11 @@ public enum PolarisKit {
         }
     }
 }
+
+/// The kit glyphs (docs/design/UI-KITS.md §1.5 rule 11). Apple kits draw SF Symbols.
+public enum PolarisKitGlyph {
+    /// An action that leaves the app: drawn beside its label, described by the `a11y.externalLink` line.
+    public static let newWindow = "arrow.up.right.square"
+    /// The kit-copy key that says where a new-window action goes.
+    public static let newWindowCopyKey = "a11y.externalLink"
+}

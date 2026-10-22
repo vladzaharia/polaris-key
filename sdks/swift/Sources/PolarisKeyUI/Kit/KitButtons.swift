@@ -22,7 +22,8 @@ struct KitButton: View {
     let line: CopyLine
     var kind: KitButtonKind = .primary
     var busy = false
-    /// A trailing SF Symbol: `arrow.up.right` for an action that leaves the app (rule 11).
+    /// A trailing SF Symbol: `PolarisKitGlyph.newWindow` (`arrow.up.right.square`) for an action that
+    /// leaves the app (rule 11); the button then says "Opens in your browser" as its accessibility hint.
     var glyph: String?
     var fullWidth = true
     /// A banner's or a row's button: about 36 pt, beside text rather than under it.
@@ -41,6 +42,9 @@ struct KitButton: View {
             .modifier(KitButtonSkin(kind: kind, style: style, compact: compact))
             .accessibilityAddTraits(busy ? .updatesFrequently : [])
             .accessibilityValue(busy ? Text(strings.string("a11y.busy")) : Text(""))
+            .accessibilityHint(
+                glyph == PolarisKitGlyph.newWindow
+                    ? Text(strings.string(PolarisKitGlyph.newWindowCopyKey)) : Text(""))
         }
     }
 

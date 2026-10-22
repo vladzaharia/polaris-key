@@ -46,6 +46,7 @@ SYMBOLS = {
         "ellipsis": "…",
         "lockerMark": "✦",
         "arrows": "↑↓",
+        "newWindow": "↗",
     },
     "ascii": {
         "stepActive": "*",
@@ -64,6 +65,7 @@ SYMBOLS = {
         "ellipsis": "...",
         "lockerMark": "*",
         "arrows": "^v",
+        "newWindow": ">",
     },
 }
 

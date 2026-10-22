@@ -150,6 +150,7 @@ import {
   accentVectorsJson,
   csharpBrand,
   gdIcons,
+  kotlinGlyphs,
   gdKit,
   godotVariableFontTres,
   kitCss,
@@ -2052,6 +2053,10 @@ const TARGETS: Target[] = [
   {
     path: `sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisKitTokens.generated.kt`,
     render: () => kotlinKit(KIT_CTX),
+  },
+  {
+    path: `sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisKitGlyphs.generated.kt`,
+    render: () => kotlinGlyphs(KIT_CTX),
   },
   {
     path: "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/brand/AccentVectors.generated.kt",

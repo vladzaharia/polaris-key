@@ -446,12 +446,13 @@ public fun PolarisActivationScreen(
                     noBrowser = !opened
                 }
                 // A fix that leaves the app carries the new-window glyph, never an ellipsis (rule 11).
-                val openLabel = copy.openInBrowser + " ↗"
-                if (noBrowser) PolarisSecondaryButton(text = openLabel, onClick = openManage, enabled = !ui.busy) else PolarisPrimaryButton(
+                val openLabel = copy.openInBrowser
+                if (noBrowser) PolarisSecondaryButton(text = openLabel, onClick = openManage, enabled = !ui.busy, external = true) else PolarisPrimaryButton(
                     text = openLabel,
                     onClick = openManage,
                     enabled = !ui.busy,
                     initialFocus = true,
+                    external = true,
                 )
                 Spacer(Modifier.height(PolarisSpace.controls))
                 // Only the validated portal link is ever copied (offeredManageUrl validates it; a host's own value is checked here).

@@ -51,6 +51,7 @@ export {
   type MarkTheme,
 } from "./marks/core.js";
 export * from "./tokens/icons.js";
+export * from "./tokens/glyphs.js";
 export { serviceAccent, sectionBit } from "./tokens/services.js";
 export {
   COLOR_RULES,

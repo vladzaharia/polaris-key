@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -107,6 +108,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineBreak
@@ -116,6 +118,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import im.plrs.key.ui.brand.PolarisKitGlyphs
 import androidx.compose.ui.unit.isSpecified
 
 /** The widest a kit screen's column grows on a phone. */
@@ -562,6 +565,8 @@ public fun PolarisPrimaryButton(
     enabled: Boolean = true,
     busy: Boolean = false,
     initialFocus: Boolean = false,
+    /** The action leaves the app (rule 11): the new-window glyph follows the label. */
+    external: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val shape = PolarisTheme.buttonShape
@@ -571,11 +576,34 @@ public fun PolarisPrimaryButton(
         shape = shape,
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
         interactionSource = interaction,
-        modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize(),
+        modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
     ) {
         if (busy) PolarisBusyRing()
         Text(text, textAlign = TextAlign.Center)
+        if (external) PolarisNewWindowGlyph()
     }
+}
+
+/**
+ * The new-window glyph that follows the label of an action that leaves the app (UI-KITS.md 1.5
+ * rule 11, DL6). It is decorative: the control says where it goes ([polarisExternalSemantics]).
+ */
+@Composable
+internal fun PolarisNewWindowGlyph(modifier: Modifier = Modifier) {
+    Spacer(Modifier.width(8.dp))
+    Icon(
+        imageVector = PolarisKitGlyphs.NewWindow,
+        contentDescription = null,
+        modifier = modifier.size(18.dp),
+    )
+}
+
+/** The catalog's "Opens in your browser" (a11y.externalLink) as the state of an action that leaves the app. */
+@Composable
+internal fun Modifier.polarisExternalSemantics(external: Boolean): Modifier {
+    if (!external) return this
+    val note = remember { KitCopy.bundled }.message(PolarisKitGlyphs.NEW_WINDOW_COPY_KEY, kitLocale()) ?: return this
+    return semantics { stateDescription = note }
 }
 
 /** A secondary action: tonal, full round, the same size as the primary. */
@@ -587,6 +615,8 @@ public fun PolarisSecondaryButton(
     enabled: Boolean = true,
     busy: Boolean = false,
     initialFocus: Boolean = false,
+    /** The action leaves the app (rule 11): the new-window glyph follows the label. */
+    external: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val shape = PolarisTheme.buttonShape
@@ -605,10 +635,11 @@ public fun PolarisSecondaryButton(
         },
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
         interactionSource = interaction,
-        modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize(),
+        modifier = modifier.polarisFocusIndication(interaction, shape, initialFocus).controlSize().polarisExternalSemantics(external),
     ) {
         if (busy) PolarisBusyRing()
         Text(text, textAlign = TextAlign.Center)
+        if (external) PolarisNewWindowGlyph()
     }
 }
 
