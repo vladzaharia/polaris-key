@@ -44,7 +44,9 @@
    own column (none on the home, a sidebar on an article), which moved the field 191 px. */
 @media (min-width: 50rem) {
   [data-brand="locker"] header.header > .header {
-    grid-template-columns: calc(var(--sl-sidebar-width) - var(--sl-nav-pad-x)) 1fr auto;
+    grid-template-columns: calc(
+        var(--sl-sidebar-width) - var(--sl-nav-pad-x)
+      ) 1fr auto;
   }
 }
 
