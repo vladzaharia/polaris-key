@@ -13,7 +13,7 @@ Rectangle {
     readonly property var spec: kit.spec
     readonly property real fs: kit.fontScale
     readonly property bool compact: width < 520
-    readonly property real gutter: compact ? 16 : 32
+    readonly property real gutter: (compact ? 16 : 32) * Theme.densityScale
 
     color: Theme.surfacePage
     Accessible.role: Accessible.Pane
@@ -21,11 +21,32 @@ Rectangle {
 
     Binding { target: Theme; property: "scheme"; value: kit.scheme }
     Binding { target: Theme; property: "platform"; value: kit.platform }
+    // The theme options (UI-KITS 3.1), as the bridge resolved them for this host.
+    Binding { target: Theme; property: "colorOverrides"; value: kit.colorOverrides }
+    Binding { target: Theme; property: "density"; value: kit.density }
+    Binding { target: Theme; property: "radiusScale"; value: kit.radiusScale }
+    Binding { target: Theme; property: "surfaceScale"; value: kit.surfaceScale }
+    Binding { target: Theme; property: "radiusPx"; value: kit.radiusPx }
+    Binding { target: Theme; property: "fontFamily"; value: kit.fontFamily; when: kit.fontFamily !== "" }
+    Binding { target: Theme; property: "monoFamily"; value: kit.monoFamily; when: kit.monoFamily !== "" }
+    Binding { target: Theme; property: "displayFamily"; value: kit.displayFamily }
     Binding { target: Theme; property: "accent"; value: kit.accent; when: kit.accent !== "" }
     Binding { target: Theme; property: "accentOn"; value: kit.accentOn; when: kit.accent !== "" }
     Binding { target: Theme; property: "accentFg"; value: kit.accentFg; when: kit.accent !== "" }
     Binding { target: Theme; property: "accentSubtle"; value: kit.accentSubtle; when: kit.accent !== "" }
     Binding { target: Theme; property: "focusRing"; value: kit.focusRing; when: kit.accent !== "" }
+
+    // The product ambient (UI-KITS 1.2): the accent's tint as two soft glows behind the card. None
+    // under `native`, with `ambient: false`, or while the product has no accent.
+    Image {
+        objectName: "ambient"
+        anchors.fill: parent
+        visible: kit.ambientSource !== ""
+        source: kit.ambientSource
+        fillMode: Image.Stretch
+        smooth: true
+        Accessible.ignored: true
+    }
 
     Flickable {
         id: scroller
@@ -56,7 +77,7 @@ Rectangle {
                 x: Theme.cardPad
                 y: Theme.cardPad
                 width: card.width - 2 * Theme.cardPad
-                spacing: 12
+                spacing: 12 * Theme.densityScale
 
                 // The product header (UI-KITS 1.2, DL5): its icon, or a monogram tile of its initial,
                 // at 32 px beside the name; the hero size on Welcome, whose title names the product.
@@ -131,7 +152,7 @@ Rectangle {
                     text: spec.title
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
-                    font.family: Theme.fontFamily
+                    font.family: Theme.displayFamily !== "" ? Theme.displayFamily : Theme.fontFamily
                     font.pixelSize: Theme.typeTitle.size * root.fs
                     font.weight: Theme.typeTitle.weight
                     color: spec.titleTone === "danger" ? Theme.danger : Theme.textStrong
@@ -159,6 +180,16 @@ Rectangle {
                     }
                 }
 
+                // The device code (UI-KITS 4.3): the code in mono with Copy, the countdown, a QR only where DL14 allows.
+                KitCode {
+                    objectName: "code"
+                    visible: !!spec.code
+                    code: spec.code
+                    fs: root.fs
+                    kit: root.kit
+                    Layout.fillWidth: true
+                }
+
                 // The seat meter (rule 9), under the lede and above the list.
                 KitSeatMeter {
                     objectName: "seatMeter"
@@ -179,7 +210,7 @@ Rectangle {
                     font.pixelSize: Theme.typeBody.size * root.fs
                     color: Theme.textStrong
                     activeFocusOnTab: true
-                    implicitHeight: Math.max(Theme.controlHeight * root.fs, 36)
+                    implicitHeight: Math.max(Theme.controlHeight * root.fs, 36 * Math.min(1, Theme.densityScale))
                     onTextEdited: kit.edit("search", text)
                     Accessible.role: Accessible.EditableText
                     Accessible.name: spec.search
@@ -236,29 +267,48 @@ Rectangle {
                             font.weight: Theme.weightMedium
                             color: Theme.textStrong
                         }
-                        TextField {
-                            id: entry
-                            objectName: "entry"
+                        RowLayout {
                             Layout.fillWidth: true
-                            placeholderText: fieldBox.modelData.placeholder
-                            placeholderTextColor: Theme.textSubtle
-                            font.family: Theme.monoFamily
-                            font.pixelSize: Theme.typeBody.size * root.fs
-                            color: Theme.textStrong
-                            focus: spec.focus === fieldBox.modelData.key
-                            activeFocusOnTab: true
-                            selectByMouse: true
-                            implicitHeight: Math.max(Theme.controlHeight * root.fs, 36)
-                            onTextEdited: kit.edit(fieldBox.modelData.key, text)
-                            Accessible.role: Accessible.EditableText
-                            Accessible.name: fieldBox.modelData.label
-                            Accessible.description: fieldBox.modelData.error || fieldBox.modelData.hint
-                            background: Rectangle {
-                                radius: Theme.radiusControl < 0 ? height / 2 : Theme.radiusControl
-                                color: Theme.surfaceSunken
-                                border.width: entry.activeFocus || fieldBox.modelData.error !== "" ? 2 : 1
-                                border.color: fieldBox.modelData.error !== "" ? Theme.danger
-                                            : entry.activeFocus ? Theme.focusRing : Theme.borderSubtle
+                            spacing: 8 * Theme.densityScale
+                            TextField {
+                                id: entry
+                                objectName: "entry"
+                                Layout.fillWidth: true
+                                text: fieldBox.modelData.value
+                                placeholderText: fieldBox.modelData.placeholder
+                                placeholderTextColor: Theme.textSubtle
+                                font.family: Theme.monoFamily
+                                font.pixelSize: Theme.typeBody.size * root.fs
+                                color: Theme.textStrong
+                                focus: spec.focus === fieldBox.modelData.key
+                                activeFocusOnTab: true
+                                selectByMouse: true
+                                // A key is a secret: no suggestions, no stored predictions, no capital to start.
+                                inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
+                                implicitHeight: Math.max(Theme.controlHeight * root.fs, 36 * Math.min(1, Theme.densityScale))
+                                onTextEdited: kit.edit(fieldBox.modelData.key, text)
+                                // Enter does what the screen's one filled button does.
+                                onAccepted: if (spec.primaryKey !== "") kit.invoke(spec.primaryKey, "")
+                                Component.onCompleted: cursorPosition = length
+                                Accessible.role: Accessible.EditableText
+                                Accessible.name: fieldBox.modelData.label
+                                Accessible.description: fieldBox.modelData.error || fieldBox.modelData.hint
+                                background: Rectangle {
+                                    radius: Theme.radiusControl < 0 ? height / 2 : Theme.radiusControl
+                                    color: Theme.surfaceSunken
+                                    border.width: entry.activeFocus || fieldBox.modelData.error !== "" ? 2 : 1
+                                    border.color: fieldBox.modelData.error !== "" ? Theme.danger
+                                                : entry.activeFocus ? Theme.focusRing : Theme.borderSubtle
+                                }
+                            }
+                            // Paste, at the end of the field: the key is in the clipboard from the purchase email.
+                            KitButton {
+                                objectName: "paste"
+                                visible: fieldBox.modelData.paste !== ""
+                                text: fieldBox.modelData.paste
+                                role: "secondary"
+                                scale_: root.fs
+                                onClicked: kit.invoke("common.paste", "paste")
                             }
                         }
                         Text {
@@ -271,6 +321,36 @@ Rectangle {
                             color: fieldBox.modelData.error !== "" ? Theme.danger : Theme.textMuted
                             Accessible.role: Accessible.StaticText
                             Accessible.name: text
+                        }
+                    }
+                }
+
+                // DL6: a refusal the person can resolve reads as a plain callout (default text on the sunken
+                // surface, no danger colour, no error glyph); its fix is the screen's one filled button.
+                Repeater {
+                    model: spec.callout
+                    Rectangle {
+                        id: callout
+                        required property string modelData
+                        objectName: "callout"
+                        Layout.fillWidth: true
+                        implicitHeight: calloutText.implicitHeight + 24
+                        radius: Theme.radiusControl < 0 ? 12 : Math.max(Theme.radiusControl, 6)
+                        color: Theme.surfaceSunken
+                        border.width: 1
+                        border.color: Theme.borderSubtle
+                        Accessible.role: Accessible.AlertMessage
+                        Accessible.name: modelData
+                        Text {
+                            id: calloutText
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            text: callout.modelData
+                            wrapMode: Text.WordWrap
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Theme.typeBody.size * root.fs
+                            color: Theme.textDefault
+                            Accessible.ignored: true
                         }
                     }
                 }
@@ -329,8 +409,8 @@ Rectangle {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.topMargin: 8
-                    spacing: 8
+                    Layout.topMargin: 8 * Theme.densityScale
+                    spacing: 8 * Theme.densityScale
                     visible: spec.buttons.length > 0
                     Repeater {
                         model: spec.buttons.filter(b => b.role !== "quiet")

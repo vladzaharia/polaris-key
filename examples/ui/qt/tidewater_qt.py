@@ -5,7 +5,7 @@ Tidewater Studio by Harbor Audio, a small PySide6 app that gates itself with the
 (``../terminal-python/tidewater_fixtures.py``, no Worker); ``--live`` talks to a real one.
 
     pip install "polaris-key[qt]"
-    python tidewater_qt.py                    # the fixtures: the gate shows needs-activation
+    python tidewater_qt.py                    # the fixtures: the gate opens on Welcome (a key or Sign in)
     python tidewater_qt.py --scheme light --platform windows
     python tidewater_qt.py --live --product your-slug --trust kid=base64key
 """

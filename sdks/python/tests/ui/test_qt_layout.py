@@ -1,10 +1,11 @@
 # @pkey-feature ui.gate
 # @pkey-feature ui.activate
+# @pkey-feature ui.signin
 # @pkey-feature ui.devicelimit
 # @pkey-feature ui.devices
 # @pkey-feature ui.update
 # @pkey-feature ui.settings
-"""The Qt kit's screen layout (no Qt import): every fixture row of the six ui-matrix families lays out
+"""The Qt kit's screen layout (no Qt import): every fixture row of the ui-matrix families the kit draws lays out
 with its catalog copy, one filled action at most, named controls, and presentation text isolated."""
 
 from __future__ import annotations

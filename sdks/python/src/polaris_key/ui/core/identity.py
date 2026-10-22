@@ -56,7 +56,8 @@ class ResolvedIdentity:
     name: str
     short_name: Optional[str]
     developer: Optional[str]
-    #: ``"integrator"``, ``"product"`` (presentation), ``"icon"`` (derived), ``"core"`` or ``"ink"``.
+    #: ``"integrator"``, ``"product"`` (presentation), ``"icon"`` (derived), ``"core"``, ``"host"``
+    #: (the ``native`` preset's) or ``"ink"``.
     accent_source: str
     accent_light: Optional[str]
     accent_dark: Optional[str]
@@ -126,10 +127,14 @@ def resolve_identity(
     bundle: Optional[ProductIdentity] = None,
     slug: Optional[str] = None,
     accent: Any = "product",
+    preset: str = "polaris-key",
+    host_accent: Optional[str] = None,
 ) -> ResolvedIdentity:
     """Resolve the identity (order in the module docstring). ``accent`` is the theme's field:
     ``"product"`` (the default), ``"core"`` (Polaris violet, only when asked), ``"service"``
-    (treated as ``"product"`` on screens without service cues) or a colour."""
+    (treated as ``"product"`` on screens without service cues) or a colour. Under ``preset="native"``
+    (§3.4) the accent is the host's own, ``host_accent``, unless the integrator gave one; with no host
+    accent it is ink, as the other kits fall back."""
     me = integrator or ProductIdentity()
     pres: Any = None
     if source is not None:
@@ -159,6 +164,11 @@ def resolve_identity(
         light = normalize(me.accent) if me.accent else None
         dark = normalize(me.accent_dark) if me.accent_dark else None
         src = "integrator"
+    elif preset == "native":
+        host = normalize(host_accent) if host_accent else None
+        if host:
+            light = dark = host
+            src = "host"
     elif pres is not None and (_field(pres, "accent") or _field(pres, "accentDark", "accent_dark")):
         a = _field(pres, "accent")
         d = _field(pres, "accentDark", "accent_dark")

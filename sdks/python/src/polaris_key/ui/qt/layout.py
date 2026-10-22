@@ -9,19 +9,21 @@ kit's :class:`~polaris_key.ui.core.copy.Copy`, with presentation text isolated i
 
 from __future__ import annotations
 
+import base64
 import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
+from ... import qr as _qr
 from ..core.copy import Copy
 from ..core.ui_contract import ACTION_KEYS
 from ..core.ui_loading import DELAYED_LOADING_STATES
 from ..core.ui_view import View, bidi_isolate, format_bytes
 from .rows import Group, RowData, Seat, build_rows
 
-__all__ = ["Button", "Field", "ScreenSpec", "build_spec", "button_role", "is_button_key"]
+__all__ = ["Button", "Code", "Field", "ScreenSpec", "build_spec", "button_role", "is_button_key"]
 
-_HEADING = re.compile(r"\.(title|heading)$|^(gate\.error\.title|part\.status\.blocked)$")
+_HEADING = re.compile(r"\.(title|heading|codeTitle|addTitle)$|^(gate\.error\.title|part\.status\.blocked)$")
 _ACTION_KEYS = frozenset(key for keys in ACTION_KEYS.values() for key in keys)
 #: The last catalog segment of every key that is a control, not a sentence.
 _VERBS = frozenset(
@@ -30,16 +32,31 @@ _VERBS = frozenset(
         "signIn useKey trial continueFree restore offline submit install later checkNow skipVersion "
         "restartNow restartWhenReady openStore resume remove rename reset update renew contact "
         "switchChannel useAnotherLicense openBrowser undo copyCode loadFile primary allChanges whatsNew "
-        "appStore googlePlay steam altstore testflight differentKey"
+        "appStore googlePlay steam altstore testflight differentKey continue start keyInstead useCode openSystem again newCode"
     ).split()
 )
 #: Quiet text buttons (the mockup's "Start a free trial", "Activate offline").
 _QUIET = frozenset(
     ("welcome.trial", "welcome.offline", "welcome.restore", "welcome.continueFree", "common.notNow",
      "common.dismiss", "update.later", "update.skipVersion", "common.cancel", "common.back",
-     "update.allChanges", "update.whatsNew")
+     "update.allChanges", "update.whatsNew", "signin.choice.keyInstead", "signin.handoff.useCode")
 
 )
+#: Keys the Qt kit never draws: the provider logo row and the passkey and email rows need a
+#: provider list and the platform's own sheets, the menu item is not a screen control, and the
+#: larger QR is for a console's couch. The kit's sign-in is the browser and the device code. (The
+#: generic "Continue with {provider}" is drawn off the desktop, where it is the browser button; on
+#: the desktop it repeats "Continue in browser", which is drawn instead.)
+_NOT_DRAWN = frozenset(
+    (
+        "signin.provider.group signin.menu.signIn signin.passkey signin.email.continue part.qr.enlarge"
+    ).split()
+)
+#: Screens whose one filled action is not always a catalog key of their copy (the model's primary is
+#: the control the message sits on): it is drawn when the copy leaves it out.
+_PRIMARY_ALWAYS = frozenset(("Activate", "SignIn", "Welcome"))
+#: The code view's own parts: its label, its copy button and its QR are drawn as one block.
+_CODE_PARTS = frozenset(("part.code.label", "a11y.copyCode", "a11y.copyAddress", "a11y.qr"))
 #: Keys that read as status chips or meters, not paragraphs.
 _NOT_BUTTONS = frozenset(("update.title", "update.current", "update.platform", "update.blockedTitle"))
 _PROGRESS = frozenset(("a11y.progress", "boot.fetchingProgress", "updateProgress.downloading"))
@@ -50,7 +67,7 @@ _FIELDS = {
     "part.keyField.label": {
         "placeholder": "part.keyField.placeholder",
         "hint": ("part.keyField.forProduct",),
-        "error": ("part.keyField.cutShort", "part.keyField.malformed"),
+        "error": ("part.keyField.cutShort", "part.keyField.malformed", "part.keyField.empty"),
     },
     "devices.renameLabel": {"placeholder": None, "hint": (), "error": ()},
     "offlineActivation.paste": {"placeholder": None, "hint": (), "error": ()},
@@ -118,9 +135,50 @@ class Field:
     placeholder: str = ""
     hint: str = ""
     error: str = ""
+    #: What the field holds when the screen is drawn (a typed or pasted key), and the label of the
+    #: Paste control that sits at the end of the field (``""``: none).
+    value: str = ""
+    paste: str = ""
 
     def as_dict(self) -> Dict[str, Any]:
-        return {"key": self.key, "label": self.label, "placeholder": self.placeholder, "hint": self.hint, "error": self.error}
+        return {
+            "key": self.key,
+            "label": self.label,
+            "placeholder": self.placeholder,
+            "hint": self.hint,
+            "error": self.error,
+            "value": self.value,
+            "paste": self.paste,
+        }
+
+
+@dataclass(frozen=True)
+class Code:
+    """The device-code view's block (UI-KITS §4.3): the code in mono with Copy, the countdown, and a
+    QR only where DL14 allows one. ``fraction`` is what is left of the code's life, ``-1`` when the
+    screen does not know it."""
+
+    label: str
+    value: str
+    copy_label: str = ""
+    copied: str = ""
+    expires: str = ""
+    fraction: float = -1.0
+    #: The QR as an SVG data URI, and its accessible name, when the link may be scanned (TV, console).
+    qr: str = ""
+    qr_label: str = ""
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "label": self.label,
+            "value": self.value,
+            "copyLabel": self.copy_label,
+            "copied": self.copied,
+            "expires": self.expires,
+            "fraction": self.fraction,
+            "qr": self.qr,
+            "qrLabel": self.qr_label,
+        }
 
 
 @dataclass(frozen=True)
@@ -157,6 +215,12 @@ class ScreenSpec:
     search: str = ""
     groups: List[Group] = field(default_factory=list)
     after: List[Tuple[str, bool]] = field(default_factory=list)
+    code: Optional[Code] = None
+    #: A refusal the person can resolve (DL6): the core copy of a key that was not accepted, a license that
+    #: is full or expired, in default text on a sunken callout under the field, never in the danger colour.
+    callout: List[str] = field(default_factory=list)
+    #: The catalog key of the screen's one filled button (what Enter in a field does), or ``""``.
+    primary_key: str = ""
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -183,12 +247,40 @@ class ScreenSpec:
             "search": self.search,
             "groups": [g.as_dict() for g in self.groups],
             "after": [{"text": text, "strong": strong} for text, strong in self.after],
+            "code": self.code.as_dict() if self.code is not None else None,
+            "callout": list(self.callout),
+            "primaryKey": self.primary_key,
             "hidden": self.state == "hidden"
             or not (
                 self.title or self.body or self.buttons or self.fields or self.groups or self.seat
-                or self.progress is not None
+                or self.progress is not None or self.code is not None or self.callout
             ),
         }
+
+
+def _code_block(view: View, copy: Copy, args: Mapping[str, Any], data: Optional[RowData]) -> Optional[Code]:
+    """The device-code view's block, or ``None`` on any other screen."""
+    if view.component != "SignInHandoff" or view.state != "code" or not args.get("code"):
+        return None
+    dc = data.device_code if data is not None else {}
+    left, total = dc.get("secondsLeft"), dc.get("expiresIn")
+    known = all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in (left, total)) and total
+    link = view.decisions.link
+    qr = ""
+    if view.decisions.qr and link is not None and link.url:
+        svg = _qr.svg(link.url, dark="#060912", light="#ffffff")
+        if svg:
+            qr = "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("ascii")
+    return Code(
+        label=copy("part.code.label"),
+        value=str(args["code"]),
+        copy_label=copy("a11y.copyCode") if "a11y.copyCode" in view.copy else "",
+        copied=copy("common.copied") if dc.get("copied") is True else "",
+        expires=copy("signin.handoff.expires", time=args["time"]) if args.get("time") else "",
+        fraction=max(0.0, min(1.0, left / total)) if known else -1.0,
+        qr=qr,
+        qr_label=copy("a11y.qr") if qr else "",
+    )
 
 
 def _args(view: View) -> Mapping[str, Any]:
@@ -240,6 +332,7 @@ def build_spec(
     busy = False
     parts: Dict[str, str] = {}
     keyed: Dict[str, str] = {}
+    paste = ""
     for key in view.copy:
         if key == "common.byDeveloper":  # the identity header draws it
             continue
@@ -247,6 +340,10 @@ def build_spec(
             continue
         if key.startswith("a11y."):
             busy = busy or key in ("a11y.busy", "a11y.progress")
+            continue
+        if key in _NOT_DRAWN or key in _CODE_PARTS:
+            continue
+        if key == "signin.provider.continue" and "signin.desktop.continue" in view.copy:
             continue
         if key in consumed:  # a row draws it, with its data
             continue
@@ -258,6 +355,9 @@ def build_spec(
             text = copy(key, **args)
             if not _open(text):
                 parts[key] = text
+            continue
+        if key == "common.paste":  # the key field's own control, at the end of the field
+            paste = copy(key)
             continue
         if _HEADING.search(key):
             if not title:
@@ -285,6 +385,10 @@ def build_spec(
         title = copy(_FALLBACK_TITLE)  # never a screen with a button and no words
     if rows is not None and not title and rows.title_key:
         title = copy(rows.title_key)
+    if not title and view.component in ("SignIn", "SignInHandoff") and view.state not in ("hidden", "code"):
+        title = copy("signIn.title", **args)  # every step of the form keeps its name
+        if _open(title):
+            title = ""
     fields = [
         Field(
             label,
@@ -292,6 +396,8 @@ def build_spec(
             parts.get(spec["placeholder"] or "", ""),
             next((parts[k] for k in spec["hint"] if k in parts), ""),
             next((parts[k] for k in spec["error"] if k in parts), ""),
+            data.key_text if data is not None and label == "part.keyField.label" else "",
+            paste if label == "part.keyField.label" else "",
         )
         for label, spec in _FIELDS.items()
         if label in parts
@@ -307,12 +413,19 @@ def build_spec(
         progress = max(0.0, min(1.0, args["done"] / args["total"]))
     elif loading or progress == -1.0 or (
         view.component == "UpdateProgress" and view.state in ("queued", "installing")
+    ) or (
+        # Waiting for the browser, or for a code: a wait with no count is the shimmer, never a made-up bar.
+        view.component in ("SignIn", "SignInHandoff") and view.state in ("handoff", "waiting", "starting", "finishing")
     ):
         progress = -1.0  # the 2 px shimmer: honest, no percentage is invented (DL7)
     else:
         progress = None  # a busy control carries its own indicator (DL4); nothing is part-filled
     # DL4: one filled control, and a lone action is always it. A busy primary keeps its label.
-    if primary and not any(b.key == primary for b in buttons) and busy and not loading:
+    if (
+        primary
+        and not any(b.key == primary for b in buttons)
+        and ((busy and not loading) or (view.component in _PRIMARY_ALWAYS and primary not in _NOT_DRAWN))
+    ):
         text = copy(primary, **args)
         if not _open(text):
             buttons.append(Button(primary, text, "primary"))
@@ -332,10 +445,25 @@ def build_spec(
     ) else ""
     buttons.sort(key=lambda b: {"primary": 0, "secondary": 1, "quiet": 2}[b.role])
     actions = {key: action for action, keys in ACTION_KEYS.items() for key in keys}
-    buttons = [Button(b.key, b.text, b.role, actions.get(b.key), busy_primary and b.role == "primary") for b in buttons]
+    # A button the kit adds for the model's primary names its action only if the view lists it.
+    buttons = [
+        Button(b.key, b.text, b.role, actions.get(b.key) if actions.get(b.key) in view.actions else None, busy_primary and b.role == "primary")
+        for b in buttons
+    ]
     isolated_product = bidi_isolate(product) if product else ""
     names_product = bool(product) and (product in title or isolated_product in title)
     on_field = view.decisions.error_slot in _FIELDS
+    callout: List[str] = []
+    if view.component in ("Activate", "SignIn") and view.decisions.tone == "neutral" and view.decisions.error_slot:
+        for key in [k for k in keyed if k.startswith(("core.activation.", "core.codes."))]:
+            text = keyed.pop(key)
+            callout.append(text)
+            body = [b for b in body if b != text]
+    code = _code_block(view, copy, args, data)
+    if code is not None:
+        # The address follows the code; the sentence that introduces the code stays above it.
+        after = after + [(keyed.pop("signin.handoff.url"), False)] if "signin.handoff.url" in keyed else after
+        body = [text for key, text in keyed.items()] if rows is None or rows.before is None else body
     return ScreenSpec(
         component=view.component,
         state=view.state,
@@ -360,4 +488,7 @@ def build_spec(
         search=rows.search if rows is not None else "",
         groups=list(rows.groups) if rows is not None else [],
         after=after,
+        code=code,
+        callout=callout,
+        primary_key=next((b.key for b in buttons if b.role == "primary"), ""),
     )

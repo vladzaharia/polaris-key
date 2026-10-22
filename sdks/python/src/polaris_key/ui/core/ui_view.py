@@ -46,7 +46,10 @@ _OPENERS = frozenset(
 _ISOLATED_ARGS = frozenset(("product", "app", "developer", "device", "thisDevice", "name", "org", "tier"))
 _MISSING = object()
 #: The members of a model's input a row-drawing renderer reads (View.rows).
-ROW_INPUT_KEYS = ("config", "devices", "licenses", "account", "activation", "edit", "selected", "platform")
+ROW_INPUT_KEYS = (
+    "config", "devices", "licenses", "account", "activation", "edit", "selected", "platform", "deviceCode",
+    "keyField",
+)
 _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 
 

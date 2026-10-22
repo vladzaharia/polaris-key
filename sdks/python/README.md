@@ -728,8 +728,10 @@ exposes a `cli` group (`polaris_key.cli.click_cli.cli`) and the typer adapter ex
 
 A desktop app on PySide6 gates a window with the Qt kit, `polaris_key.ui.qt`: `run_gate(client, window)`
 shows the license's state in the product's identity over your window and hides it when the app may
-proceed. `KitView` embeds one kit screen (the devices, settings and account rows included) in your
-own layout, and its `row_invoked` signal reports the row a user pressed. Install `polaris-key[qt]`.
+proceed. It runs the screens that get a license (Welcome, license-key entry, sign-in in the browser or
+by device code, Replace a device) and calls the client itself. `KitView` embeds one kit screen (the
+devices, settings and account rows included) in your own layout (`kit.container()` is it as a
+`QWidget`), and its `row_invoked` signal reports the row a user pressed. Install `polaris-key[qt]`.
 
 The kit's page, with the embedding, the signals, theming and accessibility:
 [Qt (Python)](https://key.plrs.im/docs/build/ui/frameworks/qt/). Sample: `examples/ui/qt/`.

@@ -2,7 +2,8 @@
 
 Everything is optional; an empty :class:`Theme` is the Polaris Key look in the product's accent.
 Each kit honours the fields that mean something on its surface and documents the rest (the
-terminal's page lists them: a cell grid has no radius, type family or ambient).
+terminal's page lists them: a cell grid has no radius, type family or ambient; the Qt kit honours
+every field but ``symbols``, see :mod:`polaris_key.ui.qt.look`).
 """
 
 from __future__ import annotations
@@ -45,7 +46,8 @@ class Theme:
     #: else the line; a terminal prints the line). ``True`` means ``"line"``.
     powered_by: Union[bool, str] = False
     platform: str = "auto"
-    #: Terminal only: ``"auto"`` (Unicode unless ``TERM=dumb``), ``"unicode"`` or ``"ascii"``.
+    #: Terminal only: ``"auto"`` (Unicode unless ``TERM=dumb``), ``"unicode"`` or ``"ascii"``. The Qt
+    #: kit draws its glyphs as paths, so it has no use for it and ignores it.
     symbols: str = "auto"
 
     def __post_init__(self) -> None:

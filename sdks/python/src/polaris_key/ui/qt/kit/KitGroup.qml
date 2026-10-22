@@ -13,7 +13,7 @@ ColumnLayout {
     property real fs: 1
     // The bridge: invokeRow(key, action, row), edit(key, text), select(row).
     property QtObject kit
-    spacing: 8
+    spacing: 8 * Theme.densityScale
 
     // The buttons of one row: real buttons, each named for its row ("Rename Work laptop").
     component RowButtons: Flow {
@@ -36,17 +36,39 @@ ColumnLayout {
         }
     }
 
-    Text {
-        visible: text !== ""
-        text: groupRoot.group.heading
-        font.family: Theme.fontFamily
-        font.pixelSize: Math.max(13, Theme.typeMeta.size) * groupRoot.fs
-        font.weight: Theme.weightMedium
-        color: Theme.textMuted
+    RowLayout {
+        visible: groupRoot.group.heading !== ""
+        spacing: 6
         Layout.fillWidth: true
-        wrapMode: Text.WordWrap
-        Accessible.role: Accessible.Heading
-        Accessible.name: text
+        // UI-KITS 1.2 serviceCues: the service's tinted glyph tile, never a fill or a status. Opt-in.
+        Rectangle {
+            id: cue
+            objectName: "serviceCue"
+            readonly property var tile: groupRoot.kit.serviceTiles[groupRoot.group.service]
+            visible: groupRoot.kit.serviceCues && !!tile
+            Layout.preferredWidth: 20 * groupRoot.fs
+            Layout.preferredHeight: 20 * groupRoot.fs
+            radius: 5
+            color: tile ? tile.subtle : "transparent"
+            Accessible.ignored: true
+            KitGlyph {
+                anchors.centerIn: parent
+                name: groupRoot.group.service === "update" ? "download" : "sliders"
+                size: 12 * groupRoot.fs
+                color: cue.tile ? cue.tile.fg : Theme.textMuted
+            }
+        }
+        Text {
+            text: groupRoot.group.heading
+            font.family: Theme.fontFamily
+            font.pixelSize: Math.max(13, Theme.typeMeta.size) * groupRoot.fs
+            font.weight: Theme.weightMedium
+            color: Theme.textMuted
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            Accessible.role: Accessible.Heading
+            Accessible.name: text
+        }
     }
 
     Rectangle {
@@ -54,7 +76,8 @@ ColumnLayout {
         objectName: "group"
         Layout.fillWidth: true
         implicitHeight: list.implicitHeight
-        radius: 16
+        // The inset grouped list's radius: 16 at `md`, scaled by `radius`; a number gives its +4.
+        radius: Theme.radiusPx >= 0 ? Theme.radiusPx + 4 : 16 * Theme.surfaceScale
         color: Theme.surfaceOverlay
         border.width: 1
         border.color: Theme.borderSubtle
@@ -87,7 +110,7 @@ ColumnLayout {
                         && (r.kind === "confirm" || r.kind === "edit" || !fitsInline)
                     Layout.fillWidth: true
                     objectName: "row-" + r.id
-                    implicitHeight: Math.max((device ? 64 : 52) * groupRoot.fs, body.implicitHeight + 20)
+                    implicitHeight: Math.max((device ? 64 : 52) * groupRoot.fs * Theme.densityScale, body.implicitHeight + 20 * Theme.densityScale)
 
                     // The hairline, inset past the glyph (logical start side), not on the first row.
                     Rectangle {
@@ -270,7 +293,7 @@ ColumnLayout {
                                 Layout.fillWidth: true
                                 Layout.topMargin: 6
                                 // A quiet button's text sits 4 px in: line it up with the words above.
-                                Layout.leftMargin: r.actions[0].role === "quiet" ? -4 : 0
+                                Layout.leftMargin: r.actions.length > 0 && r.actions[0].role === "quiet" ? -4 : 0
                             }
                         }
 
@@ -420,7 +443,7 @@ ColumnLayout {
                         anchors.margins: 2
                         visible: rowItem.activeFocus
                         color: "transparent"
-                        radius: 14
+                        radius: Math.max(0, surface.radius - 2)
                         border.width: 2
                         border.color: Theme.focusRing
                     }

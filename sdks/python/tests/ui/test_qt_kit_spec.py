@@ -18,7 +18,7 @@ from polaris_key.ui.core.ui_contract import context_of
 from polaris_key.ui.core.ui_loading import DELAYED_LOADING_STATES
 from polaris_key.ui.qt.kit import KitView
 from polaris_key.ui.qt.layout import build_spec
-from qt_fixtures import FAMILIES, MATRIX, MODELS, TIDEWATER, FakeSource, states, with_defaults
+from qt_fixtures import MODELS, TIDEWATER, FakeSource, rows, states, with_defaults
 
 COPY = Copy("en", platform="desktop")
 BY_STATE = {(c, s): v for c, s, _, v in states()}
@@ -32,13 +32,12 @@ def _spec(component: str, state: str, **identity):
 def _nameless_views():
     """Every state with no product anywhere: no integrator, presentation or bundle identity."""
     seen, out = set(), []
-    for family in FAMILIES:
-        for row in MATRIX[family]:
-            raw = {k: v for k, v in row["input"].items() if k not in ("integrator", "presentation", "bundle")}
-            view = MODELS[row["expect"]["component"]](context_of(with_defaults(raw)))
-            if (view.component, view.state) not in seen:
-                seen.add((view.component, view.state))
-                out.append(view)
+    for row in rows():
+        raw = {k: v for k, v in row["input"].items() if k not in ("integrator", "presentation", "bundle")}
+        view = MODELS[row["expect"]["component"]](context_of(with_defaults(raw)))
+        if (view.component, view.state) not in seen:
+            seen.add((view.component, view.state))
+            out.append(view)
     return out
 
 

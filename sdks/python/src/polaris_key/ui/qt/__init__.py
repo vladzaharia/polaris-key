@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-__all__ = ["KitBridge", "KitView", "build_spec", "load_fonts", "render", "run_gate"]
+__all__ = ["GateController", "GateFlow", "KitBridge", "KitView", "build_spec", "load_fonts", "render", "run_gate"]
 
 _LAZY = {
     "KitBridge": ".bridge",
@@ -20,6 +20,8 @@ _LAZY = {
     "load_fonts": ".kit",
     "render": ".kit",
     "run_gate": ".gate",
+    "GateController": ".gate",
+    "GateFlow": ".flow",
     "build_spec": ".layout",
 }
 

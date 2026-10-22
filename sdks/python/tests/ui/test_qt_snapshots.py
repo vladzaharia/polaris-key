@@ -1,11 +1,12 @@
 # @pkey-feature ui.gate
 # @pkey-feature ui.activate
+# @pkey-feature ui.signin
 # @pkey-feature ui.devicelimit
 # @pkey-feature ui.devices
 # @pkey-feature ui.update
 # @pkey-feature ui.settings
-"""Offscreen ``grab()`` baselines of the Qt Quick kit: every fixture component x state of the six
-ui-matrix families in the Linux variant, dark and light, at 480x560; the platform variants, both
+"""Offscreen ``grab()`` baselines of the Qt Quick kit: every fixture component x state of the
+ui-matrix families the kit draws (SignIn and SignInHandoff included) in the Linux variant, dark and light, at 480x560; the platform variants, both
 presets' worth of window sizes and a 200% text scale for the gate's first screen. Each render also
 runs the QML source rules (tests/ui/test_qt_lint.py) and the accessibility checks on its spec."""
 
