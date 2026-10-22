@@ -29,5 +29,6 @@ export const STEAM_STORE: StoreAdapter = {
       slot: "steam.publisher-key",
       ownKind: "steam-publisher-key",
     },
+    { kind: "app", facet: "commerce", field: "appId" },
   ],
 };

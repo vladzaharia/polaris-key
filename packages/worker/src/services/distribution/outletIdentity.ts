@@ -19,18 +19,21 @@ import {
   type StoreAppField,
   storeAppBindings,
 } from "../../core/platformCredentials.js";
+import type { StorefrontId } from "../../core/storefront/adapter.js";
+import { storeAdapter } from "../../core/stores/adapters.js";
 import { parseJsonColumn } from "../../platform/json.js";
 import { listOutlets } from "./outlets.js";
 
-/** The store outlet kinds and the identity fields each compares. */
-const STORE_FIELDS: Readonly<
-  Record<string, { store: string; fields: readonly StoreAppField[] }>
-> = {
-  "app-store": { store: "app-store", fields: ["appleId", "bundleId"] },
-  play: { store: "google-play", fields: ["packageName"] },
-  "google-play": { store: "google-play", fields: ["packageName"] },
-  "ms-store": { store: "microsoft-store", fields: ["productId"] },
-  steam: { store: "steam", fields: ["appId"] },
+/**
+ * The store outlet kinds and the store each belongs to. The identity fields a store compares are
+ * its adapter's `identity` declaration (`core/stores/`, P0-27.6), never a table here.
+ */
+const OUTLET_STORES: Readonly<Record<string, StorefrontId>> = {
+  "app-store": "app-store",
+  play: "google-play",
+  "google-play": "google-play",
+  "ms-store": "microsoft-store",
+  steam: "steam",
 };
 
 export interface OutletIdentityMismatch {
@@ -50,7 +53,7 @@ export async function outletIdentityMismatches(
   product: string,
 ): Promise<OutletIdentityMismatch[]> {
   const outlets = (await listOutlets(db, product)).filter(
-    (o) => o.removed_at === null && o.kind in STORE_FIELDS,
+    (o) => o.removed_at === null && o.kind in OUTLET_STORES,
   );
   if (outlets.length === 0) return [];
   const byStore = new Map<string, StoreAppBinding>(
@@ -58,11 +61,12 @@ export async function outletIdentityMismatches(
   );
   const out: OutletIdentityMismatch[] = [];
   for (const o of outlets) {
-    const spec = STORE_FIELDS[o.kind]!;
-    const binding = byStore.get(spec.store);
+    const store = OUTLET_STORES[o.kind]!;
+    const fields = storeAdapter(store)?.identity ?? [];
+    const binding = byStore.get(store);
     const identity = parseJsonColumn(o.identity_json);
     if (!binding || !identity || typeof identity !== "object") continue;
-    for (const field of spec.fields) {
+    for (const field of fields) {
       const declared = (identity as Record<string, unknown>)[field];
       const assigned = binding.fields[field]?.value;
       if (

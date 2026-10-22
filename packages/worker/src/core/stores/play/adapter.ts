@@ -28,5 +28,6 @@ export const PLAY_STORE: StoreAdapter = {
       slot: "google-play.service-account",
       ownKind: "google-service-account",
     },
+    { kind: "app", facet: "commerce", field: "packageName" },
   ],
 };

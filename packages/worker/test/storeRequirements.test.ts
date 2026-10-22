@@ -45,16 +45,31 @@ async function own(
   id: string,
   kind: string,
   status = "active",
+  pin?: Record<string, string>,
 ): Promise<void> {
   await db.run(
     `INSERT INTO outlet_credentials (product, credential_id, kind, outlet_id, enc_value_json, meta_json, status, created_at, created_by)
-     VALUES (?, ?, ?, NULL, ?, '{"keyId":"SECRETKEYID"}', ?, ?, 'x')`,
+     VALUES (?, ?, ?, NULL, ?, ?, ?, ?, 'x')`,
     product,
     id,
     kind,
     OPAQUE,
+    JSON.stringify({ keyId: "SECRETKEYID", ...pin }),
     status,
     NOW,
+  );
+}
+
+async function pinPlatform(
+  id: string,
+  product: string,
+  pin: string,
+): Promise<void> {
+  await db.run(
+    "INSERT INTO platform_credential_pins (credential_id, product, pin, pinned_at, pinned_by) VALUES (?, ?, ?, 0, 'x')",
+    id,
+    product,
+    pin,
   );
 }
 
@@ -104,17 +119,27 @@ describe("storeRequirements", () => {
       store: "google-play",
       facet: null,
       met: false,
-      missing: [{ kind: "credential", slot: "google-play.service-account" }],
+      missing: [
+        { kind: "credential", slot: "google-play.service-account" },
+        { kind: "app", field: "packageName" },
+      ],
     });
     expect(await ask("app-store", "commerce")).toMatchObject({
       facet: "commerce",
       met: false,
-      missing: [{ kind: "credential", slot: "app-store.in-app-purchase-key" }],
+      missing: [
+        { kind: "credential", slot: "app-store.in-app-purchase-key" },
+        { kind: "app", field: "bundleId" },
+      ],
+    });
+    expect(await ask("app-store", "delivery")).toMatchObject({
+      missing: [{ kind: "credential", slot: "app-store.api-key" }],
     });
     expect(await ask("app-store")).toMatchObject({
       missing: [
         { kind: "credential", slot: "app-store.api-key" },
         { kind: "credential", slot: "app-store.in-app-purchase-key" },
+        { kind: "app", field: "bundleId" },
       ],
     });
   });
@@ -122,6 +147,7 @@ describe("storeRequirements", () => {
   it("lists a slot once when two facets share it (Steam)", async () => {
     expect((await ask("steam"))!.missing).toEqual([
       { kind: "credential", slot: "steam.publisher-key" },
+      { kind: "app", field: "appId" },
     ]);
   });
 
@@ -133,8 +159,66 @@ describe("storeRequirements", () => {
     });
   });
 
-  it("is met by an own active credential of the slot's kind", async () => {
+  it("the app requirement is met by a platform pin, and by an own credential's pin", async () => {
+    await platform("google-play.service-account");
+    expect(await ask("google-play", "commerce")).toMatchObject({
+      met: false,
+      missing: [{ kind: "app", field: "packageName" }],
+    });
+    await pinPlatform(
+      "google-play.service-account",
+      "djdl",
+      "com.example.game",
+    );
+    expect(await ask("google-play", "commerce")).toMatchObject({ met: true });
+    // another product's pin is not this product's assignment
+    expect(await ask("google-play", "commerce", "other")).toMatchObject({
+      met: false,
+    });
+    await own("djdl", "c1", "steam-publisher-key", "active", { appId: "480" });
+    expect(await ask("steam", "commerce")).toMatchObject({
+      met: true,
+      missing: [],
+    });
+  });
+
+  it("an own credential with no pin leaves the app missing, with no fall-through to the platform pin", async () => {
+    await platform("steam.publisher-key");
+    await pinPlatform("steam.publisher-key", "djdl", "480");
+    expect(await ask("steam", "commerce")).toMatchObject({ met: true });
     await own("djdl", "c1", "steam-publisher-key");
+    expect(await ask("steam", "commerce")).toMatchObject({
+      met: false,
+      missing: [{ kind: "app", field: "appId" }],
+    });
+  });
+
+  it("an ambiguous binding is still met", async () => {
+    await own("djdl", "c1", "steam-publisher-key", "active", { appId: "480" });
+    await own("djdl", "c2", "steam-publisher-key", "active", { appId: "481" });
+    expect(await ask("steam", "commerce")).toMatchObject({ met: true });
+  });
+
+  it("delivery never asks for an app (oneClick outcomes are unchanged)", async () => {
+    await platform("app-store.api-key");
+    expect(await ask("app-store", "delivery")).toMatchObject({ met: true });
+  });
+
+  it("fails closed: an unknown facet, or commerce on a store with none, answers null", async () => {
+    const bad = (f: string) => ask("steam", f as "delivery");
+    expect(await bad("nope")).toBeNull();
+    expect(await bad("")).toBeNull();
+    expect(await bad("__proto__")).toBeNull();
+    for (const a of STORE_ADAPTERS.filter((x) => x.commerce === null)) {
+      expect(await ask(a.id, "commerce"), a.id).toBeNull();
+      // the other facets of the same store still answer
+      expect(await ask(a.id, "delivery"), a.id).not.toBeNull();
+      expect(await ask(a.id), a.id).not.toBeNull();
+    }
+  });
+
+  it("is met by an own active credential of the slot's kind", async () => {
+    await own("djdl", "c1", "steam-publisher-key", "active", { appId: "480" });
     expect(await ask("steam")).toMatchObject({ met: true, missing: [] });
     expect(await ask("steam", "delivery")).toMatchObject({ met: true });
   });
@@ -156,7 +240,7 @@ describe("storeRequirements", () => {
   it("never counts another product's credential", async () => {
     await own("other", "c1", "google-service-account");
     expect(await ask("google-play")).toMatchObject({ met: false });
-    expect(await ask("google-play", undefined, "other")).toMatchObject({
+    expect(await ask("google-play", "delivery", "other")).toMatchObject({
       met: true,
     });
   });
@@ -180,17 +264,20 @@ describe("storeRequirements", () => {
 
   it("exposes the one seam", async () => {
     expect(
-      await credentialAvailable(
-        env,
-        db,
-        "djdl",
-        "steam.publisher-key",
-        "steam-publisher-key",
-      ),
+      await credentialAvailable(env, db, "djdl", "steam.publisher-key"),
     ).toBe(false);
-    expect(await credentialAvailable(env, db, "djdl", "no.such", "x")).toBe(
-      false,
-    );
+    expect(await credentialAvailable(env, db, "djdl", "no.such")).toBe(false);
+  });
+
+  it("derives the own kind from the slot: another slot's kind never satisfies it", async () => {
+    await own("djdl", "c1", "sentry-integration");
+    await own("djdl", "c2", "steam-publisher-key");
+    expect(
+      await credentialAvailable(env, db, "djdl", "app-store.api-key"),
+    ).toBe(false);
+    expect(
+      await credentialAvailable(env, db, "djdl", "steam.publisher-key"),
+    ).toBe(true);
   });
 
   it("names no key id, issuer, pin or app in its answer", async () => {
@@ -238,6 +325,10 @@ describe("storeRequirements custody", () => {
       "fetch",
       "recordOutletCredentialResult",
       "putOutletCredential",
+      // REV-P027: the four credential functions the reach suite also refuses here.
+      "outletCredentialVersion",
+      "listOutletCredentialPins",
+      "recordPlatformCredentialResult",
     ])
       expect(code).not.toContain(bad);
   });

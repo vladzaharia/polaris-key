@@ -27,5 +27,6 @@ export const APPLE_STORE: StoreAdapter = {
       slot: "app-store.in-app-purchase-key",
       ownKind: "app-store-server-key",
     },
+    { kind: "app", facet: "commerce", field: "bundleId" },
   ],
 };

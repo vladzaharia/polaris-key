@@ -12,9 +12,9 @@
  * - Live, by plane: Polaris Key itself, a release with a fitting build; feed plane, a declared
  *   outlet and a release with a fitting build; every other plane, an availability record `live`
  *   for a declared outlet of the channel.
- * - One click (D5): in scope, not set up, and the catalogue's credential slot is held: the team's
- *   (configured, in the console or as a secret) or an active credential of the product. No store
- *   call is made.
+ * - One click (D5): in scope, not set up, and the store's delivery requirements are met
+ *   (`storeRequirements`, P0-27.6): the team's credential (configured, in the console or as a
+ *   secret) or an active credential of the product. No store call is made.
  *
  * Credential facts leave this module only as booleans and reason codes (D7): never an id, a meta
  * field, a key id or an issuer. Read-only.
@@ -34,10 +34,8 @@ import { parseJsonColumn } from "../../platform/json.js";
 import {
   isPlatformCredentialId,
   PLATFORM_CREDENTIALS,
-  resolvePlatformCredential,
-  type PlatformCredentialId,
 } from "../../core/platformCredentials.js";
-import { listOutletCredentials } from "../../core/outletCredentials.js";
+import { storeRequirements } from "../../core/stores/requirements.js";
 import { EMPTY_SETUP, isSetupChoices } from "../../core/settings/setupShape.js";
 import { expiringCredentials } from "./attentionFacts.js";
 import {
@@ -141,19 +139,16 @@ export async function deliveryFacets(
     (isSetupChoices(stored) ? stored : EMPTY_SETUP).notUsing,
   );
 
-  // Credential facts, once per slot: booleans only.
-  const held = new Map<PlatformCredentialId, boolean>();
-  const own = (await listOutletCredentials(db, product)).filter(
-    (c) => c.status === "active",
-  );
-  const heldSlot = async (slot: string): Promise<boolean> => {
-    if (!isPlatformCredentialId(slot)) return false;
-    const cached = held.get(slot);
+  // Credential facts, once per store: booleans only. The delivery facet's requirements are the
+  // one definition of "held" (P0-27.6, `core/stores/requirements.ts`); no second copy here.
+  const held = new Map<string, boolean>();
+  const heldSlot = async (adapter: string): Promise<boolean> => {
+    const cached = held.get(adapter);
     if (cached !== undefined) return cached;
-    const team = (await resolvePlatformCredential(env, db, slot)) !== null;
     const v =
-      team || own.some((c) => c.kind === PLATFORM_CREDENTIALS[slot].kind);
-    held.set(slot, v);
+      (await storeRequirements(env, db, product, adapter, "delivery"))?.met ??
+      false;
+    held.set(adapter, v);
     return v;
   };
   const expiring = await expiringCredentials(
@@ -196,7 +191,10 @@ export async function deliveryFacets(
       });
 
     const slot = c.storefront?.credential ?? null;
-    const slotHeld = slot === null ? true : await heldSlot(slot);
+    const slotHeld =
+      slot === null || c.storefront === null
+        ? true
+        : await heldSlot(c.storefront.adapter);
     if (declared && slot !== null && !slotHeld)
       attention.push({ code: "credential_missing" });
     // Expiry only turns a channel the team uses (declared) into attention; an undeclared channel

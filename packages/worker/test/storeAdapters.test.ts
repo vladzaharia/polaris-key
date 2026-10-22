@@ -23,11 +23,17 @@ import {
 import type { StoreAdapter } from "../src/core/stores/adapter.js";
 import { STORE_ADAPTERS, storeAdapter } from "../src/core/stores/adapters.js";
 import { CONNECTORS } from "../src/services/distribution/connectors/index.js";
-import { COMMERCE_FACETS } from "../src/services/commerce/stores/index.js";
+import {
+  COMMERCE_FACETS,
+  commerceFacetFor,
+} from "../src/services/commerce/stores/index.js";
 import { DELIVERY_FACETS } from "../src/services/distribution/stores/index.js";
 import { FLOW_RUNTIMES } from "../src/services/distribution/storefronts/index.js";
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
+/** The credential requirements of an adapter (the `app` ones are checked on their own). */
+const credentialReqs = (a: StoreAdapter) =>
+  a.requirements.flatMap((r) => (r.kind === "credential" ? [r] : []));
 const slotOf = (id: string) =>
   PLATFORM_CREDENTIALS[id as keyof typeof PLATFORM_CREDENTIALS];
 
@@ -71,7 +77,7 @@ describe("the channel catalogue binding", () => {
   it("storefront.credential equals the delivery credential slot", () => {
     for (const [id, facets] of byAdapter) {
       const delivery =
-        storeAdapter(id)!.requirements.find((r) => r.facet === "delivery")
+        credentialReqs(storeAdapter(id)!).find((r) => r.facet === "delivery")
           ?.slot ?? null;
       for (const f of facets) expect(f!.credential, id).toBe(delivery);
     }
@@ -127,11 +133,11 @@ describe("the channel catalogue binding", () => {
 });
 
 describe("credentials", () => {
-  const slotsOf = (a: StoreAdapter) => a.requirements.map((r) => r.slot);
+  const slotsOf = (a: StoreAdapter) => credentialReqs(a).map((r) => r.slot);
 
   it("every slot is a platform credential and its ownKind is that slot's kind", () => {
     for (const a of STORE_ADAPTERS)
-      for (const r of a.requirements) {
+      for (const r of credentialReqs(a)) {
         expect(
           PLATFORM_CREDENTIAL_IDS as string[],
           `${a.id} ${r.slot}`,
@@ -148,7 +154,7 @@ describe("credentials", () => {
     for (const a of STORE_ADAPTERS) {
       if (!a.commerce) continue;
       expect(
-        a.requirements.some(
+        credentialReqs(a).some(
           (r) => r.facet === "commerce" && r.slot === a.commerce!.verification,
         ),
         a.id,
@@ -165,6 +171,24 @@ describe("credentials", () => {
   });
 });
 
+describe("the app requirement (P0-27.6)", () => {
+  it("is declared exactly on commerce, names an identity field the commerce slot pins", () => {
+    for (const a of STORE_ADAPTERS) {
+      const apps = a.requirements.flatMap((r) => (r.kind === "app" ? [r] : []));
+      if (!a.commerce) {
+        expect(apps, a.id).toEqual([]);
+        continue;
+      }
+      expect(apps, a.id).toHaveLength(1);
+      expect(apps[0]!.facet).toBe("commerce");
+      expect(a.identity as readonly string[]).toContain(apps[0]!.field);
+      expect(apps[0]!.field, a.id).toBe(
+        slotOf(a.commerce.verification).pinField,
+      );
+    }
+  });
+});
+
 describe("connector, flow and store lists", () => {
   it("declared connectors equal the ops list and the service's connectors", () => {
     const declared = STORE_ADAPTERS.flatMap((a) =>
@@ -172,6 +196,12 @@ describe("connector, flow and store lists", () => {
     ).sort();
     expect(declared).toEqual([...OPS_CONNECTORS].sort());
     expect(declared).toEqual(CONNECTORS.map((c) => c.kind).sort());
+    // The ops list is derived from the declarations, in registry order (P0-27.6).
+    expect([...OPS_CONNECTORS]).toEqual(
+      STORE_ADAPTERS.flatMap((a) =>
+        a.delivery.connector ? [a.delivery.connector] : [],
+      ),
+    );
   });
 
   it("flow ids equal the flow runtimes' ids", () => {
@@ -301,7 +331,13 @@ describe("the Commerce facets (P0-27.4)", () => {
     for (const [id, f] of Object.entries(COMMERCE_FACETS)) {
       expect(f!.adapter).toBe(id);
       expect(f!.store).toBe(storeAdapter(id)!.commerce!.store);
+      expect(commerceFacetFor(f!.store)).toBe(f);
     }
+    // And the other way: every declared commerce.store resolves to its adapter's facet.
+    for (const a of STORE_ADAPTERS)
+      if (a.commerce)
+        expect(commerceFacetFor(a.commerce.store)).toBe(COMMERCE_FACETS[a.id]);
+      else expect(COMMERCE_FACETS[a.id], a.id).toBeUndefined();
     expect(
       Object.values(COMMERCE_FACETS)
         .map((f) => f!.store)

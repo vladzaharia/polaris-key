@@ -1,5 +1,26 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`the claim answers exactly as before > a malformed body to a store with no credential answers 404: the context is read before the body is parsed 1`] = `
+{
+  "body": "{"error":{"code":"not_found"}}",
+  "status": 404,
+}
+`;
+
+exports[`the claim answers exactly as before > a malformed body to a store with no credential answers 404: the context is read before the body is parsed 2`] = `
+{
+  "body": "{"error":{"code":"not_found"}}",
+  "status": 404,
+}
+`;
+
+exports[`the claim answers exactly as before > a malformed body to a store with no credential answers 404: the context is read before the body is parsed 3`] = `
+{
+  "body": "{"error":{"code":"not_found"}}",
+  "status": 404,
+}
+`;
+
 exports[`the claim answers exactly as before > an unmapped Steam app answers as a non-owner and makes no store call 1`] = `
 {
   "body": "{"error":{"code":"forbidden"},"reason":"not_owned","message":"Steam does not report this account as the owner of the DLC"}",

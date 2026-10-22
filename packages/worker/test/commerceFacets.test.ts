@@ -76,6 +76,16 @@ describe("the claim answers exactly as before", () => {
       expect(await answer(await claim(w, body))).toMatchSnapshot();
     });
 
+  it("a malformed body to a store with no credential answers 404: the context is read before the body is parsed", async () => {
+    w = await commerceWorld({ credentials: false });
+    for (const body of [
+      { store: "app-store" },
+      { store: "play", purchaseToken: "tok_abcdefghij" },
+      { store: "steam", ticket: "zz", dlcAppId: "0" },
+    ])
+      expect(await answer(await claim(w, body))).toMatchSnapshot();
+  });
+
   it("an unmapped Steam app answers as a non-owner and makes no store call", async () => {
     w = await commerceWorld();
     const res = await claim(w, {

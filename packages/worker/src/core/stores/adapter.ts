@@ -32,8 +32,8 @@ export type StoreIdentityField =
   | "productId"
   | "appId";
 
-/** What a facet needs before it can run. Human steps are not requirements (A-23). */
-export interface StoreRequirement {
+/** A credential a facet needs: the team slot, or the product's own credential of the slot's kind. */
+export interface StoreCredentialRequirement {
   readonly kind: "credential";
   readonly facet: "delivery" | "commerce";
   /** A `PLATFORM_CREDENTIALS` id: the team slot. */
@@ -41,6 +41,19 @@ export interface StoreRequirement {
   /** The outlet-credential kind a product's own credential of this slot has. */
   readonly ownKind: string;
 }
+
+/**
+ * An app the product must be assigned on the store (P0-27.6): `field` is present in the product's
+ * store-app binding (`storeAppBinding`, A-28.1), from a pin on its own credential or a platform pin.
+ */
+export interface StoreAppRequirement {
+  readonly kind: "app";
+  readonly facet: "delivery" | "commerce";
+  readonly field: StoreIdentityField;
+}
+
+/** What a facet needs before it can run. Human steps are not requirements (A-23). */
+export type StoreRequirement = StoreCredentialRequirement | StoreAppRequirement;
 
 export interface StoreDelivery {
   /** The Distribution connector kind; null when the store has none. */

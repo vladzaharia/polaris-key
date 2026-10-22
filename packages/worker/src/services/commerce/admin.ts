@@ -49,6 +49,7 @@ import {
   PLATFORM_CREDENTIALS,
   platformCredentialsOf,
   platformPin,
+  isPlatformStore,
   storeAppBinding,
   type PlatformStore,
 } from "../../core/platformCredentials.js";
@@ -263,9 +264,13 @@ async function flagRefusal(
     : `the catalog declares no flag ${flag}`;
 }
 
-/** The channel adapter id of a store, from its Commerce facet. */
-const platformOf = (store: Store): PlatformStore =>
-  commerceFacetFor(store)!.adapter as PlatformStore; // the four channel ids of a store with in-app purchases
+/** The channel adapter id of a store, from its Commerce facet; a store with none has no binding. */
+function platformOf(store: Store): PlatformStore {
+  const adapter = commerceFacetFor(store)?.adapter;
+  if (adapter === undefined || !isPlatformStore(adapter))
+    throw new Error(`no commerce facet binds the store ${store}`);
+  return adapter;
+}
 
 /**
  * `POST …/commerce/settings/<store>/use-assigned` (A-28.3, D14): the server works out the assigned

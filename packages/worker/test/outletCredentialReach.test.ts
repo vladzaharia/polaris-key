@@ -361,6 +361,19 @@ describe("outlet-credential reach", () => {
     expect(reachViolations(loadSources())).toEqual([]);
   });
 
+  it("REV-P027: the requirements evaluator names none of the four credential functions that open, version, pin-list or record", () => {
+    const text = code(
+      readFileSync(join(SRC, "core/stores/requirements.ts"), "utf8"),
+    );
+    for (const fn of [
+      "openOutletCredential",
+      "outletCredentialVersion",
+      "listOutletCredentialPins",
+      "recordPlatformCredentialResult",
+    ])
+      expect(text, fn).not.toContain(fn);
+  });
+
   it("every allowlisted file exists (a stale allowlist would widen silently on a re-add)", () => {
     for (const f of [
       ...IMPORT_ALLOW_FILES,
