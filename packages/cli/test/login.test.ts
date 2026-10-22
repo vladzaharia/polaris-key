@@ -213,11 +213,12 @@ describe("pkey login: the flow", () => {
     ]);
     expect(r.out).toContain("Polaris Key console · key.example");
     expect(r.out).toContain("✓  Signed in as Ada Lovelace (ada@example.com)\n");
-    expect(r.out).toContain("  Roles     DJDL admin\n");
-    expect(r.out).toContain("  Token     “pkey on laptop” (pkeyp_…h7Q2)\n");
-    expect(r.out).toMatch(/ {2}Ends {6}\d{4}-\d{2}-\d{2}\n/);
-    expect(r.out).toContain("  Saved in  macOS Keychain\n");
-    expect(r.out).toContain("\n  End it with pkey logout.");
+    // The rows sit under the text after the glyph (3 columns in).
+    expect(r.out).toContain("\n   Roles     DJDL admin\n");
+    expect(r.out).toContain("\n   Token     “pkey on laptop” (pkeyp_…h7Q2)\n");
+    expect(r.out).toMatch(/\n {3}Ends {6}\d{4}-\d{2}-\d{2}\n/);
+    expect(r.out).toContain("\n   Saved in  macOS Keychain\n");
+    expect(r.out).toContain("\n   End it with pkey logout.");
     expect(r.out).not.toContain("Signed in to");
     noToken(r.out, r.err);
   });
@@ -609,11 +610,11 @@ describe("pkey login: the flow", () => {
 });
 
 describe("pkey login: the other endings", () => {
-  it("denied: a ▲ naming the code and the rerun, exit 4, nothing stored", async () => {
+  it("denied: a ▲ naming the code and the rerun, exit 1 like Esc, nothing stored", async () => {
     const store = memoryStore();
     const { f } = server([PENDING, () => json(200, { status: "denied" })]);
     const r = await run([], { f, store: async () => store });
-    expect(r.code).toBe(4);
+    expect(r.code).toBe(1);
     expect(r.err).toContain(`▲  Code ${CODE} was canceled in the browser.`);
     expect(r.err).toContain(
       "Run pkey login --base-url https://key.example to try again.",
@@ -724,8 +725,9 @@ describe("pkey login: copy", () => {
     });
     const r = await run([], { f });
     expect(r.code).toBe(4);
+    expect(r.err).toContain("▲  key.example doesn't offer terminal sign-in.\n");
     expect(r.err).toContain(
-      "key.example doesn't offer terminal sign-in; use PKEY_ADMIN_TOKEN.",
+      "   Set PKEY_ADMIN_TOKEN to a personal token instead.",
     );
     expect(calls.length).toBe(1);
   });
@@ -748,10 +750,10 @@ describe("pkey login: copy", () => {
     expect(r.out).toContain(
       "\n\u001b[7m\u001b[1m WDJB-MJHT \u001b[22m\u001b[27m\n",
     );
-    for (const l of r.out.split("\n"))
+    for (const l of noLinks(r.out).split("\n"))
       if (!l.startsWith("http")) expect([...l].length).toBeLessThanOrEqual(80);
     expect(
-      r.out
+      noLinks(r.out)
         .split("\n")
         .filter((l) => !l.startsWith("http") && !l.includes("\u001b"))
         .every((l) => [...l].length <= 40),
@@ -871,7 +873,7 @@ describe("pkey login: keys, browser, --json", () => {
 
   it("--json: denied, expired, token_limit and refusals are each one line on stdout", async () => {
     const cases: [() => Response, string, number][] = [
-      [() => json(200, { status: "denied" }), "denied", 4],
+      [() => json(200, { status: "denied" }), "denied", 1],
       [() => json(410, {}), "expired", 1],
       [() => json(409, { reason: "token_limit" }), "token_limit", 4],
     ];
@@ -905,7 +907,10 @@ describe("pkey login: keys, browser, --json", () => {
   });
 });
 
-const bare = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
+/** An OSC 8 link wrapper (m3): the text shows, the target is the link. */
+const noLinks = (s: string) =>
+  s.replace(/\x1b\]8;;[^\x07\x1b]*(?:\x07|\x1b\\)/g, "");
+const bare = (s: string) => noLinks(s).replace(/\x1b\[[0-9;]*m/g, "");
 
 describe("pkey login: goldens", () => {
   const dump = process.env["PKEY_GOLDENS"];
@@ -944,12 +949,7 @@ describe("pkey login: goldens", () => {
 
 describe("pkey login: how it looks", () => {
   const widest = (s: string) =>
-    s
-      .split("\n")
-      .reduce(
-        (m, l) => Math.max(m, [...l.replace(/\x1b\[[0-9;]*m/g, "")].length),
-        0,
-      );
+    s.split("\n").reduce((m, l) => Math.max(m, [...bare(l)].length), 0);
 
   it("fits 32 columns (the link line aside)", async () => {
     const { f } = server([PENDING, APPROVED]);
@@ -1196,7 +1196,7 @@ describe("pkey login: what the person sees (F02, F05, F06, F14, F16)", () => {
     });
     expect(lastLine(j.out)).toMatchObject({
       error: "denied",
-      exit: 4,
+      exit: 1,
       message: `Code ${CODE} was canceled in the browser. Run pkey login --base-url ${ORIGIN} to try again.`,
     });
     const text = await run([], {
@@ -1458,7 +1458,7 @@ describe("pkey login: rerun lines, store failures, bounds (F11, F12, F17, N1-N5)
       "wouldn't save the sign-in, and pkey couldn't revoke it.",
     );
     expect(r.err.replace(/\s+/g, " ")).toContain(
-      "Revoke “pkey on laptop” (pkeyp_…h7Q2) at https://key.example/manage/#/personal-tokens.",
+      "Revoke “pkey on laptop” (pkeyp_…h7Q2) at https://key.example/manage/#/personal-tokens",
     );
     noToken(r.out, r.err);
   });
@@ -1478,8 +1478,8 @@ describe("pkey login: rerun lines, store failures, bounds (F11, F12, F17, N1-N5)
       columns: 48,
       defaultBase: true,
     });
-    expect(at48.out).toContain("https://key.plrs.im/manage/device\n");
-    expect(at48.out).not.toContain("?code=");
+    expect(noLinks(at48.out)).toContain("https://key.plrs.im/manage/device\n");
+    expect(noLinks(at48.out)).not.toContain("?code=");
     expect(at48.out).toContain("Enter this code in your browser:");
     const j = await run(["--json"], { f: server([APPROVED]).f });
     expect(j.out).toContain(`?code=${CODE}`);
@@ -1624,7 +1624,7 @@ describe("colour terminals: every login glyph renders (R1)", () => {
       [failing("ECONNREFUSED"), 1],
       [server([APPROVED], { start: () => json(500) }).f, 1],
       [server([() => json(410, {})]).f, 1],
-      [server([() => json(200, { status: "denied" })]).f, 4],
+      [server([() => json(200, { status: "denied" })]).f, 1],
     ] as const) {
       const r = await run([], { f, columns: 80, env: colour });
       expect(r.code).toBe(code);

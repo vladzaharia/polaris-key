@@ -20,6 +20,12 @@ import {
 } from "@polaris-key/node/terminal";
 import { ADMIN_TOKEN_ENV, DEFAULT_BASE_URL, maskTokens } from "./bundle.js";
 import { UsageError } from "./errors.js";
+import { Failure, Redirected, Unreachable, networkCode } from "./netErrors.js";
+import {
+  MAX_JSON_BYTES,
+  REQUEST_TIMEOUT_MS,
+  readCappedJson,
+} from "./httpRead.js";
 import {
   adminCredential,
   hintOf,
@@ -31,6 +37,9 @@ import {
 } from "./credentials.js";
 import type { Term, TermOut } from "./terminal.js";
 import { untrusted, untrustedJson, type UntrustedEnv } from "./untrusted.js";
+
+export { MAX_JSON_BYTES, REQUEST_TIMEOUT_MS };
+export { Failure, Redirected, Unreachable, networkCode };
 
 export const WHOAMI_USAGE = "pkey whoami [--base-url url] [--json]";
 export const LOGOUT_USAGE = "pkey logout [--base-url url] [--json]";
@@ -58,21 +67,6 @@ const COMMAND = {
 } as const;
 export type Command = keyof typeof COMMAND;
 
-/** A failure (exit 1): the sentence, the one fix, and the `--json` error code. */
-export class Failure extends Error {
-  constructor(
-    message: string,
-    readonly fix: string | undefined,
-    readonly code: string,
-    readonly extra: Record<string, unknown> = {},
-    /** The lines as styled spans, when a URL in them must stay whole. */
-    readonly lines?: Line[],
-  ) {
-    super(message);
-    this.name = "Failure";
-  }
-}
-
 /** Bad input to a command (exit 2): a ▲ with the sentence and the one fix. */
 export class Usage extends Refusal {
   constructor(
@@ -83,31 +77,6 @@ export class Usage extends Refusal {
   ) {
     super(message, fix, "usage");
     this.name = "Usage";
-  }
-}
-
-/** The host did not answer (offline, refused, timed out). `cause` is the network error's code. */
-export class Unreachable extends Failure {
-  constructor(host: string, cause: string | null) {
-    super(
-      `Can't reach ${host}.`,
-      "Check your network, or --base-url.",
-      "network",
-      cause ? { cause } : {},
-    );
-    this.name = "Unreachable";
-  }
-}
-
-/** A 3xx: pkey sent nothing further. */
-export class Redirected extends Refusal {
-  constructor(host: string) {
-    super(
-      `${host} answered with a redirect, so pkey sent nothing further.`,
-      "Check --base-url.",
-      "redirect",
-    );
-    this.name = "Redirected";
   }
 }
 
@@ -141,7 +110,8 @@ export function day(epochSeconds: number, env: UntrustedEnv): string {
 export const shown = (value: unknown, env: UntrustedEnv): string =>
   maskTokens(untrusted(value, env));
 
-export const hostOf = (origin: string): string => new URL(origin).host;
+export const hostOf = (origin: string): string =>
+  maskTokens(new URL(origin).host);
 
 export const text = (t: string, extra: Partial<Span> = {}): Span => ({
   text: t,
@@ -203,21 +173,6 @@ export function envelope(
   });
 }
 
-/** A request that has not answered in this long is a network failure (N3). */
-export const REQUEST_TIMEOUT_MS = 15_000;
-
-/** The most of a response pkey reads as JSON (N1). */
-export const MAX_JSON_BYTES = 64 * 1024;
-
-export function networkCode(e: unknown): string | null {
-  if ((e as { name?: unknown } | null)?.name === "TimeoutError")
-    return "TIMEOUT";
-  const code = (e as { cause?: { code?: unknown } } | null)?.cause?.code;
-  return typeof code === "string" && /^[A-Z0-9_]{1,40}$/.test(code)
-    ? code
-    : null;
-}
-
 /**
  * A GET or DELETE to the console API with the credential. A redirect is not followed (`Redirected`)
  * and a host that does not answer is `Unreachable`.
@@ -247,39 +202,8 @@ export async function call(
   return res;
 }
 
-/**
- * A response body as a JSON object, read through a size cap: a body past `MAX_JSON_BYTES` (a host
- * that streams without end, or a proxy's error page) is `{}` and the rest is never read.
- */
-export async function jsonOf(res: Response): Promise<Record<string, unknown>> {
-  try {
-    const declared = Number(res.headers.get("content-length"));
-    if (Number.isFinite(declared) && declared > MAX_JSON_BYTES) {
-      void res.body?.cancel().catch(() => undefined);
-      return {};
-    }
-    const reader = res.body?.getReader();
-    if (!reader) return {};
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > MAX_JSON_BYTES) {
-        void reader.cancel().catch(() => undefined);
-        return {};
-      }
-      chunks.push(value);
-    }
-    const v = JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
-    return v && typeof v === "object" && !Array.isArray(v)
-      ? (v as Record<string, unknown>)
-      : {};
-  } catch {
-    return {};
-  }
-}
+/** A response body as a JSON object, read through the 64 KiB cap (`httpRead.ts`). */
+export const jsonOf = readCappedJson;
 
 /**
  * Run an account command. A `Refusal` is ▲ and exit 4 (a `Usage` is exit 2), a `Failure` is ✗ and
@@ -335,7 +259,10 @@ export async function guarded(
  * The origin `--base-url` names, or a ▲ usage line when it is not https (http works on localhost):
  * the credential's name never appears in it, since a signed-in person sets none.
  */
-export function originFor(io: AccountIo, command: Command): string {
+export function originFor(
+  io: Pick<AccountIo, "baseUrl">,
+  command: Command | string,
+): string {
   try {
     return originOf(io.baseUrl);
   } catch (e) {
@@ -353,7 +280,7 @@ export function originFor(io: AccountIo, command: Command): string {
   }
 }
 
-function endedRefusal(cred: ResolvedCredential): Refusal {
+export function endedRefusal(cred: ResolvedCredential): Refusal {
   return cred.source === "env"
     ? new Refusal(
         `${ADMIN_TOKEN_ENV} was refused. It may have ended, been revoked, or not be an admin token.`,
@@ -389,10 +316,53 @@ export function roleName(
   }
 }
 
+/** The console's area names (`AREAS` in the Worker's core/rbac/areas.ts), by id. */
+export const AREA_NAMES: Readonly<Record<string, string>> = {
+  console: "Console",
+  platform: "Platform",
+  members: "Members",
+  docs: "Docs",
+  core: "Core",
+  license: "Licensing",
+  config: "Managed config",
+  ship: "Ship builds",
+  signin: "Sign-in",
+  sync: "Cloud Sync",
+  commerce: "Commerce",
+  keys: "Keys and secrets",
+  settings: "Settings",
+};
+
+/** An area's name; an id this version does not know is shown as it came. */
+export const areaName = (id: string): string =>
+  Object.hasOwn(AREA_NAMES, id) ? AREA_NAMES[id]! : id;
+
+/**
+ * A role as the console's Members page names it: "DJDL admin", and for a role narrowed to some
+ * areas "DJDL admin · Licensing, Sign-in". `sep` is the terminal's separator (`·`, or `-` in ASCII).
+ */
+export function roleText(
+  role: string,
+  scope: string,
+  areas: unknown,
+  productName: (slug: string) => string,
+  sep: string,
+  env: UntrustedEnv,
+): string {
+  const label = shown(roleName(role, scope, productName), env);
+  const names = Array.isArray(areas)
+    ? areas
+        .filter((a): a is string => typeof a === "string")
+        .map((a) => shown(areaName(a), env))
+    : [];
+  return names.length ? `${label} ${sep} ${names.join(", ")}` : label;
+}
+
 interface RawRole {
   role?: unknown;
   scope?: unknown;
   source?: unknown;
+  areas?: unknown;
 }
 
 /**
@@ -528,13 +498,16 @@ export function cmdWhoami(io: AccountIo): Promise<number> {
       for (const p of me["products"] as { slug?: unknown; name?: unknown }[])
         if (typeof p?.slug === "string" && typeof p.name === "string")
           products.set(p.slug, p.name);
+    const t = io.term(io.stdout);
     const roleNames = [
       ...new Set(
         rawRoles.map((r) =>
-          shown(
-            roleName(String(r.role), String(r.scope), (slug) => {
-              return products.get(slug) ?? slug;
-            }),
+          roleText(
+            String(r.role),
+            String(r.scope),
+            r.areas,
+            (slug) => products.get(slug) ?? slug,
+            t.symbols.separator,
             io.env,
           ),
         ),
@@ -577,13 +550,12 @@ export function cmdWhoami(io: AccountIo): Promise<number> {
       return 0;
     }
 
-    const t = io.term(io.stdout);
     const rolesLine: Line = roleNames.length
       ? roleNames.flatMap((r, i): Span[] => [
           ...(i ? [text(", ")] : []),
           text(r, { unit: true }),
         ])
-      : [text("none")];
+      : [text("None")];
     const rows: [string, Line][] = [
       ["Host", [text(host, { break: "url" })]],
       ["Name", name ? [text(name, { unit: true })] : []],
@@ -773,7 +745,7 @@ export function cmdLogout(io: AccountIo): Promise<number> {
         block(io.term(io.stderr), "warn", [
           [text(message)],
           [text(revokeLine)],
-          [text(revokeUrl, { break: "url" })],
+          [text(revokeUrl, { break: "url", link: revokeUrl })],
         ]),
       );
     }

@@ -17,11 +17,11 @@ Waiting for approval…
 ✓  Signed in as Ada Lovelace
    (ada@example.com)
 
-  Roles     DJDL admin
-  Token     “pkey on laptop”
-            (pkeyp_…h7Q2)
-  Ends      2096-10-02
-  Saved in  macOS Keychain
+   Roles     DJDL admin
+   Token     “pkey on laptop”
+             (pkeyp_…h7Q2)
+   Ends      2096-10-02
+   Saved in  macOS Keychain
 
-  End it with pkey logout.
+   End it with pkey logout.
 --- stderr ---

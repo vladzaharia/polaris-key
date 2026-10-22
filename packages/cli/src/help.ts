@@ -115,11 +115,11 @@ const CI_ENV: EnvVar = {
 const TOKEN_ENV: EnvVar = {
   name: ADMIN_TOKEN_ENV,
   text:
-    "Instead of the sign-in `pkey login` saved: an admin API token (`pkeya_...`) or a personal " +
-    "token (`pkeyp_...`), sent as `Authorization: Bearer`. Mint an API token in the console: " +
-    "/manage -> API tokens -> New token; the value is shown ONCE, at mint. It is individually " +
-    "revocable and expires on the date you chose. Do not commit it, and do not export it into a " +
-    "shared shell.",
+    "Used instead of the sign-in pkey login saved: a personal token (pkeyp_...) or an admin " +
+    "API token (pkeya_...) with the bundles:mint scope, sent as Authorization: Bearer. Make an " +
+    "API token in the console under API tokens; its value is shown once, when you make it. It " +
+    "can be revoked on its own and ends on the date you chose. Do not commit it or export it " +
+    "into a shared shell.",
 };
 
 const ciEnvFor = (subs: readonly string[]): EnvVar => ({ ...CI_ENV, subs });
@@ -459,13 +459,14 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "bundle",
     group: "bundles",
-    json: false,
+    json: true,
+    valueless: ["json"],
     context: ["product", "baseUrl"],
     summary: "Mint an offline activation bundle for one device",
     rows: [["bundle", "Mint an offline activation bundle for one device"]],
     usage: [
       "pkey bundle --product slug --device id --grace-days n [--no-config] [--license id] " +
-        "[--base-url url] [--out file] [--force]",
+        "[--base-url url] [--out file] [--force] [--json]",
     ],
     about: [
       {
@@ -481,6 +482,11 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "is refused before anything is sent. The file is written with mode 0600, is never " +
           "created over an existing one without --force, and is never written through a " +
           "symbolic link.",
+      },
+      {
+        text:
+          "--json prints one line, the result: the bundle id, the file, the device, the grace " +
+          "days and the documents it carries; on a failure, the error and its message.",
       },
     ],
     env: [TOKEN_ENV],

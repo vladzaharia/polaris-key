@@ -25,7 +25,10 @@
  */
 
 import { ADMIN_TOKEN_ENV, normalizeBaseUrl } from "./bundle.js";
+import { Refusal } from "./refusal.js";
 import { RETIRED_COOKIE_REFUSAL, retiredCookieSet } from "./retired.js";
+
+export { Refusal };
 
 export const KEYCHAIN_SERVICE = "pkey";
 
@@ -63,18 +66,6 @@ export interface CredentialStore {
   set(origin: string, credential: StoredCredential): void;
   /** True when an entry was removed. */
   delete(origin: string): boolean;
-}
-
-/** A refusal (exit 4): the sentence, the one fix, and the `--json` error code. */
-export class Refusal extends Error {
-  constructor(
-    message: string,
-    readonly fix?: string,
-    readonly code: string = "refused",
-  ) {
-    super(message);
-    this.name = "Refusal";
-  }
 }
 
 /** The tail of a fix that names no command; the account commands put theirs in its place. */

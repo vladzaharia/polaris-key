@@ -103,7 +103,13 @@ import {
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { untrusted } from "./untrusted.js";
-import { UsageError } from "./errors.js";
+import { UsageError, isInternalError } from "./errors.js";
+import { Redirected, Unreachable, networkCode } from "./netErrors.js";
+import {
+  MAX_JSON_BYTES,
+  REQUEST_TIMEOUT_MS,
+  readCappedText,
+} from "./httpRead.js";
 
 /**
  * The platform's production origin — the same value as `DEFAULT_BASE` in
@@ -159,7 +165,7 @@ const NOFOLLOW: number =
 /** The one usage line, so the help text and every refusal cannot drift apart. */
 export const BUNDLE_USAGE =
   "Usage: pkey bundle --product <slug> --device <id> --grace-days <n> " +
-  "[--no-config] [--license <id>] [--base-url <url>] [--out <file>] [--force]";
+  "[--no-config] [--license <id>] [--base-url <url>] [--out <file>] [--force] [--json]";
 
 export interface MintBundleOptions {
   /** The directory `out` resolves against — the handler's `cwd`, never `process.cwd()`. */
@@ -198,6 +204,8 @@ export interface MintBundleResult {
   baseUrl: string;
   /** The mint endpoint that answered. */
   url: string;
+  /** The documents the bundle carries (`license`, `config`), read from its payload; `[]` if unreadable. */
+  documents: string[];
 }
 
 /** `<product>-<first 8 of deviceId>.pkeybundle`. The slug is reduced to filename-safe
@@ -273,14 +281,14 @@ export async function mintBundle(
     body,
     signal: opts.signal,
   });
-  if (!res.ok) throw await httpError(res, `Minting a bundle at ${url}`);
+  if (!res.ok) throw await failureOf(res, url, "mint a bundle", bundleHint);
 
   const payload = await readJson(res, url);
   const bundleId = asString(payload.bundleId);
   const bundle = asString(payload.bundle);
   if (!bundleId || !bundle) {
     throw new Error(
-      `${url} answered ${res.status} without a bundle. Expected {bundleId, bundle}.`,
+      `${hostLabel(url)} answered ${res.status} without a bundle. Expected {bundleId, bundle}.`,
     );
   }
 
@@ -295,9 +303,36 @@ export async function mintBundle(
     graceDays: opts.graceDays,
     baseUrl,
     url,
+    documents: documentsOf(bundle),
   };
 }
 
+/**
+ * The documents a compact `pkey-bundle+jws` carries, read from its payload without verifying it
+ * (this is for the success line only; the device verifies the bundle). `[]` when unreadable.
+ */
+function documentsOf(jws: string): string[] {
+  try {
+    const part = jws.split(".")[1] ?? "";
+    const doc = JSON.parse(Buffer.from(part, "base64url").toString("utf8")) as {
+      docs?: Record<string, unknown>;
+    };
+    return ["license", "config"].filter(
+      (k) => doc.docs !== undefined && doc.docs[k] !== undefined,
+    );
+  } catch {
+    return [];
+  }
+}
+
+/** The 400 a mint answers when the licence is missing or not usable. */
+function bundleHint(status: number, detail: ErrorDetail): string | undefined {
+  if (status === 400 && detail.fields?.includes("licenseId"))
+    return /required/i.test(detail.message ?? "")
+      ? "Add --license <id>."
+      : "Check --license.";
+  return statusHint(status);
+}
 /** A token, or a function that resolves one (the caller's credential lookup, run last). */
 export type TokenSource = string | undefined | (() => Promise<string>);
 
@@ -391,17 +426,41 @@ export function normalizeBaseUrl(raw: string, credentialEnv: string): string {
   return raw.replace(/\/+$/, "");
 }
 
-/** `fetch`, with transport failures named. Bare `fetch failed` tells an operator nothing. */
+/** The host of `url`, with any token masked: what an error names instead of the address. */
+export function hostLabel(url: string): string {
+  try {
+    return maskTokens(new URL(url).host);
+  } catch {
+    return "the server";
+  }
+}
+
+/**
+ * `fetch` for the admin API: no redirect is followed (a 3xx is `Redirected`), a request that has
+ * not answered in `REQUEST_TIMEOUT_MS` ends (unless the caller brought its own deadline), and a
+ * transport failure is `Unreachable` with the network error's code kept as `cause`. The address
+ * is never printed: `/manage/api/…` is an implementation detail, and a base URL can carry a token.
+ */
 export async function request(
   f: typeof fetch,
   url: string,
   init: RequestInit,
 ): Promise<Response> {
+  let res: Response;
   try {
-    return await f(url, init);
+    res = await f(url, {
+      ...init,
+      redirect: "manual",
+      signal: init.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
   } catch (e) {
-    throw new Error(`Could not reach ${url}: ${(e as Error).message}`);
+    // A bug in pkey (a TypeError with no code) is not a network failure.
+    if (isInternalError(e)) throw e;
+    throw new Unreachable(hostLabel(url), networkCode(e));
   }
+  if (res.status >= 300 && res.status < 400)
+    throw new Redirected(hostLabel(url));
+  return res;
 }
 
 /**
@@ -409,14 +468,40 @@ export async function request(
  * `{error:{code,message,fields}, code, message, fields}` (`core/console/respond.ts`), so the
  * server's own words are always available — a bare status is never the best we can do.
  */
+export async function failureOf(
+  res: Response,
+  url: string,
+  verb: string,
+  hintFor: (status: number, detail: ErrorDetail) => string | undefined = (
+    status,
+  ) => statusHint(status),
+): Promise<HttpFailure> {
+  const detail = await errorDetail(res);
+  const said = serverWords(detail.message);
+  const hint = hintFor(res.status, detail);
+  return new HttpFailure(
+    `${hostLabel(url)} couldn't ${verb} (HTTP ${res.status})${said ? `: ${said}` : ""}.${hint ? `\n${hint}` : ""}`,
+    res.status,
+    detail,
+  );
+}
+
+/** The server's words as one clause: cleaned (`untrusted.ts`), a token it echoes masked, no final stop. */
+function serverWords(v: unknown): string {
+  return v ? maskTokens(untrusted(v, {})).trim().replace(/\.+$/, "") : "";
+}
+
+/**
+ * The same for a caller that only needs the status and the server's `detail` (`pkey doctor`):
+ * the message names `what`, and the server's words are masked.
+ */
 export async function httpError(
   res: Response,
   what: string,
   hintFor: (status: number) => string | undefined = statusHint,
 ): Promise<HttpFailure> {
   const detail = await errorDetail(res);
-  // The server's words: each cleaned (`untrusted.ts`) before it joins pkey's message.
-  const u = (v: unknown) => untrusted(v, {});
+  const u = (v: unknown) => maskTokens(untrusted(v, {}));
   const label = [String(res.status), detail.code && u(detail.code)]
     .filter(Boolean)
     .join(" ");
@@ -426,7 +511,7 @@ export async function httpError(
     : "";
   const hint = hintFor(res.status);
   return new HttpFailure(
-    `${what} failed (${label})${message}${fields}${hint ? `\n${hint}` : ""}`,
+    `${maskTokens(what)} failed (${label})${message}${fields}${hint ? `\n${hint}` : ""}`,
     res.status,
     detail,
   );
@@ -448,26 +533,13 @@ export class HttpFailure extends Error {
 }
 
 export function statusHint(status: number): string | undefined {
-  if (status === 401) {
-    return (
-      `Your sign-in or the token in ${ADMIN_TOKEN_ENV} was refused. The server answers one 401 for ` +
-      "unknown, revoked and expired alike, on purpose. Run pkey login, or check the roster in the " +
-      "console (/manage -> API tokens) and mint a replacement there."
-    );
-  }
-  if (status === 403) {
-    return (
-      "Authenticated, but not allowed. Two causes look identical from here: the token is not " +
-      "scoped for this route (a `pkeya_` token needs `bundles:mint`), or the identity behind it " +
-      "is not allowed to do this."
-    );
-  }
-  if (status === 404) {
-    return "No such product, or it has no usable signing key — a product that cannot sign cannot mint.";
-  }
-  if (status === 429) {
-    return "The admin API rate limit tripped. Wait a minute and retry.";
-  }
+  if (status === 401) return "Run pkey login.";
+  if (status === 403)
+    return `Use a token that covers this: an API token needs the bundles:mint scope.`;
+  if (status === 404)
+    return "Check --product, and that the product has a signing key.";
+  if (status === 429) return "Wait a minute, then try again.";
+  if (status >= 500) return "Try again in a minute.";
   return undefined;
 }
 
@@ -482,7 +554,8 @@ export interface ErrorDetail {
 }
 
 async function errorDetail(res: Response): Promise<ErrorDetail> {
-  const text = await res.text().catch(() => "");
+  // Through the 64 KiB cap: a host that streams without end cannot hold the command.
+  const text = (await readCappedText(res)) ?? "";
   let parsed: unknown;
   try {
     parsed = JSON.parse(text) as unknown;
@@ -513,18 +586,23 @@ export async function readJson(
   res: Response,
   url: string,
 ): Promise<Record<string, unknown>> {
-  const text = await res.text();
+  const host = hostLabel(url);
+  const text = await readCappedText(res);
+  if (text === null)
+    throw new Error(
+      `${host} answered ${res.status} with a body over ${MAX_JSON_BYTES / 1024} KiB.`,
+    );
   let parsed: unknown;
   try {
     parsed = JSON.parse(text) as unknown;
   } catch {
     throw new Error(
-      `${url} answered ${res.status} with a body that is not JSON: ${clip(text.trim())}`,
+      `${host} answered ${res.status} with a body that is not JSON.`,
     );
   }
   if (!isRecord(parsed))
     throw new Error(
-      `${url} answered ${res.status} with a non-object JSON body.`,
+      `${host} answered ${res.status} with a non-object JSON body.`,
     );
   return parsed;
 }

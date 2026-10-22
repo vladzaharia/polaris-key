@@ -51,7 +51,7 @@ import {
   plain,
   Redirected,
   REQUEST_TIMEOUT_MS,
-  roleName,
+  roleText,
   rowsText,
   shown,
   text,
@@ -59,6 +59,7 @@ import {
   type AccountIo,
 } from "./account.js";
 import {
+  hintOf,
   isCredentialShape,
   Refusal,
   type CredentialStore,
@@ -262,10 +263,23 @@ export function cmdLogin(io: LoginIo): Promise<number> {
     Object.entries(io.seams).filter(([, v]) => v !== undefined),
   );
   const seams: LoginSeams = { ...defaultSeams(), ...given };
-  return guarded(io, "login", () => flow(io, seams));
+  // A heading held back for the live region is printed after all if the sign-in fails before it.
+  const deferred: { flush?: () => void } = {};
+  return guarded(io, "login", async () => {
+    try {
+      return await flow(io, seams, deferred);
+    } catch (e) {
+      deferred.flush?.();
+      throw e;
+    }
+  });
 }
 
-async function flow(io: LoginIo, seams: LoginSeams): Promise<number> {
+async function flow(
+  io: LoginIo,
+  seams: LoginSeams,
+  deferred: { flush?: () => void },
+): Promise<number> {
   // 1. CI: before the network and before the credential store.
   if (isCi(io.env))
     throw new Refusal(
@@ -290,40 +304,69 @@ async function flow(io: LoginIo, seams: LoginSeams): Promise<number> {
   const out = io.term(io.stdout);
   const errTerm = io.term(io.stderr);
   const say = (s: string) => io.stdout.write(s);
+  /** `line` wrapped to `columns` (`indent` in), one string per row. */
+  const layout = (line: Line, columns: number, indent = 0): string[] =>
+    wrapSpans(line, Math.max(1, columns - indent)).map(
+      (l) => `${" ".repeat(indent)}${out.painter.line(l)}`,
+    );
   const put = (t: Term, line: Line, indent = 0): string =>
     wrapSpans(line, Math.max(1, t.caps.columns - indent))
       .map((l) => `${" ".repeat(indent)}${t.painter.line(l)}\n`)
       .join("");
 
-  if (!io.json) {
+  // The heading, link and code are one live region with the spinner when stdout and stderr are
+  // both a terminal, so a resize lays them out again; otherwise they are printed once.
+  const spinner = new Spinner(io.stderr, io.env, io.flags);
+  const live = !io.json && spinner.active && Boolean(io.stdout.isTTY);
+
+  /** The title, the notice that a sign-in is replaced, and the blank rows around them. */
+  const titleRows = (columns: number): string[] => {
     const title = "Polaris Key console";
     const sep = out.symbols.separator;
     // One line when it fits; else the separator stays at the end of the first and the host hangs.
-    const fits = cellWidth(`${title} ${sep} ${host}`) <= out.caps.columns;
-    say(
-      put(
-        out,
+    const fits = cellWidth(`${title} ${sep} ${host}`) <= columns;
+    return [
+      ...layout(
         fits
           ? [
               text(title, { style: ["strong"] }),
               text(` ${sep} ${host}`, { style: ["muted"] }),
             ]
           : [text(`${title} ${sep}`, { style: ["strong"] })],
+        columns,
       ),
-    );
-    if (!fits) say(put(out, [text(host, { style: ["muted"], break: "url" })]));
-    say("\n");
-    if (replaces)
-      say(
-        `${put(out, [text("You're already signed in here. The old token ends once the new one is saved.")])}\n`,
-      );
+      ...(fits
+        ? []
+        : layout([text(host, { style: ["muted"], break: "url" })], columns)),
+      "",
+      ...(replaces
+        ? [
+            ...layout(
+              [
+                text(
+                  "You're already signed in here. The old token ends once the new one is saved.",
+                ),
+              ],
+              columns,
+            ),
+            "",
+          ]
+        : []),
+    ];
+  };
+
+  if (!io.json) {
+    if (live)
+      deferred.flush = () => say(`${titleRows(out.caps.columns).join("\n")}\n`);
+    else say(`${titleRows(out.caps.columns).join("\n")}\n`);
     if (io.env[ADMIN_TOKEN_ENV]?.trim())
       io.stderr.write(
         block(
           errTerm,
           "warn",
           plain(
-            `${ADMIN_TOKEN_ENV} is set and takes precedence over this sign-in. Unset it to use the one pkey login saves.`,
+            `${ADMIN_TOKEN_ENV} is set and takes precedence over this sign-in.`,
+            "Unset it to use the one pkey login saves.",
           ),
         ),
       );
@@ -385,8 +428,8 @@ async function flow(io: LoginIo, seams: LoginSeams): Promise<number> {
     );
   if ([404, 405, 422, 501].includes(startRes.status))
     throw new Refusal(
-      `${host} doesn't offer terminal sign-in; use ${ADMIN_TOKEN_ENV}.`,
-      undefined,
+      `${host} doesn't offer terminal sign-in.`,
+      `Set ${ADMIN_TOKEN_ENV} to a personal token instead.`,
       "unsupported",
     );
   if (startRes.status !== 201)
@@ -417,9 +460,7 @@ async function flow(io: LoginIo, seams: LoginSeams): Promise<number> {
   const deadline = now() + expiresIn * 1000;
   // Built here, from the origin pkey resolved: a server cannot send the person elsewhere.
   const approveUrl = `${origin}/manage/device?code=${userCode}`;
-  // Too narrow for the whole link: print it without the code, which shows right under it.
-  const shortLink = !io.json && approveUrl.length >= out.caps.columns;
-  const shownUrl = shortLink ? `${origin}/manage/device` : approveUrl;
+  let heading: (() => void) | undefined;
 
   // 6. Show the code and the link; open the browser when allowed.
   const remote = Boolean(io.env["SSH_CONNECTION"] || io.env["SSH_TTY"]);
@@ -451,39 +492,63 @@ async function flow(io: LoginIo, seams: LoginSeams): Promise<number> {
     );
   } else {
     const opened = mayOpen ? await open() : false;
-    if (opened)
-      say(
-        put(out, [
-          text(`Opening Polaris Key in your browser${out.symbols.ellipsis}`),
-        ]),
-      );
-    say(
-      put(
-        out,
-        opened
-          ? [text("Didn't open? Go to", { style: ["muted"] })]
-          : [text("Open this link in a browser:")],
-      ),
-    );
-    say(put(out, [text(shownUrl, { break: "url" })]));
-    say("\n");
-    say(
-      put(out, [
-        text(
-          shortLink
-            ? "Enter this code in your browser:"
-            : "Check that the code in your browser matches:",
+    /** The opening line, the link, and the code with its prompt: laid out for `columns`. */
+    const codeRows = (columns: number): string[] => {
+      // Too narrow for the whole link: print it without the code, which shows right under it.
+      const short = approveUrl.length >= columns;
+      const shown = short ? `${origin}/manage/device` : approveUrl;
+      return [
+        ...(opened
+          ? layout(
+              [
+                text(
+                  `Opening Polaris Key in your browser${out.symbols.ellipsis}`,
+                ),
+              ],
+              columns,
+            )
+          : []),
+        ...layout(
+          opened
+            ? [text("Didn't open? Go to", { style: ["muted"] })]
+            : [text("Open this link in a browser:")],
+          columns,
         ),
-      ]),
-    );
-    say(`${out.painter.style(` ${userCode} `, ["code"])}\n\n`);
+        ...layout([text(shown, { break: "url", link: approveUrl })], columns),
+        "",
+        ...layout(
+          [
+            text(
+              short
+                ? "Enter this code in your browser:"
+                : "Check that the code in your browser matches:",
+            ),
+          ],
+          columns,
+        ),
+        out.painter.style(` ${userCode} `, ["code"]),
+        "",
+      ];
+    };
+    if (live) {
+      // Held in the spinner's region; `finish` prints the last layout when the region closes.
+      const rows = (columns: number): string[] => [
+        ...titleRows(columns),
+        ...codeRows(columns),
+      ];
+      deferred.flush = undefined;
+      spinner.setHeader(rows);
+      heading = () => say(`${rows(out.caps.columns).join("\n")}\n`);
+    } else say(`${codeRows(out.caps.columns).join("\n")}\n`);
   }
 
-  const spinner = new Spinner(io.stderr, io.env, io.flags);
   const wrapped = spinner.wrap(io.stdout);
   let cleanup: (() => void)[] = [];
   const finish = () => {
     spinner.stop();
+    // The region took the heading with it: print what it last showed, once.
+    heading?.();
+    heading = undefined;
     for (const c of cleanup) c();
     cleanup = [];
   };
@@ -695,7 +760,7 @@ async function flow(io: LoginIo, seams: LoginSeams): Promise<number> {
             "Revoke one in Personal tokens, then run ",
             " again.",
           ),
-          [text(url, { break: "url" })],
+          [text(url, { break: "url", link: url })],
         ],
         extra: { url },
       });
@@ -729,7 +794,7 @@ async function flow(io: LoginIo, seams: LoginSeams): Promise<number> {
     if (status === "denied")
       return report({
         state: "denied",
-        exit: 4,
+        exit: 1,
         kind: "warn",
         lines: [
           [text(`Code ${userCode} was canceled in the browser.`)],
@@ -844,11 +909,12 @@ async function approved(
   }
   if (!kept) {
     // The old sign-in still works on the server: put it back if the write displaced it.
+    let restored = true;
     if (a.previous)
       try {
         store.set(origin, a.previous);
       } catch {
-        /* nothing more can be done with a store that refuses */
+        restored = false;
       }
     const ended = await revoked(io, cred);
     const name = backendName(a.platform);
@@ -871,16 +937,18 @@ async function approved(
                 `${unlockAdvice(a.platform)} and run `,
                 " again, or make a token at ",
               ),
-              text(personalTokens, { break: "url" }),
+              text(personalTokens, { break: "url", link: personalTokens }),
               text(` and set ${ADMIN_TOKEN_ENV}.`),
             ]
           : [
               text(
                 `Revoke ${label ? `${quote[0]}${label}${quote[1]} ` : ""}(pkeyp_${t.symbols.ellipsis}${hint}) at `,
               ),
-              text(personalTokens, { break: "url" }),
-              text("."),
+              text(personalTokens, { break: "url", link: personalTokens }),
             ],
+        ...(a.previous && !restored
+          ? [rerun(io, origin, "Your old sign-in may need ", " again.")]
+          : []),
       ],
     );
   }
@@ -900,7 +968,7 @@ async function approved(
   // Who is it? The new token reads its own identity; failing that, still signed in.
   let name = "";
   let email = "";
-  let roles: { role: string; scope: string }[] = [];
+  let roles: { role: string; scope: string; areas?: unknown }[] = [];
   const products = new Map<string, string>();
   try {
     const res = await call(io, cred, "GET", "/me");
@@ -913,11 +981,12 @@ async function approved(
           if (typeof p?.slug === "string" && typeof p.name === "string")
             products.set(p.slug, shown(p.name, io.env));
       const perms = (me["permissions"] ?? {}) as {
-        roles?: { role?: unknown; scope?: unknown }[];
+        roles?: { role?: unknown; scope?: unknown; areas?: unknown }[];
       };
       roles = (Array.isArray(perms.roles) ? perms.roles : []).map((r) => ({
         role: shown(r.role, io.env),
         scope: shown(r.scope, io.env),
+        areas: r.areas,
       }));
     }
   } catch {
@@ -931,7 +1000,7 @@ async function approved(
         host,
         name,
         email,
-        roles,
+        roles: roles.map((r) => ({ role: r.role, scope: r.scope })),
         token: {
           type: "personal",
           scope: "admin",
@@ -960,7 +1029,14 @@ async function approved(
   const roleNames = [
     ...new Set(
       roles.map((r) =>
-        roleName(r.role, r.scope, (slug) => products.get(slug) ?? slug),
+        roleText(
+          r.role,
+          r.scope,
+          r.areas,
+          (slug) => products.get(slug) ?? slug,
+          t.symbols.separator,
+          io.env,
+        ),
       ),
     ),
   ];
@@ -970,35 +1046,39 @@ async function approved(
       [
         [
           "Roles",
-          roleNames.flatMap(
-            (r, i): Line => [
-              ...(i ? [text(", ")] : []),
-              text(r, { unit: true }),
-            ],
-          ),
+          roleNames.length
+            ? roleNames.flatMap(
+                (r, i): Line => [
+                  ...(i ? [text(", ")] : []),
+                  text(r, { unit: true }),
+                ],
+              )
+            : [text("None")],
         ],
         ["Token", tokenLine(t, label, hint)],
         ["Ends", [text(day(expiresAt, io.env), { unit: true })]],
         ["Saved in", [text(backend, { unit: true })]],
       ],
-      { indent: 2, label: 10 },
+      { indent: 3, label: 10 },
     ),
   );
+  // Under the text after the glyph (3 columns in), as the rows are.
   io.stdout.write(
-    `\n${t.caps.columns < 32 ? "" : "  "}End it with pkey logout.\n`,
+    `\n${t.caps.columns < 32 ? "" : "   "}End it with ${t.painter.style("pkey logout", ["strong"])}.\n`,
   );
   if (previous === "not-revoked") {
     const until = a.previous?.expiresAt
       ? ` until ${day(a.previous.expiresAt, io.env)}`
       : "";
+    const errT = io.term(io.stderr);
+    const old = a.previous ? shown(hintOf(a.previous), io.env) : "";
     io.stderr.write(
-      `\n${block(io.term(io.stderr), "warn", [
+      `\n${block(errT, "warn", [
         [
           text(
-            `Couldn't end your previous sign-in, so it still works${until}. Revoke it at `,
+            `Couldn't end your previous sign-in (pkeyp_${errT.symbols.ellipsis}${old}), so it still works${until}. Revoke it at `,
           ),
-          text(personalTokens, { break: "url" }),
-          text("."),
+          text(personalTokens, { break: "url", link: personalTokens }),
         ],
       ])}`,
     );

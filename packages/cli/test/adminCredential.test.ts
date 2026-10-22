@@ -209,7 +209,13 @@ describe("the three admin commands share one credential", () => {
       const bad = argv.map((a) => (a === ORIGIN ? "http://evil.example" : a));
       const r = await run(bad, { stored: STORED, fetchImpl: s.f });
       expect(r.code).toBe(2);
-      expect(r.err).toContain("--base-url must be https:");
+      expect(r.err).toContain(
+        "▲  pkey " +
+          argv[0] +
+          (argv[0] === "listing" ? " import" : "") +
+          " needs an https address.",
+      );
+      expect(r.err).not.toContain("PKEY_ADMIN_TOKEN");
       expect(s.calls).toEqual([]);
     });
 
@@ -222,7 +228,7 @@ describe("the three admin commands share one credential", () => {
           fetchImpl: s.f,
         });
         expect(r.code).toBe(2);
-        expect(r.err).toContain("[token]");
+        expect(r.err).toContain("needs an https address");
         for (const text of [r.out, r.err]) {
           expect(text).not.toContain(pasted);
           expect(text).not.toContain(STORED);
@@ -236,6 +242,7 @@ describe("the three admin commands share one credential", () => {
     ["whoami", ["whoami"], false],
     ["whoami --json", ["whoami", "--json"], false],
     ["migrate --json", ["migrate", "list", "--json"], true],
+    ["bundle --json", [...BUNDLE.slice(0, 7), "--json"], true],
   ])(
     "pkey %s never prints a token pasted into --base-url",
     async (_n, argv, echoes) => {
@@ -253,8 +260,10 @@ describe("the three admin commands share one credential", () => {
             pasted.slice(0, 12) + pasted.slice(12, 20),
           );
         }
-        // whoami's usage line does not repeat the address at all; migrate's does, masked.
-        if (echoes) expect(r.err).toContain("[token]");
+        // whoami's usage line does not repeat the address at all; under --json the commands that
+        // take a result line put the refusal there.
+        if (echoes)
+          expect(JSON.parse(r.out)).toMatchObject({ exit: 2, error: "usage" });
       }
       expect(s.calls).toEqual([]);
     },

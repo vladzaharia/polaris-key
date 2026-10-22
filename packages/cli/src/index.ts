@@ -36,7 +36,14 @@ import {
   type DevInfo,
 } from "./devCommand.js";
 import { fixManifest, type FixMove } from "./fix.js";
-import { cmdLogout, cmdWhoami, envelope, type AccountIo } from "./account.js";
+import {
+  block,
+  cmdLogout,
+  cmdWhoami,
+  envelope,
+  text,
+  type AccountIo,
+} from "./account.js";
 import { withAdminCredential, type AdminIo } from "./adminAuth.js";
 import { cmdLogin, type LoginSeams } from "./login.js";
 import { keyringStore, type CredentialStore } from "./credentials.js";
@@ -725,7 +732,15 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
     cmdDoctor(p, rt.cwd, rt.stdout, rt.term(rt.stdout), rt.ci, adminIo(p, rt)),
   bundle: (p, rt) =>
     withAdminCredential(adminIo(p, rt), "bundle", (token) =>
-      cmdBundle(p, rt.cwd, rt.stdout, rt.ci.env, token, rt.ci.fetchImpl),
+      cmdBundle(
+        p,
+        rt.cwd,
+        rt.stdout,
+        rt.term(rt.stdout),
+        rt.ci.env,
+        token,
+        rt.ci.fetchImpl,
+      ),
     ),
   migrate: (p, rt) =>
     withAdminCredential(adminIo(p, rt), "migrate", (token) =>
@@ -1404,7 +1419,8 @@ async function doctorJson(
 async function cmdBundle(
   parsed: ParsedArgs,
   cwd: string,
-  stdout: Pick<NodeJS.WriteStream, "write">,
+  stdout: TermOut,
+  term: Term,
   env: UntrustedEnv,
   token: TokenSource,
   fetchImpl?: typeof fetch,
@@ -1430,16 +1446,34 @@ async function cmdBundle(
   });
 
   const rel = path.relative(cwd, result.file);
-  stdout.write(`Minted bundle ${untrusted(result.bundleId, env)}\n`);
-  stdout.write(`- File: ${rel}\n`);
-  stdout.write(`- Device: ${result.deviceId}\n`);
+  if (flagBool(parsed, "json")) {
+    stdout.write(
+      envelope("bundle", 0, {
+        bundleId: untrusted(result.bundleId, env),
+        file: result.file,
+        deviceId: result.deviceId,
+        graceDays: result.graceDays,
+        documents: result.documents,
+      }),
+    );
+    return 0;
+  }
+  // Which documents rode along is read from the bundle itself; if it cannot be read, say nothing.
+  const carries = result.documents.length
+    ? `${result.documents.join(" and ")}, `
+    : "";
   stdout.write(
-    `- Grace window: ${result.graceDays} day${result.graceDays === 1 ? "" : "s"} offline\n`,
-  );
-  // Which documents rode along is decided server-side by the product's enabled services, and
-  // the mint response does not say — so claim nothing rather than guess.
-  stdout.write(
-    "\nNext: transfer this file to the offline device and import it there.\n",
+    block(term, "ok", [
+      [
+        text("Wrote "),
+        text(rel, { break: "url" }),
+        text(
+          ` (${carries}${result.graceDays} day${result.graceDays === 1 ? "" : "s"} offline)`,
+        ),
+      ],
+      [text("Bundle "), text(untrusted(result.bundleId, env), { unit: true })],
+      [text("Take it to the offline device and import it there.")],
+    ]),
   );
   return 0;
 }
@@ -1472,7 +1506,7 @@ async function cmdMigrate(
   });
   stdout.write(
     flagBool(parsed, "json")
-      ? `${untrustedJson(result, 2)}\n`
+      ? envelope("migrate", 0, { ...result })
       : formatMigrate(result, env),
   );
   return 0;

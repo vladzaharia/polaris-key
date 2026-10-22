@@ -29,7 +29,9 @@ import {
   adminTokenFrom,
   type TokenSource,
   DEFAULT_BASE_URL,
-  httpError,
+  hostLabel,
+  failureOf,
+  maskTokens,
   normalizeBaseUrl,
   readJson,
   request,
@@ -165,14 +167,17 @@ export async function listingImport(
         );
       }
       throw new Error(
-        `Importing at ${url} failed (409): ${untrusted(payload.message ?? payload.reason ?? "conflict", {})}`,
+        `${hostLabel(url)} couldn't import the listing (HTTP 409): ${maskTokens(untrusted(payload.message ?? payload.reason ?? "conflict", {}))}.`,
       );
     }
-    if (!res.ok) throw await httpError(res, `Importing at ${url}`, listingHint);
+    if (!res.ok)
+      throw await failureOf(res, url, "import the listing", listingHint);
     const payload = await readJson(res, url);
     const answer = payload.import as ImportAnswer | undefined;
     if (!answer || typeof answer.digest !== "string")
-      throw new Error(`${url} answered ${res.status} without an import diff.`);
+      throw new Error(
+        `${hostLabel(url)} answered ${res.status} without an import diff.`,
+      );
     return answer;
   };
 
