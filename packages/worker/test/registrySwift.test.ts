@@ -19,7 +19,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseManifest } from "@polaris-key/manifest";
 import { makeTestDb, NO_HOOKS } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { NOW } from "./seed.js";
+import { NOW, seedLicenseWithKey } from "./seed.js";
+import { mintRegistryToken } from "../src/core/registry/registryTokens.js";
 import { asR2, installDigestStream, R2Mock } from "./r2Mock.js";
 import {
   admin,
@@ -860,6 +861,52 @@ describe("Swift registry routes (F-06)", () => {
     expect(missing.headers.get("content-type")).toBe(
       "application/problem+json",
     );
+  });
+
+  it("identifiers on a public feed never names a package only a credential may read", async () => {
+    await publishSwift("1.0.0");
+    // acme.Other is claimed by the same repository, gated by the `pro` flag; the feed stays public.
+    await db.run(
+      "UPDATE dist_registry_feeds SET ext_json = ? WHERE product = ? AND ecosystem = 'swift'",
+      JSON.stringify({
+        requireSigned: true,
+        repositoryUrls: {
+          "acme.AcmeKit": ["https://github.com/acme/AcmeKit"],
+          "acme.Other": ["https://github.com/acme/AcmeKit"],
+        },
+      }),
+      SLUG,
+    );
+    await db.run(
+      "INSERT INTO dist_access (product, deliverable_id, mode, entitlement, modified_at) VALUES (?, 'swift.other', 'entitled', 'pro', ?)",
+      SLUG,
+      NOW,
+    );
+    forgetRegistrySettings();
+    const { licenseId } = await seedLicenseWithKey(db, SLUG, {
+      entitlements: { pro: { state: "enforced", value: true, updatedAt: NOW } },
+    });
+    const minted = await mintRegistryToken(
+      env,
+      db,
+      {
+        product: SLUG,
+        label: "reader",
+        binding: "license",
+        licenseId,
+        createdBy: "admin:test",
+      },
+      NOW,
+    );
+    if (!minted.ok) throw new Error(JSON.stringify(minted));
+    const url = encodeURIComponent("https://github.com/acme/AcmeKit");
+    const res = await get(`${BASE}/identifiers?url=${url}`, undefined, {
+      headers: {
+        authorization: `Basic ${btoa(`__token__:${minted.token}`)}`,
+      },
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ identifiers: ["acme.AcmeKit"] });
   });
 
   it("login checks a registry token (F-21) and publish (F-22) needs one, each answering like the feed", async () => {
