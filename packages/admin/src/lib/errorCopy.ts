@@ -456,6 +456,14 @@ export function errorCopy(
         action: "none",
         details,
       };
+    // ST-30c.2 (N3): an emergency sign-in names no account and creates no durable credential.
+    if (reason === "break_glass_session")
+      return {
+        title: "Emergency sign-in can't create tokens",
+        description: "Sign out, then sign in with your account to create one.",
+        action: "none",
+        details,
+      };
     return {
       title: "You can't do that",
       // The server's words stay in `details`: a 403 message is a policy line, not copy.

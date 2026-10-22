@@ -124,7 +124,7 @@ describe("console sign-in card in Chromium", () => {
       });
       const page = await context.newPage();
       await page.goto(`${origin}/manage/login`);
-      const nav = page.getByRole("navigation", { name: "Help and privacy" });
+      const nav = page.getByRole("navigation", { name: "Help and links" });
       await nav.waitFor();
       const links = nav.getByRole("link");
       expect(await links.allTextContents()).toEqual([
@@ -274,4 +274,86 @@ describe("the known-operator chip, Change and the break-glass link (ST-30c.2)", 
       await closeContext(context);
     },
   );
+});
+
+describe("the chip under large text and the lockup (UX review fixes)", () => {
+  it.each([
+    [360, 150],
+    [360, 200],
+    [390, 150],
+    [390, 200],
+  ] as const)(
+    "the address stays readable at %i px and %i %% text, with no sideways scroll",
+    async (width, pct) => {
+      const context = await browser.newContext({
+        viewport: { width, height: 800 },
+      });
+      await context.setExtraHTTPHeaders({
+        cookie:
+          "__Host-pkey_console_hint=vlad.zaharia%40polaris-engineering.dev",
+      });
+      const page = await context.newPage();
+      await page.goto(`${origin}/manage/login`);
+      await page.evaluate(
+        (p) => document.documentElement.style.setProperty("font-size", `${p}%`),
+        pct,
+      );
+      const email = page.locator(".chip-email");
+      const box = (await email.boundingBox())!;
+      // Change drops to its own line rather than squeezing the address to a sliver.
+      expect(box.width).toBeGreaterThan(110);
+      const lines = await email.evaluate((el) =>
+        Math.round(
+          el.getBoundingClientRect().height /
+            parseFloat(getComputedStyle(el).lineHeight || "20"),
+        ),
+      );
+      expect(lines).toBeLessThanOrEqual(4);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+      if (process.env.PK_SHOTS_DIR) {
+        mkdirSync(process.env.PK_SHOTS_DIR, { recursive: true });
+        await page.screenshot({
+          path: `${process.env.PK_SHOTS_DIR}/text${pct}-chip-${width}.png`,
+        });
+      }
+      await closeContext(context);
+    },
+  );
+
+  it("the lockup is 64 px tall from 30 rem and 52 px on phones, and 'Console' is 20 px / 500", async () => {
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+    });
+    const page = await context.newPage();
+    await page.goto(`${origin}/manage/login`);
+    const size = () =>
+      page.evaluate(() => {
+        const svg = document
+          .querySelector(".ac-brand svg")!
+          .getBoundingClientRect();
+        const s = getComputedStyle(document.querySelector(".ac-surface")!);
+        return [
+          Math.round(svg.width),
+          Math.round(svg.height),
+          s.fontSize,
+          s.fontWeight,
+        ];
+      });
+    expect(await size()).toEqual([222, 64, "20px", "500"]);
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect((await size()).slice(0, 2)).toEqual([180, 52]);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.evaluate(() =>
+      document.documentElement.style.setProperty("font-size", "200%"),
+    );
+    // Label and wordmark grow together (both in rem).
+    const big = await size();
+    expect(big[0]).toBe(444);
+    expect(big[2]).toBe("40px");
+    await closeContext(context);
+  });
 });

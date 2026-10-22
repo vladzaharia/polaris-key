@@ -459,6 +459,7 @@ async function signinCard(
       // A typed address in the URL wins over the remembered one (it is the retry's field).
       chip: ctx.hint ? null : remembered,
       knownEmail: known,
+      focusEmail: change,
     }),
     { status: 200, headers },
   );
@@ -902,9 +903,9 @@ async function breakGlassCallback(
     return htmlError(
       403,
       identity.email
-        ? `${identity.email} can’t use break-glass`
-        : "This account can’t use break-glass",
-      { lede: "Break-glass is for Superadmins only.", action: retry },
+        ? `${identity.email} can’t use emergency sign-in`
+        : "This account can’t use emergency sign-in",
+      { lede: "Emergency sign-in is for Superadmins only.", action: retry },
     );
   }
   // A fresh authentication is the point: an IdP that ignored `prompt=login` and `max_age=0`, or

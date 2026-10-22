@@ -12,6 +12,7 @@
  * A licensee can mint their own read tokens in the portal; those are listed here too.
  */
 
+import { useBreakGlassReason } from "../../../access/useCan.js";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -59,6 +60,7 @@ import { intentOf } from "../../core/pages/confirmGate.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
 import { useLicenses } from "../../license/components/shared.js";
 import { FeedNav } from "./FeedsArea.js";
+import { FeedList } from "./FeedList.js";
 import {
   ECOSYSTEMS,
   ECOSYSTEM_ICONS,
@@ -95,31 +97,6 @@ function creatorOf(t: RegistryTokenDto): string {
   if (t.createdBy.startsWith("admin:")) return t.createdBy.slice(6);
   if (t.createdBy.startsWith("portal:")) return "Licensee, in Polaris Locker";
   return t.createdBy;
-}
-
-function FeedList({
-  ecosystems,
-}: {
-  ecosystems: RegistryTokenDto["ecosystems"];
-}): React.ReactElement {
-  if (ecosystems === null)
-    return (
-      <StatusPill tone="neutral" icon={null} size="sm">
-        Every feed
-      </StatusPill>
-    );
-  return (
-    <span className="flex flex-wrap gap-1">
-      {ecosystems.map((e) => {
-        const Icon = ECOSYSTEM_ICONS[e] ?? KeyRound;
-        return (
-          <StatusPill key={e} tone="neutral" size="sm" icon={Icon}>
-            {ECOSYSTEM_LABELS[e] ?? e}
-          </StatusPill>
-        );
-      })}
-    </span>
-  );
 }
 
 function columns(withBinding: boolean): DataColumn<RegistryTokenDto>[] {
@@ -778,6 +755,7 @@ export function RegistryTokensPage({
   scope: FeedScope;
 }): React.ReactElement {
   const [minting, setMinting] = React.useState(false);
+  const noMint = useBreakGlassReason();
   const [revokingAll, setRevokingAll] = React.useState(false);
   const query = useRegistryTokens(scope);
   const anyLive = (query.data?.tokens ?? []).some((t) => t.status === "active");
@@ -794,7 +772,7 @@ export function RegistryTokensPage({
           <Button
             iconStart={<Plus aria-hidden />}
             onClick={() => setMinting(true)}
-            disabledReason={query.data ? undefined : "Loading"}
+            disabledReason={query.data ? noMint : "Loading"}
           >
             New token…
           </Button>
@@ -842,6 +820,7 @@ export function LicenseRegistryTokens({
     [slug],
   );
   const [minting, setMinting] = React.useState(false);
+  const noMint = useBreakGlassReason();
   const [revokingAll, setRevokingAll] = React.useState(false);
   const query = useRegistryTokens(scope, licenseId);
   const anyLive = (query.data?.tokens ?? []).some((t) => t.status === "active");
@@ -869,7 +848,7 @@ export function LicenseRegistryTokens({
             size="sm"
             iconStart={<Plus aria-hidden />}
             onClick={() => setMinting(true)}
-            disabledReason={query.data ? undefined : "Loading"}
+            disabledReason={query.data ? noMint : "Loading"}
           >
             New token…
           </Button>

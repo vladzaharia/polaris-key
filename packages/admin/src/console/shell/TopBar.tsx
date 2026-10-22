@@ -7,7 +7,7 @@ import type { ServiceAccent } from "../nav.js";
 import { BrandBlock } from "./BrandBlock.js";
 import { EnvironmentBadge } from "./EnvironmentBadge.js";
 import { ThemeMenu } from "./ThemeMenu.js";
-import { UserMenu } from "./UserMenu.js";
+import { formatSessionEnd, UserMenu } from "./UserMenu.js";
 import { Kbd } from "../../ui/Kbd.js";
 
 /**
@@ -69,6 +69,20 @@ export function TopBar({
         className="max-[24rem]:hidden lg:min-w-[calc(var(--sidebar-w)-1.5rem)]"
       />
       <EnvironmentBadge environment={me.environment} />
+      {me.breakGlass ? (
+        // ST-30c.2: stays in view while the session is an emergency sign-in, as "Staging" does.
+        <span
+          data-emergency=""
+          className="inline-flex shrink-0 items-center rounded-sm border border-warning-border bg-warning-subtle px-2 py-0.5 text-xs font-medium text-warning"
+        >
+          Emergency
+          {me.sessionExpiresAt ? (
+            <span className="max-sm:sr-only">
+              &nbsp;· until {formatSessionEnd(me.sessionExpiresAt)}
+            </span>
+          ) : null}
+        </span>
+      ) : null}
       <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
         <button
           type="button"

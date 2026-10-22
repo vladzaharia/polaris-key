@@ -34,6 +34,18 @@ export function useCan(
   return canIn(me, area, isPlatformArea(area) ? null : slug, level);
 }
 
+/** Why an emergency sign-in cannot create a durable credential (ST-30c.2, N3). */
+export const BREAK_GLASS_NO_TOKENS =
+  "Emergency sign-in can't create tokens. Sign out, then sign in with your account to create one.";
+
+/**
+ * Set while the session is an emergency sign-in: the reason a mint action (a token, a trusted
+ * publisher) is soft-disabled. The server refuses them anyway (`break_glass_session`).
+ */
+export function useBreakGlassReason(): string | undefined {
+  return useCachedMe()?.breakGlass ? BREAK_GLASS_NO_TOKENS : undefined;
+}
+
 /** The session `/me` the shell already loaded, read from the cache without fetching it. */
 function useCachedMe(): Me | undefined {
   return useQuery({ queryKey: qk.me(), queryFn: fetchMe, enabled: false }).data;

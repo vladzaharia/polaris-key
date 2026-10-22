@@ -1188,14 +1188,21 @@ describe("the top bar", () => {
     ).toBe("/");
   });
 
-  it("a break-glass session shows the warning banner and no My library; a normal one shows neither", async () => {
-    boot("#/", { me: { breakGlass: true } });
+  it("an emergency sign-in shows a labelled banner with the end time, a top-bar pill and no My library; a normal one shows none", async () => {
+    const ends = Math.floor(new Date(2026, 9, 3, 18, 40).getTime() / 1000);
+    boot("#/", { me: { breakGlass: true, sessionExpiresAt: ends } });
+    const region = await screen.findByRole("region", {
+      name: "Emergency sign-in",
+    });
+    expect(region.textContent).toMatch(
+      /You're using emergency sign-in until .+\. Sign out when you're done\./,
+    );
     expect(
-      await screen.findByText(
-        /You’re signed in with break-glass\. Sign out when you’re done\./,
-      ),
+      within(region).getByRole("button", { name: "Sign out" }),
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+    expect(document.querySelector("[data-emergency]")?.textContent).toMatch(
+      /^Emergency\s·\suntil /,
+    );
     await userEvent.click(
       await screen.findByRole("button", { name: "Account menu" }),
     );
@@ -1207,7 +1214,10 @@ describe("the top bar", () => {
     cleanup();
     boot("#/");
     await screen.findByRole("button", { name: "Account menu" });
-    expect(screen.queryByText(/signed in with break-glass/)).toBeNull();
+    expect(
+      screen.queryByRole("region", { name: "Emergency sign-in" }),
+    ).toBeNull();
+    expect(document.querySelector("[data-emergency]")).toBeNull();
   });
 
   it("omits the session end when the worker does not send it", async () => {
