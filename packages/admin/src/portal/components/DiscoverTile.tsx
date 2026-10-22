@@ -79,6 +79,7 @@ export function DiscoverTile({
   ended = false,
   onAdd,
   reserveStoreRow = false,
+  addedActions,
 }: {
   offer: PortalDiscoverOffer;
   state: DiscoverTileState;
@@ -89,6 +90,8 @@ export function DiscoverTile({
   onAdd: () => void;
   /** Some tile in the grid shows store links: every tile keeps the row so the actions sit level. */
   reserveStoreRow?: boolean;
+  /** An added tile's actions (`DiscoverAddedActions`); without them it keeps one Open button. */
+  addedActions?: React.ReactNode;
 }): React.ReactElement {
   const reason = offerReason(offer);
   const ReasonIcon = reason ? REASON_ICON[reason.kind] : null;
@@ -109,13 +112,13 @@ export function DiscoverTile({
   const noArt = !offer.headerUrl;
   const stores = !link && !added && offer.cta === "add" ? offer.stores : [];
   return (
-    <div className="pk-lift pk-pressable-card relative grid rounded-xl">
+    <div className="pk-lift pk-pressable-card relative grid rounded-lg">
       <article
         aria-labelledby={id}
         data-state={state}
         data-cta={offer.cta}
         className={cn(
-          "relative flex flex-col overflow-hidden rounded-xl border bg-surface-raised shadow-elevation-1",
+          "relative flex flex-col overflow-hidden rounded-lg border bg-surface-raised shadow-elevation-1",
           added ? "border-fg-strong" : "border-border",
         )}
       >
@@ -253,19 +256,21 @@ export function DiscoverTile({
           ) : ended && !added ? null : (
             <div className="relative mt-auto pt-3">
               {added ? (
-                <Button
-                  asChild
-                  variant="quiet"
-                  size="md"
-                  className="h-10 w-full pointer-coarse:h-11"
-                >
-                  <a id={`${id}-open`} href={href.product(offer.product)}>
-                    <ArrowRight aria-hidden />
-                    <span className="truncate">
-                      {t("locker.activate.open", { product: offer.name })}
-                    </span>
-                  </a>
-                </Button>
+                (addedActions ?? (
+                  <Button
+                    asChild
+                    variant="quiet"
+                    size="md"
+                    className="h-10 w-full pointer-coarse:h-11"
+                  >
+                    <a id={`${id}-open`} href={href.product(offer.product)}>
+                      <ArrowRight aria-hidden />
+                      <span className="truncate">
+                        {t("locker.activate.open", { product: offer.name })}
+                      </span>
+                    </a>
+                  </Button>
+                ))
               ) : (
                 <Button
                   id={`${id}-add`}
@@ -310,7 +315,7 @@ export function DiscoverTile({
           aria-hidden
           data-ring
           className={cn(
-            "pointer-events-none absolute inset-0 rounded-xl ring-1 ring-fg-strong",
+            "pointer-events-none absolute inset-0 rounded-lg ring-1 ring-fg-strong",
             pop && "pk-content-in",
           )}
         />

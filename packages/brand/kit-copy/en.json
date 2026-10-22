@@ -5266,6 +5266,21 @@
       "role": "hint",
       "note": "Discover page; moved from the portal's components (P0-36)."
     },
+    "locker.discover.addedTitle": {
+      "value": "Added to your library",
+      "role": "title",
+      "note": "Discover page; the mockup's toast and tile link (LX-discover)."
+    },
+    "locker.discover.addedBody": {
+      "value": "Sign in to {product} with {email}",
+      "role": "body",
+      "note": "Discover page; the mockup's toast and tile link (LX-discover)."
+    },
+    "locker.discover.go": {
+      "value": "Go to {product}",
+      "role": "button",
+      "note": "Discover page; the mockup's toast and tile link (LX-discover)."
+    },
     "locker.discover.ended": {
       "value": "{developer} no longer gives {product} to your account.",
       "role": "body",

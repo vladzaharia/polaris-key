@@ -19,9 +19,12 @@ import {
   reasonCopy,
   termsLine,
   withAdded,
+  youGetLine,
 } from "../src/portal/model/discover.js";
 import {
   axeViolations,
+  dlFile,
+  downloadsView,
   fetchedRequests,
   libraryFor,
   license,
@@ -315,6 +318,70 @@ describe("Discover (PX-16)", () => {
     expect((await tile("Mossgarden")).getAttribute("data-state")).toBe("added");
   });
 
+  it("the decision panel's You'd get row names the product, its tier and how long it lasts", () => {
+    const path = (terms: Parameters<typeof termsLine>[0] | null) => ({
+      kind: "auto_issue",
+      detail: null,
+      label: null,
+      terms,
+      action: "add" as const,
+      reason: "free_with_account",
+    });
+    expect(
+      youGetLine(
+        "Diceroll",
+        path({
+          tier: "standard",
+          tierLabel: "Standard",
+          deviceLimit: 3,
+          expiresAt: null,
+          expiryDays: null,
+        }),
+      ),
+    ).toBe("Diceroll Standard · lifetime");
+    expect(
+      youGetLine(
+        "Lumen RAW",
+        path({
+          tier: "beta",
+          tierLabel: "Beta",
+          deviceLimit: 2,
+          expiresAt: null,
+          expiryDays: 90,
+        }),
+      ),
+    ).toBe("Lumen RAW Beta · 90 days");
+    expect(youGetLine("Driftwood", path(null))).toBe("No license needed");
+  });
+
+  it("an added tile leads with the build for this device, then Go to the product (portal.discover)", async () => {
+    mockFetch({
+      ...discoverWorker([QUILL, MOSSGARDEN]),
+      "/api/products/mossgarden/downloads": downloadsView("mossgarden", [
+        dlFile({ artifactId: "m-mac", platform: "macos" }),
+      ]),
+    });
+    renderPortal();
+    await discoverPage();
+    const moss = await tile("Mossgarden");
+    await userEvent.click(
+      within(moss).getByRole("button", { name: "Add to library: Mossgarden" }),
+    );
+    const go = await within(moss).findByRole("link", {
+      name: "Go to Mossgarden",
+    });
+    expect(go.getAttribute("href")).toBe("#/p/mossgarden");
+    expect(
+      within(moss).getByRole("button", { name: /Download for macOS/ }),
+    ).toBeTruthy();
+    expect(
+      within(moss).queryByRole("link", { name: "Open Mossgarden" }),
+    ).toBeNull();
+    // The toast confirms, and says how to sign in.
+    expect(await screen.findByText("Added to your library")).toBeTruthy();
+    expect(screen.getByText(/Sign in to Mossgarden with /)).toBeTruthy();
+  });
+
   it("drops an offer for a product the library already holds", async () => {
     mockFetch(
       signedIn([MOSS_LICENSE], {
@@ -358,9 +425,7 @@ describe("Discover (PX-16)", () => {
     // Focus moves from the vanished button to Open; the URL keeps the state for a reload.
     await waitFor(() => expect(document.activeElement).toBe(open));
     expect(window.location.hash).toBe("#/discover?added=mossgarden");
-    expect(
-      await screen.findByText("Mossgarden is in your library"),
-    ).toBeTruthy();
+    expect(await screen.findByText("Added to your library")).toBeTruthy();
     // The counts move: Library 1, Discover 1 (the tile stays, added, after the refetch).
     const nav = screen.getByRole("navigation", { name: "Main" });
     await waitFor(() =>

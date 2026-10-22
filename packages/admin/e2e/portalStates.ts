@@ -852,7 +852,7 @@ export const SHIPPED: ShippedState[] = [
         .click();
       await p.getByRole("link", { name: "Open Mossgarden" }).waitFor();
       // The toast is part of the state: wait for it, so the screenshot never races it.
-      await p.getByText("Mossgarden is in your library").waitFor();
+      await p.getByText("Added to your library").waitFor();
     },
   },
   {
