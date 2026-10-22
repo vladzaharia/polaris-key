@@ -23,6 +23,7 @@ export * from "./input.js";
 export * from "./view.js";
 export * from "./errors.js";
 export * from "./link.js";
+export * from "./renew.js";
 export * from "./loading.js";
 export * from "./focus.js";
 export * from "./store.js";

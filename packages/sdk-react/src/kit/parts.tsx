@@ -12,7 +12,12 @@ import {
 } from "react";
 import { KIT_GLYPHS, POWERED_BY } from "@polaris-key/brand";
 import { markSvg } from "@polaris-key/brand/svg";
-import type { Copy, UiInput, View } from "@polaris-key/ui-core";
+import {
+  renewTarget,
+  type Copy,
+  type UiInput,
+  type View,
+} from "@polaris-key/ui-core";
 import { monogramOf, OPENS, spellOut, type Resolved } from "./contract.js";
 import { encodeQr } from "./lazy.js";
 
@@ -478,7 +483,9 @@ export function button(
     detail?: Record<string, unknown>;
   } = {},
 ): ReactNode {
-  const external = OPENS.has(key) || c.chrome?.labels?.[key] !== undefined;
+  const external =
+    (key === "status.renew" ? renewTarget(c.input) != null : OPENS.has(key)) ||
+    c.chrome?.labels?.[key] !== undefined;
   const device =
     NAMED_PRIMARY.has(key) && c.copy.has("signin.replace.confirmNamed")
       ? pickedDevice(c)

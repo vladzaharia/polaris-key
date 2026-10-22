@@ -16,10 +16,10 @@ import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 The blocking states, each with its primary fix: revoked, expired, version too old, version too new, and channel not entitled. Each state names what happened and what to do, never a raw code.
 
-- **Expired** offers **Renew** and **Use another license**. It never offers Try again or Reconnect, because neither can change the outcome.
+- **Expired** offers **Renew** and **Use another license**. Renew appears only when your app can renew: otherwise **Use another license** stands alone. It never offers Try again or Reconnect, because neither can change the outcome.
 - **Version too new** keeps **Try again** as its one action.
 
-SwiftUI takes `renewURL` on `GateOptions` and Compose takes `onRenew` on `PolarisGate`; without one, Renew is not drawn. React reports the Renew press through `onAction`; Godot and Qt have no renew option, and your app handles the press.
+Tell the kit how to renew: SwiftUI takes `renewURL` on `GateOptions`, Compose `onRenew` on `PolarisGate`, React `renewUrl` or `onRenew` (or `input.renew`), the elements `input.renew`, Godot `renew_url` and Qt `renew_url`. A URL must be https; Renew then carries the new-window glyph. A handler-only Renew has no glyph.
 
 ## States and copy
 

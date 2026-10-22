@@ -108,7 +108,7 @@ export function DevicesSection(props: {
 }
 ```
 
-Paywall's **Buy in your browser** needs `offers.url` on `input`, an https page. Without it the not-available screen shows no button. StatusScreen's Renew reaches your app through `onAction` (copy key `status.renew`).
+Paywall's **Buy in your browser** needs `offers.url` on `input`, an https page. Without it the not-available screen shows no button. StatusScreen draws Renew only when you pass `renewUrl` (an https page; `onAction` reports the press with `url`) or `onRenew`; without either, Use another license stands alone.
 
 Restyle with plain CSS. Every component draws in a `.pk-root` element carrying `data-component`,
 `data-state`, `data-theme` (`dark` or `light`), `data-preset`, `data-density` and `data-motion`.
