@@ -24,7 +24,7 @@ from .rows import Group, RowData, Seat, build_rows
 
 __all__ = ["Button", "Code", "Field", "ScreenSpec", "Step", "build_spec", "button_role", "is_button_key"]
 
-_HEADING = re.compile(r"\.(title|heading|codeTitle|addTitle)$|^(gate\.error\.title|part\.status\.blocked)$")
+_HEADING = re.compile(r"\.(title|heading|codeTitle|addTitle|mandatoryTitle|availableTitle)$|^(gate\.error\.title|part\.status\.blocked)$")
 _ACTION_KEYS = frozenset(key for keys in ACTION_KEYS.values() for key in keys)
 #: The last catalog segment of every key that is a control, not a sentence.
 _VERBS = frozenset(
@@ -357,6 +357,7 @@ def build_spec(
     selected_id: Optional[str] = None,
     advanced: bool = False,
     request_code: str = "",
+    facts: Optional[Mapping[str, Any]] = None,
 ) -> ScreenSpec:
     """Lay one view out. Heading, then sentences, then the buttons in catalog order with the
     model's primary first among equals; at most one filled button.
@@ -365,7 +366,12 @@ def build_spec(
     carry (a file size, a row's name) is left out rather than drawn with its braces: rows and meters
     come from the rich models in ``polaris_key.ui.core.models`` or the view's own ``rows``, which
     ``data`` (a :class:`~.rows.RowData`) replaces; with them the list, the seat meter and the account
-    rows are laid out too (``rows.py``)."""
+    rows are laid out too (``rows.py``).
+
+    ``facts`` is what an offered update knows that its view cannot carry (UI-KITS decision 1):
+    ``current`` (the running version), ``size`` (bytes or text, only when known) and ``notes`` (at
+    most three plain lines of the release's summary). With them "You have 1.4.0 · 61 MB download"
+    (or "Version 1.4.0" without a size) and the notes under "What's new" are drawn."""
     args = {**({"product": product, "app": product} if product else {}), **_args(view)}
     if developer:
         args.setdefault("developer", bidi_isolate(developer))
@@ -406,7 +412,20 @@ def build_spec(
             continue
         if key in _PROGRESS and args.get("fraction") is None and not args.get("total"):
             progress = -1.0
-        if key in _ROW_FRAGMENTS:
+        if key in _ROW_FRAGMENTS and view.component != "Toast":
+            continue
+        if facts is not None and view.component == "UpdatePrompt" and key in ("update.current", "update.whatsNew"):
+            if key == "update.current":
+                current, size = str(facts.get("current") or ""), facts.get("size")
+                if current and size:
+                    body.append(copy(key, version=current, size=format_bytes(size) if isinstance(size, int) else size))
+                elif current:
+                    body.append(copy("account.version", version=current))
+            else:
+                notes = [str(n) for n in (facts.get("notes") or ())][:3]
+                if notes:
+                    body.append(copy(key))
+                    body.extend("\u2022 " + n for n in notes)
             continue
         if key in _FIELD_PARTS:
             text = copy(key, **args)
@@ -493,7 +512,12 @@ def build_spec(
         text = copy(primary, **args)
         if not _open(text):
             buttons.append(Button(primary, text, "primary"))
-    elif not any(b.role == "primary" for b in buttons) and len(buttons) == 1 and view.component not in _NOT_FILLED:
+    elif (
+        not any(b.role == "primary" for b in buttons)
+        and len(buttons) == 1
+        and view.component not in _NOT_FILLED
+        and buttons[0].key != "common.back"  # a way out of a pane is never its one filled action
+    ):
         only = buttons[0]
         buttons = [Button(only.key, only.text, "primary")]
     busy_primary = busy and bool(primary) and any(b.key == primary for b in buttons)

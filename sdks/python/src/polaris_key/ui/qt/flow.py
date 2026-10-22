@@ -129,6 +129,8 @@ class GateFlow:
         self.activation: Optional[Dict[str, Any]] = None
         self.pending: Optional[str] = None
         self.manage_opened = False
+        #: Called with the sign-in result once the person is signed in (the gate shows its toast).
+        self.on_signed_in: Optional[Callable[[Any], None]] = None
         self.session: Optional[_Session] = None
         self.error_code: Optional[str] = None
         self._generation = 0
@@ -562,6 +564,8 @@ class GateFlow:
             self.route = "welcome" if self.has_welcome else "activate"
             self.redraw()
             self._on_status()
+            if self.on_signed_in is not None:
+                self.on_signed_in(result)
             return
         self.redraw()
 
