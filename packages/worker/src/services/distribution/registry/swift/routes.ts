@@ -495,7 +495,10 @@ const identifiers: SwiftEndpoint = {
         "swift",
         d.id,
       );
-      if (decision.ok) found.push(d.name);
+      // Only what the answer's own cache class may show: a public answer (a public feed) is
+      // shared by every reader, so a package only a credential may read stays out of it, as
+      // pypi's index and godot's lists do.
+      if (decision.ok && decision.cache === cache) found.push(d.name);
     }
     if (found.length === 0) return registryNotFound("swift");
     const body = JSON.stringify({ identifiers: found.sort() });
