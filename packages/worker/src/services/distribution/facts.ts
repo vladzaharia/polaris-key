@@ -41,6 +41,8 @@ export interface FactsContext {
   hooks: ServiceHooks;
   /** Epoch seconds; an expired setting row is no row. */
   now: number;
+  /** `liveBuilds(hooks)` when the caller already read it, so it is read once. */
+  builds?: LiveBuild[];
 }
 
 const SOURCE_ORDER: readonly PlatformSource[] = [
@@ -106,7 +108,7 @@ export async function productPlatforms(
       e.formats.add(b.format);
     }
 
-    for (const b of await liveBuilds(hooks)) {
+    for (const b of ctx.builds ?? (await liveBuilds(hooks))) {
       const e = entry(b.platform, "builds");
       e.arches.add(b.arch);
       if (b.format !== null) e.formats.add(b.format);

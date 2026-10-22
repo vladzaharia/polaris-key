@@ -16411,7 +16411,9 @@ paths:
         for a channel with no commerce facet, `not_set_up` or `ready` for a store Commerce sells
         through (reason `commerce_off` while Commerce is off). Credential facts are booleans and
         reason codes only: no key id, issuer, credential id or app name. Labels are the catalogue's.
-        Read-only; area `ship`; admin session cookie.
+        Read-only; area `ship`; admin session cookie. The one-product read (`GET /products/{product}`)
+        carries only a compact `channels` (`id`, `label`, `delivery` state, `notUsing`) and `platforms`,
+        for a holder of any area; `oneClick` and `commerce` are on this read alone.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
       responses:
@@ -21591,15 +21593,13 @@ components:
                   platform: { type: string }
                   arches: { type: array, items: { type: string } }
         commerce:
-          nullable: true
-          type: object
+          type: [object, "null"]
           required: [state, reason]
           properties:
             state: { type: string, enum: [not_set_up, ready] }
             reason:
-              nullable: true
-              type: string
-              enum: [no_settings, no_credential, commerce_off]
+              type: [string, "null"]
+              enum: [no_settings, no_credential, commerce_off, null]
     AdminIntegration:
       type: object
       required: [product, now, snippet, features, server, sightings, verified]

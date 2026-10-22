@@ -345,9 +345,10 @@ describe("channelFacts: states (A-20.3)", () => {
     ]);
   });
 
-  it("an expiring own credential raises credential_expiring; a far one does not", async () => {
+  it("an expiring own credential raises credential_expiring on a declared channel; a far one does not", async () => {
     const w = await world();
     teamKey(w.env);
+    await outlet(w.db, "o1", "app-store");
     const put = await putOutletCredential(w.env, w.db, {
       product: SLUG,
       credentialId: "own-asc",
@@ -374,5 +375,26 @@ describe("channelFacts: states (A-20.3)", () => {
     expect(await attention()).toEqual([]);
     await expire(NOW - 1);
     expect(await attention()).toEqual([{ code: "credential_expiring" }]);
+  });
+
+  it("an expiring credential leaves an undeclared channel not_set_up, still one click", async () => {
+    const w = await world();
+    teamKey(w.env);
+    await putOutletCredential(w.env, w.db, {
+      product: SLUG,
+      credentialId: "own-asc",
+      kind: "asc-api-key",
+      outletId: null,
+      value: { keyId: KEY_ID, issuerId: ISSUER, p8: ascP8() },
+      expiresAt: NOW + 5 * 86_400,
+      actor: "t",
+      now: NOW,
+    });
+    const mac = hooksOf({ stable: [releaseOf(["macos", "arm64", "pkg"])] });
+    const store = (await facts(w, mac)).find((f) => f.channel === "app-store")!;
+    expect(store.declared).toBe(false);
+    expect(store.attention).toEqual([]);
+    expect(store.state).toBe("not_set_up");
+    expect(store.oneClick).toBe(true);
   });
 });

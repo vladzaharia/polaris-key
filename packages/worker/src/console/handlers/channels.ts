@@ -23,43 +23,12 @@ import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import {
   channelFacts,
+  liveBuilds,
   productPlatforms,
-  type DeliveryAttention,
-  type DeliveryState,
 } from "../../services/distribution/public.js";
 import { storefrontStates } from "../../services/commerce/public.js";
 import type { AdminCtx } from "../routes.js";
-
-export interface ChannelCommerceFacet {
-  state: "not_set_up" | "ready";
-  reason: "no_settings" | "no_credential" | "commerce_off" | null;
-}
-
-export interface ChannelView {
-  id: string;
-  label: string;
-  inScope: boolean;
-  declared: boolean;
-  oneClick: boolean;
-  notUsing: boolean;
-  delivery: {
-    state: DeliveryState;
-    attention: DeliveryAttention[];
-    platforms: { platform: string; arches: string[] }[];
-  };
-  commerce: ChannelCommerceFacet | null;
-}
-
-export interface ChannelsView {
-  platforms: {
-    platform: string;
-    arches: string[];
-    formats: string[];
-    sources: string[];
-  }[];
-  kinds: string[];
-  channels: ChannelView[];
-}
+import type { ChannelsView, ChannelView } from "../lib/channelSummary.js";
 
 const LABELS = new Map<string, string>(CHANNELS.map((c) => [c.id, c.label]));
 
@@ -77,10 +46,19 @@ export async function channelsRead(
     product,
     now,
   }).hooks;
-  const [facts, facets] = await Promise.all([
-    productPlatforms({ db, product: slug, hooks, now }),
-    channelFacts(env, db, slug, hooks, now),
-  ]);
+  // Each fact is read once and handed to the delivery facet (the summary rides every product view).
+  const builds = await liveBuilds(hooks);
+  const facts = await productPlatforms({
+    db,
+    product: slug,
+    hooks,
+    now,
+    builds,
+  });
+  const facets = await channelFacts(env, db, slug, hooks, now, {
+    facts,
+    builds,
+  });
   const commerceOn = product.services.commerce?.enabled === true;
   const stores = new Map(
     (await storefrontStates(env, db, slug)).map((s) => [s.channel, s]),
@@ -115,18 +93,6 @@ export async function channelsRead(
       };
     }),
   };
-}
-
-/** The compact rows the one-product summary carries (`productView`). */
-export function compactChannels(view: ChannelsView) {
-  return view.channels.map((c) => ({
-    id: c.id,
-    label: c.label,
-    delivery: c.delivery.state,
-    commerce: c.commerce ? c.commerce.state : null,
-    oneClick: c.oneClick,
-    notUsing: c.notUsing,
-  }));
 }
 
 export async function handleChannels(c: AdminCtx): Promise<Response> {

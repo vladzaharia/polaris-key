@@ -34,13 +34,18 @@ import { parseJsonColumn } from "../../platform/json.js";
 import {
   isPlatformCredentialId,
   PLATFORM_CREDENTIALS,
-  platformCredentialStatus,
+  resolvePlatformCredential,
   type PlatformCredentialId,
 } from "../../core/platformCredentials.js";
 import { listOutletCredentials } from "../../core/outletCredentials.js";
 import { EMPTY_SETUP, isSetupChoices } from "../../core/settings/setupShape.js";
 import { expiringCredentials } from "./attentionFacts.js";
-import { liveBuilds, productPlatforms } from "./facts.js";
+import {
+  liveBuilds,
+  productPlatforms,
+  type LiveBuild,
+  type ProductPlatforms,
+} from "./facts.js";
 import { listOutlets, type DistOutletRow } from "./outlets.js";
 
 /** How far ahead a credential counts as expiring; the console's Home uses the same window. */
@@ -105,14 +110,18 @@ export interface DeliveryContext {
   hooks: ServiceHooks;
   /** Epoch seconds. */
   now: number;
+  /** What the caller already computed (`productPlatforms`, `liveBuilds`), so each runs once. */
+  known?: { facts: ProductPlatforms; builds: LiveBuild[] };
 }
 
 export async function deliveryFacets(
   ctx: DeliveryContext,
 ): Promise<DeliveryFacet[]> {
   const { env, db, product, hooks, now } = ctx;
-  const facts = await productPlatforms({ db, product, hooks, now });
-  const builds = await liveBuilds(hooks);
+  const builds = ctx.known?.builds ?? (await liveBuilds(hooks));
+  const facts =
+    ctx.known?.facts ??
+    (await productPlatforms({ db, product, hooks, now, builds }));
   const outlets = (await listOutlets(db, product)).filter(
     (o) => o.removed_at === null,
   );
@@ -141,7 +150,7 @@ export async function deliveryFacets(
     if (!isPlatformCredentialId(slot)) return false;
     const cached = held.get(slot);
     if (cached !== undefined) return cached;
-    const team = (await platformCredentialStatus(env, db, slot)).configured;
+    const team = (await resolvePlatformCredential(env, db, slot)) !== null;
     const v =
       team || own.some((c) => c.kind === PLATFORM_CREDENTIALS[slot].kind);
     held.set(slot, v);
@@ -190,7 +199,10 @@ export async function deliveryFacets(
     const slotHeld = slot === null ? true : await heldSlot(slot);
     if (declared && slot !== null && !slotHeld)
       attention.push({ code: "credential_missing" });
+    // Expiry only turns a channel the team uses (declared) into attention; an undeclared channel
+    // stays not_set_up (and one click), whatever its shared credential's age.
     if (
+      declared &&
       slot !== null &&
       isPlatformCredentialId(slot) &&
       expiring.some((e) => e.kind === PLATFORM_CREDENTIALS[slot].kind)
@@ -247,6 +259,7 @@ export function channelFacts(
   product: string,
   hooks: ServiceHooks,
   now: number = Math.floor(Date.now() / 1000),
+  known?: DeliveryContext["known"],
 ): Promise<DeliveryFacet[]> {
-  return deliveryFacets({ env, db, product, hooks, now });
+  return deliveryFacets({ env, db, product, hooks, now, known });
 }

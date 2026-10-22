@@ -1515,13 +1515,14 @@ export interface ChannelsView {
   channels: ChannelRow[];
 }
 
-/** The compact channel rows on the one-product read (`ProductDetail.channels`). */
+/**
+ * The compact channel rows on the one-product read (`ProductDetail.channels`): the nav's facts,
+ * safe for a holder of any area. `oneClick` and the commerce facet are on `ChannelRow` only.
+ */
 export interface ProductChannelSummary {
   id: string;
   label: string;
   delivery: ChannelDeliveryState;
-  commerce: "not_set_up" | "ready" | null;
-  oneClick: boolean;
   notUsing: boolean;
 }
 
@@ -6613,9 +6614,10 @@ const rawApi = {
       { method: "PATCH", body: JSON.stringify(patch) },
     ),
 
-  /** ST-40: per enabled feature, its prerequisites and where it is Verified. */
+  /** A-20.4: one product's channel read model (area `ship`). */
   channels: (slug: string) =>
     call<ChannelsView>(`${p(slug)}/distribution/channels`),
+  /** ST-40: per enabled feature, its prerequisites and where it is Verified. */
   integration: (slug: string) =>
     call<IntegrationView>(`${p(slug)}/integration`),
 

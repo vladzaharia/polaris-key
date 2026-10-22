@@ -320,7 +320,18 @@ export async function handleProducts(
   const slug = segments[0]!;
   const row = await getProduct(db, slug);
   if (!row) return notFound();
-  if (req.method === "GET")
+  if (req.method === "GET") {
+    // A-20.4: the channels ride the record, but the shell must never fail on them: a throw leaves
+    // the two fields out and is logged to the Workers console (the error name only).
+    let channels: Awaited<ReturnType<typeof channelsRead>> = null;
+    try {
+      channels = await channelsRead(env, db, slug, now);
+    } catch (e) {
+      console.error(
+        "channels read failed",
+        e instanceof Error ? e.name : "error",
+      );
+    }
     return adminJson({
       product: await productView(
         env,
@@ -328,9 +339,10 @@ export async function handleProducts(
         row,
         now,
         undefined,
-        (await channelsRead(env, db, slug, now)) ?? undefined,
+        channels ?? undefined,
       ),
     });
+  }
   if (req.method === "PATCH") {
     const body = await readBody(req);
     // F-03: the system product keeps its name (it is the platform's, and the feeds and the

@@ -5,7 +5,7 @@
  * facet and that no credential-derived value reaches the body.
  */
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { serializeServices } from "../src/core/services.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -21,6 +21,21 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/core/console/session.js";
+
+import type { Principal } from "../src/core/rbac/can.js";
+
+// A principal narrowed to one area, for a sub the test names; every other sub resolves for real.
+const SYNTHETIC = new Map<string, Principal>();
+vi.mock("../src/core/rbac/principal.js", async (importOriginal) => {
+  const real =
+    await importOriginal<typeof import("../src/core/rbac/principal.js")>();
+  return {
+    ...real,
+    resolvePrincipal: async (
+      ...args: Parameters<typeof real.resolvePrincipal>
+    ) => SYNTHETIC.get(args[2].sub) ?? real.resolvePrincipal(...args),
+  };
+});
 
 const SLUG = "diceroll";
 const ISSUER = "69a6de7f-0000-47e3-e053-5b8c7c11a4d1";
@@ -47,10 +62,12 @@ async function admin(
   method: string,
   path: string,
   groups = ["platform-admins"],
+  sub = "u1",
+  database: Db = db,
 ): Promise<JsonResponse> {
   const { token, session } = await issueSession(
     env,
-    { sub: "u1", name: "Ada", email: "ada@x.io", groups },
+    { sub, name: "Ada", email: "ada@x.io", groups },
     NOW,
   );
   const full = `/api${path}`;
@@ -63,7 +80,7 @@ async function admin(
       },
     }),
     env,
-    db,
+    database,
     full.split("?")[0]!,
     { now: NOW },
   )) as JsonResponse;
@@ -119,12 +136,36 @@ const row = (body: Loose, id: string) =>
   body.channels.find((c: { id: string }) => c.id === id);
 
 describe("the channels read (A-20.4)", () => {
-  it("a session without the ship area is refused with 403", async () => {
+  it("a member narrowed to the license area is refused with 403 for the ship area", async () => {
     await planned(["windows"]);
-    const res = await admin("GET", `/products/${SLUG}/distribution/channels`, [
-      "nobody",
-    ]);
+    SYNTHETIC.set("u-license", {
+      memberId: "u-license",
+      grants: [
+        {
+          role: "product_admin",
+          scope: `product:${SLUG}`,
+          areas: ["license"],
+          source: "grant",
+        },
+      ],
+    });
+    const res = await admin(
+      "GET",
+      `/products/${SLUG}/distribution/channels`,
+      ["platform-admins"],
+      "u-license",
+    );
     expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error.area).toBe("ship");
+    // The same member still reads the record (anyArea), with only the compact fields.
+    const rec = await admin(
+      "GET",
+      `/products/${SLUG}`,
+      ["platform-admins"],
+      "u-license",
+    );
+    expect(rec.status).toBe(200);
   });
 
   it("an unknown product is a 404", async () => {
@@ -258,8 +299,6 @@ describe("the one-product summary (A-20.4)", () => {
       id: "winget",
       label: "winget",
       delivery: "not_set_up",
-      commerce: null,
-      oneClick: false,
       notUsing: false,
     });
     const list = await (await admin("GET", "/products")).json();
@@ -267,5 +306,50 @@ describe("the one-product summary (A-20.4)", () => {
       expect(p.channels).toBeUndefined();
       expect(p.platforms).toBeUndefined();
     }
+  });
+});
+
+describe("the summary's cost and robustness (A-20.4)", () => {
+  /** A Db that sees every statement, counts it, and may fail one. */
+  function watched(
+    inner: Db,
+    failOn?: string,
+  ): { db: Db; count: () => number } {
+    let n = 0;
+    const see = (sql: string) => {
+      n++;
+      if (failOn && sql.includes(failOn)) throw new Error("boom");
+    };
+    return {
+      count: () => n,
+      db: {
+        all: (sql, ...p) => (see(sql), inner.all(sql, ...p)),
+        first: (sql, ...p) => (see(sql), inner.first(sql, ...p)),
+        run: (sql, ...p) => (see(sql), inner.run(sql, ...p)),
+        runChanges: (sql, ...p) => (see(sql), inner.runChanges(sql, ...p)),
+        batch: (st) => (n++, inner.batch(st)),
+      },
+    };
+  }
+
+  it("the one-product read stays within a D1 read budget", async () => {
+    await planned(["macos", "windows", "linux"]);
+    const w = watched(db);
+    const res = await admin("GET", `/products/${SLUG}`, undefined, "u1", w.db);
+    expect(res.status).toBe(200);
+    // The whole record, channels included: 35 statements now, 65 before the cost fix (platforms
+    // and live builds were computed two or three times; three queries per credential slot).
+    expect(w.count()).toBeLessThanOrEqual(40);
+  });
+
+  it("a throw in the channels read leaves the fields out and the record 200", async () => {
+    await planned(["windows"]);
+    const w = watched(db, "dist_availability");
+    const res = await admin("GET", `/products/${SLUG}`, undefined, "u1", w.db);
+    expect(res.status).toBe(200);
+    const { product } = await res.json();
+    expect(product.slug).toBe(SLUG);
+    expect(product.channels).toBeUndefined();
+    expect(product.platforms).toBeUndefined();
   });
 });

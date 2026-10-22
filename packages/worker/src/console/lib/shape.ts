@@ -28,7 +28,7 @@ import {
   type ProductPresentationView,
 } from "./presentation.js";
 import { parseJsonStringList } from "../../platform/json.js";
-import { compactChannels, type ChannelsView } from "../handlers/channels.js";
+import { compactChannels, type ChannelsView } from "./channelSummary.js";
 import { parseWebOrigins } from "../../core/cors.js";
 
 interface RequiredSecretStatus {
