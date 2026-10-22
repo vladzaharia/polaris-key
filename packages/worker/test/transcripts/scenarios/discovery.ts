@@ -1,7 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 // discovery-capabilities and discovery-failure: `GET /<p>/.well-known/polaris.json` and what a
 // client believes about the product's services afterwards (D-21). discovery-presentation (HA-12):
-// the unsigned `core.presentation` member a client exposes, present and then gone.
+// the unsigned `core.presentation` member a client exposes, present and then gone. discovery-portal
+// (DISC-01): the unsigned `core.portal` member, the product page link and then `{enabled:false}`.
 
 import { expect } from "vitest";
 import { TranscriptRecorder } from "../recorder.js";
@@ -16,6 +17,7 @@ import {
   type Scenario,
 } from "../world.js";
 import { seedHosted } from "../../hostedFixture.js";
+import { setPortalToggles } from "../../seed.js";
 
 /** The capability map the suite default resolves to (license + config), slug → enabled. */
 const DEFAULT_MAP = {
@@ -207,6 +209,55 @@ export const discoveryPresentation: Scenario = {
           expect("presentation" in doc.core).toBe(false);
         },
         { result: "ok", presentation: null },
+      );
+      return r.transcript();
+    }),
+};
+
+export const discoveryPortal: Scenario = {
+  id: "discovery-portal",
+  record: () =>
+    pinned("discovery-portal", async (pin) => {
+      // The suite-default product with its customer portal on (the default). The recording world
+      // leaves CUSTOMER_ORIGIN unset, so the customer origin is the request's own.
+      const world = await productWorld(LICENSED);
+      const r = new TranscriptRecorder({
+        id: "discovery-portal",
+        description:
+          "Discovery's unsigned core.portal member (WIRE-CONTRACT-V4 section 5.7, DISC-01). The product's customer portal is on: the client exposes the product page link, <customer origin>/activate?product=<slug> (the recording world has no CUSTOMER_ORIGIN, so the customer origin is the request's own). Then the operator turns the portal off: the member is {enabled:false} and nothing else, and the client must drop the link it held rather than keep it. A terminal kit draws the link, or Contact {developer} when there is none.",
+        features: ["ui.cli.portal"],
+        requires: [],
+        product: PRODUCT,
+        now: T0,
+        world,
+        pinned: pin,
+        initial: { deviceId: DEVICE, version: VERSION },
+      });
+      const activate = `https://key.plrs.im/activate?product=${PRODUCT}`;
+      await r.step(
+        { action: "discover" },
+        async (s) => {
+          const res = await discovery(s, PRODUCT);
+          expect(res.status).toBe(200);
+          const doc = (await res.json()) as { core: { portal?: unknown } };
+          expect(doc.core.portal).toEqual({ enabled: true, activate });
+        },
+        { result: "ok", portal: { enabled: true, activate } },
+      );
+      await setPortalToggles(world.db, PRODUCT, { portalEnabled: false });
+      await r.step(
+        {
+          action: "discover",
+          note: "The product's portal is off: the member is {enabled:false}, past the 300 s cache window.",
+          now: T0 + 301,
+        },
+        async (s) => {
+          const res = await discovery(s, PRODUCT);
+          expect(res.status).toBe(200);
+          const doc = (await res.json()) as { core: { portal?: unknown } };
+          expect(doc.core.portal).toEqual({ enabled: false });
+        },
+        { result: "ok", portal: { enabled: false } },
       );
       return r.transcript();
     }),

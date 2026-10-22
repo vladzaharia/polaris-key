@@ -2261,6 +2261,79 @@
       "note": "The `cli` family of ui-matrix.json (plans/UK-51.md): each terminal kit runs its exit, capabilities, stdin and outcomes rows (exit 4 for a refused gate, a refusal drawn as a triangle with its fix, never a cross); the mount, help and gate rows are ui.cli.mount's (UK-46, UK-48, UK-52 to UK-54). Required on node and python; UK-54 makes it required on jvm."
     },
     {
+      "id": "ui.cli.portal",
+      "family": "ui",
+      "title": "The terminal kits' product page link from discovery (core.portal), left out while the portal is off",
+      "service": "core",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "portal-matrix.json"
+        },
+        {
+          "kind": "transcript"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "dotnet",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "unity",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "tauri",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        }
+      ],
+      "note": "WIRE-CONTRACT-V4 5.7 (DISC-01, B-115): the headless SDKs' terminal kits resolve the one customer link they draw from the response's own link, then discovery's unsigned core.portal, then the legacy guess, and draw Contact {developer} while the portal is off. The widget kits show only server or integrator links (manageUrl, freeDeviceUrl, verificationUri), so they build no customer link."
+    },
+    {
       "id": "ui.gate",
       "family": "ui",
       "title": "Kit states: gate, boot, status screen, grace banner and toasts",
