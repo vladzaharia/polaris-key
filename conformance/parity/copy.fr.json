@@ -245,6 +245,10 @@
       "title": "Non synchronisé",
       "message": "Ce réglage n'est pas synchronisé avec votre compte."
     },
+    "collection_unknown": {
+      "title": "Collection inconnue",
+      "message": "Cette collection n'est pas disponible."
+    },
     "quota_exceeded": {
       "title": "Stockage plein",
       "message": "Votre stockage synchronisé est plein. Libérez de l'espace, puis réessayez."

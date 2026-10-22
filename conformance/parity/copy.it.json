@@ -245,6 +245,10 @@
       "title": "Non sincronizzata",
       "message": "Questa impostazione non viene sincronizzata con il tuo account."
     },
+    "collection_unknown": {
+      "title": "Raccolta sconosciuta",
+      "message": "Questa raccolta non è disponibile."
+    },
     "quota_exceeded": {
       "title": "Spazio pieno",
       "message": "Lo spazio sincronizzato è pieno. Libera spazio e riprova."

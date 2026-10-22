@@ -85,6 +85,7 @@ public let COPY_CODES: [String: CopyEntry] = [
     "value_invalid": CopyEntry(title: "Setting not saved", message: "That value isn't valid for this setting."),
     "op_invalid_for_policy": CopyEntry(title: "Change not allowed", message: "That change isn't allowed for this setting."),
     "setting_not_synced": CopyEntry(title: "Not synced", message: "This setting isn't synced to your account."),
+    "collection_unknown": CopyEntry(title: "Unknown collection", message: "This collection isn't available."),
     "quota_exceeded": CopyEntry(title: "Storage full", message: "Your synced storage is full. Free some space, then try again."),
     "writes_paused": CopyEntry(title: "Sync paused", message: "Syncing is paused for a moment. Your changes are kept and will sync later."),
     "email_mismatch": CopyEntry(title: "Email not verified", message: "This license belongs to an email address your account hasn't verified. Add and verify that email, then try again."),

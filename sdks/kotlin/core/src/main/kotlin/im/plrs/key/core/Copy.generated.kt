@@ -83,6 +83,7 @@ public val COPY_CODES: Map<String, CopyEntry> = mapOf(
     "value_invalid" to CopyEntry("Setting not saved", "That value isn't valid for this setting."),
     "op_invalid_for_policy" to CopyEntry("Change not allowed", "That change isn't allowed for this setting."),
     "setting_not_synced" to CopyEntry("Not synced", "This setting isn't synced to your account."),
+    "collection_unknown" to CopyEntry("Unknown collection", "This collection isn't available."),
     "quota_exceeded" to CopyEntry("Storage full", "Your synced storage is full. Free some space, then try again."),
     "writes_paused" to CopyEntry("Sync paused", "Syncing is paused for a moment. Your changes are kept and will sync later."),
     "email_mismatch" to CopyEntry("Email not verified", "This license belongs to an email address your account hasn't verified. Add and verify that email, then try again."),
