@@ -8,6 +8,10 @@ export type { AccountContext } from "./accounts/links.js";
 // ST-30: the console's door into accounts (cookie v2, `consoleSubject`).
 export {
   accountMayOpenConsole,
+  consoleAccountForMember,
+  consoleAssertedEmail,
+  consoleLinkedAccount,
+  consoleVerifiedPrimaryEmail,
   consoleActorAliases,
   consoleDirectory,
   consoleDirectoryPeople,

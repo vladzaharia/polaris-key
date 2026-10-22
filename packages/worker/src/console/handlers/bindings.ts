@@ -96,7 +96,12 @@ import {
 } from "../../services/identity/public.js";
 import { requireStepUp } from "../stepUp.js";
 import type { AdminCtx } from "../routes.js";
-import { sendOperatorNotice, superadminAccountIds } from "./accessShared.js";
+import {
+  ROLE_LABEL,
+  scopeLabel,
+  sendOperatorNotice,
+  superadminAccountIds,
+} from "./accessShared.js";
 
 /** The write budget per member: generous for a person, a wall for a stolen session. */
 const WRITE_LIMIT = 30;
@@ -112,13 +117,6 @@ const INVITE_LIMIT = 100;
 const INVITE_WINDOW_SECONDS = 3600;
 /** The most operator mails one invitation request sends besides the invitations themselves. */
 const INVITE_NOTICE_CAP = 50;
-
-const ROLE_LABEL: Record<Role, string> = {
-  superadmin: "Superadmin",
-  platform_admin: "Platform admin",
-  product_admin: "Product admin",
-  console_access: "Console access",
-};
 
 /** Where a route reaches the same writes from: the platform, or one product's Members tab. */
 export interface Via {
@@ -200,12 +198,6 @@ function view(
     source: row.source,
     grantedAt: row.granted_at,
   };
-}
-
-function scopeLabel(scope: GrantScope, productName: string | null): string {
-  if (scope === "platform") return "the platform";
-  if (scope === "products:*") return "all products";
-  return productName ?? scope.slice("product:".length);
 }
 
 /**

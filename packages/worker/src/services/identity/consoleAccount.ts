@@ -320,6 +320,85 @@ export async function consoleSubject(
   };
 }
 
+/**
+ * The address the console IdP vouches for at THIS sign-in, normalised, or `null`: the ID token
+ * carried an `email` and `email_verified: true` and the provider is one that may vouch. An invite
+ * converts only against this (ST-31.8): a claimed or stale address never does.
+ */
+export function consoleAssertedEmail(
+  identity: Pick<ConsoleIdentity, "email" | "emailVerified">,
+): string | null {
+  const asserted = identity.email?.trim()
+    ? normalizeEmail(identity.email)
+    : null;
+  return providerVouchesForEmail(
+    {
+      kind: "oidc",
+      email: asserted,
+      emailVerified: identity.emailVerified === true,
+    },
+    null,
+  )
+    ? asserted
+    : null;
+}
+
+/**
+ * The account behind a console IdP subject, or `null` when this IdP never signed that subject in.
+ * The sign-in gate asks it BEFORE anything is written (is this a known member?). The account id
+ * is for the caller's own reads; it never goes into a response.
+ */
+export async function consoleLinkedAccount(
+  env: Env,
+  db: Db,
+  sub: string,
+): Promise<string | null> {
+  const rp = adminOidcConfig(env);
+  if (!rp || !sub) return null;
+  const row = await db.first<{ account_id: string }>(
+    `SELECT account_id FROM account_links
+      WHERE issuer_key = ? AND tenant_scope = '' AND subject = ? LIMIT 1`,
+    portalIdentityIssuerKey(rp.issuer),
+    sub,
+  );
+  return row?.account_id ?? null;
+}
+
+/**
+ * The account a member id (`mbr_…`) names, or `null`. One indexed read of the console links'
+ * `member_id` column, then the id is recomputed from the account: a stale or planted column value
+ * never names a person it does not. Invite conversion resolves an inviter with it (ST-31.8).
+ */
+export async function consoleAccountForMember(
+  env: Env,
+  db: Db,
+  memberId: string,
+): Promise<string | null> {
+  if (!isMemberId(memberId)) return null;
+  const row = await db.first<{ account_id: string }>(
+    "SELECT account_id FROM account_links WHERE member_id = ? LIMIT 1",
+    memberId,
+  );
+  if (!row) return null;
+  return (await memberIdFor(env, row.account_id)) === memberId
+    ? row.account_id
+    : null;
+}
+
+/** The account's primary email, normalised, only while it is VERIFIED; else `null`. */
+export async function consoleVerifiedPrimaryEmail(
+  db: Db,
+  accountId: string,
+): Promise<string | null> {
+  const row = await db.first<{ primary_email: string | null }>(
+    `SELECT primary_email FROM accounts
+      WHERE id = ? AND primary_email IS NOT NULL AND primary_email_verified_at IS NOT NULL
+        AND status = 'active'`,
+    accountId,
+  );
+  return row?.primary_email ? normalizeEmail(row.primary_email) : null;
+}
+
 /** End one console session now (sign out). The 30 s cache elsewhere is dropped by the caller. */
 export async function endConsoleSession(
   env: Env,

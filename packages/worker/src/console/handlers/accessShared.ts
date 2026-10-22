@@ -8,6 +8,7 @@ import { deliverEmail } from "../../core/notify/emailDelivery.js";
 import { recipientHash } from "../../core/notify/emailLimits.js";
 import type { NoticeMessage } from "../../core/notify/templates.js";
 import { rowToGrant, listStoredSuperadmins } from "../../core/rbac/bindings.js";
+import type { GrantScope, Role } from "../../core/rbac/can.js";
 import { rateLimitOk } from "../../core/rateLimit.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
@@ -76,4 +77,22 @@ export async function sendOperatorNotice(
   } catch {
     return false;
   }
+}
+
+/** The role names a notice and an audit summary use. */
+export const ROLE_LABEL: Record<Role, string> = {
+  superadmin: "Superadmin",
+  platform_admin: "Platform admin",
+  product_admin: "Product admin",
+  console_access: "Console access",
+};
+
+/** A scope as a notice names it. */
+export function scopeLabel(
+  scope: GrantScope,
+  productName: string | null,
+): string {
+  if (scope === "platform") return "the platform";
+  if (scope === "products:*") return "all products";
+  return productName ?? scope.slice("product:".length);
 }

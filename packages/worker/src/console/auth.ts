@@ -53,7 +53,10 @@ import {
 } from "./signinPage.js";
 import { resolveConsoleCaller } from "./api.js";
 import {
+  consoleAssertedEmail,
+  consoleLinkedAccount,
   consoleSignIn,
+  endConsoleSession,
   type ConsoleRefusal,
   type ConsoleSignInResult,
 } from "../services/identity/public.js";
@@ -66,6 +69,12 @@ import { escapeHtml } from "../platform/html.js";
 import { randomToken } from "../platform/random.js";
 import { can, PLATFORM, resolvePrincipal } from "./authz.js";
 import { holdsRoot } from "../core/rbac/principal.js";
+import {
+  hasAccountBinding,
+  listPendingInvites,
+} from "../core/rbac/bindings.js";
+import { memberIdFor } from "../core/console/memberId.js";
+import { convertInvites } from "./inviteConversion.js";
 import {
   STEP_UP_MAX_AGE_SECONDS,
   buildSessionCookie,
@@ -647,20 +656,31 @@ export async function handleAdminCallback(
     });
   }
 
-  // The sign-in gate is the console's membership check (ST-29): the principal this identity
-  // resolves to must hold at least one grant. Today the only grant is the root rule (the
-  // platform admin group), so this admits exactly who it always did.
+  // The sign-in gate is the console's membership check (ST-29, ST-31.8): membership is "holds a
+  // grant". This PRE-gate runs before anything is written and admits exactly three people: the
+  // root rule (the platform admin group), a known link whose account has a stored binding, and an
+  // identity the IdP vouched an address for at this sign-in that has an unexpired invite. The
+  // last is admitted to the sign-in only: nothing is granted until `convertInvites` has checked
+  // the invite (below), and the post-gate refuses a session that ends with no grant.
   const principal = await resolvePrincipal(
     env,
     db,
     { sub: identity.sub, groups: identity.groups },
     now,
   );
-  if (!can(principal, PLATFORM, "console", "view")) {
+  const assertedEmail = consoleAssertedEmail(identity);
+  let admitted = can(principal, PLATFORM, "console", "view");
+  if (!admitted) {
+    const linked = await consoleLinkedAccount(env, db, identity.sub);
+    admitted = linked !== null && (await hasAccountBinding(db, linked));
+  }
+  if (!admitted && assertedEmail)
+    admitted = (await listPendingInvites(db, assertedEmail, now)).length > 0;
+  const notMember = async (summary: string) => {
     await recordPlatformSecurityEvent(db, {
       action: "admin.signin.refused",
       sub: identity.sub,
-      summary: "Admin sign-in refused: no administrator grant",
+      summary,
       now,
     });
     return htmlError(
@@ -676,7 +696,9 @@ export async function handleAdminCallback(
         },
       },
     );
-  }
+  };
+  if (!admitted)
+    return notMember("Admin sign-in refused: no administrator grant");
 
   // A step-up must be a fresh authentication. An IdP that answered `prompt=login` with an old
   // sign-in (its `auth_time` says so) is refused here rather than minting a session that would
@@ -723,6 +745,31 @@ export async function handleAdminCallback(
         href: loginHref(flowCtx, { go: "1", other: "1" }),
       },
     });
+  }
+
+  // Invites addressed to this account's verified address become its bindings now, then the
+  // POST-gate: a session whose principal holds no grant (an invite that did not convert, a
+  // binding the reader cannot understand) is ended before a cookie exists, and refused with the
+  // same card as the pre-gate. A repeat sign-in has no invite left and converts nothing.
+  await convertInvites(env, db, now, {
+    accountId: signedIn.accountId,
+    assertedEmail,
+    via: "operator",
+  });
+  const member = await resolvePrincipal(
+    env,
+    db,
+    {
+      sub: await memberIdFor(env, signedIn.accountId),
+      groups: identity.groups,
+      root: holdsRoot(env, identity.groups),
+      accountId: signedIn.accountId,
+    },
+    now,
+  );
+  if (!can(member, PLATFORM, "console", "view")) {
+    await endConsoleSession(env, db, signedIn.sid, now);
+    return notMember("Admin sign-in refused: no administrator grant");
   }
 
   // Only a step-up flow whose ID token carries `auth_time` records a step-up.

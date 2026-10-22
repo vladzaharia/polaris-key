@@ -871,6 +871,43 @@ export function accessInviteNotice(input: {
 }
 
 /**
+ * ST-31.8: an invitation was accepted (the invitee signed in and the invite became their access).
+ * Sent as Polaris Key to the inviter and to every Superadmin. Names the role, the scope, the areas
+ * and who invited; carries no link and no token.
+ */
+export function accessInviteAcceptedNotice(input: {
+  /** The person who signed in (a display name or address). */
+  member: string | null | undefined;
+  inviter: string | null | undefined;
+  roleLabel: string;
+  scopeLabel: string | null | undefined;
+  areas: readonly string[] | null;
+  origin: string | null | undefined;
+}): NoticeMessage {
+  const member = operatorText(input.member, "A member");
+  const inviter = operatorText(input.inviter, "An operator");
+  const scope = operatorText(input.scopeLabel, "the platform");
+  const subject = `Console invitation accepted: ${member}`;
+  const line = `${member} signed in to the Polaris Key console with the invitation from ${inviter} and is now ${input.roleLabel} on ${scope}${
+    input.areas ? `, limited to ${input.areas.join(", ")}` : ""
+  }.`;
+  const footer =
+    "You get this because you sent the invitation or you are a Superadmin. " +
+    "If you did not expect it, open Members in the console and take the access back.";
+  return {
+    subject,
+    text: [subject, line, footer].join("\n\n"),
+    html: renderEmail({
+      subject,
+      heading: subject,
+      paragraphs: [line],
+      footer,
+      origin: emailAssetOrigin(input.origin),
+    }),
+  };
+}
+
+/**
  * ST-31.7 (G5 for invites): one notice per request to every Superadmin, so a session that hands
  * out invites is loud. Counts only; it names no invited address.
  */

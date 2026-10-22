@@ -508,3 +508,135 @@ export async function purgeExpiredInvites(
     limit,
   );
 }
+
+/**
+ * ST-31.8: converting an invite into the member's own binding. Every statement below carries the
+ * invite's guard, so the batch applies only while the invite is exactly as the converter read and
+ * authorised it (same address, role, scope, areas and inviter, still unexpired), and a second
+ * sign-in racing the first finds nothing to convert.
+ */
+export function inviteLiveGuard(
+  inv: BindingRow,
+  now: number,
+): { sql: string; params: (string | number | null)[] } {
+  return {
+    sql: `EXISTS (SELECT 1 FROM console_role_bindings
+                   WHERE id = ? AND email_norm = ? AND account_id IS NULL AND role = ? AND scope = ?
+                     AND areas_json IS ? AND granted_by IS ? AND expires_at > ?)`,
+    params: [
+      inv.id,
+      inv.email_norm,
+      inv.role,
+      inv.scope,
+      inv.areas_json,
+      inv.granted_by,
+      now,
+    ],
+  };
+}
+
+/** The account holds this `(role, scope)` with exactly these areas (`null` = every area). */
+export function accountBindingGuard(
+  accountId: string,
+  role: string,
+  scope: string,
+  areasJson: string | null,
+): { sql: string; params: (string | null)[] } {
+  return {
+    sql: `EXISTS (SELECT 1 FROM console_role_bindings
+                   WHERE account_id = ? AND role = ? AND scope = ? AND areas_json IS ?)`,
+    params: [accountId, role, scope, areasJson],
+  };
+}
+
+export interface InviteConversion {
+  /** The id the audit rows name: the new binding's, or the merged one's. */
+  bindingId: string;
+  /** The areas the member holds after the conversion (`null` = every area). */
+  areas: AreaId[] | null;
+  /** The guard the audit rows carry: invite live AND the member's binding is in place. */
+  when: { sql: string; params: (string | number | null)[] };
+  /** Write the binding (insert, or union into an existing one). */
+  write: DbStatement[];
+  /** Delete the invite, only after `write` took effect. Run it LAST. */
+  remove: DbStatement;
+}
+
+/**
+ * The statements that turn `invite` into a binding for `accountId`. An existing `(role, scope)`
+ * binding of the account is widened to the union of the two area lists (`mergeAreas`: NULL wins);
+ * otherwise a new row is inserted with source `invite` and the inviter as `granted_by`. The insert
+ * is a no-op on a unique-index conflict (a concurrent grant) rather than an error, and every later
+ * statement then sees the binding missing and does nothing, leaving the invite for the next try.
+ */
+export function stmtsConvertInvite(a: {
+  invite: BindingRow;
+  accountId: string;
+  existing: BindingRow | null;
+  newId: string;
+  now: number;
+}): InviteConversion | null {
+  const spec = rowToGrant(a.invite);
+  if (!spec) return null;
+  const live = inviteLiveGuard(a.invite, a.now);
+  let areas: AreaId[] | null = spec.areas ? [...spec.areas] : null;
+  const write: DbStatement[] = [];
+  let bindingId = a.newId;
+  if (a.existing) {
+    const held = rowToGrant(a.existing);
+    if (!held) return null;
+    bindingId = a.existing.id;
+    areas = mergeAreas(held.areas, spec.areas);
+    const next = areas === null ? null : JSON.stringify(areas);
+    if (next !== a.existing.areas_json)
+      write.push({
+        sql: `UPDATE console_role_bindings SET areas_json = ?
+               WHERE id = ? AND account_id = ? AND areas_json IS ? AND ${live.sql}`,
+        params: [
+          next,
+          a.existing.id,
+          a.accountId,
+          a.existing.areas_json,
+          ...live.params,
+        ],
+      });
+  } else {
+    write.push({
+      sql: `INSERT INTO console_role_bindings
+              (id, account_id, email_norm, role, scope, areas_json, source, granted_by, granted_at, expires_at)
+            SELECT ?, ?, NULL, ?, ?, ?, 'invite', ?, ?, NULL WHERE ${live.sql}
+            ON CONFLICT (account_id, role, scope) WHERE account_id IS NOT NULL DO NOTHING`,
+      params: [
+        a.newId,
+        a.accountId,
+        a.invite.role,
+        a.invite.scope,
+        areas === null ? null : JSON.stringify(areas),
+        a.invite.granted_by,
+        a.now,
+        ...live.params,
+      ],
+    });
+  }
+  const finalJson = areas === null ? null : JSON.stringify(areas);
+  const bound = accountBindingGuard(
+    a.accountId,
+    a.invite.role,
+    a.invite.scope,
+    finalJson,
+  );
+  const when = {
+    sql: `${live.sql} AND ${bound.sql}`,
+    params: [...live.params, ...bound.params],
+  };
+  return {
+    bindingId,
+    areas,
+    when,
+    write,
+    remove: {
+      sql: `DELETE FROM console_role_bindings WHERE id = ? AND ${when.sql}`,
+      params: [a.invite.id, ...when.params],
+    },
+  };
+}
