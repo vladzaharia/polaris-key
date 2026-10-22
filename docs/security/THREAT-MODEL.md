@@ -3400,14 +3400,20 @@ typed value when present, otherwise the app the product is assigned on that stor
 metadata only). A typed value that differs from the assignment still wins and is reported as a
 mismatch (surfaced in A-28.3). The assignment is the operator's, not proof a key exists:
 `deletePlatformCredential` keeps pins, so a derived identity stays in force while the credential is
-gone, and every verification call keeps its own credential check and fails as before. Only the
-operator can move the assignment (platform admin, audited), so no new party chooses the app; a
-manifest or repo push still cannot. A store with no `commerce.stores` block stays off, and so does
-a block with neither a typed value nor an assignment (`no_app_assigned`). The derived Apple ID
-check on Production notifications applies only when the bundle id in force is the assigned app's.
-Residual: re-assigning a product's pin on the platform, or changing which own credential is
-active, changes which app's purchases unlock the flag with no commerce write; both are operator
-actions with their own audit rows.
+gone, and every verification call keeps its own credential check and fails as before. The
+assignment is set by two different roles, neither needing the `commerce` area: a product admin
+holding `keys` sets an own-credential pin (`PUT …/outlet-credentials/:id`, audited
+`outlet_credential.set` / `outlet_credential.pin`), and a platform admin sets the platform pin
+(`store_connection.assign`). Because an own pin beats a platform pin (D12), a `commerce` holder who
+leaves the identity field out of `commerce.stores` opts into this: while the field is out, a `keys`
+holder who adds a lower-id own credential or re-pins one moves which app's purchases unlock the
+flag. Typing the field pins it; a typed value always wins. A manifest or repo push still cannot
+choose the app. A store with no `commerce.stores` block stays off, and so does a block with
+neither a typed value nor an assignment (`no_app_assigned`; `own_credential_unpinned` when an own
+credential with no pin hides a platform pin). The Apple ID check on Production notifications
+applies only to a typed `appAppleId`: the Apple ID and the bundle id sit in different key slots
+and can name different apps, so it is never derived. Residual: the moves above change which app's
+purchases unlock the flag with no commerce write; each has its own audit row.
 
 **Licence merges (LX-03).** When an identity sign-in retires an anonymous enrolled licence into
 the identity's licence, the retired licence's grants and purchases move to the survivor and its
@@ -3443,7 +3449,7 @@ from Apple's sandbox host, never the production one.
 **Credentials and pins.** Two outlet-credential kinds join P5-01's custody: `app-store-server-key`
 (the In-App Purchase key, pinned to the bundle id) and `steam-publisher-key` (pinned to the game's
 app id); Play reuses the `google-service-account` pinned to the package. A store runs only when
-its commerce settings name the app AND an active credential is pinned to that same app, so a repo
+its commerce settings resolve an identity (typed or assigned) AND an active credential is pinned to that same app, so a repo
 writer cannot aim the operator's key at another app (the settings are operator-owned too). The
 Steam key rides in a query string to `partner.steam-api.com`, so no error carries a URL; every
 store call is redirect-free and capped (`commerce/http.ts`).
