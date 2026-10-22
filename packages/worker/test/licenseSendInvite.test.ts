@@ -171,7 +171,11 @@ describe("send-invite (LX-27c.2)", () => {
 
   it("refuses each 409 reason before sending", async () => {
     const id = await waiting();
-    await db.run("UPDATE licenses SET expires_at = ? WHERE id = ?", clock - 5, id);
+    await db.run(
+      "UPDATE licenses SET expires_at = ? WHERE id = ?",
+      clock - 5,
+      id,
+    );
     let res = await invite(id);
     expect(res.status).toBe(409);
     expect(await res.json()).toMatchObject({ reason: "license_expired" });
@@ -182,11 +186,21 @@ describe("send-invite (LX-27c.2)", () => {
     await admin("POST", `/${id}/enable`, {});
 
     await suppressEmail(env, db, "holder@example.com", "operator", clock);
-    expect(await (await invite(id)).json()).toMatchObject({ reason: "suppressed" });
+    expect(await (await invite(id)).json()).toMatchObject({
+      reason: "suppressed",
+    });
     await db.run("DELETE FROM email_suppressions");
-    await db.run("UPDATE licenses SET email = 'not-an-address' WHERE id = ?", id);
-    expect(await (await invite(id)).json()).toMatchObject({ reason: "address_unusable" });
-    await db.run("UPDATE licenses SET email = 'holder@example.com' WHERE id = ?", id);
+    await db.run(
+      "UPDATE licenses SET email = 'not-an-address' WHERE id = ?",
+      id,
+    );
+    expect(await (await invite(id)).json()).toMatchObject({
+      reason: "address_unusable",
+    });
+    await db.run(
+      "UPDATE licenses SET email = 'holder@example.com' WHERE id = ?",
+      id,
+    );
     await db.run(
       `INSERT INTO product_settings (product, key, value_json, source, version, updated_at, updated_by)
        VALUES ('djdl', 'email.dailyCap', '1', 'console', 1, ?, 'test')`,
@@ -195,11 +209,15 @@ describe("send-invite (LX-27c.2)", () => {
     await db.run("DELETE FROM email_suppressions");
     await invite(id); // spends the cap
     clock += 700;
-    expect(await (await invite(id)).json()).toMatchObject({ reason: "daily_cap" });
+    expect(await (await invite(id)).json()).toMatchObject({
+      reason: "daily_cap",
+    });
     await db.run("DELETE FROM product_settings WHERE key = 'email.dailyCap'");
     const sentBefore = sent.length;
     env.EMAIL = undefined;
-    expect(await (await invite(id)).json()).toMatchObject({ reason: "no_mail_binding" });
+    expect(await (await invite(id)).json()).toMatchObject({
+      reason: "no_mail_binding",
+    });
     expect(sent.length).toBe(sentBefore);
   });
 
@@ -209,13 +227,20 @@ describe("send-invite (LX-27c.2)", () => {
       `INSERT INTO oidc_config (product, issuer, client_id, provider)
        VALUES ('djdl', 'https://id.example.com', 'c', 'custom')`,
     );
-    expect(await (await invite(id)).json()).toMatchObject({ reason: "auto_link_off" });
+    expect(await (await invite(id)).json()).toMatchObject({
+      reason: "auto_link_off",
+    });
     await db.run("DELETE FROM oidc_config");
     await db.run(
       "UPDATE products SET services_json = ? WHERE slug = 'djdl'",
-      JSON.stringify({ license: { enabled: true }, identity: { enabled: false } }),
+      JSON.stringify({
+        license: { enabled: true },
+        identity: { enabled: false },
+      }),
     );
-    expect(await (await invite(id)).json()).toMatchObject({ reason: "identity_off" });
+    expect(await (await invite(id)).json()).toMatchObject({
+      reason: "identity_off",
+    });
     expect(sent).toHaveLength(0);
   });
 
