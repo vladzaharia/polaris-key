@@ -624,11 +624,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
 export function routeSkeleton(route: Route): SkeletonTemplate {
   if (route.kind === "not-found") return "table";
   if (route.id !== undefined || route.child) return "record";
-  if (
-    route.page === "overview" ||
-    route.page === "platform-deployment" ||
-    route.page === "platform-operations"
-  )
+  if (route.page === "overview" || route.page === "platform-status")
     return "dashboard";
   if (
     route.page === "platform-settings" ||

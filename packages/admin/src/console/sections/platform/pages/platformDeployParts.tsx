@@ -4,18 +4,8 @@
  */
 
 import * as React from "react";
-import { ExternalLink } from "lucide-react";
-import type {
-  PlatformCursor,
-  PlatformDeploy,
-  PlatformDeployment,
-} from "../../../../api.js";
-import { formatCount, fromSeconds } from "../../../../lib/format.js";
-import { ENVIRONMENT_LABELS, label } from "../../../../lib/labels.js";
-import type { DataColumn } from "../../../../ui/data-table/index.js";
-import { Hash } from "../../../../ui/Hash.js";
-import { StatusPill } from "../../../../ui/StatusPill.js";
-import { Timestamp } from "../../../../ui/Timestamp.js";
+import type { PlatformCursor, PlatformDeployment } from "../../../../api.js";
+import { formatCount } from "../../../../lib/format.js";
 import type { AttentionItem } from "../../../templates/Dashboard.js";
 
 /** "v0.8.6", else the short commit, else "Development build". */
@@ -74,108 +64,6 @@ export function deploymentAttention(d: PlatformDeployment): AttentionItem[] {
   }
   return items;
 }
-
-const SMOKE: Record<
-  string,
-  { tone: "success" | "danger" | "neutral"; label: string }
-> = {
-  success: { tone: "success", label: "Passed" },
-  failure: { tone: "danger", label: "Failed" },
-  skipped: { tone: "neutral", label: "Skipped" },
-  cancelled: { tone: "neutral", label: "Cancelled" },
-};
-
-export const DEPLOY_COLUMNS: DataColumn<PlatformDeploy>[] = [
-  {
-    id: "tag",
-    header: "Release",
-    accessorFn: (d) => d.tag ?? "",
-    meta: { priority: 1, primary: true, mono: true },
-    cell: ({ row }) => row.original.tag ?? "Untagged",
-  },
-  {
-    id: "at",
-    header: "Deployed",
-    accessorKey: "at",
-    meta: { numeric: true, priority: 1 },
-    cell: ({ row }) => <Timestamp at={fromSeconds(row.original.at)} />,
-  },
-  {
-    id: "commit",
-    header: "Commit",
-    accessorFn: (d) => d.gitSha ?? "",
-    enableSorting: false,
-    meta: { priority: 2 },
-    cell: ({ row }) =>
-      row.original.gitSha ? (
-        <Hash
-          value={row.original.gitSha}
-          label="commit"
-          chars={7}
-          className="whitespace-nowrap"
-        />
-      ) : (
-        "—"
-      ),
-  },
-  {
-    id: "environment",
-    header: "Environment",
-    accessorFn: (d) => d.environment ?? "",
-    meta: { priority: 2 },
-    cell: ({ row }) => label(ENVIRONMENT_LABELS, row.original.environment),
-  },
-  {
-    id: "smoke",
-    header: "Smoke check",
-    accessorFn: (d) => d.smoke ?? "",
-    meta: { priority: 1 },
-    cell: ({ row }) => {
-      const s = SMOKE[row.original.smoke ?? ""];
-      return s ? (
-        <StatusPill tone={s.tone} size="sm">
-          {s.label}
-        </StatusPill>
-      ) : (
-        <span className="text-fg-muted">Not recorded</span>
-      );
-    },
-  },
-  {
-    id: "scripts",
-    header: "Scripts",
-    accessorFn: (d) => d.scripts.join(", "),
-    enableSorting: false,
-    meta: { priority: 3, mono: true },
-  },
-  {
-    id: "migration",
-    header: "Newest migration",
-    accessorFn: (d) => d.latestMigration ?? "",
-    meta: { priority: 3, mono: true },
-  },
-  {
-    id: "run",
-    header: "Run",
-    enableSorting: false,
-    meta: { priority: 2, label: "Run", csv: (d) => d.runUrl ?? "" },
-    cell: ({ row }) =>
-      row.original.runUrl ? (
-        <a
-          href={row.original.runUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 whitespace-nowrap text-accent-fg underline-offset-4 hover:underline"
-        >
-          View run
-          <ExternalLink aria-hidden className="size-3.5" />
-          <span className="sr-only">(opens GitHub Actions)</span>
-        </a>
-      ) : (
-        "—"
-      ),
-  },
-];
 
 /** One more page of a keyset list, appended under the first (which the query owns). */
 export function useMorePages<T>(

@@ -171,7 +171,7 @@ describe("the lazy route fallback is a skeleton", () => {
       routeSkeleton(route({ kind: "global", page: "platform-settings" })),
     ).toBe("form");
     expect(
-      routeSkeleton(route({ kind: "global", page: "platform-deployment" })),
+      routeSkeleton(route({ kind: "global", page: "platform-status" })),
     ).toBe("dashboard");
   });
 
@@ -200,8 +200,7 @@ describe("the lazy route fallback is a skeleton", () => {
 describe("no page pulses", () => {
   it("the platform pages and Home draw pk-skeleton blocks", () => {
     for (const f of [
-      "console/sections/platform/index.tsx",
-      "console/sections/platform/pages/platformOperations.tsx",
+      "console/sections/platform/pages/platformStatusParts.tsx",
       "console/sections/platform/pages/platformSettings.tsx",
       "console/sections/platform/pages/platformStores.tsx",
       "console/sections/global/components/ProductShelf.tsx",

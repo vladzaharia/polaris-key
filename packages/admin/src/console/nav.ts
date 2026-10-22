@@ -60,6 +60,7 @@ import {
   Rocket,
   Rss,
   Send,
+  Server,
   ServerCog,
   Settings,
   ShieldCheck,
@@ -106,8 +107,7 @@ export type GlobalPageId =
   | "personal-tokens"
   // the Platform section (notes/S-13 §9.1)
   | "platform-settings"
-  | "platform-deployment"
-  | "platform-operations"
+  | "platform-status"
   | "platform-stores"
   | "platform-connections"
   | "platform-feeds"
@@ -814,20 +814,14 @@ const PLATFORM_PAGES: NavPage[] = [
     group: "platform",
   },
   {
-    page: "platform-deployment",
-    label: "Deployment",
-    path: "platform/deployment",
-    icon: CloudUpload,
+    // CX-PSTAT: Deployment and Operations in one page (ST-09). Their 0.9 addresses are Page moved
+    // rows in the route ledger.
+    page: "platform-status",
+    label: "Status",
+    keywords: "deployment operations deploy cron queue health migrations",
+    path: "platform/status",
+    icon: Server,
     docs: "/docs/operate/platform/deploy/",
-    inNav: true,
-    group: "platform",
-  },
-  {
-    page: "platform-operations",
-    label: "Operations",
-    path: "platform/operations",
-    icon: Gauge,
-    docs: "/docs/operate/platform/jobs/",
     inNav: true,
     group: "platform",
   },

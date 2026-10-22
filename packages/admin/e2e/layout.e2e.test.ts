@@ -292,7 +292,7 @@ const TEXT200_CASES = [
   // CF5: the Rollouts masthead at 200 % text on a phone.
   "djdl:rollouts",
   "djdl:activity",
-  "global:platform-deployment",
+  "global:platform-status",
   "djdl:settings-members",
 ];
 /** The console's content column at its widest (BRAND.md §7.6). */

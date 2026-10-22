@@ -92,7 +92,7 @@ export function UserMenu({
         <DropdownMenuSeparator />
         {version ? (
           <DropdownMenuItem asChild>
-            <Link to={r.platformDeployment()} data-version-chip="">
+            <Link to={r.platformStatus()} data-version-chip="">
               <CloudUpload aria-hidden />
               <span className="flex-1">Version</span>
               <span className="rounded-full border border-border bg-surface-sunken px-2 py-0.5 font-mono text-xs text-fg">

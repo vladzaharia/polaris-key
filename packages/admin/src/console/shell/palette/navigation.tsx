@@ -107,7 +107,7 @@ export function navigationSource(
       group: "Platform",
       label: p.label,
       detail: "Platform",
-      keywords: "platform",
+      keywords: p.keywords ? `platform ${p.keywords}` : "platform",
       icon: <Icon aria-hidden className="size-4" />,
       href: globalPage(p.page as GlobalPageId),
     });

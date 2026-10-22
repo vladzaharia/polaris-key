@@ -222,7 +222,7 @@ describe("ranking", () => {
     const labels = groups[0]!.items.map((i) => i.label);
     expect(labels[0]).toBe("Overview");
     expect(labels.indexOf("Licenses")).toBeLessThan(labels.indexOf("Home"));
-    expect(labels).not.toContain("Deployment");
+    expect(labels).not.toContain("Status");
   });
 
   it("typed: Platform appears on a match, after the product's own pages", () => {
@@ -412,7 +412,7 @@ describe("the palette in the console", () => {
 
     await userEvent.type(input(dialog), "deploy");
     await waitFor(() =>
-      expect(groupLabels(dialog, "Platform")[0]).toMatch(/^Deployment/),
+      expect(groupLabels(dialog, "Platform")[0]).toMatch(/^Status/),
     );
   });
 

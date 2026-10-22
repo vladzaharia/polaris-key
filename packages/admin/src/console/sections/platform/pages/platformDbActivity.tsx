@@ -4,102 +4,15 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  api,
-  type PlatformActivityItem,
-  type PlatformDeployment,
-} from "../../../../api.js";
+import { api, type PlatformActivityItem } from "../../../../api.js";
 import { formatCount, fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
-import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Timeline, TimelineItem } from "../../../../ui/Timeline.js";
 import { Panel } from "../../../templates/Dashboard.js";
 import { qk } from "../../../data/queries.js";
 import { useMorePages } from "./platformDeployParts.js";
-
-export function MigrationsPanel({
-  deployment: d,
-  loading,
-}: {
-  deployment: PlatformDeployment | undefined;
-  loading: boolean;
-}): React.ReactElement {
-  const [all, setAll] = React.useState(false);
-  const applied = d?.migrations.applied ?? null;
-  const newestFirst = applied ? [...applied].reverse() : [];
-  const shown = all ? newestFirst : newestFirst.slice(0, 8);
-  return (
-    <Panel title="Database">
-      {loading || !d ? (
-        <div aria-hidden className="pk-skeleton-group space-y-3">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="grid grid-cols-[8rem_minmax(0,1fr)] gap-4">
-              <div className="pk-skeleton h-4 rounded-md" />
-              <div className="pk-skeleton h-4 w-1/2 rounded-md" />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <DescriptionList
-            items={[
-              {
-                term: "Newest in this build",
-                detail: (
-                  <span className="break-all font-mono text-xs">
-                    {d.migrations.latest}
-                  </span>
-                ),
-              },
-              {
-                term: "Required indexes",
-                detail:
-                  d.indexes.missing === null
-                    ? "Could not be checked"
-                    : d.indexes.missing.length === 0
-                      ? "All present"
-                      : d.indexes.missing.join(", "),
-              },
-            ]}
-          />
-          {applied && applied.length > 0 ? (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-fg-strong">
-                Applied ({formatCount(applied.length)})
-              </h3>
-              <ol className="space-y-1">
-                {shown.map((m) => (
-                  <li
-                    key={m.name}
-                    className="flex flex-wrap items-baseline justify-between gap-x-2 text-xs"
-                  >
-                    <span className="break-all font-mono text-fg">
-                      {m.name}
-                    </span>
-                    {m.appliedAt ? (
-                      <span className="text-fg-muted">{m.appliedAt}</span>
-                    ) : null}
-                  </li>
-                ))}
-              </ol>
-              {newestFirst.length > 8 ? (
-                <Button
-                  variant="link"
-                  size="sm"
-                  onClick={() => setAll((v) => !v)}
-                >
-                  {all ? "Show fewer" : `Show all ${newestFirst.length}`}
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      )}
-    </Panel>
-  );
-}
 
 /** The verb phrase of a platform action; an action without one reads as its code. */
 const ACTION_VERBS: Record<string, string> = {

@@ -467,7 +467,7 @@ describe("Home", () => {
       within(region)
         .getByRole("link", { name: "Open status" })
         .getAttribute("href"),
-    ).toBe("#/platform/operations");
+    ).toBe("#/platform/status");
   });
 
   it("first run: a pending or failed Platform ready read still has its card", async () => {

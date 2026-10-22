@@ -185,9 +185,7 @@ describe("sections by enablement (D-15)", () => {
     expect(sectionHeaders()).toEqual([]);
     // The Platform context lists Home and the Platform pages themselves (ST-45), no product's.
     expect(within(nav()).getByRole("link", { name: "Home" })).toBeTruthy();
-    expect(
-      within(nav()).getByRole("link", { name: "Deployment" }),
-    ).toBeTruthy();
+    expect(within(nav()).getByRole("link", { name: "Status" })).toBeTruthy();
     expect(within(nav()).queryByRole("link", { name: "Overview" })).toBeNull();
     // The products are on Home: no Products link of their own (ST-44).
     expect(within(nav()).queryByRole("link", { name: "Products" })).toBeNull();
