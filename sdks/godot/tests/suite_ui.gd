@@ -65,6 +65,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	await _settings_open(t)
 	await _key_field(t)
 	await _layout(t, all)
+	await _spec(t)
 	t.check("coverage: states", all.size() >= 60, str(all.size()))
 	return true
 
@@ -432,7 +433,7 @@ func _settings(t: PKeyTestContext) -> void:
 	await _tree().process_frame
 	var keys: Array = p.rows.map(func(r): return r["key"])
 	t.check("settings: hidden keys are never rows (document hidden, catalog hidden, secrets, flags)", not keys.has("game.tuning") and not keys.has("debug.overlay") and not keys.has("leaderboard.key") and not keys.has("extras.skins"), str(keys))
-	t.check("settings: grouped by category, sorted by ui.order", keys == ["game.killSwitch", "audio.volume", "audio.muted", "audio.pitch", "ui.theme", "ui.reducedMotion", "net.proxyUrl", "net.proxyPassword", "notes.motd"], str(keys))
+	t.check("settings: grouped by category, sorted by ui.order, the locked rows last as Managed settings", keys == ["audio.volume", "audio.muted", "audio.pitch", "ui.theme", "ui.reducedMotion", "net.proxyUrl", "net.proxyPassword", "notes.motd", "game.killSwitch"], str(keys))
 	var kill := _row_nodes(p, "game.killSwitch")
 	var kill_input: Control = kill.get("input")
 	t.check("settings: an enforced setting is text, never a dimmed control", kill_input is Label and not (kill_input as Label).text.is_empty() and not kill_input is BaseButton, str(kill_input))
@@ -1157,3 +1158,189 @@ func _set_by(t: PKeyTestContext) -> void:
 	_free(p)
 	sdk.queue_free()
 	PKeyUiTheme.reset()
+
+
+# ── UI-KITS.md conformance (KP-godot-spec) ────────────────────────────────────────────────────
+
+const _COPY_FORMAT := preload("res://addons/polaris_key/ui/model/copy_format.gd")
+## The kit's DEFAULTS keys whose English text is a catalog string (packages/brand/kit-copy/en.json,
+## the generated en.po): the catalog is the source of truth for copy (DL8).
+const CATALOG_KEYS := {
+	"activation_subtitle": "welcome.lede",
+	"activation_subtitle_key": "welcome.ledeKeyOnly",
+	"activation_subtitle_sign_in": "welcome.ledeSignInOnly",
+	"key_label": "part.keyField.label",
+	"key_placeholder": "part.keyField.placeholder",
+	"sign_in": "welcome.signIn",
+	"continue_free": "welcome.continueFree",
+	"offline_activation": "welcome.offline",
+	"free_device": "deviceLimit.title",
+	"different_key": "signin.key.differentKey",
+	"retry": "common.tryAgain",
+	"cancel": "common.cancel",
+	"sign_in_code_title": "signin.handoff.codeTitle",
+	"sign_in_code_body": "signin.handoff.codeBody",
+	"sign_in_scan_tv": "signInHandoff.scanTv",
+	"sign_in_expires": "signin.handoff.expires",
+	"sign_in_copy_link": "signin.handoff.copyLink",
+	"sign_in_open_browser": "signin.handoff.openBrowser",
+	"sign_in_use_key": "signin.choice.keyInstead",
+	"update_dismiss": "update.later",
+	"update_action": "update.install",
+	"update_install": "update.install",
+	"update_restart": "update.restartNow",
+	"update_modal_title": "update.title",
+	"status_update": "status.update",
+	"banner_last_day": "grace.lastDay",
+	"banner_reconnect": "common.reconnect",
+	"banner_dismiss": "common.dismiss",
+	"settings_managed": "account.managedSettings",
+	"settings_search": "settings.search",
+	"settings_empty": "settings.empty",
+	"settings_offline": "settings.loadFailed",
+	"settings_reset": "settings.reset",
+	"settings_advanced": "settings.advanced",
+	"boot_syncing": "boot.syncing",
+	"boot_consent_body": "boot.consent.body",
+	"boot_consent_body_metered": "boot.consent.bodyMetered",
+	"boot_declined_body": "boot.declined.body",
+	"gate_error_title": "gate.error.title",
+	"boot_offline_title": "boot.offline.title",
+}
+
+
+## A message with its placeholders ({name}, %s, %d, a leading "#") made one marker.
+static func _shape(msg: String) -> String:
+	var re := RegEx.new()
+	re.compile("\\{[A-Za-z]+\\}|%s|%d")
+	return re.sub(msg, "§", true)
+
+
+func _stage_gate(size: Vector2i) -> Array:
+	var vp := SubViewport.new()
+	vp.size = size
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_tree().root.add_child(vp)
+	var g := PKeyGateView.new()
+	g.auto_sdk = false
+	g.activation.set_capabilities(PKeyActivationController.capabilities(true, true, true, false))
+	g.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vp.add_child(g)
+	return [vp, g]
+
+
+func _spec(t: PKeyTestContext) -> void:
+	# DL8: every English string the kit shares with the catalog reads exactly as the catalog does.
+	var cat = _COPY_FORMAT.new({"locale": "en"})
+	var drift: Array = []
+	for k in CATALOG_KEYS:
+		var want := _shape(cat.format(CATALOG_KEYS[k]))
+		var got := _shape(String(PKeyUiCopy.DEFAULTS[k]))
+		if want != got or want == "":
+			drift.append("%s: '%s' vs catalog '%s'" % [k, got, want])
+	t.check("spec: kit copy reads as the catalog (DL8)", drift.is_empty(), "; ".join(drift.slice(0, 4)))
+	# §1.5 rule 11: separators are "·", never a dash.
+	t.check("spec: the grace line separates with a middle dot", String(PKeyUiCopy.DEFAULTS["banner_grace"]).contains("·") and not String(PKeyUiCopy.DEFAULTS["banner_grace"]).contains("—"))
+
+	# DL12: the product header's name is weight 500.
+	var strong := PKeyUiTheme.build(true).get_font("font", "PKeyStrong")
+	var wght := PKeyUiTheme.weight_variation(500).variation_opentype
+	t.check("spec: PKeyStrong (the product header's name) draws at weight 500 (DL12)", strong is FontVariation and (strong as FontVariation).variation_opentype == wght)
+
+	# §4.3 Welcome: the lede leads the form, and the extras are links in one row (no full-width button).
+	var p: Control = _sc.activation(true, true, true, false)
+	await _tree().process_frame
+	await _tree().process_frame
+	var lede := p.find_child("Lede", true, false) as Label
+	var form := p.find_child("Form", true, false)
+	t.check("spec: Welcome says what to do, in the catalog's words", lede != null and (lede.visible or p.phone_bleed()) and PKeyUiCopy.new().text("activation_subtitle") == "Sign in or use a license key to continue.")
+	var extras := p.find_child("Extras", true, false) as HFlowContainer
+	t.check("spec: Welcome's extras are one row", extras != null and extras.get_node("ContinueFree") != null and extras.get_node("OfflineActivation") != null)
+	t.check("spec: the extras are links, not buttons beside the primary", extras != null and extras.get_node("ContinueFree").theme_type_variation == &"PKeyLink" and extras.get_node("OfflineActivation").theme_type_variation == &"PKeyLink")
+	if form != null:
+		var order: Array = []
+		for ch in form.get_children():
+			if ch.visible:
+				order.append(ch.name)
+		t.check("spec: the lede sits above the key field on keyboard platforms", order.find("Lede") < order.find("KeyField") or not order.has("Lede"), str(order))
+	_free(p)
+
+	# DL1/DL5: in two panes the passport holds the product only; the refusal's title leads the end pane.
+	var st := _stage_gate(Vector2i(1280, 720))
+	var g: PKeyGateView = st[1]
+	g.show_state({"status": "revoked"})
+	for i in 6:
+		await _tree().process_frame
+	var title := g.find_child("Title", true, false) as Label
+	var pane := g.find_child("Pane", true, false)
+	t.check("spec: a refusal's title is in the end pane, not the passport (DL1)", title != null and title.visible and not pane.is_ancestor_of(title) and g.find_child("Form", true, false).is_ancestor_of(title), str(title.get_path()) if title != null else "no title")
+	g.show_state({"status": "channel-not-entitled"})
+	for i in 4:
+		await _tree().process_frame
+	t.check("spec: a channel the license lacks has its own title (StatusScreen Must not)", (g.find_child("Title", true, false) as Label).text == "Channel not included" and PKeyGateController.copy_for("not-available", "version-too-new")["title"] == "not_available_title")
+	g.show_loading()
+	await _tree().process_frame
+	t.check("spec: loading shows nothing for its first 250 ms (DL7)", not g._card.visible)
+	await _tree().create_timer(0.4).timeout
+	t.check("spec: then the identity, a label and the shimmer (DL7)", g._card.visible and g._loading_bar.visible and g.find_child("Message", true, false).visible)
+	(st[0] as Node).queue_free()
+
+	# §4.3 SignInHandoff code view.
+	var d: PKeySignInDialog = _sc.sign_in("pending")
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("spec: the device-code title is Sign in with a code", (d.find_child("Title", true, false) as Label).text == "Sign in with a code")
+	var expires := (d.find_child("Expires", true, false) as Label).text
+	var ring := d.find_child("Ring", true, false) as PKeyCountdownRing
+	t.check("spec: the countdown is a determinate ring beside 'Code expires in m:ss' (§1.5 rule 4)", expires == "Code expires in 2:05" and ring != null and ring.visible and ring.fraction > 0.0 and ring.fraction < 1.0, "%s %s" % [expires, ring.fraction if ring != null else "no ring"])
+	var instructions := (d.find_child("Instructions", true, false) as Label).text
+	t.check("spec: the instruction is one sentence with the address inside it (no dangling fragment)", instructions.begins_with("On any phone or computer, go to ") and instructions.ends_with("enter this code.") and not (d.find_child("Address", true, false) as Label).visible, instructions)
+	t.check("spec: the header sits a stack gap above the title", d.find_child("Header", true, false).theme_type_variation == &"PKeyStack")
+	_free(d)
+
+	# GraceBanner: the last day, Reconnect, Dismiss for the session.
+	PKeyStatusBanner.reset_dismissed()
+	var day := PKeyBannerController.lines({"status": "grace", "grace_until": SCENARIOS.NOW + 3600}, SCENARIOS.NOW)
+	var days := PKeyBannerController.lines({"status": "grace", "grace_until": SCENARIOS.NOW + 3 * 86400}, SCENARIOS.NOW)
+	t.check("spec: under a day left says it is the last day; more counts days", day[0][0] == "banner_last_day" and days[0][0] == "banner_grace")
+	var b := PKeyStatusBanner.new()
+	b.auto_sdk = false
+	b.now_source = func(): return SCENARIOS.NOW
+	_sc.add(b)
+	b.show_state({"status": "grace", "grace_until": SCENARIOS.NOW + 3 * 86400})
+	await _tree().process_frame
+	var asked := [false]
+	b.reconnect_requested.connect(func(): asked[0] = true)
+	var rec := b.find_child("Reconnect", true, false) as Button
+	var dis := b.find_child("Dismiss", true, false) as Button
+	t.check("spec: grace carries Reconnect and Dismiss", rec.visible and dis.visible and rec.text == "Reconnect" and dis.text == "Dismiss")
+	rec.pressed.emit()
+	t.check("spec: Reconnect asks to reconnect", asked[0])
+	dis.pressed.emit()
+	await _tree().process_frame
+	t.check("spec: Dismiss hides the banner for the session", not b.visible)
+	b.show_state({"status": "grace", "grace_until": SCENARIOS.NOW + 3600})
+	await _tree().process_frame
+	t.check("spec: the last day comes back as a different message", b.visible)
+	PKeyStatusBanner.reset_dismissed()
+	_free(b)
+
+	# UpdatePrompt: the catalog's verbs and a title that names the product once.
+	var rel := {"version": "1.5.0", "seq": 15, "sha256": "ab"}
+	var up := PKeyUpdatePrompt.new()
+	up.modal = true
+	up.outlet = "direct"
+	up.release_url = "https://example.com/dl"
+	_sc.add(up)
+	up.show_result(_sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false}))
+	await _tree().process_frame
+	t.check("spec: the update's verbs are Update now and Later", (up.find_child("Action", true, false) as Button).text == "Update now" and (up.find_child("Dismiss", true, false) as Button).text == "Later")
+	var utitle := (up.find_child("Title", true, false) as Label).text
+	var uname := up.find_child("Name", true, false) as Label
+	t.check("spec: the update's title is '<Product> <version>' and the header is the icon alone (DL5)", utitle.ends_with(" 1.5.0") and utitle.length() > 6 and uname != null and not uname.visible, utitle)
+	_free(up)
+
+	# Settings: locked rows are "Managed settings", last.
+	var rows := [{"category": "B", "order": 2.0, "position": 1, "key": "b", "enforced": false}, {"category": PKeySettingsController.MANAGED, "order": 0.0, "position": 0, "key": "m", "enforced": true}, {"category": "A", "order": 1.0, "position": 2, "key": "a", "enforced": false}]
+	PKeySettingsController._sort(rows)
+	t.check("spec: the rows a policy locks close the list as Managed settings", rows.map(func(r): return r["key"]) == ["a", "b", "m"], str(rows.map(func(r): return r["key"])))

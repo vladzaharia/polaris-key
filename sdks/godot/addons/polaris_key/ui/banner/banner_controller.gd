@@ -2,7 +2,8 @@ class_name PKeyBannerController
 extends RefCounted
 ## PKeyStatusBanner's headless logic: the non-blocking lines a licence state and an update earn.
 ##
-##   grace          "Offline — N days left", from graceUntil − the effective now
+##   grace          "Offline · N days left", from graceUntil − the effective now; "Offline · last
+##                  day to use {product}" under a day
 ##   expired        "Your license needs an online check", for a game that lets play go on (or
 ##                  shows its own gate) while the licence has run out
 ##   last verified  "Checked 3 hours ago", from lastVerifiedAt (shown with grace, or when asked)
@@ -19,7 +20,12 @@ static func lines(state: Dictionary, now: float, update_available := false, show
 	if state.get("status") == "expired":
 		out.append(["banner_expired", null])
 	if grace and PKeyClaims.is_number(state.get("grace_until")):
-		out.append(["banner_grace", t.duration(float(state["grace_until"]) - now)])
+		var left := float(state["grace_until"]) - now
+		# The last day says so, in place of a count of hours.
+		if left < 86400.0:
+			out.append(["banner_last_day", null])
+		else:
+			out.append(["banner_grace", t.duration(left)])
 	if (grace or show_last_verified) and PKeyClaims.is_number(state.get("last_verified_at")):
 		var ago := now - float(state["last_verified_at"])
 		if ago < 60.0:

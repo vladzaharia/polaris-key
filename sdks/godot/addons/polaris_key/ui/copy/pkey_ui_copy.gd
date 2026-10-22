@@ -20,7 +20,7 @@ extends Resource
 const DEFAULTS := {
 	# ── PKeyBoot ────────────────────────────────────────────────────────────────────────────
 	"boot_starting": "Starting…",
-	"boot_syncing": "Connecting…",
+	"boot_syncing": "Checking for updates…",
 	"boot_gate": "Checking your license…",
 	"boot_deciding": "Looking for a newer version…",
 	"boot_fetching": "Downloading content…",
@@ -36,12 +36,12 @@ const DEFAULTS := {
 	"boot_blocked_unavailable_body": "This build isn't available on your license.",
 	"boot_rolled_back": "The last update didn't start, so the previous version was restored.",
 	"boot_consent_title": "Download content?",
-	"boot_consent_body": "%s of new content.",
-	"boot_consent_body_metered": "%s of new content. You're on a metered connection.",
+	"boot_consent_body": "{product} needs %s of new content.",
+	"boot_consent_body_metered": "{product} needs %s of new content, and you're on a metered connection.",
 	"boot_consent_download": "Download",
 	"boot_consent_later": "Not now",
 	"boot_declined_title": "Content not downloaded",
-	"boot_declined_body": "%s needs this content to start. Try again when you're ready.",
+	"boot_declined_body": "{product} needs this content to start. Download it when you're ready.",
 	"boot_background": "Downloading content… %d%%",
 	"retry": "Try again",
 	"play_offline": "Play offline",
@@ -61,16 +61,16 @@ const DEFAULTS := {
 	"version_min": "Minimum version: %s",
 	"not_available_title": "Not available on this license",
 	"version_too_new_body": "This build is newer than your license allows.",
-	"channel_not_entitled_body": "Your license doesn't cover this build.",
+	"channel_not_entitled_body": "Your license doesn't include this channel.",
 	"not_available_max": "Your license covers versions up to %s.",
-	"gate_error_title": "Couldn't start",
+	"gate_error_title": "{product} couldn't start",
 	"gate_error_body": "Check your connection and try again.",
 	"gate_continue_offline": "Continue offline",
 	# ── PKeyActivationPanel (Swift's PolarisLoginView copy is the model) ────────────────────
 	"activation_title": "Activate",
-	"activation_subtitle": "Enter a license key or sign in to continue.",
+	"activation_subtitle": "Sign in or use a license key to continue.",
 	"activation_subtitle_key": "Enter a license key to continue.",
-	"activation_subtitle_sign_in": "Sign in to continue.",
+	"activation_subtitle_sign_in": "Sign in to use {product}.",
 	"key_label": "License key",
 	"key_placeholder": "Paste your key",
 	"key_submit": "Activate",
@@ -106,16 +106,17 @@ const DEFAULTS := {
 	"use_another_license": "Use another license",
 	# ── PKeySignInDialog ────────────────────────────────────────────────────────────────────
 	"sign_in_title": "Sign in",
+	"sign_in_code_title": "Sign in with a code",
+	"sign_in_code_body": "On any phone or computer, go to %s and enter this code.",
+	"sign_in_scan_tv": "Scan the QR code with your phone, or go to this address and enter the code below.",
 	"sign_in_starting": "Starting sign-in…",
-	"sign_in_instructions": "Scan the code, or go to",
-	"sign_in_instructions_plain": "Go to",
 	"sign_in_expired_title": "Code expired",
 	"sign_in_new_code": "Get a new code",
 	"sign_in_use_key": "Use a license key instead",
 	"sign_in_open_browser": "Open browser",
 	"sign_in_copy_link": "Copy link",
 	"sign_in_copied": "Link copied.",
-	"sign_in_expires": "The code expires in %s.",
+	"sign_in_expires": "Code expires in %s",
 	"sign_in_device": "The sign-in page will show “%s”.",
 	"sign_in_confirm_title": "Is this you?",
 	"sign_in_confirm_body": "Signed in as %s.",
@@ -154,15 +155,17 @@ const DEFAULTS := {
 	# ── PKeySettingsPanel (React's ConfigPanel copy) ────────────────────────────────────────
 	"settings_title": "Settings",
 	"settings_empty": "There are no settings to show.",
-	"settings_loading": "Loading settings…",
+	"settings_loading": "Loading…",
 	"settings_general": "General",
+	"settings_managed": "Managed settings",
+	"settings_search": "Search settings",
 	"settings_advanced": "Show advanced settings",
 	"settings_decrease": "Decrease",
 	"settings_increase": "Increase",
 	"settings_reset": "Reset to default",
 	"settings_set_by": "Set by %s",
 	"settings_set_by_developer": "Set by the developer",
-	"settings_offline": "Couldn't load settings. Connect and try again.",
+	"settings_offline": "Settings couldn't be loaded.",
 	"settings_locked": "Locked",
 	"settings_badge_local": "Changed by you",
 	"settings_badge_env": "Set by the environment",
@@ -171,7 +174,10 @@ const DEFAULTS := {
 	"settings_source_local": "Changed by you",
 	"settings_source_env": "Set by the environment",
 	# ── PKeyStatusBanner ────────────────────────────────────────────────────────────────────
-	"banner_grace": "Offline — %s left",
+	"banner_grace": "Offline · %s left",
+	"banner_last_day": "Offline · last day to use {product}",
+	"banner_reconnect": "Reconnect",
+	"banner_dismiss": "Dismiss",
 	"banner_expired": "Your license needs an online check",
 	"banner_checked": "Checked %s ago",
 	"banner_checked_now": "Checked just now",
@@ -184,14 +190,16 @@ const DEFAULTS := {
 	"duration_minute": "1 minute",
 	# ── PKeyUpdatePrompt (React's UpdatePrompt copy) ────────────────────────────────────────
 	"update_title": "An update is available",
-	"update_modal_title": "Version %s",
+	"update_modal_title": "{product} %s",
 	"update_current": "You have %s · %s download",
 	"update_current_nosize": "You have %s",
 	"update_mandatory_title": "Update to keep using %s",
 	"update_body": "A newer version is available.",
 	"update_body_version": "Version %s is available.",
-	"update_action": "Get the update",
-	"update_dismiss": "Not now",
+	"update_action": "Update now",
+	"update_dismiss": "Later",
+	"status_update": "Update",
+	"channel_not_entitled_title": "Channel not included",
 	"update_up_to_date": "You're up to date.",
 	"update_ready_title": "An update is ready",
 	"update_ready_body": "Restart the game to finish updating.",
@@ -385,11 +393,12 @@ func text(key: String, args: Variant = null) -> String:
 	var s := tr(r[0])
 	if r[1] != "":
 		s = PKeyCopy.fill(s, r[1])
+	# Arguments first, then the product's name: a name with a "%" in it is never read as a format.
+	if args != null:
+		s = s % (args if args is Array else [args])
 	if s.contains("{product}"):
 		s = s.replace("{product}", _product_label())
-	if args == null:
-		return s
-	return s % (args if args is Array else [args])
+	return s
 
 
 ## The name a message gives the product: its identity's, else "the game".

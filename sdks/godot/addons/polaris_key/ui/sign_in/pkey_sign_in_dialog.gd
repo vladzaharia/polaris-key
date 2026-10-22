@@ -67,6 +67,8 @@ var _url: Label
 var _code: Label
 var _qr: PKeyQrRect
 var _timing: VBoxContainer
+var _expires_row: HBoxContainer
+var _ring: PKeyCountdownRing
 var _expires: Label
 var _device: Label
 var _account: HBoxContainer
@@ -100,14 +102,16 @@ func _build() -> void:
 	_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_info.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	loading_bar(_info)
-	var head := vbox(_info, "Header", "PKeyTight")
+	# The product's header, a stack gap above the title and its one line (UI-KITS.md §1.2).
+	var head := vbox(_info, "Header", "PKeyStack")
 	_product = product_header(head, "Product")
-	_title_row = hbox(head, "TitleRow")
+	var titles := vbox(head, "Titles", "PKeyTight")
+	_title_row = hbox(titles, "TitleRow")
 	_glyph = glyph_node(_title_row, "Glyph", "warning")
 	_title = label(_title_row, "Title", "PKeyTitle")
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_start = _title.horizontal_alignment
-	_status = label(head, "Status", "PKeyMuted")
+	_status = label(titles, "Status", "PKeyMuted")
 	_steps = vbox(_info, "Steps", "PKeyStack")
 	var where := vbox(_steps, "Where", "PKeyTight")
 	_instructions = label(where, "Instructions")
@@ -122,7 +126,13 @@ func _build() -> void:
 	_code.resized.connect(_fit_code)
 	_qr = qr_tile(_qr_column)
 	_timing = vbox(_steps, "Timing", "PKeyTight")
-	_expires = label(_timing, "Expires", "PKeyMuted")
+	# The determinate countdown ring beside the time left (§1.5 rule 4).
+	_expires_row = hbox(_timing, "ExpiresRow")
+	_ring = PKeyCountdownRing.new()
+	_expires_row.add_child(_ring)
+	_expires = label(_expires_row, "Expires", "PKeyMuted")
+	_expires.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_expires.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_device = label(_timing, "DeviceLabel", "PKeyMuted")
 	# Who signed in: an initials avatar, the name and, quieter, the e-mail.
 	_account = hbox(_steps, "Account")
@@ -427,7 +437,8 @@ func _render() -> void:
 	_product.visible = show_product
 	if show_product:
 		_product.refresh()
-	_title.text = t.text("sign_in_confirm_title") if confirming else (t.text("sign_in_expired_title") if expired else t.text("sign_in_title"))
+	# The device-code title is the same in every kit (UI-KITS.md §4.3): "Sign in with a code".
+	_title.text = t.text("sign_in_confirm_title") if confirming else (t.text("sign_in_expired_title") if expired else (t.text("sign_in_code_title") if pending else t.text("sign_in_title")))
 	_glyph.visible = expired
 	var status := ""
 	if state == "starting":
@@ -439,15 +450,21 @@ func _render() -> void:
 	show_text(_status, status)
 	_status.theme_type_variation = "PKeyError" if failed and not expired else "PKeyMuted"
 	set_loading(state == "starting")
-	# Without a QR code on the screen the line never says "scan".
-	show_text(_instructions, (t.text("sign_in_instructions") if _qr_wanted() else t.text("sign_in_instructions_plain")) if pending else "")
-	show_text(_url, PKeySignInController.short_uri(prompt.verification_uri) if pending else "")
+	# One whole sentence, never a fragment above the address: with a QR code (a pad) the address is on
+	# a line of its own below the sentence; without one it is inside it. Without a QR code the line
+	# never says "scan".
+	var short := PKeySignInController.short_uri(prompt.verification_uri) if pending else ""
+	var qr_line := _qr_wanted()
+	show_text(_instructions, (t.text("sign_in_scan_tv") if qr_line else t.text("sign_in_code_body", short.replace("/", "/\u2060"))) if pending else "")
+	show_text(_url, short if qr_line else "")
 	show_text(_code, prompt.user_code if pending else "")
 	_qr.text = prompt.verification_uri_complete if pending else ""
 	var qr_on := _qr_wanted()
 	_qr.visible = qr_on
 	_qr.get_parent().visible = qr_on
 	show_text(_expires, t.text("sign_in_expires", PKeySignInController.clock(PKeySignInController.remaining(prompt, _now()))) if pending else "")
+	_ring.visible = pending
+	_set_ring()
 	# The label the page will show, as the Worker stored it (the echo), so the player can match it.
 	show_text(_device, t.text("sign_in_device", prompt.device_name) if pending and prompt.device_name != "" else "")
 	_timing.visible = _expires.visible or _device.visible
@@ -506,6 +523,16 @@ func _process(delta: float) -> void:
 				refresh_view()
 				return
 			_expires.text = c().text("sign_in_expires", PKeySignInController.clock(left))
+			_set_ring()
+
+
+## The ring's share left and its size for this screen's scale.
+func _set_ring() -> void:
+	var k := float(layout_metrics().get("scale", 1.0))
+	_ring.side = roundf(20.0 * k)
+	_ring.stroke = maxf(roundf(2.0 * k), 2.0)
+	if prompt != null and prompt.expires_in > 0:
+		_ring.fraction = PKeySignInController.remaining(prompt, _now()) / float(prompt.expires_in)
 
 
 func _on_open() -> void:

@@ -736,6 +736,7 @@ PKeyStack/base_type = &"VBoxContainer"
 PKeyStack/constants/separation = 16
 PKeyStrong/base_type = &"Label"
 PKeyStrong/colors/font_color = Color(1, 1, 1, 1)
+PKeyStrong/fonts/font = ExtResource("3_wf8ml")
 PKeyTight/base_type = &"VBoxContainer"
 PKeyTight/constants/separation = 8
 PKeyTitle/base_type = &"Label"

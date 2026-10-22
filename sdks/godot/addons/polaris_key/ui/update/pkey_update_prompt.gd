@@ -70,15 +70,16 @@ func _build() -> void:
 	# floats the banner card for the banner (`_arrange`).
 	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	_card = columns(card_panel(), "Body")
-	_text = vbox(_card, "Text", "PKeyTight")
+	_text = vbox(_card, "Text", "PKeyStack")
 	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	# The product leads the card: its icon at the card size (56 px) on the modal, 32 px on the banner.
 	_product = product_header(_text, "Product")
 	_product.card = true
-	_title = label(_text, "Title", "PKeyTitle")
-	_body = label(_text, "Message", "PKeyMuted")
-	_note = label(_text, "CheckNote", "PKeyMuted")
+	var words := vbox(_text, "Words", "PKeyTight")
+	_title = label(words, "Title", "PKeyTitle")
+	_body = label(words, "Message", "PKeyMuted")
+	_note = label(words, "CheckNote", "PKeyMuted")
 	_actions = actions_row(_card, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_actions.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_action = button(_actions, "Action", _on_action, "PKeyPrimary")
@@ -308,7 +309,11 @@ func _render() -> void:
 	var title_text: String = t.text(model["title"]) if model["title"] != "" else ""
 	var body_text: String = t.text(model["body"], model["body_arg"]) if model["body"] != "" else ""
 	var plain: bool = model["state"] in ["binary", "store", "platform", "version"] and model["version"] != ""
-	if as_modal and plain and product != "":
+	# The title names the product and the version when the screen is the update itself, and the
+	# header is then the icon alone: the name is said once (DL5).
+	var titled := as_modal and plain and product != ""
+	_product.name_visible = not titled
+	if titled:
 		# "{product} {version}", and what the player has: nothing else to read.
 		title_text = t.text("update_modal_title", model["version"])
 		var have := String(ProjectSettings.get_setting("application/config/version", ""))

@@ -35,6 +35,15 @@ var splash := false:
 	set(value):
 		splash = value
 		_size()
+## Show the name beside the icon. Off, the header is the icon alone: a screen whose title names the
+## product ("Tidewater Studio 2.5") says it once (UI-KITS.md DL5).
+var name_visible := true:
+	set(value):
+		if name_visible == value:
+			return
+		name_visible = value
+		if _name != null:
+			_name.visible = value
 ## Stack the icon over the name, centred (else the icon beside the name, leading).
 var centered := false:
 	set(value):
@@ -133,6 +142,7 @@ func _show(icon: Texture2D) -> void:
 	_icon.texture = icon
 	_icon.visible = icon != null
 	_tile.visible = icon == null and _plain != ""
+	_name.visible = name_visible
 	visible = _plain != "" or icon != null
 
 

@@ -705,7 +705,7 @@ func _render() -> void:
 		BLOCKED:
 			if _block_reason == "content-declined":
 				title = t.text("boot_declined_title")
-				body = t.text("boot_declined_body", _product_name())
+				body = t.text("boot_declined_body")
 			elif _block_reason == "update-required" and _revoked_content():
 				# plans/P4-13.md §2.6 "Host copy": revoked REQUIRED content, with the offer's button
 				# when the answer is an offer and none for `blocked`.
@@ -725,7 +725,7 @@ func _render() -> void:
 				unavailable = true
 	show_text(_title, title)
 	show_text(_body, body)
-	show_text(_update_action, t.text("update_action") if stopped and url != "" else "")
+	show_text(_update_action, t.text("status_update") if stopped and url != "" else "")
 	show_text(_retry, t.text("retry") if stopped else "")
 	show_text(_play_offline, t.text("play_offline") if outcome == OFFLINE and state.get("canPlayOffline") == true else "")
 	# The consent card (stage matrix v3 `fetch:waiting`): the size disclosure and the cellular

@@ -104,9 +104,15 @@ var _msg_sign_in: Label
 var _free_block: VBoxContainer
 var _free: Button
 var _msg_free: Label
+## The extras (Continue free, Activate offline, Restore purchases): one quiet row of links under
+## the form's actions, no divider (UI-KITS.md §4.3 Welcome).
+var _extras: HFlowContainer
 var _offline: Button
 var _store_note: Label
 var _restore: Button
+## The lede above the form: what the player can do here (`lede_text()`), where the product does not
+## head the page with it (a phone's docked page, `_lede`, does).
+var _form_lede: Label
 var _warned_store := false
 var _restore_note := ""
 var _spacer: Control
@@ -155,6 +161,8 @@ func _build() -> void:
 	_form.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	loading_bar(_form)
 	_form_title = label(_form, "FormTitle", "PKeyMuted")
+	_form_lede = label(_form, "Lede", "PKeyMuted")
+	_form_lede.visible = false
 	_key_field = vbox(_form, "KeyField", "PKeyTight")
 	_key_label = label(_key_field, "KeyLabel")
 	_key_row = BoxContainer.new()
@@ -180,15 +188,19 @@ func _build() -> void:
 	_sign_in_block = vbox(_form, "SignInBlock", "PKeyTight")
 	_sign_in = button(_sign_in_block, "SignIn", _on_sign_in)
 	_msg_sign_in = label(_sign_in_block, "SignInMessage")
-	_free_block = vbox(_form, "FreeBlock", "PKeyTight")
-	_free = button(_free_block, "ContinueFree", _on_free)
-	_msg_free = label(_free_block, "FreeMessage")
-	_offline = button(_form, "OfflineActivation", _on_offline, "PKeyLink")
 	# A store build with no way to activate here (key entry is the store's to forbid, no sign-in
 	# service): say where to get the game instead of showing an empty form.
 	_store_note = label(_form, "StoreNote", "PKeyMuted")
-	_restore = button(_form, "RestorePurchases", _on_restore)
-	_offline.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_extras = HFlowContainer.new()
+	_extras.name = "Extras"
+	_extras.set_meta(AUTO_HIDE_META, true)
+	_form.add_child(_extras)
+	_free = button(_extras, "ContinueFree", _on_free, "PKeyLink")
+	_offline = button(_extras, "OfflineActivation", _on_offline, "PKeyLink")
+	_restore = button(_extras, "RestorePurchases", _on_restore, "PKeyLink")
+	# What a failed Continue free says sits under the row it came from.
+	_free_block = vbox(_form, "FreeBlock", "PKeyTight")
+	_msg_free = label(_free_block, "FreeMessage")
 	_limit_root = vbox(_stack, "Limit", "PKeyStack")
 	_limit_box = _limit_root
 	_limit_cols = columns(_limit_root, "Columns")
@@ -197,10 +209,11 @@ func _build() -> void:
 	_limit_right = vbox(_limit_cols, "Right", "PKeyStack")
 	_limit_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_limit_right.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var lhead := vbox(_limit_left, "Head", "PKeyTight")
+	var lhead := vbox(_limit_left, "Head", "PKeyStack")
 	_limit_product = product_header(lhead, "Product")
-	_limit_title = label(lhead, "Title", "PKeyTitle")
-	_limit_lede = label(lhead, "Lede", "PKeyMuted")
+	var ltitles := vbox(lhead, "Titles", "PKeyTight")
+	_limit_title = label(ltitles, "Title", "PKeyTitle")
+	_limit_lede = label(ltitles, "Lede", "PKeyMuted")
 	_seats = hbox(_limit_left, "Seats")
 	_remedy = vbox(_limit_right, "Remedy", "PKeyTight")
 	_manage = button(_remedy, "FreeDevice", _on_manage)
@@ -340,8 +353,13 @@ func _arrange(m: Dictionary) -> void:
 		_form.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_form.alignment = BoxContainer.ALIGNMENT_END if form_docked else BoxContainer.ALIGNMENT_BEGIN
 	show_text(_lede, lede_text() if form_docked and show_product and squeeze_level() < 3 else "")
-	# Under a phone's stacked actions the offline link is centred, as the actions are wide.
-	_offline.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if phone_screen() else Control.SIZE_SHRINK_BEGIN
+	# The extras are links in one row from the start edge; under a phone's stacked actions they are
+	# centred, as the actions are wide.
+	_extras.alignment = FlowContainer.ALIGNMENT_CENTER if phone_screen() else FlowContainer.ALIGNMENT_BEGIN
+	_extras.add_theme_constant_override("h_separation", roundi(role("inline_gap")))
+	_extras.add_theme_constant_override("v_separation", 0)
+	# The lede leads the form wherever the product does not carry it to the top of a phone's page.
+	show_text(_form_lede, lede_text() if mode == "main" and limit.is_empty() and not outer_view().phone_bleed() and squeeze_level() < 3 else "")
 	# A full license on a landscape panel: the state on one side, the way out on the other.
 	set_columns(_limit_cols, _limit_side_by_side())
 	_spacer.visible = phone_screen() and not limit.is_empty()
@@ -361,7 +379,8 @@ func _arrange(m: Dictionary) -> void:
 	# A pad-only device leads with Sign in: it comes first in the form, as the primary.
 	var pad := pad_only()
 	var first := _sign_in_block if pad else _key_field
-	var want := 1 if _form_title.visible else 0
+	# After the loading line, the form's label and its lede.
+	var want := 3
 	if _form.get_child(want) != first:
 		_form.move_child(first, want)
 	_sign_in.theme_type_variation = &"PKeyPrimary" if pad else &""
@@ -427,6 +446,7 @@ func _render() -> void:
 	_sign_in_block.visible = caps["sign_in"]
 	_sign_in.text = t.text("sign_in")
 	_free_block.visible = caps["continue_free"]
+	_free.visible = caps["continue_free"]
 	_free.text = t.text("continue_free")
 	# A busy action keeps its label and shows a thin indicator (never "Activating…" in its place).
 	set_loading(busy)

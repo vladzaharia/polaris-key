@@ -18,38 +18,40 @@ Center/Scroll/Shell/Side/Card/Body/Actions/Retry: Button "Try again" [focus 1]
 == blocked not-available ==
 PKeyGate/Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
 PKeyGate/Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-PKeyGate/Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Not available on this license"
-PKeyGate/Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "Your license doesn't cover this build."
+PKeyGate/Center/Card/Scroll/Body/Split/Pane/Aside/Head/Title: Label "Channel not included"
+PKeyGate/Center/Card/Scroll/Body/Split/Pane/Aside/Head/Message: Label "Your license doesn't include this channel."
+PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/FormTitle: Label "Use another license"
+PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/Lede: Label "Enter a license key to continue."
 PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [focus 1]
 PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
-PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/FormTitle: Label "Use another license"
-PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 3]
+PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/Extras/OfflineActivation: Button "Activate offline" [focus 3]
 PKeyGate/Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [focus 4]
 == waiting needs-activation ==
 PKeyGate/Center/Card/Scroll/Body/Split/Pane/Aside/Product/Monogram/Initial: Label "P"
 PKeyGate/Center/Card/Scroll/Body/Split/Pane/Aside/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/Lede: Label "Enter a license key to continue."
 PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
 PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [focus 1]
 PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
-PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 3]
+PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/Main/Form/Extras/OfflineActivation: Button "Activate offline" [focus 3]
 == syncing ==
 Center/Scroll/Shell/Lead/Product/Monogram/Initial: Label "P"
 Center/Scroll/Shell/Lead/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Center/Scroll/Shell/Side/Progress/Status: Label "Connecting…"
+Center/Scroll/Shell/Side/Progress/Status: Label "Checking for updates…"
 Center/Scroll/Shell/Side/Progress/Bar: ProgressBar
 == consent metered ==
 Center/Scroll/Shell/Lead/Product/Monogram/Initial: Label "P"
 Center/Scroll/Shell/Lead/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Scroll/Shell/Side/Card/Body/Head/Title: Label "Download content?"
-Center/Scroll/Shell/Side/Card/Body/Head/Message: Label "12.3 MB of new content. You're on a metered connection."
+Center/Scroll/Shell/Side/Card/Body/Head/Message: Label "Polaris Key SDK needs 12.3 MB of new content, and you're on a metered connection."
 Center/Scroll/Shell/Side/Card/Body/Actions/Download: Button "Download" [focus 1]
 Center/Scroll/Shell/Side/Card/Body/Actions/NotNow: Button "Not now" [focus 2]
 == blocked content-declined ==
 Center/Scroll/Shell/Lead/Product/Monogram/Initial: Label "P"
 Center/Scroll/Shell/Lead/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Scroll/Shell/Side/Card/Body/Head/Title: Label "Content not downloaded"
-Center/Scroll/Shell/Side/Card/Body/Head/Message: Label "Polaris Key SDK needs this content to start. Try again when you're ready."
+Center/Scroll/Shell/Side/Card/Body/Head/Message: Label "Polaris Key SDK needs this content to start. Download it when you're ready."
 Center/Scroll/Shell/Side/Card/Body/Actions/Retry: Button "Try again" [focus 1]
 == background pill ==
 Overlay/Pill: Label "Downloading content… 42%"
