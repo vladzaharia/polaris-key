@@ -110,6 +110,11 @@ interface Case {
   act?: (page: Page) => Promise<void>;
   /** The case needs a window at least this wide (a control that is not drawn below it). */
   minWidth?: number;
+  /**
+   * The case is meant to show an error state (an ErrorState, a not-found page or the
+   * AppErrorBoundary). Any other case that draws one fails: it hides a fixture gap.
+   */
+  expectError?: boolean;
 }
 
 // ── The case list: nav.ts's pages, their records and tabs, the overlays ──────────────────────
@@ -710,8 +715,10 @@ for (const vp of VIEWPORTS) {
             const csp = await page.evaluate(() =>
               (window as unknown as { __v: string[] }).__v.splice(0),
             );
+            // An ErrorState (a failed load or a not-found page), anywhere on the page, or the
+            // AppErrorBoundary: both carry `data-error-state`.
             const errorState =
-              (await page.locator("#content [data-error-action]").count()) > 0;
+              (await page.locator("[data-error-state]").count()) > 0;
             const found = withoutDebt(c.name, violations);
             report[`${vp.label}/${theme} ${c.name} ${c.hash}`] = {
               violations: found,
@@ -722,6 +729,12 @@ for (const vp of VIEWPORTS) {
             };
             if (SHOTS)
               await shoot(page, `${slug(c.name)}--${vp.label}-${theme}`);
+            expect(
+              errorState,
+              c.expectError
+                ? "an expectError case must show an error state"
+                : `the page drew an error state (a fixture gap? see the report's gaps: ${[...new Set(gaps)].join(", ") || "none"})`,
+            ).toBe(c.expectError === true);
             expect(csp, "CSP violations").toEqual([]);
             expect(
               await page.evaluate(
@@ -1065,6 +1078,80 @@ describe("a dialog whose form wraps its body and footer", () => {
       await closeContext(page.context());
     }
   });
+});
+
+// ── A typed confirmation with a reason, in a short window (CX-BUGS-2) ────────────────────────
+// The L3 "Relax the device trust policy?" dialog asks for a reason and a typed word. At 844×390
+// (a phone on its side) and 667×375 both fields are in view without a scroll, the footer pinned
+// under them, and neither is a target under 24 px. `PK_CX_SHOTS=<dir>` writes each render.
+
+describe("a typed confirmation with a reason in a short window", () => {
+  for (const vp of [
+    { width: 844, height: 390 },
+    { width: 667, height: 375 },
+  ])
+    for (const theme of THEMES)
+      it(`${vp.width}×${vp.height} · ${theme}: the reason and the typed field are both in view`, async () => {
+        const { page } = await open(
+          { name: "dialog:relax-trust", hash: "#/p/djdl/settings/keys" },
+          theme,
+          vp,
+        );
+        try {
+          await page
+            .locator("#keys-trust")
+            .getByRole("button", { name: "Edit…" })
+            .click();
+          const drawer = page.getByRole("dialog", {
+            name: "Device trust policy",
+          });
+          await drawer.waitFor();
+          await drawer
+            .getByRole("combobox", { name: "Device license and config" })
+            .click();
+          await page.getByRole("option", { name: "Any device" }).click();
+          await drawer.getByRole("button", { name: "Review changes…" }).click();
+          const dialog = page.getByRole("alertdialog");
+          await dialog.waitFor();
+          await page.waitForTimeout(500);
+          const m = await dialog.evaluate((el) => {
+            const box = (e: Element | null) => {
+              const r = e!.getBoundingClientRect();
+              return { top: r.top, bottom: r.bottom, h: r.height };
+            };
+            return {
+              reason: box(el.querySelector("textarea")),
+              typed: box(el.querySelector("input")),
+              footer: box(el.querySelector("button")!.parentElement),
+              header: box(el.querySelector("[data-pk-overlay-header]")),
+              body: el.querySelector<HTMLElement>("[data-pk-dialog-body]")!
+                .scrollTop,
+              vh: innerHeight,
+            };
+          });
+          if (process.env.PK_CX_SHOTS) {
+            mkdirSync(process.env.PK_CX_SHOTS, { recursive: true });
+            await page.screenshot({
+              path: `${process.env.PK_CX_SHOTS}/typed-${vp.width}x${vp.height}-${theme}.png`,
+            });
+          }
+          for (const f of [m.reason, m.typed]) {
+            expect(f.top, "below the header").toBeGreaterThanOrEqual(
+              m.header.bottom,
+            );
+            expect(f.bottom, "above the pinned footer").toBeLessThanOrEqual(
+              m.footer.top,
+            );
+          }
+          expect(m.typed.h, "the typed field's height").toBeGreaterThanOrEqual(
+            24,
+          );
+          expect(m.footer.bottom, "footer on screen").toBeLessThanOrEqual(m.vh);
+          expect(m.body, "the body has not been scrolled").toBe(0);
+        } finally {
+          await closeContext(page.context());
+        }
+      });
 });
 
 // ── A keyboard-focused primary or danger button shows a ring (CF1 / B1) ──────────────────────
