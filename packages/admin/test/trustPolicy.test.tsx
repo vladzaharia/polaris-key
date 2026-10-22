@@ -32,7 +32,7 @@ vi.mock("../src/api.js", async () => {
 const { ApiError } = await import("../src/api.js");
 const { TrustPolicySection } =
   await import("../src/console/sections/core/pages/KeysTrust.js");
-const { relaxesTrustPolicy, DEFAULT_POLICY } =
+const { relaxesTrustPolicy, changeLines, DEFAULT_POLICY } =
   await import("../src/console/sections/core/model/trustPolicy.js");
 
 const STRICT: TrustPolicyDto = {
@@ -50,17 +50,28 @@ const reply = (
   version: number,
 ): TrustPolicyResponse => ({ ok: true, policy, source, version });
 
-const mount = (locked = false, syncOn = false) =>
+const ALL_OFF = {
+  distribution: { enabled: false },
+  update: { enabled: false },
+  commerce: { enabled: false },
+  sync: { enabled: false },
+};
+const mount = (
+  locked = false,
+  services?: Record<string, { enabled: boolean }>,
+) =>
   renderAt(
     "#/p/djdl/settings/keys",
     <WriteLock locked={locked} reason="View-only">
-      <TrustPolicySection slug="djdl" syncOn={syncOn} />
+      <TrustPolicySection slug="djdl" services={services} />
     </WriteLock>,
   );
 
 async function openEditor() {
   const user = userEvent.setup();
-  await user.click(await screen.findByRole("button", { name: "Edit…" }));
+  await user.click(
+    await screen.findByRole("button", { name: "Edit device trust" }),
+  );
   const drawer = await screen.findByRole("dialog", {
     name: "Device trust policy",
   });
@@ -258,7 +269,7 @@ describe("Keys and secrets → Device trust", () => {
   it("a view-only member reads the policy; Edit is locked and opens nothing", async () => {
     mount(true);
     expect(await screen.findByText("ABCDE12345, production")).toBeTruthy();
-    const edit = screen.getByRole("button", { name: "Edit…" });
+    const edit = screen.getByRole("button", { name: "Edit device trust" });
     expect(edit.getAttribute("aria-disabled")).toBe("true");
     await userEvent.setup().click(edit);
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -289,31 +300,77 @@ describe("Keys and secrets → Device trust", () => {
   });
 });
 
+const valueOf = async (term: string) =>
+  (await screen.findByText(term)).nextElementSibling?.textContent;
+
 describe("Cloud Sync writes row (U-05.11)", () => {
-  it("is hidden while Cloud Sync is off", async () => {
-    mount();
+  it("is hidden while Cloud Sync is off, as are the other service-tied rows", async () => {
+    mount(false, ALL_OFF);
     await screen.findByText("ABCDE12345, production");
     expect(screen.queryByText("Cloud Sync writes")).toBeNull();
+    expect(screen.queryByText("Gated downloads")).toBeNull();
+    expect(screen.queryByText("Store purchase claims")).toBeNull();
+    expect(screen.getByText("Device license and config")).toBeTruthy();
   });
 
-  it("reads Any device for a policy that predates it, and Attested when set", async () => {
-    mount(false, true);
-    const term = await screen.findByText("Cloud Sync writes");
-    expect(term.nextElementSibling?.textContent).toBe("Any device");
+  it("an attested level is never invisible: it shows with the service that is off", async () => {
+    fns.trustPolicy.mockResolvedValue(
+      reply(
+        { ...STRICT, cloudSyncWrite: "attested", commerceClaim: "attested" },
+        "admin",
+        3,
+      ),
+    );
+    mount(false, ALL_OFF);
+    expect(await valueOf("Cloud Sync writes")).toBe(
+      "Attested device (Cloud Sync is off)",
+    );
+    expect(await valueOf("Store purchase claims")).toBe(
+      "Attested device (Commerce is off)",
+    );
+    expect(screen.queryByText("Gated downloads")).toBeNull();
+  });
+
+  it("Distribution or Update on keeps Gated downloads", async () => {
+    mount(false, { ...ALL_OFF, update: { enabled: true } });
+    expect(await valueOf("Gated downloads")).toBe("Any device");
+  });
+
+  it("reads Any device for a policy that predates it", async () => {
+    mount();
+    expect(await valueOf("Cloud Sync writes")).toBe("Any device");
   });
 
   it("reads Attested device when set", async () => {
     fns.trustPolicy.mockResolvedValue(
       reply({ ...STRICT, cloudSyncWrite: "attested" }, "admin", 3),
     );
-    mount(false, true);
-    const again = await screen.findByText("Cloud Sync writes");
-    expect(again.nextElementSibling?.textContent).toBe("Attested device");
+    mount();
+    expect(await valueOf("Cloud Sync writes")).toBe("Attested device");
   });
 
-  it("raising it is L1; relaxing it is L2", async () => {
+  it("groups the operations apart from the policy-wide facts", async () => {
+    mount();
+    const op = (await screen.findByText("Cloud Sync writes")).closest("dl")!;
+    const facts = screen.getByText("A miss").closest("dl")!;
+    expect(op).not.toBe(facts);
+    expect(op.className).toContain("lg:grid-cols-4");
+    expect(facts.textContent).not.toContain("Cloud Sync writes");
+  });
+
+  it("the drawer says what a refusal means", async () => {
+    mount();
+    const { drawer } = await openEditor();
+    expect(
+      within(drawer).getByText(
+        "Web and desktop builds can't attest. A refused change stays on the device.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("raising it is L1 and enforcing it says what is refused", async () => {
     fns.putTrustPolicy.mockResolvedValue(reply(STRICT, "admin", 4));
-    mount(false, true);
+    mount();
     const { user, drawer } = await openEditor();
     await user.click(
       within(drawer).getByRole("combobox", { name: "Cloud Sync writes" }),
@@ -327,12 +384,43 @@ describe("Cloud Sync writes row (U-05.11)", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByText(
-        "Cloud Sync writes now accepts an attested device (was any device).",
+        "Cloud Sync writes now need an attested device (was any device).",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText(
+        "Web, desktop and sideloaded builds can't upload Cloud Sync changes.",
       ),
     ).toBeTruthy();
     expect(
       within(dialog).getByText("Tighten the device trust policy?"),
     ).toBeTruthy();
+  });
+
+  it("changeLines uses one template for every operation and the relax confirm drops the enrol sentence", async () => {
+    const lines = changeLines(
+      { ...STRICT, mint: "attested", enforce: false },
+      { ...STRICT, mint: "basic", enforce: false, commerceClaim: "attested" },
+    );
+    expect(lines).toEqual([
+      "Device license and config now accept any device (was attested only).",
+      "Store purchase claims now need an attested device (was any device).",
+    ]);
+    fns.putTrustPolicy.mockResolvedValue(reply(DEFAULT_POLICY, "admin", 4));
+    mount();
+    const { user, drawer } = await openEditor();
+    await user.click(
+      within(drawer).getByRole("switch", { name: /Refuse a device/ }),
+    );
+    await user.click(
+      within(drawer).getByRole("button", { name: "Review changes…" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).queryByText(/enrol|clients/)).toBeNull();
+    expect(within(dialog).getByText(/Devices need to prove less/)).toBeTruthy();
+  });
+
+  it("relaxing it is L2; raising it is not", () => {
     expect(
       relaxesTrustPolicy(
         { ...STRICT, cloudSyncWrite: "attested" },

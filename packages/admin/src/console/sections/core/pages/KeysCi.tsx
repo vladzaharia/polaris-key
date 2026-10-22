@@ -1,6 +1,5 @@
 /**
  * Keys and secrets → CI publishing (docs/design/ADMIN.md §6.7): the trusted-publisher policy a
- * GitHub Actions run must match to publish, and static CI tokens for any other CI.
  *
  * - Editing the publisher claims it from the manifest (`source` becomes `admin`); resyncs then
  *   leave it alone. Claiming is the only way to grant `release:yank`.
@@ -124,6 +123,7 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
           <Button
             variant="outline"
             size="sm"
+            aria-label="Edit CI publishing"
             iconStart={<Pencil aria-hidden />}
             onClick={() => setEditing(true)}
           >
