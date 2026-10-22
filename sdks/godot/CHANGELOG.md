@@ -9,6 +9,9 @@ SDK: `.github/workflows/publish-sdks.yml` stamps `plugin.cfg`'s `version` and `P
 
 ## Unreleased
 
+- **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Renew and Use another license, and never Try again or Reconnect; Godot has no renew option, so the host handles the Renew press. The TV QR on the device-limit screen is labelled as the device management page. The offline dialog numbers its steps and shows the request QR on phones.
+  Migrating: pass the https offers URL to get the paywall's Buy in your browser button (without it the not-available paywall has no button).
+
 - **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
 - **US spelling and shorter kit copy.** The English template strings `Sign-in was cancelled.`, `The
 purchase was cancelled.` and `Last seen %s` read `Sign-in was canceled.`, `The purchase was

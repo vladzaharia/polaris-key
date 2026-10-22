@@ -48,6 +48,8 @@ class FakeSource:
     def __init__(self, member: Optional[Mapping[str, Any]], icon: Optional[bytes] = None) -> None:
         self.member = member
         self._icon = icon
+        #: This device's id, the offline-activation request code (the QR under step 1 encodes it).
+        self.request_code = "d3f9a1c07be24a6c9d51e8f20b7c4a36"
         self.listeners: List[Any] = []
 
     def current(self) -> Optional[Mapping[str, Any]]:

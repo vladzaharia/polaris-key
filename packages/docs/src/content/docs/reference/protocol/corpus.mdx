@@ -99,20 +99,20 @@ WIRE-CONTRACT-V4 §5.5 (HA-12): discovery's unsigned `core.presentation`, parsed
 
 WIRE-CONTRACT-V4 §14 (SP-53): a server core's six-step verdict on `X-PKey-License` (signed licence documents, header fields, the server's clock, the products served, `maxAgeSeconds` and the route's requirements, to a status, a code and the attached context), the refusal's problem body with its `WWW-Authenticate` challenge and its locale from `Accept-Language`, and the client half's refresh-and-retry rule. A reference in `tools/corpus/reference/backend.ts` recomputes every row and imports nothing it checks; `@polaris-key/client-core/backend` is checked against the file by the Node and browser runners. Server cores replay `verdict` and `problem`, client halves `client`.
 
-## UI state matrix (`ui-matrix.json`): 361 component rows, 27 theme rows, 78 i18n rows
+## UI state matrix (`ui-matrix.json`): 365 component rows, 27 theme rows, 78 i18n rows
 
 The UI kits' layer (c), pinned once for every language (`plans/UK-02b.md`): each row drives the headless model of one component with an input (SDK results, `plans/I-04.md`'s license-choice views, kit-side values) and names its state, the copy keys it shows and its actions. `hidden` means the drop-in renders nothing because a service it depends on is off. Inline sign-in rows have a sheet twin, every component has a presentation-absent row, and the negative rows carry UI-KITS §4.1's Must not. The `theme` rows pin the accent, scheme, icon and preset resolution; the `i18n` rows the catalog lookup and the ICU subset, computed from the kit copy by the generator. No reference state machine: ui-core, the Swift presentation core, Kotlin `commonMain`, the Godot controllers and `polaris_key.ui.core` each run every row.
 
 | Family | Components | Rows |
 | --- | --- | --- |
-| `gate` | PolarisKeyGate, Boot, StatusScreen, GraceBanner, Toast | 61 |
-| `activate` | Welcome, Activate, OfflineActivation | 35 |
+| `gate` | PolarisKeyGate, Boot, StatusScreen, GraceBanner, Toast | 62 |
+| `activate` | Welcome, Activate, OfflineActivation | 36 |
 | `signIn` | SignIn, SignInHandoff, LicenseChoice | 149 |
 | `deviceLimit` | DeviceLimit | 8 |
 | `devices` | Devices | 16 |
 | `update` | UpdatePrompt, UpdateProgress, ReleaseNotes | 44 |
 | `settings` | AccountAndLicense, Settings | 29 |
-| `paywall` | Paywall, EntitlementGate | 19 |
+| `paywall` | Paywall, EntitlementGate | 21 |
 
 ### Declared gaps
 
@@ -160,7 +160,7 @@ Every state a kit, or an app drawing its own UI, handles, with the copy keys the
 | StatusScreen | `revoked` | `core.gate.revoked.message`, `core.gate.revoked.title`, `signin.key.differentKey`, `welcome.signIn` |
 | StatusScreen | `expired` | `core.gate.expired.message`, `core.gate.expired.title`, `status.renew`, `status.useAnotherLicense` |
 | StatusScreen | `version-too-old` | `core.gate.version-too-old.message`, `core.gate.version-too-old.title`, `status.allowedMax`, `status.allowedMin`, `status.allowedRange`, `status.update` |
-| StatusScreen | `version-too-new` | `core.gate.version-too-new.message`, `core.gate.version-too-new.title`, `status.allowedMax`, `status.allowedRange` |
+| StatusScreen | `version-too-new` | `common.tryAgain`, `core.gate.version-too-new.message`, `core.gate.version-too-new.title`, `status.allowedMax`, `status.allowedRange` |
 | StatusScreen | `channel-not-entitled` | `core.gate.channel-not-entitled.message`, `core.gate.channel-not-entitled.title`, `status.contact`, `status.switchChannel` |
 | StatusScreen | `hidden` | none |
 | GraceBanner | `days-left` | `common.dismiss`, `common.reconnect`, `grace.daysLeft`, `grace.deadline` |
@@ -186,10 +186,10 @@ Every state a kit, or an app drawing its own UI, handles, with the copy keys the
 | Activate | `device-limit` | `core.activation.device-limit.message`, `core.activation.device-limit.title`, `deviceLimit.noManage`, `deviceLimit.title`, `part.seatMeter.caption` |
 | Activate | `done` | `core.activation.ok.message`, `core.activation.ok.title`, `part.keyField.verdict` |
 | Activate | `hidden` | none |
-| OfflineActivation | `default` | `offlineActivation.copyCode`, `offlineActivation.dropHint`, `offlineActivation.loadFile`, `offlineActivation.loadHint`, `offlineActivation.paste`, `offlineActivation.product`, `offlineActivation.request`, `offlineActivation.submit`, `offlineActivation.title` |
-| OfflineActivation | `loaded` | `offlineActivation.codeCopied`, `offlineActivation.empty`, `offlineActivation.submit` |
-| OfflineActivation | `rejected-signature` | `core.codes.bundle-jws-rejected.message`, `core.codes.bundle-jws-rejected.title` |
-| OfflineActivation | `done` | `offlineActivation.done` |
+| OfflineActivation | `default` | `a11y.qrRequest`, `offlineActivation.copyCode`, `offlineActivation.dropHint`, `offlineActivation.loadFile`, `offlineActivation.loadHint`, `offlineActivation.paste`, `offlineActivation.request`, `offlineActivation.submit`, `offlineActivation.title` |
+| OfflineActivation | `loaded` | `a11y.qrRequest`, `offlineActivation.codeCopied`, `offlineActivation.copyCode`, `offlineActivation.dropHint`, `offlineActivation.empty`, `offlineActivation.loadFile`, `offlineActivation.loadHint`, `offlineActivation.paste`, `offlineActivation.request`, `offlineActivation.submit`, `offlineActivation.title` |
+| OfflineActivation | `rejected-signature` | `a11y.qrRequest`, `core.codes.bundle-jws-rejected.message`, `offlineActivation.copyCode`, `offlineActivation.dropHint`, `offlineActivation.loadFile`, `offlineActivation.loadHint`, `offlineActivation.paste`, `offlineActivation.request`, `offlineActivation.submit`, `offlineActivation.title` |
+| OfflineActivation | `done` | `common.done`, `offlineActivation.done`, `offlineActivation.title` |
 | OfflineActivation | `hidden` | none |
 | SignIn | `methods` | `common.cancel`, `signIn.title`, `signin.choice.keyInstead`, `signin.desktop.continue`, `signin.email.continue`, `signin.link.deviceCode`, `signin.menu.signIn`, `signin.methods.ledeApp`, `signin.passkey`, `signin.provider.continue`, `signin.provider.group` |
 | SignIn | `handoff` | `signin.handoff.again`, `signin.handoff.browserBody`, `signin.handoff.title`, `signin.handoff.useCode`, `signin.handoff.waiting` |
@@ -232,7 +232,7 @@ Every state a kit, or an app drawing its own UI, handles, with the copy keys the
 | DeviceLimit | `busy` | `a11y.busy`, `common.working`, `deviceLimit.primary` |
 | DeviceLimit | `removed` | `deviceLimit.removed` |
 | DeviceLimit | `failed` | `common.tryAgain`, `deviceLimit.failed` |
-| DeviceLimit | `browser-mode` | `a11y.externalLink`, `a11y.qr`, `deviceLimit.browser`, `deviceLimit.openBrowser`, `deviceLimit.scan`, `deviceLimit.title` |
+| DeviceLimit | `browser-mode` | `a11y.externalLink`, `a11y.qrManage`, `deviceLimit.browser`, `deviceLimit.openBrowser`, `deviceLimit.scan`, `deviceLimit.title` |
 | DeviceLimit | `hidden` | none |
 | Devices | `list` | `a11y.formFactor`, `a11y.removeDevice`, `a11y.renameDevice`, `devices.count`, `devices.lede`, `devices.meta`, `devices.remove`, `devices.rename`, `devices.title`, `devices.unnamed`, `part.thisDeviceTitle` |
 | Devices | `loading` | `common.loading`, `devices.title` |
@@ -280,7 +280,7 @@ Every state a kit, or an app drawing its own UI, handles, with the copy keys the
 | Paywall | `purchasing` | `a11y.busy`, `paywall.purchasing` |
 | Paywall | `purchased` | `common.done`, `paywall.purchased` |
 | Paywall | `restore` | `paywall.restore` |
-| Paywall | `not-available` | `paywall.notAvailable` |
+| Paywall | `not-available` | `paywall.notAvailable`, `paywall.portal`, `paywall.title` |
 | Paywall | `hidden` | none |
 | EntitlementGate | `entitled` | none |
 | EntitlementGate | `not-entitled` | `entitlement.locked`, `entitlement.unlock` |

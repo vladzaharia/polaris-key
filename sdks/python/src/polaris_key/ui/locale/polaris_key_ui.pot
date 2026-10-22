@@ -414,6 +414,16 @@ msgstr ""
 msgid "a11y.qr"
 msgstr ""
 
+#. QR code with the request code
+#. Screen reader label; never shown. Describes the QR code that carries an offline-activation request.
+msgid "a11y.qrRequest"
+msgstr ""
+
+#. QR code that opens the device management page
+#. Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page.
+msgid "a11y.qrManage"
+msgstr ""
+
 #. Sign-in code {code}
 #. Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
 msgid "a11y.code"
@@ -798,13 +808,8 @@ msgid "offlineActivation.title"
 msgstr ""
 
 #. Send this request code to whoever gave you your license.
-#. OfflineActivation: activation by exchanging a request code and a response file.
+#. OfflineActivation: step 1; the kit's number marker carries the order.
 msgid "offlineActivation.request"
-msgstr ""
-
-#. Product: {product}
-#. OfflineActivation: activation by exchanging a request code and a response file. Arguments: {product} = the product's name from ProductIdentity (never translated).
-msgid "offlineActivation.product"
 msgstr ""
 
 #. Copy code
@@ -822,8 +827,8 @@ msgstr ""
 msgid "offlineActivation.codeCopied"
 msgstr ""
 
-#. Then load the activation file you get back, or paste its text.
-#. OfflineActivation: activation by exchanging a request code and a response file.
+#. Load the activation file you get back, or paste its text.
+#. OfflineActivation: step 2; the kit's number marker carries the order.
 msgid "offlineActivation.loadHint"
 msgstr ""
 

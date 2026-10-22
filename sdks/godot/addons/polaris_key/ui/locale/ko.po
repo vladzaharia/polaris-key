@@ -414,6 +414,16 @@ msgstr "브라우저에서 열림"
 msgid "a11y.qr"
 msgstr "로그인 페이지를 여는 QR 코드"
 
+#. QR code with the request code
+#. Screen reader label; never shown. Describes the QR code that carries an offline-activation request.
+msgid "a11y.qrRequest"
+msgstr "요청 코드가 담긴 QR 코드"
+
+#. QR code that opens the device management page
+#. Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page.
+msgid "a11y.qrManage"
+msgstr "기기 관리 페이지를 여는 QR 코드"
+
 #. Sign-in code {code}
 #. Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
 msgid "a11y.code"
@@ -797,14 +807,9 @@ msgid "offlineActivation.title"
 msgstr "오프라인 활성화"
 
 #. Send this request code to whoever gave you your license.
-#. OfflineActivation: activation by exchanging a request code and a response file.
+#. OfflineActivation: step 1; the kit's number marker carries the order.
 msgid "offlineActivation.request"
 msgstr "이 요청 코드를 라이선스를 제공한 곳에 보내세요."
-
-#. Product: {product}
-#. OfflineActivation: activation by exchanging a request code and a response file. Arguments: {product} = the product's name from ProductIdentity (never translated).
-msgid "offlineActivation.product"
-msgstr "제품: {product}"
 
 #. Copy code
 #. OfflineActivation: activation by exchanging a request code and a response file.
@@ -821,10 +826,10 @@ msgstr "코드 복사"
 msgid "offlineActivation.codeCopied"
 msgstr "코드 복사됨"
 
-#. Then load the activation file you get back, or paste its text.
-#. OfflineActivation: activation by exchanging a request code and a response file.
+#. Load the activation file you get back, or paste its text.
+#. OfflineActivation: step 2; the kit's number marker carries the order.
 msgid "offlineActivation.loadHint"
-msgstr "그런 다음 받은 활성화 파일을 불러오거나 그 내용을 붙여넣으세요."
+msgstr "받은 활성화 파일을 불러오거나 그 내용을 붙여넣으세요."
 
 #. Load file…
 #. OfflineActivation: activation by exchanging a request code and a response file. Opens a file picker.

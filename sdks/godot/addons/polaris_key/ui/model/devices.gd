@@ -81,7 +81,7 @@ static func device_limit_view(ctx: RefCounted) -> Dictionary:
 				"deviceLimit.title",
 				"deviceLimit.browser",
 				"deviceLimit.scan" if tv else "deviceLimit.openBrowser",
-				"a11y.qr" if tv else "a11y.externalLink",
+				"a11y.qrManage" if tv else "a11y.externalLink",
 			],
 			"args": args,
 			"primary": null if tv else "deviceLimit.openBrowser",

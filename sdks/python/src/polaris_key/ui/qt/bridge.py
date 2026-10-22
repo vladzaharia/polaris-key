@@ -125,12 +125,15 @@ class KitBridge(_Base):  # type: ignore[misc]
         system_scheme: str = "dark",
         font_scale: float = 1.0,
         loading_delay_ms: int = LOADING_DELAY_MS,
+        request_code: str = "",
         parent: Any = None,
     ) -> None:
         qt.require()
         super().__init__(parent)
         self._theme = theme or Theme()
         self._source = source
+        #: The offline-activation request code (this device's id): the QR under step 1 encodes it.
+        self._request_code = request_code
         self._system_scheme = system_scheme
         self._font_scale = font_scale
         self._copy = Copy(self._theme.locale, self._theme.copy_overrides, platform="desktop")
@@ -199,6 +202,11 @@ class KitBridge(_Base):  # type: ignore[misc]
             return row_data(self._data)
         return row_data(self._view.rows) if self._view is not None and self._view.rows else RowData()
 
+    def set_request_code(self, code: str) -> None:
+        """The code step 1 of OfflineActivation sends (and encodes as its QR)."""
+        self._request_code = code
+        self.refresh()
+
     def set_theme(self, theme: Theme) -> None:
         self._theme = theme
         self._copy = Copy(theme.locale, theme.copy_overrides, platform="desktop")
@@ -218,6 +226,7 @@ class KitBridge(_Base):  # type: ignore[misc]
                 data=self._rows(),
                 selected_id=self._selected,
                 advanced=self._advanced,
+                request_code=self._request_code or str(getattr(self._source, "request_code", "") or ""),
             )
             self._arm_loading()
         self.changed.emit()

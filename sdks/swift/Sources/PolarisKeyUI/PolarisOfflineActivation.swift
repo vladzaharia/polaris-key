@@ -172,19 +172,17 @@ struct PolarisOfflineSurface: View {
         let identity = PolarisProductIdentity.resolve(theme: theme, presentation: presentation)
         PolarisAdaptivePage(style: style, identity: identity) { layout in
             PolarisPageHeading(
-                title: imported ? copy.importedMessage : copy.offlineTitle, identity: identity,
+                title: copy.offlineTitle, identity: identity,
                 style: style, layout: layout, symbol: imported ? "checkmark.seal.fill" : nil)
         } detail: { layout in
-            if !imported {
-                VStack(alignment: layout.horizontalAlignment, spacing: PolarisSpace.xxs) {
-                    PolarisPageText(text: Text(copy.offlineRequest), style: style, layout: layout)
-                    PolarisPageText(text: Text(copy.offlineLoadHint), style: style, layout: layout)
-                }
+            // The two numbered steps live in the request form; done says what happened.
+            if imported {
+                PolarisPageText(text: Text(copy.importedMessage), style: style, layout: layout)
             }
         } act: { layout in
             if imported {
                 PolarisPageActions(
-                    primaryTitle: copy.confirmContinue, primary: onDone, layout: layout,
+                    primaryTitle: copy.doneButton, primary: onDone, layout: layout,
                     style: style)
             } else {
                 request(style: style, layout: layout)
@@ -202,11 +200,8 @@ struct PolarisOfflineSurface: View {
         -> some View
     {
         VStack(alignment: layout.horizontalAlignment, spacing: PolarisSpace.l) {
-            VStack(alignment: .leading, spacing: PolarisSpace.xs) {
-                Text(String(format: copy.offlineProductLabel, productName))
-                    .font(style.font(.meta)).foregroundStyle(style.palette.textMuted)
-                Text(copy.requestCodeLabel)
-                    .font(style.font(.meta)).foregroundStyle(style.palette.textMuted)
+            VStack(alignment: .leading, spacing: PolarisSpace.s) {
+                OfflineStep(number: 1, text: copy.offlineRequest, style: style)
                 codeCard(style: style, layout: layout)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -214,9 +209,12 @@ struct PolarisOfflineSurface: View {
                 enabled: offersDrop, disabled: importing, targeted: $targeted, caption: copy.dropHint, style: style,
                 onDrop: onDropText))
 
-            if let message {
-                PolarisErrorLine(message: message, theme: theme, alignment: .leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: PolarisSpace.s) {
+                OfflineStep(number: 2, text: copy.offlineLoadHint, style: style)
+                if let message {
+                    PolarisErrorLine(message: message, theme: theme, alignment: .leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
             PolarisPageActions(
                 primaryTitle: copy.importFileButton, primary: onImportFile,
@@ -257,7 +255,7 @@ struct PolarisOfflineSurface: View {
         } else if layout == .split {
             HStack(alignment: .center, spacing: PolarisSpace.m) {
                 card
-                PolarisQRCode(Self.requestCode(deviceId: deviceId), accessibilityLabel: copy.requestCodeLabel)
+                PolarisQRCode(Self.requestCode(deviceId: deviceId), accessibilityLabel: copy.requestQRLabel)
                     .frame(width: 96, height: 96)
             }
         } else if layout == .column {
@@ -267,7 +265,7 @@ struct PolarisOfflineSurface: View {
                 PolarisPageDecoration {
                     PolarisQRCode(
                         Self.requestCode(deviceId: deviceId),
-                        accessibilityLabel: copy.requestCodeLabel
+                        accessibilityLabel: copy.requestQRLabel
                     )
                     .frame(width: 128, height: 128)
                 }
@@ -275,6 +273,32 @@ struct PolarisOfflineSurface: View {
         } else {
             card
         }
+    }
+}
+
+/// One numbered step: the kit draws the number (a formatted integer, not copy) beside the
+/// sentence, which is the step.
+private struct OfflineStep: View {
+    let number: Int
+    let text: String
+    let style: PolarisKitStyle
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: PolarisSpace.s) {
+            Text("\(number)")
+                .font(style.font(.meta).weight(.semibold))
+                .foregroundStyle(style.palette.textStrong)
+                .frame(width: 24, height: 24)
+                .background(style.tileFill, in: Circle())
+                .overlay(Circle().strokeBorder(style.palette.borderSubtle, lineWidth: 1))
+                .accessibilityHidden(true)
+            Text(text)
+                .font(style.font(.subtitle)).foregroundStyle(style.palette.textMuted)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text("\(number). \(text)"))
     }
 }
 

@@ -6,6 +6,8 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Use another license, and Renew only when you pass `onRenew` to `PolarisGate` or `PolarisGateScreen`; it never offers Try again or Reconnect. The TV QR on the device-limit screen is labelled as the device management page. Compose draws the numbered steps and the request QR.
+  Migrating: pass an https `offers.url` in the kit's offers input to get Buy in your browser on the paywall, and `onRenew` to get Renew.
 - **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
 - **Compose UI kit follows UI-KITS.md** (`:ui`). Welcome keeps the key field behind "Use a license
   key" with Sign in the one primary and "by <Developer>" under the title (`PolarisTheme(developer =

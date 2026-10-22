@@ -135,12 +135,12 @@ Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySig
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Head/Product/Monogram/Initial: Label "P"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Head/Title: Label "Offline activation"
-Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Request/SendTitle: Label "1  Send this code"
-Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Request/RequestText: Label "Send this request code to whoever issues your license."
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Request/SendRow/SendTitle: Label "1"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Request/SendRow/RequestText: Label "Send this request code to whoever gave you your license."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Request/CodeField/CodeRow/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Request/CodeField/CodeRow/CopyCode: Button "Copy code" [focus 1]
-Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Import/LoadTitle: Label "2  Load the reply"
-Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Import/LoadHint: Label "Load the activation file you receive, or paste its text."
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Import/LoadTitleRow/LoadTitle: Label "2"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Import/LoadTitleRow/LoadHint: Label "Load the activation file you get back, or paste its text."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Import/LoadRow/LoadFile: Button "Load file…" [focus 2]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Import/Paste: TextEdit [placeholder "Paste the activation text here", focus 3]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeyOfflineDialog/Card/Scroll/Stack/Body/Import/DropHint: Label "You can also drop the file onto this window."

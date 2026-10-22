@@ -143,19 +143,7 @@ function contentFor(c: KitCtx): ReactNode {
     case "Settings":
       return settingsRows(c);
     case "OfflineActivation":
-      return keys.has("offlineActivation.paste") ? (
-        <div className="field" data-part="response">
-          <label className="label" htmlFor="pk-response">
-            {text(c, "offlineActivation.paste")}
-          </label>
-          <textarea id="pk-response" rows={3} spellCheck={false} data-mono="" />
-          {keys.has("offlineActivation.dropHint") ? (
-            <span className="meta" data-key="offlineActivation.dropHint">
-              {text(c, "offlineActivation.dropHint")}
-            </span>
-          ) : null}
-        </div>
-      ) : null;
+      return offlineSteps(c);
     case "AccountAndLicense":
       return accountRows(c);
     case "ChannelPicker":
@@ -224,9 +212,118 @@ function isLoading(view: View): boolean {
   return LOADING[view.component]?.includes(view.state) ?? false;
 }
 
+/** Keys OfflineActivation draws inside its own two steps; its text, controls and meta never
+ *  repeat them. */
+const STEP_KEYS: readonly string[] = [
+  "offlineActivation.request",
+  "offlineActivation.loadHint",
+  "offlineActivation.copyCode",
+  "offlineActivation.loadFile",
+  "offlineActivation.codeCopied",
+  "offlineActivation.paste",
+  "offlineActivation.dropHint",
+];
+
+function ownFiltered<
+  P extends {
+    body: string[];
+    meta: string[];
+    controls: string[];
+  },
+>(view: View, p: P): P {
+  if (view.component !== "OfflineActivation" || view.state === "done") return p;
+  const keep = (k: string): boolean => !STEP_KEYS.includes(k);
+  return {
+    ...p,
+    body: p.body.filter(keep),
+    meta: p.meta.filter(keep),
+    controls: p.controls.filter(keep),
+  };
+}
+
+/** OfflineActivation as two numbered steps: the request code (with Copy and a QR), then the
+ *  response (Load file, the paste box, the drop hint). The verdict follows below. */
+function offlineSteps(c: KitCtx): ReactNode {
+  if (c.view.state === "done") return null;
+  const keys = new Set(c.view.copy);
+  const code = c.input.offline?.requestCode;
+  const loaded = c.input.offline?.response ?? "";
+  const primary = c.view.decisions.primary;
+  const variant = (k: string) => (k === primary ? "primary" : "secondary");
+  return (
+    <ol className="steps" data-part="steps">
+      <li className="step-item" data-part="step">
+        <p className="body" data-key="offlineActivation.request">
+          {text(c, "offlineActivation.request")}
+        </p>
+        {code ? (
+          <>
+            <span className="code-row">
+              <span className="code" data-mono="" data-part="request-code">
+                {code}
+              </span>
+              {button(
+                c,
+                "offlineActivation.copyCode",
+                variant("offlineActivation.copyCode"),
+                { detail: { value: code } },
+              )}
+            </span>
+            {qrCode(c, code, "a11y.qrRequest")}
+          </>
+        ) : (
+          button(
+            c,
+            "offlineActivation.copyCode",
+            variant("offlineActivation.copyCode"),
+          )
+        )}
+        {keys.has("offlineActivation.codeCopied") ? (
+          <span
+            className="meta"
+            role="status"
+            data-key="offlineActivation.codeCopied"
+          >
+            {text(c, "offlineActivation.codeCopied")}
+          </span>
+        ) : null}
+      </li>
+      <li className="step-item" data-part="step">
+        <p className="body" data-key="offlineActivation.loadHint">
+          {text(c, "offlineActivation.loadHint")}
+        </p>
+        <div className="field" data-part="response">
+          <label className="label" htmlFor="pk-response">
+            {text(c, "offlineActivation.paste")}
+          </label>
+          <textarea
+            id="pk-response"
+            rows={3}
+            spellCheck={false}
+            data-mono=""
+            data-key="offlineActivation.paste"
+            value={loaded}
+            onChange={(e) => c.edit("response", e.currentTarget.value)}
+          />
+          {keys.has("offlineActivation.dropHint") ? (
+            <span className="meta" data-key="offlineActivation.dropHint">
+              {text(c, "offlineActivation.dropHint")}
+            </span>
+          ) : null}
+        </div>
+        {button(
+          c,
+          "offlineActivation.loadFile",
+          variant("offlineActivation.loadFile"),
+        )}
+      </li>
+    </ol>
+  );
+}
+
 /** `placeKeys`, then the drop-in's chrome: controls and links the state lacks, keys it drops. */
 function place(c: KitCtx, layout: Layout) {
-  const placed = placeKeys(c.view, layout);
+  const placed = ownFiltered(c.view, placeKeys(c.view, layout));
   // A line whose argument the input does not carry is dropped, never drawn as "{version}".
   const whole = (k: string) => c.driven !== true || !unfilled(c, k);
   const p = {
@@ -538,7 +635,7 @@ function deviceLimitContent(c: KitCtx): ReactNode {
     c.input.activation?.limit ?? c.input.replaceView?.seats.limit ?? undefined;
   const devices = c.input.devices ?? [];
   const link = c.view.decisions.link;
-  const qr = qrCode(c, link?.qr ? link.url : null);
+  const qr = qrCode(c, link?.qr ? link.url : null, "a11y.qrManage");
   if (!keys.has("signin.replace.meta") && !keys.has("part.seatMeter.caption"))
     return qr;
   // Least recent preselected (SIGN-IN.md §3.7).

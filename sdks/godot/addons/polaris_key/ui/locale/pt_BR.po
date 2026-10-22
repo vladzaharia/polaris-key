@@ -416,6 +416,16 @@ msgstr "Abre no navegador"
 msgid "a11y.qr"
 msgstr "Código QR que abre a página de acesso"
 
+#. QR code with the request code
+#. Screen reader label; never shown. Describes the QR code that carries an offline-activation request.
+msgid "a11y.qrRequest"
+msgstr "Código QR com o código de solicitação"
+
+#. QR code that opens the device management page
+#. Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page.
+msgid "a11y.qrManage"
+msgstr "Código QR que abre a página de gerenciamento de dispositivos"
+
 #. Sign-in code {code}
 #. Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
 msgid "a11y.code"
@@ -801,14 +811,9 @@ msgid "offlineActivation.title"
 msgstr "Ativação offline"
 
 #. Send this request code to whoever gave you your license.
-#. OfflineActivation: activation by exchanging a request code and a response file.
+#. OfflineActivation: step 1; the kit's number marker carries the order.
 msgid "offlineActivation.request"
 msgstr "Envie este código de solicitação para quem forneceu sua licença."
-
-#. Product: {product}
-#. OfflineActivation: activation by exchanging a request code and a response file. Arguments: {product} = the product's name from ProductIdentity (never translated).
-msgid "offlineActivation.product"
-msgstr "Produto: {product}"
 
 #. Copy code
 #. OfflineActivation: activation by exchanging a request code and a response file.
@@ -825,10 +830,10 @@ msgstr "Copiar código"
 msgid "offlineActivation.codeCopied"
 msgstr "Código copiado"
 
-#. Then load the activation file you get back, or paste its text.
-#. OfflineActivation: activation by exchanging a request code and a response file.
+#. Load the activation file you get back, or paste its text.
+#. OfflineActivation: step 2; the kit's number marker carries the order.
 msgid "offlineActivation.loadHint"
-msgstr "Depois, carregue o arquivo de ativação que você receber ou cole o texto dele."
+msgstr "Carregue o arquivo de ativação que você receber ou cole o texto dele."
 
 #. Load file…
 #. OfflineActivation: activation by exchanging a request code and a response file. Opens a file picker.

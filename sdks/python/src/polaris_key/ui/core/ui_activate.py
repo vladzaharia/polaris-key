@@ -294,18 +294,36 @@ def offline_activation_view(ctx: Context) -> View:
     if not ctx.on("license"):
         return hidden_view(ctx, "OfflineActivation")
     offline = _mapping(ctx.input.get("offline"))
-    product = identity_text(ctx).name
     submitted = offline.get("submitted") is True
     loaded = offline.get("file") is True
     copied = offline.get("copied") is True
     if submitted and loaded and offline.get("verified") is True:
-        return make_view(ctx, "OfflineActivation", "done", ("offlineActivation.done",), args={"product": product})
+        return make_view(
+            ctx,
+            "OfflineActivation",
+            "done",
+            ("offlineActivation.title", "offlineActivation.done", "common.done"),
+            primary="common.done",
+        )
+    # The two-step form stays in every state but done; the request QR fits wherever the screen
+    # has room (DL14, DL3).
+    base = (
+        "offlineActivation.title",
+        "offlineActivation.request",
+        "offlineActivation.copyCode",
+        "a11y.qrRequest",
+        "offlineActivation.loadHint",
+        "offlineActivation.loadFile",
+        "offlineActivation.paste",
+        "offlineActivation.dropHint",
+        "offlineActivation.submit",
+    )
     if submitted and loaded and offline.get("verified") is False:
         return make_view(
             ctx,
             "OfflineActivation",
             "rejected-signature",
-            ("core.codes.bundle-jws-rejected.title", "core.codes.bundle-jws-rejected.message"),
+            base + ("core.codes.bundle-jws-rejected.message",),
             primary="offlineActivation.loadFile",
             tone="danger",
             error_slot="offlineActivation.loadFile",
@@ -317,10 +335,10 @@ def offline_activation_view(ctx: Context) -> View:
             ctx,
             "OfflineActivation",
             "loaded",
-            (
+            base
+            + (
                 "offlineActivation.codeCopied" if copied and not submitted and not loaded else None,
                 "offlineActivation.empty" if missing else None,
-                "offlineActivation.submit",
             ),
             primary="offlineActivation.submit",
             tone="danger" if missing else None,
@@ -331,18 +349,7 @@ def offline_activation_view(ctx: Context) -> View:
         ctx,
         "OfflineActivation",
         "default",
-        (
-            "offlineActivation.title",
-            "offlineActivation.request",
-            "offlineActivation.product",
-            "offlineActivation.copyCode",
-            "offlineActivation.loadHint",
-            "offlineActivation.loadFile",
-            "offlineActivation.paste",
-            "offlineActivation.dropHint",
-            "offlineActivation.submit",
-        ),
-        args={"product": product},
+        base,
         primary="offlineActivation.copyCode",
         qr=True,
     )

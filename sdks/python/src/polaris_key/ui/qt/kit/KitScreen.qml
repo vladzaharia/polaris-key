@@ -163,6 +163,17 @@ Rectangle {
                     Accessible.name: text
                 }
 
+                // OfflineActivation's two numbered steps, the request QR under the first.
+                Repeater {
+                    model: spec.steps
+                    KitStep {
+                        required property var modelData
+                        step: modelData
+                        fs: root.fs
+                        Layout.fillWidth: true
+                    }
+                }
+
                 Repeater {
                     model: spec.body
                     Text {

@@ -10,7 +10,12 @@
 
 package im.plrs.key.ui
 
+import android.content.ClipData
 import androidx.compose.foundation.background
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +29,13 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -31,22 +43,16 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -126,6 +132,8 @@ private val sentenceWithoutName = setOf("signIn.methodError")
 
 internal fun kitLineRole(key: String): KitLineRole = when {
     key.startsWith("a11y.") -> KitLineRole.Announcement
+    // A sentence that ends in "done" is the verdict, not the Done button (`common.done`).
+    key == "offlineActivation.done" -> KitLineRole.Text
     key in controlKeys || KitAction.forCopyKey(key) != null || controlSuffix.containsMatchIn(key) -> KitLineRole.Control
     else -> KitLineRole.Text
 }
@@ -176,12 +184,13 @@ public fun PolarisKitScreen(
     modifier: Modifier = Modifier,
     catalog: KitCopy = KitCopy.bundled,
     locale: String = kitLocale(),
+    requestCode: String? = null,
     onAction: (KitAction?) -> Unit = {},
 ) {
     // The sign-in form and its hand-off (the code, declined, expired) are focused steps: the
     // product header above a start-aligned title.
     val focused = screen.component == KitComponent.signIn || screen.component == KitComponent.signInHandoff
-    KitScreenBody(screen, modifier, catalog, locale, onAction, focused = focused, productName = null)
+    KitScreenBody(screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode)
 }
 
 /** The components whose screens are centred messages or hero screens, not focused steps. */
@@ -199,6 +208,7 @@ private fun KitScreenBody(
     onAction: (KitAction?) -> Unit,
     focused: Boolean,
     productName: String?,
+    requestCode: String? = null,
 ) {
     if (screen.isHidden) return
     val component = screen.component
@@ -221,14 +231,24 @@ private fun KitScreenBody(
         }
         formatted
     }
-    val controls = lines.filter { it.role == KitLineRole.Control }
-    val announcement = lines.filter { it.role == KitLineRole.Announcement }.joinToString(". ") { it.text }
-    val text = lines.filter { it.role == KitLineRole.Text && it.key != "part.poweredBy" && !it.key.startsWith("part.keyField.") && it.key != "common.paste" }
+    // OfflineActivation's Copy code sits with step 1 (it copies the request code), not in the dock.
+    val offline = screen.component == KitComponent.offlineActivation
+    val controls = lines.filter { it.role == KitLineRole.Control && !(offline && it.key == "offlineActivation.copyCode") }
+    // OfflineActivation's request QR label belongs to the code, not to a live announcement.
+    val qrLabel = lines.firstOrNull { it.key == "a11y.qrRequest" }?.text
+    val announcement = lines.filter { it.role == KitLineRole.Announcement && !(offline && it.key == "a11y.qrRequest") }
+        .joinToString(". ") { it.text }
+    val text = lines.filter {
+        it.role == KitLineRole.Text && it.key != "part.poweredBy" && !it.key.startsWith("part.keyField.") && it.key != "common.paste" &&
+            !(offline && it.key == "offlineActivation.copyCode")
+    }
     // The optional attribution (UI-KITS.md section 1.6): the line, the pane's last item, after the
     // controls. On when the inputs carry it or the theme's `showPoweredBy` is on, and only on the
     // account pane (the kit has no About); never on a gate.
     val attribution = lines.any { it.key == "part.poweredBy" } ||
         (PolarisTheme.current.showPoweredBy && component == KitComponent.accountAndLicense)
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     val semanticsModifier = modifier.semantics {
         if (announcement.isNotEmpty()) {
             contentDescription = announcement
@@ -297,14 +317,35 @@ private fun KitScreenBody(
             ordered.forEachIndexed { index, line ->
                 // The caption belongs to the meter, which draws it.
                 if (meters && line.key == "part.seatMeter.caption") return@forEachIndexed
+                val step = if (offline) offlineStep(line.key) else null
                 when {
                     // The confirm's first line is bold body text, read before the button (4.3 DeviceLimit item 7).
                     line.key == "deviceLimit.confirmTitle" || line.key == "signin.replace.title" ->
                         Text(line.text, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth())
                     index == 0 -> PolarisTitle(line.text)
+                    step != null -> PolarisStep(step, line.text)
                     else -> PolarisBody(line.text)
                 }
                 Spacer(Modifier.height(if (index == 0) PolarisSpace.tight else 8.dp))
+                // The request QR sits under step 1, and only when the host gave the code to encode: a
+                // kit never makes up a code (DL14).
+                if (step == 1 && requestCode != null && qrLabel != null) {
+                    PolarisQrCode(requestCode, qrLabel, Modifier.size(polarisWindow.qrSize))
+                    Spacer(Modifier.height(8.dp))
+                }
+                val copyLine = lines.firstOrNull { it.key == "offlineActivation.copyCode" }
+                if (step == 1 && copyLine != null) {
+                    PolarisSecondaryButton(
+                        copyLine.text,
+                        onClick = {
+                            if (requestCode != null) {
+                                scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copyLine.text, requestCode))) }
+                            }
+                            onAction(KitAction.forCopyKey(copyLine.key))
+                        },
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
                 if (meters && line.key in setOf("deviceLimit.lede", "deviceLimit.browser", "deviceLimit.noManage")) KitSeatMeter(screen)
             }
             // The activation hand-off has no lede line of its own to hang the meter on: it follows the text.
@@ -488,6 +529,28 @@ private fun KitRow(label: String, onClick: (() -> Unit)? = null, danger: Boolean
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = color)
+    }
+}
+
+/** The step an OfflineActivation sentence is: 1 sends the request, 2 loads the response. */
+private fun offlineStep(key: String): Int? = when (key) {
+    "offlineActivation.request" -> 1
+    "offlineActivation.loadHint" -> 2
+    else -> null
+}
+
+/** One numbered step: the kit draws the number (a formatted integer, not copy); the sentence is the step. */
+@Composable
+private fun PolarisStep(number: Int, text: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+        Box(
+            Modifier.size(24.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)
+                .clearAndSetSemantics {},
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(number.toString(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+        }
+        PolarisBody(text, textAlign = TextAlign.Start, modifier = Modifier.weight(1f))
     }
 }
 

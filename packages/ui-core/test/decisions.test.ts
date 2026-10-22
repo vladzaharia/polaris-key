@@ -82,8 +82,8 @@ const EXPECT: Record<string, (input: UiInput) => Expect> = {
     ),
   "StatusScreen.expired": () => refusal("status.renew"),
   "StatusScreen.version-too-old": () => refusal("status.update"),
-  // A fix the kit cannot reach is named in words: no primary, the heading takes focus.
-  "StatusScreen.version-too-new": () => refusal(null),
+  // A fix the kit cannot reach is named in words, and Try again stays as the one control (DL6).
+  "StatusScreen.version-too-new": () => refusal("common.tryAgain"),
   "StatusScreen.channel-not-entitled": () => refusal("status.switchChannel"),
   // A banner never takes focus.
   "GraceBanner.days-left": () => ({ ...quiet, primary: "common.reconnect" }),
@@ -137,7 +137,7 @@ const EXPECT: Record<string, (input: UiInput) => Expect> = {
       : { ...none, primary: "offlineActivation.submit" },
   "OfflineActivation.rejected-signature": () =>
     failed("offlineActivation.loadFile", "offlineActivation.loadFile"),
-  "OfflineActivation.done": () => none,
+  "OfflineActivation.done": () => ({ ...none, primary: "common.done" }),
   // SignIn: the first sign-in method; Open browser again while waiting; errors under Sign in.
   "SignIn.methods": (i) => ({
     ...none,
@@ -334,7 +334,9 @@ const EXPECT: Record<string, (input: UiInput) => Expect> = {
   }),
   "Paywall.purchased": () => ({ ...none, primary: "common.done" }),
   "Paywall.restore": () => quiet,
-  "Paywall.not-available": () => refusal(null),
+  // Not sold here: the portal hand-off needs an https offers.url (DL14).
+  "Paywall.not-available": (i) =>
+    refusal(i.offers?.url?.startsWith("https://") ? "paywall.portal" : null),
   "EntitlementGate.entitled": () => quiet,
   "EntitlementGate.loading": () => quiet,
   "EntitlementGate.not-entitled": (i) => ({

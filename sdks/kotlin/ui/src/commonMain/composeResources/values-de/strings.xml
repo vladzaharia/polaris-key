@@ -154,6 +154,10 @@
     <string name="a11y_externalLink">Wird im Browser geöffnet</string>
     <!-- Screen reader label; never shown. Describes the QR code. -->
     <string name="a11y_qr">QR-Code, der die Anmeldeseite öffnet</string>
+    <!-- Screen reader label; never shown. Describes the QR code that carries an offline-activation request. -->
+    <string name="a11y_qrRequest">QR-Code mit dem Anforderungscode</string>
+    <!-- Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page. -->
+    <string name="a11y_qrManage">QR-Code, der die Seite zur Geräteverwaltung öffnet</string>
     <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="a11y_code">Anmeldecode %1$s</string>
     <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
@@ -291,17 +295,15 @@
     <string name="activate_busy">Wird aktiviert…</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
     <string name="offlineActivation_title">Offline-Aktivierung</string>
-    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <!-- OfflineActivation: step 1; the kit's number marker carries the order. -->
     <string name="offlineActivation_request">Senden Sie diesen Anforderungscode an die Stelle, von der Sie Ihre Lizenz erhalten haben.</string>
-    <!-- OfflineActivation: activation by exchanging a request code and a response file. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="offlineActivation_product">Produkt: %1$s</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
     <string name="offlineActivation_copyCode">Code kopieren</string>
     <string name="offlineActivation_copyCode__macos">Code kopieren</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
     <string name="offlineActivation_codeCopied">Code kopiert</string>
-    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
-    <string name="offlineActivation_loadHint">Laden Sie dann die Aktivierungsdatei, die Sie zurückerhalten, oder fügen Sie ihren Text ein.</string>
+    <!-- OfflineActivation: step 2; the kit's number marker carries the order. -->
+    <string name="offlineActivation_loadHint">Laden Sie die Aktivierungsdatei, die Sie zurückerhalten, oder fügen Sie ihren Text ein.</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. Opens a file picker. -->
     <string name="offlineActivation_loadFile">Datei laden…</string>
     <string name="offlineActivation_loadFile__macos">Datei laden…</string>

@@ -170,7 +170,7 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "offlineActivation.copyCode",
       "offlineActivation.loadFile",
     ],
-    meta: ["offlineActivation.product", "offlineActivation.codeCopied"],
+    meta: ["offlineActivation.codeCopied"],
     content: ["offlineActivation.paste", "offlineActivation.dropHint"],
   },
   DeviceLimit: {

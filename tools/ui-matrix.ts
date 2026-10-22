@@ -42,7 +42,12 @@
 // `status` outcomes for a version or channel refusal stop looping. Version 5 (DENY-01): a
 // device-code poll's `error` is a refusal only with `reason: access_denied`; a bare `error` is a
 // failure. SignInHandoff gains the `failed` state (phase `failed`), and the `cli` family the
-// `login` outcomes `sign-in-denied` and `sign-in-failed`.
+// `login` outcomes `sign-in-denied` and `sign-in-failed`. Version 5 also carries UIM-05 (UK-64,
+// before the first release of version 5): StatusScreen/version-too-new keeps Try again;
+// StatusScreen/expired never offers Try again or Reconnect; Paywall/not-available hands off to a
+// valid https `offers.url`; OfflineActivation carries its two-step form in every state but done,
+// with the request QR's own label and no product line; DeviceLimit's TV QR is labelled
+// `a11y.qrManage`.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -399,7 +404,11 @@ const REVOKED_MUST_NOT = {
 
 /** Further invariants a component's rows may name besides its UI-KITS §4.1 one. */
 export const EXTRA_MUST_NOT: Readonly<Record<string, readonly string[]>> = {
-  StatusScreen: ["offer Sign out on a device already signed out"],
+  StatusScreen: [
+    "offer Sign out on a device already signed out",
+    "offer Try again or Reconnect on an expired license (Renew and Use another license are its controls)",
+  ],
+  Paywall: ["open a link that is not https (DL14)"],
 };
 
 /** D6: the identity-only keys. A presentation-absent row may drop these from its default row's
@@ -613,7 +622,8 @@ const INPUTS: Record<string, string> = {
   account:
     "{signedIn, holder?: account}: holder is the account signed in on this device (S-19), or absent.",
   entitlement: "{name, entitled}.",
-  offers: "{available, purchased?}.",
+  offers:
+    "{available, purchased?, url?}: url is the https page that sells the offer outside the app (a store page or the product's Polaris Locker page), from the integrator or the server; the hand-off shows only when the opener accepts it (DL14).",
   toast: "{kind}: the toast being shown.",
   error: "{code}: a core.codes code the step failed with.",
 };
@@ -1187,6 +1197,14 @@ function gateFamily(a: A): Draft[] {
       "StatusScreen",
       "expired",
       "all",
+      {
+        mustNot: {
+          invariant:
+            "offer Try again or Reconnect on an expired license (Renew and Use another license are its controls)",
+          copy: ["common.tryAgain", "common.reconnect"],
+          actions: ["retry"],
+        },
+      },
     ),
     row(
       "StatusScreen/version-too-old: a minimum",
@@ -1249,6 +1267,7 @@ function gateFamily(a: A): Draft[] {
         "core.gate.version-too-new.title",
         "core.gate.version-too-new.message",
         "status.allowedMax",
+        "common.tryAgain",
       ],
       {
         mustNot: {
@@ -1276,6 +1295,18 @@ function gateFamily(a: A): Draft[] {
         "core.gate.version-too-new.title",
         "core.gate.version-too-new.message",
         "status.allowedRange",
+        "common.tryAgain",
+      ],
+    ),
+    row(
+      "StatusScreen/version-too-new: Try again stays when no range is known",
+      { gate: { status: "version-too-new" } },
+      "StatusScreen",
+      "version-too-new",
+      [
+        "core.gate.version-too-new.title",
+        "core.gate.version-too-new.message",
+        "common.tryAgain",
       ],
     ),
     row(
@@ -1393,6 +1424,7 @@ function gateFamily(a: A): Draft[] {
 
 function activateFamily(a: A): Draft[] {
   const { row, all, but, hidden, off } = a;
+  const base = all("OfflineActivation", "default");
   const licenseOff = { services: off("license"), registration: "open" };
   const everything = {
     capabilities: {
@@ -1615,18 +1647,29 @@ function activateFamily(a: A): Draft[] {
       { default: true },
     ),
     row(
+      "OfflineActivation/default: the request QR on a phone too",
+      {
+        platform: IPHONE,
+        capabilities: { offlineActivation: true },
+        offline: {},
+      },
+      "OfflineActivation",
+      "default",
+      "all",
+    ),
+    row(
       "OfflineActivation/loaded: the request code was copied",
       { capabilities: { offlineActivation: true }, offline: { copied: true } },
       "OfflineActivation",
       "loaded",
-      ["offlineActivation.submit", "offlineActivation.codeCopied"],
+      [...base, "offlineActivation.codeCopied"],
     ),
     row(
       "OfflineActivation/loaded: a loaded file is not yet an activation",
       { capabilities: { offlineActivation: true }, offline: { file: true } },
       "OfflineActivation",
       "loaded",
-      ["offlineActivation.submit"],
+      base,
       { mustNot: { states: ["done"], copy: ["offlineActivation.done"] } },
     ),
     row(
@@ -1637,7 +1680,7 @@ function activateFamily(a: A): Draft[] {
       },
       "OfflineActivation",
       "loaded",
-      ["offlineActivation.submit", "offlineActivation.empty"],
+      [...base, "offlineActivation.empty"],
     ),
     row(
       "OfflineActivation/rejected-signature",
@@ -1647,7 +1690,7 @@ function activateFamily(a: A): Draft[] {
       },
       "OfflineActivation",
       "rejected-signature",
-      "all",
+      [...base, "core.codes.bundle-jws-rejected.message"],
     ),
     row(
       "OfflineActivation/done",
@@ -2376,7 +2419,7 @@ function deviceLimitFamily(a: A): Draft[] {
         "deviceLimit.title",
         "deviceLimit.browser",
         "deviceLimit.scan",
-        "a11y.qr",
+        "a11y.qrManage",
       ],
     ),
     hidden(
@@ -3034,9 +3077,40 @@ function paywallFamily(a: A): Draft[] {
       { platform: WEB, entitlement: ENT, offers: { available: false } },
       "Paywall",
       "not-available",
-      "all",
+      ["paywall.title", "paywall.notAvailable"],
       {
-        mustNot: { states: ["offers", "purchasing"] },
+        mustNot: {
+          states: ["offers", "purchasing"],
+          copy: ["paywall.portal"],
+        },
+      },
+    ),
+    row(
+      "Paywall/not-available: hands off to the portal",
+      {
+        platform: WEB,
+        entitlement: ENT,
+        offers: { available: false, url: GET_LICENSE.activateUrl },
+      },
+      "Paywall",
+      "not-available",
+      "all",
+    ),
+    row(
+      "Paywall/not-available: a link that is not https is never offered",
+      {
+        platform: WEB,
+        entitlement: ENT,
+        offers: { available: false, url: "http://tidewater.example/buy" },
+      },
+      "Paywall",
+      "not-available",
+      ["paywall.title", "paywall.notAvailable"],
+      {
+        mustNot: {
+          invariant: "open a link that is not https (DL14)",
+          copy: ["paywall.portal"],
+        },
       },
     ),
     hidden(

@@ -931,6 +931,126 @@
         }
       }
     },
+    "a11y.qrManage": {
+      "comment": "Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR code that opens the device management page"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR-Code, der die Seite zur Geräteverwaltung öffnet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code QR qui ouvre la page de gestion des appareils"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código QR que abre la página de gestión de dispositivos"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código QR que abre a página de gerenciamento de dispositivos"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codice QR che apre la pagina di gestione dei dispositivi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デバイス管理ページを開くQRコード"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기기 관리 페이지를 여는 QR 코드"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开设备管理页面的二维码"
+          }
+        }
+      }
+    },
+    "a11y.qrRequest": {
+      "comment": "Screen reader label; never shown. Describes the QR code that carries an offline-activation request.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR code with the request code"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR-Code mit dem Anforderungscode"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code QR contenant le code de demande"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código QR con el código de solicitud"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código QR com o código de solicitação"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codice QR con il codice di richiesta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リクエストコードのQRコード"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "요청 코드가 담긴 QR 코드"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "包含请求代码的二维码"
+          }
+        }
+      }
+    },
     "a11y.removeDevice": {
       "comment": "Screen reader label; never shown. Names the remove control on a device row. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device.",
       "extractionState": "manual",
@@ -41318,61 +41438,61 @@
       }
     },
     "offlineActivation.loadHint": {
-      "comment": "OfflineActivation: activation by exchanging a request code and a response file.",
+      "comment": "OfflineActivation: step 2; the kit's number marker carries the order.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Then load the activation file you get back, or paste its text."
+            "value": "Load the activation file you get back, or paste its text."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Laden Sie dann die Aktivierungsdatei, die Sie zurückerhalten, oder fügen Sie ihren Text ein."
+            "value": "Laden Sie die Aktivierungsdatei, die Sie zurückerhalten, oder fügen Sie ihren Text ein."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chargez ensuite le fichier d’activation que vous recevrez en retour, ou collez son texte."
+            "value": "Chargez le fichier d’activation que vous recevrez en retour, ou collez son texte."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Después carga el archivo de activación que recibas, o pega su texto."
+            "value": "Carga el archivo de activación que recibas, o pega su texto."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Depois, carregue o arquivo de ativação que você receber ou cole o texto dele."
+            "value": "Carregue o arquivo de ativação que você receber ou cole o texto dele."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Poi carica il file di attivazione che ricevi o incollane il testo."
+            "value": "Carica il file di attivazione che ricevi o incollane il testo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "次に、返送されたアクティベーションファイルを読み込むか、そのテキストをペーストしてください。"
+            "value": "返送されたアクティベーションファイルを読み込むか、そのテキストをペーストしてください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "그런 다음 받은 활성화 파일을 불러오거나 그 내용을 붙여넣으세요."
+            "value": "받은 활성화 파일을 불러오거나 그 내용을 붙여넣으세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "然后载入你收到的激活文件，或粘贴其文本。"
+            "value": "载入你收到的激活文件，或粘贴其文本。"
           }
         }
       }
@@ -41437,68 +41557,8 @@
         }
       }
     },
-    "offlineActivation.product": {
-      "comment": "OfflineActivation: activation by exchanging a request code and a response file. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Product: %1$@"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Produkt: %1$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Produit : %1$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Producto: %1$@"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Produto: %1$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Prodotto: %1$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "製品：%1$@"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "제품: %1$@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "产品：%1$@"
-          }
-        }
-      }
-    },
     "offlineActivation.request": {
-      "comment": "OfflineActivation: activation by exchanging a request code and a response file.",
+      "comment": "OfflineActivation: step 1; the kit's number marker carries the order.",
       "extractionState": "manual",
       "localizations": {
         "en": {

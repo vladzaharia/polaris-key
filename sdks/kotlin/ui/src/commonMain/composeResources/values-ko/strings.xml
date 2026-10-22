@@ -153,6 +153,10 @@
     <string name="a11y_externalLink">브라우저에서 열림</string>
     <!-- Screen reader label; never shown. Describes the QR code. -->
     <string name="a11y_qr">로그인 페이지를 여는 QR 코드</string>
+    <!-- Screen reader label; never shown. Describes the QR code that carries an offline-activation request. -->
+    <string name="a11y_qrRequest">요청 코드가 담긴 QR 코드</string>
+    <!-- Screen reader label; never shown. Describes the QR code on DeviceLimit that opens the manage page. -->
+    <string name="a11y_qrManage">기기 관리 페이지를 여는 QR 코드</string>
     <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
     <string name="a11y_code">로그인 코드 %1$s</string>
     <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
@@ -289,17 +293,15 @@
     <string name="activate_busy">활성화하는 중…</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
     <string name="offlineActivation_title">오프라인 활성화</string>
-    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <!-- OfflineActivation: step 1; the kit's number marker carries the order. -->
     <string name="offlineActivation_request">이 요청 코드를 라이선스를 제공한 곳에 보내세요.</string>
-    <!-- OfflineActivation: activation by exchanging a request code and a response file. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="offlineActivation_product">제품: %1$s</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
     <string name="offlineActivation_copyCode">코드 복사</string>
     <string name="offlineActivation_copyCode__macos">코드 복사</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
     <string name="offlineActivation_codeCopied">코드 복사됨</string>
-    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
-    <string name="offlineActivation_loadHint">그런 다음 받은 활성화 파일을 불러오거나 그 내용을 붙여넣으세요.</string>
+    <!-- OfflineActivation: step 2; the kit's number marker carries the order. -->
+    <string name="offlineActivation_loadHint">받은 활성화 파일을 불러오거나 그 내용을 붙여넣으세요.</string>
     <!-- OfflineActivation: activation by exchanging a request code and a response file. Opens a file picker. -->
     <string name="offlineActivation_loadFile">파일 불러오기…</string>
     <string name="offlineActivation_loadFile__macos">파일 불러오기…</string>

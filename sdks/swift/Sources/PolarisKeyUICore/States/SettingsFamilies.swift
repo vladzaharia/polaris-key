@@ -148,7 +148,9 @@ extension KitStates {
         }
         guard let offers = i.offers else { return KitScreen(.loading, [c.line("common.loading")]) }
         if !offers.available {
-            return KitScreen(.notAvailable, [c.line("paywall.notAvailable", c.productArg)])
+            var lines = [c.line("paywall.title", tier), c.line("paywall.notAvailable", c.productArg)]
+            if KitLinks.valid(offers.url) != nil { lines.append(c.line("paywall.portal")) }
+            return KitScreen(.notAvailable, lines)
         }
         // "{tier} includes" only introduces a list: without the tier and its features the line
         // carries no tier, so it is incomplete and not drawn.

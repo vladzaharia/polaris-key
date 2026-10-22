@@ -276,7 +276,6 @@ static func offline_activation_view(ctx: RefCounted) -> Dictionary:
 	if not ctx.on("license"):
 		return View.hidden(ctx, "OfflineActivation")
 	var o: Dictionary = ctx.member("offline")
-	var product: String = View.identity_text(ctx)["name"]
 	var submitted := View.truthy(o.get("submitted"))
 	var file := View.truthy(o.get("file"))
 	var copied := View.truthy(o.get("copied"))
@@ -284,16 +283,26 @@ static func offline_activation_view(ctx: RefCounted) -> Dictionary:
 	if submitted and file and _is_true(verified):
 		return View.make(ctx, "OfflineActivation", {
 			"state": "done",
-			"copy": ["offlineActivation.done"],
-			"args": {"product": product},
+			"copy": ["offlineActivation.title", "offlineActivation.done", "common.done"],
+			"primary": "common.done",
 		})
+	# The two-step form stays in every state but done (H1b's base); the request QR fits wherever
+	# the screen has room (DL14, DL3).
+	var base := [
+		"offlineActivation.title",
+		"offlineActivation.request",
+		"offlineActivation.copyCode",
+		"a11y.qrRequest",
+		"offlineActivation.loadHint",
+		"offlineActivation.loadFile",
+		"offlineActivation.paste",
+		"offlineActivation.dropHint",
+		"offlineActivation.submit",
+	]
 	if submitted and file and verified is bool and not verified:
 		return View.make(ctx, "OfflineActivation", {
 			"state": "rejected-signature",
-			"copy": [
-				"core.codes.bundle-jws-rejected.title",
-				"core.codes.bundle-jws-rejected.message",
-			],
+			"copy": base + ["core.codes.bundle-jws-rejected.message"],
 			"primary": "offlineActivation.loadFile",
 			"tone": "danger",
 			"errorSlot": "offlineActivation.loadFile",
@@ -304,31 +313,18 @@ static func offline_activation_view(ctx: RefCounted) -> Dictionary:
 		var empty := submitted and not file
 		return View.make(ctx, "OfflineActivation", {
 			"state": "loaded",
-			"copy": [
+			"copy": base + [
 				"offlineActivation.codeCopied" if copied and not submitted and not file else null,
 				"offlineActivation.empty" if empty else null,
-				"offlineActivation.submit",
 			],
 			"primary": "offlineActivation.submit",
 			"tone": "danger" if empty else null,
 			"errorSlot": "offlineActivation.submit" if empty else null,
-			# The request code may be drawn as a QR on any screen that fits it (DL14).
 			"qr": true,
 		})
 	return View.make(ctx, "OfflineActivation", {
 		"state": "default",
-		"copy": [
-			"offlineActivation.title",
-			"offlineActivation.request",
-			"offlineActivation.product",
-			"offlineActivation.copyCode",
-			"offlineActivation.loadHint",
-			"offlineActivation.loadFile",
-			"offlineActivation.paste",
-			"offlineActivation.dropHint",
-			"offlineActivation.submit",
-		],
-		"args": {"product": product},
+		"copy": base,
 		"primary": "offlineActivation.copyCode",
 		"qr": true,
 	})

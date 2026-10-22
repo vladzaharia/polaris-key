@@ -482,12 +482,23 @@ export function useKit(
         component: v.component,
         state: v.state,
         ...(hooks.detail?.(key, input) ?? {}),
+        ...(key === "offlineActivation.submit"
+          ? { response: input.offline?.response ?? "" }
+          : {}),
+        ...(key === "paywall.portal" && input.offers?.url
+          ? { url: input.offers.url }
+          : {}),
         ...extra,
       });
     },
     edit: (field, value) => {
       if (field === "key")
         setLocal((l) => ({ ...l, keyField: { text: value } }));
+      if (field === "response")
+        setLocal((l) => ({
+          ...l,
+          offline: { ...l.offline, response: value, file: value !== "" },
+        }));
       props.onInput?.(field, value);
     },
     pick: (id) => {

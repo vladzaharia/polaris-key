@@ -52,6 +52,7 @@
     <string name="pkey_ui_version_max">up to %1$s</string>
     <string name="pkey_ui_version_range">%1$s to %2$s</string>
     <string name="pkey_ui_reconnect">Reconnect</string>
+    <string name="pkey_ui_renew">Renew</string>
     <string name="pkey_ui_activation_title">Welcome to %1$s</string>
     <string name="pkey_ui_activation_subtitle">Sign in or use a license key to continue.</string>
     <string name="pkey_ui_activation_subtitle_key_only">Enter a license key to continue.</string>

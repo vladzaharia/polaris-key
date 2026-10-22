@@ -6,6 +6,11 @@ only API (no deprecated aliases).
 
 ## Unreleased
 
+Kit screens.
+
+- **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Renew and Use another license, and never Try again or Reconnect; the Qt kit has no renew option, so the host handles the Renew press. The TV QR on the device-limit screen is labelled as the device management page. The Qt kit draws the numbered steps with the request QR.
+  Migrating: pass an https `offers.url` in the offers input to get Buy in your browser on the paywall, (Renew needs nothing: the host handles its press).
+
 - **The async `wait_for_sign_in` keeps `code`.** `AsyncPolarisKey.identity.wait_for_sign_in` and `sign_in_with_browser` dropped the `code` of an `error` result, so an async caller could not tell `sign-in-denied` from `sign-in-failed`; the sync client already set it. A 503 on the device-code poll (the Worker retrying a transient failure after approval) is a `server-error` the wait loop rides out, as before.
 - **The Qt kit's `run_gate` runs activation and sign-in.** The gate shows Welcome, license-key entry
   (Paste, a live verdict, refusals as an info callout with their next step), sign-in in the browser or
@@ -22,7 +27,8 @@ device_name=)`, `GateController.screen` and `.flow`, `polaris_key.ui.core.ui_sig
   `ambient=True` now draws the accent's glow behind the card.
 
 - **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
-  Server drop-ins.
+
+Server drop-ins.
 
 - **`polaris_key.server` (`server.license`, `server.signin`).** `PolarisKey` verifies `X-PKey-License` per WIRE-CONTRACT-V4 §14 (the six-step verdict, the problem body, the signed trust manifest refreshed every 900 s and once a minute on an unknown `kid`), with adapters for FastAPI/Starlette, Django and DRF, and Flask. Extras: `starlette`, `fastapi`, `flask`, `django`, `drf`. Replays `backend-matrix.json`.
 

@@ -79,6 +79,8 @@ import kotlinx.coroutines.launch
  *   to the key field.
  * @param onUpdate opens the update (the store, the installer) from a "version too old" stop, where
  *   it is the screen's one primary (DL6); null leaves Try again as the only action.
+ * @param onRenew opens the renewal (the store or account page) from an expired stop, where it is
+ *   the screen's one primary; null draws no Renew, leaving Use another license alone.
  */
 @Composable
 public fun PolarisGate(
@@ -87,6 +89,7 @@ public fun PolarisGate(
     onSignIn: (() -> Unit)? = null,
     signIn: PolarisSignInState? = null,
     onUpdate: (() -> Unit)? = null,
+    onRenew: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val gate by state.gate.collectAsState()
@@ -102,6 +105,7 @@ public fun PolarisGate(
         onRetry = state::refresh,
         signIn = signIn,
         onUpdate = onUpdate,
+        onRenew = onRenew,
         content = content,
     )
 }
@@ -132,6 +136,7 @@ public fun PolarisGateScreen(
     onActivate: () -> Unit = {},
     onSignIn: (() -> Unit)? = null,
     onRetry: () -> Unit = {},
+    onRenew: (() -> Unit)? = null,
     manageAsQr: Boolean = false,
     signIn: PolarisSignInState? = null,
     onUpdate: (() -> Unit)? = null,
@@ -205,20 +210,26 @@ public fun PolarisGateScreen(
                 // the host can open the update; otherwise Try again stays, and the message names the fix.
                 val update = onUpdate.takeIf { stop == LicenseStatus.versionTooOld }
                 PolarisMessageScreen(message) {
-                    if (update != null) {
+                    if (stop == LicenseStatus.expired) {
+                        // Expired leads with Renew only when the host has a renewal to open (onRenew),
+                        // as the Swift kit does; Use another license is always offered. Never Try
+                        // again or Reconnect (the matrix pins both).
+                        if (onRenew != null) {
+                            PolarisPrimaryButton(text = copy.renew, onClick = onRenew, initialFocus = true)
+                            PolarisSecondaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true })
+                        } else {
+                            PolarisPrimaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true }, initialFocus = true)
+                        }
+                    } else if (update != null) {
                         PolarisPrimaryButton(text = copy.updateAction, onClick = update, initialFocus = true)
                         PolarisSecondaryButton(copy.retry, onClick = onRetry, busy = gate.refreshing)
                     } else {
                         PolarisPrimaryButton(
-                            text = if (stop == LicenseStatus.expired) copy.reconnect else copy.retry,
+                            text = copy.retry,
                             onClick = onRetry,
                             busy = gate.refreshing,
                             initialFocus = true,
                         )
-                    }
-                    if (stop == LicenseStatus.expired) {
-                        // No renew link exists on the device side; another license is the way on.
-                        PolarisSecondaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true })
                     }
                 }
             }

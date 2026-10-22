@@ -21,7 +21,7 @@ from ..core.ui_loading import DELAYED_LOADING_STATES
 from ..core.ui_view import View, bidi_isolate, format_bytes
 from .rows import Group, RowData, Seat, build_rows
 
-__all__ = ["Button", "Code", "Field", "ScreenSpec", "build_spec", "button_role", "is_button_key"]
+__all__ = ["Button", "Code", "Field", "ScreenSpec", "Step", "build_spec", "button_role", "is_button_key"]
 
 _HEADING = re.compile(r"\.(title|heading|codeTitle|addTitle)$|^(gate\.error\.title|part\.status\.blocked)$")
 _ACTION_KEYS = frozenset(key for keys in ACTION_KEYS.values() for key in keys)
@@ -181,6 +181,30 @@ class Code:
         }
 
 
+#: The two numbered steps of OfflineActivation: step 1 sends the request (the code, Copy and a QR),
+#: step 2 loads the response. The sentence is the step; the kit draws the number.
+_STEP_KEYS = {"offlineActivation.request": 1, "offlineActivation.loadHint": 2}
+
+
+@dataclass(frozen=True)
+class Step:
+    """One numbered step: its number, its sentence and, on step 1, the request QR (an SVG data URI,
+    black on white with its quiet zone) with its accessible name."""
+
+    number: int
+    text: str
+    qr: str = ""
+    qr_label: str = ""
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {"number": self.number, "text": self.text, "qr": self.qr, "qrLabel": self.qr_label}
+
+
+def _qr_uri(payload: str) -> str:
+    svg = _qr.svg(payload, module=8, quiet_zone=2)
+    return "" if svg is None else "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("ascii")
+
+
 @dataclass(frozen=True)
 class ScreenSpec:
     component: str
@@ -215,6 +239,8 @@ class ScreenSpec:
     search: str = ""
     groups: List[Group] = field(default_factory=list)
     after: List[Tuple[str, bool]] = field(default_factory=list)
+    #: The numbered steps (OfflineActivation), drawn after the heading in place of those body lines.
+    steps: List[Step] = field(default_factory=list)
     code: Optional[Code] = None
     #: A refusal the person can resolve (DL6): the core copy of a key that was not accepted, a license that
     #: is full or expired, in default text on a sunken callout under the field, never in the danger colour.
@@ -247,12 +273,13 @@ class ScreenSpec:
             "search": self.search,
             "groups": [g.as_dict() for g in self.groups],
             "after": [{"text": text, "strong": strong} for text, strong in self.after],
+            "steps": [s.as_dict() for s in self.steps],
             "code": self.code.as_dict() if self.code is not None else None,
             "callout": list(self.callout),
             "primaryKey": self.primary_key,
             "hidden": self.state == "hidden"
             or not (
-                self.title or self.body or self.buttons or self.fields or self.groups or self.seat
+                self.title or self.body or self.steps or self.buttons or self.fields or self.groups or self.seat
                 or self.progress is not None or self.code is not None or self.callout
             ),
         }
@@ -305,6 +332,7 @@ def build_spec(
     data: Optional[RowData] = None,
     selected_id: Optional[str] = None,
     advanced: bool = False,
+    request_code: str = "",
 ) -> ScreenSpec:
     """Lay one view out. Heading, then sentences, then the buttons in catalog order with the
     model's primary first among equals; at most one filled button.
@@ -331,12 +359,17 @@ def build_spec(
     progress: Optional[float] = None
     busy = False
     parts: Dict[str, str] = {}
+    steps: List[Step] = []
+    qr_label = ""
     keyed: Dict[str, str] = {}
     paste = ""
     for key in view.copy:
         if key == "common.byDeveloper":  # the identity header draws it
             continue
         if key == "part.poweredBy":  # drawn at the foot with the Locker mark, when the theme asks
+            continue
+        if key == "a11y.qrRequest":  # names the request QR of step 1; drawn only with a code to encode
+            qr_label = copy(key, **args)
             continue
         if key.startswith("a11y."):
             busy = busy or key in ("a11y.busy", "a11y.progress")
@@ -371,9 +404,16 @@ def build_spec(
                 buttons.append(Button(key, text, button_role(key, primary)))
             continue
         text = copy(key, **args)
+        if key in _STEP_KEYS and view.component == "OfflineActivation":
+            steps.append(Step(_STEP_KEYS[key], text))
+            continue
         if not _open(text):
             body.append(text)
             keyed[key] = text
+    if steps and view.decisions.qr and request_code and qr_label:
+        uri = _qr_uri(request_code)
+        if uri:  # fail closed: no payload, no QR
+            steps = [Step(s.number, s.text, uri, qr_label) if s.number == 1 else s for s in steps]
     after: List[Tuple[str, bool]] = []
     if rows is not None and rows.before is not None:
         # The list sits between the sentences that introduce it and the ones that follow it.
@@ -488,6 +528,7 @@ def build_spec(
         search=rows.search if rows is not None else "",
         groups=list(rows.groups) if rows is not None else [],
         after=after,
+        steps=sorted(steps, key=lambda s: s.number),
         code=code,
         callout=callout,
         primary_key=next((b.key for b in buttons if b.role == "primary"), ""),

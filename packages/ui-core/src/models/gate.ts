@@ -313,11 +313,16 @@ export function statusScreenView(
         tone: "neutral",
       });
     case "version-too-new":
-      // No fix the kit can reach: it is named in words (DL6), and the heading takes focus.
+      // No fix the kit can reach is named in words (DL6); Try again stays and re-checks.
       return makeView(ctx, "StatusScreen", {
         state: status,
-        copy: [...head, range === "status.allowedMin" ? null : range],
+        copy: [
+          ...head,
+          range === "status.allowedMin" ? null : range,
+          "common.tryAgain",
+        ],
         args,
+        primary: "common.tryAgain",
         tone: "neutral",
       });
     case "channel-not-entitled":

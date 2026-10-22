@@ -128,7 +128,9 @@ internal fun paywallScreen(inputs: KitInputs): KitScreen {
     }
     if (offers == null) return screen(KitComponent.paywall, "loading", listOf(context.line("common.loading")))
     if (offers.boolean("available") != true) {
-        return screen(KitComponent.paywall, "not-available", listOf(context.line("paywall.notAvailable", context.productArgs)))
+        val lines = mutableListOf(context.line("paywall.title", tier), context.line("paywall.notAvailable", context.productArgs))
+        if (KitLinks.valid(offers.string("url")) != null) lines += context.line("paywall.portal")
+        return screen(KitComponent.paywall, "not-available", lines)
     }
     val features = offers.array("features")
     val includes = if (tierName != null && features != null && features.isNotEmpty()) tier else emptyMap()
