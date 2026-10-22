@@ -21,7 +21,6 @@
  * literal in this file and asserts the page exists in the built docs site.
  */
 
-import { channelLabel } from "@polaris-key/manifest";
 import {
   Activity,
   AppWindow,
@@ -657,7 +656,7 @@ export const SECTIONS: NavSection[] = [
         // A-17g: the App Store Distribute flow (T6) for the product's pinned app.
         page: "app-store",
         accent: "distribution",
-        label: channelLabel("app-store"),
+        label: "App Store",
         path: "distribution/app-store",
         icon: Send,
         docs: "/docs/features/ship-builds/channels/app-store/",

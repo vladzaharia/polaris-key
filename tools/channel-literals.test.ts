@@ -133,6 +133,10 @@ const BASELINE: Record<string, { count: number; why: string }> = {
     count: 5,
     why: "declaration module; Epic Games Store is not a catalogue channel yet",
   },
+  "packages/admin/src/console/nav.ts": {
+    count: 1,
+    why: "the docs reference page generator reads nav labels as literals (gen-reference.mjs)",
+  },
   "packages/admin/src/console/sections/distribution/pages/CommercePage.tsx": {
     count: 1,
     why: "at its page-budget ceiling; the import line would grow it",
