@@ -740,7 +740,7 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     ).toBeTruthy();
     expect(
       screen.getByText(
-        "Use your Nightfall purchase email or a work or school email.",
+        "Use your purchase email or a work or school email.",
       ),
     ).toBeTruthy();
     expect(screen.getByText("Lanternworks", { exact: false }).textContent).toBe(
