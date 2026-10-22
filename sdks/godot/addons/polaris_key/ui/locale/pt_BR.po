@@ -5424,6 +5424,76 @@ msgstr "É preciso entrar"
 msgid "core.codes.account_required.message"
 msgstr "Entre na sua conta do Polaris Locker neste dispositivo e tente novamente."
 
+#. Sync out of date
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.cursor_expired.title"
+msgstr "Sincronização desatualizada"
+
+#. This device hasn't synced in too long. It will start over from your saved data.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.cursor_expired.message"
+msgstr "Este dispositivo ficou tempo demais sem sincronizar. Ele vai recomeçar com seus dados salvos."
+
+#. Sync mismatch
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.client_mismatch.title"
+msgstr "Sincronização incompatível"
+
+#. This sync belongs to another device. Restart the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.client_mismatch.message"
+msgstr "Esta sincronização pertence a outro dispositivo. Reinicie o app e tente de novo."
+
+#. Setting not saved
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.value_invalid.title"
+msgstr "Configuração não salva"
+
+#. That value isn't valid for this setting.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.value_invalid.message"
+msgstr "Esse valor não é válido para esta configuração."
+
+#. Change not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.op_invalid_for_policy.title"
+msgstr "Alteração não permitida"
+
+#. That change isn't allowed for this setting.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.op_invalid_for_policy.message"
+msgstr "Essa alteração não é permitida para esta configuração."
+
+#. Not synced
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.setting_not_synced.title"
+msgstr "Não sincronizada"
+
+#. This setting isn't synced to your account.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.setting_not_synced.message"
+msgstr "Esta configuração não é sincronizada com sua conta."
+
+#. Storage full
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.quota_exceeded.title"
+msgstr "Armazenamento cheio"
+
+#. Your synced storage is full. Free some space, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.quota_exceeded.message"
+msgstr "Seu armazenamento sincronizado está cheio. Libere espaço e tente de novo."
+
+#. Sync paused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.writes_paused.title"
+msgstr "Sincronização pausada"
+
+#. Syncing is paused for a moment. Your changes are kept and will sync later.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.writes_paused.message"
+msgstr "A sincronização está pausada por um momento. Suas alterações são mantidas e serão sincronizadas depois."
+
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_mismatch.title"

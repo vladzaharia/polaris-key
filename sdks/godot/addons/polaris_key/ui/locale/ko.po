@@ -5398,6 +5398,76 @@ msgstr "로그인 필요"
 msgid "core.codes.account_required.message"
 msgstr "이 기기에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요."
 
+#. Sync out of date
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.cursor_expired.title"
+msgstr "동기화가 오래되었습니다"
+
+#. This device hasn't synced in too long. It will start over from your saved data.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.cursor_expired.message"
+msgstr "이 기기는 너무 오래 동기화되지 않았습니다. 저장된 데이터에서 처음부터 다시 시작합니다."
+
+#. Sync mismatch
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.client_mismatch.title"
+msgstr "동기화가 일치하지 않습니다"
+
+#. This sync belongs to another device. Restart the app and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.client_mismatch.message"
+msgstr "이 동기화는 다른 기기의 것입니다. 앱을 다시 시작한 뒤 다시 시도하세요."
+
+#. Setting not saved
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.value_invalid.title"
+msgstr "설정이 저장되지 않았습니다"
+
+#. That value isn't valid for this setting.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.value_invalid.message"
+msgstr "이 설정에는 올바르지 않은 값입니다."
+
+#. Change not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.op_invalid_for_policy.title"
+msgstr "변경할 수 없습니다"
+
+#. That change isn't allowed for this setting.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.op_invalid_for_policy.message"
+msgstr "이 설정에서는 해당 변경이 허용되지 않습니다."
+
+#. Not synced
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.setting_not_synced.title"
+msgstr "동기화되지 않음"
+
+#. This setting isn't synced to your account.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.setting_not_synced.message"
+msgstr "이 설정은 계정과 동기화되지 않습니다."
+
+#. Storage full
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.quota_exceeded.title"
+msgstr "저장 공간이 가득 찼습니다"
+
+#. Your synced storage is full. Free some space, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.quota_exceeded.message"
+msgstr "동기화 저장 공간이 가득 찼습니다. 공간을 확보한 뒤 다시 시도하세요."
+
+#. Sync paused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.writes_paused.title"
+msgstr "동기화 일시 중지"
+
+#. Syncing is paused for a moment. Your changes are kept and will sync later.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.writes_paused.message"
+msgstr "동기화가 잠시 일시 중지되었습니다. 변경 사항은 보관되며 나중에 동기화됩니다."
+
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.email_mismatch.title"

@@ -2055,6 +2055,34 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_account_required_message">Sign in to your Polaris Locker account on this device, then try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_cursor_expired_title">Sync out of date</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_cursor_expired_message">This device hasn't synced in too long. It will start over from your saved data.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_client_mismatch_title">Sync mismatch</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_client_mismatch_message">This sync belongs to another device. Restart the app and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_value_invalid_title">Setting not saved</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_value_invalid_message">That value isn't valid for this setting.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_op_invalid_for_policy_title">Change not allowed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_op_invalid_for_policy_message">That change isn't allowed for this setting.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_setting_not_synced_title">Not synced</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_setting_not_synced_message">This setting isn't synced to your account.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_quota_exceeded_title">Storage full</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_quota_exceeded_message">Your synced storage is full. Free some space, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_writes_paused_title">Sync paused</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_writes_paused_message">Syncing is paused for a moment. Your changes are kept and will sync later.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">Email not verified</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_message">This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.</string>

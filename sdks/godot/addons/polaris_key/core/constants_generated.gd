@@ -66,6 +66,13 @@ class ErrorCode:
 	const LICENSE_OWNED := "license_owned"
 	const LICENSE_EMAIL_BOUND := "license_email_bound"
 	const ACCOUNT_REQUIRED := "account_required"
+	const CURSOR_EXPIRED := "cursor_expired"
+	const CLIENT_MISMATCH := "client_mismatch"
+	const VALUE_INVALID := "value_invalid"
+	const OP_INVALID_FOR_POLICY := "op_invalid_for_policy"
+	const SETTING_NOT_SYNCED := "setting_not_synced"
+	const QUOTA_EXCEEDED := "quota_exceeded"
+	const WRITES_PAUSED := "writes_paused"
 	const EMAIL_MISMATCH := "email_mismatch"
 	const LINK_CONFLICT := "link_conflict"
 	const LAST_LINK := "last_link"
@@ -190,7 +197,7 @@ class ErrorCode:
 
 
 ## Every `ErrorCode` value, in source order.
-const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "attestation_required", "attestation_rejected", "attestation_unavailable", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "signing_unavailable", "device_limit", "key_entry_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "license_unusable", "disabled", "oidc_error", "unavailable", "erasure_ledger_unavailable", "identity_disabled", "unknown_app", "invalid_request", "invalid_client", "invalid_grant", "unsupported_grant_type", "invalid_scope", "redirect_uri_mismatch", "license_choice_required", "auth_method_disabled", "email_unavailable", "turnstile_failed", "signin_expired", "invalid_code", "code_expired", "email_in_use", "terms_required", "license_owned", "license_email_bound", "account_required", "email_mismatch", "link_conflict", "last_link", "step_up_required", "not_eligible", "not_removable", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "asset_unreachable", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "backend-origin-not-allowed", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "invalid-options", "invalid-argument", "invoke-not-allowed", "sender-refused", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "platform-error", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "chunks-ref-mismatch", "chunks-bad-length", "chunks-bad-magic", "chunks-unsupported-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-reserved-nonzero", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref", "chunks-bad-bundle-range", "chunks-size-mismatch", "chunks-payload-mismatch", "chunk-bundle-truncated", "chunk-corrupt", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-type-check-failed", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "pck-directory-refused", "pck-engine-mismatch", "pack-rolled-back", "pack-revoked", "pack-not-data-only", "marker-rejected", "license_required", "license_invalid", "license_stale", "sign_in_required"]
+const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "attestation_required", "attestation_rejected", "attestation_unavailable", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "signing_unavailable", "device_limit", "key_entry_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "license_unusable", "disabled", "oidc_error", "unavailable", "erasure_ledger_unavailable", "identity_disabled", "unknown_app", "invalid_request", "invalid_client", "invalid_grant", "unsupported_grant_type", "invalid_scope", "redirect_uri_mismatch", "license_choice_required", "auth_method_disabled", "email_unavailable", "turnstile_failed", "signin_expired", "invalid_code", "code_expired", "email_in_use", "terms_required", "license_owned", "license_email_bound", "account_required", "cursor_expired", "client_mismatch", "value_invalid", "op_invalid_for_policy", "setting_not_synced", "quota_exceeded", "writes_paused", "email_mismatch", "link_conflict", "last_link", "step_up_required", "not_eligible", "not_removable", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "asset_unreachable", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "backend-origin-not-allowed", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "invalid-options", "invalid-argument", "invoke-not-allowed", "sender-refused", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "platform-error", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "chunks-ref-mismatch", "chunks-bad-length", "chunks-bad-magic", "chunks-unsupported-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-reserved-nonzero", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref", "chunks-bad-bundle-range", "chunks-size-mismatch", "chunks-payload-mismatch", "chunk-bundle-truncated", "chunk-corrupt", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-type-check-failed", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "pck-directory-refused", "pck-engine-mismatch", "pack-rolled-back", "pack-revoked", "pack-not-data-only", "marker-rejected", "license_required", "license_invalid", "license_stale", "sign_in_required"]
 
 ## The registry: every error code and its kind (`wire` or `client`).
 const ERROR_CODE_KINDS := {
@@ -248,6 +255,13 @@ const ERROR_CODE_KINDS := {
 	"license_owned": "wire",
 	"license_email_bound": "wire",
 	"account_required": "wire",
+	"cursor_expired": "wire",
+	"client_mismatch": "wire",
+	"value_invalid": "wire",
+	"op_invalid_for_policy": "wire",
+	"setting_not_synced": "wire",
+	"quota_exceeded": "wire",
+	"writes_paused": "wire",
 	"email_mismatch": "wire",
 	"link_conflict": "wire",
 	"last_link": "wire",
@@ -1025,6 +1039,72 @@ const REQUEST_HANDLE_PATTERN := "^rq_[A-Za-z0-9_-]{22}$"
 
 ## Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
 const REQUEST_HANDLE_TTL_SECONDS := 600
+
+## Cloud Sync: `SYNC_CLIENT_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.3 rule 4, `@polaris-key/protocol/sync`).
+const SYNC_CLIENT_ID_PATTERN := "^c_[A-Za-z0-9_-]{22}$"
+
+## Cloud Sync: `SYNC_DEBOUNCE_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`).
+const SYNC_DEBOUNCE_MS := 2000
+
+## Cloud Sync: `SYNC_HLC_PATTERN` (WIRE-CONTRACT-V4 §8, `@polaris-key/protocol/sync`).
+const SYNC_HLC_PATTERN := "^[0-9a-f]{12}:[0-9a-f]{4}$"
+
+## Cloud Sync: `SYNC_IMPORT_HLC` (WIRE-CONTRACT-V4 §11.5, §13.3, `@polaris-key/protocol/sync`).
+const SYNC_IMPORT_HLC := "000000000000:0000"
+
+## Cloud Sync: `SYNC_KEY_PATTERN` (WIRE-CONTRACT-V4 §8, §13.2, `@polaris-key/protocol/sync`).
+const SYNC_KEY_PATTERN := "^[A-Za-z0-9._:-]{1,128}$"
+
+## Cloud Sync: `SYNC_MAX_CLOCK_SKEW_MS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
+const SYNC_MAX_CLOCK_SKEW_MS := 300000
+
+## Cloud Sync: `SYNC_MAX_MERGE_MEMBERS` (WIRE-CONTRACT-V4 §13.7, `@polaris-key/protocol/sync`).
+const SYNC_MAX_MERGE_MEMBERS := 256
+
+## Cloud Sync: `SYNC_MAX_MUTATIONS` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
+const SYNC_MAX_MUTATIONS := 100
+
+## Cloud Sync: `SYNC_MAX_PUSH_BYTES` (WIRE-CONTRACT-V4 §13.3, `@polaris-key/protocol/sync`).
+const SYNC_MAX_PUSH_BYTES := 262144
+
+## Cloud Sync: `SYNC_MAX_RECORD_BYTES` (WIRE-CONTRACT-V4 §13.1, §13.7, `@polaris-key/protocol/sync`).
+const SYNC_MAX_RECORD_BYTES := 65536
+
+## Cloud Sync: `SYNC_MAX_SETTINGS` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+const SYNC_MAX_SETTINGS := 256
+
+## Cloud Sync: `SYNC_MAX_SETTINGS_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+const SYNC_MAX_SETTINGS_BYTES := 65536
+
+## Cloud Sync: `SYNC_MAX_UNION_ELEMENT_BYTES` (WIRE-CONTRACT-V4 §13.7, `@polaris-key/protocol/sync`).
+const SYNC_MAX_UNION_ELEMENT_BYTES := 1024
+
+## Cloud Sync: `SYNC_MAX_VALUE_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+const SYNC_MAX_VALUE_BYTES := 8192
+
+## Cloud Sync: `SYNC_PENDING_DAYS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`).
+const SYNC_PENDING_DAYS := 30
+
+## Cloud Sync: `SYNC_PULL_PAGE_CHANGES` (WIRE-CONTRACT-V4 §13.4, `@polaris-key/protocol/sync`).
+const SYNC_PULL_PAGE_CHANGES := 500
+
+## Cloud Sync: `SYNC_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+const SYNC_QUOTA_BYTES := 268435456
+
+## Cloud Sync: `SYNC_SAVE_SLOTS` (WIRE-CONTRACT-V4 §13.1, §13.7, `@polaris-key/protocol/sync`).
+const SYNC_SAVE_SLOTS := 16
+
+## Cloud Sync: `SYNC_SIGNOUT_FLUSH_MS` (WIRE-CONTRACT-V4 §11.5, `@polaris-key/protocol/sync`).
+const SYNC_SIGNOUT_FLUSH_MS := 5000
+
+## Cloud Sync: `SYNC_TOMBSTONE_DAYS` (WIRE-CONTRACT-V4 §13.4, §13.6, `@polaris-key/protocol/sync`).
+const SYNC_TOMBSTONE_DAYS := 90
+
+## Cloud Sync: `SYNC_UNLICENSED_QUOTA_BYTES` (WIRE-CONTRACT-V4 §13.1, `@polaris-key/protocol/sync`).
+const SYNC_UNLICENSED_QUOTA_BYTES := 1048576
+
+## Cloud Sync: `SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS` (WIRE-CONTRACT-V4 §13.9, `@polaris-key/protocol/sync`).
+const SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS := 300
 
 ## Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`).
 const PAIRWISE_SUBJECT_PATTERN := "^ps_[A-Za-z0-9_-]{22}$"

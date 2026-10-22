@@ -2042,6 +2042,34 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_account_required_message">このデバイスでPolaris Lockerアカウントにサインインしてから、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_cursor_expired_title">同期が古くなっています</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_cursor_expired_message">このデバイスは長い間同期されていません。保存済みのデータから最初からやり直します。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_client_mismatch_title">同期が一致しません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_client_mismatch_message">この同期は別のデバイスのものです。アプリを再起動して、もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_value_invalid_title">設定を保存できませんでした</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_value_invalid_message">この設定には無効な値です。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_op_invalid_for_policy_title">変更できません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_op_invalid_for_policy_message">この設定ではその変更は許可されていません。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_setting_not_synced_title">同期されません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_setting_not_synced_message">この設定はアカウントと同期されません。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_quota_exceeded_title">容量がいっぱいです</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_quota_exceeded_message">同期用の容量がいっぱいです。空きを作ってから、もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_writes_paused_title">同期を一時停止中</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_writes_paused_message">同期は少しの間一時停止されています。変更は保持され、後で同期されます。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">メールアドレスが確認されていません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_message">このライセンスは、お使いのアカウントで確認されていないメールアドレスに紐付いています。そのメールアドレスを追加して確認してから、もう一度お試しください。</string>
