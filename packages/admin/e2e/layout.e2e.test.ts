@@ -329,10 +329,17 @@ function cases(): Case[] {
 }
 
 const CASES = cases();
+const PAUSED_HOME_CASES = [
+  "home:paused-platform-only",
+  "home:paused-product-role",
+  "dialog:resume-from-home",
+];
 /** The cases the zoom rows open: Home, tables, a record, a settings page and an overlay. */
 const ZOOM_CASES = [
   "global:home",
   "home:table",
+  // ST-44b.2: Home while Cloud Sync writes are paused, and the Resume dialog opened from it.
+  ...PAUSED_HOME_CASES,
   "djdl:overview",
   "djdl:licenses",
   "djdl:licenses/record/overview",
@@ -356,7 +363,12 @@ const ZOOM_CASES = [
   "dialog:set-secret",
 ];
 /** Home (Cards and Table) and a product's Overview. */
-const HOME_CASES = ["global:home", "home:table", "djdl:overview"];
+const HOME_CASES = [
+  "global:home",
+  "home:table",
+  "djdl:overview",
+  ...PAUSED_HOME_CASES,
+];
 /** The pages the phone-at-200%-text row opens. */
 const TEXT200_CASES = [
   "djdl:sync-usage",
@@ -480,7 +492,13 @@ const VIEWPORTS: {
         width: 390,
         height: 844,
         rootFontPercent: 200,
-        only: ["global:home", "home:table", "djdl:overview", ...TEXT200_CASES],
+        only: [
+          "global:home",
+          "home:table",
+          "djdl:overview",
+          ...PAUSED_HOME_CASES,
+          ...TEXT200_CASES,
+        ],
       },
       // Forced colours (a Windows contrast theme) and `prefers-contrast: more`: Home, Licenses and
       // Services.
