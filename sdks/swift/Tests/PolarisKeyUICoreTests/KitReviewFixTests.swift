@@ -149,4 +149,13 @@ final class KitReviewFixTests: XCTestCase {
         XCTAssertNotNil(later)
         XCTAssertLessThan(restart!, later!)
     }
+
+    /// The download's time left rounds up to whole minutes: "About 5 min", never "4:12".
+    func testTimeLeftRoundsUpToWholeMinutes() {
+        XCTAssertEqual(KitFormat.timeLeftLine(20), CopyLine("common.updateTimeLessThanMinute"))
+        XCTAssertEqual(
+            KitFormat.timeLeftLine(60), CopyLine("common.updateTimeMinutes", ["minutes": 1]))
+        XCTAssertEqual(
+            KitFormat.timeLeftLine(252), CopyLine("common.updateTimeMinutes", ["minutes": 5]))
+    }
 }
