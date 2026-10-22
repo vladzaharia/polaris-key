@@ -29,6 +29,8 @@ declare module "@tanstack/react-table" {
      * ADMIN.md §5.11). A mobile card leaves the field out rather than print a bare label.
      */
     quiet?: (row: TData) => boolean;
+    /** What a loading row draws in this column (default: one bar), at the row's real height. */
+    skeleton?: React.ReactNode;
   }
 }
 
@@ -72,6 +74,16 @@ export interface Facet<T> {
   options: FacetOption[];
   /** The row's value(s) for this facet (default: the column with the same id). */
   accessor?: (row: T) => string | string[] | null | undefined;
+  /**
+   * Draw the options as counted toggle chips in the filter band (see `FilterBarFacet.counted`).
+   * `counts` are the page's own totals (a server count over all rows); a value it lacks keeps
+   * the count over the loaded rows.
+   */
+  counted?: {
+    icons?: Record<string, React.ReactNode>;
+    counts?: Record<string, number | undefined>;
+    pending?: boolean;
+  };
 }
 
 export interface BulkAction<T> {
@@ -168,6 +180,11 @@ export interface DataTableProps<T> {
     description?: React.ReactNode;
     action?: React.ReactNode;
   };
+  /**
+   * With `mobile="cards"`: the card's body, replacing the primary cell and the label/value list.
+   * It receives the primary cell (the row's link) to place.
+   */
+  mobileCard?: (row: T, primary: React.ReactNode) => React.ReactNode;
   /** Below 1024 px: `cards` draws each row as a card; `scroll` keeps the table (it must fit). */
   mobile?: "cards" | "scroll";
   /** Extra controls at the end of the filter bar (Export, a date range). */
