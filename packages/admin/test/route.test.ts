@@ -495,6 +495,7 @@ describe("the nav model (nav.ts)", () => {
       "product-new",
       "api-tokens",
       "personal-tokens",
+      "sign-in-methods",
       "platform-connections",
       "platform-settings",
       "platform-status",
@@ -710,6 +711,7 @@ describe("global pages", () => {
       "product-new",
       "api-tokens",
       "personal-tokens",
+      "sign-in-methods",
       "platform-status",
     ] as GlobalPageId[]) {
       expect(sectionOf(id)).toBeNull();

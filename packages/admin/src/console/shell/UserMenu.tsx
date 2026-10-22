@@ -1,5 +1,12 @@
 import * as React from "react";
-import { BookOpen, CloudUpload, Keyboard, Library, LogOut } from "lucide-react";
+import {
+  BookOpen,
+  CloudUpload,
+  Fingerprint,
+  Keyboard,
+  Library,
+  LogOut,
+} from "lucide-react";
 import type { Me, PlatformIdentity } from "../../api.js";
 import { Button } from "../../ui/Button.js";
 import {
@@ -124,6 +131,15 @@ export function UserMenu({
               <Library aria-hidden />
               My library
             </a>
+          </DropdownMenuItem>
+        )}
+        {/* The account's own methods; a break-glass session has no account behind it. */}
+        {me.breakGlass ? null : (
+          <DropdownMenuItem asChild>
+            <Link to={r.signInMethods()}>
+              <Fingerprint aria-hidden />
+              Sign-in methods
+            </Link>
           </DropdownMenuItem>
         )}
         {narrow ? (

@@ -90,6 +90,7 @@ const GLOBAL_PAGE_AREAS: Record<GlobalPageId, AreaId> = {
   home: "console",
   "api-tokens": "platform",
   "personal-tokens": "platform",
+  "sign-in-methods": "console",
   "product-new": "platform",
   "platform-settings": "platform",
   "platform-status": "platform",

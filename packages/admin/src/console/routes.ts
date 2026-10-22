@@ -440,6 +440,7 @@ export const r = {
   productNew: (query?: QueryInit) => globalPage("product-new", query),
   apiTokens: () => globalPage("api-tokens"),
   personalTokens: () => globalPage("personal-tokens"),
+  signInMethods: () => globalPage("sign-in-methods"),
   /** The Platform group's root, which redirects to its first page. */
   platform: () => `#/${PLATFORM_GROUP.key}`,
   platformSettings: () => globalPage("platform-settings"),

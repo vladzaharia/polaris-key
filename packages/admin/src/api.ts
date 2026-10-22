@@ -283,6 +283,21 @@ export interface AdminPersonalToken {
   status: "active" | "expired" | "revoked";
 }
 
+/** One of the signed-in operator's own sign-in methods (ST-30c.3, `GET /me/methods`). */
+export interface ConsoleMethod {
+  id: string;
+  /** `passkey`, `oidc`, `email`, …; the Worker's link kind. */
+  kind: string;
+  /** The passkey's name, or the linked address; `null` when it has none. */
+  name: string | null;
+  createdAt: number;
+  lastUsedAt: number | null;
+  /** Opens the console (SM-3). */
+  strong: boolean;
+  /** A passkey added under the console's relying party that "Use for the console" may mark. */
+  consoleEligible: boolean;
+}
+
 export type AdminApiTokenStatus = "active" | "expired" | "revoked";
 
 /**
@@ -5159,6 +5174,26 @@ const rawApi = {
     call<{ ok: true; token: AdminPersonalToken }>(
       `/manage/api/account-tokens/${enc(id)}`,
       { method: "DELETE" },
+    ),
+  /** The signed-in operator's own sign-in methods (ST-30c.3). */
+  myMethods: () => call<{ methods: ConsoleMethod[] }>("/manage/api/me/methods"),
+  /** A passkey registration challenge for the console's relying party; needs a step-up. */
+  myPasskeyOptions: () =>
+    call<Record<string, unknown>>("/manage/api/me/passkeys/options", {
+      method: "POST",
+      body: "{}",
+    }),
+  /** Finish adding a passkey from the browser's attestation; needs a step-up. */
+  myPasskeyAdd: (response: Record<string, unknown>) =>
+    call<Record<string, unknown>>("/manage/api/me/passkeys", {
+      method: "POST",
+      body: JSON.stringify({ response }),
+    }),
+  /** "Use for the console": mark one of my passkeys strong; needs a step-up. */
+  myMethodStrong: (id: string) =>
+    call<{ ok: true; id: string; strong: true }>(
+      `/manage/api/me/methods/${enc(id)}/strong`,
+      { method: "POST", body: "{}" },
     ),
   /** The runtime settings, the read-only inventory, secrets presence and the warnings (A-13). */
   platformSettings: () =>

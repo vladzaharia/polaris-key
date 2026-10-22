@@ -106,6 +106,8 @@ export type GlobalPageId =
   | "api-tokens"
   // people's personal tokens (`pkeyp_`): the Superadmin's roster and revoke
   | "personal-tokens"
+  // the signed-in operator's own sign-in methods, reached from the account menu (ST-30c.4)
+  | "sign-in-methods"
   // the Platform section (notes/S-13 §9.1)
   | "platform-settings"
   | "platform-status"
@@ -950,6 +952,16 @@ export const GLOBAL_PAGES: NavPage[] = [
     icon: UserRound,
     docs: "/docs/features/ship-builds/packages/",
     inNav: true,
+  },
+  {
+    // The operator's own sign-in methods (ST-30c.4): reached from the account menu, not the sidebar.
+    page: "sign-in-methods",
+    label: "Sign-in methods",
+    keywords: "passkey security key console sign in account",
+    path: "account/sign-in-methods",
+    icon: KeyRound,
+    docs: "/docs/operate/console/",
+    inNav: false,
   },
   ...PLATFORM_PAGES,
 ];
