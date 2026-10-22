@@ -1039,8 +1039,12 @@ async function consoleCeremonyRef(env: Env, secret: string) {
  * itself (the related customer origin never mints one), and a response may name that origin alone.
  */
 function consoleCeremonyRp(env: Env, req: Request): RelyingParty | null {
+  // Without a configured console origin no passkey can admit (`subjectForAccount`), so refuse the
+  // ceremony up front rather than verify, record a use and only then refuse.
+  const configured = configuredConsoleRpId(env);
   const rp = passkeyRelyingParty(env, req);
-  if (!rp || rp.origin !== portalOriginOf(env, req)) return null;
+  if (!configured || !rp || rp.id !== configured) return null;
+  if (rp.origin !== portalOriginOf(env, req)) return null;
   return { ...rp, origins: [rp.origin] };
 }
 
