@@ -49,7 +49,7 @@ export function AccountCard({
           </div>
         ) : null}
       </div>
-      <div className="p-4 desk:p-6 bigtext:max-sm:p-2">
+      <div className="p-4 desk:p-5 bigtext:max-sm:p-2">
         {subtitle ? (
           <p className="mb-4 text-sm text-fg-muted">{subtitle}</p>
         ) : null}

@@ -187,7 +187,7 @@ export function PackagesCard(): React.ReactElement | null {
                   {t("locker.packages.none")}
                 </p>
               ) : (
-                <ul className="divide-y divide-border border-y border-border">
+                <ul className="divide-y divide-border border-y border-border -mx-4 desk:-mx-5 bigtext:max-sm:mx-0 [&>li]:px-4 desk:[&>li]:px-5 bigtext:max-sm:[&>li]:px-0">
                   {shown.map((tok, i) => (
                     <TokenRow
                       key={tok.id}
@@ -404,7 +404,7 @@ function TokenRow({
   return (
     <li className="py-3 outline-none" data-token-id={id} tabIndex={-1}>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="flex min-w-0 flex-1 items-start gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3 bigtext:max-sm:flex-col">
           <span
             aria-hidden
             className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-muted [&_svg]:size-5"
@@ -414,7 +414,17 @@ function TokenRow({
           <div className="min-w-0 space-y-0.5">
             <p className="break-words font-medium text-fg-strong">{label}</p>
             <p className="text-sm text-fg-muted">
-              <span className="font-mono">{mark}</span>
+              <span className="font-mono">
+                {mark.startsWith("pkeyp_") ? (
+                  <>
+                    {/* Large text on a phone has no room for the whole mark: its tail identifies it. */}
+                    <span className="bigtext:max-sm:hidden">pkeyp_</span>
+                    {mark.slice(6)}
+                  </>
+                ) : (
+                  mark
+                )}
+              </span>
               {app ? ` · ${app}` : ""}
             </p>
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted">
@@ -539,7 +549,7 @@ function PerAppTokens({
           {t("locker.packages.perAppBody")}
         </p>
       </div>
-      <ul className="divide-y divide-border border-y border-border">
+      <ul className="divide-y divide-border border-y border-border -mx-4 desk:-mx-5 bigtext:max-sm:mx-0 [&>li]:px-4 desk:[&>li]:px-5 bigtext:max-sm:[&>li]:px-0">
         {tokens.map((tok, i) => (
           <TokenRow
             key={`${tok.licenseId}-${tok.tokenId}`}

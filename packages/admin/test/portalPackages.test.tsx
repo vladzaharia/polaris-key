@@ -119,7 +119,14 @@ describe("Account → Packages (F-33)", () => {
     renderPortal();
     const c = await card();
     expect(within(c).getByText("CI build server")).toBeTruthy();
-    expect(within(c).getByText(/pkeyp_…Hq2a/)).toBeTruthy();
+    // The mark is two text nodes (the prefix hides at large text on a phone): match the span.
+    expect(
+      within(c).getByText(
+        (_, el) =>
+          el?.classList.contains("font-mono") === true &&
+          el.textContent === "pkeyp_…Hq2a",
+      ),
+    ).toBeTruthy();
     expect(within(c).getByText("Expires in 6 days")).toBeTruthy();
     expect(within(c).getByText(/Never used/)).toBeTruthy();
     expect(within(c).queryByText("Old")).toBeNull();
