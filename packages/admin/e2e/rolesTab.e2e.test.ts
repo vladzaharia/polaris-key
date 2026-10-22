@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
+import { closeContext } from "./teardown.js";
 import { IMG_ORIGIN, fixtureImage, resolve } from "./layoutFixtures.js";
 
 /**
@@ -81,7 +82,7 @@ async function open(
     .waitForFunction(() => !document.querySelector("#content [data-skeleton]"))
     .catch(() => undefined);
   await page.waitForTimeout(400);
-  return { page, close: () => ctx.close() };
+  return { page, close: () => closeContext(ctx) };
 }
 
 describe("Roles tab at 200 % text", () => {

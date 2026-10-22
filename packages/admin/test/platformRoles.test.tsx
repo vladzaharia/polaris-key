@@ -151,7 +151,7 @@ describe("Members: Roles tab", () => {
       expect(li.textContent).toContain(f.word);
       expect(li.textContent?.toLowerCase()).toContain(f.text.toLowerCase());
     }
-    expect(screen.getByText(/A person’s roles add up/)).toBeTruthy();
+    expect(screen.getByText(/A person's roles add up/)).toBeTruthy();
   });
 
   it("phone tiles pick the one role column the matrix shows", async () => {
@@ -242,7 +242,7 @@ describe("Members: Roles tab", () => {
     );
     open();
     expect(
-      await screen.findByText("You can’t see who holds each role."),
+      await screen.findByText("You can't see who holds each role."),
     ).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: /Retry|Try again/ }),
@@ -363,6 +363,6 @@ describe("Roles tab: focus after a Retry", () => {
       />,
     );
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(screen.getByText("You can’t see who holds each role.")).toBeTruthy();
+    expect(screen.getByText("You can't see who holds each role.")).toBeTruthy();
   });
 });
