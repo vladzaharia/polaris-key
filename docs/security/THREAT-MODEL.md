@@ -7068,6 +7068,27 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   `export`; no claimed table has an `account_id` column. A store added without its hooks fails the
   gate instead of leaving data behind after a merge or a deletion.
 
+### Cloud Sync push rules: the client's clock and the device binding (U-05.4)
+
+The engine (`services/sync/engine/`) is pure and takes pre-classified mutations, so these are the
+attacks it answers itself. The route (U-05.13) and the object (U-05.6) add no rule of their own
+here. Not tied to a numbered actor row: the actor is a signed-in person's own device (T3), whose
+clock the server must not trust.
+
+- **A fast clock cannot pin a key.** An `editedHlc` later than `serverNow` plus
+  `SYNC_MAX_CLOCK_SKEW_MS` (300 000 ms) is stored at `serverNow` with a zero counter, so a device
+  that stamps its write years ahead cannot make every later honest write a `conflict`. Earlier stamps
+  are kept as sent, the import floor included, so a slow clock only loses. **Residual:** inside the
+  five-minute window a device can still win a `lastWrite` race it should have lost.
+- **A clientId belongs to one device.** It binds to the first device that pushes with it, and
+  another device is a request-level `client_mismatch` that writes nothing, so a copied journal cannot
+  replay another install's mutation ids or burn its `lastMutationId`. The id is not a secret; the
+  device token is the credential.
+- **Nothing half-applied.** An `atomic` batch writes all or nothing (a rolled-back transaction), and
+  a replayed batch is `duplicate` by mutation id, so a retry after a lost response changes nothing.
+- **A `max` or `min` field is not anti-cheat** (§13.6): a device can claim a larger value, and the
+  better value wins whatever its clock.
+
 ### The account override layer and the licence-override migration (U-03)
 
 Operators' managed config for one account on one product (`account_overrides`, keyed by the
