@@ -6,6 +6,7 @@ import type {
   ConfigKind,
   ManagementState,
 } from "../../../../api.js";
+import { cn } from "../../../../lib/cn.js";
 import { IN_APP_LABELS } from "../../../../lib/labels.js";
 import { MintRecipeFields } from "./MintRecipeFields.js";
 import {
@@ -417,13 +418,8 @@ export function CatalogEntryForm({
           onEditJson={() => toggleAdvanced(true)}
         />
       ) : null}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {minted ? (
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-fg-strong">Value type</p>
-            <p className="text-sm text-fg-muted">Text, a signed token</p>
-          </div>
-        ) : (
+      <div className={cn("grid gap-4 sm:grid-cols-2", minted && "hidden")}>
+        {minted ? null : (
           <FormField
             name="type"
             label="Value type"
@@ -534,7 +530,9 @@ export function CatalogEntryForm({
           <p className="text-sm font-medium text-fg-strong">In the app</p>
           <p className="flex items-center gap-2 rounded-lg border border-dashed border-border-strong px-3 py-2 text-sm text-fg-muted">
             <Code aria-hidden className="size-4 shrink-0" />
-            <span>{codeOnlyText(entryType(entry), entry.key)}</span>
+            <span>
+              {codeOnlyText(entryType(entry), entry.key, productName)}
+            </span>
           </p>
         </div>
       ) : null}

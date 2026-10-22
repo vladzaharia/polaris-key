@@ -237,7 +237,7 @@ export function MintRecipeFields({
             </div>
           )
         ) : (
-          <fieldset className="contents">
+          <fieldset className="m-0 min-w-0 space-y-4 border-0 p-0">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-fg-strong">Recipe id</p>
@@ -346,7 +346,7 @@ export function MintRecipeFields({
               ) : null}
             </div>
             <details className="group text-sm">
-              <summary className="flex min-h-6 cursor-pointer items-center gap-1 text-fg-muted">
+              <summary className="flex min-h-6 cursor-pointer items-center gap-1 text-fg-strong underline underline-offset-2">
                 More recipe settings
               </summary>
               <div className="mt-3 space-y-4">

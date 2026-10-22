@@ -51,9 +51,13 @@ export const TYPE_CARD_HELP: Record<EntryType, string> = {
 };
 
 /** The In the app row for a type that is never listed. */
-export function codeOnlyText(type: EntryType, key: string): string {
+export function codeOnlyText(
+  type: EntryType,
+  key: string,
+  app = "The app",
+): string {
   return type === "minted"
-    ? `Code only. The app calls mintToken("${key}").`
+    ? `Code only. ${app} calls mintToken("${key}").`
     : "Code only. Write-only; set per profile or license.";
 }
 
