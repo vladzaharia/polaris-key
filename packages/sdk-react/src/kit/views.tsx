@@ -54,7 +54,7 @@ function contentFor(c: KitCtx): ReactNode {
         "part.keyField.malformed",
         "part.keyField.empty",
         "part.keyField.forProduct",
-      ].filter((k) => keys.has(k));
+      ].filter((k) => keys.has(k) && usableKey(c, k));
       const invalid = verdict.some(
         (k) =>
           k !== "part.keyField.verdict" && k !== "part.keyField.forProduct",
@@ -319,6 +319,37 @@ function offlineSteps(c: KitCtx): ReactNode {
       </li>
     </ol>
   );
+}
+
+/** The keys a component's base layout always shows, whatever the state adds on top (the
+ *  elements' `withBase`): ui-core's per-state views carry only a state's own keys and the corpus
+ *  pins them, so the kit adds the base for drawing only. A standalone Activate draws its own
+ *  Submit, Back and Done; the drop-in drives the same controls. */
+export function withBase(c: KitCtx): View {
+  const { view } = c;
+  const add = (...keys: string[]): View => {
+    const copy = [...view.copy];
+    for (const k of keys) if (c.copy.has(k) && !copy.includes(k)) copy.push(k);
+    return { ...view, copy };
+  };
+  if (view.component === "Activate") {
+    if (
+      ["empty", "typing", "parsed", "cut-short", "rejected"].includes(
+        view.state,
+      )
+    )
+      return add("activate.submit", "common.back");
+    if (view.state === "device-limit")
+      return add("common.back", "signin.key.differentKey");
+    if (view.state === "done") {
+      const done = add("common.done");
+      return {
+        ...done,
+        decisions: { ...done.decisions, primary: "common.done" },
+      };
+    }
+  }
+  return view;
 }
 
 /** `placeKeys`, then the drop-in's chrome: controls and links the state lacks, keys it drops. */
@@ -603,7 +634,8 @@ function inline(c: KitCtx, layout: Layout): ReactNode {
 }
 
 /** Draw one view in its component's form; `hidden` draws nothing. */
-export function renderView(c: KitCtx): ReactNode {
+export function renderView(c0: KitCtx): ReactNode {
+  const c = { ...c0, view: withBase(c0) };
   if (c.view.state === "hidden") return null;
   // DL7: a loading state inside its delay shows nothing at all (its view carries no copy yet).
   if (isLoading(c.view) && c.view.copy.length === 0) return null;
@@ -1364,19 +1396,22 @@ function segmented(
 /** The account pane's rows, grouped as the web settings frames draw them: the license facts,
  *  then "Updates" over the update controls, then the managed settings. A row whose label names a
  *  fact the input lacks ("{tier} license") is left out. */
+/** True when the string has every argument it names; else warns once and says no (the elements
+ *  do the same), so a missing fact is never drawn as "{name}". */
+function usableKey(c: KitCtx, k: string): boolean {
+  if (!unfilled(c, k)) return true;
+  if (!warnedRows.has(k)) {
+    warnedRows.add(k);
+    console.warn(`[pk] ${k} has no value; not drawn`);
+  }
+  return false;
+}
+
 function accountRows(c: KitCtx): ReactNode {
   const { copy } = c.view;
   const input = c.input;
   const has = (k: string) => copy.includes(k);
-  const usable = (k: string): boolean => {
-    if (!unfilled(c, k)) return true;
-    // Once per key, so a re-render stays quiet (the elements warn the same way).
-    if (!warnedRows.has(k)) {
-      warnedRows.add(k);
-      console.warn(`[pk] ${k} has no value; not drawn`);
-    }
-    return false;
-  };
+  const usable = (k: string): boolean => usableKey(c, k);
   const pre: ReactNode[] = [];
   if (has("account.tier") && usable("account.tier"))
     pre.push(accountRow("account.tier", text(c, "account.tier")));

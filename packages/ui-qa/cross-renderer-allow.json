@@ -1,27 +1,6 @@
 {
   "_": "States where the React and elements baselines differ today. Each is a finding, not a pass: pnpm ui:report fails on any other drift and on an entry that no longer differs, so this list only shrinks.",
   "states": {
-    "Activate.cut-short": {
-      "reason": "Elements draw the step's own controls (Submit, Back, Done) in a standalone state; React draws them only when the drop-in drives the step (component.tsx chrome). Decide which the spec wants, then align."
-    },
-    "Activate.device-limit": {
-      "reason": "Elements draw the step's own controls (Submit, Back, Done) in a standalone state; React draws them only when the drop-in drives the step (component.tsx chrome). Decide which the spec wants, then align."
-    },
-    "Activate.done": {
-      "reason": "Elements draw the step's own controls (Submit, Back, Done) in a standalone state; React draws them only when the drop-in drives the step (component.tsx chrome). Decide which the spec wants, then align."
-    },
-    "Activate.empty": {
-      "reason": "Elements draw the step's own controls (Submit, Back, Done) in a standalone state; React draws them only when the drop-in drives the step (component.tsx chrome). Decide which the spec wants, then align."
-    },
-    "Activate.parsed": {
-      "reason": "Elements draw the step's own controls (Submit, Back, Done) in a standalone state; React draws them only when the drop-in drives the step (component.tsx chrome). Decide which the spec wants, then align."
-    },
-    "Activate.rejected": {
-      "reason": "Elements draw the step's own controls (Submit, Back, Done) in a standalone state; React draws them only when the drop-in drives the step (component.tsx chrome). Decide which the spec wants, then align."
-    },
-    "Activate.typing": {
-      "reason": "Elements draw the step's own controls (Submit, Back, Done) in a standalone state; React draws them only when the drop-in drives the step (component.tsx chrome). Decide which the spec wants, then align."
-    },
     "Devices.confirming": {
       "reason": "Elements confirm and rename inline in the row; React swaps the list for the confirm."
     },
