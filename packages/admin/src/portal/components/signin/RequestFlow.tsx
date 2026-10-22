@@ -40,6 +40,7 @@ import { ConsentStep } from "./ConsentStep.js";
 import { LicenseChoiceStep } from "./LicenseChoiceStep.js";
 import { ReplaceDeviceStep } from "./ReplaceDeviceStep.js";
 import { ReplacedDone } from "./ReplacedDone.js";
+import { ReturnStep } from "./ReturnStep.js";
 import { RequestFooter, RequestHeader } from "./RequestHeader.js";
 import { PersonRow, PRIMARY_CLASS } from "./requestParts.js";
 
@@ -54,7 +55,8 @@ type Step =
   | { kind: "choice" }
   | { kind: "replace"; row: LicenseChoice }
   | { kind: "consent" }
-  | { kind: "done"; replaced: string; redirect: string };
+  | { kind: "done"; replaced: string; redirect: string }
+  | { kind: "return"; redirect: string; yours: boolean };
 
 export function RequestFlow({
   account,
@@ -172,6 +174,18 @@ export function RequestFlow({
         });
         return;
       }
+      // A native app gets the ReturnStep (§3.10); a web app's Continue is the redirect itself.
+      if (view?.client.kind === "native") {
+        setBusy(null);
+        go({
+          kind: "return",
+          redirect: out.redirect,
+          yours:
+            chosen?.kind === "create" ||
+            (chosen === null && effectiveChosen.kind === "new"),
+        });
+        return;
+      }
       leave(out.redirect);
     } catch (err) {
       setBusy(null);
@@ -281,6 +295,16 @@ export function RequestFlow({
           void licenses.refetch();
           void consent.refetch();
         }}
+      />
+    );
+  } else if (current?.kind === "return") {
+    key = "return";
+    body = (
+      <ReturnStep
+        app={view.client.appName}
+        product={view.client.appName}
+        yours={current.yours}
+        onReturn={() => leave(current.redirect)}
       />
     );
   } else if (current?.kind === "done") {

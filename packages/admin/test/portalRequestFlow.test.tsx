@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
   AppConsentView,
@@ -296,9 +303,68 @@ describe("LicenseChoiceStep (§3.6)", () => {
         choice: { kind: "license", licenseId: "lic_std" },
       }),
     );
+    // A native app gets the ReturnStep (SIGN-IN.md §3.10): nothing leaves until Return, or the timer.
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "You're signed in to Diceroll",
+      }),
+    ).toBeTruthy();
+    expect(went).toEqual([]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Return to Diceroll" }),
+    );
     await waitFor(() =>
       expect(went).toEqual(["https://app.example/cb?code=1"]),
     );
+  });
+
+  it("the ReturnStep's Stay here stops the timer, and the app is never left by itself", async () => {
+    const { ReturnStep } =
+      await import("../src/portal/components/signin/ReturnStep.js");
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const onReturn = vi.fn();
+      render(
+        <ReturnStep
+          app="Diceroll"
+          product="Diceroll"
+          yours
+          onReturn={onReturn}
+        />,
+      );
+      expect(
+        screen.getByRole("heading", { level: 1, name: "Diceroll is yours" }),
+      ).toBeTruthy();
+      await userEvent.click(screen.getByRole("button", { name: "Stay here" }));
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(onReturn).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("the ReturnStep returns by itself after three seconds", async () => {
+    const { ReturnStep } =
+      await import("../src/portal/components/signin/ReturnStep.js");
+    vi.useFakeTimers();
+    try {
+      const onReturn = vi.fn();
+      render(
+        <ReturnStep
+          app="Diceroll"
+          product="Diceroll"
+          yours={false}
+          onReturn={onReturn}
+        />,
+      );
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3100);
+      });
+      expect(onReturn).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("nothing chosen: an enabled primary and the error under the group", async () => {

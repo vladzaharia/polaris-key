@@ -46,6 +46,7 @@ import { requestLocation } from "../place.js";
 import { choiceKey, redirectToChooser, startAgainPage } from "./chooser.js";
 import {
   CHOICE_FIELDS,
+  FLOW_TTL_SECONDS,
   type FlowRecord,
   flowKey,
   isDeviceCodeFlow,
@@ -216,6 +217,11 @@ export function redirectToApprove(
       "cache-control": "no-store",
     },
   });
+}
+
+/** "14:32": the UTC time of day of a Unix time in seconds. */
+function utcClock(seconds: number): string {
+  return new Date(seconds * 1000).toISOString().slice(11, 16);
 }
 
 /** "just now", "2 minutes ago" — the age of the request, from the stored start. */
@@ -465,7 +471,12 @@ async function renderApproval(
       (flow.userCode
         ? `<p>It showed the code <span class="code">${escapeHtml(flow.userCode)}</span>${
             startedAt === null ? "" : ` ${escapeHtml(agoText(now - startedAt))}`
-          }.</p>`
+          }.${
+            // A static line, never a ticking countdown (the page has no script; SIGN-IN.md §3.13).
+            startedAt === null
+              ? ""
+              : ` Expires at ${escapeHtml(utcClock(startedAt + FLOW_TTL_SECONDS))} UTC.`
+          }</p>`
         : "") +
       originWarning(req, flow) +
       `<form id="${formId}" method="post" action="${escapeHtml(approvePath(req, product))}">` +

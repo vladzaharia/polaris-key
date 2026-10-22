@@ -791,7 +791,7 @@ describe("what the page shows", () => {
     expect(html).toContain("Ada");
     expect(html).toContain("ada<wbr>@example<wbr>.com");
     expect(html).toContain(`<span class="code">${c.userCode}</span>`);
-    expect(html).toContain("just now.");
+    expect(html).toMatch(/just now\. Expires at \d\d:\d\d UTC\./);
     expect(html).toContain("This sign-in started in Portugal.");
     expect(html).toContain("wants you to sign in");
     expect(html).toContain('class="ac-passport"');
