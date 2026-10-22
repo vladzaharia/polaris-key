@@ -215,6 +215,8 @@ export const ACTION_LEVELS = {
   // F-21: leaving `public` refuses every anonymous client within 30 seconds and can be undone
   // (L1); a registry token revocation cannot be undone, and revoking all is broad (both L2).
   "feed.tighten": 1,
+  // F-34: moving Customers to Public opens the feed to everyone; it can be undone (L1).
+  "feed.widen": 1,
   "registryToken.revoke": 2,
   "registryToken.revokeAll": 2,
   // The admin API tokens (`pkeya_…`): a revoked token cannot be restored, only replaced.

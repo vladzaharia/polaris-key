@@ -45,6 +45,7 @@ import {
   ECOSYSTEM_ICONS,
   ECOSYSTEM_LABELS,
   FEED_ACCESS_LABELS,
+  accessDisplayLabel,
   OFF_REASONS,
   feedHref,
   isEcosystem,
@@ -370,8 +371,10 @@ function overviewColumns(scope: FeedScope): DataColumn<FeedSummary>[] {
       meta: { priority: 2, label: "Access" },
       cell: ({ row }) => (
         <StatusPill tone="neutral" icon={null}>
-          {FEED_ACCESS_LABELS[row.original.accessMode] ??
-            row.original.accessMode}
+          {row.original.accessDisplay
+            ? accessDisplayLabel(row.original.accessDisplay)
+            : (FEED_ACCESS_LABELS[row.original.accessMode] ??
+              row.original.accessMode)}
         </StatusPill>
       ),
     },

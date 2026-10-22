@@ -229,7 +229,7 @@ const CAPS: Record<FeedEcosystem, FeedDetailDto["capabilities"]> = {
     ...BASE_CAPS,
     yank: true,
     deprecate: false,
-    yankPolicy: true,
+    yankPolicy: false,
     channels: "latest",
   },
   oci: {
@@ -264,14 +264,14 @@ const CAPS: Record<FeedEcosystem, FeedDetailDto["capabilities"]> = {
   },
 };
 
-/** The adapters' extension settings (`settings.ext` keys, less `yankHidesFromIndex`). */
+/** The adapters' extension settings (`settings.ext` keys). */
 export const EXTENSIONS: Record<FeedEcosystem, string[]> = {
   npm: [],
   pypi: ["htmlFallback"],
   swift: ["requireSigned", "repositoryUrls"],
   maven: [],
-  oci: ["retainUntaggedDays"],
-  godot: ["categoryId", "supportLevel", "license", "minGodotVersion"],
+  oci: [],
+  godot: ["supportLevel", "license", "minGodotVersion"],
   cargo: [],
   go: [],
 };
@@ -295,6 +295,7 @@ export function feedDetail(
     settings: {
       enabled: feed.enabled,
       accessMode: "public",
+      accessDisplay: "public",
       namespace: NAMESPACES[owner]![eco],
       maxPackageBytes: eco === "oci" ? 5_368_709_120 : 52_428_800,
       upstream: "none",
@@ -314,9 +315,9 @@ export function feedDetail(
     extensions: EXTENSIONS[eco],
     accessModes: [
       { mode: "public", available: true },
-      { mode: "authenticated", available: true },
+      { mode: "authenticated", available: false },
       { mode: "licensed", available: true },
-      { mode: "entitled", available: true },
+      { mode: "entitled", available: false },
     ],
     ungatedPackages:
       eco === "npm" ? [{ id: "npm.sdk", name: "@djdl/sdk" }] : [],

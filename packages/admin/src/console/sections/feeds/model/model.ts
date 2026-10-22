@@ -26,7 +26,6 @@ import {
   type FeedSetupCredential,
   type FeedSnippet,
 } from "@polaris-key/manifest";
-import type { CapabilityItem } from "../../../../ui/CapabilityBadge.js";
 import type {
   FeedEcosystem,
   FeedOffReason,
@@ -79,41 +78,42 @@ export const ECOSYSTEM_ICONS: Record<FeedEcosystem, LucideIcon> = {
 };
 
 /**
- * The stored modes the Feeds pages offer as one choice (P0-47). `authenticated` and `licensed`
- * are one strictness for a feed (the Worker's `access.ts`; `admin/feeds.md`), so both read as
- * **Customers** over the value already stored. Collapsing the stored values is F-34's migration.
+ * Two access options: Public and Customers (F-34). Customers is the stored `licensed`; the stored
+ * `authenticated` is the same strictness and an old `entitled` feed (packages gated one by one)
+ * also reads as Customers. The server writes only `public` and `licensed`.
  */
-const CUSTOMER_MODES: readonly string[] = ["authenticated", "licensed"];
+const CUSTOMER_MODES: readonly string[] = [
+  "authenticated",
+  "licensed",
+  "entitled",
+];
 
-/** The choice a stored mode is shown as: `customers` for Token and Licensed, else the mode. */
+/** The choice a stored mode is shown as: `public`, else `customers`. */
 export function feedAccessChoice(mode: string): string {
   return CUSTOMER_MODES.includes(mode) ? "customers" : mode;
 }
 
-/**
- * The mode to store for a choice: the stored mode when it already means that choice (an
- * `authenticated` feed stays `authenticated`), `licensed` for a feed newly opened to customers.
- */
-export function feedAccessMode(choice: string, stored: string): string {
-  if (choice !== "customers") return choice;
-  return CUSTOMER_MODES.includes(stored) ? stored : "licensed";
+/** The mode a save writes for a choice: `public` or `licensed`. */
+export function feedAccessMode(choice: string): string {
+  return choice === "customers" ? "licensed" : choice;
 }
 
-/** Access modes and choices as the Feeds pages name them (a registry client presents a token). */
+/** Access choices as the Feeds pages name them (a registry client presents a token). */
 export const FEED_ACCESS_LABELS: Record<string, string> = {
   public: "Public",
   customers: "Customers",
-  authenticated: "Customers",
-  licensed: "Customers",
-  entitled: "Entitled",
 };
 
 export const FEED_ACCESS_DESCRIPTIONS: Record<string, string> = {
   public: "Any client can install, with no credentials.",
   customers:
     "Clients with a registry token: yours, your CI's, or a customer's while their license is active.",
-  entitled: "Clients whose license includes the package's entitlement flag.",
 };
+
+/** The server's `accessDisplay` as a sentence start: "customers, packages gated individually". */
+export function accessDisplayLabel(display: string): string {
+  return display.charAt(0).toUpperCase() + display.slice(1);
+}
 
 /** Why a feed does not answer, in words. */
 export const OFF_REASONS: Record<FeedOffReason, string> = {
@@ -244,8 +244,6 @@ export type FeedExtensionInput =
       kind: "select";
       options: readonly { value: string; label: string }[];
       default: string;
-      /** The stored value is a number (`categoryId`). */
-      numeric?: boolean;
     }
   | { kind: "text"; placeholder: string; maxLength: number; pattern?: RegExp }
   | { kind: "repositoryMap"; placeholder: string };
@@ -273,29 +271,6 @@ export const FEED_EXTENSION_FIELDS: Record<string, FeedExtensionField> = {
     input: {
       kind: "repositoryMap",
       placeholder: "acme.Kit https://github.com/acme/kit",
-    },
-  },
-  retainUntaggedDays: {
-    label: "Untagged manifests",
-    help: "Recorded with the feed: nothing removes an untagged image manifest, so every one is kept whatever this holds. A published version is never removed, except by feed retention's prune of builds of main.",
-    input: { kind: "number", min: 0, max: 3650, unit: "days" },
-  },
-  categoryId: {
-    label: "Category",
-    help: "The asset library category every addon of this feed is listed under.",
-    input: {
-      kind: "select",
-      numeric: true,
-      default: "5",
-      options: [
-        { value: "1", label: "2D Tools" },
-        { value: "2", label: "3D Tools" },
-        { value: "3", label: "Shaders" },
-        { value: "4", label: "Materials" },
-        { value: "5", label: "Tools" },
-        { value: "6", label: "Scripts" },
-        { value: "7", label: "Misc" },
-      ],
     },
   },
   supportLevel: {
@@ -339,22 +314,3 @@ export const FEED_PANEL_TITLES: Record<FeedEcosystem, string> = {
   cargo: "Sparse index",
   go: "Module proxy",
 };
-
-/**
- * A feed's version-state operations as capability items (A-18j: the same badge the storefront
- * tiles use), from the adapter's declared `ops` when the server sends them, else from its booleans.
- */
-export function feedVersionCapabilities(caps: {
-  yank: boolean;
-  deprecate: boolean;
-  ops?: Record<string, { mode: string; reason?: string }>;
-}): CapabilityItem[] {
-  const op = (id: "yank" | "deprecate", label: string): CapabilityItem => ({
-    op: id,
-    label,
-    support: caps.ops?.[id] ?? {
-      mode: caps[id] ? "api" : "unsupported",
-    },
-  });
-  return [op("yank", "Yank"), op("deprecate", "Deprecate")];
-}
