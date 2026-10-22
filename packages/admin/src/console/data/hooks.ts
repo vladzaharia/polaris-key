@@ -17,6 +17,7 @@ import {
   type Me,
   type PlatformIdentity,
   type ProductDetail,
+  type ProductSecretDto,
 } from "../../api.js";
 import type { ServiceState } from "../nav.js";
 import { noteIdentity } from "../shell/endedState.js";
@@ -130,4 +131,9 @@ export function usePlatformVersion(
     // ST-29: the build identity is the Platform area's; a member without it never asks.
     enabled,
   });
+}
+
+/** The product's secrets inventory, as cached under `qk.secrets(slug)` (Keys and secrets, mint recipes). */
+export function fetchSecrets(slug: string): Promise<ProductSecretDto[]> {
+  return api.productSecrets(slug).then((r) => r.secrets);
 }

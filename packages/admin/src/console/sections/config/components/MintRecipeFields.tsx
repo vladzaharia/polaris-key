@@ -6,6 +6,7 @@ import { api, type ConfigEntry } from "../../../../api.js";
 import { formatDate, fromSeconds } from "../../../../lib/format.js";
 import { CodeBlock } from "../../../../ui/CodeBlock.js";
 import { qk } from "../../../data/queries.js";
+import { fetchSecrets } from "../../../data/hooks.js";
 import { Button } from "../../../../ui/Button.js";
 import { Unlocked } from "../../../../ui/WriteLock.js";
 import { Callout } from "../../../../ui/Callout.js";
@@ -90,7 +91,7 @@ export function MintRecipeFields({
   const keyless = recipe ? needsKey(recipe) : false;
   const secrets = useQuery({
     queryKey: qk.secrets(slug),
-    queryFn: () => api.productSecrets(slug).then((r) => r.secrets),
+    queryFn: () => fetchSecrets(slug),
     enabled: recipe?.secretUsage === "edge-mint",
   });
   const sealed = secrets.data?.find((x) => x.name === recipe?.signingKeySecret);

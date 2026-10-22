@@ -52,7 +52,7 @@ export function WhereItsSet({
                 />
               </span>
               {v !== undefined ? (
-                <code className="rounded bg-sunken px-1.5 py-0.5 font-mono text-xs">
+                <code className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-xs">
                   {valueText(v)}
                 </code>
               ) : null}
