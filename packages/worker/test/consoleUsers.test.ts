@@ -642,6 +642,7 @@ describe("actions", () => {
       stores: [
         "config.accountOverrides",
         "core.entitlementEvents",
+        "core.provisionedSecretMoves",
         "test-store",
       ],
     });
