@@ -138,6 +138,7 @@ the table.
 | `platform-operations`         | `#/platform/operations`                      | Status (`#/platform/status`)                                               | moved (CX-PSTAT) |
 | `platform-stores`             | `#/platform/store-connections`               | Store connections (`#/platform/store-connections`)                         | live             |
 | `platform-feeds`              | `#/platform/feeds`                           | Package feeds (`#/platform/feeds`)                                         | live             |
+| `platform-activity`           | `#/platform/activity`                        | Activity (`#/platform/activity`)                                           | live             |
 | `platform-override-migration` | `#/platform/override-migration`              | deleted (U-27)                                                             | deleted (U-27)   |
 | `home`                        | `#`                                          | Home (`#`)                                                                 | live             |
 | `products`                    | `#/products`                                 | Home (`#`)                                                                 | moved (ST-44)    |

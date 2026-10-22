@@ -1976,6 +1976,14 @@ export const DATA_ROUTES: Record<string, unknown> = {
         ...ACTIVITY.items[0],
         id: `pax${i}`,
         at: 1_789_990_000 - i * 3600,
+        // ST-51: Platform → Activity reads the union; every third event is a product's.
+        ...(i % 3 === 1
+          ? {
+              product: "djdl",
+              action: "release.demote",
+              summary: "Demoted 1.8.0 from stable",
+            }
+          : {}),
       })),
     ],
     nextCursor: null,

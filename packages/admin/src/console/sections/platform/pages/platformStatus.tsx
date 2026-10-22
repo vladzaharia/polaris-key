@@ -34,12 +34,7 @@ import {
 } from "./platformStatusParts.js";
 import { ChecksTable, buildChecks } from "./platformStatusChecks.js";
 
-export function PlatformStatus({
-  after,
-}: {
-  /** Shown after the deploys (the platform activity, until it has its own page). */
-  after?: React.ReactNode;
-}): React.ReactElement {
+export function PlatformStatus(): React.ReactElement {
   const [auto, setAuto] = React.useState<boolean>(() =>
     readPref(
       AUTO_REFRESH_KEY,
@@ -155,7 +150,6 @@ export function PlatformStatus({
         error={deployment.isError ? deployment.error : null}
         onRetry={() => void deployment.refetch()}
       />
-      {after}
       <p className="flex items-center gap-2 text-xs text-fg-muted">
         <EyeOff aria-hidden className="size-3.5 shrink-0" />
         <span>Logs never show tokens, keys or emails.</span>

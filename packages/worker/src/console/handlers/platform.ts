@@ -72,8 +72,11 @@ import { missingRequiredIndexes } from "../../scheduled.js";
 import { listPlatformDeploys } from "../../core/repo.js";
 import {
   exportPlatformAuditNdjson,
-  listPlatformAudit,
+  listActivity,
+  type AuditFilters,
 } from "../../core/audit.js";
+import { consoleActorAliases } from "../../services/identity/public.js";
+import { ErrorCode } from "../../core/errors.js";
 import { ensureSystemProduct } from "../systemProduct.js";
 import { handleFeedsAdmin } from "./feeds.js";
 import { platformAudit } from "../../core/audit.js";
@@ -171,16 +174,52 @@ async function deployment(req: Request, env: Env, db: Db): Promise<Response> {
   });
 }
 
-async function activity(req: Request, db: Db): Promise<Response> {
-  if (new URL(req.url).searchParams.get("format") === "ndjson") {
+/** The longest filter value accepted: longer than any action, kind, id or email we write. */
+const MAX_FILTER = 200;
+
+async function activity(req: Request, env: Env, db: Db): Promise<Response> {
+  const url = new URL(req.url);
+  if (url.searchParams.get("format") === "ndjson") {
     const out = await exportPlatformAuditNdjson(db);
     return adminNdjson(out.body, "audit-platform.ndjson", out.truncated);
   }
-  const cursor = cursorOf(new URL(req.url), 50, 200);
-  const rows = await listPlatformAudit(db, cursor);
+  const cursor = cursorOf(url, 50, 200);
+  // ST-51: the same filters as a product's feed, and `product` (`all`, `platform` or a slug).
+  // Without `product` the answer is the platform trail alone, as before.
+  const filters: AuditFilters = {};
+  const bad: string[] = [];
+  for (const name of [
+    "action",
+    "actor",
+    "targetKind",
+    "targetId",
+    "id",
+  ] as const) {
+    const raw = url.searchParams.get(name);
+    if (raw === null || raw === "") continue;
+    if (raw.length > MAX_FILTER) bad.push(name);
+    else filters[name] = raw;
+  }
+  for (const name of ["since", "until"] as const) {
+    const raw = url.searchParams.get(name);
+    if (raw === null || raw === "") continue;
+    const n = Number(raw);
+    if (!Number.isSafeInteger(n) || n < 0) bad.push(name);
+    else filters[name] = n;
+  }
+  const product = url.searchParams.get("product") || "platform";
+  if (product.length > MAX_FILTER) bad.push("product");
+  if (bad.length)
+    return err(422, ErrorCode.BadRequest, "invalid activity filter", {
+      fields: bad,
+    });
+  if (filters.actor && filters.actor !== "system")
+    filters.actorAliases = await consoleActorAliases(env, db, filters.actor);
+  const rows = await listActivity(db, { ...cursor, ...filters, product });
   const items = rows.map((r) => ({
     id: r.id,
     at: r.at,
+    product: r.product,
     actor: {
       sub: r.actor_sub ?? "",
       name: r.actor_name ?? "",
@@ -330,7 +369,7 @@ export async function handlePlatform(
         missingIndexes: missingRequiredIndexes,
       }),
     );
-  return activity(req, db);
+  return activity(req, env, db);
 }
 
 /** `POST /api/platform/feeds/bootstrap` (F-03). */

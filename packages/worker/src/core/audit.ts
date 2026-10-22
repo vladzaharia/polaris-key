@@ -446,6 +446,8 @@ export interface AuditFilters {
   targetId?: string;
   since?: number;
   until?: number;
+  /** One row by id (ST-51: an event's deep link). */
+  id?: string;
 }
 
 function filterWhere(
@@ -477,6 +479,10 @@ function filterWhere(
   if (opts.targetId) {
     where.push("target_id = ?");
     params.push(opts.targetId);
+  }
+  if (opts.id) {
+    where.push("id = ?");
+    params.push(opts.id);
   }
   if (opts.since !== undefined) {
     where.push("at >= ?");
@@ -530,6 +536,62 @@ export async function listPlatformAudit(
      ORDER BY at DESC, id DESC LIMIT ?`,
     ...params,
     pageLimit(opts.limit),
+  );
+}
+
+/** One row of the platform Activity page: either trail, with the product it belongs to. */
+export type ActivityRow = PlatformAuditRow & { product: string | null };
+
+/** The columns both trails carry, in the order the union selects them. */
+const UNION_COLUMNS =
+  "id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, summary, before_json, after_json, origin, reason, setting_key";
+
+/**
+ * ST-51: the platform Activity page's feed. `product` is `all` (every product's trail and the
+ * platform trail, newest first), `platform` (the platform trail only) or a product slug. Each
+ * branch applies the same filters and cursor, so a page costs a keyset read per table, not a scan
+ * of the union.
+ */
+export async function listActivity(
+  db: Db,
+  opts: {
+    product: string;
+    beforeAt?: number;
+    beforeId?: string;
+    limit?: number;
+  } & AuditFilters,
+): Promise<ActivityRow[]> {
+  const where: string[] = [];
+  const params: DbParam[] = [];
+  filterWhere(opts, where, params);
+  const limit = pageLimit(opts.limit);
+  const clause = (extra: string[]): string => {
+    const all = [...extra, ...where];
+    return all.length ? `WHERE ${all.join(" AND ")}` : "";
+  };
+  const branches: { sql: string; params: DbParam[] }[] = [];
+  if (opts.product !== "platform") {
+    const slug = opts.product !== "all";
+    branches.push({
+      sql: `SELECT product, ${UNION_COLUMNS} FROM audit ${clause(slug ? ["product = ?"] : [])}
+            ORDER BY at DESC, id DESC LIMIT ?`,
+      params: [...(slug ? [opts.product] : []), ...params, limit],
+    });
+  }
+  if (opts.product === "all" || opts.product === "platform") {
+    branches.push({
+      sql: `SELECT NULL AS product, ${UNION_COLUMNS} FROM platform_audit ${clause([])}
+            ORDER BY at DESC, id DESC LIMIT ?`,
+      params: [...params, limit],
+    });
+  }
+  const inner = branches
+    .map((b) => `SELECT * FROM (${b.sql})`)
+    .join(" UNION ALL ");
+  return db.all<ActivityRow>(
+    `SELECT * FROM (${inner}) ORDER BY at DESC, id DESC LIMIT ?`,
+    ...branches.flatMap((b) => b.params),
+    limit,
   );
 }
 

@@ -92,6 +92,7 @@ describe("the sources", () => {
       "Connections",
       "Store connections",
       "Package feeds",
+      "Activity",
     ]);
   });
 

@@ -500,6 +500,7 @@ describe("the nav model (nav.ts)", () => {
       "platform-status",
       "platform-stores",
       "platform-feeds",
+      "platform-activity",
       "platform-override-migration",
       "package-feeds",
       "overview",
@@ -722,6 +723,7 @@ describe("global pages", () => {
       "platform-connections",
       "platform-stores",
       "platform-feeds",
+      "platform-activity",
       "platform-override-migration",
     ]);
     for (const p of PLATFORM_GROUP.items) {
@@ -744,6 +746,7 @@ describe("global pages", () => {
       "platform-connections",
       "platform-stores",
       "platform-feeds",
+      "platform-activity",
     ]);
     expect(
       parseLocation("#/platform/override-migration").redirect,

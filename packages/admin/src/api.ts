@@ -213,12 +213,25 @@ export interface PlatformActivityItem {
   id: string;
   /** Epoch seconds. */
   at: number;
+  /**
+   * The product the event belongs to; `null` for a platform event. Only a read that names a
+   * `product` can return product events: without one the feed is the platform's alone.
+   */
+  product?: string | null;
   actor: { sub: string; name: string; email: string };
   action: string;
   target: { kind: string; id: string } | null;
   summary: string;
   before: unknown;
   after: unknown;
+}
+
+/** The platform feed's filters: a product feed's, plus which trails to read (ST-51). */
+export interface PlatformActivityFilters extends ActivityFilters {
+  /** `all` (every product and the platform), `platform`, or a product slug. */
+  product?: string;
+  /** One event, by id (a deep link to its drawer). */
+  id?: string;
 }
 
 export interface PlatformActivityPage {
@@ -5058,10 +5071,25 @@ const rawApi = {
   platformOperations: () =>
     call<PlatformOperations>("/manage/api/platform/operations"),
   /** `platform_audit`, newest first (keyset `cursor`). */
-  platformActivity: (cursor?: PlatformCursor | null) =>
-    call<PlatformActivityPage>(
-      `/manage/api/platform/activity${cursorQuery(cursor)}`,
-    ),
+  platformActivity: (
+    cursor?: PlatformCursor | null,
+    filters: PlatformActivityFilters = {},
+    limit?: number,
+  ) => {
+    const search = new URLSearchParams();
+    if (limit) search.set("limit", String(limit));
+    if (cursor) {
+      search.set("beforeAt", String(cursor.beforeAt));
+      search.set("beforeId", cursor.beforeId);
+    }
+    for (const [k, v] of Object.entries(filters)) {
+      if (v !== undefined && v !== null && v !== "") search.set(k, String(v));
+    }
+    const qs = search.toString();
+    return call<PlatformActivityPage>(
+      `/manage/api/platform/activity${qs ? `?${qs}` : ""}`,
+    );
+  },
   // ── admin API tokens (platform, not product-scoped) ─────────────────────────
   /** The roster. Never carries a secret or a hash: see `AdminApiToken`. */
   apiTokens: () => call<{ tokens: AdminApiToken[] }>("/manage/api/tokens"),
