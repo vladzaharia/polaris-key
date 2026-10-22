@@ -259,8 +259,13 @@ export function deviceRows(c: KitCtx): ReactNode {
   const list = c.input.devices ?? [];
   const editing = c.view.state === "renaming" || c.view.state === "confirming";
   // The row the edit concerns (`input.selected`); without a list, the form stands alone.
+  const edit = c.input.edit;
   const at =
-    editing && c.input.selected !== undefined ? Number(c.input.selected) : -1;
+    editing && c.input.selected !== undefined
+      ? Number(c.input.selected)
+      : edit
+        ? list.findIndex((d) => d.name === edit.device)
+        : -1;
   if (!keys.has("devices.meta") || list.length === 0 || (editing && at < 0)) {
     if (keys.has("devices.renameLabel"))
       return renameForm(c, String(c.view.args.device ?? ""));
@@ -273,68 +278,107 @@ export function deviceRows(c: KitCtx): ReactNode {
       {list.map((d, i) => {
         // A row with no name is named by its platform, so its buttons say which it is.
         const label = d.name ?? unnamed;
-        const row =
-          c.view.state === "renaming" && i === at ? (
-            <li key={i} className="row" data-part="device-row">
-              {renameForm(c, d.name ?? "")}
-            </li>
-          ) : (
-            <li key={i} className="row" data-part="device-row">
-              <span
-                role="img"
-                aria-label={plain(c, "a11y.formFactor", {
-                  formFactor: d.formFactor ?? "other",
-                })}
-              >
-                {GLYPHS.device(d.formFactor)}
-              </span>
-              <span>
-                <span className="row-title">
-                  {d.name ? <bdi>{d.name}</bdi> : text(c, "devices.unnamed")}
-                </span>
-                <br />
-                <span className="meta">
-                  {d.current && keys.has("part.thisDeviceTitle") ? (
-                    <>
-                      {text(c, "part.thisDeviceTitle", {
-                        formFactor: d.formFactor ?? "other",
-                      })}
-                      {c.interactive ? null : " · "}
-                    </>
-                  ) : null}
-                  {/* A driven row for this device says "This Mac" and no platform beside it. */}
-                  {d.current && c.interactive
-                    ? null
-                    : text(c, "devices.meta", {
-                        platform: platformLabel(d.platform),
-                        when: days(d.lastSeenDays),
-                      })}
-                </span>
-              </span>
+        const glyph = (
+          <span
+            role="img"
+            aria-label={plain(c, "a11y.formFactor", {
+              formFactor: d.formFactor ?? "other",
+            })}
+          >
+            {GLYPHS.device(d.formFactor)}
+          </span>
+        );
+        if (c.view.state === "renaming" && i === at)
+          return (
+            <li
+              key={i}
+              className="row"
+              data-part="device-row"
+              data-editing="rename"
+            >
+              {glyph}
+              <div className="field" data-part="rename">
+                <label className="label" htmlFor="pk-rename">
+                  {text(c, "devices.renameLabel")}
+                </label>
+                <input
+                  id="pk-rename"
+                  defaultValue={d.name ?? ""}
+                  data-key="devices.renameLabel"
+                  autoComplete="off"
+                  onChange={(e) => c.edit("rename", e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") c.act("common.save");
+                  }}
+                />
+              </div>
               <span className="row-actions">
-                {button(c, "devices.rename", "link", {
-                  label: plain(c, "a11y.renameDevice", { device: label }),
-                  detail: { index: i, ...(d.id ? { deviceId: d.id } : {}) },
-                })}
-                {d.current
-                  ? null
-                  : button(c, "devices.remove", "link", {
-                      label: plain(c, "a11y.removeDevice", { device: label }),
-                      detail: { index: i, ...(d.id ? { deviceId: d.id } : {}) },
-                    })}
+                {button(c, "common.save", "primary")}
+                {button(c, "common.cancel", "secondary")}
               </span>
             </li>
           );
-        return c.view.state === "confirming" && i === at ? (
-          <Fragment key={i}>
-            {row}
-            <li className="row" data-part="device-confirm">
-              {removeConfirm(c)}
+        if (c.view.state === "confirming" && i === at)
+          return (
+            <li
+              key={i}
+              className="row"
+              data-part="device-row"
+              data-editing="remove"
+            >
+              {glyph}
+              <div className="callout" data-part="confirm" role="group">
+                <span data-key="devices.removeConfirm">
+                  {text(c, "devices.removeConfirm", { device: label })}
+                </span>
+                <div className="actions" data-layout="row">
+                  {button(c, "devices.remove", "danger")}
+                  {button(c, "common.cancel", "secondary")}
+                </div>
+              </div>
             </li>
-          </Fragment>
-        ) : (
-          row
+          );
+        const row = (
+          <li key={i} className="row" data-part="device-row">
+            {glyph}
+            <span>
+              <span className="row-title">
+                {d.name ? <bdi>{d.name}</bdi> : text(c, "devices.unnamed")}
+              </span>
+              <br />
+              <span className="meta">
+                {d.current && keys.has("part.thisDeviceTitle") ? (
+                  <>
+                    {text(c, "part.thisDeviceTitle", {
+                      formFactor: d.formFactor ?? "other",
+                    })}
+                    {c.interactive ? null : " · "}
+                  </>
+                ) : null}
+                {/* A driven row for this device says "This Mac" and no platform beside it. */}
+                {d.current && c.interactive
+                  ? null
+                  : text(c, "devices.meta", {
+                      platform: platformLabel(d.platform),
+                      when: days(d.lastSeenDays),
+                    })}
+              </span>
+            </span>
+            <span className="row-actions">
+              {button(c, "devices.rename", "link", {
+                label: plain(c, "a11y.renameDevice", { device: label }),
+                detail: { index: i, ...(d.id ? { deviceId: d.id } : {}) },
+              })}
+              {d.current
+                ? null
+                : button(c, "devices.remove", "link", {
+                    label: plain(c, "a11y.removeDevice", { device: label }),
+                    detail: { index: i, ...(d.id ? { deviceId: d.id } : {}) },
+                  })}
+            </span>
+          </li>
         );
+        return row;
       })}
     </ul>
   );

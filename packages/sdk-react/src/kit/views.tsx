@@ -295,6 +295,24 @@ export function withBase(c: KitCtx): View {
       };
     }
   }
+  if (view.component === "Devices") {
+    const input = c.input;
+    if (
+      !input.devices?.length ||
+      !["renaming", "confirming"].includes(view.state)
+    )
+      return { ...view, copy: view.copy.filter((k) => k !== "devices.lede") };
+    // An edit keeps the list: the row it concerns turns into the form, in place.
+    return add(
+      "devices.title",
+      "devices.meta",
+      "a11y.formFactor",
+      "devices.rename",
+      "devices.remove",
+      "a11y.renameDevice",
+      "a11y.removeDevice",
+    );
+  }
   if (view.component === "UpdatePrompt") {
     const notes = c.input.releaseNotes ?? [];
     if (view.state === "downloading")

@@ -1,12 +1,6 @@
 {
   "_": "States where the React and elements baselines differ today. Each is a finding, not a pass: pnpm ui:report fails on any other drift and on an entry that no longer differs, so this list only shrinks.",
   "states": {
-    "Devices.confirming": {
-      "reason": "Elements confirm and rename inline in the row; React swaps the list for the confirm."
-    },
-    "Devices.renaming": {
-      "reason": "Elements confirm and rename inline in the row; React swaps the list for the confirm."
-    },
     "LicenseChoice.all-full": {
       "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
     },
