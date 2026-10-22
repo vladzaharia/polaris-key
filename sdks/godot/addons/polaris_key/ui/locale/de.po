@@ -1309,6 +1309,16 @@ msgctxt "macos"
 msgid "update.checkNow"
 msgstr "Nach Updates suchen"
 
+#. Manage license
+#. App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane.
+msgid "menu.manageLicense"
+msgstr "Lizenz verwalten"
+
+#. macos: Manage License…
+msgctxt "macos"
+msgid "menu.manageLicense"
+msgstr "Lizenz verwalten"
+
 #. Downloading content
 #. UpdateProgress: compact progress for an app update or a content pack.
 msgid "updateProgress.contentTitle"

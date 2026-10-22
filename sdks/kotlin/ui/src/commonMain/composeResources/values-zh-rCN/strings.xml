@@ -474,6 +474,9 @@
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">检查更新</string>
     <string name="update_checkNow__macos">检查更新</string>
+    <!-- App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane. -->
+    <string name="menu_manageLicense">管理许可证</string>
+    <string name="menu_manageLicense__macos">管理许可证</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->
     <string name="updateProgress_contentTitle">正在下载内容</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->

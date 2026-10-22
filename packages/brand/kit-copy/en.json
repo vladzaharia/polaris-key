@@ -1006,6 +1006,14 @@
         "macos": "Check for Updates…"
       }
     },
+    "menu.manageLicense": {
+      "value": "Manage license",
+      "role": "menu",
+      "note": "App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane.",
+      "variants": {
+        "macos": "Manage License…"
+      }
+    },
     "updateProgress.contentTitle": {
       "value": "Downloading content",
       "role": "title",

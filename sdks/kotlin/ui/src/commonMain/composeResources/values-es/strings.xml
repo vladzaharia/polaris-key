@@ -482,6 +482,9 @@
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
     <string name="update_checkNow">Buscar actualizaciones</string>
     <string name="update_checkNow__macos">Buscar actualizaciones</string>
+    <!-- App menu item (Electron host menu) that opens the Settings pane for the license in the app's own window. macOS menu items use title case and an ellipsis because the item opens a pane. -->
+    <string name="menu_manageLicense">Administrar la licencia</string>
+    <string name="menu_manageLicense__macos">Administrar la licencia</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->
     <string name="updateProgress_contentTitle">Descargando contenido</string>
     <!-- UpdateProgress: compact progress for an app update or a content pack. -->

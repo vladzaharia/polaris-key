@@ -197,6 +197,7 @@
   "update.revokedContent": "Parte del contenido de {product} se retiró y no se puede usar. Actualiza para continuar.",
   "update.upToDate": "Tienes la última versión",
   "update.checkNow": "Buscar actualizaciones",
+  "menu.manageLicense": "Administrar la licencia",
   "updateProgress.contentTitle": "Descargando contenido",
   "updateProgress.queued": "Esperando para descargar",
   "updateProgress.downloading": "{size} de {total} · quedan {time}",

@@ -211,6 +211,7 @@ export type KitCopyKey =
   | "update.revokedContent"
   | "update.upToDate"
   | "update.checkNow"
+  | "menu.manageLicense"
   | "updateProgress.contentTitle"
   | "updateProgress.queued"
   | "updateProgress.downloading"

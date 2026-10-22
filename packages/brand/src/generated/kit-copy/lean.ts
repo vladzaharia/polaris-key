@@ -70,6 +70,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "update.install": { macos: "Update Now" },
   "update.steam": { macos: "Get It on Steam" },
   "update.checkNow": { macos: "Check for Updates…" },
+  "menu.manageLicense": { macos: "Manage License…" },
   "updateProgress.resume": { macos: "Download Now" },
   "status.useAnotherLicense": { macos: "Use Another License" },
   "status.switchChannel": { macos: "Switch Channel" },

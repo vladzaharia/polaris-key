@@ -204,6 +204,7 @@
     "update.revokedContent": "{product}の一部のコンテンツは取り下げられたため、使用できません。続けるにはアップデートしてください。",
     "update.upToDate": "最新の状態です",
     "update.checkNow": "アップデートを確認",
+    "menu.manageLicense": "ライセンスを管理",
     "updateProgress.contentTitle": "コンテンツをダウンロード中",
     "updateProgress.queued": "ダウンロード待ち",
     "updateProgress.downloading": "{total}中{size} · 残り{time}",
