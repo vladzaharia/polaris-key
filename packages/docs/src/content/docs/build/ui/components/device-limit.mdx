@@ -1,6 +1,6 @@
 ---
 title: "DeviceLimit"
-description: "The focused Replace a device flow: the seat meter, the devices as radio rows with the device unused longest preselected, the confirm, and Replace and continue."
+description: "The focused Replace a device flow: the device count, the devices as radio rows with the device unused longest preselected, the confirm, and Replace and continue."
 sidebar:
   order: 12
 type: "reference"
@@ -14,7 +14,7 @@ import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
-The focused Replace a device flow: the seat meter, the devices as radio rows with the device unused longest preselected and tagged "Least recent", so the person sees why, the confirm, and Replace and continue. In browser mode it opens the product's manage page instead. On TV and console the manage page shows as a QR code, which screen readers hear as "QR code that opens the device management page".
+The focused Replace a device flow: the device count, the devices as radio rows with the device unused longest preselected and tagged "Least recent", so the person sees why, the confirm, and Replace and continue. In browser mode it opens the product's manage page instead. On TV and console the manage page shows as a QR code, which screen readers hear as "QR code that opens the device management page".
 
 ## States and copy
 
@@ -41,10 +41,10 @@ The focused Replace a device flow: the seat meter, the devices as radio rows wit
   <TabItem label="Terminal (Node)">
     <KitStatus kit="terminal-node" />
 
-    **Drop-in.** `activate` (and `enroll`) when every seat is taken: the seat meter and Polaris Locker
-    page that frees one (`browser-mode`). Enter opens the page, then Enter tries the key again.
+    **Drop-in.** `activate` (and `enroll`) when the device limit is reached: the device count and Polaris Locker
+    page that makes room (`browser-mode`). Enter opens the page, then Enter tries the key again.
     Without a Locker link (`default`), or with no terminal to ask on, it ends with the command to
-    run once a seat is free, and exit code 1. `devices deauthorize <deviceId>` frees a seat from a
+    run once there is room, and exit code 1. `devices deauthorize <deviceId>` makes room from a
     device that holds one.
 
     **Styled part.** `seatMeter(ctx, used, limit)`, `linkSpan` and `hintsRow`.

@@ -357,7 +357,7 @@ export const choiceReplaceApp: Scenario = {
         w,
         pin,
         "choice-replace-app",
-        "Replace a device in the app (I-08b, WIRE-CONTRACT-V4 §12.5.1; plans/I-04.md §B, §F.3, §G). The only licence is full: its single seat is held by another device. The SDK reads the licence (state full, Replace offered), lists the seat-holding devices with the grant, and completes with replaceDeviceId. The old device is deauthorized and this one takes its seat in one batch; the answer is token's shape on the licence.",
+        "Replace a device in the app (I-08b, WIRE-CONTRACT-V4 §12.5.1; plans/I-04.md §B, §F.3, §G). The only licence is full: its single seat is held by another device. The SDK reads the licence (state full, Replace offered), lists the seat-holding devices with the grant, and completes with replaceDeviceId. The old device is deauthorized and this one takes its place in one batch; the answer is token's shape on the licence.",
       );
       const redirect = await browserTo(
         r,

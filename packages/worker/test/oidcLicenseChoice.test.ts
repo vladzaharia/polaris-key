@@ -517,7 +517,7 @@ describe("I-26 device-code flow", () => {
     });
     expect(foreign.status).toBe(303);
     page = await readChooser(flow.binder!);
-    expect(page.html).toContain("That seat was just taken. Choose again.");
+    expect(page.html).toContain("That license just filled up. Choose again.");
     expect((await devicePoll(flow, NOW + 10)).status).toBe("pending");
 
     // Disabled between the render and the submit: re-checked, refused.
@@ -712,7 +712,7 @@ describe("I-26 rows", () => {
     );
     expect(page.html).toContain("<summary>Replace a device</summary>");
     expect(page.html).toContain(
-      "Choose a device to sign out. Steam Deck takes its seat.",
+      "Choose a device to sign out. Steam Deck takes its place.",
     );
     expect(page.html).toContain(">Replace…</button>");
     expect(page.html).not.toContain("Create a new free license");
@@ -1005,7 +1005,7 @@ describe("I-26 Replace a device", () => {
     expect(page.html).toContain("Replace Work laptop?");
     // SIGN-IN.md §3.7: the consequence names both devices; in use now, it warns.
     expect(page.html).toContain(
-      "Work laptop signs out of djdl and Steam Deck takes its seat. Work laptop can sign in again later if a seat is free. We'll email you about it.",
+      "Work laptop signs out of djdl and Steam Deck takes its place. Work laptop can sign in again later if there's room for another device. We'll email you about it.",
     );
     expect(page.html).toContain("Work laptop is in use right now.");
     expect(page.html).toContain(
@@ -1045,11 +1045,11 @@ describe("I-26 Replace a device", () => {
     // radio group with nothing preselected, and Replace and sign in is the one primary.
     expect(page.html).not.toContain("<summary>Replace a device</summary>");
     expect(page.html).toContain(
-      "Choose one to sign out. \u2068Steam Deck\u2069 takes its seat.",
+      "Choose one to sign out. \u2068Steam Deck\u2069 takes its place.",
     );
     expect(page.html).toContain("<h1>Replace a device</h1>");
     expect(page.html).toContain(
-      "The device you choose signs out of djdl. It can sign in again later if a seat is free. We'll email you about it.",
+      "The device you choose signs out of djdl. It can sign in again later if there's room for another device. We'll email you about it.",
     );
     expect(page.html.match(/Least recent/g)).toHaveLength(1);
     expect(page.html.match(/Active now/g)).toHaveLength(1);

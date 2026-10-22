@@ -142,7 +142,7 @@ Card/Scroll/Frame/Actions/Secondary: Button "Use a license key instead" [focus 4
 Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
 Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Frame/Head/Titles/Title: Label "Replace \u2068Work laptop\u2069?"
-Card/Scroll/Frame/Notice: Label "\u2068Work laptop\u2069 signs out of Polaris Key SDK and \u2068Living room PC\u2069 takes its seat. We'll email you about it."
+Card/Scroll/Frame/Notice: Label "\u2068Work laptop\u2069 signs out of Polaris Key SDK and \u2068Living room PC\u2069 takes its place. We'll email you about it."
 Card/Scroll/Frame/Actions/Continue: Button "Replace and continue" [focus 1]
 Card/Scroll/Frame/Actions/Secondary: Button "Back" [focus 2]
 == raced ==
