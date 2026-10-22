@@ -1,13 +1,13 @@
 ---
 title: "Gate a Node route with the license"
-description: "Refuse a request to your Express, Hono or Next.js route unless the device's license allows it, and test the gate without a network."
+description: "Refuse a request to your Express, Hono, Next.js, Fastify, NestJS or Koa route unless the device's license allows it, and test the gate without a network."
 type: "how-to"
 lastReviewed: "2026-10-21"
 sidebar:
   order: 13
 ---
 
-A drop-in from `@polaris-key/server` reads the device's license document from the `X-PKey-License` header, verifies it offline and refuses the request when the license doesn't allow it. A route with no gate stays open. For the other backends and the steps behind this, see [Verify licenses on your server](/docs/features/licensing/server-verification/).
+A drop-in from `@polaris-key/server` reads the device's license document from the `X-PKey-License` header, verifies it offline and refuses the request when the license doesn't allow it. A route with no gate stays open. For the other frameworks and the steps behind this, see [Verify licenses on your server](/docs/build/servers/).
 
 Requires the License feature and the config file `pkey sdk --lang node --write` writes. The app sends `X-PKey-License` and `X-PKey-Device` with each call to your server.
 
@@ -113,6 +113,105 @@ export const config = { matcher: "/api/:path*" };
 
 The middleware can't pass the license on to the route. A route that reads it wraps its handler too: the verdict is cached, so it isn't verified twice.
 
+## Fastify
+
+```ts title="Fastify: app.ts"
+import Fastify from "fastify";
+import {
+  getPolarisLicense,
+  polarisKey,
+  requireEntitlement,
+  requireTier,
+} from "@polaris-key/server/fastify";
+import { polarisConfig } from "./polaris.config";
+
+const app = Fastify();
+await app.register(polarisKey, { config: polarisConfig });
+
+app.get("/health", async () => ({ ok: true }));
+
+app.get(
+  "/api/export",
+  { preHandler: requireEntitlement("export.pdf") },
+  async (req) => ({ tier: getPolarisLicense(req).tier }),
+);
+
+app.get("/api/team", { preHandler: requireTier("pro", "team") }, async () => ({
+  team: true,
+}));
+
+await app.listen({ port: 3000 });
+```
+
+The plugin sets `req.polaris` on every request and never refuses. Each gate is a `preHandler` hook. It works with Fastify 4 and 5, and the plugin covers the whole app, not just the scope that registers it.
+
+## Koa
+
+```ts title="Koa: app.ts"
+import Koa from "koa";
+import Router from "@koa/router";
+import {
+  getPolarisLicense,
+  polarisKey,
+  requireEntitlement,
+  requireTier,
+} from "@polaris-key/server/koa";
+import { polarisConfig } from "./polaris.config";
+
+const app = new Koa();
+app.use(polarisKey({ config: polarisConfig }));
+
+const router = new Router();
+router.get("/api/export", requireEntitlement("export.pdf"), (ctx) => {
+  ctx.body = { tier: getPolarisLicense(ctx).tier };
+});
+router.get("/api/team", requireTier("pro", "team"), (ctx) => {
+  ctx.body = { team: true };
+});
+app.use(router.routes());
+
+app.listen(3000);
+```
+
+`polarisKey()` sets `ctx.state.polaris` and never refuses. It works with Koa 2 and 3.
+
+## NestJS
+
+```ts title="NestJS: app.module.ts"
+import { Controller, Get, Module } from "@nestjs/common";
+import {
+  GetPolarisLicense,
+  PolarisKeyModule,
+  RequireEntitlement,
+  RequireTier,
+} from "@polaris-key/server/nestjs";
+import type { PolarisLicense } from "@polaris-key/server/nestjs";
+import { polarisConfig } from "./polaris.config";
+
+@Controller("api")
+export class ApiController {
+  @Get("export")
+  @RequireEntitlement("export.pdf")
+  exportReport(@GetPolarisLicense() license: PolarisLicense) {
+    return { tier: license.tier };
+  }
+
+  @Get("team")
+  @RequireTier("pro", "team")
+  team() {
+    return { team: true };
+  }
+}
+
+@Module({
+  imports: [PolarisKeyModule.register({ config: polarisConfig })],
+  controllers: [ApiController],
+})
+export class AppModule {}
+```
+
+A route with no decorator stays open. A `Require*` decorator also works on a whole controller. It runs on Nest's Express and Fastify platforms, versions 10 and 11, and needs `experimentalDecorators`, which every Nest project sets. `GetPolarisAuth()` gives the full context, and `RequireAll(...)` takes the same requirements as below.
+
 ## Several requirements
 
 `requireAll` checks requirements in order and refuses with the first one that fails:
@@ -166,6 +265,22 @@ app.use(
 
 `errors: "throw"` hands a `PolarisKeyError` to the framework's error handling instead. A browser's CORS preflight carries no license, so every gate lets it through; `preflight: "gate"` turns that off. The drop-ins set no CORS headers: add `X-PKey-License` and `X-PKey-Device` to your own `Access-Control-Allow-Headers`.
 
+`onRefusal` takes the framework's own response object. Fastify gets `(problem, req, reply)` and sends the reply, Koa gets `(problem, ctx)` and sets `ctx.status` and `ctx.body`, and NestJS gets `(problem, context)` and returns the `HttpException` to throw:
+
+```ts title="NestJS: onRefusal"
+import { HttpException } from "@nestjs/common";
+import { PolarisKeyModule } from "@polaris-key/server/nestjs";
+import { polarisConfig } from "./polaris.config";
+
+export const polaris = PolarisKeyModule.register({
+  config: polarisConfig,
+  onRefusal: (problem) =>
+    new HttpException({ error: problem.code }, problem.status),
+});
+```
+
+Out of order, a gate raises a `PolarisKeyConfigError` that names what to add: the plugin, the middleware or the module. It is a server error, never a refusal.
+
 ## Test a gated route
 
 `@polaris-key/server/testing` signs documents with a throwaway key, so a test needs no network and no Polaris Key.
@@ -209,7 +324,30 @@ describe("the export route", async () => {
 });
 ```
 
-The kit has a clock you move with `kit.clock.advance(seconds)`. For a Hono app, `app.request("/api/export", { headers })` needs no server. For a trust manifest, `kit.trust` is a fake `fetch`: `kit.trust.addKey()` publishes a second key, `kit.trust.offline = true` makes the fetch fail like an unreachable Polaris Key, and `kit.polarisKey(kit.trust.options())` turns the refresh on against it.
+The kit has a clock you move with `kit.clock.advance(seconds)`. For a Hono app, `app.request("/api/export", { headers })` needs no server, and for Fastify, `app.inject({ url, headers })`. Pass `kit.options()` to `polarisKey()` in Koa, to `app.register(polarisKey, kit.options())` in Fastify and to `PolarisKeyModule.register()` in NestJS. For a trust manifest, `kit.trust` is a fake `fetch`: `kit.trust.addKey()` publishes a second key, `kit.trust.offline = true` makes the fetch fail like an unreachable Polaris Key, and `kit.polarisKey(kit.trust.options())` turns the refresh on against it.
+
+## Read managed config on the server
+
+A server reads managed config as a device with its own license, so it never takes a customer's seat. Give it a license key whose tier has a high device limit. `serverClient()` is the normal client with a memory store, a device id that survives a restart, the key from `PKEY_LICENSE_KEY`, no device reports and a background refresh.
+
+Set the key and a stable device id in the server's environment:
+
+- `PKEY_LICENSE_KEY` is the server's license key.
+- `PKEY_DEVICE_ID` is a 32-character id you generate once. Or set `PKEY_DEVICE_ID_FILE` to a file on a volume, and the first start writes an id there.
+
+A server with neither refuses to start, because a new id on each restart would take a new seat each time.
+
+```ts title="Node: config.ts"
+import { serverClient } from "@polaris-key/node";
+import { polarisConfig } from "./polaris.config";
+
+const client = await serverClient({ ...polarisConfig, version: "1.4.2" });
+
+export const runConcurrency = (): number =>
+  client.config.getConfig("run.concurrency", 3);
+```
+
+`serverClient()` resolves once the key is activated and the first sync is done. A refused key throws the server's code, for example `device_limit`. Per-user config is not offered: the device's config document carries secrets, so never forward it to a browser.
 
 ## Check it works
 

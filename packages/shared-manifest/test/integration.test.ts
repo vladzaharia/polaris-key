@@ -22,6 +22,42 @@ const PINS = [
   { kid: "tb-b", publicKey: "B".repeat(43) },
 ];
 
+describe("renderSdkSetup on a server", () => {
+  const base = {
+    slug: "acme",
+    pins: [{ kid: "k1", publicKey: "AAAA" }],
+    services: ["license"] as const,
+  };
+  it("starts from the framework's drop-in", () => {
+    const s = renderSdkSetup("node", {
+      ...base,
+      fit: { host: "server", target: "server", framework: "hono" },
+    });
+    expect(s.start.id).toBe("licensing.node.server.hono");
+    expect(s.install.map((i) => i.code).join("\n")).toContain(
+      "@polaris-key/server",
+    );
+  });
+  it("falls back to the SDK's first drop-in, and names the Python extra", () => {
+    const s = renderSdkSetup("python", {
+      ...base,
+      fit: { host: "server", target: "none", framework: "flask" },
+    });
+    expect(s.start.id).toBe("licensing.python.server.flask");
+    expect(s.installNote).toContain("polaris-key[flask]");
+    const d = renderSdkSetup("python", {
+      ...base,
+      fit: { host: "server", target: "none", framework: null },
+    });
+    expect(d.start.id).toBe("licensing.python.server.fastapi");
+    const k = renderSdkSetup("kotlin", {
+      ...base,
+      fit: { host: "server", target: "desktop", framework: "spring" },
+    });
+    expect(k.start.id).toBe("licensing.kotlin.server.ktor");
+  });
+});
+
 describe("renderSdkSetup", () => {
   it("renders install, config and a start for every SDK", () => {
     for (const sdk of SDK_IDS) {
@@ -154,12 +190,64 @@ describe("renderUsage", () => {
   it("renders null where an SDK has no such code, never a guess", () => {
     expect(renderUsage("packs", "react", "library")).toBeNull();
     expect(renderUsage("licensing", "python", "server")).toBeNull();
+    expect(renderUsage("licensing", "swift", "server")).toBeNull();
     expect(
       renderUsage("licensing", "node", "kit", "no-such-framework"),
     ).toBeNull();
-    // Server frameworks wait for the adapter packages.
-    expect(renderUsage("licensing", "node", "server", "express")).toBeNull();
-    expect(usageFrameworks("node", "server")).toEqual([]);
+    // A server framework with no drop-in yet.
+    expect(renderUsage("licensing", "node", "server", "fastify")).toBeNull();
+    expect(renderUsage("licensing", "kotlin", "server", "spring")).toBeNull();
+  });
+
+  it("renders each shipped server drop-in under its framework, with its docs page", () => {
+    expect(usageFrameworks("node", "server")).toEqual([
+      "express",
+      "hono",
+      "next",
+    ]);
+    expect(usageFrameworks("python", "server")).toEqual([
+      "fastapi",
+      "starlette",
+      "flask",
+      "django",
+      "drf",
+    ]);
+    expect(usageFrameworks("kotlin", "server")).toEqual(["ktor"]);
+    for (const [sdk, fw] of [
+      ["node", "express"],
+      ["node", "hono"],
+      ["node", "next"],
+      ["python", "fastapi"],
+      ["python", "starlette"],
+      ["python", "flask"],
+      ["python", "django"],
+      ["python", "drf"],
+      ["kotlin", "ktor"],
+    ] as const) {
+      const b = renderUsage("licensing", sdk, "server", fw, {
+        entitlement: "vpn",
+      });
+      expect(b?.code).toContain('"vpn"');
+      expect(b?.docs).toBe(`/docs/build/servers/${fw}/`);
+    }
+    // Sign-in on the drop-ins that expose the account.
+    expect(
+      renderUsage("identity", "node", "server", "express")?.code,
+    ).toContain("user?.subject");
+    expect(
+      renderUsage("identity", "python", "server", "fastapi")?.code,
+    ).toContain("auth.user");
+    // The CLI frameworks mount the verbs and gate a command.
+    for (const [sdk, fw] of [
+      ["node", "commander"],
+      ["node", "yargs"],
+      ["python", "argparse"],
+      ["python", "click"],
+      ["python", "typer"],
+    ] as const)
+      expect(renderUsage("licensing", sdk, "kit", fw)?.code).toMatch(
+        /requireLicense|require_license/,
+      );
   });
 
   it("marks Cloud Sync planned, and every block ends in one newline with a docs link", () => {
@@ -181,6 +269,26 @@ describe("renderUsage", () => {
         continue;
       expect(b.code, b.id).not.toMatch(/PUB-|pinnedKeys: \{\s*"/);
     }
+  });
+});
+
+describe("sdkFit frameworks", () => {
+  it.each([
+    [{ npm: ["express"] }, "node", "server", "express"],
+    [{ npm: ["hono"] }, "node", "server", "hono"],
+    [{ npm: ["next", "react"] }, "node", "server", "next"],
+    [{ python: ["fastapi"] }, "python", "server", "fastapi"],
+    [{ python: ["starlette"] }, "python", "server", "starlette"],
+    [{ python: ["Flask>=3"] }, "python", "server", "flask"],
+    [{ python: ["Django"] }, "python", "server", "django"],
+    [{ python: ["djangorestframework"] }, "python", "server", "drf"],
+    [{ gradle: ["io.ktor:ktor-server-core:3"] }, "kotlin", "server", "ktor"],
+    [{ npm: ["commander"] }, "node", "cli", "commander"],
+    [{ npm: ["yargs"] }, "node", "cli", "yargs"],
+    [{ python: ["click"] }, "python", "cli", "click"],
+    [{ python: ["typer"] }, "python", "cli", "typer"],
+  ] as const)("detects %j", (repo, sdk, host, framework) => {
+    expect(sdkFit([], repo)).toMatchObject({ sdk, host, framework });
   });
 });
 

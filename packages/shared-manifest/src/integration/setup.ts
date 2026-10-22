@@ -20,6 +20,7 @@ import {
 } from "./sdkConfig.js";
 import {
   renderUsage,
+  usageFrameworks,
   type IntegrationBlock,
   type UsageContext,
   type UsageLanguage,
@@ -122,7 +123,17 @@ export function sdkInstall(
 }
 
 /** A line after the install snippets, where one is needed to finish installing. */
-export function sdkInstallNote(sdk: SdkId): string | null {
+export function sdkInstallNote(
+  sdk: SdkId,
+  host: SdkHost | null | undefined = "app",
+  framework: string | null = null,
+): string | null {
+  if (host === "server") {
+    if (sdk === "python")
+      return `Install the extra for your framework: polaris-key[${framework ?? "fastapi"}].`;
+    if (sdk === "kotlin")
+      return "Add im.plrs.key:polaris-key-server-ktor from the same feed.";
+  }
   if (sdk === "godot")
     return "Then install the Polaris Key addon from the editor's asset library and enable it under Project Settings, Plugins.";
   return null;
@@ -193,7 +204,18 @@ function startFor(
   const library = renderUsage("licensing", sdk, "library", null, ctx);
   let start: IntegrationBlock | null = null;
   if (fit.host === "server") {
-    start = renderUsage("licensing", sdk, "server", null, ctx) ?? library;
+    // The framework's own variant; else the framework-free core; else the SDK's first drop-in.
+    start =
+      renderUsage("licensing", sdk, "server", framework, ctx) ??
+      renderUsage("licensing", sdk, "server", null, ctx) ??
+      renderUsage(
+        "licensing",
+        sdk,
+        "server",
+        usageFrameworks(sdk, "server")[0] ?? null,
+        ctx,
+      ) ??
+      library;
   } else {
     start =
       renderUsage("licensing", sdk, "kit", framework, ctx) ??
@@ -245,7 +267,7 @@ export function renderSdkSetup(sdk: SdkId, o: SdkSetupContext): SdkSetup {
   return {
     sdk,
     install: sdkInstall(sdk, fit.host),
-    installNote: sdkInstallNote(sdk),
+    installNote: sdkInstallNote(sdk, fit.host, fit.framework ?? null),
     config: { filename: out, language: CONFIG_LANGUAGE[sdk], code },
     start,
     headless,

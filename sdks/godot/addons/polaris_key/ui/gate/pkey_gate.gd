@@ -4,7 +4,9 @@ extends PKeyUiView
 ## ok and not-applicable hide the gate and emit `usable`; grace emits `usable` and shows only a
 ## PKeyStatusBanner strip (or blocks with Retry when `allow_grace` is false); needs-activation
 ## shows PKeyActivationPanel; revoked says the device was signed out and offers sign-in and
-## activation again; expired asks to connect and retries (sync(true)); version-too-old says
+## activation again; expired offers Renew (only when the host can renew: `renew_url` is https, or
+## `renew_requested` has a handler) and Use another license (key entry), never Try again;
+## version-too-old says
 ## "update required" with the outlet's action when one is known; version-too-new and
 ## channel-not-entitled say the build is not available on this licence.
 ##
@@ -29,6 +31,8 @@ signal usable()
 signal retry_requested()
 ## The player chose Continue offline on a network-failure card.
 signal continue_offline_requested()
+## The player chose Renew and the game handles it (no `renew_url`, or besides it).
+signal renew_requested()
 ## The player chose a license on the license-choice screen: `{kind, id}` (PKeyLicenseChoice.chosen).
 signal license_chosen(selection: Dictionary)
 
@@ -48,6 +52,9 @@ signal license_chosen(selection: Dictionary)
 			activation.confirm_identity = value
 ## The release page a direct build opens on "update required" (see PKeyUpdatePromptController).
 @export var release_url := ""
+## Where an expired license renews. Only an https URL counts: Renew opens it, then the license is
+## re-read. A game that renews itself connects `renew_requested` instead.
+@export var renew_url := ""
 ## Retry emits `retry_requested` only; the owner decides (PKeyBoot).
 var managed_retry := false
 ## Owned by another scene (PKeyBoot): the owner feeds `show_state()` and decides visibility.
@@ -90,6 +97,10 @@ var _lede: Label
 var _update: Button
 var _retry: Button
 var _offline_btn: Button
+var _renew: Button
+var _other: Button
+## Expired: the player chose Use another license, so key entry shows.
+var _keying := false
 var _actions: BoxContainer
 var _spacer: Control
 var _banner_slot: MarginContainer
@@ -170,6 +181,10 @@ func _build() -> void:
 	_spacer = spacer(_main)
 	_actions = actions_row(_main, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_update = button(_actions, "UpdateAction", _on_update, "PKeyPrimary")
+	_renew = button(_actions, "Renew", _on_renew, "PKeyPrimary")
+	# Renew reads the shared catalog (`status.renew`), not PKeyUiCopy: the copy test treats it as data.
+	_renew.set_meta(PKeyUiView.DATA_META, true)
+	_other = button(_actions, "UseAnotherLicense", _on_use_another)
 	_retry = button(_actions, "Retry", _on_retry, "PKeyPrimary")
 	_offline_btn = button(_actions, "ContinueOffline", _on_continue_offline)
 	_banner_slot = MarginContainer.new()
@@ -306,6 +321,8 @@ func _ready() -> void:
 
 ## Render a licence state ({status, grace_until?, last_verified_at?, allowed_range?}).
 func show_state(s: Dictionary, p_error := "") -> void:
+	if String(s.get("status", "")) != "expired":
+		_keying = false
 	status = s
 	loading = false
 	error = p_error
@@ -350,7 +367,7 @@ func _tr_product(t: PKeyUiCopy, key: String) -> String:
 
 
 func _screen_key() -> String:
-	return "%s|%s|%s|%s" % [screen, activation.mode, "limit" if not activation.limit.is_empty() else "", "net" if network_error else ""]
+	return "%s|%s|%s|%s|%s" % [screen, activation.mode, "limit" if not activation.limit.is_empty() else "", "net" if network_error else "", "key" if _keying else ""]
 
 
 func _render() -> void:
@@ -401,18 +418,26 @@ func _render() -> void:
 			detail_text = t.text("not_available_max", range_v["max"])
 	show_text(_detail, detail_text)
 	_glyph.visible = net
-	var wants_form: bool = ctl["activation"] and not net
+	var expired_keying := screen == "expired" and _keying
+	var wants_form: bool = (ctl["activation"] or expired_keying) and not net
 	activation.visible = wants_form
 	license_choice.visible = screen == "license-choice"
 	# A refusal's own title leads its screen; only the Welcome form says what to do.
 	activation.show_lede = screen == "activation" or screen == "error"
-	activation.form_title = t.text("use_another_license") if screen == "not-available" else ""
+	activation.form_title = t.text("use_another_license") if screen == "not-available" or expired_keying else ""
 	if inline:
 		if activation.message != error:
 			activation.show_message(error)
 
 	show_text(_update, t.text("status_update") if ctl["update_action"] else "")
 	leaves_app(_update, ctl["update_action"] and PKeyUpdatePromptController.update_url(update_result, _outlet(), release_url) != "")
+	# Expired: Renew when the host can renew (the primary), Use another license always; one primary.
+	var expired_actions := screen == "expired" and not _keying
+	var renew_on := expired_actions and can_renew()
+	show_text(_renew, _catalog_text("status.renew") if renew_on else "")
+	leaves_app(_renew, renew_on and _renew_target() != "")
+	show_text(_other, t.text("use_another_license") if expired_actions else "")
+	_other.theme_type_variation = &"" if renew_on else &"PKeyPrimary"
 	var retry_on: bool = (ctl["retry"] and not inline)
 	show_text(_retry, t.text("retry") if retry_on else "")
 	# A lone action is the primary; beside the update action, or beside a way forward, Try again is not.
@@ -431,7 +456,7 @@ func _focus_chain() -> Array:
 		out.append_array(activation._focus_chain())
 	if license_choice.visible:
 		out.append_array(license_choice._focus_chain())
-	out.append_array([_update, _retry, _offline_btn])
+	out.append_array([_renew, _other, _update, _retry, _offline_btn])
 	# Grace's strip (Reconnect, Dismiss) is part of this view's chain: a pad reaches it from here.
 	if banner != null and banner.is_visible_in_tree():
 		out.append_array(banner._focus_chain())
@@ -453,7 +478,7 @@ func _initial_focus() -> Control:
 		return license_choice._initial_focus()
 	if activation.visible:
 		return activation._initial_focus()
-	for b in [_update, _retry, _offline_btn]:
+	for b in [_renew, _other, _update, _retry, _offline_btn]:
 		if is_focusable(b):
 			return b
 	return null
@@ -473,6 +498,47 @@ func _on_update() -> void:
 	var url := PKeyUpdatePromptController.update_url(update_result, _outlet(), release_url)
 	if url != "":
 		OS.shell_open(url)
+
+
+## The renew URL when it is a usable https page, else "".
+func _renew_target() -> String:
+	var u := renew_url.strip_edges()
+	return u if u.begins_with("https://") and u.length() > 8 and not u.contains(" ") else ""
+
+
+## The host can renew: an https `renew_url`, or a handler on `renew_requested`.
+func can_renew() -> bool:
+	return _renew_target() != "" or not renew_requested.get_connections().is_empty()
+
+
+## Text from the shared copy catalog (the model's `status.*` keys).
+func _catalog_text(key: String) -> String:
+	return String(catalog().format(key))
+
+
+func _on_renew() -> void:
+	renew_requested.emit()
+	var url := _renew_target()
+	if url == "":
+		return
+	OS.shell_open(url)
+	# The player may have renewed in the browser: read the license again.
+	if managed_retry:
+		retry_requested.emit()
+		return
+	if sdk == null or not sdk.has_method("sync"):
+		return
+	_retrying = true
+	refresh_view()
+	await sdk.sync(true)
+	_retrying = false
+	show_state(sdk.status())
+
+
+func _on_use_another() -> void:
+	_keying = true
+	refresh_view()
+	ensure_focus(true)
 
 
 func _on_continue_offline() -> void:

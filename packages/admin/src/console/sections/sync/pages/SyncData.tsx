@@ -29,7 +29,6 @@ import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
-import { PageHeader } from "../../../../ui/PageHeader.js";
 import { ScrollTable } from "../../../../ui/ScrollTable.js";
 import { useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
@@ -37,6 +36,7 @@ import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { SettingsSection } from "../../../templates/Settings.js";
 import { noCatalog, userSettings } from "../data.js";
+import { SyncHeader } from "../SyncHeader.js";
 
 /** Where a synced setting roams. */
 export const SYNC_LABEL: Record<"user" | "platform", string> = {
@@ -51,7 +51,7 @@ export const CONFLICT_LABEL: Record<SyncConflict, string> = {
   min: "Keep the lowest",
   merge: "Merge members",
   union: "Combine as a set",
-  revision: "Ask the player",
+  revision: "Ask the person",
 };
 
 const KiB = 1024;
@@ -86,13 +86,9 @@ export function SyncDataPage({ slug }: { slug: string }): React.ReactElement {
   });
 
   const header = (
-    <PageHeader
-      title="Data"
-      description={
-        <>
-          Declared in <code className="font-mono text-xs">.pkey/schema</code>.
-        </>
-      }
+    <SyncHeader
+      slug={slug}
+      tab="sync-data"
       refetching={catalog.isFetching && !catalog.isPending}
     />
   );
@@ -164,8 +160,9 @@ function SyncDataBody({
         title="Synced settings"
         description={
           <>
-            Every config key people can change. Keys the game adds itself also
-            sync.{" "}
+            Every config key people can change, declared in{" "}
+            <code className="font-mono text-xs">.pkey/schema</code>. Keys the
+            app adds itself also sync.{" "}
             <Link
               to={r.catalog(slug)}
               className="py-1 text-accent-fg underline underline-offset-2"
@@ -176,25 +173,6 @@ function SyncDataBody({
         }
       >
         <div className="space-y-4 px-5 py-4">
-          <DescriptionList
-            columns={3}
-            items={[
-              {
-                term: "Keys per player",
-                detail: `Up to ${formatCount(CLOUD_SYNC_DEFAULTS.settings.maxKeys)}`,
-              },
-              {
-                term: "Size per player",
-                detail: `Up to ${formatBinaryBytes(CLOUD_SYNC_DEFAULTS.settings.maxBytes)}`,
-              },
-              {
-                term: "Largest value",
-                detail: formatBinaryBytes(
-                  CLOUD_SYNC_DEFAULTS.settings.maxValueBytes,
-                ),
-              },
-            ]}
-          />
           {settings.length === 0 ? (
             <p className="text-sm text-fg-muted">No catalog key syncs.</p>
           ) : (
@@ -279,7 +257,7 @@ function SyncDataBody({
                       ) : null}
                     </td>
                     <td className="py-2 pe-4">
-                      Up to {formatCount(c.maxRecords)} per player
+                      Up to {formatCount(c.maxRecords)} per person
                     </td>
                     <td className="py-2 pe-4">
                       {CONFLICT_LABEL[c.conflict]}
@@ -342,17 +320,12 @@ function SyncDataBody({
             columns={3}
             items={[
               {
-                term: "Default quota",
-                detail: formatBinaryBytes(CLOUD_SYNC_DEFAULTS.quotaBytes),
-                help: `Without a license: ${formatBinaryBytes(CLOUD_SYNC_DEFAULTS.unlicensedQuotaBytes)}, no files.`,
-              },
-              {
                 term: "Quota per person",
                 detail: `Up to ${formatBinaryBytes(CLOUD_SYNC_CEILINGS.perPerson.bytes)}`,
               },
               {
                 term: "Saves",
-                detail: `Up to ${formatCount(CLOUD_SYNC_SAVE_SLOTS)} per player`,
+                detail: `Up to ${formatCount(CLOUD_SYNC_SAVE_SLOTS)} per person`,
                 help: `${formatBinaryBytes(saves.files.maxBytes)} each, last ${formatCount(saves.files.keepRevisions)} versions kept.`,
               },
               {
@@ -363,10 +336,6 @@ function SyncDataBody({
               {
                 term: "One file",
                 detail: `Up to ${formatBinaryBytes(CLOUD_SYNC_CEILINGS.perPerson.fileBytes)}`,
-              },
-              {
-                term: "Data per product",
-                detail: formatBinaryBytes(CLOUD_SYNC_CEILINGS.perProduct.bytes),
               },
               {
                 term: "People holding data",

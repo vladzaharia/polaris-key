@@ -3536,61 +3536,61 @@
       }
     },
     "boot.error.body": {
-      "comment": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
+      "comment": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ couldn't finish starting. Try again."
+            "value": "If this keeps happening, restart the app."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ konnte den Start nicht abschließen. Versuchen Sie es erneut."
+            "value": "Wenn das weiterhin passiert, starten Sie die App neu."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ n’a pas pu terminer son démarrage. Réessayez."
+            "value": "Si le problème persiste, redémarrez l’app."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ no pudo terminar de iniciarse. Inténtalo de nuevo."
+            "value": "Si el problema continúa, reinicia la app."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível concluir a inicialização de %1$@. Tente novamente."
+            "value": "Se o problema continuar, reinicie o app."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile completare l'avvio di %1$@. Riprova."
+            "value": "Se il problema persiste, riavvia l'app."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@の起動を完了できませんでした。もう一度お試しください。"
+            "value": "問題が続く場合は、アプリを再起動してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 시작을 완료하지 못했어요. 다시 시도해 주세요."
+            "value": "문제가 계속되면 앱을 다시 시작해 주세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@未能完成启动。请重试。"
+            "value": "如果问题仍然存在，请重启应用。"
           }
         }
       }
@@ -59804,7 +59804,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Agree to %1$@’s terms to keep going."
+            "value": "Agree to %1$@'s terms to keep going."
           }
         },
         "de": {
@@ -59864,7 +59864,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Locker’s Terms and Privacy Policy"
+            "value": "Polaris Locker's Terms and Privacy Policy"
           }
         },
         "de": {
@@ -75302,61 +75302,61 @@
       }
     },
     "update.mandatoryBody": {
-      "comment": "UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
+      "comment": "UpdatePrompt: an app update. Mandatory update.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This version is below the minimum supported version. Update to keep using %1$@."
+            "value": "This version is no longer supported."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese Version liegt unter der mindestens unterstützten Version. Aktualisieren Sie, um %1$@ weiter zu verwenden."
+            "value": "Diese Version wird nicht mehr unterstützt."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cette version est antérieure à la version minimale prise en charge. Mettez à jour pour continuer à utiliser %1$@."
+            "value": "Cette version n’est plus prise en charge."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta versión es anterior a la versión mínima admitida. Actualiza para seguir usando %1$@."
+            "value": "Esta versión ya no es compatible."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta versão é anterior à versão mínima compatível. Atualize para continuar usando %1$@."
+            "value": "Esta versão não é mais compatível."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Questa versione è precedente alla versione minima supportata. Aggiorna per continuare a usare %1$@."
+            "value": "Questa versione non è più supportata."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このバージョンはサポート対象の最低バージョンを下回っています。%1$@を引き続き使うにはアップデートしてください。"
+            "value": "このバージョンはサポートが終了しました。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 버전은 지원되는 최소 버전보다 낮아요. %1$@을(를) 계속 사용하려면 업데이트하세요."
+            "value": "이 버전은 더 이상 지원되지 않아요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "此版本低于最低支持版本。请更新以继续使用%1$@。"
+            "value": "此版本已不再受支持。"
           }
         }
       }

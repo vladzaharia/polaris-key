@@ -1259,7 +1259,7 @@ export const SHIPPED: ShippedState[] = [
     path: "/#/p/quill",
     ready: async (p) => {
       await h1(p, "Quill");
-      await p.getByText("1 of 5 devices in use").first().waitFor();
+      await p.getByText("of 5 in use").first().waitFor();
       await licenseSourceIs(p, "Automatic grant");
       await p.getByText("Living room PC").first().waitFor();
     },

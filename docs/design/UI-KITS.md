@@ -1327,7 +1327,7 @@ mode, titled **Replace a device**. The seat meter and count appear only when the
   no control.
 - **StatusScreen, expired** offers **Renew** and **Use another license**. Every kit draws Renew
   only when the host can renew (a handler or an https renew URL: SwiftUI `renewURL`, Compose
-  `onRenew`, React `renewUrl` / `onRenew`, elements `input.renew`, Qt `renew_url`; the Godot gate draws no Renew), and
+  `onRenew`, React `renewUrl` / `onRenew`, elements `input.renew`, Qt `renew_url`, Godot gate `renew_url` / `renew_requested`), and
   otherwise offers Use another license alone as the primary. The ui-matrix row lists Renew; its
   runners play a host that can renew. It never offers Try again or Reconnect. **Version too new** keeps
   **Try again** as its one action and primary (DL4, DL6).
@@ -1743,13 +1743,14 @@ both ledgers only shrink. The per-kit runtime helpers are `sdks/godot/tests/supp
 - no border wider than 1 px, and none of 1.5 px or more on a selected or resting control;
 - no `box-shadow` spread ring on focus, and no focus ring outside `:focus-visible`;
 - no coloured `box-shadow` under buttons (`no-button-glow`);
-- no accent-tinted border, rim or shadow under `native` or forced colours;
+- no accent-tinted border, rim or shadow under `native` or forced colours (`native-accent-tint`);
 - no static accent rule under a title bar or header (`static-top-accent-rule`).
 
 **Type:**
 
 - no `font-family` other than the theme's;
-- no `font-weight: 700` outside the allow list;
+- `weights` (DL12): no computed `font-weight` other than 400, 500 and 600 (700 only on the allow
+  list, the game wordmark fallback);
 - no text below 12 px, and no fractional px sizes;
 - no `text-transform: uppercase` on buttons;
 - no `vw` units in kit CSS (container units only);
@@ -1787,6 +1788,32 @@ both ledgers only shrink. The per-kit runtime helpers are `sdks/godot/tests/supp
 - drifted board copy: board strings are diffed against the catalog (the string lint below);
 - every visible string is a catalog key (the **string lint** also diffs the visible strings of the
   same state across kits and mockup boards, allowing only the documented platform variants).
+
+**Design-language rules** (UK-55; the mechanical half of DL1–DL18, one line each; the others are
+checked by the size matrix and the UX review). Each runs in the DOM lint (`pnpm ui:lint`: the boards
+in both themes, `--css=` and `--html=` pages, `lintPage()`) and, where a source pattern or a runtime
+walk sees it, in every kit `rules/kit-rules.json` covers (`node packages/ui-qa/bin/kit-lint.mjs`).
+Today's hits are in `rules/dom-debt.json` (boards) and `rules/kit-debt.json` (kits), each owned by
+its kit's package; both only shrink.
+
+- `spacing-off-scale` (DL3): a margin, padding or gap that is not a `--pk-space-*` step or a kit
+  token (0 and a 1 px hairline pass); a literal in `.padding(`, `Modifier.padding`, a `margin_*`
+  override, `setContentsMargins` or QSS in the native kits;
+- `weights` (DL12): above;
+- `polaris-mark` (DL5): a Pinned K or Star Cut outside the Powered-by line or badge; `mark-size`:
+  no mark below the 16 px favicon cut, and 16–23 px must be that cut;
+- `refusal-styling` (DL6): the text of a refusal copy key (`deviceLimit.*`, the core gate and
+  activation refusals) in the danger role or beside an `aria-invalid` field; the Godot and Qt
+  helpers (`tests/support/ui_lint.gd`, `tests/ui_lint_qt.py`) walk the same fixtures;
+- `initial-focus` (DL9): after a full-window state mounts, `document.activeElement` is inside the
+  kit root; a native screen file with no `_initial_focus()`, `@FocusState`, `requestFocus()` or
+  `forceActiveFocus()` fails, and the Godot and Qt helpers check it at run time;
+- `catalog-string` (DL8): the string lint above; a literal in a visible position in a native source;
+- `link-validation` (DL14): `window.open`, a location assignment or a non-https `href` in the DOM; a
+  URL open outside the kit's one validating opener in the sources (the opener is unit-tested: https
+  and loopback http only);
+- `px-font` (DL11): a `font-size` in px in kit CSS; `.system(size:)`, a `Density` override,
+  `font.pixelSize` or a literal font-size override in the native kits.
 
 **Per-kit equivalents:**
 

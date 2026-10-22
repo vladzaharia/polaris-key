@@ -246,7 +246,7 @@ describe("product page on today's data (PX-04)", () => {
       within(card).getByRole("img", { name: "License key for nightfall" })
         .textContent,
     ).toBe("pkey_nightfall_…");
-    expect(within(card).getByText(/can’t be shown again/)).toBeTruthy();
+    expect(within(card).getByText(/can't be shown again/)).toBeTruthy();
     expect(within(card).getByText("Original soundtrack")).toBeTruthy();
     // No "Get a new key" until G7.
     expect(within(card).queryByText(/Get a new key/)).toBeNull();
@@ -575,7 +575,7 @@ describe("product page on today's data (PX-04)", () => {
       "Kiln Games",
     );
     const devices = screen.getByRole("region", { name: "Devices" });
-    expect(devices.textContent).toContain("2 of 3 devices in use");
+    expect(devices.textContent).toContain("2 of 3 in use");
   });
 
   it("removes a device inline: consequences, focus on the heading, Keep it, then Remove", async () => {
@@ -781,13 +781,13 @@ describe("product page on today's data (PX-04)", () => {
     // Granted through OIDC at sign-in: "Automatic grant" (owner polish 2026-10-07).
     expect(licenseSource(card)).toBe("Automatic grant");
     // The count is the Devices card's alone.
-    expect(within(card).queryByText(/of 5 devices/)).toBeNull();
+    expect(within(card).queryByText(/of 5 in use/)).toBeNull();
     // Owner decision (2026-10-05): no licence type label; every licence is account-bound.
     expect(screen.queryByText(/Account-wide/)).toBeNull();
     expect(screen.queryByText("Signed-in app")).toBeNull();
     expect(screen.queryByText(/any device/i)).toBeNull();
     const devices = screen.getByRole("region", { name: "Devices" });
-    expect(within(devices).getByText(/of 5 devices/)).toBeTruthy();
+    expect(within(devices).getByText(/of 5 in use/)).toBeTruthy();
     await userEvent.click(
       within(devices).getByRole("button", { name: "Remove Living room PC" }),
     );
@@ -1509,9 +1509,7 @@ describe("product page correctness (UX-04)", () => {
     renderPortal();
     await page();
     const devices = screen.getByRole("region", { name: "Devices" });
-    await waitFor(() =>
-      expect(devices.textContent).toContain("1 of 3 devices in use"),
-    );
+    await waitFor(() => expect(devices.textContent).toContain("1 of 3 in use"));
     expect(
       within(devices).queryByRole("button", { name: "Remove Studio PC" }),
     ).toBeNull();
@@ -1609,7 +1607,7 @@ describe("product identity card (PX-13; §4.20, §3.1)", () => {
     await waitFor(() =>
       expect(
         screen.getByRole("region", { name: "Devices" }).textContent,
-      ).toMatch(/of 3 devices/),
+      ).toMatch(/of 3 in use/),
     );
     expect(screen.queryByRole("region", { name: /^Sign in to/ })).toBeNull();
   });
@@ -1939,7 +1937,7 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     );
     renderPortal();
     await page();
-    const help = await screen.findByRole("region", { name: "Need help?" });
+    const help = await screen.findByRole("region", { name: "Help" });
     const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
     const license = screen.getByRole("region", { name: "License" });
     // In the main column with What's new, after it; not in the licence's side column.

@@ -92,7 +92,7 @@ try {
       });
       const page = await ctx.newPage();
       await page.addInitScript(
-        (s) => localStorage.setItem("starlight-theme", s),
+        (s) => localStorage.setItem("pk-admin-theme", s),
         scheme,
       );
       for (const [name, path] of Object.entries(PAGES)) {

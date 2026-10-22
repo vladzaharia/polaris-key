@@ -1,0 +1,647 @@
+/**
+ * Help, drawn as docs/design/mockups/screens/docs/docs.help-home, docs.help-article,
+ * docs.help-message and docs.mobile-menu. Help is Polaris Locker's: every rule is scoped to
+ * `[data-brand="locker"]` (PageFrame.astro), so the developer and operator doors keep Starlight's
+ * own look. Tokens only, so dark and light come with them. This file loads after global.css.
+ */
+
+[data-brand="locker"] {
+  /* Comfortable prose: 16/26 (the mockup's data-density="comfortable"). */
+  --sl-text-body: 1rem;
+  --sl-line-height: 1.625;
+  --sl-text-h1: 1.5rem;
+  --sl-text-h2: 1.125rem;
+  --sl-text-h3: 1rem;
+  --sl-text-h4: 1rem;
+  --sl-line-height-headings: 1.35;
+  --sl-menu-button-size: 2.5rem;
+}
+
+/* ---- Header --------------------------------------------------------------------------------- */
+
+[data-brand="locker"] .title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+}
+
+.pk-help-tag {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 1.25rem;
+  padding-inline: var(--pk-space-2);
+  border-radius: var(--pk-radius-full);
+  border: 1px solid var(--pk-border-subtle);
+  background-color: var(--pk-surface-sunken);
+  color: var(--pk-text-muted);
+  font-size: var(--pk-font-size-xs, 0.75rem);
+  font-weight: 500;
+  line-height: 1;
+}
+
+[data-brand="locker"] .social-icons::after {
+  display: none;
+}
+
+.pk-help-library {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  min-height: 2rem;
+  color: var(--pk-text-muted);
+  font-size: var(--sl-text-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.pk-help-library:hover {
+  color: var(--pk-text-strong);
+}
+.pk-help-library .pk-help-ic {
+  width: 1rem;
+  height: 1rem;
+}
+
+.pk-help-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pk-radius-md);
+  background: transparent;
+  color: var(--pk-text-muted);
+  cursor: pointer;
+}
+.pk-help-iconbtn:hover {
+  background-color: var(--pk-surface-overlay);
+  color: var(--pk-text-strong);
+}
+.pk-help-iconbtn:focus-visible,
+.pk-help-copy:focus-visible,
+.pk-help-bigsearch:focus-visible,
+.pk-help-segmented button:focus-visible {
+  outline: 2px solid var(--pk-text-strong);
+  outline-offset: 2px;
+}
+
+/* One glyph per theme: the moon is the way to dark mode's opposite, so each shows the other. */
+.pk-help-theme__light {
+  display: none;
+}
+.pk-help-theme__dark {
+  display: inline-flex;
+}
+:root[data-theme="light"] .pk-help-theme__dark {
+  display: none;
+}
+:root[data-theme="light"] .pk-help-theme__light {
+  display: inline-flex;
+}
+
+/* ---- Sidebar -------------------------------------------------------------------------------- */
+
+[data-brand="locker"] .sidebar-content summary .large,
+[data-brand="locker"] .sidebar-content .group-label .large {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  color: var(--pk-text-muted);
+  font-size: var(--sl-text-sm);
+  font-weight: 500;
+}
+[data-brand="locker"] .sidebar-content summary .large::before {
+  content: "";
+  width: 3px;
+  height: 1rem;
+  border-radius: 2px;
+  background-color: var(--pk-accent);
+}
+[data-brand="locker"] .sidebar-content a {
+  font-size: 0.9375rem;
+}
+
+/* ---- Page: one column on the home, the article's measure elsewhere --------------------------- */
+
+:root:not([data-has-sidebar]):has([data-help-home]) {
+  --sl-content-width: 61.5rem;
+}
+
+[data-brand="locker"] .content-panel {
+  padding-block: var(--pk-space-4);
+}
+[data-brand="locker"] .content-panel + .content-panel {
+  border-top: 0;
+  padding-block-start: 0;
+}
+.pk-help-iconbtn .pk-help-ic,
+.pk-help-copy > span:first-child {
+  display: inline-flex;
+}
+
+[data-brand="locker"] .pk-help-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-3);
+}
+
+[data-brand="locker"] .pk-help-eyebrow {
+  margin: 0;
+  font-size: var(--sl-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+[data-brand="locker"] .pk-help-eyebrow .pk-eyebrow__marker {
+  width: 3px;
+  height: 1rem;
+  border-radius: 2px;
+}
+
+.pk-help-titlerow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pk-space-3);
+}
+[data-brand="locker"] .pk-help-titlerow > h1#_top {
+  min-width: 0;
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 2rem;
+  color: var(--pk-text-strong);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+[data-brand="locker"] h1#_top {
+  padding: 0;
+  border: 0;
+}
+
+.pk-help-copy {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--pk-space-2);
+  min-height: 2rem;
+  padding: 0 var(--pk-space-3);
+  border: 1px solid var(--pk-border-strong);
+  border-radius: var(--pk-radius-md);
+  background: transparent;
+  color: var(--pk-text-strong);
+  font: inherit;
+  font-size: var(--sl-text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+.pk-help-copy:hover {
+  background-color: var(--pk-surface-overlay);
+}
+.pk-help-copy .pk-help-ic {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* The home's title is the display step: 40/48, then 30/36 on a phone. */
+[data-help-home] .pk-help-titlerow > h1#_top {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+}
+@media (min-width: 40rem) {
+  [data-help-home] .pk-help-titlerow > h1#_top {
+    font-size: 2.5rem;
+    line-height: 3rem;
+  }
+}
+
+/* The page's first paragraph is its lede. */
+[data-brand="locker"] .sl-markdown-content > p:first-child {
+  max-width: 64ch;
+  margin-top: 0;
+  color: var(--pk-text-muted);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+}
+
+[data-brand="locker"] .sl-markdown-content :is(h2, h3, h4) {
+  color: var(--pk-text-strong);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+[data-brand="locker"] .sl-markdown-content h2 {
+  margin-top: 2rem;
+}
+
+@media (max-width: 39.99rem) {
+  .pk-help-copy {
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+  }
+  .pk-help-copy__label {
+    display: none;
+  }
+}
+
+/* Steps: an ordered list is numbered circles joined by a line (docs-steps). */
+[data-brand="locker"] .sl-markdown-content > ol {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-block: 1.25rem;
+  padding: 0;
+  list-style: none;
+  counter-reset: pk-step;
+}
+[data-brand="locker"] .sl-markdown-content > ol > li {
+  position: relative;
+  min-height: 2rem;
+  margin: 0;
+  padding-block-start: 0.1875rem;
+  padding-inline-start: 3rem;
+  counter-increment: pk-step;
+}
+[data-brand="locker"] .sl-markdown-content > ol > li::before {
+  content: counter(pk-step);
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background-color: var(--pk-accent-subtle);
+  color: var(--pk-accent-fg);
+  font-weight: 700;
+}
+[data-brand="locker"] .sl-markdown-content > ol > li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 2.25rem;
+  inset-inline-start: 0.9375rem;
+  height: calc(100% - 2.25rem + 1rem);
+  width: 2px;
+  border-radius: 1px;
+  background-color: var(--pk-border-subtle);
+}
+[data-brand="locker"] .sl-markdown-content > ol > li > :first-child {
+  margin-top: 0;
+}
+
+/* ---- Home: link cards and the large search --------------------------------------------------- */
+
+.pk-help-bigsearch {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-3);
+  width: 100%;
+  min-height: 3rem;
+  margin-block: var(--pk-space-6) var(--pk-space-2);
+  padding: 0 var(--pk-space-4);
+  border: 1px solid var(--pk-border-strong);
+  border-radius: var(--pk-radius-lg);
+  background-color: var(--pk-surface-raised);
+  color: var(--pk-text-muted);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.pk-help-bigsearch:hover {
+  border-color: var(--pk-text-muted);
+}
+.pk-help-bigsearch .pk-help-ic {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+.pk-help-bigsearch kbd {
+  margin-inline-start: auto;
+  padding: 0 var(--pk-space-1);
+  border-radius: var(--pk-radius-sm);
+  background-color: var(--pk-surface-overlay);
+  color: var(--pk-text-muted);
+  font: inherit;
+  font-size: var(--sl-text-xs);
+}
+@media (pointer: coarse) {
+  .pk-help-bigsearch kbd {
+    display: none;
+  }
+}
+
+.pk-help-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: var(--pk-space-4);
+  margin: var(--pk-space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pk-help-cards li {
+  display: flex;
+  margin: 0;
+}
+.pk-help-cards a {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--pk-space-1);
+  min-height: 4.5rem;
+  padding: var(--pk-space-4);
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-lg);
+  background-color: var(--pk-surface-raised);
+  color: var(--pk-text-muted);
+  font-size: var(--sl-text-sm);
+  line-height: 1.5;
+  text-decoration: none;
+}
+.pk-help-cards a:hover {
+  border-color: var(--pk-border-strong);
+  background-color: var(--pk-surface-overlay);
+}
+.pk-help-cards__title {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  color: var(--pk-text-strong);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.pk-help-cards__title .pk-help-ic {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  margin-inline-start: auto;
+  color: var(--pk-text-muted);
+}
+.pk-help-cards a:hover .pk-help-ic {
+  color: var(--pk-text-strong);
+}
+
+[data-help-home] .sl-markdown-content h2 {
+  margin-top: 2.5rem;
+}
+
+/* ---- Messages: each entry is a card with the accent edge ------------------------------------ */
+
+[data-brand="locker"] .pk-help-message {
+  margin-block: var(--pk-space-6);
+  padding: var(--pk-space-2) var(--pk-space-6) var(--pk-space-4);
+  border: 1px solid var(--pk-border-subtle);
+  border-inline-start: 3px solid var(--pk-accent);
+  border-radius: var(--pk-radius-lg);
+  background-color: var(--pk-surface-raised);
+}
+[data-brand="locker"] .pk-help-message > .sl-heading-wrapper {
+  margin-top: 0.5rem;
+}
+[data-brand="locker"] .pk-help-message:has(:target) {
+  background-color: var(--pk-accent-subtle);
+  box-shadow: none;
+}
+
+/* ---- Footer --------------------------------------------------------------------------------- */
+
+.pk-help-footer {
+  /* Above the fixed sidebar (z-index 5), below the header (10): the column ends at the footer. */
+  position: relative;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pk-space-2);
+  padding: var(--pk-space-6) var(--pk-space-12, 3rem);
+  border-top: 1px solid var(--pk-border-subtle);
+  background-color: var(--sl-color-bg);
+  color: var(--pk-text-subtle);
+  font-size: var(--sl-text-sm);
+}
+.pk-help-footer a {
+  color: inherit;
+  text-decoration: none;
+}
+.pk-help-footer a:hover {
+  color: var(--pk-text-strong);
+  text-decoration: underline;
+}
+.pk-help-footer__end {
+  margin-inline-start: auto;
+}
+@media (max-width: 39.99rem) {
+  .pk-help-footer {
+    padding-inline: var(--pk-space-4);
+  }
+  .pk-help-footer__end {
+    width: 100%;
+    margin-inline-start: 0;
+  }
+}
+
+/* ---- Phone: the menu is a drawer from the right (docs.mobile-menu) ---------------------------- */
+
+.pk-help-drawer-head {
+  display: none;
+}
+
+@media (max-width: 49.99rem) {
+  [data-brand="locker"] .sl-menu-button {
+    inset-inline: var(--sl-nav-pad-x) auto;
+    background: transparent;
+    box-shadow: none;
+    color: var(--pk-text-strong);
+    border-radius: var(--pk-radius-md);
+  }
+  [data-brand="locker"] .sl-menu-button svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+  [data-brand="locker"] .sl-menu-button:focus-visible {
+    outline: 2px solid var(--pk-text-strong);
+    outline-offset: 2px;
+  }
+  :root[data-has-sidebar] [data-brand="locker"] header.header {
+    padding-inline: calc(
+        var(--sl-nav-pad-x) + var(--sl-menu-button-size) + 0.5rem
+      )
+      var(--sl-nav-pad-x);
+  }
+  /* The brand's words stay: the lockup is 218 px wide, and the 20 rem window has the mark alone. */
+  [data-brand="locker"] .sidebar-pane {
+    inset-block: 0;
+    inset-inline: auto 0;
+    width: min(22rem, 100%);
+    border-inline-start: 1px solid var(--pk-border-subtle);
+    background-color: var(--pk-surface-raised);
+    box-shadow: var(--sl-shadow-lg);
+  }
+  [data-brand="locker"] .sidebar-pane::backdrop {
+    background-color: var(--sl-color-backdrop-overlay);
+  }
+  [data-brand="locker"] .pk-help-drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--pk-space-3);
+    margin: -1rem calc(-1 * var(--sl-sidebar-pad-x)) 0;
+    padding: 0 var(--sl-sidebar-pad-x);
+    min-height: var(--sl-nav-height);
+    border-bottom: 1px solid var(--pk-border-subtle);
+  }
+  .pk-help-drawer-head h2 {
+    margin: 0;
+    color: var(--pk-text-strong);
+    font-size: 1.125rem;
+    font-weight: 700;
+  }
+}
+
+.pk-help-prefs {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--pk-space-3);
+  padding-block: var(--pk-space-4);
+  border-top: 1px solid var(--pk-border-subtle);
+  color: var(--pk-text-strong);
+}
+.pk-help-segmented {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-md);
+  background-color: var(--pk-surface-sunken);
+}
+.pk-help-segmented button {
+  min-height: 2rem;
+  padding: 0 var(--pk-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--pk-radius-sm);
+  background: transparent;
+  color: var(--pk-text-muted);
+  font: inherit;
+  font-size: var(--sl-text-sm);
+  cursor: pointer;
+}
+.pk-help-segmented button[aria-checked="true"] {
+  border-color: var(--pk-text-strong);
+  background-color: var(--pk-surface-raised);
+  color: var(--pk-text-strong);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-brand="locker"] * {
+    scroll-behavior: auto;
+    transition: none;
+  }
+}
+
+/* ---- Page not found (docs.not-found): one 404 for every door, the variant from the address ---- */
+
+/* Both brands are drawn; the address under /docs/help/ marks the page (MissingPage.astro). */
+[data-miss-brand="locker"],
+.pk-miss__help,
+.pk-help-footer[data-miss] {
+  display: none !important;
+}
+:root[data-help-miss] [data-miss-brand="key"],
+:root[data-help-miss] .pk-miss__docs {
+  display: none !important;
+}
+:root[data-help-miss] a[data-miss-brand="locker"] {
+  display: flex !important;
+}
+:root[data-help-miss] span[data-miss-brand="locker"] {
+  display: inline-flex !important;
+}
+:root[data-help-miss] .pk-miss__help {
+  display: block !important;
+}
+:root[data-help-miss] .pk-help-footer[data-miss] {
+  display: flex !important;
+}
+:root[data-help-miss] [data-brand="locker"] .sl-markdown-content {
+  margin-top: 0;
+}
+
+.pk-miss {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pk-space-2);
+  padding: var(--pk-space-10, 2.5rem) var(--pk-space-6);
+  text-align: center;
+}
+.pk-miss__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: var(--pk-space-2);
+  border-radius: 14px;
+  background-color: var(--pk-accent-subtle);
+  color: var(--pk-accent-fg);
+}
+.pk-miss__icon .pk-help-ic {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.pk-miss h1 {
+  margin: 0 0 var(--pk-space-2);
+  color: var(--pk-text-strong);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.pk-miss p {
+  max-width: 30rem;
+  margin: 0 auto;
+  color: var(--pk-text-muted);
+}
+.pk-miss__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--pk-space-3);
+  margin-top: var(--pk-space-4);
+}
+.pk-miss__primary,
+.pk-miss__secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pk-space-2);
+  min-height: 2.5rem;
+  padding: 0 var(--pk-space-4);
+  border-radius: var(--pk-radius-md);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.pk-miss__primary {
+  border: 1px solid transparent;
+  background-color: var(--pk-text-strong);
+  color: var(--pk-surface-page);
+}
+.pk-miss__secondary {
+  border: 1px solid var(--pk-border-strong);
+  background: transparent;
+  color: var(--pk-text-strong);
+}
+.pk-miss__secondary .pk-help-ic {
+  width: 1rem;
+  height: 1rem;
+}
+.pk-miss__primary:focus-visible,
+.pk-miss__secondary:focus-visible {
+  outline: 2px solid var(--pk-text-strong);
+  outline-offset: 2px;
+}

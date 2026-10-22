@@ -7,7 +7,7 @@
  *   display name is refused (A-3, PRD-6).
  * - The admin group (`core.adminGroup`) grants nothing, so it has no input (P0-47): a product
  *   that has one shows it read-only, marked Not enforced, until ST-25 removes it.
- * - Signing moved to Keys & secrets and the compatibility window to In-app updates → Feed; this page
+ * - Signing moved to Keys and secrets and the compatibility window to In-app updates → Feed; this page
  *   links to each instead of describing where they went (SET-3).
  * - Resync from repo is the console's one resync flow (`components/ResyncDialog.tsx`, UX-78):
  *   an L1 confirm that shows the dry run's plan, then a focused, announced result panel listing

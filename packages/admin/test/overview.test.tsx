@@ -227,7 +227,8 @@ afterEach(cleanup);
 
 describe("Core → Overview", () => {
   it("titles the page with the product and offers New license when License is on (OVR-1)", async () => {
-    // Nothing left to do on Integration: the header's primary follows enablement.
+    // Nothing left to do on Integration: the hero's action follows enablement.
+    fns.attention.mockResolvedValue({ items: [] });
     fns.integration.mockResolvedValue(
       integrationView({ features: [], verified: false }),
     );
@@ -243,6 +244,7 @@ describe("Core → Overview", () => {
   });
 
   it("offers Publish catalog with only Config on, else Enable features", async () => {
+    fns.attention.mockResolvedValue({ items: [] });
     fns.integration.mockResolvedValue(
       integrationView({ features: [], verified: false }),
     );
@@ -265,23 +267,26 @@ describe("Core → Overview", () => {
     expect(screen.getByText("This product runs no features yet")).toBeTruthy();
   });
 
-  it("draws a tile only for each enabled service, in that service's accent", async () => {
+  it("draws a card for each enabled service in its accent and a dashed cell for the rest", async () => {
     mount();
     const license = await screen.findByRole("heading", {
-      level: 2,
+      level: 3,
       name: "Licensing",
     });
     expect(
       license.closest("[data-service]")?.getAttribute("data-service"),
     ).toBe("license");
     expect(
-      screen.getByRole("heading", { level: 2, name: "Managed config" }),
+      screen.getByRole("heading", { level: 3, name: "Managed config" }),
     ).toBeTruthy();
     expect(
-      screen.queryByRole("heading", { level: 2, name: "Releases" }),
+      screen.queryByRole("heading", { level: 3, name: "Releases" }),
     ).toBeNull();
-    expect(await screen.findByText("2 keys")).toBeTruthy();
-    expect(await screen.findByText("7 devices")).toBeTruthy();
+    // Ship builds is off: its dashed cell says so and offers Turn on.
+    const off = screen.getByRole("link", { name: "Ship builds: off. Turn on" });
+    expect(off.closest("article")?.getAttribute("data-feature")).toBe("off");
+    expect(await screen.findByText(/2 settings/)).toBeTruthy();
+    expect(await screen.findByText(/7 devices/)).toBeTruthy();
   });
 
   it("M7: Ship builds is one tile with its lines inside and no accent top rule", async () => {
@@ -292,17 +297,17 @@ describe("Core → Overview", () => {
     });
     mount();
     const ship = (
-      await screen.findByRole("heading", { level: 2, name: "Ship builds" })
-    ).closest("section")!;
+      await screen.findByRole("heading", { level: 3, name: "Ship builds" })
+    ).closest("article")!;
     for (const name of ["Releases", "Rollouts", "In-app updates"])
-      expect(screen.queryByRole("heading", { level: 2, name })).toBeNull();
+      expect(screen.queryByRole("heading", { level: 3, name })).toBeNull();
     expect(ship.className).not.toContain("border-t-accent");
     expect(await within(ship).findByText(/rollouts live/)).toBeTruthy();
     expect(await within(ship).findByText(/In-app updates:/)).toBeTruthy();
   });
 
-  it("B-051/B-052: Ship builds' three tiles share the Releases accent and their link is a 24 px target", async () => {
-    const { tileAccent, TileFrame } =
+  it("B-051: Ship builds' three services share the Releases accent, in the card too", async () => {
+    const { tileAccent, FeatureCard } =
       await import("../src/console/sections/core/components/TileFrame.js");
     expect(
       ["release", "distribution", "update"].map((x) => tileAccent(x as never)),
@@ -311,19 +316,16 @@ describe("Core → Overview", () => {
     expect(tileAccent("config")).toBe("config");
     const { container } = renderAt(
       "#/p/djdl",
-      <TileFrame service="update" href="#/x" linkLabel="Open updates" />,
+      <FeatureCard service="update" href="#/x" foot="x" />,
     );
     expect(
-      container.querySelector("section")?.getAttribute("data-service"),
+      container.querySelector("article")?.getAttribute("data-service"),
     ).toBe("release");
-    expect(
-      screen.getByRole("link", { name: "Open updates" }).className,
-    ).toContain("min-h-6");
   });
 
-  it("B-052/B-060: View activity is a 24 px target and the minted-token step reads as an instruction", async () => {
+  it("B-052/B-060: Open Activity is a 24 px target and the minted-token step reads as an instruction", async () => {
     mount();
-    const activity = await screen.findByRole("link", { name: /View activity/ });
+    const activity = await screen.findByRole("link", { name: /Open Activity/ });
     expect(activity.className).toContain("min-h-6");
     const { nextStep } =
       await import("../src/console/sections/core/model/integration.js");
@@ -343,58 +345,132 @@ describe("Core → Overview", () => {
     });
     mount();
     expect(
-      await screen.findByRole("heading", { level: 2, name: "Commerce" }),
+      await screen.findByRole("heading", { level: 3, name: "Commerce" }),
     ).toBeTruthy();
     expect(screen.getByText(/Runs 2 features/)).toBeTruthy();
   });
 
-  it("replaces the checklist, Trust & SDK and the welcome with the Integration card", async () => {
+  it("puts Integration in the hero (a gauge per platform) and the steps on a rail", async () => {
     mount();
-    const card = (
-      await screen.findByRole("heading", { name: "Integration" })
-    ).closest("section")!;
+    const pane = (await screen.findByTestId("integration-pane")) as HTMLElement;
     expect(
-      await within(card).findByText(/of 2 features verified/),
+      within(pane)
+        .getByRole("link", { name: "Integration" })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/integration");
+    expect(await within(pane).findByText("1 of 2 verified")).toBeTruthy();
+    expect(within(pane).getByText("macOS")).toBeTruthy();
+    expect(within(pane).getByText(/Last seen/)).toBeTruthy();
+    expect(within(pane).getByText(/Swift SDK 1.2.3/)).toBeTruthy();
+    const steps = screen.getByRole("list", { name: "Integration steps" });
+    const rows = within(steps).getAllByRole("listitem");
+    expect(rows.map((x) => x.getAttribute("data-step"))).toEqual([
+      "done",
+      "current",
+    ]);
+    // Licensing is done: a tick and no sub-line; Managed config is the current step.
+    expect(within(rows[0]!).getByText(", done")).toBeTruthy();
+    expect(
+      within(rows[1]!).getByRole("link", { name: "Publish a catalog" }),
     ).toBeTruthy();
-    expect(within(card).getByText("Verified")).toBeTruthy();
-    expect(within(card).getByText("Waiting on setup")).toBeTruthy();
-    expect(within(card).getByText("macOS")).toBeTruthy();
+    expect(
+      within(rows[0]!)
+        .getByRole("img", { name: /^macOS: Verified .+/ })
+        .getAttribute("data-state"),
+    ).toBe("verified");
+    expect(
+      within(rows[1]!)
+        .getByRole("img", { name: "macOS: After the console step" })
+        .getAttribute("data-state"),
+    ).toBe("after");
     expect(screen.queryByRole("heading", { name: "Setup" })).toBeNull();
     expect(screen.queryByText("Trust & SDK")).toBeNull();
     expect(screen.queryByTestId("product-welcome")).toBeNull();
   });
 
-  it("the computed next step is the one primary action", async () => {
+  it("offers the drop-in kit once, on the first feature waiting on the app", async () => {
+    const waiting = (
+      id: "identity" | "sync",
+      service: "identity" | "sync",
+    ) => ({
+      id,
+      service,
+      prerequisites: [],
+      unavailable: false,
+      facts: {},
+      status: "not_seen" as const,
+      verifiedOn: [],
+    });
+    const base = integrationView();
+    fns.integration.mockResolvedValue(
+      integrationView({
+        features: [
+          base.features[0]!,
+          waiting("identity", "identity"),
+          waiting("sync", "sync"),
+        ],
+      }),
+    );
+    fns.attention.mockResolvedValue({ items: [] });
     mount();
     expect(
+      await screen.findByRole("link", { name: "Sign-in drop-in kit" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", {
+        name: "Integrate Sign-in directly with your own UI: Swift SDK docs",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("link", { name: "Cloud Sync drop-in kit" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("img", { name: "macOS: Waiting for the first sync" }),
+    ).toBeTruthy();
+  });
+
+  it("the hero states the first attention item, the warning edge and +N more", async () => {
+    mount();
+    const hero = (await screen.findByTestId("overview-hero")) as HTMLElement;
+    await within(hero).findByText(/has no value in the Default profile/);
+    expect(hero.hasAttribute("data-issue")).toBe(true);
+    expect(hero.querySelector("[data-edge]")).toBeTruthy();
+    expect(within(hero).getByText("Warning")).toBeTruthy();
+    expect(within(hero).getByRole("link", { name: "Open keys" })).toBeTruthy();
+    expect(within(hero).getByRole("link", { name: /\+1 more/ })).toBeTruthy();
+    // The problem is said once: Needs attention is not a card of its own.
+    expect(
+      screen.queryByRole("heading", { name: "Needs attention" }),
+    ).toBeNull();
+  });
+
+  it("with nothing to fix, the computed next step is the hero's one action", async () => {
+    fns.attention.mockResolvedValue({ items: [] });
+    mount();
+    const hero = (await screen.findByTestId("overview-hero")) as HTMLElement;
+    expect(
       (
-        await screen.findByRole("link", { name: "Publish a catalog" })
+        await within(hero).findByRole("link", { name: "Publish a catalog" })
       ).getAttribute("href"),
     ).toBe("#/p/djdl/config/catalog");
-    expect(screen.queryByRole("link", { name: "Create license" })).toBeNull();
-    // It lives in the card, with its reason, and the header carries no second primary.
-    const card = screen.getByTestId("integration-card");
+    expect(hero.hasAttribute("data-issue")).toBe(false);
     expect(
-      within(card).getByText(
+      within(hero).getByText(
         /needs a published catalog before an app can use it/,
       ),
     ).toBeTruthy();
-    expect(
-      screen.getAllByRole("link", { name: "Publish a catalog" }),
-    ).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: "New license" })).toBeNull();
   });
 
-  it("names an unset secret and a missing signing key under Needs attention (the card hidden, so the next step does not say it)", async () => {
-    fns.product.mockResolvedValue({
-      product: product({ signing: undefined }),
-    });
+  it("Hide is offered once a feature is Verified and records the operator's choice", async () => {
+    const user = userEvent.setup();
     fns.productSettings.mockResolvedValue({
       settings: [
         {
           key: "core.setup",
           version: 1,
           value: {
-            integrationHidden: { at: NOW, by: "a@b.c" },
+            integrationHidden: null,
             notUsing: [],
             runnerConsent: null,
             skipped: [],
@@ -402,29 +478,27 @@ describe("Core → Overview", () => {
         },
       ],
     });
-    mount();
-    expect(await screen.findByText("Missing secret")).toBeTruthy();
-    expect(await screen.findByText("No signing key")).toBeTruthy();
-  });
-
-  it("holds the setup items back until the next step is known (no item rises and is then taken back)", async () => {
-    let answer: (v: ReturnType<typeof integrationView>) => void = () => {};
-    fns.integration.mockReturnValue(
-      new Promise((res) => {
-        answer = res;
-      }),
-    );
-    fns.product.mockResolvedValue({
-      product: product({ signing: undefined }),
+    fns.updateProductSetting.mockResolvedValue({
+      ok: true,
+      claimed: false,
+      setting: {
+        key: "core.setup",
+        version: 2,
+        value: { integrationHidden: { at: NOW, by: "a@b.c" } },
+      },
     });
     mount();
-    expect(await screen.findByText("Missing secret")).toBeTruthy();
-    expect(screen.queryByText("No signing key")).toBeNull();
-    answer(integrationView());
-    await waitFor(() => expect(screen.getByTestId("integration-card")));
+    await user.click(
+      await screen.findByRole("button", { name: "Hide Integration" }),
+    );
+    await waitFor(() => expect(fns.updateProductSetting).toHaveBeenCalled());
+    const body = fns.updateProductSetting.mock.calls[0]![2] as {
+      value: { integrationHidden: unknown };
+    };
+    expect(body.value.integrationHidden).not.toBeNull();
   });
 
-  it("a hidden Integration card is one line that reopens it", async () => {
+  it("a hidden Integration reopens from the More menu, and its pane and steps are gone", async () => {
     const user = userEvent.setup();
     fns.productSettings.mockResolvedValue({
       settings: [
@@ -441,10 +515,14 @@ describe("Core → Overview", () => {
       ],
     });
     mount();
-    const show = await screen.findByRole("button", {
-      name: "Show Integration",
+    await user.click(await screen.findByRole("button", { name: "More" }));
+    const show = await screen.findByRole("menuitem", {
+      name: /Show Integration/,
     });
-    expect(screen.queryByText(/features verified/)).toBeNull();
+    expect(screen.queryByTestId("integration-pane")).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: "Integration steps" }),
+    ).toBeNull();
     fns.updateProductSetting.mockResolvedValue({
       ok: true,
       claimed: false,
@@ -475,7 +553,7 @@ describe("Core → Overview", () => {
     await waitFor(() => expect(fns.product).toHaveBeenCalled());
     await new Promise((r) => setTimeout(r, 100));
     expect(screen.getByText("Loading overview…")).toBeTruthy();
-    expect(screen.queryByTestId("integration-card")).toBeNull();
+    expect(screen.queryByTestId("integration-pane")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Integration" })).toBeNull();
     answer({ items: [] });
     expect(
@@ -498,18 +576,18 @@ describe("Core → Overview", () => {
     ).toBeTruthy();
     fns.attention.mockResolvedValue({ items: [SECRET_ITEM] });
     await user.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByText("Missing secret")).toBeTruthy();
+    expect(
+      await screen.findByText(/has no value in the Default profile/),
+    ).toBeTruthy();
     expect(screen.queryByText("What needs attention didn't load.")).toBeNull();
   });
 
-  it("lists licenses expiring soon under Needs attention", async () => {
+  it("states licenses expiring soon as the hero's step", async () => {
+    fns.attention.mockResolvedValue({ items: [] });
     fns.licenses.mockResolvedValue({
       licenses: [{ id: "l1", status: "active", expiresAt: NOW + 3 * 86400 }],
     });
     mount();
-    expect(
-      await screen.findByRole("heading", { name: "Needs attention" }),
-    ).toBeTruthy();
     expect(
       await screen.findByText("1 license expires within 14 days."),
     ).toBeTruthy();
@@ -529,10 +607,10 @@ describe("Core → Overview", () => {
     fns.schema.mockRejectedValue(new Error("boom"));
     mount();
     const config = await screen.findByRole("heading", {
-      level: 2,
+      level: 3,
       name: "Managed config",
     });
-    const tile = config.closest("section")!;
+    const tile = config.closest("article")!;
     expect(
       await within(tile as HTMLElement).findByRole("button", {
         name: "Try again",
@@ -545,7 +623,7 @@ describe("Core → Overview", () => {
 
   it("passes axe", async () => {
     const { container } = mount();
-    await screen.findByText("2 keys");
+    await screen.findByText(/2 settings/);
     await expectNoAxeViolations(container);
   });
 });

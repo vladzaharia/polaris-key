@@ -228,8 +228,8 @@
     <string name="boot_consent_bodyMetered">%1$s needs %2$s of new content, and you're on a metered connection.</string>
     <!-- Boot screen, shown while the product starts. -->
     <string name="boot_consent_download">Download</string>
-    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="boot_error_body">%1$s couldn't finish starting. Try again.</string>
+    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. -->
+    <string name="boot_error_body">If this keeps happening, restart the app.</string>
     <!-- Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="welcome_title">Welcome to %1$s</string>
     <!-- Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}. -->
@@ -424,8 +424,8 @@
     <string name="update_readyBody">Restart %1$s to finish updating.</string>
     <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_mandatoryTitle">Update to keep using %1$s</string>
-    <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="update_mandatoryBody">This version is below the minimum supported version. Update to keep using %1$s.</string>
+    <!-- UpdatePrompt: an app update. Mandatory update. -->
+    <string name="update_mandatoryBody">This version is no longer supported.</string>
     <!-- UpdatePrompt: an app update. No update is available yet. -->
     <string name="update_blockedTitle">This version is no longer supported</string>
     <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -1590,7 +1590,7 @@
     <!-- The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name. Arguments: 1=product. -->
     <string name="signin_gate_termsLinkProduct">%1$s terms</string>
     <!-- The platform's terms link in the finish step. Polaris Locker is never translated. -->
-    <string name="signin_gate_termsLinkPlatform">Polaris Locker’s Terms and Privacy Policy</string>
+    <string name="signin_gate_termsLinkPlatform">Polaris Locker's Terms and Privacy Policy</string>
     <!-- Approve dialog: the code is spent or expired (410). -->
     <string name="signin_approve_expiredCode">That code expired. Ask for a new one on the other device.</string>
     <!-- Approve dialog: no pending request has this code (404 or 422). -->
@@ -1720,7 +1720,7 @@
     <!-- Finish: the screen name field left empty. -->
     <string name="signin_gate_nameRequired">Enter a screen name.</string>
     <!-- Finish: lede of the terms-only step. Arguments: {app}. Arguments: 1=app. -->
-    <string name="signin_gate_termsLede">Agree to %1$s’s terms to keep going.</string>
+    <string name="signin_gate_termsLede">Agree to %1$s's terms to keep going.</string>
     <!-- Code entry: submitted with fewer than six digits. -->
     <string name="signin_code_incomplete">Enter all 6 digits.</string>
     <!-- Portal, next visit after a first platform sign-in: the Add another way to sign in nudge (SIGN-IN.md D-40). -->

@@ -140,19 +140,17 @@ describe("Cloud Sync → Data", () => {
     // Negative control: a local key, a locked key and a secret never sync.
     for (const key of ["ui.window", "ops.mode", "api.token"])
       expect(within(settings).queryByText(key)).toBeNull();
-    expect(
-      screen.getByText(/Keys the game adds itself also sync/),
-    ).toBeTruthy();
+    expect(screen.getByText(/Keys the app adds itself also sync/)).toBeTruthy();
     expect((await axe(container)).violations).toEqual([]);
   });
 
-  it("shows the settings budget from the constants: 256 keys and 64 KiB per player", async () => {
+  it("leaves the per-person limits to Setup, so the two tabs say them once", async () => {
     renderPage();
     await screen.findByRole("table", { name: "Synced settings" });
-    expect(screen.getByText("Keys per player")).toBeTruthy();
-    expect(screen.getByText("Up to 256")).toBeTruthy();
-    expect(screen.getByText("Size per player")).toBeTruthy();
-    expect(screen.getByText("Up to 64 KiB")).toBeTruthy();
+    expect(screen.queryByText("Keys per person")).toBeNull();
+    expect(screen.queryByText("Size per person")).toBeNull();
+    expect(screen.queryByText("Default quota")).toBeNull();
+    expect(screen.queryByText("Data per product")).toBeNull();
   });
 
   it("resolves each collection over its template: saves slots are pinned at 16", async () => {
@@ -162,8 +160,8 @@ describe("Cloud Sync → Data", () => {
     });
     const rows = within(collections).getAllByRole("row").slice(1);
     expect(rows.map((r) => r.textContent)).toEqual([
-      "savesSavesUp to 16 per playerAsk the player32 MiB, last 5 versionscloudSaves",
-      "progressUp to 10,000 per playerKeep the highest on level32 MiB, last 5 versionsNone",
+      "savesSavesUp to 16 per personAsk the person32 MiB, last 5 versionscloudSaves",
+      "progressUp to 10,000 per personKeep the highest on level32 MiB, last 5 versionsNone",
     ]);
     expect(screen.getByText(/audio\.vol → audio\.volume/)).toBeTruthy();
   });
@@ -179,13 +177,8 @@ describe("Cloud Sync → Data", () => {
   it("shows the platform limits, the quota being an entitlement", async () => {
     renderPage();
     await screen.findByRole("table", { name: "Synced settings" });
-    expect(screen.getByText("Default quota")).toBeTruthy();
-    expect(screen.getByText("256 MiB")).toBeTruthy();
-    expect(
-      screen.getByText("Without a license: 1 MiB, no files."),
-    ).toBeTruthy();
     // The saves collection's row and the platform limit both read the one constant.
-    expect(screen.getAllByText("Up to 16 per player")).toHaveLength(2);
+    expect(screen.getAllByText("Up to 16 per person")).toHaveLength(2);
     expect(screen.getByText(/pkey\.cloudSync\.bytes/)).toBeTruthy();
     expect(screen.getByText("People holding data")).toBeTruthy();
     expect(screen.getByText("100,000")).toBeTruthy();

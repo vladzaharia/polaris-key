@@ -398,6 +398,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     empty,
     noResults: noResultsOverride,
     mobile = "scroll",
+    mobileCard,
     toolbarActions,
     toolbarLead,
     chrome = "auto",
@@ -959,8 +960,18 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       label: f.label,
       options: f.options.map((o) => ({
         ...o,
-        count: counts ? (counts.get(o.value) ?? 0) : undefined,
+        count: f.counted
+          ? (f.counted.counts?.[o.value] ??
+            (counts && !f.counted.pending
+              ? (counts.get(o.value) ?? 0)
+              : undefined))
+          : counts
+            ? (counts.get(o.value) ?? 0)
+            : undefined,
       })),
+      ...(f.counted
+        ? { counted: { icons: f.counted.icons, pending: f.counted.pending } }
+        : {}),
       // The controls (the menu's checkboxes, a chip's remove button) work on the live selection,
       // so changes made while a transition holds the old view build on each other instead of on
       // a stale copy; only the chips are drawn from the held view, since the chip row moves the
@@ -1305,7 +1316,12 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           <span role="alert">{`Couldn't load more ${caption.toLowerCase()}.`}</span>
         ) : undefined)
       }
-      filters={describeFilters(view, facets)}
+      // A page that words its own description says what was asked for there.
+      filters={
+        noResultsOverride?.description
+          ? undefined
+          : describeFilters(view, facets)
+      }
       onClearFilters={clearFilters}
       primaryAction={
         noResultsOverride?.action ??
@@ -1343,12 +1359,14 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         {selection ? <td className="w-10 px-3" /> : null}
         {visibleColumns.map((c) => (
           <td key={c.id} className="px-3">
-            <Skeleton
-              className={cn(
-                "h-4",
-                c.columnDef.meta?.numeric ? "ms-auto w-12" : "w-3/4",
-              )}
-            />
+            {c.columnDef.meta?.skeleton ?? (
+              <Skeleton
+                className={cn(
+                  "h-4",
+                  c.columnDef.meta?.numeric ? "ms-auto w-12" : "w-3/4",
+                )}
+              />
+            )}
           </td>
         ))}
         {rowActions ? <td className="w-12" /> : null}
@@ -1503,13 +1521,20 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                 />
               ) : null}
               <div className="min-w-0 flex-1 text-sm">
-                {primary ? cellContent(primary) : label}
+                {mobileCard
+                  ? mobileCard(
+                      row.original,
+                      primary ? cellContent(primary) : label,
+                    )
+                  : primary
+                    ? cellContent(primary)
+                    : label}
               </div>
               {rowActions ? (
                 <RowMenu label={label} items={rowActions(row.original)} />
               ) : null}
             </div>
-            {rest.length > 0 ? (
+            {!mobileCard && rest.length > 0 ? (
               <dl className="mt-2 grid grid-cols-1 gap-x-3 gap-y-0.5 text-xs @[22rem]:grid-cols-[auto_minmax(0,1fr)] @[22rem]:gap-y-1">
                 {rest.map((c) => (
                   <React.Fragment key={c.id}>

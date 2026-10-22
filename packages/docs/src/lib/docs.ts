@@ -41,13 +41,23 @@ export const SDK_LABELS: Readonly<Record<SdkId, string>> = {
   godot: "Godot",
 };
 
-/** The two integration lanes: equal depth, no recommended one (README §0 D3). */
-export const LANE_IDS = ["kit", "library"] as const;
+/**
+ * The integration lanes: equal depth, no recommended one (README §0 D3). `kit` and `library` are
+ * app code; `server` is the developer's own backend or CLI host (framework drop-ins plan §10),
+ * shown on the feature pages that have one.
+ */
+export const LANE_IDS = ["kit", "library", "server"] as const;
+/** The lanes a `<Lanes>` shows when a page names none: the two around app code. */
+export const APP_LANE_IDS = [
+  "kit",
+  "library",
+] as const satisfies readonly LaneId[];
 export type LaneId = (typeof LANE_IDS)[number];
 
 export const LANE_LABELS: Readonly<Record<LaneId, string>> = {
   kit: "Drop-in UI kit",
   library: "Your own UI",
+  server: "Your server",
 };
 
 /** Tab axes and their sync keys (README §4). */

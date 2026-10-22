@@ -205,6 +205,42 @@ export function HolderLine({
   );
 }
 
+/**
+ * What each holder state counts across the whole product (the counted chips of the Licenses
+ * band): the Worker's `total` for a one-row page under each holder filter. A state the Worker did
+ * not count stays out of the result, and its chip draws no number.
+ */
+export function useHolderCounts(slug: string) {
+  return useQuery({
+    queryKey: qk.licenseHolderCounts(slug),
+    queryFn: async (): Promise<Partial<Record<HolderState, number>>> => {
+      const pages = await Promise.all(
+        HOLDER_STATES.map((holder) =>
+          api.licensesPage(slug, { limit: 1, holder }),
+        ),
+      );
+      const out: Partial<Record<HolderState, number>> = {};
+      HOLDER_STATES.forEach((h, i) => {
+        const total = pages[i]?.total;
+        if (total !== undefined) out[h] = total;
+      });
+      return out;
+    },
+  });
+}
+
+/** Up to two letters for a license's avatar: the name's, else the email's. */
+export function licenseInitials(
+  l: Pick<LicenseSummary, "name" | "email">,
+): string {
+  const words = (l.name?.trim() || l.email?.split("@")[0] || "?")
+    .split(/[\s._-]+/)
+    .filter(Boolean);
+  const first = words[0]?.[0] ?? "?";
+  const last = words.length > 1 ? (words[words.length - 1]?.[0] ?? "") : "";
+  return (first + last).toUpperCase();
+}
+
 // ── Batches (LX-28) ──────────────────────────────────────────────────────────────────────────
 
 /** The page size the batch list is read in, and the most pages read (10,000 batches). */

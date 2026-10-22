@@ -42,6 +42,7 @@ import {
   Grid3x3,
   Image,
   HeartPulse,
+  History,
   House,
   KeyRound,
   KeySquare,
@@ -60,6 +61,7 @@ import {
   Rocket,
   Rss,
   Send,
+  Server,
   ServerCog,
   Settings,
   ShieldCheck,
@@ -106,11 +108,11 @@ export type GlobalPageId =
   | "personal-tokens"
   // the Platform section (notes/S-13 §9.1)
   | "platform-settings"
-  | "platform-deployment"
-  | "platform-operations"
+  | "platform-status"
   | "platform-stores"
   | "platform-connections"
   | "platform-feeds"
+  | "platform-activity"
   | "platform-override-migration";
 
 /** Pages scoped to one product (`#/p/<slug>/…`). */
@@ -162,6 +164,7 @@ export type ProductPageId =
   // identity
   | "app-sign-in"
   // sync
+  | "sync-setup"
   | "sync-data"
   // commerce
   | "commerce-overview";
@@ -273,6 +276,9 @@ export const SETTINGS_HUB_PAGES: readonly ProductPageId[] = [
   "settings-all",
 ];
 
+/** Cloud Sync's route tabs, the first the default; one sidebar row, `sync-setup`. */
+export const SYNC_PAGES: readonly ProductPageId[] = ["sync-setup", "sync-data"];
+
 /** A feed page's route tabs (F-11), the first the default. */
 export const FEED_TABS = ["packages", "setup", "settings", "activity"] as const;
 /** A package record's route tabs (F-11). */
@@ -310,7 +316,7 @@ export const SECTIONS: NavSection[] = [
       {
         page: "services",
         tile: "product",
-        label: "Features & general",
+        label: "Features and general",
         path: "settings/features",
         icon: Blocks,
         docs: "/docs/operate/console/products/",
@@ -364,7 +370,7 @@ export const SECTIONS: NavSection[] = [
       {
         page: "keys",
         tile: "product",
-        label: "Keys & secrets",
+        label: "Keys and secrets",
         path: "settings/keys",
         icon: LockKeyhole,
         docs: "/docs/operate/console/keys-and-secrets/",
@@ -425,7 +431,7 @@ export const SECTIONS: NavSection[] = [
         shortcut: "l",
         record: {
           noun: "License",
-          tabs: ["overview", "keys", "devices", "config"],
+          tabs: ["overview", "keys", "devices", "activity", "config"],
         },
       },
       {
@@ -753,13 +759,24 @@ export const SECTIONS: NavSection[] = [
     docs: "/docs/features/cloud-sync/",
     items: [
       {
+        // One row for the feature: Setup is the page, Data its second route tab.
+        page: "sync-setup",
+        tile: "service",
+        label: "Cloud Sync",
+        path: "sync/setup",
+        icon: Cloud,
+        docs: "/docs/features/cloud-sync/",
+        inNav: true,
+      },
+      {
+        // A tab of Cloud Sync, not a sidebar item; its address is unchanged.
         page: "sync-data",
         tile: "service",
         label: "Data",
         path: "sync/data",
         icon: Database,
         docs: "/docs/features/cloud-sync/",
-        inNav: true,
+        inNav: false,
       },
     ],
   },
@@ -814,19 +831,13 @@ const PLATFORM_PAGES: NavPage[] = [
     group: "platform",
   },
   {
-    page: "platform-deployment",
-    label: "Deployment",
-    path: "platform/deployment",
-    icon: CloudUpload,
-    docs: "/docs/operate/platform/deploy/",
-    inNav: true,
-    group: "platform",
-  },
-  {
-    page: "platform-operations",
-    label: "Operations",
-    path: "platform/operations",
-    icon: Gauge,
+    // CX-PSTAT: Deployment and Operations in one page (ST-09). Their 0.9 addresses are Page moved
+    // rows in the route ledger.
+    page: "platform-status",
+    label: "Status",
+    keywords: "deployment operations deploy cron queue health migrations",
+    path: "platform/status",
+    icon: Server,
     docs: "/docs/operate/platform/jobs/",
     inNav: true,
     group: "platform",
@@ -873,6 +884,18 @@ const PLATFORM_PAGES: NavPage[] = [
         tabs: PACKAGE_TABS,
       },
     },
+  },
+  {
+    // ST-51: every product's trail and the platform's, one list. The Product facet scopes it.
+    page: "platform-activity",
+    label: "Activity",
+    keywords: "audit log history events changes who",
+    path: "platform/activity",
+    icon: History,
+    docs: "/docs/operate/console/activity/",
+    inNav: true,
+    group: "platform",
+    record: { noun: "Event" },
   },
   {
     // U-03: the one-time move of licence config and secret overrides onto account overrides,

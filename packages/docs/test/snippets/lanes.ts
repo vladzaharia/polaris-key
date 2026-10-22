@@ -55,6 +55,8 @@ const OPTIONS: ts.CompilerOptions = {
   moduleResolution: ts.ModuleResolutionKind.Bundler,
   jsx: ts.JsxEmit.ReactJSX,
   strict: true,
+  // NestJS blocks use decorators, which every Nest project enables.
+  experimentalDecorators: true,
   noEmit: true,
   skipLibCheck: true,
   allowJs: true,

@@ -283,7 +283,7 @@ describe("section roots redirect to the section's first page", () => {
   it("only an old tab, or an old tab and an id its page has records for, is moved", () => {
     for (const hash of [
       "#/p/djdl/nope",
-      "#/p/djdl/secrets/x", // Keys & secrets has no records
+      "#/p/djdl/secrets/x", // Keys and secrets has no records
       "#/p/djdl/licenses/lic_1/keys", // the old URLs had no record tabs
       "#/p/djdl/constructor",
       "#/p/djdl/config/nope",
@@ -497,10 +497,10 @@ describe("the nav model (nav.ts)", () => {
       "personal-tokens",
       "platform-connections",
       "platform-settings",
-      "platform-deployment",
-      "platform-operations",
+      "platform-status",
       "platform-stores",
       "platform-feeds",
+      "platform-activity",
       "platform-override-migration",
       "package-feeds",
       "overview",
@@ -543,6 +543,7 @@ describe("the nav model (nav.ts)", () => {
       "credentials",
       "feed",
       "app-sign-in",
+      "sync-setup",
       "sync-data",
     ];
     expect(ALL_PAGES.map((p) => p.page).sort()).toEqual([...expected].sort());
@@ -709,7 +710,7 @@ describe("global pages", () => {
       "product-new",
       "api-tokens",
       "personal-tokens",
-      "platform-deployment",
+      "platform-status",
     ] as GlobalPageId[]) {
       expect(sectionOf(id)).toBeNull();
     }
@@ -718,11 +719,11 @@ describe("global pages", () => {
   it("the Platform section's pages are one sidebar group; Home is a link", () => {
     expect(PLATFORM_GROUP.items.map((p) => p.page)).toEqual([
       "platform-settings",
-      "platform-deployment",
-      "platform-operations",
+      "platform-status",
       "platform-connections",
       "platform-stores",
       "platform-feeds",
+      "platform-activity",
       "platform-override-migration",
     ]);
     for (const p of PLATFORM_GROUP.items) {
@@ -741,11 +742,11 @@ describe("global pages", () => {
     // URL still answers until U-27 removes the page.
     expect(platformItems().map((p) => p.page)).toEqual([
       "platform-settings",
-      "platform-deployment",
-      "platform-operations",
+      "platform-status",
       "platform-connections",
       "platform-stores",
       "platform-feeds",
+      "platform-activity",
     ]);
     expect(
       parseLocation("#/platform/override-migration").redirect,
@@ -755,7 +756,7 @@ describe("global pages", () => {
   it("#/platform redirects to Settings; every Platform page renders in place", () => {
     expect(parseLocation("#/platform").redirect).toBe("#/platform/settings");
     expect(parseLocation("#/platform/settings").redirect).toBeUndefined();
-    expect(parseLocation("#/platform/operations").redirect).toBeUndefined();
+    expect(parseLocation("#/platform/status").redirect).toBeUndefined();
     expect(
       parseLocation("#/platform/store-connections").redirect,
     ).toBeUndefined();
@@ -764,7 +765,7 @@ describe("global pages", () => {
       parseLocation("#/platform/override-migration").redirect,
     ).toBeUndefined();
     expect(r.platform()).toBe("#/platform");
-    expect(r.platformDeployment()).toBe("#/platform/deployment");
+    expect(r.platformStatus()).toBe("#/platform/status");
     expect(r.productNew({ via: "github" })).toBe("#/products/new?via=github");
     const wizard = parseLocation("#/products/new?via=manual&step=basics");
     expect(wizard.redirect).toBeUndefined();

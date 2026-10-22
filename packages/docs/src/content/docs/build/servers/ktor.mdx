@@ -1,0 +1,38 @@
+---
+title: "Gate a Ktor route with the license"
+description: "Refuse a request to your Ktor route unless the device's license allows it. Verified offline, with no call to Polaris Key."
+type: "how-to"
+lastReviewed: "2026-10-22"
+lanes: ["server"]
+sidebar:
+  order: 10
+---
+
+import Snippet from "../../../../components/docs/Snippet.astro";
+
+The Kotlin drop-in reads the device's license document from the `X-PKey-License` header, verifies it offline against your pinned keys and refuses the request when the license doesn't allow it. A route with no gate stays open. The contract is on [Verify licenses on your server](/docs/build/servers/).
+
+Requires the License feature and the config file `pkey sdk --lang kotlin --write` writes. The app sends `X-PKey-License` and `X-PKey-Device` with each call to your server.
+
+## Steps
+
+1. **Server** Add `im.plrs.key:polaris-key-server-ktor` from Polaris Key's Maven feed, and generate `PolarisConfig.kt` with `pkey sdk --lang kotlin --write`.
+2. **Server** Install the provider once, in `install(Authentication)`.
+3. **Server** Wrap each route that needs a gate: `requireLicense`, `requireEntitlement`, `requireTier`, `requireSignIn` or `requireAll`.
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/kotlin/server/licensing.ktor.kt"
+  title="Application.kt"
+/>
+
+`polarisKey` never refuses. Only the `require*` blocks do. `call.requirePolarisLicense()` returns the license without a null check, and throws if the route has no gate; `call.polarisLicense` is the nullable form. A missing, empty or malformed product fails at startup with a message that names the fix.
+
+## Require a signed-in account
+
+`requireSignIn` refuses with `sign_in_required` (403) while no account is signed in on the device. Wrap the route the same way as `requireEntitlement`.
+
+## More
+
+- Refusal shapes, several requirements, your own status codes and tests without a network: [Kotlin server reference](/docs/features/licensing/server-kotlin/).
+- Freshness, revocation and replay: [Verify licenses on your server](/docs/build/servers/).
+- The codes a refused request carries: [Error codes](/docs/reference/error-codes/).

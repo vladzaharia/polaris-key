@@ -112,7 +112,7 @@ When the check or the create is refused, the step shows what to do next:
 
 The Check step names any secrets the manifest declared that have no value yet, such as an OIDC
 client secret or an edge-mint signing key. Set them after creating, from
-[Keys & secrets](/docs/operate/console/keys-and-secrets/). Secrets are write-only and never echoed
+[Keys and secrets](/docs/operate/console/keys-and-secrets/). Secrets are write-only and never echoed
 back.
 
 ### What a create writes
@@ -210,7 +210,7 @@ server call, `GET /manage/api/attention`, recomputed on every read. It lists bro
 | **Credential**        | A store credential has expired or expires within the window.                                                     |
 
 Each item links to the page that fixes it. The **required secrets** list on
-[Keys & secrets](/docs/operate/console/keys-and-secrets/) is drawn from the same configuration.
+[Keys and secrets](/docs/operate/console/keys-and-secrets/) is drawn from the same configuration.
 
 ## Services & enablement
 

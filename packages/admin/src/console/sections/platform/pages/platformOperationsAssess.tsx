@@ -12,7 +12,11 @@ import {
   type OperationsQueue,
   type PlatformOperations,
 } from "../../../../api.js";
-import { formatCount, formatNumber } from "../../../../lib/format.js";
+import {
+  formatCount,
+  formatDateTime,
+  formatNumber,
+} from "../../../../lib/format.js";
 import {} from "../../../../ui/charts/StatTile.js";
 import {} from "../../../../lib/cn.js";
 import {} from "../../../../ui/DescriptionList.js";
@@ -234,7 +238,7 @@ export function assessOperations(op: PlatformOperations): OperationsAssessment {
           id: `heartbeat-${script}`,
           object: SCRIPT_LABEL[script] ?? script,
           reason: beat
-            ? `${s.label}: nothing reported since ${new Date(beat.at * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC.`
+            ? `${s.label}: nothing reported since ${formatDateTime(beat.at * 1000, { locale: "en-US", timeZone: "UTC" })}.`
             : `${s.label}.`,
           at: beat?.at,
         });

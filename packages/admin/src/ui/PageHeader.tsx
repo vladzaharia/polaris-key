@@ -1,9 +1,10 @@
 import * as React from "react";
-import { RefreshCw } from "lucide-react";
+import { CirclePause, CirclePlay, RefreshCw } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { formatRelative } from "../lib/format.js";
 import { ActionMenu } from "./ActionMenu.js";
 import { Button } from "./Button.js";
+import { IconButton } from "./IconButton.js";
 import { RefetchBar } from "./loading.js";
 import { crumbItemsOf, useMasthead } from "./Masthead.js";
 import { Switch } from "./Switch.js";
@@ -14,6 +15,8 @@ export interface PageAction {
   onSelect: () => void;
   icon?: React.ReactNode;
   disabledReason?: string;
+  /** Left out of the phone's "More actions" menu: the page draws it another way there. */
+  hideOnPhone?: boolean;
 }
 
 export interface PageHeaderProps {
@@ -38,6 +41,13 @@ export interface PageHeaderProps {
     onRefresh: () => void;
     refreshing?: boolean;
     now?: number;
+    /** The word before the age: "Updated" (default) or "Checked". */
+    verb?: string;
+    /**
+     * An icon button that pauses the page's own refreshing (Platform → Status), instead of the
+     * switch. While it runs there is no Refresh button; paused, Refresh returns.
+     */
+    pause?: { paused: boolean; onToggle: () => void };
     /** An auto-refresh switch, last in the cluster (flush right). */
     auto?: {
       checked: boolean;
@@ -47,8 +57,10 @@ export interface PageHeaderProps {
   };
   /** The one primary action (a `Button`). */
   primaryAction?: React.ReactNode;
-  /** Up to two show inline on ≥ 640 px; the rest go to "More actions". */
+  /** Up to two show inline on ≥ 640 px (`inlineSecondary`); the rest go to "More actions". */
   secondaryActions?: PageAction[];
+  /** How many secondary actions show inline on ≥ 640 px (default 2; 0: all in "More actions"). */
+  inlineSecondary?: number;
   /** Always last in "More actions", after a separator, styled danger. */
   dangerActions?: PageAction[];
   /** `PageTabs`, under the header. */
@@ -92,14 +104,15 @@ export function PageHeader({
   freshness,
   primaryAction,
   secondaryActions = [],
+  inlineSecondary = INLINE_SECONDARY,
   dangerActions = [],
   tabs,
   refetching = false,
   sticky = false,
   className,
 }: PageHeaderProps): React.ReactElement {
-  const inline = secondaryActions.slice(0, INLINE_SECONDARY);
-  const overflow = secondaryActions.slice(INLINE_SECONDARY);
+  const inline = secondaryActions.slice(0, inlineSecondary);
+  const overflow = secondaryActions.slice(inlineSecondary);
   const toItems = (actions: PageAction[], tone?: "danger") =>
     actions.map((a) => ({
       label: a.label,
@@ -117,7 +130,9 @@ export function PageHeader({
         ]
       : items;
   const desktopMenu = withDanger(toItems(overflow));
-  const mobileMenu = withDanger(toItems(secondaryActions));
+  const mobileMenu = withDanger(
+    toItems(secondaryActions.filter((a) => !a.hideOnPhone)),
+  );
 
   const nested = React.useContext(PageHeaderNested);
   const masthead = useMasthead();
@@ -148,11 +163,12 @@ export function PageHeader({
   // 640 px the inline secondaries are hidden and the primary action has its own row, so the
   // question is asked per breakpoint.
   const refreshTrailsPhone = Boolean(
-    freshness && !freshness.auto && mobileMenu.length === 0,
+    freshness && !freshness.auto && !freshness.pause && mobileMenu.length === 0,
   );
   const refreshTrailsWide = Boolean(
     freshness &&
     !freshness.auto &&
+    !freshness.pause &&
     inline.length === 0 &&
     desktopMenu.length === 0 &&
     !primaryAction,
@@ -269,24 +285,41 @@ export function PageHeader({
               <span className="inline-flex flex-wrap items-center justify-end gap-x-1 text-sm text-fg-muted">
                 {/* Shown on a phone too: the freshness is the page's one trust cue (B-022). */}
                 <span className="whitespace-nowrap">
-                  Updated {formatRelative(freshness.updatedAt, freshness.now)}
+                  {freshness.verb ?? "Updated"}{" "}
+                  {formatRelative(freshness.updatedAt, freshness.now)}
                 </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  data-trailing-ghost={
-                    refreshTrailsPhone || refreshTrailsWide ? "" : undefined
-                  }
-                  className={cn(
-                    refreshTrailsPhone && "-me-3",
-                    refreshTrailsWide ? "sm:-me-3" : "sm:me-0",
-                  )}
-                  loading={freshness.refreshing}
-                  iconStart={<RefreshCw aria-hidden />}
-                  onClick={freshness.onRefresh}
-                >
-                  Refresh
-                </Button>
+                {freshness.pause ? (
+                  <IconButton
+                    label={
+                      freshness.pause.paused
+                        ? "Resume refreshing"
+                        : "Pause refreshing"
+                    }
+                    size="sm"
+                    icon={
+                      freshness.pause.paused ? <CirclePlay /> : <CirclePause />
+                    }
+                    onClick={freshness.pause.onToggle}
+                  />
+                ) : null}
+                {freshness.pause && !freshness.pause.paused ? null : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    data-trailing-ghost={
+                      refreshTrailsPhone || refreshTrailsWide ? "" : undefined
+                    }
+                    className={cn(
+                      refreshTrailsPhone && "-me-3 conbig:-me-2",
+                      refreshTrailsWide ? "sm:-me-3 sm:conbig:-me-2" : "sm:me-0",
+                    )}
+                    loading={freshness.refreshing}
+                    iconStart={<RefreshCw aria-hidden />}
+                    onClick={freshness.onRefresh}
+                  >
+                    Refresh
+                  </Button>
+                )}
                 {freshness.auto ? (
                   <Switch
                     className="ms-2"

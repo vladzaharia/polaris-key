@@ -567,7 +567,7 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
     );
     expect(rows).toEqual({
       "Runs on": "macOS, Linux",
-      "You’d get": "No license needed",
+      "You'd get": "No license needed",
       "You qualify": "Free to use",
     });
     expect(within(panel).queryByRole("radio")).toBeNull();
@@ -825,7 +825,7 @@ describe("open products in the Library (PS-05)", () => {
     expect(
       within(get).getByRole("link", { name: /Get it from Tern Studio/ }),
     ).toBeTruthy();
-    expect(screen.getByRole("region", { name: "Need help?" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Help" })).toBeTruthy();
     expect(await axeViolations()).toEqual([]);
 
     const menu = screen.getByRole("button", {

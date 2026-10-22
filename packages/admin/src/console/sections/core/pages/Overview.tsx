@@ -1,26 +1,29 @@
 /**
- * Core → Overview (T1; docs/design/ADMIN.md §6.2): "is this product healthy, and what is it
- * running?"
+ * Core → Overview (products.overview; docs/design/ADMIN.md §3): "is this product healthy, and what
+ * is it running?" One grid for the page body:
  *
- * - The header's primary action is the Integration card's computed next step (ST-41); with none
- *   left it follows enablement: Create license with License on, else Publish catalog with Config
- *   on, else Enable services (OVR-1).
- * - Needs attention lists operational problems: a missing signing key, unset secrets, failed
- *   syncs, recipes awaiting approval, expiring licenses (OVR-2).
- * - One tile per **enabled** service, each its section's accent, numbers from that service's own
- *   queries, loaded per tile (one failing never blanks the page; OVR-1, OVR-5).
- * - The Integration card (`components/IntegrationCard.tsx`) replaces the setup checklist, Trust &
- *   SDK and the welcome: features Verified, per platform, the next step; the install and the
- *   pins moved to the Integration page.
+ * - The hero (`components/OverviewHero.tsx`) is the masthead: the product's identity, the one
+ *   computed next step (the first attention item, else Integration's next step, else the main
+ *   action) and, until the operator hides it, the Integration pane (a gauge per platform).
+ * - The board: one card per feature in canonical order, each its key number, from the feature's
+ *   own queries, loaded per card (one failing never blanks the page). A feature the product does
+ *   not run is a dashed cell.
+ * - Integration steps (`components/IntegrationSteps.tsx`): a rail, a row per feature, a badge per
+ *   platform. Recent activity runs under the board.
  * - Moments (EXPERIENCE.md §0.7; MO-11): the first catalog publish, the first release, the first
  *   store connected and the product launched each show once per product, as one line with the
- *   success check and sparks (`components/Moment.tsx`); the attention list staggers in on the
- *   page's first load.
+ *   success check and sparks (`components/Moment.tsx`).
+ * - The columns follow the grid's own width (4 from 1488 px, 3 from 976, 2 from 680, else 1).
  */
 
 import * as React from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { ArrowRight, Eye, Settings as SettingsIcon } from "lucide-react";
+import {
+  ArrowRight,
+  Eye,
+  Server,
+  Settings as SettingsIcon,
+} from "lucide-react";
 import {
   ApiError,
   api,
@@ -29,15 +32,16 @@ import {
   type ReleaseDto,
   type ServiceSlug,
 } from "../../../../api.js";
-import { formatCount, fromSeconds } from "../../../../lib/format.js";
+import {
+  formatCount,
+  formatDateTime,
+  fromSeconds,
+} from "../../../../lib/format.js";
+import { cn } from "../../../../lib/cn.js";
 import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
-import { IdChip } from "../../../../ui/IdChip.js";
-import { ServiceGlyph } from "../../../../ui/ServiceBadge.js";
 import { PageSkeleton, Skeleton } from "../../../../ui/Skeleton.js";
-import { StatusPill } from "../../../../ui/StatusPill.js";
-import { Timeline, TimelineItem } from "../../../../ui/Timeline.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import {
@@ -51,9 +55,13 @@ import { useWriteGate } from "../../../access/useCan.js";
 import { useAttention, useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { OverviewAttention } from "../components/OverviewAttention.js";
-import { OverviewByline } from "../components/OverviewByline.js";
 import { Link, navigate } from "../../../router.js";
-import { Big, Line, TileFrame } from "../components/TileFrame.js";
+import {
+  FeatureCard,
+  OffCard,
+  SectionHead,
+  tileTitle,
+} from "../components/TileFrame.js";
 import {
   ShipBuildsTile,
   latestAppRelease,
@@ -62,11 +70,7 @@ import { CommerceTile } from "../../commerce/CommerceTile.js";
 import { pendingRecipesOf, reviewHref } from "../../config/model/pending.js";
 import { r } from "../../../routes.js";
 import {
-  DashboardTemplate,
-  Panel,
-  useFirstLoad,
-} from "../../../templates/Dashboard.js";
-import {
+  heroStep,
   productAttentionItems,
   useAttentionPending,
 } from "./overviewAttention.js";
@@ -74,7 +78,8 @@ import { ActivityTarget, actorName, useActivityFeed } from "./Activity.js";
 import { verbFor } from "../model/activityVerbs.js";
 import { fetchDeviceSummary } from "./Devices.js";
 import { declaresSaves, noCatalog, userSettings } from "../../sync/data.js";
-import { IntegrationCard } from "../components/IntegrationCard.js";
+import { IntegrationSteps } from "../components/IntegrationSteps.js";
+import { IntegrationPane, OverviewHero } from "../components/OverviewHero.js";
 import { nextStep } from "../model/integration.js";
 import { runningFeatures } from "../../global/model/home.js";
 import { useSetup } from "../../../wizard/useSetup.js";
@@ -102,7 +107,6 @@ export function OverviewPage({ slug }: { slug: string }): React.ReactElement {
   // The attention read is part of the first load (MO-11).
   const pending = useAttentionPending() || product.isPending;
   useLoadingAnnouncement("overview", pending);
-  const firstLoad = useFirstLoad(`overview:${slug}`, pending);
   if (pending) {
     return (
       <div className="space-y-6">
@@ -126,7 +130,6 @@ export function OverviewPage({ slug }: { slug: string }): React.ReactElement {
     <OverviewBody
       slug={slug}
       product={product.data}
-      firstLoad={firstLoad}
       placeholder={product.isPlaceholderData}
     />
   );
@@ -135,19 +138,14 @@ export function OverviewPage({ slug }: { slug: string }): React.ReactElement {
 function OverviewBody({
   slug,
   product: p,
-  firstLoad,
   placeholder = false,
 }: {
   slug: string;
   product: ProductDetail;
-  /** The page's first-load key (`useFirstLoad`), for the attention list's stagger. */
-  firstLoad?: string;
   /** The product is the products list's row standing in until its own read lands. */
   placeholder?: boolean;
 }): React.ReactElement {
   const enabled = SERVICE_ORDER.filter((s) => on(p, s));
-  // Ship builds is one tile: Release's stands for it and carries Distribution and Update.
-  const tiles = enabled.filter((s) => s !== "distribution" && s !== "update");
   const features = runningFeatures(p);
   const licenses = useQuery({
     queryKey: qk.licenses(slug),
@@ -170,7 +168,6 @@ function OverviewBody({
             : "before",
         }
       : UNKNOWN;
-  const sync = p.sync;
   const serverAttention = useAttention();
   const pending = pendingRecipesOf(serverAttention.data, slug);
   const next = view
@@ -179,138 +176,208 @@ function OverviewBody({
   const setup = useSetup(slug);
   const licenseGate = useWriteGate("license", slug);
   const hidden = setup.choices.integrationHidden !== null;
-  // Show Integration puts the card back and the card takes focus; nothing else moves it.
+  // Show Integration puts the pane back and the pane takes focus; nothing else moves it.
   const [justShown, setJustShown] = React.useState(false);
-  const cardShown = enabled.length > 0 && !hidden;
+  const paneShown = enabled.length > 0 && !hidden;
+  // Hide unmounts its own button: focus goes to ⋯ More, where Show Integration now lives.
+  const focusHeroMenu = (): void => {
+    requestAnimationFrame(() =>
+      document
+        .querySelector<HTMLElement>(
+          '[data-testid="overview-hero"] button[aria-label="More"]',
+        )
+        ?.focus(),
+    );
+  };
   const attention = productAttentionItems(
     slug,
     serverAttention.data,
     licenses.data?.licenses,
-    {
-      signing:
-        cardShown && (integration.isPending || next?.to === r.keys(slug)),
-      recipes:
-        cardShown &&
-        (integration.isPending || next?.to === reviewHref(slug, pending)),
-    },
   );
+  const step = heroStep(attention, next, (service) =>
+    service ? tileTitle(service as ServiceSlug) : "Core",
+  );
+  const attentionOf = (s: ServiceSlug): number =>
+    attention.filter((i) => i.service === s).length;
+  // Nothing is decided until the read model answers, so the action never changes once it shows.
+  const stepPending =
+    enabled.length > 0 && attention.length === 0 && integration.isPending;
 
   const fallback = on(p, "license") ? (
-    <Button asChild disabledReason={licenseGate.disabledReason}>
+    <Button asChild size="lg" disabledReason={licenseGate.disabledReason}>
       <Link to={r.newLicense(slug)}>New license</Link>
     </Button>
   ) : on(p, "config") ? (
-    <Button asChild>
+    <Button asChild size="lg">
       <Link to={r.catalog(slug)}>Publish catalog</Link>
     </Button>
   ) : (
-    <Button asChild>
+    <Button asChild size="lg">
       <Link to={r.services(slug)}>Enable features</Link>
     </Button>
   );
-  // The card's hero carries the next step while it shows; otherwise the header does. Nothing is
-  // decided until the read model answers, so the primary never changes after it appears.
-  const primary =
-    enabled.length > 0 && integration.isPending ? (
-      <Skeleton className="h-9 w-36" />
-    ) : cardShown && next && integration.isSuccess ? undefined : next ? (
-      <Button asChild>
-        <Link to={next.to}>{next.text}</Link>
-      </Button>
-    ) : (
-      fallback
-    );
+  const menu = [
+    {
+      label: "Settings",
+      icon: <SettingsIcon aria-hidden />,
+      onSelect: () => navigate(r.settings(slug)),
+    },
+    ...(hidden && enabled.length > 0
+      ? [
+          {
+            label: "Show Integration",
+            icon: <Eye aria-hidden />,
+            disabledReason: setup.allowed ? undefined : setup.disabledReason,
+            onSelect: () =>
+              void setup.setIntegrationHidden(false).then((ok) => {
+                if (ok) setJustShown(true);
+              }),
+          },
+        ]
+      : []),
+  ];
+  const canHide = Boolean(view?.features.some((f) => f.status === "verified"));
+  const stepsShown = paneShown && Boolean(view) && view!.features.length > 0;
 
-  return (
-    <DashboardTemplate
-      header={
-        <PageHeader
-          title={p.name}
-          titleAside={<IdChip value={slug} noun="slug" head={32} />}
-          description={
-            <OverviewByline
-              features={features.length}
-              linked={p.releaseSource === "github"}
-              resyncedAt={sync?.lastSyncedAt}
-              createdAt={p.createdAt}
-            />
-          }
-          primaryAction={primary}
-          secondaryActions={[
-            {
-              label: "Settings",
-              icon: <SettingsIcon aria-hidden />,
-              onSelect: () => navigate(r.settings(slug)),
-            },
-            ...(hidden && enabled.length > 0
-              ? [
-                  {
-                    label: "Show Integration",
-                    icon: <Eye aria-hidden />,
-                    disabledReason: setup.allowed
-                      ? undefined
-                      : setup.disabledReason,
-                    onSelect: () =>
-                      void setup.setIntegrationHidden(false).then((ok) => {
-                        if (ok) setJustShown(true);
-                      }),
-                  },
-                ]
-              : []),
-          ]}
-        />
-      }
-      attention={
-        <>
-          <OverviewMoments slug={slug} product={p} launched={launched} />
-          <OverviewAttention
-            read={serverAttention}
-            items={attention}
-            stagger={firstLoad}
-            primaryFirst
+  // The board's cells in canonical order; a feature the product does not run is a dashed cell.
+  const cell = (s: ServiceSlug): React.ReactElement => {
+    if (!on(p, s))
+      return <OffCard key={s} service={s} href={r.services(slug)} />;
+    switch (s) {
+      case "license":
+        return (
+          <LicenseTile
+            key={s}
+            slug={slug}
+            licenses={licenses}
+            attention={attentionOf(s)}
           />
-        </>
-      }
-      firstRun={
-        enabled.length === 0 ? (
-          <EmptyState
-            kind="first-run"
-            title="This product runs no features yet"
-            description="Core keeps its devices, keys and settings. Turn on the features it needs: Licensing for licenses, Managed config for signed config, Ship builds to release and distribute."
-            primaryAction={
-              <Button asChild>
-                <Link to={r.services(slug)}>Enable features</Link>
-              </Button>
+        );
+      case "config":
+        return <ConfigTile key={s} slug={slug} attention={attentionOf(s)} />;
+      case "release":
+        return (
+          <ShipBuildsTile
+            key={s}
+            slug={slug}
+            distribution={on(p, "distribution")}
+            update={on(p, "update")}
+            attention={
+              attentionOf("release") +
+              attentionOf("distribution") +
+              attentionOf("update")
             }
           />
-        ) : undefined
-      }
-      tiles={
-        <>
-          {cardShown ? (
-            <IntegrationCard
-              slug={slug}
-              query={integration}
-              next={next}
-              focusHeading={justShown}
-              demoted={attention.length > 0}
-            />
-          ) : null}
-          <div className="col-span-full grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {tiles.map((s) => (
-              <ServiceTile
-                key={s}
+        );
+      case "identity":
+        return <IdentityTile key={s} slug={slug} attention={attentionOf(s)} />;
+      case "sync":
+        return <SyncTile key={s} slug={slug} attention={attentionOf(s)} />;
+      default:
+        return <CommerceTile key={s} slug={slug} attention={attentionOf(s)} />;
+    }
+  };
+  const BOARD: ServiceSlug[] = [
+    "license",
+    "config",
+    "release",
+    "identity",
+    "sync",
+    "commerce",
+  ];
+
+  return (
+    <div
+      data-template="overview"
+      className="@container mx-auto w-full max-w-[1760px]"
+    >
+      <div className="grid grid-cols-1 gap-6 @min-[680px]:grid-cols-2 @min-[976px]:grid-cols-3 @min-[1488px]:grid-cols-4">
+        <div className="col-span-full space-y-3 empty:hidden">
+          <OverviewMoments slug={slug} product={p} launched={launched} />
+          <OverviewAttention read={serverAttention} />
+        </div>
+        <OverviewHero
+          slug={slug}
+          product={p}
+          featureCount={features.length}
+          step={step}
+          fallback={fallback}
+          stepPending={stepPending}
+          menu={menu}
+          pane={
+            paneShown ? (
+              <IntegrationPane
                 slug={slug}
-                product={p}
-                service={s}
-                licenses={s === "license" ? licenses : undefined}
+                query={integration}
+                focusHeading={justShown}
+                hide={
+                  canHide
+                    ? {
+                        onHide: () =>
+                          void setup.setIntegrationHidden(true).then((ok) => {
+                            if (ok) focusHeroMenu();
+                          }),
+                        disabledReason: setup.allowed
+                          ? undefined
+                          : setup.disabledReason,
+                      }
+                    : null
+                }
               />
-            ))}
+            ) : null
+          }
+        />
+        {enabled.length === 0 ? (
+          <div className="col-span-full">
+            <EmptyState
+              kind="first-run"
+              title="This product runs no features yet"
+              description="Core keeps its devices, keys and settings. Turn on the features it needs: Licensing for licenses, Managed config for signed config, Ship builds to release and distribute."
+              primaryAction={
+                <Button asChild>
+                  <Link to={r.services(slug)}>Enable features</Link>
+                </Button>
+              }
+            />
           </div>
-        </>
-      }
-      primary={<RecentActivity slug={slug} />}
-    ></DashboardTemplate>
+        ) : (
+          <>
+            <section
+              aria-labelledby="overview-features"
+              className="grid grid-cols-subgrid content-start gap-y-4 @min-[680px]:col-span-2 @min-[680px]:col-start-1 @min-[680px]:row-start-2 @min-[1488px]:col-span-3"
+            >
+              <SectionHead
+                id="overview-features"
+                title="Features"
+                action={{ label: "Manage features", to: r.services(slug) }}
+              />
+              <div className="col-span-full grid grid-cols-subgrid gap-y-4">
+                {BOARD.map(cell)}
+              </div>
+            </section>
+            {stepsShown ? (
+              <section
+                aria-labelledby="overview-steps"
+                className="space-y-4 @min-[680px]:col-start-2 @min-[680px]:row-start-3 @min-[976px]:col-start-3 @min-[976px]:row-span-2 @min-[976px]:row-start-2 @min-[1488px]:col-start-4"
+              >
+                <SectionHead id="overview-steps" title="Integration steps" />
+                <div className="@container overflow-hidden rounded-xl border border-border bg-surface-raised">
+                  <IntegrationSteps slug={slug} view={view!} />
+                </div>
+              </section>
+            ) : null}
+            <RecentActivity
+              slug={slug}
+              className={cn(
+                stepsShown
+                  ? "@min-[680px]:col-start-1 @min-[680px]:row-start-3 @min-[976px]:col-span-2 @min-[1488px]:col-span-3"
+                  : "@min-[680px]:col-span-2 @min-[680px]:col-start-1 @min-[680px]:row-start-3 @min-[976px]:col-span-1 @min-[976px]:col-start-3 @min-[976px]:row-start-2 @min-[1488px]:col-start-4",
+              )}
+            />
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -551,49 +618,15 @@ function OverviewMoments({
   );
 }
 
-// ── Service tiles ──────────────────────────────────────────────────────────────────────────────
-function ServiceTile({
-  slug,
-  product,
-  service,
-  licenses,
-}: {
-  slug: string;
-  product: ProductDetail;
-  service: ServiceSlug;
-  licenses?: LicensesQuery;
-}): React.ReactElement {
-  switch (service) {
-    case "license":
-      return <LicenseTile slug={slug} licenses={licenses!} />;
-    case "config":
-      return <ConfigTile slug={slug} />;
-    case "release":
-      return (
-        <ShipBuildsTile
-          slug={slug}
-          distribution={on(product, "distribution")}
-          update={on(product, "update")}
-        />
-      );
-    case "distribution":
-    case "update":
-      return <></>;
-    case "identity":
-      return <IdentityTile slug={slug} />;
-    case "sync":
-      return <SyncTile slug={slug} />;
-    case "commerce":
-      return <CommerceTile slug={slug} />;
-  }
-}
-
+// ── Feature cards ──────────────────────────────────────────────────────────────────────────────
 function LicenseTile({
   slug,
   licenses,
+  attention,
 }: {
   slug: string;
   licenses: LicensesQuery;
+  attention: number;
 }): React.ReactElement {
   const devices = useQuery({
     queryKey: qk.devicesSummary(slug),
@@ -613,26 +646,33 @@ function LicenseTile({
   ).length;
   const disabled = list.filter((l) => l.status === "disabled").length;
   return (
-    <TileFrame
+    <FeatureCard
       service="license"
       href={r.licenses(slug)}
-      linkLabel="Licenses"
+      attention={attention}
       loading={licenses.isPending}
       error={licenses.isError ? licenses.error : undefined}
       onRetry={() => void licenses.refetch()}
-    >
-      <Big>{formatCount(active)} active</Big>
-      <Line>
-        {formatCount(expiring)} expiring soon · {formatCount(disabled)} disabled
-      </Line>
-      {devices.data ? (
-        <Line>{formatCount(devices.data.total)} devices</Line>
-      ) : null}
-    </TileFrame>
+      number={formatCount(active)}
+      unit="active"
+      foot={[
+        `${formatCount(expiring)} expiring soon`,
+        `${formatCount(disabled)} disabled`,
+        devices.data ? `${formatCount(devices.data.total)} devices` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")}
+    />
   );
 }
 
-function ConfigTile({ slug }: { slug: string }): React.ReactElement {
+function ConfigTile({
+  slug,
+  attention,
+}: {
+  slug: string;
+  attention: number;
+}): React.ReactElement {
   const catalog = useQuery({
     queryKey: qk.catalog(slug),
     queryFn: () => api.schema(slug),
@@ -644,65 +684,78 @@ function ConfigTile({ slug }: { slug: string }): React.ReactElement {
   });
   const missing =
     catalog.error instanceof ApiError && catalog.error.status === 404;
+  const entries = catalog.data?.entries ?? [];
+  const secrets = entries.filter(
+    (e) => (e as { kind?: string }).kind === "secret",
+  ).length;
+  const count = profiles.data?.profiles.length;
   return (
-    <TileFrame
+    <FeatureCard
       service="config"
-      badge={
-        catalog.data && !missing ? (
-          <StatusPill tone="neutral" icon={false} size="sm">
-            Schema v{catalog.data.schemaVersion}
-          </StatusPill>
-        ) : undefined
-      }
       href={r.catalog(slug)}
-      linkLabel="Catalog"
+      attention={attention}
       loading={catalog.isPending}
       error={catalog.isError && !missing ? catalog.error : undefined}
       onRetry={() => void catalog.refetch()}
-    >
-      {missing || !catalog.data ? (
-        <Big>No catalog yet</Big>
-      ) : (
-        <>
-          <Big>{formatCount(catalog.data.entries.length)} keys</Big>
-        </>
-      )}
-      {profiles.data ? (
-        <Line>
-          {formatCount(profiles.data.profiles.length)}{" "}
-          {profiles.data.profiles.length === 1 ? "profile" : "profiles"}
-        </Line>
-      ) : null}
-    </TileFrame>
+      number={
+        missing || !catalog.data ? undefined : `v${catalog.data.schemaVersion}`
+      }
+      unit={missing || !catalog.data ? undefined : "catalog"}
+      foot={
+        missing || !catalog.data
+          ? "No catalog yet"
+          : [
+              `${formatCount(entries.length - secrets)} ${entries.length - secrets === 1 ? "setting" : "settings"}`,
+              `${formatCount(secrets)} ${secrets === 1 ? "secret" : "secrets"}`,
+              count === undefined
+                ? null
+                : `${formatCount(count)} ${count === 1 ? "profile" : "profiles"}`,
+            ]
+              .filter(Boolean)
+              .join(" · ")
+      }
+    />
   );
 }
 
-function IdentityTile({ slug }: { slug: string }): React.ReactElement {
+function IdentityTile({
+  slug,
+  attention,
+}: {
+  slug: string;
+  attention: number;
+}): React.ReactElement {
   const portal = useQuery({
     queryKey: qk.portal(slug),
     queryFn: () => api.portalSettings(slug).then((r) => r.settings),
   });
   const s = portal.data;
   return (
-    <TileFrame
+    <FeatureCard
       service="identity"
       href={r.appSignIn(slug)}
-      linkLabel="App sign-in"
+      attention={attention}
       loading={portal.isPending}
       error={portal.isError ? portal.error : undefined}
       onRetry={() => void portal.refetch()}
-    >
-      {s ? (
-        <>
-          <Big>{s.portalEnabled ? "On" : "Off"}</Big>
-          <Line>Sign-in by email code and passkeys</Line>
-        </>
-      ) : null}
-    </TileFrame>
+      foot={
+        s
+          ? s.portalEnabled
+            ? "Sign-in by email code and passkeys"
+            : "Sign-in is off"
+          : undefined
+      }
+    />
   );
 }
 
-function SyncTile({ slug }: { slug: string }): React.ReactElement {
+function SyncTile({
+  slug,
+  attention,
+}: {
+  slug: string;
+  attention: number;
+}): React.ReactElement {
   const catalog = useQuery({
     queryKey: qk.catalog(slug),
     queryFn: () => api.schema(slug),
@@ -712,77 +765,120 @@ function SyncTile({ slug }: { slug: string }): React.ReactElement {
   const data = empty ? null : catalog.data;
   const settings = userSettings(data ?? null).length;
   const collections = data?.cloudSync?.collections?.length ?? 0;
+  const syncing = settings > 0 || collections > 0;
   return (
-    <TileFrame
+    <FeatureCard
       service="sync"
       href={r.syncData(slug)}
-      linkLabel="Data"
+      attention={attention}
       loading={catalog.isPending}
       error={catalog.isError && !empty ? catalog.error : undefined}
       onRetry={() => void catalog.refetch()}
-    >
-      {data !== undefined ? (
-        <>
-          <Big>
-            {formatCount(settings)} synced{" "}
-            {settings === 1 ? "setting" : "settings"}
-          </Big>
-          <Line>
-            {formatCount(collections)}{" "}
-            {collections === 1 ? "collection" : "collections"} · saves{" "}
-            {declaresSaves(data ?? null) ? "declared" : "not declared"}
-          </Line>
-        </>
-      ) : null}
-    </TileFrame>
+      number={syncing ? formatCount(settings) : undefined}
+      unit={syncing ? (settings === 1 ? "setting" : "settings") : undefined}
+      foot={
+        data !== undefined
+          ? syncing
+            ? `${formatCount(collections)} ${collections === 1 ? "collection" : "collections"} · saves ${declaresSaves(data ?? null) ? "declared" : "not declared"}`
+            : "Not syncing yet"
+          : undefined
+      }
+    />
   );
+}
+
+/** "Today, 10:42" or "Oct 6, 4:20 PM": the mockup's flat-row time, in the viewer's locale. */
+function activityWhen(at: number, now = Date.now()): string {
+  const day = (t: number): string => new Date(t).toDateString();
+  const time = new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(at);
+  if (day(at) === day(now)) return `Today, ${time}`;
+  const date = new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  }).format(at);
+  return `${date}, ${time}`;
+}
+
+function activityInitials(name: string): string {
+  const w = name.trim().split(/\s+/).filter(Boolean);
+  const l =
+    w.length >= 2
+      ? `${w[0]![0]}${w[w.length - 1]![0]}`
+      : (w[0] ?? "?").slice(0, 2);
+  return l.toUpperCase();
 }
 
 // ── Recent activity ────────────────────────────────────────────────────────────────────────────
 
-function RecentActivity({ slug }: { slug: string }): React.ReactElement {
+function RecentActivity({
+  slug,
+  className,
+}: {
+  slug: string;
+  className?: string;
+}): React.ReactElement {
   const feed = useActivityFeed(slug, {});
   const items = (feed.data?.pages.flatMap((pg) => pg.items) ?? []).slice(0, 5);
   return (
-    <Panel
-      title="Recent activity"
-      action={
-        <Link
-          to={r.activity(slug)}
-          className="inline-flex min-h-6 items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
-        >
-          View activity
-          <ArrowRight aria-hidden className="size-3.5" />
-        </Link>
-      }
+    <section
+      aria-labelledby="overview-activity"
+      className={cn("space-y-4", className)}
     >
-      {feed.isPending ? (
-        <Skeleton className="h-24 w-full" />
-      ) : feed.isError ? (
-        <ErrorState
-          compact
-          error={feed.error}
-          onRetry={() => void feed.refetch()}
-        />
-      ) : items.length === 0 ? (
-        <p className="text-sm text-fg-muted">No activity yet.</p>
-      ) : (
-        <Timeline
-          label="Recent activity"
-          groupBy="day"
-          items={items}
-          getKey={(i) => i.id}
-          getTime={(i) => fromSeconds(i.at)}
-          renderItem={(i) => (
-            <TimelineItem
-              actor={i.actor.sub ? { name: actorName(i) } : "system"}
-              verb={verbFor(i.action)}
-              target={<ActivityTarget slug={slug} item={i} />}
-              at={fromSeconds(i.at)}
-            />
-          )}
-        />
-      )}
-    </Panel>
+      <SectionHead
+        id="overview-activity"
+        title="Recent activity"
+        action={{ label: "Open Activity", to: r.activity(slug) }}
+      />
+      <div className="rounded-xl border border-border bg-surface-raised p-4">
+        {feed.isPending ? (
+          <Skeleton className="h-24 w-full" />
+        ) : feed.isError ? (
+          <ErrorState
+            compact
+            error={feed.error}
+            onRetry={() => void feed.refetch()}
+          />
+        ) : items.length === 0 ? (
+          <p className="text-sm text-fg-muted">No activity yet.</p>
+        ) : (
+          <ul aria-label="Recent activity" className="divide-y divide-border">
+            {items.map((i) => {
+              const name = i.actor.sub ? actorName(i) : "Polaris Key";
+              return (
+                <li
+                  key={i.id}
+                  className="flex items-center gap-3 py-2.5 text-sm first:pt-0 last:pb-0"
+                >
+                  <span
+                    aria-hidden
+                    className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-xs font-medium text-fg-muted"
+                  >
+                    {i.actor.sub ? (
+                      activityInitials(name)
+                    ) : (
+                      <Server className="size-3.5" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1 text-fg [overflow-wrap:anywhere]">
+                    <span className="font-medium text-fg-strong">{name}</span>{" "}
+                    {verbFor(i.action)} <ActivityTarget slug={slug} item={i} />
+                  </span>
+                  <time
+                    dateTime={new Date(fromSeconds(i.at)).toISOString()}
+                    title={formatDateTime(fromSeconds(i.at))}
+                    className="shrink-0 text-xs text-fg-subtle tabular-nums"
+                  >
+                    {activityWhen(fromSeconds(i.at))}
+                  </time>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }

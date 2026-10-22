@@ -31198,7 +31198,7 @@ var SDK_KIT_DOCS = {
   kotlin: "/docs/build/ui/frameworks/compose/",
   godot: "/docs/build/ui/frameworks/godot/"
 };
-var SERVER_DOCS = "/docs/features/licensing/server-verification/";
+var SERVER_DOCS = "/docs/build/servers/";
 var q2 = (v) => JSON.stringify(v);
 var py = (v) => typeof v === "boolean" ? v ? "True" : "False" : JSON.stringify(v);
 var tsType = (v) => typeof v;
@@ -31333,13 +31333,13 @@ var NODE_LIBRARY = {
 };
 var NODE_KIT = {
   licensing: (c) => ({
-    title: "Mount the Polaris Key verbs in your CLI",
+    title: "Mount the Polaris Key verbs and gate a command",
     filename: "cli.ts",
     language: "ts",
     code: lines2(
       `import { Command } from "commander";`,
       `import { PolarisKeyClient } from "@polaris-key/node";`,
-      `import { registerPolarisCommands } from "@polaris-key/node/cli";`,
+      `import { registerPolarisCommands, requireLicense } from "@polaris-key/node/cli";`,
       `import { polarisConfig } from "./polaris.config.js";`,
       ``,
       `const program = new Command(${q2(c.appName)});`,
@@ -31355,6 +31355,9 @@ var NODE_KIT = {
       `    expectedServices: polarisConfig.expectedServices,`,
       `  },`,
       `);`,
+      `program`,
+      `  .command("export")`,
+      `  .action(requireLicense(() => console.log("exported"), { entitlement: ${q2(c.entitlement)} }));`,
       `await program.parseAsync();`
     )
   })
@@ -31409,6 +31412,131 @@ var NODE_SERVER = {
       `  });`,
       `  return v.ok && v.usable && v.isEntitled(${q2(c.entitlement)});`,
       `}`
+    )
+  })
+};
+var NODE_EXPRESS = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app.ts",
+    language: "ts",
+    code: lines2(
+      `import express from "express";`,
+      `import { polarisKey, requireEntitlement } from "@polaris-key/server/express";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const app = express();`,
+      `app.use(polarisKey({ config: polarisConfig }));`,
+      ``,
+      `app.get("/api/pro", requireEntitlement(${q2(c.entitlement)}), (_req, res) => {`,
+      `  res.json({ ok: true });`,
+      `});`,
+      ``,
+      `app.listen(3000);`
+    )
+  }),
+  identity: () => ({
+    title: "Read the signed-in account",
+    filename: "app.ts",
+    language: "ts",
+    code: lines2(
+      `import express from "express";`,
+      `import {`,
+      `  getPolarisAuth,`,
+      `  polarisKey,`,
+      `  requireSignIn,`,
+      `} from "@polaris-key/server/express";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const app = express();`,
+      `app.use(polarisKey({ config: polarisConfig }));`,
+      ``,
+      `app.get("/api/me", requireSignIn(), (req, res) => {`,
+      `  res.json({ subject: getPolarisAuth(req).user?.subject });`,
+      `});`,
+      ``,
+      `app.listen(3000);`
+    )
+  })
+};
+var NODE_HONO = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app.ts",
+    language: "ts",
+    code: lines2(
+      `import { Hono } from "hono";`,
+      `import {`,
+      `  polarisKey,`,
+      `  requireEntitlement,`,
+      `  type PolarisEnv,`,
+      `} from "@polaris-key/server/hono";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const app = new Hono<PolarisEnv>();`,
+      `app.use("/api/*", polarisKey({ config: polarisConfig }));`,
+      ``,
+      `app.get("/api/pro", requireEntitlement(${q2(c.entitlement)}), (c) =>`,
+      `  c.json({ tier: c.var.polaris.license.tier }),`,
+      `);`,
+      ``,
+      `export default app;`
+    )
+  }),
+  identity: () => ({
+    title: "Read the signed-in account",
+    filename: "app.ts",
+    language: "ts",
+    code: lines2(
+      `import { Hono } from "hono";`,
+      `import {`,
+      `  polarisKey,`,
+      `  requireSignIn,`,
+      `  type PolarisEnv,`,
+      `} from "@polaris-key/server/hono";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const app = new Hono<PolarisEnv>();`,
+      `app.use("/api/*", polarisKey({ config: polarisConfig }));`,
+      ``,
+      `app.get("/api/me", requireSignIn(), (c) =>`,
+      `  c.json({ subject: c.var.polaris.user?.subject }),`,
+      `);`,
+      ``,
+      `export default app;`
+    )
+  })
+};
+var NODE_NEXT = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app/api/pro/route.ts",
+    language: "ts",
+    code: lines2(
+      `import { createNextPolarisKey } from "@polaris-key/server/next";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const polaris = createNextPolarisKey({ config: polarisConfig });`,
+      ``,
+      `export const GET = polaris.requireEntitlement(`,
+      `  ${q2(c.entitlement)},`,
+      `  async (_req, { license }) => Response.json({ tier: license.tier }),`,
+      `);`
+    )
+  }),
+  identity: () => ({
+    title: "Read the signed-in account",
+    filename: "app/api/me/route.ts",
+    language: "ts",
+    code: lines2(
+      `import { createNextPolarisKey } from "@polaris-key/server/next";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const polaris = createNextPolarisKey({ config: polarisConfig });`,
+      ``,
+      `export const GET = polaris.requireSignIn(async (_req, { user }) =>`,
+      `  Response.json({ subject: user?.subject }),`,
+      `);`
     )
   })
 };
@@ -31637,22 +31765,31 @@ var PY_LIBRARY = {
 };
 var PY_KIT = {
   licensing: (c) => ({
-    title: "Mount the Polaris Key verbs in your CLI",
+    title: "Mount the Polaris Key verbs and gate a command",
     filename: "cli.py",
     language: "python",
     code: lines2(
       `import argparse`,
       ``,
-      `from polaris_key.cli import register_argparse`,
+      `from polaris_key.cli import register_argparse, require_license`,
       ``,
       `import polaris_config`,
       ``,
+      ``,
+      `@require_license(entitlement=${q2(c.entitlement)})`,
+      `def export(args: argparse.Namespace) -> int:`,
+      `    print("exported")`,
+      `    return 0`,
+      ``,
+      ``,
       `parser = argparse.ArgumentParser(prog=${q2(c.appName)})`,
+      `sub = parser.add_subparsers(dest="command", required=True)`,
       `register_argparse(`,
-      `    parser.add_subparsers(dest="command", required=True),`,
+      `    sub,`,
       `    config=polaris_config.CONFIG,`,
       `    version=${q2(c.appVersion)},  # your app's version`,
       `)`,
+      `sub.add_parser("export", help="Export a mix.").set_defaults(func=export)`,
       `args = parser.parse_args()`,
       `raise SystemExit(args.func(args))`
     )
@@ -31783,22 +31920,309 @@ var GODOT_LIBRARY = {
     )
   })
 };
+var PY_FASTAPI = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "main.py",
+    language: "python",
+    code: lines2(
+      `from typing import Annotated, Dict`,
+      ``,
+      `from fastapi import Depends, FastAPI`,
+      ``,
+      `import polaris_config`,
+      `from polaris_key.server.fastapi import PolarisAuth, PolarisKey`,
+      ``,
+      `app = FastAPI()`,
+      `polaris = PolarisKey(config=polaris_config)`,
+      `polaris.install(app)`,
+      ``,
+      ``,
+      `@app.get("/api/pro")`,
+      `def pro(`,
+      `    auth: Annotated[PolarisAuth, Depends(polaris.require_entitlement(${q2(c.entitlement)}))],`,
+      `) -> Dict[str, bool]:`,
+      `    return {"ok": True}`
+    )
+  }),
+  identity: () => ({
+    title: "Read the signed-in account",
+    filename: "main.py",
+    language: "python",
+    code: lines2(
+      `from typing import Annotated, Dict, Optional`,
+      ``,
+      `from fastapi import Depends, FastAPI`,
+      ``,
+      `import polaris_config`,
+      `from polaris_key.server.fastapi import PolarisAuth, PolarisKey`,
+      ``,
+      `app = FastAPI()`,
+      `polaris = PolarisKey(config=polaris_config)`,
+      `polaris.install(app)`,
+      ``,
+      ``,
+      `@app.get("/api/me")`,
+      `def me(auth: Annotated[PolarisAuth, Depends(polaris.require_sign_in())]) -> Dict[str, Optional[str]]:`,
+      `    return {"subject": auth.user.subject if auth.user else None}`
+    )
+  })
+};
+var PY_STARLETTE = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app.py",
+    language: "python",
+    code: lines2(
+      `from starlette.applications import Starlette`,
+      `from starlette.requests import Request`,
+      `from starlette.responses import JSONResponse`,
+      `from starlette.routing import Route`,
+      ``,
+      `import polaris_config`,
+      `from polaris_key.server.starlette import PolarisKey, get_polaris_license`,
+      ``,
+      `polaris = PolarisKey(config=polaris_config)`,
+      ``,
+      ``,
+      `@polaris.require_entitlement(${q2(c.entitlement)})`,
+      `async def pro(request: Request) -> JSONResponse:`,
+      `    return JSONResponse({"tier": get_polaris_license(request).tier})`,
+      ``,
+      ``,
+      `app = Starlette(routes=[Route("/api/pro", pro)])`,
+      `polaris.install(app)`
+    )
+  })
+};
+var PY_FLASK = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app.py",
+    language: "python",
+    code: lines2(
+      `from typing import Any, Dict`,
+      ``,
+      `from flask import Flask`,
+      ``,
+      `import polaris_config`,
+      `from polaris_key.server.flask import PolarisKey, get_polaris_license`,
+      ``,
+      `app = Flask(__name__)`,
+      `polaris = PolarisKey(config=polaris_config)`,
+      `polaris.init_app(app)`,
+      ``,
+      ``,
+      `@app.get("/api/pro")`,
+      `@polaris.require_entitlement(${q2(c.entitlement)})`,
+      `def pro() -> Dict[str, Any]:`,
+      `    return {"tier": get_polaris_license().tier}`
+    )
+  })
+};
+var PY_DJANGO = {
+  licensing: (c) => ({
+    title: "Gate a view with the license",
+    filename: "views.py",
+    language: "python",
+    code: lines2(
+      `from typing import Any`,
+      ``,
+      `from django.http import HttpRequest, JsonResponse`,
+      ``,
+      `from polaris_key.server.django import get_polaris_license, require_entitlement`,
+      ``,
+      `# settings.py: add "polaris_key.server.django.PolarisKeyMiddleware" to MIDDLEWARE, and`,
+      `# POLARIS_KEY = {"CONFIG": "myapp.polaris_config"}`,
+      ``,
+      ``,
+      `@require_entitlement(${q2(c.entitlement)})`,
+      `def pro(request: HttpRequest) -> Any:`,
+      `    return JsonResponse({"tier": get_polaris_license(request).tier})`
+    )
+  })
+};
+var PY_DRF = {
+  licensing: (c) => ({
+    title: "Gate a view with the license",
+    filename: "views.py",
+    language: "python",
+    code: lines2(
+      `from typing import Any`,
+      ``,
+      `from rest_framework.response import Response`,
+      `from rest_framework.views import APIView`,
+      ``,
+      `from polaris_key.server.drf import PolarisKeyAuthentication, get_polaris_license, has_entitlement`,
+      ``,
+      `# settings.py: REST_FRAMEWORK = {"EXCEPTION_HANDLER": "polaris_key.server.drf.exception_handler"}`,
+      `# and POLARIS_KEY = {"CONFIG": "myapp.polaris_config"}`,
+      ``,
+      ``,
+      `class ProView(APIView):`,
+      `    authentication_classes = [PolarisKeyAuthentication]`,
+      `    permission_classes = [has_entitlement(${q2(c.entitlement)})]`,
+      ``,
+      `    def get(self, request: Any) -> Response:`,
+      `        return Response({"tier": get_polaris_license(request).tier})`
+    )
+  })
+};
+var KOTLIN_KTOR = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "Application.kt",
+    language: "kotlin",
+    code: lines2(
+      `import com.acme.polaris.PolarisConfig`,
+      `import im.plrs.key.server.ktor.polarisKey`,
+      `import im.plrs.key.server.ktor.requireEntitlement`,
+      `import io.ktor.server.application.Application`,
+      `import io.ktor.server.application.install`,
+      `import io.ktor.server.auth.Authentication`,
+      `import io.ktor.server.response.respondText`,
+      `import io.ktor.server.routing.get`,
+      `import io.ktor.server.routing.routing`,
+      ``,
+      `fun Application.module() {`,
+      `    install(Authentication) {`,
+      `        polarisKey {`,
+      `            product(PolarisConfig.PRODUCT_SLUG, PolarisConfig.pinnedKeys, PolarisConfig.BASE_URL)`,
+      `        }`,
+      `    }`,
+      `    routing {`,
+      `        requireEntitlement(${q2(c.entitlement)}) {`,
+      `            get("/api/pro") { call.respondText("ok") }`,
+      `        }`,
+      `    }`,
+      `}`
+    )
+  })
+};
+var NODE_YARGS = {
+  licensing: (c) => ({
+    title: "Mount the Polaris Key verbs and gate a command",
+    filename: "cli.ts",
+    language: "ts",
+    code: lines2(
+      `import yargs from "yargs";`,
+      `import { hideBin } from "yargs/helpers";`,
+      `import { requireLicense } from "@polaris-key/node/cli";`,
+      `import { registerPolarisCommands } from "@polaris-key/node/cli/yargs";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const cli = yargs(hideBin(process.argv)).scriptName(${q2(c.appName)});`,
+      `registerPolarisCommands(cli, { config: polarisConfig, version: ${q2(c.appVersion)} });`,
+      `cli.command(`,
+      `  "export",`,
+      `  "Export a mix",`,
+      `  {},`,
+      `  requireLicense(() => console.log("exported"), { entitlement: ${q2(c.entitlement)} }),`,
+      `);`,
+      `await cli.parseAsync();`
+    )
+  })
+};
+var PY_CLICK = {
+  licensing: (c) => ({
+    title: "Mount the Polaris Key verbs and gate a command",
+    filename: "cli.py",
+    language: "python",
+    code: lines2(
+      `import click`,
+      ``,
+      `from polaris_key.cli import register_click, require_license`,
+      ``,
+      `import polaris_config`,
+      ``,
+      ``,
+      `@click.group()`,
+      `def cli() -> None:`,
+      `    pass`,
+      ``,
+      ``,
+      `@cli.command()`,
+      `@click.option("--json", "as_json", is_flag=True, help="Machine-readable refusal.")`,
+      `@require_license(entitlement=${q2(c.entitlement)})`,
+      `def export(as_json: bool) -> None:`,
+      `    click.echo("exported")`,
+      ``,
+      ``,
+      `register_click(cli, config=polaris_config.CONFIG, version=${q2(c.appVersion)})  # your app's version`,
+      ``,
+      `if __name__ == "__main__":`,
+      `    cli()`
+    )
+  })
+};
+var PY_TYPER = {
+  licensing: (c) => ({
+    title: "Mount the Polaris Key verbs and gate a command",
+    filename: "cli.py",
+    language: "python",
+    code: lines2(
+      `import typer`,
+      ``,
+      `from polaris_key.cli import register_typer, require_license`,
+      ``,
+      `import polaris_config`,
+      ``,
+      `app = typer.Typer()`,
+      ``,
+      ``,
+      `@app.command()`,
+      `@require_license(entitlement=${q2(c.entitlement)})`,
+      `def export(as_json: bool = typer.Option(False, "--json", help="Machine-readable refusal.")) -> None:`,
+      `    typer.echo("exported")`,
+      ``,
+      ``,
+      `register_typer(app, config=polaris_config.CONFIG, version=${q2(c.appVersion)})  # your app's version`,
+      ``,
+      `if __name__ == "__main__":`,
+      `    app()`
+    )
+  })
+};
 var TABLE = {
   node: {
-    kit: { _: NODE_KIT, commander: NODE_KIT, electron: NODE_ELECTRON },
+    kit: {
+      _: NODE_KIT,
+      commander: NODE_KIT,
+      yargs: NODE_YARGS,
+      electron: NODE_ELECTRON
+    },
     library: { _: NODE_LIBRARY },
-    server: { _: NODE_SERVER }
+    server: {
+      _: NODE_SERVER,
+      express: NODE_EXPRESS,
+      hono: NODE_HONO,
+      next: NODE_NEXT
+    }
   },
   react: { kit: { _: REACT_KIT }, library: { _: REACT_LIBRARY } },
   python: {
-    kit: { _: PY_KIT, argparse: PY_KIT },
-    library: { _: PY_LIBRARY }
+    kit: { _: PY_KIT, argparse: PY_KIT, click: PY_CLICK, typer: PY_TYPER },
+    library: { _: PY_LIBRARY },
+    server: {
+      fastapi: PY_FASTAPI,
+      starlette: PY_STARLETTE,
+      flask: PY_FLASK,
+      django: PY_DJANGO,
+      drf: PY_DRF
+    }
   },
   swift: { kit: { _: SWIFT_KIT }, library: { _: SWIFT_LIBRARY } },
-  kotlin: { kit: { _: KOTLIN_KIT }, library: { _: KOTLIN_LIBRARY } },
+  kotlin: {
+    kit: { _: KOTLIN_KIT },
+    library: { _: KOTLIN_LIBRARY },
+    server: { ktor: KOTLIN_KTOR }
+  },
   godot: { kit: { _: GODOT_KIT }, library: { _: GODOT_LIBRARY } }
 };
 var COMPILED_SDKS = /* @__PURE__ */ new Set(["node", "react", "python"]);
+function usageFrameworks(sdk, lane) {
+  return Object.keys(TABLE[sdk]?.[lane] ?? {}).filter((f) => f !== "_");
+}
 function renderUsage(feature, sdk, lane, framework = null, ctx = {}) {
   const group = TABLE[sdk]?.[lane];
   if (!group) return null;
@@ -31806,7 +32230,7 @@ function renderUsage(feature, sdk, lane, framework = null, ctx = {}) {
   const make = features?.[feature];
   if (!make) return null;
   const made = make({ ...DEFAULT_USAGE_CONTEXT, ...ctx });
-  const docs = lane === "server" ? SERVER_DOCS : lane === "kit" ? SDK_KIT_DOCS[sdk] : SDK_LIBRARY_DOCS[sdk];
+  const docs = lane === "server" ? framework ? `${SERVER_DOCS}${framework}/` : SERVER_DOCS : lane === "kit" ? SDK_KIT_DOCS[sdk] : SDK_LIBRARY_DOCS[sdk];
   return {
     id: `${feature}.${sdk}.${lane}${framework ? `.${framework}` : ""}`,
     feature,
@@ -31878,7 +32302,13 @@ function sdkInstall(sdk, host = "app") {
   });
   return spec.snippets.flatMap((id) => all.filter((s) => s.id === id));
 }
-function sdkInstallNote(sdk) {
+function sdkInstallNote(sdk, host = "app", framework = null) {
+  if (host === "server") {
+    if (sdk === "python")
+      return `Install the extra for your framework: polaris-key[${framework ?? "fastapi"}].`;
+    if (sdk === "kotlin")
+      return "Add im.plrs.key:polaris-key-server-ktor from the same feed.";
+  }
   if (sdk === "godot")
     return "Then install the Polaris Key addon from the editor's asset library and enable it under Project Settings, Plugins.";
   return null;
@@ -31900,7 +32330,13 @@ function startFor(sdk, fit, ctx) {
   const library = renderUsage("licensing", sdk, "library", null, ctx);
   let start = null;
   if (fit.host === "server") {
-    start = renderUsage("licensing", sdk, "server", null, ctx) ?? library;
+    start = renderUsage("licensing", sdk, "server", framework, ctx) ?? renderUsage("licensing", sdk, "server", null, ctx) ?? renderUsage(
+      "licensing",
+      sdk,
+      "server",
+      usageFrameworks(sdk, "server")[0] ?? null,
+      ctx
+    ) ?? library;
   } else {
     start = renderUsage("licensing", sdk, "kit", framework, ctx) ?? renderUsage("licensing", sdk, "kit", null, ctx) ?? library;
   }
@@ -31942,7 +32378,7 @@ function renderSdkSetup(sdk, o) {
   return {
     sdk,
     install: sdkInstall(sdk, fit.host),
-    installNote: sdkInstallNote(sdk),
+    installNote: sdkInstallNote(sdk, fit.host, fit.framework ?? null),
     config: { filename: out, language: CONFIG_LANGUAGE[sdk], code },
     start,
     headless,

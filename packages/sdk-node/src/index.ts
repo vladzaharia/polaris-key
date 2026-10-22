@@ -69,6 +69,7 @@ export {
   type LicenseClientOptions,
   type LicenseInfo,
 } from "./license/client.js";
+export { serverClient, type ServerClientOptions } from "./serverClient.js";
 export {
   BackendClient,
   normalizeBackendOrigin,

@@ -76,7 +76,7 @@ describe("Licenses list", () => {
     // The tier's label, not its id; seats against the tier's limit.
     const ada = row(t, "Ada Lovelace");
     expect(within(ada).getByText("Pro")).toBeTruthy();
-    expect(within(ada).getByRole("meter", { name: "Seats" })).toBeTruthy();
+    expect(within(ada).getByRole("meter", { name: "Devices" })).toBeTruthy();
     expect(within(ada).getByText("2 of 5")).toBeTruthy();
     // The id moved to the record header; the holder links to the record.
     expect(within(t).queryByText("lic_1")).toBeNull();
@@ -85,6 +85,29 @@ describe("Licenses list", () => {
         .getByRole("link", { name: /Ada Lovelace/ })
         .getAttribute("href"),
     ).toBe("#/p/djdl/license/licenses/lic_1");
+  });
+
+  it("draws the mockup's columns, counted holder chips and Create keys in bulk", async () => {
+    bootLicense("#/p/djdl/license/licenses");
+    const t = await table();
+    await within(t).findByText("Ada Lovelace");
+    const heads = within(t)
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent);
+    for (const h of ["License", "Holder", "Tier", "Duration", "Devices"])
+      expect(heads).toContain(h);
+    // The holder states are chips with counts, not a menu.
+    const chip = screen.getByRole("button", { name: /^Holder: In an account/ });
+    expect(chip.getAttribute("aria-pressed")).toBe("false");
+    // Create keys in bulk opens the wizard on Anyone with the key.
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Create keys in bulk" })[0]!,
+    );
+    expect(window.location.hash).toContain("setup=new-license");
+    expect(window.location.hash).toContain("step=holder");
+    expect(
+      JSON.parse(sessionStorage.getItem("pk-new-license:djdl") ?? "{}").who,
+    ).toBe("anyone");
   });
 
   it("loads the list by cursor, a page at a time (P0-29)", async () => {
@@ -233,7 +256,8 @@ describe("Licenses list", () => {
     const t = await table();
     await waitFor(() => expect(rowNames(t)).toEqual(["Chargeback Ltd"]));
     expect(
-      (screen.getByPlaceholderText(/Search name/) as HTMLInputElement).value,
+      (screen.getByPlaceholderText(/Search licenses/) as HTMLInputElement)
+        .value,
     ).toBe("charge");
   });
 
@@ -245,9 +269,7 @@ describe("Licenses list", () => {
 
   it("says no license matches, and clears the filters", async () => {
     bootLicense("#/p/djdl/license/licenses?q=nobody");
-    expect(
-      await screen.findByText("No licenses match these filters"),
-    ).toBeTruthy();
+    expect(await screen.findByText("No licenses match")).toBeTruthy();
     await userEvent.click(
       screen.getAllByRole("button", { name: /Clear filters/ })[0]!,
     );
@@ -277,6 +299,24 @@ describe("Licenses list", () => {
     const before = reads();
     await userEvent.click(retry);
     await waitFor(() => expect(reads()).toBeGreaterThan(before));
+  });
+
+  it("keeps the filters through an error and a retry, and the table head", async () => {
+    bootLicense("#/p/djdl/license/licenses?tier=pro", {
+      routes: { [`${API}/license/licenses`]: failing(500) },
+    });
+    await screen.findByRole("button", { name: /Try again/ });
+    expect(screen.getByRole("columnheader", { name: /^License/ })).toBeTruthy();
+    expect(window.location.hash).toContain("tier=pro");
+  });
+
+  it("names what was asked for when nothing matches", async () => {
+    bootLicense("#/p/djdl/license/licenses?q=zzzz");
+    expect(await screen.findByText("No licenses match")).toBeTruthy();
+    expect(
+      screen.getByText(/No license has a name, email or id containing “zzzz”/),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Clear filters/ })).toBeTruthy();
   });
 
   it("disables the selected licenses after a caution confirm that lists the effect", async () => {

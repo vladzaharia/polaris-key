@@ -711,8 +711,7 @@ describe("overlays under the Worker's CSP", () => {
       ["#/products", "Page moved"],
       ["#/products/new?via=manual&step=basics", "New product"],
       ["#/platform", "Settings"],
-      ["#/platform/operations", "Operations"],
-      ["#/platform/deployment", "Deployment"],
+      ["#/platform/status", "Status"],
       ["#/platform/store-connections", "Store connections"],
     ] as const) {
       await page.evaluate((h) => {

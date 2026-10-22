@@ -11,7 +11,7 @@ import {
   TaskFrame,
   TaskFrameSkeleton,
 } from "../components/FocusedFlow.js";
-import { type PlatformKey } from "../components/Glyphs.js";
+import { type PlatformKey } from "../../ui/Glyphs.js";
 import { platformInSentence } from "../../lib/vocab/platforms.js";
 import { StorePills } from "../components/StorePills.js";
 import { ErrorPanel } from "../components/States.js";

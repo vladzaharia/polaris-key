@@ -1,17 +1,52 @@
 import * as React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../../../api.js";
+import { formatCount } from "../../../lib/format.js";
+import { qk } from "../../data/queries.js";
 import { r } from "../../routes.js";
-import { Line, TileFrame } from "../core/components/TileFrame.js";
+import { FeatureCard } from "../core/components/TileFrame.js";
 
-/** Commerce's tile on the Overview (CM-29); CM-23 adds the offers and purchases counts. */
-export function CommerceTile({ slug }: { slug: string }): React.ReactElement {
+/** Commerce's card on the Overview (CM-29): its storefronts and the store purchases they brought. */
+export function CommerceTile({
+  slug,
+  attention = 0,
+}: {
+  slug: string;
+  attention?: number;
+}): React.ReactElement {
+  const services = useQuery({
+    queryKey: qk.services(slug),
+    queryFn: () => api.services(slug),
+  });
+  const facts = services.data?.facts.commerce;
+  const grants = facts?.storeGrants ?? 0;
   return (
-    <TileFrame
+    <FeatureCard
       service="commerce"
       href={r.commerceOverview(slug)}
-      linkLabel="Overview"
-      loading={false}
-    >
-      <Line>Store purchases that give licenses and add-ons.</Line>
-    </TileFrame>
+      attention={attention}
+      loading={services.isPending}
+      error={services.isError ? services.error : undefined}
+      onRetry={() => void services.refetch()}
+      number={
+        facts && facts.storefronts > 0
+          ? formatCount(facts.storefronts)
+          : undefined
+      }
+      unit={
+        facts && facts.storefronts > 0
+          ? facts.storefronts === 1
+            ? "storefront"
+            : "storefronts"
+          : undefined
+      }
+      foot={
+        facts
+          ? facts.storefronts === 0
+            ? "No storefront yet"
+            : `${formatCount(grants)} store ${grants === 1 ? "purchase" : "purchases"}`
+          : undefined
+      }
+    />
   );
 }

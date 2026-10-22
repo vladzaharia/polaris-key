@@ -193,13 +193,17 @@ export const ROUTE_LEDGER: readonly LedgerRow[] = [
     id: "platform-deployment",
     scope: "global",
     from: "platform/deployment",
-    fate: "live",
+    fate: "moved",
+    to: "platform-status",
+    by: "CX-PSTAT",
   },
   {
     id: "platform-operations",
     scope: "global",
     from: "platform/operations",
-    fate: "live",
+    fate: "moved",
+    to: "platform-status",
+    by: "CX-PSTAT",
   },
   {
     id: "platform-stores",
@@ -211,6 +215,12 @@ export const ROUTE_LEDGER: readonly LedgerRow[] = [
     id: "platform-feeds",
     scope: "global",
     from: "platform/feeds",
+    fate: "live",
+  },
+  {
+    id: "platform-activity",
+    scope: "global",
+    from: "platform/activity",
     fate: "live",
   },
   {

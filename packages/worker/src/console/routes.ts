@@ -41,6 +41,7 @@ import type { Method, RouteDecl } from "./routeMatch.js";
 import { handleMe } from "./handlers/me.js";
 import { handleAttention } from "./handlers/attention.js";
 import { handleAccessAdmins } from "./handlers/access.js";
+import { handleSearch } from "./handlers/search.js";
 import { handleSupportCodes } from "./handlers/supportCodes.js";
 import { handleGithub } from "./handlers/github.js";
 import { handlePlatformStoreConnections } from "./handlers/platformStoreConnections.js";
@@ -117,6 +118,8 @@ async function logout(c: AdminCtx): Promise<Response> {
 const me: AdminHandler = (c) => handleMe(c.env, c.db, c.session);
 const attention: AdminHandler = (c) =>
   handleAttention(c.req, c.env, c.db, c.session, [], c.now);
+const search: AdminHandler = (c) =>
+  handleSearch(c.req, c.env, c.db, c.session, c.now);
 const supportCodes: AdminHandler = (c) =>
   handleSupportCodes(c.req, c.env, c.db, c.session, c.segments.slice(1), c.now);
 const github: AdminHandler = (c) =>
@@ -167,6 +170,8 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET"], "/attention", "console", attention),
   // I-41: a support code resolved to {product, subject}; the handler checks the caller's product access.
   ...rows(["GET"], "/support-codes/:code", "console", supportCodes),
+  // ST-52: the palette's entity search and pasted-key resolution; each product is held to its own area.
+  ...rows(["POST"], "/search", "console", search),
   // The product list, filtered the same way.
   ...rows(["GET"], "/products", "console", registry),
   // NoAccessPage: who can give the caller access to a scope and area.

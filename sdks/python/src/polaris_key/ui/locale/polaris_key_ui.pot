@@ -617,8 +617,8 @@ msgstr ""
 msgid "boot.consent.download"
 msgstr ""
 
-#. {product} couldn't finish starting. Try again.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. If this keeps happening, restart the app.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
 msgid "boot.error.body"
 msgstr ""
 
@@ -1168,8 +1168,8 @@ msgstr ""
 msgid "update.mandatoryTitle"
 msgstr ""
 
-#. This version is below the minimum supported version. Update to keep using {product}.
-#. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. This version is no longer supported.
+#. UpdatePrompt: an app update. Mandatory update.
 msgid "update.mandatoryBody"
 msgstr ""
 
@@ -4231,7 +4231,7 @@ msgstr ""
 msgid "signin.gate.termsLinkProduct"
 msgstr ""
 
-#. Polaris Locker’s Terms and Privacy Policy
+#. Polaris Locker's Terms and Privacy Policy
 #. The platform's terms link in the finish step. Polaris Locker is never translated.
 msgid "signin.gate.termsLinkPlatform"
 msgstr ""
@@ -4569,7 +4569,7 @@ msgstr ""
 msgid "signin.gate.nameRequired"
 msgstr ""
 
-#. Agree to {app}’s terms to keep going.
+#. Agree to {app}'s terms to keep going.
 #. Finish: lede of the terms-only step. Arguments: {app}.
 msgid "signin.gate.termsLede"
 msgstr ""

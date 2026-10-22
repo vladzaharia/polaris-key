@@ -1,13 +1,13 @@
 ---
-title: "Keys & secrets"
-description: "Keys & secrets: signing keys and their lifecycle, write-only product secrets and their usage, CI publishing, edge-mint approval and outlet credentials."
+title: "Keys and secrets"
+description: "Keys and secrets: signing keys and their lifecycle, write-only product secrets and their usage, CI publishing, edge-mint approval and outlet credentials."
 type: "reference"
 lastReviewed: "2026-10-16"
 sidebar:
   order: 6
 ---
 
-**Keys & secrets** (`#/p/<slug>/settings/keys`, a tab of **Settings**) holds what a product signs and
+**Keys and secrets** (`#/p/<slug>/settings/keys`, a tab of **Settings**) holds what a product signs and
 authenticates with, whether or not it runs any service: its **Signing keys**, its write-only
 **Secrets** and its **CI publishing** credentials. Signing keys and secrets are sealed under the
 same platform KEK. Edge-mint recipes are approved on their catalog entry, and store credentials

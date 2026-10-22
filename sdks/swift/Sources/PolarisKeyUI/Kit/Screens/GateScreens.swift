@@ -402,3 +402,26 @@ public struct ToastView: View {
         }
     }
 }
+
+/// The gate's toast: the model's line in the user's language, with the tone its kind has.
+struct GateToastView: View {
+    let toast: KitGateToast
+    var onDismiss: () -> Void
+    @Environment(\.polarisKeyStrings) private var strings
+
+    var body: some View {
+        ToastView(
+            text: strings.string(toast.line), tone: toast.kind == .update ? .neutral : .success,
+            onDismiss: onDismiss)
+    }
+}
+
+/// The floating surface of the compact update progress row.
+struct KitFloatingProgressSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        KitStyleReader { style in
+            content.modifier(KitFloatingSurface(style: style))
+        }
+        .padding(.horizontal)
+    }
+}

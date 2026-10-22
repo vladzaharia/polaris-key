@@ -87,6 +87,7 @@
   "GET /products/:slug/users/licenses/:id/relinks": "core",
   "GET /products/kek": "platform",
   "GET /products/slug-check": "platform",
+  "POST /search": "console",
   "GET /support-codes/:code": "console",
   "GET /tokens": "platform",
   "PATCH /platform/alerts/:id": "platform",

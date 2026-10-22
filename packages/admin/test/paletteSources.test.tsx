@@ -77,6 +77,7 @@ describe("the registry", () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual([
       "support-code",
+      "entities",
       "navigation",
       "product-pages",
       "actions",
@@ -84,9 +85,12 @@ describe("the registry", () => {
       "products",
     ]);
     expect(PALETTE_GROUPS.map((g) => g.heading)).toEqual([
+      "Pasted key",
       "Recent",
       "Support code",
       "Pages",
+      "Licenses",
+      "Users",
       "Actions",
       "Settings",
       "Products",
@@ -222,7 +226,7 @@ describe("ranking", () => {
     const labels = groups[0]!.items.map((i) => i.label);
     expect(labels[0]).toBe("Overview");
     expect(labels.indexOf("Licenses")).toBeLessThan(labels.indexOf("Home"));
-    expect(labels).not.toContain("Deployment");
+    expect(labels).not.toContain("Status");
   });
 
   it("typed: Platform appears on a match, after the product's own pages", () => {
@@ -232,7 +236,7 @@ describe("ranking", () => {
     ).toEqual([
       // Core → Settings, then License → Settings (LX-06), in section order. The licence page is
       // "Licensing" in the palette and still found by its sidebar label.
-      // The settings hub's tabs (Features, Keys & secrets, Members…) are found by the word too.
+      // The settings hub's tabs (Features, Keys and secrets, Members…) are found by the word too.
       [
         "Pages",
         [
@@ -252,10 +256,10 @@ describe("ranking", () => {
       "Settings",
       "All settings",
       "Licensing",
-      "Features & general",
+      "Features and general",
       "Presentation",
       "Polaris Locker",
-      "Keys & secrets",
+      "Keys and secrets",
       "Members",
     ]);
   });
@@ -412,7 +416,7 @@ describe("the palette in the console", () => {
 
     await userEvent.type(input(dialog), "deploy");
     await waitFor(() =>
-      expect(groupLabels(dialog, "Platform")[0]).toMatch(/^Deployment/),
+      expect(groupLabels(dialog, "Platform")[0]).toMatch(/^Status/),
     );
   });
 
@@ -473,11 +477,11 @@ describe("palette across products (from Home)", () => {
     { slug: "acme", name: "Acme", services: ALL_ON },
   ] as never;
 
-  it('"secret" finds Keys & secrets for each product, before any trust pin', () => {
+  it('"secret" finds Keys and secrets for each product, before any trust pin', () => {
     const rows = productPagesAcross(products, "secret");
     expect(rows.map((r) => [r.label, r.detail])).toEqual([
-      ["Keys & secrets", "DJDL · Settings"],
-      ["Keys & secrets", "Acme · Settings"],
+      ["Keys and secrets", "DJDL · Settings"],
+      ["Keys and secrets", "Acme · Settings"],
     ]);
   });
 
@@ -501,15 +505,15 @@ describe("palette across products (from Home)", () => {
 });
 
 describe("palette on a product: secret", () => {
-  it("ranks the Keys & secrets page above Trust pins", () => {
+  it("ranks the Keys and secrets page above Trust pins", () => {
     const items = [
       ...sdkActions("djdl"),
       ...navigationSource("djdl", "DJDL", ALL_ON),
     ];
     const groups = rankPalette(items, [], "secret", PALETTE_GROUPS);
     const flat = groups.flatMap((g) => g.items.map((i) => i.label));
-    expect(flat.indexOf("Keys & secrets")).toBeGreaterThanOrEqual(0);
-    expect(flat.indexOf("Keys & secrets")).toBeLessThan(
+    expect(flat.indexOf("Keys and secrets")).toBeGreaterThanOrEqual(0);
+    expect(flat.indexOf("Keys and secrets")).toBeLessThan(
       flat.indexOf("Trust pins"),
     );
   });

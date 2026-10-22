@@ -12,17 +12,14 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink } from "lucide-react";
 import {
   SDK_LABELS,
   pinFingerprint,
   renderSdkSetup,
   sdkAddCommand,
   type PinFingerprint,
-  renderUsage,
 } from "@polaris-key/manifest/integration";
 import { api } from "../../../../api.js";
-import { docsUrl } from "../../../../lib/docsLinks.js";
 import { Button } from "../../../../ui/Button.js";
 import { CodeBlock } from "../../../../ui/CodeBlock.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
@@ -41,24 +38,22 @@ import { r } from "../../../routes.js";
 import { focusWhenReady } from "../../../shell/palette/focus.js";
 import { MomentLine, momentKey } from "../../../components/Moment.js";
 import { useSetup } from "../../../wizard/useSetup.js";
-import {
-  FeatureCard,
-  VerifiedOn,
-} from "../components/IntegrationFeatureCard.js";
+import { CliCard, ServerCard } from "../components/HostCards.js";
+import { FeatureCard } from "../components/IntegrationFeatureCard.js";
 import { PlatformMeters } from "../components/PlatformMeters.js";
 import { SdkSetupBlocks } from "../components/SdkSetupBlocks.js";
 import { SdkTabs } from "../components/SdkTabs.js";
 import {
-  SDK_DOC_KEYS,
+  backendCall,
   defaultSdk,
   isSdkId,
   sdkOrder,
   usageContext,
 } from "../model/integration.js";
-import { SDK_QUICK_START_ID } from "../model/sdkQuickStart.js";
+import { SDK_QUICK_START_ID, codeLanguage } from "../model/sdkQuickStart.js";
 import { useQueryParams } from "../model/urlState.js";
 
-const PARAMS = ["sdk", "feature", "created"] as const;
+const PARAMS = ["sdk", "feature", "created", "server", "cli"] as const;
 
 export function IntegrationPage({
   slug,
@@ -190,12 +185,8 @@ export function IntegrationPage({
     services: data.snippet.services,
     usage: ctx,
   });
-  // Only some SDKs have a server lane: show the Node one rather than hide the card, so a Verified
-  // server stays visible whatever client SDK is picked.
-  const serverSdk = renderUsage("licensing", sdk, "server", null, ctx)
-    ? sdk
-    : "node";
-  const server = renderUsage("licensing", serverSdk, "server", null, ctx);
+  // A server in the picture (seen, or picked) adds the one line an app sends the license with.
+  const call = data.server.length > 0 || q.server ? backendCall(sdk) : null;
 
   return (
     <div className="space-y-6">
@@ -301,6 +292,19 @@ export function IntegrationPage({
                 />
               )}
             </SdkTabs>
+            {call ? (
+              <div className="space-y-1.5">
+                <h3 className="text-sm font-medium text-fg-strong">
+                  Call your server
+                </h3>
+                <CodeBlock
+                  code={call.code}
+                  language={codeLanguage(call.language)}
+                  filename={call.filename}
+                  wrap
+                />
+              </div>
+            ) : null}
             {prints.length > 0 ? (
               <div className="space-y-1.5">
                 <h3 className="text-sm font-medium text-fg-strong">
@@ -355,64 +359,20 @@ export function IntegrationPage({
                 }
               />
             ))}
-            {server ? (
-              <section
-                aria-labelledby="integration-server"
-                className="space-y-4 rounded-xl border border-border bg-surface-raised p-4 sm:p-5"
-              >
-                <header className="flex flex-wrap items-center justify-between gap-2">
-                  <h2
-                    id="integration-server"
-                    tabIndex={-1}
-                    className="text-base font-semibold text-fg-strong"
-                  >
-                    Your server
-                  </h2>
-                  <span
-                    className={
-                      data.server.length > 0
-                        ? "text-sm font-medium text-success"
-                        : "text-sm text-fg-muted"
-                    }
-                  >
-                    {data.server.length > 0 ? "Verified" : "Not seen yet"}
-                  </span>
-                </header>
-                <p className="text-sm text-fg-muted">
-                  A backend that checks the license a client sends.
-                  {serverSdk !== sdk
-                    ? ` ${SDK_LABELS[sdk]} has no server snippet; this one is ${SDK_LABELS[serverSdk]}.`
-                    : ""}
-                </p>
-                <CodeBlock code={server.code} filename={server.filename} wrap />
-                <p className="text-sm">
-                  <a
-                    className="inline-flex min-h-6 items-center gap-1 text-accent-fg underline underline-offset-4"
-                    href={docsUrl(SDK_DOC_KEYS[serverSdk].ownUi)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Integrate directly with your own UI
-                    <ExternalLink aria-hidden className="size-3.5" />
-                    <span className="sr-only"> (opens the docs)</span>
-                  </a>
-                </p>
-                {data.server.length > 0 ? (
-                  <VerifiedOn seen={data.server} now={data.now} />
-                ) : (
-                  <p className="text-sm text-fg-muted">
-                    <a
-                      className="inline-flex min-h-6 items-center text-accent-fg underline underline-offset-4"
-                      href={docsUrl("notSeenYet")}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Not seen after running it?
-                    </a>
-                  </p>
-                )}
-              </section>
-            ) : null}
+            <ServerCard
+              sdk={sdk}
+              ctx={ctx}
+              framework={q.server || null}
+              onFramework={(f) => setQ({ server: f })}
+              seen={data.server}
+              now={data.now}
+            />
+            <CliCard
+              sdk={sdk}
+              ctx={ctx}
+              framework={q.cli || null}
+              onFramework={(f) => setQ({ cli: f })}
+            />
           </div>
         </div>
       )}

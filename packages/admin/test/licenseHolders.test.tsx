@@ -89,10 +89,11 @@ const ROUTES = {
   [`${API}/users/licenses/lic_float/relinks`]: { relinks: [] },
 };
 
-/** The Licenses table once the batch read has landed (the table remounts with its Batch column). */
+/** The Licenses table. The batch label is in the Origin column, so it arrives with the batch read. */
 async function table(withBatches = true): Promise<HTMLElement> {
-  if (withBatches) await screen.findByRole("columnheader", { name: /Batch/ });
-  return screen.findByRole("table", { name: "Licenses" });
+  const t = await screen.findByRole("table", { name: "Licenses" });
+  if (withBatches) await within(t).findByText("Steam keys, October");
+  return t;
 }
 const rowOf = (t: HTMLElement, text: string) =>
   within(t).getByText(text).closest("tr")!;
@@ -117,11 +118,16 @@ describe("Licenses: the Holder column and filters", () => {
     expect(
       within(rowOf(t, "Lena Ortiz")).getByText("lena@ortiz.audio"),
     ).toBeTruthy();
+    const sam = rowOf(t, "Sam Reyes");
+    expect(within(sam).getByText("sam@reyes.fm")).toBeTruthy();
+    expect(within(sam).getByText("Waiting")).toBeTruthy();
     expect(
-      within(rowOf(t, "Sam Reyes")).getByText("Waiting for sam@reyes.fm"),
+      within(rowOf(t, "Lena Ortiz")).getByText("In an account"),
     ).toBeTruthy();
-    const floating = rowOf(t, "anyone with the key");
+    // A floating license with no name shows its id and the Floating pill.
+    const floating = rowOf(t, "lic_float");
     expect(within(floating).getByText("Floating")).toBeTruthy();
+    expect(within(floating).getByText("Key batch")).toBeTruthy();
     // The batch label links to the batch page.
     const batch = within(floating).getByRole("link", {
       name: "Steam keys, October",
@@ -136,13 +142,13 @@ describe("Licenses: the Holder column and filters", () => {
       routes: ROUTES,
     });
     const t = await table();
-    await waitFor(() => expect(rowNames(t)).toEqual(["Floating"]));
+    await waitFor(() => expect(rowNames(t)).toEqual(["lic_float"]));
     cleanup();
     resetConsole();
     bootLicense("#/p/djdl/license/licenses?holder=inAccount,waiting", {
       routes: ROUTES,
     });
-    const t2 = await table();
+    const t2 = await table(false);
     await waitFor(() =>
       expect(rowNames(t2)).toEqual(["Lena Ortiz", "Sam Reyes"]),
     );
@@ -153,7 +159,7 @@ describe("Licenses: the Holder column and filters", () => {
       routes: ROUTES,
     });
     const t = await table();
-    await waitFor(() => expect(rowNames(t)).toEqual(["Floating"]));
+    await waitFor(() => expect(rowNames(t)).toEqual(["lic_float"]));
     const link = within(
       await screen.findByTestId("batch-filter-link"),
     ).getByRole("link", { name: "Steam keys, October" });
@@ -172,7 +178,8 @@ describe("Licenses: the Holder column and filters", () => {
     });
     const t = await table(false);
     await within(t).findByText("Lena Ortiz");
-    expect(within(t).queryByRole("columnheader", { name: /Batch/ })).toBeNull();
+    expect(within(t).queryByText("Key batch")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Batch/ })).toBeNull();
   });
 });
 
@@ -196,9 +203,18 @@ describe("the record's holder line", () => {
     expect(screen.getByTestId("record-key-entries").textContent).toBe(
       "Key entries 3 of 10",
     );
+    // The holder variant: the Invitation card leads, and Resend invitation is the action.
+    const card = screen.getByRole("region", { name: "Invitation" });
+    expect(within(card).getByText("sam@reyes.fm")).toBeTruthy();
+    expect(
+      within(card).getByRole("button", { name: "Change email…" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Resend invitation" }),
+    ).toBeTruthy();
   });
 
-  it("floating: the title, the line, its batch, Assign… first, and the true count past the limit", async () => {
+  it("floating: the title, the line, its batch, Assign to a person first, and the true count past the limit", async () => {
     bootLicense("#/p/djdl/license/licenses/lic_float", { routes: ROUTES });
     await screen.findByRole("heading", { level: 1, name: "Floating license" });
     const line = screen.getByTestId("record-holder");
@@ -211,8 +227,13 @@ describe("the record's holder line", () => {
     expect(screen.getByTestId("record-key-entries").textContent).toBe(
       "Key entries 12 of 10",
     );
-    expect(screen.getByText("Not in anyone's account")).toBeTruthy();
-    expect(screen.getAllByRole("button", { name: "Assign…" }).length).toBe(1);
+    // The holder variant: the Anyone with the key card, and one Assign to a person.
+    expect(
+      screen.getByRole("region", { name: "Anyone with the key" }),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByRole("button", { name: "Assign to a person" }).length,
+    ).toBe(1);
     // No Reassign or Make floating on a licence with no holder.
     await userEvent.click(
       screen.getAllByRole("button", { name: "More actions" })[0]!,
@@ -243,7 +264,9 @@ describe("Assign… and Edit holder", () => {
       },
     });
     await screen.findByRole("heading", { level: 1, name: "Floating license" });
-    await userEvent.click(screen.getByRole("button", { name: "Assign…" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Assign to a person" }),
+    );
     const dialog = await screen.findByRole("dialog", {
       name: "Assign license",
     });
@@ -289,7 +312,9 @@ describe("Assign… and Edit holder", () => {
       },
     });
     await screen.findByRole("heading", { level: 1, name: "Floating license" });
-    await userEvent.click(screen.getByRole("button", { name: "Assign…" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Assign to a person" }),
+    );
     const dialog = await screen.findByRole("dialog", {
       name: "Assign license",
     });
@@ -492,9 +517,7 @@ describe("Assign… and Edit holder", () => {
   it("Edit holder edits the name only on an assigned licence", async () => {
     bootLicense("#/p/djdl/license/licenses/lic_in", { routes: ROUTES });
     await screen.findByRole("heading", { level: 1, name: "Lena Ortiz" });
-    await userEvent.click(
-      screen.getAllByRole("button", { name: "Edit holder…" })[0]!,
-    );
+    await more("Edit holder…");
     const dialog = await screen.findByRole("dialog", { name: "Edit holder" });
     expect(within(dialog).getByLabelText(/^Name/)).toBeTruthy();
     expect(within(dialog).queryByLabelText(/^Email/)).toBeNull();

@@ -10,7 +10,7 @@ import { r } from "../../../routes.js";
 /** Where each row's fix lives (the worker names a Platform page; the console owns the address). */
 const TARGETS: Record<string, (store?: string) => string> = {
   settings: r.platformSettings,
-  status: r.platformOperations,
+  status: r.platformStatus,
   // The Store connections page (not the sign-in providers'); one missing store opens it on that
   // store.
   connections: (store) =>

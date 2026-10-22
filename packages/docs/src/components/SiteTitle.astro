@@ -20,36 +20,51 @@ import { doorOf } from "../lib/doors";
 
 const route = Astro.locals.starlightRoute;
 const { siteTitleHref } = route;
-const locker = route.siteTitle === "Polaris Locker" || doorOf(route.id)?.door === "help";
-const kind = locker ? "locker" : "key";
-const name = locker ? "Polaris Locker" : "Polaris Key";
-const height = locker ? 40 : 52;
+const miss = route.id === "404";
+const isLocker = route.siteTitle === "Polaris Locker" || doorOf(route.id)?.door === "help";
+// The page-not-found page is one file for every door: it draws both brands and help.css shows the
+// one the address names (components/help/MissingPage.astro).
+const kinds: ("key" | "locker")[] = miss ? ["key", "locker"] : [isLocker ? "locker" : "key"];
 const themes = ["dark", "light"] as const;
 ---
 
-<a href={siteTitleHref} class="site-title pk-site-title sl-flex" data-kind={kind} aria-label={name}>
-  <span class="pk-lockup" aria-hidden="true">
-    {
-      themes.map((theme) => (
-        <span
-          class={theme === "dark" ? "light:sl-hidden" : "dark:sl-hidden"}
-          set:html={
-            locker
-              ? lockupSvg({ kind, layout: "horizontal", theme, trim: true, height, title: "" })
-              : lockupSvg({ kind, layout: "compact", theme, height, title: "" })
-          }
-        />
-      ))
-    }
-  </span>
-  <span class="pk-lockup-mark" aria-hidden="true">
-    {
-      themes.map((theme) => (
-        <span
-          class={theme === "dark" ? "light:sl-hidden" : "dark:sl-hidden"}
-          set:html={markSvg({ kind, size: 32, theme, title: "" })}
-        />
-      ))
-    }
-  </span>
-</a>
+{
+  kinds.map((kind) => {
+    const locker = kind === "locker";
+    const name = locker ? "Polaris Locker" : "Polaris Key";
+    const height = locker ? 40 : 52;
+    return (
+      <>
+        <a
+          href={miss ? (locker ? "/docs/help/" : "/docs/") : siteTitleHref}
+          class="site-title pk-site-title sl-flex"
+          data-kind={kind}
+          data-miss-brand={miss ? kind : undefined}
+          aria-label={name}
+        >
+          <span class="pk-lockup" aria-hidden="true">
+            {themes.map((theme) => (
+              <span
+                class={theme === "dark" ? "light:sl-hidden" : "dark:sl-hidden"}
+                set:html={
+                  locker
+                    ? lockupSvg({ kind, layout: "horizontal", theme, trim: true, height, title: "" })
+                    : lockupSvg({ kind, layout: "compact", theme, height, title: "" })
+                }
+              />
+            ))}
+          </span>
+          <span class="pk-lockup-mark" aria-hidden="true">
+            {themes.map((theme) => (
+              <span
+                class={theme === "dark" ? "light:sl-hidden" : "dark:sl-hidden"}
+                set:html={markSvg({ kind, size: 32, theme, title: "" })}
+              />
+            ))}
+          </span>
+        </a>
+        <span class="pk-help-tag" data-miss-brand={miss ? kind : undefined}>{locker ? "Help" : "Docs"}</span>
+      </>
+    );
+  })
+}

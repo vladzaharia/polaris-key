@@ -463,9 +463,9 @@
       "note": "Boot screen, shown while the product starts."
     },
     "boot.error.body": {
-      "value": "{product} couldn't finish starting. Try again.",
+      "value": "If this keeps happening, restart the app.",
       "role": "body",
-      "note": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics."
     },
     "welcome.title": {
       "value": "Welcome to {product}",
@@ -874,9 +874,9 @@
       "note": "UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "update.mandatoryBody": {
-      "value": "This version is below the minimum supported version. Update to keep using {product}.",
+      "value": "This version is no longer supported.",
       "role": "body",
-      "note": "UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+      "note": "UpdatePrompt: an app update. Mandatory update."
     },
     "update.blockedTitle": {
       "value": "This version is no longer supported",
@@ -3567,7 +3567,7 @@
       "note": "The product's terms link in the finish step; fills {term} in the terms sentence. Arguments: {product} = the product's name."
     },
     "signin.gate.termsLinkPlatform": {
-      "value": "Polaris Locker’s Terms and Privacy Policy",
+      "value": "Polaris Locker's Terms and Privacy Policy",
       "role": "label",
       "note": "The platform's terms link in the finish step. Polaris Locker is never translated."
     },
@@ -4157,12 +4157,12 @@
       "note": "The customer portal's License section on a product page (PX-28a). A fact's value: the offline allowance. Arguments: {days} = the number of days."
     },
     "license.key.last4": {
-      "value": "Only the last 4 characters are kept, so a key can’t be shown in full.",
+      "value": "Only the last 4 characters are kept, so a key can't be shown in full.",
       "role": "hint",
       "note": "The customer portal's License section on a product page (PX-28a). Under the masked key when the Worker kept its last 4 characters."
     },
     "license.key.fingerprint": {
-      "value": "Polaris Locker keeps only a fingerprint of your key, so it can’t be shown again. Keep the copy from your email or store.",
+      "value": "Polaris Locker keeps only a fingerprint of your key, so it can't be shown again. Keep the copy from your email or store.",
       "role": "hint",
       "note": "The customer portal's License section on a product page (PX-28a). Under the masked key when only a fingerprint of the key is kept."
     },
@@ -4627,7 +4627,7 @@
       "note": "Finish: the screen name field left empty."
     },
     "signin.gate.termsLede": {
-      "value": "Agree to {app}’s terms to keep going.",
+      "value": "Agree to {app}'s terms to keep going.",
       "role": "body",
       "note": "Finish: lede of the terms-only step. Arguments: {app}."
     },
@@ -6421,6 +6421,11 @@
       "role": "hint",
       "note": "Activate a license dialog (P0-36)."
     },
+    "locker.activate.updatesUntil": {
+      "value": "Updates until {date}",
+      "role": "hint",
+      "note": "Activate a license dialog, confirm step: the license term when it ends (LX-15's words). Arguments: {date} = a date already formatted by the platform."
+    },
     "locker.activate.recognized": {
       "value": "Key recognized · {product}",
       "role": "hint",
@@ -6822,7 +6827,7 @@
       "note": "Discover tiles, offers and the storefront page (P0-36)."
     },
     "locker.storefront.youGet": {
-      "value": "You’d get",
+      "value": "You'd get",
       "role": "label",
       "note": "Discover tiles, offers and the storefront page (P0-36)."
     },
@@ -6897,7 +6902,7 @@
       "note": "Portal shell, library and product pages (P0-36)."
     },
     "locker.missing.steamTitle": {
-      "value": "Bought on Steam? Open the app from Steam and choose Restore purchase.",
+      "value": "On Steam? Restore in the app.",
       "role": "label",
       "note": "Portal shell, library and product pages (P0-36)."
     },
@@ -7157,7 +7162,7 @@
       "note": "Portal shell, library and product pages (P0-36)."
     },
     "locker.help.title": {
-      "value": "Need help?",
+      "value": "Help",
       "role": "title",
       "note": "Portal shell, library and product pages (P0-36)."
     },
@@ -7205,6 +7210,11 @@
       "value": "Earlier versions",
       "role": "title",
       "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.notes.released": {
+      "value": "Released",
+      "role": "label",
+      "note": "Earlier versions table header: the release date column (LX-product)."
     },
     "locker.notes.fewer": {
       "value": "Show fewer",
@@ -7557,7 +7567,7 @@
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },
     "locker.devices.tailOf": {
-      "value": "of {limit, plural, one {# device} other {# devices}} in use",
+      "value": "of {limit} in use",
       "role": "hint",
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },

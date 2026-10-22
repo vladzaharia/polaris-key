@@ -1,0 +1,31 @@
+---
+/**
+ * Starlight renders this slot in the header's right group (and the mobile menu's footer). On Help
+ * it holds the one link out of the docs: the customer's library (docs/design/mockups/screens/docs/
+ * docs.help-home.html). On the developer and Operate doors: the changelog and the console (docs.reference); none on the 404.
+ */
+import { helpRoute } from "../lib/helpHost";
+import { HELP_ICONS } from "../lib/helpIcons";
+import { portalHref } from "../lib/portalHref";
+import { DOC_LINKS } from "../lib/chrome";
+
+const help = helpRoute(Astro.locals.starlightRoute.id);
+---
+
+{
+  help ? (
+    <a class="pk-help-library" href={portalHref("library")}>
+      Your library
+      <Fragment set:html={HELP_ICONS.arrowUpRight} />
+    </a>
+  ) : Astro.locals.starlightRoute.id === "404" ? null : (
+    <>
+      {DOC_LINKS.map((link) => (
+        <a class="pk-doc-link" href={link.href}>
+          {link.label}
+          {link.out && <Fragment set:html={HELP_ICONS.arrowUpRight} />}
+        </a>
+      ))}
+    </>
+  )
+}

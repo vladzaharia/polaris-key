@@ -130,7 +130,7 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} needs {size} of new content, and you're on a metered connection.",
     "boot.consent.download": "Download",
-    "boot.error.body": "{product} couldn't finish starting. Try again.",
+    "boot.error.body": "If this keeps happening, restart the app.",
     "welcome.title": "Welcome to {product}",
     "common.welcomeNoProductTitle": "Welcome",
     "common.signInToContinue": "Sign in to continue.",
@@ -223,8 +223,7 @@ export const KIT_COPY: Readonly<
     "update.readyTitle": "{product} {version} is ready",
     "update.readyBody": "Restart {product} to finish updating.",
     "update.mandatoryTitle": "Update to keep using {product}",
-    "update.mandatoryBody":
-      "This version is below the minimum supported version. Update to keep using {product}.",
+    "update.mandatoryBody": "This version is no longer supported.",
     "update.blockedTitle": "This version is no longer supported",
     "update.blockedBody":
       "No update is available here yet. You can keep using {product} for now.",
@@ -843,7 +842,7 @@ export const KIT_COPY: Readonly<
     "signin.code.rateLimited": "Too many tries. Wait a minute, then try again.",
     "signin.gate.termsLinkProduct": "{product} terms",
     "signin.gate.termsLinkPlatform":
-      "Polaris Locker’s Terms and Privacy Policy",
+      "Polaris Locker's Terms and Privacy Policy",
     "signin.approve.expiredCode":
       "That code expired. Ask for a new one on the other device.",
     "signin.approve.notFound":
@@ -916,7 +915,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.joinOtherLede":
       "{email} already belongs to a Polaris Locker account. Use a different email, or sign in to that account first.",
     "signin.gate.nameRequired": "Enter a screen name.",
-    "signin.gate.termsLede": "Agree to {app}’s terms to keep going.",
+    "signin.gate.termsLede": "Agree to {app}'s terms to keep going.",
     "signin.code.incomplete": "Enter all 6 digits.",
     "signin.nudge.title": "Add another way to sign in",
     "signin.nudge.body": "So you can always get back in.",
@@ -1652,8 +1651,7 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} benötigt {size} an neuen Inhalten, und Sie nutzen eine getaktete Verbindung.",
     "boot.consent.download": "Herunterladen",
-    "boot.error.body":
-      "{product} konnte den Start nicht abschließen. Versuchen Sie es erneut.",
+    "boot.error.body": "Wenn das weiterhin passiert, starten Sie die App neu.",
     "welcome.title": "Willkommen bei {product}",
     "common.welcomeNoProductTitle": "Willkommen",
     "common.signInToContinue": "Melden Sie sich an, um fortzufahren.",
@@ -1757,8 +1755,7 @@ export const KIT_COPY: Readonly<
     "update.readyBody":
       "Starten Sie {product} neu, um das Update abzuschließen.",
     "update.mandatoryTitle": "Aktualisieren, um {product} weiter zu verwenden",
-    "update.mandatoryBody":
-      "Diese Version liegt unter der mindestens unterstützten Version. Aktualisieren Sie, um {product} weiter zu verwenden.",
+    "update.mandatoryBody": "Diese Version wird nicht mehr unterstützt.",
     "update.blockedTitle": "Diese Version wird nicht mehr unterstützt",
     "update.blockedBody":
       "Hier ist noch kein Update verfügbar. Sie können {product} vorerst weiter verwenden.",
@@ -3280,8 +3277,7 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} a besoin de {size} de nouveau contenu, et votre connexion est facturée à l’usage.",
     "boot.consent.download": "Télécharger",
-    "boot.error.body":
-      "{product} n’a pas pu terminer son démarrage. Réessayez.",
+    "boot.error.body": "Si le problème persiste, redémarrez l’app.",
     "welcome.title": "Bienvenue dans {product}",
     "common.welcomeNoProductTitle": "Bienvenue",
     "common.signInToContinue": "Connectez-vous pour continuer.",
@@ -3382,8 +3378,7 @@ export const KIT_COPY: Readonly<
     "update.readyBody": "Redémarrez {product} pour terminer la mise à jour.",
     "update.mandatoryTitle":
       "Mettez à jour pour continuer à utiliser {product}",
-    "update.mandatoryBody":
-      "Cette version est antérieure à la version minimale prise en charge. Mettez à jour pour continuer à utiliser {product}.",
+    "update.mandatoryBody": "Cette version n’est plus prise en charge.",
     "update.blockedTitle": "Cette version n’est plus prise en charge",
     "update.blockedBody":
       "Aucune mise à jour n’est encore disponible ici. Vous pouvez continuer à utiliser {product} pour le moment.",
@@ -4893,8 +4888,7 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} necesita {size} de contenido nuevo y estás en una conexión de uso medido.",
     "boot.consent.download": "Descargar",
-    "boot.error.body":
-      "{product} no pudo terminar de iniciarse. Inténtalo de nuevo.",
+    "boot.error.body": "Si el problema continúa, reinicia la app.",
     "welcome.title": "Te damos la bienvenida a {product}",
     "common.welcomeNoProductTitle": "Te damos la bienvenida",
     "common.signInToContinue": "Inicia sesión para continuar.",
@@ -4993,8 +4987,7 @@ export const KIT_COPY: Readonly<
     "update.readyTitle": "{product} {version} está lista",
     "update.readyBody": "Reinicia {product} para terminar de actualizar.",
     "update.mandatoryTitle": "Actualiza para seguir usando {product}",
-    "update.mandatoryBody":
-      "Esta versión es anterior a la versión mínima admitida. Actualiza para seguir usando {product}.",
+    "update.mandatoryBody": "Esta versión ya no es compatible.",
     "update.blockedTitle": "Esta versión ya no es compatible",
     "update.blockedBody":
       "Todavía no hay ninguna actualización disponible aquí. Por ahora puedes seguir usando {product}.",
@@ -6496,8 +6489,7 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} precisa de {size} de conteúdo novo, e você está em uma conexão limitada.",
     "boot.consent.download": "Baixar",
-    "boot.error.body":
-      "Não foi possível concluir a inicialização de {product}. Tente novamente.",
+    "boot.error.body": "Se o problema continuar, reinicie o app.",
     "welcome.title": "Boas-vindas ao {product}",
     "common.welcomeNoProductTitle": "Boas-vindas",
     "common.signInToContinue": "Entre para continuar.",
@@ -6598,8 +6590,7 @@ export const KIT_COPY: Readonly<
     "update.readyTitle": "{product} {version} está pronto",
     "update.readyBody": "Reinicie {product} para concluir a atualização.",
     "update.mandatoryTitle": "Atualize para continuar usando {product}",
-    "update.mandatoryBody":
-      "Esta versão é anterior à versão mínima compatível. Atualize para continuar usando {product}.",
+    "update.mandatoryBody": "Esta versão não é mais compatível.",
     "update.blockedTitle": "Esta versão não é mais compatível",
     "update.blockedBody":
       "Ainda não há atualização disponível aqui. Você pode continuar usando {product} por enquanto.",
@@ -8073,7 +8064,7 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} ha bisogno di {size} di nuovi contenuti e stai usando una connessione a consumo.",
     "boot.consent.download": "Scarica",
-    "boot.error.body": "Impossibile completare l'avvio di {product}. Riprova.",
+    "boot.error.body": "Se il problema persiste, riavvia l'app.",
     "welcome.title": "Ti diamo il benvenuto in {product}",
     "common.welcomeNoProductTitle": "Ti diamo il benvenuto",
     "common.signInToContinue": "Accedi per continuare.",
@@ -8169,8 +8160,7 @@ export const KIT_COPY: Readonly<
     "update.readyTitle": "{product} {version} è pronto",
     "update.readyBody": "Riavvia {product} per completare l'aggiornamento.",
     "update.mandatoryTitle": "Aggiorna per continuare a usare {product}",
-    "update.mandatoryBody":
-      "Questa versione è precedente alla versione minima supportata. Aggiorna per continuare a usare {product}.",
+    "update.mandatoryBody": "Questa versione non è più supportata.",
     "update.blockedTitle": "Questa versione non è più supportata",
     "update.blockedBody":
       "Qui non è ancora disponibile alcun aggiornamento. Per ora puoi continuare a usare {product}.",
@@ -9654,8 +9644,7 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product}には{size}の新しいコンテンツが必要です。現在、従量制の接続を使用しています。",
     "boot.consent.download": "ダウンロード",
-    "boot.error.body":
-      "{product}の起動を完了できませんでした。もう一度お試しください。",
+    "boot.error.body": "問題が続く場合は、アプリを再起動してください。",
     "welcome.title": "{product}へようこそ",
     "common.welcomeNoProductTitle": "ようこそ",
     "common.signInToContinue": "続けるにはサインインしてください。",
@@ -9759,8 +9748,7 @@ export const KIT_COPY: Readonly<
       "アップデートを完了するには{product}を再起動してください。",
     "update.mandatoryTitle":
       "{product}を引き続き使うにはアップデートしてください",
-    "update.mandatoryBody":
-      "このバージョンはサポート対象の最低バージョンを下回っています。{product}を引き続き使うにはアップデートしてください。",
+    "update.mandatoryBody": "このバージョンはサポートが終了しました。",
     "update.blockedTitle": "このバージョンはサポートが終了しました",
     "update.blockedBody":
       "ここではまだアップデートを利用できません。当面は{product}を引き続き使用できます。",
@@ -11258,8 +11246,7 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product}에 {size} 크기의 새 콘텐츠가 필요해요. 현재 데이터 종량제 네트워크에 연결되어 있어요.",
     "boot.consent.download": "다운로드",
-    "boot.error.body":
-      "{product} 시작을 완료하지 못했어요. 다시 시도해 주세요.",
+    "boot.error.body": "문제가 계속되면 앱을 다시 시작해 주세요.",
     "welcome.title": "{product}에 오신 것을 환영해요",
     "common.welcomeNoProductTitle": "환영해요",
     "common.signInToContinue": "계속하려면 로그인하세요.",
@@ -11356,8 +11343,7 @@ export const KIT_COPY: Readonly<
     "update.readyTitle": "{product} {version} 준비 완료",
     "update.readyBody": "업데이트를 완료하려면 {product}을(를) 재시작하세요.",
     "update.mandatoryTitle": "{product}을(를) 계속 사용하려면 업데이트하세요",
-    "update.mandatoryBody":
-      "이 버전은 지원되는 최소 버전보다 낮아요. {product}을(를) 계속 사용하려면 업데이트하세요.",
+    "update.mandatoryBody": "이 버전은 더 이상 지원되지 않아요.",
     "update.blockedTitle": "이 버전은 더 이상 지원되지 않아요",
     "update.blockedBody":
       "아직 여기에서 사용할 수 있는 업데이트가 없어요. 당분간 {product}을(를) 계속 사용할 수 있어요.",
@@ -12787,7 +12773,7 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product}需要{size}的新内容，而你正在使用按流量计费的网络。",
     "boot.consent.download": "下载",
-    "boot.error.body": "{product}未能完成启动。请重试。",
+    "boot.error.body": "如果问题仍然存在，请重启应用。",
     "welcome.title": "欢迎使用{product}",
     "common.welcomeNoProductTitle": "欢迎",
     "common.signInToContinue": "登录以继续。",
@@ -12872,8 +12858,7 @@ export const KIT_COPY: Readonly<
     "update.readyTitle": "{product} {version}已就绪",
     "update.readyBody": "重启{product}以完成更新。",
     "update.mandatoryTitle": "更新以继续使用{product}",
-    "update.mandatoryBody":
-      "此版本低于最低支持版本。请更新以继续使用{product}。",
+    "update.mandatoryBody": "此版本已不再受支持。",
     "update.blockedTitle": "此版本已不再受支持",
     "update.blockedBody": "此处暂无可用的更新。你目前仍可继续使用{product}。",
     "update.critical": "此更新包含一项重要的安全修复。",

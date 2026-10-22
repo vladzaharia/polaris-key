@@ -10,8 +10,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../../lib/cn.js";
-import type { PlatformKey } from "./Glyphs.js";
-import { PlatformGlyphs } from "./Glyphs.js";
+import type { PlatformKey } from "../../ui/Glyphs.js";
+import { PlatformGlyphs } from "../../ui/Glyphs.js";
 import type { TileFact, TileFacts as Facts } from "../model/tileFacts.js";
 
 const FACT_ICON: Record<TileFact["kind"], LucideIcon> = {

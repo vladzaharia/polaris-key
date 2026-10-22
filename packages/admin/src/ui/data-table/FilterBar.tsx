@@ -21,6 +21,12 @@ export interface FilterBarFacet {
    */
   chips?: string[];
   onChange: (next: string[]) => void;
+  /**
+   * Draw the options as counted toggle chips in the band (Licenses' holder states) instead of a
+   * menu: each is a pressed/unpressed button with its `count`, and a selected one needs no chip
+   * in the filter row. `pending` shows a skeleton where a count is not yet known.
+   */
+  counted?: { icons?: Record<string, React.ReactNode>; pending?: boolean };
 }
 
 export interface FilterBarProps {
@@ -140,6 +146,62 @@ function FacetMenu({ facet }: { facet: FilterBarFacet }): React.ReactElement {
   );
 }
 
+/** The counted chips of one facet: toggle buttons, a count on each. */
+function CountedChips({
+  facet,
+}: {
+  facet: FilterBarFacet;
+}): React.ReactElement {
+  const toggle = (value: string, on: boolean): void =>
+    facet.onChange(
+      on
+        ? [...facet.selected, value]
+        : facet.selected.filter((v) => v !== value),
+    );
+  return (
+    <>
+      {facet.options.map((o) => {
+        const on = facet.selected.includes(o.value);
+        const count = o.count === undefined ? null : o.count.toLocaleString();
+        return (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={on}
+            aria-label={
+              count === null
+                ? `${facet.label}: ${o.label}`
+                : `${facet.label}: ${o.label}, ${count}`
+            }
+            onClick={() => toggle(o.value, !on)}
+            className={cn(
+              "inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full border px-3 py-0.5 text-start text-sm text-fg",
+              "hover:bg-hover focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
+              "[&_svg]:size-3.5 [&_svg]:shrink-0",
+              on
+                ? "border-accent-fg bg-accent-subtle text-fg-strong"
+                : "border-border-strong bg-transparent",
+            )}
+          >
+            {facet.counted?.icons?.[o.value]}
+            {o.label}
+            {count !== null ? (
+              <span className="rounded-full bg-surface-sunken px-1.5 text-xs text-fg-muted tabular-nums">
+                {count}
+              </span>
+            ) : facet.counted?.pending ? (
+              <span
+                aria-hidden
+                className="pk-skeleton inline-block h-3 w-6 rounded-full bg-hover"
+              />
+            ) : null}
+          </button>
+        );
+      })}
+    </>
+  );
+}
+
 interface Chip {
   key: string;
   facet: FilterBarFacet;
@@ -230,12 +292,14 @@ export function FilterBar({
     search?.onChange ?? (() => undefined),
   );
   const chips: Chip[] = facets.flatMap((f) =>
-    (f.chips ?? f.selected).map((v) => ({
-      key: `${f.id}:${v}`,
-      facet: f,
-      value: v,
-      label: f.options.find((o) => o.value === v)?.label ?? v,
-    })),
+    f.counted
+      ? []
+      : (f.chips ?? f.selected).map((v) => ({
+          key: `${f.id}:${v}`,
+          facet: f,
+          value: v,
+          label: f.options.find((o) => o.value === v)?.label ?? v,
+        })),
   );
   const [shownChips, dropChip] = useChipPresence(chips);
   const filtered = chips.length > 0 || (search?.value ?? "") !== "";
@@ -247,7 +311,7 @@ export function FilterBar({
         {search ? (
           <label
             className={cn(
-              "relative flex min-w-[min(12rem,100%)] flex-1 items-center sm:max-w-sm",
+              "relative flex min-w-[min(12rem,100%)] flex-1 basis-[min(12rem,100%)] items-center sm:max-w-sm",
               stackSearch && "max-sm:basis-full",
             )}
           >
@@ -267,9 +331,16 @@ export function FilterBar({
             />
           </label>
         ) : null}
-        {facets.map((f) => (
-          <FacetMenu key={f.id} facet={f} />
-        ))}
+        {facets
+          .filter((f) => f.counted)
+          .map((f) => (
+            <CountedChips key={f.id} facet={f} />
+          ))}
+        {facets
+          .filter((f) => !f.counted)
+          .map((f) => (
+            <FacetMenu key={f.id} facet={f} />
+          ))}
         {dateRange}
         {actions ? (
           <div className="ms-auto flex flex-wrap items-center gap-2">

@@ -1,31 +1,30 @@
 /**
- * License → Tiers (ADMIN.md §6.5.3, T2): label, id, profile (a link, TIR-9), term (TIR-6),
- * device limit, channels, versions and **Used by** (licenses on the tier, from the licenses
- * query; TIR-2). Rows open the tier record (TIR-5). Delete is disabled with its reason while the
- * tier is used and L2 when it is not. Create is a one-pane drawer (TIR-8).
+ * License → Tiers (licenses.tiers): the tiers beside the open tier's record. From 1024 px the list
+ * is a column (272 px, 300 from 1280) and the record fills the rest; below that a select picks
+ * the tier above the record. Rows open the tier (`/tiers/<id>`; `/tiers` opens the first) and
+ * show its rank ("1 of 4", best first). Delete lives in the record's menu. Create is a one-pane
+ * drawer (TIR-8). Reordering, Includes and the other mockup fields wait for LX-44, LX-34, LX-41.
  */
 
 import * as React from "react";
 import { Plus } from "lucide-react";
-import type { TierSummary } from "../../../../api.js";
 import { mutate } from "../../../data/mutations.js";
 import { r } from "../../../routes.js";
 import { Link, navigate } from "../../../router.js";
-import { useTableUrlState } from "../../../useTableUrlState.js";
-import { EntityLink } from "../../../components/EntityLink.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
-import { confirmFor } from "../../../../lib/actions.js";
+import { cn } from "../../../../lib/cn.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
-import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
+import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Form, useAdminForm } from "../../../../ui/form.js";
+import { Select } from "../../../../ui/Select.js";
+import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { toast } from "../../../../ui/toast.js";
-import { DataTable, type DataColumn } from "../../../../ui/data-table/index.js";
 import {
   EMPTY_TIER,
   TierFields,
@@ -33,296 +32,154 @@ import {
   validateTier,
   type TierValues,
 } from "../components/TierForm.js";
-import { useLicenses, useProfiles, useTiers } from "../components/shared.js";
+import { TierEditor } from "../components/TierEditor.js";
+import { licenseCountText, useTierUsage } from "../components/tierSummary.js";
+import { useTiers } from "../components/shared.js";
 
-/** Licenses per tier id, or `null` while the licenses are unknown. */
-export function useTierUsage(slug: string): Map<string, number> | null {
-  const q = useLicenses(slug);
-  return React.useMemo(() => {
-    if (!q.data) return null;
-    const m = new Map<string, number>();
-    for (const l of q.data.licenses ?? [])
-      if (l.tier) m.set(l.tier, (m.get(l.tier) ?? 0) + 1);
-    return m;
-  }, [q.data]);
-}
-
-export const usedByText = (n: number) =>
-  `Used by ${n} ${n === 1 ? "license" : "licenses"}`;
-
-/** The tier's term in words: "365-day term". */
-export const termText = (days: number | null) =>
-  days == null ? "No term" : `${days}-day term`;
-
-export function TiersPage({ slug }: { slug: string }): React.ReactElement {
+export function TiersPage({
+  slug,
+  selectedId,
+}: {
+  slug: string;
+  /** The tier the route opens; the first tier when absent. */
+  selectedId?: string;
+}): React.ReactElement {
   const tiersQ = useTiers(slug);
-  const profiles = useProfiles(slug).data?.profiles ?? [];
   const usage = useTierUsage(slug);
-  const [state, setState] = useTableUrlState("tiers");
   const [createOpen, setCreateOpen] = React.useState(false);
-  const [deleting, setDeleting] = React.useState<TierSummary | null>(null);
   const tiers = React.useMemo(() => tiersQ.data?.tiers ?? [], [tiersQ.data]);
+  const open =
+    selectedId === undefined
+      ? tiers[0]
+      : tiers.find((t) => t.id === selectedId);
 
-  const profileName = React.useCallback(
-    (id: string) => profiles.find((p) => p.id === id)?.name || id,
-    [profiles],
-  );
-
-  const columns = React.useMemo<DataColumn<TierSummary>[]>(
-    () => [
-      {
-        id: "label",
-        header: "Tier",
-        accessorFn: (t) => t.label || t.id,
-        meta: { priority: 1, primary: true },
-        cell: ({ getValue }) => (
-          <span
-            className="block max-w-[9.5rem] truncate"
-            title={getValue() as string}
-          >
-            {getValue() as string}
-          </span>
-        ),
-      },
-      {
-        id: "id",
-        header: "Id",
-        accessorKey: "id",
-        meta: { priority: 2, mono: true },
-        cell: ({ getValue }) => (
-          <span
-            className="block max-w-[7rem] truncate"
-            title={getValue() as string}
-          >
-            {getValue() as string}
-          </span>
-        ),
-      },
-      {
-        id: "profile",
-        header: "Profile",
-        accessorFn: (t) => (t.profile ? profileName(t.profile) : ""),
-        meta: { priority: 2 },
-        cell: ({ row }) =>
-          row.original.profile ? (
-            <EntityLink
-              slug={slug}
-              kind="profile"
-              id={row.original.profile}
-              label={profileName(row.original.profile)}
-              className="block max-w-[9.5rem] truncate"
-              title={profileName(row.original.profile)}
-            />
-          ) : (
-            <span className="text-fg-muted">None</span>
-          ),
-      },
-      {
-        id: "term",
-        header: "Expiry",
-        accessorFn: (t) => t.policyExpiryDays ?? Number.MAX_SAFE_INTEGER,
-        meta: { priority: 2, csv: (t) => termText(t.policyExpiryDays) },
-        cell: ({ row }) => (
-          <span className="whitespace-nowrap">
-            {termText(row.original.policyExpiryDays)}
-          </span>
-        ),
-      },
-      {
-        id: "devices",
-        header: "Device limit",
-        accessorFn: (t) => t.policyDeviceLimit ?? 0,
-        meta: {
-          priority: 1,
-          numeric: true,
-          csv: (t) => String(t.policyDeviceLimit ?? ""),
-        },
-        cell: ({ row }) =>
-          row.original.policyDeviceLimit ?? (
-            <span className="whitespace-nowrap text-fg-muted">
-              Product default
-            </span>
-          ),
-      },
-      {
-        id: "channels",
-        header: "Release tracks",
-        accessorFn: (t) => t.channels.join(", "),
-        meta: { priority: 3 },
-        cell: ({ getValue }) =>
-          (getValue() as string) ? (
-            <span
-              className="block max-w-[7.5rem] truncate"
-              title={getValue() as string}
-            >
-              {getValue() as string}
-            </span>
-          ) : (
-            <span className="text-fg-muted">—</span>
-          ),
-      },
-      {
-        id: "versions",
-        header: "Versions",
-        accessorFn: (t) =>
-          t.minVersion || t.maxVersion
-            ? `${t.minVersion ? `≥ ${t.minVersion}` : ""}${t.minVersion && t.maxVersion ? " · " : ""}${t.maxVersion ? `≤ ${t.maxVersion}` : ""}`
-            : "",
-        meta: { priority: 3 },
-        cell: ({ getValue }) =>
-          (getValue() as string) ? (
-            <span className="whitespace-nowrap tabular-nums">
-              {getValue() as string}
-            </span>
-          ) : (
-            <span className="text-fg-muted">Any</span>
-          ),
-      },
-      {
-        id: "usedBy",
-        header: "Used by",
-        accessorFn: (t) => usage?.get(t.id) ?? 0,
-        meta: { priority: 1, numeric: true },
-        cell: ({ row }) => {
-          if (!usage) return <span className="text-fg-muted">—</span>;
-          const n = usage.get(row.original.id) ?? 0;
-          return n === 0 ? (
-            <span className="text-fg-muted">0</span>
-          ) : (
-            <Link
-              to={r.licenses(slug, { tier: row.original.id })}
-              className="inline-block min-w-6 py-1 text-end text-accent-fg underline-offset-4 hover:underline"
-            >
-              {n}
-            </Link>
-          );
-        },
-      },
-    ],
-    [slug, profileName, usage],
-  );
-
-  return (
-    <CollectionTemplate
-      header={
-        <PageHeader
-          title="Tiers"
-          titleAside={
-            tiersQ.data ? (
-              <span className="text-sm tabular-nums text-fg-muted">
-                {tiers.length}
-              </span>
-            ) : null
-          }
-          primaryAction={
-            <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
-              New tier
-            </Button>
-          }
-          refetching={tiersQ.isFetching && !tiersQ.isPending}
-        />
+  const header = (
+    <PageHeader
+      title="Tiers"
+      primaryAction={
+        <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
+          New tier
+        </Button>
       }
-    >
-      <DataTable<TierSummary>
-        id="tiers"
-        caption="Tiers"
-        data={tiers}
-        columns={columns}
-        getRowId={(t) => t.id}
-        rowLabel={(t) => t.label || t.id}
-        rowHref={(t) => r.tier(slug, t.id)}
-        linkComponent={Link}
-        search={{
-          placeholder: "Search tiers",
-          columns: ["label", "id", "profile"],
-        }}
-        state={state}
-        onStateChange={setState}
-        rowActions={(t) => {
-          const used = usage?.get(t.id) ?? 0;
-          return [
-            { label: "Open", onSelect: () => navigate(r.tier(slug, t.id)) },
-            { type: "separator" },
-            {
-              label: "Delete…",
-              tone: "danger",
-              disabledReason: used > 0 ? usedByText(used) : undefined,
-              onSelect: () => setDeleting(t),
-            },
-          ];
-        }}
-        loading={tiersQ.isPending}
-        error={tiersQ.error ?? undefined}
+      refetching={tiersQ.isFetching && !tiersQ.isPending}
+    />
+  );
+
+  let body: React.ReactNode;
+  if (tiersQ.isPending) {
+    body = <PageSkeleton template="record" label="tiers" />;
+  } else if (tiersQ.error && !tiersQ.data) {
+    body = (
+      <ErrorState
+        error={tiersQ.error}
         onRetry={() => void tiersQ.refetch()}
-        empty={
+        context={{ thing: "Tiers" }}
+      />
+    );
+  } else if (tiers.length === 0) {
+    body = (
+      <EmptyState
+        kind="first-run"
+        headingLevel={2}
+        title="No tiers yet"
+        description="A tier bundles a profile and policy defaults that licenses can be put on."
+        primaryAction={
+          <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
+            New tier
+          </Button>
+        }
+        docs={docsUrl("tierEditor")}
+      />
+    );
+  } else {
+    body = (
+      <div className="grid items-start gap-6 lg:grid-cols-[17rem_minmax(0,1fr)] xl:grid-cols-[18.75rem_minmax(0,1fr)]">
+        <div className="lg:hidden">
+          <Select
+            aria-label="Tier"
+            value={open?.id ?? null}
+            placeholder="Choose a tier"
+            options={tiers.map((t) => ({
+              value: t.id,
+              label: t.label || t.id,
+              description: usage ? licenseCountText(usage.get(t.id) ?? 0) : "",
+            }))}
+            onChange={(id) => id && navigate(r.tier(slug, id))}
+          />
+        </div>
+        <nav
+          aria-label="Tiers"
+          className="hidden overflow-hidden rounded-lg border border-border bg-surface-raised lg:sticky lg:top-4 lg:block"
+        >
+          <ul className="divide-y divide-border">
+            {tiers.map((t, i) => {
+              const used = usage?.get(t.id) ?? 0;
+              const current = t.id === open?.id;
+              return (
+                <li
+                  key={t.id}
+                  className={cn(
+                    "flex items-center gap-1 border-s-[3px] pe-2",
+                    current
+                      ? "border-accent bg-accent-subtle"
+                      : "border-transparent",
+                  )}
+                >
+                  <Link
+                    to={r.tier(slug, t.id)}
+                    aria-current={current ? "page" : undefined}
+                    className="min-w-0 flex-1 px-3 py-2.5 outline-offset-[-2px] hover:bg-hover"
+                  >
+                    <span
+                      className="block truncate text-sm font-medium text-fg-strong"
+                      title={t.label || t.id}
+                    >
+                      {t.label || t.id}
+                    </span>
+                    <span className="block text-xs text-fg-muted">
+                      {`${i + 1} of ${tiers.length}`}
+                      {usage ? ` · ${licenseCountText(used)}` : ""}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+        {open ? (
+          <TierEditor
+            key={open.id}
+            slug={slug}
+            tier={open}
+            used={usage ? (usage.get(open.id) ?? 0) : null}
+          />
+        ) : (
           <EmptyState
-            kind="first-run"
+            kind="not-found"
             headingLevel={2}
-            title="No tiers yet"
-            description="A tier bundles a profile and policy defaults that licenses can be put on."
+            title="This tier doesn't exist"
+            description="It may have been deleted, or the link has a typo."
             primaryAction={
-              <Button iconStart={<Plus />} onClick={() => setCreateOpen(true)}>
-                New tier
+              <Button variant="outline" onClick={() => navigate(r.tiers(slug))}>
+                Back to tiers
               </Button>
             }
-            docs={docsUrl("tierEditor")}
           />
-        }
-        mobile="cards"
-      />
+        )}
+      </div>
+    );
+  }
 
+  return (
+    <CollectionTemplate header={header}>
+      {body}
       <CreateTierDrawer
         slug={slug}
         open={createOpen}
         onOpenChange={setCreateOpen}
         existingIds={tiers.map((t) => t.id)}
       />
-      <DeleteTierDialog
-        slug={slug}
-        tier={deleting}
-        onOpenChange={(o) => !o && setDeleting(null)}
-      />
     </CollectionTemplate>
-  );
-}
-
-export function DeleteTierDialog({
-  slug,
-  tier,
-  onOpenChange,
-  onDeleted,
-}: {
-  slug: string;
-  tier: TierSummary | null;
-  onOpenChange: (open: boolean) => void;
-  onDeleted?: () => void;
-}): React.ReactElement {
-  return (
-    <ConfirmDialog
-      open={tier !== null}
-      onOpenChange={onOpenChange}
-      intent={confirmFor("tier.delete").intent as "danger"}
-      title={`Delete tier “${tier?.label || tier?.id || ""}”?`}
-      consequences={[
-        "The tier is removed. No license is on it, so no device is affected.",
-        "A tier the manifest declares comes back at the next resync.",
-      ]}
-      confirmLabel="Delete tier"
-      describeError={(e) =>
-        (e as { status?: number })?.status === 409
-          ? {
-              title: "Licenses are on this tier",
-              description: "Move them to another tier first.",
-            }
-          : errorCopy(e, { thing: "Tier" })
-      }
-      onConfirm={async () => {
-        if (!tier) return;
-        await mutate("deleteTier", slug, tier.id);
-        toast.success("Tier deleted");
-        onDeleted?.();
-      }}
-    />
   );
 }
 

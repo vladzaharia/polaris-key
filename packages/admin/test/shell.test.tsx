@@ -185,9 +185,7 @@ describe("sections by enablement (D-15)", () => {
     expect(sectionHeaders()).toEqual([]);
     // The Platform context lists Home and the Platform pages themselves (ST-45), no product's.
     expect(within(nav()).getByRole("link", { name: "Home" })).toBeTruthy();
-    expect(
-      within(nav()).getByRole("link", { name: "Deployment" }),
-    ).toBeTruthy();
+    expect(within(nav()).getByRole("link", { name: "Status" })).toBeTruthy();
     expect(within(nav()).queryByRole("link", { name: "Overview" })).toBeNull();
     // The products are on Home: no Products link of their own (ST-44).
     expect(within(nav()).queryByRole("link", { name: "Products" })).toBeNull();
@@ -472,9 +470,9 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
     await ready();
     // Overview's own reads land first: its first visit records what it saw for its one-time
     // moments (MO-11). The sidebar is what this test watches.
-    await screen.findByText("0 keys");
-    await screen.findByText("No releases");
-    await screen.findByText(/of 1 feature verified/);
+    await screen.findByText(/0 settings/);
+    await screen.findByText(/No releases yet/);
+    await screen.findByRole("list", { name: "Integration steps" });
     const before = { ...window.localStorage };
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     await expand("Managed config");
@@ -938,8 +936,8 @@ describe("state pages (T8)", () => {
       ],
       [
         "#/p/djdl/secrets",
-        "This page moved to Settings\u00a0→\u00a0Keys & secrets",
-        "Go to Keys & secrets",
+        "This page moved to Settings\u00a0→\u00a0Keys and secrets",
+        "Go to Keys and secrets",
         "#/p/djdl/settings/keys",
       ],
       [

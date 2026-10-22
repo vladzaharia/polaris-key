@@ -37,6 +37,7 @@
     "@polaris-key/react": "workspace:*",
     "@polaris-key/server": "workspace:*",
     "@types/express": "^5.0.0",
+    "@types/yargs": "^17.0.33",
     "@types/node": "^22.14.0",
     "axe-core": "^4.13.0",
     "pagefind": "^1.5.2",
@@ -47,6 +48,15 @@
     "express": "^5.1.0",
     "hono": "^4.7.0",
     "typescript": "^5.8.0",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "yargs": "^18.2.0",
+    "fastify": "^5.2.0",
+    "koa": "^3.0.0",
+    "@types/koa": "^2.15.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.0",
+    "@koa/router": "^15.7.0"
   }
 }

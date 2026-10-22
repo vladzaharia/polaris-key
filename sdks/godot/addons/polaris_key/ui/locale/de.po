@@ -618,10 +618,10 @@ msgstr "{product} benötigt {size} an neuen Inhalten, und Sie nutzen eine getakt
 msgid "boot.consent.download"
 msgstr "Herunterladen"
 
-#. {product} couldn't finish starting. Try again.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. If this keeps happening, restart the app.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
 msgid "boot.error.body"
-msgstr "{product} konnte den Start nicht abschließen. Versuchen Sie es erneut."
+msgstr "Wenn das weiterhin passiert, starten Sie die App neu."
 
 #. Welcome to {product}
 #. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -1169,10 +1169,10 @@ msgstr "Starten Sie {product} neu, um das Update abzuschließen."
 msgid "update.mandatoryTitle"
 msgstr "Aktualisieren, um {product} weiter zu verwenden"
 
-#. This version is below the minimum supported version. Update to keep using {product}.
-#. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. This version is no longer supported.
+#. UpdatePrompt: an app update. Mandatory update.
 msgid "update.mandatoryBody"
-msgstr "Diese Version liegt unter der mindestens unterstützten Version. Aktualisieren Sie, um {product} weiter zu verwenden."
+msgstr "Diese Version wird nicht mehr unterstützt."
 
 #. This version is no longer supported
 #. UpdatePrompt: an app update. No update is available yet.
@@ -4232,7 +4232,7 @@ msgstr "Zu viele Versuche. Warten Sie eine Minute und versuchen Sie es erneut."
 msgid "signin.gate.termsLinkProduct"
 msgstr "Bedingungen von {product}"
 
-#. Polaris Locker’s Terms and Privacy Policy
+#. Polaris Locker's Terms and Privacy Policy
 #. The platform's terms link in the finish step. Polaris Locker is never translated.
 msgid "signin.gate.termsLinkPlatform"
 msgstr "Bedingungen und Datenschutzerklärung von Polaris Locker"
@@ -4565,7 +4565,7 @@ msgstr "{email} gehört bereits zu einem Polaris Locker-Konto. Verwenden Sie ein
 msgid "signin.gate.nameRequired"
 msgstr "Geben Sie einen Anzeigenamen ein."
 
-#. Agree to {app}’s terms to keep going.
+#. Agree to {app}'s terms to keep going.
 #. Finish: lede of the terms-only step. Arguments: {app}.
 msgid "signin.gate.termsLede"
 msgstr "Stimmen Sie den Bedingungen von {app} zu, um fortzufahren."

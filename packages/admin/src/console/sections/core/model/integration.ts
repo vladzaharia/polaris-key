@@ -7,6 +7,7 @@
 import {
   SDK_IDS,
   sdkFit,
+  usageFrameworks,
   type FitPlatform,
   type SdkId,
   type UsageContext,
@@ -278,3 +279,84 @@ export const featureOf = (
   view: IntegrationView,
   id: IntegrationFeatureId,
 ): IntegrationFeature | undefined => view.features.find((f) => f.id === id);
+
+/** Framework names as the docs write them; an id not listed is shown as it is. */
+const FRAMEWORK_LABELS: Record<string, string> = {
+  express: "Express",
+  hono: "Hono",
+  next: "Next.js",
+  fastapi: "FastAPI",
+  starlette: "Starlette",
+  flask: "Flask",
+  django: "Django",
+  drf: "Django REST framework",
+  ktor: "Ktor",
+  commander: "commander",
+  yargs: "yargs",
+  argparse: "argparse",
+  click: "click",
+  typer: "Typer",
+};
+
+export const frameworkLabel = (id: string): string =>
+  FRAMEWORK_LABELS[id] ?? id;
+
+/** The SDK whose server snippet a card can show: this one, else Node (which always has one). */
+export function serverSdkFor(sdk: SdkId): SdkId {
+  return renderServerKey(sdk) ? sdk : "node";
+}
+const renderServerKey = (sdk: SdkId): boolean =>
+  sdk === "node" || usageFrameworks(sdk, "server").length > 0;
+
+/**
+ * The frameworks an SDK has a drop-in for in a lane. Server: Node also offers no framework (the
+ * core). Kit: the terminal frameworks only (Electron is an app, not a CLI).
+ */
+export function hostFrameworks(
+  sdk: SdkId,
+  host: "server" | "cli",
+): Array<{ value: string; label: string }> {
+  const lane = host === "server" ? "server" : "kit";
+  const ids = usageFrameworks(sdk, lane).filter((f) => f !== "electron");
+  const out = ids.map((value) => ({ value, label: frameworkLabel(value) }));
+  if (host === "server" && sdk === "node")
+    out.push({ value: "core", label: "No framework" });
+  return out;
+}
+
+/** The picked framework when this SDK has it, else the SDK's first. Null when it has none. */
+export function pickFramework(
+  sdk: SdkId,
+  host: "server" | "cli",
+  requested: string | null | undefined,
+): string | null {
+  const options = hostFrameworks(sdk, host);
+  return (
+    options.find((o) => o.value === requested)?.value ??
+    options[0]?.value ??
+    null
+  );
+}
+
+/** `core` is the Node server's framework-free variant, rendered with no framework. */
+export const rendererFramework = (framework: string | null): string | null =>
+  framework === "core" ? null : framework;
+
+/** The one line an app adds to call its own server with the license, per SDK; none where unsure. */
+export function backendCall(
+  sdk: SdkId,
+): { code: string; language: string; filename: string } | null {
+  if (sdk === "node")
+    return {
+      language: "ts",
+      filename: "app.ts",
+      code: 'const res = await client.backend.fetch("https://<your-server>/api/pro");',
+    };
+  if (sdk === "python")
+    return {
+      language: "python",
+      filename: "app.py",
+      code: 'res = httpx.get("https://<your-server>/api/pro", auth=client.backend.httpx_auth())',
+    };
+  return null;
+}

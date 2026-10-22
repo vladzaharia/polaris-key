@@ -616,10 +616,10 @@ msgstr "{product}需要{size}的新内容，而你正在使用按流量计费的
 msgid "boot.consent.download"
 msgstr "下载"
 
-#. {product} couldn't finish starting. Try again.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. If this keeps happening, restart the app.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
 msgid "boot.error.body"
-msgstr "{product}未能完成启动。请重试。"
+msgstr "如果问题仍然存在，请重启应用。"
 
 #. Welcome to {product}
 #. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -1165,10 +1165,10 @@ msgstr "重启{product}以完成更新。"
 msgid "update.mandatoryTitle"
 msgstr "更新以继续使用{product}"
 
-#. This version is below the minimum supported version. Update to keep using {product}.
-#. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. This version is no longer supported.
+#. UpdatePrompt: an app update. Mandatory update.
 msgid "update.mandatoryBody"
-msgstr "此版本低于最低支持版本。请更新以继续使用{product}。"
+msgstr "此版本已不再受支持。"
 
 #. This version is no longer supported
 #. UpdatePrompt: an app update. No update is available yet.
@@ -4222,7 +4222,7 @@ msgstr "尝试次数过多。请等待一分钟后重试。"
 msgid "signin.gate.termsLinkProduct"
 msgstr "{product} 条款"
 
-#. Polaris Locker’s Terms and Privacy Policy
+#. Polaris Locker's Terms and Privacy Policy
 #. The platform's terms link in the finish step. Polaris Locker is never translated.
 msgid "signin.gate.termsLinkPlatform"
 msgstr "Polaris Locker 的条款和隐私政策"
@@ -4554,7 +4554,7 @@ msgstr "{email} 已属于一个 Polaris Locker 账户。请使用其他邮箱，
 msgid "signin.gate.nameRequired"
 msgstr "请输入显示名称。"
 
-#. Agree to {app}’s terms to keep going.
+#. Agree to {app}'s terms to keep going.
 #. Finish: lede of the terms-only step. Arguments: {app}.
 msgid "signin.gate.termsLede"
 msgstr "同意 {app} 的条款后继续。"

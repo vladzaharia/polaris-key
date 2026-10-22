@@ -620,10 +620,10 @@ msgstr "{product} necesita {size} de contenido nuevo y estás en una conexión d
 msgid "boot.consent.download"
 msgstr "Descargar"
 
-#. {product} couldn't finish starting. Try again.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. If this keeps happening, restart the app.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
 msgid "boot.error.body"
-msgstr "{product} no pudo terminar de iniciarse. Inténtalo de nuevo."
+msgstr "Si el problema continúa, reinicia la app."
 
 #. Welcome to {product}
 #. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -1173,10 +1173,10 @@ msgstr "Reinicia {product} para terminar de actualizar."
 msgid "update.mandatoryTitle"
 msgstr "Actualiza para seguir usando {product}"
 
-#. This version is below the minimum supported version. Update to keep using {product}.
-#. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. This version is no longer supported.
+#. UpdatePrompt: an app update. Mandatory update.
 msgid "update.mandatoryBody"
-msgstr "Esta versión es anterior a la versión mínima admitida. Actualiza para seguir usando {product}."
+msgstr "Esta versión ya no es compatible."
 
 #. This version is no longer supported
 #. UpdatePrompt: an app update. No update is available yet.
@@ -4242,7 +4242,7 @@ msgstr "Demasiados intentos. Espera un minuto y vuelve a intentarlo."
 msgid "signin.gate.termsLinkProduct"
 msgstr "condiciones de {product}"
 
-#. Polaris Locker’s Terms and Privacy Policy
+#. Polaris Locker's Terms and Privacy Policy
 #. The platform's terms link in the finish step. Polaris Locker is never translated.
 msgid "signin.gate.termsLinkPlatform"
 msgstr "los Términos y la Política de privacidad de Polaris Locker"
@@ -4576,7 +4576,7 @@ msgstr "{email} ya pertenece a una cuenta de Polaris Locker. Usa otro correo o i
 msgid "signin.gate.nameRequired"
 msgstr "Escribe un nombre visible."
 
-#. Agree to {app}’s terms to keep going.
+#. Agree to {app}'s terms to keep going.
 #. Finish: lede of the terms-only step. Arguments: {app}.
 msgid "signin.gate.termsLede"
 msgstr "Acepta los términos de {app} para continuar."

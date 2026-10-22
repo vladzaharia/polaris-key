@@ -1,0 +1,88 @@
+---
+/**
+ * The menu's preferences. On Help: the theme as one segmented choice (System, Dark, Light) and the
+ * link to the library (docs.mobile-menu). Elsewhere the same choice and the header's two links.
+ */
+import { helpRoute } from "../lib/helpHost";
+import { HELP_ICONS } from "../lib/helpIcons";
+import { portalHref } from "../lib/portalHref";
+import { DOC_LINKS } from "../lib/chrome";
+
+const help = helpRoute(Astro.locals.starlightRoute.id);
+const themes = [
+  ["auto", "System"],
+  ["dark", "Dark"],
+  ["light", "Light"],
+] as const;
+---
+
+<pk-help-theme-picker class="pk-help-prefs">
+  <strong id="pk-help-theme-label">Theme</strong>
+  <div class="pk-help-segmented" role="radiogroup" aria-labelledby="pk-help-theme-label">
+    {themes.map(([value, label]) => (
+      <button type="button" role="radio" aria-checked="false" data-theme-value={value}>
+        {label}
+      </button>
+    ))}
+  </div>
+  {
+    help ? (
+      <a class="pk-help-library" href={portalHref("library")}>
+        Your library
+        <Fragment set:html={HELP_ICONS.arrowUpRight} />
+      </a>
+    ) : (
+      <div class="pk-doc-links">
+        {DOC_LINKS.map((link) => (
+          <a class="pk-doc-link" href={link.href}>
+            {link.label}
+            <Fragment set:html={link.out ? HELP_ICONS.arrowUpRight : HELP_ICONS.arrowRight} />
+          </a>
+        ))}
+      </div>
+    )
+  }
+</pk-help-theme-picker>
+
+<script>
+  import { setTheme, storedTheme, type Theme } from "../scripts/helpTheme";
+
+  class HelpThemePicker extends HTMLElement {
+    constructor() {
+      super();
+      const buttons = [
+        ...this.querySelectorAll<HTMLButtonElement>("[data-theme-value]"),
+      ];
+      const show = () => {
+        const now = storedTheme();
+        for (const b of buttons) {
+          const on = b.dataset.themeValue === now;
+          b.setAttribute("aria-checked", String(on));
+          b.tabIndex = on ? 0 : -1;
+        }
+      };
+      for (const [i, b] of buttons.entries()) {
+        b.addEventListener("click", () => {
+          setTheme(b.dataset.themeValue as Theme);
+          show();
+        });
+        b.addEventListener("keydown", (e) => {
+          const step =
+            e.key === "ArrowRight" || e.key === "ArrowDown"
+              ? 1
+              : e.key === "ArrowLeft" || e.key === "ArrowUp"
+                ? -1
+                : 0;
+          if (step === 0) return;
+          e.preventDefault();
+          const next = buttons[(i + step + buttons.length) % buttons.length]!;
+          next.focus();
+          next.click();
+        });
+      }
+      show();
+    }
+  }
+  if (!customElements.get("pk-help-theme-picker"))
+    customElements.define("pk-help-theme-picker", HelpThemePicker);
+</script>

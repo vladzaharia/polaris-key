@@ -53,7 +53,7 @@ export function FocusedFlow({
         {t("locker.shell.skip")}
       </a>
       <header className="@container border-b border-border bg-surface-page">
-        <div className="mx-auto flex min-h-14 w-full max-w-[82rem] items-center justify-between gap-4 px-4 desk:min-h-16 desk:px-8">
+        <div className="mx-auto flex min-h-14 w-full max-w-[82rem] items-center justify-between gap-4 px-4 desk:min-h-16 desk:px-6">
           <a
             href={href.library()}
             aria-label={t("locker.shell.home")}
@@ -158,7 +158,7 @@ export function TaskFrame({
       <h1
         ref={titleRef}
         tabIndex={-1}
-        className="flex items-start gap-3 text-2xl leading-tight @max-[18rem]:text-xl font-semibold tracking-[-0.02em] text-fg-strong outline-none desk:text-[2rem] desk:leading-tight"
+        className="flex items-start gap-3 text-2xl leading-tight @max-[18rem]:text-xl font-semibold tracking-[-0.02em] text-fg-strong outline-none desk:text-headline-lg desk:leading-tight"
       >
         {titleIcon ? (
           <span

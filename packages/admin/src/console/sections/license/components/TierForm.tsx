@@ -25,6 +25,12 @@ import { VersionInput } from "../../../../ui/VersionInput.js";
 import { InlineFailure } from "./InlineFailure.js";
 import { useManualChannels, useProfiles } from "./shared.js";
 
+/**
+ * Every license holds `stable` whatever its tier lists ("none means stable only", terms.ts), so
+ * the form never edits it: it is drawn checked and disabled, and kept out of the draft and the diff.
+ */
+const CHANNEL_STABLE = "stable";
+
 /** The manifest's tier id rule. */
 export const TIER_ID_RE = /^[a-z0-9][a-z0-9_-]*$/;
 
@@ -58,7 +64,7 @@ export function tierValues(t: TierSummary): TierValues {
     profile: t.profile,
     policyExpiryDays: t.policyExpiryDays,
     policyDeviceLimit: t.policyDeviceLimit,
-    channels: t.channels,
+    channels: t.channels.filter((c) => c !== CHANNEL_STABLE),
     minVersion: t.minVersion ?? "",
     maxVersion: t.maxVersion ?? "",
   };
@@ -236,8 +242,159 @@ export function TierFields({
         group
         className="sm:col-span-2"
       >
-        {(f) => <ChannelPicker {...f} manual={manual} held={heldChannels} />}
+        {(f) => (
+          <ChannelPicker
+            {...f}
+            manual={manual}
+            held={heldChannels}
+            fixed={[CHANNEL_STABLE]}
+          />
+        )}
       </FormField>
     </div>
+  );
+}
+
+/** One record group: its name and hint in a label column, its fields beside it (from xl). */
+function TierGroup({
+  title,
+  hint,
+  service,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  service?: string;
+  children: React.ReactNode;
+}): React.ReactElement {
+  const id = React.useId();
+  return (
+    <section
+      aria-labelledby={id}
+      data-service={service}
+      className="grid gap-x-8 gap-y-4 border-t border-border px-5 py-5 xl:grid-cols-[12.5rem_minmax(0,40rem)]"
+    >
+      <div>
+        <h3 id={id} className="text-sm font-semibold text-fg-strong">
+          {title}
+        </h3>
+        {hint ? <p className="mt-1 text-xs text-fg-muted">{hint}</p> : null}
+      </div>
+      <div className="space-y-5">{children}</div>
+    </section>
+  );
+}
+
+/**
+ * The tier record's fields in three groups (licenses.tiers): Duration, Limits and Profile.
+ * Inside a `Form`; the label comes first, ungrouped, because a tier has to be renameable.
+ */
+export function TierGroups({
+  slug,
+  heldChannels,
+}: {
+  slug: string;
+  heldChannels?: readonly string[];
+}): React.ReactElement {
+  const profilesQ = useProfiles(slug);
+  const manual = useManualChannels(slug);
+  const product = useProduct(slug).data;
+  const profiles = profilesQ.data?.profiles ?? [];
+  return (
+    <>
+      <div className="px-5 pb-5">
+        <FormField name="label" label="Label" className="max-w-sm">
+          {(f) => <Input {...f} placeholder="e.g. Pro" />}
+        </FormField>
+      </div>
+      <TierGroup title="Duration">
+        <FormField
+          name="policyExpiryDays"
+          label="Runs for"
+          help="From when a license is issued. Blank: no expiry."
+          className="max-w-xs"
+        >
+          {(f) => <NumberInput {...f} nullable integer min={1} unit="days" />}
+        </FormField>
+      </TierGroup>
+      <TierGroup title="Limits" hint="Blank uses the product default.">
+        <FormField
+          name="policyDeviceLimit"
+          label="Devices"
+          help={`Per license, up to ${MAX_DEVICE_LIMIT}. The product default is ${
+            product?.defaultDeviceLimit && product.defaultDeviceLimit > 0
+              ? product.defaultDeviceLimit
+              : "unlimited"
+          }.`}
+          className="max-w-xs"
+        >
+          {(f) => (
+            <NumberInput
+              {...f}
+              nullable
+              integer
+              min={1}
+              max={MAX_DEVICE_LIMIT}
+              unit="devices"
+            />
+          )}
+        </FormField>
+        <div data-service="release">
+          <FormField
+            name="channels"
+            label="Release tracks"
+            help="Every license on this tier gets these, plus its own."
+            group
+          >
+            {(f) => (
+              <ChannelPicker
+                {...f}
+                manual={manual}
+                held={heldChannels}
+                fixed={[CHANNEL_STABLE]}
+              />
+            )}
+          </FormField>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <FormField name="minVersion" label="Minimum version">
+            {(f) => <VersionInput {...f} placeholder="None" />}
+          </FormField>
+          <FormField name="maxVersion" label="Maximum version">
+            {(f) => <VersionInput {...f} placeholder="None" />}
+          </FormField>
+        </div>
+      </TierGroup>
+      <TierGroup title="Profile" service="config">
+        <FormField
+          name="profile"
+          label="Profile"
+          hideLabel
+          help="A tier has one profile. A license can add more on top of it, in order."
+        >
+          {(f) =>
+            profilesQ.error ? (
+              <InlineFailure
+                what="profiles"
+                error={profilesQ.error}
+                onRetry={() => void profilesQ.refetch()}
+              />
+            ) : (
+              <Select
+                {...f}
+                allowEmpty
+                emptyLabel="No profile"
+                placeholder={profilesQ.isPending ? "Loading…" : "No profile"}
+                options={profiles.map((p) => ({
+                  value: p.id,
+                  label: p.name || p.id,
+                  description: p.id,
+                }))}
+              />
+            )
+          }
+        </FormField>
+      </TierGroup>
+    </>
   );
 }

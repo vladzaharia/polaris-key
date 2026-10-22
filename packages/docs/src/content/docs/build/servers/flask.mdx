@@ -1,0 +1,38 @@
+---
+title: "Gate a Flask route with the license"
+description: "Refuse a request to your Flask view unless the device's license allows it. Verified offline, with no call to Polaris Key."
+type: "how-to"
+lastReviewed: "2026-10-22"
+lanes: ["server"]
+sidebar:
+  order: 7
+---
+
+import Snippet from "../../../../components/docs/Snippet.astro";
+
+The Python drop-in reads the device's license document from the `X-PKey-License` header, verifies it offline against your pinned keys and refuses the request when the license doesn't allow it. A route with no gate stays open. The contract is on [Verify licenses on your server](/docs/build/servers/).
+
+Requires the License feature and the config file `pkey sdk --lang python --write` writes. The app sends `X-PKey-License` and `X-PKey-Device` with each call to your server.
+
+## Steps
+
+1. **Server** Install the SDK with the extra: `pip install "polaris-key[flask]"`, and generate the config file with `pkey sdk --lang python --write`.
+2. **Server** Build one `PolarisKey` from the config and call `polaris.init_app(app)`.
+3. **Server** Decorate each view with a gate, below `@app.get`: `require_license`, `require_entitlement`, `require_tier` or `require_sign_in`.
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/python/server/licensing.flask.py"
+  title="app.py"
+/>
+
+Put the gate below `@app.get`. Above it, the route registers the ungated function, so `require_*` raises at start-up when it sees that. `init_app` decides each request and never refuses; only the gates refuse.
+
+## Require a signed-in account
+
+`require_sign_in()` refuses with `sign_in_required` (403) while no account is signed in on the device. Decorate the view the same way as `require_entitlement`.
+
+## More
+
+- Refusal shapes, several requirements, your own status codes and tests without a network: [Python server reference](/docs/features/licensing/server-python/).
+- Freshness, revocation and replay: [Verify licenses on your server](/docs/build/servers/).
+- The codes a refused request carries: [Error codes](/docs/reference/error-codes/).

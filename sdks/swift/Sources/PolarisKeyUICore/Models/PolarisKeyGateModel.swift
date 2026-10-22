@@ -19,6 +19,7 @@ import PolarisKey
 import PolarisKeyCore
 import PolarisKeyIdentity
 import PolarisKeyLicense
+import PolarisKeyRelease
 
 /// Which step of the gate the person is on while the license is not yet usable.
 public enum KitGateRoute: String, Sendable, Equatable, CaseIterable {
@@ -61,6 +62,67 @@ public struct KitGateOptions: Sendable, Equatable {
         self.signInPresentation = signInPresentation
         self.replace = replace
         self.integrator = integrator
+    }
+}
+
+/// What the host can act on (UI-KITS decision 7): Trial, Restore, Continue free and the update
+/// verb draw only when the host passes a handler for them.
+public struct KitGateHandlers {
+    public var trial: (@MainActor () -> Void)?
+    public var restore: (@MainActor () -> Void)?
+    public var continueFree: (@MainActor () -> Void)?
+    /// The update verb ("Update now", "Update on the App Store", "Restart now").
+    public var update: (@MainActor () -> Void)?
+
+    public init(
+        trial: (@MainActor () -> Void)? = nil, restore: (@MainActor () -> Void)? = nil,
+        continueFree: (@MainActor () -> Void)? = nil, update: (@MainActor () -> Void)? = nil
+    ) {
+        self.trial = trial
+        self.restore = restore
+        self.continueFree = continueFree
+        self.update = update
+    }
+
+    /// Whether the host passed any handler.
+    public var isEmpty: Bool {
+        trial == nil && restore == nil && continueFree == nil && update == nil
+    }
+}
+
+/// A toast the gate shows over the running app (UI-KITS §4.1 Toast).
+public struct KitGateToast: Identifiable, Sendable {
+    public enum Kind: Sendable { case signedIn, copied, update }
+    public let id = UUID()
+    public let kind: Kind
+    public let line: CopyLine
+}
+
+/// The facts of an offered update that come from the release feed (decision 1).
+public enum KitUpdateFacts {
+    /// At most three plain lines of a release summary: bullets and blanks stripped.
+    public static func notes(summary: String?) -> [String] {
+        guard let summary else { return [] }
+        let lines = summary.split(whereSeparator: \.isNewline).map { raw -> String in
+            var line = raw.trimmingCharacters(in: .whitespaces)
+            while let first = line.first, "-*•#>".contains(first) {
+                line.removeFirst()
+                line = line.trimmingCharacters(in: .whitespaces)
+            }
+            return line
+        }
+        return Array(lines.filter { !$0.isEmpty }.prefix(3))
+    }
+
+    /// The changelog entry for `version` (a leading "v" ignored).
+    public static func entry(for version: String, in entries: [ChangelogEntry]) -> ChangelogEntry? {
+        func bare(_ v: String) -> String { v.hasPrefix("v") ? String(v.dropFirst()) : v }
+        return entries.first { bare($0.version) == bare(version) || bare($0.tag) == bare(version) }
+    }
+
+    /// The running build's version from the app bundle.
+    public static func bundleVersion() -> String? {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
     }
 }
 
@@ -134,6 +196,15 @@ public final class PolarisKeyGateModel {
     public private(set) var hasLoaded = false
     /// The name a finished sign-in names in its toast.
     public private(set) var signedInName: String?
+    /// What the host can act on; Trial, Restore and Continue free draw only with a handler.
+    public var handlers: KitGateHandlers {
+        didSet { rebuild() }
+    }
+    /// The toast over the running app, or nil.
+    public private(set) var toast: KitGateToast?
+    /// Whether the person chose Later for the offered update (the banner goes; a repeat offer of
+    /// the same version is a toast).
+    public private(set) var updateDismissed = false
     /// The latest one-shot message for assistive tech (DL7, DL9): set on each refusal, step and
     /// result; a view announces it once.
     public private(set) var announcement: CopyLine?
@@ -157,6 +228,8 @@ public final class PolarisKeyGateModel {
     private var signInError: KitError?
     private var update: KitUpdate?
     private var bootError: String?
+    private var deferredVersion: String?
+    private var currentVersion: String? = KitUpdateFacts.bundleVersion()
 
     private var prompt: SignInPrompt?
     private var observation: Task<Void, Never>?
@@ -172,10 +245,12 @@ public final class PolarisKeyGateModel {
         client: PolarisKeyClient, options: KitGateOptions = KitGateOptions(),
         presentationSource: (any KitPresentationSource)? = nil,
         browser: (any KitSignInBrowser)? = nil, copy: KitCopy = .bundled,
-        bundle: KitBundle? = nil, platform: KitPlatform = .current
+        bundle: KitBundle? = nil, platform: KitPlatform = .current,
+        handlers: KitGateHandlers = KitGateHandlers()
     ) {
         self.client = client
         self.options = options
+        self.handlers = handlers
         self.copy = copy
         // The SDK's presentation unless the host passes its own source (plans/HA-13.md).
         self.presentationSource =
@@ -194,6 +269,7 @@ public final class PolarisKeyGateModel {
         request: KitSignInRequest? = nil, presentationIcon: Data? = nil
     ) {
         self.client = nil
+        self.handlers = KitGateHandlers()
         self.options = KitGateOptions()
         self.copy = copy
         self.presentationSource = nil
@@ -255,12 +331,79 @@ public final class PolarisKeyGateModel {
             for await event in stream {
                 guard let self else { return }
                 if case .updateAvailable(let version, let action, let mandatory, _) = event {
-                    self.update = KitUpdate(action: action, version: version, mandatory: mandatory)
-                    self.rebuild()
+                    await self.offerUpdate(version: version, action: action, mandatory: mandatory)
                 } else {
                     await self.reload()
                 }
             }
+        }
+    }
+
+    // MARK: Update
+
+    private func offerUpdate(version: String, action: String, mandatory: Bool) async {
+        var offer = KitUpdate(
+            action: action, version: version, mandatory: mandatory, currentVersion: currentVersion)
+        if let old = update, old.version == version {
+            offer.progress = old.progress
+            offer.sizeBytes = old.sizeBytes
+            offer.notes = old.notes
+            offer.notesUrl = old.notesUrl
+        }
+        update = offer
+        if deferredVersion == version, !mandatory {
+            showToast(
+                .update,
+                CopyLine(
+                    "toast.updateAvailable",
+                    ["product": .text(identity.name), "version": .text(version)]))
+        } else {
+            deferredVersion = nil
+            updateDismissed = false
+        }
+        rebuild()
+        guard offer.notes == nil, let client,
+            let entries = try? await client.release.changelog(),
+            let entry = KitUpdateFacts.entry(for: version, in: entries), update?.version == version
+        else { return }
+        update?.notes = KitUpdateFacts.notes(summary: entry.summary)
+        update?.notesUrl = entry.url
+        rebuild()
+    }
+
+    /// Later: the banner goes; the same version offered again is a toast.
+    public func deferUpdate() {
+        deferredVersion = update?.version
+        updateDismissed = true
+    }
+
+    /// The host's updater reports a download: its progress and, when known, the size.
+    public func updateDownload(progress: KitUpdateProgress?, sizeBytes: Int? = nil) {
+        guard update != nil else { return }
+        update?.progress = progress
+        if let sizeBytes { update?.sizeBytes = sizeBytes }
+        rebuild()
+    }
+
+    // MARK: Toast
+
+    private func showToast(_ kind: KitGateToast.Kind, _ line: CopyLine) {
+        toast = KitGateToast(kind: kind, line: line)
+    }
+
+    /// The toast timed out or was dismissed (an older toast's timer never clears a newer one).
+    public func dismissToast(_ id: UUID) {
+        if toast?.id == id { toast = nil }
+    }
+
+    /// "Signed in as <name> · <Tier> license" after a sign-in the gate ran.
+    private func toastSignedIn(name: String, tier: String?) {
+        if let tier, !tier.isEmpty {
+            showToast(
+                .signedIn,
+                CopyLine("signin.desktop.toast", ["name": .text(name), "tier": .text(tier)]))
+        } else {
+            showToast(.signedIn, CopyLine("account.holder", ["name": .text(name)]))
         }
     }
 
@@ -356,6 +499,7 @@ public final class PolarisKeyGateModel {
     /// The code was copied (the button says so for a moment).
     public func offlineCodeCopied() {
         offlineCopied = true
+        showToast(.copied, CopyLine("common.copied"))
         rebuild()
     }
 
@@ -478,6 +622,7 @@ public final class PolarisKeyGateModel {
     /// The link was copied (no browser could open).
     public func linkCopied() {
         signIn?.event = .copyLink
+        showToast(.copied, CopyLine("common.copied"))
         rebuild()
         announce(handoff.copy.first)
     }
@@ -545,6 +690,10 @@ public final class PolarisKeyGateModel {
                 signIn?.issuedNow = false
                 rebuild()
                 announce(signInScreen.copy.first)
+                if let name = signedInName {
+                    let info = await client.licenseInfo()
+                    toastSignedIn(name: name, tier: info?.tierLabel ?? info?.tier)
+                }
             case .confirm:
                 // waitForSignIn without confirmIdentity never stops here; treat it as unfinished.
                 signInError = KitError(code: "sign-in-failed")
@@ -623,8 +772,10 @@ public final class PolarisKeyGateModel {
             platform: platform, services: servicesOn, registration: registration,
             capabilities: KitCapabilities(
                 signIn: true, keyEntry: options.keyEntry, deviceCode: true,
-                offlineActivation: options.offlineActivation, trial: options.trial,
-                restore: options.restore, purchase: false, enroll: options.enroll))
+                offlineActivation: options.offlineActivation,
+                trial: options.trial && handlers.trial != nil,
+                restore: options.restore && handlers.restore != nil, purchase: false,
+                enroll: options.enroll && handlers.continueFree != nil))
         if !hasLoaded {
             i.gate = KitGate(checking: true)
         } else if let license {

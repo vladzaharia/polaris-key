@@ -85,6 +85,24 @@ async function runbookItems(body: string, maxDepth: number) {
   return nest(headings, maxDepth);
 }
 
+/**
+ * The collapse rule (docs plan 3.2): in Developers and Operate every group is closed except the one
+ * holding the current page, as in the console. Starlight opens a group that holds the current page
+ * whatever its `collapsed` flag says, so closing them all is the rule.
+ */
+interface Collapsible {
+  type: string;
+  collapsed?: boolean;
+  entries?: Collapsible[];
+}
+function collapseGroups(entries: Collapsible[]): void {
+  for (const e of entries) {
+    if (e.type !== "group") continue;
+    e.collapsed = true;
+    collapseGroups(e.entries ?? []);
+  }
+}
+
 export const onRequest = defineRouteMiddleware(async (context) => {
   const route = context.locals.starlightRoute;
   const { toc, id, entry, head } = route;
@@ -92,6 +110,7 @@ export const onRequest = defineRouteMiddleware(async (context) => {
   const door = doorOf(id)?.door;
   if (route.sidebar && door && door !== "landing") {
     route.sidebar = scopeSidebar(route.sidebar, door);
+    if (door !== "help") collapseGroups(route.sidebar as Collapsible[]);
     // Previous and next follow the same sidebar, so they stay inside the door.
     const data = (entry as { data?: { prev?: unknown; next?: unknown } }).data;
     route.pagination = scopedPagination(route.sidebar, route.pagination, {
@@ -99,11 +118,19 @@ export const onRequest = defineRouteMiddleware(async (context) => {
       next: data?.next !== undefined,
     });
   }
+  // The landing and the access page are one column: no tree, as the Help home.
+  if (door === "landing") route.hasSidebar = false;
   // Help is the customer's site (LK-09, D7): it is served at polaris.locker/docs/help/, so its
   // name, its address and its home link say so.
   if (helpRoute(id)) {
     route.siteTitle = "Polaris Locker";
     route.siteTitleHref = "/docs/help/";
+    // The home is one column, and no Help page has a previous and next (docs.help-home,
+    // docs.help-article). "On this page" stays on the messages pages only: they hold up to 27
+    // entries and the list is the way to jump to one (below).
+    if (id === "help") route.hasSidebar = false;
+    route.pagination = { prev: undefined, next: undefined };
+    if (!id.startsWith("help/messages")) route.toc = undefined;
     for (const h of head ?? []) {
       if (h.tag === "title" && typeof h.content === "string")
         h.content = h.content.replace(/ \| Polaris Key$/, " · Polaris Locker");
@@ -138,7 +165,12 @@ export const onRequest = defineRouteMiddleware(async (context) => {
   )
     head.push({ tag: "meta", attrs: { name: "robots", content: "noindex" } });
   // The list is off for the page, or does not show level 2.
-  if (toc === undefined || toc.minHeadingLevel > 2 || toc.maxHeadingLevel < 2)
+  if (
+    route.toc === undefined ||
+    toc === undefined ||
+    toc.minHeadingLevel > 2 ||
+    toc.maxHeadingLevel < 2
+  )
     return;
   const body = (entry as { body?: string } | undefined)?.body ?? "";
   toc.items.splice(

@@ -50,6 +50,8 @@ export const PREF_KEYS = {
   recentProducts: "pk-admin-recent-products",
   /** The command palette's recent commands. */
   recentCommands: "pk-admin-recent-commands",
+  /** Names of records opened from the palette, by console hash, so Recent shows a name not an id. */
+  recentNames: "pk-admin-recent-names",
   /**
    * Prefix: a one-time moment shown, `<prefix><moment>:<slug>` (EXPERIENCE.md §0.7; MO-11). Written
    * by `ui/motion`'s `Celebration` (which the portal shares), listed here so every console key is.

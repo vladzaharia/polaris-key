@@ -1,4 +1,4 @@
-import type { PlatformKey } from "../components/Glyphs.js";
+import type { PlatformKey } from "../../ui/Glyphs.js";
 import { t, type PortalKey } from "../../lib/copy.js";
 
 /**

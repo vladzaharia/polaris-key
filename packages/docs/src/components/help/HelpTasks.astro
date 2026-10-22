@@ -1,8 +1,10 @@
 ---
 /**
- * The Help home's popular tasks as cards: a title and one line each, two across on a wide screen
- * and one on a phone. Colours are tokens, so dark and light come with them.
+ * Link cards for the Help home (docs.help-home): a title with an arrow, then one line. Used for
+ * Top tasks and for Browse by topic, which differ only in what the line holds. Colours are tokens,
+ * so dark and light come with them.
  */
+import { HELP_ICONS } from "../../lib/helpIcons";
 import "./home.css";
 
 export interface Props {
@@ -12,13 +14,16 @@ export interface Props {
 const { tasks } = Astro.props;
 ---
 
-<ul class="pk-help-home__tasks not-content">
+<ul class="pk-help-cards not-content">
   {
     tasks.map((task) => (
       <li>
         <a href={task.href}>
-          <strong>{task.title}</strong>
-          <span>{task.description}</span>
+          <span class="pk-help-cards__title">
+            {task.title}
+            <Fragment set:html={HELP_ICONS.arrowRight} />
+          </span>
+          <span class="pk-help-cards__text">{task.description}</span>
         </a>
       </li>
     ))

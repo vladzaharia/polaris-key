@@ -1,0 +1,26 @@
+---
+/**
+ * The theme's pre-paint script, on the console's key. `pk-admin-theme` holds "dark", "light" or
+ * "system" (packages/admin/src/components/theme.tsx): the docs, the console and the portal share
+ * an origin, so a viewer who chose light in one reads light in the others. Starlight's own script
+ * reads `starlight-theme` and would ignore the choice. This one resolves "system" (or nothing) to
+ * the OS's answer, dark when it gives none, and sets data-theme as Starlight's does.
+ */
+---
+
+<script is:inline>
+  window.StarlightThemeProvider = (() => {
+    let stored = null;
+    try {
+      stored = localStorage.getItem("pk-admin-theme");
+    } catch {}
+    const theme =
+      stored === "light" || stored === "dark"
+        ? stored
+        : window.matchMedia("(prefers-color-scheme: light)").matches
+          ? "light"
+          : "dark";
+    document.documentElement.dataset.theme = theme;
+    return { updatePickers() {} };
+  })();
+</script>

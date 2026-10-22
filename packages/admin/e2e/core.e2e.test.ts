@@ -8,7 +8,7 @@ import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES, DEVICE_ID, USER_SUBJECT } from "./coreFixtures.js";
 
 /**
- * The Core pages (Overview, Services, Devices and the device drawer, Keys & secrets, Activity,
+ * The Core pages (Overview, Services, Devices and the device drawer, Keys and secrets, Activity,
  * Settings) in real Chromium under the Worker's CSP, in both themes: each loads with zero
  * violations, and its drawers and dialogs open and close cleanly.
  *
@@ -250,9 +250,9 @@ describe("Core pages under the Worker's CSP", () => {
   // ST-08: the old pages are removals, not aliases. The old URL stays and says where it went.
   it("old Services, Presentation and Keys URLs open Page moved, with no redirect", async () => {
     for (const [old, home] of [
-      ["#/p/djdl/services", "Features & general"],
+      ["#/p/djdl/services", "Features and general"],
       ["#/p/djdl/presentation", "Presentation"],
-      ["#/p/djdl/keys", "Keys & secrets"],
+      ["#/p/djdl/keys", "Keys and secrets"],
     ] as const) {
       const page = await open("dark", old);
       await page.getByText(/This page moved to/).waitFor();

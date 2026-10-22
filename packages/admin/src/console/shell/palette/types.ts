@@ -74,6 +74,8 @@ export interface PaletteItem {
   capped?: { shown: number; total: number; noun: string };
   issue?: { tone: "danger" | "warning"; label: string };
   product?: ProductLike;
+  /** The name Recent shows for the record this row opens (an entity row: who, not its id). */
+  recordName?: string;
 }
 
 /** A row that goes somewhere: every navigation and product row. */

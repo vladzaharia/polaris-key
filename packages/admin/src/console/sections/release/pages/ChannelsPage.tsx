@@ -68,6 +68,7 @@ export function DeliverableLanes({
     platforms,
     floors,
     onAction: setAction,
+    channels,
     distributionOn: product.data?.services?.distribution?.enabled !== false,
   };
 

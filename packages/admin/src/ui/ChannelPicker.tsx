@@ -18,6 +18,11 @@ export interface ChannelPickerProps {
   manual?: readonly string[];
   /** The value when the form opened, so an unticked held grant stays listed. */
   held?: readonly string[];
+  /**
+   * Channels held whatever the value says (a tier's `stable`): drawn first, checked and disabled
+   * with "Always included", and never part of the value or of what `onChange` returns.
+   */
+  fixed?: readonly string[];
   id?: string;
   disabled?: boolean;
   readOnly?: boolean;
@@ -38,6 +43,7 @@ export function ChannelPicker({
   onChange,
   manual = [],
   held,
+  fixed = [],
   id,
   disabled,
   readOnly,
@@ -46,7 +52,9 @@ export function ChannelPicker({
   ...aria
 }: ChannelPickerProps): React.ReactElement {
   const selected = value ?? [];
-  const options = channelOptions(manual, held ?? selected);
+  const options = channelOptions(manual, held ?? selected).filter(
+    (o) => !fixed.includes(o.name),
+  );
   const reactId = React.useId();
   const base = id ?? `ch-${reactId.replace(/:/g, "")}`;
   return (
@@ -57,6 +65,16 @@ export function ChannelPicker({
       className={cn("flex flex-col gap-2", className)}
       {...aria}
     >
+      {fixed.map((name) => (
+        <Checkbox
+          key={name}
+          id={`${base}-${name}`}
+          label={<span className="font-mono text-xs">{name}</span>}
+          description="Always included"
+          checked
+          disabled
+        />
+      ))}
       {options.map((o) => (
         <Checkbox
           key={o.name}

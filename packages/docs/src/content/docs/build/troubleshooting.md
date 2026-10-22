@@ -93,7 +93,7 @@ Each entry starts from a license status or an error code your app reports. For t
 
 **Cause:** The pins in the app's config file don't match the key that signed the document: the app points at another product or base URL, or the product's signing key changed since the file was generated. The app trusts only keys it pinned at build time, so it refuses a document with an unknown key id or a bad signature, and it never falls back to trusting the network.
 
-**Fix:** Run `pkey sdk --lang <lang> --product <slug> --write --force` and rebuild. Compare each key in the file with **Public key** under **Core → Keys & secrets**. [Go live](/docs/build/go-live/) covers staging a second key before you retire the first.
+**Fix:** Run `pkey sdk --lang <lang> --product <slug> --write --force` and rebuild. Compare each key in the file with **Public key** under **Core → Keys and secrets**. [Go live](/docs/build/go-live/) covers staging a second key before you retire the first.
 
 **Check it works:** The status moves to `ok` after the next sync.
 

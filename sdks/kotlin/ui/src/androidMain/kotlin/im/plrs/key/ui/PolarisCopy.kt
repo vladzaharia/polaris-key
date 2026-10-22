@@ -39,7 +39,7 @@ public data class PolarisCopy(
     val bootOfflineBody: String = "Connect to the internet and try again.",
     val bootOfflinePlayableBody: String = "Some content couldn't be downloaded. You can keep going with what's installed, or connect and try again.",
     val bootErrorTitle: String = "Something went wrong",
-    val bootErrorBody: String = "%1\$s couldn't finish starting. Try again.",
+    val bootErrorBody: String = "If this keeps happening, restart the app.",
     val bootBlockedUpdateTitle: String = "Update required",
     val bootBlockedUpdateBody: String = "This version can no longer be used. Update to continue.",
     val bootBlockedUnavailableTitle: String = "Not available on your license",
@@ -200,7 +200,7 @@ public data class PolarisCopy(
     val updatePromptTitle: String = "%1\$s %2\$s",
     /** A mandatory update of a named product: %1$s the product (update.mandatoryTitle, mandatoryBody). */
     val updateMandatoryTitle: String = "Update to keep using %1\$s",
-    val updateMandatoryBody: String = "This version is below the minimum supported version. Update to keep using %1\$s.",
+    val updateMandatoryBody: String = "This version is no longer supported.",
     val updateRequiredTitle: String = "Update required",
     val updateRequiredBody: String = "Version %1\$s is required to keep using this app.",
     val updateNow: String = "Update now",

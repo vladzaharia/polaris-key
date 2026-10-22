@@ -21,6 +21,8 @@ const ALERT_TRAP = `(() => {
   for (const k of ["alert", "confirm", "prompt"]) {
     window[k] = () => { window.__pkUiLintAlerts.push(k); return k === "confirm" ? false : null; };
   }
+  window.__pkUiLintOpens = [];
+  window.open = (url) => { window.__pkUiLintOpens.push(String(url)); return null; };
 })();`;
 
 /** Install the alert trap on a page before it navigates (kits' component tests call this). */

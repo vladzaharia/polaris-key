@@ -31,10 +31,10 @@ describe("Settings hub", () => {
     const nav = screen.getByRole("navigation", { name: "Settings" });
     const links = within(nav).getAllByRole("link");
     expect(links.map((l) => l.textContent)).toEqual([
-      "Features & general",
+      "Features and general",
       "Presentation",
       "Polaris Locker",
-      "Keys & secrets",
+      "Keys and secrets",
       "Members",
     ]);
     expect(links[0]!.getAttribute("aria-current")).toBe("page");
@@ -59,7 +59,7 @@ describe("Settings hub", () => {
     const nav = screen.getByRole("navigation", { name: "Settings" });
     expect(
       within(nav)
-        .getByRole("link", { name: "Features & general" })
+        .getByRole("link", { name: "Features and general" })
         .getAttribute("aria-current"),
     ).toBe("page");
   });
@@ -80,7 +80,7 @@ describe("the view-only notice (UX review M8)", () => {
     ["settings", "Settings"],
     ["portal", "Settings"],
     ["presentation", "Settings"],
-    ["keys", "Keys & secrets"],
+    ["keys", "Keys and secrets"],
   ] as const)(
     "%s: one callout, naming %s access and never Core",
     async (page, name) => {

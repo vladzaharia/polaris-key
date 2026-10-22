@@ -467,7 +467,7 @@ describe("Home", () => {
       within(region)
         .getByRole("link", { name: "Open status" })
         .getAttribute("href"),
-    ).toBe("#/platform/operations");
+    ).toBe("#/platform/status");
   });
 
   it("first run: a pending or failed Platform ready read still has its card", async () => {
@@ -1020,7 +1020,7 @@ describe("a member with narrow access (ST-29)", () => {
     const extra = registry();
     extra["/manage/api/attention"] = {
       items: [
-        // Keys & secrets is not theirs; Releases is.
+        // Keys and secrets is not theirs; Releases is.
         item({ id: "djdl:secret.missing:K" }),
         item({
           id: "djdl:sync.failed",

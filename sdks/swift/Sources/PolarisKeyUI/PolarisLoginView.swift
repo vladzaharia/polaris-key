@@ -1070,7 +1070,7 @@ private struct OptionalTint: ViewModifier {
                 lastError: lastError, licenseKey: .constant(""), theme: theme,
                 onSignIn: {}, onActivate: { _ in }, onRefresh: {},
                 content: {
-                    Text("Product UI").font(.title).foregroundStyle(.secondary)
+                    Text("Product UI").font(.title).foregroundStyle(.secondary)  // ui-lint: allow swiftui-catalog-string preview fixture for the host app
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 })
         }

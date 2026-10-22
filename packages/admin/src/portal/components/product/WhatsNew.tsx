@@ -91,7 +91,11 @@ export function WhatsNew({
                   className={all ? "size-4 rotate-180" : "size-4"}
                 />
               </button>
-            ) : null}
+            ) : (
+              <span className="text-sm text-fg-muted">
+                {t("locker.notes.released")}
+              </span>
+            )}
           </div>
           <ul className="divide-y divide-border">
             {shown.map((r) => (

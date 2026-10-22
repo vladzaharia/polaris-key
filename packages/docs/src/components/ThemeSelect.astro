@@ -1,0 +1,33 @@
+---
+/**
+ * The theme control on every page is one icon button that flips dark and light, as in the
+ * mockups; the three-way choice (System, Dark, Light) is in the phone menu (MobileMenuFooter).
+ */
+import { HELP_ICONS } from "../lib/helpIcons";
+---
+
+<pk-help-theme-toggle>
+  <button type="button" class="pk-help-iconbtn" aria-label="Theme">
+    <span class="pk-help-theme__dark" set:html={HELP_ICONS.moon} />
+    <span class="pk-help-theme__light" set:html={HELP_ICONS.sun} />
+  </button>
+</pk-help-theme-toggle>
+
+<script>
+  import { setTheme } from "../scripts/helpTheme";
+
+  class HelpThemeToggle extends HTMLElement {
+    constructor() {
+      super();
+      this.querySelector("button")?.addEventListener("click", () =>
+        setTheme(
+          document.documentElement.dataset.theme === "light"
+            ? "dark"
+            : "light",
+        ),
+      );
+    }
+  }
+  if (!customElements.get("pk-help-theme-toggle"))
+    customElements.define("pk-help-theme-toggle", HelpThemeToggle);
+</script>

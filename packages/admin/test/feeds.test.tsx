@@ -583,21 +583,29 @@ describe("the Feeds overview", () => {
     ).toBe("#/p/djdl/distribution/feeds");
   });
 
-  it("product scope with package feeds off: absent from the sidebar, and the page says where to turn them on", async () => {
+  it("product scope with package feeds off: absent from the sidebar, and the page offers Turn on", async () => {
     boot("#/p/djdl/distribution/feeds/npm", {
-      extra: { ...feedRoutes(), ...product(false) },
+      extra: {
+        ...feedRoutes(),
+        ...product(false),
+        "/manage/api/products/djdl/distribution/package-feeds": {
+          packageFeeds: { enabled: false, version: 2, updatedAt: 1760000000 },
+        },
+        "PUT /manage/api/products/djdl/distribution/package-feeds": {
+          ok: true,
+          packageFeeds: { enabled: true, version: 3, updatedAt: 1760000100 },
+        },
+      },
     });
     await heading("Package feeds");
+    const page = within(await mainReady());
+    expect(await page.findByText(/Package feeds are off for/)).toBeTruthy();
+    expect(await page.findByText(/Nothing was deleted/)).toBeTruthy();
+    expect(page.getByText(/Turned off on/)).toBeTruthy();
+    expect(page.queryByRole("link", { name: "Open Features" })).toBeNull();
     expect(
-      await within(await mainReady()).findByText(
-        "Package feeds are off for this product",
-      ),
+      page.getByRole("button", { name: "Turn on package feeds" }),
     ).toBeTruthy();
-    expect(
-      within(main())
-        .getByRole("link", { name: "Open Features" })
-        .getAttribute("href"),
-    ).toBe("#/p/djdl/settings/features");
     expect(
       within(nav())
         .queryAllByRole("link", { name: "Package feeds" })

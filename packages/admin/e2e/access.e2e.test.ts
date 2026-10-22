@@ -128,7 +128,7 @@ const STATES = [
     name: "no-access",
     hash: "#/p/diceroll/license/licenses",
     me: LUCIA,
-    h1: "You don’t have access to Diceroll , Licensing",
+    h1: "You don't have access to Diceroll , Licensing",
     admins: [
       { name: "Kenji Mori", email: "kenji@example.com", role: "product_admin" },
       { name: "Ada Lindqvist", email: "ada@example.com", role: "superadmin" },
@@ -139,7 +139,7 @@ const STATES = [
     name: "no-access-long",
     hash: "#/p/diceroll/license/licenses",
     me: LONG,
-    h1: "You don’t have access to Starfall Chronicles Remastered , Licensing",
+    h1: "You don't have access to Starfall Chronicles Remastered , Licensing",
     admins: [
       { name: "Kenji Mori", email: "kenji@example.com", role: "product_admin" },
       { name: "Ada Lindqvist", email: "ada@example.com", role: "superadmin" },
@@ -149,7 +149,7 @@ const STATES = [
     name: "no-access-home",
     hash: "#/",
     me: NOOR,
-    h1: "You don’t have access to any product yet",
+    h1: "You don't have access to any product yet",
     admins: [
       { name: "Ada Lindqvist", email: "ada@example.com", role: "superadmin" },
       { name: "Jonas Weber", email: "jonas@example.com", role: "superadmin" },

@@ -223,13 +223,13 @@ describe("a rendered tab", () => {
     }
   });
 
-  it("reads Activate and Devices from the addon", () => {
+  it("reads Activate and Paywall from the addon", () => {
     expect(godotTab("Activate").map(plain).join("\n")).toContain(
       "`PKeyActivationPanel` (`activation/pkey_activation_panel.tscn`)",
     );
-    const devices = godotTab("Devices").map(plain).join("\n");
-    expect(devices).toContain("no scene");
-    expect(devices).toContain('`view_of("Devices", input)`');
+    const paywall = godotTab("Paywall").map(plain).join("\n");
+    expect(paywall).toContain("no scene");
+    expect(paywall).toContain('`view_of("Paywall", input)`');
   });
 
   it("refuses a component the kit does not implement", () => {

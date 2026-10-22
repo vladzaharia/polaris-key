@@ -18,7 +18,7 @@
     <string name="pkey_ui_boot_offline_body">Connect to the internet and try again.</string>
     <string name="pkey_ui_boot_offline_playable_body">Some content couldn\'t be downloaded. You can keep going with what\'s installed, or connect and try again.</string>
     <string name="pkey_ui_boot_error_title">Something went wrong</string>
-    <string name="pkey_ui_boot_error_body">%1$s couldn\'t finish starting. Try again.</string>
+    <string name="pkey_ui_boot_error_body">If this keeps happening, restart the app.</string>
     <string name="pkey_ui_boot_blocked_update_title">Update required</string>
     <string name="pkey_ui_boot_blocked_update_body">This version can no longer be used. Update to continue.</string>
     <string name="pkey_ui_boot_blocked_unavailable_title">Not available on your license</string>
@@ -141,7 +141,7 @@
     <string name="pkey_ui_update_dismiss">Dismiss</string>
     <string name="pkey_ui_update_prompt_title">%1$s %2$s</string>
     <string name="pkey_ui_update_mandatory_title">Update to keep using %1$s</string>
-    <string name="pkey_ui_update_mandatory_body">This version is below the minimum supported version. Update to keep using %1$s.</string>
+    <string name="pkey_ui_update_mandatory_body">This version is no longer supported.</string>
     <string name="pkey_ui_update_required_title">Update required</string>
     <string name="pkey_ui_update_required_body">Version %1$s is required to keep using this app.</string>
     <string name="pkey_ui_update_now">Update now</string>

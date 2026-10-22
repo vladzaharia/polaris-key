@@ -1,0 +1,59 @@
+---
+/**
+ * The page-not-found state (docs.not-found): an icon, what happened, and two ways on. The site has
+ * one static 404 for every door, and the Worker serves it for any miss under /docs/, so the
+ * variant is chosen in the browser from the address: under /docs/help/ it is Help's (Polaris
+ * Locker, "Back to Help", "Search help"), anywhere else the docs'. The inline script runs before
+ * the first paint and marks the page; CSS shows the matching variant (help.css).
+ */
+import { HELP_ICONS } from "../../lib/helpIcons";
+---
+
+<script is:inline>
+  if (location.pathname.indexOf("/docs/help") === 0) {
+    document.documentElement.setAttribute("data-help-miss", "");
+    var frame = document.querySelector(".pk-section");
+    if (frame) frame.setAttribute("data-brand", "locker");
+  }
+</script>
+
+<pk-miss class="pk-miss not-content">
+  <span class="pk-miss__icon"><Fragment set:html={HELP_ICONS.star} /></span>
+  <div class="pk-miss__docs">
+    <h1 id="_top">That page isn’t in the docs</h1>
+    <p>The link may be old or the page may have moved.</p>
+    <div class="pk-miss__row">
+      <a class="pk-miss__primary" href="/docs/">Back to the docs</a>
+      <button type="button" class="pk-miss__secondary" data-search>
+        <Fragment set:html={HELP_ICONS.search} />Search the docs
+      </button>
+    </div>
+  </div>
+  <div class="pk-miss__help">
+    <h1>That page isn’t in Help</h1>
+    <p>The link may be old or the page may have moved.</p>
+    <div class="pk-miss__row">
+      <a class="pk-miss__primary" href="/docs/help/">Back to Help</a>
+      <button type="button" class="pk-miss__secondary" data-search>
+        <Fragment set:html={HELP_ICONS.search} />Search help
+      </button>
+    </div>
+  </div>
+</pk-miss>
+
+<script>
+  class Miss extends HTMLElement {
+    constructor() {
+      super();
+      for (const b of this.querySelectorAll("[data-search]"))
+        b.addEventListener("click", () =>
+          document
+            .querySelector<HTMLButtonElement>(
+              "site-search button[data-open-modal]",
+            )
+            ?.click(),
+        );
+    }
+  }
+  if (!customElements.get("pk-miss")) customElements.define("pk-miss", Miss);
+</script>
