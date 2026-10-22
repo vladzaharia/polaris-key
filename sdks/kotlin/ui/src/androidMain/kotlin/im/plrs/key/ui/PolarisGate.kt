@@ -129,6 +129,7 @@ public fun PolarisGateScreen(
     onActivate: () -> Unit = {},
     onSignIn: (() -> Unit)? = null,
     onRetry: () -> Unit = {},
+    onRenew: (() -> Unit)? = null,
     manageAsQr: Boolean = false,
     signIn: PolarisSignInState? = null,
     content: @Composable () -> Unit = {},
@@ -190,15 +191,24 @@ public fun PolarisGateScreen(
                 val stop = status ?: LicenseStatus.expired
                 val message = copy.gateMessage(stop, license?.allowedRange) ?: return@Crossfade
                 PolarisMessageScreen(message) {
-                    PolarisPrimaryButton(
-                        text = if (stop == LicenseStatus.expired) copy.reconnect else copy.retry,
-                        onClick = onRetry,
-                        busy = gate.refreshing,
-                        initialFocus = true,
-                    )
                     if (stop == LicenseStatus.expired) {
-                        // No renew link exists on the device side; another license is the way on.
+                        // Expired leads with Renew and offers Use another license; never Try again or
+                        // Reconnect (the matrix pins both). Without a host renewal page, Renew
+                        // re-checks the license, which is how a renewal made elsewhere shows up.
+                        PolarisPrimaryButton(
+                            text = copy.renew,
+                            onClick = onRenew ?: onRetry,
+                            busy = gate.refreshing,
+                            initialFocus = true,
+                        )
                         PolarisSecondaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true })
+                    } else {
+                        PolarisPrimaryButton(
+                            text = copy.retry,
+                            onClick = onRetry,
+                            busy = gate.refreshing,
+                            initialFocus = true,
+                        )
                     }
                 }
             }

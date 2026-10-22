@@ -145,7 +145,7 @@ internal fun statusScreen(inputs: KitInputs): KitScreen {
         "version-too-new" -> screen(
             KitComponent.statusScreen,
             "version-too-new",
-            listOf(context.line("core.gate.version-too-new.title"), context.line("core.gate.version-too-new.message", context.productArgs)) + allowedLines(),
+            listOf(context.line("core.gate.version-too-new.title"), context.line("core.gate.version-too-new.message", context.productArgs)) + allowedLines() + context.line("common.tryAgain"),
         )
         "channel-not-entitled" -> {
             val lines = mutableListOf(

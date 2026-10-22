@@ -10,9 +10,20 @@
 
 package im.plrs.key.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -61,6 +72,8 @@ private val controlKeys = setOf(
 
 internal fun kitLineRole(key: String): KitLineRole = when {
     key.startsWith("a11y.") -> KitLineRole.Announcement
+    // A sentence that ends in "done" is the verdict, not the Done button (`common.done`).
+    key == "offlineActivation.done" -> KitLineRole.Text
     key in controlKeys || KitAction.forCopyKey(key) != null || controlSuffix.containsMatchIn(key) -> KitLineRole.Control
     else -> KitLineRole.Text
 }
@@ -86,12 +99,13 @@ public fun PolarisKitScreen(
     modifier: Modifier = Modifier,
     catalog: KitCopy = KitCopy.bundled,
     locale: String = kitLocale(),
+    requestCode: String? = null,
     onAction: (KitAction?) -> Unit = {},
 ) {
     // The sign-in form and its hand-off (the code, declined, expired) are focused steps: the
     // product header above a start-aligned title.
     val focused = screen.component == KitComponent.signIn || screen.component == KitComponent.signInHandoff
-    KitScreenBody(screen, modifier, catalog, locale, onAction, focused = focused, productName = null)
+    KitScreenBody(screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode)
 }
 
 @Composable
@@ -103,13 +117,18 @@ private fun KitScreenBody(
     onAction: (KitAction?) -> Unit,
     focused: Boolean,
     productName: String?,
+    requestCode: String? = null,
 ) {
     if (screen.isHidden) return
     val lines = remember(screen, catalog, locale) {
         screen.copy.filter { it.key !in kitLeftOut }.map { line -> KitLine(line.key, kitLineRole(line.key), catalog.format(line, locale)) }
     }
     val controls = lines.filter { it.role == KitLineRole.Control }
-    val announcement = lines.filter { it.role == KitLineRole.Announcement }.joinToString(". ") { it.text }
+    // OfflineActivation's request QR label belongs to the code, not to a live announcement.
+    val offline = screen.component == KitComponent.offlineActivation
+    val qrLabel = lines.firstOrNull { it.key == "a11y.qrRequest" }?.text
+    val announcement = lines.filter { it.role == KitLineRole.Announcement && !(offline && it.key == "a11y.qrRequest") }
+        .joinToString(". ") { it.text }
     val text = lines.filter { it.role == KitLineRole.Text && it.key != "part.poweredBy" }
     // The optional attribution (UI-KITS.md section 1.6): the line, the pane's last item, after the
     // controls. On when the inputs carry it or the theme's `showPoweredBy` is on, and only on the
@@ -141,8 +160,19 @@ private fun KitScreenBody(
     val body: @Composable ColumnScope.() -> Unit = {
         if (focused) PolarisProductHeader(productName)
         text.forEachIndexed { index, line ->
-            if (index == 0) PolarisTitle(line.text) else PolarisBody(line.text)
+            val step = if (offline) offlineStep(line.key) else null
+            when {
+                index == 0 -> PolarisTitle(line.text)
+                step != null -> PolarisStep(step, line.text)
+                else -> PolarisBody(line.text)
+            }
             Spacer(Modifier.height(8.dp))
+            // The request QR sits under step 1, and only when the host gave the code to encode: a
+            // kit never makes up a code (DL14).
+            if (step == 1 && requestCode != null && qrLabel != null) {
+                PolarisQrCode(requestCode, qrLabel, Modifier.size(polarisWindow.qrSize))
+                Spacer(Modifier.height(8.dp))
+            }
         }
         // With no controls, the line closes the content.
         if (attribution && controls.isEmpty()) PolarisPoweredByLine()
@@ -157,6 +187,28 @@ private fun KitScreenBody(
         )
     } else {
         PolarisScreen(modifier = semanticsModifier, actions = actions, content = body)
+    }
+}
+
+/** The step an OfflineActivation sentence is: 1 sends the request, 2 loads the response. */
+private fun offlineStep(key: String): Int? = when (key) {
+    "offlineActivation.request" -> 1
+    "offlineActivation.loadHint" -> 2
+    else -> null
+}
+
+/** One numbered step: the kit draws the number (a formatted integer, not copy); the sentence is the step. */
+@Composable
+private fun PolarisStep(number: Int, text: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+        Box(
+            Modifier.size(24.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)
+                .clearAndSetSemantics {},
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(number.toString(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+        }
+        PolarisBody(text, textAlign = TextAlign.Start, modifier = Modifier.weight(1f))
     }
 }
 
