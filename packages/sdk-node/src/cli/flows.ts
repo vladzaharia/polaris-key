@@ -2196,7 +2196,7 @@ export async function devicesRenameFlow(
   };
 }
 
-/** `devices deauthorize`: remove a device and free its seat. */
+/** `devices deauthorize`: remove a device and make room for another. */
 export async function devicesRemoveFlow(
   ctx: KitContext,
   client: PolarisKeyClient,

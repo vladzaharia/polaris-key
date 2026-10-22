@@ -3287,7 +3287,7 @@ msgstr "라이선스 키 추가 (입력하거나 stdin으로)"
 msgid "cli.verb.enroll"
 msgstr "무료 라이선스 받기 ({product}에서 제공하는 경우)"
 
-#. Stop using your license on this device and free its seat
+#. Stop using your license on this device and make room for another
 #. Terminal help: what the deactivate command does.
 msgid "cli.verb.deactivate"
 msgstr "이 기기에서 라이선스 사용을 중지하고 자리 비우기"
@@ -3332,7 +3332,7 @@ msgstr "라이선스를 사용하는 기기 목록 보기"
 msgid "cli.verb.devicesRename"
 msgstr "기기 이름 변경 (이름을 비우면 지워짐)"
 
-#. Remove a device and free its seat
+#. Remove a device and make room for another
 #. Terminal help: what 'devices deauthorize' does.
 msgid "cli.verb.devicesRemove"
 msgstr "기기를 제거하고 자리 비우기"
@@ -3547,8 +3547,8 @@ msgstr "계정의 라이선스 사용"
 msgid "cli.logout.done"
 msgstr "이 기기의 {product}에서 로그아웃했어요."
 
-#. {product} no longer uses your license on this device. Its seat is free.
-#. Terminal: deactivate finished; the license's seat on this device is released.
+#. {product} no longer uses your license on this device. It no longer counts toward your limit.
+#. Terminal: deactivate finished; the device no longer counts toward the license limit.
 msgid "cli.deactivate.done"
 msgstr "이제 이 기기의 {product}에서 라이선스를 사용하지 않아요. 자리가 비었어요."
 
@@ -3572,7 +3572,7 @@ msgstr "이름을 {device}(으)로 변경했어요."
 msgid "cli.devices.nameCleared"
 msgstr "{device}의 이름을 지웠어요."
 
-#. {device} was removed. Its seat is free.
+#. {device} was removed. It no longer counts toward your limit.
 #. Terminal: a device was removed from the license.
 msgid "cli.devices.removed"
 msgstr "{device}을(를) 제거했어요. 자리가 비었어요."

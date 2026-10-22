@@ -1226,7 +1226,7 @@
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->
     <string name="cli_verb_enroll">Get the free license, when %1$s offers one</string>
     <!-- Terminal help: what the deactivate command does. -->
-    <string name="cli_verb_deactivate">Stop using your license on this device and free its seat</string>
+    <string name="cli_verb_deactivate">Stop using your license on this device and make room for another</string>
     <!-- Terminal help: what the status command shows. -->
     <string name="cli_verb_status">Show your license, devices and offline time</string>
     <!-- Terminal help: what the offline-request command does. -->
@@ -1244,7 +1244,7 @@
     <!-- Terminal help: what 'devices rename' does. -->
     <string name="cli_verb_devicesRename">Rename a device (no name clears it)</string>
     <!-- Terminal help: what 'devices deauthorize' does. -->
-    <string name="cli_verb_devicesRemove">Remove a device and free its seat</string>
+    <string name="cli_verb_devicesRemove">Remove a device and make room for another</string>
     <!-- Terminal help: what 'config get' does. -->
     <string name="cli_verb_configGet">Show one setting and where its value comes from</string>
     <!-- Terminal help: what 'config list' does. -->
@@ -1329,8 +1329,8 @@
     <string name="cli_fix_signIn">Use the license on your account</string>
     <!-- Terminal: sign-out finished. Arguments: 1=product. -->
     <string name="cli_logout_done">Signed out of %1$s on this device.</string>
-    <!-- Terminal: deactivate finished; the license's seat on this device is released. Arguments: 1=product. -->
-    <string name="cli_deactivate_done">%1$s no longer uses your license on this device. Its seat is free.</string>
+    <!-- Terminal: deactivate finished; the device no longer counts toward the license limit. Arguments: 1=product. -->
+    <string name="cli_deactivate_done">%1$s no longer uses your license on this device. It no longer counts toward your limit.</string>
     <!-- Terminal: the person answered no to a confirmation. -->
     <string name="cli_nothingChanged">Nothing changed.</string>
     <!-- Terminal: keyless device registration finished. -->
@@ -1340,7 +1340,7 @@
     <!-- Terminal: a device's name was cleared; {device} is the device's id. Arguments: 1=device. -->
     <string name="cli_devices_nameCleared">%1$s has no name now.</string>
     <!-- Terminal: a device was removed from the license. Arguments: 1=device. -->
-    <string name="cli_devices_removed">%1$s was removed. Its seat is free.</string>
+    <string name="cli_devices_removed">%1$s was removed. It no longer counts toward your limit.</string>
     <!-- Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it. -->
     <string name="cli_update_cancelled">Update canceled.</string>
     <!-- Terminal: there are no downloadable content packs on this device. -->

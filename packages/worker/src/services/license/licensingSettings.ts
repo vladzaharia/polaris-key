@@ -148,7 +148,7 @@ export const LICENSING_SETTINGS: readonly SettingDef[] = [
     area: LICENSING_AREA,
     label: "Anchor license choice",
     description:
-      "Which of a holder's licenses a device runs on: the highest-ranked tier, the one with the most free seats, or the oldest.",
+      "Which of a holder's licenses a device runs on: the highest-ranked tier, the one with the most room for devices, or the oldest.",
     keywords: ["anchor", "rank", "seats"],
     docs: DOCS,
     value: { kind: "enum", values: LICENSING_ANCHOR_POLICIES },

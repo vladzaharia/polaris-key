@@ -1329,7 +1329,7 @@
     <string name="cli_fix_signIn">Die Lizenz Ihres Kontos verwenden</string>
     <!-- Terminal: sign-out finished. Arguments: 1=product. -->
     <string name="cli_logout_done">Auf diesem Gerät von %1$s abgemeldet.</string>
-    <!-- Terminal: deactivate finished; the license's seat on this device is released. Arguments: 1=product. -->
+    <!-- Terminal: deactivate finished; the device no longer counts toward the license limit. Arguments: 1=product. -->
     <string name="cli_deactivate_done">%1$s verwendet Ihre Lizenz auf diesem Gerät nicht mehr. Der Platz ist frei.</string>
     <!-- Terminal: the person answered no to a confirmation. -->
     <string name="cli_nothingChanged">Es wurde nichts geändert.</string>

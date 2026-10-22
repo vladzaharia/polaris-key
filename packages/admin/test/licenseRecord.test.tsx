@@ -669,7 +669,7 @@ describe("license record: Devices", () => {
   it("uses the shared device table with only valid row actions (LDT-10, DEV-8)", async () => {
     bootLicense(`${REC}/devices`);
     const t = await screen.findByRole("table", { name: "Devices" });
-    expect(screen.getByRole("meter", { name: "Seats" })).toBeTruthy();
+    expect(screen.getByRole("meter", { name: "Devices" })).toBeTruthy();
     // No License column on a license's own devices.
     expect(
       within(t).queryByRole("columnheader", { name: /License/ }),
@@ -704,7 +704,9 @@ describe("license record: Devices", () => {
     );
     const dialog = await screen.findByRole("alertdialog");
     expect(
-      within(dialog).getByText(/stays authorized and keeps its seat/),
+      within(dialog).getByText(
+        /stays authorized and keeps counting toward the device limit/,
+      ),
     ).toBeTruthy();
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Reset binding" }),

@@ -97,7 +97,7 @@ suspend fun activate(client: PolarisKeyClient, key: String): Refusal? {
     if (r is ActivationResult.Ok) return null
     val message = Copy.activationMessage(kindOf(r), code = r.code)
     return when (r) {
-        // Replace a device: Polaris Locker frees a seat. Nothing was wiped.
+        // Replace a device: Polaris Locker makes room for another device. Nothing was wiped.
         is ActivationResult.DeviceLimit -> Refusal(
             message,
             link = r.manageUrl?.let { ManageLink.withReturn(ManageLink.withKey(it, key), "myapp://activated") },
@@ -108,19 +108,19 @@ suspend fun activate(client: PolarisKeyClient, key: String): Refusal? {
 }
 ```
 
-| Result                              | Meaning                                                          | Offer                                                                         |
-| ----------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `Unauthorized`                      | The key was not accepted                                         | Retry                                                                         |
-| `DeviceLimit`                       | Every seat is taken                                              | `manageUrl`, then retry the same key                                          |
-| `LicenseExpired`, `LicenseDisabled` | The license ended or an operator disabled it                     | Renew, or contact the developer                                               |
-| `HardwareMismatch`                  | The hardware moved past the tier's tolerance                     | Retry: it binds the new hardware and takes a seat; `changed` lists what moved |
-| `FingerprintRequired`               | The tier needs a hardware fingerprint this device could not give | Show the copy                                                                 |
-| `AttestationRequired`               | The product needs a verified device                              | `client.devices.attest()`, then retry                                         |
-| `EnrollDisabled`, `EnrollClaimed`   | From `client.enroll()`: no free license, or it is on an account  | Key entry, or sign in                                                         |
-| `RateLimited`                       | Too many attempts                                                | Wait `retryAfterSeconds` when it is set                                       |
-| `Refused`, `Error`                  | Any other refusal; a network or server failure                   | Show the copy and `code`                                                      |
+| Result                              | Meaning                                                          | Offer                                                                                    |
+| ----------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `Unauthorized`                      | The key was not accepted                                         | Retry                                                                                    |
+| `DeviceLimit`                       | The device limit is reached                                      | `manageUrl`, then retry the same key                                                     |
+| `LicenseExpired`, `LicenseDisabled` | The license ended or an operator disabled it                     | Renew, or contact the developer                                                          |
+| `HardwareMismatch`                  | The hardware moved past the tier's tolerance                     | Retry: it binds the new hardware and counts toward the limit; `changed` lists what moved |
+| `FingerprintRequired`               | The tier needs a hardware fingerprint this device could not give | Show the copy                                                                            |
+| `AttestationRequired`               | The product needs a verified device                              | `client.devices.attest()`, then retry                                                    |
+| `EnrollDisabled`, `EnrollClaimed`   | From `client.enroll()`: no free license, or it is on an account  | Key entry, or sign in                                                                    |
+| `RateLimited`                       | Too many attempts                                                | Wait `retryAfterSeconds` when it is set                                                  |
+| `Refused`, `Error`                  | Any other refusal; a network or server failure                   | Show the copy and `code`                                                                 |
 
-Leave `withKey` out of any QR code you draw: a TV is on view to anyone in the room. A seat is also
+Leave `withKey` out of any QR code you draw: a TV is on view to anyone in the room. The device limit is also
 freed from a device that still holds a credential, with `client.deauthorizeDevice(id)`. See the
 [device-limit recipe](/docs/build/recipes/device-limit/).
 
@@ -148,7 +148,7 @@ the token is stored and the first sync is done. `licenseUser()` is the pairwise 
 ships after `0.9.3`); the person's name and email are planned. Anyone holding the code can finish
 the sign-in elsewhere, so say who signed in. Sign-in needs the Identity service; with it off, every
 call throws `service-unavailable` before any request. `client.deactivate()` signs this device out and
-asks the server to free its seat.
+asks the server to stop counting it.
 
 ## Status, offline and refresh
 

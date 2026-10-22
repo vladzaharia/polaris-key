@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "identity-subject-signout",
-  "description": "Subject and sign-out (I-09, WIRE-CONTRACT-V4 §12.3). The device starts signed in, on a seat its sign-in took on the account's licence: subject() is the product's pairwise subject, and signOut() releases that seat (released: true), so the token stops working. The key is then entered on the device (refusals are off, so a licence in an account is still admitted and counted) and the person signs in again on the key-activated device: signOut() now keeps the licence and the token (released: false) and subject() is null.",
+  "description": "Subject and sign-out (I-09, WIRE-CONTRACT-V4 §12.3). The device starts signed in, counted against the account's licence: subject() is the product's pairwise subject, and signOut() stops counting that device (released: true), so the token stops working. The key is then entered on the device (refusals are off, so a licence in an account is still admitted and counted) and the person signs in again on the key-activated device: signOut() now keeps the licence and the token (released: false) and subject() is null.",
   "features": ["identity.account"],
   "requires": ["license.activate"],
   "product": "djdl",
@@ -58,7 +58,7 @@
     },
     {
       "action": "signOut",
-      "note": "The sign-in bound the seat: signing out releases it.",
+      "note": "The sign-in counted the device: signing out releases it.",
       "args": {},
       "now": 1700000060,
       "exchanges": {

@@ -1319,7 +1319,7 @@
     <string name="cli_fix_signIn">アカウントのライセンスを使う</string>
     <!-- Terminal: sign-out finished. Arguments: 1=product. -->
     <string name="cli_logout_done">このデバイスで%1$sからサインアウトしました。</string>
-    <!-- Terminal: deactivate finished; the license's seat on this device is released. Arguments: 1=product. -->
+    <!-- Terminal: deactivate finished; the device no longer counts toward the license limit. Arguments: 1=product. -->
     <string name="cli_deactivate_done">%1$sはこのデバイスでライセンスを使用しなくなりました。枠は空いています。</string>
     <!-- Terminal: the person answered no to a confirmation. -->
     <string name="cli_nothingChanged">変更はありません。</string>

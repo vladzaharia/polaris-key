@@ -10,7 +10,7 @@ state, the last one ``"event": "result"``; never prompts), ``--no-color`` and ``
 ``activate``        the key from ``--key-stdin``, ``--key-file``, ``$POLARIS_KEY_ACTIVATION_KEY``
                     or masked entry (the positional still works and warns)
 ``enroll``          a license with no key and no sign-in
-``deactivate``      release this device's seat and wipe local credentials (asks on a terminal; ``--yes``)
+``deactivate``      stop counting this device and wipe local credentials (asks on a terminal; ``--yes``)
 ``status``          the account summary, the grace line, or the blocked state and its fix
 ``register``        the keyless device mint
 ``sign-in``         sign in in the browser, or with a code when headless (``--device-code``);
@@ -318,7 +318,7 @@ VERBS: Tuple[Verb, ...] = (
     Verb("activate", "license", "Add a license key (a masked prompt, stdin or a file).", activate,
          opts=_KEY_SOURCE, arg="key"),
     Verb("enroll", "license", "Get a license with no key and no sign-in.", enroll),
-    Verb("deactivate", "license", "Release this device's seat and wipe local credentials.", deactivate,
+    Verb("deactivate", "license", "Stop counting this device and wipe local credentials.", deactivate,
          opts=_YES),
     Verb("status", "license", "License, devices and offline time.", status),
     Verb("sign-in", "identity", "Sign in in your browser, or with a code.", sign_in, opts=_SIGN_IN),

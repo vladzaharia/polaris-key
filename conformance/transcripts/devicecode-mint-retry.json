@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "devicecode-mint-retry",
-  "description": "A device-code flow whose completion fails once after the person approved it (I-37d). beginSignIn() posts the device id alone; one poll is pending. The player confirms the code, signs in at the (mocked) IdP and presses Sign in on the approval page, server-side and unrecorded; the Worker's database then rejects the first write of the device's seat. The next poll answers 503 unavailable with Retry-After: 2 (WIRE-CONTRACT-V4 12.10 rule 5), which the client reports as a transient server-error and rides out, holding no token. The poll after the backoff answers ready with the identity and the client stores the token.",
+  "description": "A device-code flow whose completion fails once after the person approved it (I-37d). beginSignIn() posts the device id alone; one poll is pending. The player confirms the code, signs in at the (mocked) IdP and presses Sign in on the approval page, server-side and unrecorded; the Worker's database then rejects the first write of the device's record. The next poll answers 503 unavailable with Retry-After: 2 (WIRE-CONTRACT-V4 12.10 rule 5), which the client reports as a transient server-error and rides out, holding no token. The poll after the backoff answers ready with the identity and the client stores the token.",
   "features": ["identity.devicecode"],
   "requires": ["core.store"],
   "product": "djdl",

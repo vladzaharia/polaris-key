@@ -436,10 +436,10 @@ terminal kit's `tidewater` demo) and `examples/python-renpy/` (a Ren'Py boot sni
 no license to be missing, so it boots **usable** rather than sitting on `needs-activation`
 forever.
 
-## When every seat is taken
+## When the device limit is reached
 
 A refused activation or enrolment returns `ActivationDeviceLimit(limit, deviceCount, manage_url)`.
-`manage_url` is the customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while
+`manage_url` is the customer-portal link that makes room for another device (WIRE-CONTRACT-V4 §5.3), present while
 the product's portal is on and already validated. It is never an auth failure.
 
 ```python
@@ -448,7 +448,7 @@ from polaris_key import ActivationDeviceLimit, with_manage_key, with_manage_retu
 r = client.license.activate_with_key(user_entered_key)
 if isinstance(r, ActivationDeviceLimit) and r.manage_url:
     link = with_manage_return(with_manage_key(r.manage_url, user_entered_key), "myapp://activated")
-    print(f"Every seat is taken. Free one up at {link}")
+    print(f"The device limit is reached. Free one up at {link}")
 ```
 
 `with_manage_key` adds `#key=` only to an `/activate` link; `with_manage_return` adds `return=`,
@@ -1048,7 +1048,7 @@ the seven test keys does, a config change arriving as an event, a device-code si
 the fake identity provider's page, and an update decision before and after a release. It skips
 unless `PKEY_DEV_BASE_URL` is set, so a plain `pytest` needs no server; naming the file on the
 command line asks for the live run, and an unset variable then fails it. The run changes the
-server it talks to (device seats, key entries, a published `1.2.0`), so start a fresh one each time:
+server it talks to (devices, key entries, a published `1.2.0`), so start a fresh one each time:
 
 ```sh
 pkey dev --builtin --auto-approve --port 8787 &

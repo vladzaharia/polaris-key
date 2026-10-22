@@ -109,17 +109,17 @@ interactive control is in one wrapping focus chain, so `ui_up`, `ui_down`, `ui_a
 Each scene reads a controller, and a game that draws its own screens can read the same ones. They
 are in `addons/polaris_key/ui/` and are pure functions of the state they are given:
 
-| Class                         | Answers                                                                        |
-| ----------------------------- | ------------------------------------------------------------------------------ |
-| `PKeyGateController`          | Which screen a license status renders, with its copy keys and its controls     |
-| `PKeyActivationController`    | Which ways to activate this build offers, and the copy key for each refusal    |
-| `PKeySignInController`        | The copy key for how a sign-in ended, the countdown and the identity line      |
-| `PKeyUpdatePromptController`  | Whether an update answer shows, its copy keys, its action and whether it locks |
-| `PKeyDevicesController`       | The roster as rows, how long ago each device was last used, which is this one  |
-| `PKeyLicenseChoiceController` | The rows the license step offers, the selected one and what each says          |
-| `PKeyAccountController`       | What the Account and license pane knows: tier, holder, seats, update rows      |
-| `PKeyToastController`         | A toast's model view, its status glyph and its actions                         |
-| `PKeyProgressController`      | The model input for a download, the time left and the sizes as one unit        |
+| Class                         | Answers                                                                          |
+| ----------------------------- | -------------------------------------------------------------------------------- |
+| `PKeyGateController`          | Which screen a license status renders, with its copy keys and its controls       |
+| `PKeyActivationController`    | Which ways to activate this build offers, and the copy key for each refusal      |
+| `PKeySignInController`        | The copy key for how a sign-in ended, the countdown and the identity line        |
+| `PKeyUpdatePromptController`  | Whether an update answer shows, its copy keys, its action and whether it locks   |
+| `PKeyDevicesController`       | The roster as rows, how long ago each device was last used, which is this one    |
+| `PKeyLicenseChoiceController` | The rows the license step offers, the selected one and what each says            |
+| `PKeyAccountController`       | What the Account and license pane knows: tier, holder, device count, update rows |
+| `PKeyToastController`         | A toast's model view, its status glyph and its actions                           |
+| `PKeyProgressController`      | The model input for a download, the time left and the sizes as one unit          |
 
 [Your own UI](/docs/build/sdks/godot/your-own-ui/#gate-status-screen-and-copy-key) maps every status
 to its screen and copy keys.

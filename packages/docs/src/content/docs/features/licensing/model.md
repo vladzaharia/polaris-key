@@ -1,20 +1,20 @@
 ---
 title: "The license model"
-description: "License, key, device, tier and entitlement: how they relate, where seats come from and how a license ends."
+description: "License, key, device, tier and entitlement: how they relate, how the device limit works and how a license ends."
 type: "concept"
 lastReviewed: "2026-10-16"
 sidebar:
   order: 3
 ---
 
-A license is the account a device's seat hangs off. A key redeems a seat, a tier shapes the license, and the signed license document tells the device what it may do.
+A license is the account a device's place hangs off. A key activates one device, a tier shapes the license, and the signed license document tells the device what it may do.
 
 ## The nouns
 
 | Noun        | What it is                                                                                                         |
 | ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| License     | The record that holds entitlements and seats. A member disables it when a customer stops paying.                   |
-| Key         | A `pkey_…` secret that redeems one seat per device. A license can have many keys.                                  |
+| License     | The record that holds entitlements and the device limit. A member disables it when a customer stops paying.        |
+| Key         | A `pkey_…` secret that activates one device each. A license can have many keys.                                    |
 | Device      | One install with its own `pkeyt_…` token. Devices belong to Core, so products without licensing have them too.     |
 | Tier        | A named license template: a profile, a device limit, an expiry, release tracks and a version window.               |
 | Entitlement | A named right the device gets. Entitlements travel in the license document only; the config document carries none. |
@@ -69,14 +69,14 @@ Refunds have no grace period. Only the store's reversal of a refund or chargebac
 
 An add-on is `active`, `past_due` (a renewal failed and the store is retrying), `suppressed`, `revoked` or `refunded`. Only `active` and `past_due` count toward entitlements.
 
-## Seats
+## Device limit
 
-A seat pool is the set of authorized devices that share one license. The limit is the `deviceLimit` entitlement, falling back to the product's default device limit. A tier's limit must be a whole number from 1 to 1000, and an empty value inherits the product default. A limit of zero or less denies; it never means unlimited.
+A device pool is the set of authorized devices that share one license. The limit is the `deviceLimit` entitlement, falling back to the product's default device limit. A tier's limit must be a whole number from 1 to 1000, and an empty value inherits the product default. A limit of zero or less denies; it never means unlimited.
 
-- **The database arbitrates.** A seat is an ordinal under a unique index, so N concurrent activations against a limit of L admit exactly L.
-- **A device that already holds a seat re-activates for free.**
-- **Dormant devices free their seat.** A device not seen for 90 days no longer counts. The row stays, and the device claims a seat again on its next activation.
-- **One device holds one seat.** When fingerprint enforcement is on and a new authorization presents hardware that already has an authorized sibling on the same license, the stale device id is retired and the newest wins. Switch enforcement off for the product or tier if customers run several instances on one host.
+- **The database arbitrates.** Each device takes an ordinal under a unique index, so N concurrent activations against a limit of L admit exactly L.
+- **A device that already counts re-activates for free.**
+- **Dormant devices stop counting.** A device not seen for 90 days no longer counts. The row stays, and the device counts again on its next activation.
+- **One device counts once.** When fingerprint enforcement is on and a new authorization presents hardware that already has an authorized sibling on the same license, the stale device id is retired and the newest wins. Switch enforcement off for the product or tier if customers run several instances on one host.
 
 ## Licensing settings
 

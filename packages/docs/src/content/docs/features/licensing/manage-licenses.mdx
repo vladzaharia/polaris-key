@@ -15,7 +15,7 @@ The **License** section has **Licenses**, **Tiers**, **Enrollment** and **Settin
 
 ## The list
 
-Each row shows the holder, the **state**, the tier, the expiry, the seats and the active keys.
+Each row shows the holder, the **state**, the tier, the expiry, the devices and the active keys.
 
 | State                   | Meaning                                                |
 | ----------------------- | ------------------------------------------------------ |
@@ -24,7 +24,7 @@ Each row shows the holder, the **state**, the tier, the expiry, the seats and th
 | **Expired**             | The expiry has passed. Devices are refused at check-in |
 | **Disabled**            | A member disabled it                                   |
 
-The four tiles count each state and filter the table. Search matches the name, email and license id. Filters and sort are in the URL, so a filtered list can be shared. **Seats** is the device count against the effective limit, with its source under the meter. **Columns** shows the hidden columns and **Export CSV** downloads what the filters show.
+The four tiles count each state and filter the table. Search matches the name, email and license id. Filters and sort are in the URL, so a filtered list can be shared. **Devices** is the device count against the effective limit, with its source under the meter. **Columns** shows the hidden columns and **Export CSV** downloads what the filters show.
 
 Select rows to **Disable**, **Enable**, **Export** or **Delete** them together. Each asks first and lists the effect.
 
@@ -73,12 +73,12 @@ The **Keys** tab lists active keys with a label, the hash (first 6 and last 4 ch
 
 ## Devices
 
-The **Devices** tab shows a **Seats** meter and the device table for this license. **Core → Devices** lists every device of the product, including license-free ones, which appear in no license tab. Rows show status, platform, versions and **last seen**, the time of the last check-in, not an online indicator. Open a device for its fingerprint and facts. Hardware ids and component hashes are truncated on screen.
+The **Devices** tab shows a **Devices** meter and the device table for this license. **Core → Devices** lists every device of the product, including license-free ones, which appear in no license tab. Rows show status, platform, versions and **last seen**, the time of the last check-in, not an online indicator. Open a device for its fingerprint and facts. Hardware ids and component hashes are truncated on screen.
 
-| Action            | Effect                                                                                      | Use it when                                                        |
-| ----------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| **Deauthorize**   | Marks the device deauthorized and evicts its token. It must activate again. Frees the seat. | The device is lost, decommissioned or offboarded                   |
-| **Reset binding** | Clears the stored hardware fingerprint. The device stays authorized and keeps its seat.     | A hardware change caused `hardware_mismatch` and locked a user out |
+| Action            | Effect                                                                                                   | Use it when                                                        |
+| ----------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| **Deauthorize**   | Marks the device deauthorized and evicts its token. It must activate again. Stops counting the device.   | The device is lost, decommissioned or offboarded                   |
+| **Reset binding** | Clears the stored hardware fingerprint. The device stays authorized and keeps counting toward the limit. | A hardware change caused `hardware_mismatch` and locked a user out |
 
 **Unverified** means the device sent no fingerprint. **Drifted** means its last check-in changed components within tolerance. The full history is in the activity log as `device.fingerprint.drift` entries.
 
@@ -123,10 +123,10 @@ A refused delete is `409 license_not_deletable` with every reason. A `deviceLimi
 
 ## Check it works
 
-Create a license, activate its key from `pkey dev` or your app, and open its **Devices** tab. The device appears and the **Seats** meter moves.
+Create a license, activate its key from `pkey dev` or your app, and open its **Devices** tab. The device appears and the **Devices** meter moves.
 
 ## If it isn't working
 
 - [Troubleshoot licensing](/docs/features/licensing/troubleshooting/): the code a device got.
-- [The license model](/docs/features/licensing/model/): why a seat is or isn't free.
+- [The license model](/docs/features/licensing/model/): why there is or isn't room for another device.
 - [Enrollment and policy](/docs/features/licensing/access/): the fingerprint policy on **License → Enrollment**.

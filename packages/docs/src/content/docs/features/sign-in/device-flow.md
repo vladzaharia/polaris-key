@@ -84,7 +84,7 @@ If the sign-in was approved but the Worker could not finish it yet, the poll ans
 
 A refusal stays refused until the code lapses, then the poll answers `timeout`. A client treats an unknown `reason` as absent. The UI kits' sign-in handoff shows a refusal as **denied** and a bare `error` as **failed**. An app that checked only `sign-in-denied` for every failure must now check `sign-in-failed` as well. Builds shipped before this split ignore `reason` and report both as `sign-in-denied`.
 
-Show `identity` (`name`, and `email` only when the provider verified it): if someone else approved the flow, this is where the player sees the device is now on a stranger's account. The flow record is deleted the moment a poll returns `ready` or `timeout`, so a token is handed out once. Minting runs the same seat authorization as activation.
+Show `identity` (`name`, and `email` only when the provider verified it): if someone else approved the flow, this is where the player sees the device is now on a stranger's account. The flow record is deleted the moment a poll returns `ready` or `timeout`, so a token is handed out once. Minting runs the same device-limit authorization as activation.
 
 ## Attach is retired
 

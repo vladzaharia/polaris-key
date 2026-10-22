@@ -3287,10 +3287,10 @@ msgstr "添加许可证密钥（提示输入，或通过 stdin）"
 msgid "cli.verb.enroll"
 msgstr "获取免费许可证（如果{product}提供）"
 
-#. Stop using your license on this device and free its seat
+#. Stop using your license on this device and make room for another
 #. Terminal help: what the deactivate command does.
 msgid "cli.verb.deactivate"
-msgstr "停止在此设备上使用你的许可证并释放席位"
+msgstr "停止在此设备上使用你的许可证，为其他设备腾出名额"
 
 #. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
@@ -3332,10 +3332,10 @@ msgstr "列出使用你的许可证的设备"
 msgid "cli.verb.devicesRename"
 msgstr "重命名设备（不提供名称则清除名称）"
 
-#. Remove a device and free its seat
+#. Remove a device and make room for another
 #. Terminal help: what 'devices deauthorize' does.
 msgid "cli.verb.devicesRemove"
-msgstr "移除设备并释放其席位"
+msgstr "移除设备，为其他设备腾出名额"
 
 #. Show one setting and where its value comes from
 #. Terminal help: what 'config get' does.
@@ -3547,10 +3547,10 @@ msgstr "使用你账户中的许可证"
 msgid "cli.logout.done"
 msgstr "已在此设备上退出登录{product}。"
 
-#. {product} no longer uses your license on this device. Its seat is free.
-#. Terminal: deactivate finished; the license's seat on this device is released.
+#. {product} no longer uses your license on this device. It no longer counts toward your limit.
+#. Terminal: deactivate finished; the device no longer counts toward the license limit.
 msgid "cli.deactivate.done"
-msgstr "{product}不再在此设备上使用你的许可证。其席位已释放。"
+msgstr "{product}不再在此设备上使用你的许可证。不再计入设备上限。"
 
 #. Nothing changed.
 #. Terminal: the person answered no to a confirmation.
@@ -3572,10 +3572,10 @@ msgstr "已重命名为{device}。"
 msgid "cli.devices.nameCleared"
 msgstr "{device}现在没有名称。"
 
-#. {device} was removed. Its seat is free.
+#. {device} was removed. It no longer counts toward your limit.
 #. Terminal: a device was removed from the license.
 msgid "cli.devices.removed"
-msgstr "{device}已移除。其席位已释放。"
+msgstr "{device}已移除。不再计入设备上限。"
 
 #. Update canceled.
 #. Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it.

@@ -154,7 +154,7 @@ The flow states are `starting`, `pending`, `confirm`, and `ended`. Pending shows
 short URI, QR payload, and countdown. Ended maps `ok`, `expired`, `cancelled`, `denied` (the person pressed Deny),
 `device-mismatch`, `rate-limited`, `service-unavailable`, `timeout`, and other errors to a copy
 key. Use `PolarisKey.identity.current()` after success to restore the signed-in person on a later
-screen; `sign_out()` ends the identity and deactivates its seat.
+screen; `sign_out()` ends the identity and stops counting it.
 
 ## Status and signals
 

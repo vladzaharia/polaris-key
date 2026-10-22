@@ -12,7 +12,7 @@
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ License ────────────────────────────────────────────────────────────────────╮
 │ activate    Add a license key (prompted, or piped on stdin)                  │
-│ deactivate  Stop using your license on this device and free its seat         │
+│ deactivate  Stop using your license on this device and make room for another │
 │ status      Show your license, devices and offline time                      │
 │ login       Sign in with your account in the browser                         │
 │ logout      Sign out on this device                                          │

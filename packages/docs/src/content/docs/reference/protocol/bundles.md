@@ -178,7 +178,7 @@ would reach, and the only way to be sure of that is to take the same route.
 - **No token.** A bundle-activated install has no credential and never talks to the server.
 - **No device row, no fingerprint check.** Fingerprint enforcement is skipped for bundle
   activation — there is no server to dedupe against. The mint side likewise creates no device
-  row: inventing one would put a seat holder in the console that nothing can ever reconcile,
+  row: inventing one would put a device holder in the console that nothing can ever reconcile,
   deactivate, or hear from again.
 - **`docs.license` is optional by design.** A config-only product air-gaps with a bundle
   carrying only `docs.config` and `trust`. Importing a bundle with **no** license document has

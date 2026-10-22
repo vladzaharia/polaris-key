@@ -2682,7 +2682,7 @@
       "note": "Terminal help: what the enroll command does."
     },
     "cli.verb.deactivate": {
-      "value": "Stop using your license on this device and free its seat",
+      "value": "Stop using your license on this device and make room for another",
       "role": "body",
       "note": "Terminal help: what the deactivate command does."
     },
@@ -2727,7 +2727,7 @@
       "note": "Terminal help: what 'devices rename' does."
     },
     "cli.verb.devicesRemove": {
-      "value": "Remove a device and free its seat",
+      "value": "Remove a device and make room for another",
       "role": "body",
       "note": "Terminal help: what 'devices deauthorize' does."
     },
@@ -2942,9 +2942,9 @@
       "note": "Terminal: sign-out finished."
     },
     "cli.deactivate.done": {
-      "value": "{product} no longer uses your license on this device. Its seat is free.",
+      "value": "{product} no longer uses your license on this device. It no longer counts toward your limit.",
       "role": "body",
-      "note": "Terminal: deactivate finished; the license's seat on this device is released."
+      "note": "Terminal: deactivate finished; the device no longer counts toward the license limit."
     },
     "cli.nothingChanged": {
       "value": "Nothing changed.",
@@ -2967,7 +2967,7 @@
       "note": "Terminal: a device's name was cleared; {device} is the device's id."
     },
     "cli.devices.removed": {
-      "value": "{device} was removed. Its seat is free.",
+      "value": "{device} was removed. It no longer counts toward your limit.",
       "role": "body",
       "note": "Terminal: a device was removed from the license."
     },
