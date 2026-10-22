@@ -57,8 +57,9 @@ if (
 }
 const major = version.split(".")[0];
 // A prerelease deploy publishes its exact version but must not move the floating major
-// (PKEY_ELEMENTS_FLOAT=0): the major directory is then not written at all.
-const float = process.env.PKEY_ELEMENTS_FLOAT !== "0";
+// (PKEY_ELEMENTS_FLOAT=0, or a version with a prerelease tag): the major directory is then not
+// written at all.
+const float = !version.includes("-") && process.env.PKEY_ELEMENTS_FLOAT !== "0";
 
 const exact = join(out, version);
 rmSync(out, { recursive: true, force: true });

@@ -69,6 +69,9 @@ every module's sha384 keyed by its URL:
 <script type="module" src="https://key.plrs.im/elements/1.0.0/pk.js"></script>
 ```
 
+The map must come before any module loads. If the page already has an import map, merge
+`integrity` into it: browsers before Chrome 133 accept only one map per page.
+
 Import-map integrity needs a browser that supports it (Chrome and Edge 127 and later; check the
 current table for Firefox and Safari). Where it is unsupported the map is ignored and only the
 `integrity` attribute on `pk.js` protects the page, so keep the attribute as well. Fonts are data and
