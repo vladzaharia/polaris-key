@@ -1,5 +1,5 @@
 import * as React from "react";
-import { blockNavigation, navigate } from "../console/router.js";
+import { blockNavigation, navigate } from "../lib/router-core.js";
 import { ConfirmDialog } from "./ConfirmDialog.js";
 
 export interface UnsavedChangesGuardOptions {

@@ -52,8 +52,6 @@ const KNOWN: Record<string, string> = {
   // P0-32 (one data layer): errorCopy words HttpError, not the console's ApiError.
   "lib/errorCopy.ts -> api.ts": "P0-32",
   "ui/form.tsx -> api.ts": "P0-32",
-  // P0-34 (shared router core): the guard blocks navigation through the core, not the console's.
-  "ui/useUnsavedChangesGuard.tsx -> console/router.tsx": "P0-34",
   // P0-33 (Worker-owned DTO types): the shapes come from @polaris-key/worker/dto, not api.ts.
   "lib/products.ts -> api.ts": "P0-33",
   "lib/secretUsage.ts -> api.ts": "P0-33",
