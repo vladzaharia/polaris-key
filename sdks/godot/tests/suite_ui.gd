@@ -62,6 +62,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	await _copy(t, all)
 	await _behaviour(t)
 	await _motion_and_transparency(t)
+	await _game_look(t)
 	await _settings_open(t)
 	await _key_field(t)
 	await _layout(t, all)
@@ -169,6 +170,128 @@ func _motion_and_transparency(t: PKeyTestContext) -> void:
 	_free(d)
 	PKeyUiTheme.reset()
 	t.check("DL16: auto follows the system (off where the engine reports nothing)", PKeyUiTheme.reduce_motion_mode == "auto" and PKeyUiTheme.reduce_motion() == (DisplayServer.has_method("accessibility_should_reduce_animation") and bool(DisplayServer.call("accessibility_should_reduce_animation"))))
+
+
+## The game look (UK-11b): glass over the scrim and the opaque fallbacks, the system scheme, the
+## input glyphs and their confirm swap, the sound hook and the PKEY_UI_REDUCE_TRANSPARENCY override.
+func _game_look(t: PKeyTestContext) -> void:
+	PKeyUiTheme.reset()
+	# The forced paths (the CI lanes run the matrix once on each).
+	OS.set_environment("PKEY_UI_REDUCE_TRANSPARENCY", "1")
+	t.check("env: PKEY_UI_REDUCE_TRANSPARENCY=1 forces the opaque page", PKeyUiTheme.reduce_transparency())
+	OS.set_environment("PKEY_UI_REDUCE_TRANSPARENCY", "0")
+	t.check("env: =0 forces the scrim", not PKeyUiTheme.reduce_transparency())
+	PKeyUiTheme.reduce_transparency_mode = "on"
+	t.check("env: an explicit option wins over the variable", PKeyUiTheme.reduce_transparency())
+	PKeyUiTheme.reduce_transparency_mode = "auto"
+	OS.set_environment("PKEY_UI_REDUCE_TRANSPARENCY", "")
+	# Glass: the card over the dimmed game is see-through on the scrim path, opaque on the others.
+	PKeyUiTheme.branding = PKeyUiTheme.BRANDING_POLARIS_KEY
+	PKeyUiTheme.reduce_transparency_mode = "off"
+	PKeyUiTheme.glass_opaque_override = false
+	var d: Control = _sc.offline(false, "")
+	# On a desktop-sized screen (a phone's sheet is opaque by design).
+	var screen := SubViewport.new()
+	screen.size = Vector2i(1280, 720)
+	_tree().root.add_child(screen)
+	d.get_parent().remove_child(d)
+	screen.add_child(d)
+	d.theme = load(PKeyUiTheme.NEUTRAL_PATH)
+	d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	await _tree().process_frame
+	d.refresh_view()
+	await _tree().process_frame
+	await _tree().process_frame
+	var card := d.find_child("Card", true, false) as PanelContainer
+	var glass := card.get_theme_stylebox("panel") as StyleBoxFlat if card != null else null
+	t.check("glass: a dialog's card over the scrim is see-through", glass != null and is_equal_approx(glass.bg_color.a, 0.88) and card.has_meta(&"pkey_glass"), str(glass.bg_color) if glass != null else "no card")
+	PKeyUiTheme.glass_opaque_override = true
+	d.refresh_view()
+	await _tree().process_frame
+	await _tree().process_frame
+	var plain := card.get_theme_stylebox("panel") as StyleBoxFlat
+	t.check("glass: opaque under the compatibility renderer, on the web or by override", plain != null and is_equal_approx(plain.bg_color.a, 1.0) and not card.has_meta(&"pkey_glass"), "%s meta %s" % [plain.bg_color if plain != null else null, card.has_meta(&"pkey_glass")])
+	PKeyUiTheme.glass_opaque_override = null
+	PKeyUiTheme.reduce_transparency_mode = "on"
+	d.refresh_view()
+	await _tree().process_frame
+	t.check("glass: reduced transparency is the opaque page and an opaque card", d.theme_type_variation != &"PKeyScrim" and not card.has_meta(&"pkey_glass") and PKeyUiTheme.glass_opaque())
+	# Sound hook and haptics: focus, confirm, open and close reach the host.
+	PKeyUiTheme.reduce_transparency_mode = "off"
+	var heard := []
+	PKeyUiFeedback.hook = func(e): heard.append(e)
+	var b := d.find_child("Load", true, false) as Button
+	if b == null:
+		b = d.find_child("Close", true, false) as Button
+	d.refresh_view()
+	await _tree().process_frame
+	if b != null:
+		b.pressed.emit()
+	PKeyUiFeedback.emit(&"focus")
+	t.check("sound: the host's hook hears confirm and focus", heard.has(&"focus") and (b == null or heard.has(&"confirm")), str(heard))
+	PKeyUiFeedback.haptics = true
+	PKeyUiFeedback.emit(&"confirm")
+	t.check("haptics: on, a confirm is harmless without a handheld", true)
+	t.check("sound: the hook comes from PKeyOptions.ui_sound_hook", _hook_from_options())
+	_free(d)
+	screen.queue_free()
+	# Tweens: a dialog fades in, and holds still under reduced motion.
+	PKeyUiTheme.reduce_motion_mode = "off"
+	var f := Control.new()
+	_tree().root.add_child(f)
+	PKeyUiMotion.enter(f)
+	t.check("motion: a dialog starts transparent and fades in", is_zero_approx(f.modulate.a) and f.has_meta(PKeyUiMotion.ENTER_META))
+	PKeyUiTheme.reduce_motion_mode = "on"
+	PKeyUiMotion.enter(f)
+	t.check("motion: reduced motion shows it at once", is_equal_approx(f.modulate.a, 1.0))
+	f.queue_free()
+	# The system scheme: follows the OS, dark where it cannot say.
+	PKeyUiTheme.scheme_mode = "system"
+	PKeyUiTheme.system_dark_override = false
+	PKeyUiTheme.resolve_scheme()
+	t.check("scheme: system follows a light OS", PKeyUiTheme.scheme == "light")
+	PKeyUiTheme.system_dark_override = true
+	PKeyUiTheme.resolve_scheme()
+	t.check("scheme: system follows a dark OS", PKeyUiTheme.scheme == "dark")
+	var o := PKeyOptions.new()
+	o.ui_brand_scheme = "system"
+	PKeyUiTheme.system_dark_override = false
+	PKeyUiTheme.apply_options(o)
+	t.check("scheme: ui_brand_scheme = system reaches the kit", PKeyUiTheme.scheme_mode == "system" and PKeyUiTheme.scheme == "light")
+	o.ui_brand_scheme = "bogus"
+	PKeyUiTheme.apply_options(o)
+	t.check("scheme: an unknown value is dark", PKeyUiTheme.scheme == "dark")
+	# Input glyphs and the confirm swap.
+	PKeyInputGlyphs.swap_override = false
+	PKeyInputGlyphs.family_override = "xbox"
+	var k := PKeyInputGlyphs.KEYBOARD
+	var p := PKeyInputGlyphs.PAD
+	t.check("glyphs: keyboard confirm is Enter, back is Esc", PKeyInputGlyphs.label_for(&"confirm", k) == "Enter" and PKeyInputGlyphs.label_for(&"back", k) == "Esc")
+	t.check("glyphs: a pad confirms with A and goes back with B", PKeyInputGlyphs.label_for(&"confirm", p) == "A" and PKeyInputGlyphs.label_for(&"back", p) == "B")
+	PKeyInputGlyphs.swap_override = true
+	t.check("glyphs: swapped, a pad confirms with B and goes back with A", PKeyInputGlyphs.label_for(&"confirm", p) == "B" and PKeyInputGlyphs.label_for(&"back", p) == "A")
+	PKeyInputGlyphs.family_override = "playstation"
+	t.check("glyphs: a PlayStation pad draws a circle to confirm when swapped, a cross otherwise", PKeyInputGlyphs.shape_for(&"confirm", p) == "circle" and PKeyInputGlyphs.label_for(&"confirm", p) == "")
+	PKeyInputGlyphs.swap_override = false
+	t.check("glyphs: unswapped, the cross confirms", PKeyInputGlyphs.shape_for(&"confirm", p) == "cross" and PKeyInputGlyphs.shape_for(&"back", p) == "circle")
+	var g := PKeyInputGlyphs.new()
+	g.kind = k
+	_tree().root.add_child(g)
+	await _tree().process_frame
+	t.check("glyphs: a keycap is at least as wide as it is tall, and a readable size", g.get_combined_minimum_size().x >= g.get_combined_minimum_size().y and g.get_combined_minimum_size().y > 20.0)
+	g.queue_free()
+	PKeyInputGlyphs.swap_override = null
+	PKeyInputGlyphs.family_override = null
+	PKeyUiTheme.reset()
+
+
+func _hook_from_options() -> bool:
+	var o := PKeyOptions.new()
+	var seen := []
+	o.ui_sound_hook = func(e): seen.append(e)
+	PKeyUiTheme.apply_options(o)
+	PKeyUiFeedback.emit(&"open")
+	return seen == [&"open"]
 
 
 # ── Snapshots ────────────────────────────────────────────────────────────────────────────

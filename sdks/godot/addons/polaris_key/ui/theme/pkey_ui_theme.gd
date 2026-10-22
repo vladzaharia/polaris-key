@@ -236,6 +236,15 @@ static var scheme := "dark":
 	set(value):
 		scheme = value
 		_cache = null
+## What `ui_brand_scheme` asked for: "dark" (the default), "light" or "system" (follow the OS
+## live, dark where the OS has no preference; UI-KITS.md §3.1 `colorScheme`). `scheme` is the
+## result.
+static var scheme_mode := "dark"
+## Tests: replaces the OS's dark-mode answer for "system" (null: ask the OS).
+static var system_dark_override: Variant = null
+## Tests: forces the glass card opaque (true) or see-through (false); null decides from the
+## renderer, the platform and `reduce_transparency()`.
+static var glass_opaque_override: Variant = null
 ## The brand theme's accent; alpha 0 (the default) resolves in this order (UI-KITS.md §1.2, never
 ## the platform violet by default): the product's own (`presentation_accent_dark` in the dark
 ## scheme when it has one, else `presentation_accent`), the accent derived from the product's icon,
@@ -307,7 +316,9 @@ static func apply_options(opts: Resource) -> void:
 	if opts == null:
 		return
 	branding = BRANDING_POLARIS_KEY if str(opts.get("ui_branding")) == BRANDING_POLARIS_KEY else BRANDING_NONE
-	scheme = "light" if str(opts.get("ui_brand_scheme")) == "light" else "dark"
+	var sm := str(opts.get("ui_brand_scheme"))
+	scheme_mode = sm if sm in ["dark", "light", "system"] else "dark"
+	resolve_scheme()
 	accent = opts.get("ui_accent") if opts.get("ui_accent") is Color else Color(0, 0, 0, 0)
 	override = opts.get("ui_theme") as Theme
 	powered_by = opts.get("ui_powered_by") == true
@@ -324,7 +335,55 @@ static func apply_options(opts: Resource) -> void:
 	product_icon = opts.get("ui_product_icon") as Texture2D
 	product_wordmark = opts.get("ui_product_wordmark") as Texture2D
 	product_art = opts.get("ui_product_art") as Texture2D
+	PKeyUiFeedback.haptics = opts.get("ui_haptics") == true
+	var hk = opts.get("ui_sound_hook")
+	PKeyUiFeedback.hook = hk if typeof(hk) == TYPE_CALLABLE else Callable()
+	_watch_system_scheme()
 	refresh_views()
+
+
+## `scheme` from `scheme_mode`: "system" asks the OS (dark when it cannot say).
+static func resolve_scheme() -> void:
+	var dark := true
+	match scheme_mode:
+		"light":
+			dark = false
+		"system":
+			dark = _system_dark()
+	var want := "dark" if dark else "light"
+	if scheme != want:
+		scheme = want
+
+
+static func _system_dark() -> bool:
+	if system_dark_override != null:
+		return bool(system_dark_override)
+	if DisplayServer.has_method("is_dark_mode_supported") and DisplayServer.is_dark_mode_supported() and DisplayServer.has_method("is_dark_mode"):
+		return DisplayServer.is_dark_mode()
+	return true
+
+
+## Follow the OS while `scheme_mode` is "system" (the engine keeps one callback, so a game that
+## sets its own takes it over: call `resolve_scheme()` and `refresh_views()` from it).
+static func _watch_system_scheme() -> void:
+	if scheme_mode == "system" and DisplayServer.has_method("set_system_theme_change_callback"):
+		DisplayServer.call("set_system_theme_change_callback", _on_system_scheme)
+
+
+static func _on_system_scheme() -> void:
+	if scheme_mode == "system":
+		resolve_scheme()
+		refresh_views()
+
+
+## Whether a dialog's card is drawn opaque, not as glass over the dimmed game (UI-KITS.md §4.3):
+## under reduced transparency, on the web and under the compatibility renderer.
+static func glass_opaque() -> bool:
+	if glass_opaque_override != null:
+		return bool(glass_opaque_override)
+	if reduce_transparency() or OS.has_feature("web"):
+		return true
+	return RenderingServer.has_method("get_current_rendering_method") and RenderingServer.call("get_current_rendering_method") == "gl_compatibility"
 
 
 ## Re-render every kit view in the tree (deferred), so options applied after a scene was mounted
@@ -338,6 +397,10 @@ static func refresh_views() -> void:
 ## Back to the defaults: the Polaris Key look (dark), no override, no badge.
 static func reset() -> void:
 	branding = BRANDING_POLARIS_KEY
+	scheme_mode = "dark"
+	system_dark_override = null
+	glass_opaque_override = null
+	PKeyUiFeedback.reset()
 	scheme = "dark"
 	accent = Color(0, 0, 0, 0)
 	override = null
@@ -366,6 +429,11 @@ static func reduce_motion() -> bool:
 static func reduce_transparency() -> bool:
 	if reduce_transparency_mode != "auto":
 		return reduce_transparency_mode == "on"
+	# Tests (the CI lanes run the matrix once per path): PKEY_UI_REDUCE_TRANSPARENCY=1 forces the
+	# opaque page, =0 the scrim, whatever the system says.
+	var forced := OS.get_environment("PKEY_UI_REDUCE_TRANSPARENCY")
+	if forced == "1" or forced == "0":
+		return forced == "1"
 	return _system_flag("accessibility_should_reduce_transparency")
 
 
@@ -1543,4 +1611,7 @@ static func _ring(color: Color, radius := RADIUS_CONTROL) -> StyleBoxFlat:
 	s.set_border_width_all(RING_WIDTH)
 	s.set_corner_radius_all(radius + RING_OFFSET + RING_WIDTH)
 	s.set_expand_margin_all(RING_OFFSET + RING_WIDTH)
+	# The glow (FOCUS_GLOW px of the ring colour at 30 %) that makes it read from across a room.
+	s.shadow_color = Color(color, 0.3)
+	s.shadow_size = int(PKeyKitTokens.FOCUS_GLOW)
 	return s

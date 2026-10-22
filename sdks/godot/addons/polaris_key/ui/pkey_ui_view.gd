@@ -243,6 +243,7 @@ func _sync_capture(gone := false) -> void:
 	if _rendering and not gone:
 		return
 	var want := not gone and is_inside_tree() and is_visible_in_tree() and outer_view() == self and _captures_input()
+	_sync_feedback(want)
 	if want == _capturing:
 		return
 	var owner_sdk: Node = sdk
@@ -250,6 +251,19 @@ func _sync_capture(gone := false) -> void:
 		return
 	_capturing = want
 	owner_sdk.call("capture_input", self, want)
+
+
+var _fx_open := false
+
+
+## A dialog over the game opening or closing: the host's sound and haptic hook, and the fade in.
+func _sync_feedback(open: bool) -> void:
+	if open == _fx_open:
+		return
+	_fx_open = open
+	PKeyUiFeedback.emit(&"open" if open else &"close")
+	if open:
+		PKeyUiMotion.enter(self)
 
 
 ## Follow the viewport the view is in now (a view moved into another one, a SubViewport, follows that
@@ -1236,6 +1250,7 @@ func _arrange(_m: Dictionary) -> void:
 	_apply_scrim()
 	_nest_panel()
 	_style_card()
+	_apply_glass()
 	_size_controls(self)
 	auto_hide(self)
 	_apply_width(content_width())
@@ -1434,6 +1449,46 @@ func _scrim_wanted() -> bool:
 	return false
 
 
+## A card over the dimmed game is glass (UI-KITS.md §4.3): the raised surface at GLASS_ALPHA with a
+## light edge and a soft shadow, so the game shows through the scrim. A phone's docked sheet, the
+## full-bleed pages, the game's own (neutral) look, reduced transparency, the web and the
+## compatibility renderer keep the opaque card (`PKeyUiTheme.glass_opaque()`).
+const GLASS_ALPHA := 0.88
+const GLASS_META := &"pkey_glass"
+
+
+func _glass_wanted() -> bool:
+	return outer_view() == self and _scrim_wanted() and _card_shown() and not phone_sheet() and not phone_bleed() and not side_bleed() and PKeyUiTheme.branded() and not PKeyUiTheme.glass_opaque()
+
+
+func _apply_glass() -> void:
+	if _card_box == null:
+		return
+	var had := _card_box.has_meta(GLASS_META) and _card_box.has_theme_stylebox_override("panel")
+	if not _glass_wanted():
+		if _card_box.has_meta(GLASS_META):
+			_card_box.remove_meta(GLASS_META)
+		return
+	# Derived afresh on every layout: the theme's card follows the screen's scale and density.
+	if had:
+		_card_box.remove_theme_stylebox_override("panel")
+	if _card_box.has_theme_stylebox_override("panel"):
+		return
+	var base := _card_box.get_theme_stylebox("panel")
+	if not base is StyleBoxFlat:
+		return
+	var box := (base as StyleBoxFlat).duplicate() as StyleBoxFlat
+	var dark := PKeyUiTheme.is_dark(self)
+	box.bg_color.a = GLASS_ALPHA
+	box.border_color = PKeyKitTokens.HIGHLIGHT_DARK if dark else PKeyKitTokens.HIGHLIGHT_LIGHT
+	box.border_color.a = maxf(box.border_color.a, 0.16)
+	box.shadow_color = PKeyKitTokens.SCRIM_DARK if dark else PKeyKitTokens.SCRIM_LIGHT
+	box.shadow_size = 32
+	box.shadow_offset = Vector2(0, 8)
+	_card_box.add_theme_stylebox_override("panel", box)
+	_card_box.set_meta(GLASS_META, true)
+
+
 func _apply_scrim() -> void:
 	# DL16: under reduced transparency a dialog over the game sits on the opaque page the gate and
 	# the boot use, not on the see-through scrim.
@@ -1464,6 +1519,8 @@ func _size_controls(n: Node) -> void:
 			var ctl := ch as Control
 			if not is_equal_approx(ctl.custom_minimum_size.y, h):
 				ctl.custom_minimum_size.y = h
+		if ch is BaseButton or ch is LineEdit:
+			PKeyUiFeedback.attach(ch as Control)
 		if ch.get_class() == "Button":
 			_fit_label(ch as Button, room_x())
 		if not (ch is SpinBox):

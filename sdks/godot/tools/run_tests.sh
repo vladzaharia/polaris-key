@@ -219,10 +219,24 @@ step editor run "$GODOT" --headless --path "$PROJECT" -- --pkey-test "$SUITES" "
 # limit, PKEY_UI_MATRIX_TIMEOUT (default 1800 s), and the shared PKEY_TEST_TIMEOUT stays as it was.
 # Layout is the same engine code on a release template, so it runs once.
 if [ "$SUITES" = ci ] || [ "${PKEY_TEST_MATRIX:-0}" = 1 ]; then
-  (
-    TIMEOUT="${PKEY_UI_MATRIX_TIMEOUT:-1800}"
-    step ui-matrix run "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix
-  ) || exit 1
+  # PKEY_UI_MATRIX_PATHS=both runs it once per presentation path (UI-KITS.md DL16): the scrim
+  # (PKEY_UI_REDUCE_TRANSPARENCY=0, the see-through glass card) and the opaque page (=1). The engines
+  # disagree on which one a headless run takes by default (4.4.1 the scrim, 4.7 on macOS the opaque
+  # page, GODOT-441b), so the newest lane asks for both. Unset: one run, the engine's own path.
+  if [ "${PKEY_UI_MATRIX_PATHS:-auto}" = both ]; then
+    MATRIX_PATHS="0 1"
+  else
+    MATRIX_PATHS="auto"
+  fi
+  for path in $MATRIX_PATHS; do
+    (
+      TIMEOUT="${PKEY_UI_MATRIX_TIMEOUT:-1800}"
+      if [ "$path" != auto ]; then
+        export PKEY_UI_REDUCE_TRANSPARENCY="$path"
+      fi
+      step "ui-matrix$([ "$path" = auto ] || echo "-rt$path")" run "$GODOT" --headless --path "$PROJECT" -- --pkey-test ui_matrix
+    ) || exit 1
+  done
 fi
 
 # 4. The build stamp (P1-11): the export plugin end to end, headless, as CI exports a game.

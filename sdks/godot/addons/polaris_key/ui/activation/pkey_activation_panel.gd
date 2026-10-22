@@ -102,6 +102,7 @@ var _msg_key: Label
 ## The live verdict under the field ("Key for <Product>"), and the input hint beside it.
 var _verdict: Label
 var _hint: Label
+var _hint_glyph: PKeyInputGlyphs
 ## The kind of the last input: keyboard, pad or touch (&"" before any; a mouse leaves the hint off).
 var _input_kind: StringName = &""
 var _sign_in_block: VBoxContainer
@@ -197,7 +198,13 @@ func _build() -> void:
 	_submit = button(row, "Activate", _on_submit, "PKeyPrimary")
 	_msg_key = label(_key_field, "Message")
 	_verdict = label(_key_field, "Verdict", "PKeyMuted")
-	_hint = label(_key_field, "Hint", "PKeyMuted")
+	# The hint: the glyph of the confirm control of the last input device, then its words.
+	var hint_row := hbox(_key_field, "HintRow", "PKeyRow")
+	_hint_glyph = PKeyInputGlyphs.new()
+	_hint_glyph.name = "HintGlyph"
+	hint_row.add_child(_hint_glyph)
+	_hint = label(hint_row, "Hint", "PKeyMuted")
+	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_sign_in_block = vbox(_form, "SignInBlock", "PKeyTight")
 	_sign_in = button(_sign_in_block, "SignIn", _on_sign_in)
 	_msg_sign_in = label(_sign_in_block, "SignInMessage")
@@ -484,7 +491,14 @@ func _render() -> void:
 	var v := PKeyActivationController.key_verdict(_key.text) if message == "" and not busy else {}
 	show_text(_verdict, t.text(v["copy"], v["args"]) if not v.is_empty() else "")
 	var hint_key := PKeyActivationController.input_hint(input_kind())
-	show_text(_hint, t.text(hint_key) if hint_key != "" and caps["key_entry"] and mode == "main" else "")
+	var hint_text := t.text(hint_key) if hint_key != "" and caps["key_entry"] and mode == "main" else ""
+	# A pad that swaps accept and cancel confirms with B: the words follow the glyph.
+	if hint_key == "hint_pad" and PKeyInputGlyphs.label_for(PKeyInputGlyphs.CONFIRM, PKeyInputGlyphs.PAD) == "B" and hint_text.begins_with("A "):
+		hint_text = "B " + hint_text.substr(2)
+	show_text(_hint, hint_text)
+	_hint_glyph.visible = hint_text != ""
+	_hint_glyph.kind = input_kind() if input_kind() in [PKeyInputGlyphs.KEYBOARD, PKeyInputGlyphs.PAD] else PKeyInputGlyphs.KEYBOARD
+	_hint.get_parent().visible = hint_text != ""
 	_submit.text = t.text("key_submit")
 	_sign_in_block.visible = caps["sign_in"]
 	_sign_in.text = t.text("sign_in")

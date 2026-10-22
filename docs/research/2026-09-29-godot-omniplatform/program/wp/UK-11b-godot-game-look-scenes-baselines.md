@@ -37,6 +37,27 @@ Godot kit: game look, five standalone scenes, PNG baselines, UK-59 leftovers, BU
 
 - Work owned by the packages in the Depends on and Unblocks rows, and everything UK-11 already shipped.
 
+## Verified against the code (2026-10-22, tip 328e1a12e)
+
+The code is the fact. Corrections to the scope above:
+
+- **Already shipped; not slice work.** 60 px controls (`PKeyKitTokens.CONTROL_HEIGHT`, the `spacious` density default) and the scrim with its opaque page under `ui_reduce_transparency` and `ui_reduce_motion` (UK-11, DL16). KX-GD-PLAY: nodes run while the tree is paused, `PolarisKey.in_play` and `input_captured`, the shared toast host (`PKeyToast`, `toast_anchor`), What's new and All changes in the update prompt. KX-GD-ID: the live key verdict, the input hint under the key field (words only: "Enter to activate", "A to select"; no glyph), `product.wordmark` and `product.art` in the theme.
+- **Standalone scenes already exist** with scenarios, text snapshots and matrix rows: `PKeyDeviceList` (Devices), `PKeyAccountTab`, `PKeyToast`, `PKeyUpdateProgress`, `PKeyLicenseChoice`; the device limit is a state of the gate and the activation panel, and release notes are a section of `PKeyUpdatePrompt`. Still missing as scenes of their own: Paywall (copy exists, no scene), CloudSyncStatus, About, a standalone DeviceLimit, a standalone ReleaseNotes. "Five standalone scenes" is those five, not the nine named in the UK-11 scope.
+- **Not shipped before this slice:** glass card, focus glow (`FOCUS_GLOW` was unused), tweens (none), `colorScheme: system`, sound hooks, haptics, the input glyph control. Glass blur (`SCRIM_*_BLUR`, both 0 in the tokens) stays out.
+- **The 4.4.1 `sign_in / native28 / 1170x2532@3` overflow is already fixed.** Commit 0b5782771 ("count a button's icon when fitting its label on Godot before 4.5") counts the icon's width in `_fit_label`; `ui_matrix sign_in native28` on 4.4.1 passes at every size (checked 2026-10-22). Nothing left to do but keep the row green.
+- **PNG baselines:** `tests/ui/snapshots/` holds text snapshots only; `tools/ui_screenshots.gd` and the new `tools/ui_look_shots.gd` render PNGs but no suite compares them. The kit is not yet in ui-qa's `BASELINE_DIRS`.
+
+## Slices
+
+Each is 90 minutes or less and ends with a BUILT UX review (`pkey-ux-reviewer`, screens built and run, not mockups). Order:
+
+1. **Game look, part 1 (this slice, built).** `PKEY_UI_REDUCE_TRANSPARENCY=0/1` override (and `run_tests.sh` `PKEY_UI_MATRIX_PATHS=both`, set for the 4.7.2 lane in `ci.yml`, so the matrix runs on the scrim path and the opaque path); glass card on the scrim path (opaque under reduced transparency, web and `gl_compatibility`); focus glow; dialog fade-in and press scale (`PKeyUiMotion`, off under reduced motion); `ui_brand_scheme = "system"` following the OS live; sound hook and haptics (`PKeyUiFeedback`, `ui_sound_hook`, `ui_haptics`); `PKeyInputGlyphs` with the confirm swap, on the activation hint. Look shots: `tools/ui_look_shots.gd`.
+2. **Game look, part 2.** Step crossfade and sheet exit tween; the hint bar on the gate, update prompt and sign-in (needs catalog verb keys, `pnpm gen brand`, so the hint words stop carrying the key name); toast anchor inside 5 % title-safe verified at TV; scheme-follow test on a real OS change; BUILT UX review of slices 1 and 2 together.
+3. **PNG baselines.** Promote `ui_screenshots.gd` to a compared suite: dark and light, the UI-KITS §7.1 sizes, committed lossless under `tests/ui/snapshots/`; add the kit to ui-qa's `BASELINE_DIRS`. Largest of the slices; may need two sessions if the compare tolerance across engines is not stable.
+4. **Standalone scenes, A:** Paywall and a standalone DeviceLimit on the view models, with scenarios, snapshots and matrix rows.
+5. **Standalone scenes, B:** CloudSyncStatus, About and a standalone ReleaseNotes, same shape; BUILT UX review.
+6. **UK-59 leftovers** (the Godot targets on the UK-59 boards, listed against the built screens), then the final BUILT UX pass, the full `ui_matrix` on 4.4.1 and on 4.7.2 (both paths) and `set UK-11b in-review`.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
