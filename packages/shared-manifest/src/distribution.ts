@@ -30,6 +30,7 @@ import {
   RELEASE_PLATFORMS,
   type ValidationMessage,
 } from "./index.js";
+import { CHANNELS, type ChannelEntry } from "./channels.generated.js";
 import {
   assetRefProblem,
   assetRefUrl,
@@ -759,6 +760,11 @@ export interface DistributionContext {
   channels: ReadonlySet<string>;
   /** Every declared deliverable and its kind; `app` is always present (implicit or declared). */
   deliverables: ReadonlyMap<string, string>;
+  /**
+   * The platforms of the app's declared builds (`deliverables.app.artifacts[].platform`). Absent
+   * or empty means no artifact map is declared, and `outlet_without_build` is not judged.
+   */
+  buildPlatforms?: ReadonlySet<string>;
 }
 
 /**
@@ -854,6 +860,7 @@ export function validateDistribution(
     } else {
       for (const [id, entry] of Object.entries(outlets)) {
         validateOutlet(errors, warnings, id, entry, ctx, kinds);
+        if (warnings) warnOutletWithoutBuild(warnings, id, entry, ctx);
       }
     }
   } else {
@@ -879,6 +886,47 @@ export function validateDistribution(
   // ── listing ──
   if (doc.listing !== undefined) {
     reportListing(errors, warnings, doc.listing, "/listing", "listing");
+  }
+}
+
+/** The catalogue channels an outlet entry declares; a bare `direct` is Polaris Key itself and none. */
+function declaredChannels(id: string, entry: unknown): ChannelEntry[] {
+  const kind = outletKindOf(id, entry);
+  if (!kind || !isRecord(entry)) return [];
+  const has = (...fields: string[]) =>
+    fields.some((f) => entry[f] !== undefined);
+  return CHANNELS.filter((c) => {
+    if (c.outlet.kind !== kind) return false;
+    if (kind !== "direct") return true;
+    if (c.outlet.subkind === "homebrew")
+      return has("homebrewCask", "homebrewFormula", "homebrewTap");
+    if (c.outlet.subkind === "scoop") return has("scoop", "scoopBucket");
+    return false;
+  });
+}
+
+/**
+ * `outlet_without_build` (A-20.5), a warning: the release declares an artifact map and none of
+ * its builds is on a platform the outlet's channel serves ("app-store declared but no ios or
+ * macos build"). Silent while no artifact map is declared, and for a bare `direct`.
+ */
+function warnOutletWithoutBuild(
+  warnings: ValidationMessage[],
+  id: string,
+  entry: unknown,
+  ctx: DistributionContext,
+): void {
+  const built = ctx.buildPlatforms;
+  if (!built || built.size === 0) return;
+  for (const c of declaredChannels(id, entry)) {
+    if (c.platforms.some((p) => built.has(p))) continue;
+    add(
+      warnings,
+      "distribution",
+      `/outlets/${id}`,
+      "outlet_without_build",
+      `outlet ${id} (${c.label}) is declared but .pkey/release declares no ${c.platforms.join(" or ")} build in deliverables.app.artifacts, so nothing can ship to it.`,
+    );
   }
 }
 

@@ -3179,17 +3179,22 @@ function distributionContext(relRoot: Record<string, unknown> | null): {
   artifactIds: Set<string>;
   channels: Set<string>;
   deliverables: Map<string, string>;
+  buildPlatforms: Set<string>;
 } {
   const rel = relRoot ?? {};
   const declared = asRecord(rel.deliverables);
   const app = asRecord(declared[APP_DELIVERABLE_ID]);
   const artifactIds = new Set<string>();
+  const buildPlatforms = new Set<string>();
   for (const entry of arrayAt(app, "artifacts") ?? []) {
     if (isRecord(entry) && typeof entry.id === "string")
       artifactIds.add(entry.id);
+    if (isRecord(entry) && typeof entry.platform === "string")
+      buildPlatforms.add(entry.platform);
   }
   return {
     artifactIds,
+    buildPlatforms,
     channels: knownChannelNames(rel, Object.keys(asRecord(app.channels))),
     deliverables: new Map(
       distributionDeliverables(relRoot).map((d) => [d.id, d.kind]),
