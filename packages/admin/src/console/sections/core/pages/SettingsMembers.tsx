@@ -150,7 +150,7 @@ function Table({
   );
 }
 
-const ROW = "max-sm:block max-sm:px-5 max-sm:py-3 align-top";
+const ROW = "max-sm:relative max-sm:block max-sm:px-5 max-sm:py-3 align-top";
 const CELL = "px-5 py-3 max-sm:block max-sm:p-0 max-sm:pb-2";
 
 function PlatformRows({
@@ -345,7 +345,7 @@ export function SettingsMembersPage({
               const items = menu(r);
               return (
                 <tr key={r.id} role="row" className={ROW}>
-                  <td role="cell" className={CELL}>
+                  <td role="cell" className={`${CELL} max-sm:pe-10`}>
                     <Person
                       name={who}
                       email={email}
@@ -376,7 +376,7 @@ export function SettingsMembersPage({
                   {live ? (
                     <td
                       role="cell"
-                      className="w-12 px-5 py-3 text-end max-sm:block max-sm:px-0 max-sm:py-0 max-sm:pt-2 max-sm:text-start"
+                      className="w-12 px-5 py-3 text-end max-sm:absolute max-sm:end-2 max-sm:top-2 max-sm:w-auto max-sm:p-0"
                     >
                       <ActionMenu
                         label={`Actions for ${who || email}`}
