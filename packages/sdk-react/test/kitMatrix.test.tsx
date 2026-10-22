@@ -114,6 +114,8 @@ const LEFT_OUT = new Set([
   "signin.menu.signIn",
   // The pane's title says what the list is; the lede repeats it (the elements leave it out too).
   "devices.lede",
+  // A heading with no notes under it.
+  "update.whatsNew",
 ]);
 
 /** The literal text of a message (its longest run outside `{…}`), to find it with any args. */

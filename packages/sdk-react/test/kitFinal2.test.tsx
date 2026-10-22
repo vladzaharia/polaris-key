@@ -40,7 +40,7 @@ const keys = (
 ) => [...c.querySelectorAll<HTMLElement>(sel)].map((e) => e.dataset.key);
 
 describe("UpdatePrompt", () => {
-  it("drops the separator beside a figure it does not have", () => {
+  it("draws no line for a download whose figures it does not have (the bar and percent stand)", () => {
     const c = prompt({
       update: {
         action: "binary",
@@ -48,11 +48,8 @@ describe("UpdatePrompt", () => {
         progress: { phase: "download", fraction: 0.4 },
       },
     });
-    const line = c.querySelector("[data-part=status]")!;
-    expect(line.textContent).toBe("Downloading");
-    expect(
-      line.querySelector<HTMLElement>("[data-key='update.timeLeft']")?.hidden,
-    ).toBe(true);
+    expect(c.querySelector("[data-part=status]")).toBeNull();
+    expect(c.querySelector(".percent")?.textContent).toBe("40%");
   });
 
   it("keeps the separator between the parts it has", () => {

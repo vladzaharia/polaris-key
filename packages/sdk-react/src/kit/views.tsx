@@ -178,7 +178,29 @@ function progressFor(c: KitCtx): ReactNode {
     return progressBar(c, p?.fraction ?? 0);
   if (view.copy.includes("a11y.progress"))
     return progressBar(c, p?.fraction ?? 0);
+  // A counted download draws its bar wherever its line shows (a toast, the inline progress).
+  if (
+    p?.fraction !== undefined &&
+    (view.component === "Toast" || view.component === "UpdateProgress")
+  )
+    return progressBar(c, p.fraction);
   return null;
+}
+
+/** The download's percent, beside its bar (the bar itself is named for assistive tech). */
+function percentFor(c: KitCtx): ReactNode {
+  const f = c.input.update?.progress?.fraction;
+  if (c.view.component !== "UpdatePrompt" || c.view.state !== "downloading")
+    return null;
+  if (typeof f !== "number") return null;
+  const pct = new Intl.NumberFormat(c.resolved.locale, {
+    style: "percent",
+  }).format(Math.max(0, Math.min(1, f)));
+  return (
+    <p className="meta percent" aria-hidden="true">
+      {pct}
+    </p>
+  );
 }
 
 /** A locked value (ChannelPicker, a managed setting): the lock glyph, named. */
@@ -273,6 +295,34 @@ export function withBase(c: KitCtx): View {
       };
     }
   }
+  if (view.component === "UpdatePrompt") {
+    const notes = c.input.releaseNotes ?? [];
+    if (view.state === "downloading")
+      // The download keeps its title: what is coming.
+      return add(
+        c.input.update?.version ? "update.title" : "update.availableTitle",
+      );
+    if (view.state !== "available" && view.state !== "ready") return view;
+    const kept = (
+      notes.length === 0
+        ? view.copy.filter((k) => k !== "update.whatsNew")
+        : view.copy
+    ).filter(
+      (k) => view.state !== "available" || k !== "update.restartWhenReady",
+    );
+    // On the web the page cannot install: one Download action and Later, a title that says so.
+    if (view.state === "available" && c.input.platform?.os === "web") {
+      const gone = new Set(["update.title", "update.skipVersion"]);
+      return {
+        ...view,
+        copy: [
+          "update.availableTitle",
+          ...kept.filter((k) => !gone.has(k) && k !== "update.availableTitle"),
+        ],
+      };
+    }
+    return { ...view, copy: kept };
+  }
   if (view.component === "Settings") {
     const titled = ["dirty", "locked", "saving"].includes(view.state)
       ? add("settings.title")
@@ -294,7 +344,7 @@ export function withBase(c: KitCtx): View {
 function place(c: KitCtx, layout: Layout) {
   const placed = ownFiltered(c.view, placeKeys(c.view, layout));
   // A line whose argument the input does not carry is dropped, never drawn as "{version}".
-  const whole = (k: string) => c.driven !== true || !unfilled(c, k);
+  const whole = (k: string) => usableKey(c, k);
   const p = {
     ...placed,
     titles: placed.titles.filter(whole),
@@ -397,6 +447,7 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
         </div>
         {contentFor(c)}
         {progressFor(c)}
+        {percentFor(c)}
         {callout(c, errorKeys)}
         {actions(c, p.controls)}
         {links(c, p.links)}
@@ -502,7 +553,7 @@ function statusOf(view: View): string {
 
 /** A banner or a toast: one line plus its consequence, at most two actions. */
 function strip(c: KitCtx, layout: Layout, kind: "banner" | "toast"): ReactNode {
-  const p = placeKeys(c.view, layout);
+  const p = place(c, layout);
   const lines = [...p.titles, ...p.body, ...p.meta];
   const role = c.view.decisions.tone === "danger" ? "alert" : "status";
   return (

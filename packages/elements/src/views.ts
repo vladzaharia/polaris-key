@@ -745,10 +745,17 @@ function withBase(c: RenderCtx): View {
           input.update?.version ? "update.title" : "update.availableTitle",
         );
       if (view.state !== "available" && view.state !== "ready") return view;
-      const kept =
+      // Restart when ready queues the restart of a download in flight (UI-KITS.md §4.1): an
+      // available update offers Update now and Later.
+      const noRestart = (copy: string[]) =>
+        view.state === "available"
+          ? copy.filter((k) => k !== "update.restartWhenReady")
+          : copy;
+      const kept = noRestart(
         notes.length === 0
           ? view.copy.filter((k) => k !== "update.whatsNew")
-          : view.copy;
+          : view.copy,
+      );
       // On the web the page cannot install: one Download action and Later, a title that says so.
       if (view.state === "available" && input.platform?.os === "web") {
         const gone = new Set([
