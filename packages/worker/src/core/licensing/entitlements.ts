@@ -20,7 +20,7 @@ import type { AllowedRange, ManagedEntry } from "@polaris-key/protocol";
 import type { ManagedPayload } from "./payload.js";
 import type { LicenseRow, TierRow } from "../repo.js";
 import { resolveLicenseTerms, type LicenseTerms } from "./terms.js";
-import { chainTier, customerTierOf } from "./implicitTier.js";
+import { chainTier, customerTierOf, isImplicitTier } from "./implicitTier.js";
 
 interface ParsedSemver {
   major: number;
@@ -206,45 +206,69 @@ export function injectAdminPolicy(
   maxOf: (a?: string, b?: string) => string | undefined,
 ): void {
   const updatedAt = license.modified_at;
+
+  // LX-32: one resolver decides every limit; this only stamps what it resolved.
+  const terms = licenseTermsOf(license, tier, { defaultDeviceLimit: 0 }, null, {
+    minOf,
+    maxOf,
+  });
+  Object.assign(
+    payload.entitlements,
+    stampedEntitlements(license, tier, terms, updatedAt),
+  );
+}
+
+/** What either chain's resolved terms need for stamping (`LicenseTerms` and `OverrideTerms`). */
+export interface StampableTerms {
+  deviceLimit: { value: number; source: string };
+  channels: { value: readonly string[] };
+  minVersion: { value: string | null };
+  maxVersion: { value: string | null };
+}
+
+/**
+ * LX-33.3: the one place that decides which resolved terms are stamped into a document as
+ * ENFORCED entitlements, for both chains. Nothing is stamped for a field that fell to the
+ * platform: `stable` is never stamped, and the device limit only when the licence or its tier set
+ * it, so a merged `deviceLimit` entitlement keeps its place below them (LX-14a). The implicit
+ * Default tier is no tier here (LX-33.2): no `license.tier` / `license.tierLabel`.
+ */
+export function stampedEntitlements(
+  license: Pick<LicenseRow, "tier_id">,
+  tier: Pick<TierRow, "label" | "implicit"> | null,
+  terms: StampableTerms,
+  updatedAt: number,
+): Record<string, ManagedEntry> {
   const enforced = (value: ManagedEntry["value"]): ManagedEntry => ({
     state: "enforced",
     value,
     updatedAt,
   });
+  const out: Record<string, ManagedEntry> = {};
 
   // The license's plan, surfaced to the client as ordinary entitlements. This is what makes
   // remote re-licensing visible without touching the signed document's shape: changing
   // `licenses.tier_id` bumps `modified_at`, which changes these entries' `updatedAt`, which
-  // changes the doc's ETag — so the client's next refresh detects a real content change.
-  // LX-33.2: the implicit Default tier is no tier here, so a licence on it keeps today's bytes.
+  // changes the doc's ETag, so the client's next refresh detects a real content change.
   const shown = customerTierOf(license, tier);
   if (shown) {
-    payload.entitlements["license.tier"] = enforced(shown.id);
-    if (shown.label) {
-      payload.entitlements["license.tierLabel"] = enforced(shown.label);
-    }
+    out["license.tier"] = enforced(shown.id);
+    if (shown.label) out["license.tierLabel"] = enforced(shown.label);
   }
 
-  // LX-32: one resolver decides every limit; this only stamps what it resolved. The device limit
-  // is stamped only when the licence or its tier sets one, so a merged `deviceLimit` entitlement
-  // (a profile, store grant or override) keeps its place below them (LX-14a).
-  const terms = licenseTermsOf(license, tier, { defaultDeviceLimit: 0 }, null, {
-    minOf,
-    maxOf,
-  });
   if (terms.channels.value.length > 0)
-    payload.entitlements["channels"] = enforced(terms.channels.value);
-
+    out["channels"] = enforced([...terms.channels.value]);
+  // An implicit tier's limit is the platform's in disguise: never a stamp of its own.
   if (
     terms.deviceLimit.source === "license" ||
-    terms.deviceLimit.source === "tier"
+    (terms.deviceLimit.source === "tier" && !isImplicitTier(tier))
   )
-    payload.entitlements["deviceLimit"] = enforced(terms.deviceLimit.value);
-
+    out["deviceLimit"] = enforced(terms.deviceLimit.value);
   if (terms.minVersion.value)
-    payload.entitlements["app.minVersion"] = enforced(terms.minVersion.value);
+    out["app.minVersion"] = enforced(terms.minVersion.value);
   if (terms.maxVersion.value)
-    payload.entitlements["app.maxVersion"] = enforced(terms.maxVersion.value);
+    out["app.maxVersion"] = enforced(terms.maxVersion.value);
+  return out;
 }
 
 /** A licence that sets nothing itself. */
@@ -279,6 +303,7 @@ export function licenseTermsOf(
     | "min_version"
     | "max_version"
     | "policy_fingerprint"
+    | "policy_offline_grace_days"
     | "implicit"
   > | null,
   product: {
@@ -312,6 +337,7 @@ export function licenseTermsOf(
           minVersion: tier.min_version,
           maxVersion: tier.max_version,
           fingerprintMode: tier.policy_fingerprint ?? null,
+          maxOfflineDays: tier.policy_offline_grace_days ?? null,
         }
       : null,
     entitlementDeviceLimit,
