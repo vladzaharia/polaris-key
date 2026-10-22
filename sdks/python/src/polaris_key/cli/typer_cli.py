@@ -14,10 +14,11 @@ from typing import Any, Callable, List, Mapping, Optional, Sequence, Union
 import typer
 from typer.core import TyperCommand
 
+_UsageError: Any
 try:  # Typer 0.27 vendors its own click; older Typers raise click's.
     from typer._click.exceptions import UsageError as _UsageError
 except ImportError:  # pragma: no cover
-    from click.exceptions import UsageError as _UsageError
+    from click.exceptions import UsageError as _UsageError  # type: ignore[assignment]
 
 from ..ui.core import Copy
 from . import core, mount
