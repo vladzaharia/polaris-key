@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import {
@@ -233,7 +233,7 @@ describe("registry auth (F-21)", () => {
     // Public, then back to Customers: the form is the stored choice again; still no write.
     await userEvent.click(within(form).getByRole("radio", { name: /Public/ }));
     // The warning is about Customers: gone while Public is picked.
-    expect(form.textContent).not.toContain("License tokens are refused");
+    expect(form.textContent).not.toContain("tokens are refused these packages");
     await userEvent.click(
       within(form).getByRole("radio", { name: /Customers/ }),
     );
@@ -1327,6 +1327,223 @@ describe("a feed page", () => {
         { expectedVersion: 4, maxPackageBytes: 10 * 1024 * 1024 },
       ]),
     );
+  });
+
+  it("saving one section does not tell another section's draft that someone else saved", async () => {
+    let served = 3;
+    let served_enabled = true;
+    const routes = feedRoutes();
+    const stored = feedDetail("product", "npm");
+    const puts: unknown[] = [];
+    routes[NPM_PATH] = () => ({
+      ...stored,
+      settings: {
+        ...stored.settings,
+        version: served,
+        enabled: served_enabled,
+      },
+    });
+    routes[`PUT ${NPM_PATH}/settings`] = (
+      _q: URLSearchParams,
+      req: { json?: unknown },
+    ) => {
+      puts.push(req.json);
+      const body = req.json as { enabled?: boolean };
+      served += 1;
+      if (body.enabled !== undefined) served_enabled = body.enabled;
+      return { ok: true, settings: { ...stored.settings, version: served } };
+    };
+    boot("#/p/djdl/distribution/feeds/npm/settings", {
+      extra: { ...routes, ...product(true) },
+    });
+    const general = await within(await mainReady()).findByRole("form", {
+      name: "General",
+    });
+    const limits = within(main()).getByRole("form", { name: "Limits" });
+    const size = within(limits).getByRole("textbox", { name: /^Size/ });
+    await userEvent.clear(size);
+    await userEvent.type(size, "10");
+    await userEvent.click(
+      within(general).getByRole("switch", { name: "Serving" }),
+    );
+    await userEvent.click(
+      within(general).getByRole("button", { name: /^Save/ }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Switch off feed",
+      }),
+    );
+    await waitFor(() => expect(puts.length).toBe(1));
+    // The refetch carries our own version: Limits keeps its draft and says nothing.
+    await screen.findByText("npm feed switched off");
+    await new Promise((r) => setTimeout(r, 200));
+    expect(main().textContent).not.toContain("Someone saved this feed");
+    expect(
+      (
+        within(within(main()).getByRole("form", { name: "Limits" })).getByRole(
+          "textbox",
+          { name: /^Size/ },
+        ) as HTMLInputElement
+      ).value,
+    ).toBe("10");
+    await userEvent.click(
+      within(limits).getByRole("button", { name: /^Save/ }),
+    );
+    await waitFor(() =>
+      expect(puts[1]).toEqual({
+        expectedVersion: 4,
+        maxPackageBytes: 10 * 1024 * 1024,
+      }),
+    );
+  });
+
+  it("Discard mine after a conflict takes theirs and clears the notice", async () => {
+    let served = 3;
+    const routes = feedRoutes();
+    const stored = feedDetail("product", "npm");
+    routes[NPM_PATH] = () => ({
+      ...stored,
+      settings: {
+        ...stored.settings,
+        version: served,
+        maxPackageBytes: served === 3 ? 52_428_800 : 20 * 1024 * 1024,
+      },
+    });
+    routes[`PUT ${NPM_PATH}/settings`] = () => {
+      served = 4;
+      return new Response(
+        JSON.stringify({
+          error: {
+            code: "bad_request",
+            message: "x",
+            reason: "version_conflict",
+          },
+        }),
+        { status: 409, headers: { "content-type": "application/json" } },
+      );
+    };
+    boot("#/p/djdl/distribution/feeds/npm/settings", {
+      extra: { ...routes, ...product(true) },
+    });
+    const limits = await within(await mainReady()).findByRole("form", {
+      name: "Limits",
+    });
+    const size = within(limits).getByRole("textbox", { name: "Size" });
+    await userEvent.clear(size);
+    await userEvent.type(size, "10");
+    await userEvent.click(
+      within(limits).getByRole("button", { name: /^Save/ }),
+    );
+    await within(limits).findByText(
+      "Someone saved this feed after you opened it",
+    );
+    await userEvent.click(
+      within(limits).getByRole("button", { name: "Discard mine" }),
+    );
+    await waitFor(() =>
+      expect(
+        within(limits).queryByText(
+          "Someone saved this feed after you opened it",
+        ),
+      ).toBeNull(),
+    );
+    await waitFor(() => expect((size as HTMLInputElement).value).toBe("20"));
+  });
+
+  it("Override: typing back to the stored value keeps the editor open with focus in it", async () => {
+    bootDerived();
+    const ns = await within(await mainReady()).findByRole("form", {
+      name: "Namespace",
+    });
+    await userEvent.click(within(ns).getByRole("button", { name: "Override" }));
+    const scope = within(ns).getByRole("textbox", { name: "Scope" });
+    await userEvent.type(scope, "x");
+    await userEvent.keyboard("{Backspace}");
+    const again = within(ns).getByRole("textbox", { name: "Scope" });
+    expect(again).toBe(scope);
+    expect(document.activeElement).toBe(scope);
+  });
+
+  it("Cancel and Discard in override mode hand focus back to Override", async () => {
+    bootDerived();
+    const ns = await within(await mainReady()).findByRole("form", {
+      name: "Namespace",
+    });
+    await userEvent.click(within(ns).getByRole("button", { name: "Override" }));
+    await userEvent.click(within(ns).getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(ns).getByRole("button", { name: "Override" }),
+      ),
+    );
+    await userEvent.click(within(ns).getByRole("button", { name: "Override" }));
+    await userEvent.type(
+      within(ns).getByRole("textbox", { name: "Scope" }),
+      "x",
+    );
+    await userEvent.click(within(ns).getByRole("button", { name: "Discard" }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(ns).getByRole("button", { name: "Override" }),
+      ),
+    );
+  });
+
+  it("the combined off-and-widen confirm looks ahead and does not contradict itself", async () => {
+    bootSettings("licensed");
+    const form = await general();
+    await userEvent.click(
+      within(form).getByRole("switch", { name: "Serving" }),
+    );
+    await userEvent.click(within(form).getByRole("radio", { name: /Public/ }));
+    await userEvent.click(within(form).getByRole("button", { name: /^Save/ }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog.querySelectorAll("li").length).toBe(3);
+    expect(dialog.textContent).toContain(
+      "When it is switched on again, anyone can install",
+    );
+    expect(dialog.textContent).not.toContain("Within 30 seconds anyone");
+  });
+
+  it("a namespace nobody set shows no Source row", async () => {
+    boot("#/p/djdl/distribution/feeds/godot/settings", {
+      extra: { ...feedRoutes(), ...product(true) },
+    });
+    const ns = await within(await mainReady()).findByRole("form", {
+      name: "Namespace",
+    });
+    expect(ns.textContent).not.toContain("Source");
+  });
+
+  it("the entitled warning uses one noun and stays one block", async () => {
+    bootSettings("entitled");
+    const form = await general();
+    expect(form.textContent).toContain(
+      "Customers' tokens are refused these packages",
+    );
+    expect(form.textContent).not.toContain("License tokens");
+  });
+
+  it("a view-only member's access cards read as locked, with the reason", async () => {
+    boot("#/p/djdl/distribution/feeds/npm/settings", {
+      me: {
+        platformAdmin: false,
+        permissions: {
+          roles: [],
+          platform: { view: ["console"], edit: [] },
+          products: {
+            djdl: { view: ["core", "ship"], edit: [] },
+            acme: { view: ["core"], edit: [] },
+          },
+        },
+      },
+      extra: { ...feedRoutes(), ...product(true) },
+    });
+    const form = await general();
+    const group = within(form).getByRole("radiogroup");
+    expect(group.getAttribute("aria-disabled")).toBe("true");
+    expect(form.textContent).toMatch(/edit access|can view this/i);
   });
 
   it("a view-only member sees the settings read-only", async () => {

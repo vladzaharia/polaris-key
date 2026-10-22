@@ -2,6 +2,7 @@ import * as React from "react";
 import { Check } from "lucide-react";
 import { RadioGroup } from "radix-ui";
 import { cn } from "../lib/cn.js";
+import { Tooltip } from "./Tooltip.js";
 import { useWriteLock } from "./WriteLock.js";
 
 export interface RadioCardOption<V extends string = string> {
@@ -58,7 +59,8 @@ export function RadioCards<V extends string = string>({
   ...aria
 }: RadioCardsProps<V>): React.ReactElement {
   const check = indicator === "check";
-  const frozen = readOnly || useWriteLock().locked;
+  const lock = useWriteLock();
+  const frozen = readOnly || lock.locked;
   // One column below 640 px is an explicit minmax(0,1fr) track: an implicit auto track grows with
   // its content and runs past the card at a large text size.
   const cols = {
@@ -67,7 +69,7 @@ export function RadioCards<V extends string = string>({
     3: "sm:grid-cols-3",
     4: "sm:grid-cols-4",
   }[columns];
-  return (
+  const group = (
     <RadioGroup.Root
       ref={ref}
       id={id}
@@ -75,11 +77,18 @@ export function RadioCards<V extends string = string>({
       value={value ?? ""}
       disabled={disabled}
       aria-readonly={frozen || undefined}
+      // A view-only member's group reads as locked, like Button and Switch: muted, with the reason.
+      aria-disabled={lock.locked || undefined}
       onValueChange={(v) => {
         if (!frozen) onChange?.(v as V);
       }}
       onBlur={onBlur}
-      className={cn("grid grid-cols-[minmax(0,1fr)] gap-2", cols, className)}
+      className={cn(
+        "grid grid-cols-[minmax(0,1fr)] gap-2",
+        cols,
+        lock.locked && "opacity-60 [&_button]:cursor-not-allowed",
+        className,
+      )}
       {...aria}
     >
       {options.map((o) => {
@@ -141,5 +150,15 @@ export function RadioCards<V extends string = string>({
         );
       })}
     </RadioGroup.Root>
+  );
+  if (!lock.locked) return group;
+  const reason = lock.reason ?? "You can view this, not change it.";
+  return (
+    <>
+      <Tooltip content={reason}>
+        <div className="min-w-0">{group}</div>
+      </Tooltip>
+      <span className="sr-only">{reason}</span>
+    </>
   );
 }

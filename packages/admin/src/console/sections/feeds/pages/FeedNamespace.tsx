@@ -206,18 +206,29 @@ export function NamespaceSection({
   const [overriding, setOverriding] = React.useState(false);
   const readOnly = fromManifest && !overriding;
   const draft = form.rhf.watch();
-  // Override opens the first field; Discard (the draft going clean again) returns to the read-out.
-  const wasDirty = React.useRef(false);
-  React.useEffect(() => {
-    if (overriding && wasDirty.current && !form.isDirty && fromManifest)
-      setOverriding(false);
-    wasDirty.current = form.isDirty;
-  }, [overriding, form.isDirty, fromManifest]);
+  // Override opens the first field. Override mode ends only on Cancel or Discard, never because
+  // the draft happens to equal the stored value again (typing and deleting a character).
+  const overrideRef = React.useRef<HTMLButtonElement>(null);
+  const backToRead = React.useRef(false);
+  const leaveOverride = (): void => {
+    backToRead.current = true;
+    setOverriding(false);
+  };
   React.useEffect(() => {
     if (overriding && fields[0]) form.focus(fields[0].key);
     // Only on the Override press.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overriding]);
+  React.useEffect(() => {
+    if (!overriding && backToRead.current) {
+      backToRead.current = false;
+      overrideRef.current?.focus();
+    }
+  }, [overriding]);
+  const hasValue = fields.some((f) => {
+    const v = ns[f.key];
+    return Array.isArray(v) ? v.length > 0 : typeof v === "string" && v !== "";
+  });
   return (
     <Form form={form} aria-label="Namespace">
       <SettingsSection
@@ -228,13 +239,19 @@ export function NamespaceSection({
           fields.length === 0 || readOnly ? undefined : (
             <>
               <FeedSubmitError error={form.submitError} />
-              <SaveBar form={form} section="Namespace" />
+              <SaveBar
+                form={form}
+                section="Namespace"
+                onDiscard={fromManifest ? leaveOverride : undefined}
+              />
             </>
           )
         }
       >
-        <ConflictNotice form={form} />
-        {fields.length > 0 && detail.settings.version > 0 ? (
+        <ConflictNotice form={form} version={detail.settings.version} />
+        {fields.length > 0 &&
+        detail.settings.version > 0 &&
+        (fromManifest || hasValue) ? (
           <SettingsRow
             label="Source"
             help={
@@ -258,6 +275,7 @@ export function NamespaceSection({
               )}
               {readOnly ? (
                 <Button
+                  ref={overrideRef}
                   type="button"
                   variant="outline"
                   size="sm"
@@ -273,7 +291,7 @@ export function NamespaceSection({
                   size="sm"
                   onClick={() => {
                     form.discard();
-                    setOverriding(false);
+                    leaveOverride();
                   }}
                 >
                   Cancel

@@ -32,13 +32,17 @@ import {
   type FeedEcosystem,
   type FeedSettingsWrite,
 } from "../../../../api.js";
-import { Globe, Lock, Package } from "lucide-react";
+import { AlertTriangle, Globe, Lock, Package } from "lucide-react";
 import { WriteLock } from "../../../../ui/WriteLock.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { r } from "../../../routes.js";
-import { Callout } from "../../../../ui/Callout.js";
 import { NamespaceSection } from "./FeedNamespace.js";
-import { ConflictNotice, FeedSubmitError, focusSection } from "./feedForm.js";
+import {
+  ConflictNotice,
+  FeedSubmitError,
+  FeedSyncContext,
+  focusSection,
+} from "./feedForm.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { Form, FormField, useAdminForm } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
@@ -106,11 +110,17 @@ export function FeedSettingsTab({
     scope.kind === "platform" ? "platform" : "ship",
     scope.kind === "platform" ? null : scope.slug,
   );
+  // The versions this tab wrote: a sibling form's draft rebases silently onto them.
+  const own = React.useRef(new Set<number>());
+  const [tick, setTick] = React.useState(0);
+  const sync = React.useMemo(() => ({ own, tick }), [tick]);
   const save = React.useCallback(
     async (patch: Omit<FeedSettingsWrite, "expectedVersion">) => {
       const body = { expectedVersion: settings.version, ...patch };
       try {
-        await mutate("saveFeedSettings", scope, eco, body);
+        const done = await mutate("saveFeedSettings", scope, eco, body);
+        own.current.add(done.settings.version);
+        setTick((t) => t + 1);
       } catch (e) {
         // Someone saved first: fetch their version, so each form offers to review it and the next
         // save carries the fresh version (a stale one would be refused again).
@@ -124,23 +134,25 @@ export function FeedSettingsTab({
   const Panel = FEED_PANELS[eco];
   return (
     <WriteLock locked={!gate.allowed} reason={gate.disabledReason}>
-      <div className="space-y-6">
-        {settings.version === 0 ? (
-          <p className="text-sm text-fg-muted">
-            This feed has no settings yet. Saving any section creates them; give
-            it a namespace before enabling it.
-          </p>
-        ) : null}
-        <GeneralSection eco={eco} scope={scope} detail={detail} save={save} />
-        <NamespaceSection eco={eco} detail={detail} save={save} />
-        <LimitsSection detail={detail} save={save} />
-        {Panel ? (
-          <Panel scope={scope} eco={eco} detail={detail} save={save} />
-        ) : null}
-        {scope.kind === "platform" && detail.policy ? (
-          <PolicyPointer eco={eco} />
-        ) : null}
-      </div>
+      <FeedSyncContext.Provider value={sync}>
+        <div className="space-y-6">
+          {settings.version === 0 ? (
+            <p className="text-sm text-fg-muted">
+              This feed has no settings yet. Saving any section creates them;
+              give it a namespace before enabling it.
+            </p>
+          ) : null}
+          <GeneralSection eco={eco} scope={scope} detail={detail} save={save} />
+          <NamespaceSection eco={eco} detail={detail} save={save} />
+          <LimitsSection detail={detail} save={save} />
+          {Panel ? (
+            <Panel scope={scope} eco={eco} detail={detail} save={save} />
+          ) : null}
+          {scope.kind === "platform" && detail.policy ? (
+            <PolicyPointer eco={eco} />
+          ) : null}
+        </div>
+      </FeedSyncContext.Provider>
     </WriteLock>
   );
 }
@@ -245,7 +257,7 @@ function GeneralSection({
           </>
         }
       >
-        <ConflictNotice form={form} />
+        <ConflictNotice form={form} version={detail.settings.version} />
         <SettingsRow
           label="Serving"
           help={
@@ -291,28 +303,38 @@ function GeneralSection({
         </SettingsRow>
         {gated && chosen !== "public" && ungated.length > 0 && owner ? (
           <SettingsRow label="Packages without a gate" align="block">
-            <Callout
-              tone="warning"
-              title="License tokens are refused these packages"
+            <div
+              data-tone="warning"
+              className="rounded-lg border border-warning-border bg-warning-subtle px-4 py-3 text-sm"
             >
-              <p>
+              <p className="font-semibold text-warning">
+                <AlertTriangle
+                  aria-hidden
+                  className="me-2 inline size-4 align-text-bottom"
+                />
+                Customers' tokens are refused these packages
+              </p>
+              <p className="mt-1 text-fg">
                 A customer's token gets a package only when its delivery access
                 names an entitlement. Give each of these {label} packages one:
               </p>
               <ul className="mt-2 space-y-1">
                 {ungated.map((p) => (
                   <li key={p.id} className="flex items-center gap-1.5">
-                    <Package aria-hidden className="size-4 text-fg-muted" />
+                    <Package
+                      aria-hidden
+                      className="size-4 shrink-0 text-fg-muted"
+                    />
                     <Link
                       to={r.deliverable(owner, p.id, "delivery")}
-                      className="font-mono text-xs underline underline-offset-4"
+                      className="min-w-0 font-mono text-xs underline underline-offset-4 [overflow-wrap:anywhere]"
                     >
                       {p.name}
                     </Link>
                   </li>
                 ))}
               </ul>
-            </Callout>
+            </div>
           </SettingsRow>
         ) : null}
       </SettingsSection>
@@ -351,6 +373,17 @@ const TIGHTEN_LINES = [
   "Each client then needs the authenticated setup from the Tokens page.",
   "Bytes already installed or cached by clients stay where they are.",
 ];
+// Switched off in the same save, the access change takes effect when the feed is on again.
+const OFF_WIDEN_LINES = [
+  "Every client install and update gets not-found within 30 seconds; nothing is deleted.",
+  "When it is switched on again, anyone can install with no credentials, unless a package's own access is stricter.",
+  "Anything installed while it is public stays installed.",
+];
+const OFF_TIGHTEN_LINES = [
+  "Every client install and update gets not-found within 30 seconds; nothing is deleted.",
+  "When it is switched on again, clients without a registry token are refused.",
+  "Each client then needs the authenticated setup from the Tokens page.",
+];
 
 function confirmTitle(label: string, ask: GeneralAsk | null): string {
   if (ask?.off && ask.access === "widen")
@@ -363,13 +396,10 @@ function confirmTitle(label: string, ask: GeneralAsk | null): string {
 }
 
 function confirmConsequences(ask: GeneralAsk | null): string[] {
-  const access =
-    ask?.access === "widen"
-      ? WIDEN_LINES
-      : ask?.access === "tighten"
-        ? TIGHTEN_LINES
-        : [];
-  return [...(ask?.off ? OFF_LINES : []), ...access];
+  if (ask?.off && ask.access === "widen") return OFF_WIDEN_LINES;
+  if (ask?.off && ask.access === "tighten") return OFF_TIGHTEN_LINES;
+  if (ask?.off) return OFF_LINES;
+  return ask?.access === "widen" ? WIDEN_LINES : TIGHTEN_LINES;
 }
 
 function confirmLabelOf(ask: GeneralAsk | null): string {
@@ -423,7 +453,7 @@ function LimitsSection({
           </>
         }
       >
-        <ConflictNotice form={form} />
+        <ConflictNotice form={form} version={detail.settings.version} />
         <SettingsRow
           label="Largest package"
           help={`The platform's ceiling for this ecosystem is ${bytesToMiB(ceiling)} MiB.`}
@@ -617,7 +647,7 @@ function EcosystemPanel({
           </>
         }
       >
-        <ConflictNotice form={form} />
+        <ConflictNotice form={form} version={detail.settings.version} />
         {keys.map((key) => {
           const field = FEED_EXTENSION_FIELDS[key]!;
           const input = field.input;

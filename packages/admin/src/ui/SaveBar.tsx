@@ -14,6 +14,8 @@ export interface SaveBarProps<T extends FieldValues> {
   summary?: React.ReactNode;
   /** The save scope's name on a page with several (T4): "2 changes in General". */
   section?: string;
+  /** Runs after Discard (or the confirmed discard) has thrown the draft away. */
+  onDiscard?: () => void;
   /** Editor templates: "Review" opens the diff drawer. */
   onReview?: () => void;
   reviewLabel?: string;
@@ -68,6 +70,7 @@ export function SaveBar<T extends FieldValues>({
   discardLabel = "Discard",
   summary,
   section,
+  onDiscard,
   onReview,
   reviewLabel = "Review",
   className,
@@ -195,6 +198,7 @@ export function SaveBar<T extends FieldValues>({
               onClick={() => {
                 setConfirming(false);
                 form.discard();
+                onDiscard?.();
               }}
             >
               {discardLabel}
@@ -205,7 +209,10 @@ export function SaveBar<T extends FieldValues>({
             <Button
               variant="ghost"
               disabled={form.isSubmitting || !form.isDirty}
-              onClick={() => form.discard()}
+              onClick={() => {
+                form.discard();
+                onDiscard?.();
+              }}
             >
               {discardLabel}
             </Button>

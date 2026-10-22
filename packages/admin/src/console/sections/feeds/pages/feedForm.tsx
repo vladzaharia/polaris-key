@@ -30,17 +30,48 @@ export function FeedSubmitError({
   );
 }
 
-/** The server's version arrived while this form held a draft: keep it or take theirs. */
+/**
+ * The versions this tab wrote itself. The sections save disjoint fields over one version counter,
+ * so our own save moves the version under every sibling form that holds a draft: those take the
+ * new baseline silently. Only a 409, or a version we did not write, is someone else's change.
+ */
+export interface FeedSync {
+  own: React.RefObject<Set<number>>;
+  /** Bumps when a version is recorded, so a form that saw the refetch first looks again. */
+  tick: number;
+}
+export const FeedSyncContext = React.createContext<FeedSync>({
+  own: { current: new Set() },
+  tick: 0,
+});
+
+/**
+ * The notice for a version conflict: keep the draft or take theirs. Shown after a 409, or when a
+ * version this tab did not write arrives while the form holds a draft. A version this tab wrote
+ * rebases the draft without a word.
+ */
 export function ConflictNotice<T extends FieldValues>({
   form,
+  version,
 }: {
   form: AdminForm<T>;
+  /** The feed's settings version as the page now holds it. */
+  version: number;
 }): React.ReactElement | null {
-  const conflicted =
-    form.serverChanged ||
-    (form.submitError instanceof ApiError &&
-      form.submitError.reason === "version_conflict");
-  if (!conflicted) return null;
+  const sync = React.useContext(FeedSyncContext);
+  const own = sync.own.current.has(version);
+  const refused =
+    form.submitError instanceof ApiError &&
+    form.submitError.reason === "version_conflict";
+  const [kept, setKept] = React.useState(false);
+  React.useEffect(() => setKept(false), [form.submitError]);
+  React.useEffect(() => {
+    if (form.serverChanged && own && !refused) form.keepMine();
+    // Rebase once per arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.serverChanged, own, refused, sync.tick]);
+  const foreign = form.serverChanged && !own;
+  if (kept || !(refused || foreign)) return null;
   return (
     <div className="px-5 pt-4">
       <Callout
@@ -55,7 +86,10 @@ export function ConflictNotice<T extends FieldValues>({
               type="button"
               size="sm"
               variant="outline"
-              onClick={form.keepMine}
+              onClick={() => {
+                form.keepMine();
+                setKept(true);
+              }}
             >
               Keep mine
             </Button>
@@ -64,7 +98,7 @@ export function ConflictNotice<T extends FieldValues>({
             type="button"
             size="sm"
             variant="outline"
-            onClick={form.acceptServer}
+            onClick={form.discard}
           >
             Discard mine
           </Button>
