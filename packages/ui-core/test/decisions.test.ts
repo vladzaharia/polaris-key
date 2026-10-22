@@ -183,6 +183,7 @@ const EXPECT: Record<string, (input: UiInput) => Expect> = {
   "SignInHandoff.finishing": () => quiet,
   // Denied, expired and failed keep a result with the action that starts again (DL7).
   "SignInHandoff.denied": () => failed("signInHandoff.newCode", "screen"),
+  "SignInHandoff.failed": () => failed("signInHandoff.newCode", "screen"),
   "SignInHandoff.expired": () => refusal("signInHandoff.newCode"),
   "SignInHandoff.cancelled": () => ({
     ...none,

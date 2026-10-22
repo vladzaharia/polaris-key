@@ -30,6 +30,7 @@ import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { rm } from "node:fs/promises";
 import { PolarisError } from "@polaris-key/client-core";
+import { DEVICE_POLL_DENIED } from "@polaris-key/protocol/identity";
 import { readJson, writeJson } from "../core/jsonFile.js";
 import { ErrorCode, Feature } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
@@ -84,9 +85,14 @@ export type SignInPoll =
   /** The code expired (or the server no longer knows it). Begin again. */
   | { status: "expired" }
   /** The sign-in failed or was refused. Begin again. `code` is `sign-in-denied` when the Worker
-   *  answered its generic `error` (the provider failed, or the person pressed Deny on the
-   *  approval page; the server never says which). */
-  | { status: "error"; message: string; code?: typeof ErrorCode.signInDenied };
+   *  answered `error` with `reason: "access_denied"` (a person refused); `sign-in-failed` for a
+   *  bare `error` (the sign-in failed after approval; the server never says why). */
+  | { status: "error"; message: string; code?: SignInErrorCode };
+
+/** The codes a device-code poll's `error` maps to: a refusal, or a failure after approval. */
+export type SignInErrorCode =
+  | typeof ErrorCode.signInDenied
+  | typeof ErrorCode.signInFailed;
 
 /** The name and verified e-mail of a signed-in identity, as the Worker shows them. */
 export interface ShownIdentity {
@@ -116,7 +122,7 @@ export type SignInResult =
       attached?: "claimed" | "migrated";
     }
   | { status: "expired" }
-  | { status: "error"; message: string; code?: typeof ErrorCode.signInDenied };
+  | { status: "error"; message: string; code?: SignInErrorCode };
 
 export interface WaitForSignInOptions {
   /** Abort to stop polling; `waitForSignIn` then rejects with the signal's reason. */
@@ -411,6 +417,7 @@ export class IdentityClient {
       identity?: unknown;
       attachable?: unknown;
       attached?: unknown;
+      reason?: unknown;
     };
     if (res.status === 429) {
       // The Worker's own `slow_down` carries the interval; a rate limiter in front of it may
@@ -429,11 +436,17 @@ export class IdentityClient {
       case "timeout":
         return { status: "expired" };
       case "error":
-        return {
-          status: "error",
-          message: "device sign-in failed.",
-          code: ErrorCode.signInDenied,
-        };
+        return answer.reason === DEVICE_POLL_DENIED
+          ? {
+              status: "error",
+              message: "device sign-in was refused.",
+              code: ErrorCode.signInDenied,
+            }
+          : {
+              status: "error",
+              message: "device sign-in failed.",
+              code: ErrorCode.signInFailed,
+            };
       case "confirm":
         return {
           status: "confirm",

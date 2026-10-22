@@ -309,6 +309,7 @@ export type HandoffState =
   | "link-copied"
   | "finishing"
   | "denied"
+  | "failed"
   | "expired"
   | "cancelled";
 
@@ -349,7 +350,14 @@ export function handoffView(
     ],
     "link-copied": ["common.copied"],
     finishing: ["signin.handoff.finishing"],
-    denied: ["core.codes.oidc_error.title", "core.codes.oidc_error.message"],
+    denied: [
+      "core.codes.sign-in-denied.title",
+      "core.codes.sign-in-denied.message",
+    ],
+    failed: [
+      "core.codes.sign-in-failed.title",
+      "core.codes.sign-in-failed.message",
+    ],
     expired: ["signin.handoff.tooLong", "signin.cli.signInAgain"],
     cancelled: ["core.codes.cancelled.title", "signin.cli.signInAgain"],
   };
