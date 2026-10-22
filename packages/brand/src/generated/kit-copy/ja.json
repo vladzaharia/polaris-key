@@ -88,7 +88,7 @@
   "boot.consent.body": "{product}には{size}の新しいコンテンツが必要です。",
   "boot.consent.bodyMetered": "{product}には{size}の新しいコンテンツが必要です。現在、従量制の接続を使用しています。",
   "boot.consent.download": "ダウンロード",
-  "boot.error.body": "{product}の起動を完了できませんでした（{code}）。",
+  "boot.error.body": "{product}の起動を完了できませんでした。もう一度お試しください。",
   "welcome.title": "{product}へようこそ",
   "common.welcomeNoProductTitle": "ようこそ",
   "common.signInToContinue": "続けるにはサインインしてください。",

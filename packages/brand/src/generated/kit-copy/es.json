@@ -88,7 +88,7 @@
   "boot.consent.body": "{product} necesita {size} de contenido nuevo.",
   "boot.consent.bodyMetered": "{product} necesita {size} de contenido nuevo y estás en una conexión de uso medido.",
   "boot.consent.download": "Descargar",
-  "boot.error.body": "{product} no pudo terminar de iniciarse ({code}).",
+  "boot.error.body": "{product} no pudo terminar de iniciarse. Inténtalo de nuevo.",
   "welcome.title": "Te damos la bienvenida a {product}",
   "common.welcomeNoProductTitle": "Te damos la bienvenida",
   "common.signInToContinue": "Inicia sesión para continuar.",

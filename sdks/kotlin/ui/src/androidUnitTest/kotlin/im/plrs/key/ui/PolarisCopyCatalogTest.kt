@@ -49,7 +49,7 @@ class PolarisCopyCatalogTest {
         check("bootDeclinedTitle", "boot.declined.title")
         check("bootDeclinedBody", "boot.declined.body", "product")
         check("bootRolledBack", "boot.rolledBack")
-        check("bootErrorBody", "boot.error.body", "product", "code")
+        check("bootErrorBody", "boot.error.body", "product")
         check("consentTitle", "boot.consent.title")
         check("consentBody", "boot.consent.body", "product", "size")
         check("consentBodyMetered", "boot.consent.bodyMetered", "product", "size")

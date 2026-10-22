@@ -2,61 +2,61 @@
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · boot[0m
 [2m│[0m
 [31m✗[0m  [1mTidewater Studio couldn't start[0m
-[2m│[0m  Tidewater Studio couldn't finish starting (mount-failed).
+[2m│[0m  Tidewater Studio couldn't finish starting. Try again.
 [2m│[0m
 [2m└[0m  [1mtidewater boot[0m   [2mTry again[0m
 ── ansi16 · 80 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · boot[0m
 [2m│[0m
 [31m✗[0m  [1mTidewater Studio couldn't start[0m
-[2m│[0m  Tidewater Studio couldn't finish starting (mount-failed).
+[2m│[0m  Tidewater Studio couldn't finish starting. Try again.
 [2m│[0m
 [2m└[0m  [1mtidewater boot[0m   [2mTry again[0m
 ── no-color · 80 ──
 ┌  [7m Tidewater Studio [0m · boot
 │
 ✗  [1mTidewater Studio couldn't start[0m
-│  Tidewater Studio couldn't finish starting (mount-failed).
+│  Tidewater Studio couldn't finish starting. Try again.
 │
 └  [1mtidewater boot[0m   Try again
 ── ascii · 80 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - boot[0m
 [2m|[0m
 [31mx[0m  [1mTidewater Studio couldn't start[0m
-[2m|[0m  Tidewater Studio couldn't finish starting (mount-failed).
+[2m|[0m  Tidewater Studio couldn't finish starting. Try again.
 [2m|[0m
 [2m`[0m  [1mtidewater boot[0m   [2mTry again[0m
 ── truecolor · 60 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · boot[0m
 [2m│[0m
 [31m✗[0m  [1mTidewater Studio couldn't start[0m
-[2m│[0m  Tidewater Studio couldn't finish starting (mount-failed).
+[2m│[0m  Tidewater Studio couldn't finish starting. Try again.
 [2m│[0m
 [2m└[0m  [1mtidewater boot[0m   [2mTry again[0m
 ── ansi16 · 60 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · boot[0m
 [2m│[0m
 [31m✗[0m  [1mTidewater Studio couldn't start[0m
-[2m│[0m  Tidewater Studio couldn't finish starting (mount-failed).
+[2m│[0m  Tidewater Studio couldn't finish starting. Try again.
 [2m│[0m
 [2m└[0m  [1mtidewater boot[0m   [2mTry again[0m
 ── no-color · 60 ──
 ┌  [7m Tidewater Studio [0m · boot
 │
 ✗  [1mTidewater Studio couldn't start[0m
-│  Tidewater Studio couldn't finish starting (mount-failed).
+│  Tidewater Studio couldn't finish starting. Try again.
 │
 └  [1mtidewater boot[0m   Try again
 ── ascii · 60 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - boot[0m
 [2m|[0m
 [31mx[0m  [1mTidewater Studio couldn't start[0m
-[2m|[0m  Tidewater Studio couldn't finish starting (mount-failed).
+[2m|[0m  Tidewater Studio couldn't finish starting. Try again.
 [2m|[0m
 [2m`[0m  [1mtidewater boot[0m   [2mTry again[0m
 ── pipe · 80 ──
 Tidewater Studio · boot
 Tidewater Studio couldn't start
-Tidewater Studio couldn't finish starting (mount-failed).
+Tidewater Studio couldn't finish starting. Try again.
 
 tidewater boot   Try again

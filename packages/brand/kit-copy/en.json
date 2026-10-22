@@ -453,9 +453,9 @@
       "note": "Boot screen, shown while the product starts."
     },
     "boot.error.body": {
-      "value": "{product} couldn't finish starting ({code}).",
+      "value": "{product} couldn't finish starting. Try again.",
       "role": "body",
-      "note": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. Arguments: {product} = the product's name from ProductIdentity (never translated); {code} = a code shown to the person (a user code or an error code); never split or translated."
+      "note": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
     "welcome.title": {
       "value": "Welcome to {product}",

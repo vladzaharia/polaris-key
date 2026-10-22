@@ -29,7 +29,7 @@ const DEFAULTS := {
 	"boot_offline_title": "You're offline",
 	"boot_offline_body": "Connect to the internet and try again.",
 	"boot_error_title": "%s couldn't start",
-	"boot_error_body": "The game couldn't finish starting (%s).",
+	"boot_error_body": "The game couldn't finish starting. Try again.",
 	"boot_blocked_update_title": "Update required",
 	"boot_blocked_update_body": "This version can no longer be played. Update %s to continue.",
 	"boot_blocked_unavailable_title": "Not available on your license",

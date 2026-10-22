@@ -10,7 +10,7 @@
 <text x="21" y="60.2" text-anchor="middle" fill="#ef6b73">✗</text>
 <text x="42" y="60.2" textLength="260.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Tidewater Studio couldn&#x27;t start</text>
 <rect x="20.5" y="64.4" width="1" height="16.8" fill="#d7dae0"/>
-<text x="42" y="77" textLength="478.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Tidewater Studio couldn&#x27;t finish starting (mount-failed).</text>
+<text x="42" y="77" textLength="445.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Tidewater Studio couldn&#x27;t finish starting. Try again.</text>
 <rect x="20.5" y="81.2" width="1" height="16.8" fill="#d7dae0"/>
 <rect x="20.5" y="98" width="1" height="8.4" fill="#d7dae0"/>
 <rect x="20.5" y="105.9" width="4.7" height="1" fill="#d7dae0"/>

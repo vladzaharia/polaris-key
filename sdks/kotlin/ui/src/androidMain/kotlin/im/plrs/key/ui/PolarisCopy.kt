@@ -39,7 +39,7 @@ public data class PolarisCopy(
     val bootOfflineBody: String = "Connect to the internet and try again.",
     val bootOfflinePlayableBody: String = "Some content couldn't be downloaded. You can keep going with what's installed, or connect and try again.",
     val bootErrorTitle: String = "Something went wrong",
-    val bootErrorBody: String = "%1\$s couldn't finish starting (%2\$s).",
+    val bootErrorBody: String = "%1\$s couldn't finish starting. Try again.",
     val bootBlockedUpdateTitle: String = "Update required",
     val bootBlockedUpdateBody: String = "This version can no longer be used. Update to continue.",
     val bootBlockedUnavailableTitle: String = "Not available on your license",

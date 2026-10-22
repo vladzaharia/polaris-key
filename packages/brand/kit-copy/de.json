@@ -95,7 +95,7 @@
     "boot.consent.body": "{product} benötigt {size} an neuen Inhalten.",
     "boot.consent.bodyMetered": "{product} benötigt {size} an neuen Inhalten, und Sie nutzen eine getaktete Verbindung.",
     "boot.consent.download": "Herunterladen",
-    "boot.error.body": "{product} konnte den Start nicht abschließen ({code}).",
+    "boot.error.body": "{product} konnte den Start nicht abschließen. Versuchen Sie es erneut.",
     "welcome.title": "Willkommen bei {product}",
     "common.welcomeNoProductTitle": "Willkommen",
     "common.signInToContinue": "Melden Sie sich an, um fortzufahren.",

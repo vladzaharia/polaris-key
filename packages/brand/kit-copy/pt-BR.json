@@ -95,7 +95,7 @@
     "boot.consent.body": "{product} precisa de {size} de conteúdo novo.",
     "boot.consent.bodyMetered": "{product} precisa de {size} de conteúdo novo, e você está em uma conexão limitada.",
     "boot.consent.download": "Baixar",
-    "boot.error.body": "Não foi possível concluir a inicialização de {product} ({code}).",
+    "boot.error.body": "Não foi possível concluir a inicialização de {product}. Tente novamente.",
     "welcome.title": "Boas-vindas ao {product}",
     "common.welcomeNoProductTitle": "Boas-vindas",
     "common.signInToContinue": "Entre para continuar.",

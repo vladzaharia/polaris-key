@@ -226,8 +226,8 @@
     <string name="boot_consent_bodyMetered">%1$s ha bisogno di %2$s di nuovi contenuti e stai usando una connessione a consumo.</string>
     <!-- Boot screen, shown while the product starts. -->
     <string name="boot_consent_download">Scarica</string>
-    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. Arguments: {product} = the product's name from ProductIdentity (never translated); {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=product, 2=code. -->
-    <string name="boot_error_body">Impossibile completare l'avvio di %1$s (%2$s).</string>
+    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="boot_error_body">Impossibile completare l'avvio di %1$s. Riprova.</string>
     <!-- Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="welcome_title">Ti diamo il benvenuto in %1$s</string>
     <!-- Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}. -->

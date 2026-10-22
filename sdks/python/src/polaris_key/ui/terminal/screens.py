@@ -842,7 +842,7 @@ def boot(k: Kit, v: BootView, verb: str = "boot") -> Lines:
         body += boot_progress(k, "fetch", done=v.size, total=v.size)
     else:
         body += k.step("fail", [k.t("gate.error.title", "strong", product=k.inline_product)])
-        body += k.body([k.t("boot.error.body", product=k.inline_product, code=v.code or "unknown")])
+        body += k.body([k.t("boot.error.body", product=k.inline_product)])
         body += _gap(k)
         body += _fixes(k, [("boot", "common.tryAgain")])
     return _frame(k, verb, body, end)

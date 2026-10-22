@@ -128,7 +128,7 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} needs {size} of new content, and you're on a metered connection.",
     "boot.consent.download": "Download",
-    "boot.error.body": "{product} couldn't finish starting ({code}).",
+    "boot.error.body": "{product} couldn't finish starting. Try again.",
     "welcome.title": "Welcome to {product}",
     "common.welcomeNoProductTitle": "Welcome",
     "common.signInToContinue": "Sign in to continue.",
@@ -1646,7 +1646,8 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} benötigt {size} an neuen Inhalten, und Sie nutzen eine getaktete Verbindung.",
     "boot.consent.download": "Herunterladen",
-    "boot.error.body": "{product} konnte den Start nicht abschließen ({code}).",
+    "boot.error.body":
+      "{product} konnte den Start nicht abschließen. Versuchen Sie es erneut.",
     "welcome.title": "Willkommen bei {product}",
     "common.welcomeNoProductTitle": "Willkommen",
     "common.signInToContinue": "Melden Sie sich an, um fortzufahren.",
@@ -3269,7 +3270,8 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} a besoin de {size} de nouveau contenu, et votre connexion est facturée à l’usage.",
     "boot.consent.download": "Télécharger",
-    "boot.error.body": "{product} n’a pas pu terminer son démarrage ({code}).",
+    "boot.error.body":
+      "{product} n’a pas pu terminer son démarrage. Réessayez.",
     "welcome.title": "Bienvenue dans {product}",
     "common.welcomeNoProductTitle": "Bienvenue",
     "common.signInToContinue": "Connectez-vous pour continuer.",
@@ -4873,7 +4875,8 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} necesita {size} de contenido nuevo y estás en una conexión de uso medido.",
     "boot.consent.download": "Descargar",
-    "boot.error.body": "{product} no pudo terminar de iniciarse ({code}).",
+    "boot.error.body":
+      "{product} no pudo terminar de iniciarse. Inténtalo de nuevo.",
     "welcome.title": "Te damos la bienvenida a {product}",
     "common.welcomeNoProductTitle": "Te damos la bienvenida",
     "common.signInToContinue": "Inicia sesión para continuar.",
@@ -6471,7 +6474,7 @@ export const KIT_COPY: Readonly<
       "{product} precisa de {size} de conteúdo novo, e você está em uma conexão limitada.",
     "boot.consent.download": "Baixar",
     "boot.error.body":
-      "Não foi possível concluir a inicialização de {product} ({code}).",
+      "Não foi possível concluir a inicialização de {product}. Tente novamente.",
     "welcome.title": "Boas-vindas ao {product}",
     "common.welcomeNoProductTitle": "Boas-vindas",
     "common.signInToContinue": "Entre para continuar.",
@@ -8043,7 +8046,7 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product} ha bisogno di {size} di nuovi contenuti e stai usando una connessione a consumo.",
     "boot.consent.download": "Scarica",
-    "boot.error.body": "Impossibile completare l'avvio di {product} ({code}).",
+    "boot.error.body": "Impossibile completare l'avvio di {product}. Riprova.",
     "welcome.title": "Ti diamo il benvenuto in {product}",
     "common.welcomeNoProductTitle": "Ti diamo il benvenuto",
     "common.signInToContinue": "Accedi per continuare.",
@@ -9620,7 +9623,8 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product}には{size}の新しいコンテンツが必要です。現在、従量制の接続を使用しています。",
     "boot.consent.download": "ダウンロード",
-    "boot.error.body": "{product}の起動を完了できませんでした（{code}）。",
+    "boot.error.body":
+      "{product}の起動を完了できませんでした。もう一度お試しください。",
     "welcome.title": "{product}へようこそ",
     "common.welcomeNoProductTitle": "ようこそ",
     "common.signInToContinue": "続けるにはサインインしてください。",
@@ -11219,7 +11223,8 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product}에 {size} 크기의 새 콘텐츠가 필요해요. 현재 데이터 종량제 네트워크에 연결되어 있어요.",
     "boot.consent.download": "다운로드",
-    "boot.error.body": "{product} 시작을 완료하지 못했어요({code}).",
+    "boot.error.body":
+      "{product} 시작을 완료하지 못했어요. 다시 시도해 주세요.",
     "welcome.title": "{product}에 오신 것을 환영해요",
     "common.welcomeNoProductTitle": "환영해요",
     "common.signInToContinue": "계속하려면 로그인하세요.",
@@ -12743,7 +12748,7 @@ export const KIT_COPY: Readonly<
     "boot.consent.bodyMetered":
       "{product}需要{size}的新内容，而你正在使用按流量计费的网络。",
     "boot.consent.download": "下载",
-    "boot.error.body": "{product}未能完成启动（{code}）。",
+    "boot.error.body": "{product}未能完成启动。请重试。",
     "welcome.title": "欢迎使用{product}",
     "common.welcomeNoProductTitle": "欢迎",
     "common.signInToContinue": "登录以继续。",

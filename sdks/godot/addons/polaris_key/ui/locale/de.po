@@ -608,10 +608,10 @@ msgstr "{product} benötigt {size} an neuen Inhalten, und Sie nutzen eine getakt
 msgid "boot.consent.download"
 msgstr "Herunterladen"
 
-#. {product} couldn't finish starting ({code}).
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. Arguments: {product} = the product's name from ProductIdentity (never translated); {code} = a code shown to the person (a user code or an error code); never split or translated.
+#. {product} couldn't finish starting. Try again.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "boot.error.body"
-msgstr "{product} konnte den Start nicht abschließen ({code})."
+msgstr "{product} konnte den Start nicht abschließen. Versuchen Sie es erneut."
 
 #. Welcome to {product}
 #. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).
