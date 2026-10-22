@@ -59,7 +59,9 @@ describe("license record: header and tabs", () => {
       await screen.findByRole("button", { name: "Tier: Pro. Change tier" }),
     ).toBeTruthy();
     // modifiedBy is the signed-in operator: named, not a raw sub (LDT-9).
-    expect(screen.getByText(/Changed .* by Ada Lovelace/)).toBeTruthy();
+    // (the facts line is drawn under the title and, on a phone, under the tabs; CSS picks one)
+    expect(screen.getAllByText(/Changed .* by Ada Lovelace/).length).toBe(2);
+    expect(screen.queryByText(/Changed now/)).toBeNull();
     const tabs = screen.getByRole("navigation", { name: "License sections" });
     expect(
       within(tabs)

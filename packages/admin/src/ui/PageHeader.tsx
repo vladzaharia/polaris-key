@@ -35,6 +35,11 @@ export interface PageHeaderProps {
   description?: React.ReactNode;
   /** Badges after the description: `SourceBadge`, ids. */
   meta?: React.ReactNode;
+  /**
+   * A line of facts under the title row, the full width of the header (not just the title's
+   * column, which the actions narrow): a record's id and "Changed …".
+   */
+  factsRow?: React.ReactNode;
   /** T1: "Updated 2 min ago" plus Refresh. */
   freshness?: {
     updatedAt: number;
@@ -106,6 +111,7 @@ export function PageHeader({
   titleAside,
   description,
   meta,
+  factsRow,
   freshness,
   primaryAction,
   secondaryActions = [],
@@ -388,6 +394,11 @@ export function PageHeader({
         ) : null}
         {trailing ? null : primaryEl}
       </div>
+      {factsRow ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
+          {factsRow}
+        </div>
+      ) : null}
       {tabs ? (
         <div data-masthead-tabs="" className="border-b border-border pt-1">
           {tabs}

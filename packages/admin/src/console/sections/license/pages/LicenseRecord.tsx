@@ -271,6 +271,8 @@ function LicenseRecordBody({
   const tierControl = (
     <Button
       variant="outline"
+      // 200 % text on a phone has no room for a second action row: Change tier… is in More actions.
+      className="max-sm:conbig:hidden"
       aria-haspopup="dialog"
       aria-label={`Tier: ${tierLabel ?? "No tier"}. Change tier`}
       iconStart={<Layers />}
@@ -279,7 +281,12 @@ function LicenseRecordBody({
     >
       <span className="text-fg-muted conbig:sr-only">Tier</span>
       {tierLabel ? (
-        <span>{tierLabel}</span>
+        <span
+          title={tierLabel}
+          className="min-w-0 max-w-56 truncate max-sm:max-w-full max-sm:conbig:whitespace-normal"
+        >
+          {tierLabel}
+        </span>
       ) : (
         <span className="text-fg-muted">No tier</span>
       )}
@@ -308,6 +315,40 @@ function LicenseRecordBody({
     </Button>
   );
 
+  // The facts line, drawn in two places (under the title; under the tabs on a phone and at
+  // 200 % text): only the first carries the test ids, and only the second the status.
+  const facts = (primary: boolean): React.ReactElement => (
+    <span
+      data-testid={primary ? "record-facts" : undefined}
+      className="flex flex-wrap items-center gap-x-3 gap-y-1"
+    >
+      {primary ? null : (
+        <span className="hidden conbig:inline-flex">
+          <HeaderStatus license={license} waiting={waiting} />
+        </span>
+      )}
+      {inAccount ? (
+        <span data-testid={primary ? "record-holder" : undefined}>
+          {[holder.kind === "assigned" ? holder.email : "", "In an account"]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
+      ) : null}
+      <IdChip value={id} noun="license id" />
+      {keyEntries ? (
+        <span data-testid={primary ? "record-key-entries" : undefined}>
+          Key entries {keyEntries.used} of {keyEntries.limit}
+        </span>
+      ) : null}
+      {license.modifiedAt ? (
+        <span>
+          Changed {relativeWhen(fromSeconds(license.modifiedAt))}
+          {changedBy ? ` by ${changedBy}` : ""}
+        </span>
+      ) : null}
+    </span>
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -322,7 +363,7 @@ function LicenseRecordBody({
         title={
           // The other end of the Licenses table's name (S-23 §6.1 shared-element): named
           // `pk-key` during a drill-down, fit-content like its source.
-          <span className="pk-vt-key inline-block max-w-full">
+          <span className="pk-vt-key w-fit max-w-full line-clamp-2">
             {licenseTitle(license)}
           </span>
         }
@@ -337,7 +378,7 @@ function LicenseRecordBody({
         primaryAction={
           // On a phone the two take a row each at 200 % text and their labels wrap; from 640 px
           // they sit side by side on one line.
-          <div className="grid grid-cols-2 gap-2 max-sm:conbig:grid-cols-1 sm:flex [&>button]:min-w-0 max-sm:[&>button]:h-auto max-sm:[&>button]:py-2 max-sm:[&>button]:whitespace-normal conbig:sm:[&>button]:whitespace-nowrap!">
+          <div className="grid grid-cols-2 gap-2 max-sm:conbig:grid-cols-1 sm:flex [&>button]:min-w-0 max-sm:[&>button]:whitespace-normal conbig:sm:[&>button]:whitespace-nowrap!">
             {tierControl}
             {mainAction}
           </div>
@@ -400,37 +441,12 @@ function LicenseRecordBody({
         ]}
         // Under the title: the facts the cards below do not carry (an assigned license's email
         // and state, the id, key entries, the last change). The name is the title, the waiting
-        // email is the Invitation card's, the batch is the Origin card's.
-        meta={
-          <span
-            data-testid="record-facts"
-            className="flex flex-wrap items-center gap-x-3 gap-y-1"
-          >
-            <span className="hidden conbig:inline-flex">
-              <HeaderStatus license={license} waiting={waiting} />
-            </span>
-            {inAccount ? (
-              <span data-testid="record-holder">
-                {[
-                  holder.kind === "assigned" ? holder.email : "",
-                  "In an account",
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </span>
-            ) : null}
-            <IdChip value={id} noun="license id" />
-            {keyEntries ? (
-              <span data-testid="record-key-entries">
-                Key entries {keyEntries.used} of {keyEntries.limit}
-              </span>
-            ) : null}
-            {license.modifiedAt ? (
-              <span>
-                Changed {relativeWhen(fromSeconds(license.modifiedAt))}
-                {changedBy ? ` by ${changedBy}` : ""}
-              </span>
-            ) : null}
+        // email is the Invitation card's, the batch is the Origin card's. A phone and 200 % text
+        // have no room for a third masthead line (nor a short window), so they read it under the
+        // tabs instead.
+        factsRow={
+          <span className="hidden sm:flex conbig:hidden short:hidden">
+            {facts(true)}
           </span>
         }
         refetching={refetching}
@@ -469,6 +485,10 @@ function LicenseRecordBody({
           />
         }
       />
+
+      <div className="hidden text-sm text-fg-muted max-sm:block conbig:block short:block">
+        {facts(false)}
+      </div>
 
       {undoable ? (
         <UndoableMoveCallout
