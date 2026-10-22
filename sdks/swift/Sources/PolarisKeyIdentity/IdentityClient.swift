@@ -306,7 +306,10 @@ public final class IdentityClient: Sendable {
             await onAcquired?()
             return .ready(SignInReady(identity: body?.identity, attached: body?.attached))
         case "error":
-            return .error(message: "device sign-in failed.", code: ErrorCode.signInDenied)
+            // A Deny names itself (`reason: access_denied`); a bare `error` failed after approval.
+            return .error(
+                message: "device sign-in failed.",
+                code: body?.reason == "access_denied" ? ErrorCode.signInDenied : ErrorCode.signInFailed)
         default:
             return .error(message: "device sign-in failed.")
         }
@@ -435,6 +438,7 @@ private struct StartBody: Decodable {
 
 private struct PollBody: Decodable {
     let status: String?
+    let reason: String?
     let interval: Double?
     let token: String?
     let identity: SignInIdentity?

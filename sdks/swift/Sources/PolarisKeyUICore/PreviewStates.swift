@@ -291,6 +291,12 @@ extension PolarisKeyPreviewState {
                 $0.deviceCode = KitDeviceCode(phase: .denied)
             }),
         .init(
+            .signInHandoff, "failed",
+            base {
+                $0.signIn = sign(channel: .deviceCode)
+                $0.deviceCode = KitDeviceCode(phase: .failed)
+            }),
+        .init(
             .signInHandoff, "expired",
             base {
                 $0.signIn = sign(channel: .deviceCode)

@@ -18,7 +18,7 @@ public enum SignInHandoffState: String, KitStateID {
     case noBrowser = "no-browser"
     case code
     case linkCopied = "link-copied"
-    case finishing, denied, expired, cancelled
+    case finishing, denied, failed, expired, cancelled
     public static let component = KitComponent.signInHandoff
 }
 
@@ -187,6 +187,14 @@ extension KitStates {
                     [
                         c.line("core.codes.sign-in-denied.title"),
                         c.line("core.codes.sign-in-denied.message", c.productArg),
+                        c.line("signInHandoff.newCode"),
+                    ])
+            case .failed:
+                return KitScreen(
+                    .failed,
+                    [
+                        c.line("core.codes.sign-in-failed.title"),
+                        c.line("core.codes.sign-in-failed.message", c.productArg),
                         c.line("signInHandoff.newCode"),
                     ])
             case .expired:
