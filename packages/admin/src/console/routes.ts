@@ -491,6 +491,11 @@ export const r = {
   activity: (slug: string, query?: QueryInit) =>
     productPage(slug, "activity", { query }),
   settings: (slug: string) => productPage(slug, "settings"),
+  /** The Planned platforms setting, which sets the scope of the stores a product can use (A-20.7). */
+  plannedPlatforms: (slug: string) =>
+    productPage(slug, "settings", {
+      query: { setting: "distribution.intendedPlatforms" },
+    }),
   licenses: (slug: string, query?: QueryInit) =>
     productPage(slug, "licenses", { query }),
   /** The Licenses page with the New license wizard open on its first step (LX-29). */

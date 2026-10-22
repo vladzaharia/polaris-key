@@ -71,6 +71,8 @@ import {
 } from "../components/StepDialog.js";
 import { PolarisKeyPanel } from "../components/PolarisKeyPanel.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
+import { ScopeLine } from "../components/ScopeLine.js";
+import { platformName } from "../../../../lib/vocab/platforms.js";
 
 /**
  * A storefront's own page, by store id: one line per store that has one. The built-in Polaris Key
@@ -138,11 +140,20 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
   const q = useStorefronts(slug);
   const product = useProduct(slug);
   const gate = useWriteGate("ship", slug);
-  // A-20.7: only the stores the product's builds can reach. Everything shows while that loads.
+  // A-20.7: only the stores the product's builds can reach (a declared one stays, flagged), and
+  // never the built-in store. Everything shows while the facts load or when there are none.
   const features = navFeaturesOf(product.data);
-  const stores = (q.data?.stores ?? []).filter((s) =>
-    channelInScope(features, s.id),
+  const stores = (q.data?.stores ?? []).filter(
+    (s) => s.builtIn || channelInScope(features, s.id),
   );
+  const outOfScope = new Set(
+    (product.data?.channels ?? []).filter((c) => !c.inScope).map((c) => c.id),
+  );
+  const platforms = (product.data?.platforms ?? []).map((p) =>
+    platformName(p.platform),
+  );
+  const columns =
+    stores.length >= 3 ? "md:grid-cols-2 xl:grid-cols-3" : "md:grid-cols-2";
   const [flow] = useSearchParam("flow", flowCodec);
   const root = React.useRef<HTMLDivElement>(null);
   const hadFlow = React.useRef(Boolean(flow));
@@ -176,7 +187,8 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
           )
         }
       />
-      {q.isPending ? (
+      {flow ? null : <ScopeLine slug={slug} platforms={platforms} />}
+      {q.isPending || product.isPending || product.isPlaceholderData ? (
         flow ? (
           <FlowSkeleton slug={slug} />
         ) : (
@@ -198,11 +210,15 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
         />
       ) : flow ? (
         // A built-in store has no flow (SETUP.md D48): it is always on.
-        <AddFlow slug={slug} stores={stores.filter((s) => !s.builtIn)} />
+        <AddFlow
+          slug={slug}
+          stores={stores.filter((s) => !s.builtIn)}
+          scoped={features !== null && platforms.length > 0}
+        />
       ) : (
         <div
           data-top-aligned=""
-          className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3"
+          className={`grid items-start gap-4 ${columns}`}
         >
           {stores.map((s) => (
             <StoreTile
@@ -210,6 +226,7 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
               slug={slug}
               store={s}
               hasPanel={Object.hasOwn(STORE_PANELS, s.id)}
+              outOfScope={outOfScope.has(s.id)}
             />
           ))}
         </div>
@@ -223,9 +240,12 @@ function Catalogue({ slug }: { slug: string }): React.ReactElement {
 function AddFlow({
   slug,
   stores,
+  scoped,
 }: {
   slug: string;
   stores: StorefrontDto[];
+  /** The product's platforms are known, so an empty list means none fits, not "all built in". */
+  scoped: boolean;
 }): React.ReactElement {
   const { route } = useLocation();
   const [step, setStep] = useSearchParam("step", stepCodec, { replace: false });
@@ -380,6 +400,20 @@ function AddFlow({
     return l.length > 0 && l.every((x) => x.state === "done");
   });
 
+  if (stores.length === 0 && scoped)
+    return (
+      <EmptyState
+        kind="first-run"
+        headingLevel={2}
+        title="No other store fits"
+        description="No other store fits this product's platforms."
+        primaryAction={
+          <Button asChild>
+            <Link to={r.plannedPlatforms(slug)}>Planned platforms</Link>
+          </Button>
+        }
+      />
+    );
   if (stores.length === 0)
     return (
       <EmptyState

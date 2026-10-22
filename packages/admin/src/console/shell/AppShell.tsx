@@ -53,6 +53,7 @@ import { ShortcutSheet } from "./ShortcutSheet.js";
 import { Sidebar, useNavCollapse } from "./Sidebar.js";
 import {
   MovedPage,
+  ChannelOutOfScopePage,
   NotFoundPage,
   ServiceOffPage,
   UnknownProductPage,
@@ -524,6 +525,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                       me={me}
                       knownProduct={knownProduct}
                       services={services}
+                      features={features}
                       productName={productName ?? routeSlug ?? ""}
                       onOpenPalette={openPalette}
                     />
@@ -676,6 +678,7 @@ function PageContent({
   me,
   knownProduct,
   services,
+  features,
   productName,
   onOpenPalette,
 }: {
@@ -683,6 +686,7 @@ function PageContent({
   me: Me;
   knownProduct: boolean;
   services: ServiceState;
+  features: NavFeatures;
   productName: string;
   onOpenPalette: (query?: string) => void;
 }): React.ReactElement {
@@ -763,6 +767,23 @@ function PageContent({
         section={section}
         slug={route.slug}
         productName={productName}
+      />
+    );
+  }
+  // A-20.7: a link to a page of a store outside the product's scope says so, not a bare page.
+  const target = PRODUCT_PAGES.find((p) => p.page === route.page);
+  const needs = target?.requires;
+  if (
+    needs?.startsWith("channel:") &&
+    features !== null &&
+    features[needs] === false
+  ) {
+    return (
+      <ChannelOutOfScopePage
+        section={section}
+        title={target!.label}
+        slug={route.slug}
+        channel={needs.slice("channel:".length)}
       />
     );
   }

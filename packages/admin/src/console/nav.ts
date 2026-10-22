@@ -209,22 +209,26 @@ export const channelRequirement = (id: string): NavRequirement =>
   `channel:${id as ChannelId}`;
 
 /**
- * The nav's facts from a one-product read. A channel the read does not list is out of scope; an
- * older Worker that sends no `channels` leaves them unset, which shows every page as before.
+ * The nav's facts from a one-product read. The Worker lists a channel when it is in scope or the
+ * team declared it (an out-of-scope declared one stays, flagged), so a listed channel stays and
+ * an unlisted one is out. A product with no platform facts has an unknown scope, not an empty
+ * one, and an older Worker that sends no `channels` has none: both leave the channels unset,
+ * which shows every page as before.
  */
 export function navFeaturesOf(
-  product: Pick<ProductDetail, "packageFeeds" | "channels"> | null | undefined,
+  product:
+    | Pick<ProductDetail, "packageFeeds" | "channels" | "platforms">
+    | null
+    | undefined,
 ): NavFeatures {
   if (!product) return null;
   const features: Partial<Record<NavRequirement, boolean>> = {
     packageFeeds: product.packageFeeds === true,
   };
-  if (product.channels) {
-    const inScope = new Set(
-      product.channels.filter((c) => c.inScope).map((c) => c.id),
-    );
+  if (product.channels && (product.platforms?.length ?? 0) > 0) {
+    const listed = new Set(product.channels.map((c) => c.id));
     for (const id of CHANNEL_IDS)
-      features[channelRequirement(id)] = inScope.has(id);
+      features[channelRequirement(id)] = listed.has(id);
   }
   return features;
 }
