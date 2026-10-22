@@ -8924,6 +8924,159 @@ paths:
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
 
+  /{product}/sync/ops:
+    post:
+      operationId: syncPush
+      tags: [sync]
+      summary: Push a batch of synced-setting mutations
+      description: >
+        U-05.13 (WIRE-CONTRACT-V4 §13.3). The device's own credential only: `Authorization: Bearer
+        pkeyt_…` and `X-PKey-Device`; no cookie. The principal is the device's pairwise subject;
+        the body names no subject, quota or platform family. The `200` is the per-mutation
+        `results` beside the pull members of §13.4 since the request's `cursor`.
+
+        The order is: token and principal (`401`, `400`, `403 account_required`); the platform
+        pause (`503 writes_paused`, `Retry-After: 300`; pulls are still served); device trust, the
+        `cloudSyncWrite` operation (`403 attestation_required` when enforced, an audit row only when
+        log-only); the body (`413 body_too_large` over 256 KiB, `400 bad_request` for a malformed
+        body or more than 100 mutations); then the object. A product that is deleted, or whose
+        Cloud Sync data is being erased, is `404`. A refusal that is not a `200` leaves the
+        client's journal as it was (push rule 1).
+
+        A declared key that is not an Editable `config` key, or is `local`, is `rejected` with
+        `setting_not_synced`, as is a synced key pushed under another scope and an open setting
+        pushed with `platform`. A declared key is validated against its entry (`value_invalid`); an
+        undeclared key is an open setting, `lastWrite`, at most 8 KiB. `quota_exceeded` carries its
+        `scope`: `user` for the person's quota and budget, `product` past the operator's ceiling.
+        A clear always passes. A `clientId` that belongs to another device is `409 client_mismatch`;
+        a `cursor` the store cannot serve is `410 cursor_expired` (the mutations were applied and
+        the retry finds them `duplicate`).
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PushRequest" }
+            examples:
+              volume:
+                summary: test/cloudSyncPush.test.ts
+                value:
+                  clientId: c_AAAAAAAAAAAAAAAAAAAAAA
+                  cursor: 0
+                  atomic: false
+                  mutations:
+                    - mutationId: 41
+                      target: { setting: audio.music.volume, scope: user }
+                      op: set
+                      value: 0.6
+                      editedHlc: "0190f3a2c1b4:0003"
+      responses:
+        "200":
+          description: "The results, and the pull since the request's `cursor`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PushResponse" }
+              examples:
+                accepted:
+                  summary: test/cloudSyncPush.test.ts
+                  value:
+                    subject: ps_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                    serverNow: 1700000000000
+                    cursor: 1
+                    more: false
+                    lastMutationId: 41
+                    catalogVersion: 1
+                    aliases: {}
+                    quota: { bytes: 268435456, files: true }
+                    usage: { bytes: 21, settings: 1, records: 0, files: 0 }
+                    results: [{ mutationId: 41, status: ok, version: 1 }]
+                    changes:
+                      - setting: audio.music.volume
+                        scope: user
+                        value: 0.6
+                        version: 1
+                        editedHlc: "0190f3a2c1b4:0003"
+                        updatedBy: c_AAAAAAAAAAAAAAAAAAAAAA
+                    tombstones: []
+        "400":
+          description: >
+            A malformed body, a missing or malformed `X-PKey-Device`, or more than 100 mutations —
+            NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                badRequest: { value: { error: { code: bad_request } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            `account_required` (no account is signed in on the device; the body carries the
+            `signInUrl`) or `attestation_required` (the product enforces `cloudSyncWrite` and the
+            device is not attested; NESTED, whole request). Not auth failures: the client keeps its
+            journal.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+              examples:
+                attestation:
+                  { value: { error: { code: attestation_required } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: "`client_mismatch` — the `clientId` belongs to another device. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                mismatch: { value: { error: { code: client_mismatch } } }
+        "410":
+          description: >
+            `cursor_expired` — the request's `cursor` is older than the tombstone horizon (or past
+            the store). The mutations were applied; the retry finds them `duplicate`. NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                expired: { value: { error: { code: cursor_expired } } }
+        "413":
+          description: "`body_too_large` — the body is over 256 KiB. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                tooLarge: { value: { error: { code: body_too_large } } }
+        "503":
+          description: >
+            `writes_paused` (the operator paused Cloud Sync writes; `Retry-After: 300`) or
+            `unavailable` (the person's store could not answer now; `Retry-After: 5`). NESTED.
+            The journal is kept; retry after the delay.
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                paused: { value: { error: { code: writes_paused } } }
+                unavailable: { value: { error: { code: unavailable } } }
+    options:
+      operationId: preflightSyncPush
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
   # ── permanent aliases ─────────────────────────────────────────────────────────
   /{product}/appcast.xml:
     get:
@@ -25774,8 +25927,9 @@ components:
     SyncPullResponse:
       type: object
       description: >
-        `GET /{product}/sync` (U-05.12, §13.4), and the pull members of a push `200`. `cursor`
-        is the page's last row while `more`, else the store's sequence.
+        `GET /{product}/sync` (U-05.12, §13.4), and the pull members of a push `200` (`PushResponse`
+        adds `results`, so this schema is open). `cursor` is the page's last row while `more`, else
+        the store's sequence.
       required:
         [
           subject,
@@ -25790,7 +25944,6 @@ components:
           changes,
           tombstones,
         ]
-      additionalProperties: false
       properties:
         subject:
           {
@@ -25835,6 +25988,131 @@ components:
             message: { type: string, const: Sign in to use Cloud Sync. }
             signInUrl:
               { type: string, description: "`<origin>/signin?product=<slug>`." }
+    SyncMutation:
+      type: object
+      description: "One mutation of a push body (§13.3). Settings only until U-09."
+      required: [mutationId, target, op]
+      properties:
+        mutationId:
+          {
+            type: integer,
+            minimum: 1,
+            description: "Strictly increasing per `clientId`.",
+          }
+        target:
+          oneOf:
+            - type: object
+              required: [setting, scope]
+              properties:
+                setting: { type: string, pattern: "^[A-Za-z0-9._:-]{1,128}$" }
+                scope: { type: string, enum: [user, platform] }
+            - type: object
+              required: [record]
+              properties:
+                record:
+                  type: array
+                  minItems: 2
+                  maxItems: 2
+                  items: { type: string }
+        op:
+          type: string
+          enum:
+            [
+              set,
+              clear,
+              setMember,
+              removeMember,
+              setField,
+              removeField,
+              delete,
+              add,
+              remove,
+            ]
+        value: {}
+        member: { type: string }
+        editedHlc: { type: string, pattern: "^[0-9a-f]{12}:[0-9a-f]{4}$" }
+    PushRequest:
+      type: object
+      description: >
+        `POST /{product}/sync/ops` (U-05.13, §13.3): at most 100 mutations and 256 KiB. A
+        `mutationId` at or below the client's last processed is `duplicate`.
+      required: [clientId, cursor, mutations]
+      properties:
+        clientId: { type: string, pattern: "^c_[A-Za-z0-9_-]{22}$" }
+        cursor:
+          {
+            type: integer,
+            minimum: 0,
+            description: "The pull cursor the client holds.",
+          }
+        atomic:
+          type: boolean
+          description: "All or nothing: the first mutation that is not `ok` aborts the rest."
+        mutations:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/SyncMutation" }
+    MutationResult:
+      description: "One mutation's result (§13.3, §13.9), by `mutationId`."
+      oneOf:
+        - type: object
+          required: [mutationId, status, version]
+          properties:
+            mutationId: { type: integer }
+            status: { type: string, const: ok }
+            version: { type: integer, minimum: 1 }
+            renamedTo:
+              {
+                type: string,
+                description: "A catalog migration renamed the key.",
+              }
+            dropped: { type: boolean, const: true }
+        - type: object
+          required: [mutationId, status, server]
+          properties:
+            mutationId: { type: integer }
+            status: { type: string, const: conflict }
+            server:
+              type: object
+              required: [value, version]
+              properties:
+                value: {}
+                version: { type: integer }
+                editedHlc: { type: string }
+                members: { type: object, additionalProperties: {} }
+        - type: object
+          required: [mutationId, status, code]
+          properties:
+            mutationId: { type: integer }
+            status: { type: string, const: rejected }
+            code:
+              type: string
+              enum:
+                - value_invalid
+                - setting_not_synced
+                - op_invalid_for_policy
+                - collection_unknown
+                - entitlement_required
+                - quota_exceeded
+            scope:
+              type: string
+              enum: [user, collection, product]
+              description: "Only with `quota_exceeded`."
+        - type: object
+          required: [mutationId, status]
+          properties:
+            mutationId: { type: integer }
+            status: { type: string, enum: [duplicate, aborted] }
+    PushResponse:
+      description: "The push `200` (§13.3): the results beside the pull members of §13.4."
+      allOf:
+        - { $ref: "#/components/schemas/SyncPullResponse" }
+        - type: object
+          required: [results]
+          properties:
+            results:
+              type: array
+              items: { $ref: "#/components/schemas/MutationResult" }
     SessionFromLicenseResult:
       type: object
       description: >

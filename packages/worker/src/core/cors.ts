@@ -163,9 +163,10 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   "identity/attach",
   "identity/subject",
   "identity/signout",
-  // U-05.12: the Cloud Sync pull. It takes the device bearer (never ambient), so a listed origin
-  // reaches only what that page's own device token already can. `sync/ops` joins with U-05.13.
+  // U-05.12, U-05.13: the Cloud Sync pull and push. Both take the device bearer (never ambient),
+  // so a listed origin reaches only what that page's own device token already can.
   "sync",
+  "sync/ops",
 ];
 
 /** Core route kinds that answer CORS. The attestation routes (P6-02) are not among them: no

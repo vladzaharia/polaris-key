@@ -26,6 +26,7 @@ import { CLOUD_SYNC_STORE } from "../src/services/sync/subjectStore.js";
 import type { Classification } from "../src/services/sync/engine/types.js";
 import { makeTestDb } from "./helpers.js";
 import { NOW, seedProduct } from "./seed.js";
+import { KvMock, asKv } from "./kvMock.js";
 import {
   CloudSyncNamespaceMock,
   asCloudSyncNamespace,
@@ -52,10 +53,14 @@ const MERGE: Classification = {
   policy: "merge",
 };
 
-type Cs = { CLOUD_SYNC: DurableObjectNamespace };
+// The purge sets its flag in KV first (U-05.13, `purgeFlag.ts`).
+type Cs = { CLOUD_SYNC: DurableObjectNamespace; HOT: KVNamespace };
 function world() {
   const ns = new CloudSyncNamespaceMock();
-  const env: Cs = { CLOUD_SYNC: asCloudSyncNamespace(ns) };
+  const env: Cs = {
+    CLOUD_SYNC: asCloudSyncNamespace(ns),
+    HOT: asKv(new KvMock()),
+  };
   return { ns, env, db: makeTestDb() };
 }
 
@@ -311,7 +316,7 @@ describe("product deletion", () => {
     await expect(
       syncProductPurge({
         db,
-        env: { CLOUD_SYNC: flaky } as never,
+        env: { CLOUD_SYNC: flaky, HOT: env.HOT } as never,
         product: P,
         now: NOW,
       }),

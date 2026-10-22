@@ -489,9 +489,9 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     ownership: "operator",
     critical: true,
     confirm: { on: "L2", off: "L1" },
+    readers: ["services/sync/handlers/push.ts"],
     storage: { kind: "scalar" },
     since: "U-01b",
-    pending: { wp: "U-05" },
   }),
   // The quota a person gets when no tier, license override or add-on sets `pkey.cloudSync.bytes`.
   // Clamped to the per-person ceiling; lowering it deletes nothing (a person over it can still

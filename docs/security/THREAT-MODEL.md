@@ -7182,7 +7182,7 @@ yet. SR-1 (isolation) follows U-05.8.
   the product's status flips (`contributes.productPurge`, bounded per run). The object cannot be
   listed, so an object whose directory row was never written would survive: U-05.9's first-write
   alarm keeps that window to seconds.
-  Residual, a requirement on U-05.13 (found in SR-1 re-review): the purge runs before the product's
+  Closed by U-05.13 (T17 under "The Cloud Sync push"); the residual, found in SR-1 re-review, was: the purge runs before the product's
   per-device token deletes, so during a multi-run purge a device still authenticates and a push
   can recreate an erased object. The object cannot tell (it reads no D1), so the push route
   must refuse a product that is soft-deleted or being purged (`status = 'deleted'` or a purge
@@ -7228,6 +7228,65 @@ cached document or the audit log. Rows are S-17 §5.14's; the route is `services
   tag and is never `304`, so a replayed tag cannot stop a client mid-snapshot. The tag does not
   cover `quota` or `aliases`: a client that only revalidates does not learn a changed quota until
   its next `200` (a push `200` carries both).
+
+### The Cloud Sync push: `POST /<p>/sync/ops` (U-05.13)
+
+The one Cloud Sync route that writes settings. Handler `services/sync/handlers/push.ts`, classifier
+`handlers/classify.ts`, tests `test/cloudSyncPush.test.ts`. Rows are S-17 §5.14's; S-17's table ends
+at T16, so T17 here is the plan's: a push that outlives the data it must not recreate.
+
+- **The order is the defence.** Token and principal (`401`, `400`, `403 account_required`), then
+  `cloudSync.writesPaused` (`503 writes_paused`, `Retry-After: 300`), then device trust
+  (`cloudSyncWrite`), then the body (`413`, `400`), classification, the product ceiling, the
+  product-still-live check, and only then the object. Every refusal before the last two costs
+  no object call. A device with no principal never reaches the pause or the trust audit.
+- **T6, storage and cost abuse.** The device's quota and tier come from `syncAccess` (a body
+  member named `quota` or `limits` is dropped; the Worker forwards only `clientId`, `cursor`,
+  `atomic` and `mutations`). A licence-less device is 1 MiB with files refused, quota `0` is reads
+  only, and a clear always passes (it frees space). The product ceiling compares the 15-minute
+  aggregate `sync_product_usage.bytes` with `cloudSync.ceiling.bytes`: a product can overshoot by
+  what its people write inside one aggregate window (up to 15 minutes), which is acceptable for a
+  cost control and is the reason the object, not the aggregate, enforces the per-person quota.
+  `cloudSync.writesPaused` is the operator's kill switch (platform scope, `policyBound: lock`);
+  a push is refused and a pull still answers. Rate limits are U-05.14's.
+- **Device trust.** `trustRefusal(…, "cloudSyncWrite", …, "wire")`: log-only writes at most one
+  `device.trust.would_refuse` audit row per device and hour and goes on; enforced is `403
+attestation_required` for the whole request, in the nested `wireError` shape every other sync
+  answer uses, so the client keeps its journal (push rule 1).
+- **T9, hostile JSON.** The body is read under 256 KiB with a streaming cap (declared or chunked)
+  before any parse; more than 100 mutations is `400`; keys match `SYNC_KEY_PATTERN`; an open
+  setting's value is at most 8 KiB of canonical JSON and must be representable in a signed
+  document; a declared value is validated by the catalog's interpreter (no code generation, so it
+  runs in workerd); a merge member is checked against the entry's `properties` for that member, or
+  its `additionalProperties`. Keys are looked up in `Map`s, so `__proto__` is an ordinary undeclared
+  key (`test/cloudSyncPush.test.ts`). A catalog that cannot be read refuses the push with a
+  retryable `503`: a declared key is never stored as an open one.
+- **Classification is the Worker's, scope is the engine's.** `local`, `locked`, `refused` and
+  non-`config` keys are `setting_not_synced`, as are a synced key under another scope and an open
+  setting pushed with `platform`. The platform family a `platform` row lands in is the device
+  row's (`core/devices/platformFamily.ts`); no request member names one. A renamed key is judged
+  as its new name and a dropped key never reaches the classification. Record targets are
+  `collection_unknown` until U-09.
+- **The object's refusals are never copied.** `410 absorbed` re-resolves the principal and retries
+  once, and a second is a retryable `503 unavailable`; a `pin_mismatch` or other 4xx is a `500`
+  and a 5xx or an unbound namespace a retryable `503` (`handlers/common.ts`). Only the codes of
+  `conformance/parity/errors.json` leave the Worker. If the subject moved after the push landed,
+  the exchange is repeated against the survivor (mutation ids make that idempotent).
+- **T17, a push cannot recreate erased data (SR-2).** Closes the residual recorded under
+  "Product deletion" above. The first run of `contributes.productPurge` sets a KV flag
+  (`services/sync/purgeFlag.ts`, `pk()`-scoped, one-hour TTL renewed by every run) BEFORE it erases
+  an object; the push reads the flag and re-reads the product row immediately before the object
+  call, and answers `404` for a soft-deleted or purging product. A KV read that fails refuses the
+  push (retryable) instead of assuming no purge. Residual: KV is eventually consistent, so a push
+  served in another location can land for up to about a minute after the first purge run; the
+  directory row it writes is guarded on the product being live (U-05.9) and the purge's next run
+  erases the object if it was listed. A delete that is started and abandoned blocks Cloud Sync
+  writes for the product for at most an hour. Pulls are not refused (a read creates nothing).
+- **An expired cursor after a landed push** is `410 cursor_expired`: the mutations were applied, the
+  journal is kept, and the retry finds every mutation `duplicate` (push rule 1).
+- **Residual, still open (SR-1 N4).** The account merge still passes no catalog `policies` to the
+  survivor, so a `max` or `min` key joins by `lastWrite` until the merge hook loads the catalog.
+  The push passes the policy per request; the hook is outside this route.
 
 ### The account override layer and the licence-override migration (U-03)
 

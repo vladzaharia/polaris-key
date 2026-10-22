@@ -911,11 +911,12 @@ describe("absorb: isolation", () => {
       "services/sync/do/client.ts",
       "services/sync/subjectStore.ts",
     ]);
-    // U-05.12: the device routes (the pull; the push joins with U-05.13) call the object too, and
+    // U-05.12, U-05.13: the device routes (the pull and the push) call the object too, and
     // `handlers/common.ts` maps its refusals. `absorbCloudSync` above stays the merge hook's alone.
     expect(users(/do\/client\.js"/)).toEqual([
       "services/sync/handlers/common.ts",
       "services/sync/handlers/pull.ts",
+      "services/sync/handlers/push.ts",
       "services/sync/productDeletion.ts",
       "services/sync/subjectStore.ts",
     ]);

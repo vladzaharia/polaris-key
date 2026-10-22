@@ -150,11 +150,14 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 export async function catalogView(
   db: Db,
   product: Pick<Product, "slug" | "schemaVersion">,
+  /** The active catalog row, when the caller already read it (the push reads it once). */
+  loaded?: { catalog_json: string } | null,
 ): Promise<CatalogView> {
   const renamedTo = new Map<string, string>();
   const dropped = new Set<string>();
   let catalogVersion = product.schemaVersion;
-  const row = await getActiveSchema(db, product.slug);
+  const row =
+    loaded === undefined ? await getActiveSchema(db, product.slug) : loaded;
   if (row) {
     try {
       const catalog: unknown = JSON.parse(row.catalog_json);

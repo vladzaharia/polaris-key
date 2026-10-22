@@ -18,6 +18,7 @@ import { deleteCloudSyncIfUnchanged } from "../src/services/sync/do/client.js";
 import { cloudSyncStore } from "../src/services/sync/subjectStore.js";
 import { makeTestDb } from "./helpers.js";
 import { seedProduct } from "./seed.js";
+import { KvMock, asKv } from "./kvMock.js";
 import {
   CloudSyncNamespaceMock,
   asCloudSyncNamespace,
@@ -285,7 +286,8 @@ describe("directory flush (U-05.9)", () => {
     await w.ns.fireAlarm(NAME(A));
     const out = await syncProductPurge({
       db: w.db,
-      env: w.env as never,
+      // The purge sets its flag in KV first (U-05.13).
+      env: { ...w.env, HOT: asKv(new KvMock()) } as never,
       product: P,
       now: T0 / 1000,
     });

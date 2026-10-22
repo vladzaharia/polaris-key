@@ -8,7 +8,8 @@
  * `purgeProductObjects` takes its subjects in pages, erases each object (alarm, then storage), and
  * only then deletes that subject's directory row, so a crash or a failed call leaves the row that
  * points at the object still to erase, and the run is simply repeated. The statements then drop
- * whatever rows remain, and the product's aggregates (which hold no subject).
+ * whatever rows remain, and the product's aggregates (which hold no subject). The first thing a
+ * run does is set the purge flag, which the push route reads (`purgeFlag.ts`).
  */
 
 import type {
@@ -16,6 +17,7 @@ import type {
   ProductPurgeContributor,
 } from "../../core/contributions.js";
 import { deleteCloudSync } from "./do/client.js";
+import { markProductPurging } from "./purgeFlag.js";
 
 /** Objects erased per run: each is one subrequest, and a run must stay inside the Worker's limit. */
 export const PURGE_OBJECTS_PER_RUN = 400;
@@ -38,6 +40,9 @@ export const syncProductPurge: ProductPurgeContributor = async ({
   env,
   product,
 }) => {
+  // First, before any object is erased: from here a push is refused (`purgeFlag.ts`), so a device
+  // that still authenticates cannot recreate what this run erases. Renewed by every run.
+  await markProductPurging(env, product);
   let erased = 0;
   for (;;) {
     const page = await db.all<{ subject: string }>(
