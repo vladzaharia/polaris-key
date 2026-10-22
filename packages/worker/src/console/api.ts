@@ -459,11 +459,13 @@ export async function handleAdminApi(
   // A verified session whose principal holds no grant is not a member: every route answers the
   // same 403, so it learns nothing about what exists. (The sign-in gate mints no such session; one
   // appears when the platform group changes under a live cookie.) A reach into an existing
-  // product is still audited on that product. Four rows stay open to it, so a refused member can
+  // product is still audited on that product. Five rows stay open to it, so a refused member can
   // still read who they are (`GET /me`, for the console's "no access" screen), sign out
   // (`POST /logout`, which still passes the CSRF check below), and find and end their OWN personal
   // tokens (`GET /me/personal-tokens`, `DELETE /me/personal-tokens/:id`, ST-34.4 review: they read
-  // no product data, a revoke only narrows, and both are session-only); none reads any product data.
+  // no product data, a revoke only narrows, and both are session-only), and a personal token whose
+  // holder lost every grant can still end ITSELF (`DELETE /me/personal-tokens/current`, ST-34.7
+  // review: `pkey logout` must be able to revoke); none reads any product data.
   const noGrantRow =
     found.kind === "route" &&
     ((found.route.method === "GET" && found.route.path === "/me") ||
@@ -471,7 +473,9 @@ export async function handleAdminApi(
       (found.route.method === "GET" &&
         found.route.path === "/me/personal-tokens") ||
       (found.route.method === "DELETE" &&
-        found.route.path === "/me/personal-tokens/:id"));
+        found.route.path === "/me/personal-tokens/:id") ||
+      (found.route.method === "DELETE" &&
+        found.route.path === "/me/personal-tokens/current"));
   if (!noGrantRow && !can(principal, PLATFORM, "console", "view")) {
     if (found.kind === "route" && isProductRoute(found.route)) {
       const target = await getProduct(db, found.match.params.slug ?? "");

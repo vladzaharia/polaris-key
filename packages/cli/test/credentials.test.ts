@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   adminCredential,
+  decode,
+  encode,
   keyringStore,
+  KeychainRefusedError,
   memoryStore,
   NoStoreError,
   originOf,
@@ -106,14 +109,19 @@ describe("resolution", () => {
 describe("the OS store backend", () => {
   const fake = () => {
     const data = new Map<string, string>();
+    const made: unknown[] = [];
     return {
       data,
+      made,
       mod: {
         Entry: class {
           constructor(
             readonly service: string,
             readonly account: string,
-          ) {}
+            readonly options?: unknown,
+          ) {
+            made.push(options);
+          }
           getPassword() {
             return data.get(`${this.service}|${this.account}`) ?? null;
           }
@@ -133,7 +141,12 @@ describe("the OS store backend", () => {
     const store = await keyringStore(async () => mod);
     store.set(A, { token: PERSONAL, expiresAt: 1_900_000_000 });
     expect([...data.keys()]).toEqual([`pkey|${A}`]);
-    expect(store.get(A)).toEqual({ token: PERSONAL, expiresAt: 1_900_000_000 });
+    expect(store.get(A)).toEqual({
+      token: PERSONAL,
+      expiresAt: 1_900_000_000,
+      label: null,
+      hint: "PPPP",
+    });
     expect(store.get(B)).toBeNull();
     expect(store.delete(A)).toBe(true);
     expect(store.get(A)).toBeNull();
@@ -146,7 +159,11 @@ describe("the OS store backend", () => {
       }),
     );
     expect(err).toBeInstanceOf(NoStoreError);
-    expect(err.fix).toBe("Set PKEY_ADMIN_TOKEN instead.");
+    expect(err.message).toBe("No credential store on this computer.");
+    expect(err.fix).toBe(
+      "Set PKEY_ADMIN_TOKEN to a personal token (pkeyp_…) instead.",
+    );
+    expect(err.code).toBe("no-credential-store");
     expect(err.message).not.toContain("pkeyp_");
     // No fallback exists to take: the module imports no file-system API at all.
     const src = readFileSync(
@@ -177,6 +194,95 @@ describe("the OS store backend", () => {
     }
     expect(caught).toBeInstanceOf(NoStoreError);
     expect(String((caught as Error).message)).not.toContain("pkeyp_");
+  });
+
+  it("a denied or locked keychain is KeychainRefusedError, not 'no credential store'", async () => {
+    for (const text of [
+      "User interaction is required",
+      "NoStorageAccess: the keychain is locked",
+      "access denied",
+    ]) {
+      const mod = {
+        Entry: class {
+          getPassword(): string | null {
+            throw new Error(text);
+          }
+          setPassword() {}
+          deletePassword() {
+            return false;
+          }
+        },
+      };
+      const store = await keyringStore(async () => mod);
+      expect(() => store.get(A), text).toThrow(KeychainRefusedError);
+    }
+    const refused = new KeychainRefusedError();
+    expect(refused.code).toBe("keychain-refused");
+    expect(refused.message).toBe("The credential store refused access.");
+  });
+
+  it("pins every Linux entry to the Secret Service (R4-11), and no other platform", async () => {
+    for (const [platform, expected] of [
+      ["linux", { linux: { store: "secret-service" } }],
+      ["darwin", undefined],
+      ["win32", undefined],
+    ] as const) {
+      const { mod, made } = fake();
+      const store = await keyringStore(async () => mod, platform);
+      store.set(A, { token: PERSONAL, expiresAt: null });
+      store.get(A);
+      store.delete(A);
+      expect(made, platform).toHaveLength(3);
+      for (const o of made) expect(o, platform).toEqual(expected);
+    }
+  });
+
+  it("the stored encoding is {t, e, l, h}; a bare {t, e} and a bare token still read", () => {
+    const raw = encode({
+      token: PERSONAL,
+      expiresAt: 1_900_000_000,
+      label: "pkey on a.example",
+      hint: "h7Q2",
+    });
+    expect(JSON.parse(raw)).toEqual({
+      t: PERSONAL,
+      e: 1_900_000_000,
+      l: "pkey on a.example",
+      h: "h7Q2",
+    });
+    expect(decode(raw)).toEqual({
+      token: PERSONAL,
+      expiresAt: 1_900_000_000,
+      label: "pkey on a.example",
+      hint: "h7Q2",
+    });
+    expect(decode(JSON.stringify({ t: PERSONAL, e: 5 }))).toMatchObject({
+      token: PERSONAL,
+      expiresAt: 5,
+      label: null,
+    });
+    expect(decode(PERSONAL)).toMatchObject({
+      token: PERSONAL,
+      expiresAt: null,
+    });
+    // The hint defaults to the token's last four characters.
+    expect(JSON.parse(encode({ token: PERSONAL, expiresAt: null })).h).toBe(
+      "PPPP",
+    );
+  });
+
+  it("the store keeps pkeyp_ only: a pkeya_ is refused on write and ignored on read", async () => {
+    const { data, mod } = fake();
+    const store = await keyringStore(async () => mod);
+    expect(() => store.set(A, { token: ADMIN, expiresAt: null })).toThrow();
+    expect(data.size).toBe(0);
+    data.set(`pkey|${A}`, JSON.stringify({ t: ADMIN, e: null }));
+    expect(store.get(A)).toBeNull();
+    data.set(`pkey|${A}`, ADMIN);
+    expect(store.get(A)).toBeNull();
+    expect(() =>
+      memoryStore().set(A, { token: ADMIN, expiresAt: null }),
+    ).toThrow();
   });
 
   it("ignores an entry that is not a token", async () => {

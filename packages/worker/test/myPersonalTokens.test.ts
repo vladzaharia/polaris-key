@@ -499,12 +499,21 @@ describe("DELETE /me/personal-tokens/current", () => {
     ).toBeNull();
   });
 
-  it("is not a no-grant row: a holder with no grant gets 403 and the token stays", async () => {
+  it("is a no-grant row: a holder with no grant can still end the presenting token (self-revoke only narrows)", async () => {
     const aid = await person(env, db, "nog");
     const tok = await mint(env, db, aid);
-    expect((await call(env, db, tok, "DELETE", `${MINE}/current`)).status).toBe(
-      403,
-    );
+    const res = await call(env, db, tok, "DELETE", `${MINE}/current`);
+    expect(res.status).toBe(200);
+    expect(
+      (await db.first<{ revoked_at: number | null }>(
+        "SELECT revoked_at FROM account_tokens WHERE account_id = ?",
+        aid,
+      ))!.revoked_at,
+    ).not.toBeNull();
+    // Revoked: the same token now gets nothing.
+    expect(
+      (await call(env, db, tok, "DELETE", `${MINE}/current`)).status,
+    ).toBe(401);
   });
 });
 

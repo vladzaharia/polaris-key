@@ -7634,6 +7634,90 @@ the operator reads out and who passes the step-up gets a token; the shown host a
 warning line and the notice are the defence. If the audit write fails after a decision lands, the
 approval stands (the mint writes its own row) and the page answers 500.
 
+### Admin-scope personal tokens: the CLI credential store (ST-34.7)
+
+**What arrived.** `packages/cli/src/credentials.ts`, `account.ts`: the place `pkey login` (ST-34.8)
+keeps a `pkeyp_` admin token, and `pkey whoami` / `pkey logout`, which read it back. The store is
+the operating system's credential store through `@napi-rs/keyring` (optional, loaded on first use,
+pinned to an exact version in `packages/cli` and `packages/sdk-node`). There is no file fallback and
+no shelling out (`security` would put the secret in argv).
+
+**Control.**
+
+- **Origin keying.** An entry is service `pkey`, account `https://host[:port]`, read after the
+  https-or-loopback rule and before anything is sent. A token minted by one origin is looked up only
+  for that origin and is never offered to another; `--base-url` selects the entry and cannot make
+  pkey send an entry's token elsewhere. **Residual:** `PKEY_ADMIN_TOKEN` is not origin-bound. It is
+  sent to whatever `--base-url` (or `PKEY_BASE_URL`) names, https or loopback, so a script that lets
+  an attacker choose the base URL, with the variable set, hands the attacker the token.
+- **Redirects are refused.** Every request is `redirect: "manual"`; a 3xx stops the command and
+  names no `Location`, so the `Authorization` header cannot follow a redirect to another host.
+  `logout` still clears the local entry on a 3xx and says the token was not revoked.
+- **No echo.** A token is not written to a screen, `--json`, an error, a log or `PKEY_DEBUG` output.
+  A store failure is a fixed sentence; the keyring's own text is classified (denied or locked
+  against absent) and dropped. Only the label and the token's last four characters are shown, as
+  the console's Personal tokens page shows them. The encoded entry is `{t, e, l, h}` (token,
+  expiry in epoch seconds, label, last-4 hint); a bare `{t, e}` and a bare token still read, and the
+  store holds `pkeyp_` only (a `pkeya_` is refused on write and ignored on read).
+- **Seven days.** A `pkey login` token lives 7 days (ST-34.5, D-2) and `whoami` and `logout` treat
+  an entry past its end as ended without asking the server. A copied entry is therefore a bearer
+  token with a bounded life, individually revocable in Personal tokens, and `logout` of a live one
+  is a server-side revoke, not only a local delete.
+- **Linux is pinned to the Secret Service.** Unpinned, `@napi-rs/keyring` falls back silently to
+  the kernel keyutils keyring (in memory, per session or user, gone at reboot, readable by the
+  user's other processes). Every Linux entry is created with `{linux: {store: "secret-service"}}`
+  (sdk-node's R4-11 precedent), so a headless host gets "No credential store on this computer",
+  not a quietly weaker store.
+- **Logout clears the local copy whether or not the revoke is confirmed.** The token is deleted
+  from the store after the request returns, however it returned: revoked, already ended, refused,
+  an error, a redirect, or no answer. A computer that is offline or a server that refuses leaves a
+  token that still works until its end date; pkey then says so, with the date in the person's local
+  time, and where to revoke it. `DELETE /me/personal-tokens/current` is a no-grant row (ST-34.4's
+  rule extended): a holder who lost every role can still end the token, and the revoke only
+  narrows. The CLI counts a 404 as "already ended" only when it is the Worker's JSON `not_found`.
+- **A rejected `PKEY_ADMIN_TOKEN` and `pkeya_`.** `whoami` refuses a `pkeya_` (no person behind it)
+  without sending it, and `logout` refuses while the variable is set: pkey ends only a sign-in it
+  stored.
+- **The hostname is the label.** `pkey login` sends the computer's hostname as `client.host`; the
+  Worker cleans it (control and bidi characters dropped, 64 characters at most), shows it to the
+  approver as unverified text, and mints the token as `pkey on <host>`, the label Personal tokens
+  lists, that `whoami` and `logout` print, and that the store keeps (`l`). The name is therefore
+  disclosed to the console and to whoever approves, and a hostile machine can choose a misleading
+  one: a label is for telling tokens apart, never for deciding trust (the code, the shown host and
+  the approver's own check are). pkey prints a stored label through the same cleaning and token
+  masking as any server text.
+- **`pkey login` bounds what a console can make it do.** Every response is read through a 64 KiB
+  cap, a code lives at most 600 seconds whatever `expiresIn` says, and a request that has not
+  answered in 15 seconds is a network failure (the poll gives up after five). The token this sign-in
+  replaces is revoked only after the new one is stored and read back, so a cancel, a denial, an
+  expiry or a lost network leaves the old sign-in working; if that revoke fails, pkey says so.
+- **The Action never loads a keyring.** `bundle-action.mjs` aliases `@napi-rs/keyring` to a stub
+  that throws, so the committed Action bundle can neither load a native addon nor resolve a
+  `@napi-rs/keyring` from the runner's working directory.
+
+**Residual: same-user access, per platform.** The store defends a token from other users and from
+the disk, not from code running as the person.
+
+- **macOS.** The Keychain item's access list trusts the binary that created it, `node`. Any script
+  run by that `node` reads the token without a prompt, and a malicious dependency in any Node
+  project the person runs can do so. (A denied prompt or a locked Keychain is "The credential store
+  refused access".)
+- **Windows.** The Credential Manager entry is readable by any process running as the same user.
+  `keyring-rs` writes it with `CRED_PERSIST_ENTERPRISE`, which on a domain-joined account roams the
+  credential with the profile (confirm against the pinned `@napi-rs/keyring` release when it is
+  bumped). A roaming credential is readable on every computer the profile reaches.
+- **Linux.** Any client on the session's D-Bus that can talk to the unlocked Secret Service can read
+  the entry. The collection is unlocked for the login session, so any process of that user can.
+- **Native-library override.** `NAPI_RS_NATIVE_LIBRARY_PATH` makes `@napi-rs/keyring` load a
+  native addon from that path, so it is equivalent to `NODE_OPTIONS` (`--require`): whoever sets the
+  environment of a `pkey` process runs code in it and reads the token. The environment is
+  the person's own; it is no wider than the same-user rule above, and the Action cannot load the
+  module at all.
+- **What bounds it.** The seven-day life, the per-use audit (`account_token.used`), the owner
+  revoking from Personal tokens, and `can()` applied under the holder's roles at every use. A
+  Superadmin held only through the identity provider's root rule lapses 8 hours after a console
+  sign-in whatever the token's life, which `pkey whoami` says.
+
 ### The outbound fetcher and hosted-asset ingest (HA-01)
 
 `core/safeFetch.ts` is the one guarded fetcher for URLs someone other than Polaris Key wrote, and
