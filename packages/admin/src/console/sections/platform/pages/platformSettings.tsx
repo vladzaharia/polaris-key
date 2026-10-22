@@ -101,6 +101,12 @@ export const SECTION_OF_AREA: Record<string, SectionId> = {
   "background-jobs": "platform-jobs",
 };
 
+/** The title of the section a registry area is shown in (Activity's "Where" row). */
+export function sectionTitleOfArea(area: string): string {
+  const id = SECTION_OF_AREA[area] ?? "platform-advanced";
+  return SECTIONS.find((x) => x.id === id)?.title ?? "Advanced";
+}
+
 /** A setting that reads better elsewhere than its registry area says. */
 const SECTION_OF_KEY: Record<string, SectionId> = {
   KEYENTRY_REFUSALS: "platform-licensing",

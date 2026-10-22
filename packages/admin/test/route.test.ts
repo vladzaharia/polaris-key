@@ -432,6 +432,15 @@ describe("the remount key (ADMIN.md §2.6)", () => {
       key("#/p/a/license/licenses/l2"),
     );
   });
+
+  it("keeps a drawer-record page mounted across its record id (ST-51)", () => {
+    expect(key("#/platform/activity/ev1")).toBe(key("#/platform/activity"));
+    expect(key("#/platform/activity/ev1")).toBe(key("#/platform/activity/ev2"));
+    // A page whose record is its own view still remounts per record.
+    expect(key("#/platform/connections/c1")).not.toBe(
+      key("#/platform/connections/c2"),
+    );
+  });
 });
 
 describe("query codecs (ADMIN.md §5.7)", () => {

@@ -1,25 +1,28 @@
 /**
- * Platform → Activity (ST-51; admin.platform-activity, admin.platform-activity-event): every
- * product's audit trail and the platform's own, newest first, in one workbench: the facets and the
- * view switch are the band, Timeline or Table below, Load more from the server, and a routed
- * drawer for one event (the URL names it).
+ * Platform → Activity (ST-51; admin.platform-activity, admin.platform-activity-event): the
+ * platform's own audit trail, newest first (D10: platform events only by default; the Product facet
+ * chooses a product or Any product), in one workbench: the facets and the view switch are the band,
+ * Timeline or Table below, Load more from the server, and a routed drawer for one event (the URL
+ * names it).
  *
- * - The filters are the product Activity's (actor, action area, target kind, date range) plus the
- *   Product facet; the Worker applies them before it pages (`GET /platform/activity?product=all`),
- *   and they live in the URL, so a filtered view is a link.
+ * - The filters are actor, action area, target kind and date range, with the platform's own action
+ *   and target lists, plus the Product facet; the Worker applies them before it pages
+ *   (`GET /platform/activity?product=platform`), and they live in the URL, so a filtered view is a
+ *   link.
  * - The feed carries no total, so the foot counts what is loaded and never implies a full history.
  * - A row carries the service its action belongs to (`data-service`, B17): the selected row's tint
  *   and bar take that accent.
  */
 
 import * as React from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Download, List, Rows3 } from "lucide-react";
 import {
   api,
   type PlatformActivityFilters,
   type PlatformActivityItem,
   type PlatformActivityPage,
+  type PlatformSetting,
   type ProductDetail,
 } from "../../../../api.js";
 import { formatIso, fromSeconds, toSeconds } from "../../../../lib/format.js";
@@ -30,22 +33,28 @@ import { ErrorState } from "../../../../ui/ErrorState.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
-import { Select } from "../../../../ui/Select.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { Timeline, TimelineItem } from "../../../../ui/Timeline.js";
 import { toast } from "../../../../ui/toast.js";
 import { qk } from "../../../data/queries.js";
 import { EventDrawer } from "./platformActivityEvent.js";
-import { ActivityTable, actorName, whatOf } from "./platformActivityParts.js";
+import {
+  ActivityTable,
+  FacetSelect,
+  actorName,
+  whatOf,
+} from "./platformActivityParts.js";
+import { filterListsFor } from "./platformActivityFilters.js";
+import { settingOf, valueText } from "./platformActivityValues.js";
 import { useProducts } from "../../../data/hooks.js";
 import { Link, navigate, useLocation } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
-import { ACTION_GROUPS, TARGET_KINDS } from "../../core/model/activityVerbs.js";
 import { useQueryParams } from "../../core/model/urlState.js";
 
 const PAGE_SIZE = 50;
 const PLATFORM = "platform";
+const ALL = "all";
 
 const RANGES: { value: string; label: string; hours: number | null }[] = [
   { value: "24h", label: "Last 24 hours", hours: 24 },
@@ -63,12 +72,22 @@ type Params = Record<(typeof KEYS)[number], string>;
 function serverFilters(p: Params, anchor: number): PlatformActivityFilters {
   const range = RANGES.find((x) => x.value === (p.range || DEFAULT_RANGE));
   return {
-    product: p.product || "all",
+    product: p.product || PLATFORM,
     ...(p.actor ? { actor: p.actor } : {}),
     ...(p.action ? { action: p.action } : {}),
     ...(p.kind ? { targetKind: p.kind } : {}),
     ...(range?.hours ? { since: toSeconds(anchor) - range.hours * 3600 } : {}),
   };
+}
+
+/** Focus a row's link once it is drawn (after the last Load more, the button is gone). */
+function focusEventLink(id: string | undefined): void {
+  if (!id) return;
+  requestAnimationFrame(() =>
+    [...document.querySelectorAll<HTMLElement>("[data-event-link]")]
+      .find((el) => el.dataset.eventLink === id)
+      ?.focus(),
+  );
 }
 
 function useActivityFeed(filters: PlatformActivityFilters) {
@@ -106,6 +125,17 @@ export function PlatformActivityPage({
   const feed = useActivityFeed(filters);
   useLoadingAnnouncement("activity", feed.isPending || feed.isRefetching);
   const products = useProducts();
+  const platformSettings = useQuery({
+    queryKey: qk.platformSettings(),
+    queryFn: () => api.platformSettings(),
+  });
+  const settings = React.useMemo(
+    () =>
+      new Map<string, PlatformSetting>(
+        (platformSettings.data?.settings ?? []).map((s) => [s.key, s]),
+      ),
+    [platformSettings.data],
+  );
 
   const items = React.useMemo(
     () => feed.data?.pages.flatMap((p) => p.items) ?? [],
@@ -115,13 +145,15 @@ export function PlatformActivityPage({
     () => new Map((products.data ?? []).map((p) => [p.slug, p])),
     [products.data],
   );
+  // Every actor seen on this page, so choosing one does not collapse the facet to it.
+  const seenActors = React.useRef(new Map<string, string>());
   const actors = React.useMemo(() => {
-    const seen = new Map<string, string>();
+    const seen = seenActors.current;
     for (const i of items) if (i.actor.sub) seen.set(i.actor.sub, actorName(i));
     if (params.actor && params.actor !== "system" && !seen.has(params.actor))
       seen.set(params.actor, params.actor);
     return [
-      { value: "system", label: "Polaris Key (runtime)" },
+      { value: "system", label: "Polaris Key" },
       ...[...seen.entries()].map(([value, label]) => ({ value, label })),
     ];
   }, [items, params.actor]);
@@ -131,6 +163,14 @@ export function PlatformActivityPage({
     Boolean(params.actor || params.action || params.kind || params.product) ||
     range !== DEFAULT_RANGE;
   const view = params.view === "timeline" ? "timeline" : "table";
+  const lists = filterListsFor(params.product);
+  const loadMore = (): void => {
+    void feed.fetchNextPage().then((res) => {
+      // The button unmounts with the last page; focus moves to the first new row.
+      if (res.hasNextPage || res.isError) return;
+      focusEventLink(res.data?.pages.at(-1)?.items[0]?.id);
+    });
+  };
   const clear = (): void => {
     setAnchor(Date.now());
     setParams({
@@ -151,22 +191,31 @@ export function PlatformActivityPage({
     const csv = toCsv(
       [
         "at",
+        "actor_name",
         "actor",
         "action",
         "product",
         "target_kind",
         "target_id",
         "summary",
+        "before",
+        "after",
       ],
-      items.map((i) => [
-        formatIso(fromSeconds(i.at)),
-        i.actor.email || i.actor.sub || "polaris-key",
-        i.action,
-        i.product ?? PLATFORM,
-        i.target?.kind ?? "",
-        i.target?.id ?? "",
-        i.summary,
-      ]),
+      items.map((i) => {
+        const setting = settingOf(i, settings);
+        return [
+          formatIso(fromSeconds(i.at)),
+          actorName(i),
+          i.actor.email || i.actor.sub || "polaris-key",
+          i.action,
+          i.product ?? PLATFORM,
+          i.target?.kind ?? "",
+          i.target?.id ?? "",
+          i.summary,
+          valueText(i.before, setting)?.text ?? "",
+          valueText(i.after, setting)?.text ?? "",
+        ];
+      }),
     );
     if (!downloadCsv("platform-activity.csv", csv))
       toast.error("Couldn't save the file");
@@ -190,7 +239,9 @@ export function PlatformActivityPage({
               onClick={exportLoaded}
             >
               <Download aria-hidden />
-              Export CSV
+              {items.length === 0
+                ? "Export CSV"
+                : `Export ${items.length} loaded ${items.length === 1 ? "event" : "events"}`}
             </Button>
           }
         />
@@ -204,62 +255,58 @@ export function PlatformActivityPage({
           data-workbench-toolbar=""
           role="search"
           aria-label="Filter activity"
-          className="flex flex-wrap items-center gap-2 border-b border-border bg-(--pk-admin-band) px-4 py-3"
+          className="flex flex-wrap items-center gap-2 border-b border-border bg-(--pk-admin-band) px-4 py-3 [@media(max-height:500px)]:py-2 [@media(max-height:500px)]:flex-nowrap [@media(max-height:500px)]:overflow-x-auto"
         >
-          <Select
-            aria-label="Actor"
+          <FacetSelect
+            label="Actor"
             options={actors}
             value={params.actor || null}
-            allowEmpty
+            set={Boolean(params.actor)}
             emptyLabel="Anyone"
             onChange={(v) => setParams({ actor: v })}
-            className="w-auto min-w-36"
           />
-          <Select
-            aria-label="Action"
-            options={ACTION_GROUPS}
+          <FacetSelect
+            label="Action"
+            options={lists.actions}
             value={params.action || null}
-            allowEmpty
+            set={Boolean(params.action)}
             emptyLabel="Any action"
             onChange={(v) => setParams({ action: v })}
-            className="w-auto min-w-36"
           />
-          <Select
-            aria-label="Target kind"
-            options={TARGET_KINDS}
+          <FacetSelect
+            label="Target kind"
+            options={lists.kinds}
             value={params.kind || null}
-            allowEmpty
+            set={Boolean(params.kind)}
             emptyLabel="Any target"
             onChange={(v) => setParams({ kind: v })}
-            className="w-auto min-w-36"
           />
-          <Select
-            aria-label="Date range"
+          <FacetSelect
+            label="Date range"
             options={RANGES.map(({ value, label }) => ({ value, label }))}
             value={range}
+            set={range !== DEFAULT_RANGE}
             onChange={(v) => {
               setAnchor(Date.now());
               setParams({ range: v === DEFAULT_RANGE ? null : v });
             }}
-            className="w-auto min-w-36"
           />
-          <Select
-            aria-label="Product"
+          <FacetSelect
+            label="Product"
             options={[
               { value: PLATFORM, label: "Platform" },
+              { value: ALL, label: "Any product" },
               ...(products.data ?? []).map((p: ProductDetail) => ({
                 value: p.slug,
                 label: p.name,
               })),
             ]}
-            value={params.product || null}
-            allowEmpty
-            emptyLabel="Product"
-            onChange={(v) => setParams({ product: v })}
-            className="w-auto min-w-36"
+            value={params.product || PLATFORM}
+            set={Boolean(params.product)}
+            onChange={(v) => setParams({ product: v === PLATFORM ? null : v })}
           />
-          <div className="ms-auto flex items-center gap-2">
-            {filtered ? (
+          <div className="ms-auto flex shrink-0 items-center gap-2">
+            {filtered && !(feed.data && items.length === 0) ? (
               <Button variant="ghost" size="sm" onClick={clear}>
                 Clear filters
               </Button>
@@ -312,6 +359,7 @@ export function PlatformActivityPage({
           <div className="p-4">
             <ErrorState
               error={feed.error}
+              context={{ read: true }}
               onRetry={() => void feed.refetch()}
             />
           </div>
@@ -355,13 +403,21 @@ export function PlatformActivityPage({
                       }
                       verb={whatOf(i)}
                       target={
-                        <Link
-                          to={eventHref(i.id)}
-                          className="inline-flex min-h-6 items-center text-xs text-accent-fg underline-offset-4 hover:underline"
-                        >
-                          Details
-                          <span className="sr-only">: {whatOf(i)}</span>
-                        </Link>
+                        <>
+                          {i.product ? (
+                            <span className="text-fg-muted">
+                              · {byProduct.get(i.product)?.name ?? i.product}
+                            </span>
+                          ) : null}{" "}
+                          <Link
+                            to={eventHref(i.id)}
+                            data-event-link={i.id}
+                            className="inline-flex min-h-6 items-center text-xs text-accent-fg underline-offset-4 hover:underline"
+                          >
+                            Details
+                            <span className="sr-only">: {whatOf(i)}</span>
+                          </Link>
+                        </>
                       }
                       at={fromSeconds(i.at)}
                     />
@@ -391,7 +447,7 @@ export function PlatformActivityPage({
                   variant="outline"
                   size="sm"
                   loading={feed.isFetchingNextPage}
-                  onClick={() => void feed.fetchNextPage()}
+                  onClick={loadMore}
                 >
                   {feed.isFetchNextPageError ? "Try again" : "Load more"}
                 </Button>
@@ -405,6 +461,7 @@ export function PlatformActivityPage({
         id={eventId}
         loaded={items}
         products={byProduct}
+        settings={settings}
         onClose={() => navigate(listHref())}
       />
     </CollectionTemplate>

@@ -4,10 +4,12 @@
  */
 
 import * as React from "react";
+import { Check } from "lucide-react";
 import type { PlatformActivityItem, ProductDetail } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
 import { formatIso, fromSeconds } from "../../../../lib/format.js";
 import { ProductLogo } from "../../../../ui/ProductLogo.js";
+import { Select } from "../../../../ui/Select.js";
 import { Link } from "../../../router.js";
 import { verbFor } from "../../core/model/activityVerbs.js";
 
@@ -47,7 +49,57 @@ export function actorName(item: PlatformActivityItem): string {
 
 /** What happened, in the words the Worker wrote; a row without a summary reads as its action. */
 export function whatOf(item: PlatformActivityItem): string {
-  return item.summary || verbFor(item.action);
+  if (item.summary) return item.summary;
+  const verb = verbFor(item.action);
+  return verb.charAt(0).toUpperCase() + verb.slice(1);
+}
+
+/**
+ * A filter facet: a Select that shows it is set, in form and not only in words (a check and the
+ * accent border), and whose name carries the visible value ("Actor: Anyone", WCAG 2.5.3).
+ */
+export function FacetSelect({
+  label,
+  options,
+  value,
+  set,
+  emptyLabel,
+  onChange,
+}: {
+  label: string;
+  options: { value: string; label: string }[];
+  /** `null` is the empty choice; omit `emptyLabel` when there is none. */
+  value: string | null;
+  set: boolean;
+  emptyLabel?: string;
+  onChange: (value: string | null) => void;
+}): React.ReactElement {
+  const shown =
+    value === null
+      ? (emptyLabel ?? "")
+      : (options.find((o) => o.value === value)?.label ?? value);
+  return (
+    <span className="relative inline-flex shrink-0" data-set={set || undefined}>
+      {set ? (
+        <Check
+          aria-hidden
+          className="pointer-events-none absolute start-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-accent-fg"
+        />
+      ) : null}
+      <Select
+        aria-label={`${label}: ${shown}`}
+        options={options}
+        value={value}
+        allowEmpty={emptyLabel !== undefined}
+        emptyLabel={emptyLabel}
+        onChange={onChange}
+        className={cn(
+          "w-auto min-w-36 max-w-56",
+          set && "border-accent bg-accent-subtle ps-8",
+        )}
+      />
+    </span>
+  );
 }
 
 /** The product cell: its logo and name, or "Platform" for an event that belongs to none. */
@@ -60,14 +112,13 @@ export function ProductCell({
 }): React.ReactElement {
   if (!slug) return <span className="text-fg-muted">Platform</span>;
   const p = products.get(slug);
+  const name = p?.name ?? slug;
   return (
-    <span className="inline-flex min-w-0 items-center gap-2">
-      <ProductLogo
-        name={p?.name ?? slug}
-        presentation={p?.presentation}
-        size={24}
-      />
-      <span className="truncate">{p?.name ?? slug}</span>
+    <span className="flex min-w-0 max-w-full items-center gap-2">
+      <ProductLogo name={name} presentation={p?.presentation} size={24} />
+      <span className="min-w-0 truncate" title={name}>
+        {name}
+      </span>
     </span>
   );
 }
@@ -87,7 +138,7 @@ export function ActivityTable({
     "px-4 py-3 text-start text-xs font-semibold text-fg-strong max-sm:sr-only";
   // Phone: each row stacks, every cell under its own label.
   const td =
-    "px-4 py-3.5 align-middle text-sm max-sm:flex max-sm:gap-3 max-sm:py-1 max-sm:before:w-16 max-sm:before:shrink-0 max-sm:before:text-xs max-sm:before:text-fg-muted max-sm:before:content-[attr(data-label)]";
+    "px-4 py-3 align-middle text-sm max-sm:flex max-sm:gap-3 max-sm:py-1 max-sm:before:w-16 max-sm:before:shrink-0 max-sm:before:text-xs max-sm:before:text-fg-muted max-sm:before:content-[attr(data-label)]";
   return (
     <div
       role="region"
@@ -152,18 +203,24 @@ export function ActivityTable({
                     }).format(fromSeconds(i.at))}
                   </time>
                 </td>
-                <td data-label="Who" className={cn(td, "truncate")}>
-                  {actorName(i)}
+                <td data-label="Who" className={cn(td, "overflow-hidden")}>
+                  <span
+                    className="min-w-0 truncate max-sm:whitespace-normal max-sm:[overflow-wrap:anywhere]"
+                    title={actorName(i)}
+                  >
+                    {actorName(i)}
+                  </span>
                 </td>
                 <td data-label="What" className={td}>
                   <Link
                     to={eventHref(i.id)}
-                    className="inline-flex min-h-6 min-w-0 items-center break-words text-fg underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-focus"
+                    data-event-link={i.id}
+                    className="inline-flex min-h-6 min-w-0 items-center [overflow-wrap:anywhere] text-fg underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-focus"
                   >
                     {whatOf(i)}
                   </Link>
                 </td>
-                <td data-label="Product" className={td}>
+                <td data-label="Product" className={cn(td, "overflow-hidden")}>
                   <ProductCell slug={i.product} products={products} />
                 </td>
               </tr>
