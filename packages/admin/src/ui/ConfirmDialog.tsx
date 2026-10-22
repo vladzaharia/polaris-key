@@ -2,7 +2,7 @@ import * as React from "react";
 import {
   AlertTriangle,
   CircleAlert,
-  KeyRound,
+  Fingerprint,
   OctagonAlert,
 } from "lucide-react";
 import { startStepUp } from "../api.js";
@@ -29,6 +29,9 @@ import { Dialog, DialogBody, DialogFooter } from "./Dialog.js";
  *   unchanged consequences, the primary button reading "Sign in again", Cancel unchanged. The sign-in
  *   leaves the page, so a typed confirmation word is kept in `sessionStorage` (under `stepUpKey`,
  *   default the title when it is text) and put back when the dialog opens again after the return.
+ *   The caller's own fields (a reason) ride along: `stepUpState` is saved with the word and handed
+ *   back to `onRestore` when the dialog opens again. The dialog also opens itself on the page it
+ *   left (same `#` route, within 15 minutes) when it holds a saved state for its `stepUpKey`.
  * - The confirm label repeats the verb ("Disable license"), never "Confirm".
  * - Focus lands on Cancel, the least destructive button (`focusTyped` puts it on the typed field).
  */
@@ -73,6 +76,10 @@ export interface ConfirmDialogProps {
   } | null;
   /** Where the typed word waits while the operator signs in again. Default: the title, when text. */
   stepUpKey?: string;
+  /** The caller's own fields (a required reason), saved with the typed word across the sign-in. */
+  stepUpState?: Record<string, string>;
+  /** Puts `stepUpState` back when the dialog opens again after the sign-in. */
+  onRestore?: (state: Record<string, string>) => void;
   /** Sends the operator to sign in again. Default: the console's step-up sign-in. */
   onStepUp?: () => void;
   /** When they last signed in (epoch seconds, `Me.authAt`): the step-up state says how long ago. */
@@ -108,33 +115,63 @@ export function isStepUpRequired(error: unknown): boolean {
 const STEP_UP_TTL_MS = 15 * 60 * 1000;
 const stepUpStorageKey = (key: string): string => `pkey:step-up:${key}`;
 
-function stashTyped(key: string | undefined, typed: string): void {
+interface Stash {
+  typed: string;
+  fields: Record<string, string>;
+}
+
+function stashStepUp(
+  key: string | undefined,
+  typed: string,
+  fields: Record<string, string> = {},
+): void {
   if (!key) return;
   try {
     sessionStorage.setItem(
       stepUpStorageKey(key),
-      JSON.stringify({ typed, at: Date.now() }),
+      JSON.stringify({
+        typed,
+        fields,
+        page: window.location.hash,
+        at: Date.now(),
+      }),
     );
   } catch {
     // No storage: the word is typed again.
   }
 }
 
-function takeTyped(key: string | undefined): string {
-  if (!key) return "";
+function readStash(key: string | undefined, remove: boolean): Stash | null {
+  if (!key) return null;
   try {
     const raw = sessionStorage.getItem(stepUpStorageKey(key));
-    if (raw === null) return "";
-    sessionStorage.removeItem(stepUpStorageKey(key));
-    const v = JSON.parse(raw) as { typed?: unknown; at?: unknown };
-    return typeof v.typed === "string" &&
-      typeof v.at === "number" &&
-      Date.now() - v.at < STEP_UP_TTL_MS
-      ? v.typed
-      : "";
+    if (raw === null) return null;
+    if (remove) sessionStorage.removeItem(stepUpStorageKey(key));
+    const v = JSON.parse(raw) as {
+      typed?: unknown;
+      fields?: unknown;
+      page?: unknown;
+      at?: unknown;
+    };
+    if (
+      typeof v.at !== "number" ||
+      Date.now() - v.at >= STEP_UP_TTL_MS ||
+      (typeof v.page === "string" && v.page !== window.location.hash)
+    )
+      return null;
+    const fields: Record<string, string> = {};
+    if (v.fields && typeof v.fields === "object")
+      for (const [k, x] of Object.entries(v.fields))
+        if (typeof x === "string") fields[k] = x;
+    return { typed: typeof v.typed === "string" ? v.typed : "", fields };
   } catch {
-    return "";
+    return null;
   }
+}
+
+/** Whether a step-up sign-in left a saved dialog for `key` on this page (it reopens). */
+export function hasSavedStepUp(key: string): boolean {
+  return readStash(key, false) !== null;
 }
 
 const ICON: Record<ConfirmIntent, React.ReactNode> = {
@@ -162,6 +199,8 @@ export function ConfirmDialog({
   closeOnSuccess = true,
   stepUpKey,
   onStepUp,
+  stepUpState,
+  onRestore,
   signedInAt,
   confirmVariant,
   focusTyped = false,
@@ -182,10 +221,18 @@ export function ConfirmDialog({
   React.useEffect(() => {
     if (open) {
       setError(null);
-      setTyped(typedConfirmation ? takeTyped(storeKey) : "");
+      const saved = readStash(storeKey, true);
+      setTyped(typedConfirmation && saved ? saved.typed : "");
+      if (saved && Object.keys(saved.fields).length > 0)
+        onRestore?.(saved.fields);
       setPending(false);
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The page came back from the sign-in: show the dialog again, with what was typed.
+  React.useEffect(() => {
+    if (!open && storeKey && hasSavedStepUp(storeKey)) onOpenChange(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const busy = pending || loading;
   const typedOk =
@@ -193,17 +240,18 @@ export function ConfirmDialog({
     (typedConfirmation.ignoreCase
       ? typed.trim().toLowerCase() === typedConfirmation.value.toLowerCase()
       : typed === typedConfirmation.value);
-  const variant: ButtonVariant =
-    confirmVariant ?? (intent === "danger" ? "danger" : "primary");
-
   // `null`: the caller shows this error itself (at a field), so no banner.
   const shown = error ?? callerError;
   const stepUp = isStepUpRequired(shown);
+  // Signing in again is a request, not a danger: the ink primary whatever the intent.
+  const variant: ButtonVariant = stepUp
+    ? "primary"
+    : (confirmVariant ?? (intent === "danger" ? "danger" : "primary"));
 
   const confirm = async (): Promise<void> => {
     if (busy) return;
     if (stepUp) {
-      stashTyped(storeKey, typed);
+      stashStepUp(storeKey, typed, stepUpState);
       (onStepUp ?? startStepUp)();
       return;
     }
@@ -289,11 +337,11 @@ export function ConfirmDialog({
             <div
               id={errorId}
               role="status"
-              className="flex gap-2 rounded-md border border-warning-border bg-warning-subtle p-3"
+              className="flex gap-2 rounded-md border border-border bg-surface-sunken p-3"
             >
-              <KeyRound
+              <Fingerprint
                 aria-hidden
-                className="mt-0.5 size-4 shrink-0 text-warning"
+                className="mt-0.5 size-4 shrink-0 text-fg-muted"
               />
               <div className="space-y-0.5">
                 <p className="font-semibold text-fg-strong">
