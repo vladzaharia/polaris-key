@@ -205,7 +205,6 @@ export function AccountOverrideEditor({
     );
   }
 
-  const retired = overridesQ.data?.licenseLayerRetired === true;
   return (
     <SettingsSection
       id="user-overrides"
@@ -214,10 +213,8 @@ export function AccountOverrideEditor({
         <>
           These config and secret values reach every device signed in to this
           account on this product, and the license-key devices of licenses this
-          account owns. Entitlements stay on each license.
-          {retired
-            ? null
-            : " A value set here wins over the same key on one of their licenses."}
+          account owns. Entitlements stay on each license. A value set here wins
+          over the same key on one of their licenses.
         </>
       }
     >

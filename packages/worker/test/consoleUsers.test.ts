@@ -631,7 +631,7 @@ describe("actions", () => {
     // U-03's account override layer and LX-08's entitlement-event feed are registered stores
     // too: they hold nothing for Ada yet.
     expect(doc.stores).toEqual({
-      "config.accountOverrides": { overrides: null, migrationReport: [] },
+      "config.accountOverrides": { overrides: null },
       "core.entitlementEvents": [],
       "test-store": { overrides: { volume: 3 }, of: f.adaAlpha },
     });

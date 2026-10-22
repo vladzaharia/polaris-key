@@ -700,6 +700,9 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
       ownerSubject: null,
       signUpUrl: `https://key.plrs.im/activate?product=${SLUG}`,
     });
+    // U-27 (L-U6): no phase and no run date, so an old cached console reads `license`.
+    expect(detail.configOverrides).not.toHaveProperty("phase");
+    expect(detail.configOverrides).not.toHaveProperty("runNotBefore");
   });
 
   it("7. an account merge copies the absorbed account's overrides and reports the collisions (§5.5)", async () => {
@@ -1508,8 +1511,9 @@ describe("U-03: GET and PUT users/<subject>/overrides", () => {
       configOn: true,
       overrides: { config: {}, secrets: {} },
       updatedAt: null,
-      licenseLayerRetired: false,
     });
+    // U-27: the licence layer is always read, so there is nothing to retire.
+    expect(empty).not.toHaveProperty("licenseLayerRetired");
     const flag = await w.call("PUT", path, {
       updates: [{ key: "pro", value: true }],
     });

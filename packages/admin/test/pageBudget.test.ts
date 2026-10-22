@@ -37,7 +37,6 @@ const OVER_BUDGET: Record<string, number> = {
   "sections/feeds/pages/FeedSettings.tsx": 1083,
   "sections/feeds/pages/PackageRecord.tsx": 606,
   "sections/feeds/pages/RegistryTokens.tsx": 889,
-  "sections/platform/pages/platformOverrideMigration.tsx": 1183,
   "sections/platform/pages/platformStores.tsx": 1790,
   "sections/release/components/PolicyDialog.tsx": 655,
   "sections/release/pages/CompatibilityPage.tsx": 753,

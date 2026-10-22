@@ -36,8 +36,6 @@ const SUBJECT_EXCEPTIONS: Record<string, string> = {
   integration: "/docs/build/",
   // Platform -> Package feeds is Ship builds -> Packages.
   "platform-feeds": "/docs/features/ship-builds/packages/",
-  // Platform -> Override migration is Managed config.
-  "platform-override-migration": "/docs/features/managed-config/",
 };
 
 const platformPages = GLOBAL_PAGES.filter((p) => p.group === "platform");

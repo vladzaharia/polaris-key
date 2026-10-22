@@ -87,11 +87,6 @@ import {
   licenseEmail,
   subjectForOrNull,
 } from "../../../core/accounts/accountSubjects.js";
-import {
-  licenseConfigFrozen,
-  licenseConfigRetired,
-  readOverrideMigrationState,
-} from "../../../core/ops/overrideMigration.js";
 import { portalEnabled } from "../../../core/licensing/manageUrl.js";
 import { customerOrigin } from "../../../core/hosts.js";
 import {
@@ -280,42 +275,27 @@ async function validateRefs(
 }
 
 /**
- * Where this licence's config and secret overrides live (U-03, notes/S-17 §5.12), for the
- * console's Config tab:
+ * The ownership facts the console's Config tab needs (U-03, notes/S-17 §5.12). The licence layer
+ * is always read and always writable (U-27), so there is no phase:
  *
- *   - `phase`: `license` (before any notice: the licence editor edits them), `notice` (the
- *     migration's notice is running; `runNotBefore` is the earliest run), `moving` (the run has
- *     started: config and secrets are frozen here, step 4), `moved` (the run completed: they live
- *     on the owner's account overrides and this licence no longer delivers them, step 5);
  *   - `owned`: whether an account owns the licence. An unowned licence has no account layer, so
  *     the console says "No account: managed config for this customer needs an account" and offers
  *     `signUpUrl`, the portal's Activate License page (an offer to the customer, never forced);
  *   - `ownerSubject`: the owner's subject for the Users-page link (created on first contact, as
  *     the licence summary's `ownerSubject` is).
- *
- * Entitlement overrides stay on the licence in every phase (decision 20).
  */
 async function configOverridesView(
   ctx: LicenseAdminContext,
   license: LicenseRow,
 ): Promise<Record<string, unknown>> {
   const slug = ctx.product.slug;
-  const state = await readOverrideMigrationState(ctx.db);
   const owned = (license.account_id ?? null) !== null;
   const origin = customerOrigin(ctx.env, ctx.req);
   return {
-    phase: licenseConfigRetired(state)
-      ? "moved"
-      : licenseConfigFrozen(state)
-        ? "moving"
-        : state.noticeStartedAt !== null
-          ? "notice"
-          : "license",
     owned,
     ownerSubject: owned
       ? await subjectForOrNull(ctx.db, license.account_id!, slug, ctx.now)
       : null,
-    runNotBefore: state.runNotBefore,
     signUpUrl:
       origin && (await portalEnabled(ctx.db, slug))
         ? `${origin}/activate?product=${encodeURIComponent(slug)}`

@@ -191,8 +191,8 @@ licences, newest release, storefronts, users per product) are dropped, not plann
 | Package feeds     | `#/platform/feeds`             |
 
 **New product** is `#/products/new` and is reached from the switcher rather than the
-sidebar. Override migration (`#/platform/override-migration`) remains addressable but is not in
-navigation or the palette.
+sidebar. Override migration (`#/platform/override-migration`) was deleted (U-27) and no longer
+addresses a page.
 
 ### Product context
 

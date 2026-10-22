@@ -16611,9 +16611,8 @@ paths:
       description: >
         The licence record the console shows: the summary (with `holder`, LX-26) plus its keys (by
         hash), devices, profiles, offline window, seat count and redacted overrides, and (U-03)
-        `configOverrides`: where its config and secret overrides live (`phase`: `license`,
-        `notice`, `moving`, `moved`), whether an account owns it, the owner's subject and the
-        portal's Activate License link offered for a licence with none. Platform admins only;
+        `configOverrides`: whether an account owns it, the owner's subject and the portal's
+        Activate License link offered for a licence with none. Platform admins only;
         admin session cookie. DELETE on this path is documented on the docs site.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
@@ -22052,15 +22051,7 @@ components:
     AdminAccountOverrides:
       type: object
       description: One subject's account override layer (U-03), redacted.
-      required:
-        [
-          subject,
-          configOn,
-          overrides,
-          updatedAt,
-          updatedBy,
-          licenseLayerRetired,
-        ]
+      required: [subject, configOn, overrides, updatedAt, updatedBy]
       properties:
         subject: { type: string }
         configOn:
@@ -22086,9 +22077,6 @@ components:
         updatedBy:
           type: [string, "null"]
           description: "The operator's subject, or `migration`, `merge` or `signin`."
-        licenseLayerRetired:
-          type: boolean
-          description: Whether the override migration has completed (licences no longer deliver config and secrets).
     AdminOverrideInventory:
       type: object
       required: [computedAt, products, totals]

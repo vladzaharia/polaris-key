@@ -45,7 +45,6 @@ import {
   useServerFilter,
 } from "../components/LicenseListParts.js";
 import { useLicenseColumns } from "../components/licenseColumns.js";
-import { OverrideMigrationNotice } from "../components/OverrideMigrationNotice.js";
 import {
   BulkDeleteDialog,
   CleanupDialog,
@@ -374,7 +373,6 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         ) : undefined
       }
     >
-      <OverrideMigrationNotice slug={slug} />
       {oneBatch ? (
         <p className="text-sm text-fg-muted" data-testid="batch-filter-link">
           Showing the licenses of batch{" "}

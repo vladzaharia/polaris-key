@@ -456,7 +456,6 @@ export const r = {
     globalPage("platform-activity", query),
   platformActivityEvent: (id: string, query?: QueryInit) =>
     globalPage("platform-activity", query, { id }),
-  platformOverrideMigration: () => globalPage("platform-override-migration"),
   platformFeed: (eco: string, tab?: string) =>
     globalPage("platform-feeds", undefined, { id: eco, tab }),
   platformFeedPackage: (

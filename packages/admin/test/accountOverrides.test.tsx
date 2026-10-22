@@ -69,7 +69,6 @@ function view(over: Partial<AccountOverridesView> = {}): AccountOverridesView {
     },
     updatedAt: NOW_S - 60,
     updatedBy: "u1",
-    licenseLayerRetired: false,
     ...over,
   };
 }
