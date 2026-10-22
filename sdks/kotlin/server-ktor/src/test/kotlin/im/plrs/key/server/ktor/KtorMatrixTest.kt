@@ -37,6 +37,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KtorMatrixTest {
+    /** PolarisProduct refuses an empty pin set (nothing could verify). A row with no keys gets one pin that signed nothing: the same verdict. */
+    private val noSigner: TrustSet = mapOf("unused-pin" to "A".repeat(43))
+
     private val root = File(System.getProperty("pkey.repoRoot"))
     private val matrix = JsonText.parse(File(root, "conformance/corpus/v2/backend-matrix.json").readText()) as JsonObject
 
@@ -78,7 +81,7 @@ class KtorMatrixTest {
                 application {
                     install(Authentication) {
                         polarisKey {
-                            this.products = products.map { PolarisProduct(it, trust[it] ?: emptyMap()) }
+                            this.products = products.map { PolarisProduct(it, trust[it]?.takeIf { pins -> pins.isNotEmpty() } ?: noSigner) }
                             maxAgeSeconds = max
                             trustRefresh = false
                             clock = { now }
@@ -90,6 +93,7 @@ class KtorMatrixTest {
                             for (r in require) {
                                 when (r) {
                                     is BackendRequirement.Entitlement -> install(RequireEntitlement) { name = r.name }
+                                    is BackendRequirement.Tier -> install(RequireTier) { tiers = r.tiers }
                                     BackendRequirement.SignIn -> install(RequireSignIn)
                                 }
                             }
