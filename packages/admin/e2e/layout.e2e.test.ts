@@ -275,6 +275,10 @@ const TEXT200_CASES = [
   "djdl:services",
   "djdl:portal",
   "djdl:licenses/record/overview",
+  // CXF-LREC: the holder variants, whose primary action ("Resend invitation", "Assign to a
+  // person") is the longest label on the record's header (cases come from LAYOUT-fx's fixtures).
+  "djdl:licenses/record-waiting/overview",
+  "djdl:licenses/record-floating/overview",
   // N1: the data tables' phone cards, where a status pill wrapped out of its box.
   "djdl:licenses",
   // CF1 / M1: the pages that scrolled sideways at 390 px with 200 % text.

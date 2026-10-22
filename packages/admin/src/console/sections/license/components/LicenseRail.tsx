@@ -25,6 +25,7 @@ import {
   formatRelative,
   fromSeconds,
 } from "../../../../lib/format.js";
+import { platformName } from "../../../../lib/vocab/platforms.js";
 import { actorName, type SeatLimit } from "./shared.js";
 
 const ORIGIN_TITLES = {
@@ -171,7 +172,7 @@ export function OriginCard({
   return (
     <Section
       id="origin"
-      title={license.origin ? ORIGIN_TITLES[license.origin] : "Origin"}
+      title="Origin"
       variant="settings"
       actions={
         <Button asChild variant="link" size="sm">
@@ -183,6 +184,9 @@ export function OriginCard({
       }
     >
       <dl className="divide-y divide-border">
+        {license.origin ? (
+          <Fact label="Method">{ORIGIN_TITLES[license.origin]}</Fact>
+        ) : null}
         <Fact label="Created">{created}</Fact>
       </dl>
     </Section>
@@ -220,7 +224,9 @@ export function InvitationCard({
 }
 
 function deviceLine(d: DeviceDto): string {
-  return [d.platform, d.appVersion].filter(Boolean).join(" · ");
+  return [d.platform ? platformName(d.platform) : "", d.appVersion]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /** Floating: no holder, so the key itself activates devices. */

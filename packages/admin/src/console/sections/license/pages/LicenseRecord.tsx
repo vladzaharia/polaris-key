@@ -15,6 +15,7 @@
 import * as React from "react";
 import {
   ChevronDown,
+  Hourglass,
   KeyRound,
   Layers,
   Power,
@@ -47,6 +48,7 @@ import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { IdChip } from "../../../../ui/IdChip.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
+import { StatusPill } from "../../../../ui/StatusPill.js";
 import { toast } from "../../../../ui/toast.js";
 import { LicenseConfig } from "./LicenseConfig.js";
 import { LicenseDevices } from "./LicenseDevices.js";
@@ -63,7 +65,6 @@ import {
   UndoableMoveCallout,
 } from "../components/LicenseHolderDialogs.js";
 import {
-  HolderLine,
   holderOf,
   licenseTitle,
   undoableMove,
@@ -89,6 +90,7 @@ import {
   daysUntil,
   expiryText,
   LicenseStatus,
+  licenseState,
   seatLimitOf,
   seatLimitText,
   useTiers,
@@ -328,17 +330,20 @@ function LicenseRecordBody({
         // facts strip below the tabs (CSS only; the other copy is `display: none`).
         titleAside={
           <span className="conbig:hidden">
-            <LicenseStatus license={license} />
+            <HeaderStatus license={license} waiting={waiting} />
           </span>
         }
         // The tier is a control beside the one action (licenses.detail): 50/50 on a phone.
         primaryAction={
-          <div className="grid grid-cols-2 gap-2 sm:flex [&>button]:min-w-0 conbig:[&>button]:whitespace-nowrap!">
+          // On a phone the two take a row each at 200 % text and their labels wrap; from 640 px
+          // they sit side by side on one line.
+          <div className="grid grid-cols-2 gap-2 max-sm:conbig:grid-cols-1 sm:flex [&>button]:min-w-0 max-sm:[&>button]:h-auto max-sm:[&>button]:py-2 max-sm:[&>button]:whitespace-normal conbig:sm:[&>button]:whitespace-nowrap!">
             {tierControl}
             {mainAction}
           </div>
         }
         inlineSecondary={0}
+        menuLast
         secondaryActions={[
           { label: "Change tier…", onSelect: () => setDialog("tier") },
           ...(floating
@@ -393,6 +398,41 @@ function LicenseRecordBody({
             disabledReason: deletionBlockedReason(license.deletion),
           },
         ]}
+        // Under the title: the facts the cards below do not carry (an assigned license's email
+        // and state, the id, key entries, the last change). The name is the title, the waiting
+        // email is the Invitation card's, the batch is the Origin card's.
+        meta={
+          <span
+            data-testid="record-facts"
+            className="flex flex-wrap items-center gap-x-3 gap-y-1"
+          >
+            <span className="hidden conbig:inline-flex">
+              <HeaderStatus license={license} waiting={waiting} />
+            </span>
+            {inAccount ? (
+              <span data-testid="record-holder">
+                {[
+                  holder.kind === "assigned" ? holder.email : "",
+                  "In an account",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            ) : null}
+            <IdChip value={id} noun="license id" />
+            {keyEntries ? (
+              <span data-testid="record-key-entries">
+                Key entries {keyEntries.used} of {keyEntries.limit}
+              </span>
+            ) : null}
+            {license.modifiedAt ? (
+              <span>
+                Changed {relativeWhen(fromSeconds(license.modifiedAt))}
+                {changedBy ? ` by ${changedBy}` : ""}
+              </span>
+            ) : null}
+          </span>
+        }
         refetching={refetching}
         tabs={
           <PageTabs
@@ -429,28 +469,6 @@ function LicenseRecordBody({
           />
         }
       />
-
-      <div
-        data-testid="record-facts"
-        className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted"
-      >
-        <span className="hidden conbig:inline-flex">
-          <LicenseStatus license={license} />
-        </span>
-        <HolderLine slug={slug} license={license} batch={batch} />
-        <IdChip value={id} noun="license id" />
-        {keyEntries ? (
-          <span data-testid="record-key-entries">
-            Key entries {keyEntries.used} of {keyEntries.limit}
-          </span>
-        ) : null}
-        {license.modifiedAt ? (
-          <span>
-            Changed {formatRelative(fromSeconds(license.modifiedAt))}
-            {changedBy ? ` by ${changedBy}` : ""}
-          </span>
-        ) : null}
-      </div>
 
       {undoable ? (
         <UndoableMoveCallout
@@ -619,6 +637,29 @@ function LicenseRecordBody({
       />
     </div>
   );
+}
+
+/** "now" reads "just now" after "Changed"; any other age is as formatted. */
+function relativeWhen(ms: number): string {
+  const text = formatRelative(ms);
+  return text === formatRelative(Date.now()) ? "just now" : text;
+}
+
+/** The header pill. A license still waiting for its holder says so; its other states stand. */
+function HeaderStatus({
+  license,
+  waiting,
+}: {
+  license: LicenseDetail;
+  waiting: boolean;
+}): React.ReactElement {
+  if (waiting && licenseState(license) === "active")
+    return (
+      <StatusPill tone="info" icon={Hourglass}>
+        Waiting
+      </StatusPill>
+    );
+  return <LicenseStatus license={license} />;
 }
 
 type RecordDialog =

@@ -28,6 +28,7 @@ import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
+import { ErrorDescription } from "../../../../ui/CopyDetails.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { ChannelPicker } from "../../../../ui/ChannelPicker.js";
 import {
@@ -245,6 +246,18 @@ export function LimitsTable({
 
   const reset = async (row: LimitRow): Promise<void> => {
     setBusy(row.kind);
+    // What the license set itself, kept so the toast's Undo can put it back.
+    const previous =
+      row.kind === "devices"
+        ? { deviceLimit: license.deviceLimit ?? null }
+        : row.kind === "offline"
+          ? { maxOfflineDays: license.maxOfflineDays ?? null }
+          : row.kind === "tracks"
+            ? { channels: license.channels ?? [] }
+            : {
+                minVersion: license.minVersion ?? null,
+                maxVersion: license.maxVersion ?? null,
+              };
     try {
       if (row.kind === "devices")
         await mutate("patchLicense", slug, license.id, { deviceLimit: null });
@@ -259,10 +272,33 @@ export function LimitsTable({
           minVersion: null,
           maxVersion: null,
         });
-      toast.success(`${row.label} uses ${row.inherits}`);
+      toast.success(`${row.label} uses ${row.inherits}`, {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            mutate("patchLicense", slug, license.id, previous)
+              .then(() => toast.success(`${row.label} restored`))
+              .catch((e: unknown) => {
+                const copy = errorCopy(e, { thing: "License" });
+                toast.error(`${row.label} wasn't restored`, {
+                  description: copy.description,
+                  copyDetails:
+                    copy.action === "copy-details"
+                      ? JSON.stringify(copy.details ?? {}, null, 2)
+                      : undefined,
+                });
+              });
+          },
+        },
+      });
     } catch (e) {
+      const copy = errorCopy(e, { thing: "License" });
       toast.error(`${row.label} wasn't changed`, {
-        description: errorCopy(e, { thing: "License" }).description,
+        description: copy.description,
+        copyDetails:
+          copy.action === "copy-details"
+            ? JSON.stringify(copy.details ?? {}, null, 2)
+            : undefined,
       });
     } finally {
       setBusy(null);
@@ -322,8 +358,8 @@ export function LimitsTable({
                   ) : null}
                 </span>
               </td>
-              <td className="text-right max-sm:self-end conbig:max-sm:self-start conbig:max-sm:text-left">
-                <span className="inline-flex flex-wrap items-center justify-end gap-x-2 conbig:max-sm:justify-start">
+              <td className="text-right max-sm:col-span-2 max-sm:text-left">
+                <span className="inline-flex flex-wrap items-center justify-end gap-x-3 max-sm:justify-start">
                   {row.kind === "fingerprint" ? (
                     row.tierId ? (
                       <Button asChild variant="link" size="sm">
@@ -334,7 +370,7 @@ export function LimitsTable({
                     <>
                       {row.overridden ? (
                         <Button
-                          variant="ghost"
+                          variant="link"
                           size="sm"
                           loading={busy === row.kind}
                           onClick={() => void reset(row)}
@@ -344,7 +380,7 @@ export function LimitsTable({
                         </Button>
                       ) : null}
                       <Button
-                        variant="ghost"
+                        variant="link"
                         size="sm"
                         aria-label={`${row.overridden ? "Edit" : "Override"} ${row.label.toLowerCase()}`}
                         onClick={() =>
@@ -490,7 +526,9 @@ function OverrideForm({
         ) : null}
         {form.submitError && !Object.keys(form.errors).length ? (
           <Callout tone="danger" title="This wasn't saved" live>
-            {errorCopy(form.submitError, { thing: "License" }).description}
+            <ErrorDescription
+              copy={errorCopy(form.submitError, { thing: "License" })}
+            />
           </Callout>
         ) : null}
       </DialogBody>

@@ -23,6 +23,7 @@ import type { LicenseDetail, MintBundleBody } from "../../../../api.js";
 import { mutate } from "../../../data/mutations.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
+import { ErrorDescription } from "../../../../ui/CopyDetails.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
@@ -115,7 +116,9 @@ function HolderForm({
         ) : null}
         {form.submitError && !Object.keys(form.errors).length ? (
           <Callout tone="danger" title="The holder wasn't saved" live>
-            {errorCopy(form.submitError, { thing: "License" }).description}
+            <ErrorDescription
+              copy={errorCopy(form.submitError, { thing: "License" })}
+            />
           </Callout>
         ) : null}
       </DialogBody>
@@ -348,7 +351,9 @@ export function OfflineBundleDialog({
             ) : null}
             {error ? (
               <Callout tone="danger" title="The bundle wasn't minted" live>
-                {errorCopy(error, { thing: "License" }).description}
+                <ErrorDescription
+                  copy={errorCopy(error, { thing: "License" })}
+                />
               </Callout>
             ) : null}
           </DialogBody>

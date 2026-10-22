@@ -8,6 +8,7 @@ import * as React from "react";
 import type { LicenseDetail, PatchLicenseBody } from "../../../../api.js";
 import { mutate } from "../../../data/mutations.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
+import { ErrorDescription } from "../../../../ui/CopyDetails.js";
 import { fromSeconds, toSeconds } from "../../../../lib/format.js";
 import { versionRangeError } from "../../../../lib/version.js";
 import { Button } from "../../../../ui/Button.js";
@@ -167,7 +168,9 @@ function ExpiryForm({
         </FormField>
         {form.submitError && !Object.keys(form.errors).length ? (
           <Callout tone="danger" title="The duration wasn't saved" live>
-            {errorCopy(form.submitError, { thing: "License" }).description}
+            <ErrorDescription
+              copy={errorCopy(form.submitError, { thing: "License" })}
+            />
           </Callout>
         ) : null}
       </DialogBody>
@@ -284,7 +287,9 @@ function ProfilesForm({
         </FormField>
         {form.submitError && !Object.keys(form.errors).length ? (
           <Callout tone="danger" title="The profiles weren't saved" live>
-            {errorCopy(form.submitError, { thing: "License" }).description}
+            <ErrorDescription
+              copy={errorCopy(form.submitError, { thing: "License" })}
+            />
           </Callout>
         ) : null}
       </DialogBody>

@@ -1257,7 +1257,8 @@ export const LICENSES = Array.from({ length: 240 }, (_, i) => ({
     i % 7 === 0 ? null : i % 5 === 1 ? NOW_S + 4 * DAY : NOW_S + (90 + i) * DAY,
   keyCount: 1 + (i % 3),
   activeKeyCount: 1 + (i % 2),
-  deviceCount: i % 6,
+  // lic_1 lists four live devices in its detail; the count agrees.
+  deviceCount: i === 0 ? 4 : i % 6,
   profile: null,
   profiles: i % 4 === 0 ? ["base", "studio"] : [],
   tier: TIER_IDS[i % TIER_IDS.length],
@@ -1498,6 +1499,11 @@ export const PROFILE = {
 
 export const LICENSE_DETAIL = {
   ...LICENSES[0],
+  // Waiting for its holder: the Config tab's notice below is the no-account callout, so the
+  // holder has no account either (a licence in an account would not show it).
+  holder: { kind: "assigned", inAccount: false },
+  ownerSubject: null,
+  keyEntries: { used: 0, limit: 10 },
   maxOfflineDays: 14,
   profiles: ["base", "studio"],
   overrides: {

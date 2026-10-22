@@ -188,18 +188,17 @@ describe("the record's holder line", () => {
     bootLicense("#/p/djdl/license/licenses/lic_in", { routes: ROUTES });
     await screen.findByRole("heading", { level: 1, name: "Lena Ortiz" });
     const line = screen.getByTestId("record-holder");
-    expect(line.textContent).toMatch(
-      /Lena Ortiz.*lena@ortiz\.audio.*In an account/,
-    );
+    // The name is the title; the line carries the email and the state, once.
+    expect(line.textContent).toBe("lena@ortiz.audio · In an account");
     expect(screen.queryByTestId("record-key-entries")).toBeNull();
   });
 
   it("waiting: Waiting for the email, with the key entries", async () => {
     bootLicense("#/p/djdl/license/licenses/lic_wait", { routes: ROUTES });
     await screen.findByRole("heading", { level: 1, name: "Sam Reyes" });
-    expect(screen.getByTestId("record-holder").textContent).toContain(
-      "Waiting for sam@reyes.fm",
-    );
+    // Waiting and the email are said once: the pill and the Invitation card, not the line.
+    expect(screen.queryByTestId("record-holder")).toBeNull();
+    expect(screen.getAllByText("Waiting").length).toBeGreaterThan(0);
     expect(screen.getByTestId("record-key-entries").textContent).toBe(
       "Key entries 3 of 10",
     );
@@ -217,12 +216,12 @@ describe("the record's holder line", () => {
   it("floating: the title, the line, its batch, Assign to a person first, and the true count past the limit", async () => {
     bootLicense("#/p/djdl/license/licenses/lic_float", { routes: ROUTES });
     await screen.findByRole("heading", { level: 1, name: "Floating license" });
-    const line = screen.getByTestId("record-holder");
-    expect(line.textContent).toMatch(/Floating.*anyone with the key/);
+    // The line does not repeat the holder or the batch: the cards carry them.
+    expect(screen.queryByTestId("record-holder")).toBeNull();
     expect(
-      (
-        await within(line).findByRole("link", { name: "Steam keys, October" })
-      ).getAttribute("href"),
+      (await screen.findByRole("link", { name: /Open batch/ })).getAttribute(
+        "href",
+      ),
     ).toBe("#/p/djdl/license/batches/batch_oct");
     expect(screen.getByTestId("record-key-entries").textContent).toBe(
       "Key entries 12 of 10",
