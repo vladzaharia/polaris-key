@@ -33,9 +33,10 @@
  * `410 absorbed` (the subject was merged away while the request ran) re-resolves the principal and
  * retries once; a second one is a retryable `503 unavailable`. A batch the object finds malformed
  * is `400`, another device's `clientId` is `409 client_mismatch`; every other object failure is
- * mapped by `objectFailure` (`common.ts`). If the subject moved after the push landed to a merge survivor, the whole
- * exchange is repeated against it; if the device now belongs to someone else, `account_required` (mutation ids make it idempotent), exactly as the
- * pull does. An expired `cursor` after a landed push is `410 cursor_expired`: the journal is kept
+ * mapped by `objectFailure` (`common.ts`). If the subject moved to a merge survivor after the push
+ * landed, the whole exchange is repeated against it (mutation ids make it idempotent); if the device
+ * now belongs to someone else, it is `account_required`, exactly as the pull does. An expired
+ * `cursor` after a landed push is `410 cursor_expired`: the journal is kept
  * (rule 1) and the client's retry finds every mutation already processed.
  */
 

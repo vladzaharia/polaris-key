@@ -7162,7 +7162,9 @@ yet. SR-1 (isolation) follows U-05.8.
   object, marker included, so the only record linking the two pseudonymous ids does not outlive
   the day, and it also clears an absorbed subject left live when Identity's batch failed (N5). The
   marker is written before the wipe and again after it, so a reset between the two steps leaves a
-  marked object, never an unmarked empty one a late push could rebuild.
+  marked object, never an unmarked empty one a late push could rebuild. The cleanup alarm is set the
+  same way, before the wipe and again after it, from the first `absorbed_at`, so a retried merge
+  never pushes it out; a `setAlarm` that fails is a retryable `503 unavailable` and wipes nothing.
 - **Residual: the hook runs before Identity's D1 batch (SR-1 N5).** The store's `merge` runs before
   Identity commits the account merge. If that batch then fails, the data already sits under the
   survivor and the absorbed object is marked, while the accounts are still two: the retry of the
@@ -7284,9 +7286,15 @@ attestation_required` for the whole request, in the nested `wireError` shape eve
   `collection_unknown` until U-09.
 - **The object's refusals are never copied.** `410 absorbed` re-resolves the principal and retries
   once, and a second is a retryable `503 unavailable`; a `pin_mismatch` or other 4xx is a `500`
-  and a 5xx or an unbound namespace a retryable `503` (`handlers/common.ts`). Only the codes of
+  and a 5xx (the object's own `unavailable` when it could not set an alarm included) or an unbound
+  namespace a retryable `503` (`handlers/common.ts`). Only the codes of
   `conformance/parity/errors.json` leave the Worker. If the subject moved after the push landed,
-  the exchange is repeated against the survivor (mutation ids make that idempotent).
+  the exchange is repeated only when the old subject resolves to the new one along a merge alias
+  (mutation ids make that idempotent); a device re-bound to another person gets `account_required`
+  and nothing reaches that person's object (SR-2 N1).
+- **A pull is cached per person (SR-2 B1).** Every pull answer, the `304` and each page included,
+  carries `Vary: Authorization, X-PKey-Device` (CORS appends `Origin`), so a shared browser or
+  proxy cache never serves one person's answer to another's request with the same ETag.
 - **T17, a push cannot recreate erased data (SR-2).** Closes the residual recorded under
   "Product deletion" above. The first run of `contributes.productPurge` sets a KV flag
   (`services/sync/purgeFlag.ts`, `pk()`-scoped, one-hour TTL renewed by every run) BEFORE it erases
@@ -7296,8 +7304,8 @@ attestation_required` for the whole request, in the nested `wireError` shape eve
   slug created again within the hour is not refused. Residual: KV is eventually consistent, so a
   push served in another location can land for up to about a minute after the first purge run, and
   the directory row it writes is guarded on the product being live (U-05.9). The object closes that
-  itself: its alarm flush reads whether the product is live (before and after the batch), and when
-  it is not, the object clears its alarm and erases all its storage. So the object a stale push
+  itself: its alarm flush ends with a directory upsert guarded on the product being live, and when
+  that statement changes no row, the object clears its alarm and erases all its storage. So the object a stale push
   recreated is gone within one alarm, whether or not the purge ever listed it. A delete that is started and abandoned blocks Cloud Sync
   writes for the product for at most an hour. Pulls are not refused (a read creates nothing).
 - **An expired cursor after a landed push** is `410 cursor_expired`: the mutations were applied, the
@@ -7316,7 +7324,8 @@ it carries no quota or subject. Rows are S-17 §5.14's.
 - **T8, an account switch on a shared PC (server side).** The server never trusts a client's idea of
   who is signed in. The principal is read from the device row on every request, so after a sign-out
   or a switch the old token's next push is `account_required` and the new account's request reaches
-  its own object only. The client half (a journal and cache partitioned by user, `onSignOut: clear`)
+  its own object only. A subject that changes mid-request is followed only along a merge alias;
+  any other change is `account_required`. The client half (a journal and cache partitioned by user, `onSignOut: clear`)
   is the SDKs' and is checked by their replay of the transcripts. Residual: a journal a client keeps
   across a switch against its own rules is client code; the server cannot see it.
 - **T16, no owner fallback for Cloud Sync.** `subjectFor` keeps Config's owner fallback (U-03);
