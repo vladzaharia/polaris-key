@@ -18428,6 +18428,78 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/members:
+    get:
+      operationId: listMembersAdmin
+      tags: [admin]
+      summary: List the console's members and pending invites
+      description: >
+        ST-31.4. The root rule's group, every member (an account that holds a stored role or
+        holds Superadmin through the root rule right now) with their roles and where each came from,
+        and the invites still open. A person is named by an opaque `memberId` (`mbr_…`), display name
+        and address, never by an account id. A root-rule role has `source: root` and no `bindingId`
+        (it cannot be revoked). `grantedBy.name` is `null` when the granter is no longer a member.
+        Needs the Members area at platform scope (Superadmin, Platform admin); admin session cookie.
+        A token cannot call it.
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: The roster.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rootRule, members, invites]
+                properties:
+                  rootRule:
+                    type: object
+                    required: [group]
+                    properties:
+                      group: { type: [string, "null"] }
+                  members:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConsoleMember" }
+                  invites:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConsoleInvite" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/members/{memberId}:
+    get:
+      operationId: getMemberAdmin
+      tags: [admin]
+      summary: Read one console member
+      description: >
+        ST-31.4. The id is matched by computing each candidate's member id, never by decoding it; an
+        unknown, stale or forged id is a 404 that says nothing else. Same access as the list.
+      security:
+        - adminSession: []
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          description: The opaque member id (`mbr_…`), from the list.
+          schema: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
+      responses:
+        "200":
+          description: The member.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [member]
+                properties:
+                  member: { $ref: "#/components/schemas/ConsoleMember" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such member.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
   # ── Godot tokenised URLs (F-21) ──
   /godot/{owner}/t/{token}/asset-library/api/configure:
     servers:
@@ -24064,6 +24136,63 @@ components:
           type: [string, "null"]
           enum: [manual, admin, account_deleted, access_removed, null]
         status: { type: string, enum: [active, expired, revoked] }
+    ConsoleGrantedBy:
+      type: [object, "null"]
+      description: >
+        Who granted it. `null` = the system or the root rule; `name: null` = someone who is no longer
+        a member.
+      required: [name]
+      properties:
+        name: { type: [string, "null"] }
+    ConsoleMember:
+      type: object
+      required: [memberId, name, email, lastSignInAt, you, roles]
+      properties:
+        memberId: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
+        name: { type: string }
+        email: { type: string }
+        lastSignInAt: { type: [integer, "null"] }
+        you: { type: boolean }
+        roles:
+          type: array
+          items:
+            type: object
+            required:
+              [role, scope, areas, source, bindingId, grantedBy, grantedAt]
+            properties:
+              role:
+                {
+                  type: string,
+                  enum:
+                    [superadmin, platform_admin, product_admin, console_access],
+                }
+              scope:
+                {
+                  type: string,
+                  description: "platform, products:*, or product:<slug>",
+                }
+              areas:
+                type: [array, "null"]
+                items: { type: string }
+              source: { type: string, enum: [root, grant, invite, creator] }
+              bindingId: { type: [string, "null"] }
+              grantedBy: { $ref: "#/components/schemas/ConsoleGrantedBy" }
+              grantedAt: { type: [integer, "null"] }
+    ConsoleInvite:
+      type: object
+      required:
+        [bindingId, email, role, scope, areas, invitedBy, sentAt, expiresAt]
+      properties:
+        bindingId: { type: string }
+        email: { type: string }
+        role: { type: string }
+        scope: { type: string }
+        areas:
+          type: [array, "null"]
+          items: { type: string }
+        invitedBy: { $ref: "#/components/schemas/ConsoleGrantedBy" }
+        sentAt: { type: integer }
+        expiresAt: { type: integer }
     AccountTokenAdmin:
       type: object
       description: >

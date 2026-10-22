@@ -9,6 +9,9 @@ export type { AccountContext } from "./accounts/links.js";
 export {
   accountMayOpenConsole,
   consoleActorAliases,
+  consoleDirectory,
+  consoleRootHolders,
+  type ConsoleDirectoryEntry,
   consoleMemberIdForIdpSub,
   consoleSignIn,
   consoleSubject,

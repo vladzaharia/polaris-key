@@ -6988,6 +6988,44 @@ account id, which the subject receives (the principal does not) and which is nev
 returned (`accountIdBoundary`). The binding read adds one D1 read to each console request, and
 runs before the rate limiter (ST-31.6). Nothing writes bindings yet (ST-31.6 on).
 
+### Console Members: the read API (ST-31.4)
+
+**What arrived.** `GET /manage/api/members` and `GET /manage/api/members/:memberId` (platform scope, area
+`members`: Superadmin and Platform admin; a Product admin holds `members` at product scope only and is refused
+here). Session only (no `tokenScope`). Read-only.
+
+**Control.**
+
+- **No account id in a body.** A person is a `memberId` (`mbr_`, one-way), a display name and an address. The
+  handler joins on account ids internally and serialises none (`consoleMembers.test.ts` scans both routes,
+  the list also joins `accountIdBoundary.test.ts`; the OpenAPI schemas declare no account id property).
+- **The path id is never decoded.** The handler computes the id of each candidate member and compares; a
+  malformed, forged, stale or non-member id is the same 404.
+- **The directory answers only for the ids it is handed.** `consoleDirectory(accountIds)` reads accounts and
+  console links for exactly the accounts that hold a binding or the root rule, so a non-member is never read,
+  counted or named. A person with a role is listed; a signed-in person with none is not.
+- **Root holders use the principal's own rule.** `consoleRootHolders` applies `rootRuleHolds` with
+  `ADMIN_SESSION_TTL_SECONDS` (the constant the principal uses), on active accounts, so the roster cannot show
+  a Superadmin the principal would not treat as one.
+- **Granter names.** `grantedBy` / `invitedBy` name a granter only while they are a member; a former member is
+  `{ name: null }`, so the roster does not become a lookup of departed people.
+- **Last sign-in** is the newest `admin.signin` under the member id or any console IdP subject of the account
+  (the `consoleActorAliases` set), through `idx_platform_audit_action`; chunked under D1's bound-parameter
+  limit.
+- **Bounds.** At most 500 members' worth of root holders, 2000 binding rows and 500 invites are read.
+- **Disclosure, deliberately.** A Platform admin or Superadmin sees every member's name, address, roles and
+  last sign-in, and every open invite's address (`docs/PRIVACY.md`, "What an admin can see"). Product-scoped
+  members appear here too; the page is the platform's roster.
+
+**`/account-tokens` (ST-31.2 re-review item).** It stays a `platform` row. Platform admins see the address of
+every account that holds a personal token, which includes people who are not console members. Kept because
+revoking an abused token is an incident response a Platform admin owns and needs the owner to be identifiable;
+it returns no account id, no token and no hash. Follow-up, not done here: mask the address for a Platform
+admin if the owner wants Superadmin-only disclosure (`superadmin_only`, as `POST /tokens`).
+
+**Residual.** The roster is unpaginated (bounded). A binding for a disabled account is still listed as a role
+(inert; the account cannot sign in).
+
 ### Identity as a per-product service (PX-W17)
 
 One account per person; a product's `identity` toggle gates only sign-in through that product

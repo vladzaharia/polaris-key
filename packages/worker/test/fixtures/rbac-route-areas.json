@@ -26,6 +26,8 @@
   "GET /attention": "console",
   "GET /github/repositories": "platform",
   "GET /me": "console",
+  "GET /members": "members",
+  "GET /members/:memberId": "members",
   "GET /platform/activity": "platform",
   "GET /platform/alerts": "platform",
   "GET /platform/deployment": "platform",

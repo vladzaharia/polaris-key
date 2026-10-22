@@ -418,6 +418,15 @@ can also set the person's **account overrides** for that product (managed config
 never shown again once saved). No admin can delete, disable, sign out or merge an account, or
 change its sign-in methods.
 
+The console's **Members** page (Platform → Members) is the roster of people who can use the console. A
+Platform admin and a Superadmin see each member's display name, address, roles (with where each came from and
+who granted it), whether they hold the root rule, when they last signed in, and the address of every open
+invite. A person is shown by a random member id (`mbr_…`); the Polaris Key account id is never in a response.
+Only people with a role appear: the page cannot be used to look up anyone else. A Product admin cannot read it.
+Platform → Personal tokens (`/account-tokens`) shows a Platform admin or Superadmin the address of each account
+that holds a personal token, whether or not that person is a console member, with the token's label, last four
+characters and times, never the token.
+
 ## What an end user can see
 
 The customer portal already lists a user's own devices with their platform, versions, and

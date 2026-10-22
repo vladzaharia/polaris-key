@@ -19,6 +19,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/manage/api/account-tokens` | admin | List people's personal tokens |
 | GET | `/manage/api/attention` | admin | What needs the operator across every product the session can see |
 | GET | `/manage/api/github/repositories` | admin | The repositories the Polaris Key GitHub App can read |
+| GET | `/manage/api/members/{memberId}` | admin | Read one console member |
+| GET | `/manage/api/members` | admin | List the console's members and pending invites |
 | POST | `/manage/api/platform/alerts/{id}/test` | admin | Send a test alert to a destination |
 | PATCH | `/manage/api/platform/alerts/{id}` | admin | Change, disable or re-secret an alert destination (step-up) |
 | DELETE | `/manage/api/platform/alerts/{id}` | admin | Remove an alert destination |

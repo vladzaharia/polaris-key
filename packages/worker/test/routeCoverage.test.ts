@@ -228,6 +228,9 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/platform/alerts/{id}/test", ["post"]],
     ["/manage/api/account-tokens", ["get"]],
     ["/manage/api/account-tokens/{tokenId}", ["delete"]],
+    // ST-31.4: the Platform Members roster (platform scope, area `members`).
+    ["/manage/api/members", ["get"]],
+    ["/manage/api/members/{memberId}", ["get"]],
   ],
   // `/manage/api/products[/…]` routes as its own kind (the product registry), narrative too.
   products: [
@@ -860,6 +863,7 @@ function concrete(template: string): string {
     methodId: "lnk_AAAAAAAAAAAA",
     subject: `ps_${"A".repeat(22)}`,
     tokenId: "apitok_AAAAAAAAAAAA",
+    memberId: "mbr_AAAAAAAAAAAAAAAAAAAAAA",
     id: "dst_AAAAAAAAAAAA",
     runId: "mig_AAAAAAAAAAAA",
     code: "K7M-4QX-9TZ",

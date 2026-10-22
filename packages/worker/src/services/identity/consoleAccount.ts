@@ -445,3 +445,158 @@ export async function consoleMemberIdForIdpSub(
   );
   return row ? memberIdFor(env, row.account_id) : null;
 }
+
+/** A console member as the Members page shows them (ST-31.4). Never carries the account id. */
+export interface ConsoleDirectoryEntry {
+  memberId: string;
+  name: string;
+  email: string;
+  /** Epoch seconds of the latest `admin.signin` under any of the person's aliases, or `null`. */
+  lastSignInAt: number | null;
+}
+
+/** Bound parameters per statement stay under D1's limit of 100. */
+const IN_CHUNK = 80;
+
+function chunks<T>(items: readonly T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size)
+    out.push(items.slice(i, i + size));
+  return out;
+}
+
+/**
+ * The directory of the accounts the CALLER names: member id, display name, address and last
+ * console sign-in. It answers only for the ids it is given (the Members handler passes the
+ * accounts that hold a binding or the root rule), so nothing is learned about any other account.
+ * The last sign-in is the newest `admin.signin` row under the person's member id or any IdP
+ * subject of their console links (the `consoleActorAliases` set), through the
+ * `(action, actor_sub, at)` index. Read-only; an unknown id is simply absent from the map.
+ */
+export async function consoleDirectory(
+  env: Env,
+  db: Db,
+  accountIds: readonly string[],
+  _now: number,
+): Promise<Map<string, ConsoleDirectoryEntry>> {
+  const out = new Map<string, ConsoleDirectoryEntry>();
+  const ids = [...new Set(accountIds)];
+  if (ids.length === 0) return out;
+  const rp = adminOidcConfig(env);
+  const issuerKey = rp ? portalIdentityIssuerKey(rp.issuer) : null;
+  const aliasOf = new Map<string, string>(); // alias -> accountId
+  const base = new Map<
+    string,
+    { memberId: string; name: string; email: string }
+  >();
+  for (const part of chunks(ids, IN_CHUNK)) {
+    const marks = part.map(() => "?").join(", ");
+    const accounts = await db.all<{
+      id: string;
+      display_name: string | null;
+      primary_email: string | null;
+    }>(
+      `SELECT id, display_name, primary_email FROM accounts WHERE id IN (${marks})`,
+      ...part,
+    );
+    const links = issuerKey
+      ? await db.all<{
+          account_id: string;
+          subject: string;
+          display_name: string | null;
+          email: string | null;
+        }>(
+          `SELECT account_id, subject, display_name, email FROM account_links
+            WHERE issuer_key = ? AND tenant_scope = '' AND account_id IN (${marks})
+            ORDER BY last_used_at DESC, id`,
+          issuerKey,
+          ...part,
+        )
+      : [];
+    for (const a of accounts) {
+      const mine = links.filter((l) => l.account_id === a.id);
+      const memberId = await memberIdFor(env, a.id);
+      aliasOf.set(memberId, a.id);
+      for (const l of mine.slice(0, 20)) aliasOf.set(l.subject, a.id);
+      const first = mine[0];
+      base.set(a.id, {
+        memberId,
+        name:
+          a.display_name ??
+          first?.display_name ??
+          a.primary_email ??
+          first?.subject ??
+          "",
+        email: a.primary_email ?? first?.email ?? "",
+      });
+    }
+  }
+  const last = new Map<string, number>();
+  for (const part of chunks([...aliasOf.keys()], IN_CHUNK)) {
+    const marks = part.map(() => "?").join(", ");
+    const rows = await db.all<{ actor_sub: string; at: number }>(
+      `SELECT actor_sub, MAX(at) AS at FROM platform_audit
+        WHERE action = 'admin.signin' AND actor_sub IN (${marks})
+        GROUP BY actor_sub`,
+      ...part,
+    );
+    for (const r of rows) {
+      const id = aliasOf.get(r.actor_sub);
+      if (id && r.at > (last.get(id) ?? 0)) last.set(id, r.at);
+    }
+  }
+  for (const [id, b] of base)
+    out.set(id, { ...b, lastSignInAt: last.get(id) ?? null });
+  return out;
+}
+
+/**
+ * The accounts that hold Superadmin through the root rule right now (ST-31.4): a strong console
+ * link whose groups carry `PLATFORM_ADMIN_GROUP`, asserted within `ADMIN_SESSION_TTL_SECONDS`
+ * (the same constant and the same `rootRuleHolds` the principal uses), on an active account.
+ * Account ids are for the caller's own joins; they never go into a response.
+ */
+export async function consoleRootHolders(
+  env: Env,
+  db: Db,
+  now: number,
+): Promise<string[]> {
+  const rp = adminOidcConfig(env);
+  if (
+    !rp ||
+    !env.PLATFORM_ADMIN_GROUP ||
+    !operatorIssuerAllowed(env, rp.issuer)
+  )
+    return [];
+  const rows = await db.all<{
+    account_id: string;
+    groups_json: string | null;
+    strong_at: number | null;
+    asserted_at: number | null;
+  }>(
+    `SELECT l.account_id, l.groups_json, l.strong_at, l.asserted_at
+       FROM account_links l JOIN accounts a ON a.id = l.account_id
+      WHERE l.issuer_key = ? AND l.tenant_scope = '' AND l.strong_at IS NOT NULL
+        AND l.asserted_at IS NOT NULL AND l.asserted_at > ? AND a.status = 'active'
+      LIMIT 500`,
+    portalIdentityIssuerKey(rp.issuer),
+    now - ADMIN_SESSION_TTL_SECONDS,
+  );
+  const out = new Set<string>();
+  for (const r of rows) {
+    if (
+      rootRuleHolds(
+        env,
+        {
+          strongAt: r.strong_at,
+          assertedAt: r.asserted_at,
+          groups: parseJsonStringList(r.groups_json),
+        },
+        now,
+        ADMIN_SESSION_TTL_SECONDS,
+      )
+    )
+      out.add(r.account_id);
+  }
+  return [...out];
+}

@@ -59,6 +59,7 @@ import {
   handleAccountTokenList,
   handleAccountTokenRevoke,
 } from "./handlers/accountTokens.js";
+import { handleMemberGet, handleMembersList } from "./handlers/members.js";
 
 /** What every handler receives once the dispatcher has authorized the request. */
 export interface AdminCtx {
@@ -352,6 +353,11 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
     "platform",
     handleAccountTokenRevoke,
   ),
+
+  // ── Platform: the Members roster (ST-31.4) ────────────────────────────────────────────────
+  // Read-only here; `./handlers/members.ts`. Session only, like the rosters above.
+  ...rows(["GET"], "/members", "members", handleMembersList),
+  ...rows(["GET"], "/members/:memberId", "members", handleMemberGet),
 
   // ── One product: the record ───────────────────────────────────────────────────────────────
   // The record every holder of any of the product's areas reads (the shell's name and services);
