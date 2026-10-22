@@ -87,6 +87,7 @@ const CHOICE_BODY_CAP = 4 * 1024;
  */
 const choiceRow = (action: "licenses" | "devices" | "complete" | "cancel") => ({
   path: `choice/${action}`,
+  cors: true as const,
   methods: ["POST" as const],
   auth: { kind: "code" as const },
   handler: (async (ctx) => {
@@ -141,6 +142,7 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
   },
   {
     path: "token",
+    cors: true,
     methods: ["POST"],
     auth: { kind: "code" },
     handler: ({ req, env, db, product, now }) =>
@@ -154,6 +156,7 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
   // I-09 (WIRE-CONTRACT-V4 §12.3): the account on the device wire.
   {
     path: "attach",
+    cors: true,
     methods: ["POST"],
     auth: { kind: "device" },
     handler: ({ req, env, db, product, now }) =>
@@ -161,6 +164,7 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
   },
   {
     path: "subject",
+    cors: true,
     methods: ["GET"],
     auth: { kind: "device" },
     handler: ({ req, env, db, product, now }) =>
@@ -168,6 +172,7 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
   },
   {
     path: "signout",
+    cors: true,
     methods: ["POST"],
     auth: { kind: "device" },
     handler: ({ req, env, db, product, now }) =>
@@ -217,6 +222,7 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
   },
   {
     path: "auth/device/start",
+    cors: true,
     methods: ["POST"],
     auth: { kind: "none" },
     handler: ({ req, env, db, product }) =>
@@ -230,6 +236,7 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
   },
   {
     path: "auth/device/poll",
+    cors: true,
     methods: ["POST"],
     auth: { kind: "code" },
     handler: ({ req, env, db, product, now }) =>

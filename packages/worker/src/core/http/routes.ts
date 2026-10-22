@@ -104,6 +104,15 @@ export interface ServiceRouteDecl {
    */
   alsoHead?: true;
   auth: RouteAuth;
+  /**
+   * A browser page on an origin the product lists under `web.origins` may READ this route
+   * (`core/cors.ts`): its preflight is answered and its responses carry `Vary: Origin` and, for
+   * a listed origin, the allow-origin header. Deny by default: a row without the flag stays
+   * first-party (no `Access-Control-*` ever), so a new route is not browser-readable until
+   * someone decides it should be. Never set on a route that takes a cookie or is only a
+   * navigation, nor on a CI route. Applies to every spelling in `doc`.
+   */
+  cors?: true;
   /** A `:name` segment that must match, else the route does not match at all. */
   params?: Readonly<Record<string, RegExp>>;
   /** Largest JSON body the route reads, in bytes. Required for a `ci` route that reads one. */
@@ -148,6 +157,28 @@ function openApiTail(path: string): string {
     .join("/");
 }
 
+/**
+ * The most specific row whose path matches the segments (and that `ok` admits), or `null`. A
+ * literal beats a parameter and a parameter beats `**` (`./pathMatch.ts`); a row `ok` refuses is
+ * skipped, so the next candidate gets the request (the root portal's rows fall through that
+ * way). Shared by the service tables and the portal's.
+ */
+export function bestRow<R extends { path: string }>(
+  rows: readonly R[],
+  segments: readonly string[],
+  ok?: (row: R, matched: MatchedPath) => boolean,
+): { row: R; matched: MatchedPath } | null {
+  let best: { row: R; matched: MatchedPath } | null = null;
+  for (const row of rows) {
+    const matched = matchPath(row.path, segments);
+    if (!matched) continue;
+    if (ok && !ok(row, matched)) continue;
+    if (best === null || compareSpecificity(row.path, best.row.path) < 0)
+      best = { row, matched };
+  }
+  return best;
+}
+
 export function serviceRoutes(
   slug: ServiceSlug,
   rows: readonly ServiceRouteDecl[],
@@ -183,18 +214,13 @@ export function serviceRoutes(
         ? tail
         : `/{product}/${slug}${tail === "" ? "" : `/${tail}`}`,
       methods: r.methods.map((m) => m.toLowerCase()),
+      ...(r.cors ? { cors: true as const } : {}),
     }));
   });
 
   async function handle(ctx: ServiceContext): Promise<Response | null> {
     // The best row by path, then the method; a failed `params` check is no match.
-    let best: { row: ServiceRouteDecl; matched: MatchedPath } | null = null;
-    for (const row of rows) {
-      const matched = matchPath(row.path, ctx.rest);
-      if (!matched) continue;
-      if (best === null || compareSpecificity(row.path, best.row.path) < 0)
-        best = { row, matched };
-    }
+    const best = bestRow(rows, ctx.rest);
     if (best === null) return null;
     const { row, matched } = best;
     for (const [name, re] of Object.entries(row.params ?? {}))

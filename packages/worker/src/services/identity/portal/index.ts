@@ -40,6 +40,8 @@ import { handlePortalMedia } from "./media.js";
 import { hostedImageOrigin } from "../../../core/assets/hostedImages.js";
 import { serveAvatar } from "../card/avatars.js";
 import { handleProviderSignInPath } from "../providers/flow.js";
+import { bestRow } from "../../../core/http/routes.js";
+import type { HttpMethod, RouteAuth } from "../../../core/http/routes.js";
 
 /**
  * The portal's shell (and its assets) may load images from exactly one more origin: the image host
@@ -101,6 +103,166 @@ async function servePortalAsset(
   return new Response(res.body, { status: res.status, headers });
 }
 
+/** What the portal's handlers are given beside the request. */
+interface PortalCtx {
+  req: Request;
+  env: Env;
+  db: Db;
+  now: number;
+  /** The path, without its trailing slash. */
+  clean: string;
+  hooksFor: PortalHooksFor | undefined;
+  settings: SettingsRegistry | undefined;
+}
+
+/**
+ * One row of the root portal's table. The path is a pattern over the root path's segments
+ * (`core/http/pathMatch.ts`: `:name` is one segment, a trailing `**` the rest, a literal beats a
+ * parameter beats `**`). `methods` is what the route documents, NOT a gate: every handler keeps
+ * its own method policy (some answer HEAD, some a richer 405), exactly as the `if` chain this
+ * table replaced left them. `auth` names the credential the handler checks, as on the service
+ * tables. A row whose `accept` refuses is skipped, so the request falls to the next row (a
+ * `/media/avatar/` with no asset reaches the media proxy's not-found, as before).
+ */
+interface PortalRouteDecl {
+  path: string;
+  methods: readonly HttpMethod[];
+  auth: RouteAuth;
+  accept?: (segments: readonly string[]) => boolean;
+  handler: (
+    c: PortalCtx,
+    m: { params: Readonly<Record<string, string>>; rest: readonly string[] },
+  ) => Promise<Response>;
+}
+
+const nonEmpty = (s: string | undefined): s is string => !!s;
+const READ: readonly HttpMethod[] = ["GET", "HEAD"];
+
+/**
+ * The root portal's routes. Order is irrelevant (the most specific row wins); the last row, the
+ * SPA, is the catch-all: any path no other row takes is the shell or one of its assets.
+ */
+export const PORTAL_ROUTES: readonly PortalRouteDecl[] = [
+  {
+    path: "login",
+    methods: ["GET", "HEAD", "POST"],
+    auth: { kind: "none" },
+    handler: (c) => handlePortalLogin(c.req, c.env, c.db, c.now),
+  },
+  // I-30: a platform connection's sign-in (`state` names the connection; `/callback` finishes it).
+  // The id is everything after `/login/sso/` (it may hold slashes; the handler refuses those).
+  {
+    path: "login/sso/:id/**",
+    methods: READ,
+    auth: { kind: "none" },
+    handler: (c, m) =>
+      handleConnectionLogin(
+        c.req,
+        c.env,
+        c.db,
+        [m.params.id, ...m.rest].join("/"),
+        c.now,
+      ),
+  },
+  // I-06: Google, Apple and Steam on the login card (`../providers/flow.ts`).
+  {
+    path: "login/**",
+    methods: ["GET", "HEAD", "POST"],
+    auth: { kind: "handler" },
+    handler: (c) =>
+      handleProviderSignInPath(c.req, c.env, c.db, c.clean, {
+        now: c.now,
+        settings: c.settings,
+      }),
+  },
+  {
+    path: "callback",
+    methods: READ,
+    auth: { kind: "code" },
+    handler: (c) => handlePortalCallback(c.req, c.env, c.db, c.now, c.settings),
+  },
+  {
+    path: "logout",
+    methods: ["GET", "HEAD", "POST"],
+    auth: { kind: "session" },
+    handler: (c) => handlePortalLogout(c.req, c.env, c.db, c.now),
+  },
+  {
+    path: "magic/verify",
+    methods: ["GET", "HEAD", "POST"],
+    auth: { kind: "code" },
+    handler: (c) => handleMagicVerify(c.req, c.env, c.db, c.now),
+  },
+  // The portal API: its own path walk, CSRF and session gates (`api.ts`).
+  {
+    path: "api/**",
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
+    auth: { kind: "session" },
+    handler: (c) =>
+      handlePortalApi(
+        c.req,
+        c.env,
+        c.db,
+        c.clean,
+        c.now,
+        c.hooksFor,
+        c.settings,
+      ),
+  },
+  // I-07, PX-W16: account pictures, `/media/avatar/<asset>` (`avatar` is a reserved product slug,
+  // so this never shadows a product's art).
+  {
+    path: "media/avatar/:asset",
+    methods: READ,
+    auth: { kind: "none" },
+    accept: (s) => nonEmpty(s[2]),
+    handler: (c, m) => serveAvatar(c.req, c.env, m.params.asset ?? ""),
+  },
+  // PX-W1: the same-origin media proxy (`media.ts`): `/media/<product>/<asset>`, public. Every
+  // other path under `/media` is its not-found, never the SPA shell. A slug and an asset name are
+  // plain ASCII and not decoded; anything else is refused.
+  {
+    path: "media/**",
+    methods: READ,
+    auth: { kind: "none" },
+    handler: (c, m) => {
+      const [product, asset] = m.rest;
+      const exact = m.rest.length === 2 && nonEmpty(product) && nonEmpty(asset);
+      return handlePortalMedia(
+        c.req,
+        c.env,
+        c.db,
+        exact ? product : "",
+        exact ? asset : "",
+        c.now,
+        c.hooksFor,
+      );
+    },
+  },
+  {
+    path: "download/:token",
+    methods: READ,
+    auth: { kind: "code" },
+    accept: (s) => nonEmpty(s[1]),
+    handler: (c, m) =>
+      handlePortalDownload(
+        c.req,
+        c.env,
+        c.db,
+        decodeURIComponent(m.params.token ?? ""),
+        c.now,
+        c.hooksFor,
+      ),
+  },
+  // Everything else: the SPA shell and its assets (`/`, `/index.html`, `/activate`, `/assets/*`).
+  {
+    path: "**",
+    methods: READ,
+    auth: { kind: "none" },
+    handler: (c) => servePortalAsset(c.req, c.env, c.db, c.clean),
+  },
+];
+
 export async function handlePortal(
   req: Request,
   env: Env,
@@ -118,69 +280,22 @@ export async function handlePortal(
   const now = opts.now ?? Math.floor(Date.now() / 1000);
   const clean =
     path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
-
-  if (clean === "/login") return handlePortalLogin(req, env, db, now);
-  // I-30: a platform connection's sign-in (`state` names the connection; `/callback` finishes it).
-  if (clean.startsWith("/login/sso/")) {
-    return handleConnectionLogin(
+  // Segments keep their empty strings (`//`): the rows decide what an empty one means.
+  const segments = clean === "/" ? [] : clean.slice(1).split("/");
+  // The catch-all always matches, so there is a row for every path.
+  const best = bestRow(PORTAL_ROUTES, segments, (row) =>
+    row.accept ? row.accept(segments) : true,
+  )!;
+  return best.row.handler(
+    {
       req,
       env,
       db,
-      clean.slice("/login/sso/".length),
       now,
-    );
-  }
-  // I-06: Google, Apple and Steam on the login card (`../providers/flow.ts`).
-  if (clean.startsWith("/login/")) {
-    return handleProviderSignInPath(req, env, db, clean, {
-      now,
-      settings: opts.settings,
-    });
-  }
-  if (clean === "/callback")
-    return handlePortalCallback(req, env, db, now, opts.settings);
-  if (clean === "/logout") return handlePortalLogout(req, env, db, now);
-  if (clean === "/magic/verify") return handleMagicVerify(req, env, db, now);
-  if (clean === "/api" || clean.startsWith("/api/")) {
-    return handlePortalApi(
-      req,
-      env,
-      db,
       clean,
-      now,
-      opts.hooksFor,
-      opts.settings,
-    );
-  }
-  // PX-W1: the same-origin media proxy (`media.ts`): `/media/<product>/<asset>`, public. Every
-  // other path under `/media` is its not-found, never the SPA shell.
-  // I-07, PX-W16: account pictures, `/media/avatar/<asset>` (`avatar` is a reserved product slug,
-  // so this never shadows a product's art).
-  const avatar = clean.match(/^\/media\/avatar\/([^/]+)$/);
-  if (avatar) return serveAvatar(req, env, avatar[1] ?? "");
-  if (clean === "/media" || clean.startsWith("/media/")) {
-    const media = clean.match(/^\/media\/([^/]+)\/([^/]+)$/);
-    return handlePortalMedia(
-      req,
-      env,
-      db,
-      // Not decoded: a slug and an asset name are plain ASCII, and anything else is refused.
-      media?.[1] ?? "",
-      media?.[2] ?? "",
-      now,
-      opts.hooksFor,
-    );
-  }
-  const download = clean.match(/^\/download\/([^/]+)$/);
-  if (download?.[1]) {
-    return handlePortalDownload(
-      req,
-      env,
-      db,
-      decodeURIComponent(download[1]),
-      now,
-      opts.hooksFor,
-    );
-  }
-  return servePortalAsset(req, env, db, clean);
+      hooksFor: opts.hooksFor,
+      settings: opts.settings,
+    },
+    best.matched,
+  );
 }
