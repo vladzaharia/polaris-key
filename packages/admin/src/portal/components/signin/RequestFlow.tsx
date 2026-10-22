@@ -128,7 +128,9 @@ export function RequestFlow({
     try {
       await mutate("signOutHere");
     } catch {
-      // The session check below says what is true.
+      // The session was not ended (the table only runs after a confirmed write), so the families
+      // stay; the session check says what is true.
+      await qc.invalidateQueries({ queryKey: qk.me() });
     }
   };
 

@@ -749,3 +749,24 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
     expect(await screen.findByText(/already in another/i)).toBeTruthy();
   });
 });
+
+describe("Not you? (the sign-out can fail)", () => {
+  const meReads = () =>
+    fetchedRequests().filter((r) => r === "GET /api/me").length;
+
+  it("re-reads the session whether the sign-out was confirmed or not", async () => {
+    for (const logout of [{ status: 200 }, "network"] as const) {
+      cleanup();
+      flow(choices(), { "POST /logout": logout });
+      renderPortal();
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Choose a license for this device",
+      });
+      const before = meReads();
+      await userEvent.click(screen.getByRole("button", { name: "Not you?" }));
+      await waitFor(() => expect(meReads()).toBeGreaterThan(before));
+      expect(fetchedRequests()).toContain("POST /logout");
+    }
+  });
+});
