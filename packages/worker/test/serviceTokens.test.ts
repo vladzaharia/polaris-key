@@ -123,10 +123,14 @@ describe("minting a service token", () => {
       token_hash: await hashCiCredential(env, body.token),
     });
     expect(JSON.stringify(row)).not.toContain(body.token);
+    // The hint is the token's last four characters, in the answer and the list.
+    expect(body.view.hint).toBe(body.token.slice(-4));
+    expect(row!.hint).toBe(body.token.slice(-4));
     expect(await resolves(body.token)).toBe(true);
     // Listed, never with the token or its hash.
     const listed = await (await admin("GET", tokens())).json();
     expect(listed.serviceTokens).toHaveLength(1);
+    expect(listed.serviceTokens[0].hint).toBe(body.token.slice(-4));
     expect(JSON.stringify(listed)).not.toContain(body.token);
     expect(JSON.stringify(listed)).not.toContain(row!.token_hash as string);
     expect(listed.limits).toMatchObject({

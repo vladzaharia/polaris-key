@@ -678,6 +678,7 @@ interface CiTokenRow {
   revoked_at: number | null;
   created_by: string;
   last_used_at?: number | null;
+  hint?: string | null;
 }
 
 /**
@@ -869,8 +870,8 @@ export async function issueStaticCiToken(
   await db.run(
     `INSERT INTO ci_tokens
        (token_hash, token_id, product, kind, scopes_json, subject, label, jti, issued_at,
-        expires_at, revoked_at, created_by)
-     VALUES (?, ?, ?, 'static', ?, ?, ?, NULL, ?, ?, NULL, ?)`,
+        expires_at, revoked_at, created_by, hint)
+     VALUES (?, ?, ?, 'static', ?, ?, ?, NULL, ?, ?, NULL, ?, ?)`,
     tokenHash,
     tokenId,
     input.product,
@@ -880,6 +881,7 @@ export async function issueStaticCiToken(
     input.now,
     input.expiresAt,
     input.createdBy,
+    token.slice(-4),
   );
   return {
     token,
@@ -901,6 +903,8 @@ export interface CiTokenListing {
   createdBy: string;
   /** Last accepted on the registry host, at hourly resolution; null if never. */
   lastUsedAt: number | null;
+  /** The token's last four characters; null for a token made before F-33b.4 and for OIDC tokens. */
+  hint: string | null;
 }
 
 /** A product's tokens, newest first — never a hash, never a token. */
@@ -930,6 +934,7 @@ function listingOf(r: CiTokenRow): CiTokenListing {
     revokedAt: r.revoked_at,
     createdBy: r.created_by,
     lastUsedAt: r.last_used_at ?? null,
+    hint: r.hint ?? null,
   };
 }
 

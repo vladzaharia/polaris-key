@@ -221,6 +221,7 @@ function serviceView(
     createdAt: t.issuedAt,
     expiresAt: t.expiresAt,
     lastUsedAt: t.lastUsedAt,
+    hint: t.hint,
     revokedAt: t.revokedAt,
     revokedBy: t.revokedAt !== null ? by.revokedBy : null,
     revokeReason: t.revokedAt !== null ? by.revokeReason : null,
