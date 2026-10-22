@@ -1,5 +1,5 @@
 /**
- * A scripted admin API for the Core pages (Overview, Services, Devices, Keys & secrets,
+ * A scripted admin API for the Core pages (Overview, Services, Devices, Keys and secrets,
  * Activity, Settings): enough data that every section has something to draw. Used by
  * `core.e2e.test.ts`.
  */

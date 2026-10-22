@@ -102,7 +102,7 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   // The icon and accents are declared in `.pkey/product`; Presentation uploads hosted files
   // (other keys), and nothing in the console reads the accents.
   "core.presentation": manifest("product"),
-  // ST-12: Keys & secrets → Device trust (view-only members see it locked).
+  // ST-12: Keys and secrets → Device trust (view-only members see it locked).
   "core.trustPolicy": at("keys", "Device trust"),
   // The wizards' saved choices (ST-39): written by their own steps, never a settings control.
   "core.setup": API,

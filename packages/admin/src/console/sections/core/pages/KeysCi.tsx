@@ -1,5 +1,5 @@
 /**
- * Keys & secrets → CI publishing (docs/design/ADMIN.md §6.7): the trusted-publisher policy a
+ * Keys and secrets → CI publishing (docs/design/ADMIN.md §6.7): the trusted-publisher policy a
  * GitHub Actions run must match to publish, and static CI tokens for any other CI.
  *
  * - Editing the publisher claims it from the manifest (`source` becomes `admin`); resyncs then
@@ -201,7 +201,7 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
 }
 
 /**
- * Set or edit the trusted publisher. Keys & secrets → CI publishing and Release's guided panel
+ * Set or edit the trusted publisher. Keys and secrets → CI publishing and Release's guided panel
  * open this same drawer, so CI publishing is edited the same way from either place.
  */
 export function PublisherDrawer({
@@ -553,7 +553,7 @@ function TokensRow({ slug }: { slug: string }): React.ReactElement {
 }
 
 /**
- * Issue a CI token, then show it once. Keys & secrets → CI publishing and Release's guided panel
+ * Issue a CI token, then show it once. Keys and secrets → CI publishing and Release's guided panel
  * open this same flow.
  */
 export function IssueCiTokenFlow({

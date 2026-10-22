@@ -1,5 +1,5 @@
 /**
- * Distribution → Channel credentials (admin chunk 9, ADMIN.md §6.4): moved from Keys & secrets
+ * Distribution → Channel credentials (admin chunk 9, ADMIN.md §6.4): moved from Keys and secrets
  * (the "Channel credentials card (P5-01)" suite lived in `secrets.test.tsx`). Write-only values,
  * pins, kind-first drawer, rotate, delete, the platform store connection's refusal (A-16) and the
  * connector cards. Closes OUT-1 to OUT-7.

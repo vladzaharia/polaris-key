@@ -11,6 +11,6 @@ export const AREA_NAMES = {
   signin: "Sign-in",
   sync: "Cloud Sync",
   commerce: "Commerce",
-  keys: "Keys & secrets",
+  keys: "Keys and secrets",
   settings: "Settings",
 } as const;

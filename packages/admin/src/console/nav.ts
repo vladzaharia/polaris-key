@@ -310,7 +310,7 @@ export const SECTIONS: NavSection[] = [
       {
         page: "services",
         tile: "product",
-        label: "Features & general",
+        label: "Features and general",
         path: "settings/features",
         icon: Blocks,
         docs: "/docs/operate/console/products/",
@@ -364,7 +364,7 @@ export const SECTIONS: NavSection[] = [
       {
         page: "keys",
         tile: "product",
-        label: "Keys & secrets",
+        label: "Keys and secrets",
         path: "settings/keys",
         icon: LockKeyhole,
         docs: "/docs/operate/console/keys-and-secrets/",

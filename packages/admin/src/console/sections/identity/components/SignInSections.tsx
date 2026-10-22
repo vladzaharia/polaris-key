@@ -99,7 +99,7 @@ export function StatusSection({
   enabled: boolean;
 }): React.ReactElement {
   const queryClient = useQueryClient();
-  // The same gate as Settings → Features & general: the switch is a Core setting.
+  // The same gate as Settings → Features and general: the switch is a Core setting.
   const gate = useWriteGate("core", slug, "Settings");
   const busy = React.useRef(false);
   const [working, setWorking] = React.useState(false);

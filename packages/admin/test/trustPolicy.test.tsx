@@ -73,7 +73,7 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("Keys & secrets → Device trust", () => {
+describe("Keys and secrets → Device trust", () => {
   it("reads the stored policy in words", async () => {
     mount();
     expect(await screen.findByText("ABCDE12345, production")).toBeTruthy();
