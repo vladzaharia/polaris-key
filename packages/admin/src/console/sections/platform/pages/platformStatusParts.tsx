@@ -185,10 +185,7 @@ export function HealthByArea({
       <Loaded data={assessment} error={error} onRetry={onRetry}>
         <CardRows label="Health by area">
           {(assessment ? areasOf(assessment) : []).map((area) => (
-            <li
-              key={area.id}
-              className="flex items-center gap-3 py-2 text-sm"
-            >
+            <li key={area.id} className="flex items-center gap-3 py-2 text-sm">
               <ServiceGlyph id={area.service} />
               <span className="min-w-0 flex-1 break-words text-fg">
                 {area.label}

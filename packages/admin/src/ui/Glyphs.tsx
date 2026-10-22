@@ -110,10 +110,7 @@ export function PlatformGlyphs({
       role="img"
       aria-label={label}
       title={label}
-      className={cn(
-        "inline-flex items-center gap-2 text-fg-muted",
-        className,
-      )}
+      className={cn("inline-flex items-center gap-2 text-fg-muted", className)}
     >
       {platforms.map((p) => (
         <PlatformGlyph key={p} platform={p} />
