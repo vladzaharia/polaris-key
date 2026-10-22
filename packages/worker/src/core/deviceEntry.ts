@@ -14,7 +14,6 @@
 // client network. The code rides in the query string, so the page is never cached and never sent
 // onward as a Referer, and no code is logged here.
 
-import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 import type { Env } from "../platform/env.js";
 import { escapeHtml } from "../platform/html.js";
 import {
@@ -29,8 +28,6 @@ import { brandedHtmlSecurityHeaders } from "./securityHeaders.js";
 
 const MISS =
   "No device is waiting for that code. Check your device's screen: codes last 10 minutes.";
-/** The catalog's line (`signin.rateLimitedFew`), so the Worker's card and the kits say the same (B-103). */
-const LIMITED_TITLE = KIT_COPY_EN["signin.rateLimitedFew"];
 const LIMITED = "The code on your device still works until it expires.";
 
 /** How long the 429 tells the person to wait: the `retry-after` the page sends. */
@@ -94,10 +91,11 @@ export function codeEntryBody(opts: {
 /** Too many tries: a neutral callout that gives the time to try again, and nothing to press (a
  *  button could only reload into the same 429). */
 export function tooManyBody(seconds: number = ENTRY_RETRY_SECONDS): string {
+  // The catalog's `signin.rateLimited` with the time the page's `retry-after` states, said once.
   return callout(
     "clock",
-    LIMITED_TITLE,
-    `Try again in ${waitText(seconds)}. ${LIMITED}`,
+    `Too many codes. Try again in ${waitText(seconds)}.`,
+    LIMITED,
   );
 }
 

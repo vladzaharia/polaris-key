@@ -3,7 +3,6 @@
 // step offers Sign in and Deny through one decision; and a device link or form that has gone stale
 // ends on a Locker page, never bare JSON (a JSON client still gets JSON).
 import { beforeEach, describe, expect, it } from "vitest";
-import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
@@ -121,13 +120,12 @@ describe("the code entry", () => {
     }
     expect(res!.status).toBe(429);
     const html = await res!.text();
-    // The catalog's line, not a Worker-only one (B-103).
-    expect(html).toContain(KIT_COPY_EN["signin.rateLimitedFew"]);
+    // The catalog's `signin.rateLimited` shape (B-103), with the time the `retry-after` states.
+    expect(html).toContain("Too many codes. Try again in 1 minute.");
     expect(html).toContain(
       "The code on your device still works until it expires.",
     );
     // N6: the time to try again, and nothing to press (a button could only reload into the same 429).
-    expect(html).toContain("Try again in 1 minute.");
     expect(res!.headers.get("retry-after")).toBe("60");
     expect(html).not.toMatch(/<a [^>]*class="button/);
     expect(html).not.toContain("<form");
