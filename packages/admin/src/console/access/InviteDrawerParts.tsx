@@ -146,7 +146,7 @@ export function EmailChips({
                 {member && !bad ? (
                   <span
                     aria-hidden
-                    className="inline-flex size-5 items-center justify-center rounded-full bg-surface-sunken text-[10px] font-semibold"
+                    className="inline-flex size-5 items-center justify-center rounded-full bg-surface-sunken text-xs font-semibold"
                   >
                     {initialsOf(member.name, member.email)}
                   </span>
@@ -437,8 +437,8 @@ export function RoleFields({
           aria-describedby={reason ? groupId : undefined}
           id={`${idPrefix}-card`}
           columns={2}
-          // Two by two on a phone too.
-          className="grid-cols-2"
+          // Two by two on a phone too; one column once the text is large enough (rem) to need it.
+          className="grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))]"
           value={card}
           disabled={disabled}
           onChange={(c) =>
