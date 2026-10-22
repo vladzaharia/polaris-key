@@ -402,11 +402,11 @@ public fun PolarisIconBadge(icon: ImageVector, container: Color, content: Color,
  * The product's icon at [size]: the theme's logo (the host's icon, with the host's own semantics)
  * in the kit's squircle, or a monogram tile of the product's initial (Rubik 600 on the highest
  * container) when there is none; the monogram is decorative, since the product's name always sits
- * beside it or in the title. Nothing when the theme has no logo and the copy does not name the
- * product.
+ * beside it or in the title. Nothing when the theme has no logo and neither [name] nor the copy
+ * names the product.
  */
 @Composable
-internal fun PolarisProductIcon(size: Dp, modifier: Modifier = Modifier) {
+internal fun PolarisProductIcon(size: Dp, modifier: Modifier = Modifier, name: String? = null) {
     val theme = PolarisTheme.current
     val logo = theme.logo
     val shape = PolarisTheme.iconShape
@@ -414,7 +414,7 @@ internal fun PolarisProductIcon(size: Dp, modifier: Modifier = Modifier) {
         Box(modifier.size(size).clip(shape), contentAlignment = Alignment.Center) { logo() }
         return
     }
-    val initial = productName(theme.copy)?.trim()?.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar() ?: return
+    val initial = (name?.takeIf { it.isNotBlank() } ?: productName(theme.copy))?.trim()?.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar() ?: return
     val fontSize = with(LocalDensity.current) { (size * 0.46f).toSp() }
     Surface(
         modifier = modifier.size(size).clearAndSetSemantics {},
@@ -446,7 +446,7 @@ internal fun PolarisProductHeader(presentedName: String? = null, gap: Dp = polar
     val name = presentedName?.takeIf { it.isNotBlank() } ?: productName(theme.copy)
     if (name == null && theme.logo == null) return
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
-        PolarisProductIcon(32.dp)
+        PolarisProductIcon(32.dp, name = name)
         if (name != null) {
             Text(
                 name,
@@ -821,6 +821,8 @@ internal fun PolarisTextField(
     enabled: Boolean = true,
     error: String? = null,
     supporting: List<String> = emptyList(),
+    /** A control inside the field at its end (the key field's paste). */
+    trailing: (@Composable () -> Unit)? = null,
     focusRequester: FocusRequester? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
@@ -833,6 +835,7 @@ internal fun PolarisTextField(
             onValueChange = onValueChange,
             label = { Text(label) },
             placeholder = placeholder?.let { { Text(it) } },
+            trailingIcon = trailing,
             singleLine = true,
             enabled = enabled,
             isError = error != null,

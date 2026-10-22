@@ -66,6 +66,16 @@ internal val DeviceIcon: ImageVector by lazy {
 }
 
 
+/** Material's "content paste" glyph: the key field's paste control. */
+internal val PolarisPasteIcon: ImageVector by lazy {
+    ImageVector.Builder("PolarisPaste", 24.dp, 24.dp, 24f, 24f).addPath(
+        pathData = PathParser()
+            .parsePathString("M19,2h-4.18C14.4,0.84 13.3,0 12,0c-1.3,0 -2.4,0.84 -2.82,2L5,2c-1.1,0 -2,0.9 -2,2v16c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2L21,4c0,-1.1 -0.9,-2 -2,-2zM12,2c0.55,0 1,0.45 1,1s-0.45,1 -1,1 -1,-0.45 -1,-1 0.45,-1 1,-1zM19,20L5,20L5,4h2v3h10L17,4h2v16z")
+            .toNodes(),
+        fill = SolidColor(androidx.compose.ui.graphics.Color.Black), // polaris-lint: allow-colour (an icon mask; Icon() tints it)
+    ).build()
+}
+
 /** A device's display name. */
 public fun PolarisCopy.deviceName(device: DeviceInfo): String = device.label?.takeIf { it.isNotBlank() } ?: deviceUnnamed
 

@@ -477,7 +477,7 @@ public fun PolarisGraceBanner(
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
-                        Text(body, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Start)
+                        if (body.isNotEmpty()) Text(body, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Start)
                     }
                 }
                 if (onReconnect != null || onDismiss != null) {
