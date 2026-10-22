@@ -1098,6 +1098,8 @@
     <string name="signin_approve_ask">新しいデバイスを承認しますか？</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_warning">ご自身が目の前のデバイスで開始した場合にのみ承認してください。Polaris Lockerや開発者がこれを求めることは絶対にありません。</string>
+    <!-- Device approval page (SIGN-IN.md §3.13): always shown above the buttons. Polaris Locker never translated. -->
+    <string name="signin_approve_checkDevice">お使いのデバイスにこのコードが表示されているか確認してください。</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_approve">承認してサインイン</string>
     <string name="signin_approve_approve__macos">承認してサインイン</string>

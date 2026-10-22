@@ -47653,6 +47653,66 @@
         }
       }
     },
+    "signin.approve.checkDevice": {
+      "comment": "Device approval page (SIGN-IN.md §3.13): always shown above the buttons. Polaris Locker never translated.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check that your device shows this code."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfen Sie, ob Ihr Gerät diesen Code anzeigt."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifiez que votre appareil affiche ce code."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprueba que tu dispositivo muestra este código."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confira se o seu dispositivo mostra este código."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controlla che il tuo dispositivo mostri questo codice."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "お使いのデバイスにこのコードが表示されているか確認してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기기에 이 코드가 표시되는지 확인하세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请确认你的设备上显示的是这个代码。"
+          }
+        }
+      }
+    },
     "signin.approve.codeLabel": {
       "comment": "Approve dialog: the field's label.",
       "extractionState": "manual",

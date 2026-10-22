@@ -139,6 +139,14 @@ async function start() {
 }
 
 const same = { "sec-fetch-site": "same-origin" };
+/** A person's own navigation: the device's link, a typed address, a bookmark. */
+const nav = {
+  "sec-fetch-site": "none",
+  "sec-fetch-mode": "navigate",
+  "sec-fetch-dest": "document",
+};
+/** The code form's GET submission on the customer host. */
+const formNav = { ...nav, "sec-fetch-site": "same-origin" };
 const cookieOf = (res: Response) =>
   res.headers.get("set-cookie")!.split(";")[0]!;
 
@@ -152,7 +160,7 @@ async function signInStarted(
   const open = await send(
     `${CUSTOMER}${path}?user_code=${f.userCode}${suffix}`,
     {
-      headers: same,
+      headers: nav,
     },
   );
   expect(open.status).toBe(303);
@@ -162,6 +170,7 @@ async function signInStarted(
   return {
     open,
     hop,
+    customerCookie: cookieOf(open),
     apiCookie: cookieOf(hop),
     state: authorize.searchParams.get("state")!,
     nonce: authorize.searchParams.get("nonce")!,
@@ -185,9 +194,11 @@ async function atApproval(f: { userCode: string }) {
     { headers: { cookie: s.apiCookie } },
   );
   expect(cb.status).toBe(303);
-  const hop = await send(cb.headers.get("location")!);
+  const hop = await send(cb.headers.get("location")!, {
+    headers: { cookie: s.customerCookie },
+  });
   expect(hop.status).toBe(303);
-  const cookie = cookieOf(hop);
+  const cookie = s.customerCookie;
   const page = await send(`${CUSTOMER}${hop.headers.get("location")}`, {
     headers: { cookie },
   });
@@ -209,7 +220,7 @@ describe("the device pages on the customer host", () => {
       const g = path === "/device" ? f : await start();
       const res = await send(
         `${CUSTOMER}${path}?user_code=${g.userCode.toLowerCase()}`,
-        { headers: same },
+        { headers: nav },
       );
       expect(res.status).toBe(303);
       const to = new URL(res.headers.get("location")!);
@@ -218,8 +229,8 @@ describe("the device pages on the customer host", () => {
       expect([...to.searchParams.keys()]).toEqual(["bind"]);
       expect(to.searchParams.get("bind")).toMatch(/^[A-Za-z0-9_-]{43}$/);
       expect(res.headers.get("location")).not.toContain(g.userCode);
-      // __Host- cookies are host-only: nothing is set on the customer host for the IdP leg.
-      expect(res.headers.get("set-cookie")).toBeNull();
+      // The customer host's own binder (host-only), so only this browser reaches the approval.
+      expect(res.headers.get("set-cookie")).toMatch(/^__Host-pk_lcb=/);
       expect(res.headers.get("cache-control")).toBe("no-store");
       expect(res.headers.get("referrer-policy")).toBe("no-referrer");
     }
@@ -228,7 +239,7 @@ describe("the device pages on the customer host", () => {
   it("the hop sets the binder on the API host and goes to the IdP; the token works once", async () => {
     const f = await start();
     const open = await send(`${CUSTOMER}/device?user_code=${f.userCode}`, {
-      headers: same,
+      headers: nav,
     });
     const hopUrl = open.headers.get("location")!;
     const hop = await send(hopUrl);
@@ -241,48 +252,174 @@ describe("the device pages on the customer host", () => {
     );
     expect(hop.headers.get("referrer-policy")).toBe("no-referrer");
     // A second visit (a replay, a forwarded copy of the hop URL) gets the generic page and no cookie.
+    // N6: it goes back to the customer host (from configuration), not to a key.plrs.im page.
     const again = await send(hopUrl);
-    expect(again.status).toBe(403);
+    expect(again.status).toBe(303);
+    expect(again.headers.get("location")).toBe(`${CUSTOMER}/device/approve`);
     expect(again.headers.get("set-cookie")).toBeNull();
     // The code is spent: the entry says so.
     expect(
       (
         await send(`${CUSTOMER}/device?user_code=${f.userCode}`, {
-          headers: same,
+          headers: nav,
         })
       ).status,
     ).toBe(404);
   });
 
-  it("a link followed from another site, or prefetched, starts nothing: the form with the code filled in", async () => {
+  it("only a person's own navigation starts a sign-in: everything else gets the form with the code unspent (B3)", async () => {
     const f = await start();
-    for (const headers of [
-      { "sec-fetch-site": "cross-site" } as Record<string, string>,
-      { "sec-purpose": "prefetch" },
-    ]) {
+    const cases: Record<string, string>[] = [
+      {}, // no Fetch Metadata at all: a link scanner, an unfurler, curl
+      { "user-agent": "Slackbot-LinkExpanding 1.0" },
+      { ...nav, "sec-fetch-site": "cross-site" },
+      { ...nav, "sec-fetch-site": "same-site" },
+      { ...nav, "sec-fetch-mode": "no-cors" },
+      { ...nav, "sec-fetch-mode": "cors" },
+      { ...nav, "sec-fetch-dest": "iframe" },
+      { ...nav, "sec-fetch-dest": "image" },
+      { "sec-fetch-site": "same-origin" }, // a forged half
+      { ...nav, "sec-purpose": "prefetch" },
+      { ...nav, "sec-purpose": "prefetch;prerender" },
+      { ...nav, purpose: "prefetch" },
+      { ...nav, "x-purpose": "preview" },
+      { ...nav, "x-moz": "prefetch" },
+    ];
+    for (const headers of cases) {
       const res = await send(`${CUSTOMER}/device?user_code=${f.userCode}`, {
         headers,
       });
-      expect(res.status).toBe(200);
+      expect(res.status, JSON.stringify(headers)).toBe(200);
       const html = await res.text();
       expect(html).toContain(`value="${f.userCode}"`);
       expect(res.headers.get("set-cookie")).toBeNull();
     }
-    // The code was not spent: the same-origin press goes on.
+    // The code was never spent: the person's own click goes on.
     expect(
       (
         await send(`${CUSTOMER}/device?user_code=${f.userCode}`, {
-          headers: same,
+          headers: nav,
         })
       ).status,
     ).toBe(303);
+  });
+
+  it("a typed code (the form's own GET) answers 200 with a meta refresh to the hop, never a redirect chain (B2)", async () => {
+    const f = await start();
+    const res = await send(`${CUSTOMER}/device?user_code=${f.userCode}`, {
+      headers: formNav,
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("referrer-policy")).toBe("no-referrer");
+    // form-action stays 'self': it is not widened to carry the chain.
+    const csp = res.headers.get("content-security-policy")!;
+    expect(csp).toContain("form-action 'self';");
+    expect(csp).not.toContain(API);
+    const html = await res.text();
+    const meta = /<meta http-equiv="refresh" content="0;url=([^"]+)">/.exec(
+      html,
+    )![1]!;
+    expect(meta.startsWith(`${API}/djdl/identity/auth/device?bind=`)).toBe(
+      true,
+    );
+    expect(html).toContain(`href="${meta}"`);
+    expect(html).toContain("Continue");
+    // The customer host's own binder rides on this response.
+    expect(res.headers.get("set-cookie")).toMatch(
+      /^__Host-pk_lcb=[A-Za-z0-9_-]{43}; Path=\/; Max-Age=600; HttpOnly; Secure; SameSite=Lax$/,
+    );
+    // The hop works from the page's link.
+    expect((await send(meta)).status).toBe(303);
+  });
+
+  it("a hop URL handed to another browser does not bind it: no customer-host binder, no approval (B1)", async () => {
+    const f = await start();
+    // The attacker opens its own code and keeps the hop URL.
+    const open = await send(`${CUSTOMER}/device?user_code=${f.userCode}`, {
+      headers: nav,
+    });
+    const attackerCookie = cookieOf(open);
+    const hopUrl = open.headers.get("location")!;
+    // The victim's browser follows the hop (no customer-host cookie) and signs in at the IdP.
+    const hop = await send(hopUrl, {
+      headers: { "sec-fetch-site": "cross-site", "sec-fetch-mode": "navigate" },
+    });
+    expect(hop.status).toBe(303);
+    const authorize = new URL(hop.headers.get("location")!);
+    installIdp({ ...PERSON, nonce: authorize.searchParams.get("nonce") });
+    const cb = await send(
+      `${API}/djdl/identity/auth/callback?code=c&state=${authorize.searchParams.get("state")}`,
+      { headers: { cookie: cookieOf(hop) } },
+    );
+    expect(cb.status).toBe(303);
+    const approveHop = cb.headers.get("location")!;
+    // Victim browser: no customer-host binder.
+    const victim = await send(approveHop);
+    expect(victim.status).toBe(403);
+    expect(victim.headers.get("set-cookie")).toBeNull();
+    expect(await victim.text()).toContain("This page has expired");
+    // The attacker's own browser cannot use the spent token either.
+    const spent = await send(approveHop, {
+      headers: { cookie: attackerCookie },
+    });
+    expect(spent.status).toBe(403);
+  });
+
+  it("the same browser that opened the code reaches its approval page (B1)", async () => {
+    const f = await start();
+    const open = await send(`${CUSTOMER}/device?user_code=${f.userCode}`, {
+      headers: nav,
+    });
+    const own = cookieOf(open);
+    const hop = await send(open.headers.get("location")!);
+    const authorize = new URL(hop.headers.get("location")!);
+    installIdp({ ...PERSON, nonce: authorize.searchParams.get("nonce") });
+    const cb = await send(
+      `${API}/djdl/identity/auth/callback?code=c&state=${authorize.searchParams.get("state")}`,
+      { headers: { cookie: cookieOf(hop) } },
+    );
+    const step = await send(cb.headers.get("location")!, {
+      headers: { cookie: own },
+    });
+    expect(step.status).toBe(303);
+    expect(step.headers.get("set-cookie")).toBeNull();
+    const page = await send(`${CUSTOMER}${step.headers.get("location")}`, {
+      headers: { cookie: own },
+    });
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    expect(html).toContain("Sign in on");
+    // N7: the always-on device check line.
+    expect(html).toContain("Check that your device shows this code.");
+  });
+
+  it("the API host takes no confirm POST once the customer host is on (N1)", async () => {
+    const f = await start();
+    const res = await send(`${API}/djdl/identity/auth/device`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", ...same },
+      body: `user_code=${f.userCode}`,
+    });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(`${CUSTOMER}/device`);
+    expect(await res.text()).not.toContain('name="csrf"');
+  });
+
+  it("a surrogate split in the typed code does not throw on the API forward (N8)", async () => {
+    const typed = "a".repeat(63) + "\u{1F600}";
+    const res = await send(
+      `${API}/djdl/identity/auth/device?user_code=${encodeURIComponent(typed)}`,
+    );
+    expect(res.status).toBe(302);
   });
 
   it("serves the form with no code, names no product on a miss, and takes no POST", async () => {
     await start();
     expect((await send(`${CUSTOMER}/device`)).status).toBe(200);
     const miss = await send(`${CUSTOMER}/device?user_code=BBBBBBBB`, {
-      headers: same,
+      headers: nav,
     });
     expect(miss.status).toBe(404);
     expect((await miss.text()).toLowerCase()).not.toContain("djdl");
@@ -340,18 +477,19 @@ describe("the device pages on the customer host", () => {
   });
 
   it("the IdP's callback hands the binder back to the customer host with a single-use token and sets no cookie", async () => {
-    const { cb, hop } = await atApproval(await start());
+    const { cb, hop, cookie } = await atApproval(await start());
     const to = new URL(cb.headers.get("location")!);
     expect(to.origin + to.pathname).toBe(`${CUSTOMER}/device/approve`);
     expect([...to.searchParams.keys()]).toEqual(["bind"]);
     expect(cb.headers.get("set-cookie")).toBeNull();
     // The hop cookie is the customer host's own: host-only, Secure, HttpOnly, flow-lived.
-    expect(hop.headers.get("set-cookie")).toMatch(
-      /^__Host-pk_lcb=[A-Za-z0-9_-]{43}; Path=\/; Max-Age=600; HttpOnly; Secure; SameSite=Lax$/,
-    );
+    // The cookie is the one set when the code was opened: the hop sets nothing, it only checks it.
+    expect(hop.headers.get("set-cookie")).toBeNull();
     expect(hop.headers.get("location")).toBe("/device/approve");
     // Spent: the same URL again is the generic page, with no cookie.
-    const replay = await send(cb.headers.get("location")!);
+    const replay = await send(cb.headers.get("location")!, {
+      headers: { cookie },
+    });
     expect(replay.status).toBe(403);
     expect(replay.headers.get("set-cookie")).toBeNull();
   });

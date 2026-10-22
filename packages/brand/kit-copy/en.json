@@ -2406,6 +2406,11 @@
       "role": "body",
       "note": "Sign in with another device (SIGN-IN.md §3.11)."
     },
+    "signin.approve.checkDevice": {
+      "value": "Check that your device shows this code.",
+      "role": "body",
+      "note": "Device approval page (SIGN-IN.md §3.13): always shown above the buttons. Polaris Locker never translated."
+    },
     "signin.approve.approve": {
       "value": "Approve and sign it in",
       "role": "button",

@@ -477,6 +477,7 @@
   "signin.approve.waiting": "En attente de votre approbation sur l’autre appareil…",
   "signin.approve.ask": "Approuver un nouvel appareil ?",
   "signin.approve.warning": "N’approuvez que si vous êtes à l’origine de cette demande, sur un appareil qui se trouve devant vous. Personne chez Polaris Locker ni aucun développeur ne vous le demandera jamais.",
+  "signin.approve.checkDevice": "Vérifiez que votre appareil affiche ce code.",
   "signin.approve.approve": "Approuver et connecter",
   "signin.approve.deny": "Refuser",
   "signin.approve.denied": "Cette demande a été refusée. Utilisez un autre moyen de vous connecter.",

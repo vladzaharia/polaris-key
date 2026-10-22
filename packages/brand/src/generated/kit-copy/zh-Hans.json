@@ -477,6 +477,7 @@
   "signin.approve.waiting": "正在等待你在另一台设备上批准…",
   "signin.approve.ask": "要批准新设备吗？",
   "signin.approve.warning": "仅当是你本人在面前的设备上发起时才批准。Polaris Locker或任何开发者都不会向你索要此信息。",
+  "signin.approve.checkDevice": "请确认你的设备上显示的是这个代码。",
   "signin.approve.approve": "批准并登录",
   "signin.approve.deny": "拒绝",
   "signin.approve.denied": "该请求已被拒绝。请换一种方式登录。",

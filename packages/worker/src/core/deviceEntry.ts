@@ -143,12 +143,23 @@ export const DEVICE_ENTRY_WIDE_WINDOW_SEC = 60;
  *  formatted user code. */
 export type DeviceEntryHit = (slug: string, code: string) => Promise<Response>;
 
-/** A request that must not start a sign-in by itself: a link followed from another site, or a
- *  browser's speculative load. It gets the form with the code filled in, and one press. */
-function startsNothing(req: Request): boolean {
-  if (req.headers.get("sec-fetch-site") === "cross-site") return true;
-  const purpose = `${req.headers.get("sec-purpose") ?? ""} ${req.headers.get("purpose") ?? ""}`;
-  return /prefetch|prerender/i.test(purpose);
+/**
+ * Only a person's own navigation starts a sign-in: Fetch Metadata that says so (`same-origin`: the
+ * code form; `none`: the device's link, a typed address, a bookmark), a `navigate` of a `document`,
+ * and no speculative purpose. Anything else (no metadata at all, a link scanner or unfurler, a
+ * cross-site or same-site link, a prefetch) gets the form with the code filled in, unspent.
+ * Residual: a sandbox that drives a real browser sends `none` like a person does.
+ */
+function startsSignIn(req: Request): boolean {
+  const h = req.headers;
+  const site = h.get("sec-fetch-site");
+  if (site !== "same-origin" && site !== "none") return false;
+  if (h.get("sec-fetch-mode") !== "navigate") return false;
+  if (h.get("sec-fetch-dest") !== "document") return false;
+  if (h.has("sec-purpose") || h.has("purpose")) return false;
+  if (/preview/i.test(h.get("x-purpose") ?? "")) return false;
+  if (h.has("x-moz")) return false;
+  return true;
 }
 
 export async function handleDeviceEntry(
@@ -164,7 +175,7 @@ export async function handleDeviceEntry(
   // Where a hit starts the sign-in itself (the customer host), a request that did not come from
   // this page or the device's own link gets the form instead: a state change never rides a
   // cross-site navigation or a prefetch.
-  if (onHit && (req.method === "HEAD" || startsNothing(req)))
+  if (onHit && (req.method === "HEAD" || !startsSignIn(req)))
     return page(tv, 200, typedCode(raw));
 
   const ok = await rateLimitOk(

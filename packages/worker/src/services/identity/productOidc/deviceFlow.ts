@@ -7,10 +7,14 @@ import { hashKey } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
 import { hostOrigin } from "../../../core/hosts.js";
 import { apiOrigin } from "../../../core/customerHost.js";
+import { renderAuthCard, icon } from "../../../core/brandHtml.js";
+import { brandedHtmlSecurityHeaders } from "../../../core/securityHeaders.js";
+import { escapeHtml } from "../../../platform/html.js";
 import { consumeBindToken, issueBindToken } from "../../../core/signInBind.js";
 import {
   DEVICE_ENTRY_WIDE_LIMIT,
   DEVICE_ENTRY_WIDE_WINDOW_SEC,
+  ENTRY_FOOTER,
   typedCode,
 } from "../../../core/deviceEntry.js";
 import { appForPage } from "../../../core/brandPage.js";
@@ -305,7 +309,7 @@ export async function confirmDeviceFlow(
     view,
   );
   if (bound instanceof Response) return bound;
-  return handOff(env, product, record, bound, false);
+  return handOff(req, env, product, record, bound, false);
 }
 
 /** The binder the confirming browser will hold, or the response that ends the visit. */
@@ -344,9 +348,13 @@ async function bindDeviceFlow(
     env,
     deviceKey,
     token === null
-      ? { expect: { confirmedAt: null }, set: { confirmedAt: now } }
+      ? {
+          expect: { confirmedAt: null },
+          set: { confirmedAt: now },
+          unset: ["csrf"],
+        }
       : {
-          expect: { csrf: token },
+          expect: { csrf: token, confirmedAt: null },
           set: { confirmedAt: now },
           unset: ["csrf"],
         },
@@ -359,6 +367,8 @@ async function bindDeviceFlow(
   // only finish where the human confirmed, not in a victim's browser the starter phished.
   const binder = randomToken(32);
   const stamped = await updateArtefact(env, stateKey, {
+    // One stamp per flow: a second confirmation never replaces the binder.
+    expect: { confirmedAt: null, binder: null },
     set: {
       confirmedAt: now,
       // The large-type variant follows the person through the IdP and the chooser.
@@ -387,6 +397,7 @@ async function bindDeviceFlow(
  *  token carries it to the API host, which sets it and 303s on to the authorize URL it reads
  *  back from the store (LK-04's bind hop, for the device pages). */
 async function handOff(
+  req: Request,
   env: Env,
   product: Product,
   record: DeviceFlowRecord,
@@ -407,15 +418,52 @@ async function handOff(
       binder,
       next: record.authorizeUrl,
     });
-    headers.set(
-      "location",
-      `${api}/${product.slug}/identity/auth/device?bind=${token}`,
-    );
+    const hop = `${api}/${product.slug}/identity/auth/device?bind=${token}`;
+    // The customer host's own binder cookie (host-only): the approval page, back on this host,
+    // answers only the browser that opened the code. The hop URL alone binds nothing here (B1).
+    const cookie = binderSetCookie(binder, FLOW_TTL_SECONDS);
+    headers.append("set-cookie", cookie);
+    // A typed code is a form submission under `form-action 'self'`, and browsers check that
+    // directive on every redirect of the chain: answer with a page that moves on by itself (B2).
+    if (req.headers.get("sec-fetch-site") === "same-origin")
+      return hopPage(hop, cookie);
+    headers.set("location", hop);
   } else {
     headers.set("location", record.authorizeUrl);
     headers.append("set-cookie", binderSetCookie(binder, FLOW_TTL_SECONDS));
   }
   return new Response(null, { status: 303, headers });
+}
+
+/** Lone surrogates (a slice through an emoji) would make `encodeURIComponent` throw. */
+function wellFormed(s: string): string {
+  return s.replace(
+    /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g,
+    "\ufffd",
+  );
+}
+
+/** The 200 that carries a form-started sign-in to the bind hop: `<meta refresh>` plus a plain
+ *  link. Not a redirect, so the form's `form-action 'self'` never meets the cross-origin hop. */
+function hopPage(hop: string, cookie: string): Response {
+  const html = renderAuthCard({
+    title: "Continuing",
+    heading: "Continuing to sign in",
+    body: `<a class="button" href="${escapeHtml(hop)}">Continue${icon("arrow-right")}</a>`,
+    footer: ENTRY_FOOTER,
+  }).replace(
+    '<meta charset="utf-8">',
+    `<meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtml(hop)}">`,
+  );
+  const headers = brandedHtmlSecurityHeaders(
+    new Headers({
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "referrer-policy": "no-referrer",
+    }),
+  );
+  headers.append("set-cookie", cookie);
+  return new Response(html, { status: 200, headers });
 }
 
 /**
@@ -444,7 +492,7 @@ export async function startDeviceSignIn(
     view,
   );
   if (bound instanceof Response) return bound;
-  return handOff(env, product, record, bound, true);
+  return handOff(req, env, product, record, bound, true);
 }
 
 /**
@@ -459,8 +507,20 @@ export async function completeDeviceBindHop(
 ): Promise<Response> {
   const token = new URL(req.url).searchParams.get("bind") ?? "";
   const bound = await consumeBindToken(env, token);
-  if (!bound || bound.kind !== "device-start" || bound.slug !== product.slug)
-    return startAgainPage();
+  if (!bound || bound.kind !== "device-start" || bound.slug !== product.slug) {
+    // A spent or expired hop: back to the customer host (from configuration), not a key.plrs.im page.
+    const customer = hostOrigin("customer", env);
+    return customer === null
+      ? startAgainPage()
+      : new Response(null, {
+          status: 303,
+          headers: {
+            location: `${customer}/device/approve`,
+            "referrer-policy": "no-referrer",
+            "cache-control": "no-store",
+          },
+        });
+  }
   return new Response(null, {
     status: 303,
     headers: {
@@ -595,12 +655,23 @@ export async function handleAuthDeviceEntry(
     return new Response(null, {
       status: 302,
       headers: {
-        location: `${customer}${tv ? "/tv" : "/device"}${typed?.trim() ? `?user_code=${encodeURIComponent(typed.slice(0, 64))}` : ""}`,
+        location: `${customer}${tv ? "/tv" : "/device"}${typed?.trim() ? `?user_code=${encodeURIComponent(wellFormed(typed.slice(0, 64)))}` : ""}`,
         "cache-control": "no-store",
         "referrer-policy": "no-referrer",
       },
     });
   }
+  // The old confirm page's POST (a stale form, a script) is not kept as a second path: it goes to
+  // the customer host's own entry, carrying nothing the customer host would trust.
+  if (req.method === "POST" && customer !== null && !onCustomer)
+    return new Response(null, {
+      status: 303,
+      headers: {
+        location: `${customer}${tv ? "/tv" : "/device"}`,
+        "cache-control": "no-store",
+        "referrer-policy": "no-referrer",
+      },
+    });
   if (onCustomer && req.method !== "GET") return methodNotAllowed();
 
   let rawCode: string | null;

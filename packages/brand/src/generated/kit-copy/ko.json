@@ -477,6 +477,7 @@
   "signin.approve.waiting": "다른 기기에서 승인하기를 기다리는 중…",
   "signin.approve.ask": "새 기기를 승인할까요?",
   "signin.approve.warning": "직접 시작했고 기기가 눈앞에 있을 때만 승인하세요. Polaris Locker나 개발자는 절대 이것을 요청하지 않아요.",
+  "signin.approve.checkDevice": "기기에 이 코드가 표시되는지 확인하세요.",
   "signin.approve.approve": "승인하고 로그인",
   "signin.approve.deny": "거부",
   "signin.approve.denied": "요청이 거부됐어요. 다른 방법으로 로그인하세요.",

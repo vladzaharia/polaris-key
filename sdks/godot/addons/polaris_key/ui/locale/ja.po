@@ -2985,6 +2985,11 @@ msgstr "新しいデバイスを承認しますか？"
 msgid "signin.approve.warning"
 msgstr "ご自身が目の前のデバイスで開始した場合にのみ承認してください。Polaris Lockerや開発者がこれを求めることは絶対にありません。"
 
+#. Check that your device shows this code.
+#. Device approval page (SIGN-IN.md §3.13): always shown above the buttons. Polaris Locker never translated.
+msgid "signin.approve.checkDevice"
+msgstr "お使いのデバイスにこのコードが表示されているか確認してください。"
+
 #. Approve and sign it in
 #. Sign in with another device (SIGN-IN.md §3.11).
 msgid "signin.approve.approve"

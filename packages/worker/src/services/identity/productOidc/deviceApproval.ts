@@ -15,6 +15,7 @@
 
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { checkDisplayName } from "@polaris-key/manifest";
+import { constantTimeEqual } from "../../../platform/compare.js";
 import { hashKey, randomId } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
 import { escapeHtmlKeepApostrophe as escapeHtml } from "../../../platform/html.js";
@@ -22,7 +23,7 @@ import { parseFlowRecord } from "../../../platform/json.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
-import { errorResponse, methodNotAllowed } from "../../../core/errors.js";
+import { methodNotAllowed } from "../../../core/errors.js";
 import { appendAudit } from "../../../core/audit.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
@@ -33,6 +34,7 @@ import {
   personRow,
   renderAuthCard,
 } from "../../../core/brandHtml.js";
+import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 import { appForPage, pageApp } from "../../../core/brandPage.js";
 import { readBodyText } from "../../../core/cappedBody.js";
 import {
@@ -43,15 +45,17 @@ import {
   updateArtefact,
   type ArtefactRef,
 } from "../../../core/singleUse.js";
-import {
-  binderClearCookie,
-  binderSetCookie,
-  readBinder,
-} from "../licenseChoice.js";
+import { binderClearCookie, readBinder } from "../licenseChoice.js";
 import { hostOrigin } from "../../../core/hosts.js";
+import { apiOrigin } from "../../../core/customerHost.js";
 import { consumeBindToken, issueBindToken } from "../../../core/signInBind.js";
 import { requestLocation } from "../place.js";
-import { choiceKey, redirectToChooser, startAgainPage } from "./chooser.js";
+import {
+  choiceKey,
+  choicePage,
+  redirectToChooser,
+  startAgainPage,
+} from "./chooser.js";
 import {
   CHOICE_FIELDS,
   FLOW_TTL_SECONDS,
@@ -203,7 +207,20 @@ async function findFlow(
     return startAgainPage();
   }
   // The licence chooser is still open: that is the explicit step, not this page.
-  if (flow.choiceOpen) return redirectToChooser(req, product);
+  // The chooser lives on the API host (until PX-14b retires it): the customer host has no such path.
+  if (flow.choiceOpen) {
+    const api = onCustomerHost(req, env) ? apiOrigin(env) : null;
+    return api === null
+      ? redirectToChooser(req, product)
+      : new Response(null, {
+          status: 303,
+          headers: {
+            location: `${api}/${product.slug}/identity/auth/choose`,
+            "referrer-policy": "no-referrer",
+            "cache-control": "no-store",
+          },
+        });
+  }
   return { stateKey, indexKey, binderHash, flow };
 }
 
@@ -291,11 +308,17 @@ export async function customerApproveTarget(
       now,
     ))
   )
-    return errorResponse(429, "rate_limited", "too many requests");
+    return tooManyPage();
   const url = new URL(req.url);
   if (req.method === "GET" && url.searchParams.has("bind")) {
     const bound = await consumeBindToken(env, url.searchParams.get("bind")!);
     if (!bound || bound.kind !== "device-approve") return startAgainPage();
+    // The token names the flow's browser, it never makes one: the cookie this host set when the
+    // code was opened must be the token's binder. A token handed to another browser (a hop URL
+    // forwarded to a victim) finds no such cookie and ends here (B1).
+    const mine = readBinder(req);
+    if (!mine || !constantTimeEqual(mine, bound.binder))
+      return startAgainPage();
     await putArtefact(
       env,
       slugRef(await hashKey(bound.binder, env.KEY_HASH_PEPPER)),
@@ -306,7 +329,6 @@ export async function customerApproveTarget(
       status: 303,
       headers: {
         location: `/device/approve${url.searchParams.get("again") === "1" ? "?again=1" : ""}`,
-        "set-cookie": binderSetCookie(bound.binder, FLOW_TTL_SECONDS),
         "referrer-policy": "no-referrer",
         "cache-control": "no-store",
       },
@@ -319,6 +341,17 @@ export async function customerApproveTarget(
     slugRef(await hashKey(binder, env.KEY_HASH_PEPPER)),
   );
   return slug ? { slug } : startAgainPage();
+}
+
+/** The branded 429 of the customer host's approval route. */
+function tooManyPage(): Response {
+  const res = choicePage(429, {
+    title: "Too many tries",
+    heading: "Too many tries",
+    body: `<p class="muted">Wait a minute, then try again.</p>`,
+  });
+  res.headers.set("retry-after", "60");
+  return res;
 }
 
 /** "14:32": the UTC time of day of a Unix time in seconds. */
@@ -592,6 +625,8 @@ async function renderApproval(
           }</p>`
         : "") +
       originWarning(req, flow) +
+      // Always on, whatever the place says: the person checks the device, not just the place.
+      `<p class="note">${escapeHtml(KIT_COPY_EN["signin.approve.checkDevice"] ?? "")}</p>` +
       `<form id="${formId}" method="post" action="${escapeHtml(approvePath(req, env, product))}">` +
       `<input type="hidden" name="token" value="${escapeHtml(token)}">` +
       `<div class="stack"><button class="button" type="submit" name="decision" value="approve"><span>Sign in on <bdi>${escapeHtml(label)}</bdi></span></button>` +
