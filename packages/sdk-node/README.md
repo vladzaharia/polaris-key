@@ -728,6 +728,14 @@ kit's usage result (exit 2, and the `--json` line) for an option a verb doesn't 
 pipe early (`| head -1`) ends quietly, and an unexpected failure prints its cause under
 `DEBUG=polaris`.
 
+**Changed in the terminal kit.** `activate` takes the key from `--key-file <path>`, then
+`--key-stdin`, then `$POLARIS_KEY_ACTIVATION_KEY`, then the positional (which warns), then the
+masked prompt or a pipe, the same names and order as the Python kit; an empty or unreadable file,
+or `--key-stdin` with nothing on stdin, ends in a usage result (exit 2). A product the client could
+not reach (no discovery document) is reported as `network` by `login`, `update`, `packs` and
+`config`, not `identity_disabled` or `service-unavailable`. `PortalStore.load()` no longer deletes a
+`portal.json` that a discovery wrote while it was reading.
+
 **Changed in the terminal kit.** The adapters' human output is new: the rail, catalog
 copy in the active locale (nine languages), color on a terminal, and new verb names `login` and
 `logout` (`sign-in` and `sign-out` still work). Human output is for people and may change between
