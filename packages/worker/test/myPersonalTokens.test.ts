@@ -511,9 +511,9 @@ describe("DELETE /me/personal-tokens/current", () => {
       ))!.revoked_at,
     ).not.toBeNull();
     // Revoked: the same token now gets nothing.
-    expect(
-      (await call(env, db, tok, "DELETE", `${MINE}/current`)).status,
-    ).toBe(401);
+    expect((await call(env, db, tok, "DELETE", `${MINE}/current`)).status).toBe(
+      401,
+    );
   });
 });
 
