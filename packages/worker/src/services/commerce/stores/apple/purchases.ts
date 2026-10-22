@@ -28,30 +28,30 @@
  * every `src/` file from calling it).
  */
 
-import { b64urlDecodeStrict } from "../../platform/bytes.js";
-import { parseJsonObject } from "../../platform/json.js";
-import type { Db } from "../../db/types.js";
-import type { Env } from "../../platform/env.js";
+import { b64urlDecodeStrict } from "../../../../platform/bytes.js";
+import { parseJsonObject } from "../../../../platform/json.js";
+import type { Db } from "../../../../db/types.js";
+import type { Env } from "../../../../platform/env.js";
 import {
   X509Error,
   base64ToBytes,
   verifyChain,
-} from "../../core/trust/x509.js";
-import { APPLE_ROOT_CA_G3_DER } from "./appleRoot.js";
-import type { AppStoreSettings } from "./settings.js";
-import { normaliseBinding, type VerifiedPurchase } from "./state.js";
-import { StoreUnavailable, storeJson } from "../../core/stores/http.js";
+} from "../../../../core/trust/x509.js";
+import { APPLE_ROOT_CA_G3_DER } from "./root.js";
+import type { AppStoreSettings } from "../../settings.js";
+import { normaliseBinding, type VerifiedPurchase } from "../../state.js";
+import { StoreUnavailable, storeJson } from "../../../../core/stores/http.js";
 import {
   APP_STORE_SERVER_API,
   APP_STORE_SERVER_API_SANDBOX,
   serverApiToken,
   type AppleServerContext,
-} from "../../core/stores/apple/server.js";
+} from "../../../../core/stores/apple/server.js";
 export {
   PLATFORM_APP_STORE_SERVER_CREDENTIAL,
   appStoreCredential,
   type AppleServerContext,
-} from "../../core/stores/apple/server.js";
+} from "../../../../core/stores/apple/server.js";
 
 export const APPLE_LEAF_OID = "1.2.840.113635.100.6.11.1";
 export const APPLE_INTERMEDIATE_OID = "1.2.840.113635.100.6.2.1";
@@ -340,52 +340,4 @@ export async function verifyAppleClaim(
   );
   checkTransaction(tx, ctx.settings);
   return applePurchase(tx);
-}
-
-// ── notifications ────────────────────────────────────────────────────────────────────────────
-
-export interface AppleNotification {
-  notificationUUID: string;
-  notificationType: string;
-  subtype: string | null;
-  environment: string;
-  bundleId: string;
-  appAppleId: number | null;
-  signedTransactionInfo: string | null;
-}
-
-const UUID_ANY =
-  /^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$/;
-
-/** Verify a Notifications V2 `signedPayload` and read its envelope. Throws `AppleRejected`. */
-export async function verifyAppleNotification(
-  signedPayload: string,
-  now: number,
-): Promise<AppleNotification> {
-  const p = await verifyAppleJws(signedPayload, now, {
-    maxAgeSeconds: APPLE_MAX_SIGNED_AGE_SECONDS,
-  });
-  const data =
-    p.data && typeof p.data === "object" && !Array.isArray(p.data)
-      ? (p.data as Record<string, unknown>)
-      : {};
-  if (
-    typeof p.notificationUUID !== "string" ||
-    !UUID_ANY.test(p.notificationUUID) ||
-    typeof p.notificationType !== "string" ||
-    p.notificationType.length > 64
-  )
-    return reject("invalid_jws");
-  return {
-    notificationUUID: p.notificationUUID.toLowerCase(),
-    notificationType: p.notificationType,
-    subtype: typeof p.subtype === "string" ? p.subtype : null,
-    environment: typeof data.environment === "string" ? data.environment : "",
-    bundleId: typeof data.bundleId === "string" ? data.bundleId : "",
-    appAppleId: typeof data.appAppleId === "number" ? data.appAppleId : null,
-    signedTransactionInfo:
-      typeof data.signedTransactionInfo === "string"
-        ? data.signedTransactionInfo
-        : null,
-  };
 }

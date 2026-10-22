@@ -1,0 +1,92 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the claim answers exactly as before > an unmapped Steam app answers as a non-owner and makes no store call 1`] = `
+{
+  "body": "{"error":{"code":"forbidden"},"reason":"not_owned","message":"Steam does not report this account as the owner of the DLC"}",
+  "status": 403,
+}
+`;
+
+exports[`the claim answers exactly as before > apple with a numeric transaction 1`] = `
+{
+  "body": "{"error":{"code":"bad_request"},"reason":"bad_body","message":"signedTransaction is required"}",
+  "status": 400,
+}
+`;
+
+exports[`the claim answers exactly as before > apple without a transaction 1`] = `
+{
+  "body": "{"error":{"code":"bad_request"},"reason":"bad_body","message":"signedTransaction is required"}",
+  "status": 400,
+}
+`;
+
+exports[`the claim answers exactly as before > inherited store name 1`] = `
+{
+  "body": "{"error":{"code":"bad_request"},"reason":"bad_body","message":"body must name a store: \\"app-store\\", \\"play\\" or \\"steam\\""}",
+  "status": 400,
+}
+`;
+
+exports[`the claim answers exactly as before > no store 1`] = `
+{
+  "body": "{"error":{"code":"bad_request"},"reason":"bad_body","message":"body must name a store: \\"app-store\\", \\"play\\" or \\"steam\\""}",
+  "status": 400,
+}
+`;
+
+exports[`the claim answers exactly as before > non-string store 1`] = `
+{
+  "body": "{"error":{"code":"bad_request"},"reason":"bad_body","message":"body must name a store: \\"app-store\\", \\"play\\" or \\"steam\\""}",
+  "status": 400,
+}
+`;
+
+exports[`the claim answers exactly as before > play without a sku 1`] = `
+{
+  "body": "{"error":{"code":"bad_request"},"reason":"bad_body","message":"productId and purchaseToken are required"}",
+  "status": 400,
+}
+`;
+
+exports[`the claim answers exactly as before > play without a token 1`] = `
+{
+  "body": "{"error":{"code":"bad_request"},"reason":"bad_body","message":"productId and purchaseToken are required"}",
+  "status": 400,
+}
+`;
+
+exports[`the claim answers exactly as before > steam with a bad app id 1`] = `
+{
+  "body": "{"error":{"code":"bad_request"},"reason":"bad_body","message":"ticket (hex) and dlcAppId are required"}",
+  "status": 400,
+}
+`;
+
+exports[`the claim answers exactly as before > steam with a non-hex ticket 1`] = `
+{
+  "body": "{"error":{"code":"bad_request"},"reason":"bad_body","message":"ticket (hex) and dlcAppId are required"}",
+  "status": 400,
+}
+`;
+
+exports[`the claim answers exactly as before > steam with a non-numeric app id 1`] = `
+{
+  "body": "{"error":{"code":"bad_request"},"reason":"bad_body","message":"ticket (hex) and dlcAppId are required"}",
+  "status": 400,
+}
+`;
+
+exports[`the claim answers exactly as before > steam without a ticket 1`] = `
+{
+  "body": "{"error":{"code":"bad_request"},"reason":"bad_body","message":"ticket (hex) and dlcAppId are required"}",
+  "status": 400,
+}
+`;
+
+exports[`the claim answers exactly as before > unknown store 1`] = `
+{
+  "body": "{"error":{"code":"bad_request"},"reason":"bad_body","message":"body must name a store: \\"app-store\\", \\"play\\" or \\"steam\\""}",
+  "status": 400,
+}
+`;
