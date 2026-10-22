@@ -9961,13 +9961,14 @@ puts on the Sign in link only after `sanitizeReturnTo` (a hand-made value falls 
 link); a signed-in reader without the admin area gets the access page's admin wording under a 403.
 
 **The customer host (LK-09).** Help is served at `polaris.locker/docs/help/*` through `handleDocs`,
-confined by `customerDocsPath` (Help, `/docs/_astro/`, `/docs/pagefind/`, `/docs/branding/`, the
+confined by `customerDocsPath` (Help, `/docs/_astro/`, `/docs/pagefind-help/`, `/docs/branding/`, the
 404 page); every other `/docs` path answers a 302 to the console host, and `key.plrs.im/docs/help/*`
 a 301 to the customer host. All served paths are public tier; the gate still runs on each.
 
 **Residual.** The docs sidebar is scoped per door in the page (`routeData.ts`), but a public
 page's HTML still names only its own door's pages. Anything placed under `/assets/` in the admin
-build is public by design. The developer door and Help are public. The search UI still loads the
-public bundle for every reader until DOC-02c picks the bundle by tier, so a member searching sees
-public results only (DOC-02c). `robots.txt` for the docs host is not served yet, and public HTML is
+build is public by design. The developer door and Help are public. The search dialog (DOC-02c) loads
+exactly one bundle: Help's own on the customer host, else the highest tier `/manage/api/me` says the
+session may read (never merged, never a gated bundle without that answer; the gate still runs on
+the request). `robots.txt` for the docs host is not served yet, and public HTML is
 `no-store`, not cacheable (LK-09).
