@@ -1,65 +1,282 @@
 /**
  * Packages, product scope (F-34.7, UX-33; mockups `packages.feeds` and `packages.feeds-empty`):
- * one card per provisioned feed, the access shown as a read-only chip, and an empty card when
- * the product declares no package. Nothing here turns a feed on: a feed exists because a package
- * is declared in `.pkey/release`. The off switch is F-34.8's, the cleanup notice F-36's; both
- * sit between the header and the cards.
+ * one card per provisioned feed, in tab order, each naming its packages and the version on each
+ * release track; the access is a read-only chip beside the URL. Nothing here turns a feed on: a
+ * feed exists because a package is declared in `.pkey/release`. The off switch is F-34.8's, the
+ * cleanup notice F-36's; both sit between the header and the cards.
  */
 
 import * as React from "react";
 import { Clock, Globe, Lock } from "lucide-react";
-import type { FeedSummary, FeedsOverviewDto } from "../../../../api.js";
+import type {
+  DeliverableDto,
+  FeedPackageRow,
+  FeedSummary,
+  FeedsOverviewDto,
+} from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { formatCount, fromSeconds } from "../../../../lib/format.js";
-import { CodeBlock } from "../../../../ui/CodeBlock.js";
 import { CopyButton } from "../../../../ui/CopyButton.js";
-import { EmptyState } from "../../../../ui/EmptyState.js";
 import { Section } from "../../../../ui/Section.js";
+import { Skeleton } from "../../../../ui/Skeleton.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../../../../api.js";
+import { qk } from "../../../data/queries.js";
 import { Link } from "../../../router.js";
+import { useFeedPackages } from "../data.js";
 import {
+  ECOSYSTEMS,
   ECOSYSTEM_ICONS,
   ECOSYSTEM_LABELS,
   FEED_ACCESS_LABELS,
   OFF_REASONS,
   accessDisplayLabel,
   feedHref,
+  packageHref,
   type FeedScope,
 } from "../model/model.js";
 import { FeedStatusPill } from "./FeedsArea.js";
+import { CommandLine, publishCommand } from "./PackagesEmpty.js";
 
-/** The feeds the product has: the ones a declared package provisioned. */
+/** The feeds the product has (the ones a declared package provisioned), in tab order. */
 export function provisionedFeeds(data: FeedsOverviewDto): FeedSummary[] {
-  return data.feeds.filter((f) => f.configured);
+  return ECOSYSTEMS.map((e) =>
+    data.feeds.find((f) => f.ecosystem === e && f.configured),
+  ).filter((f): f is FeedSummary => f !== undefined);
 }
 
-/** "Customers" or "Public", read-only; changing it is on the feed's Settings. */
-function AccessChip({ feed }: { feed: FeedSummary }): React.ReactElement {
-  const Icon = feed.accessMode === "public" ? Globe : Lock;
-  const label = feed.accessDisplay
-    ? accessDisplayLabel(feed.accessDisplay)
-    : (FEED_ACCESS_LABELS[feed.accessMode] ?? feed.accessMode);
+/** How often the overview is re-read while a feed waits for its first package. */
+export const PACKAGES_POLL_MS = 10_000;
+
+/** Is a feed waiting for its first package (and able to get one)? */
+export function isWaiting(f: FeedSummary): boolean {
+  return f.configured && f.status === "enabled" && f.packages === 0;
+}
+
+/** Re-read while nothing is declared or a feed waits for its first package. */
+export function pollPackages(d: FeedsOverviewDto | undefined): number | false {
+  if (!d) return false;
+  const feeds = provisionedFeeds(d);
+  return feeds.length === 0 || feeds.some(isWaiting) ? PACKAGES_POLL_MS : false;
+}
+
+/** Packages that show on a card before "(N more)". */
+const CARD_ROWS = 5;
+
+const TRACK_ORDER = ["stable", "beta", "dev"];
+
+/** The release tracks the rows carry, stable first. */
+function tracksOf(rows: FeedPackageRow[]): string[] {
+  const seen = new Set(rows.flatMap((r) => r.tags.map((t) => t.channel)));
+  return [...seen].sort((a, b) => {
+    const ia = TRACK_ORDER.indexOf(a);
+    const ib = TRACK_ORDER.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+  });
+}
+
+function Sep(): React.ReactElement {
   return (
-    <span
-      data-access-chip=""
-      className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-fg-muted"
-    >
-      <Icon aria-hidden className="size-3.5" />
-      {label}
+    <span aria-hidden className="text-fg-subtle">
+      ·{" "}
     </span>
   );
 }
 
-function FeedCard({
+/** "Customers" or "Public"; the link says where access changes. */
+function AccessChip({
   scope,
   feed,
 }: {
   scope: FeedScope;
   feed: FeedSummary;
 }): React.ReactElement {
+  const Icon = feed.accessMode === "public" ? Globe : Lock;
+  const label = feed.accessDisplay
+    ? accessDisplayLabel(feed.accessDisplay)
+    : (FEED_ACCESS_LABELS[feed.accessMode] ?? feed.accessMode);
+  return (
+    <Link
+      to={feedHref(scope, feed.ecosystem, "settings")}
+      data-access-chip=""
+      title="Change in Settings"
+      aria-label={`Access: ${label}. Change in Settings`}
+      className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-fg-muted hover:bg-hover hover:text-fg-strong"
+    >
+      <Icon aria-hidden className="size-3.5" />
+      {label}
+    </Link>
+  );
+}
+
+/** The registry URL with copy, breaking only after a `/` or a `.`. */
+function FeedUrl({
+  url,
+  label,
+}: {
+  url: string;
+  label: string;
+}): React.ReactElement {
+  const parts = url
+    .replace(/^https?:\/\//, "")
+    .split(/(?<=[/.])/)
+    .filter(Boolean);
+  return (
+    <span className="min-w-0 max-w-full text-xs">
+      <span className="font-mono">
+        {parts.map((p, i) => (
+          <React.Fragment key={i}>
+            {p}
+            <wbr />
+          </React.Fragment>
+        ))}
+      </span>{" "}
+      <CopyButton
+        value={url}
+        label={`Copy the ${label} registry URL`}
+        size="xs"
+      />
+    </span>
+  );
+}
+
+function PackageRows({
+  scope,
+  feed,
+}: {
+  scope: FeedScope;
+  feed: FeedSummary;
+}): React.ReactElement {
+  const query = useFeedPackages(scope, feed.ecosystem, "", "");
+  const label = ECOSYSTEM_LABELS[feed.ecosystem];
+  const rows = (query.data?.pages[0]?.items ?? []).slice(0, CARD_ROWS);
+  const tracks = tracksOf(rows);
+  const more = feed.packages - rows.length;
+  return (
+    <>
+      {query.isPending ? (
+        <div aria-hidden className="space-y-2">
+          <Skeleton className="h-5 w-2/3" />
+          <Skeleton className="h-5 w-1/2" />
+        </div>
+      ) : null}
+      {rows.length ? (
+        <ul
+          aria-label={`${label} packages`}
+          className="m-0 list-none divide-y divide-border p-0"
+        >
+          {rows.map((r) => (
+            <li
+              key={`${r.owner}/${r.deliverableId}`}
+              className="flex flex-col gap-1 py-2 first:pt-0 last:pb-0"
+            >
+              <Link
+                to={packageHref(scope, feed.ecosystem, r.owner, r.name)}
+                className="break-all font-mono text-sm text-fg-strong underline-offset-2 hover:underline"
+              >
+                {r.name}
+              </Link>
+              <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-fg-muted">
+                {tracks.map((t) => {
+                  const tag = r.tags.find((x) => x.channel === t);
+                  return (
+                    <span key={t} className="font-mono">
+                      {t}{" "}
+                      {tag ? (
+                        <span className="text-fg">{tag.version}</span>
+                      ) : (
+                        <span aria-label="none">—</span>
+                      )}
+                    </span>
+                  );
+                })}
+                <span>
+                  {tracks.length ? <Sep /> : null}
+                  {formatCount(r.versions)}{" "}
+                  {r.versions === 1 ? "version" : "versions"}
+                </span>
+                {r.lastPublishedAt ? (
+                  <>
+                    <span>
+                      <Sep />
+                      Last publish{" "}
+                      <Timestamp at={fromSeconds(r.lastPublishedAt)} />
+                    </span>
+                  </>
+                ) : null}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <Link
+        to={feedHref(scope, feed.ecosystem)}
+        className="mt-auto inline-block self-start pt-1 text-sm text-accent-fg underline-offset-2 hover:underline"
+      >
+        Open the {label} feed{more > 0 ? ` (${formatCount(more)} more)` : ""}
+      </Link>
+    </>
+  );
+}
+
+/** The package deliverable of this feed's ecosystem, when the release read has it. */
+function deliverableFor(
+  rows: DeliverableDto[] | undefined,
+  eco: string,
+): string | null {
+  return rows?.find((d) => d.kind === "package" && d.type === eco)?.id ?? null;
+}
+
+/** A declared, enabled feed with no package yet: the CI step that publishes it. */
+function WaitingBody({
+  eco,
+  deliverable,
+}: {
+  eco: string;
+  deliverable: string | null;
+}): React.ReactElement {
+  return (
+    <div className="space-y-2 text-sm">
+      <p className="flex items-center gap-2 text-fg-muted">
+        <Clock aria-hidden className="size-4 shrink-0" />
+        Waiting for the first package…
+      </p>
+      {deliverable ? (
+        <CommandLine
+          command={publishCommand(deliverable, `dist/${eco}`)}
+          className="rounded-lg border"
+        />
+      ) : (
+        <p className="m-0 text-fg-muted">
+          Publish it from CI with <code>pkey release publish</code> for its
+          deliverable.{" "}
+          <a
+            href={docsUrl("publishFromCi")}
+            target="_blank"
+            rel="noreferrer"
+            className="text-accent-fg underline-offset-2 hover:underline"
+          >
+            Publish from CI
+          </a>
+        </p>
+      )}
+    </div>
+  );
+}
+
+function FeedCard({
+  scope,
+  feed,
+  deliverable,
+}: {
+  scope: FeedScope;
+  feed: FeedSummary;
+  deliverable: string | null;
+}): React.ReactElement {
   const Icon = ECOSYSTEM_ICONS[feed.ecosystem];
   const label = ECOSYSTEM_LABELS[feed.ecosystem];
-  const url = feed.baseUrl?.replace(/^https?:\/\//, "") ?? null;
+  const off = feed.status !== "enabled";
   return (
     <Section
       title={
@@ -69,63 +286,48 @@ function FeedCard({
         </span>
       }
       description={
-        feed.baseUrl && url ? (
-          <span className="inline-flex flex-wrap items-center gap-1">
-            <span className="break-all font-mono text-xs">{url}</span>
-            <CopyButton
-              value={feed.baseUrl}
-              label={`Copy the ${label} registry URL`}
-              size="xs"
-            />
-          </span>
-        ) : undefined
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {feed.baseUrl ? <FeedUrl url={feed.baseUrl} label={label} /> : null}
+          <AccessChip scope={scope} feed={feed} />
+        </span>
       }
-      actions={<AccessChip feed={feed} />}
     >
-      <div data-feed-card={feed.ecosystem} className="space-y-2 text-sm">
-        {feed.status !== "enabled" ? (
-          <p className="flex flex-wrap items-center gap-2">
-            <FeedStatusPill feed={feed} />
+      <div
+        data-feed-card={feed.ecosystem}
+        className="flex h-full flex-col gap-3"
+      >
+        {off ? (
+          <div className="flex flex-1 flex-col gap-1 text-sm">
+            <p className="flex flex-wrap items-center gap-2">
+              <FeedStatusPill feed={feed} />
+              <span>Installs and CI publishes are refused.</span>
+            </p>
             {feed.reason && feed.reason !== "feed-off" ? (
-              <span className="text-fg-muted">{OFF_REASONS[feed.reason]}</span>
+              <p className="m-0 text-fg-muted">{OFF_REASONS[feed.reason]}</p>
             ) : null}
-          </p>
+            <Link
+              to={feedHref(scope, feed.ecosystem, "settings")}
+              className="mt-auto inline-block self-start pt-1 text-accent-fg underline-offset-2 hover:underline"
+            >
+              {feed.reason === "feed-off" || feed.reason === null
+                ? "Turn it on in Settings"
+                : `Open ${label} Settings`}
+            </Link>
+          </div>
         ) : null}
         {feed.packages === 0 ? (
-          <p className="flex items-center gap-2 text-fg-muted">
-            <Clock aria-hidden className="size-4 shrink-0" />
-            Waiting for the first package…
-          </p>
+          off ? null : (
+            <WaitingBody eco={feed.ecosystem} deliverable={deliverable} />
+          )
         ) : (
-          <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span>
-              {formatCount(feed.packages)}{" "}
-              {feed.packages === 1 ? "package" : "packages"}
-            </span>
-            <span className="text-fg-muted">
-              {formatCount(feed.versions)}{" "}
-              {feed.versions === 1 ? "version" : "versions"}
-            </span>
-            {feed.lastPublishedAt ? (
-              <span className="text-fg-muted">
-                Last publish{" "}
-                <Timestamp at={fromSeconds(feed.lastPublishedAt)} />
-              </span>
-            ) : null}
-          </p>
+          <PackageRows scope={scope} feed={feed} />
         )}
-        <Link
-          to={feedHref(scope, feed.ecosystem)}
-          className="inline-block text-accent underline-offset-2 hover:underline"
-        >
-          Open the {label} feed
-        </Link>
       </div>
     </Section>
   );
 }
 
-/** One card per provisioned feed. */
+/** One card per provisioned feed, two across from `lg`. */
 export function FeedCards({
   scope,
   feeds,
@@ -133,68 +335,49 @@ export function FeedCards({
   scope: FeedScope;
   feeds: FeedSummary[];
 }): React.ReactElement {
+  const needsDeliverable = scope.kind === "product" && feeds.some(isWaiting);
+  const slug = scope.kind === "product" ? scope.slug : "";
+  const deliverables = useQuery({
+    queryKey: qk.deliverables(slug),
+    queryFn: () => api.deliverables(slug),
+    enabled: needsDeliverable,
+  });
   return (
-    <ul aria-label="Package feeds" className="m-0 list-none space-y-4 p-0">
+    <ul
+      aria-label="Package feeds"
+      className="m-0 grid list-none gap-4 p-0 lg:grid-cols-2"
+    >
       {feeds.map((f) => (
-        <li key={f.ecosystem}>
-          <FeedCard scope={scope} feed={f} />
+        <li key={f.ecosystem} className="flex flex-col [&>*]:flex-1">
+          <FeedCard
+            scope={scope}
+            feed={f}
+            deliverable={deliverableFor(
+              needsDeliverable ? deliverables.data?.deliverables : undefined,
+              f.ecosystem,
+            )}
+          />
         </li>
       ))}
     </ul>
   );
 }
 
-const PUBLISH =
-  "pkey release publish --deliverable npm.sourcekit --dir dist/npm";
-
-/** The `.pkey/release` declaration the empty card shows, in the product's own scope. */
-export function declarationSnippet(slug: string): string {
-  return [
-    "deliverables:",
-    "  npm.sourcekit:",
-    "    kind: package",
-    "    ecosystem: npm # npm | pypi | swift | maven | oci | godot",
-    `    name: "@${slug}/source-kit"`,
-    "    artifacts:",
-    '      tarball: { match: "dist/npm/*.tgz" }',
-  ].join("\n");
-}
-
-/** Nothing declared: how to declare a package, how to publish it, and nothing to turn on. */
-export function PackagesEmpty({
-  slug,
-  name,
-}: {
-  slug: string;
-  name: string;
-}): React.ReactElement {
+/** The card-shaped loading state. */
+export function CardsSkeleton(): React.ReactElement {
   return (
-    <div className="space-y-4">
-      <EmptyState
-        kind="first-run"
-        headingLevel={2}
-        title={`${name} declares no packages yet`}
-        description={
-          <>
-            Declare a package in <code>.pkey/release</code>; its feed appears
-            here on the next resync.
-          </>
-        }
-        docs={docsUrl("packageFeeds")}
-      />
-      <CodeBlock
-        code={declarationSnippet(slug)}
-        language="yaml"
-        filename=".pkey/release"
-      />
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border px-4 py-3">
-        <code className="break-all font-mono text-xs">{PUBLISH}</code>
-        <CopyButton
-          value={PUBLISH}
-          label="Copy the publish command"
-          size="xs"
-        />
-      </div>
+    <div
+      data-skeleton="cards"
+      className="pk-skeleton-group grid gap-4 lg:grid-cols-2"
+    >
+      {[0, 1].map((i) => (
+        <div key={i} className="space-y-3 rounded-xl border border-border p-5">
+          <Skeleton className="h-6 w-24" />
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+      ))}
     </div>
   );
 }

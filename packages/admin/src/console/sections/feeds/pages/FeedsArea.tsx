@@ -16,8 +16,13 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, LayoutGrid } from "lucide-react";
+import { CardsSkeleton, pollPackages } from "./PackagesOverview.js";
 import { api } from "../../../../api.js";
-import type { FeedSummary, FeedsOverviewDto } from "../../../../api.js";
+import type {
+  FeedEcosystem,
+  FeedSummary,
+  FeedsOverviewDto,
+} from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { formatCount, fromSeconds } from "../../../../lib/format.js";
@@ -37,7 +42,7 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { mutate } from "../../../data/mutations.js";
-import { Link } from "../../../router.js";
+import { Link, navigate } from "../../../router.js";
 import { type RouteChild } from "../../../routes.js";
 import { useFeedsOverview } from "../data.js";
 import { FeedPage } from "./FeedPage.js";
@@ -54,13 +59,12 @@ import {
   tokensHref,
   type FeedScope,
 } from "../model/model.js";
+import { PackagesEmpty } from "./PackagesEmpty.js";
+import { ProductFeed } from "./ProductFeed.js";
+import { useMoreTabs } from "./useMoreTabs.js";
 import { BootstrapEmpty, OwnersPanel } from "./FeedsOwners.js";
 import { PackageRecord } from "./PackageRecord.js";
-import {
-  FeedCards,
-  PackagesEmpty,
-  provisionedFeeds,
-} from "./PackagesOverview.js";
+import { FeedCards, provisionedFeeds } from "./PackagesOverview.js";
 import { RegistryTokensPage } from "./RegistryTokens.js";
 
 /** The area's page for a route: the overview, a feed, or a package. */
@@ -112,6 +116,8 @@ export function FeedsArea({
       />
     );
   }
+  if (scope.kind === "product")
+    return <ProductFeed slug={scope.slug} scope={scope} eco={eco} tab={tab} />;
   return <FeedPage scope={scope} eco={eco} tab={tab} />;
 }
 
@@ -232,6 +238,16 @@ export function FeedNav({
   scope: FeedScope;
   current: "overview" | "tokens" | (typeof ECOSYSTEMS)[number];
 }): React.ReactElement {
+  // A product's tabs are the feeds it declared (a feed exists because a package is); the
+  // platform lists every ecosystem.
+  const overview = useFeedsOverview(scope, scope.kind === "product");
+  const tabs =
+    scope.kind === "platform"
+      ? ECOSYSTEMS
+      : overview.data
+        ? provisionedFeeds(overview.data).map((f) => f.ecosystem)
+        : ECOSYSTEMS.filter((e) => e === current);
+  const [barRef, more] = useMoreTabs(tabs.length);
   const link = (it: {
     key: string;
     label: string;
@@ -266,10 +282,17 @@ export function FeedNav({
   };
   return (
     <nav
+      ref={barRef}
       aria-label="Package feeds"
-      className="pk-scroll overflow-x-auto border-b border-border"
+      data-more-tabs={more ? "" : undefined}
+      className={cn(
+        "pk-scroll overflow-x-auto border-b border-border",
+        // A fade at the edge says there are more tabs to scroll to.
+        more &&
+          "[mask-image:linear-gradient(to_right,black_calc(100%-2.5rem),transparent)]",
+      )}
     >
-      <ul className="flex items-center gap-1">
+      <ul className="flex items-center gap-1 pe-6">
         {link({
           key: "overview",
           label: "Overview",
@@ -277,7 +300,7 @@ export function FeedNav({
           to: overviewHref(scope),
         })}
         <li aria-hidden className="mx-1.5 h-5 w-px shrink-0 bg-border-strong" />
-        {ECOSYSTEMS.map((e) =>
+        {tabs.map((e) =>
           link({
             key: e,
             label: ECOSYSTEM_LABELS[e],
@@ -417,7 +440,12 @@ export function FeedsOverview({
 }: {
   scope: FeedScope;
 }): React.ReactElement {
-  const query = useFeedsOverview(scope);
+  // A product's page re-reads while nothing is declared or a feed waits for its first package.
+  const query = useFeedsOverview(
+    scope,
+    true,
+    scope.kind === "product" ? pollPackages : undefined,
+  );
   const product = useProduct(scope.kind === "product" ? scope.slug : null);
   useLoadingAnnouncement("package feeds", query.isPending);
   const columns = React.useMemo(() => overviewColumns(scope), [scope]);
@@ -425,19 +453,37 @@ export function FeedsOverview({
   const host = data?.registryOrigin
     ? new URL(data.registryOrigin).host
     : "the registry host";
+  const provisioned =
+    data && scope.kind === "product" ? provisionedFeeds(data) : [];
   const header = (
     <PageHeader
       title={scope.kind === "platform" ? "Package feeds" : "Packages"}
+      titleAside={
+        scope.kind === "product" && provisioned.length ? (
+          <span className="text-sm text-fg-muted">
+            {provisioned.length} {provisioned.length === 1 ? "feed" : "feeds"}
+          </span>
+        ) : undefined
+      }
       description={
         scope.kind === "platform"
           ? `Polaris Key's own SDKs and tools, on ${host}. Policy set here covers every product.`
-          : `On ${host}.`
+          : undefined
+      }
+      secondaryActions={
+        scope.kind === "product"
+          ? [
+              {
+                label: "Registry tokens",
+                icon: <KeyRound aria-hidden />,
+                onSelect: () => void navigate(tokensHref(scope)),
+              },
+            ]
+          : []
       }
       tabs={
-        // Nothing declared: no feed pages to switch between (packages.feeds-empty).
-        scope.kind === "product" &&
-        data &&
-        provisionedFeeds(data).length === 0 ? undefined : (
+        // A product's tabs are the feeds it declared: none while loading, failing or empty.
+        scope.kind === "product" && provisioned.length === 0 ? undefined : (
           <FeedNav scope={scope} current="overview" />
         )
       }
@@ -448,20 +494,32 @@ export function FeedsOverview({
     return (
       <div className="space-y-6">
         {header}
-        <PageSkeleton template="table" label="package feeds" />
+        {scope.kind === "product" ? (
+          <CardsSkeleton />
+        ) : (
+          <PageSkeleton template="table" label="package feeds" />
+        )}
       </div>
     );
-  if (query.isError || !data)
+  if (query.isError || !data) {
+    const forbidden =
+      (query.error as { status?: number } | null)?.status === 403;
     return (
       <div className="space-y-6">
         {header}
         <ErrorState
           error={query.error}
-          onRetry={() => void query.refetch()}
-          context={{ area: "distribution", thing: "Package feeds" }}
+          // A refusal to read does not change on a retry.
+          onRetry={forbidden ? undefined : () => void query.refetch()}
+          context={{
+            area: "distribution",
+            thing: scope.kind === "product" ? "Packages" : "Package feeds",
+            read: true,
+          }}
         />
       </div>
     );
+  }
   if (scope.kind === "platform" && data.owner === null)
     return (
       <div className="space-y-6">
