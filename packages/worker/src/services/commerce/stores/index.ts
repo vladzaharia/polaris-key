@@ -4,6 +4,7 @@
  * these to `core/stores/` `STORE_ADAPTERS[].commerce`, in both directions.
  */
 
+import type { Store } from "../../../core/licensing/storeGrants.js";
 import type { StorefrontId } from "../../../core/storefront/adapter.js";
 import type { CommerceFacet } from "./facet.js";
 import { APPLE_COMMERCE } from "./apple/facet.js";
@@ -19,3 +20,12 @@ export const COMMERCE_FACETS: Readonly<
   "google-play": PLAY_COMMERCE,
   steam: STEAM_COMMERCE,
 };
+
+/** The facet serving a wire store id, or `undefined` for an unknown one (the caller fails closed). */
+export function commerceFacetFor(
+  store: Store,
+): CommerceFacet<any, any, any, any> | undefined {
+  for (const f of Object.values(COMMERCE_FACETS))
+    if (f?.store === store) return f;
+  return undefined;
+}

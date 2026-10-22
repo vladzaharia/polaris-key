@@ -19,22 +19,20 @@
 import type { ScheduledServiceContext } from "../../core/registry.js";
 import { pk as kvKey } from "../../platform/kv.js";
 import { effectiveCommerceSettings } from "./identity.js";
-import { acknowledgeOnce } from "./bridge.js";
 import {
   applePurchase,
   checkTransaction,
-  fetchTransaction,
   AppleRejected,
 } from "./stores/apple/purchases.js";
+import { COMMERCE_FACETS } from "./stores/index.js";
+import type { APPLE_COMMERCE } from "./stores/apple/facet.js";
+import type { PLAY_COMMERCE } from "./stores/play/facet.js";
+import type { STEAM_COMMERCE } from "./stores/steam/facet.js";
 import { StoreUnavailable } from "../../core/stores/http.js";
 import {
-  listVoidedPurchases,
+  acknowledgeOnce,
   playPurchasesClient,
 } from "./stores/play/purchases.js";
-import { appleContext } from "./stores/apple/context.js";
-import { playContext } from "./stores/play/context.js";
-import { steamContext } from "./stores/steam/context.js";
-import { recheckSteamOwnership } from "./stores/steam/purchases.js";
 import {
   parseDetail,
   purchaseKeyHash,
@@ -78,7 +76,11 @@ export async function runCommerceTick(
     storeGrants: ctx.storeGrants,
   };
 
-  const pctx = await playContext(ctx, settings);
+  const play = COMMERCE_FACETS["google-play"] as typeof PLAY_COMMERCE;
+  const apple = COMMERCE_FACETS["app-store"] as typeof APPLE_COMMERCE;
+  const steam = COMMERCE_FACETS.steam as typeof STEAM_COMMERCE;
+
+  const pctx = await play.context(ctx, settings);
   if (pctx) {
     try {
       const api = playPurchasesClient(pctx, "commerce:recheck");
@@ -133,7 +135,7 @@ export async function runCommerceTick(
       const marker = kvKey(ctx.product.slug, "commerce-voided", "play");
       const last = Number((await ctx.env.HOT.get(marker)) ?? "0");
       if (!(ctx.now - last < PLAY_VOIDED_INTERVAL_SECONDS)) {
-        const voided = await listVoidedPurchases(
+        const voided = await play.recheck.listVoidedPurchases(
           api,
           (ctx.now - PLAY_VOIDED_LOOKBACK_SECONDS) * 1000,
         );
@@ -153,7 +155,7 @@ export async function runCommerceTick(
     }
   }
 
-  const actx = await appleContext(ctx, settings);
+  const actx = await apple.context(ctx, settings);
   if (actx) {
     try {
       const due = await purchasesToRecheck(
@@ -174,7 +176,7 @@ export async function runCommerceTick(
         )
           continue;
         try {
-          const tx = await fetchTransaction(
+          const tx = await apple.recheck.fetchTransaction(
             actx,
             d.transactionId,
             d.environment,
@@ -203,7 +205,7 @@ export async function runCommerceTick(
     }
   }
 
-  const sctx = await steamContext(ctx, settings);
+  const sctx = await steam.context(ctx, settings);
   if (sctx) {
     try {
       const due = await purchasesToRecheck(ctx.db, ctx.product.slug, "steam", {
@@ -220,7 +222,11 @@ export async function runCommerceTick(
         // `last_verified` (retried next tick) and is reported; the batch goes on.
         let owns: boolean;
         try {
-          owns = await recheckSteamOwnership(sctx, d.steamId, d.dlcAppId);
+          owns = await steam.recheck.recheckSteamOwnership(
+            sctx,
+            d.steamId,
+            d.dlcAppId,
+          );
         } catch (e) {
           out.errors.push(
             `steam row: ${e instanceof Error ? e.message : "failed"}`,

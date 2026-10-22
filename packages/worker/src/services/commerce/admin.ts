@@ -72,6 +72,7 @@ import {
   recentPurchases,
   upsertStoreProduct,
 } from "./state.js";
+import { commerceFacetFor } from "./stores/index.js";
 import { appStoreCredential } from "./stores/apple/purchases.js";
 import { playCredential } from "./stores/play/purchases.js";
 import { steamCredential } from "./stores/steam/purchases.js";
@@ -262,11 +263,9 @@ async function flagRefusal(
     : `the catalog declares no flag ${flag}`;
 }
 
-const PLATFORM_OF = {
-  "app-store": "app-store",
-  play: "google-play",
-  steam: "steam",
-} as const satisfies Record<Store, PlatformStore>;
+/** The channel adapter id of a store, from its Commerce facet. */
+const platformOf = (store: Store): PlatformStore =>
+  commerceFacetFor(store)!.adapter as PlatformStore; // the four channel ids of a store with in-app purchases
 
 /**
  * `POST …/commerce/settings/<store>/use-assigned` (A-28.3, D14): the server works out the assigned
@@ -279,7 +278,7 @@ const PLATFORM_OF = {
 async function useAssigned(ctx: AdminCtx, store: Store): Promise<Response> {
   const { db, product, session, now } = ctx;
   const slug = product.slug;
-  const binding = await storeAppBinding(db, slug, PLATFORM_OF[store]);
+  const binding = await storeAppBinding(db, slug, platformOf(store));
   const field = (
     {
       "app-store": "bundleId",

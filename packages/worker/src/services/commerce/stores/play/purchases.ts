@@ -45,7 +45,13 @@ import {
   PlayError,
 } from "../../../../core/stores/play/client.js";
 import type { PlaySettings } from "../../settings.js";
-import { normaliseBinding, type VerifiedPurchase } from "../../state.js";
+import {
+  getPurchase,
+  normaliseBinding,
+  parseDetail,
+  type RecordOutcome,
+  type VerifiedPurchase,
+} from "../../state.js";
 import { StoreUnavailable } from "../../../../core/stores/http.js";
 import { PURCHASE_TOKEN, SKU } from "./notifications.js";
 
@@ -312,4 +318,45 @@ export async function listVoidedPurchases(
     pageToken = next;
   }
   return out;
+}
+
+/**
+ * Acknowledge a granted Play purchase once (Google voids an unacknowledged purchase after three
+ * days). Our record and Play's `acknowledgementState` both stop a second call; a failure is left
+ * for the connector tick (`recheck.ts`) and never fails the grant.
+ */
+export async function acknowledgeOnce(
+  pctx: PlayContext,
+  api: ReturnType<typeof playPurchasesClient>,
+  out: Extract<RecordOutcome, { ok: true }>,
+  purchase: VerifiedPurchase,
+): Promise<boolean> {
+  if (out.state !== "active") return false;
+  const row = await getPurchase(
+    pctx.db,
+    pctx.product,
+    "play",
+    out.purchaseKeyHash,
+  );
+  const detail = row ? parseDetail(row.detail_json) : {};
+  if (detail.acknowledged === true) return false;
+  try {
+    await acknowledgePurchase(
+      api,
+      purchase.storeProductId,
+      purchase.purchaseKey,
+    );
+  } catch (e) {
+    if (e instanceof StoreUnavailable || e instanceof PlayRejected)
+      return false;
+    throw e;
+  }
+  await pctx.db.run(
+    `UPDATE dist_purchases SET detail_json = ?
+      WHERE product = ? AND store = 'play' AND purchase_key_hash = ?`,
+    JSON.stringify({ ...detail, acknowledged: true, acknowledgedAt: pctx.now }),
+    pctx.product,
+    out.purchaseKeyHash,
+  );
+  return true;
 }
