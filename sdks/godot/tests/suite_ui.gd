@@ -237,7 +237,7 @@ func _layout(t: PKeyTestContext, all: Array) -> void:
 	var cases: Array = []
 	var seen := {}
 	for c in all:
-		if seen.has(c[0]) or c[0] in ["badge", "banner"]:
+		if seen.has(c[0]) or c[0] in ["badge", "banner", "update_progress", "toast"]:
 			continue
 		var probe: PKeyUiView = await _build(c)
 		var visible := probe.visible and _centred(probe) != null and _centred(probe).is_visible_in_tree()
@@ -929,7 +929,8 @@ func _controllers(t: PKeyTestContext) -> void:
 ## Every screen the kit shows carries the product's header (UI-KITS.md §1.2): its icon or a
 ## monogram beside its name, visible in the tree. Not a screen: the gate while it lets the game
 ## through (usable, grace) or loads, the update strip and banner (a card inside the game's own
-## screen), and the settings panel (it heads itself with the same header).
+## screen), the progress strip and the toast (a card over the game), and the settings panel (it heads
+## itself with the same header).
 const NO_HEADER := ["ok", "grace", "grace (allow_grace false)", "not-applicable", "loading", "background pill", "update available"]
 
 
@@ -937,7 +938,7 @@ func _headers(t: PKeyTestContext, all: Array) -> void:
 	var checked := 0
 	var missing: PackedStringArray = []
 	for c in all:
-		if c[0] in ["badge", "banner", "dev_menu", "settings"] or String(c[1]) in NO_HEADER:
+		if c[0] in ["badge", "banner", "dev_menu", "settings", "update_progress", "toast"] or String(c[1]) in NO_HEADER:
 			continue
 		var v: Control = await _build(c)
 		var ok := false

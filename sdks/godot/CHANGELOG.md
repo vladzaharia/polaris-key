@@ -13,6 +13,29 @@ SDK: `.github/workflows/publish-sdks.yml` stamps `plugin.cfg`'s `version` and `P
   Migrating: pass the https offers URL to get the paywall's Buy in your browser button (without it the not-available paywall has no button).
 
 - **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
+- **Five components the kit lacked.** Every other GUI kit had them (UI-KITS.md §4.1, §4.3):
+  `PKeyDeviceList` (Devices: this license's devices as 64 px rows with a form-factor glyph, a "This
+  Mac" tag only where the runtime knows which device it is, Rename in place and Remove with an inline
+  confirm; the server lets a device rename and sign out only itself, so a roster read from the SDK
+  edits this device only, and a game that manages the others sets `host_handles` and answers
+  `rename_requested` / `remove_requested`), `PKeyLicenseChoice` (LicenseChoice: rows with origin and
+  term, a seat meter and its count, "On this device" and "All devices in use" tags, **Use this license
+  and continue** as the one primary; keep, create and a first license are rows of their own),
+  `PKeyAccountTab` (AccountAndLicense: grouped rows for the tier, who is signed in, Devices with its
+  meter, Updates, Managed settings and Sign out in danger text in a group of its own; also the first
+  section of `PKeySettingsPanel` with `account_tab = true`), `PKeyToast` (one line and its consequence,
+  at most two actions, a visible 6 s timer, errors that stay, no focus taken from the game; `toast_anchor`
+  and the `pkey_toast_focus` input action reach it) and `PKeyUpdateProgress` (a counted bar: "38 of 91 MB
+  · 1 minute left", queued, paused, failed and done; `PKeyProgressBlock` draws the same bar inside a
+  toast). New keys: `devices_*`, `choice_*`, `replace_*`, `account_*`, `status_*`, `sync_*`, `toast_*`,
+  `progress_*`, `when_*`, `platform_*`, `form_factor_*`, `this_device_*`, `seat_*`, `dismiss`,
+  `manage`, `copied`, `loading`, `update_check_now`, `update_downloading_of`. The unused
+  `devices_last_seen`, `devices_sign_out`, `devices_unsupported`, `devices_manage_online`,
+  `devices_refresh`, `account_signed_in_as`, `account_signed_out`, `account_deactivate`,
+  `account_sign_out_confirm`, `account_manage` and `account_signed_out_done` keys are gone, and
+  `devices_title` reads "Your devices", `devices_empty` "No devices are using this license yet.", and
+  `devices_remove_confirm` "Remove %s? It signs out of {product}.", as the catalog does.
+
 - **The kit follows UI-KITS.md.** Copy: the English template strings that the kit catalog words
   differently now read as it does ("Update now" and "Later" for the update prompt, "Update" for the
   gate's fix, "Offline · 3 days left", "Code expires in 2:05", the Welcome lede "Sign in or use a

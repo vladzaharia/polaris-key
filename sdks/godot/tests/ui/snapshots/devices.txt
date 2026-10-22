@@ -1,0 +1,144 @@
+== list ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Titles/TitleRow/Title: Label "Your devices"
+Card/Scroll/Frame/Head/Titles/TitleRow/Count: Label "3 devices"
+Card/Scroll/Frame/Head/Titles/Lede: Label "Devices using this license."
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Glyph: TextureRect
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Text/Label: Label "\u2068Work laptop\u2069"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Text/Meta: Label "Windows · last used 12 days ago"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Actions/Rename: Button "Rename" [focus 1]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Actions/Remove: Button "Remove" [focus 2]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Head/Glyph: TextureRect
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Head/Text/Label: Label "\u2068Mara’s iPad\u2069"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Head/Text/Meta: Label "iOS · last used 3 days ago"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Actions/Rename: Button "Rename" [focus 3]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Actions/Remove: Button "Remove" [focus 4]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Head/Glyph: TextureRect
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Head/Text/Label: Label "\u2068MacBook Pro\u2069"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Head/Text/Meta: Label "This Mac"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Actions/Rename: Button "Rename" [focus 5]
+== list, an unnamed device ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Titles/TitleRow/Title: Label "Your devices"
+Card/Scroll/Frame/Head/Titles/TitleRow/Count: Label "3 devices"
+Card/Scroll/Frame/Head/Titles/Lede: Label "Devices using this license."
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Glyph: TextureRect
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Text/Label: Label "\u2068Work laptop\u2069"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Text/Meta: Label "Windows · last used 12 days ago"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Actions/Rename: Button "Rename" [focus 1]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Actions/Remove: Button "Remove" [focus 2]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Head/Glyph: TextureRect
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Head/Text/Label: Label "\u2068Mara’s iPad\u2069"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Head/Text/Meta: Label "iOS · last used 3 days ago"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Actions/Rename: Button "Rename" [focus 3]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Actions/Remove: Button "Remove" [focus 4]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Head/Glyph: TextureRect
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Head/Text/Label: Label "Unnamed device"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Head/Text/Meta: Label "This Mac"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Actions/Rename: Button "Rename" [focus 5]
+== list, this device not known ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Titles/TitleRow/Title: Label "Your devices"
+Card/Scroll/Frame/Head/Titles/TitleRow/Count: Label "3 devices"
+Card/Scroll/Frame/Head/Titles/Lede: Label "Devices using this license."
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Glyph: TextureRect
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Text/Label: Label "\u2068Work laptop\u2069"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Text/Meta: Label "Windows · last used 12 days ago"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Actions/Rename: Button "Rename" [focus 1]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Actions/Remove: Button "Remove" [focus 2]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Head/Glyph: TextureRect
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Head/Text/Label: Label "\u2068Mara’s iPad\u2069"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Head/Text/Meta: Label "iOS · last used 3 days ago"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Actions/Rename: Button "Rename" [focus 3]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Actions/Remove: Button "Remove" [focus 4]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Head/Glyph: TextureRect
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Head/Text/Label: Label "\u2068MacBook Pro\u2069"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Head/Text/Meta: Label "macOS · last used today"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Actions/Rename: Button "Rename" [focus 5]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Actions/Remove: Button "Remove" [focus 6]
+== renaming ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Titles/TitleRow/Title: Label "Your devices"
+Card/Scroll/Frame/Head/Titles/TitleRow/Count: Label "3 devices"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/RenameForm/Caption: Label "Device name"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/RenameForm/Name: LineEdit "Work laptop" [focus 1]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/RenameForm/Actions/Save: Button "Save" [focus 2]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/RenameForm/Actions/Cancel: Button "Cancel" [focus 3]
+== confirming a removal ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Titles/TitleRow/Title: Label "Your devices"
+Card/Scroll/Frame/Head/Titles/TitleRow/Count: Label "3 devices"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Glyph: TextureRect
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Text/Label: Label "\u2068Work laptop\u2069"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Text/Meta: Label "Windows · last used 12 days ago"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Actions/Rename: Button "Rename" [focus 1]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Actions/Remove: Button "Remove" [focus 2]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Confirm/Question: Label "Remove \u2068Work laptop\u2069? It signs out of Polaris Key SDK."
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Confirm/Actions/ConfirmRemove: Button "Remove" [focus 3]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Confirm/Actions/Cancel: Button "Cancel" [focus 4]
+== empty ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Titles/TitleRow/Title: Label "Your devices"
+Card/Scroll/Frame/Message: Label "No devices are using this license yet."
+== browser mode ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Titles/TitleRow/Title: Label "Your devices"
+Card/Scroll/Frame/Message: Label "Manage your devices in your browser."
+Card/Scroll/Frame/Actions/Manage: Button "Manage devices" [focus 1]
+== loading ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Titles/TitleRow/Title: Label "Your devices"
+Card/Scroll/Frame/Loading: ProgressBar
+Card/Scroll/Frame/Message: Label "Loading…"
+== error: the list could not load ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Titles/TitleRow/Title: Label "Your devices"
+Card/Scroll/Frame/Message: Label "Couldn't load your devices."
+Card/Scroll/Frame/Actions/Retry: Button "Try again" [focus 1]
+== error: a rename was refused ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Titles/TitleRow/Title: Label "Your devices"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/RenameForm/Caption: Label "Device name"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/RenameForm/Name: LineEdit "Work laptop" [focus 1]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/RenameForm/Actions/Save: Button "Try again" [focus 2]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/RenameForm/Actions/Cancel: Button "Cancel" [focus 3]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Failure: Label "Couldn't rename \u2068Work laptop\u2069. Try again."
+== error: a removal was refused ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Titles/TitleRow/Title: Label "Your devices"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Glyph: TextureRect
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Text/Label: Label "\u2068Work laptop\u2069"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Text/Meta: Label "Windows · last used 12 days ago"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Actions/Rename: Button "Rename" [focus 1]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Actions/Remove: Button "Remove" [focus 2]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Confirm/Question: Label "Remove \u2068Work laptop\u2069? It signs out of Polaris Key SDK."
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Confirm/Actions/ConfirmRemove: Button "Try again" [focus 3]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Confirm/Actions/Cancel: Button "Cancel" [focus 4]
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Failure: Label "Couldn't remove \u2068Work laptop\u2069. Try again."
+== list, this device only (from the SDK) ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Titles/TitleRow/Title: Label "Your devices"
+Card/Scroll/Frame/Head/Titles/TitleRow/Count: Label "3 devices"
+Card/Scroll/Frame/Head/Titles/Lede: Label "Devices using this license."
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Glyph: TextureRect
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Text/Label: Label "\u2068Work laptop\u2069"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_0/Line/Head/Text/Meta: Label "Windows · last used 12 days ago"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Head/Glyph: TextureRect
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Head/Text/Label: Label "\u2068Mara’s iPad\u2069"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_1/Line/Head/Text/Meta: Label "iOS · last used 3 days ago"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Head/Glyph: TextureRect
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Head/Text/Label: Label "\u2068MacBook Pro\u2069"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Head/Text/Meta: Label "This Mac"
+Card/Scroll/Frame/ListScroll/List/Rows/Row_2/Line/Actions/Rename: Button "Rename" [focus 1]

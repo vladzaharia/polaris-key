@@ -1,0 +1,101 @@
+== signed in ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Title: Label "Account and license"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_tier/Text/Label: Label "\u2068Pro\u2069 license"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_tier/Text/Sub: Label "Active"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_holder/Text/Label: Label "Signed in as \u2068Mara Lindqvist\u2069"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_holder/Control/Manage: Button "Manage" [focus 1]
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_devices/Text/Action: Button "Devices" [focus 2]
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_devices/Control/Caption: Label "2 of 3 in use"
+Card/Scroll/Frame/Groups/Group_Updates/Heading: Label "Updates"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Text/Label: Label "Update automatically"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Control/Switch: CheckButton [pressed, focus 3]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Text/Label: Label "Release channel"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Control/Channel: OptionButton "Stable" [items [Stable, Beta], focus 4]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_check/Text/Action: Button "Check for updates" [focus 5]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_version/Text/Label: Label "Version 2.5.0"
+Card/Scroll/Frame/Groups/Group_Managed/List/Rows/Row_managed/Text/Action: Button "Managed settings" [focus 6]
+Card/Scroll/Frame/Groups/Group_SignOut/List/Rows/Row_sign_out/Text/Action: Button "Sign out" [focus 7]
+== key only ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Title: Label "Account and license"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_tier/Text/Label: Label "\u2068Pro\u2069 license"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_tier/Text/Sub: Label "Active"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_holder/Text/Label: Label "Activated with a license key"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_devices/Text/Action: Button "Devices" [focus 1]
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_devices/Control/Caption: Label "2 of 3 in use"
+Card/Scroll/Frame/Groups/Group_Updates/Heading: Label "Updates"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Text/Label: Label "Update automatically"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Control/Switch: CheckButton [pressed, focus 2]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Text/Label: Label "Release channel"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Control/Channel: OptionButton "Stable" [items [Stable, Beta], focus 3]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_check/Text/Action: Button "Check for updates" [focus 4]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_version/Text/Label: Label "Version 2.5.0"
+Card/Scroll/Frame/Groups/Group_Managed/List/Rows/Row_managed/Text/Action: Button "Managed settings" [focus 5]
+Card/Scroll/Frame/Groups/Group_SignOut/List/Rows/Row_sign_out/Text/Action: Button "Sign out" [focus 6]
+== offline ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Title: Label "Account and license"
+Card/Scroll/Frame/Notice: Label "Offline · showing the last saved details"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_tier/Text/Label: Label "\u2068Pro\u2069 license"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_tier/Text/Sub: Label "Offline"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_holder/Text/Label: Label "Signed in as \u2068Mara Lindqvist\u2069"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_holder/Control/Manage: Button "Manage" [focus 1]
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_devices/Text/Action: Button "Devices" [focus 2]
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_devices/Control/Caption: Label "2 of 3 in use"
+Card/Scroll/Frame/Groups/Group_Updates/Heading: Label "Updates"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Text/Label: Label "Update automatically"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Control/Switch: CheckButton [pressed, focus 3]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Text/Label: Label "Release channel"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Control/Channel: OptionButton "Stable" [items [Stable, Beta], focus 4]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_check/Text/Action: Button "Check for updates" [focus 5]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_version/Text/Label: Label "Version 2.5.0"
+Card/Scroll/Frame/Groups/Group_Managed/List/Rows/Row_managed/Text/Action: Button "Managed settings" [focus 6]
+Card/Scroll/Frame/Groups/Group_SignOut/List/Rows/Row_sign_out/Text/Action: Button "Sign out" [focus 7]
+== loading ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Title: Label "Account and license"
+Card/Scroll/Frame/Loading: ProgressBar
+== channel set by the outlet ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Title: Label "Account and license"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_tier/Text/Label: Label "\u2068Pro\u2069 license"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_tier/Text/Sub: Label "Active"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_holder/Text/Label: Label "Signed in as \u2068Mara Lindqvist\u2069"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_holder/Control/Manage: Button "Manage" [focus 1]
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_devices/Text/Action: Button "Devices" [focus 2]
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_devices/Control/Caption: Label "2 of 3 in use"
+Card/Scroll/Frame/Groups/Group_Updates/Heading: Label "Updates"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Text/Label: Label "Update automatically"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Control/Switch: CheckButton [pressed, focus 3]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Text/Label: Label "Release channel"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Control/Lock: TextureRect
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Control/Value: Label "Beta"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_check/Text/Action: Button "Check for updates" [focus 4]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_version/Text/Label: Label "Version 2.5.0"
+Card/Scroll/Frame/Groups/Group_Managed/List/Rows/Row_managed/Text/Action: Button "Managed settings" [focus 5]
+Card/Scroll/Frame/Groups/Group_SignOut/List/Rows/Row_sign_out/Text/Action: Button "Sign out" [focus 6]
+== on a TV, the email masked ==
+Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Frame/Head/Title: Label "Account and license"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_tier/Text/Label: Label "\u2068Pro\u2069 license"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_tier/Text/Sub: Label "Active"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_holder/Text/Label: Label "Signed in as \u2068mara@fennick.studio\u2069"
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_holder/Control/Manage: Button "Manage" [focus 1]
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_devices/Text/Action: Button "Devices" [focus 2]
+Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_devices/Control/Caption: Label "2 of 3 in use"
+Card/Scroll/Frame/Groups/Group_Updates/Heading: Label "Updates"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Text/Label: Label "Update automatically"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Control/Switch: CheckButton [pressed, focus 3]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Text/Label: Label "Release channel"
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Control/Channel: OptionButton "Stable" [items [Stable, Beta], focus 4]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_check/Text/Action: Button "Check for updates" [focus 5]
+Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_version/Text/Label: Label "Version 2.5.0"
+Card/Scroll/Frame/Groups/Group_Managed/List/Rows/Row_managed/Text/Action: Button "Managed settings" [focus 6]
+Card/Scroll/Frame/Groups/Group_SignOut/List/Rows/Row_sign_out/Text/Action: Button "Sign out" [focus 7]

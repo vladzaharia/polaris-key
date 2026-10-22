@@ -1,0 +1,37 @@
+== queued: content ==
+Card/Body/Row/Progress/Title: Label "Downloading content"
+Card/Body/Row/Progress/Status: Label "Waiting to download"
+Card/Body/Row/Progress/Bar: ProgressBar
+== queued: an app update ==
+Card/Body/Row/Progress/Status: Label "Waiting to download"
+Card/Body/Row/Progress/Bar: ProgressBar
+== downloading ==
+Card/Body/Row/Progress/Title: Label "Downloading content"
+Card/Body/Row/Progress/Status: Label "38 of 91 MB · 1 minute left"
+Card/Body/Row/Progress/Bar: ProgressBar
+== downloading: no time left known ==
+Card/Body/Row/Progress/Title: Label "Downloading content"
+Card/Body/Row/Progress/Status: Label "Downloading · 38 of 91 MB"
+Card/Body/Row/Progress/Bar: ProgressBar
+== downloading: verified, not yet installed ==
+Card/Body/Row/Progress/Status: Label "Downloading · 91 of 91 MB"
+Card/Body/Row/Progress/Bar: ProgressBar
+== installing ==
+Card/Body/Row/Progress/Status: Label "Installing…"
+Card/Body/Row/Progress/Bar: ProgressBar
+== paused: a metered connection ==
+Card/Body/Row/Progress/Status: Label "Paused · waiting for Wi-Fi"
+Card/Body/Row/Progress/Bar: ProgressBar
+Card/Body/Actions/Action: Button "Download now" [focus 1]
+== failed ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Progress/Title: Label "Downloading content"
+Card/Body/Row/Progress/Status: Label "Couldn't download"
+Card/Body/Actions/Action: Button "Try again" [focus 1]
+== done ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Progress/Status: Label "Up to date"
+== compact ==
+Card/Body/Row/Progress/Title: Label "Downloading content"
+Card/Body/Row/Progress/Status: Label "Downloading · 38 of 91 MB"
+Card/Body/Row/Progress/Bar: ProgressBar

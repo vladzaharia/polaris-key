@@ -167,6 +167,67 @@ const TIGHT_CASES := [
 	["gate.offline", "native", "2532x1170@3"],
 	["gate.offline", "custom", "750x1334@2"],
 	["gate.offline", "custom", "2532x1170@3"],
+	# Devices, LicenseChoice, the Account pane, UpdateProgress and Toast (UI-KITS.md §4.1): a game's own theme
+	# (larger controls, a 28 or 36 px type) on a 360 px canvas, a phone held sideways or a 36 px type at 720p
+	# leaves a list screen no room for its primary or a row's own buttons, which stay reachable through the
+	# scroll fallback (asserted). The Polaris Key look has no entry here: it fits every size.
+	["devices.confirm", "custom", "2532x1170@3"],
+	["license_choice.all_full", "custom", "2532x1170@3"],
+	["license_choice.none", "custom", "2532x1170@3"],
+	["devices.confirm", "custom", "pixel-art canvas_items 640x360 keep"],
+	["devices.error", "custom", "pixel-art canvas_items 640x360 keep"],
+	["devices.rename", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.choice", "custom", "pixel-art canvas_items 640x360 keep"],
+	["license_choice", "custom", "pixel-art canvas_items 640x360 keep"],
+	["license_choice.all_full", "custom", "pixel-art canvas_items 640x360 keep"],
+	["license_choice.keep", "custom", "pixel-art canvas_items 640x360 keep"],
+	["license_choice.none", "custom", "pixel-art canvas_items 640x360 keep"],
+	["license_choice.replace", "custom", "pixel-art canvas_items 640x360 keep"],
+	["devices.confirm", "native", "2532x1170@3"],
+	["devices.confirm", "native", "pixel-art canvas_items 640x360 keep"],
+	["license_choice", "native", "pixel-art canvas_items 640x360 keep"],
+	["license_choice.all_full", "native", "pixel-art canvas_items 640x360 keep"],
+	["license_choice.keep", "native", "pixel-art canvas_items 640x360 keep"],
+	["license_choice.none", "native", "pixel-art canvas_items 640x360 keep"],
+	["license_choice.replace", "native", "pixel-art canvas_items 640x360 keep"],
+	["license_choice.all_full", "native28", "1170x2532@3"],
+	["settings.account", "native28", "1170x2532@3"],
+	["license_choice.all_full", "native28", "1280x720"],
+	["license_choice.none", "native28", "1280x720"],
+	["devices.error", "native28", "640x360"],
+	["devices.rename", "native28", "640x360"],
+	["settings.account", "native36", "1080x2400"],
+	["account", "native36", "1170x2532@3"],
+	["account.key_only", "native36", "1170x2532@3"],
+	["account.offline", "native36", "1170x2532@3"],
+	["devices", "native36", "1170x2532@3"],
+	["devices.confirm", "native36", "1170x2532@3"],
+	["gate.choice", "native36", "1170x2532@3"],
+	["license_choice", "native36", "1170x2532@3"],
+	["license_choice.all_full", "native36", "1170x2532@3"],
+	["license_choice.keep", "native36", "1170x2532@3"],
+	["license_choice.none", "native36", "1170x2532@3"],
+	["license_choice.replace", "native36", "1170x2532@3"],
+	["settings.account", "native36", "1170x2532@3"],
+	["toast.progress", "native36", "1170x2532@3"],
+	["update_progress.failed", "native36", "1170x2532@3"],
+	["devices.confirm", "native36", "1280x720"],
+	["devices.error", "native36", "1280x720"],
+	["devices.rename", "native36", "1280x720"],
+	["license_choice", "native36", "1280x720"],
+	["license_choice.all_full", "native36", "1280x720"],
+	["license_choice.keep", "native36", "1280x720"],
+	["license_choice.none", "native36", "1280x720"],
+	["license_choice.replace", "native36", "1280x720"],
+	["devices.confirm", "native36", "1280x800"],
+	["devices.confirm", "native28", "1280x720"],
+	["devices.error", "native36", "1170x2532@3"],
+	["devices.rename", "native36", "1170x2532@3"],
+	["devices.error", "native36", "1280x800"],
+	["devices.rename", "native36", "1280x800"],
+	["devices.confirm", "native36", "640x360"],
+	["devices.error", "native36", "640x360"],
+	["devices.rename", "native36", "640x360"],
 ]
 
 ## The looks: the Polaris Key theme (dark, light), the native look over a game's own theme
@@ -193,6 +254,7 @@ const SCREENS := [
 	["gate.sign_in", "gate", "sign-in pending", "full"],
 	["gate.sign_in_pad", "gate", "sign-in pending", "full", "pad"],
 	["gate.offline", "gate", "offline activation", "full"],
+	["gate.choice", "gate", "license choice", "full"],
 	["gate.device_limit", "gate", "device limit", "full"],
 	["gate.device_limit_qr", "gate", "device limit, replace a device (QR)", "full", "pad"],
 	["gate.error", "gate", "needs-activation after an error", "full"],
@@ -218,7 +280,28 @@ const SCREENS := [
 	["gate.network", "gate", "network error", "full"],
 	["gate.unavailable", "gate", "not available (version-too-new)", "full"],
 	["settings", "settings", "catalog", "full"],
+	["settings.account", "settings", "catalog, with the account tab", "full"],
 	["dev_menu", "dev_menu", "steam build", "full"],
+	# Devices, LicenseChoice, AccountAndLicense, UpdateProgress and Toast (UI-KITS.md §4.1).
+	["devices", "devices", "list", "full"],
+	["devices.rename", "devices", "renaming", "full"],
+	["devices.confirm", "devices", "confirming a removal", "full"],
+	["devices.error", "devices", "error: a rename was refused", "full"],
+	["devices.empty", "devices", "empty", "full"],
+	["license_choice", "license_choice", "many", "full"],
+	["license_choice.keep", "license_choice", "keep", "full"],
+	["license_choice.all_full", "license_choice", "all-full, create offered", "full"],
+	["license_choice.none", "license_choice", "none (no keys)", "full"],
+	["license_choice.replace", "license_choice", "replace open", "full"],
+	["account", "account", "signed in", "full"],
+	["account.key_only", "account", "key only", "full"],
+	["account.offline", "account", "offline", "full"],
+	["update_progress", "update_progress", "downloading", "strip"],
+	["update_progress.paused", "update_progress", "paused: a metered connection", "strip"],
+	["update_progress.failed", "update_progress", "failed", "strip"],
+	["toast", "toast", "info: an update is available", "full"],
+	["toast.error", "toast", "error: stays until dismissed", "full"],
+	["toast.progress", "toast", "with progress", "full"],
 	# The gate under the product's presentation from discovery (core.presentation): its fetched icon,
 	# its monogram, a long name and a right-to-left one, in the product's own accent.
 	["gate.presented", "gate", "needs-activation, presented: Drift Kart's icon", "full"],
@@ -569,10 +652,10 @@ static func problems(view: PKeyUiView, kind: String, screen: String, strict := f
 	var out := PackedStringArray()
 	# On the kit's own looks a player's card never needs its scroll fallback (a list may scroll,
 	# and so may the developer menu's section, which lives in the game's own dev menu).
-	if strict and not (view is PKeyDevMenuSection) and not (view is PKeySettingsPanel):
+	if strict and not (view is PKeyDevMenuSection) and not (view is PKeySettingsPanel) and not (view is PKeyAccountTab):
 		for sc in view.find_children("*", "ScrollContainer", true, false):
 			var s := sc as ScrollContainer
-			if not s.is_visible_in_tree():
+			if not s.is_visible_in_tree() or s.has_meta(PKeyListScroll.META):
 				continue
 			var content := s.get_child(0) as Control if s.get_child_count() > 0 else null
 			if s.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED and content != null and content.get_combined_minimum_size().y > s.size.y + 1.0:
@@ -850,12 +933,20 @@ static func _word_breaks(l: Label, view: Control, out: PackedStringArray) -> voi
 			var word := raw.trim_prefix(String.chr(0x2068)).trim_suffix(String.chr(0x2069))
 			if word == "":
 				continue
-			# (Unspaced Japanese and Chinese break between any two characters, by design.)
-			if word.unicode_at(word.length() - 1) >= 0x2E80 or word.unicode_at(0) >= 0x2E80:
+			# (Unspaced Japanese and Chinese break between any two characters, by design: a run that holds
+			# one, between two names in Latin letters, can break there.)
+			if _has_cjk(word):
 				continue
 			if PKeyUiView.text_width(l, word) > l.size.x + 1.0:
 				out.append("%s breaks the word \"%s\" across lines (%.0f px wide)" % [_path(view, l), word, l.size.x])
 				break
+
+
+static func _has_cjk(word: String) -> bool:
+	for i in word.length():
+		if word.unicode_at(i) >= 0x2E80:
+			return true
+	return false
 
 
 static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: PackedStringArray) -> void:

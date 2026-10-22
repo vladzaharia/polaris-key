@@ -1,0 +1,33 @@
+== info: an update is available ==
+Anchor/Card/Body/Row/Glyph: TextureRect
+Anchor/Card/Body/Row/Texts/Title: Label "Polaris Key SDK 2.5.0 is available"
+Anchor/Card/Body/Actions/Action0: Button "Update now" [focus 1]
+Anchor/Card/Body/Actions/Action1: Button "Dismiss" [focus 2]
+Anchor/Card/Body/Timer: ProgressBar
+== success: copied ==
+Anchor/Card/Body/Row/Glyph: TextureRect
+Anchor/Card/Body/Row/Texts/Title: Label "Copied"
+Anchor/Card/Body/Timer: ProgressBar
+== warning ==
+Anchor/Card/Body/Row/Glyph: TextureRect
+Anchor/Card/Body/Row/Texts/Title: Label "Autosave is off"
+Anchor/Card/Body/Row/Texts/Consequence: Label "Your progress is not being saved."
+Anchor/Card/Body/Actions/Action0: Button "Dismiss" [focus 1]
+Anchor/Card/Body/Timer: ProgressBar
+== error: stays until dismissed ==
+Anchor/Card/Body/Row/Glyph: TextureRect
+Anchor/Card/Body/Row/Texts/Title: Label "Can't connect"
+Anchor/Card/Body/Row/Texts/Consequence: Label "Polaris Key SDK couldn't connect. Check your connection and try again."
+Anchor/Card/Body/Actions/Action0: Button "Dismiss" [focus 1]
+== with progress ==
+Anchor/Card/Body/Row/Glyph: TextureRect
+Anchor/Card/Body/Row/Texts/Progress/Title: Label "Downloading content"
+Anchor/Card/Body/Row/Texts/Progress/Status: Label "38 of 91 MB · 1 minute left"
+Anchor/Card/Body/Row/Texts/Progress/Bar: ProgressBar
+Anchor/Card/Body/Actions/Action0: Button "Undo" [focus 1]
+== bottom centre ==
+Anchor/Card/Body/Row/Glyph: TextureRect
+Anchor/Card/Body/Row/Texts/Title: Label "Polaris Key SDK 2.5.0 is available"
+Anchor/Card/Body/Actions/Action0: Button "Update now" [focus 1]
+Anchor/Card/Body/Actions/Action1: Button "Dismiss" [focus 2]
+Anchor/Card/Body/Timer: ProgressBar

@@ -29,6 +29,8 @@ signal usable()
 signal retry_requested()
 ## The player chose Continue offline on a network-failure card.
 signal continue_offline_requested()
+## The player chose a license on the license-choice screen: `{kind, id}` (PKeyLicenseChoice.chosen).
+signal license_chosen(selection: Dictionary)
 
 ## Let `grace` pass (React's `allowGrace`).
 @export var allow_grace := true
@@ -67,6 +69,10 @@ var outlet := ""
 var screen := "loading"
 
 var activation: PKeyActivationPanel
+## A sign-in that found several licenses asks which this device uses: the gate's license-choice
+## screen (`show_license_choice()`).
+var license_choice: PKeyLicenseChoice
+var choosing := false
 var banner: PKeyStatusBanner
 var _card: PanelContainer
 var _split: BoxContainer
@@ -155,6 +161,12 @@ func _build() -> void:
 	# Sign-in and offline activation take the whole card: the gate re-renders around them.
 	activation.mode_changed.connect(func(_m: String) -> void: refresh_view())
 	_main.add_child(activation)
+	license_choice = PKeyLicenseChoice.new()
+	license_choice.auto_sdk = false
+	license_choice.show_product = false
+	license_choice.visible = false
+	license_choice.chosen.connect(func(selection: Dictionary) -> void: license_chosen.emit(selection))
+	_main.add_child(license_choice)
 	_spacer = spacer(_main)
 	_actions = actions_row(_main, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_update = button(_actions, "UpdateAction", _on_update, "PKeyPrimary")
@@ -281,6 +293,7 @@ func _ready() -> void:
 	super()
 	_title_start = _title.horizontal_alignment
 	activation.sdk = sdk
+	license_choice.sdk = sdk
 	banner.sdk = sdk
 	if sdk != null and not _bound and not embedded and sdk.has_signal("state_changed"):
 		_bound = true
@@ -301,6 +314,20 @@ func show_state(s: Dictionary, p_error := "") -> void:
 
 func show_loading() -> void:
 	loading = true
+	refresh_view()
+
+
+## A sign-in found several licenses: ask which this device uses (PKeyLicenseChoice's `show_choices()`
+## view). The screen holds until `end_license_choice()`; `license_chosen` carries the answer.
+func show_license_choice(view: Dictionary, pick := "") -> void:
+	choosing = true
+	loading = false
+	license_choice.show_choices(view, pick)
+	refresh_view()
+
+
+func end_license_choice() -> void:
+	choosing = false
 	refresh_view()
 
 
@@ -329,7 +356,7 @@ func _screen_key() -> String:
 func _render() -> void:
 	var t := c()
 	var st := String(status.get("status", ""))
-	screen = PKeyGateController.screen_for(st, loading, error, allow_grace)
+	screen = PKeyGateController.screen_for(st, loading, error, allow_grace, choosing)
 	var url := PKeyUpdatePromptController.update_url(update_result, _outlet(), release_url)
 	var ctl := PKeyGateController.controls_for(screen, url != "")
 	var cp := PKeyGateController.copy_for(screen, st, status.get("allowed_range"))
@@ -376,6 +403,7 @@ func _render() -> void:
 	_glyph.visible = net
 	var wants_form: bool = ctl["activation"] and not net
 	activation.visible = wants_form
+	license_choice.visible = screen == "license-choice"
 	# A refusal's own title leads its screen; only the Welcome form says what to do.
 	activation.show_lede = screen == "activation" or screen == "error"
 	activation.form_title = t.text("use_another_license") if screen == "not-available" else ""
@@ -401,6 +429,8 @@ func _focus_chain() -> Array:
 	var out: Array = []
 	if activation.visible:
 		out.append_array(activation._focus_chain())
+	if license_choice.visible:
+		out.append_array(license_choice._focus_chain())
 	out.append_array([_update, _retry, _offline_btn])
 	# Grace's strip (Reconnect, Dismiss) is part of this view's chain: a pad reaches it from here.
 	if banner != null and banner.is_visible_in_tree():
@@ -419,6 +449,8 @@ func ensure_focus(force := false) -> bool:
 ## A stop card puts the focus on Try again (or the update action); the form on its first control,
 ## which on a pad-only device is Sign in.
 func _initial_focus() -> Control:
+	if license_choice.visible:
+		return license_choice._initial_focus()
 	if activation.visible:
 		return activation._initial_focus()
 	for b in [_update, _retry, _offline_btn]:
@@ -461,4 +493,6 @@ func _on_retry() -> void:
 
 
 func _cancel() -> bool:
+	if license_choice.visible and license_choice._cancel():
+		return true
 	return activation.visible and activation._cancel()

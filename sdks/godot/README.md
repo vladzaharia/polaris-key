@@ -290,7 +290,8 @@ signing steps.
 Drop-in scenes under `addons/polaris_key/ui/`, each a `.tscn` with a view script and a headless
 controller: `PKeyBoot`, `PKeyGate` (class `PKeyGateView`), `PKeyActivationPanel`,
 `PKeySignInDialog`, `PKeyOfflineDialog`, `PKeySettingsPanel`, `PKeyStatusBanner`,
-`PKeyUpdatePrompt`, `PKeyEntitlementBadge`, `PKeyDevMenuSection` and the `PKeyQrRect` control.
+`PKeyUpdatePrompt`, `PKeyEntitlementBadge`, `PKeyDevMenuSection`, `PKeyDeviceList`,
+`PKeyLicenseChoice`, `PKeyAccountTab`, `PKeyUpdateProgress`, `PKeyToast` and the `PKeyQrRect` control.
 Every one is operable with ui_up, ui_down, ui_accept and ui_cancel alone, so it works on a
 gamepad or a TV remote.
 
@@ -408,6 +409,41 @@ bold_font)` makes the Polaris Key theme with your accent or fonts if you want a 
   on a light one; never cropped, never recolored, and never smaller than the kit minimum
   (`PKeyUiTheme.powered_by_size(wanted)` raises a smaller size to 320 × 104, keeping the
   proportions).
+
+### Devices, license choice, account, progress and toasts
+
+Five more scenes (UI-KITS.md §4.1), each driven by a headless controller and the same view model the
+other kits read (`ui/model/`), each following that model's state for state:
+
+- **`PKeyDeviceList`** (Devices). 64 px rows with a form-factor glyph, the name (or "Unnamed
+  device"), "This Mac" on the row the runtime knows is this device, and Rename and Remove beside
+  it; both edit in place (a field with Save and Cancel; "Remove Work laptop? It signs out of
+  Diceroll."), and B or Escape cancels. `show_devices(rows)` drives it; `refresh_roster()` loads
+  `PolarisKey.devices.list()`. The server lets a device rename and sign out only itself, so a roster
+  read through the SDK offers Rename on this device only and no Remove; a game that manages the others
+  sets `host_handles`, listens to `rename_requested` / `remove_requested` and answers
+  `edit_succeeded()` / `edit_failed()`.
+- **`PKeyLicenseChoice`** (LicenseChoice). Rows carry the tier, the origin and term ("Added with a key
+  · Lifetime"), a seat meter with its count and the "On this device" and "All devices in use" tags;
+  **Use this license and continue** is the one primary (`chosen({kind, id})`). A full license is not a
+  choice: its action is **Replace a device** (`replace_requested`). `show_choices(view)` takes the
+  sign-in session's LicenseChoiceView; `PKeyGateView.show_license_choice(view)` shows it as the gate's
+  own screen and `license_chosen` carries the answer.
+- **`PKeyAccountTab`** (AccountAndLicense). Grouped rows (the tier and its status, who is signed in
+  with Manage, Devices with its meter, Updates, Managed settings) and **Sign out** in danger text in a
+  group of its own. `PKeySettingsPanel.account_tab = true` makes it the first section; or add it to
+  a menu of your own. `refresh_from_sdk()` reads the SDK; on a TV the email is masked until Manage has
+  the focus.
+- **`PKeyUpdateProgress`** (UpdateProgress). A counted bar: "Downloading content", "38 of 91 MB · 1
+  minute left", and queued, installing, paused ("Download now"), failed ("Try again") and done. It follows
+  `PolarisKey.update.download_progress` and `packs.pack_progress`, or `set_progress(phase, received,
+total)` drives it; verification is part of downloading, and nothing says installed before apply.
+- **`PKeyToast`** (Toast). One line and its consequence, at most two actions, a visible 6 s timer, and
+  errors that stay until dismissed. It takes no focus from the game: a pad reaches it with the first
+  direction press while nothing is focused, or with the input action `pkey_toast_focus` if you bind
+  one. `toast_anchor` is `bottom_right` (default), `bottom_center` or `top_right`; on a phone it is
+  the bottom of the screen, full width. `PKeyToast.open(self)` adds a layer over the game;
+  `follow_sdk = true` shows the SDK's update events.
 
 ### Product presentation (`core.presentation`)
 

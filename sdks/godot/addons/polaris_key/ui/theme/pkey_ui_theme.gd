@@ -1361,7 +1361,7 @@ static func kit_icons(t: Theme, k: float) -> void:
 	t.set_meta(&"pkey_icons", k)
 
 
-## A status glyph (PKeyKitIcons: lock, cloud_off, warning) as a texture `px` logical pixels square
+## A status glyph (PKeyKitIcons: lock, cloud_off, warning; PKeyKitGlyphs: devices, check, info) as a texture `px` logical pixels square
 ## at screen scale `k`, in `colour`.
 static func glyph(name: String, colour: Color, px: float, k := 1.0) -> Texture2D:
 	return _kit_icon(name, colour, colour, colour, px / 24.0 * k)
@@ -1373,7 +1373,11 @@ static func _kit_icon(name: String, fg: Color, bg: Color, track: Color, k: float
 		return _icons[key]
 	var img := Image.new()
 	var tex: Texture2D = null
-	if img.load_svg_from_string(PKeyKitIcons.svg(name, fg, bg, track), k) == OK:
+	var src := PKeyKitIcons.svg(name, fg, bg, track)
+	if src == "":
+		# A component glyph (a device, a check, a toast status): PKeyKitGlyphs.
+		src = PKeyKitGlyphs.svg(name, fg)
+	if img.load_svg_from_string(src, k) == OK:
 		tex = ImageTexture.create_from_image(img)
 	_icons[key] = tex
 	return tex
