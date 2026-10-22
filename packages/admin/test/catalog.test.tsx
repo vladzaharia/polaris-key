@@ -349,10 +349,10 @@ describe("Catalog editor", () => {
     const backend = await openEditor();
     const spin = await screen.findByRole("spinbutton", { name: /^Default/ });
     expect((spin as HTMLInputElement).value).toBe("30");
-    await userEvent.click(screen.getByRole("radio", { name: "Secret" }));
+    await userEvent.click(screen.getByRole("radio", { name: /^Secret/ }));
     expect(await screen.findByText(/Code only\. Write-only/)).toBeTruthy();
     expect(screen.queryByRole("spinbutton", { name: /^Default/ })).toBeNull();
-    await userEvent.click(screen.getByRole("radio", { name: "Setting" }));
+    await userEvent.click(screen.getByRole("radio", { name: /^Setting/ }));
     const back = await screen.findByRole("spinbutton", { name: /^Default/ });
     expect((back as HTMLInputElement).value).toBe("30");
     expect(
@@ -362,7 +362,7 @@ describe("Catalog editor", () => {
     ).toBe("true");
     expect(screen.queryByText(/changed/)).toBeNull();
     // As a Secret at publish, the fields that do not apply are dropped.
-    await userEvent.click(screen.getByRole("radio", { name: "Secret" }));
+    await userEvent.click(screen.getByRole("radio", { name: /^Secret/ }));
     await userEvent.click(
       await screen.findByRole("button", { name: "Review changes" }),
     );
@@ -511,6 +511,10 @@ describe("Catalog editor", () => {
 
   it("opens the review with the error pinned to its entry, and Publish waits", async () => {
     await openEditor();
+    // A new entry's key is typed; a published one's is the card's title.
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Add entry" }),
+    );
     const key = await screen.findByRole("textbox", { name: /^Key/ });
     await userEvent.clear(key);
     await userEvent.type(key, "network.proxy.url");
@@ -553,7 +557,7 @@ describe("Catalog editor", () => {
       },
     });
     await userEvent.click(
-      await screen.findByRole("button", { name: "Remove entry" }),
+      await screen.findByRole("button", { name: "Remove from catalog" }),
     );
     await userEvent.click(
       screen.getByRole("button", { name: "Review changes" }),
@@ -594,7 +598,7 @@ describe("Catalog editor", () => {
       },
     });
     await userEvent.click(
-      await screen.findByRole("button", { name: "Remove entry" }),
+      await screen.findByRole("button", { name: "Remove from catalog" }),
     );
     await userEvent.click(
       screen.getByRole("button", { name: "Review changes" }),
@@ -785,8 +789,9 @@ describe("Catalog entry form", () => {
       {},
       "#/p/djdl/config/catalog/edit?entry=network.proxy.url",
     );
-    for (const name of [/^Key/, /^Label/])
-      expect(await screen.findByRole("textbox", { name })).toBeTruthy();
+    expect(await screen.findByRole("textbox", { name: /^Label/ })).toBeTruthy();
+    // The key is the card's title; it can't change once published.
+    expect(screen.queryByRole("textbox", { name: /^Key/ })).toBeNull();
     // A category suggests the draft's others, so it is a combobox.
     expect(screen.getByRole("combobox", { name: /^Category/ })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: /^Value type/ })).toBeTruthy();
@@ -910,7 +915,7 @@ describe("Catalog: view-only members (B-230)", () => {
     ).toBe("true");
     expect(
       screen
-        .getByRole("button", { name: "Remove entry" })
+        .getByRole("button", { name: "Remove from catalog" })
         .getAttribute("aria-disabled"),
     ).toBe("true");
     const search = screen.getByRole("searchbox", { name: "Search entries" });
@@ -934,6 +939,6 @@ describe("Catalog editor: layout (B-231)", () => {
     const pane = screen.getByRole("region", { name: /^Entry / });
     expect(pane.className).toContain("max-w-[55rem]");
     const type = screen.getByRole("radiogroup", { name: "Type" });
-    expect(type.className).toContain("flex-wrap");
+    expect(type.className).toContain("grid");
   });
 });

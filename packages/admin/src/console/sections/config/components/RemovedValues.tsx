@@ -1,8 +1,6 @@
 import * as React from "react";
 import { useQueries } from "@tanstack/react-query";
-import { RotateCcw } from "lucide-react";
 import { api } from "../../../../api.js";
-import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { EntityLink } from "../../../components/EntityLink.js";
 import { qk } from "../../../data/queries.js";
@@ -18,45 +16,33 @@ import { useCatalogUsage } from "../data.js";
 /** Reading each holder's value stops here; the rest are named as "and more". */
 const READ_CAP = 25;
 
-export interface Removal {
-  key: string;
-  values: unknown[];
+export interface KeyHolders {
+  /** Everyone who sets the key, from the usage read. */
+  total: number;
+  /** Those read, with the value each sets. */
   holders: ValueHolder[];
-  /** Holders beyond the read cap, not looked at. */
+  /** Setters beyond the read cap, not looked at (the counts per value are then partial). */
   unread: number;
 }
 
 /**
- * The draft's removed allowed values and who still holds each: profiles, licenses and accounts that
- * set the key to a value the draft no longer allows. `pending` is true while that is still being
- * read, so Review waits instead of passing on a guess.
+ * Who sets each of `keys` and to what: profiles, licenses and accounts, read from the usage read
+ * and each one's own record (one shape per query key). `pending` is true while that is still being
+ * read, so a gate waits instead of passing on a guess.
  */
-export function useRemovals(
+export function useHolders(
   slug: string,
-  draft: CatalogDraft,
-): { removals: Record<string, Removal>; pending: boolean } {
-  const base = React.useMemo(
-    () => new Map(draft.baseEntries.map((e) => [e.key, e])),
-    [draft.baseEntries],
-  );
-  const targets = React.useMemo(() => {
-    const out: { key: string; values: unknown[] }[] = [];
-    for (const e of draftEntries(draft)) {
-      const values = removedValues(base.get(e.key), e);
-      if (values.length) out.push({ key: e.key, values });
-    }
-    return out;
-  }, [draft, base]);
-  const keys = React.useMemo(() => targets.map((t) => t.key), [targets]);
+  keys: readonly string[],
+): { byKey: Record<string, KeyHolders>; pending: boolean } {
   const usage = useCatalogUsage(slug, keys);
 
   type Ref = { kind: ValueHolder["kind"]; id: string; label: string };
   const refs = React.useMemo(() => {
     const out = new Map<string, Ref[]>();
-    for (const t of targets) {
-      const u = usage.data?.keys[t.key];
+    for (const key of keys) {
+      const u = usage.data?.keys[key];
       if (!u) continue;
-      out.set(t.key, [
+      out.set(key, [
         ...u.profiles.map((p) => ({
           kind: "profile" as const,
           id: p.id,
@@ -75,9 +61,9 @@ export function useRemovals(
       ]);
     }
     return out;
-  }, [targets, usage.data]);
+  }, [keys, usage.data]);
 
-  // One read per distinct holder (a profile or account may set several removed keys).
+  // One read per distinct holder (a profile or account may set several keys).
   const distinct = React.useMemo(() => {
     const seen = new Map<string, Ref>();
     for (const list of refs.values())
@@ -111,20 +97,63 @@ export function useRemovals(
   const pending =
     (keys.length > 0 && usage.isPending) || reads.some((q) => q.isPending);
 
-  const removals: Record<string, Removal> = {};
-  for (const t of targets) {
-    const list = refs.get(t.key) ?? [];
+  const byKey: Record<string, KeyHolders> = {};
+  for (const key of keys) {
+    const list = refs.get(key) ?? [];
     const holders: ValueHolder[] = [];
     for (const r of list.slice(0, READ_CAP)) {
       const i = distinct.findIndex((d) => d.kind === r.kind && d.id === r.id);
-      const entry = reads[i]?.data?.[t.key];
-      if (entry && holdsRemoved(entry.value, t.values))
-        holders.push({ ...r, value: entry.value });
+      const entry = reads[i]?.data?.[key];
+      if (entry) holders.push({ ...r, value: entry.value });
     }
-    removals[t.key] = {
-      ...t,
+    byKey[key] = {
+      total: list.length,
       holders,
       unread: Math.max(0, list.length - READ_CAP),
+    };
+  }
+  return { byKey, pending };
+}
+
+export interface Removal {
+  key: string;
+  values: unknown[];
+  holders: ValueHolder[];
+  /** Holders beyond the read cap, not looked at. */
+  unread: number;
+}
+
+/**
+ * The draft's removed allowed values and who still holds each: profiles, licenses and accounts that
+ * set the key to a value the draft no longer allows.
+ */
+export function useRemovals(
+  slug: string,
+  draft: CatalogDraft,
+): { removals: Record<string, Removal>; pending: boolean } {
+  const base = React.useMemo(
+    () => new Map(draft.baseEntries.map((e) => [e.key, e])),
+    [draft.baseEntries],
+  );
+  const targets = React.useMemo(() => {
+    const out: { key: string; values: unknown[] }[] = [];
+    for (const e of draftEntries(draft)) {
+      const values = removedValues(base.get(e.key), e);
+      if (values.length) out.push({ key: e.key, values });
+    }
+    return out;
+  }, [draft, base]);
+  const keys = React.useMemo(() => targets.map((t) => t.key), [targets]);
+  const { byKey, pending } = useHolders(slug, keys);
+  const removals: Record<string, Removal> = {};
+  for (const t of targets) {
+    const k = byKey[t.key];
+    removals[t.key] = {
+      ...t,
+      holders: (k?.holders ?? []).filter((h) =>
+        holdsRemoved(h.value, t.values),
+      ),
+      unread: k?.unread ?? 0,
     };
   }
   return { removals, pending };
@@ -136,79 +165,53 @@ export const blockedKeys = (removals: Record<string, Removal>): string[] =>
     .filter((r) => r.holders.length > 0)
     .map((r) => r.key);
 
-/** The removed chips (dashed, struck, with Undo) and, under them, who is left on a removed value. */
-export function RemovedValues({
+/** Under the allowed values: who is left on a removed value (the chips themselves are in the row). */
+export function RemovalWarning({
   slug,
   removal,
   describedBy,
-  onUndo,
 }: {
   slug: string;
   removal: Removal | undefined;
   describedBy: string;
-  onUndo: (value: unknown) => void;
 }): React.ReactElement | null {
-  if (!removal) return null;
+  if (!removal || removal.holders.length === 0) return null;
   return (
-    <div className="space-y-3" data-removed-values>
-      <ul className="flex flex-wrap gap-2" aria-label="Removed values">
-        {removal.values.map((v) => (
-          <li
-            key={valueText(v)}
-            className="inline-flex items-center gap-1 rounded-md border border-dashed border-border-strong px-2 py-0.5 font-mono text-xs text-fg-muted"
-          >
-            <s>{valueText(v)}</s>
-            <span className="sr-only"> (removed)</span>
-            <Button
-              size="xs"
-              variant="ghost"
-              iconStart={<RotateCcw aria-hidden />}
-              onClick={() => onUndo(v)}
-            >
-              Undo
-              <span className="sr-only"> removing {valueText(v)}</span>
-            </Button>
+    <Callout
+      tone="warning"
+      live
+      title={`${removal.values.map(valueText).join(", ")} ${removal.values.length === 1 ? "is" : "are"} still in use`}
+    >
+      <p id={describedBy}>
+        Change these to an allowed value first; Review waits until none holds a
+        removed one. Nothing changes until you publish.
+      </p>
+      <ul className="mt-2 space-y-1">
+        {removal.holders.map((h) => (
+          <li key={`${h.kind}:${h.id}`} className="text-sm">
+            <EntityLink
+              slug={slug}
+              kind={h.kind === "account" ? "user" : h.kind}
+              id={h.id}
+              label={h.label}
+            />{" "}
+            <span className="text-fg-muted">
+              {h.kind === "profile"
+                ? "profile"
+                : h.kind === "license"
+                  ? "license"
+                  : "account"}{" "}
+              sets{" "}
+            </span>
+            <code className="font-mono text-xs">{valueText(h.value)}</code>
           </li>
         ))}
+        {removal.unread > 0 ? (
+          <li className="text-sm text-fg-muted">
+            and {removal.unread} more not checked
+          </li>
+        ) : null}
       </ul>
-      {removal.holders.length > 0 ? (
-        <Callout
-          tone="warning"
-          live
-          title={`${removal.values.map(valueText).join(", ")} ${removal.values.length === 1 ? "is" : "are"} still in use`}
-        >
-          <p id={describedBy}>
-            Change these to an allowed value first; Review waits until none
-            holds a removed one. Nothing changes until you publish.
-          </p>
-          <ul className="mt-2 space-y-1">
-            {removal.holders.map((h) => (
-              <li key={`${h.kind}:${h.id}`} className="text-sm">
-                <EntityLink
-                  slug={slug}
-                  kind={h.kind === "account" ? "user" : h.kind}
-                  id={h.id}
-                  label={h.label}
-                />{" "}
-                <span className="text-fg-muted">
-                  {h.kind === "profile"
-                    ? "profile"
-                    : h.kind === "license"
-                      ? "license"
-                      : "account"}{" "}
-                  sets{" "}
-                </span>
-                <code className="font-mono text-xs">{valueText(h.value)}</code>
-              </li>
-            ))}
-            {removal.unread > 0 ? (
-              <li className="text-sm text-fg-muted">
-                and {removal.unread} more not checked
-              </li>
-            ) : null}
-          </ul>
-        </Callout>
-      ) : null}
-    </div>
+    </Callout>
   );
 }

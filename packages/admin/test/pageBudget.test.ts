@@ -20,8 +20,8 @@ const SECTIONS = join(import.meta.dirname, "../src/console/sections");
  * pages when next touched.
  */
 const OVER_BUDGET: Record<string, number> = {
-  "sections/config/components/CatalogEntryForm.tsx": 780,
-  "sections/config/pages/CatalogEditorPage.tsx": 669,
+  "sections/config/components/CatalogEntryForm.tsx": 758,
+  "sections/config/pages/CatalogEditorPage.tsx": 645,
   "sections/core/pages/Keys.tsx": 870,
   "sections/core/pages/KeysCi.tsx": 714,
   "sections/core/pages/Overview.tsx": 896,

@@ -293,12 +293,12 @@ describe("Catalog editor: removing a value that is still in use", () => {
         },
       }),
     });
-    const allowed = await screen.findByRole("textbox", {
-      name: /^Allowed values/,
-    });
-    await userEvent.clear(allowed);
-    await userEvent.type(allowed, "flac, any");
-    await screen.findByRole("list", { name: "Removed values" });
+    const chips = await screen.findByRole("list", { name: "Allowed values" });
+    // Each chip says who uses it: the profile that sets mp3-320 is named on it.
+    await waitFor(() => expect(within(chips).getByText("Studio")).toBeTruthy());
+    await userEvent.click(
+      within(chips).getByRole("button", { name: "Remove mp3-320" }),
+    );
     const warning = await screen.findByText(/is still in use/);
     expect(warning.closest("[data-tone]")!.textContent).toContain("Studio");
     expect(warning.closest("[data-tone]")!.textContent).toContain("mp3-320");
@@ -308,11 +308,16 @@ describe("Catalog editor: removing a value that is still in use", () => {
         .getAttribute("aria-disabled"),
     ).toBe("true");
     // The removed chip stays, struck, with Undo.
+    expect(within(chips).getByText("(removed)")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: /Undo/ }));
     await waitFor(() =>
       expect(screen.queryByText(/is still in use/)).toBeNull(),
     );
-    expect((allowed as HTMLInputElement).value).toBe("flac, mp3-320, any");
+    expect(
+      within(screen.getByRole("list", { name: "Allowed values" })).getByText(
+        "mp3-320",
+      ),
+    ).toBeTruthy();
     held = "flac";
   });
 });
