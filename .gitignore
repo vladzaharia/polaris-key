@@ -76,3 +76,7 @@ packages/worker/assets/
 # platforms record their own locally, and mismatches write actual/diff images to .out/.
 packages/admin/e2e/__baselines__/portal/*
 !packages/admin/e2e/__baselines__/portal/linux/
+
+# Kit baselines are named <Component>.<state>/; a contributor's global `*.key` ignore would hide
+# the SignIn.key states from `git add` (it did once: ELEM-base's four elements baselines).
+!SignIn.key/
