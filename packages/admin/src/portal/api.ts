@@ -7,6 +7,7 @@ import type {
   SignInRedirect,
   SignInRequestView,
 } from "@polaris-key/protocol/identity";
+import { createHttpClient, HttpError } from "../lib/http.js";
 import { returnUrl } from "./carriedKey.js";
 
 export type {
@@ -1195,28 +1196,44 @@ export interface PortalSignInFlow {
   next?: PortalSsoNext;
 }
 
-export class PortalApiError extends Error {
-  /** A refusal's numeric extras the card shows (`triesLeft` on a wrong sign-in code). */
-  triesLeft?: number;
-  /** Seconds to wait before asking again (a resend asked too soon, PX-W4). */
-  retryAfter?: number;
-  /**
-   * The case a refusal names beside its registered code (PX-W16's profile routes: `invalid_name`,
-   * `too_large`, `unsupported_type` …). Copy is chosen from it, never from `message`.
-   */
-  reason?: string;
-  /** `step_up_required` on a join: which proofs are older than 5 minutes (`started`, `other`). */
-  stale?: string[];
+export class PortalApiError extends HttpError {
   /** I-30: an enforced domain's refusal names the connection to use instead. */
   next?: PortalSsoNext;
   /** I-16: a passkey sign-in refused because no account here holds that credential. */
   unknownCredential?: boolean;
-  constructor(
-    public readonly status: number,
-    public readonly code?: string,
-  ) {
-    super(`portal api ${status}`);
+  constructor(status: number, code?: string) {
+    super(status, { code });
     this.name = "PortalApiError";
+    this.message = `portal api ${status}`;
+  }
+
+  /** A transport refusal as the portal's error: the core's fields plus what only the portal reads. */
+  static from(e: HttpError): PortalApiError {
+    const out = new PortalApiError(e.status, e.code);
+    const serverMessage =
+      e.message !== `http ${e.status}` &&
+      !(e.status === 0 && e.code === "network");
+    if (serverMessage) out.message = e.message;
+    Object.assign(out, {
+      fields: e.fields,
+      errors: e.errors,
+      reason: e.reason,
+      area: e.area,
+      retryAfter: e.retryAfter,
+      triesLeft: e.triesLeft,
+      stale: e.stale,
+      body: e.body,
+    });
+    const body = e.body as {
+      next?: unknown;
+      unknownCredential?: unknown;
+    } | null;
+    if (body && typeof body === "object") {
+      const next = readSsoNext(body.next);
+      if (next) out.next = next;
+      if (body.unknownCredential === true) out.unknownCredential = true;
+    }
+    return out;
   }
 }
 
@@ -1230,6 +1247,11 @@ export function setPortalCsrf(token: string): void {
 /** This tab started an email sign-in that has not finished yet (I-07). */
 let signInPending = false;
 
+const http = createHttpClient({
+  csrfHeader: CSRF_HEADER,
+  csrf: () => csrf,
+});
+
 /**
  * One request to the Worker, answered or refused as a {@link PortalApiError}. `withCsrf` sends
  * the portal binder for every change and for a personal-data download.
@@ -1239,67 +1261,13 @@ async function send(
   init: RequestInit,
   withCsrf: boolean,
 ): Promise<Response> {
-  const headers = new Headers(init.headers);
-  if (withCsrf) {
-    headers.set(CSRF_HEADER, csrf);
-    // JSON unless the caller sent bytes with their own type (a picture upload).
-    if (init.body && !headers.has("Content-Type"))
-      headers.set("Content-Type", "application/json");
-  }
-  let res: Response;
   try {
-    res = await fetch(path, {
-      ...init,
-      headers,
-      credentials: "same-origin",
-    });
-  } catch {
-    // Offline, DNS, a dropped connection: "Can't reach Polaris Key", never "signed out".
-    throw new PortalApiError(0, "network");
+    return await http.send(path, init, { csrf: withCsrf });
+  } catch (e) {
+    throw e instanceof HttpError && !(e instanceof PortalApiError)
+      ? PortalApiError.from(e)
+      : e;
   }
-  if (!res.ok) {
-    let code: string | undefined;
-    let message: string | undefined;
-    let triesLeft: number | undefined;
-    let retryAfter: number | undefined;
-    let reason: string | undefined;
-    let stale: string[] | undefined;
-    let next: PortalSsoNext | undefined;
-    let unknownCredential = false;
-    try {
-      const body = (await res.json()) as {
-        error?: string;
-        message?: string;
-        triesLeft?: unknown;
-        retryAfter?: unknown;
-        reason?: unknown;
-        stale?: unknown;
-        next?: unknown;
-        unknownCredential?: unknown;
-      };
-      unknownCredential = body.unknownCredential === true;
-      code = body.error;
-      message = body.message;
-      if (typeof body.triesLeft === "number") triesLeft = body.triesLeft;
-      if (typeof body.retryAfter === "number") retryAfter = body.retryAfter;
-      if (typeof body.reason === "string") reason = body.reason;
-      if (Array.isArray(body.stale))
-        stale = body.stale.filter((x): x is string => typeof x === "string");
-      next = readSsoNext(body.next);
-    } catch {
-      // non-JSON response
-    }
-    const error = new PortalApiError(res.status, code);
-    if (message) error.message = message;
-    if (triesLeft !== undefined) error.triesLeft = triesLeft;
-    if (retryAfter !== undefined) error.retryAfter = retryAfter;
-    if (reason !== undefined) error.reason = reason;
-    if (stale !== undefined) error.stale = stale;
-    if (next) error.next = next;
-    if (unknownCredential) error.unknownCredential = true;
-    throw error;
-  }
-  return res;
 }
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -1735,14 +1703,15 @@ export const portalApi = {
     }),
   /** "Not you?": ends this browser's session and stays on the card. */
   signOutHere: async (): Promise<void> => {
+    // No CSRF binder here, and the redirect is not followed: only "the request was made" matters.
     try {
-      await fetch("/logout", {
-        method: "POST",
-        credentials: "same-origin",
-        redirect: "manual",
-      });
-    } catch {
-      throw new PortalApiError(0, "network");
+      await http.send(
+        "/logout",
+        { method: "POST", redirect: "manual" },
+        { raw: true, csrf: false },
+      );
+    } catch (e) {
+      throw e instanceof HttpError ? PortalApiError.from(e) : e;
     }
   },
   /** Every session and app of the account, this browser's included. */

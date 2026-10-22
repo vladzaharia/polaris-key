@@ -25,7 +25,6 @@ const ALLOWED = "lib/http.ts";
 /** Files that still call `fetch`, as paths under `src/`, each with the slice that removes it. */
 const KNOWN: Record<string, string> = {
   "api.ts": "P0-32.10",
-  "portal/api.ts": "P0-32.2",
 };
 
 const GLOBALS = new Set(["window", "globalThis", "self"]);

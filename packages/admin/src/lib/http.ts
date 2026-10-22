@@ -23,22 +23,22 @@ export interface Refusal {
 }
 
 export class HttpError extends Error {
-  readonly code?: string;
-  readonly fields?: string[];
+  code?: string;
+  fields?: string[];
   /** Stable coherence codes: inputs individually fine and jointly impossible. */
-  readonly errors?: string[];
+  errors?: string[];
   /** A machine-readable case beside the registered `code` (`unknown_channel`, `too_large`, …). */
-  readonly reason?: string;
+  reason?: string;
   /** The area a `no_access` 403 names. */
-  readonly area?: string;
+  area?: string;
   /** Seconds until a 429 clears, when the route says. */
-  readonly retryAfter?: number;
+  retryAfter?: number;
   /** A wrong sign-in code's remaining tries. */
-  readonly triesLeft?: number;
+  triesLeft?: number;
   /** `step_up_required` on a join: which proofs are older than 5 minutes. */
-  readonly stale?: string[];
+  stale?: string[];
   /** The parsed refusal body as sent (`undefined` when it was not JSON): route extras live here. */
-  readonly body: unknown;
+  body: unknown;
 
   constructor(
     /** The HTTP status; 0 is a network failure. */
