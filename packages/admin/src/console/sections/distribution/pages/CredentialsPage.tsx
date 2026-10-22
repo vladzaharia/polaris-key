@@ -1,5 +1,5 @@
 /**
- * Distribution → Outlet credentials (ADMIN.md §6.4, T2 + drawer), moved from Keys & secrets. Fixes OUT-1 to OUT-7.
+ * Distribution → Outlet credentials (ADMIN.md §6.4, T2 + drawer), moved from Keys and secrets. Fixes OUT-1 to OUT-7.
  *
  * The keys a store connector signs in with (App Store Connect, Google Play, the Microsoft Store,
  * the App Store In-App Purchase key, Steam) and the Sentry integration whose alerts open halt

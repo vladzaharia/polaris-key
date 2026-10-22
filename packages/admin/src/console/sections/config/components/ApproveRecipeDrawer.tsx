@@ -370,7 +370,7 @@ export function ApproveRecipeDrawer({
                       to={r.keys(slug)}
                       className="py-1 text-accent-fg underline underline-offset-2"
                     >
-                      Keys &amp; secrets
+                      Keys and secrets
                     </Link>
                     . Until then the recipe cannot sign, even when approved.
                   </p>

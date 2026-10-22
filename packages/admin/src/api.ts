@@ -5569,7 +5569,7 @@ const rawApi = {
     }),
   rotateProductKey: (slug: string) =>
     call<RotateKeyResult>(`${p(slug)}/keys/rotate`, { method: "POST" }),
-  // ── Keys & secrets (chunk 5): inventories and the signing-key lifecycle ─────
+  // ── Keys and secrets (chunk 5): inventories and the signing-key lifecycle ─────
   /** A-4: every signing key with its lifecycle state. */
   productKeys: (slug: string) => call<SigningKeysResponse>(`${p(slug)}/keys`),
   /** Promote a staged key. `breakGlass` skips the trust-cache window. */

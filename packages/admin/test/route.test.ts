@@ -283,7 +283,7 @@ describe("section roots redirect to the section's first page", () => {
   it("only an old tab, or an old tab and an id its page has records for, is moved", () => {
     for (const hash of [
       "#/p/djdl/nope",
-      "#/p/djdl/secrets/x", // Keys & secrets has no records
+      "#/p/djdl/secrets/x", // Keys and secrets has no records
       "#/p/djdl/licenses/lic_1/keys", // the old URLs had no record tabs
       "#/p/djdl/constructor",
       "#/p/djdl/config/nope",

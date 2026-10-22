@@ -4,7 +4,7 @@
  * secrets, Members). Each tab is a Core page rendered under it with no header of its own.
  *
  * `#/p/<slug>/settings` (the product's own settings) is Features with its last row unfolded.
- * All settings is a link in the header, not a tab. Keys & secrets answers to the `keys` area: a
+ * All settings is a link in the header, not a tab. Keys and secrets answers to the `keys` area: a
  * member without it does not see the tab (the page itself is refused by the dispatcher). The tabs
  * are route tabs, so the area is in the URL and a phone scrolls the row inside its own region.
  */
@@ -34,10 +34,10 @@ import { productPage, r } from "../../../routes.js";
  * (the product's own settings) lives on the Features tab, so it has no tab of its own.
  */
 export const SETTINGS_AREAS: { page: ProductPageId; label: string }[] = [
-  { page: "services", label: "Features & general" },
+  { page: "services", label: "Features and general" },
   { page: "presentation", label: "Presentation" },
   { page: "portal", label: "Polaris Locker" },
-  { page: "keys", label: "Keys & secrets" },
+  { page: "keys", label: "Keys and secrets" },
   { page: "settings-members", label: "Members" },
 ];
 
@@ -64,7 +64,7 @@ export function SettingsHub({
   const gate = useWriteGate(
     page === "keys" ? "keys" : "core",
     slug,
-    page === "keys" ? "Keys & secrets" : "Settings",
+    page === "keys" ? "Keys and secrets" : "Settings",
   );
   // One notice per page, on every tab that has something to edit. Features gates its own
   // switches; the other tabs lock whole.

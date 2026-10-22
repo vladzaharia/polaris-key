@@ -601,7 +601,7 @@ describe("403 refusal wording", () => {
       area: "keys",
     });
     expect(errorCopy(e, {}).description).toBe(
-      "You need Keys & secrets edit access to do this.",
+      "You need Keys and secrets edit access to do this.",
     );
   });
   it("falls back to plain edit access", () => {

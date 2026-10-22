@@ -1,5 +1,5 @@
 /**
- * Keys & secrets → Device trust (ST-12; S-18 §2.2, §4.15 item 8). The product's device trust
+ * Keys and secrets → Device trust (ST-12; S-18 §2.2, §4.15 item 8). The product's device trust
  * policy: which operations need an attested device, whether a miss is refused or only logged,
  * and the App Attest and Play Integrity anchors.
  *

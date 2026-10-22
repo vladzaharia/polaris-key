@@ -1,5 +1,5 @@
 /**
- * Keys & secrets → Secrets (docs/design/ADMIN.md §6.7). Write-only product secrets: an OIDC client
+ * Keys and secrets → Secrets (docs/design/ADMIN.md §6.7). Write-only product secrets: an OIDC client
  * secret, edge-mint key material. Values are sealed under the platform key and never returned.
  *
  * - Rows are the union of what is stored and what the configuration requires (A-5), each with

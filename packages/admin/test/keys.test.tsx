@@ -162,7 +162,7 @@ async function openRowMenu(name: string) {
   return user;
 }
 
-describe("Keys & secrets → Secrets", () => {
+describe("Keys and secrets → Secrets", () => {
   it("lists stored and required secrets with usage, status and what requires each (SEC-2)", async () => {
     mount();
     expect(await screen.findByText("EDGE_KEY")).toBeTruthy();
@@ -294,7 +294,7 @@ describe("Keys & secrets → Secrets", () => {
   });
 });
 
-describe("Keys & secrets → Signing keys (A-4)", () => {
+describe("Keys and secrets → Signing keys (A-4)", () => {
   it("lists every key with its state", async () => {
     mount();
     expect((await screen.findAllByText("djdl-a")).length).toBeGreaterThan(0);
@@ -524,7 +524,7 @@ describe("refreshedCopy", () => {
   });
 });
 
-describe("Keys & secrets → CI publishing", () => {
+describe("Keys and secrets → CI publishing", () => {
   it("issues a static token and shows it once", async () => {
     const user = userEvent.setup();
     fns.issueCiToken.mockResolvedValue({
@@ -610,7 +610,7 @@ describe("Keys & secrets → CI publishing", () => {
   });
 });
 
-describe("Keys & secrets → the page", () => {
+describe("Keys and secrets → the page", () => {
   it("holds signing keys, secrets, device trust and CI only: edge mint and store credentials have their own pages (SEC-1)", async () => {
     fns.product.mockResolvedValue({
       product: product({

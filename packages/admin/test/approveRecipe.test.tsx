@@ -323,12 +323,12 @@ describe("Approve a minted token's recipe", () => {
     ).toBeNull();
   });
 
-  it("links an unmarked signing secret to Keys & secrets", async () => {
+  it("links an unmarked signing secret to Keys and secrets", async () => {
     open(recipes([recipe({ secretUsage: "general" })]));
     const drawer = await openApprove();
     expect(
       within(drawer)
-        .getByRole("link", { name: "Keys & secrets" })
+        .getByRole("link", { name: "Keys and secrets" })
         .getAttribute("href"),
     ).toBe("#/p/djdl/settings/keys");
   });

@@ -12,7 +12,7 @@ import { expectNoAxeViolations, mountAt } from "./releaseHarness.js";
 
 /**
  * The guided Releases empty state (EXPERIENCE.md §0.4 S2, AS 2.2; UX-23): the checks that let CI
- * publish with their fixes inline, CI publishing edited through Keys & secrets' own drawer and
+ * publish with their fixes inline, CI publishing edited through Keys and secrets' own drawer and
  * dialog, the workflow step with the slug filled in, and a wait that completes out loud (§7.1).
  */
 
@@ -179,7 +179,7 @@ describe("Releases → guided first release (UX-23)", () => {
     ).toBe("/docs/features/ship-builds/ci/");
   });
 
-  it("allows the workflow inline, through Keys & secrets' own publisher drawer", async () => {
+  it("allows the workflow inline, through Keys and secrets' own publisher drawer", async () => {
     const user = userEvent.setup();
     fns.putCiPublisher.mockResolvedValue({ ok: true, policy: POLICY });
     mount();

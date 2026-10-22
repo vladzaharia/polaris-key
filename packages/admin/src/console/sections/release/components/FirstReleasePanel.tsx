@@ -10,7 +10,7 @@
  *   sync health's `github` check) and the trusted publisher.
  * - A manual product offers Link a repository (the same drawer as Settings → Repository) or a
  *   trusted publisher and a CI token, either of which lets CI publish.
- * - CI publishing lives in Keys & secrets, but it is edited from here through the same drawer
+ * - CI publishing lives in Keys and secrets, but it is edited from here through the same drawer
  *   and dialog (`PublisherDrawer`, `IssueCiTokenFlow`).
  * - The store is polled while the panel is up; ReleasesPage announces the release that ends it.
  */

@@ -190,7 +190,7 @@ export function deleteProductActions(
 /**
  * Connecting an app (UX-59; SETUP.md §3): the SDK quick start, its install from pkg.plrs.im and
  * the trust pins, findable by the words a developer types ("sdk", "install", "pins"). The quick
- * start rows open Integration with the SDK picker focused; the pins row opens Keys & secrets.
+ * start rows open Integration with the SDK picker focused; the pins row opens Keys and secrets.
  * Shown on a match only, on a product.
  */
 export function sdkActions(slug: string | null): PaletteItem[] {
@@ -226,7 +226,7 @@ export function sdkActions(slug: string | null): PaletteItem[] {
       id: "action:trust-pins",
       group: "Actions",
       label: "Trust pins",
-      detail: "Keys & secrets",
+      detail: "Keys and secrets",
       keywords:
         "trust pins pinned keys signing key public key kid jwks rotation staged sdk",
       icon: <KeyRound aria-hidden className="size-4" />,
