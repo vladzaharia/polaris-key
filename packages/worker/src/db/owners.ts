@@ -81,6 +81,8 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "license_profiles",
     "license_store_grants",
     "license_batches",
+    // LX-33's P0-49 job ledger; dropped after release N+1.
+    "license_limit_backfill",
   ],
   config: [
     "product_schema",

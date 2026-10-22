@@ -189,6 +189,7 @@ export const REQUIRED_INDEXES: readonly string[] = [
   "idx_release_download_tokens_expiry",
   "idx_release_download_tokens_hash",
   "idx_release_metadata_seq",
+  "idx_tiers_implicit",
 ];
 
 /** Which of `REQUIRED_INDEXES` are absent from the live schema. */
