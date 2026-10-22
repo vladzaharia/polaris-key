@@ -1586,8 +1586,23 @@ func card_width(wanted: float) -> float:
 	while n != null and n != outer:
 		if n is PanelContainer:
 			room -= side_padding(n as Control)
+		elif n is MarginContainer:
+			# A margin container between (the settings page's inset around its tab) takes its margins too.
+			room -= float(n.get_theme_constant("margin_left") + n.get_theme_constant("margin_right"))
+		elif n is ScrollContainer and (n as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED and not _is_view_scroll(n as ScrollContainer):
+			# A page's own scroll area (the settings panel's list) keeps its bar's width free even while
+			# it fits. A view's card scroll is already in `card_padding_x()`.
+			room -= (n as ScrollContainer).get_v_scroll_bar().get_combined_minimum_size().x
 		n = n.get_parent()
 	return maxf(0.0, minf(wanted, room))
+
+
+## Whether `sc` is a card scroll a view made with `scroll_area()`.
+static func _is_view_scroll(sc: ScrollContainer) -> bool:
+	var v := sc.get_parent()
+	while v != null and not (v is PKeyUiView):
+		v = v.get_parent()
+	return v != null and (v as PKeyUiView)._scrolls.has(sc)
 
 
 ## The left plus right content margins of `panel`'s "panel" stylebox.
