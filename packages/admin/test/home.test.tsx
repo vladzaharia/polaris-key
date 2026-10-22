@@ -1492,7 +1492,7 @@ describe("the platform row (ST-44b.2)", () => {
       row.querySelector("[data-platform-subject] svg")!.getAttribute("class"),
     ).toContain("size-6");
     expect(row.parentElement!.className).toContain(
-      "minmax(8rem,fit-content(11rem))",
+      "@xl:grid-cols-[max-content_fit-content(11rem)_minmax(0,1fr)_max-content]",
     );
   });
 });
