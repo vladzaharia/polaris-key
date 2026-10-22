@@ -1841,99 +1841,6 @@ not available_ and the rest of the card works as before.
   isolate. A sign-in that answers _… sign-in is unavailable right now_ is the provider's endpoint
   failing, or answering with a host outside the allowlist (`providers/net.ts`).
 
-## License override migration
-
-The license-level config override layer is removed on every product and replaced by the
-**account override**: managed config an operator sets for one account on one product. Devices get the layer of the account signed in on them,
-else of their license's owner; a floating license gets none. Entitlement overrides stay on the
-license. Operators edit the layer on a user's record (Users → a user → Overview), or with
-`PUT /manage/api/products/<slug>/users/<subject>/overrides`.
-
-Until the migration runs, both layers are read (the account layer above the license's) and every
-document is byte-identical to before: the account layer is empty until someone writes one. The
-migration is **one platform-wide run that the owner schedules**. Nothing in the Worker starts it;
-it stays off until the steps below are taken by hand, in order. Agents never run any of it against
-staging or production, and never run `wrangler` against a remote.
-
-**Owner steps (production).**
-
-1. **Deploy.** The `account_overrides` migration ships with the release that carries the override migration and is
-   applied by the normal deploy. Every license keeps working unchanged.
-2. **Dry run on a production-shaped copy.** Either in the console (Platform → Override migration →
-   Dry run), which writes nothing, or offline, with no Worker and no KEK:
-
-   ```sh
-   npx wrangler d1 export polaris_key_prod --env prod --remote --output prod.sql   # owner only
-   pnpm --filter @polaris-key/worker override-migration:dry-run -- --sql prod.sql --out ovm-dry
-   ```
-
-   `ovm-dry/` then holds `inventory.json`, `report.json` and `report.csv`: per product, every
-   license carrying config or secret overrides, whether it moves to its owner's account overrides
-   (`moved`), loses values to another license of the same owner (`collapsed`, with the kept and
-   lost values), or is dropped (`dropped`: no account). Secret values are never in any of them
-   (names only). The tool loads the copy into memory and fails if the dry run changed anything.
-   Delete `prod.sql` afterwards: it holds customer data.
-
-3. **Flag the prerequisites** once the login card **and** the portal Library with Activate
-   License are live in production (decision 21: customers must be able to add their
-   license to an account during the notice). Platform → Override migration → flag each, or
-   `PUT /manage/api/platform/override-migration/prerequisites` with `{"loginCard":true,"library":true}`.
-   The notice is refused until both are set.
-
-   **Before the notice: OIDC-provisioned secrets on licenses with no account (decision 4).** A
-   product whose Identity provisioning writes a secret from a sign-in claim (djdl's
-   `proxy.subscriptionUrl`) keeps that secret on the license until the run; from the run on, its
-   only target is the license owner's account overrides. So **OIDC licenses that are not in an
-   account** (no `account_id`: the customer never added the license in the portal Library, and
-   the automatic attach never matched a verified email) **stop receiving provisioned secrets**:
-   from the run's start, every sign-in (`updateLicenseOnSignIn`, and `activateFromIdentity`'s
-   claim and new-license paths in `services/identity/oidc.ts`) removes them from the license
-   instead of renewing them, and from the run's completion the license stops delivering any it
-   still holds. A sign-in during the run can strip the secret before the run reaches the product,
-   so such a license may then be missing from the report: count them from the dry run, before the
-   notice. They are the `dropped` rows whose `keys.secrets` include a key the provisioning
-   declares:
-
-   ```sh
-   jq '[.[] | select(.outcome == "dropped" and (.keys.secrets | index("proxy.subscriptionUrl")))] | length' ovm-dry/report.json
-   ```
-
-   In the console, the product's license list under Platform → Override migration shows the same
-   licenses with their `secretKeys`. Ask those customers to add the license to their account
-   during the notice: one that does keeps the secret through the owner line.
-
-4. **Start the notice** (`POST …/override-migration/notice`). The run becomes possible 30 days
-   later (`runNotBefore`). During the window the inventory is recomputed nightly, so the count to
-   be dropped falls as customers attach; the console shows it on every affected product's
-   Licenses page. Operators can ask those customers to add the license to their account (the
-   license page offers the portal's Activate License link). Withdraw with
-   `DELETE …/override-migration/notice` if needed; a new notice starts a fresh 30 days.
-5. **Run it** on or after the run date: sign in to the console again (the run needs a sign-in from
-   the last 5 minutes), then Platform → Override migration → Run, or
-   `POST /manage/api/platform/override-migration/run`, repeated while `progress.done` is false
-   (each call processes up to 25 products). From the first call,
-   `PUT …/licenses/<id>/overrides` refuses config and secrets (entitlements stay writable) and the
-   OIDC provisioning writer targets the owner's account overrides; an OIDC license with no account
-   stops receiving its provisioned secrets from here on (see before step 4). When `done` is true,
-   documents stop reading config and secrets from licenses. Each license touched has an audit row
-   (`license.overrides.migrated` or `license.overrides.dropped`), and the platform activity log
-   has the start and the completion.
-6. **The report** (Platform → Override migration → Report, or
-   `GET …/override-migration/report?format=csv[&product=<slug>]`) stays 90 days; use it to
-   re-apply a dropped or lost value by hand once the customer has an account. Secret values are
-   never in it: re-enter those from the source.
-7. **After 90 days** the nightly job deletes the report and empties the licenses' config and
-   secrets columns (entitlements kept). Nothing to do.
-
-**Rolling back.** Before step 5 nothing changed. Between the run and the 90-day mark the licenses
-still hold their old config and secrets, so a Worker built before the override migration would deliver them again
-(the account rows it ignores); a dropped license's values come back that way too. **Do not roll
-back past the override migration once the columns are emptied:** the license values are gone, and only the account
-rows (which an older Worker does not read) hold them.
-
-**KEK rotation** covers the account rows: their sealed secrets are counted and re-sealed by the
-`managed` bucket of the KEK sweep (above).
-
 ## Offline grace clamp
 
 A license's offline grace no longer outlasts the license. While a product's
@@ -1995,8 +1902,9 @@ stays on the old objects until a later release. Three things change underneath:
 - **OIDC-provisioned entitlement keys move** out of `licenses.overrides_json` into the license's
   `oidc` grant, `grt_oidc_<license id>` (djdl's `polarisVpn`). Each entry's state, value and
   `updatedAt` is copied, and the license document reads the grant where the keys used to sit. A
-  sign-in moves its own license. Provisioned **secrets** are not touched: they stay a license
-  override until the override migration runs, and then go to the owner's account overrides.
+  sign-in moves its own license. Provisioned **secrets** are not touched by this job: a sign-in
+  by an identity linked to the license's owner puts them on the owner's account overrides row, and
+  `core.provisioned-secrets-to-account` moves the ones already on the license.
 - **Tiers gain `rank` and `policyOfflineGraceDays`** (default 0 and none). A sign-in whose
   groups map to several tiers picks the highest-ranked one. While every rank is 0 that is still
   the first match, so nothing changes until a rank is set. `oidc.syncTierOnSignIn: upgradeOnly`
@@ -2079,7 +1987,7 @@ under _Entries_ in the change that closes the row. A row with no entry is open.
 
 | Pair                        | Owner     | Exit fact                                                                                                                                                                        |
 | --------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| License override migration  | The lead  | A later release deletes the machinery. A second drops `override_migration` and `override_migration_report` after the check.                                                      |
+| License override migration  | The lead  | Deleted with the override-migration release. A later release drops `override_migration`, `override_migration_report` and `provisioned_secret_moves`.                             |
 | Settings backfill           | The owner | The backfill ran on `djdl` and `polaris-key` and its report is kept. Then the runner, routes and page are deleted.                                                               |
 | Platform-IdP claim          | The owner | The count of end users with no email, read on the sunset date `PLATFORM_OIDC_SUNSET`. Closed when the legacy callbacks are retired.                                              |
 | Licensing catch-up          | The lead  | A later release retires `licensingCatchUp` and the store-grant dual-write once offers are the writer.                                                                            |
@@ -2121,7 +2029,7 @@ tracks:
 
 | Job                                   | Owner    | Exit fact                                                                                                                                                                                                             |
 | ------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `core.licence-override-migration`     | The lead | The dry run reports no license with an override, then a later release deletes the machinery. Applied from the console, never the runner.                                                                              |
+| `core.licence-override-migration`     | The lead | Deleted with the override-migration release. A later release drops the tables.                                                                                                                                        |
 | `core.provisioned-secrets-to-account` | The lead | A dry run after the apply reports changes 0, and its conflicts and otherSubject counts are resolved or accepted by the lead. Both run ids are recorded under Entries. The release after drops the job and its ledger. |
 | `identity.seed-platform-connection`   | The lead | An apply report exists. Its seeded audience is recorded here as above.                                                                                                                                                |
 | `license.limits-materialise`          | The lead | A dry run after the apply reports changes 0 and docDiffs 0, and no license has a tier of NULL. Its run ids are recorded under Entries.                                                                                |

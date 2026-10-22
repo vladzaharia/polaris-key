@@ -7021,13 +7021,14 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   `export`; no claimed table has an `account_id` column. A store added without its hooks fails the
   gate instead of leaving data behind after a merge or a deletion.
 
-### The account override layer and the licence-override migration (U-03)
+### The account override layer (U-03, U-27)
 
 Operators' managed config for one account on one product (`account_overrides`, keyed by the
-product's pairwise subject) replaces the licence's config and secret overrides on every product
-(notes/S-17 §5.12, owner decisions 3, 4, 20 and 21). Core merges it after the licence overrides
-and before the device's (`core/licensing/payload.ts`); a one-time, owner-run migration moves owned licences'
-values onto it and drops unowned licences'.
+product's pairwise subject) is layer 5 of the config merge (notes/S-17 §5.12, owner decisions 3, 4,
+20 and 21). Core merges it after the licence's own overrides, layer 4, and before the device's
+(`core/licensing/payload.ts`). The licence layer is read and writable for every licence, floating
+or owned (U-27.1); there is no migration, freeze or retirement state. U-03's one-time migration of
+licence values was deleted in U-27.
 
 - **Whose layer (S-17 T16, intended).** `overrideSubject` (`core/accounts/accountOverrides.ts`) is the
   Cloud Sync principal (`resolveSyncPrincipal`, with all of its checks: an authorized device, a
@@ -7040,42 +7041,69 @@ values onto it and drops unowned licences'.
   owner accessor (`test/subjectStores.test.ts`). A floating licence gets no layer, even with a
   binding on the device. The owner line reads the subject without creating one, so a document GET
   writes nothing.
-- **No account id leaves.** Rows, the console route, the inventory, the dry run, the report, the
-  audit rows and the export name the owner only by the product's pairwise subject (S-16 §5.1);
-  the run groups licences by account internally only. Tests assert no account id appears.
+- **No account id leaves.** Rows, the console route, the inventory, the job's reports, the audit
+  rows and the export name the owner only by the product's pairwise subject (S-16 §5.1). Tests
+  assert no account id appears.
+- **Where a sign-in's provisioned secrets go (U-27.2).** `provisionedSecretTarget`
+  (`core/licensing/provisioning.ts`) answers `account` only when the licence has an owner and the
+  signing identity's `sub` is linked to that owner's account: an `account_links` row with
+  `kind='oidc'` and `tenant_scope=''`. Every other licence keeps the secrets in its column as
+  before: floating, waiting on its email, identified only by its `sub`, an email-only identity, or
+  handed over to another account. The target is decided per licence, not by a switch, because
+  writing the account row of an unowned licence would drop its secrets.
+- **Checked twice.** The target is decided on sign-in, in the claim arm and in
+  `issueAccountLicense`, and `applyProvisionedAccountSecrets` repeats the same link query before it
+  writes. A licence handed over between the two checks takes nothing from its previous owner's
+  sign-in. Residual: the link query does not check the issuer, because `OidcIdentity` carries no
+  issuer key (the same predicate as `licenseChoice.ts:132`). Abuse needs the product's sign-in IdP
+  to hand an attacker a `sub` equal to a subject the owner linked from another global issuer, and
+  the attacker also needs a licence the owner holds. A malicious product operator gains nothing:
+  they already control that product's config.
+- **Exposure.** Only a device signed in as the owner gets the row's secrets. A key-entry device of
+  an owned licence still gets the owner's config but not their secrets
+  (`answer.via === "owner"`).
 - **Secrets stay sealed.** Account-layer secrets (and config keys the catalog flags `secret`) are
   sealed under PLATFORM_KEK with the same AAD as the licence's (`…:managed-secret:<key>`; a value
   sealed under the earlier `…:product-secret:managed:<key>` still opens and is re-sealed on its
-  next write), so the run copies sealed values as they are and seals any legacy plaintext on the
-  way; the KEK sweep covers the table. The console never echoes a value back (`redactPayload`).
-  The inventory, the dry run, the report (and its CSV), the export and the merge's collision audit
-  row never carry a secret: a value is shown only when the active catalog positively declares the
-  key a non-secret `config` key and the stored value is not a sealed envelope (fail closed). Tests
-  feed sealed and plaintext secrets through every output and search for them.
-- **The migration cannot start early or by accident.** The notice is refused until an operator
-  flags the login card (I-07) and the Library (I-11) live in production, and the guard is the
-  conditional write itself; the run is refused before the 30-day notice window ends, needs the
-  operator's step-up (a sign-in from the last 5 minutes), runs under a lease so two requests never
-  process one product at once (renewed per product, cleared only by its holder), and resumes
-  exactly (report rows are the per-licence progress marker). Its account-row write is a
-  compare-and-set on the row it planned from, with that unit's report and audit rows written only
-  if it applied, so an operator's edit or a sign-in that lands meanwhile is re-planned on, never
-  overwritten. The licence route's freeze check and its write are one statement. Every step is in the platform activity log; every licence the run touches has an audit
-  row. Nothing in the Worker starts the run: the nightly job only refreshes the inventory, purges
-  the report after 90 days and, after the report window, empties the licences' config and secrets
-  columns. Residual: the prerequisites are facts about production that only an operator can
-  assert; a wrong flag starts the notice early (the owner sets them, RUNBOOK).
-- **Freeze, then retire.** From the run's start, `PUT /licenses/<id>/overrides` refuses config and
-  secrets (entitlements stay writable, decision 20) and the OIDC provisioning writer puts its
-  secrets on the owner's account row; from its completion, documents stop reading config and
-  secrets from licences. Until the columns are emptied (90 days later), the licence values remain
-  in D1 and the run can be reasoned about or reversed by hand; the report keeps non-secret values
-  for re-application.
-- **Data the report holds.** A licence's own email (`buyer_email`), key names, non-secret config
-  values and the owner's subject, for 90 days, platform admins only. A subject's report rows go
-  with its account × product data (the store's `delete`: per-product removal, account deletion,
-  the console's data deletion) and follow it through a merge. Deleting a product deletes all of
-  its account overrides and report rows (`deleteProduct`), and deleting a licence its report rows.
+  next write). The AAD binds the product and the key, not the home: a sealed value opens
+  wherever it sits, so moving it between the licence column and the account row needs no
+  re-sealing. That is acceptable because a writer of D1 can already place any sealed value in
+  either home; the AAD stops a value moving to another product or key, not within one. The KEK
+  sweep covers the table. The console never echoes a value back (`redactPayload`). The inventory,
+  the job's reports (and CSV), the export and the merge's collision audit row never carry a
+  secret: a value is shown only when the active catalog positively declares the key a non-secret
+  `config` key and the stored value is not a sealed envelope (fail closed). Tests feed sealed and
+  plaintext secrets through every output and search for them.
+- **The move job (`core.provisioned-secrets-to-account`, U-27.5, U-27.6).** It moves an owned
+  licence's declared provisioned secrets to the owner's row, one layer up. A dry run reads only
+  and carries no value (counts and capped ids). Per move, the `provisioned_secret_moves` ledger
+  row is written first, then the entry is added to the owner's row by compare-and-set exactly as
+  stored (writer `migration`), then removed from the licence column by a guarded write that never
+  touches `modified_at`. A sign-in or edit between plan and apply loses the compare-and-set and is
+  skipped, never overwritten. Conflicts (several licences of one owner with different entries and
+  no account value) and devices signed in as another subject are skipped and reported. The result
+  is value-equal, not byte-identical: the order of keys inside a document's secrets may change,
+  so the config ETag changes once and a device sees one full response; the SDK `onChange`
+  callbacks that key on the ETag may fire once with identical values.
+- **`down` is exact and handover-safe.** The ledger stores the licence id, key, subject, a
+  SHA-256 of the moved entry and whether the job added it, never a value. `down` puts an entry
+  back on its licence only while the account row still hashes to the recorded entry and the
+  licence is still owned by the same account. It removes the entry from the row only when the job
+  added it and every licence of that entry has its copy back, and settles a kept group before a
+  pending one. A copy the apply removed as shadowed under an existing account entry is restored
+  from that entry. A later edit stays. If the row's compare-and-set fails three times, `down`
+  reports a counted retry and is run again.
+- **Residuals, each to be closed by U-27b.**
+  - `down` is product-wide, not per run: undoing an older apply also undoes a newer one.
+  - Legacy plaintext provisioned values move as they are, without sealing, and the ledger hash
+    covers the plaintext; only a database reader could use that. Sealing them is carried by U-27b.
+  - A rare kept group: an `added` row together with a non-matching shadowed copy in one group.
+    The entry stays, so devices keep what they saw, and the invisible older copy is lost.
+  - `override_migration_report` rows (a licence's own email, key names, non-secret values and the
+    owner's subject) are no longer erased: nothing reads or deletes them from U-27, and a
+    licence, account or product deletion leaves them. U-27b drops the table.
+  - The ledger holds the owner's subject; erasure, merge, licence deletion and product deletion
+    remove or re-key its rows, and U-27b drops the table.
 - **Merges never overwrite silently.** The registered store's `merge` keeps the survivor's value
   per key, copies keys only the absorbed account had (secrets copied sealed, never decrypted),
   deletes the absorbed row in the same batch, and lists every collision in the product's activity
