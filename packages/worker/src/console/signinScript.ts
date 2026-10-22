@@ -59,17 +59,20 @@ var mine=ctl=new AbortController();
 if(!keep)say("");
 var start=back?{returnTo:back}:{};
 if(stepUp)start.stepUp=true;
+var quiet=conditional;
+function note(k){if(!quiet)say(k)}
 function stop(retry){if(mine!==ctl)return;if(!conditional)busy(false);if(retry==="now")arm();else if(retry==="focus")armOnFocus()}
 return post("/manage/login/passkey/options",start).then(function(o){
 if(mine!==ctl)return;
-if(!o.ok||!o.json.options){say(why(o,true));stop("focus");return}
+if(!o.ok||!o.json.options){note(why(o,true));stop("focus");return}
 var p=o.json.options;
 var pub={challenge:bytes(p.challenge),rpId:p.rpId,timeout:p.timeout,userVerification:p.userVerification||"required",allowCredentials:(p.allowCredentials||[]).map(function(c){return{type:"public-key",id:bytes(c.id),transports:c.transports}})};
 var ask={publicKey:pub,signal:mine.signal};
 if(conditional)ask.mediation="conditional";
 return navigator.credentials.get(ask).then(function(c){
 if(mine!==ctl)return;
-if(!c){stop("now");return}
+if(!c){stop(conditional?"focus":"now");return}
+quiet=false;
 var r=c.response;
 say("");busy(true,"Signing in…");
 var res={id:c.id,rawId:b64(c.rawId),type:c.type,response:{clientDataJSON:b64(r.clientDataJSON),authenticatorData:b64(r.authenticatorData),signature:b64(r.signature)},clientExtensionResults:{}};
@@ -80,8 +83,8 @@ say(why(v,false));busy(false);stop("focus")
 })
 },function(e){
 if(mine!==ctl||(e&&e.name==="AbortError"))return;
-if(e&&e.name==="NotAllowedError")stop("now");
-else{say("other");stop("focus")}
+if(e&&e.name==="NotAllowedError")stop(conditional?"focus":"now");
+else{note("other");stop("focus")}
 })
 })
 }
@@ -96,4 +99,4 @@ if(email&&!stepUp&&typeof pk.isConditionalMediationAvailable==="function")pk.isC
 
 /** `'sha256-…'` of `SIGNIN_SCRIPT` as the CSP names it; pinned by `test/consoleCard.test.ts`. */
 export const SIGNIN_SCRIPT_HASH =
-  "'sha256-Ceb997ivhumPTBAsWtDJF2eF2MDBzr7DB8LDWULHX5I='";
+  "'sha256-4szpK1kVqxpZ38+0S242KDV0DBmNMt6TcruG4RXRww4='";

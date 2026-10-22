@@ -122,7 +122,7 @@ export function renderConsoleSignin(opts: {
   const identifier = bg
     ? ""
     : opts.knownEmail
-      ? `${hidden("login_hint", opts.knownEmail)}<p class="fine">Signing in as ${escapeHtml(opts.knownEmail)}</p>`
+      ? hidden("login_hint", opts.knownEmail)
       : chip
         ? `${hidden("login_hint", chip)}<div class="field"><span class="field-label" id="email-label">Email</span>` +
           `<div class="chip" role="group" aria-labelledby="email-label"><span class="ac-mono" aria-hidden="true">${escapeHtml(initialsOf(chip))}</span>` +
@@ -139,6 +139,10 @@ export function renderConsoleSignin(opts: {
           "shield",
           "Every use is recorded and every Superadmin is emailed.",
         )
+      : "",
+    // A step-up names who is confirming, once, above both ways in.
+    opts.state === "stepUp" && opts.knownEmail
+      ? `<p class="fine">Signing in as ${escapeHtml(opts.knownEmail)}</p>`
       : "",
     // On a step-up the passkey leads (the primary), so its block sits before the form; elsewhere it follows.
     offerPasskey && opts.state === "stepUp"

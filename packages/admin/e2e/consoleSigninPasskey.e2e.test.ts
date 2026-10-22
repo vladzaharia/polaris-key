@@ -228,6 +228,7 @@ async function open(
   opts: Parameters<Browser["newContext"]>[0] = {},
   /** Chromium's virtual authenticator answers conditional UI at once; off, only the button signs in. */
   conditional = false,
+  verified = true,
 ): Promise<{
   context: BrowserContext;
   page: Page;
@@ -259,7 +260,7 @@ async function open(
         transport: "internal",
         hasResidentKey: true,
         hasUserVerification: true,
-        isUserVerified: true,
+        isUserVerified: verified,
         automaticPresenceSimulation: true,
       },
     },
@@ -336,6 +337,42 @@ describe("the passkey button (ST-30c.6)", () => {
     expect((await verify).status()).toBe(200);
     await page.waitForURL(`${origin}/manage/`);
     expect(violations).toEqual([]);
+    await closeContext(context);
+  });
+
+  it.each([
+    ["an empty authenticator", false],
+    ["a failing user verification", true],
+  ] as const)(
+    "conditional UI with %s makes at most 2 options requests in 3 s and shows no message",
+    async (_n, hasCredential) => {
+      const { context, page } = await open(
+        hasCredential ? ada : null,
+        {},
+        true,
+        false,
+      );
+      let optionsCalls = 0;
+      page.on("request", (r) => {
+        if (r.url().endsWith("/login/passkey/options")) optionsCalls++;
+      });
+      await page.goto(`${origin}/manage/login`);
+      await page.waitForTimeout(3000);
+      expect(optionsCalls).toBeLessThanOrEqual(2);
+      expect(await page.locator("#pk-msg").isVisible()).toBe(false);
+      expect(await page.locator("#pk-msg-t").textContent()).toBe("");
+      await closeContext(context);
+    },
+  );
+
+  it("a conditional options failure on load stays silent", async () => {
+    const { context, page } = await open(ada, {}, true);
+    await context.route("**/login/passkey/options", (route) =>
+      route.fulfill({ status: 500, body: "{}" }),
+    );
+    await page.goto(`${origin}/manage/login`);
+    await page.waitForTimeout(800);
+    expect(await page.locator("#pk-msg").isVisible()).toBe(false);
     await closeContext(context);
   });
 

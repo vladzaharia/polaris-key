@@ -385,12 +385,17 @@ const CONSOLE_PAGE_CSS_TAIL = [
   `.pk .or{display:flex;gap:1rem;align-items:center;color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
   // Borders, not fills: a fill vanishes under forced colours.
   `.pk .or::before,.pk .or::after{content:"";flex:1;border-top:1px solid var(--rule)}`,
+  // One run: the glyph sits beside the first line of a label that wraps, and the label starts at the glyph.
+  `.pk .button{align-items:flex-start;padding-block:.75rem}`,
+  `.pk .button .ic{margin-top:.125rem}`,
+  `.pk .button span{text-align:start}`,
   `.pk .button[aria-disabled=true]{opacity:.6;cursor:progress}`,
   `.pk-err{display:grid;min-width:0}`,
   `.pk-err .field-err{margin:0}`,
   `.pk-err .field-err[hidden]{display:none}`,
   // With a passkey on step-up, the passkey is the primary and the IdP round trip the ghost.
   `.pk:not([hidden])+form .button[type=submit]{border-color:var(--edge);background:transparent;color:var(--strong)}`,
+  `@media (forced-colors: active){.pk:not([hidden])+form .button[type=submit]{border:1px solid ButtonText;background:ButtonFace;color:ButtonText}}`,
   `@media (forced-colors: active){.pk .or::before,.pk .or::after{border-color:CanvasText}}`,
   // The links row has no separator dots here: a dot cannot be told from a link's name, and one
   // stranded at a wrap reads as a glitch. The gap separates them.
