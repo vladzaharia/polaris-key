@@ -178,14 +178,14 @@ export function DiscoverTile({
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                 <h3
                   id={id}
-                  className="line-clamp-2 max-h-[2lh] min-w-0 max-w-full overflow-hidden break-words text-base font-semibold leading-snug text-fg-strong"
+                  className="min-w-0 max-w-full break-words text-base font-semibold leading-snug text-fg-strong"
                 >
                   <a
                     href={page}
                     // block: the name's full line is the link (24 px or taller), so a short name
                     // still meets the target size (WCAG 2.5.8; PS-05). Its focus ring is the
                     // card's, which it stretches over (styles.css, .pk-press-link).
-                    className="pk-press-link block rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+                    className="pk-press-link line-clamp-2 rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
                   >
                     <span dir="auto">{offer.name}</span>
                   </a>

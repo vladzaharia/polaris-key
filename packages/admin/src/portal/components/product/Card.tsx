@@ -28,7 +28,7 @@ export function SectionCard({
         // (`--pk-scroll-top`: the header, and the section pills) plus this margin; never closer
         // than 2rem under the tablet pills, and 0.75rem under whatever sticks on a short screen
         // (styles.css).
-        "scroll-mt-[calc(9rem_-_var(--pk-scroll-top,0px))] rounded-xl border border-border bg-surface-raised p-5 shadow-elevation-1 desk:scroll-mt-[max(2rem,calc(6rem_-_var(--pk-scroll-top,0px)))] desk:p-6 short:scroll-mt-3",
+        "scroll-mt-[calc(9rem_-_var(--pk-scroll-top,0px))] rounded-xl border border-border bg-surface-raised p-5 shadow-elevation-1 bigtext:p-3 desk:scroll-mt-[max(2rem,calc(6rem_-_var(--pk-scroll-top,0px)))] desk:p-6 short:scroll-mt-3",
         className,
       )}
     >

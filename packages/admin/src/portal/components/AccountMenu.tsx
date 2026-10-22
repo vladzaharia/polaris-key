@@ -82,10 +82,10 @@ export function AccountMenu({
             // px the full name and the chevron, the name truncating (min-w-0) only once the ⌘K
             // trigger has given way (PortalShell).
             className={cn(
-              "inline-flex min-h-[40px] w-[40px] min-w-0 max-w-[18rem] shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-surface-raised p-[3px] text-sm text-fg-strong hover:bg-hover pointer-coarse:min-h-[44px]",
+              "inline-flex min-h-10 w-10 min-w-0 max-w-[18rem] shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-surface-raised p-[3px] text-sm text-fg-strong hover:bg-hover pointer-coarse:min-h-11",
               named
-                ? "max-wide:pointer-coarse:w-[44px] wide:w-auto wide:shrink wide:justify-start wide:pe-3"
-                : "pointer-coarse:w-[44px]",
+                ? "max-wide:pointer-coarse:w-11 wide:w-auto wide:shrink wide:justify-start wide:pe-3"
+                : "pointer-coarse:w-11",
             )}
           >
             <Avatar

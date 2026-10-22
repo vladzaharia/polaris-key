@@ -7,6 +7,19 @@ import { Spinner } from "./Spinner.js";
 import { Tooltip } from "./Tooltip.js";
 import { useWriteLock } from "./WriteLock.js";
 
+/** Every variant but the link wraps a long label in the portal (the console keeps one line). */
+const WRAPPING = [
+  "primary",
+  "neutral",
+  "secondary",
+  "outline",
+  "ghost",
+  "danger",
+  "destructive",
+  "quiet",
+  "action",
+] as const;
+
 /**
  * The console's button (docs/design/admin/components.md §2.1).
  *
@@ -42,24 +55,28 @@ export const buttonVariants = cva(
       // The portal's variants wrap a long label (200 % text on a phone) instead of running past
       // the screen: the height follows the text, never below the size's own.
       {
-        variant: ["neutral", "quiet", "action"],
+        variant: [...WRAPPING],
         size: "xs",
-        class: "h-auto min-h-7 whitespace-normal py-1.5 text-center",
+        class:
+          "console:whitespace-nowrap h-auto min-h-7 whitespace-normal py-1.5 text-center bigtext:gap-1 bigtext:px-2 bigtext:[&>svg:not(:only-child)]:hidden",
       },
       {
-        variant: ["neutral", "quiet", "action"],
+        variant: [...WRAPPING],
         size: "sm",
-        class: "h-auto min-h-8 whitespace-normal py-1.5 text-center",
+        class:
+          "console:whitespace-nowrap h-auto min-h-8 whitespace-normal py-1.5 text-center bigtext:gap-1 bigtext:px-2 bigtext:[&>svg:not(:only-child)]:hidden",
       },
       {
-        variant: ["neutral", "quiet", "action"],
+        variant: [...WRAPPING],
         size: "md",
-        class: "h-auto min-h-9 whitespace-normal py-1.5 text-center",
+        class:
+          "console:whitespace-nowrap h-auto min-h-9 whitespace-normal py-1.5 text-center bigtext:gap-1 bigtext:px-2 bigtext:[&>svg:not(:only-child)]:hidden",
       },
       {
-        variant: ["neutral", "quiet", "action"],
+        variant: [...WRAPPING],
         size: "lg",
-        class: "h-auto min-h-10 whitespace-normal py-1.5 text-center",
+        class:
+          "console:whitespace-nowrap h-auto min-h-10 whitespace-normal py-1.5 text-center bigtext:gap-1 bigtext:px-2 bigtext:[&>svg:not(:only-child)]:hidden",
       },
     ],
     defaultVariants: { variant: "primary", size: "md" },

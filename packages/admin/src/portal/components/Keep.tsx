@@ -16,7 +16,7 @@ export function Keep({ children }: { children: string }): React.ReactElement {
     <>
       {parts.map((part, i) =>
         i % 2 === 1 ? (
-          <span key={i} className="whitespace-nowrap">
+          <span key={i} className="whitespace-nowrap bigtext:whitespace-normal">
             {part}
           </span>
         ) : (

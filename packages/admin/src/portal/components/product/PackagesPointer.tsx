@@ -20,7 +20,7 @@ export function PackagesPointer({
     <SectionCard
       id="package"
       title={
-        <span className="inline-flex items-center gap-3">
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="inline-flex size-9 items-center justify-center rounded-lg bg-surface-sunken">
             <Package aria-hidden className="size-5 text-fg-strong" />
           </span>

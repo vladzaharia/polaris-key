@@ -45,12 +45,14 @@ export function HeaderBrand({
   container?: boolean;
 } = {}): React.ReactElement {
   const { theme } = useTheme();
-  const wide = container
-    ? "hidden @min-[24rem]:block"
-    : "hidden min-[24rem]:block";
+  // Container mode: the 36 px lockup only while the header is under `desk` and wide enough for it.
+  // The two conditions are one rule, so no later rule can show it beside the desktop lockup.
+  const phoneLockup = container
+    ? "hidden max-desk:@min-[24rem]:block"
+    : "hidden min-[24rem]:block desk:hidden";
   return (
     <>
-      <Lockup height={36} className={`${wide} desk:hidden`} />
+      <Lockup height={36} className={phoneLockup} />
       <Lockup height={40} className="hidden desk:block" />
       <PolarisMark
         kind="locker"
