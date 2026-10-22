@@ -19,7 +19,11 @@ export default {
   server: { fs: { allow: [at("../../../")] } },
   build: {
     rollupOptions: {
-      input: { index: at("./index.html"), states: at("./states.html") },
+      input: {
+        index: at("./index.html"),
+        play: at("./play.html"),
+        states: at("./states.html"),
+      },
     },
   },
 };

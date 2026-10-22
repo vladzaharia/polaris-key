@@ -247,7 +247,7 @@ export abstract class PkElement extends LitElement {
   }
 
   /** §1.2: integrator → the SDK's PresentationSource → bundle → the icon's accent → ink. */
-  private restartIdentity(): void {
+  protected restartIdentity(): void {
     const o = this.options;
     const source = o.presentation ?? null;
     if (this.stopIdentity && source === this.lastSource) {

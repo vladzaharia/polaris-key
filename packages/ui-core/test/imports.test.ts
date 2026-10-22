@@ -1,7 +1,9 @@
 // ui-core is the headless layer: no DOM, no React, no Lit, no framework (the brief's acceptance).
-// The compiler holds the DOM out (the package's `lib` has no DOM, so `document` does not even
-// type-check); this test holds out every import of a UI framework, and DOM globals reached
-// around the types.
+// The one exception is the `/browser` subpath (src/browser): the browser client and gate
+// controller both web kits share, which need `fetch`, `window` and IndexedDB. The compiler holds
+// the DOM out of everything else (tsconfig.headless.json has no DOM lib and leaves src/browser
+// out, so `document` does not even type-check); this test holds out every import of a UI
+// framework, everywhere, and DOM globals reached around the types outside src/browser.
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -34,8 +36,9 @@ describe("no DOM, React or Lit in @polaris-key/ui-core", () => {
         expect(FRAMEWORKS.test(m[1]!), `${file} imports ${m[1]}`).toBe(false);
   });
 
-  it("reaches for no DOM global", () => {
+  it("reaches for no DOM global outside the browser subpath", () => {
     for (const { file, text } of sources) {
+      if (file.startsWith("src/browser/")) continue;
       const code = text
         .split("\n")
         .filter((l) => !/^\s*(\/\/|\*)/.test(l))
@@ -46,13 +49,16 @@ describe("no DOM, React or Lit in @polaris-key/ui-core", () => {
 
   it("compiles without the DOM library, and depends on no framework", () => {
     const tsconfig = JSON.parse(
-      readFileSync(join(PKG, "tsconfig.json"), "utf8"),
+      readFileSync(join(PKG, "tsconfig.headless.json"), "utf8"),
     ) as {
       compilerOptions: { lib: string[] };
+      exclude: string[];
     };
     expect(
       tsconfig.compilerOptions.lib.map((l) => l.toLowerCase()),
     ).not.toContain("dom");
+    // The only source the DOM-free project leaves out is the browser subpath.
+    expect(tsconfig.exclude).toEqual(["src/browser"]);
     const pkg = JSON.parse(
       readFileSync(join(PKG, "package.json"), "utf8"),
     ) as Record<string, Record<string, string> | undefined>;
