@@ -33,6 +33,11 @@ const INTERNAL: Record<string, string[]> = {
     "PERSONA_STORES_MAX",
   ],
   "console/handlers/refusals.ts": ["REFUSED_SINCE_DEFAULT_SECONDS"],
+  "console/handlers/search.ts": [
+    "SEARCH_KIND_CAP",
+    "SEARCH_PER_MINUTE",
+    "SEARCH_QUERY_MAX",
+  ],
   "console/handlers/supportCodes.ts": ["SUPPORT_CODE_LOOKUPS_PER_MINUTE"],
   "console/settingsBackfill.ts": ["BATCH_LIMIT"],
   "core/accounts/accountSubjects.ts": ["MERGE_REDIRECT_SECONDS"],

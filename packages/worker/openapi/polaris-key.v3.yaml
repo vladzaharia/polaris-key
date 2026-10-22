@@ -15629,6 +15629,75 @@ paths:
               schema: { $ref: "#/components/schemas/AdminAttention" }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
+  /manage/api/search:
+    get:
+      operationId: getAdminSearch
+      tags: [admin]
+      summary: Command palette search across the products the caller may read
+      description: >
+        ST-52. Licences by id, name or email (products where the caller holds Licensing) and people
+        by email or name (products where the caller holds Core), at most 20 of each, newest first.
+        A query shorter than two characters answers empty. A query that is a licence key
+        (`pkey_<product>_<22>`) is not searched as text: its hash is looked up in `keys_index` and
+        `key` names the licence. A key that is unknown and a key of a licence the caller may not
+        read answer the same `key: null`, so the route is no way to learn another product's keys;
+        the key is never echoed. Rate-limited per operator (120 a minute). Admin session cookie.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, maxLength: 200 }
+      responses:
+        "200":
+          description: The matches.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [key, licenses, people]
+                properties:
+                  key:
+                    nullable: true
+                    type: object
+                    additionalProperties: false
+                    required: [product, licenseId]
+                    properties:
+                      product: { type: string }
+                      licenseId: { type: string }
+                  licenses:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        [product, productName, id, name, email, status, expiresAt]
+                      properties:
+                        product: { type: string }
+                        productName: { type: string }
+                        id: { type: string }
+                        name: { type: string, nullable: true }
+                        email: { type: string, nullable: true }
+                        status: { type: string }
+                        expiresAt: { type: integer, nullable: true }
+                  people:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [product, productName, subject, name, email]
+                      properties:
+                        product: { type: string }
+                        productName: { type: string }
+                        subject: { type: string }
+                        name: { type: string, nullable: true }
+                        email: { type: string, nullable: true }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /manage/api/support-codes/{code}:
     get:
       operationId: getAdminSupportCode
