@@ -1015,7 +1015,7 @@ describe("scope confinement", () => {
     const dryRes = await dispatch(
       mkReq("POST", "/api/platform/migrations/dry-run", {
         bearer: secret,
-        body: { job: "core.licence-override-migration" },
+        body: { job: "release.scrub-manifest-snapshots" },
       }),
       env,
       db,

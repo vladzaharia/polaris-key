@@ -503,8 +503,7 @@ export async function updateLicenseOnSignIn(
  *  sign-in, the licence chooser, the device-code poll and the portal's Discover claim. */
 export interface IssueVia {
   kind: "oidc";
-  /** Seals secrets provisioned into the licence column until the override migration runs, then
-   *  into the owner's account overrides. Every caller passes it. */
+  /** Seals secrets provisioned into the licence column or the owner's account overrides. Every caller passes it. */
   env?: Env;
   /** The sign-in's mint writes its own audit row (`license.mint.oidc`) in the batch that
    *  inserts the licence. The portal's Discover claim passes `false`: it audits the licence it

@@ -29,13 +29,6 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/manage/api/platform/migrations/dry-run` | admin | Plan a job and store the report, changing no data |
 | GET | `/manage/api/platform/migrations/runs/{runId}` | admin | One run with its units (the report) |
 | GET | `/manage/api/platform/migrations` | admin | The data-migration jobs and their latest runs |
-| POST | `/manage/api/platform/override-migration/dry-run` | admin | The inventory and report the run would write, writing nothing |
-| POST | `/manage/api/platform/override-migration/notice` | admin | Start the 30-day notice |
-| DELETE | `/manage/api/platform/override-migration/notice` | admin | Withdraw the notice (before the run) |
-| PUT | `/manage/api/platform/override-migration/prerequisites` | admin | Flag the login card and the Library live in production |
-| GET | `/manage/api/platform/override-migration/report` | admin | The migration report (90 days) |
-| POST | `/manage/api/platform/override-migration/run` | admin | Start or continue the run (owner-scheduled; step-up) |
-| GET | `/manage/api/platform/override-migration` | admin | The licence-override migration's state and inventory |
 | GET | `/manage/api/platform/ready` | admin | Platform ready, the first-run checklist for platform admins |
 | POST | `/manage/api/products/{product}/alerts/{id}/test` | admin | Send a test alert to a destination |
 | PATCH | `/manage/api/products/{product}/alerts/{id}` | admin | Change, disable or re-secret an alert destination (step-up) |

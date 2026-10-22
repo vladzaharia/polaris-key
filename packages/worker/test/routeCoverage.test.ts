@@ -210,12 +210,6 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/platform/migrations/dry-run", ["post"]],
     ["/manage/api/platform/migrations/apply", ["post"]],
     ["/manage/api/platform/migrations/down", ["post"]],
-    ["/manage/api/platform/override-migration", ["get"]],
-    ["/manage/api/platform/override-migration/prerequisites", ["put"]],
-    ["/manage/api/platform/override-migration/notice", ["post", "delete"]],
-    ["/manage/api/platform/override-migration/dry-run", ["post"]],
-    ["/manage/api/platform/override-migration/run", ["post"]],
-    ["/manage/api/platform/override-migration/report", ["get"]],
     // The admin API-token roster: the credential a PROGRAM presents (`pkey bundle`, from a
     // terminal and from CI, sends `Authorization: Bearer pkeya_…` to the bundle mint), documented
     // here, machine-readable, and not only in prose. The roster itself stays session-only: no

@@ -1,5 +1,5 @@
 // Read-modify-write races closed: the metadata touch and token rotation, the dormant-seat
-// release, the attestation challenge, the webhook claim and the override-migration audit id.
+// release, the attestation challenge, and the webhook claim.
 // Each test fails on the code before this change.
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";

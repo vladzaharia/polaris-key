@@ -1,28 +1,15 @@
 /**
- * U-03: the account override layer and the licence-override migration (notes/S-17 §5.12, §5.5;
- * plans/U-01.md §6.3; decisions 3, 4, 20 and 21).
+ * U-03: the account override layer (notes/S-17 §5.5; plans/U-01.md §6.3; decisions 3, 4, 20 and
+ * 21). The licence-override migration these tests once ran is gone (U-27.4): the licence layer is
+ * always read (U-27.1), so no test moves values between layers.
  *
- * The eight tests §5.12 lists, each under its own name below:
- *
- *   1. a licence-key device on an owned licence (one licence of the product) receives the owner's
- *      migrated override: the same signed config content as before, apart from timestamps;
- *   2. an owner of two licences with different values: both licences' devices receive the most
- *      recently updated value, keys on one licence survive, the report lists the collapse;
  *   3. a signed-in device on a licence another account owns receives its own account's layer;
- *   4. a device on a floating licence receives no account layer; its licence's overrides are in
- *      the report with an audit row;
- *   5. secret values never appear in the report;
- *   6. PUT /licenses/<id>/overrides accepts config, secrets and entitlements after the run,
- *      on owned and floating licences (U-27.1);
+ *   6. PUT /licenses/<id>/overrides accepts config, secrets and entitlements, on owned and
+ *      floating licences (U-27.1);
  *   7. an account merge copies and reports colliding account overrides (§5.5);
- *   8. the signed corpus is unchanged: asserted by `pnpm gen corpus --check` (the gate), since
- *      no signed shape, claim or fixture changes here; the config document's shape is checked in
- *      test 1.
  *
- * And around them: the notice cannot start before I-07 and I-11 are flagged live; the run waits
- * for the notice window and needs a step-up; the console editor; ETags follow the layer; the OIDC
- * provisioning writer's secrets move with the run; the nightly inventory, report purge and column
- * emptying.
+ * and around them: product deletion, the layer's place in the merge and its ETag, the console
+ * editor, and the OIDC provisioning writer's account-row secrets.
  */
 import { describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
@@ -58,19 +45,6 @@ import {
   parseAccountOverridePayload,
   putAccountOverrides,
 } from "../src/core/accounts/accountOverrides.js";
-import {
-  OVERRIDE_MIGRATION_NOTICE_DAYS,
-  OVERRIDE_MIGRATION_REPORT_DAYS,
-  dryRunOverrideMigration,
-  listOverrideMigrationReport,
-  overrideMigrationNightly,
-  overrideMigrationReportCsv,
-  productOverrideInventory,
-  readOverrideMigrationState,
-  runOverrideMigration,
-  setOverrideMigrationPrerequisite,
-  startOverrideMigrationNotice,
-} from "../src/core/ops/overrideMigration.js";
 import { resolveMergedPayload } from "../src/core/licensing/payload.js";
 import { sealManagedValue } from "../src/core/managedSecrets.js";
 import { handleActivate } from "../src/services/license/activation.js";
@@ -83,7 +57,6 @@ import {
 } from "../src/services/identity/accounts/claim.js";
 import { handleAdmin } from "../src/console/index.js";
 import { deleteProduct } from "../src/core/products/store.js";
-import { dryRunOnCopy } from "../scripts/override-migration-dry-run.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
@@ -92,9 +65,6 @@ import {
 
 const SLUG = "djdl";
 const PLATFORM_GROUP = "platform-admins";
-const DAY = 86_400;
-/** A time past the notice window of a notice started at NOW. */
-const RUN_AT = NOW + (OVERRIDE_MIGRATION_NOTICE_DAYS + 1) * DAY;
 
 const CATALOG = {
   schemaVersion: 1,
@@ -328,172 +298,9 @@ async function configDoc(
   return { doc, content: JSON.stringify(content), etag };
 }
 
-const ACTOR = {
-  sub: "op-1",
-  name: "Ada Operator",
-  email: "ops@studio.example",
-};
-
-/** Flag both prerequisites, start the notice at NOW and run to completion at RUN_AT. */
-async function migrate(w: World): Promise<void> {
-  await setOverrideMigrationPrerequisite(w.db, "loginCard", true, ACTOR, NOW);
-  await setOverrideMigrationPrerequisite(w.db, "library", true, ACTOR, NOW);
-  const notice = await startOverrideMigrationNotice(w.db, ACTOR, NOW);
-  expect(notice.ok).toBe(true);
-  for (let i = 0; i < 10; i++) {
-    const r = await runOverrideMigration(w.env, w.db, ACTOR, RUN_AT);
-    if (!r.ok) throw new Error(r.reason);
-    if (r.progress.done) return;
-  }
-  throw new Error("the run did not complete");
-}
-
-/**
- * A Db that runs `race` once, just before the first write whose SQL matches `match` (a concurrent
- * writer landing between a read and the write that depends on it).
- */
-function racing(inner: Db, match: RegExp, race: () => Promise<void>): Db {
-  let fired = false;
-  const before = async (sqls: string[]): Promise<void> => {
-    if (fired || !sqls.some((q) => match.test(q))) return;
-    fired = true;
-    await race();
-  };
-  return {
-    all: (sql, ...p) => inner.all(sql, ...p),
-    first: (sql, ...p) => inner.first(sql, ...p),
-    run: async (sql, ...p) => {
-      await before([sql]);
-      return inner.run(sql, ...p);
-    },
-    runChanges: async (sql, ...p) => {
-      await before([sql]);
-      return inner.runChanges(sql, ...p);
-    },
-    batch: async (stmts) => {
-      await before(stmts.map((x) => x.sql));
-      return inner.batch(stmts);
-    },
-    batchChanges: async (stmts) => {
-      await before(stmts.map((x) => x.sql));
-      return inner.batchChanges!(stmts);
-    },
-  };
-}
-
 // ── The eight tests (S-17 §5.12) ──────────────────────────────────────────────────────────────
 
-describe("U-03 §5.12: the account override layer and the migration", () => {
-  it("1. a licence-key device on an owned licence keeps the same signed config content through the migration (Identity off)", async () => {
-    // The owner line works with the product's Identity toggle off (owner, 2026-10-04).
-    const w = await world({ identity: false });
-    const ada = await signIn(
-      w.db,
-      { issuerKey: "email", subject: "ada@example.com", kind: "email" },
-      NOW,
-      { unfenced: true },
-    );
-    if (ada.status !== "signed_in") throw new Error(ada.status);
-    const sealedToken = await sealManagedValue(
-      w.env,
-      SLUG,
-      "api.token",
-      "tok-ada-SECRET",
-    );
-    const key = await licence(w, "lic-ada", {
-      owner: ada.account.id,
-      config: { theme: entry("dark", NOW - 50), volume: entry(7, NOW - 40) },
-      secrets: { "api.token": entry(sealedToken, NOW - 30, "hidden") },
-      entitlements: { pro: entry(true) },
-    });
-    const token = await activate(w, key, "dev-key");
-    // Both documents are minted at the same instant: a catalog default's `updatedAt` is the
-    // request time (`catalogDefaultPayload`), so documents minted at different times differ there.
-    const before = await configDoc(w, token, RUN_AT);
-    expect(before.doc.config.theme?.value).toBe("dark");
-    expect(before.doc.secrets["api.token"]?.value).toBe("tok-ada-SECRET");
-
-    await migrate(w);
-
-    // The owner had never contacted the product: the run created the subject and wrote the row.
-    const subject = await subjectFor(w.db, ada.account.id, SLUG, NOW);
-    const row = await getAccountOverrides(w.db, SLUG, subject);
-    expect(row?.updated_by).toBe("migration");
-    // Copied sealed, never re-sealed: the same envelope.
-    expect(
-      parseAccountOverridePayload(row!.payload_json).secrets["api.token"]
-        ?.value,
-    ).toBe(sealedToken);
-    const after = await configDoc(w, token, RUN_AT);
-    // U-27.1: the licence layer is always read, so the column's config and secrets still reach
-    // the key-only device until the sweep empties them.
-    expect(after.doc.config).toEqual(before.doc.config);
-    expect(after.doc.secrets["api.token"]?.value).toBe("tok-ada-SECRET");
-    const lic = (await getLicense(w.db, SLUG, "lic-ada"))!;
-    expect(
-      (
-        await resolveMergedPayload(w.db, SLUG, lic, null, RUN_AT, {
-          entitlementsOnly: false,
-        })
-      ).payload.config.theme?.value,
-    ).toBe("dark"); // through the owner line
-    await putAccountOverrides(
-      w.db,
-      SLUG,
-      subject,
-      { config: {}, secrets: {} },
-      "op-1",
-      RUN_AT,
-    );
-    const emptied = await configDoc(w, token, RUN_AT);
-    // With the account row empty the licence's own layer is what remains (U-27.1).
-    expect(emptied.doc.config.theme?.value).toBe("dark");
-    expect(emptied.doc.secrets["api.token"]?.value).toBe("tok-ada-SECRET");
-  });
-
-  it("2. an owner of two licences: both receive the most recently updated value, single keys survive, the report lists the collapse", async () => {
-    const w = await world();
-    const ada = await account(w.db, "ada@example.com");
-    const keyA = await licence(w, "lic-a", {
-      owner: ada.id,
-      config: { theme: entry("dark", NOW - 100), volume: entry(3, NOW - 100) },
-    });
-    const keyB = await licence(w, "lic-b", {
-      owner: ada.id,
-      config: { theme: entry("light", NOW - 10), lang: entry("fr", NOW - 10) },
-    });
-    const tA = await activate(w, keyA, "dev-a");
-    const tB = await activate(w, keyB, "dev-b");
-    expect((await configDoc(w, tA)).doc.config.theme?.value).toBe("dark");
-
-    await migrate(w);
-
-    for (const t of [tA, tB]) {
-      const { doc } = await configDoc(w, t, RUN_AT);
-      expect(doc.config.theme?.value).toBe("light");
-      expect(doc.config.volume?.value).toBe(3);
-      expect(doc.config.lang?.value).toBe("fr");
-    }
-    const report = await listOverrideMigrationReport(w.db, RUN_AT);
-    const a = report.find((r) => r.licenseId === "lic-a")!;
-    const b = report.find((r) => r.licenseId === "lic-b")!;
-    expect(a.outcome).toBe("collapsed");
-    expect(a.subject).toBe(ada.subject);
-    expect(a.values.collapsed).toEqual([
-      {
-        bucket: "config",
-        key: "theme",
-        keptFrom: "lic-b",
-        kept: "light",
-        lost: "dark",
-      },
-    ]);
-    expect(b.outcome).toBe("moved");
-    expect(b.values.collapsed).toBeUndefined();
-    // No account id anywhere in the report.
-    expect(JSON.stringify(report)).not.toContain(ada.id);
-  });
-
+describe("U-03 §5.12: the account override layer", () => {
   it("3. a signed-in device on a licence another account owns receives its own account's layer", async () => {
     const w = await world();
     const ada = await account(w.db, "ada@example.com");
@@ -515,149 +322,16 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
       "op-1",
       NOW,
     );
-    await migrate(w);
-    const boDoc = (await configDoc(w, tBo, RUN_AT)).doc;
+    const boDoc = (await configDoc(w, tBo)).doc;
     expect(boDoc.config.theme?.value).toBe("blue");
     expect(boDoc.config.lang?.value).toBe("de");
-    // The key-entry device on the same licence gets the owner's (migrated) layer.
-    const keyDoc = (await configDoc(w, tKey, RUN_AT)).doc;
+    // The key-entry device on the same licence gets the licence's own layer.
+    const keyDoc = (await configDoc(w, tKey)).doc;
     expect(keyDoc.config.theme?.value).toBe("dark");
     expect(keyDoc.config.lang).toBeUndefined();
   });
 
-  it("4. a device on a floating licence receives no account layer; its overrides are in the report with an audit row", async () => {
-    const w = await world();
-    const bo = await account(w.db, "bo@example.com");
-    const key = await licence(w, "lic-float", {
-      owner: null,
-      email: null,
-      config: { theme: entry("dark"), volume: entry(9) },
-    });
-    const token = await activate(w, key, "dev-1");
-    // Even a binding on the device gives a floating licence no account layer (S-24).
-    await setDeviceSubject(w.env, w.db, SLUG, "dev-1", bo.subject);
-    await putAccountOverrides(
-      w.db,
-      SLUG,
-      bo.subject,
-      { config: { theme: entry("blue") }, secrets: {} },
-      "op-1",
-      NOW,
-    );
-    expect((await configDoc(w, token)).doc.config.theme?.value).toBe("dark");
-
-    await migrate(w);
-
-    const doc = (await configDoc(w, token, RUN_AT)).doc;
-    // U-27.1: a floating licence's own layer is still delivered after the run.
-    expect(doc.config.theme?.value).toBe("dark");
-    expect(doc.config.volume?.value).toBe(9);
-    const device = (await getDevice(w.db, SLUG, "dev-1"))!;
-    const lic = (await getLicense(w.db, SLUG, "lic-float"))!;
-    expect(await overrideSubject(w.db, SLUG, lic, device)).toBeNull();
-    const [row] = await listOverrideMigrationReport(w.db, RUN_AT);
-    expect(row).toMatchObject({
-      licenseId: "lic-float",
-      outcome: "dropped",
-      subject: null,
-      buyerEmail: null,
-      keys: { config: ["theme", "volume"], secrets: [] },
-      values: { config: { theme: "dark", volume: 9 } },
-    });
-    const audit = await w.db.all<{ action: string; target_id: string }>(
-      "SELECT action, target_id FROM audit WHERE product = ? AND action LIKE 'license.overrides.%'",
-      SLUG,
-    );
-    expect(audit).toEqual([
-      { action: "license.overrides.dropped", target_id: "lic-float" },
-    ]);
-  });
-
-  it("5. secret values never appear in the report, the CSV, the dry run or the inventory", async () => {
-    const w = await world();
-    const ada = await account(w.db, "ada@example.com");
-    const sealedA = await sealManagedValue(
-      w.env,
-      SLUG,
-      "api.token",
-      "tok-SEALED-1",
-    );
-    const sealedPw = await sealManagedValue(
-      w.env,
-      SLUG,
-      "cfg.password",
-      "pw-SEALED-2",
-    );
-    await licence(w, "lic-owned", {
-      owner: ada.id,
-      config: { "cfg.password": entry(sealedPw), theme: entry("dark") },
-      secrets: { "api.token": entry(sealedA, NOW - 5) },
-    });
-    // A second licence of the same owner, with a different secret: a collapse of secrets.
-    await licence(w, "lic-owned-2", {
-      owner: ada.id,
-      secrets: { "api.token": entry("tok-PLAIN-3", NOW - 50) },
-    });
-    // A legacy plaintext secret and a plaintext secret-flagged config value, on a floating licence.
-    await licence(w, "lic-float", {
-      owner: null,
-      email: "buyer@example.com",
-      config: { "cfg.password": entry("pw-PLAIN-4"), volume: entry(4) },
-      secrets: { "api.token": entry("tok-PLAIN-5") },
-    });
-    const secrets = [
-      "tok-SEALED-1",
-      "pw-SEALED-2",
-      "tok-PLAIN-3",
-      "pw-PLAIN-4",
-      "tok-PLAIN-5",
-      sealedA,
-      sealedPw,
-    ];
-    const dry = JSON.stringify(await dryRunOverrideMigration(w.db, NOW));
-    // The console's inventory before the run: the nightly snapshot and one product's licence list.
-    await overrideMigrationNightly(w.db, NOW);
-    const snapshot = await readOverrideMigrationState(w.db);
-    expect(snapshot.inventory?.totals).toEqual({
-      licences: 3,
-      owned: 2,
-      dropped: 1,
-    });
-    const listed = await productOverrideInventory(w.db, SLUG);
-    expect(listed.licences.map((l) => [l.licenseId, l.secretKeys])).toEqual([
-      ["lic-float", ["api.token"]],
-      ["lic-owned", ["api.token"]],
-      ["lic-owned-2", ["api.token"]],
-    ]);
-    const inventory = JSON.stringify(snapshot) + JSON.stringify(listed);
-    await migrate(w);
-    const rows = await listOverrideMigrationReport(w.db, RUN_AT);
-    const stored = JSON.stringify(
-      await w.db.all("SELECT * FROM override_migration_report"),
-    );
-    const csv = overrideMigrationReportCsv(rows);
-    const audit = JSON.stringify(await w.db.all("SELECT * FROM audit"));
-    for (const out of [dry, stored, csv, inventory, audit])
-      for (const s of secrets) expect(out).not.toContain(s);
-    // Names are listed, non-secret values are kept.
-    const owned2 = rows.find((r) => r.licenseId === "lic-owned-2")!;
-    expect(owned2.outcome).toBe("collapsed");
-    expect(owned2.values.collapsed).toEqual([
-      { bucket: "secrets", key: "api.token", keptFrom: "lic-owned" },
-    ]);
-    const floating = rows.find((r) => r.licenseId === "lic-float")!;
-    expect(floating.keys).toEqual({
-      config: ["cfg.password", "volume"],
-      secrets: ["api.token"],
-    });
-    expect(floating.values).toEqual({ config: { volume: 4 } });
-    // The run sealed nothing in plaintext onto the account row.
-    const row = await getAccountOverrides(w.db, SLUG, ada.subject);
-    expect(row!.payload_json).not.toContain("tok-");
-    expect(row!.payload_json).not.toContain("pw-");
-  });
-
-  it("6. PUT /licenses/<id>/overrides accepts config, secret and flag keys after the run, owned and floating (U-27.1)", async () => {
+  it("6. PUT /licenses/<id>/overrides accepts config, secret and flag keys, owned and floating (U-27.1)", async () => {
     const w = await world();
     const ada = await account(w.db, "ada@example.com");
     await licence(w, "lic-owned", { owner: ada.id });
@@ -672,14 +346,13 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
     expect(
       (await put("lic-owned", [{ key: "theme", value: "dark" }])).status,
     ).toBe(200);
-    await migrate(w);
     for (const id of ["lic-owned", "lic-float"]) {
       for (const update of [
         { key: "theme", value: "dark" },
         { key: "api.token", value: "tok-x" },
         { key: "pro", value: true },
       ]) {
-        expect((await put(id, [update], RUN_AT)).status).toBe(200);
+        expect((await put(id, [update])).status).toBe(200);
       }
       const lic = (await getLicense(w.db, SLUG, id))!;
       const stored = JSON.parse(lic.overrides_json!);
@@ -688,12 +361,7 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
       expect(lic.overrides_json).not.toContain("tok-x");
     }
     const detail = (await (
-      await w.call(
-        "GET",
-        `/products/${SLUG}/license/licenses/lic-float`,
-        undefined,
-        { now: RUN_AT },
-      )
+      await w.call("GET", `/products/${SLUG}/license/licenses/lic-float`)
     ).json()) as { configOverrides: Record<string, unknown> };
     expect(detail.configOverrides).toMatchObject({
       owned: false,
@@ -784,540 +452,8 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
   });
 });
 
-// ── The notice, the run and the dry run ───────────────────────────────────────────────────────
-
-describe("U-03: the migration's guards", () => {
-  it("the notice cannot start before the login card (I-07) and the Library (I-11) are flagged live", async () => {
-    const w = await world();
-    const refused = await startOverrideMigrationNotice(w.db, ACTOR, NOW);
-    expect(refused).toEqual({
-      ok: false,
-      reason: "prerequisites_missing",
-      missing: ["loginCard", "library"],
-    });
-    await setOverrideMigrationPrerequisite(w.db, "loginCard", true, ACTOR, NOW);
-    expect(await startOverrideMigrationNotice(w.db, ACTOR, NOW)).toEqual({
-      ok: false,
-      reason: "prerequisites_missing",
-      missing: ["library"],
-    });
-    // Through the route too.
-    const res = await w.call("POST", "/platform/override-migration/notice");
-    expect(res.status).toBe(409);
-    expect(((await res.json()) as { code: string }).code).toBe(
-      "prerequisites_missing",
-    );
-    const flagged = await w.call(
-      "PUT",
-      "/platform/override-migration/prerequisites",
-      {
-        library: true,
-      },
-    );
-    expect(flagged.status).toBe(200);
-    const started = await w.call("POST", "/platform/override-migration/notice");
-    expect(started.status).toBe(200);
-    const { state } = (await started.json()) as {
-      state: { phase: string; notice: { runNotBefore: number } };
-    };
-    expect(state.phase).toBe("notice");
-    expect(state.notice.runNotBefore).toBe(
-      NOW + OVERRIDE_MIGRATION_NOTICE_DAYS * DAY,
-    );
-    // A prerequisite cannot be unflagged under a running notice.
-    const unflag = await w.call(
-      "PUT",
-      "/platform/override-migration/prerequisites",
-      {
-        loginCard: false,
-      },
-    );
-    expect(unflag.status).toBe(409);
-    const activity = await w.db.all<{ action: string }>(
-      "SELECT action FROM platform_audit ORDER BY at, id",
-    );
-    expect(activity.map((a) => a.action)).toEqual(
-      expect.arrayContaining([
-        "overrideMigration.prerequisites",
-        "overrideMigration.notice",
-      ]),
-    );
-  });
-
-  it("the run waits for the notice window, needs a step-up, freezes then retires, and resumes", async () => {
-    const w = await world({ products: [SLUG, "zeta"] });
-    const ada = await account(w.db, "ada@example.com");
-    await licence(w, "lic-1", {
-      owner: ada.id,
-      config: { theme: entry("dark") },
-    });
-    await licence(w, "lic-z", {
-      product: "zeta",
-      owner: null,
-      email: null,
-      config: { volume: entry(1) },
-    });
-    const run = (now: number, authAt = now) =>
-      w.call("POST", "/platform/override-migration/run", undefined, {
-        now,
-        authAt,
-      });
-    expect((await run(NOW)).status).toBe(409); // no notice
-    await setOverrideMigrationPrerequisite(w.db, "loginCard", true, ACTOR, NOW);
-    await setOverrideMigrationPrerequisite(w.db, "library", true, ACTOR, NOW);
-    await startOverrideMigrationNotice(w.db, ACTOR, NOW);
-    const early = await run(NOW + DAY);
-    expect(early.status).toBe(409);
-    expect(((await early.json()) as { code: string }).code).toBe(
-      "notice_window",
-    );
-    // A stale sign-in is refused before anything is written.
-    const stale = await run(RUN_AT, RUN_AT - 3600);
-    expect(stale.status).toBe(403);
-    expect((await readOverrideMigrationState(w.db)).runId).toBeNull();
-
-    // One product per call: after the first, licence config is frozen but not yet retired.
-    const first = await runOverrideMigration(w.env, w.db, ACTOR, RUN_AT, {
-      maxProducts: 1,
-    });
-    expect(first.ok && first.progress.done).toBe(false);
-    let state = await readOverrideMigrationState(w.db);
-    expect(state.runStartedAt).toBe(RUN_AT);
-    expect(state.runCompletedAt).toBeNull();
-    expect(state.productsDone).toEqual([SLUG]);
-    const lic = (await getLicense(w.db, SLUG, "lic-1"))!;
-    // Not retired yet: the licence layer is still read (below the account's, same value).
-    expect(
-      (await resolveMergedPayload(w.db, SLUG, lic, null, RUN_AT)).payload.config
-        .theme?.value,
-    ).toBe("dark");
-
-    const second = await run(RUN_AT);
-    expect(second.status).toBe(200);
-    const body = (await second.json()) as {
-      progress: { done: boolean; written: Record<string, number> };
-    };
-    expect(body.progress.done).toBe(true);
-    expect(body.progress.written).toEqual({
-      moved: 0,
-      collapsed: 0,
-      dropped: 1,
-    });
-    state = await readOverrideMigrationState(w.db);
-    expect(state.runCompletedAt).toBe(RUN_AT);
-    expect((await run(RUN_AT)).status).toBe(409); // run_completed
-    // A rerun of the first product's work writes nothing twice.
-    expect(
-      (
-        await w.db.all(
-          "SELECT * FROM override_migration_report WHERE product = ?",
-          SLUG,
-        )
-      ).length,
-    ).toBe(1);
-    const report = await w.call(
-      "GET",
-      "/platform/override-migration/report?format=csv&product=zeta",
-      undefined,
-      { now: RUN_AT },
-    );
-    expect(report.headers.get("content-type")).toContain("text/csv");
-    expect(report.headers.get("content-disposition")).toContain("attachment");
-    const csv = await report.text();
-    expect(csv.split("\n")[1]).toContain("zeta,lic-z,dropped");
-  });
-
-  it("dry run on a production-shaped copy: the inventory and report, nothing written, no secret", async () => {
-    // Three products, every licence shape production holds: owned (one and several licences),
-    // floating, waiting on its email, entitlements only, empty buckets, a malformed column,
-    // sealed and legacy plaintext secrets, a secret-flagged config key, an owner who never
-    // contacted the product, an owner whose account row already has a value.
-    const w = await world({ products: [SLUG, "beta", "gamma"] });
-    const ada = await account(w.db, "ada@example.com");
-    const bo = await account(w.db, "bo@example.com");
-    const cy = await signIn(
-      w.db,
-      { issuerKey: "email", subject: "cy@example.com", kind: "email" },
-      NOW,
-      { unfenced: true },
-    );
-    if (cy.status !== "signed_in") throw new Error(cy.status);
-    const sealed = await sealManagedValue(
-      w.env,
-      SLUG,
-      "api.token",
-      "tok-PROD-SEALED",
-    );
-    await putAccountOverrides(
-      w.db,
-      SLUG,
-      bo.subject,
-      { config: { theme: entry("solar") }, secrets: {} },
-      "op-1",
-      NOW,
-    );
-    await licence(w, "a-1", {
-      owner: ada.id,
-      config: { theme: entry("dark", NOW - 9) },
-      secrets: { "api.token": entry(sealed, NOW - 9) },
-    });
-    await licence(w, "a-2", {
-      owner: ada.id,
-      config: { theme: entry("light", NOW - 1), lang: entry("fr") },
-    });
-    await licence(w, "b-1", {
-      owner: bo.id,
-      config: { theme: entry("night") },
-    });
-    await licence(w, "c-1", {
-      owner: cy.account.id,
-      config: { volume: entry(2) },
-    });
-    await licence(w, "f-1", {
-      owner: null,
-      email: null,
-      config: { "cfg.password": entry("pw-PROD-PLAIN") },
-      secrets: { "api.token": entry("tok-PROD-PLAIN") },
-    });
-    await licence(w, "w-1", {
-      owner: null,
-      email: "waiting@example.com",
-      config: { volume: entry(5) },
-    });
-    await licence(w, "e-1", {
-      owner: ada.id,
-      entitlements: { pro: entry(true) },
-    });
-    await licence(w, "x-1", { owner: ada.id });
-    await licence(w, "beta-1", {
-      product: "beta",
-      owner: null,
-      email: null,
-      config: { theme: entry("dark") },
-    });
-    await licence(w, "beta-2", {
-      product: "beta",
-      owner: bo.id,
-      secrets: { "api.token": entry("tok-BETA") },
-    });
-    await w.db.run(
-      "UPDATE licenses SET overrides_json = '{not json' WHERE product = 'beta' AND id = 'beta-2'",
-    );
-    await licence(w, "gamma-1", {
-      product: "gamma",
-      owner: null,
-      email: null,
-      entitlements: { pro: entry(true) },
-    });
-    const counts = async () =>
-      JSON.stringify(
-        await Promise.all(
-          [
-            "account_overrides",
-            "override_migration_report",
-            "account_product_subjects",
-            "audit",
-            "licenses",
-          ].map((t) => w.db.all(`SELECT * FROM ${t} ORDER BY 1, 2`)),
-        ),
-      );
-    const before = await counts();
-
-    const dry = await dryRunOverrideMigration(w.db, NOW);
-
-    expect(await counts()).toBe(before); // nothing written, not even cy's subject
-    expect(dry.inventory.products).toEqual([
-      {
-        product: "beta",
-        licences: 1,
-        owned: 0,
-        dropped: 1,
-        collapsingAccounts: 0,
-      },
-      {
-        product: SLUG,
-        licences: 6,
-        owned: 4,
-        dropped: 2,
-        collapsingAccounts: 1,
-      },
-    ]);
-    expect(dry.inventory.totals).toEqual({ licences: 7, owned: 4, dropped: 3 });
-    const byId = new Map(dry.report.map((r) => [r.licenseId, r]));
-    expect(byId.get("a-1")).toMatchObject({
-      outcome: "collapsed",
-      subject: ada.subject,
-      values: {
-        collapsed: [
-          {
-            bucket: "config",
-            key: "theme",
-            keptFrom: "a-2",
-            kept: "light",
-            lost: "dark",
-          },
-        ],
-      },
-    });
-    expect(byId.get("a-2")?.outcome).toBe("moved");
-    // An existing account value wins over the licence's (devices already received it).
-    expect(byId.get("b-1")).toMatchObject({
-      outcome: "collapsed",
-      values: {
-        collapsed: [
-          { key: "theme", keptFrom: "account", kept: "solar", lost: "night" },
-        ],
-      },
-    });
-    expect(byId.get("c-1")).toMatchObject({
-      outcome: "moved",
-      subject: null,
-      subjectCreatedAtRun: true,
-    });
-    expect(byId.get("f-1")).toMatchObject({
-      outcome: "dropped",
-      keys: { config: ["cfg.password"], secrets: ["api.token"] },
-      values: {},
-    });
-    expect(byId.get("w-1")).toMatchObject({
-      outcome: "dropped",
-      buyerEmail: "waiting@example.com",
-    });
-    for (const id of ["e-1", "x-1", "beta-2", "gamma-1"])
-      expect(byId.has(id)).toBe(false);
-    const text = JSON.stringify(dry);
-    for (const s of [
-      "tok-PROD-SEALED",
-      "pw-PROD-PLAIN",
-      "tok-PROD-PLAIN",
-      "tok-BETA",
-      sealed,
-    ])
-      expect(text).not.toContain(s);
-    for (const id of [ada.id, bo.id, cy.account.id])
-      expect(text).not.toContain(id);
-
-    // The run writes exactly the report the dry run promised (cy's subject now exists).
-    await migrate(w);
-    const cySubject = await subjectFor(w.db, cy.account.id, SLUG, NOW);
-    const written = await listOverrideMigrationReport(w.db, RUN_AT);
-    expect(
-      written.map((r) => [r.licenseId, r.outcome, r.subject, r.keys, r.values]),
-    ).toEqual(
-      dry.report.map((r) => [
-        r.licenseId,
-        r.outcome,
-        r.licenseId === "c-1" ? cySubject : r.subject,
-        r.keys,
-        r.values,
-      ]),
-    );
-    // The offline tool over a copy of the database (RUNBOOK step 2): the same answer, nothing
-    // written, and a copy that predates the U-03 tables works too.
-    const raw = (w.db as unknown as { db: { serialize(): Buffer } }).db;
-    const copy = new Database(raw.serialize());
-    copy.exec(
-      "DROP TABLE account_overrides; DROP TABLE override_migration_report; DROP TABLE override_migration;",
-    );
-    const offline = await dryRunOnCopy({
-      sqliteBytes: copy.serialize(),
-      now: NOW,
-    });
-    copy.close();
-    expect(offline.changes).toBe(0);
-    // Before the run (the copy was taken after it, with the account rows dropped), so compare
-    // with a fresh dry run's shape: every licence is reported, with no secret anywhere.
-    expect(offline.dryRun.inventory.totals).toEqual({
-      licences: 7,
-      owned: 4,
-      dropped: 3,
-    });
-    for (const s of [
-      "tok-PROD-SEALED",
-      "pw-PROD-PLAIN",
-      "tok-PROD-PLAIN",
-      "tok-BETA",
-      sealed,
-    ])
-      expect(offline.csv + JSON.stringify(offline.dryRun)).not.toContain(s);
-    // Through the route: the same dry run (platform admins only).
-    const viaRoute = await w.call(
-      "POST",
-      "/platform/override-migration/dry-run",
-      { product: "beta" },
-    );
-    expect(viaRoute.status).toBe(200);
-  });
-});
-
-describe("U-03: the run's writes under concurrency", () => {
-  it("N1: an account row edited between the plan and the write is re-planned on top of the edit", async () => {
-    const w = await world();
-    const ada = await account(w.db, "ada@example.com");
-    await putAccountOverrides(
-      w.db,
-      SLUG,
-      ada.subject,
-      { config: { lang: entry("de") }, secrets: {} },
-      "op-1",
-      NOW,
-    );
-    await licence(w, "lic-1", {
-      owner: ada.id,
-      config: { theme: entry("dark"), volume: entry(3) },
-    });
-    await setOverrideMigrationPrerequisite(w.db, "loginCard", true, ACTOR, NOW);
-    await setOverrideMigrationPrerequisite(w.db, "library", true, ACTOR, NOW);
-    await startOverrideMigrationNotice(w.db, ACTOR, NOW);
-    // An operator saves Ada's overrides just before the run's write lands.
-    const db = racing(w.db, /account_overrides/, () =>
-      putAccountOverrides(
-        w.db,
-        SLUG,
-        ada.subject,
-        { config: { lang: entry("de"), theme: entry("blue") }, secrets: {} },
-        "op-2",
-        NOW,
-      ),
-    );
-    const r = await runOverrideMigration(w.env, db, ACTOR, RUN_AT);
-    expect(r.ok && r.progress).toMatchObject({
-      done: true,
-      conflicts: 0,
-      written: { moved: 0, collapsed: 1, dropped: 0 },
-    });
-    // Nothing of the edit is lost: the operator's theme wins, the licence's volume moved.
-    const row = parseAccountOverridePayload(
-      (await getAccountOverrides(w.db, SLUG, ada.subject))!.payload_json,
-    );
-    expect(row.config.theme?.value).toBe("blue");
-    expect(row.config.lang?.value).toBe("de");
-    expect(row.config.volume?.value).toBe(3);
-    const [report] = await listOverrideMigrationReport(w.db, RUN_AT);
-    expect(report).toMatchObject({
-      licenseId: "lic-1",
-      outcome: "collapsed",
-      values: {
-        collapsed: [
-          {
-            bucket: "config",
-            key: "theme",
-            keptFrom: "account",
-            kept: "blue",
-            lost: "dark",
-          },
-        ],
-      },
-    });
-    // The failed first attempt left no report or audit row behind.
-    expect(
-      (
-        await w.db.all(
-          "SELECT * FROM audit WHERE product = ? AND action LIKE 'license.overrides.%'",
-          SLUG,
-        )
-      ).length,
-    ).toBe(1);
-  });
-
-  it("N2: a second call while another holds the lease is refused and leaves that lease alone; a lost lease stops the call", async () => {
-    const w = await world({ products: [SLUG, "zeta"] });
-    const ada = await account(w.db, "ada@example.com");
-    await licence(w, "lic-1", {
-      owner: ada.id,
-      config: { theme: entry("dark") },
-    });
-    await licence(w, "lic-z", {
-      product: "zeta",
-      owner: null,
-      email: null,
-      config: { volume: entry(1) },
-    });
-    await setOverrideMigrationPrerequisite(w.db, "loginCard", true, ACTOR, NOW);
-    await setOverrideMigrationPrerequisite(w.db, "library", true, ACTOR, NOW);
-    await startOverrideMigrationNotice(w.db, ACTOR, NOW);
-    const clock = () => RUN_AT;
-    const lease = () =>
-      w.db.first<{
-        run_lease_until: number | null;
-        run_lease_holder: string | null;
-      }>(
-        "SELECT run_lease_until, run_lease_holder FROM override_migration WHERE id = 'platform'",
-      );
-    // Another request holds the lease.
-    await runOverrideMigration(w.env, w.db, ACTOR, RUN_AT, {
-      maxProducts: 1,
-      clock,
-    });
-    await w.db.run(
-      "UPDATE override_migration SET run_lease_until = ?, run_lease_holder = 'other' WHERE id = 'platform'",
-      RUN_AT + 60,
-    );
-    expect(
-      await runOverrideMigration(w.env, w.db, ACTOR, RUN_AT, { clock }),
-    ).toEqual({
-      ok: false,
-      reason: "run_in_progress",
-    });
-    expect(await lease()).toEqual({
-      run_lease_until: RUN_AT + 60,
-      run_lease_holder: "other",
-    });
-
-    // Its lease expires; this call takes it over, then loses it to a third request mid-run: it
-    // stops before the next product and never clears the new holder's lease.
-    await w.db.run(
-      "UPDATE override_migration SET run_lease_until = ?, products_done_json = '[]' WHERE id = 'platform'",
-      RUN_AT - 1,
-    );
-    await w.db.run("DELETE FROM override_migration_report");
-    const db = racing(w.db, /override_migration_report/, () =>
-      w.db.run(
-        "UPDATE override_migration SET run_lease_until = ?, run_lease_holder = 'third' WHERE id = 'platform'",
-        RUN_AT + 60,
-      ),
-    );
-    const r = await runOverrideMigration(w.env, db, ACTOR, RUN_AT, { clock });
-    expect(r.ok && r.progress.productsDone).toEqual([SLUG]);
-    expect(r.ok && r.progress.done).toBe(false);
-    expect(await lease()).toEqual({
-      run_lease_until: RUN_AT + 60,
-      run_lease_holder: "third",
-    });
-  });
-
-  it("N4: a run that starts between the licence PUT's read and its write no longer refuses it (U-27.1)", async () => {
-    const w = await world();
-    const ada = await account(w.db, "ada@example.com");
-    await licence(w, "lic-1", {
-      owner: ada.id,
-      config: { theme: entry("dark") },
-    });
-    await setOverrideMigrationPrerequisite(w.db, "loginCard", true, ACTOR, NOW);
-    await setOverrideMigrationPrerequisite(w.db, "library", true, ACTOR, NOW);
-    await startOverrideMigrationNotice(w.db, ACTOR, NOW);
-    const db = racing(w.db, /UPDATE licenses SET overrides_json/, async () => {
-      await w.db.run(
-        "UPDATE override_migration SET run_id = 'ovm_x', run_started_at = ? WHERE id = 'platform'",
-        RUN_AT,
-      );
-    });
-    const res = await w.call(
-      "PUT",
-      `/products/${SLUG}/license/licenses/lic-1/overrides`,
-      { updates: [{ key: "theme", value: "light" }] },
-      { now: RUN_AT, db },
-    );
-    expect(res.status).toBe(200);
-    const stored = JSON.parse(
-      (await getLicense(w.db, SLUG, "lic-1"))!.overrides_json!,
-    );
-    expect(stored.config.theme.value).toBe("light");
-  });
-});
-
 describe("U-03: product deletion", () => {
-  it("removes the product's account overrides and migration report, and only the product's", async () => {
+  it("removes the product's account overrides, and only the product's", async () => {
     const w = await world({ products: [SLUG, "beta"] });
     const ada = await account(w.db, "ada@example.com");
     const adaBeta = await subjectFor(w.db, ada.id, "beta", NOW);
@@ -1333,14 +469,6 @@ describe("U-03: product deletion", () => {
         "op-1",
         NOW,
       );
-      await w.db.run(
-        `INSERT INTO override_migration_report
-           (product, run_id, license_id, outcome, subject, buyer_email, keys_json, values_json, created_at, expires_at)
-         VALUES (?, 'ovm_1', 'lic-1', 'dropped', NULL, 'buyer@example.com', '{"config":["theme"],"secrets":[]}', '{}', ?, ?)`,
-        product,
-        NOW,
-        NOW + 90 * DAY,
-      );
     }
     await deleteProduct(w.db, SLUG, NOW);
     const left = async (table: string) =>
@@ -1350,7 +478,6 @@ describe("U-03: product deletion", () => {
         )
       ).map((r) => r.product);
     expect(await left("account_overrides")).toEqual(["beta"]);
-    expect(await left("override_migration_report")).toEqual(["beta"]);
   });
 });
 
@@ -1592,7 +719,7 @@ describe("U-03: GET and PUT users/<subject>/overrides", () => {
 
 // ── The OIDC provisioning writer and the nightly job ─────────────────────────────────────────
 
-describe("U-03: provisioned secrets and the nightly step", () => {
+describe("U-03: provisioned secrets", () => {
   it("applyProvisionedAccountSecrets rewrites only the declared keys, sealed, keeping an operator's", async () => {
     const w = await world();
     const ada = await account(w.db, "ada@example.com");
@@ -1664,67 +791,5 @@ describe("U-03: provisioned secrets and the nightly step", () => {
     );
     await applyProvisionedAccountSecrets(...args, "oidc-sub-ada");
     expect(await getAccountOverrides(w.db, SLUG, ada.subject)).not.toBeNull();
-  });
-
-  it("refreshes the inventory daily until the run, purges the report after 90 days, then empties the columns", async () => {
-    const w = await world();
-    const ada = await account(w.db, "ada@example.com");
-    await licence(w, "lic-owned", {
-      owner: ada.id,
-      config: { theme: entry("dark") },
-      entitlements: { pro: entry(true) },
-    });
-    await licence(w, "lic-float", {
-      owner: null,
-      email: null,
-      config: { volume: entry(2) },
-    });
-    await overrideMigrationNightly(w.db, NOW);
-    let state = await readOverrideMigrationState(w.db);
-    expect(state.inventory?.totals).toEqual({
-      licences: 2,
-      owned: 1,
-      dropped: 1,
-    });
-    // A customer attaches the floating licence: the count falls the next day.
-    await w.db.run(
-      "UPDATE licenses SET account_id = ? WHERE product = ? AND id = 'lic-float'",
-      ada.id,
-      SLUG,
-    );
-    await overrideMigrationNightly(w.db, NOW + DAY);
-    state = await readOverrideMigrationState(w.db);
-    expect(state.inventory?.totals).toEqual({
-      licences: 2,
-      owned: 2,
-      dropped: 0,
-    });
-    await w.db.run(
-      "UPDATE licenses SET account_id = NULL WHERE id = 'lic-float'",
-    );
-
-    await migrate(w);
-    const afterWindow = RUN_AT + OVERRIDE_MIGRATION_REPORT_DAYS * DAY;
-    expect((await listOverrideMigrationReport(w.db, RUN_AT)).length).toBe(2);
-    await overrideMigrationNightly(w.db, afterWindow - 1);
-    expect(
-      (await w.db.all("SELECT * FROM override_migration_report")).length,
-    ).toBe(2);
-    const lic = (await getLicense(w.db, SLUG, "lic-owned"))!;
-    expect(JSON.parse(lic.overrides_json!).config.theme).toBeDefined();
-    await overrideMigrationNightly(w.db, afterWindow);
-    expect(
-      (await w.db.all("SELECT * FROM override_migration_report")).length,
-    ).toBe(0);
-    for (const id of ["lic-owned", "lic-float"]) {
-      const l = (await getLicense(w.db, SLUG, id))!;
-      const o = JSON.parse(l.overrides_json!);
-      expect(o.config).toEqual({});
-      expect(o.secrets).toEqual({});
-      if (id === "lic-owned") expect(o.entitlements.pro.value).toBe(true);
-    }
-    expect((await readOverrideMigrationState(w.db)).columnsEmptiedAt).toBe(
-      afterWindow,
-    );
   });
 });

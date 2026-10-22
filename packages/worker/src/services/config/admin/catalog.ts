@@ -458,9 +458,7 @@ async function oneVersion(
  * it, the tiers that inherit one of those profiles, the licenses whose own overrides set it, and
  * the accounts whose account overrides set it (U-03, by pairwise subject). The catalog editor's
  * review cross-checks removed keys against this, and the catalog's key drawer lists it as
- * "Overridden by". Ids and names only — never a value. Once the licence-override migration has
- * completed, a licence's config and secrets are no longer delivered, so only its entitlement
- * overrides count as a licence's use.
+ * "Overridden by". Ids and names only — never a value.
  */
 async function usage(ctx: ConfigAdminContext): Promise<Response> {
   const { req, db, product } = ctx;
