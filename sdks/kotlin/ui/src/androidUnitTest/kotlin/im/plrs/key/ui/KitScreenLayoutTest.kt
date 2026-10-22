@@ -123,11 +123,11 @@ class KitScreenLayoutTest {
     fun theAccountPaneIsGroupedRowsWithSignOutAloneAndNoDuplicateButtons() {
         val actions = mutableListOf<KitAction?>()
         show(case("accountAndLicense-signed-in")) { actions += it }
-        rule.onNodeWithText("Manage ↗").assertIsDisplayed()
+        rule.onNodeWithText("Manage").assertIsDisplayed()
         // One Sign out, and the row is the control: no button list repeats the rows.
         assertEquals(1, texts().count { it == "Sign out" })
         assertEquals(1, texts().count { it == "Check for updates" })
-        rule.onNodeWithText("Manage ↗").performClick()
+        rule.onNodeWithText("Manage").performClick()
         // Manage is a control the action vocabulary has no entry for: the host gets null and opens the portal itself.
         assertEquals(listOf<KitAction?>(null), actions)
     }

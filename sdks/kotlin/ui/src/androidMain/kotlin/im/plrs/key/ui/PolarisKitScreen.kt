@@ -256,9 +256,9 @@ private fun KitScreenBody(
                 val action = KitAction.forCopyKey(line.key)
                 // One primary, then tonal secondaries (a lone action is always the primary, DL4).
                 if (index == 0) {
-                    PolarisPrimaryButton(line.text, onClick = { onAction(action) })
+                    PolarisPrimaryButton(line.text, onClick = { onAction(action) }, external = KitAction.leavesApp(line.key))
                 } else {
-                    PolarisSecondaryButton(line.text, onClick = { onAction(action) })
+                    PolarisSecondaryButton(line.text, onClick = { onAction(action) }, external = KitAction.leavesApp(line.key))
                 }
                 if (index < buttons.lastIndex) Spacer(Modifier.height(PolarisSpace.controls))
             }
@@ -450,7 +450,7 @@ private fun ColumnScope.KitAccountBody(lines: List<KitLine>, text: List<KitLine>
     if (identityRows.isNotEmpty() || manage != null) {
         PolarisSection(title = null) {
             for (row in identityRows) KitRow(row.text)
-            manage?.let { KitRow(it.text + " ↗", onClick = { onAction(KitAction.forCopyKey(it.key)) }) }
+            manage?.let { KitRow(it.text, onClick = { onAction(KitAction.forCopyKey(it.key)) }, external = true) }
         }
         Spacer(Modifier.height(PolarisSpace.controls))
     }
@@ -480,14 +480,15 @@ private fun ColumnScope.KitAccountBody(lines: List<KitLine>, text: List<KitLine>
 
 /** One row of the account pane: the label at the start, 52 dp at least, a 48 dp target when it acts. */
 @Composable
-private fun KitRow(label: String, onClick: (() -> Unit)? = null, danger: Boolean = false) {
+private fun KitRow(label: String, onClick: (() -> Unit)? = null, danger: Boolean = false, external: Boolean = false) {
     val color = if (danger) PolarisTheme.status.danger else MaterialTheme.colorScheme.onSurface
     val base = Modifier.fillMaxWidth().heightIn(min = 52.dp)
     Row(
-        modifier = (if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base).padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = (if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base).polarisExternalSemantics(external).padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = color)
+        if (external) PolarisNewWindowGlyph()
     }
 }
 
