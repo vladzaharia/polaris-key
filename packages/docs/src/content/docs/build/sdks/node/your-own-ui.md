@@ -76,7 +76,7 @@ export function refusalScreen(r: Refusal) {
   const message = copy.activation(r.kind, { code: r.code });
   switch (r.kind) {
     case "device-limit":
-      // Replace a device: Polaris Locker frees a seat. Nothing was wiped.
+      // Replace a device: Polaris Locker makes room for another device. Nothing was wiped.
       return {
         message,
         link: r.manageUrl && withManageReturn(r.manageUrl, "myapp://activated"),
@@ -101,14 +101,14 @@ export async function activate(client: PolarisKeyClient, key: string) {
 | `kind`                                                              | Meaning                                        | Offer                                |
 | ------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------ |
 | `unauthorized`                                                      | The key was not accepted                       | Retry                                |
-| `device-limit`                                                      | Every seat is taken                            | `manageUrl`, then retry the same key |
+| `device-limit`                                                      | The device limit is reached                    | `manageUrl`, then retry the same key |
 | `license-expired`, `license-disabled`                               | The license ended or an operator disabled it   | Renew, or contact the developer      |
 | `hardware-mismatch`, `fingerprint-required`, `attestation-required` | The device check failed                        | Retry; `changed` lists what moved    |
 | `enroll-disabled`, `enroll-claimed`                                 | No free license, or it is on an account        | Key entry, or sign in                |
 | `rate-limited`                                                      | Too many attempts                              | Wait `retryAfterSeconds`             |
 | `refused`, `error`                                                  | Any other refusal; a network or server failure | Show `copy.activation` and `code`    |
 
-A seat that a key holds is also freed from a device that still has a credential
+A device that a key counts is also freed from a device that still has a credential
 (`client.deauthorizeDevice(id)`); the new device has none. See the
 [device-limit recipe](/docs/build/recipes/device-limit/).
 

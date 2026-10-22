@@ -7,7 +7,7 @@ sidebar:
   order: 7
 ---
 
-Re-licensing is changing a license's tier: a trial converts to paid, a customer upgrades to more seats, a lapsed subscription drops to free. There is no push channel, websocket or invalidation broadcast. The Worker re-merges entitlements on every document request, so a change lands the next time a running client refreshes.
+Re-licensing is changing a license's tier: a trial converts to paid, a customer upgrades to more devices, a lapsed subscription drops to free. There is no push channel, websocket or invalidation broadcast. The Worker re-merges entitlements on every document request, so a change lands the next time a running client refreshes.
 
 ## Make the change
 
@@ -39,7 +39,7 @@ A tier change doesn't take effect now. **Disable license…** does: it purges th
 
 ## Downgrades grandfather
 
-Lowering a tier's seat count evicts nobody. The seat check runs only on a new authorization, so existing devices keep their seats and documents. New activations answer `403 device_limit` until the count drops below the new limit.
+Lowering a tier's device limit evicts nobody. The device-limit check runs only on a new authorization, so existing devices keep counting toward the limit and documents. New activations answer `403 device_limit` until the count drops below the new limit.
 
 Because that is silent, the `PATCH` response says so:
 
@@ -76,5 +76,5 @@ Both directions were costly before. Trial to paid kept the trial's expiry and en
 ## Next steps
 
 - [The license model](/docs/features/licensing/model/): the layers and the injected entitlements.
-- [Activation](/docs/features/licensing/activation/): where the seat limit applies.
+- [Activation](/docs/features/licensing/activation/): where the device limit applies.
 - [Manage licenses](/docs/features/licensing/manage-licenses/): the console edit.

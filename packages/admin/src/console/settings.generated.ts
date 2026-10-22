@@ -1085,7 +1085,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "license",
     label: "Anchor license choice",
     description:
-      "Which of a holder's licenses a device runs on: the highest-ranked tier, the one with the most free seats, or the oldest.",
+      "Which of a holder's licenses a device runs on: the highest-ranked tier, the one with the most room for devices, or the oldest.",
     keywords: ["anchor", "rank", "seats"],
     docs: "/docs/features/licensing/model/",
     ownership: "claimable",

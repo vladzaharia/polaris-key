@@ -3297,10 +3297,10 @@ msgstr "Add a license key (prompted, or piped on stdin)"
 msgid "cli.verb.enroll"
 msgstr "Get the free license, when {product} offers one"
 
-#. Stop using your license on this device and free its seat
+#. Stop using your license on this device and make room for another
 #. Terminal help: what the deactivate command does.
 msgid "cli.verb.deactivate"
-msgstr "Stop using your license on this device and free its seat"
+msgstr "Stop using your license on this device and make room for another"
 
 #. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
@@ -3342,10 +3342,10 @@ msgstr "List the devices using your license"
 msgid "cli.verb.devicesRename"
 msgstr "Rename a device (no name clears it)"
 
-#. Remove a device and free its seat
+#. Remove a device and make room for another
 #. Terminal help: what 'devices deauthorize' does.
 msgid "cli.verb.devicesRemove"
-msgstr "Remove a device and free its seat"
+msgstr "Remove a device and make room for another"
 
 #. Show one setting and where its value comes from
 #. Terminal help: what 'config get' does.
@@ -3557,10 +3557,10 @@ msgstr "Use the license on your account"
 msgid "cli.logout.done"
 msgstr "Signed out of {product} on this device."
 
-#. {product} no longer uses your license on this device. Its seat is free.
-#. Terminal: deactivate finished; the license's seat on this device is released.
+#. {product} no longer uses your license on this device. It no longer counts toward your limit.
+#. Terminal: deactivate finished; the device no longer counts toward the license limit.
 msgid "cli.deactivate.done"
-msgstr "{product} no longer uses your license on this device. Its seat is free."
+msgstr "{product} no longer uses your license on this device. It no longer counts toward your limit."
 
 #. Nothing changed.
 #. Terminal: the person answered no to a confirmation.
@@ -3582,10 +3582,10 @@ msgstr "Renamed to {device}."
 msgid "cli.devices.nameCleared"
 msgstr "{device} has no name now."
 
-#. {device} was removed. Its seat is free.
+#. {device} was removed. It no longer counts toward your limit.
 #. Terminal: a device was removed from the license.
 msgid "cli.devices.removed"
-msgstr "{device} was removed. Its seat is free."
+msgstr "{device} was removed. It no longer counts toward your limit."
 
 #. Update canceled.
 #. Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it.

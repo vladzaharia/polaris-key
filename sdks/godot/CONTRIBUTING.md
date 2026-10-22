@@ -261,8 +261,8 @@ PKEY_TEST_SUITES=ed25519 sdks/godot/tools/run_tests.sh bench 20 # one suite, wit
   sdks/godot/tools/run_tests.sh
   ```
 
-  The server counts a key entry for every seat a key claims and allows three per key, so the suite
-  runs each group as one of four fixed devices and never frees the seat of the one that activated
+  The server counts a key entry for every device a key claims and allows three per key, so the suite
+  runs each group as one of four fixed devices and never stops counting the device of the one that activated
   `ok` (or `floating`): a rerun on the same server, which CI does (the editor, then the exported
   pack), activates the same device again and publishes the next patch release.
 

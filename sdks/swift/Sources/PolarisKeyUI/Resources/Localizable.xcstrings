@@ -4736,13 +4736,13 @@
       }
     },
     "cli.deactivate.done": {
-      "comment": "Terminal: deactivate finished; the license's seat on this device is released. Arguments: 1=product.",
+      "comment": "Terminal: deactivate finished; the device no longer counts toward the license limit. Arguments: 1=product.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ no longer uses your license on this device. Its seat is free."
+            "value": "%1$@ no longer uses your license on this device. It no longer counts toward your limit."
           }
         },
         "de": {
@@ -4790,7 +4790,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@不再在此设备上使用你的许可证。其席位已释放。"
+            "value": "%1$@不再在此设备上使用你的许可证。不再计入设备上限。"
           }
         }
       }
@@ -4982,7 +4982,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ was removed. Its seat is free."
+            "value": "%1$@ was removed. It no longer counts toward your limit."
           }
         },
         "de": {
@@ -5030,7 +5030,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@已移除。其席位已释放。"
+            "value": "%1$@已移除。不再计入设备上限。"
           }
         }
       }
@@ -11582,7 +11582,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stop using your license on this device and free its seat"
+            "value": "Stop using your license on this device and make room for another"
           }
         },
         "de": {
@@ -11630,7 +11630,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "停止在此设备上使用你的许可证并释放席位"
+            "value": "停止在此设备上使用你的许可证，为其他设备腾出名额"
           }
         }
       }
@@ -11702,7 +11702,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remove a device and free its seat"
+            "value": "Remove a device and make room for another"
           }
         },
         "de": {
@@ -11750,7 +11750,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "移除设备并释放其席位"
+            "value": "移除设备，为其他设备腾出名额"
           }
         }
       }

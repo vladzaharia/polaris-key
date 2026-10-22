@@ -1319,7 +1319,7 @@
     <string name="cli_fix_signIn">계정의 라이선스 사용</string>
     <!-- Terminal: sign-out finished. Arguments: 1=product. -->
     <string name="cli_logout_done">이 기기의 %1$s에서 로그아웃했어요.</string>
-    <!-- Terminal: deactivate finished; the license's seat on this device is released. Arguments: 1=product. -->
+    <!-- Terminal: deactivate finished; the device no longer counts toward the license limit. Arguments: 1=product. -->
     <string name="cli_deactivate_done">이제 이 기기의 %1$s에서 라이선스를 사용하지 않아요. 자리가 비었어요.</string>
     <!-- Terminal: the person answered no to a confirmation. -->
     <string name="cli_nothingChanged">변경된 사항이 없어요.</string>

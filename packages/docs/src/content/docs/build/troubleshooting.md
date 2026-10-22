@@ -27,7 +27,7 @@ Each entry starts from a license status or an error code your app reports. For t
 
 ## `device_limit`
 
-**Cause:** The license has no free device seat. The body may carry `limit`, `deviceCount` and a Polaris Locker link that frees a seat.
+**Cause:** The license has no room for another device. The body may carry `limit`, `deviceCount` and a Polaris Locker link that makes room for another device.
 
 **Fix:** Deauthorize a device the customer no longer uses, or raise the license's device limit. [Device-limit recovery](/docs/features/licensing/device-limit/) shows what to put on screen.
 
@@ -67,11 +67,11 @@ Each entry starts from a license status or an error code your app reports. For t
 
 ## `hardware_mismatch`
 
-**Cause:** The device's fingerprint no longer matches the one its seat was bound to. A strict fingerprint mode also answers `fingerprint_required` when a request carries none.
+**Cause:** The device's fingerprint no longer matches the one the device was bound to. A strict fingerprint mode also answers `fingerprint_required` when a request carries none.
 
 **Fix:** Reset the hardware binding on the device, or deauthorize it so the customer can activate again. [Fingerprints](/docs/features/licensing/fingerprints/) explains the modes.
 
-**Check it works:** The device activates and keeps its seat.
+**Check it works:** The device activates and keeps counting toward the limit.
 
 ## `not_found` on every request
 

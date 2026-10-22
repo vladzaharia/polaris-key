@@ -77,7 +77,7 @@ export const activateEnrollDeactivate: Scenario = {
       const r = new TranscriptRecorder({
         id: "activate-enroll-deactivate",
         description:
-          "The licence mint and release paths. Activation exchanges a licence key (plus a hashed fingerprint and the device label the SDK takes from the platform's device name, PX-W13) for a device token and syncs; deactivation releases the seat and wipes the client; keyless enrolment on the product's free tier mints a token and syncs; and a deactivation the server refuses (the device was already deauthorized from the console, so the token 401s) still wipes the client, because the remote half is best-effort and the local half is not.",
+          "The licence mint and release paths. Activation exchanges a licence key (plus a hashed fingerprint and the device label the SDK takes from the platform's device name, PX-W13) for a device token and syncs; deactivation stops counting the device and wipes the client; keyless enrolment on the product's free tier mints a token and syncs; and a deactivation the server refuses (the device was already deauthorized from the console, so the token 401s) still wipes the client, because the remote half is best-effort and the local half is not.",
         features: ["license.activate", "license.enroll", "license.deactivate"],
         requires: ["core.store"],
         product: PRODUCT,
@@ -119,7 +119,7 @@ export const activateEnrollDeactivate: Scenario = {
         {
           action: "deactivate",
           now: T0 + 60,
-          note: "The server releases the seat.",
+          note: "The server stops counting the device.",
         },
         async (s) => {
           const res = await s.send({
@@ -207,7 +207,7 @@ export const licenseDeviceLimit: Scenario = {
       const r = new TranscriptRecorder({
         id: "license-device-limit",
         description:
-          "The seat refusal's portal link (PX-W8, WIRE-CONTRACT-V4 §5.3). Every seat is taken, so activation is refused with `device_limit`, which carries `manageUrl`: for a floating licence the portal's activate page, then free-device; once the licence is attached to an account, the free-device flow for that licence; and, with the product's portal off, no link at all. `for` is the coarse platform-and-arch label from the request's metadata. The link is never an auth failure: the client holds no token and wipes nothing.",
+          "The device-limit refusal's portal link (PX-W8, WIRE-CONTRACT-V4 §5.3). The device limit is reached, so activation is refused with `device_limit`, which carries `manageUrl`: for a floating licence the portal's activate page, then free-device; once the licence is attached to an account, the free-device flow for that licence; and, with the product's portal off, no link at all. `for` is the coarse platform-and-arch label from the request's metadata. The link is never an auth failure: the client holds no token and wipes nothing.",
         features: ["license.activate", "license.manage"],
         requires: ["core.store"],
         product: PRODUCT,
@@ -335,7 +335,7 @@ export const activateRefusals: Scenario = {
       const r = new TranscriptRecorder({
         id: "activate-refusals",
         description:
-          "Every refusal the activation and enrolment routes answer today, each surfaced by its body code and never collapsed into another kind: enrolment for a machine whose free licence an account has claimed (403 enroll_claimed), then whose free licence an operator disabled (403 license_disabled); activation with an expired licence's key (today a 401 unauthorized: the Worker refuses every unusable licence alike); activation on hardware that drifted past the threshold from the seat's binding (409 hardware_mismatch); and activation once the per-client budget is spent (429 rate_limited, no Retry-After). No refusal mints a token. attestation_required is not recorded: activation and enrolment are not trust operations.",
+          "Every refusal the activation and enrolment routes answer today, each surfaced by its body code and never collapsed into another kind: enrolment for a machine whose free licence an account has claimed (403 enroll_claimed), then whose free licence an operator disabled (403 license_disabled); activation with an expired licence's key (today a 401 unauthorized: the Worker refuses every unusable licence alike); activation on hardware that drifted past the threshold from the device's binding (409 hardware_mismatch); and activation once the per-client budget is spent (429 rate_limited, no Retry-After). No refusal mints a token. attestation_required is not recorded: activation and enrolment are not trust operations.",
         features: ["license.refusals"],
         requires: ["core.store", "license.activate"],
         product: PRODUCT,

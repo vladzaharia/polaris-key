@@ -3307,7 +3307,7 @@ msgstr "Aggiungi una chiave di licenza (richiesta, o da stdin)"
 msgid "cli.verb.enroll"
 msgstr "Ottieni la licenza gratuita, se {product} ne offre una"
 
-#. Stop using your license on this device and free its seat
+#. Stop using your license on this device and make room for another
 #. Terminal help: what the deactivate command does.
 msgid "cli.verb.deactivate"
 msgstr "Togli la licenza da questo dispositivo e liberane il posto"
@@ -3352,7 +3352,7 @@ msgstr "Elenca i dispositivi che usano la tua licenza"
 msgid "cli.verb.devicesRename"
 msgstr "Rinomina un dispositivo (senza nome, toglie il nome)"
 
-#. Remove a device and free its seat
+#. Remove a device and make room for another
 #. Terminal help: what 'devices deauthorize' does.
 msgid "cli.verb.devicesRemove"
 msgstr "Rimuovi un dispositivo e liberane il posto"
@@ -3567,8 +3567,8 @@ msgstr "Usa la licenza del tuo account"
 msgid "cli.logout.done"
 msgstr "Uscita da {product} effettuata su questo dispositivo."
 
-#. {product} no longer uses your license on this device. Its seat is free.
-#. Terminal: deactivate finished; the license's seat on this device is released.
+#. {product} no longer uses your license on this device. It no longer counts toward your limit.
+#. Terminal: deactivate finished; the device no longer counts toward the license limit.
 msgid "cli.deactivate.done"
 msgstr "{product} non usa più la tua licenza su questo dispositivo. Il posto è libero."
 
@@ -3592,7 +3592,7 @@ msgstr "Rinominato in {device}."
 msgid "cli.devices.nameCleared"
 msgstr "{device} ora non ha un nome."
 
-#. {device} was removed. Its seat is free.
+#. {device} was removed. It no longer counts toward your limit.
 #. Terminal: a device was removed from the license.
 msgid "cli.devices.removed"
 msgstr "{device} è stato rimosso. Il posto è libero."

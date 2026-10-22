@@ -1,5 +1,5 @@
 /**
- * The license's Devices tab (ADMIN.md §6.5.2): a Seats meter and the shared `DeviceTable` (the
+ * The license's Devices tab (ADMIN.md §6.5.2): a Devices meter and the shared `DeviceTable` (the
  * Core → Devices table, scoped to this license; DEV-8). Row actions appear only when valid:
  * Deauthorize for a device that is still authorized (LDT-10), Reset binding when a hardware
  * binding exists. A row opens the shared device drawer, where the hardware facts, probes and
@@ -76,7 +76,7 @@ export function LicenseDevices({
           </p>
         ) : (
           <Meter
-            label="Seats"
+            label="Devices"
             value={license.deviceCount}
             max={limit}
             tone={license.deviceCount > limit ? "warning" : "accent"}
@@ -115,7 +115,7 @@ export function LicenseDevices({
         title={`Deauthorize ${name(deauth)}?`}
         consequences={[
           "The device loses access now: its token is revoked.",
-          "Its seat is freed. To use the license again it must activate with a key.",
+          "It stops counting toward the device limit. To use the license again it must activate with a key.",
         ]}
         confirmLabel="Deauthorize"
         describeError={(e) => errorCopy(e, { thing: "Device" })}
@@ -131,7 +131,7 @@ export function LicenseDevices({
         intent={confirmFor("device.resetBinding").intent as "caution"}
         title={`Reset the hardware binding of ${name(reset)}?`}
         consequences={[
-          "The stored fingerprint is cleared; the device stays authorized and keeps its seat.",
+          "The stored fingerprint is cleared; the device stays authorized and keeps counting toward the device limit.",
           "Its next check-in binds to the hardware it reports then.",
         ]}
         confirmLabel="Reset binding"

@@ -11,8 +11,8 @@ positional arguments:
     deactivate
             Stop using your
             license on this
-            device and free its
-            seat
+            device and make room
+            for another
     status  Show your license,
             devices and offline
             time

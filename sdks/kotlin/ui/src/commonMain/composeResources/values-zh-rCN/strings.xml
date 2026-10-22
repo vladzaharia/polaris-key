@@ -1216,7 +1216,7 @@
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->
     <string name="cli_verb_enroll">获取免费许可证（如果%1$s提供）</string>
     <!-- Terminal help: what the deactivate command does. -->
-    <string name="cli_verb_deactivate">停止在此设备上使用你的许可证并释放席位</string>
+    <string name="cli_verb_deactivate">停止在此设备上使用你的许可证，为其他设备腾出名额</string>
     <!-- Terminal help: what the status command shows. -->
     <string name="cli_verb_status">许可证、设备和离线时间</string>
     <!-- Terminal help: what the offline-request command does. -->
@@ -1234,7 +1234,7 @@
     <!-- Terminal help: what 'devices rename' does. -->
     <string name="cli_verb_devicesRename">重命名设备（不提供名称则清除名称）</string>
     <!-- Terminal help: what 'devices deauthorize' does. -->
-    <string name="cli_verb_devicesRemove">移除设备并释放其席位</string>
+    <string name="cli_verb_devicesRemove">移除设备，为其他设备腾出名额</string>
     <!-- Terminal help: what 'config get' does. -->
     <string name="cli_verb_configGet">显示某项设置及其值的来源</string>
     <!-- Terminal help: what 'config list' does. -->
@@ -1319,8 +1319,8 @@
     <string name="cli_fix_signIn">使用你账户中的许可证</string>
     <!-- Terminal: sign-out finished. Arguments: 1=product. -->
     <string name="cli_logout_done">已在此设备上退出登录%1$s。</string>
-    <!-- Terminal: deactivate finished; the license's seat on this device is released. Arguments: 1=product. -->
-    <string name="cli_deactivate_done">%1$s不再在此设备上使用你的许可证。其席位已释放。</string>
+    <!-- Terminal: deactivate finished; the device no longer counts toward the license limit. Arguments: 1=product. -->
+    <string name="cli_deactivate_done">%1$s不再在此设备上使用你的许可证。不再计入设备上限。</string>
     <!-- Terminal: the person answered no to a confirmation. -->
     <string name="cli_nothingChanged">未做任何更改。</string>
     <!-- Terminal: keyless device registration finished. -->
@@ -1330,7 +1330,7 @@
     <!-- Terminal: a device's name was cleared; {device} is the device's id. Arguments: 1=device. -->
     <string name="cli_devices_nameCleared">%1$s现在没有名称。</string>
     <!-- Terminal: a device was removed from the license. Arguments: 1=device. -->
-    <string name="cli_devices_removed">%1$s已移除。其席位已释放。</string>
+    <string name="cli_devices_removed">%1$s已移除。不再计入设备上限。</string>
     <!-- Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it. -->
     <string name="cli_update_cancelled">更新已取消。</string>
     <!-- Terminal: there are no downloadable content packs on this device. -->
