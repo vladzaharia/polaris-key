@@ -92,3 +92,7 @@ Left (named slots, each a leg or a case in the same job):
 4. `requireSignIn()` end to end, once SP-54 lands the signed-in subject.
 
 Status stays `in-progress`.
+
+## Split 2026-10-22 (triage)
+
+Stays in progress for the must tier (Django/DRF with an injectable clock; the Next stale case). The React `usePolarisFetch`, native-client and `requireSignIn` legs are **[SP-65b](SP-65b-e2e-react-native-require-sign-in.md)**.

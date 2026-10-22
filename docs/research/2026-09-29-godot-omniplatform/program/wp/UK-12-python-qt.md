@@ -247,3 +247,7 @@ Remaining:
 - `ui.*` parity rows stay `planned`: the six families have corpus runners and snapshots, but the rich screens
   above are what make `ui.activate`, `ui.devices` and `ui.settings` honest. `ui.gate` can flip once the banner
   and toast parts exist.
+
+## Split 2026-10-22 (triage)
+
+UK-12 closes after KX-QT-DROP and KX-PY-MODELS land and the `ui.*` parity rows flip. Scrim, Mica, QSS, QAccessible, Flatpak, Qt tabs and the BUILT UX pass are **[UK-12b](UK-12b-qt-scrim-mica-tabs.md)**.

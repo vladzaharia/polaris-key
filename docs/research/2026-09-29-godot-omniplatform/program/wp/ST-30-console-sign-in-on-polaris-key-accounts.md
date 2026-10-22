@@ -91,7 +91,7 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
       taglines; no text drawn over customer art.
 - [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
-- [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+- [x] pkey-ux-reviewer passes the built screens (BUILT mode): `_mockups/review/stabilization/console-final/ux-review.md` lists ST-30 as a pass (recorded in `ux-reviews.json` 2026-10-22).
 
 ## Brand transition (2026-10-09)
 
@@ -114,12 +114,12 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Every current PLATFORM_ADMIN_GROUP member signs in as Superadmin with no setup
-- [ ] An email-code-only session is refused console access
-- [ ] No route treats a non-null session as authorisation (ST-29's grep test still passes)
-- [ ] Break-glass documented in the RUNBOOK with its exit facts; security review signed
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Every current PLATFORM_ADMIN_GROUP member signs in as Superadmin with no setup
+- [x] An email-code-only session is refused console access
+- [x] No route treats a non-null session as authorisation (ST-29's grep test still passes)
+- [ ] Break-glass documented in the RUNBOOK with its exit facts; security review signed (split 2026-10-22: the break-glass link, its audit row and the final security review are ST-30c; the RUNBOOK text is ST-35. Both slice security reviews passed.)
+- [ ] Docs: moved to ST-35 on 2026-10-22 (see the Split note): `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches. (slice gates passed; the unrelated reds on `main` CI are tracked in the triage.)
 
 ## Verify
 
@@ -246,3 +246,7 @@ chip; the security review; the docs pages (operate/console/members, reference/ro
 lockout recovery and the rule 11 text; deleting the 'full platform authority' comment once ST-29's
 docs.ts is on can(); removing the v1 cookie reader after the deploy. A larger lockup on the console
 card is not done.
+
+## Split 2026-10-22 (triage)
+
+Set done on what is on staging (slices 1, 2a and 2b; both security reviews passed; console-final BUILT UX pass). The rest is **[ST-30c](ST-30c-passkey-step-up-break-glass.md)**: SM-3(a)/(d) passkey step-up, the break-glass link with its audit row, the known-operator chip, the `session.ts:5` comment, v1 cookie reader removal and the lockup, security-gated. The members/roles docs, the RUNBOOK lockout recovery and the rule 11 text moved to [ST-35](ST-35-rbac-docs-lockout-recovery-docs-gate.md), which already owns them.

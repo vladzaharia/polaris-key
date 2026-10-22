@@ -311,3 +311,7 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
   `examples/ui/compose-android/`, docs pages and the kit README; (5) the `ui.*` parity rows stay
   `planned` (the signin and theme notes record progress) until a component ships all three layers;
   (6) design and UX reviews. Every acceptance criterion above is still open.
+
+## Split 2026-10-22 (triage)
+
+After the `ui.*` parity flip (45 min) UK-09 closes. The Android sample, Compose tabs, M3 Expressive, nav graph and deep links, tablet list-detail, ChannelPicker and the BUILT UX pass are **[UK-09b](UK-09b-compose-android-sample-and-expressive.md)**.

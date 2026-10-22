@@ -675,7 +675,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-25-service-portal-public-route-tables.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "P0-25b",
@@ -1177,7 +1177,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-sdks-tools.md"
       ],
       "brief": "wp/P0-43-ci-consolidation.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "P0-44",
@@ -7121,7 +7121,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md"
       ],
       "brief": "wp/F-33-personal-tokens-pkeyp-packages-read.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "F-33b",
@@ -7711,7 +7711,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/A-19-one-channel-catalogue-tools-channels.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "A-19b",
@@ -9940,7 +9940,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/rbac-admin.md"
       ],
       "brief": "wp/ST-30-console-sign-in-on-polaris-key-accounts.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "ST-30c",
@@ -12267,7 +12267,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/SP-52-swift-package-footprint.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "SP-52b",

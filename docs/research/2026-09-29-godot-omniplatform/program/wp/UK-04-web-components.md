@@ -471,3 +471,7 @@ network-error wording of `signIn.methodError`, CloudSync `conflict` (no Review a
 baselines and the ui-qa cross-renderer diff; the CDN route; React's `parts.tsx` panes need the same
 controls (UK-05); the BUILT re-review (item 7). `ui-qa` `strings.allow.json` pattern now reads
 `UI compact|UI sounds`.
+
+## Split 2026-10-22 (triage)
+
+The CDN module `key.plrs.im/elements/<major>/pk.js` (route, OpenAPI, assemble) and the npm publish are **[UK-04b](UK-04b-elements-cdn-module.md)**. Nothing in the graph needs them. UK-04 itself closes after KX-EL-DRIVE merges and the UX pass is recorded.

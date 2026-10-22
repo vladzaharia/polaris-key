@@ -67,11 +67,11 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] One store label table (lint refuses literals elsewhere)
-- [ ] Two-way conformance test passes
-- [ ] gen --check covers the generated copies
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/channels/*`, rewritten in place (one page per channel; the matrix section at A-21); `reference/channels`.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [ ] One store label table (lint refuses literals elsewhere): moved to A-19b (2026-10-22)
+- [x] Two-way conformance test passes
+- [x] gen --check covers the generated copies
+- [x] Docs: `reference/channels` (generated) shipped here; the per-channel `features/ship-builds/channels/*` check moved to A-19b (2026-10-22).
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 
@@ -95,3 +95,7 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - Lint that refuses store-label literals elsewhere
 - Per-channel features/ship-builds/channels/\* page rewrites (only the index page exists)
 - Green-gate box; consider splitting the remainder into an A-19b
+
+## Split 2026-10-22 (triage)
+
+Set done on the catalogue and its gates (76350fa74). A-20, P0-27 and the rest need only the catalogue. `channelLabel` everywhere, the store-name literal lint and the per-channel docs check are **[A-19b](A-19b-channel-labels-literal-lint.md)**. It touches the same admin files as A-22: run it before or alongside A-22.

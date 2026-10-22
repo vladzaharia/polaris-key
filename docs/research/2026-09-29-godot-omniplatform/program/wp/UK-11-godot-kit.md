@@ -280,3 +280,7 @@ Branch `wp/UK-11-continue`. Done:
 - Known: `offline / custom / ja` failed at `750x1334@2` (Import below the fold) in the first full run; not caused by this slice as far as seen, check against main.
 
 Still to do, in order: priority 3 (move the screens onto `view_of()` and catalog keys through `copy_format.gd`; of 300 `PKeyUiCopy` keys only 117 have a catalog string with the same English, the rest need the catalog's wording and the tests that pin the old strings updated; start with `PKeyGate` and `PKeyActivationPanel`), then the new scenes, the modern-game look, baselines and the design review as listed above.
+
+## Split 2026-10-22 (triage)
+
+UK-11 closes after KX-GD-PLAY and KX-GD-ID land. The game look, five standalone scenes, PNG baselines, UK-59 leftovers, the BUILT UX pass and the Godot `sign_in / native28` overflow are **[UK-11b](UK-11b-godot-game-look-scenes-baselines.md)**.

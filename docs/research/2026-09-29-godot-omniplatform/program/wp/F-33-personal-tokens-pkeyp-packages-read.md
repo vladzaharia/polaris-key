@@ -131,11 +131,12 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] One token installs every package the account may read, across products
-- [ ] Customers never see the system product in listings
-- [ ] Existing pkeyr* tokens keep working until expiry; new service tokens are pkeyci*
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/packages/*`; `build/install` (private feeds); `help/packages`.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] One token installs every package the account may read, across products
+- [x] Customers never see the system product in listings (`personMayRead` answers no until bindings exist)
+- [x] Existing pkeyr\* tokens keep working until expiry
+- [ ] New service tokens are pkeyci\*: moved to F-33b (2026-10-22)
+- [x] Docs for slices 1 and 2 shipped (help/packages, features/ship-builds/packages, build/install); anything F-33b adds rides F-33b.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 
@@ -178,3 +179,7 @@ Named follow-ups (mockup drift, not built in this round): the grouped "every pac
 Slices 1 and 2 are merged (`2db897218`, `9e2ae1609`); slice 2's UX re-review passed with fixes
 (`_mockups/review/F-33/ux-review-2.md`). Back to `in-progress` for slice 3, the "Still to build"
 list above; record the UX pass when the package is done.
+
+## Split 2026-10-22 (triage)
+
+Set done on slices 1 and 2 (2db897218, 9e2ae1609; slice 2 UX re-review passed, `_mockups/review/F-33/ux-review-2.md`). F-34, F-37 and ST-34 need only that. Slice 3 is **[F-33b](F-33b-service-tokens-list-filtering.md)**: `pkeyci_` packages:read, serve-time list filtering, the registry-clients two-owner row, and revoking licence-bound tokens on unlink. "Role-granted and console-member access in `personMayRead`" and the member's own Personal tokens page moved to [ST-31](ST-31-roles-bindings-invites-members-pages.md) (the binding source) and [ST-34](ST-34-admin-scope-personal-tokens-pkey-login.md); leaving them here deadlocks, because ST-34 depends on F-33.
