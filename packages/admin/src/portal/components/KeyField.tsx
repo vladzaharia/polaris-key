@@ -95,7 +95,7 @@ export function KeyField({
       </label>
       <div
         className={cn(
-          "relative rounded-md border bg-surface-sunken focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-surface-overlay",
+          "relative @container rounded-md border bg-surface-sunken focus-within:ring-2 focus-within:ring-focus focus-within:ring-offset-2 focus-within:ring-offset-surface-overlay",
           danger
             ? "border-danger"
             : verdict?.tone === "info"
@@ -111,7 +111,10 @@ export function KeyField({
           aria-hidden
           // A key is a token: it may break anywhere (the reflow checks leave tokens alone).
           data-token=""
-          className="min-h-[3.25rem] whitespace-pre-wrap py-3.5 ps-4 pe-24 font-mono text-md leading-6 [overflow-wrap:anywhere] [word-break:break-all]"
+          className={cn(
+            "min-h-[3.25rem] whitespace-pre-wrap py-3.5 ps-4 pe-24 font-mono text-md leading-6 [overflow-wrap:anywhere] [word-break:break-all]",
+            value !== "" && "@max-[17rem]:pe-4",
+          )}
         >
           {value ? (
             parts ? (
@@ -154,7 +157,10 @@ export function KeyField({
               e.currentTarget.form?.requestSubmit();
             }
           }}
-          className="absolute inset-0 size-full resize-none overflow-hidden bg-transparent py-3.5 ps-4 pe-24 font-mono text-md leading-6 text-transparent caret-fg-strong outline-none [overflow-wrap:anywhere] [word-break:break-all]"
+          className={cn(
+            "absolute inset-0 size-full resize-none overflow-hidden bg-transparent py-3.5 ps-4 pe-24 font-mono text-md leading-6 text-transparent caret-fg-strong outline-none [overflow-wrap:anywhere] [word-break:break-all]",
+            value !== "" && "@max-[17rem]:pe-4",
+          )}
         />
         <div className="absolute end-2 top-2.5 flex items-center">
           {value === "" ? (
@@ -167,7 +173,10 @@ export function KeyField({
               {t("common.paste")}
             </button>
           ) : valid ? (
-            <Check aria-hidden className="me-2 size-5 text-success" />
+            <Check
+              aria-hidden
+              className="me-2 size-5 text-success @max-[17rem]:hidden"
+            />
           ) : null}
         </div>
       </div>

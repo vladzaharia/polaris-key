@@ -40,3 +40,8 @@ export function formatDayTime(
     ...(opts.utc ? { timeZone: "UTC" } : {}),
   }).format(new Date(epochSeconds * 1000));
 }
+
+/** The portal's copy is English: relative times ("3 wk. ago") pin it, whatever the browser speaks. */
+export const PORTAL_LOCALE = "en-US";
+/** `FormatOptions` for `lib/format.ts` calls from the portal. */
+export const PORTAL_FMT = { locale: PORTAL_LOCALE } as const;

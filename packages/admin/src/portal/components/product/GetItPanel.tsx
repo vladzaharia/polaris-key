@@ -144,7 +144,7 @@ export function GetItPanel({
       id="get"
       title={t("getIt.heading")}
       aside={
-        <p className="shrink-0 pt-1 text-end text-xs text-fg-muted">
+        <p className="max-w-full pt-1 text-end text-xs text-fg-muted">
           {shown.publishedAt
             ? t("getIt.latest", {
                 version: shown.version,

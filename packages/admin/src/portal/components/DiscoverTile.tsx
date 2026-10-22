@@ -178,8 +178,7 @@ export function DiscoverTile({
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
                 <h3
                   id={id}
-                  dir="auto"
-                  className="line-clamp-2 min-w-0 max-w-full break-words [text-align:match-parent] text-base font-semibold leading-snug text-fg-strong"
+                  className="line-clamp-2 max-h-[2lh] min-w-0 max-w-full overflow-hidden break-words text-base font-semibold leading-snug text-fg-strong"
                 >
                   <a
                     href={page}
@@ -188,7 +187,7 @@ export function DiscoverTile({
                     // card's, which it stretches over (styles.css, .pk-press-link).
                     className="pk-press-link block rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
                   >
-                    {offer.name}
+                    <span dir="auto">{offer.name}</span>
                   </a>
                 </h3>
                 {offer.developerName ? (

@@ -5,6 +5,7 @@ import { Button } from "../../ui/Button.js";
 import { Dialog, DialogBody, DialogFooter } from "../../ui/Dialog.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { formatRelative } from "../../lib/format.js";
+import { PORTAL_FMT } from "../date.js";
 import { formatDay } from "../date.js";
 import { t } from "../../lib/copy.js";
 import {
@@ -627,7 +628,11 @@ function AccountCard({
           <span className="text-fg-muted">
             {t("signin.join.provenBy", {
               method: by,
-              when: formatRelative(account.proven.at * 1000, Date.now()),
+              when: formatRelative(
+                account.proven.at * 1000,
+                Date.now(),
+                PORTAL_FMT,
+              ),
             })}
           </span>
         ) : null}

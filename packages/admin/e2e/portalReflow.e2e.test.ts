@@ -536,6 +536,20 @@ const FLOW_STATES = [
     "device-limit",
     "download-flow",
     "product-token",
+    // The product-page variants and the secondary pages (LF4, 200 % text on a phone).
+    "product-entry",
+    "product-identity",
+    "product-no-cover",
+    "product-no-icon",
+    "product-account-bound",
+    "product-install-sources",
+    "switcher",
+    "discover-empty",
+    "storefront-not-found",
+    "account-link-start",
+    "account-link-both",
+    "account-link-stale",
+    "account-last-method",
   ].map((id) => ({ id })),
 ] as const;
 
@@ -563,6 +577,12 @@ describe("the one-product Library and the flows lose no text at large text", () 
         try {
           if (shipped) await shipped.ready(o.page);
           else await h1(o.page, st.heading);
+          // A pasted key, so the field is as full as it gets.
+          if (st.id === "activate-enter")
+            await o.page.fill(
+              "[role=dialog] textarea",
+              "pkey_nightfall_AAAA-BBBB-CCCC-DDDD-EEEE-FFFF",
+            );
           await enlarge(o.page, text);
           await o.page.waitForTimeout(300);
           const over = await horizontalOverflow(o.page);
@@ -579,6 +599,19 @@ describe("the one-product Library and the flows lose no text at large text", () 
               : null;
           });
           if (slot) expect(slot.scroll).toBeLessThanOrEqual(slot.client + 1);
+          // The key field keeps its room: no more than five lines, never a character a line.
+          if (st.id === "activate-enter") {
+            const field = await o.page.evaluate(() => {
+              const t = document.querySelector<HTMLTextAreaElement>(
+                "[role=dialog] textarea",
+              );
+              if (!t) return null;
+              const lh = parseFloat(getComputedStyle(t).lineHeight);
+              return { height: t.getBoundingClientRect().height, lh };
+            });
+            if (field)
+              expect(field.height / field.lh).toBeLessThanOrEqual(5 + 1);
+          }
           // A code frame clips what leaves it (LF3, M7): each of its buttons (Wrap, Copy) sits
           // wholly inside the frame, and so does every Copy button beside a shown-once value.
           const cut = await o.page.evaluate(() =>

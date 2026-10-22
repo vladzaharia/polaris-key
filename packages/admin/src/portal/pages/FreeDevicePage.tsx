@@ -13,6 +13,7 @@ import { RadioCards } from "../../ui/RadioCards.js";
 import { announce } from "../../ui/LiveRegion.js";
 import { SuccessCheck } from "../../ui/motion/index.js";
 import { formatRelative } from "../../lib/format.js";
+import { PORTAL_FMT } from "../date.js";
 import type {
   PortalAccount,
   PortalProduct,
@@ -150,7 +151,9 @@ export function lastSeenText(
   if (days < 1) return t("locker.freeDevice.activeToday");
   if (days === 1) return t("locker.freeDevice.activeYesterday");
   if (days < 90) return t("locker.freeDevice.daysAgo", { count: days });
-  return t("locker.freeDevice.lastSeen", { when: formatRelative(at * 1000) });
+  return t("locker.freeDevice.lastSeen", {
+    when: formatRelative(at * 1000, Date.now(), PORTAL_FMT),
+  });
 }
 
 function deviceName(d: PortalProductDevice): string {

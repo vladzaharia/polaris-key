@@ -121,6 +121,8 @@ export interface OpenOptions {
    * portal offers a visitor on one (the focused download's Email me the download, PX-29).
    */
   userAgent?: string;
+  /** The browser's language (default `en-US`): a French browser must still read English dates. */
+  locale?: string;
   /** A touch screen: `(pointer: coarse)` matches, so the coarse-pointer target sizes apply. */
   hasTouch?: boolean;
 }
@@ -166,7 +168,7 @@ export async function startPortal(): Promise<PortalHarness> {
       contrast: opts.contrast ?? "no-preference",
       userAgent: opts.userAgent ?? USER_AGENT,
       hasTouch: opts.hasTouch ?? false,
-      locale: "en-US",
+      locale: opts.locale ?? "en-US",
       timezoneId: "UTC",
       reducedMotion: opts.reducedMotion ?? "reduce",
     });

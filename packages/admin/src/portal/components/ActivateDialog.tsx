@@ -563,6 +563,8 @@ export function ActivateDialog({
             ) : (
               <Button
                 type="submit"
+                // After a refusal, Continue would only repeat it: "Use a different key" leads.
+                variant={serverVerdict ? "outline" : undefined}
                 className="font-medium max-sm:min-h-11"
                 loading={preview.isPending || claim.isPending || leaving}
               >
@@ -615,9 +617,14 @@ function RefusalActions({
         </div>
       ) : null}
       <Button
-        variant="ghost"
+        // The refusal's way forward is the action; where the footer leads with Join (the account
+        // may be theirs), it stays a quiet link instead of a second primary.
+        variant={ownedNotice ? "ghost" : "neutral"}
         size="sm"
-        className="font-medium underline decoration-2 underline-offset-4 max-sm:min-h-11 max-sm:w-full"
+        className={cn(
+          "font-medium max-sm:min-h-11 max-sm:w-full",
+          ownedNotice && "underline decoration-2 underline-offset-4",
+        )}
         onClick={onDifferentKey}
       >
         {t("signin.key.differentKey")}

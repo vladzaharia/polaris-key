@@ -39,6 +39,28 @@ export const buttonVariants = cva(
         variant: "link",
         class: "h-auto min-h-6 min-w-0 px-0 pointer-coarse:min-h-6",
       },
+      // The portal's variants wrap a long label (200 % text on a phone) instead of running past
+      // the screen: the height follows the text, never below the size's own.
+      {
+        variant: ["neutral", "quiet", "action"],
+        size: "xs",
+        class: "h-auto min-h-7 whitespace-normal py-1.5 text-center",
+      },
+      {
+        variant: ["neutral", "quiet", "action"],
+        size: "sm",
+        class: "h-auto min-h-8 whitespace-normal py-1.5 text-center",
+      },
+      {
+        variant: ["neutral", "quiet", "action"],
+        size: "md",
+        class: "h-auto min-h-9 whitespace-normal py-1.5 text-center",
+      },
+      {
+        variant: ["neutral", "quiet", "action"],
+        size: "lg",
+        class: "h-auto min-h-10 whitespace-normal py-1.5 text-center",
+      },
     ],
     defaultVariants: { variant: "primary", size: "md" },
   },

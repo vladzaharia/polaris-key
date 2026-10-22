@@ -156,7 +156,7 @@ export const BRAND_PAGE_CSS = [
   `input[type=text]{display:block;width:100%;min-height:44px;padding:0 .75rem;margin:0 0 1rem;border:1px solid var(--edge);border-radius:6px;background:var(--sunken);color:var(--strong);font-family:${FONT.mono};font-size:1.25rem;letter-spacing:.08em;text-transform:uppercase}`,
   `input[type=text]::placeholder{color:var(--muted);opacity:1}`,
   // The console's md Button (BootScreen's Retry): 36 px, 14 px regular weight, one accent fill.
-  `.button{display:flex;width:100%;align-items:center;justify-content:center;min-height:2.25rem;padding:0 1rem;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:.875rem;line-height:1.25rem;font-weight:400;text-decoration:none;cursor:pointer}`,
+  `.button{display:flex;width:100%;align-items:center;justify-content:center;min-height:2.25rem;padding:.5rem 1rem;text-align:center;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:.875rem;line-height:1.25rem;font-weight:400;text-decoration:none;cursor:pointer}`,
   `.button:hover{filter:brightness(1.1)}`,
   `.actions{margin:1.5rem 0 0}`,
   // The secondary and destructive buttons, and a vertical button stack (the license chooser).

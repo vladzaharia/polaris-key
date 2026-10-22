@@ -11,6 +11,7 @@ import { Skeleton } from "../../../ui/Skeleton.js";
 import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import { formatRelative } from "../../../lib/format.js";
+import { PORTAL_FMT } from "../../date.js";
 import { cn } from "../../../lib/cn.js";
 import { t, tParts } from "../../../lib/copy.js";
 import type {
@@ -420,7 +421,11 @@ function TokenRow({
             <span>
               {lastUsedAt
                 ? t("locker.packages.lastUsed", {
-                    when: formatRelative(lastUsedAt * 1000),
+                    when: formatRelative(
+                      lastUsedAt * 1000,
+                      Date.now(),
+                      PORTAL_FMT,
+                    ),
                   })
                 : t("locker.packages.neverUsed")}
               <span aria-hidden className="ms-2">
