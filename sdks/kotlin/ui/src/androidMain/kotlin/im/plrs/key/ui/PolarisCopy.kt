@@ -173,7 +173,6 @@ public data class PolarisCopy(
     val deviceUnnamed: String = "Unnamed device",
     val deviceLastVerified: String = "Last checked %1\$s",
     val deviceRename: String = "Rename",
-    val deviceRenameTitle: String = "Rename device",
     val deviceRenameLabel: String = "Device name",
     val deviceSave: String = "Save",
     val deviceDeauthorize: String = "Remove",

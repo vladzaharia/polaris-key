@@ -124,7 +124,6 @@
     <string name="pkey_ui_device_unnamed">Unnamed device</string>
     <string name="pkey_ui_device_last_verified">Last checked %1$s</string>
     <string name="pkey_ui_device_rename">Rename</string>
-    <string name="pkey_ui_device_rename_title">Rename device</string>
     <string name="pkey_ui_device_rename_label">Device name</string>
     <string name="pkey_ui_device_save">Save</string>
     <string name="pkey_ui_device_deauthorize">Remove</string>
