@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   useClaimKey,
   useMintPersonalToken,
+  useMintRegistryToken,
   usePreviewKey,
 } from "../src/portal/data.js";
 
@@ -41,6 +42,31 @@ describe("mutations that carry a secret", () => {
     );
     expect(JSON.stringify(client.getMutationCache().getAll())).not.toMatch(
       /pkey[pa]?_[A-Z]+SECRET/,
+    );
+  });
+
+  it("a licence-bound registry token does not linger either", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response('{"token":"pkeyr_REGISTRYSECRET"}')),
+    );
+    const client = new QueryClient();
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    const { result, unmount } = renderHook(
+      () => useMintRegistryToken("djdl", "L1"),
+      { wrapper },
+    );
+    await act(async () => {
+      await result.current.mutateAsync({ label: "ci" } as never);
+    });
+    unmount();
+    await waitFor(() =>
+      expect(client.getMutationCache().getAll()).toHaveLength(0),
+    );
+    expect(JSON.stringify(client.getMutationCache().getAll())).not.toContain(
+      "pkeyr_",
     );
   });
 });

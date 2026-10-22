@@ -416,7 +416,7 @@ async function afterStepUp(
   if (!me) throw new PortalApiError(401, "unauthorized");
   if (me.account.id !== accountId) {
     // Signed in to another account after all: everything on the page belongs to it now.
-    refreshAfterAccountChange(qc);
+    await refreshAfterAccountChange(qc);
     throw new PortalApiError(409, "other_account");
   }
   if (replaced) {

@@ -368,22 +368,18 @@ describe("after a step-up", () => {
     expect(stale()).toEqual(["link", "methods", "profile", "sessions"]);
   });
 
-  it("signing in to another account after all re-reads everything", () => {
+  it("signing in to another account after all drops the first account's data and re-reads the session", async () => {
     const client = new QueryClient();
     const stale = seeded(client);
-    refreshAfterAccountChange(client);
-    expect(stale()).toEqual(
-      [
-        "library",
-        "licenses",
-        "link",
-        "me",
-        "methods",
-        "product",
-        "profile",
-        "sessions",
-      ].sort(),
-    );
+    await refreshAfterAccountChange(client);
+    // Nothing but the session survives; it is marked for a re-read.
+    expect(
+      client
+        .getQueryCache()
+        .getAll()
+        .map((q) => q.queryKey),
+    ).toEqual([qk.me()]);
+    expect(stale()).toEqual(["me"]);
   });
 
   it("joining accounts and undoing a join refresh the methods, session, profile, library, licences and link view", () => {

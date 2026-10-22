@@ -375,7 +375,18 @@ export async function refreshAfterStepUp(client: QueryClient): Promise<void> {
   ]);
 }
 
-/** Signed in to another account after all: everything on the page belongs to it now. */
-export function refreshAfterAccountChange(client: QueryClient): void {
+/**
+ * Signed in to another account after all: everything on the page belongs to it now. The first
+ * account's data is dropped (not merely marked stale), so no entry of it can render while the
+ * refetch lands; only the session read survives, to be read again.
+ */
+export async function refreshAfterAccountChange(
+  client: QueryClient,
+): Promise<void> {
+  await client.cancelQueries({ queryKey: qkAll() });
+  client.removeQueries({
+    queryKey: qkAll(),
+    predicate: (q) => q.queryKey[1] !== "me",
+  });
   void client.invalidateQueries({ queryKey: qkAll() });
 }
