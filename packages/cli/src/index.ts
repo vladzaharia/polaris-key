@@ -1347,7 +1347,7 @@ async function cmdDoctor(
   const config = await checkConfigFiles({
     cwd,
     host: hostOf(ctx.baseUrl.url),
-    exposed: reached ? remote!.keys : null,
+    exposed: reached ? remote!.pinned : null,
   });
   const report = buildReport({
     product: ctx.product,

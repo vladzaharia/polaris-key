@@ -404,7 +404,13 @@ describe("pkey doctor against a hostile discovery document", () => {
           services: Object.fromEntries(
             [...HOSTILE, "release"].map((k) => [k, { enabled: true }]),
           ),
-          signing: { [CSI8]: ALL, kid: "\u0085::error::x" },
+          trust: {
+            keys: [
+              { kid: CSI8, status: ALL },
+              { kid: "\u0085::error::x", status: "active" },
+            ],
+            pinnedKeys: {},
+          },
         })) as typeof fetch);
       const io = capture();
       const code = await runPkey(

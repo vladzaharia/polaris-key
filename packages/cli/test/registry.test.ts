@@ -459,7 +459,10 @@ describe("pkey doctor", () => {
       return new Response(
         JSON.stringify({
           services: { license: { enabled: true }, config: { enabled: false } },
-          signing: { "djdl-2026": "key" },
+          trust: {
+            keys: [{ kid: "djdl-2026", status: "active" }],
+            pinnedKeys: { "djdl-2026": "key" },
+          },
         }),
       );
     }) as typeof fetch;
@@ -548,7 +551,10 @@ describe("pkey doctor", () => {
     const real = globalThis.fetch;
     globalThis.fetch = discovery({
       services: { license: { enabled: true } },
-      signing: { "djdl-2026": "key" },
+      trust: {
+        keys: [{ kid: "djdl-2026", status: "active" }],
+        pinnedKeys: { "djdl-2026": "key" },
+      },
     });
     try {
       const out = await run(["doctor"], { cwd });

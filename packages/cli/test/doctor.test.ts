@@ -11,6 +11,7 @@
 //   * `--json` carries the same facts as the text;
 //   * no 'outlet', 'grant' or programme id in any output.
 
+import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -129,10 +130,28 @@ const json = (status: number, body: unknown) =>
     headers: { "content-type": "application/json" },
   });
 
-const DISCOVERY = {
-  services: { license: { enabled: true } },
-  signing: { "djdl-2026": "key" },
+/** The discovery document the Worker really sends, as the conformance transcript recorded it. */
+const DISCOVERY = (
+  JSON.parse(
+    readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../conformance/transcripts/discovery-capabilities.json",
+      ),
+      "utf8",
+    ),
+  ) as {
+    steps: Array<{
+      exchanges: { items: Array<{ response: { body: unknown } }> };
+    }>;
+  }
+).steps[0]!.exchanges.items[0]!.response.body as {
+  trust: {
+    keys: Array<Record<string, unknown>>;
+    pinnedKeys: Record<string, string>;
+  };
 };
+const KID = "pkey-test-prod-2026";
 
 interface Call {
   url: string;
@@ -267,12 +286,12 @@ describe("pkey doctor: one report, one count", () => {
 
       Manifest
         ✓ .pkey/                    valid · license
-        ✓ Services                  license
+        ✓ Services                  config
         ✓ Signed in                 Ada Lindqvist (ada@example.com) · ends 2026-10-26
         ○ polaris-key.json          Not found here
 
       Keys
-        ✓ Signing key               djdl-2026 · active
+        ✓ Signing key               pkey-test-prod-2026 · active
         ✓ Release key               djdl-rk-2026 · pinned
 
       Integration on macOS
@@ -317,14 +336,15 @@ describe("pkey doctor: one report, one count", () => {
 
       Manifest
         ✓ .pkey/            valid · license
-        ✓ Services          license
+        ✓ Services          config
         ✓ Signed in
           Ada Lindqvist (ada@example.com)
           ends 2026-10-26
         ○ polaris-key.json  Not found here
 
       Keys
-        ✓ Signing key  djdl-2026 · active
+        ✓ Signing key
+          pkey-test-prod-2026 · active
         ✓ Release key  djdl-rk-2026 · pinned
 
       Integration on macOS
@@ -374,7 +394,7 @@ describe("pkey doctor: one report, one count", () => {
 
       Manifest
         ✓ .pkey/     valid · license
-        ✓ Services   license
+        ✓ Services   config
         ✓ Signed in
           Ada Lindqvist
           (ada@example.com)
@@ -384,7 +404,7 @@ describe("pkey doctor: one report, one count", () => {
 
       Keys
         ✓ Signing key
-          djdl-2026 · active
+          pkey-test-prod-2026 · active
         ✓ Release key
           djdl-rk-2026 · pinned
 
@@ -447,7 +467,7 @@ describe("pkey doctor: one report, one count", () => {
         ✓ .pkey/
           valid · license
         ✓ Services
-          license
+          config
         ✓ Signed in
           Ada Lindqvist
           (ada@example.com)
@@ -457,7 +477,8 @@ describe("pkey doctor: one report, one count", () => {
 
       Keys
         ✓ Signing key
-          djdl-2026 · active
+          pkey-test-prod-2026
+          active
         ✓ Release key
           djdl-rk-2026
           pinned
@@ -549,14 +570,15 @@ describe("pkey doctor: one report, one count", () => {
         ✗ product/product/name
           Add product.name.
             → pkey validate
-        ✓ Services              license
+        ✓ Services              config
         ✓ Signed in
           Ada (ada@example.com)
           ends 2096-10-02
         ○ polaris-key.json      Not found here
 
       Keys
-        ✓ Signing key  djdl-2026 · active
+        ✓ Signing key
+          pkey-test-prod-2026 · active
         ✓ Release key  djdl-rk-2026 · pinned
 
       Commerce  off, needs Licensing
@@ -726,7 +748,9 @@ describe("pkey doctor: one report, one count", () => {
     ].map((h) => text.indexOf(h));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(text).toContain("✓ Signing key               djdl-2026 · active");
+    expect(text).toContain(
+      "✓ Signing key               pkey-test-prod-2026 · active",
+    );
     expect(text).toContain("✓ Release key               djdl-rk-2026 · pinned");
     expect(text).not.toContain("MCowBQ"); // key ids, never key material
     expect(text).not.toContain("{");
@@ -994,6 +1018,7 @@ describe("pkey doctor: one report, one count", () => {
       state: "unavailable",
       detail: "The console did not answer in time.",
       fix: "pkey doctor",
+      code: "timeout",
     });
   });
 
@@ -1035,7 +1060,7 @@ describe("pkey doctor: one report, one count", () => {
       { id: "macos", label: "macOS" },
       { id: "windows", label: "Windows" },
     ]);
-    expect(line.keys).toEqual(["djdl-2026"]);
+    expect(line.keys).toEqual(["pkey-test-prod-2026"]);
     for (const f of line.integration.features)
       expect(text.out).toContain(f.label);
     for (const t of line.integration.todo) expect(text.out).toContain(t.label);
@@ -1106,5 +1131,157 @@ describe("pkey doctor: one report, one count", () => {
     const r = await run([], { fetchImpl: s.f, columns: 80 });
     expect(r.out).not.toContain("\u001b]52");
     expect(r.out).not.toContain("\u001b[2J");
+  });
+});
+
+describe("pkey doctor: the real discovery document (NB1)", () => {
+  it("lists the trust keys by id, never the trust object's field names", async () => {
+    const r = await run([], { fetchImpl: server().f, columns: 80 });
+    const text = frame(r.out);
+    expect(text).toContain(`✓ Signing key               ${KID} · active`);
+    for (const field of [
+      "jwksUrl",
+      "trustManifestUrl",
+      "cacheSeconds",
+      "pinnedKeys",
+      "signingKid",
+      "signingPub",
+    ])
+      expect(text).not.toContain(field);
+    expect(text.match(/Signing key/g)).toHaveLength(1);
+    const j = JSON.parse(
+      (await run(["--json"], { fetchImpl: server().f })).out,
+    );
+    expect(j.keys).toEqual([KID]);
+    expect(j.signing).toEqual(DISCOVERY.trust.pinnedKeys);
+  });
+
+  it("compares polaris-key.json pins with trust.pinnedKeys", async () => {
+    const cwd = await repo();
+    await writeFile(
+      path.join(cwd, "polaris-key.json"),
+      JSON.stringify({
+        baseUrl: ORIGIN,
+        trust: { pinnedKeys: DISCOVERY.trust.pinnedKeys },
+      }),
+    );
+    const ok = await run([], { fetchImpl: server().f, columns: 80, cwd });
+    expect(frame(ok.out)).toContain(`pins match key.example`);
+    await writeFile(
+      path.join(cwd, "polaris-key.json"),
+      JSON.stringify({ baseUrl: ORIGIN, trust: { pinnedKeys: { old: "x" } } }),
+    );
+    const bad = await run([], { fetchImpl: server().f, columns: 80, cwd });
+    expect(frame(bad.out)).toContain("pins old are not exposed by key.example");
+  });
+
+  it("a staged key is a warning with one fix per app folder", async () => {
+    const cwd = await repo();
+    for (const dir of ["macos", "windows"]) {
+      await mkdir(path.join(cwd, dir));
+      await writeFile(
+        path.join(cwd, dir, "polaris-key.json"),
+        JSON.stringify({
+          baseUrl: ORIGIN,
+          trust: { pinnedKeys: DISCOVERY.trust.pinnedKeys },
+        }),
+      );
+    }
+    const staged = {
+      ...DISCOVERY,
+      trust: {
+        ...DISCOVERY.trust,
+        keys: [
+          ...DISCOVERY.trust.keys,
+          { kid: "pkey-test-prod-2026b", status: "staged", active: false },
+        ],
+      },
+    };
+    const f = server((url) =>
+      url.endsWith("/.well-known/polaris.json")
+        ? json(200, staged)
+        : answering(() => json(200, { ...VIEW, features: [] }))(url),
+    ).f;
+    const r = await run([], { fetchImpl: f, columns: 80, cwd });
+    const text = frame(r.out);
+    expect(text).toMatch(
+      /▲ Next signing key\s+pkey-test-prod-2026b · is staged/,
+    );
+    expect(text).toContain("→ pkey sdk --lang <sdk> --write --out macos/");
+    expect(text).toContain("→ pkey sdk --lang <sdk> --write --out windows/");
+    expect(r.code).toBe(0); // a warning, not a to-do
+    expect(text).toContain("0 to do · 1 warning");
+  });
+});
+
+describe("pkey doctor: a failed console read says what happened (NM1)", () => {
+  const meWith = (answer: () => Response | Promise<Response>) =>
+    server((url) =>
+      url.endsWith("/.well-known/polaris.json")
+        ? json(200, DISCOVERY)
+        : url.endsWith("/manage/api/me")
+          ? answer()
+          : json(200, { ...VIEW, features: [] }),
+    ).f;
+
+  it("a redirect is a redirect row, code redirect", async () => {
+    const f = meWith(
+      () =>
+        new Response("", {
+          status: 302,
+          headers: { location: "https://x.example/" },
+        }),
+    );
+    const r = await run([], { fetchImpl: f, columns: 80 });
+    const text = frame(r.out);
+    expect(text).toContain("key.example answered with a redirect");
+    expect(text).not.toContain("Can't reach");
+    expect(text).toContain("→ Check --base-url.");
+    const j = JSON.parse((await run(["--json"], { fetchImpl: f })).out);
+    expect(j.signedIn).toMatchObject({ state: "unreadable", code: "redirect" });
+  });
+
+  it("an unreadable or oversize body is 'didn't answer as a Polaris Key console'", async () => {
+    for (const body of ["<html>no</html>", "x".repeat(70 * 1024)]) {
+      const f = meWith(() => new Response(body, { status: 200 }));
+      const r = await run([], { fetchImpl: f, columns: 80 });
+      expect(frame(r.out).replace(/\s+/g, " ")).toContain(
+        "key.example didn't answer as a Polaris Key console.",
+      );
+      expect(frame(r.out)).not.toContain("Can't reach");
+      const j = JSON.parse((await run(["--json"], { fetchImpl: f })).out);
+      expect(j.signedIn.code).toBe("not-a-console");
+    }
+  });
+
+  it("a redirect and an unreadable body on the Integration view say the same", async () => {
+    for (const [answer, code] of [
+      [
+        () =>
+          new Response("", {
+            status: 301,
+            headers: { location: "https://x/" },
+          }),
+        "redirect",
+      ],
+      [() => new Response("nope", { status: 200 }), "not-a-console"],
+    ] as const) {
+      const f = server((url) =>
+        url.endsWith("/.well-known/polaris.json")
+          ? json(200, DISCOVERY)
+          : url.endsWith("/manage/api/me")
+            ? json(200, { name: "Ada", email: "ada@example.com" })
+            : answer(),
+      ).f;
+      const j = JSON.parse((await run(["--json"], { fetchImpl: f })).out);
+      expect(j.integration).toMatchObject({ state: "unavailable", code });
+    }
+  });
+
+  it("only an unreachable host says 'Can't reach', code network", async () => {
+    const f = meWith(() => unreachable());
+    const j = JSON.parse((await run(["--json"], { fetchImpl: f })).out);
+    expect(j.signedIn).toMatchObject({ state: "unreadable", code: "network" });
+    expect(j.signedIn.detail).toBe("Can't reach key.example.");
   });
 });

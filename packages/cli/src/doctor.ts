@@ -42,6 +42,7 @@ import {
   type ResolvedCredential,
 } from "./credentials.js";
 import { readCappedText } from "./httpRead.js";
+import { Redirected, Unreachable } from "./netErrors.js";
 import type { ValidationResult } from "./manifest.js";
 import type { Term } from "./terminal.js";
 import { untrusted, type UntrustedEnv } from "./untrusted.js";
@@ -66,6 +67,10 @@ export interface RemoteDoctor {
   host: string;
   /** The signing key ids discovery exposes, in the server's order (never the keys themselves). */
   keys: string[];
+  /** Each key's id and status (`active`, `staged`, …) from `trust.keys`. */
+  keyStates: Array<{ kid: string; status: string }>;
+  /** The key ids an app pins today: the names in `trust.pinnedKeys`. */
+  pinned: string[];
   /** The HTTP status when the server answered with a refusal. */
   status?: number;
   services: string[];
@@ -79,8 +84,20 @@ export interface RemoteDoctor {
  */
 export async function readCapped(res: Response): Promise<unknown> {
   const text = await readCappedText(res);
-  if (text === null) throw new Error("The answer was too large to read.");
-  return JSON.parse(text) as unknown;
+  if (text === null) throw new ReadFailure("too large or unreadable");
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new ReadFailure("not JSON");
+  }
+}
+
+/** The answer arrived but is not a readable JSON document (oversize, or not JSON). */
+export class ReadFailure extends Error {
+  constructor(why: string) {
+    super(`The answer could not be read: ${why}.`);
+    this.name = "ReadFailure";
+  }
 }
 
 const plural = (n: number, word: string): string =>
@@ -143,6 +160,8 @@ export async function checkRemote(opts: {
     url,
     host,
     keys: [],
+    keyStates: [],
+    pinned: [],
     ...(status === undefined ? {} : { status }),
     services: [],
     signing: null,
@@ -185,15 +204,30 @@ export async function checkRemote(opts: {
   const services = Object.entries(rec(rec(body)["services"]))
     .filter(([, service]) => rec(service)["enabled"] === true)
     .map(([slug]) => slug);
-  const signing = rec(body)["signing"] ?? rec(body)["trust"] ?? {};
-  const keys =
-    signing !== null && typeof signing === "object" && !Array.isArray(signing)
-      ? Object.keys(signing)
-      : [];
+  // The real document keeps its keys under `trust`: `keys[]` with a status each, and the
+  // `pinnedKeys` map (kid to public key) an app pins.
+  const trust = rec(rec(body)["trust"]);
+  const keyStates = asArray(trust["keys"])
+    .map(rec)
+    .filter((k) => typeof k["kid"] === "string" && k["kid"] !== "")
+    .map((k) => ({
+      kid: k["kid"] as string,
+      status:
+        typeof k["status"] === "string"
+          ? (k["status"] as string)
+          : k["active"] === true
+            ? "active"
+            : "unknown",
+    }));
+  const signing = rec(trust["pinnedKeys"]);
+  const pinned = Object.keys(signing);
+  const keys = keyStates.map((k) => k.kid);
   return {
     url,
     host,
     keys,
+    keyStates,
+    pinned,
     services,
     signing,
     facts: [
@@ -229,6 +263,8 @@ export interface SignedIn {
   /** The warning's sentence and its one fix, for every state but `in`. */
   detail?: string;
   fix?: string;
+  /** `network`, `redirect` or `not-a-console` when `/me` could not be read. */
+  code?: string;
 }
 
 export type FeatureState = "verified" | "waiting" | "unseen";
@@ -271,7 +307,7 @@ export type IntegrationFact =
   | ({ state: "ok" } & IntegrationFacts)
   | { state: "skipped"; reason: "signed-out" | "no-product" | "ended" }
   | { state: "denied"; reason: string; access: AccessInfo | null }
-  | { state: "unavailable"; detail: string; fix: string };
+  | { state: "unavailable"; detail: string; fix: string; code?: string };
 
 export interface DoctorSession {
   signedIn: SignedIn;
@@ -469,12 +505,34 @@ export async function gatherSession(opts: {
     });
   const api = cred.token.startsWith("pkeya_");
   const host = hostOf(cred.origin);
-  const reach = (): string =>
-    signal?.aborted
-      ? "The console did not answer in time."
-      : `Can't reach ${host}.`;
-  const reachFix = (): string =>
-    signal?.aborted ? "pkey doctor" : "Check your network, or --base-url.";
+  /** What a failed read says: a redirect, an unreadable answer, or no answer at all. */
+  const failed = (
+    e: unknown,
+  ): { detail: string; fix: string; code: string } => {
+    if (signal?.aborted)
+      return {
+        detail: "The console did not answer in time.",
+        fix: "pkey doctor",
+        code: "timeout",
+      };
+    if (e instanceof Redirected)
+      return {
+        detail: maskTokens(e.message),
+        fix: "Check --base-url.",
+        code: "redirect",
+      };
+    if (e instanceof Unreachable || !(e instanceof ReadFailure))
+      return {
+        detail: `Can't reach ${host}.`,
+        fix: "Check your network, or --base-url.",
+        code: "network",
+      };
+    return {
+      detail: `${host} didn't answer as a Polaris Key console.`,
+      fix: "Check --base-url.",
+      code: "not-a-console",
+    };
+  };
   const ended = (): DoctorSession => ({
     signedIn: {
       state: "ended",
@@ -515,12 +573,8 @@ export async function gatherSession(opts: {
           endsAt: ends,
         };
       }
-    } catch {
-      signedIn = {
-        state: "unreadable",
-        detail: reach(),
-        fix: reachFix(),
-      };
+    } catch (e) {
+      signedIn = { state: "unreadable", ...failed(e) };
     }
   }
 
@@ -572,10 +626,10 @@ export async function gatherSession(opts: {
         ...integrationFacts(await readCapped(res), slug, cred.origin, io.env),
       },
     };
-  } catch {
+  } catch (e) {
     return {
       signedIn,
-      integration: { state: "unavailable", detail: reach(), fix: reachFix() },
+      integration: { state: "unavailable", ...failed(e) },
     };
   }
 }
@@ -605,6 +659,8 @@ export interface ReportRow {
   notes?: Part[][];
   /** One fix, a bare command (or a short instruction). */
   fix?: string;
+  /** More fixes, one line each (a command per app folder). */
+  fixes?: string[];
   /** A console link, shown without its scheme and broken after `/` and `#`. */
   link?: string;
 }
@@ -818,18 +874,34 @@ export function buildReport(input: ReportInput): DoctorReport {
           ),
         ],
       });
-      if (!remote.keys.length)
+      if (!remote.keyStates.length)
         keys.push({
           lead: "warn",
           name: "Signing key",
           parts: [dim("none exposed")],
         });
-      for (const kid of remote.keys)
-        keys.push({
-          lead: "ok",
-          name: "Signing key",
-          parts: [plain(u(kid)), dim("active")],
-        });
+      for (const k of remote.keyStates) {
+        if (k.status === "staged") {
+          // Not a problem: the app's config file pins it before it becomes active.
+          const folders = config.dirs.length ? config.dirs : ["./"];
+          keys.push({
+            lead: "warn",
+            name: "Next signing key",
+            parts: [plain(u(k.kid)), dim("is staged")],
+            fixes: folders.map((d) =>
+              `pkey sdk --lang <sdk> --write --out ${d === "./" ? "" : d}`.trimEnd(),
+            ),
+            notes: [
+              [dim(`Pin ${u(k.kid)} beside the active key in each folder.`)],
+            ],
+          });
+        } else
+          keys.push({
+            lead: k.status === "active" ? "ok" : "none",
+            name: "Signing key",
+            parts: [plain(u(k.kid)), dim(u(k.status))],
+          });
+      }
     }
   } else
     manifest.push({
@@ -1244,12 +1316,14 @@ export function renderReport(
       for (const l of flow(note.map(piece), width - 4, sep))
         out.push(`    ${paint(l)}`);
     const fixIndent = stackAll ? 4 : 6;
-    if (r.fix)
-      wrapSpans([{ text: r.fix }], Math.max(1, width - fixIndent - 2)).forEach(
-        (l, n) =>
-          out.push(
-            `${" ".repeat(fixIndent)}${n === 0 ? `${arrow} ` : "  "}${paint(l)}`,
-          ),
+    for (const fixText of [...(r.fix ? [r.fix] : []), ...(r.fixes ?? [])])
+      wrapSpans(
+        [{ text: fixText }],
+        Math.max(1, width - fixIndent - 2),
+      ).forEach((l, n) =>
+        out.push(
+          `${" ".repeat(fixIndent)}${n === 0 ? `${arrow} ` : "  "}${paint(l)}`,
+        ),
       );
     if (r.link) {
       const link = r.link.replace(/^https?:\/\//, "");
