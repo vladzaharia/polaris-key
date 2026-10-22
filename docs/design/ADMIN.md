@@ -94,11 +94,11 @@ the table.
 | ----------------------------- | -------------------------------------------- | -------------------------------------------------------------------------- | ---------------- |
 | `overview`                    | `#/p/<slug>`                                 | Core → Overview (`#/p/<slug>`)                                             | live             |
 | `integration`                 | `#/p/<slug>/integration`                     | Core → Integration (`#/p/<slug>/integration`)                              | live             |
-| `services`                    | `#/p/<slug>/settings/features`               | Core → Features & general (`#/p/<slug>/settings/features`)                 | live             |
+| `services`                    | `#/p/<slug>/settings/features`               | Core → Features and general (`#/p/<slug>/settings/features`)               | live             |
 | `devices`                     | `#/p/<slug>/devices`                         | Core → Devices (`#/p/<slug>/devices`)                                      | live             |
 | `users`                       | `#/p/<slug>/users`                           | Core → Users (`#/p/<slug>/users`)                                          | live             |
 | `presentation`                | `#/p/<slug>/settings/presentation`           | Core → Presentation (`#/p/<slug>/settings/presentation`)                   | live             |
-| `keys`                        | `#/p/<slug>/settings/keys`                   | Core → Keys & secrets (`#/p/<slug>/settings/keys`)                         | live             |
+| `keys`                        | `#/p/<slug>/settings/keys`                   | Core → Keys and secrets (`#/p/<slug>/settings/keys`)                       | live             |
 | `activity`                    | `#/p/<slug>/activity`                        | Core → Activity (`#/p/<slug>/activity`)                                    | live             |
 | `settings`                    | `#/p/<slug>/settings`                        | Core → Settings (`#/p/<slug>/settings`)                                    | live             |
 | `settings-members`            | `#/p/<slug>/settings/members`                | Core → Members (`#/p/<slug>/settings/members`)                             | live             |
@@ -145,10 +145,10 @@ the table.
 | `api-tokens`                  | `#/tokens`                                   | API tokens (`#/tokens`)                                                    | live             |
 | `personal-tokens`             | `#/personal-tokens`                          | Personal tokens (`#/personal-tokens`)                                      | live             |
 | `tab:overview`                | `#/p/<slug>/overview`                        | Core → Overview (`#/p/<slug>`)                                             | moved (P0-31)    |
-| `tab:services`                | `#/p/<slug>/services`                        | Core → Features & general (`#/p/<slug>/settings/features`)                 | moved (P0-31)    |
+| `tab:services`                | `#/p/<slug>/services`                        | Core → Features and general (`#/p/<slug>/settings/features`)               | moved (P0-31)    |
 | `tab:presentation`            | `#/p/<slug>/presentation`                    | Core → Presentation (`#/p/<slug>/settings/presentation`)                   | moved (P0-31)    |
-| `tab:keys`                    | `#/p/<slug>/keys`                            | Core → Keys & secrets (`#/p/<slug>/settings/keys`)                         | moved (P0-31)    |
-| `tab:secrets`                 | `#/p/<slug>/secrets`                         | Core → Keys & secrets (`#/p/<slug>/settings/keys`)                         | moved (P0-31)    |
+| `tab:keys`                    | `#/p/<slug>/keys`                            | Core → Keys and secrets (`#/p/<slug>/settings/keys`)                       | moved (P0-31)    |
+| `tab:secrets`                 | `#/p/<slug>/secrets`                         | Core → Keys and secrets (`#/p/<slug>/settings/keys`)                       | moved (P0-31)    |
 | `tab:licenses`                | `#/p/<slug>/licenses`                        | Licensing → Licenses (`#/p/<slug>/license/licenses`)                       | moved (P0-31)    |
 | `tab:tiers`                   | `#/p/<slug>/tiers`                           | Licensing → Tiers (`#/p/<slug>/license/tiers`)                             | moved (P0-31)    |
 | `tab:fingerprints`            | `#/p/<slug>/fingerprints`                    | Licensing → Enrollment (`#/p/<slug>/license/enrollment`)                   | moved (P0-31)    |

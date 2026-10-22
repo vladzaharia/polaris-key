@@ -40,7 +40,7 @@ export const AREAS = [
   { id: "signin", name: "Sign-in", scope: "product" },
   { id: "sync", name: "Cloud Sync", scope: "product" },
   { id: "commerce", name: "Commerce", scope: "product" },
-  { id: "keys", name: "Keys & secrets", scope: "product" },
+  { id: "keys", name: "Keys and secrets", scope: "product" },
   { id: "settings", name: "Settings", scope: "product" },
 ] as const satisfies readonly AreaDef[];
 
