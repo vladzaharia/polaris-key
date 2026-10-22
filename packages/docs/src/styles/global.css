@@ -265,6 +265,32 @@ h6,
   }
 }
 
+/* Large text: the lockup is a fixed 218 px, so a header that text size has shrunk to under 18 em
+   (a 390 px window at 200 %, a 320 px one at 100 %) takes the mark alone rather than a scaled-down
+   lockup. The em is the header's own, so it follows the reader's text size, which a window-width
+   media query cannot. */
+@supports (container-type: inline-size) {
+  [data-brand="locker"] header.header {
+    container: pk-header / inline-size;
+  }
+  @container pk-header (max-width: 18em) {
+    .pk-site-title[data-kind="locker"] .pk-lockup {
+      display: none;
+    }
+    .pk-site-title[data-kind="locker"] .pk-lockup-mark {
+      display: block;
+    }
+    /* The mark keeps its 32 px: the tag beside it goes (it squeezed the title to nothing). */
+    .pk-site-title[data-kind="locker"] {
+      flex: none;
+      min-width: 2rem;
+    }
+    [data-brand="locker"] .title-wrapper .pk-help-tag {
+      display: none;
+    }
+  }
+}
+
 /* ---- Sidebar --------------------------------------------------------------------------------- */
 
 /* The current page: the section's subtle surface and a solid marker (BRAND.md §5.4). */

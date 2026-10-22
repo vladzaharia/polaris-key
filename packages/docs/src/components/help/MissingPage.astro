@@ -12,6 +12,15 @@ import { HELP_ICONS } from "../../lib/helpIcons";
 <script is:inline>
   if (location.pathname.indexOf("/docs/help") === 0) {
     document.documentElement.setAttribute("data-help-miss", "");
+    // The page is Polaris Locker's from here: its title says so, and the Key variant (and its
+    // /docs/ links, which would leave Help) is removed rather than hidden.
+    document.title = "Page not found \u00b7 Polaris Locker";
+    document.addEventListener("DOMContentLoaded", function () {
+      var key = document.querySelectorAll(
+        '[data-miss-brand="key"], .pk-miss__docs, [data-miss-key]',
+      );
+      for (var i = 0; i < key.length; i++) key[i].remove();
+    });
     var frame = document.querySelector(".pk-section");
     if (frame) frame.setAttribute("data-brand", "locker");
   }
