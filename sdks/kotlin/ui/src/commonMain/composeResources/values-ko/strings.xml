@@ -1149,7 +1149,7 @@
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_signout_title">이 기기의 %1$s에서 로그아웃할까요?</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated). Arguments: 1=product, 2=tier. -->
-    <string name="signin_signout_released">이 기기의 %1$s에서 %2$s 라이선스 사용을 중지하고 자리를 비워요.</string>
+    <string name="signin_signout_released">이 기기의 %1$s에서 %2$s 라이선스 사용을 중지하고 다른 기기가 쓸 수 있게 비워요.</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number. Arguments: 1=n. -->
     <plurals name="signin_signout_unsynced">
         <item quantity="other">변경 사항 %1$d개가 아직 동기화되지 않았어요.</item>
@@ -1172,7 +1172,7 @@
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
     <string name="signin_mail_replaced_subject">%2$s에서 %1$s 로그아웃됨</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform. Arguments: 1=device, 2=newDevice, 3=product, 4=date. -->
-    <string name="signin_mail_replaced_body">%4$s에 %3$s에 로그인하면서 %1$s 대신 %2$s 기기가 등록됐어요. 자리가 비면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Locker를 열고 기기를 확인하세요.</string>
+    <string name="signin_mail_replaced_body">%4$s에 %3$s에 로그인하면서 %1$s 대신 %2$s 기기가 등록됐어요. 다른 기기를 등록할 여유가 생기면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Locker를 열고 기기를 확인하세요.</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
     <string name="signin_mail_newDevice_subject">Polaris Locker 계정에 새 기기가 로그인했어요</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->

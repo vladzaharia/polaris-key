@@ -1167,7 +1167,7 @@
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_signout_title">Sair de %1$s neste dispositivo?</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated). Arguments: 1=product, 2=tier. -->
-    <string name="signin_signout_released">%1$s deixa de usar sua licença %2$s aqui e libera a vaga.</string>
+    <string name="signin_signout_released">%1$s deixa de usar sua licença %2$s aqui e libera espaço para outro dispositivo.</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number. Arguments: 1=n. -->
     <plurals name="signin_signout_unsynced">
         <item quantity="one">%1$d alteração ainda não foi sincronizada.</item>
@@ -1192,7 +1192,7 @@
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
     <string name="signin_mail_replaced_subject">%1$s foi desconectado em %2$s</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform. Arguments: 1=device, 2=newDevice, 3=product, 4=date. -->
-    <string name="signin_mail_replaced_body">%1$s foi substituído por %2$s quando você entrou no %3$s em %4$s. Ele poderá entrar novamente depois, se houver uma vaga livre. Se não foi você, abra o Polaris Locker e verifique seus dispositivos.</string>
+    <string name="signin_mail_replaced_body">%1$s foi substituído por %2$s quando você entrou no %3$s em %4$s. Ele poderá entrar novamente depois, se houver espaço para outro dispositivo. Se não foi você, abra o Polaris Locker e verifique seus dispositivos.</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
     <string name="signin_mail_newDevice_subject">Um novo dispositivo entrou na sua conta do Polaris Locker</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->

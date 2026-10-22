@@ -1149,7 +1149,7 @@
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_signout_title">要在此设备上退出登录%1$s吗？</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated). Arguments: 1=product, 2=tier. -->
-    <string name="signin_signout_released">%1$s将停止在此使用你的%2$s许可证，并释放其席位。</string>
+    <string name="signin_signout_released">%1$s将停止在此使用你的%2$s许可证，并为其他设备腾出名额。</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number. Arguments: 1=n. -->
     <plurals name="signin_signout_unsynced">
         <item quantity="other">%1$d项更改尚未同步。</item>
@@ -1172,7 +1172,7 @@
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
     <string name="signin_mail_replaced_subject">%1$s已在%2$s上退出登录</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform. Arguments: 1=device, 2=newDevice, 3=product, 4=date. -->
-    <string name="signin_mail_replaced_body">你于%4$s登录%3$s时，%1$s被%2$s替换。如有空余席位，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。</string>
+    <string name="signin_mail_replaced_body">你于%4$s登录%3$s时，%1$s被%2$s替换。如果还可以再添加设备，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
     <string name="signin_mail_newDevice_subject">有新设备登录了你的Polaris Locker账户</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->

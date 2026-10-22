@@ -19,6 +19,17 @@ import { HELP_ICONS } from "../../lib/helpIcons";
     // The page is Polaris Locker's from here: its title says so, and the Key variant (and its
     // /docs/ links, which would leave Help) is removed rather than hidden.
     document.title = "Page not found \u00b7 Polaris Locker";
+    // The tab icon is the Locker's too (the head links name the Key's).
+    var icons = document.querySelectorAll(
+      'link[rel~="icon"], link[rel="apple-touch-icon"]',
+    );
+    for (var j = 0; j < icons.length; j++) {
+      var href = icons[j].getAttribute("href") || "";
+      if (href.indexOf("/docs/branding/key/") !== 0) continue;
+      var file = href.slice(href.lastIndexOf("/") + 1);
+      if (file.indexOf("app-icon-dark-180") === 0) file = "apple-touch-icon.png";
+      icons[j].setAttribute("href", "/docs/branding/locker/" + file);
+    }
     document.addEventListener("DOMContentLoaded", function () {
       var key = document.querySelectorAll(
         '[data-miss-brand="key"], .pk-miss__docs, [data-miss-key]',

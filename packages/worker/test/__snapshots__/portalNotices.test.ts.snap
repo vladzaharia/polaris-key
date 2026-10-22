@@ -84,7 +84,7 @@ exports[`notice templates: copy > deviceReplaced: subject and plain text 1`] = `
   "subject": "Diceroll signed out on Work laptop",
   "text": "Diceroll signed out on Work laptop
 
-Work laptop was replaced by Mara's Pixel 8 when you signed in to Diceroll on 14 Nov 2023, 22:13 UTC. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.
+Work laptop was replaced by Mara's Pixel 8 when you signed in to Diceroll on 14 Nov 2023, 22:13 UTC. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices.
 
 Open Polaris Locker: https://key.plrs.im/#/p/diceroll/devices
 

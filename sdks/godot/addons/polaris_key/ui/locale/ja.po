@@ -3115,10 +3115,10 @@ msgstr "ここでサインインすると、ライブラリに{product}が表示
 msgid "signin.signout.title"
 msgstr "このデバイスで{product}からサインアウトしますか？"
 
-#. {product} stops using your {tier} license here and frees its seat.
+#. {product} stops using your {tier} license on this device and frees room for another device.
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
 msgid "signin.signout.released"
-msgstr "{product}はこのデバイスで{tier}ライセンスの使用を停止し、その枠を解放します。"
+msgstr "{product}はこのデバイスで{tier}ライセンスの使用を停止し、別のデバイス用に空きを作ります。"
 
 #. {n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number.
@@ -3177,10 +3177,10 @@ msgstr "写真を変更"
 msgid "signin.mail.replaced.subject"
 msgstr "{device}で{product}がサインアウトされました"
 
-#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.
+#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform.
 msgid "signin.mail.replaced.body"
-msgstr "{date}に{product}にサインインした際、{device}は{newDevice}に置き換えられました。枠が空けば、後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。"
+msgstr "{date}に{product}にサインインした際、{device}は{newDevice}に置き換えられました。別のデバイスを登録できる空きがあれば、後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。"
 
 #. A new device signed in to your Polaris Locker account
 #. Security email (SIGN-IN.md §3.15).

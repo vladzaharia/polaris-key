@@ -3133,10 +3133,10 @@ msgstr "Connectez-vous ici pour voir {product} dans votre bibliothèque."
 msgid "signin.signout.title"
 msgstr "Se déconnecter de {product} sur cet appareil ?"
 
-#. {product} stops using your {tier} license here and frees its seat.
+#. {product} stops using your {tier} license on this device and frees room for another device.
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
 msgid "signin.signout.released"
-msgstr "{product} cesse d’utiliser votre licence {tier} ici et libère sa place."
+msgstr "{product} cesse d’utiliser votre licence {tier} ici et libère de la place pour un autre appareil."
 
 #. {n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number.
@@ -3197,10 +3197,10 @@ msgstr "Changer de photo"
 msgid "signin.mail.replaced.subject"
 msgstr "{product} déconnecté sur {device}"
 
-#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices.
+#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform.
 msgid "signin.mail.replaced.body"
-msgstr "{device} a été remplacé par {newDevice} lorsque vous vous êtes connecté à {product} le {date}. Il pourra se reconnecter plus tard si une place se libère. Si ce n’était pas vous, ouvrez Polaris Locker et vérifiez vos appareils."
+msgstr "{device} a été remplacé par {newDevice} lorsque vous vous êtes connecté à {product} le {date}. Il pourra se reconnecter plus tard s’il reste de la place pour un autre appareil. Si ce n’était pas vous, ouvrez Polaris Locker et vérifiez vos appareils."
 
 #. A new device signed in to your Polaris Locker account
 #. Security email (SIGN-IN.md §3.15).

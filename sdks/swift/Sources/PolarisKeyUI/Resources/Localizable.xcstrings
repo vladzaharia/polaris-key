@@ -67856,55 +67856,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ was replaced by %2$@ when you signed in to %3$@ on %4$@. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices."
+            "value": "%1$@ was replaced by %2$@ when you signed in to %3$@ on %4$@. It can sign in again later if there is room for another device. If this wasn't you, open Polaris Locker and check your devices."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ wurde durch %2$@ ersetzt, als Sie sich am %4$@ bei %3$@ angemeldet haben. Es kann sich später wieder anmelden, wenn ein Platz frei ist. Falls Sie das nicht waren, öffnen Sie Polaris Locker und prüfen Sie Ihre Geräte."
+            "value": "%1$@ wurde durch %2$@ ersetzt, als Sie sich am %4$@ bei %3$@ angemeldet haben. Es kann sich später wieder anmelden, wenn ein wenn Platz für ein weiteres Gerät frei ist. Falls Sie das nicht waren, öffnen Sie Polaris Locker und prüfen Sie Ihre Geräte."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ a été remplacé par %2$@ lorsque vous vous êtes connecté à %3$@ le %4$@. Il pourra se reconnecter plus tard si une place se libère. Si ce n’était pas vous, ouvrez Polaris Locker et vérifiez vos appareils."
+            "value": "%1$@ a été remplacé par %2$@ lorsque vous vous êtes connecté à %3$@ le %4$@. Il pourra se reconnecter plus tard s’il reste de la place pour un autre appareil. Si ce n’était pas vous, ouvrez Polaris Locker et vérifiez vos appareils."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%2$@ reemplazó a %1$@ cuando iniciaste sesión en %3$@ el %4$@. %1$@ podrá volver a iniciar sesión más tarde si hay una plaza libre. Si no fuiste tú, abre Polaris Locker y revisa tus dispositivos."
+            "value": "%2$@ reemplazó a %1$@ cuando iniciaste sesión en %3$@ el %4$@. %1$@ podrá volver a iniciar sesión más tarde si hay espacio para otro dispositivo. Si no fuiste tú, abre Polaris Locker y revisa tus dispositivos."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ foi substituído por %2$@ quando você entrou no %3$@ em %4$@. Ele poderá entrar novamente depois, se houver uma vaga livre. Se não foi você, abra o Polaris Locker e verifique seus dispositivos."
+            "value": "%1$@ foi substituído por %2$@ quando você entrou no %3$@ em %4$@. Ele poderá entrar novamente depois, se houver espaço para outro dispositivo. Se não foi você, abra o Polaris Locker e verifique seus dispositivos."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ è stato sostituito da %2$@ quando hai effettuato l'accesso a %3$@ il %4$@. Potrà accedere di nuovo in seguito se si libera un posto. Se non sei stato tu, apri Polaris Locker e controlla i tuoi dispositivi."
+            "value": "%1$@ è stato sostituito da %2$@ quando hai effettuato l'accesso a %3$@ il %4$@. Potrà accedere di nuovo in seguito se c'è spazio per un altro dispositivo. Se non sei stato tu, apri Polaris Locker e controlla i tuoi dispositivi."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%4$@に%3$@にサインインした際、%1$@は%2$@に置き換えられました。枠が空けば、後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。"
+            "value": "%4$@に%3$@にサインインした際、%1$@は%2$@に置き換えられました。別のデバイスを登録できる空きがあれば、後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%4$@에 %3$@에 로그인하면서 %1$@ 대신 %2$@ 기기가 등록됐어요. 자리가 비면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Locker를 열고 기기를 확인하세요."
+            "value": "%4$@에 %3$@에 로그인하면서 %1$@ 대신 %2$@ 기기가 등록됐어요. 다른 기기를 등록할 여유가 생기면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Locker를 열고 기기를 확인하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你于%4$@登录%3$@时，%1$@被%2$@替换。如有空余席位，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。"
+            "value": "你于%4$@登录%3$@时，%1$@被%2$@替换。如果还可以再添加设备，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。"
           }
         }
       }
@@ -73136,55 +73136,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ stops using your %2$@ license here and frees its seat."
+            "value": "%1$@ stops using your %2$@ license on this device and frees room for another device."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ verwendet Ihre %2$@-Lizenz hier nicht mehr und gibt den Platz frei."
+            "value": "%1$@ verwendet Ihre %2$@-Lizenz auf diesem Gerät nicht mehr und schafft Platz für ein weiteres Gerät."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ cesse d’utiliser votre licence %2$@ ici et libère sa place."
+            "value": "%1$@ cesse d’utiliser votre licence %2$@ ici et libère de la place pour un autre appareil."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ dejará de usar aquí tu licencia %2$@ y liberará su plaza."
+            "value": "%1$@ dejará de usar aquí tu licencia %2$@ y liberará espacio para otro dispositivo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ deixa de usar sua licença %2$@ aqui e libera a vaga."
+            "value": "%1$@ deixa de usar sua licença %2$@ aqui e libera espaço para outro dispositivo."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ smette di usare qui la tua licenza %2$@ e ne libera il posto."
+            "value": "%1$@ smette di usare qui la tua licenza %2$@ e libera spazio per un altro dispositivo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@はこのデバイスで%2$@ライセンスの使用を停止し、その枠を解放します。"
+            "value": "%1$@はこのデバイスで%2$@ライセンスの使用を停止し、別のデバイス用に空きを作ります。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 기기의 %1$@에서 %2$@ 라이선스 사용을 중지하고 자리를 비워요."
+            "value": "이 기기의 %1$@에서 %2$@ 라이선스 사용을 중지하고 다른 기기가 쓸 수 있게 비워요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@将停止在此使用你的%2$@许可证，并释放其席位。"
+            "value": "%1$@将停止在此使用你的%2$@许可证，并为其他设备腾出名额。"
           }
         }
       }

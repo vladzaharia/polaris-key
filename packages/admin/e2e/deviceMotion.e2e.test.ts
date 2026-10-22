@@ -457,7 +457,7 @@ describe("motion on: devices and activation under the Worker's CSP", () => {
         .last()
         .click();
       await expect.poll(() => deviceRows(page)).toEqual(["Mara's MacBook Pro"]);
-      await expect.poll(() => focused(page)).toBe("H1:Nightfall");
+      await expect.poll(() => focused(page)).toBe("H2:Devices");
       await atRest(page);
       const m = await state(page);
       expect(m.starts).toHaveLength(1);
@@ -699,7 +699,7 @@ describe("reduced motion: every change in scope is an instant swap to the same e
       await devices
         .getByRole("img", { name: "1 of 3 devices in use" })
         .waitFor();
-      await expect.poll(() => focused(page)).toBe("H1:Nightfall");
+      await expect.poll(() => focused(page)).toBe("H2:Devices");
       expect(await page.locator("#pk-announcer").textContent()).toContain(
         "Studio PC was removed. 1 of 3 devices in use.",
       );
