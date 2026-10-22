@@ -260,6 +260,30 @@ describe("the three admin commands share one credential", () => {
     },
   );
 
+  it("a failure of an admin command is a ✗ with the fix, or one {v:1} result line under --json", async () => {
+    const down = server(() => json(500, { error: { code: "boom" } }));
+    const human = await run(["migrate", "list"], {
+      env: { PKEY_ADMIN_TOKEN: PERSONAL },
+      fetchImpl: down.f,
+    });
+    expect(human.code).toBe(1);
+    expect(human.err.startsWith("✗  ")).toBe(true);
+    const machine = await run(["migrate", "list", "--json"], {
+      env: { PKEY_ADMIN_TOKEN: PERSONAL },
+      fetchImpl: down.f,
+    });
+    expect(machine.code).toBe(1);
+    expect(machine.err).toBe("");
+    expect(JSON.parse(machine.out)).toMatchObject({
+      v: 1,
+      command: "migrate",
+      event: "result",
+      ok: false,
+      exit: 1,
+      error: "failed",
+    });
+  });
+
   it("listing import --dry-run needs no credential and sends nothing", async () => {
     const s = server(ok);
     const r = await run(["listing", "import", "--godot", GODOT, "--dry-run"], {

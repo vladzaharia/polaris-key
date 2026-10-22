@@ -744,11 +744,13 @@ describe("pkey bundle — server failures", () => {
 
     expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
 
-    expect(io.err()).toContain(
+    // The ✗ block wraps to the terminal: compare the words, not the line breaks.
+    const err = io.err().replace(/\s+/g, " ");
+    expect(err).toContain(
       "licenseId is required when the License service is enabled",
     );
-    expect(io.err()).toContain("400 bad_request");
-    expect(io.err()).toContain("fields: licenseId");
+    expect(err).toContain("400 bad_request");
+    expect(err).toContain("fields: licenseId");
   });
 
   it("blames the API token for a 401 on the mint", async () => {
@@ -823,7 +825,7 @@ describe("pkey bundle — server failures", () => {
 
     expect(await runPkey(argv(), { cwd, ...io })).toBe(1);
 
-    expect(io.err()).toContain("without a bundle");
+    expect(io.err().replace(/\s+/g, " ")).toContain("without a bundle");
   });
 });
 

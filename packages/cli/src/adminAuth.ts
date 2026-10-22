@@ -18,7 +18,13 @@
  */
 
 import { wrapSpans } from "@polaris-key/node/terminal";
-import { block, plain, roleName } from "./account.js";
+import { block, envelope, networkCode, plain, roleName } from "./account.js";
+import {
+  UsageError,
+  isInternalError,
+  isUsageError,
+  networkMessage,
+} from "./errors.js";
 import { HttpFailure, request } from "./bundle.js";
 import {
   adminCredential,
@@ -27,7 +33,7 @@ import {
   type ResolvedCredential,
 } from "./credentials.js";
 import type { Term, TermOut } from "./terminal.js";
-import { untrusted, type UntrustedEnv } from "./untrusted.js";
+import { untrusted, untrustedLines, type UntrustedEnv } from "./untrusted.js";
 
 /** The console's area names (`AREAS` in the Worker's core/rbac/areas.ts), by id. */
 const AREA_NAMES: Readonly<Record<string, string>> = {
@@ -53,6 +59,9 @@ export interface AdminIo {
   term: (out: TermOut) => Term;
   store: () => Promise<CredentialStore>;
   fetchImpl?: typeof fetch;
+  /** `--json`: a failure is one `{"v":1,…}` result line on `stdout` (`account.ts` `envelope`). */
+  json?: boolean;
+  stdout?: TermOut;
   /** One deadline for a caller that makes several requests (`pkey doctor`). */
   signal?: AbortSignal;
 }
@@ -238,6 +247,24 @@ export async function withAdminCredential(
           ),
         );
         return 4;
+      }
+    }
+    // Any other failure of the command is the same ✗ sentence-and-fix every account command
+    // draws (or the same result line under --json). A usage error and a bug keep the generic path.
+    if (!(e instanceof UsageError) && !isInternalError(e)) {
+      const message = untrustedLines(networkMessage(e), io.env);
+      if (!isUsageError(message)) {
+        const [first = "", ...rest] = message.split("\n");
+        if (io.json && io.stdout)
+          io.stdout.write(
+            envelope(command, 1, {
+              error: networkCode(e) ? "network" : "failed",
+              message: first,
+              ...(rest.length ? { fix: rest.join(" ") } : {}),
+            }),
+          );
+        else io.stderr.write(block(t, "fail", plain(first, ...rest)));
+        return 1;
       }
     }
     throw e;

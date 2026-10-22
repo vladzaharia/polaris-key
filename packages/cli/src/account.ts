@@ -189,7 +189,7 @@ export function jsonLine(value: Record<string, unknown>): string {
 
 /** The single `--json` result line: ASCII only, no token. */
 export function envelope(
-  command: Command,
+  command: Command | string,
   exit: number,
   fields: Record<string, unknown>,
 ): string {

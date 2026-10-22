@@ -36,12 +36,7 @@ import {
   type DevInfo,
 } from "./devCommand.js";
 import { fixManifest, type FixMove } from "./fix.js";
-import {
-  cmdLogout,
-  cmdWhoami,
-  envelope,
-  type AccountIo,
-} from "./account.js";
+import { cmdLogout, cmdWhoami, envelope, type AccountIo } from "./account.js";
 import { withAdminCredential, type AdminIo } from "./adminAuth.js";
 import { cmdLogin, type LoginSeams } from "./login.js";
 import { keyringStore, type CredentialStore } from "./credentials.js";
@@ -782,6 +777,8 @@ function adminIo(parsed: ParsedArgs, rt: Runtime): AdminIo {
     term: rt.term,
     store: rt.store,
     fetchImpl: rt.ci.fetchImpl,
+    json: flagBool(parsed, "json"),
+    stdout: rt.stdout,
   };
 }
 
