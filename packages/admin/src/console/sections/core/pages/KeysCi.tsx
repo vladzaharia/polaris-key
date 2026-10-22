@@ -9,11 +9,11 @@
  *   same `PublisherDrawer` and `IssueCiTokenFlow` (EXPERIENCE.md §0.4 S2).
  */
 
+import { useBreakGlassReason } from "../../../access/useCan.js";
 import * as React from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Pencil, Plus } from "lucide-react";
 import {
-  CI_SCOPES,
   api,
   type CiTokenDto,
   type IssuedCiToken,
@@ -24,7 +24,6 @@ import { errorCopy } from "../../../../lib/errorCopy.js";
 import { fromSeconds, toSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
-import { Checkbox } from "../../../../ui/Checkbox.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { DataTable, type DataColumn } from "../../../../ui/data-table/index.js";
 import { DescriptionList } from "../../../../ui/DescriptionList.js";
@@ -45,18 +44,7 @@ import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
 import { intentOf } from "./confirmGate.js";
-
-/** What each scope lets a CI run do, in the docs' words. */
-const SCOPE_TEXT: Record<string, string> = {
-  "release:publish": "Publish releases",
-  "release:promote": "Promote releases on channels",
-  "release:yank": "Yank releases",
-  "distribution:report": "Report store status",
-  "distribution:rollout": "Start and change rollouts",
-  "distribution:feeds": "Publish package feeds",
-  "distribution:listing": "Upload listing assets",
-  "assets:write": "Upload hosted assets",
-};
+import { ScopeList, ScopePicker } from "./ciScopes.js";
 
 export function fetchCiPublisher(
   slug: string,
@@ -99,21 +87,10 @@ export function CiPublishingSection({
   );
 }
 
-function ScopeList({ scopes }: { scopes: string[] }): React.ReactElement {
-  return (
-    <span className="flex flex-wrap gap-1">
-      {scopes.map((s) => (
-        <StatusPill key={s} tone="neutral" icon={null} size="sm">
-          {SCOPE_TEXT[s] ?? s}
-        </StatusPill>
-      ))}
-    </span>
-  );
-}
-
 function PublisherRow({ slug }: { slug: string }): React.ReactElement {
   const policy = useCiPublisher(slug);
   const [editing, setEditing] = React.useState(false);
+  const noMint = useBreakGlassReason();
   return (
     <SettingsRow
       label="Trusted publisher"
@@ -126,6 +103,7 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
             size="sm"
             iconStart={<Pencil aria-hidden />}
             onClick={() => setEditing(true)}
+            disabledReason={noMint}
           >
             Edit…
           </Button>
@@ -185,6 +163,7 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
             size="sm"
             iconStart={<Plus aria-hidden />}
             onClick={() => setEditing(true)}
+            disabledReason={noMint}
           >
             Set trusted publisher…
           </Button>
@@ -222,6 +201,7 @@ export function PublisherDrawer({
   const [repositoryId, setRepositoryId] = React.useState<number | null>(null);
   const [ownerId, setOwnerId] = React.useState<number | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const noMint = useBreakGlassReason();
   const [failure, setFailure] = React.useState<unknown>(null);
 
   React.useEffect(() => {
@@ -243,7 +223,7 @@ export function PublisherDrawer({
 
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (saving) return;
+    if (saving || noMint) return;
     setSaving(true);
     setFailure(null);
     const body: PublisherClaimBody = {
@@ -359,40 +339,17 @@ export function PublisherDrawer({
           >
             Cancel
           </Button>
-          <Button type="submit" loading={saving} disabled={scopes.length === 0}>
+          <Button
+            type="submit"
+            loading={saving}
+            disabled={scopes.length === 0}
+            disabledReason={noMint}
+          >
             Save publisher
           </Button>
         </DrawerFooter>
       </form>
     </Drawer>
-  );
-}
-
-function ScopePicker({
-  value,
-  onChange,
-}: {
-  value: string[];
-  onChange: (next: string[]) => void;
-}): React.ReactElement {
-  return (
-    <fieldset className="space-y-2">
-      <legend className="text-sm font-semibold text-fg-strong">Scopes</legend>
-      {CI_SCOPES.map((s) => (
-        <Checkbox
-          key={s}
-          label={SCOPE_TEXT[s] ?? s}
-          description={s}
-          checked={value.includes(s)}
-          onCheckedChange={(on) =>
-            onChange(on ? [...value, s].sort() : value.filter((x) => x !== s))
-          }
-        />
-      ))}
-      {value.length === 0 ? (
-        <p className="text-xs text-danger">Choose at least one scope.</p>
-      ) : null}
-    </fieldset>
   );
 }
 
@@ -408,6 +365,7 @@ export function tokenState(
 function TokensRow({ slug }: { slug: string }): React.ReactElement {
   const tokens = useCiTokens(slug);
   const [issuing, setIssuing] = React.useState(false);
+  const noMint = useBreakGlassReason();
   const [revoking, setRevoking] = React.useState<CiTokenDto | null>(null);
   const nowSec = toSeconds(Date.now());
 
@@ -528,6 +486,7 @@ function TokensRow({ slug }: { slug: string }): React.ReactElement {
         size="sm"
         iconStart={<Plus aria-hidden />}
         onClick={() => setIssuing(true)}
+        disabledReason={noMint}
       >
         Issue token…
       </Button>
@@ -607,6 +566,7 @@ function IssueTokenDialog({
   onOpenChange: (open: boolean) => void;
   onIssued: (t: IssuedCiToken) => void;
 }): React.ReactElement {
+  const noMint = useBreakGlassReason();
   const [label, setLabel] = React.useState("");
   const [scopes, setScopes] = React.useState<string[]>([]);
   const [days, setDays] = React.useState<number | null>(30);
@@ -627,7 +587,7 @@ function IssueTokenDialog({
 
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (saving || daysError || scopes.length === 0) return;
+    if (saving || noMint || daysError || scopes.length === 0) return;
     setSaving(true);
     setFailure(null);
     try {
@@ -704,6 +664,7 @@ function IssueTokenDialog({
             type="submit"
             loading={saving}
             disabled={!!daysError || scopes.length === 0}
+            disabledReason={noMint}
           >
             Issue token
           </Button>

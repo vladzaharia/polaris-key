@@ -256,7 +256,7 @@ describe("the known-operator chip (D-S5)", () => {
       const html = await (await card(q, `${HINT}=root1%40example.com`)).text();
       expect(html).toContain(h1);
       expect(html).toContain(
-        '<span class="chip-email">root1@example.com</span>',
+        '<span class="chip-email">root1<wbr>@example<wbr>.com</span>',
       );
       expect(html).toContain('name="login_hint" value="root1@example.com"');
       expect(html).toContain("Change</a>");
@@ -381,8 +381,16 @@ describe("the break-glass link and start card", () => {
     const html = await res.text();
     expect(html).toContain("Emergency sign-in</h1>");
     expect(html).toContain(
-      "For when the usual sign-in is broken. Every use is recorded and every Superadmin is emailed.",
+      "For when your account can’t sign in. Superadmins only.",
     );
+    // The elevated fact sits in a callout with a glyph, and Back to sign in is in the links row.
+    expect(html).toContain(
+      '<p class="callout-title">Every use is recorded and every Superadmin is emailed.</p>',
+    );
+    expect(html).toMatch(
+      /<nav class="ac-links" aria-label="Help and links">.*Back to sign in<\/a><\/nav>/,
+    );
+    expect(html).not.toContain('<p class="fine"><a');
     expect(html).toContain('name="breakGlass" value="1"');
     expect(html).not.toContain('class="chip-email"');
     expect(html).not.toContain('type="email"');
@@ -477,6 +485,24 @@ describe("N3: a break-glass session mints no durable credential", () => {
     },
   );
 
+  it("a trusted-publisher policy (a repository minting CI tokens later) is refused too", async () => {
+    await seedProduct(db, "alpha");
+    const r = await breakGlass();
+    const res = await call(
+      r.token!,
+      NOW + 1,
+      "PUT",
+      "/api/products/alpha/ci-publisher",
+      String(r.body!.csrf),
+      { repository: "acme/app", workflows: ["release.yml"] },
+    );
+    expect(res.status).toBe(403);
+    const j = (await res.json()) as {
+      error: { code: string; reason?: string };
+    };
+    expect(j.error.reason).toBe("break_glass_session");
+  });
+
   it("personal tokens have no console mint route: the account-tokens rows are list and revoke only", async () => {
     const r = await breakGlass();
     const res = await call(
@@ -509,5 +535,80 @@ describe("N3: a break-glass session mints no durable credential", () => {
     // covered by the token suites; here: the guard is a no-op for a normal session
     expect(refuseBreakGlass({})).toBeNull();
     expect(refuseBreakGlass({ breakGlass: true })!.status).toBe(403);
+  });
+});
+
+describe("the chip, large text and the card's details (UX review)", () => {
+  it("the chip wraps, breaks the address at @ and . and has no input look", async () => {
+    const res = await card(
+      "",
+      `${HINT}=vlad.zaharia%40polaris-engineering.dev`,
+    );
+    const html = await res.text();
+    expect(html).toContain(
+      "vlad<wbr>.zaharia<wbr>@polaris-engineering<wbr>.dev",
+    );
+    expect(html).toMatch(/\.chip\{display:flex;flex-wrap:wrap/);
+    expect(html).toContain(".chip-email{flex:1 1 10rem");
+    expect(html).toContain(".chip-change:focus-visible{outline-offset:-2px}");
+    // The house initials: the first two words of the local part, by code point.
+    expect(html).toContain(
+      '<span class="ac-mono" aria-hidden="true">VZ</span>',
+    );
+    const emoji = await (
+      await card("", `${HINT}=${encodeURIComponent("😀x@b.io")}`)
+    ).text();
+    expect(emoji).toContain('aria-hidden="true">😀</span>');
+  });
+
+  it("the links landmark covers every link, with no separator dots; the lockup is 4 rem from 30 rem", async () => {
+    const html = await (await card("")).text();
+    expect(html).toContain('aria-label="Help and links"');
+    expect(html).toContain(
+      "[data-brand=console] .ac-links a+a::before{content:none}",
+    );
+    expect(html).toContain(
+      "[data-brand=console] .ac-brand svg{width:13.875rem;height:4rem}",
+    );
+    expect(html).toContain("width:min(180px,52vw);height:auto");
+    expect(html).toContain(
+      "font-size:1.25rem;line-height:1.75rem;font-weight:500",
+    );
+  });
+
+  it("Change puts focus on the empty field and not on the heading; the other cards keep the heading", async () => {
+    const change = await (await card("?change=1", `${HINT}=a%40b.io`)).text();
+    expect(change).toMatch(
+      /<input id="email" type="email" name="login_hint" autofocus/,
+    );
+    expect(change).toContain("<h1>Sign in to the console</h1>");
+    const plain = await (await card("")).text();
+    expect(plain).not.toMatch(/<input id="email"[^>]* autofocus/);
+    expect(plain).toContain('<h1 tabindex="-1" autofocus>');
+  });
+
+  it("the refusal and the mint refusal say 'emergency sign-in', one name for one thing", async () => {
+    const r = await breakGlass({ groups: ["other"] });
+    const html = await r.res.text();
+    expect(html).toContain("Emergency sign-in is for Superadmins only.");
+    expect(html).not.toMatch(/break-glass/i);
+  });
+
+  it("the audit summary and the Superadmin email say 'emergency sign-in'; identifiers stay", async () => {
+    await normalRoot(1);
+    await breakGlass();
+    const rows = await audit("rbac.breakglass");
+    expect(rows.map((r) => r.summary)).toEqual(["Emergency sign-in used"]);
+    const m = mail.find((x) => x.subject === "Emergency sign-in used")!;
+    expect(m.text).toContain(
+      "used emergency sign-in to the Polaris Key console",
+    );
+    expect(m.text).not.toMatch(/break-glass/i);
+    const refused = await breakGlass({ groups: ["other"] });
+    expect(refused.res.status).toBe(403);
+    const ev = await audit("admin.signin.refused");
+    expect(ev.map((r) => r.summary)).toContain(
+      "Emergency sign-in refused: not in the platform admin group",
+    );
   });
 });

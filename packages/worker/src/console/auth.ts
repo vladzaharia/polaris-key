@@ -459,6 +459,7 @@ async function signinCard(
       // A typed address in the URL wins over the remembered one (it is the retry's field).
       chip: ctx.hint ? null : remembered,
       knownEmail: known,
+      focusEmail: change,
     }),
     { status: 200, headers },
   );
@@ -896,15 +897,15 @@ async function breakGlassCallback(
     await recordPlatformSecurityEvent(db, {
       action: "admin.signin.refused",
       sub: identity.sub,
-      summary: "Admin break-glass refused: not in the platform admin group",
+      summary: "Emergency sign-in refused: not in the platform admin group",
       now,
     });
     return htmlError(
       403,
       identity.email
-        ? `${identity.email} can’t use break-glass`
-        : "This account can’t use break-glass",
-      { lede: "Break-glass is for Superadmins only.", action: retry },
+        ? `${identity.email} can’t use emergency sign-in`
+        : "This account can’t use emergency sign-in",
+      { lede: "Emergency sign-in is for Superadmins only.", action: retry },
     );
   }
   // A fresh authentication is the point: an IdP that ignored `prompt=login` and `max_age=0`, or
@@ -916,7 +917,7 @@ async function breakGlassCallback(
     await recordPlatformSecurityEvent(db, {
       action: "admin.signin.refused",
       sub: identity.sub,
-      summary: "Admin break-glass refused: sign-in was not recent",
+      summary: "Emergency sign-in refused: sign-in was not recent",
       now,
     });
     return htmlError(401, "Your provider didn’t ask you to sign in again", {
@@ -931,7 +932,7 @@ async function breakGlassCallback(
   await recordPlatformSecurityEvent(db, {
     action: "rbac.breakglass",
     sub: identity.sub,
-    summary: "Break-glass console sign-in",
+    summary: "Emergency sign-in used",
     now,
   });
   await notifySuperadmins(

@@ -7367,8 +7367,10 @@ a fallback: no error page offers it and no ordinary sign-in turns into it.
   when, from which network, "If this wasn't expected, rotate ADMIN_SESSION_SECRET and check the
   audit"), at most 25 addresses and exempt from the per-recipient budget so it cannot be silenced.
 - **No durable credential (ST-30c.2, N3).** A break-glass session cannot mint a credential that
-  outlives the emergency hour: admin API tokens, service (CI) tokens and registry tokens are refused
-  with 403 `forbidden`, reason `break_glass_session` (`refuseBreakGlass`, `console/lib/accountSession.ts`);
+  outlives the emergency hour: admin API tokens, service (CI) tokens, registry tokens and a
+  trusted-publisher policy (which lets a repository mint CI tokens later) are refused with 403
+  `forbidden`, reason `break_glass_session` (`refuseBreakGlass`, `console/lib/accountSession.ts`);
+  role grants and invites need an account session (`requireAccountSession`);
   personal tokens are minted in the portal, which a break-glass cookie cannot reach. Revocation stays
   allowed.
 - **A small cookie (ST-30c.2, N2).** The cookie carries only the group `holdsRoot` reads

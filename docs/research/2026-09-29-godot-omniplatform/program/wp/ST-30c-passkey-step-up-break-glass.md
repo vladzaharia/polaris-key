@@ -64,8 +64,8 @@ Console sign-in: passkey step-up, break-glass link, known-operator chip, v1 read
   `?change=1`, the quiet "Emergency sign-in" link and the break-glass start card), the shell banner
   (`/me.breakGlass`) and N1 to N3 from the ST-30c.1 review: the break-glass cookie carries only the
   `PLATFORM_ADMIN_GROUP` group, and `refuseBreakGlass` refuses the admin API, service (CI) and
-  registry token mints with reason `break_glass_session`. Corrections: (1) the lockup matches frame 13
-  at 52 px (checked in the built shots), so it is unchanged; (2) the base has no account-bound console
+  registry token mints with reason `break_glass_session`. Corrections: (1) the UX review measured the lockup at about 80 % of frame 13 on desktop, so it is now the native 64 px
+  (222x64, `13.875rem x 4rem`) from 30 rem with "Console" at 1.25rem / 500, and 52 px on phones, all in rem; (2) the base has no account-bound console
   screen to hide (no "Yours" tab, no account settings; personal tokens here is the Superadmin list and
   revoke), so the only account-bound shell entry hidden is "My library"; ST-34 and ST-30c.4 hide their
   screens with `me.breakGlass` when they land; (3) `pageBudget` fails on this base for
@@ -91,7 +91,7 @@ Console sign-in: passkey step-up, break-glass link, known-operator chip, v1 read
 - [x] Break-glass is an explicit link with an audit row and documented exit facts
 - [x] The known-operator chip shows from a last-operator hint
 - [ ] The `session.ts:5` comment is deleted; the v1 cookie reader is removed (one release after 8 h)
-- [x] The console card has the larger lockup (52 px, confirmed against frame 13 in ST-30c.2)
+- [x] The console card has the larger lockup (64 px from 30 rem, 52 px on phones, matching frame 13; ST-30c.2 after the UX review)
 - [ ] THREAT-MODEL rows for each; security review signed
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 

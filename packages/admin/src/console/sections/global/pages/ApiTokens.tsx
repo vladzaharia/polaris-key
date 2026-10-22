@@ -36,7 +36,7 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
-import { useWriteGate } from "../../../access/useCan.js";
+import { useBreakGlassReason, useWriteGate } from "../../../access/useCan.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { CollectionTemplate } from "../../../templates/Collection.js";
@@ -151,6 +151,7 @@ export function ApiTokens(): React.ReactElement {
   useLoadingAnnouncement("API tokens", tokens.isPending);
   // ST-29: tokens are the Platform area's, like the rest of the deployment's credentials.
   const write = useWriteGate("platform");
+  const noMint = useBreakGlassReason();
   const [state, setState] = useTableUrlState("api-tokens", {
     facets: ["status"],
   });
@@ -197,7 +198,7 @@ export function ApiTokens(): React.ReactElement {
             <Button
               iconStart={<Plus aria-hidden />}
               onClick={() => setMinting(true)}
-              disabledReason={write.disabledReason}
+              disabledReason={write.disabledReason ?? noMint}
             >
               New token…
             </Button>
