@@ -1247,6 +1247,8 @@
     <string name="cli_verb_packsEnsure">コンテンツをダウンロードしてインストール（進捗表示）</string>
     <!-- Terminal help: what the doctor command does. -->
     <string name="cli_verb_doctor">このデバイスでできることを表示（サポート用）</string>
+    <!-- Terminal help: what the boot command does. -->
+    <string name="cli_verb_boot">起動処理を実行（段階ごとに1行）</string>
     <!-- Terminal help: what the completion command does. bash, zsh and fish are shell names; keep them. -->
     <string name="cli_verb_completion">bash、zsh、fish用のシェル補完を出力</string>
     <!-- Terminal help: what the -json flag does. -->
@@ -1259,6 +1261,8 @@
     <string name="cli_option_help">コマンドのヘルプ</string>
     <!-- Terminal help: what the -yes flag does. -->
     <string name="cli_option_yes">サインアウト前に確認しない</string>
+    <!-- Terminal help: what the -yes flag does on boot. -->
+    <string name="cli_option_yesDownload">必要なコンテンツを確認せずにダウンロード</string>
     <!-- Terminal help: what the -device-code flag does. -->
     <string name="cli_option_deviceCode">このコンピュータのブラウザの代わりにコードでサインイン</string>
     <!-- Terminal help: what the -key-file flag of the activate command does. -->

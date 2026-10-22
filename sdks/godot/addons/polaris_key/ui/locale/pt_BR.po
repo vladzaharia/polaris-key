@@ -3387,6 +3387,11 @@ msgstr "Baixar e instalar conteúdo, com progresso"
 msgid "cli.verb.doctor"
 msgstr "Mostrar o que este dispositivo pode fazer, para suporte"
 
+#. Run startup, one line per stage
+#. Terminal help: what the boot command does.
+msgid "cli.verb.boot"
+msgstr "Executar a inicialização, uma linha por etapa"
+
 #. Print shell completion for bash, zsh or fish
 #. Terminal help: what the completion command does. bash, zsh and fish are shell names; keep them.
 msgid "cli.verb.completion"
@@ -3416,6 +3421,11 @@ msgstr "Ajuda de um comando"
 #. Terminal help: what the --yes flag does.
 msgid "cli.option.yes"
 msgstr "Não perguntar antes de sair"
+
+#. Download required content without asking
+#. Terminal help: what the --yes flag does on boot.
+msgid "cli.option.yesDownload"
+msgstr "Baixar o conteúdo necessário sem perguntar"
 
 #. Sign in with a code instead of this computer's browser
 #. Terminal help: what the --device-code flag does.

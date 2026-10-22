@@ -1247,6 +1247,8 @@
     <string name="cli_verb_packsEnsure">진행률을 표시하며 콘텐츠 다운로드 및 설치</string>
     <!-- Terminal help: what the doctor command does. -->
     <string name="cli_verb_doctor">이 기기에서 가능한 기능 표시 (지원용)</string>
+    <!-- Terminal help: what the boot command does. -->
+    <string name="cli_verb_boot">시작 과정을 실행해요(단계마다 한 줄)</string>
     <!-- Terminal help: what the completion command does. bash, zsh and fish are shell names; keep them. -->
     <string name="cli_verb_completion">bash, zsh, fish용 셸 자동 완성 출력</string>
     <!-- Terminal help: what the -json flag does. -->
@@ -1259,6 +1261,8 @@
     <string name="cli_option_help">명령 도움말</string>
     <!-- Terminal help: what the -yes flag does. -->
     <string name="cli_option_yes">로그아웃 전에 확인하지 않음</string>
+    <!-- Terminal help: what the -yes flag does on boot. -->
+    <string name="cli_option_yesDownload">필요한 콘텐츠를 묻지 않고 다운로드</string>
     <!-- Terminal help: what the -device-code flag does. -->
     <string name="cli_option_deviceCode">이 컴퓨터의 브라우저 대신 코드로 로그인</string>
     <!-- Terminal help: what the -key-file flag of the activate command does. -->

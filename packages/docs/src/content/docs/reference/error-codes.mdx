@@ -84,7 +84,7 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `inner-doc-rejected` | `core` | Offline bundle import, step 4: a carried document failed against the effective trust set. |
 | `bundle` | `core` | Swift: the offline bundle import failed before a refusal step could be named. |
 | `transport` | `core` | Swift: the transport returned something that is not an HTTP response. |
-| `network` | `core` | React: the request failed, or the server answered with an unexpected status. |
+| `network` | `core` | React: the request failed, or the server answered with an unexpected status. Node and Python terminal kits: discovery could not be reached, so a service that looks off reads as offline (not "Not available"). |
 | `refresh-failed` | `core` | React: refreshing the session or documents failed. |
 | `sync-failed` | `core` | Boot stage machine: sync returned an unusable answer and boot cannot continue, so it stops in the error stage. |
 | `fetch-failed` | `core` | Boot stage machine: fetching required content failed and required packs are still missing, so boot stops in the error stage. |
