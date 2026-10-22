@@ -44,9 +44,9 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 ## Acceptance criteria
 
-- [ ] `serverClient()` reads config with a stable device id and takes no customer seat.
-- [ ] It makes no device report.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] `serverClient()` reads config with a stable device id and takes no customer seat.
+- [x] It makes no device report.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 

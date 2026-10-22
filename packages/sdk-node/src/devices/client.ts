@@ -82,12 +82,16 @@ export interface DevicesClientOptions {
   /** The capability list every report carries as `caps` (P1b-10). `PolarisKeyClient` wires it to
    *  its own `caps()`; a standalone `DevicesClient` without it sends no `caps`. */
   caps?: () => string[];
+  /** Send `devices/report` telemetry. Defaults to true; `false` makes `report()` return false
+   *  without a request, and so the report that ends a sync (`serverClient()`). */
+  reports?: boolean;
 }
 
 export class DevicesClient {
   private readonly probes: ProbeDeclaration[];
   private readonly fingerprintEnabled: boolean;
   private readonly caps?: () => string[];
+  private readonly reportsEnabled: boolean;
   /** The active pack set's id for the report's `content` (P4-06), set by the facade. */
   packSetId: () => Promise<string | null> = async () => null;
   /** Recent pack installs (P4-17); wired by the client like `packSetId`. */
@@ -107,6 +111,7 @@ export class DevicesClient {
     this.probes = opts.probes ?? [];
     this.fingerprintEnabled = opts.fingerprint !== false;
     if (opts.caps) this.caps = opts.caps;
+    this.reportsEnabled = opts.reports !== false;
   }
 
   /** This machine's hashed hardware components, or null when collection is disabled or
@@ -271,6 +276,7 @@ export class DevicesClient {
 
   /** `POST /<p>/devices/report` — best-effort telemetry built from re-verified documents. */
   async report(): Promise<boolean> {
+    if (!this.reportsEnabled) return false;
     const token = this.tokens.current;
     if (!token) return false;
     const packSetId = await this.packSetId().catch(() => null);

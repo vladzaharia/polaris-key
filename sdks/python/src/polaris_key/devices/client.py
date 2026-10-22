@@ -183,8 +183,12 @@ class DevicesClient:
         probes: Optional[List[ProbeDeclaration]] = None,
         fingerprint: bool = True,
         caps: Optional[Callable[[], List[str]]] = None,
+        reports: bool = True,
     ) -> None:
         self._caps = caps
+        #: ``False`` makes :meth:`report` return ``False`` without a request, and so the report
+        #: that ends a sync (``server_client()``).
+        self._reports = reports
         #: The active pack set's id for the report's ``content`` (P4-07), set by the facade.
         self.pack_set_id: Callable[[], Optional[str]] = lambda: None
         #: The report's ``gate``, ``outlet`` and ``packInstalls`` sources, set by the facade
@@ -346,6 +350,8 @@ class DevicesClient:
     def report(self) -> bool:
         """``POST /<p>/devices/report`` — best-effort telemetry built from re-verified
         documents."""
+        if not self._reports:
+            return False
         token = self._tokens.current
         if not token:
             return False

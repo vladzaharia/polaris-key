@@ -1838,10 +1838,10 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "commerce.receipt": { status: "implemented", service: "commerce", na: [] },
   "server.license": { status: "implemented", service: "license", na: [] },
   "server.signin": { status: "implemented", service: "identity", na: [] },
-  "server.config": { status: "planned", service: "config", na: [] },
+  "server.config": { status: "implemented", service: "config", na: [] },
   "server.webhooks": { status: "planned", service: "core", na: [] },
 };
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "fdcd993be9afb57d635178aa859ca34422a5a2e888a8b205c35e744d4b19c46c";
+  "7f59a592004c9e0f592c13c8633eae9ade9d34309254e411489d373797fe4ec3";

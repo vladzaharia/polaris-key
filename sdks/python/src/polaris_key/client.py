@@ -166,6 +166,8 @@ class PolarisKeyClient:
         # ── licence + devices inputs ─────────────────────────────────────────────────
         fingerprint: bool = True,
         probes: Optional[List[ProbeDeclaration]] = None,
+        # Send ``devices/report`` telemetry (default True); ``False`` for a server.
+        device_reports: bool = True,
         # ── update inputs (wire v4) ──────────────────────────────────────────────────
         update: Optional[UpdateClientOptions] = None,
         # ── lifecycle ────────────────────────────────────────────────────────────────
@@ -211,6 +213,7 @@ class PolarisKeyClient:
             probes=self._probes,
             fingerprint=fingerprint,
             caps=lambda: self.caps(),
+            reports=device_reports,
         )
         self.license = LicenseClient(
             self.core,
