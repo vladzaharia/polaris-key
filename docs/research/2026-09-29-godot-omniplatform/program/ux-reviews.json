@@ -464,6 +464,11 @@
       "verdict": "pass",
       "date": "2026-10-22",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/F-33/ux-review-2.md (BUILT re-review of slice 2, pass with fixes; fixes landed)"
+    },
+    "DOC-02c": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/DOC-02c-search.md (BUILT review FIX: 3 blocking; all fixed with tests in the one fix round fix/doc-02c-search-review 70b5f46eb)"
     }
   }
 }
