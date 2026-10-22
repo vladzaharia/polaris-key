@@ -4559,7 +4559,9 @@ composition root and refuses:
   name), and any `securityWidening` entry;
 - **at product scope**, a security-widening setting (web origins, an OIDC issuer, trust policy,
   redirect paths, a role map, access modes, the Sparkle key) that is not `critical` (reason
-  required), that `inherits` from platform (so one platform write cannot widen every product), or
+  required; a key with a `SettingAdapter` takes a reason but does not require one on the generic
+  write path until the console collects it, follow-up "console reason field for critical
+  adapter-backed keys"; the trust policy's relaxing change asks for one in the relax gate), that `inherits` from platform (so one platform write cannot widen every product), or
   whose widening direction needs less than L1; known keys and name patterns must carry the flag;
 - a product session length that could be lengthened: sessions are shorten-only, bounded `max` at
   the code constant;
@@ -4586,8 +4588,9 @@ paths read them through the resolver.
 ST-19b registers the manifest-declared settings ST-06 left pending (the `.pkey/release` block,
 deliverables, channel policy, trusted publisher, release keys, device registration, required
 secret names, provisioning hooks and transports). Each describes today's storage and adds no
-write path. Five are flagged security-widening, so any later generic write needs a reason and at
-least L1: `release.github` (whose releases are served and published; set by Link, never by a
+write path. Five are flagged security-widening, so any later generic write needs a reason (except
+a key with a `SettingAdapter`, which takes one but does not require it until the console collects
+it: follow-up "console reason field for critical adapter-backed keys") and at least L1: `release.github` (whose releases are served and published; set by Link, never by a
 resync), `release.publishing.trustedPublisher` (which workflow and environment can mint a
 `pkeyci_` token; the console's `PUT …/ci-publisher` also sets the repository and the scopes,
 `release:yank` included, except on the system product, where it is refused), `release.keys` (who can sign an accepted release record),
@@ -5568,6 +5571,12 @@ sideloaded builds, which cannot attest and stay `basic` by design.
   never used, and nothing is sent to Google. The root of trust for App Attest is the pinned Apple
   App Attestation Root CA in source (fingerprint pinned by a test); test roots enter only through a
   handler argument production dispatch never passes.
+- **Two RBAC area moves came with the generic settings routes (ST-05b).** `distribution.access`
+  moved from `ship` to `settings`: the bespoke route it replaced bypassed `writeSetting()`, and the
+  key is security-widening, so it takes the area every other access-policy key takes.
+  `update.metadataAccess` moved from `ship` plus `settings` to `settings` alone, for the same
+  reason. Sign-off: the ST-05b security review (lead, 2026-10-22). A member who held only `ship`
+  can no longer change either key.
 - **The console write path is guarded (ST-12).** The policy is edited in Keys & secrets → Device
   trust, through the generic settings route for `core.trustPolicy` (ST-05b; the `trust-policy` route is gone) and the same `keys` area. The
   Worker, not the page, classifies each change (`relaxesTrustPolicy`): a change that only tightens
@@ -9860,7 +9869,7 @@ is edited or its `MSSTORE_SPEC_PIN` re-dated (the docs-drift review: re-read eve
 re-classify every write), or a field joins a store's audit projection (A-17a, A-18a, A-18f); a platform store credential (A-16) is added, used
 without the product's platform pin matching at setup, token and open, cached in a way a hit can
 skip the pin, allowed to fall through from a mis-pinned own credential, or written or opened by a
-file outside its allowlists; the sign-in card starts reading a display value from anywhere but the server-side client record, a passthrough request handle becomes creatable by a public route, readable without its binder, longer-lived than the sign-in flow, or holds a credential, a server decision starts reading the device label, or a term leaves `RESERVED_DISPLAY_TERMS` (PX-W13); the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
+file outside its allowlists; the sign-in card starts reading a display value from anywhere but the server-side client record, a passthrough request handle becomes creatable by a public route, readable without its binder, longer-lived than the sign-in flow, or holds a credential, a server decision starts reading the device label, or a term leaves `RESERVED_DISPLAY_TERMS` (PX-W13); the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the `core.trustPolicy` setting (`keys` area), the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
 operator-issued key is added, or a check on one is made conditional on product state (it must be
 folded into `mintIsPublic` or into the edge-mint approval's recorded state — `productWidening` in
 `core/edgeMintApproval.ts`, which the ingest sweep and the `0025_b` backfill follow); or, for

@@ -39,17 +39,22 @@ const here = dirname(fileURLToPath(import.meta.url));
 const src = join(here, "..", "src");
 
 /**
- * Methods that read a setting before they write it (ST-05b: the generic settings API carries the
- * version just read, and a policy patch merges onto the current one) are called with arguments that
- * reach the write; junk arguments would leave them with nothing to send.
+ * Methods that carry the version the page loaded (ST-05b: the generic settings API checks it, and
+ * a policy patch merges onto the policy the page loaded) are called with arguments that reach the
+ * write; junk arguments would leave them with nothing to send.
  */
+const LOADED_UPDATE = {
+  versions: { access: 1, compat: 1, policy: 1 },
+  compatMin: "1.0.0",
+  compatMax: "2.0.0",
+};
 const PROBES: Record<string, unknown[]> = {
-  saveUpdateSettings: ["djdl", { metadataAccess: "public" }],
-  revertUpdateSettings: ["djdl", ["access"]],
-  saveDeliveryAccess: ["djdl", { mode: "public" }],
-  revertDeliveryAccess: ["djdl"],
-  updateFingerprintPolicy: ["djdl", {}],
-  revertFingerprintPolicy: ["djdl"],
+  saveUpdateSettings: ["djdl", { metadataAccess: "public" }, LOADED_UPDATE],
+  revertUpdateSettings: ["djdl", ["access"], LOADED_UPDATE],
+  saveDeliveryAccess: ["djdl", { mode: "public" }, 1],
+  revertDeliveryAccess: ["djdl", 1],
+  updateFingerprintPolicy: ["djdl", {}, { policy: {}, version: 1 }],
+  revertFingerprintPolicy: ["djdl", 1],
 };
 
 /** The HTTP method each API method sends, learned by calling it (a write anywhere in a method's

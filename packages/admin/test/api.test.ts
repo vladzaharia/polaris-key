@@ -376,30 +376,33 @@ describe("api — the settings-backed calls use the generic settings API (ST-05b
 
   it("reads and writes the fingerprint policy as two settings", async () => {
     stubSettings();
-    await api.fingerprintPolicy("djdl");
+    const loaded = await api.fingerprintPolicy("djdl");
     expect(seen()).toEqual(["GET settings/license.fingerprint"]);
+    expect(loaded.version).toBe(3);
 
+    // A write carries the version the page loaded (here an older 2, the server being at 3), and
+    // reads nothing first, so a stale page gets the 409 rather than overwriting.
     stubSettings();
-    await api.updateFingerprintPolicy("djdl", { defaultMode: "strict" });
-    expect(seen()).toEqual([
-      "GET settings/license.fingerprint",
-      "PATCH settings/license.fingerprint",
-    ]);
-    // The patch merges onto the current policy, with the version just read.
-    expect(bodies()[1]).toEqual({
+    await api.updateFingerprintPolicy(
+      "djdl",
+      { defaultMode: "strict" },
+      { ...loaded, version: 2 },
+    );
+    expect(seen()).toEqual(["PATCH settings/license.fingerprint"]);
+    // The patch merges onto the policy the page loaded.
+    expect(bodies()[0]).toEqual({
       value: { enabled: true, defaultMode: "strict", probes: [] },
-      expectedVersion: 3,
+      expectedVersion: 2,
     });
 
     stubSettings();
-    await api.revertFingerprintPolicy("djdl");
+    await api.revertFingerprintPolicy("djdl", 2);
     expect(seen()).toEqual([
-      "GET settings/license.fingerprint",
       "DELETE settings/license.fingerprint",
       "GET settings/license.autoIssue",
       "DELETE settings/license.autoIssue",
     ]);
-    expect(bodies()[1]).toEqual({ expectedVersion: 3 });
+    expect(bodies()[0]).toEqual({ expectedVersion: 2 });
   });
 
   it("reads the update settings key by key and writes each key it names", async () => {
@@ -420,24 +423,34 @@ describe("api — the settings-backed calls use the generic settings API (ST-05b
     });
 
     stubSettings();
-    await api.saveUpdateSettings("djdl", {
-      metadataAccess: "entitled",
-      compatMax: "3.0.0",
-    });
+    // The page's own versions go on the writes (older than the server's 3), with no read first.
+    const loaded = { ...view, versions: { access: 1, compat: 2, policy: 0 } };
+    stubSettings();
+    await api.saveUpdateSettings(
+      "djdl",
+      { metadataAccess: "entitled", compatMax: "3.0.0" },
+      loaded,
+    );
+    // Only the final re-read of the view follows the writes.
     expect(seen().filter((c) => !c.startsWith("GET"))).toEqual([
       "PATCH settings/update.metadataAccess",
       "PATCH settings/release.compatWindow",
     ]);
+    expect(seen().slice(0, 2).join()).not.toContain("GET");
     expect(bodies().filter(Boolean)).toEqual([
-      { value: "entitled", expectedVersion: 3 },
-      { value: { min: "1.0.0", max: "3.0.0" }, expectedVersion: 3 },
+      { value: "entitled", expectedVersion: 1 },
+      { value: { min: "1.0.0", max: "3.0.0" }, expectedVersion: 2 },
     ]);
 
     stubSettings();
-    await api.revertUpdateSettings("djdl", ["access", "compat"]);
+    await api.revertUpdateSettings("djdl", ["access", "compat"], loaded);
     expect(seen().filter((c) => !c.startsWith("GET"))).toEqual([
       "DELETE settings/update.metadataAccess",
       "DELETE settings/release.compatWindow",
+    ]);
+    expect(bodies().filter(Boolean)).toEqual([
+      { expectedVersion: 1 },
+      { expectedVersion: 2 },
     ]);
   });
 
@@ -478,25 +491,23 @@ describe("api — the settings-backed calls use the generic settings API (ST-05b
       source: "admin",
     });
     stubSettings();
-    await api.saveDeliveryAccess("djdl", {
-      mode: "entitled",
-      deliverable: "pack",
-      entitlement: "pro",
-    });
-    expect(seen()).toEqual([
-      "GET settings/distribution.access",
-      "PATCH settings/distribution.access",
-    ]);
-    expect(bodies()[1]).toEqual({
+    expect(access.version).toBe(3);
+    // The version the page loaded goes on the write; nothing is read first.
+    stubSettings();
+    await api.saveDeliveryAccess(
+      "djdl",
+      { mode: "entitled", deliverable: "pack", entitlement: "pro" },
+      2,
+    );
+    expect(seen()).toEqual(["PATCH settings/distribution.access"]);
+    expect(bodies()[0]).toEqual({
       value: { pack: { mode: "entitled", entitlement: "pro" } },
-      expectedVersion: 3,
+      expectedVersion: 2,
     });
     stubSettings();
-    await api.revertDeliveryAccess("djdl");
-    expect(seen()).toEqual([
-      "GET settings/distribution.access",
-      "DELETE settings/distribution.access",
-    ]);
+    await api.revertDeliveryAccess("djdl", 2);
+    expect(seen()).toEqual(["DELETE settings/distribution.access"]);
+    expect(bodies()[0]).toEqual({ expectedVersion: 2 });
 
     stubSettings();
     expect(await api.trustPolicy("djdl")).toMatchObject({
