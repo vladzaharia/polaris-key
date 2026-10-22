@@ -5,13 +5,12 @@ import { KeyRound, Sparkles } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { useTheme } from "../../components/theme.js";
 import { useActivate } from "../activate.js";
-import { HELP_LINKS } from "../helpLinks.js";
 import { href } from "../router.js";
-import { HelpLink } from "./HelpLink.js";
 
 /**
  * The empty library (§4.12, mockup `portal.library-empty`, portal-17): one centred state, the
- * Locker mark in a tile, "Nothing here yet" (the page's subtitle already names the signed-in email),
+ * Locker mark in a tile, "Nothing here yet" (the page's subtitle already names the signed-in email; the strip below
+ * carries every "missing a license" way, so there is no body line or second link),
  * **Activate license** (its own ink primary, the page's one) and "See N in Discover" once the
  * Worker counts offers (G24). It takes the space between the title and the sticky "Missing a license?" strip.
  */
@@ -36,9 +35,6 @@ export function LibraryEmpty({
       <h2 id="empty-h" className="text-xl font-semibold text-fg-strong">
         {t("locker.library.empty.title")}
       </h2>
-      <p className="-mt-2 max-w-sm text-fg-muted">
-        {t("locker.library.empty.body")}
-      </p>
       <div className="flex flex-wrap justify-center gap-3">
         <Button
           size="lg"
@@ -62,9 +58,6 @@ export function LibraryEmpty({
           </Button>
         ) : null}
       </div>
-      <HelpLink href={HELP_LINKS.joinAccounts}>
-        {t("locker.library.empty.missing")}
-      </HelpLink>
     </section>
   );
 }
