@@ -199,7 +199,7 @@
       "code": "unavailable",
       "kind": "wire",
       "service": "identity",
-      "description": "Device-code sign-in could not allocate a free user code after several attempts; try again."
+      "description": "Device-code sign-in could not allocate a free user code after several attempts; try again. Also the device-code poll could not finish an approved sign-in yet (503 with `Retry-After`): the flow is kept, poll again (I-37d)."
     },
     {
       "code": "erasure_ledger_unavailable",
@@ -577,7 +577,7 @@
       "code": "sign-in-failed",
       "kind": "client",
       "service": "identity",
-      "description": "A device-code sign-in poll answered a bare `error` (no `reason`): the sign-in failed after approval and the service does not say why. Also, in React, a sign-in or activation that did not complete. Begin again (DENY-01)."
+      "description": "A device-code sign-in poll answered a bare `error` (no `reason`): the sign-in failed after approval and the service does not say why and the Worker will not retry it. Also, in React, a sign-in or activation that did not complete. Begin again (DENY-01)."
     },
     {
       "code": "sign-out-failed",
@@ -601,7 +601,7 @@
       "code": "server-error",
       "kind": "client",
       "service": "core",
-      "description": "The server answered 5xx. Node: every network call, with `status` and the server's own code as `wireCode`; Python, Swift, Godot: a device-code sign-in poll. Transient: a sign-in wait polls again at the same interval."
+      "description": "The server answered 5xx. Node: every network call, with `status` and the server's own code as `wireCode`; Node, React, Python, Swift, Kotlin and Godot: a device-code sign-in poll. Transient: a sign-in wait polls again at the same interval."
     },
     {
       "code": "cancelled",
