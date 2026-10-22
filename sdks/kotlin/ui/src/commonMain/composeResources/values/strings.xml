@@ -228,8 +228,8 @@
     <string name="boot_consent_bodyMetered">%1$s needs %2$s of new content, and you're on a metered connection.</string>
     <!-- Boot screen, shown while the product starts. -->
     <string name="boot_consent_download">Download</string>
-    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="boot_error_body">%1$s couldn't finish starting. Try again.</string>
+    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. -->
+    <string name="boot_error_body">If this keeps happening, restart the app.</string>
     <!-- Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="welcome_title">Welcome to %1$s</string>
     <!-- Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}. -->

@@ -616,10 +616,10 @@ msgstr "{product}には{size}の新しいコンテンツが必要です。現在
 msgid "boot.consent.download"
 msgstr "ダウンロード"
 
-#. {product} couldn't finish starting. Try again.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. If this keeps happening, restart the app.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
 msgid "boot.error.body"
-msgstr "{product}の起動を完了できませんでした。もう一度お試しください。"
+msgstr "問題が続く場合は、アプリを再起動してください。"
 
 #. Welcome to {product}
 #. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).

@@ -3536,61 +3536,61 @@
       }
     },
     "boot.error.body": {
-      "comment": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
+      "comment": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ couldn't finish starting. Try again."
+            "value": "If this keeps happening, restart the app."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ konnte den Start nicht abschließen. Versuchen Sie es erneut."
+            "value": "Wenn das weiterhin passiert, starten Sie die App neu."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ n’a pas pu terminer son démarrage. Réessayez."
+            "value": "Si le problème persiste, redémarrez l’app."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ no pudo terminar de iniciarse. Inténtalo de nuevo."
+            "value": "Si el problema continúa, reinicia la app."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível concluir a inicialização de %1$@. Tente novamente."
+            "value": "Se o problema continuar, reinicie o app."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile completare l'avvio di %1$@. Riprova."
+            "value": "Se il problema persiste, riavvia l'app."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@の起動を完了できませんでした。もう一度お試しください。"
+            "value": "問題が続く場合は、アプリを再起動してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 시작을 완료하지 못했어요. 다시 시도해 주세요."
+            "value": "문제가 계속되면 앱을 다시 시작해 주세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@未能完成启动。请重试。"
+            "value": "如果问题仍然存在，请重启应用。"
           }
         }
       }
