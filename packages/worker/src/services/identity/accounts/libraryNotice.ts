@@ -43,7 +43,7 @@ export async function sendLibraryNotices(
   for (const slug of products) {
     try {
       const row = await db.first<{ name: string }>(
-        "SELECT name FROM products WHERE slug = ?",
+        "SELECT name FROM products WHERE slug = ? AND COALESCE(status, 'active') != 'deleted'",
         slug,
       );
       if (!row) continue;

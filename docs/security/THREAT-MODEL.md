@@ -8311,6 +8311,8 @@ method added or auto-linked, or the sign-in's link sweep), the person gets one n
   product name go through `displayValue` (control and bidi characters stripped, length bounded)
   before the subject or text, and are HTML-escaped on top. The notice never says how the license
   was delivered and carries no key.
+- **Only an active license announces itself.** An inactive (disabled, revoked) or expired license
+  attaches silently, with no notice; the attach itself is unchanged. A deleted product sends none.
 - **Best effort.** It goes through Core's send choke point (suppression, relay gate, cap); a failed
   or blocked send is swallowed and never undoes or reports the join.
 - **Every path that attaches by address sends it,** under the same rules: the hook's callers, the
