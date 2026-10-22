@@ -21,7 +21,6 @@ import {
   ADMIN_COOKIE,
   BREAK_GLASS_TTL_SECONDS,
   CSRF_HEADER,
-  issueSession,
   issueSessionV2,
   STEP_UP_MAX_AGE_SECONDS,
   type SessionIdentity,
@@ -512,7 +511,17 @@ describe("realms", () => {
       groups: [GROUP],
       authTime: NOW,
     };
-    const v1 = (await issueSession(env, identity, NOW)).token;
+    // A v1 body (the IdP sub and groups), signed under the v1 tag.
+    const v1 = await sign("pkey.admin.v1|", {
+      sub: identity.sub,
+      name: identity.sub,
+      email: "",
+      groups: identity.groups,
+      csrf: "c",
+      // A v1 cookie lived 8 hours; the break-glass verifier caps its realm at one.
+      exp: NOW + 8 * 3600,
+      authAt: NOW,
+    });
     const v2 = (
       await issueSessionV2(
         env,

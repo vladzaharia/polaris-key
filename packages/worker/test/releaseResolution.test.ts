@@ -43,13 +43,10 @@ import {
 } from "../src/services/release/store.js";
 import { handleReleaseSurface } from "./releaseSurface.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { TEST_RSA_PKCS8 } from "./releaseFixtures.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "djdl";
 const API = "https://api.github.com/repos/acme/djdl";
@@ -896,8 +893,9 @@ describe("channel floors (R6-10)", () => {
     env.PLATFORM_ADMIN_GROUP = "platform-admins";
     const gh = github({ releases: [release("v2.0.0"), release("v1.0.0")] });
     await syncReleaseStore(env, db, SLUG, NOW, gh.fetchImpl);
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",
@@ -958,8 +956,9 @@ describe("channel floors (R6-10)", () => {
     const env = envFor();
     env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
     env.PLATFORM_ADMIN_GROUP = "platform-admins";
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",

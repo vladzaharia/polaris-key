@@ -23,11 +23,7 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { listAudit } from "../src/core/audit.js";
 import {
   getPortalProductSettings,
@@ -43,6 +39,7 @@ import {
   parseOfferPaths,
   resolveListing,
 } from "../src/core/storefront/polarisKeyListing.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DIR = join(HERE, "..", "migrations");
@@ -322,8 +319,9 @@ async function fixture() {
   env.ADMIN_SESSION_SECRET = ADMIN_SECRET;
   env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
   await seedProduct(db, SLUG);
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );

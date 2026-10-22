@@ -20,11 +20,7 @@ import type { Env } from "../src/platform/env.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { getFingerprint } from "../src/core/devices/store.js";
 import {
   getProduct,
@@ -34,6 +30,7 @@ import { parseFingerprintPolicy } from "../src/core/fingerprint.js";
 import { SETTINGS } from "../src/mount.js";
 import { writeSetting } from "../src/core/settings/write.js";
 import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const PLATFORM_GROUP = "admins";
 
@@ -183,8 +180,9 @@ describe("admin fingerprint reset", () => {
     expect(activated.status).toBe(200);
     expect(await getFingerprint(db, "djdl", device)).not.toBeNull();
 
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP] },
       NOW,
     );
@@ -230,8 +228,9 @@ describe("admin fingerprint policy endpoint", () => {
     path: string,
     body?: unknown,
   ): Promise<Response> {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP] },
       NOW,
     );

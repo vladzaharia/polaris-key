@@ -9,7 +9,8 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
+import { ADMIN_COOKIE } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const PLATFORM_GROUP = "platform-admins";
 const DAY = 86_400;
@@ -36,8 +37,9 @@ async function get(
   method = "GET",
 ): Promise<{ status: number; json: Record<string, unknown> }> {
   const env = adminEnv();
-  const { token } = await issueSession(
+  const { token } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups },
     NOW,
   );

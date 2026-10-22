@@ -7,11 +7,7 @@ import { describe, expect, it } from "vitest";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";
@@ -38,6 +34,7 @@ import {
 import { resolveConnection } from "../src/core/oidc/connections.js";
 import { migrationJobs } from "../src/core/contributions.js";
 import "../src/mount.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const ACTOR = { sub: "op", name: "Op", email: null };
 
@@ -498,8 +495,9 @@ describe("the admin route", () => {
     body?: unknown,
     stepUp = true,
   ) {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "admin-1",
         name: "Ada",

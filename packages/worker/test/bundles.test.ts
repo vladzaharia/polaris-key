@@ -42,16 +42,13 @@ import {
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { setServices } from "../src/core/products/store.js";
 import { listAudit } from "../src/core/audit.js";
 import { transitionLicense } from "../src/core/licensing/lifecycleWrites.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { BUNDLE_IMPORT_WINDOW_SECONDS } from "../src/console/handlers/bundles.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -109,10 +106,12 @@ function adminEnv(): Env {
 
 async function session(
   env: Env,
+  db: Db,
   groups: string[] = [PLATFORM_GROUP],
 ): Promise<{ cookie: string; csrf: string }> {
-  const { token, session: s } = await issueSession(
+  const { token, session: s } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups },
     NOW,
   );
@@ -178,7 +177,7 @@ async function fixture(
     ...(opts.entitlements ? { entitlements: opts.entitlements } : {}),
     ...(opts.tier ? { tierId: "pro" } : {}),
   });
-  const auth = await session(env);
+  const auth = await session(env, db);
   return { db, env, auth, licenseId };
 }
 
@@ -755,7 +754,7 @@ describe("bundle mint — the gates it sits behind", () => {
 
   it("refuses a mutation whose CSRF token belongs to another session", async () => {
     const world = await fixture();
-    const other = await session(world.env);
+    const other = await session(world.env, world.db);
     const res = await dispatch(
       mkReq("POST", PATH, {
         cookie: world.auth.cookie,
@@ -784,7 +783,7 @@ describe("bundle mint — the gates it sits behind", () => {
 
   it("refuses a session that is not a platform admin", async () => {
     const world = await fixture();
-    const outsider = await session(world.env, ["some-other-group"]);
+    const outsider = await session(world.env, world.db, ["some-other-group"]);
     const res = await dispatch(
       mkReq("POST", PATH, {
         cookie: outsider.cookie,

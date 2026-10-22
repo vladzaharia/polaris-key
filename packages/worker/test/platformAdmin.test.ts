@@ -12,7 +12,6 @@ import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
   type AdminSession,
 } from "../src/core/console/session.js";
 import { appendAudit, platformAudit } from "../src/core/audit.js";
@@ -30,6 +29,10 @@ import { listPlatformAudit } from "../src/core/audit.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
+import {
+  consoleTestBreakGlass,
+  consoleTestSession,
+} from "./consoleSessionHelper.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -50,16 +53,17 @@ async function fetchRaw(
   path: string,
   opts: { method?: string; groups?: string[] } = {},
 ): Promise<Response> {
-  const { token, session } = await issueSession(
-    env,
-    {
-      sub: "admin-1",
-      name: "Ada Admin",
-      email: "admin@example.com",
-      groups: opts.groups ?? [PLATFORM_GROUP],
-    },
-    NOW,
-  );
+  const identity = {
+    sub: "admin-1",
+    name: "Ada Admin",
+    email: "admin@example.com",
+    groups: opts.groups ?? [PLATFORM_GROUP],
+  };
+  // A deploy with no blob store has no erasure ledger to ask, so no account session opens
+  // (fail closed); the break-glass realm has no account and is the console session there.
+  const { token, session } = env.BLOBS
+    ? await consoleTestSession(env, db, identity, NOW)
+    : await consoleTestBreakGlass(env, identity, NOW);
   const method = opts.method ?? "GET";
   const headers: Record<string, string> = {
     cookie: `${ADMIN_COOKIE}=${token}`,

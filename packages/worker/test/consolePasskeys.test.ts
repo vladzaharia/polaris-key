@@ -17,7 +17,6 @@ import {
   CSRF_HEADER,
   STEP_UP_MAX_AGE_SECONDS,
   issueBreakGlassSession,
-  issueSession,
   issueSessionV2,
 } from "../src/core/console/session.js";
 import {
@@ -31,6 +30,9 @@ import {
 } from "../src/services/identity/passkeys/repo.js";
 import { insertLink } from "../src/services/identity/accounts/repo.js";
 import { sessionIdHash } from "../src/services/identity/portal/accountSessions.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
+import { importHmacKey } from "../src/platform/hash.js";
+import { signHmacToken } from "../src/platform/hmacToken.js";
 
 const GROUP = "platform-admins";
 const ISSUER = "https://id.example";
@@ -465,8 +467,34 @@ describe("who may call", () => {
   });
 
   it("refuses a v1 session (no account) and an admin API token", async () => {
-    const { token, session } = await issueSession(
+    // An account-less v1 cookie, signed directly (the console no longer mints them).
+    const v1Token = await signHmacToken(
+      await importHmacKey(env.ADMIN_SESSION_SECRET!),
+      "pkey.admin.v1|",
+      {
+        sub: "u1",
+        name: "Ada",
+        email: "ada@x.io",
+        groups: [GROUP],
+        csrf: "c",
+        exp: NOW + 8 * 3600,
+        authAt: NOW,
+        stepUpAt: NOW,
+      },
+    );
+    const v1 = await call(
+      { token: v1Token, csrf: "c" },
+      "GET",
+      "/api/me/methods",
+    );
+    expect(v1.status).toBe(403);
+    expect(JSON.stringify(await v1.json())).toContain(
+      "account_session_required",
+    );
+    // A stepped-up operator session mints the admin API token.
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",
@@ -476,15 +504,6 @@ describe("who may call", () => {
         stepUp: true,
       },
       NOW,
-    );
-    const v1 = await call(
-      { token, csrf: session.csrf },
-      "GET",
-      "/api/me/methods",
-    );
-    expect(v1.status).toBe(403);
-    expect(JSON.stringify(await v1.json())).toContain(
-      "account_session_required",
     );
     const minted = await call(
       { token, csrf: session.csrf },

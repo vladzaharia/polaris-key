@@ -29,11 +29,8 @@ import { digestStream } from "../src/services/release/packages/digests.js";
 import { NO_HOOKS } from "./helpers.js";
 import { getProduct } from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 /** The real admin API as a platform admin, at `/api<path>`. */
 async function admin(
@@ -43,8 +40,9 @@ async function admin(
   path: string,
   body?: unknown,
 ): Promise<Response> {
-  const { token: t, session } = await issueSession(
+  const { token: t, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );

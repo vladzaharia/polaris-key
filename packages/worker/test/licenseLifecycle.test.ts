@@ -31,11 +31,7 @@ import {
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { deleteProduct } from "../src/core/products/store.js";
 import { listAudit } from "../src/core/audit.js";
 import { loadProduct, type Product } from "../src/core/products.js";
@@ -69,6 +65,7 @@ import {
   transitionGrant,
   transitionLicense,
 } from "../src/core/licensing/lifecycleWrites.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "djdl";
 
@@ -899,8 +896,9 @@ describe("ended_reason is written with every disable", () => {
     env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
     env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
     await seedProduct(db, SLUG);
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       { sub: "op-1", name: "Op", email: "op@x.io", groups: [PLATFORM_GROUP] },
       NOW,
     );

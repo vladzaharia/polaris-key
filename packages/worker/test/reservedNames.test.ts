@@ -18,11 +18,7 @@ import { describe, expect, it } from "vitest";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { RESERVED_ENTITLEMENT_KEYS } from "@polaris-key/manifest";
 import { reservedNamesMode } from "../src/core/licensing/reservedNames.js";
 import { tighterMax, tighterMin } from "../src/core/licensing/entitlements.js";
@@ -33,6 +29,7 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -77,8 +74,9 @@ async function call(
   path: string,
   body?: unknown,
 ): Promise<{ status: number; body: Record<string, any> }> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );

@@ -14,12 +14,13 @@ import {
   docsTierOf,
 } from "../src/docs.js";
 import { DOCS_ASSET_TIERS } from "../src/docsTiers.generated.js";
-import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
+import { ADMIN_COOKIE } from "../src/core/console/session.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW } from "./seed.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const API = "https://key.plrs.im";
 const CUSTOMER = "https://polaris.locker";
@@ -127,8 +128,9 @@ describe("docs cache headers through the Worker, on both hosts", () => {
       NOW,
     );
   const admin = async () => {
-    const { token } = await issueSession(
+    const { token } = await consoleTestSession(
       env,
+      db,
       { sub: "op", name: "Op", email: "op@example.com", groups: ["admins"] },
       NOW,
     );

@@ -31,11 +31,7 @@ import type { Env } from "../src/platform/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import type { Release } from "../src/services/release/github.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { loadProduct } from "../src/core/products.js";
 import { getProduct } from "../src/core/products/store.js";
 import { listAudit } from "../src/core/audit.js";
@@ -48,6 +44,7 @@ import { getReleaseConfig } from "../src/services/release/index.js";
 // drives it (`releaseSurface.ts`).
 import { handleReleaseSurface as handleUpdate } from "./releaseSurface.js";
 import { withDefaultHead } from "./githubHead.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "acme";
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -209,8 +206,9 @@ async function linked(
     ingestFor(SERVICES),
   );
   expect(res.ok).toBe(true);
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );

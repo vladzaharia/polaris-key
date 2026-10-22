@@ -9,11 +9,7 @@ import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { getLicense } from "../src/core/licensing/store.js";
 import {
   suppressEmail,
@@ -21,6 +17,7 @@ import {
 } from "../src/core/notify/emailDelivery.js";
 import { listAudit } from "../src/core/audit.js";
 import { licenseKeyEmail } from "../src/core/notify/templates.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 /** ST-11: a product's own cap is the `email.dailyCap` `product_settings` row. */
 async function setProductDailyEmailCap(
@@ -89,8 +86,9 @@ describe("create with deviceLimit and delivery, and send-key (LX-27)", () => {
   });
 
   async function admin(method: string, path: string, body?: unknown) {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "a@x.io", groups: [PLATFORM_GROUP] },
       clock,
     );

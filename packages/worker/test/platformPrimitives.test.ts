@@ -21,11 +21,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  buildSessionCookie,
-  issueSession,
-  verifySession,
-} from "../src/core/console/session.js";
+import { issueSessionV2, verifySession } from "../src/core/console/session.js";
 import {
   issuePortalSession,
   verifyPortalSession,
@@ -140,25 +136,6 @@ describe("session cookies survive the move onto platform/hmacToken", () => {
     });
   });
 
-  it("mints the identical console token and cookie from the same inputs", async () => {
-    fixRandom();
-    const { token } = await issueSession(
-      PIN_ENV,
-      {
-        sub: "op-sub-1",
-        name: "Ada Op",
-        email: "ada@example.com",
-        groups: ["polaris-admins"],
-        authTime: PIN_NOW - 30,
-      },
-      PIN_NOW,
-    );
-    expect(token).toBe(ADMIN_PIN);
-    expect(buildSessionCookie(token)).toBe(
-      `__Host-pkey_admin=${ADMIN_PIN}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=28800`,
-    );
-  });
-
   it("verifies portal sessions minted by the old code, both key sources", async () => {
     expect(await verifyPortalSession(PIN_ENV, PORTAL_PIN, PIN_NOW)).toEqual({
       accountId: "acct_pin1",
@@ -201,9 +178,9 @@ describe("session cookies survive the move onto platform/hmacToken", () => {
     expect(
       await verifySession(FALLBACK_ENV, PORTAL_FALLBACK_PIN, PIN_NOW),
     ).toBeNull();
-    const admin = await issueSession(
+    const admin = await issueSessionV2(
       FALLBACK_ENV,
-      { sub: "s", groups: ["g"] },
+      { aid: "acct_s", sid: "sid_s", name: "s", email: "s@example.com" },
       PIN_NOW,
     );
     expect(

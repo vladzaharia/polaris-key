@@ -19,11 +19,7 @@ import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { type LicenseRow } from "../src/core/repo.js";
 import { listAudit } from "../src/core/audit.js";
 import { isFloatingLicense } from "../src/core/accounts/accountSubjects.js";
@@ -37,6 +33,7 @@ import {
 } from "../src/services/license/batches.js";
 import { auditStatementFor } from "../src/core/audit.js";
 import type { DbStatement } from "../src/db/types.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "tonebox";
 const PLATFORM_GROUP = "admins";
@@ -56,8 +53,9 @@ beforeEach(async () => {
   await seedProduct(db, SLUG);
   await seedTier(db, SLUG, "pro", { deviceLimit: 3, expiryDays: 30 });
   product = (await loadProduct(env, db, SLUG))!;
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "op-1", name: "Op", email: "op@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );
@@ -533,8 +531,9 @@ describe("batch reads, used counts and Disable unused keys", () => {
     await db.run("DROP TRIGGER lx28_audit_fail");
 
     // A stale count (a device bound since it was read): neither statement writes.
-    const { session } = await issueSession(
+    const { session } = await consoleTestSession(
       env,
+      db,
       { sub: "op-1", name: "Op", email: "op@x.io", groups: [PLATFORM_GROUP] },
       NOW,
     );
@@ -659,8 +658,9 @@ describe("batch reads, used counts and Disable unused keys", () => {
     expect([401, 403]).toContain((await send({})).status);
 
     // A platform admin's session without the CSRF header.
-    const admin = await issueSession(
+    const admin = await consoleTestSession(
       env,
+      db,
       { sub: "op-1", name: "Op", email: "op@x.io", groups: [PLATFORM_GROUP] },
       NOW,
     );
@@ -671,8 +671,9 @@ describe("batch reads, used counts and Disable unused keys", () => {
     );
 
     // A signed-in operator outside the platform-admin group, with a valid CSRF token.
-    const outsider = await issueSession(
+    const outsider = await consoleTestSession(
       env,
+      db,
       { sub: "u2", name: "Eve", email: "eve@x.io", groups: ["someone-else"] },
       NOW,
     );

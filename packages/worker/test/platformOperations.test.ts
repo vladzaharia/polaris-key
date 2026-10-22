@@ -9,11 +9,7 @@ import { describe, expect, it } from "vitest";
 import type { Env } from "../src/platform/env.js";
 import type { Db, DbStatement } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   D1_MAX_BOUND_PARAMS,
   ERROR_SUMMARY_MAX,
@@ -34,6 +30,10 @@ import {
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
+import {
+  consoleTestBreakGlass,
+  consoleTestSession,
+} from "./consoleSessionHelper.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = join(HERE, "..", "src");
@@ -54,16 +54,17 @@ async function call(
   path: string,
   opts: { method?: string; groups?: string[] } = {},
 ): Promise<{ status: number; body: Record<string, any> }> {
-  const { token, session } = await issueSession(
-    env,
-    {
-      sub: "admin-1",
-      name: "Ada Admin",
-      email: "admin@example.com",
-      groups: opts.groups ?? [PLATFORM_GROUP],
-    },
-    NOW,
-  );
+  const identity = {
+    sub: "admin-1",
+    name: "Ada Admin",
+    email: "admin@example.com",
+    groups: opts.groups ?? [PLATFORM_GROUP],
+  };
+  // A deploy with no blob store has no erasure ledger to ask, so no account session opens
+  // (fail closed); the break-glass realm has no account and is the console session there.
+  const { token, session } = env.BLOBS
+    ? await consoleTestSession(env, db, identity, NOW)
+    : await consoleTestBreakGlass(env, identity, NOW);
   const method = opts.method ?? "GET";
   const headers: Record<string, string> = {
     cookie: `${ADMIN_COOKIE}=${token}`,

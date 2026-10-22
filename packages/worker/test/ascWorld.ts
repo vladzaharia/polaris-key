@@ -13,11 +13,7 @@ import type { Env } from "../src/platform/env.js";
 import { putOutletCredential } from "../src/core/outletCredentials.js";
 import { upsertBuild } from "../src/services/release/model.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { makeTestDb } from "./helpers.js";
 import {
   call,
@@ -31,6 +27,7 @@ import {
 } from "./releaseRoutesFixture.js";
 import { NOW } from "./seed.js";
 import { AscFake, APPLE_ID } from "./ascFake.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 export const WEBHOOK_SECRET = "whsec-test-only-0123456789abcdef";
 export const HOOK_URL = `${CONSOLE}/${SLUG}/distribution/hooks/asc`;
@@ -182,8 +179,9 @@ export async function admin(
   body?: unknown,
   headers: Record<string, string> = {},
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );

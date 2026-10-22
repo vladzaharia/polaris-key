@@ -26,16 +26,13 @@ import {
 import { MANAGED_SCAN_ROWS } from "../src/console/handlers/products.js";
 import type { ManagedPayload } from "../src/core/licensing/payload.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { loadProduct } from "../src/core/products.js";
 import { getProductSecret } from "../src/core/products/store.js";
 import { listAudit, listPlatformAudit } from "../src/core/audit.js";
 import { signInSecretContext } from "../src/services/identity/providers/config.js";
 import { sealSignInSecret } from "../scripts/seal-signin-secret.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const env = { PLATFORM_KEK: TEST_KEK } as unknown as Env;
 const ctx = { product: "djdl", kind: "signing-key", id: "kid-1" } as const;
@@ -552,8 +549,9 @@ async function kek(
   method: "GET" | "POST" | "DELETE",
   opts: { body?: unknown; csrf?: boolean; groups?: string[] } = {},
 ): Promise<{ status: number; body: KekResponse }> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     {
       sub: "admin-1",
       email: "admin@example.com",

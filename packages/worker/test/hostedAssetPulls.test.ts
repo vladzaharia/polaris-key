@@ -53,7 +53,8 @@ import { resyncRepo } from "../src/services/release/resync.js";
 import { ingestFor } from "../src/core/ingest/pipeline.js";
 import { SERVICES } from "../src/mount.js";
 import { handleAdmin } from "../src/console/index.js";
-import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
+import { ADMIN_COOKIE } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 beforeAll(() => installDigestStream());
 
@@ -1398,8 +1399,9 @@ async function call(method: string, path: string) {
   const e = makeEnv(new KvMock(), []);
   e.ADMIN_SESSION_SECRET = ADMIN_SECRET;
   e.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
-  const { token } = await issueSession(
+  const { token } = await consoleTestSession(
     e,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );

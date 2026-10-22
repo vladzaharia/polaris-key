@@ -9,17 +9,14 @@ import { CONSOLE, envFor } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   PACKAGES_READ_SCOPE,
   mintAccountToken,
   resolvePersonalToken,
 } from "../src/core/accounts/personalTokens.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 let db: Db;
 let env: Env;
@@ -36,8 +33,9 @@ async function admin(
   path: string,
   groups = ["platform-admins"],
 ): Promise<JsonResponse> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Root", email: "root@x.io", groups },
     NOW,
   );

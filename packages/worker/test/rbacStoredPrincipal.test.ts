@@ -21,7 +21,6 @@ import { resetConsoleSessionCache } from "../src/console/consoleSession.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
   LIVE_CHECK_SECONDS,
 } from "../src/core/console/session.js";
 import {
@@ -409,12 +408,22 @@ describe("credentials without an account", () => {
   it("a v1 cookie keeps its root-only principal; a payload naming aid/sid is ignored", async () => {
     const p = await person(env, db, "v1x");
     await bind(db, p.accountId, "platform_admin", "platform", null);
-    const { token, session } = await issueSession(
-      env,
-      { sub: "op-1", name: "Op", email: "op@x.io", groups: [] },
-      NOW,
-    );
-    expect(session.aid).toBeUndefined();
+    // An account-less v1 cookie, signed directly (the console no longer mints them).
+    const v1 = async (groups: string[]) =>
+      signHmacToken(
+        await importHmacKey(env.ADMIN_SESSION_SECRET!),
+        "pkey.admin.v1|",
+        {
+          sub: "op-1",
+          name: "Op",
+          email: "op@x.io",
+          groups,
+          csrf: "c",
+          exp: NOW + 3600,
+          authAt: NOW,
+        },
+      );
+    const token = await v1([]);
     const res = await handleAdmin(
       new Request(`https://key.plrs.im/manage${PLATFORM}`, {
         headers: { cookie: `${ADMIN_COOKIE}=${token}` },
@@ -426,11 +435,7 @@ describe("credentials without an account", () => {
     );
     expect(res.status).toBe(403);
     // And the group still roots a v1 cookie, as before.
-    const rooted = await issueSession(
-      env,
-      { sub: "op-1", name: "Op", email: "op@x.io", groups: [GROUP] },
-      NOW,
-    );
+    const rooted = { token: await v1([GROUP]) };
     const ok = await handleAdmin(
       new Request(`https://key.plrs.im/manage${PLATFORM}`, {
         headers: { cookie: `${ADMIN_COOKIE}=${rooted.token}` },

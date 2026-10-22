@@ -16,11 +16,7 @@ import type { AscResource } from "../src/core/stores/apple/client.js";
 import { putOutletCredential } from "../src/core/outletCredentials.js";
 import { setPlatformPin } from "../src/core/platformCredentials.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { APP_STORE_EVENTS } from "../src/services/commerce/bridge.js";
 import { CONSOLE } from "./releaseRoutesFixture.js";
 import {
@@ -32,6 +28,7 @@ import {
   audits,
   type AscWorld,
 } from "./ascWorld.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
@@ -312,8 +309,9 @@ async function call(
   key: string | null = freshKey(),
   method = "POST",
 ): Promise<{ status: number; json: Record<string, unknown> }> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );

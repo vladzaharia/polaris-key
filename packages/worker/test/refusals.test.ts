@@ -35,17 +35,14 @@ import {
 } from "../src/core/licensing/refusals.js";
 import { runScheduledMaintenance } from "../src/scheduled.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { getLicense } from "../src/core/licensing/store.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { ServiceContext } from "../src/core/registry.js";
 import { NO_HOOKS } from "./helpers.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "djdl";
 const ONE_SEAT = {
@@ -290,8 +287,9 @@ describe("GET /manage/api/products/<slug>/refusals", () => {
     env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
     await seedProduct(db, SLUG);
     await seedProduct(db, "other");
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
       NOW,
     );

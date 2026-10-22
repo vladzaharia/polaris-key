@@ -50,11 +50,7 @@ import {
   type ReleaseMirrorMessage,
 } from "../src/services/release/mirror.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import type { Release, ReleaseAsset } from "../src/services/release/github.js";
 import {
   ASSET_BYTES,
@@ -73,6 +69,7 @@ import { NOW } from "./seed.js";
 import { setAssetHosting, setProductAssetSetting } from "./hostedFixture.js";
 import { assetUsage } from "../src/core/assets/assetQuota.js";
 import { mirrorNow } from "../src/services/release/mirror.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 beforeAll(() => installDigestStream());
 
@@ -1015,8 +1012,9 @@ describe("backfill and the operator's action", () => {
     await drain(NOW + 10);
     gh.corrupt.clear();
     expect(await job("v1.1.0", "201")).toMatchObject({ status: "failed" });
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",

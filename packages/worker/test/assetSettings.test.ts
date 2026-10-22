@@ -41,13 +41,10 @@ import {
 } from "../src/core/assets/assetSettings.js";
 import { writeSetting } from "../src/core/settings/write.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import type { AssetUsageDto } from "../src/console/handlers/hostedAssets.js";
 import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 let db: SqliteDb;
 let env: Env;
@@ -245,8 +242,9 @@ describe("a product's settings", () => {
 
 describe("the console: usage and the settings writes", () => {
   async function admin() {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "u1",
         name: "Ada",

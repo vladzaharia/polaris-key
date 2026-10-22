@@ -14,11 +14,8 @@ import { CONSOLE, enableServices, envFor } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 let db: Db;
 let env: Env;
@@ -35,8 +32,9 @@ async function admin(
   path: string,
   body?: unknown,
 ): Promise<JsonResponse> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );

@@ -24,11 +24,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   openPlatformCredential,
   platformPin,
@@ -66,6 +62,7 @@ import {
   type CommerceWorld,
 } from "./commerceWorld.js";
 import { TEST_KEK } from "./seed.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
@@ -111,8 +108,9 @@ async function platform(
   body?: unknown,
   groups: string[] = ["platform-admins"],
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups },
     NOW,
   );
@@ -692,8 +690,9 @@ describe("platform store connections: assigning an app to a product", () => {
       ascKey("OWNKEY1234"),
       APPLE_ID,
     );
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       w.env,
+      w.db,
       {
         sub: "u1",
         name: "Ada",
@@ -769,8 +768,9 @@ describe("platform store connections: a product's connector falls back to the te
     await poll(w);
     expect(w.fake.requests).toEqual([]);
     expect(await useRows(w.db)).toEqual([]);
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       w.env,
+      w.db,
       {
         sub: "u1",
         name: "Ada",
@@ -1151,8 +1151,9 @@ describe("platform store connections: custody", () => {
         await handleAdmin(
           await (async () => {
             // A proven step-up: POST /kek is in the step-up table.
-            const { token, session } = await issueSession(
+            const { token, session } = await consoleTestSession(
               env,
+              w.db,
               {
                 sub: "u1",
                 name: "Ada",

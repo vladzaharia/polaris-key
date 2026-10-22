@@ -12,7 +12,6 @@ import { handleAdmin } from "../src/console/index.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
   type SessionIdentity,
 } from "../src/core/console/session.js";
 import { type DeviceRow } from "../src/core/repo.js";
@@ -24,6 +23,7 @@ import {
 } from "../src/core/devices/store.js";
 import { listAudit } from "../src/core/audit.js";
 import { getTokenRecord, putTokenRecord } from "../src/platform/kv.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const PLATFORM_GROUP = "platform-admins";
 const SLUG = "djdl";
@@ -53,8 +53,8 @@ interface World {
   call: (method: string, path: string) => Promise<Response>;
 }
 
-async function login(env: Env, identity: SessionIdentity) {
-  const { token, session } = await issueSession(env, identity, NOW);
+async function login(env: Env, db: Db, identity: SessionIdentity) {
+  const { token, session } = await consoleTestSession(env, db, identity, NOW);
   return { cookie: `${ADMIN_COOKIE}=${token}`, csrf: session.csrf };
 }
 
@@ -64,13 +64,13 @@ async function world(): Promise<World> {
   env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
   env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
   await seedProduct(db, SLUG);
-  const admin = await login(env, {
+  const admin = await login(env, db, {
     sub: "u1",
     name: "Ada",
     email: "ada@x.io",
     groups: [PLATFORM_GROUP],
   });
-  const weak = await login(env, {
+  const weak = await login(env, db, {
     sub: "u9",
     name: "Bob",
     email: "b@x.io",

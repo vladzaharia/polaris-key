@@ -13,11 +13,7 @@ import { makeTestDb } from "./helpers.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   parseSentryRelease,
   sentrySignature,
@@ -35,6 +31,7 @@ import {
   syncAndDescribe,
 } from "./releaseRoutesFixture.js";
 import { NOW } from "./seed.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 /** A placeholder — never a real Sentry client secret. */
 const CLIENT_SECRET = "sentry-test-client-secret-0000";
@@ -51,8 +48,9 @@ async function admin(
   path: string,
   body?: unknown,
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );

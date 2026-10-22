@@ -25,11 +25,7 @@ import { handleAdminApi } from "../src/console/api.js";
 import { STEP_UP_ROUTES } from "../src/console/stepUp.js";
 import { ADMIN_ROUTES, isProductRoute } from "../src/console/routes.js";
 import { routeKey, type Method } from "../src/console/routeMatch.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
@@ -38,6 +34,7 @@ import {
   PRINCIPALS,
   type PrincipalName,
 } from "./rbacFixtures.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 // ── The principal seam ──────────────────────────────────────────────────────────────────────
 
@@ -185,8 +182,9 @@ async function call(
   };
   const p = PRINCIPALS[name];
   if (p) {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       e,
+      db,
       {
         sub: p.memberId,
         name: name,
@@ -416,8 +414,9 @@ describe("negative controls", () => {
   it("a session the real resolver roots (the platform group) is a Superadmin; dropping the group drops it", async () => {
     const e = freshEnv();
     const mint = async (groups: string[]) => {
-      const { token } = await issueSession(
+      const { token } = await consoleTestSession(
         e,
+        db,
         { sub: "op-real", name: "Op", email: "op@example.test", groups },
         NOW,
       );
@@ -439,8 +438,9 @@ describe("negative controls", () => {
     const e = freshEnv();
     const nope = await call(e, "root", "GET", "/products/alpha/nope");
     expect(nope.status).toBe(404);
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       e,
+      db,
       { sub: "m-root", name: "r", email: "r@x", groups: [] },
       NOW,
     );
@@ -468,8 +468,9 @@ describe("negative controls", () => {
   it("answers no session 401, and an expired one too", async () => {
     const e = freshEnv();
     expect((await call(e, "none", "GET", "/me")).status).toBe(401);
-    const { token } = await issueSession(
+    const { token } = await consoleTestSession(
       e,
+      db,
       { sub: "m-root", name: "r", email: "r@x", groups: [] },
       NOW - 9 * 60 * 60,
     );

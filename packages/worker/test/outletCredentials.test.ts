@@ -15,11 +15,7 @@ import { makeEnv, NOW, seedProduct, TEST_KEK } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { listAudit } from "../src/core/audit.js";
 import { open } from "../src/platform/keyvault.js";
 import {
@@ -32,6 +28,7 @@ import {
   validateOutletCredential,
   type OutletCredentialKind,
 } from "../src/core/outletCredentials.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const pem = (k: { export(o: object): string | Buffer }, type: string) =>
   (k.export({ type, format: "pem" }) as string).trim();
@@ -117,8 +114,9 @@ async function call(
   groups: string[] = [PLATFORM_GROUP],
 ): Promise<{ status: number; body: Record<string, unknown>; raw: string }> {
   // A proven step-up: product delete and the KEK sweep are in the step-up table.
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     {
       sub: "admin-1",
       email: "admin@example.com",

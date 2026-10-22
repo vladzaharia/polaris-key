@@ -17,11 +17,7 @@ import {
   seedProduct,
 } from "./seed.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { loadProduct } from "../src/core/products.js";
 import { setServices } from "../src/core/products/store.js";
 import { DEFAULT_SERVICES, serializeServices } from "../src/core/services.js";
@@ -34,6 +30,7 @@ import {
 import { handleLicenseDocument } from "../src/services/license/document.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { attachLicense } from "../src/services/identity/accounts/claim.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 function decodeJwsPayload(jws: string): string {
   const part = jws.split(".")[1] ?? "";
@@ -141,8 +138,9 @@ describe("the account id never reaches a developer-facing response (I-05)", () =
     expect(devices.status).toBe(200);
     bodies.push(["GET devices", await devices.text()]);
 
-    const { token: adminToken, session } = await issueSession(
+    const { token: adminToken, session } = await consoleTestSession(
       env,
+      db,
       { sub: "op", name: "Op", email: "op@x.io", groups: ["platform-admins"] },
       NOW,
     );

@@ -9,13 +9,10 @@ import { makeEnv, mkReq, NOW, seedProduct } from "./seed.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { SETTINGS } from "../src/mount.js";
 import { servedSettings } from "../src/console/handlers/productSettings.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const GROUP = "admins";
 
@@ -36,8 +33,9 @@ describe("the generic product settings routes", () => {
     path: string,
     body?: unknown,
   ): Promise<{ status: number; json: Record<string, unknown> }> {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u1", name: "Ada", email: "a@x.io", groups: [GROUP] },
       NOW,
     );

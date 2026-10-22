@@ -84,11 +84,8 @@ import {
 import { handleAdmin } from "../src/console/index.js";
 import { deleteProduct } from "../src/core/products/store.js";
 import { dryRunOnCopy } from "../scripts/override-migration-dry-run.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "djdl";
 const PLATFORM_GROUP = "platform-admins";
@@ -198,8 +195,9 @@ async function world(
   const product = (await loadProduct(env, db, SLUG))!;
   const call: World["call"] = async (method, path, body, o = {}) => {
     const now = o.now ?? NOW;
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "op-1",
         name: "Ada Operator",

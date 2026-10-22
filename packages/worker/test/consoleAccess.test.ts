@@ -9,16 +9,13 @@ import type { Env } from "../src/platform/env.js";
 import type { Db } from "../src/db/types.js";
 import type { Principal } from "../src/core/rbac/can.js";
 import { handleAdminApi } from "../src/console/api.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { appendPlatformAudit } from "../src/core/audit.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { PRINCIPALS } from "./rbacFixtures.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const SYNTHETIC = new Map<string, Principal>();
 vi.mock("../src/core/rbac/principal.js", async (importOriginal) => {
@@ -50,8 +47,9 @@ async function get(
   path: string,
   groups: string[] = [],
 ): Promise<{ status: number; body: Record<string, unknown> }> {
-  const { token } = await issueSession(
+  const { token } = await consoleTestSession(
     env,
+    db,
     { sub, name: sub, email: `${sub}@example.test`, groups },
     NOW,
   );
@@ -174,8 +172,9 @@ describe("/me.permissions", () => {
   });
 
   it("lets a session with no grant sign out, behind the CSRF check", async () => {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       {
         sub: "nobody",
         name: "nobody",

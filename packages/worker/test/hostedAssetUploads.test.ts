@@ -61,12 +61,13 @@ import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/platform/env.js";
 import { dispatch } from "../src/dispatch.js";
 import { handleAdmin } from "../src/console/index.js";
-import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
+import { ADMIN_COOKIE } from "../src/core/console/session.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { R2Mock, asR2, installDigestStream } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { enableServices } from "./releaseRoutesFixture.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 beforeAll(() => installDigestStream());
 
@@ -190,8 +191,9 @@ async function admin(
   body?: Uint8Array,
   headers: Record<string, string> = {},
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [ADMIN_GROUP] },
     NOW,
   );
@@ -996,8 +998,9 @@ describe("the slot routes' gate", () => {
     method: string,
     opts: { csrf: boolean; groups: string[] },
   ): Promise<Response> {
-    const { token, session } = await issueSession(
+    const { token, session } = await consoleTestSession(
       env,
+      db,
       { sub: "u9", name: "Eve", email: "eve@x.io", groups: opts.groups },
       NOW,
     );

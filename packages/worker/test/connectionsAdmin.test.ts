@@ -9,11 +9,7 @@ import { NOW } from "./seed.js";
 import { Device, seededWorld, type CardWorld } from "./identityCardHarness.js";
 import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { handleAdminApi } from "../src/console/api.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import {
   connectionSecretContext,
   resolveConnection,
@@ -21,6 +17,7 @@ import {
 import { open } from "../src/platform/keyvault.js";
 import { plainProviderText } from "../src/services/identity/connections/testSignIn.js";
 import { challengeName } from "../src/services/identity/connections/domains.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const ISSUER = "https://sso.corp.example";
 const SECRET = "s3cr3t-value-that-must-never-come-back";
@@ -104,8 +101,9 @@ async function api(
   body?: unknown,
   as: As = {},
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     {
       sub: as.sub ?? "op1",
       name: "Ada",

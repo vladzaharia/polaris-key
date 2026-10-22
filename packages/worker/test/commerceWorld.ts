@@ -18,11 +18,7 @@ import { loadProduct } from "../src/core/products.js";
 import { registerDeviceBinding } from "../src/core/devices.js";
 import { setAppleRootsForTesting } from "../src/services/commerce/apple.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { runConnectorPolls } from "../src/scheduled.js";
 import { makeTestDb } from "./helpers.js";
 import {
@@ -48,6 +44,7 @@ import {
   fakeFetch,
   type CommerceFakes,
 } from "./commerceFake.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 export const FLAG = "extras.diceSkins";
 
@@ -162,8 +159,9 @@ export async function admin(
   path: string,
   body?: unknown,
 ): Promise<Response> {
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     w.env,
+    w.db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
     NOW,
   );

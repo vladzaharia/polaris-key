@@ -20,11 +20,7 @@ import type { Db } from "../src/db/types.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { setServices } from "../src/core/products/store.js";
 import { handleAdmin } from "../src/console/index.js";
-import {
-  ADMIN_COOKIE,
-  CSRF_HEADER,
-  issueSession,
-} from "../src/core/console/session.js";
+import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { STOREFRONT_ADAPTERS } from "../src/core/storefront/adapter.js";
 import { STOREFRONT_ENABLED_KEY } from "../src/core/storefrontSwitch.js";
 import { isBuiltIn } from "../src/services/distribution/storefronts/plan.js";
@@ -33,6 +29,7 @@ import {
   parsePersona,
 } from "../src/console/handlers/polarisKeyStorefront.js";
 import { storefrontDay } from "../src/services/identity/portal/store/analytics.js";
+import { consoleTestSession } from "./consoleSessionHelper.js";
 
 const ISSUER = "https://id.plrs.im";
 const PLATFORM_GROUP = "platform-admins";
@@ -123,8 +120,9 @@ async function world(): Promise<World> {
   await seedProduct(db, "bare");
   await services(db, "bare", LICENSED);
 
-  const { token, session } = await issueSession(
+  const { token, session } = await consoleTestSession(
     env,
+    db,
     { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
     NOW,
   );

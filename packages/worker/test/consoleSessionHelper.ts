@@ -19,6 +19,7 @@ import {
 import { memberIdFor } from "../src/core/console/memberId.js";
 import { adminOidcConfig } from "../src/platform/platformOidc.js";
 import { consoleSignIn } from "../src/services/identity/public.js";
+import { portalIdentityIssuerKey } from "../src/services/identity/portal/repo.js";
 
 const TEST_ISSUER = "https://id.example";
 
@@ -33,6 +34,8 @@ export interface ConsoleTestSession {
   session: {
     /** The member id (the audit actor), as the console resolves the principal. */
     sub: string;
+    name: string;
+    email: string;
     csrf: string;
     groups: string[];
     exp: number;
@@ -96,6 +99,8 @@ export async function consoleTestSession(
     csrf: claims.csrf,
     session: {
       sub: await memberIdFor(env, signedIn.accountId),
+      name: signedIn.name,
+      email: signedIn.email || identity.email || "",
       csrf: claims.csrf,
       groups: identity.groups,
       exp: claims.exp,
@@ -121,13 +126,33 @@ export async function consoleTestBreakGlass(
     csrf: session.csrf,
     session: {
       sub: session.sub,
+      name: session.name,
+      email: session.email,
       csrf: session.csrf,
       groups: session.groups,
       exp: session.exp,
       authAt: session.authAt ?? now,
-      ...(session.stepUpAt !== undefined
-        ? { stepUpAt: session.stepUpAt }
-        : {}),
+      ...(session.stepUpAt !== undefined ? { stepUpAt: session.stepUpAt } : {}),
     },
   };
+}
+
+/**
+ * The audit actor a console session signed in as `idpSub` carries: the member id of the account
+ * its console link belongs to. A v1 cookie's actor was the IdP subject itself.
+ */
+export async function consoleActor(
+  env: Env,
+  db: Db,
+  idpSub: string,
+): Promise<string> {
+  ensureConsoleIdp(env);
+  const rp = adminOidcConfig(env)!;
+  const link = await db.first<{ account_id: string }>(
+    "SELECT account_id FROM account_links WHERE issuer_key = ? AND tenant_scope = '' AND subject = ?",
+    portalIdentityIssuerKey(rp.issuer),
+    idpSub,
+  );
+  if (!link) throw new Error(`consoleActor: ${idpSub} never signed in`);
+  return memberIdFor(env, link.account_id);
 }
