@@ -393,9 +393,7 @@ public fun PolarisActivationScreen(
                     Spacer(Modifier.height(PolarisSpace.group))
                 }
             } else {
-                val window = polarisWindow
-                PolarisProductIcon(if (window.compactHeight) 56.dp else 120.dp)
-                if (productName(copy) != null || PolarisTheme.current.logo != null) Spacer(Modifier.height(window.section))
+                PolarisHeroIcon()
                 // A notice replaces the welcome's title, which carried the product's name: say it here (DL5).
                 if (notice != null) productName(copy)?.let {
                     Text(
