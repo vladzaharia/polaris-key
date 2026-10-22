@@ -122,7 +122,7 @@ export function SelectItem({
       ref={ref}
       className={cn(
         "relative flex w-full cursor-pointer select-none flex-col items-start rounded-sm py-1.5 ps-8 pe-2 text-sm outline-hidden",
-        "focus:bg-hover focus:text-fg-strong data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50",
+        "focus:bg-menu-active focus:ring-2 focus:ring-inset focus:ring-focus focus:text-fg-strong data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50",
         className,
       )}
       {...props}

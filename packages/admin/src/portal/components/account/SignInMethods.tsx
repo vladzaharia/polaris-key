@@ -174,6 +174,7 @@ export function SignInMethods({
           account
           error={methods.error}
           onRetry={() => void methods.refetch()}
+          message={t("locker.error.loadFailedMethods")}
           className="border-0 p-0 shadow-none"
         />
       ) : (

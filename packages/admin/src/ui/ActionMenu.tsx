@@ -74,7 +74,7 @@ export function ActionMenu({
                 onSelect={() => item.onSelect()}
                 className={cn(
                   "relative flex cursor-pointer select-none items-start gap-2 rounded-sm px-2 py-1.5 outline-hidden",
-                  "focus:bg-hover data-[disabled]:cursor-not-allowed",
+                  "focus:bg-menu-active focus:ring-2 focus:ring-inset focus:ring-focus data-[disabled]:cursor-not-allowed",
                   "[&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:shrink-0",
                   item.tone === "danger"
                     ? "text-danger focus:bg-danger-subtle"
