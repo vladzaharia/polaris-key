@@ -717,6 +717,7 @@ describe("resolveInState: legacy and store views over D1", () => {
   ) => {
     const state = (await loadDeliverableState(db, SLUG, "app", undefined, {
       narrow: view === "legacy",
+      view,
     }))!;
     return (
       resolveInState(state, { selector, view })?.release.release_id ?? null
@@ -731,9 +732,12 @@ describe("resolveInState: legacy and store views over D1", () => {
 
   it("the narrow read carries no notes and keeps tag, prerelease and descriptor status", async () => {
     const db = await setup();
-    const wide = (await loadDeliverableState(db, SLUG, "app"))!;
+    const wide = (await loadDeliverableState(db, SLUG, "app", undefined, {
+      view: "legacy",
+    }))!;
     const narrow = (await loadDeliverableState(db, SLUG, "app", undefined, {
       narrow: true,
+      view: "legacy",
     }))!;
     expect(narrow.rows.every((r) => r.notes === null)).toBe(true);
     expect(narrow.candidates).toEqual(wide.candidates);
@@ -756,7 +760,9 @@ describe("resolveInState: legacy and store views over D1", () => {
     await markAbsent(db, "app@2.0.0");
     expect(await pick(db, "legacy")).toBe("v1.1.0");
     expect(await pick(db, "store")).toBe("app@2.0.0");
-    const state = (await loadDeliverableState(db, SLUG, "app"))!;
+    const state = (await loadDeliverableState(db, SLUG, "app", undefined, {
+      view: "legacy",
+    }))!;
     // With the switch on, only the undescribed absent row goes; the described one stays.
     expect([...hiddenFor(state, "store", true)]).toEqual(["v1.2.0"]);
     expect(hiddenFor(state, "store").size).toBe(0);
@@ -774,7 +780,9 @@ describe("resolveInState: legacy and store views over D1", () => {
     const db = await setup();
     await floor(db, "stable", "1.2.0", "v1.2.0");
     await yankRelease(db, SLUG, "v1.2.0", "test", "t", NOW);
-    const s2 = (await loadDeliverableState(db, SLUG, "app"))!;
+    const s2 = (await loadDeliverableState(db, SLUG, "app", undefined, {
+      view: "legacy",
+    }))!;
     expect(effectiveFloor(s2, "stable")).toEqual({ version: "1.1.0" });
     // v1.1.0 is gone upstream: the fallback floor still stands, so the channel 404s.
     await markAbsent(db, "v1.1.0");
@@ -784,10 +792,30 @@ describe("resolveInState: legacy and store views over D1", () => {
     expect(await pick(db, "legacy")).toBe("v1.0.0");
   });
 
+  it("a state loaded for the store view reads neither absent nor floors, and refuses the legacy view (SR-P1 N4)", async () => {
+    const db = await setup();
+    await floor(db, "stable", "1.2.0", "v1.2.0");
+    await markAbsent(db, "v1.2.0");
+    const store = (await loadDeliverableState(db, SLUG, "app"))!;
+    expect(store.loadedFor).toBe("store");
+    expect(store.absent.size).toBe(0);
+    expect(store.floors.size).toBe(0);
+    expect(() =>
+      resolveInState(store, { selector: "stable", view: "legacy" }),
+    ).toThrow(/legacy view needs a state loaded/);
+    const legacy = (await loadDeliverableState(db, SLUG, "app", undefined, {
+      view: "legacy",
+    }))!;
+    expect([...legacy.absent]).toEqual(["v1.2.0"]);
+    expect(legacy.floors.size).toBe(1);
+  });
+
   it("a described release is untouched by the store view", async () => {
     const db = await setup();
     await markAbsent(db, "app@2.0.0");
-    const state = (await loadDeliverableState(db, SLUG, "app"))!;
+    const state = (await loadDeliverableState(db, SLUG, "app", undefined, {
+      view: "legacy",
+    }))!;
     expect(hiddenFor(state, "store", true).has("app@2.0.0")).toBe(false);
   });
 });

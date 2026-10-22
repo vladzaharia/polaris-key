@@ -41,10 +41,12 @@ import {
   channelSuffix,
   installationToken,
   resolveSelector,
-  serveReleaseSurface,
   type ReleaseParams,
-  type SurfaceContext,
 } from "../release/gateway.js";
+import {
+  serveReleaseSurface,
+  type SurfaceContext,
+} from "../release/surface.js";
 import { buildAppcastItem, proseToHtml, renderAppcast } from "./appcast.js";
 
 /** The surfaces this service serves. Release owns the other four. */

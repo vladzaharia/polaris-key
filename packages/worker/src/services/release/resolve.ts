@@ -536,6 +536,10 @@ export interface DeliverableState {
   policyRows: Map<string, ReleaseChannelPolicyRow>;
   candidates: Candidate[];
   /**
+   * The view the state was loaded for (see `LoadStateOptions.view`).
+   */
+  loadedFor: ResolveView;
+  /**
    * App only (empty for a pack): the rows the sync last listed (`metadata_json.tag` is set),
    * the rows it saw gone upstream (`absentUpstream`), the recorded channel floors (R6-10) and
    * the rows that carry an ingested descriptor (P2-12.2, plan §6.2).
@@ -554,11 +558,22 @@ export interface FloorView {
 
 export interface LoadStateOptions {
   /**
-   * The narrow read for the legacy view: no `notes`, and `metadata_json` only through
-   * `json_extract` of `$.tag`, `$.prerelease` and `$.descriptor.status` (rebuilt as a small
-   * object). `storeRelease()` reads the picked row by key afterwards. App rows only.
+   * The narrow read for the legacy view: no `notes`, no `content_api`, no `content_interface`,
+   * and `metadata_json` only through `json_extract` of `$.tag`, `$.prerelease` and
+   * `$.descriptor.status` (rebuilt as a small object). The rows it returns are NOT whole
+   * release rows: never hand one on to a caller that renders it. `resolveStoreSelector` keeps
+   * the narrow read inside itself and `storeRelease()` reads the picked row by key afterwards.
+   * App rows only.
    */
   narrow?: boolean;
+  /**
+   * The view the state will be resolved in (default `"store"`). The reads only a view needs are
+   * made only for it (SR-P1 N4): `absent` (the health read) for `"legacy"`, or for `"store"`
+   * while `STORE_VIEW_HIDES_ABSENT` is on, and `floors` for `"legacy"`. A state loaded for
+   * `"store"` while the constant is off has both empty, and `resolveInState` refuses to
+   * resolve it in the legacy view rather than silently offering what that view hides.
+   */
+  view?: ResolveView;
 }
 
 export async function loadDeliverableState(
@@ -601,9 +616,10 @@ export async function loadDeliverableState(
     deliverableId,
   );
 
+  const loadedFor = loadOpts.view ?? "store";
   let absent = new Set<string>();
   let floors = new Map<string, FloorView>();
-  if (isApp) {
+  if (isApp && (loadedFor === "legacy" || STORE_VIEW_HIDES_ABSENT)) {
     const gone = await db.all<{ subject_id: string }>(
       `SELECT subject_id FROM release_health
         WHERE product = ? AND subject_kind = 'release' AND status = 'degraded'
@@ -611,6 +627,8 @@ export async function loadDeliverableState(
       product,
     );
     absent = new Set(gone.map((g) => g.subject_id));
+  }
+  if (isApp && loadedFor === "legacy") {
     const floorRows = await db.all<{
       channel: string;
       version: string;
@@ -667,6 +685,7 @@ export async function loadDeliverableState(
     yanked: new Set(yanks.map((y) => y.release_id)),
     policyRows: new Map(policies.map((p) => [p.channel, p])),
     candidates,
+    loadedFor,
     listed,
     absent,
     floors,
@@ -689,7 +708,7 @@ function metaOf(json: string | null): MetaView {
   }
 }
 
-/** The narrow read of `loadDeliverableState`: every column but `notes`, three JSON members. */
+/** The narrow read of `loadDeliverableState`: every column but `notes`, `content_api`, `content_interface` and the JSON body, with three JSON members. */
 async function readNarrowRows(
   db: Db,
   product: string,
@@ -829,6 +848,10 @@ export function resolveInState(
   opts: Omit<ResolveBuildOptions, "deliverable"> & { view?: ResolveView },
 ): BuildResolution | null {
   const view = opts.view ?? "store";
+  if (view === "legacy" && state.loadedFor !== "legacy")
+    throw new Error(
+      "resolveInState: the legacy view needs a state loaded with view: legacy (absent and floors)",
+    );
   let selector: Selector;
   let channel: string | null = null;
   if (isVersionSelector(opts.selector)) {

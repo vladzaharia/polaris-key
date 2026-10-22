@@ -70,6 +70,7 @@ async function world(): Promise<Db> {
 const legacy = async (db: Db, selector: string) => {
   const state = (await loadDeliverableState(db, SLUG, "app", null, {
     narrow: true,
+    view: "legacy",
   }))!;
   return (
     resolveInState(state, { selector, view: "legacy" })?.release.release_id ??
