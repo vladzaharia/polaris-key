@@ -1569,19 +1569,27 @@ describe("R10-05 public release surface no longer amplifies into GitHub", () => 
       releaseWith([asset("djdl-1.2.3-arm64.dmg", 7)]),
     );
     const statuses: number[] = [];
-    // Distinct pinned selectors, i.e. the shape that always misses the cache — enumerating
-    // versions is exactly how an attacker would defeat a cache-only fix.
-    for (let i = 0; i < 32; i++) {
-      const res = await handleRelease(
-        mkReq("GET", {}),
-        env,
-        db,
-        makeReleaseProduct(),
-        "version",
-        { version: `1.2.${i}` },
-        fetchImpl,
-      );
-      statuses.push(res.status);
+    // The limiter counts per fixed minute of `Date.now()`. Pin the clock inside one minute: on a
+    // slow runner the 32 requests otherwise straddle a boundary and the 31st lands in a new window.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-01-01T00:00:05Z"));
+    try {
+      // Distinct pinned selectors, i.e. the shape that always misses the cache — enumerating
+      // versions is exactly how an attacker would defeat a cache-only fix.
+      for (let i = 0; i < 32; i++) {
+        const res = await handleRelease(
+          mkReq("GET", {}),
+          env,
+          db,
+          makeReleaseProduct(),
+          "version",
+          { version: `1.2.${i}` },
+          fetchImpl,
+        );
+        statuses.push(res.status);
+      }
+    } finally {
+      vi.useRealTimers();
     }
     expect(statuses.slice(0, 30).every((s) => s === 200)).toBe(true);
     expect(statuses[30]).toBe(429);
