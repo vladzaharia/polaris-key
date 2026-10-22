@@ -39,10 +39,10 @@ the THREAT-MODEL attempt-budget line and the device-flow docs line.
 
 ## Acceptance criteria
 
-- [ ] Contract, Worker and tests (each path: transient then success, five failures then error then timeout, final refusal, polls in the wait touch no DB, 600 s lapse).
-- [ ] Every existing device-code transcript is byte-identical; `devicecode-mint-retry` replays in all six runners.
-- [ ] Python `aio.py` keeps `code` for denied and failed, with a test.
-- [ ] THREAT-MODEL and docs updated.
+- [x] Contract, Worker and tests (each path: transient then success, five failures then error then timeout, final refusal, polls in the wait touch no DB, 600 s lapse).
+- [x] Every existing device-code transcript is byte-identical; `devicecode-mint-retry` replays in all six runners.
+- [x] Python `aio.py` keeps `code` for denied and failed, with a test.
+- [x] THREAT-MODEL and docs updated.
 - [ ] The green gate passes (`AGENTS.md`).
 
 ## Verify
