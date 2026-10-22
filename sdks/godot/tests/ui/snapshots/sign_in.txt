@@ -1,17 +1,16 @@
 == starting ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
-Card/Scroll/Stack/Body/Info/Header/Status: Label "Starting sign-in…"
+Card/Scroll/Stack/Body/Info/Header/Titles/TitleRow/Title: Label "Sign in"
+Card/Scroll/Stack/Body/Info/Header/Titles/Status: Label "Starting sign-in…"
 Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 1]
 == pending ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
-Card/Scroll/Stack/Body/Info/Steps/Where/Instructions: Label "Go to"
-Card/Scroll/Stack/Body/Info/Steps/Where/Address: Label "polaris.locker/device"
+Card/Scroll/Stack/Body/Info/Header/Titles/TitleRow/Title: Label "Sign in with a code"
 Card/Scroll/Stack/Body/Info/Steps/UserCode: Label "WDJB-MJHT"
-Card/Scroll/Stack/Body/Info/Steps/Timing/Expires: Label "The code expires in 2:05."
+Card/Scroll/Stack/Body/Info/Steps/Address: Label "Or go to polaris.locker/device"
+Card/Scroll/Stack/Body/Info/Steps/Timing/ExpiresRow/Expires: Label "Code expires in 2:05"
 Card/Scroll/Stack/Body/Info/Steps/Timing/DeviceLabel: Label "The sign-in page will show “Living room TV”."
 Card/Scroll/Stack/Body/Info/Actions/OpenBrowser: Button "Open browser" [focus 1]
 Card/Scroll/Stack/Body/Info/Actions/CopyLink: Button "Copy link" [focus 2]
@@ -19,12 +18,11 @@ Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
 == pending, link copied ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
-Card/Scroll/Stack/Body/Info/Header/Status: Label "Link copied."
-Card/Scroll/Stack/Body/Info/Steps/Where/Instructions: Label "Go to"
-Card/Scroll/Stack/Body/Info/Steps/Where/Address: Label "polaris.locker/device"
+Card/Scroll/Stack/Body/Info/Header/Titles/TitleRow/Title: Label "Sign in with a code"
+Card/Scroll/Stack/Body/Info/Header/Titles/Status: Label "Link copied."
 Card/Scroll/Stack/Body/Info/Steps/UserCode: Label "WDJB-MJHT"
-Card/Scroll/Stack/Body/Info/Steps/Timing/Expires: Label "The code expires in 2:05."
+Card/Scroll/Stack/Body/Info/Steps/Address: Label "Or go to polaris.locker/device"
+Card/Scroll/Stack/Body/Info/Steps/Timing/ExpiresRow/Expires: Label "Code expires in 2:05"
 Card/Scroll/Stack/Body/Info/Steps/Timing/DeviceLabel: Label "The sign-in page will show “Living room TV”."
 Card/Scroll/Stack/Body/Info/Actions/OpenBrowser: Button "Open browser" [focus 1]
 Card/Scroll/Stack/Body/Info/Actions/CopyLink: Button "Copy link" [focus 2]
@@ -32,7 +30,7 @@ Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
 == confirm, attachable ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Is this you?"
+Card/Scroll/Stack/Body/Info/Header/Titles/TitleRow/Title: Label "Is this you?"
 Card/Scroll/Stack/Body/Info/Steps/Account/Avatar/Initials: Label "A"
 Card/Scroll/Stack/Body/Info/Steps/Account/Who/Name: Label "Ada Lovelace"
 Card/Scroll/Stack/Body/Info/Steps/Account/Who/Email: Label "ada@example.com"
@@ -42,27 +40,27 @@ Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Cancel" [focus 3]
 == ok ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
-Card/Scroll/Stack/Body/Info/Header/Status: Label "Signed in."
+Card/Scroll/Stack/Body/Info/Header/Titles/TitleRow/Title: Label "Sign in"
+Card/Scroll/Stack/Body/Info/Header/Titles/Status: Label "Signed in."
 Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Close" [focus 1]
 == expired ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Stack/Body/Info/Header/TitleRow/Glyph: TextureRect
-Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Code expired"
+Card/Scroll/Stack/Body/Info/Header/Titles/TitleRow/Glyph: TextureRect
+Card/Scroll/Stack/Body/Info/Header/Titles/TitleRow/Title: Label "Code expired"
 Card/Scroll/Stack/Body/Info/Actions/TryAgain: Button "Get a new code" [focus 1]
 Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Close" [focus 2]
 == denied ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
-Card/Scroll/Stack/Body/Info/Header/Status: Label "Sign-in was declined."
+Card/Scroll/Stack/Body/Info/Header/Titles/TitleRow/Title: Label "Sign in"
+Card/Scroll/Stack/Body/Info/Header/Titles/Status: Label "Sign-in was declined."
 Card/Scroll/Stack/Body/Info/Actions/TryAgain: Button "Try again" [focus 1]
 Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Close" [focus 2]
 == failed ==
 Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Stack/Body/Info/Header/TitleRow/Title: Label "Sign in"
-Card/Scroll/Stack/Body/Info/Header/Status: Label "Sign-in failed. Check your connection and try again."
+Card/Scroll/Stack/Body/Info/Header/Titles/TitleRow/Title: Label "Sign in"
+Card/Scroll/Stack/Body/Info/Header/Titles/Status: Label "Sign-in failed. Check your connection and try again."
 Card/Scroll/Stack/Body/Info/Actions/TryAgain: Button "Try again" [focus 1]
 Card/Scroll/Stack/Body/Info/Actions/Cancel: Button "Close" [focus 2]

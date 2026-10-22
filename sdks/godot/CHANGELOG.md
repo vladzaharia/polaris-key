@@ -13,6 +13,23 @@ SDK: `.github/workflows/publish-sdks.yml` stamps `plugin.cfg`'s `version` and `P
   Migrating: pass the https offers URL to get the paywall's Buy in your browser button (without it the not-available paywall has no button).
 
 - **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
+- **The kit follows UI-KITS.md.** Copy: the English template strings that the kit catalog words
+  differently now read as it does ("Update now" and "Later" for the update prompt, "Update" for the
+  gate's fix, "Offline · 3 days left", "Code expires in 2:05", the Welcome lede "Sign in or use a
+  license key to continue.", "{product} needs … of new content"); a game's Translation or `copy`
+  override keyed by an old string moves to the new one. New keys: `status_update`,
+  `channel_not_entitled_title`, `banner_last_day`, `banner_reconnect`, `banner_dismiss`,
+  `settings_managed`, `settings_search`, `sign_in_code_title`, `sign_in_go_to`, `sign_in_scan_tv`.
+  Behaviour: the device-code view is titled "Sign in with a code", counts down in a determinate ring
+  (`PKeyCountdownRing`) and puts the address after the code; Welcome's extras (Continue free, Activate
+  offline, Restore purchases) are one row of links under a lede; a refusal's title leads the end pane,
+  not the product pane, and a channel the license lacks has its own title; the grace banner says "last
+  day", offers Reconnect and Dismiss (dismissed for the session; `PKeyStatusBanner.reconnect_requested`,
+  `dismissed`); the update modal is titled "<Product> <version>" with the icon alone above it; rows
+  a policy locks form "Managed settings" last, a list over 12 rows has a search field, and a failed
+  load has Try again; the gate shows nothing for the first 250 ms of its license check, then the
+  identity, a label and the shimmer. The product header's name is weight 500.
+
 - **US spelling and shorter kit copy.** The English template strings `Sign-in was cancelled.`, `The
 purchase was cancelled.` and `Last seen %s` read `Sign-in was canceled.`, `The purchase was
 canceled.` and `Last used %s`; `Your license doesn't include this release channel.` drops

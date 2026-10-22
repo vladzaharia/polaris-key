@@ -21,6 +21,9 @@ extends RefCounted
 ##   visible     false while `dependsOn` {key, equals} does not hold
 ##   advanced    ui.advanced: behind the panel's toggle
 
+## The category of every row a policy locks: "Managed settings" (UI-KITS.md §4.3), last.
+const MANAGED := "pkey:managed"
+
 const BADGES := {
 	&"local": "settings_badge_local",
 	&"env": "settings_badge_env",
@@ -77,7 +80,7 @@ static func _row(config: PKeyConfig, key: String, entry: Dictionary, source: Str
 		"key": key,
 		"label": String(entry.get("label", key)) if entry.get("label") is String else key,
 		"description": String(entry.get("description", "")) if entry.get("description") is String else "",
-		"category": String(entry.get("category", "")) if entry.get("category") is String else "",
+		"category": MANAGED if enforced else (String(entry.get("category", "")) if entry.get("category") is String else ""),
 		"order": float(ui["order"]) if PKeyClaims.is_number(ui.get("order")) else INF,
 		"position": position,
 		"widget": widget,
@@ -132,6 +135,11 @@ static func _sort(rows: Array) -> void:
 	rows.sort_custom(func(a, b):
 		var ra: Array = cat_rank[a["category"]]
 		var rb: Array = cat_rank[b["category"]]
+		# The managed group closes the list, whatever its rows' orders.
+		var ma: bool = a["category"] == MANAGED
+		var mb: bool = b["category"] == MANAGED
+		if ma != mb:
+			return mb
 		if ra != rb:
 			return ra[0] < rb[0] or (ra[0] == rb[0] and ra[1] < rb[1])
 		if a["order"] != b["order"]:

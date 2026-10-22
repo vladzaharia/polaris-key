@@ -934,6 +934,9 @@ static func build_with(dark: bool, p_accent: Color, regular: Font, bold: Font, m
 	t.set_font_size("font_size", "PKeyMono", TYPE_BODY)
 	t.set_color("font_color", "PKeyMono", p.strong)
 	t.set_color("font_color", "PKeyStrong", p.strong)
+	# The product header's name, the address to type and a name in a row: weight 500 (DL12).
+	if medium != null:
+		t.set_font("font", "PKeyStrong", medium)
 	t.set_color("font_color", "PKeyError", p.danger)
 	t.set_color("font_color", "PKeyWarning", PKeyBrand.Dark.WARNING if dark else PKeyBrand.Light.WARNING)
 	t.set_stylebox("panel", "PKeyAvatar", _box(p.sunken, p.border, 1, RADIUS_FULL, 0))

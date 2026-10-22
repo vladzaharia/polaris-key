@@ -51,6 +51,9 @@ static func open(parent: Node = null) -> PKeySettingsPanel:
 
 const FREE_ON_CLOSE_META := &"pkey_free_on_close"
 
+## The number of rows from which the filter shows.
+const SEARCH_FROM := 12
+
 ## Offer Close (and close on Escape or a pad's B): set by `open()`; off for a panel a game's
 ## own menu holds.
 var closable := false:
@@ -85,6 +88,10 @@ var _close_row: BoxContainer
 var _close: Button
 var _title: Label
 var _empty: Label
+## A filter over the rows, from SEARCH_FROM rows up (UI-KITS.md §4.3); and Try again after a load
+## that failed.
+var _search: LineEdit
+var _retry: Button
 var _advanced: CheckButton
 var _list: VBoxContainer
 var _signature := ""
@@ -98,11 +105,22 @@ var _writing := false
 func _build() -> void:
 	name = "PKeySettingsPanel"
 	_frame = vbox(card_panel("Card", false), "Frame", "PKeySections")
-	_head = vbox(_frame, "Head", "PKeyTight")
+	_head = vbox(_frame, "Head", "PKeyStack")
 	_product = product_header(_head, "Product")
 	_product.card = true
-	_title = label(_head, "Title", "PKeyTitle")
-	_empty = label(_head, "Empty", "PKeyMuted")
+	var titles := vbox(_head, "Titles", "PKeyTight")
+	_title = label(titles, "Title", "PKeyTitle")
+	_empty = label(titles, "Empty", "PKeyMuted")
+	_search = LineEdit.new()
+	_search.name = "Search"
+	_search.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_search.clear_button_enabled = true
+	_search.visible = false
+	_search.text_changed.connect(func(_t: String) -> void: refresh_view())
+	_head.add_child(_search)
+	_retry = button(_head, "Retry", _on_retry)
+	_retry.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_retry.visible = false
 	_body = columns(_frame, "Body")
 	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_rail_panel = PanelContainer.new()
@@ -425,7 +443,18 @@ func _render() -> void:
 	var pending := cfg != null and cfg.enabled() and not cfg.has_meta(&"pkey_schema_done")
 	var catalogued := cfg != null and not cfg.catalog().is_empty()
 	var shown := rows.filter(func(r): return r["visible"] and (show_advanced or not r["advanced"]) and not ((pending or catalogued or failed) and cfg.catalog_entry(r["key"]).is_empty()))
-	show_text(_empty, (t.text("settings_loading") if pending else (t.text("settings_offline") if failed and not catalogued else t.text("settings_empty"))) if shown.is_empty() else "")
+	# A long list gets a filter above it; the rows keep their groups.
+	var searchable := shown.size() > SEARCH_FROM
+	_search.visible = searchable or _search.text != ""
+	_search.placeholder_text = t.text("settings_search")
+	_search.accessibility_name = t.text("settings_search")
+	if _search.visible and _search.text.strip_edges() != "":
+		var q := _search.text.strip_edges().to_lower()
+		shown = shown.filter(func(r): return String(r["label"]).to_lower().contains(q) or String(r["description"]).to_lower().contains(q))
+	var load_failed := failed and not catalogued
+	show_text(_empty, (t.text("settings_loading") if pending else (t.text("settings_offline") if load_failed else t.text("settings_empty"))) if shown.is_empty() else "")
+	# A load that failed is an error, never an empty list: with Try again beside it (DL7).
+	show_text(_retry, t.text("retry") if load_failed and shown.is_empty() else "")
 	var sig := JSON.stringify(shown.map(func(r): return [r["key"], r["widget"], r["editable"], r["category"], r["options"].size(), r["min"] > -1e8 and r["max"] < 1e8]))
 	if sig != _signature:
 		_rebuild(shown)
@@ -483,7 +512,7 @@ func _rebuild(shown: Array) -> void:
 			var holder := vbox(_list, "Group_%s" % _safe(category if category != "" else "General"), "PKeyTight")
 			if category != "":
 				var h := label(holder, "Category", "PKeyMuted", true)
-				h.text = tr(category)
+				h.text = _group_name(category)
 			var panel := PanelContainer.new()
 			panel.name = "List"
 			panel.theme_type_variation = "PKeyRail"
@@ -494,10 +523,9 @@ func _rebuild(shown: Array) -> void:
 	if section >= _groups.size():
 		section = 0
 	for i in _groups.size():
-		var name_text: String = _groups[i]["category"] if _groups[i]["category"] != "" else c().text("settings_general")
 		var b := Button.new()
 		b.name = "Section_%d" % i
-		b.text = tr(name_text) if _groups[i]["category"] != "" else name_text
+		b.text = _group_name(_groups[i]["category"]) if _groups[i]["category"] != "" else c().text("settings_general")
 		b.toggle_mode = true
 		b.theme_type_variation = &"PKeyRailItem"
 		# 0 is the start edge (left to right); the layout direction mirrors it.
@@ -519,6 +547,24 @@ func _rebuild(shown: Array) -> void:
 			input = (input as SpinBox).get_line_edit()
 		if input is Control:
 			(input as Control).grab_focus.call_deferred()
+
+
+## A group's heading: the catalog's category (the developer's data, still passed through tr()), or
+## "Managed settings" for the rows a policy locks.
+func _group_name(category: String) -> String:
+	return c().text("settings_managed") if category == PKeySettingsController.MANAGED else tr(category)
+
+
+## Ask the Worker for the catalog again after a failed load.
+func _on_retry() -> void:
+	var cfg := _config()
+	if cfg == null:
+		return
+	for m in [&"pkey_schema_failed", &"pkey_schema_asked", &"pkey_schema_done"]:
+		if cfg.has_meta(m):
+			cfg.remove_meta(m)
+	_fetch_schema(cfg)
+	refresh_view()
 
 
 func _select_section(i: int) -> void:
@@ -894,7 +940,7 @@ static func _show_value(v: Variant, r: Dictionary) -> String:
 
 
 func _focus_chain() -> Array:
-	var out: Array = []
+	var out: Array = [_search, _retry]
 	if _rail_panel.visible:
 		out.append_array(_rail_buttons)
 	for k in _controls:
@@ -962,7 +1008,7 @@ func _after_wire() -> void:
 func _initial_focus() -> Control:
 	var chain := focus_order()
 	for ctl in chain:
-		if not _rail_buttons.has(ctl) and ctl != _advanced and ctl != _close:
+		if not _rail_buttons.has(ctl) and ctl != _advanced and ctl != _close and ctl != _search:
 			return ctl
 	if _rail_panel.visible and not _rail_buttons.is_empty():
 		var rail_btn: Button = _rail_buttons[clampi(section, 0, _rail_buttons.size() - 1)]

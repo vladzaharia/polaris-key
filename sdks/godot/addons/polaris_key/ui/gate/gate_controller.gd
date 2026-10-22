@@ -54,6 +54,10 @@ static func is_usable_screen(screen: String) -> bool:
 ## The screen's copy: {title, body, detail} as PKeyUiCopy keys (detail may carry an argument as
 ## [key, arg]); "" for none. `status` refines not-available's body.
 static func copy_for(screen: String, status: String, allowed_range: Variant = null) -> Dictionary:
+	# Five refusals, five screens (StatusScreen "Must not"): a channel the license does not include
+	# says so under its own title, never "newer than your license allows".
+	if screen == "not-available" and status == "channel-not-entitled":
+		return {"title": "channel_not_entitled_title", "body": "channel_not_entitled_body", "detail": ""}
 	match screen:
 		"loading":
 			return {"title": "", "body": "gate_loading", "detail": ""}

@@ -1,8 +1,11 @@
 == grace ==
-Card/Row/Glyph: TextureRect
-Card/Row/Lines/Line0: Label "Offline — 3 days left"
-Card/Row/Lines/Line1: Label "Checked 3 hours ago"
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Lines/Line0: Label "Offline · 3 days left"
+Card/Body/Row/Lines/Line1: Label "Checked 3 hours ago"
+Card/Body/Actions/Reconnect: Button "Reconnect" [focus 1]
+Card/Body/Actions/Dismiss: Button "Dismiss" [focus 2]
 == update available ==
-Card/Row/Lines/Line0: Label "An update is available"
+Card/Body/Row/Lines/Line0: Label "An update is available"
+Card/Body/Actions/Dismiss: Button "Dismiss" [focus 1]
 == nothing to say ==
 <hidden>

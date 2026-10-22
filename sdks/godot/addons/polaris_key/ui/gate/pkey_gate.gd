@@ -95,6 +95,14 @@ var _retrying := false
 
 func _process(_delta: float) -> void:
 	_tick_loading()
+	# The check is taking long enough to show: the card (identity, label, shimmer) appears now.
+	if screen == "loading" and not _card.visible and _loading_due():
+		refresh_view()
+
+
+## DL7: a wait shows nothing for its first 250 ms.
+func _loading_due() -> bool:
+	return _loading_since > 0 and Time.get_ticks_msec() - _loading_since >= 250
 
 
 func _bleeds() -> bool:
@@ -204,7 +212,17 @@ func _arrange(m: Dictionary) -> void:
 	var bleed := phone_bleed()
 	set_columns(_split, two)
 	_split.size_flags_vertical = Control.SIZE_EXPAND_FILL if bleed else Control.SIZE_FILL
-	_pane.visible = (_product.visible or _head.visible) and not _activation_owns_screen()
+	# DL1: the passport pane holds the product and nothing else; a refusal's title and message lead
+	# the end pane, above the form it concerns. In one column they sit under the product.
+	# (Deferred: a child's _ready can ask for this layout while the form is still setting up its
+	# children, and a node cannot move out of a parent that is busy.)
+	# Squeezed, the title goes back under the product: the end pane then holds the form alone
+	# (DL3: decoration and secondary lines give way before the form scrolls).
+	var head_in_end := two and squeeze_level() == 0
+	var head_home: Node = _main if head_in_end else _aside
+	if _head.get_parent() != head_home:
+		_move_head.call_deferred(head_in_end)
+	_pane.visible = (_product.visible or (_head.visible and not head_in_end)) and not _activation_owns_screen()
 	# The last squeeze step drops the secondary line (the version range, say) before any scrolling.
 	_detail.visible = _detail.text != "" and squeeze_level() < 3
 	if two:
@@ -245,6 +263,14 @@ func _arrange(m: Dictionary) -> void:
 		_card.theme_type_variation = &"PKeyCard"
 	super(m)
 	fit_scrolls(available_height(), outer_view() == self or embedded)
+
+
+## Move the refusal's title and message between the passport pane's column and the end pane.
+func _move_head(two: bool) -> void:
+	if not is_inside_tree() or _head.get_parent() == null:
+		return
+	place(_head, _main if two else _aside, 0 if two else -1)
+	queue_layout()
 
 
 ## A label's own start alignment (mirrored with the layout direction).
@@ -312,7 +338,11 @@ func _render() -> void:
 	var inline := screen == "error" and not network_error
 	if not embedded:
 		visible = screen != "usable"
-	_card.visible = not is_usable
+	# Loading shows nothing for its first 250 ms, then the identity, a muted label and the shimmer
+	# (DL7); a license check that finishes sooner never flashes a card.
+	var waiting := screen == "loading"
+	set_loading(waiting or _retrying)
+	_card.visible = not is_usable and not (waiting and not _loading_due())
 	# Grace lets the game run: no backdrop, no input captured, only the banner strip.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if is_usable else Control.MOUSE_FILTER_STOP
 	# The full-rect CenterContainer would catch the game's clicks (a Container passes by default).
@@ -322,8 +352,7 @@ func _render() -> void:
 	if ctl["banner"]:
 		banner.show_state(status)
 	_product.refresh()
-	set_loading(_retrying)
-	set_process(_retrying)
+	set_process(_retrying or waiting)
 	# One state per screen: a rejected key is the activation form with its message inline.
 	var title_key: String = cp["title"]
 	var body_key: String = cp["body"]
@@ -347,12 +376,14 @@ func _render() -> void:
 	_glyph.visible = net
 	var wants_form: bool = ctl["activation"] and not net
 	activation.visible = wants_form
+	# A refusal's own title leads its screen; only the Welcome form says what to do.
+	activation.show_lede = screen == "activation" or screen == "error"
 	activation.form_title = t.text("use_another_license") if screen == "not-available" else ""
 	if inline:
 		if activation.message != error:
 			activation.show_message(error)
 
-	show_text(_update, t.text("update_action") if ctl["update_action"] else "")
+	show_text(_update, t.text("status_update") if ctl["update_action"] else "")
 	var retry_on: bool = (ctl["retry"] and not inline)
 	show_text(_retry, t.text("retry") if retry_on else "")
 	# A lone action is the primary; beside the update action, or beside a way forward, Try again is not.
@@ -370,7 +401,18 @@ func _focus_chain() -> Array:
 	if activation.visible:
 		out.append_array(activation._focus_chain())
 	out.append_array([_update, _retry, _offline_btn])
+	# Grace's strip (Reconnect, Dismiss) is part of this view's chain: a pad reaches it from here.
+	if banner != null and banner.is_visible_in_tree():
+		out.append_array(banner._focus_chain())
 	return out
+
+
+## Grace lets the game run: its strip never takes the focus from the game on its own; the first
+## direction press while nothing is focused asks for it.
+func ensure_focus(force := false) -> bool:
+	if PKeyGateController.is_usable_screen(screen) and not force:
+		return false
+	return super(force)
 
 
 ## A stop card puts the focus on Try again (or the update action); the form on its first control,

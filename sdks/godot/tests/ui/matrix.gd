@@ -66,6 +66,19 @@ const STRETCHED := [
 ## through its scroll fallback (asserted: reachable by pad) and does not promise two columns. Every other
 ## screen and look, at every size, must show its primary and its user code without scrolling.
 const TIGHT_CASES := [
+	# The catalog's longer sentences (the QR line of the device-code view, "{product} couldn't start")
+	# at a game's 36 px type and 800 px, and in German on a 360 px canvas.
+	["sign_in.pad", "native36", "1280x800"],
+	["gate.network", "native", "pixel-art canvas_items 640x360 keep"],
+	# The refusal screens keep the title with the form when the pane has room; on a 360 px canvas the
+	# card goes to one column and scrolls (the title stays in view, the primary is a pad press away).
+	["gate.revoked", "native", "pixel-art canvas_items 640x360 keep"],
+	["gate.revoked", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.channel", "native", "pixel-art canvas_items 640x360 keep"],
+	["gate.channel", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.revoked", "native36", "1170x2532@3"],
+	["gate.channel", "native36", "1170x2532@3"],
+	["gate.unavailable", "native28", "1170x2532@3"],
 	# A game's 22 px theme with unspaced Japanese on a 390 dp wide phone: the reply's Import is a scroll away.
 	["offline", "custom", "1170x2532@3"],
 	["gate.offline", "custom", "1170x2532@3"],
@@ -184,6 +197,8 @@ const SCREENS := [
 	["gate.device_limit_qr", "gate", "device limit, replace a device (QR)", "full", "pad"],
 	["gate.error", "gate", "needs-activation after an error", "full"],
 	["gate.expired", "gate", "expired", "full"],
+	["gate.revoked", "gate", "revoked", "full"],
+	["gate.channel", "gate", "channel-not-entitled", "full"],
 	["gate.update", "gate", "version-too-old with a store action", "full"],
 	["activation", "activation", "license on, identity on, enrolment on, native", "full"],
 	["activation.device_limit", "activation", "device limit, replace a device (QR)", "full", "pad"],
@@ -223,6 +238,8 @@ const COLUMNS := {
 	"gate.sign_in": ["QrCode", "UserCode"],
 	"gate": ["Aside", "Form"],
 	"gate.error": ["Aside", "Form"],
+	"gate.revoked": ["Aside", "Form"],
+	"gate.channel": ["Aside", "Form"],
 	"gate.presented": ["Aside", "Form"],
 	"gate.presented_monogram": ["Aside", "Form"],
 	"gate.presented_long": ["Aside", "Form"],
@@ -233,7 +250,7 @@ const COLUMNS := {
 }
 
 ## The screens that put an identity pane beside a form: two panes only at an aspect of 1.5 or more.
-const WIDE_SCREENS := ["gate", "gate.error", "activation", "gate.presented", "gate.presented_monogram", "gate.presented_long", "gate.presented_rtl"]
+const WIDE_SCREENS := ["gate", "gate.error", "gate.revoked", "gate.channel", "activation", "gate.presented", "gate.presented_monogram", "gate.presented_long", "gate.presented_rtl"]
 const MOBILE_BODY_DP := 16
 const MOBILE_CONTROL_DP := 48
 

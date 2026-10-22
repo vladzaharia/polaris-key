@@ -516,7 +516,7 @@ func _settings_schema(t: PKeyTestContext) -> void:
 	var labels: Array = panel._controls.values().map(func(n): return (n["label"] as Label).text)
 	t.check("settings: rows read their catalog labels, never their keys", labels.has("Master volume") and labels.has("Theme") and not labels.has("ui.theme"), str(labels))
 	var names: Array = panel._rail_buttons.map(func(b): return (b as Button).text)
-	t.check("settings: an uncategorised group is named General", names.has("General") and names.has("Look") and not names.has("settings_title"), str(names))
+	t.check("settings: an uncategorised group is named General, and the locked theme row moves to Managed settings", names.has("General") and names.has("Managed settings") and not names.has("Look") and not names.has("settings_title"), str(names))
 	await _until(func() -> bool: return panel.is_ancestor_of(_tree().root.gui_get_focus_owner()) if _tree().root.gui_get_focus_owner() != null else false, 3.0)
 	t.check("settings: the focus left the game for the panel", panel.is_ancestor_of(_tree().root.gui_get_focus_owner()) if _tree().root.gui_get_focus_owner() != null else false)
 	game.queue_free()
