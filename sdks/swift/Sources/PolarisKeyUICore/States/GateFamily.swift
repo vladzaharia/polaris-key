@@ -215,7 +215,7 @@ extension KitStates {
                 [
                     c.line("core.gate.version-too-new.title"),
                     c.line("core.gate.version-too-new.message", c.productArg),
-                ] + allowedLine())
+                ] + allowedLine() + [c.line("common.tryAgain")])
         case .channelNotEntitled:
             var lines = [
                 c.line("core.gate.channel-not-entitled.title"),

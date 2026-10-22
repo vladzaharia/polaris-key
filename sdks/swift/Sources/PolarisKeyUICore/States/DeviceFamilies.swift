@@ -70,7 +70,7 @@ extension KitStates {
         ]
         if KitLinks.valid(i.activation?.manageUrl) != nil {
             if i.platform.isTV {
-                lines += [c.line("deviceLimit.scan"), c.line("a11y.qr")]
+                lines += [c.line("deviceLimit.scan"), c.line("a11y.qrManage")]
             } else {
                 lines += [c.line("deviceLimit.openBrowser"), c.line("a11y.externalLink")]
             }
