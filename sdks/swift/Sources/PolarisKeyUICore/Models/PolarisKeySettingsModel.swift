@@ -190,7 +190,7 @@ public final class PolarisKeySettingsModel {
         let stream = client.events
         observation = Task { [weak self] in
             await self?.load()
-            for await event in stream {
+            for await _ in stream {
                 guard let self else { return }
                 await self.reloadAccount()
             }
