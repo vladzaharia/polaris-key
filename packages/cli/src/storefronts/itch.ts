@@ -11,6 +11,7 @@
 import { ciStore } from "./allowList.js";
 import type { StepOutlet } from "./outlets.js";
 import type { StoreStep } from "./run.js";
+import { UsageError } from "../errors.js";
 
 /** The platform words itch.io recognises at the start of a channel name. */
 export const ITCH_PLATFORMS = ["windows", "linux", "mac", "android"] as const;
@@ -21,13 +22,13 @@ const CHANNEL_SUFFIX = /^[a-z0-9]{1,32}$/;
 /** The butler channel for a platform and release channel. */
 export function itchChannel(platform: string, channel?: string): string {
   if (!(ITCH_PLATFORMS as readonly string[]).includes(platform))
-    throw new Error(
+    throw new UsageError(
       `--platform must be one of ${ITCH_PLATFORMS.join(", ")} (got ${JSON.stringify(platform)}): itch.io tags an upload by its channel's platform word.`,
     );
   if (channel === undefined || channel === "stable") return platform;
   const suffix = channel.toLowerCase();
   if (!CHANNEL_SUFFIX.test(suffix))
-    throw new Error(
+    throw new UsageError(
       `--channel ${JSON.stringify(channel)} cannot suffix a butler channel (1-32 lower-case letters and digits).`,
     );
   return `${platform}-${suffix}`;

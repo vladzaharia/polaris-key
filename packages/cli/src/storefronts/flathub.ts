@@ -26,6 +26,7 @@ import {
   type PrInputBuild,
   type PrInputs,
 } from "./prInputs.js";
+import { UsageError } from "../errors.js";
 
 export interface FlathubOptions {
   /** The MetaInfo `project_license` (SPDX). Default `LicenseRef-proprietary`. */
@@ -389,14 +390,14 @@ export function generateFlathubSkeleton(
   const command = o.command ?? slug;
   const runtimeVersion = o.runtimeVersion ?? FLATHUB_RUNTIME_VERSION;
   if (!RUNTIME_VERSION_PATTERN.test(runtimeVersion))
-    throw new Error(
+    throw new UsageError(
       `--runtime-version must be a Freedesktop SDK branch such as ${FLATHUB_RUNTIME_VERSION} (got ${runtimeVersion}).`,
     );
   if (
     !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/.test(command) ||
     command.includes("..")
   )
-    throw new Error(
+    throw new UsageError(
       `--command must be a relative path inside the build (got ${command}).`,
     );
   const builds = linuxBuilds(i);

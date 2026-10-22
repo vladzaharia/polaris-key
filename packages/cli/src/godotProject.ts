@@ -33,6 +33,7 @@
 import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { UsageError } from "./errors.js";
 
 // ── The ConfigFile format ────────────────────────────────────────────────────────────────────
 
@@ -465,7 +466,7 @@ export async function readGodotListing(
       if (!presetsRead.some((r) => r.startsWith(`${p} (`)))
         warnings.push(`no export preset named "${p}"`);
   } else if (opts.presets?.length) {
-    throw new Error(
+    throw new UsageError(
       `--preset was given but ${root} has no export_presets.cfg.`,
     );
   }

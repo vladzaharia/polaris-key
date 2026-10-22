@@ -8,6 +8,17 @@
  */
 
 /**
+ * The user passed a bad argument or flag value: exit 2. Throw it where a command refuses its
+ * input; a runtime failure (network, a server refusal, file IO) stays a plain `Error` (exit 1).
+ */
+export class UsageError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UsageError";
+  }
+}
+
+/**
  * A message that carries its command's `Usage:` lines, or that opens by faulting a flag
  * (`--bp must be ...`, `--product is required.`), is a usage error (exit 2).
  */

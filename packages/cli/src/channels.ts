@@ -13,6 +13,7 @@
 
 import { ciClient, type Out, type Sleep } from "./ci.js";
 import { resolveCiToken, type CiEnv } from "./oidc.js";
+import { UsageError } from "./errors.js";
 
 export type PointerOp = "promote" | "pin" | "unpin";
 
@@ -61,7 +62,7 @@ export async function movePointer(
   },
 ): Promise<Record<string, unknown>> {
   if (!opts.channel)
-    throw new Error(`--channel is required.\n${CHANNEL_USAGE}`);
+    throw new UsageError(`--channel is required.\n${CHANNEL_USAGE}`);
   if (opts.op !== "unpin" && !opts.releaseId)
     throw new Error(
       `pkey release ${opts.op} needs a release id.\n${CHANNEL_USAGE}`,
@@ -93,7 +94,8 @@ export async function yankRelease(
 ): Promise<Record<string, unknown>> {
   if (!opts.releaseId)
     throw new Error(`pkey release yank needs a release id.\n${CHANNEL_USAGE}`);
-  if (!opts.reason) throw new Error(`--reason is required.\n${CHANNEL_USAGE}`);
+  if (!opts.reason)
+    throw new UsageError(`--reason is required.\n${CHANNEL_USAGE}`);
   const client = await clientFor(opts);
   const body = await client.postJson(
     `release/releases/${encodeURIComponent(opts.releaseId)}/yank`,

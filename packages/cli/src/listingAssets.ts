@@ -70,6 +70,7 @@ import {
   type ScreenshotClass,
   type TextAllowed,
 } from "./listing/specs.js";
+import { UsageError } from "./errors.js";
 
 export const LISTING_ASSETS_USAGE =
   "Usage: pkey listing assets --out <dir> [--icon <png>] [--key-art <png>]\n" +
@@ -218,7 +219,7 @@ async function loadScreenshots(
       !e.isDirectory() ||
       !(SCREENSHOT_CLASSES as readonly string[]).includes(e.name)
     )
-      throw new Error(
+      throw new UsageError(
         `--screenshots ${dir}: ${e.name} is not a size-class directory (${SCREENSHOT_CLASSES.join(", ")}).`,
       );
     const cls = e.name as ScreenshotClass;
@@ -227,7 +228,7 @@ async function loadScreenshots(
       .sort();
     for (const f of files) {
       if (!SCREENSHOT_EXT.test(f) || !/^[A-Za-z0-9_.-]+$/.test(f))
-        throw new Error(
+        throw new UsageError(
           `--screenshots ${dir}/${cls}/${f}: screenshots are .png, .jpg or .webp files with plain names.`,
         );
       const p = path.join(root, cls, f);
@@ -248,7 +249,7 @@ async function loadScreenshots(
   for (const s of out) {
     const key = `${s.cls}/${s.name}`;
     if (names.has(key))
-      throw new Error(
+      throw new UsageError(
         `--screenshots: two ${s.cls} files are named ${s.name} (ids must be unique).`,
       );
     names.add(key);
@@ -276,7 +277,7 @@ async function clearOut(dir: string): Promise<void> {
     previous.format !== REPORT_FORMAT ||
     !Array.isArray(previous.files)
   )
-    throw new Error(
+    throw new UsageError(
       `--out ${dir} is not empty and holds no ${REPORT_FORMAT} report.json: give an empty or new directory.`,
     );
   const dirs = new Set<string>();
@@ -397,14 +398,16 @@ export async function listingAssets(
   )
     throw new Error(`Give at least one input.\n${LISTING_ASSETS_USAGE}`);
   if (opts.upload && !opts.product?.trim())
-    throw new Error(`--upload needs --product.\n${LISTING_ASSETS_USAGE}`);
+    throw new UsageError(`--upload needs --product.\n${LISTING_ASSETS_USAGE}`);
   if (!opts.upload && opts.dryRun)
-    throw new Error(
+    throw new UsageError(
       "--dry-run applies to --upload only (without --upload nothing is sent).",
     );
   const locale = opts.locale?.trim() || null;
   if (locale !== null && !LOCALE_RE.test(locale))
-    throw new Error(`--locale ${locale} is not a locale code such as en-US.`);
+    throw new UsageError(
+      `--locale ${locale} is not a locale code such as en-US.`,
+    );
   const focal = opts.focal ? parseFocal(opts.focal) : { x: 0.5, y: 0.5 };
   const focalPortrait = opts.focalPortrait
     ? parseFocal(opts.focalPortrait)
@@ -413,7 +416,7 @@ export async function listingAssets(
   const dir = path.resolve(opts.cwd, opts.out);
   // Refuse a foreign --out before any decoding.
   if (existsSync(dir) && !(await stat(dir)).isDirectory())
-    throw new Error(`--out ${opts.out} is not a directory.`);
+    throw new UsageError(`--out ${opts.out} is not a directory.`);
 
   // ── Inputs ──
   opts.progress?.stage("Reading the masters");
@@ -429,7 +432,7 @@ export async function listingAssets(
   for (const m of masterList) masters[m.slot] = m.decoded.raster;
   const icon = masters["icon-master"];
   if (icon && icon.width !== icon.height)
-    throw new Error(
+    throw new UsageError(
       `--icon must be square (got ${icon.width}x${icon.height}); a 1024x1024 master is best.`,
     );
   if (

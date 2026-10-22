@@ -11,6 +11,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadManifest } from "./manifest.js";
+import { UsageError } from "./errors.js";
 
 export const DEV_DEFAULT_PORT = 8787;
 export const DEV_CONFIG_FILE = "polaris-key.json";
@@ -303,6 +304,10 @@ export async function controlDev(args: DevArgs, io: DevIo): Promise<number> {
     const key = args.positional[0];
     if (!key)
       throw new Error(`Usage: pkey dev ${sub} <key>  (${DEV_KEYS.join(", ")})`);
+    if (!(DEV_KEYS as readonly string[]).includes(key))
+      throw new UsageError(
+        `${key} is not a test key. The test keys are ${DEV_KEYS.join(", ")}.`,
+      );
     body = { key };
   } else if (sub === "config") {
     const [name, raw] = args.positional;
@@ -312,7 +317,7 @@ export async function controlDev(args: DevArgs, io: DevIo): Promise<number> {
     try {
       value = JSON.parse(raw);
     } catch {
-      throw new Error(`${raw} is not JSON; quote strings: '"high"'.`);
+      throw new UsageError(`${raw} is not JSON; quote strings: '"high"'.`);
     }
     body = { name, value, ...(args.key ? { key: args.key } : {}) };
   } else if (sub === "release") {
@@ -323,7 +328,9 @@ export async function controlDev(args: DevArgs, io: DevIo): Promise<number> {
   } else if (sub === "offline" || sub === "online") {
     body = {};
   } else {
-    throw new Error(`Unknown dev command ${sub}.\n${DEV_USAGE.join("\n")}`);
+    throw new UsageError(
+      `Unknown dev command ${sub}.\n${DEV_USAGE.join("\n")}`,
+    );
   }
 
   let res: Response;

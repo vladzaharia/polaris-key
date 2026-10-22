@@ -25,6 +25,7 @@ import {
   type PrInputBuild,
   type PrInputs,
 } from "./prInputs.js";
+import { UsageError } from "../errors.js";
 
 export const WINGET_MANIFEST_VERSION = "1.12.0";
 
@@ -131,7 +132,7 @@ function installer(
       o.portable.includes("..") ||
       /^[A-Za-z]:/.test(o.portable)
     )
-      throw new Error(
+      throw new UsageError(
         `--portable must be a relative path inside the archive (got ${o.portable}).`,
       );
     out.NestedInstallerType = "portable";
@@ -164,7 +165,7 @@ export function generateWinget(
     o.command !== undefined &&
     !/^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$/.test(o.command)
   )
-    throw new Error(
+    throw new UsageError(
       `--command must be 1-40 letters, digits, ., _ or - (got ${o.command}).`,
     );
   const release = needRelease(i);

@@ -45,6 +45,7 @@ import { loadManifest, validateLoadedManifest } from "./manifest.js";
 import { declaredVariants, variantDirName } from "./packManifest.js";
 import { loadVariant, markerJson } from "./packPublish.js";
 import { reportDistribution } from "./distribution.js";
+import { UsageError } from "./errors.js";
 
 export const TRANSPORT_USAGE =
   "Usage: pkey transport apple-ba package --deliverable <packId> --release <v> --from <dir> [--content-api n]\n" +
@@ -149,13 +150,13 @@ export async function loadTransportProduct(
     throw new Error(`.pkey/ does not parse:\n  ${parsed.errors.join("\n  ")}`);
   const m = parsed.manifest;
   if (common.product && common.product !== m.product.slug)
-    throw new Error(
+    throw new UsageError(
       `--product ${common.product} does not match .pkey/product's slug ${m.product.slug}.`,
     );
   const packs = m.release?.packDeliverables ?? [];
   const pack = packs.find((p) => p.id === common.deliverable);
   if (!pack)
-    throw new Error(
+    throw new UsageError(
       `--deliverable ${common.deliverable} is not a pack .pkey/release declares (declared: ${packs.map((p) => p.id).join(", ") || "none"}).`,
     );
   return {
@@ -313,7 +314,7 @@ export function pickVariants(
       return variantKey(rest) === want;
     });
     if (!hit.length)
-      throw new Error(
+      throw new UsageError(
         `--variant ${wanted} is not a published variant of ${loaded.pack.id} (published: ${loaded.variants.map((v) => v.key || "default").join(", ")}).`,
       );
     return hit;
@@ -342,11 +343,11 @@ export function contentLevel(
   const level =
     given !== undefined ? Number(given) : loaded.app?.content?.contentApi;
   if (level === undefined)
-    throw new Error(
+    throw new UsageError(
       "--content-api is required: .pkey/release declares no deliverables.app.content.contentApi.",
     );
   if (!Number.isSafeInteger(level) || level < 1)
-    throw new Error(
+    throw new UsageError(
       `--content-api must be a whole number of at least 1 (got ${String(given)}).`,
     );
   const range = loaded.pack.requires.contentApi?.app;

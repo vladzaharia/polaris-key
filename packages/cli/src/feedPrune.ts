@@ -17,6 +17,7 @@
 import { ciClient, type Out, type Sleep } from "./ci.js";
 import { resolveCiToken, type CiEnv } from "./oidc.js";
 import { untrusted, untrustedJson, type UntrustedEnv } from "./untrusted.js";
+import { UsageError } from "./errors.js";
 
 /** Requests one `--apply` makes at most (200 versions each). */
 const MAX_ROUNDS = 50;
@@ -167,7 +168,7 @@ export async function feedsPrune(
   opts: FeedsPruneOptions,
 ): Promise<PruneReport> {
   if (!opts.product)
-    throw new Error(`--product is required.\n${FEEDS_PRUNE_USAGE}`);
+    throw new UsageError(`--product is required.\n${FEEDS_PRUNE_USAGE}`);
   const token = await resolveCiToken({
     baseUrl: opts.baseUrl,
     product: opts.product,

@@ -6,6 +6,7 @@
 
 import { effectiveTrackMap, parseManifest } from "@polaris-key/manifest";
 import { loadManifest, validateLoadedManifest } from "../manifest.js";
+import { UsageError } from "../errors.js";
 
 export interface StepOutlet {
   id: string;
@@ -44,7 +45,7 @@ export async function loadStepProduct(
     throw new Error(`.pkey/ does not parse:\n  ${parsed.errors.join("\n  ")}`);
   const m = parsed.manifest;
   if (product && product !== m.product.slug)
-    throw new Error(
+    throw new UsageError(
       `--product ${product} does not match .pkey/product's slug ${m.product.slug}.`,
     );
   return {
@@ -96,11 +97,11 @@ export function pickOutlet(
   if (outletId) {
     const o = p.outlets.find((x) => x.id === outletId);
     if (!o)
-      throw new Error(
+      throw new UsageError(
         `--outlet ${outletId} is not declared in .pkey/distribution.`,
       );
     if (!kinds.includes(o.kind))
-      throw new Error(
+      throw new UsageError(
         `--outlet ${outletId} is a ${o.kind} outlet, not a ${label} one (${kinds.join(", ")}).`,
       );
     return o;

@@ -43,6 +43,7 @@ import { putFile } from "./s3.js";
 import { untrusted, type UntrustedEnv } from "./untrusted.js";
 import { withZip, zipStore } from "./zip.js";
 import { apkSignerSha256 } from "./buildMetadata.js";
+import { UsageError } from "./errors.js";
 
 export const FEEDS_USAGE =
   "Usage: pkey feeds fdroid --product <slug> --channel <c> --out <dir>\n" +
@@ -556,7 +557,7 @@ export async function staleOutFiles(
 ): Promise<{ files: string[]; dirs: string[] }> {
   const up = path.relative(dir, path.resolve(cwd));
   if (up === "" || (up.split(path.sep)[0] !== ".." && !path.isAbsolute(up)))
-    throw new Error(
+    throw new UsageError(
       `--out ${dir} is the working directory or one of its parents; point it at a directory of its own (for example --out fdroid-repo).`,
     );
   let top;
@@ -566,7 +567,7 @@ export async function staleOutFiles(
     return { files: [], dirs: [] };
   }
   if (!top.isDirectory())
-    throw new Error(`--out ${dir} exists and is not a directory.`);
+    throw new UsageError(`--out ${dir} exists and is not a directory.`);
   const files: string[] = [];
   const dirs: string[] = [];
   const foreign: string[] = [];
@@ -594,7 +595,7 @@ export async function staleOutFiles(
     foreign.push(name);
   }
   if (foreign.length)
-    throw new Error(
+    throw new UsageError(
       `--out ${dir} holds files pkey feeds fdroid did not write (${foreign.slice(0, 5).join(", ")}${foreign.length > 5 ? ", ..." : ""}); point --out at a new or empty directory.`,
     );
   return { files, dirs };
@@ -683,7 +684,7 @@ export async function buildFdroidFeed(
   const out = opts.stdout;
   if (!opts.channel?.trim() || !opts.out?.trim()) throw new Error(FEEDS_USAGE);
   if ((opts.keystore === undefined) !== (opts.alias === undefined))
-    throw new Error(`--keystore and --alias go together.\n${FEEDS_USAGE}`);
+    throw new UsageError(`--keystore and --alias go together.\n${FEEDS_USAGE}`);
   // Check --out before anything is fetched: a refused directory costs no token.
   const dir = path.resolve(opts.cwd, opts.out);
   await staleOutFiles(dir, opts.cwd);
@@ -733,7 +734,7 @@ export async function buildFdroidFeed(
       }
     : undefined;
   if (icon && !/^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/.test(icon.name))
-    throw new Error(
+    throw new UsageError(
       "--icon must be a .png, .jpg or .webp file with a plain name.",
     );
   const repo = buildRepoFiles(inputs, timestamp, {

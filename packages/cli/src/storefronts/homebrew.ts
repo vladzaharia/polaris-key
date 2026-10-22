@@ -15,6 +15,7 @@ import {
   type PrInputBuild,
   type PrInputs,
 } from "./prInputs.js";
+import { UsageError } from "../errors.js";
 
 export interface HomebrewOptions {
   /** The `.app` bundle inside the dmg or zip. Default `<listing name>.app`. */
@@ -67,7 +68,7 @@ export function generateCask(
     );
   const app = o.app ?? `${i.app.name}.app`;
   if (!/\.app$/.test(app) || app.includes("/") || app.includes(".."))
-    throw new Error(`--app must name a .app bundle (got ${app}).`);
+    throw new UsageError(`--app must name a .app bundle (got ${app}).`);
   const desc = (i.app.shortDescription ?? i.app.subtitle ?? i.app.name)
     .trim()
     .replace(/\.$/, "");

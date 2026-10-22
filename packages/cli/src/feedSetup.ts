@@ -22,6 +22,7 @@ import {
   renderFeedSetup,
   type FeedSetupContext,
 } from "@polaris-key/manifest";
+import { UsageError } from "./errors.js";
 
 export const FEEDS_SETUP_USAGE =
   "Usage: pkey feeds setup --ecosystem <" +
@@ -47,17 +48,19 @@ export function feedsSetup(opts: FeedsSetupOptions): string {
   const { ecosystem, owner } = opts;
   if (!ecosystem || !owner) throw new Error(FEEDS_SETUP_USAGE);
   if (!isPackageEcosystem(ecosystem))
-    throw new Error(
+    throw new UsageError(
       `--ecosystem must be one of ${PACKAGE_ECOSYSTEMS.join(", ")}.\n${FEEDS_SETUP_USAGE}`,
     );
   if (opts.version && !opts.package)
-    throw new Error(`--version goes with --package.\n${FEEDS_SETUP_USAGE}`);
+    throw new UsageError(
+      `--version goes with --package.\n${FEEDS_SETUP_USAGE}`,
+    );
   if (opts.tokenEnv !== undefined && !isFeedTokenEnvName(opts.tokenEnv))
-    throw new Error(
+    throw new UsageError(
       `--token-env takes an environment variable's name (like PKEY_REGISTRY_TOKEN), never the token itself.`,
     );
   if (opts.tokenEnv !== undefined && ecosystem === "godot")
-    throw new Error(
+    throw new UsageError(
       `--token-env does not apply to godot: the editor and GodotEnv authenticate by a token in the feed's URL, which only the console shows.`,
     );
   const fields = PACKAGE_ECOSYSTEM_RULES[ecosystem].namespace.fields;

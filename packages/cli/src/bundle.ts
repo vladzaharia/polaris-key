@@ -103,6 +103,7 @@ import {
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { untrusted } from "./untrusted.js";
+import { UsageError } from "./errors.js";
 
 /**
  * The platform's production origin — the same value as `DEFAULT_BASE` in
@@ -216,11 +217,11 @@ export async function mintBundle(
   opts: MintBundleOptions,
 ): Promise<MintBundleResult> {
   const product = opts.product.trim();
-  if (!product) throw new Error(`--product is required.\n${BUNDLE_USAGE}`);
+  if (!product) throw new UsageError(`--product is required.\n${BUNDLE_USAGE}`);
 
   const deviceId = opts.deviceId.trim();
   if (!DEVICE_ID.test(deviceId)) {
-    throw new Error(
+    throw new UsageError(
       `--device must be 32 base64url characters (A-Z a-z 0-9 - _); got ${deviceId.length}. ` +
         "Copy it from the offline device's activation screen exactly, without spaces or line breaks.",
     );
@@ -231,7 +232,7 @@ export async function mintBundle(
     opts.graceDays < 1 ||
     opts.graceDays > MAX_GRACE_DAYS
   ) {
-    throw new Error(
+    throw new UsageError(
       `--grace-days must be a whole number from 1 to ${MAX_GRACE_DAYS}` +
         `${Number.isFinite(opts.graceDays) ? ` (got ${opts.graceDays})` : ""}. ` +
         "It is the offline window the minted documents grant, in days.",
@@ -349,7 +350,7 @@ export function normalizeBaseUrl(raw: string, credentialEnv: string): string {
   try {
     url = new URL(raw);
   } catch {
-    throw new Error(
+    throw new UsageError(
       `--base-url is not a valid URL: ${raw}. Give a full origin, e.g. ${DEFAULT_BASE_URL}.`,
     );
   }
@@ -357,7 +358,7 @@ export function normalizeBaseUrl(raw: string, credentialEnv: string): string {
     url.protocol === "http:" &&
     LOOPBACK_HOSTS.includes(url.hostname.toLowerCase());
   if (url.protocol !== "https:" && !loopback) {
-    throw new Error(
+    throw new UsageError(
       `--base-url must be https: (got ${url.protocol}//${url.host}). ` +
         `${credentialEnv} is sent to this origin as a credential, so plaintext http:// ` +
         "is only accepted for localhost/127.0.0.1 during local development.",

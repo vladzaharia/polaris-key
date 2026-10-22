@@ -10,6 +10,7 @@
  */
 
 import { needRelease, type GeneratedFile, type PrInputs } from "./prInputs.js";
+import { UsageError } from "../errors.js";
 
 export interface ScoopOptions {
   /** The app name (the manifest's file name). Default: the product slug. */
@@ -22,7 +23,7 @@ export const SCOOP_APP_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 export function scoopApp(i: PrInputs, o: ScoopOptions = {}): string {
   const app = o.app ?? i.product.slug.toLowerCase();
   if (!SCOOP_APP_PATTERN.test(app))
-    throw new Error(
+    throw new UsageError(
       `--app must be 1-64 lower-case letters, digits, ., _ or - (got ${app}).`,
     );
   return app;

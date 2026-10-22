@@ -24,6 +24,7 @@ import { untrusted } from "../untrusted.js";
 import { ciStore } from "./allowList.js";
 import type { StepOutlet } from "./outlets.js";
 import type { StoreStep } from "./run.js";
+import { UsageError } from "../errors.js";
 
 export interface SnapUploadOptions {
   outlet: StepOutlet;
@@ -46,7 +47,7 @@ export function snapReleaseChannels(
       : undefined,
   );
   if (channels.length === 0)
-    throw new Error(
+    throw new UsageError(
       "--channel is required: the release channel(s) to release to.",
     );
   const out: string[] = [];

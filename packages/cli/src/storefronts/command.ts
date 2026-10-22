@@ -38,6 +38,7 @@ import {
   snapUploadStep,
   writeSnapMetadata,
 } from "./snap.js";
+import { UsageError } from "../errors.js";
 
 export const STOREFRONT_USAGE =
   "Usage: pkey storefront itch push --platform windows|linux|mac|android --dir <dir> --version <v> [--channel c] [--outlet id]\n" +
@@ -78,7 +79,7 @@ function bool(a: StorefrontArgs, name: string): boolean {
 function need(a: StorefrontArgs, name: string, why: string): string {
   const v = str(a, name);
   if (!v)
-    throw new Error(`--${name} is required: ${why}.\n${STOREFRONT_USAGE}`);
+    throw new UsageError(`--${name} is required: ${why}.\n${STOREFRONT_USAGE}`);
   return v;
 }
 
@@ -115,7 +116,7 @@ export async function resolveSnapcraftYaml(
 function printAllowList(a: StorefrontArgs, io: StorefrontIo): number {
   const only = str(a, "store");
   if (only && !ciStore(only))
-    throw new Error(
+    throw new UsageError(
       `--store must be one of ${ciStoreIds().join(", ")} (got ${only}).`,
     );
   const stores = CI_PLANE.stores.filter((s) => !only || s.store === only);

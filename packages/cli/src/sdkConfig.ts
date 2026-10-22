@@ -34,6 +34,7 @@ import {
   type SdkLang,
 } from "@polaris-key/manifest/integration";
 import { untrusted } from "./untrusted.js";
+import { UsageError } from "./errors.js";
 
 // The renderers and their types live in @polaris-key/manifest/integration (SP-33a); the console's
 // Integration page calls the same functions.
@@ -51,7 +52,9 @@ export {
 export const SDK_CONFIG_USAGE =
   "Usage: pkey sdk --lang node|react|python|swift|kotlin|godot --product <slug> [--base-url <url>]\n" +
   "                [--write] [--out <path>] [--force] [--kid <kid> --public-key <key>]\n" +
-  "                [--release-key <kid>=<key> ...] [--package <kotlin package>]";
+  "                [--release-key <kid>=<key> ...] [--package <kotlin package>]\n" +
+  "       pkey sdk add <lang> --expect <kid>@sha256:<fingerprint>[,...] [--product <slug>] [--base-url <url>]\n" +
+  "                [--out <path>] [--force] [--release-key <kid>=<key> ...] [--package <kotlin package>]";
 
 export interface DeclaredReleaseKey {
   kid: string;
@@ -80,23 +83,25 @@ export function normalizeBaseUrl(raw: string): string {
   try {
     url = new URL(raw);
   } catch {
-    throw new Error(`--base-url ${raw} is not a URL.`);
+    throw new UsageError(`--base-url ${raw} is not a URL.`);
   }
   const loopback =
     url.hostname === "localhost" ||
     url.hostname === "127.0.0.1" ||
     url.hostname === "[::1]";
   if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback))
-    throw new Error(
+    throw new UsageError(
       `--base-url must be https: (http: only for localhost); got ${raw}.`,
     );
   if (url.search || url.hash || url.username || url.password)
-    throw new Error(
+    throw new UsageError(
       `--base-url must not carry credentials, a query or a fragment.`,
     );
   const out = `${url.origin}${url.pathname}`.replace(/\/+$/, "");
   if (!URL_CHARS_RE.test(out))
-    throw new Error(`--base-url ${raw} has characters pkey sdk cannot emit.`);
+    throw new UsageError(
+      `--base-url ${raw} has characters pkey sdk cannot emit.`,
+    );
   return out;
 }
 
@@ -104,7 +109,8 @@ export function normalizeBaseUrl(raw: string): string {
 export function parseReleaseKeyFlags(values: string[]): DeclaredReleaseKey[] {
   return values.map((v) => {
     const eq = v.indexOf("=");
-    if (eq <= 0) throw new Error(`--release-key takes <kid>=<key>; got ${v}.`);
+    if (eq <= 0)
+      throw new UsageError(`--release-key takes <kid>=<key>; got ${v}.`);
     return { kid: v.slice(0, eq), publicKey: v.slice(eq + 1) };
   });
 }
@@ -128,7 +134,7 @@ export async function resolveSdkFacts(opts: {
   fetchImpl?: typeof fetch;
 }): Promise<SdkConfigFacts> {
   if (!PRODUCT_RE.test(opts.product))
-    throw new Error(
+    throw new UsageError(
       `--product must be a lower-case slug; got ${opts.product}.`,
     );
   const baseUrl = normalizeBaseUrl(opts.baseUrl);

@@ -58,6 +58,7 @@ import { resolveCiToken, type CiEnv } from "./oidc.js";
 import { packContext, requirePacksDiscovery } from "./packManifest.js";
 import { untrusted, type UntrustedEnv } from "./untrusted.js";
 import { payloadIdentity, readTree, sha256Hex } from "./packArtifacts.js";
+import { UsageError } from "./errors.js";
 
 export const CONTENT_STAMP_USAGE =
   "Usage: pkey release content-stamp --product <slug> --out <file> " +
@@ -93,7 +94,7 @@ async function findMarkers(dir: string): Promise<string[]> {
     await walk(dir);
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT")
-      throw new Error(`--embedded ${dir} does not exist.`);
+      throw new UsageError(`--embedded ${dir} does not exist.`);
     throw e;
   }
   return out.sort();
@@ -192,7 +193,7 @@ export function parsePinFlag(
   const pack = value.slice(0, at);
   const version = value.slice(at + 1);
   if (at < 1 || !isPackId(pack) || !VERSION_RE.test(version))
-    throw new Error(`${flag} ${value} must be <packId>@<version>.`);
+    throw new UsageError(`${flag} ${value} must be <packId>@<version>.`);
   return { pack, version };
 }
 
@@ -209,7 +210,7 @@ export function parseHoldFlag(value: string): {
   if (eq < 0) return { pack, version };
   const reason = value.slice(eq + 1);
   if (reason === "" || reason.length > MAX_HOLD_REASON)
-    throw new Error(
+    throw new UsageError(
       `--hold ${value}: the reason after "=" must be 1–${MAX_HOLD_REASON} characters.`,
     );
   return { pack, version, reason };
@@ -278,17 +279,21 @@ export async function resolveHolds(
   const decl = new Map(packs.map((p) => [p.id, p]));
   for (const h of parsed) {
     if (seen.has(h.pack))
-      throw new Error(`--hold ${h.pack} is given twice; hold a pack once.`);
+      throw new UsageError(
+        `--hold ${h.pack} is given twice; hold a pack once.`,
+      );
     seen.add(h.pack);
     if (pinned.has(h.pack))
-      throw new Error(
+      throw new UsageError(
         `--hold ${h.pack}: this release pins ${h.pack}, and a pinned pack is never held.`,
       );
     const d = decl.get(h.pack);
     if (!d)
-      throw new Error(`--hold ${h.pack} is not a pack .pkey/release declares.`);
+      throw new UsageError(
+        `--hold ${h.pack} is not a pack .pkey/release declares.`,
+      );
     if (d.binding !== "compatible")
-      throw new Error(
+      throw new UsageError(
         `--hold ${h.pack}: its binding is ${d.binding}; a hold keeps a compatible pack at one release.`,
       );
   }
@@ -437,11 +442,11 @@ export async function readContentStamp(file: string): Promise<AppContent> {
   try {
     bytes = await readFile(file);
   } catch {
-    throw new Error(`--content-stamp ${file} is not readable.`);
+    throw new UsageError(`--content-stamp ${file} is not readable.`);
   }
   const parsed = parseContentStamp(new Uint8Array(bytes));
   if (!parsed.ok)
-    throw new Error(
+    throw new UsageError(
       `--content-stamp ${file} is not a valid ${CONTENT_STAMP_FORMAT} stamp (content-stamp-invalid).`,
     );
   // `parseContentStamp` ignores holds (plans/P4-13.md §2.4); read them beside it, with the
@@ -453,7 +458,7 @@ export async function readContentStamp(file: string): Promise<AppContent> {
     "",
   );
   if (holds === null)
-    throw new Error(
+    throw new UsageError(
       `--content-stamp ${file}: its holds are malformed (each {pack, release {sha256, seq, version}, reason?}, never a pinned pack).`,
     );
   return holds.length > 0 ? { ...parsed.content, holds } : parsed.content;
@@ -531,7 +536,7 @@ export async function writeContentStampFile(
     );
   const ctx = packContext(loaded);
   if (ctx.slug !== opts.product)
-    throw new Error(
+    throw new UsageError(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`,
     );
   if (ctx.packs.length === 0)

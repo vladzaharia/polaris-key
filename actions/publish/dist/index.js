@@ -12601,6 +12601,70 @@ function guardOutput(out, env) {
   };
 }
 
+// src/errors.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var UsageError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "UsageError";
+  }
+};
+function isUsageError(message) {
+  return /^Usage: /m.test(message) || /^--[\w-]+(?: and --[\w-]+)? (?:must|is required|are required|goes with|go with|go together|needs)\b/.test(
+    message
+  );
+}
+var NETWORK_CODES = {
+  ECONNREFUSED: "the connection was refused",
+  ENOTFOUND: "the host name did not resolve",
+  EAI_AGAIN: "the host name did not resolve",
+  ETIMEDOUT: "the connection timed out",
+  UND_ERR_CONNECT_TIMEOUT: "the connection timed out",
+  ECONNRESET: "the connection was reset",
+  EHOSTUNREACH: "the host is unreachable",
+  ENETUNREACH: "the network is unreachable"
+};
+function isFetchFailure(err) {
+  return err instanceof TypeError && err.message === "fetch failed";
+}
+var FS_CODES = {
+  ENOENT: "No such file or directory",
+  EACCES: "Permission denied",
+  EPERM: "Permission denied",
+  EISDIR: "Is a directory, not a file",
+  ENOTDIR: "Not a directory",
+  EEXIST: "Already exists"
+};
+function fsMessage(err) {
+  const e = err;
+  if (typeof e?.code !== "string" || typeof e.path !== "string") return;
+  const what = FS_CODES[e.code];
+  return what === void 0 ? void 0 : `${what}: ${e.path}`;
+}
+function networkMessage(err, url) {
+  const fs = fsMessage(err);
+  if (fs !== void 0) return fs;
+  const listen = err;
+  if (listen?.code === "EADDRINUSE")
+    return `${String(listen.address)}:${String(listen.port)} is already in use. Stop what holds it, or pass --port <n>.`;
+  if (!isFetchFailure(err)) {
+    return err instanceof Error ? err.message : String(err);
+  }
+  const cause = err.cause;
+  const code = cause?.code;
+  const why = (code !== void 0 ? NETWORK_CODES[code] : void 0) ?? (code?.startsWith("ERR_TLS") || code?.includes("CERT") ? "the TLS certificate was not accepted" : void 0) ?? cause?.message;
+  return `Could not reach ${url ?? "the server"}${why ? `: ${why}` : ""}. Check your network, and --base-url (or $PKEY_BASE_URL) if you set one.`;
+}
+function isInternalError(err) {
+  if (isFetchFailure(err)) return false;
+  return (err instanceof TypeError || err instanceof RangeError || err instanceof ReferenceError) && err.code === void 0;
+}
+function internalMessage(err) {
+  const text = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  return `pkey hit an unexpected error: ${text}
+This is a bug in pkey. Re-run with PKEY_DEBUG=1 for the stack, and report it.`;
+}
+
 // src/bundle.ts
 var DEFAULT_BASE_URL = "https://key.plrs.im";
 var ADMIN_TOKEN_ENV = "PKEY_ADMIN_TOKEN";
@@ -12623,16 +12687,16 @@ function bundleFileName(product, deviceId) {
 }
 async function mintBundle(opts) {
   const product = opts.product.trim();
-  if (!product) throw new Error(`--product is required.
+  if (!product) throw new UsageError(`--product is required.
 ${BUNDLE_USAGE}`);
   const deviceId = opts.deviceId.trim();
   if (!DEVICE_ID.test(deviceId)) {
-    throw new Error(
+    throw new UsageError(
       `--device must be 32 base64url characters (A-Z a-z 0-9 - _); got ${deviceId.length}. Copy it from the offline device's activation screen exactly, without spaces or line breaks.`
     );
   }
   if (!Number.isInteger(opts.graceDays) || opts.graceDays < 1 || opts.graceDays > MAX_GRACE_DAYS) {
-    throw new Error(
+    throw new UsageError(
       `--grace-days must be a whole number from 1 to ${MAX_GRACE_DAYS}${Number.isFinite(opts.graceDays) ? ` (got ${opts.graceDays})` : ""}. It is the offline window the minted documents grant, in days.`
     );
   }
@@ -12711,13 +12775,13 @@ function normalizeBaseUrl(raw, credentialEnv) {
   try {
     url = new URL(raw);
   } catch {
-    throw new Error(
+    throw new UsageError(
       `--base-url is not a valid URL: ${raw}. Give a full origin, e.g. ${DEFAULT_BASE_URL}.`
     );
   }
   const loopback = url.protocol === "http:" && LOOPBACK_HOSTS.includes(url.hostname.toLowerCase());
   if (url.protocol !== "https:" && !loopback) {
-    throw new Error(
+    throw new UsageError(
       `--base-url must be https: (got ${url.protocol}//${url.host}). ${credentialEnv} is sent to this origin as a credential, so plaintext http:// is only accepted for localhost/127.0.0.1 during local development.`
     );
   }
@@ -12843,64 +12907,6 @@ function asStrings(value) {
 }
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-// src/errors.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-function isUsageError(message) {
-  return /^Usage: /m.test(message) || /^--[\w-]+(?: and --[\w-]+)? (?:must|is required|are required|goes with|go with|go together|needs)\b/.test(
-    message
-  );
-}
-var NETWORK_CODES = {
-  ECONNREFUSED: "the connection was refused",
-  ENOTFOUND: "the host name did not resolve",
-  EAI_AGAIN: "the host name did not resolve",
-  ETIMEDOUT: "the connection timed out",
-  UND_ERR_CONNECT_TIMEOUT: "the connection timed out",
-  ECONNRESET: "the connection was reset",
-  EHOSTUNREACH: "the host is unreachable",
-  ENETUNREACH: "the network is unreachable"
-};
-function isFetchFailure(err) {
-  return err instanceof TypeError && err.message === "fetch failed";
-}
-var FS_CODES = {
-  ENOENT: "No such file or directory",
-  EACCES: "Permission denied",
-  EPERM: "Permission denied",
-  EISDIR: "Is a directory, not a file",
-  ENOTDIR: "Not a directory",
-  EEXIST: "Already exists"
-};
-function fsMessage(err) {
-  const e = err;
-  if (typeof e?.code !== "string" || typeof e.path !== "string") return;
-  const what = FS_CODES[e.code];
-  return what === void 0 ? void 0 : `${what}: ${e.path}`;
-}
-function networkMessage(err, url) {
-  const fs = fsMessage(err);
-  if (fs !== void 0) return fs;
-  const listen = err;
-  if (listen?.code === "EADDRINUSE")
-    return `${String(listen.address)}:${String(listen.port)} is already in use. Stop what holds it, or pass --port <n>.`;
-  if (!isFetchFailure(err)) {
-    return err instanceof Error ? err.message : String(err);
-  }
-  const cause = err.cause;
-  const code = cause?.code;
-  const why = (code !== void 0 ? NETWORK_CODES[code] : void 0) ?? (code?.startsWith("ERR_TLS") || code?.includes("CERT") ? "the TLS certificate was not accepted" : void 0) ?? cause?.message;
-  return `Could not reach ${url ?? "the server"}${why ? `: ${why}` : ""}. Check your network, and --base-url (or $PKEY_BASE_URL) if you set one.`;
-}
-function isInternalError(err) {
-  if (isFetchFailure(err)) return false;
-  return (err instanceof TypeError || err instanceof RangeError || err instanceof ReferenceError) && err.code === void 0;
-}
-function internalMessage(err) {
-  const text = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-  return `pkey hit an unexpected error: ${text}
-This is a bug in pkey. Re-run with PKEY_DEBUG=1 for the stack, and report it.`;
 }
 
 // src/version.ts
@@ -23066,7 +23072,7 @@ async function readGodotListing(dir, opts = {}) {
       if (!presetsRead.some((r) => r.startsWith(`${p} (`)))
         warnings.push(`no export preset named "${p}"`);
   } else if (opts.presets?.length) {
-    throw new Error(
+    throw new UsageError(
       `--preset was given but ${root} has no export_presets.cfg.`
     );
   }
@@ -23203,10 +23209,12 @@ async function readCsrf(f, baseUrl, cookie) {
 }
 async function listingImport(opts) {
   if (opts.locale !== void 0 && !LOCALE.test(opts.locale))
-    throw new Error(`--locale must be a code such as en-US.
-${LISTING_USAGE}`);
+    throw new UsageError(
+      `--locale must be a code such as en-US.
+${LISTING_USAGE}`
+    );
   if (opts.fields?.length && !opts.apply)
-    throw new Error(`--fields goes with --apply.
+    throw new UsageError(`--fields goes with --apply.
 ${LISTING_USAGE}`);
   const read2 = await readGodotListing(opts.godot, {
     ...opts.presets?.length ? { presets: opts.presets } : {}
@@ -23218,7 +23226,8 @@ ${LISTING_USAGE}`);
   };
   if (opts.dryRun) return result;
   const product = opts.product?.trim();
-  if (!product) throw new Error(`--product is required.
+  if (!product)
+    throw new UsageError(`--product is required.
 ${LISTING_USAGE}`);
   const cookie = adminCookie(opts.cookie);
   const baseUrl = normalizeBaseUrl(
@@ -23356,10 +23365,10 @@ function normalizeBaseUrl2(baseUrl) {
   try {
     url = new URL(raw);
   } catch {
-    throw new Error(`--base-url ${JSON.stringify(raw)} is not a URL.`);
+    throw new UsageError(`--base-url ${JSON.stringify(raw)} is not a URL.`);
   }
   if (url.protocol !== "https:" && url.hostname !== "localhost")
-    throw new Error(
+    throw new UsageError(
       `--base-url must be https (got ${url.protocol}//${url.host}); a CI token must never cross plain HTTP.`
     );
   return raw;
@@ -23368,7 +23377,7 @@ function ciClient(opts) {
   const baseUrl = normalizeBaseUrl2(opts.baseUrl);
   const product = opts.product.trim();
   if (!PRODUCT_SLUG_RE.test(product))
-    throw new Error(
+    throw new UsageError(
       `--product must be a product slug (got ${JSON.stringify(opts.product)}).`
     );
   const f = opts.fetchImpl ?? fetch;
@@ -24819,7 +24828,7 @@ function normalizeModules2(raw) {
   const parsed = raw.split(",").map((item) => item.trim()).filter(Boolean);
   for (const item of parsed) {
     if (!isProductModule(item))
-      throw new Error(
+      throw new UsageError(
         `Unknown module "${item}". Expected one of ${MODULES2.join(", ")}.`
       );
   }
@@ -25271,6 +25280,10 @@ releases: ${info.releases.map((r) => `${r.version} (${r.channel})`).join(", ") |
     const key = args.positional[0];
     if (!key)
       throw new Error(`Usage: pkey dev ${sub} <key>  (${DEV_KEYS.join(", ")})`);
+    if (!DEV_KEYS.includes(key))
+      throw new UsageError(
+        `${key} is not a test key. The test keys are ${DEV_KEYS.join(", ")}.`
+      );
     body = { key };
   } else if (sub === "config") {
     const [name, raw] = args.positional;
@@ -25280,7 +25293,7 @@ releases: ${info.releases.map((r) => `${r.version} (${r.channel})`).join(", ") |
     try {
       value = JSON.parse(raw);
     } catch {
-      throw new Error(`${raw} is not JSON; quote strings: '"high"'.`);
+      throw new UsageError(`${raw} is not JSON; quote strings: '"high"'.`);
     }
     body = { name, value, ...args.key ? { key: args.key } : {} };
   } else if (sub === "release") {
@@ -25291,8 +25304,10 @@ releases: ${info.releases.map((r) => `${r.version} (${r.channel})`).join(", ") |
   } else if (sub === "offline" || sub === "online") {
     body = {};
   } else {
-    throw new Error(`Unknown dev command ${sub}.
-${DEV_USAGE.join("\n")}`);
+    throw new UsageError(
+      `Unknown dev command ${sub}.
+${DEV_USAGE.join("\n")}`
+    );
   }
   let res;
   try {
@@ -26733,7 +26748,7 @@ async function collectProvides(o) {
   }
   if (o.removes && o.removes.length > 0) {
     const problem = providesListProblem(o.removes);
-    if (problem) throw new Error(`--removes ${problem}.`);
+    if (problem) throw new UsageError(`--removes ${problem}.`);
     out.removes = [...o.removes].sort(byCodeUnit);
   }
   return out;
@@ -28026,7 +28041,7 @@ function fingerprintOf(publicKey) {
 }
 async function generateReleaseKey(opts) {
   if (!RELEASE_KEY_KID_PATTERN.test(opts.kid))
-    throw new Error(
+    throw new UsageError(
       `--kid must match ${RELEASE_KEY_KID_PATTERN.source}.
 ${KEYS_USAGE}`
     );
@@ -29758,7 +29773,7 @@ async function findMarkers(dir) {
     await walk3(dir);
   } catch (e) {
     if (e.code === "ENOENT")
-      throw new Error(`--embedded ${dir} does not exist.`);
+      throw new UsageError(`--embedded ${dir} does not exist.`);
     throw e;
   }
   return out.sort();
@@ -29824,7 +29839,7 @@ function parsePinFlag(value, flag = "--pin") {
   const pack = value.slice(0, at);
   const version = value.slice(at + 1);
   if (at < 1 || !isPackId(pack) || !VERSION_RE4.test(version))
-    throw new Error(`${flag} ${value} must be <packId>@<version>.`);
+    throw new UsageError(`${flag} ${value} must be <packId>@<version>.`);
   return { pack, version };
 }
 function parseHoldFlag(value) {
@@ -29834,7 +29849,7 @@ function parseHoldFlag(value) {
   if (eq < 0) return { pack, version };
   const reason = value.slice(eq + 1);
   if (reason === "" || reason.length > MAX_HOLD_REASON)
-    throw new Error(
+    throw new UsageError(
       `--hold ${value}: the reason after "=" must be 1–${MAX_HOLD_REASON} characters.`
     );
   return { pack, version, reason };
@@ -29879,17 +29894,21 @@ async function resolveHolds(client, flags, packs, pins) {
   const decl = new Map(packs.map((p) => [p.id, p]));
   for (const h of parsed) {
     if (seen.has(h.pack))
-      throw new Error(`--hold ${h.pack} is given twice; hold a pack once.`);
+      throw new UsageError(
+        `--hold ${h.pack} is given twice; hold a pack once.`
+      );
     seen.add(h.pack);
     if (pinned.has(h.pack))
-      throw new Error(
+      throw new UsageError(
         `--hold ${h.pack}: this release pins ${h.pack}, and a pinned pack is never held.`
       );
     const d = decl.get(h.pack);
     if (!d)
-      throw new Error(`--hold ${h.pack} is not a pack .pkey/release declares.`);
+      throw new UsageError(
+        `--hold ${h.pack} is not a pack .pkey/release declares.`
+      );
     if (d.binding !== "compatible")
-      throw new Error(
+      throw new UsageError(
         `--hold ${h.pack}: its binding is ${d.binding}; a hold keeps a compatible pack at one release.`
       );
   }
@@ -30002,11 +30021,11 @@ async function readContentStamp(file) {
   try {
     bytes = await readFile7(file);
   } catch {
-    throw new Error(`--content-stamp ${file} is not readable.`);
+    throw new UsageError(`--content-stamp ${file} is not readable.`);
   }
   const parsed = parseContentStamp(new Uint8Array(bytes));
   if (!parsed.ok)
-    throw new Error(
+    throw new UsageError(
       `--content-stamp ${file} is not a valid ${CONTENT_STAMP_FORMAT} stamp (content-stamp-invalid).`
     );
   const scan = scanStrictJson(new TextDecoder().decode(bytes));
@@ -30016,7 +30035,7 @@ async function readContentStamp(file) {
     ""
   );
   if (holds === null)
-    throw new Error(
+    throw new UsageError(
       `--content-stamp ${file}: its holds are malformed (each {pack, release {sha256, seq, version}, reason?}, never a pinned pack).`
     );
   return holds.length > 0 ? { ...parsed.content, holds } : parsed.content;
@@ -30058,7 +30077,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     );
   const ctx = packContext(loaded2);
   if (ctx.slug !== opts.product)
-    throw new Error(
+    throw new UsageError(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`
     );
   if (ctx.packs.length === 0)
@@ -30143,7 +30162,7 @@ async function scanDir(dir) {
     await walk3(dir);
   } catch (e) {
     if (e.code === "ENOENT")
-      throw new Error(`--dir ${dir} does not exist.`);
+      throw new UsageError(`--dir ${dir} does not exist.`);
     throw e;
   }
   return out;
@@ -30225,12 +30244,12 @@ async function readMeta(file, entryIds) {
   try {
     raw = JSON.parse(await readFile8(file, "utf8"));
   } catch (e) {
-    throw new Error(
+    throw new UsageError(
       `--meta ${file} is not readable JSON: ${e.message}`
     );
   }
   if (!raw || typeof raw !== "object" || Array.isArray(raw))
-    throw new Error(`--meta ${file} must be an object keyed by build id.`);
+    throw new UsageError(`--meta ${file} must be an object keyed by build id.`);
   const out = {};
   const problems = [];
   for (const [id, value] of Object.entries(raw)) {
@@ -30268,7 +30287,7 @@ async function readMeta(file, entryIds) {
     out[id] = m;
   }
   if (problems.length)
-    throw new Error(
+    throw new UsageError(
       `--meta ${file}:
 ${problems.map((p) => `  ${p}`).join("\n")}`
     );
@@ -30359,23 +30378,23 @@ async function publishRelease(opts) {
   const out = opts.stdout;
   const source = opts.source ?? "r2";
   if (source !== "r2" && source !== "github")
-    throw new Error(`--source must be r2 or github.
+    throw new UsageError(`--source must be r2 or github.
 ${PUBLISH_USAGE}`);
   const deliverable = opts.deliverable?.trim() || APP_DELIVERABLE_ID;
   if (deliverable !== APP_DELIVERABLE_ID)
-    throw new Error(
+    throw new UsageError(
       `--deliverable ${deliverable}: publishRelease publishes the app; a pack publishes through publishPack (pkey release publish dispatches).`
     );
   const tag2 = opts.tag?.trim() || void 0;
   const version = opts.version?.trim() || tag2?.replace(/^v/, "");
   if (!version)
-    throw new Error(`--version (or --tag) is required.
+    throw new UsageError(`--version (or --tag) is required.
 ${PUBLISH_USAGE}`);
   if (!opts.dir?.trim())
-    throw new Error(`--dir is required.
+    throw new UsageError(`--dir is required.
 ${PUBLISH_USAGE}`);
   if (opts.strict && opts.contentInterface === void 0)
-    throw new Error("--strict needs --content-interface <file>.");
+    throw new UsageError("--strict needs --content-interface <file>.");
   const fingerprint = opts.contentInterface !== void 0 ? await contentInterfaceFingerprint(opts.cwd, opts.contentInterface) : null;
   if (fingerprint !== null) out.write(`Content interface: ${fingerprint}
 `);
@@ -30392,7 +30411,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   const context = descriptorManifestOf(loaded2);
   const slug = context.product?.slug;
   if (slug !== opts.product)
-    throw new Error(
+    throw new UsageError(
       `--product ${opts.product} does not match .pkey/product's slug ${slug}.`
     );
   const app = context.release?.app;
@@ -30477,7 +30496,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       ".pkey/release declares no pack deliverables; --content-stamp, --embedded and --pin stamp an app release's packs."
     );
   if (opts.contentStamp !== void 0 && (opts.embedded || opts.pins?.length))
-    throw new Error(
+    throw new UsageError(
       "--content-stamp is the stamp the build embedded; it cannot be combined with --embedded or --pin."
     );
   if (packs.length > 0 && contentApi === void 0)
@@ -30526,7 +30545,7 @@ ${problems.map((p) => `  ${p}`).join("\n")}`
 ${local.errors.map((e) => `  ${e.path} ${e.code}: ${e.message}`).join("\n")}`
     );
   if (opts.minSupportedSeq !== void 0 && (!Number.isSafeInteger(opts.minSupportedSeq) || opts.minSupportedSeq < 1))
-    throw new Error(
+    throw new UsageError(
       "--min-supported-seq must be a whole number of at least 1."
     );
   const pem = opts.releaseKeyPem ?? opts.env[RELEASE_KEY_ENV] ?? void 0;
@@ -31932,7 +31951,7 @@ function renderSdkSetup(sdk, o) {
 // src/sdkConfig.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { createHash as createHash8 } from "node:crypto";
-var SDK_CONFIG_USAGE = "Usage: pkey sdk --lang node|react|python|swift|kotlin|godot --product <slug> [--base-url <url>]\n                [--write] [--out <path>] [--force] [--kid <kid> --public-key <key>]\n                [--release-key <kid>=<key> ...] [--package <kotlin package>]";
+var SDK_CONFIG_USAGE = "Usage: pkey sdk --lang node|react|python|swift|kotlin|godot --product <slug> [--base-url <url>]\n                [--write] [--out <path>] [--force] [--kid <kid> --public-key <key>]\n                [--release-key <kid>=<key> ...] [--package <kotlin package>]\n       pkey sdk add <lang> --expect <kid>@sha256:<fingerprint>[,...] [--product <slug>] [--base-url <url>]\n                [--out <path>] [--force] [--release-key <kid>=<key> ...] [--package <kotlin package>]";
 var shown = (v) => untrusted(v, {});
 var PRODUCT_RE = /^[a-z0-9][a-z0-9_-]*$/;
 var KID_RE2 = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
@@ -31946,26 +31965,29 @@ function normalizeBaseUrl3(raw) {
   try {
     url = new URL(raw);
   } catch {
-    throw new Error(`--base-url ${raw} is not a URL.`);
+    throw new UsageError(`--base-url ${raw} is not a URL.`);
   }
   const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
   if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback))
-    throw new Error(
+    throw new UsageError(
       `--base-url must be https: (http: only for localhost); got ${raw}.`
     );
   if (url.search || url.hash || url.username || url.password)
-    throw new Error(
+    throw new UsageError(
       `--base-url must not carry credentials, a query or a fragment.`
     );
   const out = `${url.origin}${url.pathname}`.replace(/\/+$/, "");
   if (!URL_CHARS_RE.test(out))
-    throw new Error(`--base-url ${raw} has characters pkey sdk cannot emit.`);
+    throw new UsageError(
+      `--base-url ${raw} has characters pkey sdk cannot emit.`
+    );
   return out;
 }
 function parseReleaseKeyFlags(values) {
   return values.map((v) => {
     const eq = v.indexOf("=");
-    if (eq <= 0) throw new Error(`--release-key takes <kid>=<key>; got ${v}.`);
+    if (eq <= 0)
+      throw new UsageError(`--release-key takes <kid>=<key>; got ${v}.`);
     return { kid: v.slice(0, eq), publicKey: v.slice(eq + 1) };
   });
 }
@@ -31974,7 +31996,7 @@ function isRecord8(v) {
 }
 async function resolveSdkFacts(opts) {
   if (!PRODUCT_RE.test(opts.product))
-    throw new Error(
+    throw new UsageError(
       `--product must be a lower-case slug; got ${opts.product}.`
     );
   const baseUrl = normalizeBaseUrl3(opts.baseUrl);
@@ -32524,7 +32546,7 @@ ${rows.join("\n")}
 }
 function renderKotlin2(catalog, pkg = DEFAULT_KOTLIN_PACKAGE) {
   if (!/^[a-z_][A-Za-z0-9_]*(\.[a-z_][A-Za-z0-9_]*)*$/.test(pkg))
-    throw new Error(`not a Kotlin package name: ${pkg}`);
+    throw new UsageError(`not a Kotlin package name: ${pkg}`);
   const rows = catalog.entries.map((e) => {
     const ui = e.ui ?? {};
     const order = typeof ui.order === "number" && Number.isInteger(ui.order) ? String(ui.order) : "null";
@@ -32684,7 +32706,7 @@ function assertCatalog(v, source) {
 async function writeMirrors(opts) {
   for (const l of opts.langs)
     if (!isMirrorLang(l))
-      throw new Error(`Unknown mirror language ${l}.
+      throw new UsageError(`Unknown mirror language ${l}.
 ${MIRROR_USAGE}`);
   let catalog;
   if (opts.catalog) {
@@ -32692,10 +32714,12 @@ ${MIRROR_USAGE}`);
     catalog = assertCatalog(JSON.parse(await readFile9(file, "utf8")), file);
   } else if (opts.product) {
     if (!/^[a-z0-9][a-z0-9_-]*$/.test(opts.product))
-      throw new Error(`--product must be a lower-case slug.`);
+      throw new UsageError(`--product must be a lower-case slug.`);
     const url = `${opts.baseUrl.replace(/\/+$/, "")}/${opts.product}/config/schema`;
     if (!/^https:\/\/|^http:\/\/(localhost|127\.0\.0\.1)(:|\/)/.test(url))
-      throw new Error(`--base-url must be https: (http: only for localhost).`);
+      throw new UsageError(
+        `--base-url must be https: (http: only for localhost).`
+      );
     const res = await (opts.fetchImpl ?? fetch)(url, {
       headers: { accept: "application/json" }
     });
@@ -32749,7 +32773,7 @@ async function clientFor(opts) {
 }
 async function movePointer(opts) {
   if (!opts.channel)
-    throw new Error(`--channel is required.
+    throw new UsageError(`--channel is required.
 ${CHANNEL_USAGE}`);
   if (opts.op !== "unpin" && !opts.releaseId)
     throw new Error(
@@ -32779,7 +32803,8 @@ async function yankRelease(opts) {
   if (!opts.releaseId)
     throw new Error(`pkey release yank needs a release id.
 ${CHANNEL_USAGE}`);
-  if (!opts.reason) throw new Error(`--reason is required.
+  if (!opts.reason)
+    throw new UsageError(`--reason is required.
 ${CHANNEL_USAGE}`);
   const client = await clientFor(opts);
   const body = await client.postJson(
@@ -34552,7 +34577,7 @@ function isPrePackageWorker(e) {
 }
 async function publishPackage(opts) {
   const out = opts.stdout;
-  if (!opts.dir?.trim()) throw new Error("--dir is required.");
+  if (!opts.dir?.trim()) throw new UsageError("--dir is required.");
   const loaded2 = await loadManifest(opts.cwd);
   const validation = validateLoadedManifest(loaded2);
   if (!validation.ok)
@@ -34562,14 +34587,14 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     );
   const context = descriptorManifestOf(loaded2);
   if (context.product?.slug !== opts.product)
-    throw new Error(
+    throw new UsageError(
       `--product ${opts.product} does not match .pkey/product's slug ${context.product?.slug}.`
     );
   const declared = (context.packageDeliverables ?? []).find(
     (p) => p.id === opts.deliverable
   );
   if (!declared)
-    throw new Error(
+    throw new UsageError(
       `--deliverable ${opts.deliverable} is not a package deliverable .pkey/release declares.`
     );
   const workDir = await mkdtemp(path15.join(tmpdir(), "pkey-package-"));
@@ -34582,7 +34607,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     });
     const version = opts.version?.trim() || extracted.version;
     if (version !== extracted.version)
-      throw new Error(
+      throw new UsageError(
         `--version ${version} does not match the packed files' version ${extracted.version}.`
       );
     const hashed = [];
@@ -35386,16 +35411,16 @@ function delegationVersion(jws) {
 function parseDelegationTypes(types) {
   const list2 = (typeof types === "string" ? types.split(/[\s,]+/) : [...types]).filter(Boolean);
   if (list2.length < 1 || list2.length > MAX_DELEGATION_TYPES)
-    throw new Error(
+    throw new UsageError(
       `--types lists 1–${MAX_DELEGATION_TYPES} pack types (got ${list2.length}).`
     );
   if (new Set(list2).size !== list2.length)
-    throw new Error("--types lists a type twice.");
+    throw new UsageError("--types lists a type twice.");
   for (const t of list2) {
     if (!PACK_TYPE_PATTERN.test(t))
-      throw new Error(`--types: ${JSON.stringify(t)} is not a pack type.`);
+      throw new UsageError(`--types: ${JSON.stringify(t)} is not a pack type.`);
     if (!DELEGABLE_PACK_TYPES.includes(t))
-      throw new Error(
+      throw new UsageError(
         `--types: ${t} can never be delegated; a content key signs only ${DELEGABLE_PACK_TYPES.join(", ")} (godot.pck, godot.zip, audio.bank, ml.model and custom types can load code).`
       );
   }
@@ -35410,18 +35435,18 @@ async function keepSignedDelegation(cwd, jws, sha2566) {
 async function delegateContentKey(opts) {
   const out = opts.stdout;
   if (!isPackId(opts.prefix))
-    throw new Error(
+    throw new UsageError(
       `--prefix must be a pack id (the scope root, never app; got ${JSON.stringify(opts.prefix)}).
 ${DELEGATE_USAGE}`
     );
   const types = parseDelegationTypes(opts.types);
   if (!KEY_B64URL_RE2.test(opts.publicKey))
-    throw new Error(
+    throw new UsageError(
       "--public-key must be base64url of 32 raw Ed25519 bytes (as pkey release keys generate --content prints it)."
     );
   const days = opts.expiresInDays ?? DEFAULT_DELEGATION_DAYS;
   if (!Number.isSafeInteger(days) || days < 1 || days > MAX_DELEGATION_DAYS)
-    throw new Error(
+    throw new UsageError(
       `--expires-in must be a whole number of days from 1 to ${MAX_DELEGATION_DAYS} (got ${String(opts.expiresInDays)}).`
     );
   const loaded2 = await loadManifest(opts.cwd);
@@ -35433,12 +35458,12 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     );
   const ctx = packContext(loaded2);
   if (ctx.slug !== opts.product)
-    throw new Error(
+    throw new UsageError(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`
     );
   const fingerprint = fingerprintOf(opts.publicKey);
   if (ctx.releaseKeys.some((k) => k.publicKey === opts.publicKey))
-    throw new Error(
+    throw new UsageError(
       "--public-key is a declared release key; a content key is a separate key (pkey release keys generate --content)."
     );
   let sign2 = null;
@@ -35597,7 +35622,7 @@ A text file (json, csv, tsv, po, txt) is refused for a script marker (${DATA_ONL
 }
 async function contentSigner(o) {
   if (!SHA256_RE5.test(o.key.delegation))
-    throw new Error(
+    throw new UsageError(
       "--delegation must be the delegation record's sha256 (64 lowercase hex), as pkey release delegate prints it."
     );
   const publicKey = publicKeyOfPem(
@@ -36984,17 +37009,17 @@ function checkScriptKinds(pack, opts) {
   const exts = opts.scriptExtensions ?? [];
   const types = opts.scriptTypes ?? [];
   if ((exts.length || types.length) && pack.type !== "godot.pck" && pack.type !== "godot.zip")
-    throw new Error(
+    throw new UsageError(
       `--script-extensions and --script-types apply to a godot.pck or godot.zip pack's lint; ${pack.id} is a ${pack.type} pack.`
     );
   const badExt = exts.find((x) => !/^[A-Za-z0-9_]{1,32}$/.test(x));
   if (badExt !== void 0)
-    throw new Error(
+    throw new UsageError(
       `--script-extensions takes bare extensions (lua, wren; letters, digits and _), not ${JSON.stringify(badExt)}.`
     );
   const badType = types.find((x) => !/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(x));
   if (badType !== void 0)
-    throw new Error(
+    throw new UsageError(
       `--script-types takes script class names (LuaScript), not ${JSON.stringify(badType)}.`
     );
 }
@@ -37247,9 +37272,9 @@ async function publishPack(opts) {
   const packId = opts.deliverable;
   const tag2 = opts.tag?.trim() || void 0;
   const version = opts.version?.trim() || tag2?.replace(/^v/, "");
-  if (!version) throw new Error("--version (or --tag) is required.");
+  if (!version) throw new UsageError("--version (or --tag) is required.");
   if (opts.minSupportedSeq !== void 0 && (!Number.isSafeInteger(opts.minSupportedSeq) || opts.minSupportedSeq < 1))
-    throw new Error(
+    throw new UsageError(
       "--min-supported-seq must be a whole number of at least 1."
     );
   const loaded2 = await loadManifest(opts.cwd);
@@ -37266,16 +37291,16 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     distribution: loaded2.distribution
   });
   if (ctx.slug !== opts.product)
-    throw new Error(
+    throw new UsageError(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`
     );
   const pack = ctx.packs.find((p) => p.id === packId);
   if (!pack)
-    throw new Error(
+    throw new UsageError(
       `--deliverable ${packId} is not a pack .pkey/release declares (declared: ${ctx.packs.map((p) => p.id).join(", ") || "none"}).`
     );
   if (parseVersion(pack.versioning.scheme, version) === null)
-    throw new Error(
+    throw new UsageError(
       `--version ${version} does not parse under ${packId}'s ${pack.versioning.scheme} scheme.`
     );
   checkScriptKinds(pack, opts);
@@ -37342,7 +37367,7 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
         `Both a release key (${RELEASE_KEY_ENV}) and a content key (${CONTENT_KEY_ENV}) are set: a pack release is signed by one or the other. Unset one.`
       );
     if (contentPem === void 0)
-      throw new Error(
+      throw new UsageError(
         `--delegation needs a content key: set ${CONTENT_KEY_ENV} or --content-key-file.`
       );
     if (opts.delegation === void 0)
@@ -38073,13 +38098,13 @@ async function requireRevocationsDiscovery(client, fetchImpl = fetch) {
 function checkReason(reason) {
   const bytes = new TextEncoder().encode(reason).byteLength;
   if (bytes < 1 || bytes > REVOCATION_REASON_MAX_BYTES)
-    throw new Error(
+    throw new UsageError(
       `--reason must be 1–${REVOCATION_REASON_MAX_BYTES} bytes (got ${bytes}).`
     );
 }
 function revocationRecord(o) {
   if (o.replacement && o.replacement.sha256 === o.target.sha256)
-    throw new Error(
+    throw new UsageError(
       "--replacement names the revoked release itself; a replacement is another release."
     );
   return {
@@ -38126,7 +38151,7 @@ async function revokePackRelease(opts) {
   if (opts.replacement !== void 0)
     parsePinFlag(`${pack}@${opts.replacement}`, "--replacement");
   if (opts.replacement === version)
-    throw new Error(
+    throw new UsageError(
       "--replacement names the revoked release itself; a replacement is another release."
     );
   checkReason(opts.reason);
@@ -38139,7 +38164,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     );
   const ctx = packContext(loaded2);
   if (ctx.slug !== opts.product)
-    throw new Error(
+    throw new UsageError(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`
     );
   if (!ctx.packs.some((p) => p.id === pack))
@@ -38226,7 +38251,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     );
   const ctx = packContext(loaded2);
   if (ctx.slug !== opts.product)
-    throw new Error(
+    throw new UsageError(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`
     );
   const byHash = /^[0-9a-f]{64}$/.test(opts.delegation);
@@ -38235,7 +38260,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
     try {
       fileJws = (await readFile15(path18.resolve(opts.cwd, opts.delegation), "utf8")).trim();
     } catch (e) {
-      throw new Error(
+      throw new UsageError(
         `--delegation is neither a sha256 nor a readable file (${e.message}).
 ${REVOKE_DELEGATION_USAGE}`
       );
@@ -38360,7 +38385,7 @@ async function clientFor2(opts) {
 function normalizeFingerprint2(raw) {
   const hex5 = raw.replace(/[\s:]/g, "").toLowerCase();
   if (!/^[0-9a-f]{64}$/.test(hex5))
-    throw new Error(
+    throw new UsageError(
       `--sha256 must be a SHA-256 fingerprint: 64 hex characters, colons allowed (got ${JSON.stringify(raw)}).`
     );
   return hex5;
@@ -38371,17 +38396,17 @@ function jsonObjectFlag(name, raw) {
   try {
     v = JSON.parse(raw);
   } catch {
-    throw new Error(`--${name} must be a JSON object (got ${raw}).`);
+    throw new UsageError(`--${name} must be a JSON object (got ${raw}).`);
   }
   if (v !== null && (typeof v !== "object" || Array.isArray(v)))
-    throw new Error(`--${name} must be a JSON object (got ${raw}).`);
+    throw new UsageError(`--${name} must be a JSON object (got ${raw}).`);
   return v;
 }
 function epochFlag(raw) {
   if (raw === void 0) return void 0;
   const n = Number(raw);
   if (!Number.isSafeInteger(n) || n <= 0)
-    throw new Error(`--since must be epoch seconds (got ${raw}).`);
+    throw new UsageError(`--since must be epoch seconds (got ${raw}).`);
   return n;
 }
 function reportBody(opts) {
@@ -38409,9 +38434,9 @@ ${DISTRIBUTION_CI_USAGE}`
 ${DISTRIBUTION_CI_USAGE}`
     );
   if (opts.releaseId && opts.deliverable)
-    throw new Error("--deliverable goes with --version, not --release.");
+    throw new UsageError("--deliverable goes with --version, not --release.");
   if (opts.type === "submission" && (opts.buildId || opts.platformRef))
-    throw new Error(
+    throw new UsageError(
       "--build and --platform-ref go with an availability report; a submission is per release."
     );
   const since = epochFlag(opts.since);
@@ -38464,7 +38489,7 @@ async function reportDistribution(opts) {
 }
 async function driveRollout(opts) {
   if (!opts.outlet || !opts.channel)
-    throw new Error(
+    throw new UsageError(
       `--outlet and --channel are required.
 ${DISTRIBUTION_CI_USAGE}`
     );
@@ -38477,7 +38502,7 @@ ${DISTRIBUTION_CI_USAGE}`
       );
     bp = Number(opts.bp);
     if (!Number.isInteger(bp) || bp < 0 || bp > 1e4)
-      throw new Error(
+      throw new UsageError(
         `--bp must be an integer from 0 to 10000 (basis points; 2500 = 25%), got ${opts.bp}.`
       );
   }
@@ -38562,13 +38587,13 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   ${parsed.errors.join("\n  ")}`);
   const m = parsed.manifest;
   if (common.product && common.product !== m.product.slug)
-    throw new Error(
+    throw new UsageError(
       `--product ${common.product} does not match .pkey/product's slug ${m.product.slug}.`
     );
   const packs = m.release?.packDeliverables ?? [];
   const pack = packs.find((p) => p.id === common.deliverable);
   if (!pack)
-    throw new Error(
+    throw new UsageError(
       `--deliverable ${common.deliverable} is not a pack .pkey/release declares (declared: ${packs.map((p) => p.id).join(", ") || "none"}).`
     );
   return {
@@ -38680,7 +38705,7 @@ function pickVariants(loaded2, wanted, fixed = []) {
       return variantKey(rest) === want;
     });
     if (!hit.length)
-      throw new Error(
+      throw new UsageError(
         `--variant ${wanted} is not a published variant of ${loaded2.pack.id} (published: ${loaded2.variants.map((v) => v.key || "default").join(", ")}).`
       );
     return hit;
@@ -38699,11 +38724,11 @@ function pickVariants(loaded2, wanted, fixed = []) {
 function contentLevel(loaded2, given) {
   const level = given !== void 0 ? Number(given) : loaded2.app?.content?.contentApi;
   if (level === void 0)
-    throw new Error(
+    throw new UsageError(
       "--content-api is required: .pkey/release declares no deliverables.app.content.contentApi."
     );
   if (!Number.isSafeInteger(level) || level < 1)
-    throw new Error(
+    throw new UsageError(
       `--content-api must be a whole number of at least 1 (got ${String(given)}).`
     );
   const range = loaded2.pack.requires.contentApi?.app;
@@ -39296,7 +39321,7 @@ function padDirectories(variants, defaultTexture) {
   const values = textured.map((v) => v.variant.texture);
   const def = defaultTexture ?? (values.includes("etc2") ? "etc2" : values[0]);
   if (!values.includes(def))
-    throw new Error(
+    throw new UsageError(
       `--default-texture ${def} is not a published texture variant (published: ${values.join(", ")}).`
     );
   for (const v of textured) {
@@ -39324,7 +39349,7 @@ async function padModules(o) {
   const name = names.get(loaded2.pack.id);
   const delivery = o.delivery ?? (loaded2.pack.delivery === "essential" || loaded2.pack.delivery === "prefetch" ? "fast-follow" : "on-demand");
   if (delivery !== "fast-follow" && delivery !== "on-demand")
-    throw new Error(
+    throw new UsageError(
       `--delivery must be fast-follow or on-demand (install-time content is Godot's own assetPackInstallTime, an embedded baseline).`
     );
   const variants = pickVariants(loaded2, o.variant, ["texture"]);
@@ -39425,7 +39450,7 @@ function depotBuildVdf(o) {
 }
 async function steamVdf(o) {
   if (!/^[0-9]{1,10}$/.test(o.depot))
-    throw new Error(
+    throw new UsageError(
       `--depot must be a numeric Steam depot id (got ${o.depot}).`
     );
   const loaded2 = await loadTransportPack(o, o.from);
@@ -39435,7 +39460,7 @@ async function steamVdf(o) {
   );
   const app = o.app ?? steam.find((x) => x.identity.appId)?.identity.appId;
   if (!app || !/^[0-9]{1,10}$/.test(app))
-    throw new Error(
+    throw new UsageError(
       "--app is required (a numeric Steam app id): no steam outlet the pack is routed through declares appId."
     );
   let branch = o.branch;
@@ -39444,14 +39469,14 @@ async function steamVdf(o) {
       (x) => effectiveTrackMap("steam", x.identity.branches)[o.channel]
     ).find(Boolean);
   if (!branch)
-    throw new Error(
+    throw new UsageError(
       `--branch is required${o.channel ? ` (no steam outlet maps channel ${o.channel} to a branch)` : " (or --channel with the outlet's branches map)"}.`
     );
   if (!/^[A-Za-z0-9_.-]{1,64}$/.test(branch))
-    throw new Error(`--branch ${branch} is not a Steam branch name.`);
+    throw new UsageError(`--branch ${branch} is not a Steam branch name.`);
   const isDefault = branch === "default" || branch === "public";
   if (o.setlive && isDefault)
-    throw new Error(
+    throw new UsageError(
       `--setlive cannot target the ${branch} branch: Steam's default branch is set live in Steamworks by a person (SetLive applies to named branches only).`
     );
   const [v, ...more] = pickVariants(loaded2, o.variant);
@@ -40341,13 +40366,13 @@ var ITCH_PLATFORMS = ["windows", "linux", "mac", "android"];
 var CHANNEL_SUFFIX = /^[a-z0-9]{1,32}$/;
 function itchChannel(platform, channel) {
   if (!ITCH_PLATFORMS.includes(platform))
-    throw new Error(
+    throw new UsageError(
       `--platform must be one of ${ITCH_PLATFORMS.join(", ")} (got ${JSON.stringify(platform)}): itch.io tags an upload by its channel's platform word.`
     );
   if (channel === void 0 || channel === "stable") return platform;
   const suffix = channel.toLowerCase();
   if (!CHANNEL_SUFFIX.test(suffix))
-    throw new Error(
+    throw new UsageError(
       `--channel ${JSON.stringify(channel)} cannot suffix a butler channel (1-32 lower-case letters and digits).`
     );
   return `${platform}-${suffix}`;
@@ -40785,11 +40810,11 @@ function generateFlathubSkeleton(i, o = {}) {
   const command = o.command ?? slug;
   const runtimeVersion = o.runtimeVersion ?? FLATHUB_RUNTIME_VERSION;
   if (!RUNTIME_VERSION_PATTERN.test(runtimeVersion))
-    throw new Error(
+    throw new UsageError(
       `--runtime-version must be a Freedesktop SDK branch such as ${FLATHUB_RUNTIME_VERSION} (got ${runtimeVersion}).`
     );
   if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/.test(command) || command.includes(".."))
-    throw new Error(
+    throw new UsageError(
       `--command must be a relative path inside the build (got ${command}).`
     );
   const builds = linuxBuilds(i);
@@ -41146,7 +41171,7 @@ function generateCask(i, o = {}) {
     );
   const app = o.app ?? `${i.app.name}.app`;
   if (!/\.app$/.test(app) || app.includes("/") || app.includes(".."))
-    throw new Error(`--app must name a .app bundle (got ${app}).`);
+    throw new UsageError(`--app must name a .app bundle (got ${app}).`);
   const desc = (i.app.shortDescription ?? i.app.subtitle ?? i.app.name).trim().replace(/\.$/, "");
   const lines4 = [
     `cask ${rubyString(cask)} do`,
@@ -41342,7 +41367,7 @@ var defaultSpawn = (tool, argv2, cwd) => new Promise((resolve2, reject) => {
 function checkToolPath(toolPath, tool) {
   const base = path24.basename(toolPath.replace(/\\/g, "/")).replace(/\.(exe|sh|cmd|bat)$/i, "");
   if (base.toLowerCase() !== tool.toLowerCase())
-    throw new Error(
+    throw new UsageError(
       `--tool-path must point at ${tool} itself, not ${path24.basename(toolPath)}.`
     );
 }
@@ -41460,7 +41485,7 @@ var SCOOP_APP_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 function scoopApp(i, o = {}) {
   const app = o.app ?? i.product.slug.toLowerCase();
   if (!SCOOP_APP_PATTERN.test(app))
-    throw new Error(
+    throw new UsageError(
       `--app must be 1-64 lower-case letters, digits, ., _ or - (got ${app}).`
     );
   return app;
@@ -41598,7 +41623,7 @@ function installer(b, date, o) {
         `${b.name} is a zip: pass --portable <path of the executable inside it>.`
       );
     if (o.portable.startsWith("/") || o.portable.includes("..") || /^[A-Za-z]:/.test(o.portable))
-      throw new Error(
+      throw new UsageError(
         `--portable must be a relative path inside the archive (got ${o.portable}).`
       );
     out.NestedInstallerType = "portable";
@@ -41623,7 +41648,7 @@ function generateWinget(i, o = {}) {
       `The ${i.outlet.id} outlet declares no packageIdentifier in .pkey/distribution.`
     );
   if (o.command !== void 0 && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$/.test(o.command))
-    throw new Error(
+    throw new UsageError(
       `--command must be 1-40 letters, digits, ., _ or - (got ${o.command}).`
     );
   const release = needRelease(i);
@@ -42212,7 +42237,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
   ${parsed.errors.join("\n  ")}`);
   const m = parsed.manifest;
   if (product && product !== m.product.slug)
-    throw new Error(
+    throw new UsageError(
       `--product ${product} does not match .pkey/product's slug ${m.product.slug}.`
     );
   return {
@@ -42242,11 +42267,11 @@ function pickOutlet(p, kinds, outletId, label) {
   if (outletId) {
     const o = p.outlets.find((x) => x.id === outletId);
     if (!o)
-      throw new Error(
+      throw new UsageError(
         `--outlet ${outletId} is not declared in .pkey/distribution.`
       );
     if (!kinds.includes(o.kind))
-      throw new Error(
+      throw new UsageError(
         `--outlet ${outletId} is a ${o.kind} outlet, not a ${label} one (${kinds.join(", ")}).`
       );
     return o;
@@ -42269,7 +42294,7 @@ function snapReleaseChannels(outlet, channels2) {
     declared && typeof declared === "object" && !Array.isArray(declared) ? declared : void 0
   );
   if (channels2.length === 0)
-    throw new Error(
+    throw new UsageError(
       "--channel is required: the release channel(s) to release to."
     );
   const out = [];
@@ -42393,7 +42418,7 @@ function bool(a, name) {
 function need(a, name, why) {
   const v = str5(a, name);
   if (!v)
-    throw new Error(`--${name} is required: ${why}.
+    throw new UsageError(`--${name} is required: ${why}.
 ${STOREFRONT_USAGE}`);
   return v;
 }
@@ -42422,7 +42447,7 @@ async function resolveSnapcraftYaml(cwd, p) {
 function printAllowList(a, io) {
   const only = str5(a, "store");
   if (only && !ciStore(only))
-    throw new Error(
+    throw new UsageError(
       `--store must be one of ${ciStoreIds().join(", ")} (got ${only}).`
     );
   const stores = CI_PLANE.stores.filter((s) => !only || s.store === only);
@@ -42979,7 +43004,7 @@ var OUT_DIRS = {
 async function staleOutFiles(dir, cwd) {
   const up = path27.relative(dir, path27.resolve(cwd));
   if (up === "" || up.split(path27.sep)[0] !== ".." && !path27.isAbsolute(up))
-    throw new Error(
+    throw new UsageError(
       `--out ${dir} is the working directory or one of its parents; point it at a directory of its own (for example --out fdroid-repo).`
     );
   let top;
@@ -42989,7 +43014,7 @@ async function staleOutFiles(dir, cwd) {
     return { files: [], dirs: [] };
   }
   if (!top.isDirectory())
-    throw new Error(`--out ${dir} exists and is not a directory.`);
+    throw new UsageError(`--out ${dir} exists and is not a directory.`);
   const files = [];
   const dirs = [];
   const foreign = [];
@@ -43017,7 +43042,7 @@ async function staleOutFiles(dir, cwd) {
     foreign.push(name);
   }
   if (foreign.length)
-    throw new Error(
+    throw new UsageError(
       `--out ${dir} holds files pkey feeds fdroid did not write (${foreign.slice(0, 5).join(", ")}${foreign.length > 5 ? ", ..." : ""}); point --out at a new or empty directory.`
     );
   return { files, dirs };
@@ -43043,7 +43068,7 @@ async function buildFdroidFeed(opts) {
   const out = opts.stdout;
   if (!opts.channel?.trim() || !opts.out?.trim()) throw new Error(FEEDS_USAGE);
   if (opts.keystore === void 0 !== (opts.alias === void 0))
-    throw new Error(`--keystore and --alias go together.
+    throw new UsageError(`--keystore and --alias go together.
 ${FEEDS_USAGE}`);
   const dir = path27.resolve(opts.cwd, opts.out);
   await staleOutFiles(dir, opts.cwd);
@@ -43088,7 +43113,7 @@ ${FEEDS_USAGE}`);
     bytes: await readFile22(path27.resolve(opts.cwd, opts.icon))
   } : void 0;
   if (icon2 && !/^[A-Za-z0-9_~.-]+\.(png|jpe?g|webp)$/.test(icon2.name))
-    throw new Error(
+    throw new UsageError(
       "--icon must be a .png, .jpg or .webp file with a plain name."
     );
   const repo = buildRepoFiles(inputs, timestamp, {
@@ -43219,19 +43244,21 @@ function feedsSetup(opts) {
   const { ecosystem, owner } = opts;
   if (!ecosystem || !owner) throw new Error(FEEDS_SETUP_USAGE);
   if (!isPackageEcosystem(ecosystem))
-    throw new Error(
+    throw new UsageError(
       `--ecosystem must be one of ${PACKAGE_ECOSYSTEMS.join(", ")}.
 ${FEEDS_SETUP_USAGE}`
     );
   if (opts.version && !opts.package)
-    throw new Error(`--version goes with --package.
-${FEEDS_SETUP_USAGE}`);
+    throw new UsageError(
+      `--version goes with --package.
+${FEEDS_SETUP_USAGE}`
+    );
   if (opts.tokenEnv !== void 0 && !isFeedTokenEnvName(opts.tokenEnv))
-    throw new Error(
+    throw new UsageError(
       `--token-env takes an environment variable's name (like PKEY_REGISTRY_TOKEN), never the token itself.`
     );
   if (opts.tokenEnv !== void 0 && ecosystem === "godot")
-    throw new Error(
+    throw new UsageError(
       `--token-env does not apply to godot: the editor and GodotEnv authenticate by a token in the feed's URL, which only the console shows.`
     );
   const fields = PACKAGE_ECOSYSTEM_RULES[ecosystem].namespace.fields;
@@ -43328,7 +43355,7 @@ function renderPruneReport(r, env = {}) {
 }
 async function feedsPrune(opts) {
   if (!opts.product)
-    throw new Error(`--product is required.
+    throw new UsageError(`--product is required.
 ${FEEDS_PRUNE_USAGE}`);
   const token = await resolveCiToken({
     baseUrl: opts.baseUrl,
@@ -44489,7 +44516,7 @@ function fitScreenshots(inputs, accepted, background) {
         if (choice) used.add(id);
         const method = choice === "pad" ? "pad" : proposal.crop ? "crop" : "pad";
         if (choice === "pad" && !proposal.pad)
-          throw new Error(
+          throw new UsageError(
             `--pad ${id}: no pad fits ${rule.store}; accept the crop instead.`
           );
         const raster = opaque(
@@ -44545,14 +44572,14 @@ async function loadScreenshots(cwd, dir) {
   for (const e of entries) {
     if (e.name.startsWith(".")) continue;
     if (!e.isDirectory() || !SCREENSHOT_CLASSES.includes(e.name))
-      throw new Error(
+      throw new UsageError(
         `--screenshots ${dir}: ${e.name} is not a size-class directory (${SCREENSHOT_CLASSES.join(", ")}).`
       );
     const cls = e.name;
     const files = (await readdir11(path28.join(root, cls))).filter((f) => !f.startsWith(".")).sort();
     for (const f of files) {
       if (!SCREENSHOT_EXT.test(f) || !/^[A-Za-z0-9_.-]+$/.test(f))
-        throw new Error(
+        throw new UsageError(
           `--screenshots ${dir}/${cls}/${f}: screenshots are .png, .jpg or .webp files with plain names.`
         );
       const p = path28.join(root, cls, f);
@@ -44573,7 +44600,7 @@ async function loadScreenshots(cwd, dir) {
   for (const s of out) {
     const key = `${s.cls}/${s.name}`;
     if (names.has(key))
-      throw new Error(
+      throw new UsageError(
         `--screenshots: two ${s.cls} files are named ${s.name} (ids must be unique).`
       );
     names.add(key);
@@ -44592,7 +44619,7 @@ async function clearOut(dir) {
     previous = null;
   }
   if (!previous || previous.format !== REPORT_FORMAT || !Array.isArray(previous.files))
-    throw new Error(
+    throw new UsageError(
       `--out ${dir} is not empty and holds no ${REPORT_FORMAT} report.json: give an empty or new directory.`
     );
   const dirs = /* @__PURE__ */ new Set();
@@ -44673,21 +44700,23 @@ async function listingAssets(opts) {
     throw new Error(`Give at least one input.
 ${LISTING_ASSETS_USAGE}`);
   if (opts.upload && !opts.product?.trim())
-    throw new Error(`--upload needs --product.
+    throw new UsageError(`--upload needs --product.
 ${LISTING_ASSETS_USAGE}`);
   if (!opts.upload && opts.dryRun)
-    throw new Error(
+    throw new UsageError(
       "--dry-run applies to --upload only (without --upload nothing is sent)."
     );
   const locale = opts.locale?.trim() || null;
   if (locale !== null && !LOCALE_RE.test(locale))
-    throw new Error(`--locale ${locale} is not a locale code such as en-US.`);
+    throw new UsageError(
+      `--locale ${locale} is not a locale code such as en-US.`
+    );
   const focal = opts.focal ? parseFocal(opts.focal) : { x: 0.5, y: 0.5 };
   const focalPortrait = opts.focalPortrait ? parseFocal(opts.focalPortrait) : focal;
   const accepted = acceptances(opts.accept ?? [], opts.pad ?? []);
   const dir = path28.resolve(opts.cwd, opts.out);
   if (existsSync2(dir) && !(await stat9(dir)).isDirectory())
-    throw new Error(`--out ${opts.out} is not a directory.`);
+    throw new UsageError(`--out ${opts.out} is not a directory.`);
   opts.progress?.stage("Reading the masters");
   const masterList = (await Promise.all([
     loadMaster(opts.cwd, "icon-master", opts.icon),
@@ -44699,7 +44728,7 @@ ${LISTING_ASSETS_USAGE}`);
   for (const m of masterList) masters[m.slot] = m.decoded.raster;
   const icon2 = masters["icon-master"];
   if (icon2 && icon2.width !== icon2.height)
-    throw new Error(
+    throw new UsageError(
       `--icon must be square (got ${icon2.width}x${icon2.height}); a 1024x1024 master is best.`
     );
   if (masters.wordmark && !masterList.find((m) => m.slot === "wordmark").decoded.alpha)
@@ -45134,7 +45163,7 @@ async function prepare(cwd, entries) {
     const problem = slotProblem(e.slot);
     if (problem) throw new Error(problem);
     if (e.locale !== void 0 && !LOCALE_RE2.test(e.locale))
-      throw new Error(
+      throw new UsageError(
         `--locale must be a language tag such as de or pt-BR (got ${JSON.stringify(e.locale)}).`
       );
     const id = `${e.slot}@${e.locale ?? ""}`;
@@ -45417,6 +45446,10 @@ async function runCommand(argv2, io) {
   try {
     const cmd = findCommand(parsed.command);
     const handler = cmd ? HANDLERS[cmd.name] : void 0;
+    if (!cmd && parsed.command.startsWith("-")) {
+      stderr.write(unknownOption(parsed.command, term(stderr)));
+      return 2;
+    }
     if (!cmd || !handler) {
       stderr.write(unknownCommand(parsed.command, term(stderr)));
       return 2;
@@ -45437,7 +45470,7 @@ async function runCommand(argv2, io) {
     if (ci.env.PKEY_DEBUG && err instanceof Error && err.stack)
       stderr.write(`${untrustedLines(err.stack, ci.env)}
 `);
-    return isUsageError(message) ? 2 : 1;
+    return err instanceof UsageError || isUsageError(message) ? 2 : 1;
   }
 }
 var HANDLERS = {
@@ -45465,8 +45498,19 @@ var HANDLERS = {
   )
 };
 function unknownCommand(name, term, parent) {
+  return failLine(
+    parent ? `Unknown ${parent} command "${name.slice(parent.length + 1)}". Run pkey help ${parent} to see its commands.` : `Unknown command "${name}". Run pkey help to see every command.`,
+    term
+  );
+}
+function unknownOption(flag, term) {
+  return failLine(
+    `Unknown option ${flag.split("=")[0]}. Run pkey help to see the options.`,
+    term
+  );
+}
+function failLine(text, term) {
   const { painter, symbols, caps } = term;
-  const text = parent ? `Unknown ${parent} command "${name.slice(parent.length + 1)}". Run pkey help ${parent} to see its commands.` : `Unknown command "${name}". Run pkey help to see every command.`;
   const lines4 = wrapSpans([{ text }], Math.max(1, caps.columns - 3));
   return `${lines4.map(
     (l, i) => i === 0 ? `${painter.style(symbols.fail, ["danger"])}  ${painter.line(l)}` : `   ${painter.line(l)}`
@@ -45948,7 +45992,7 @@ function cmdTrust(parsed, stdout) {
   if (!kid || !publicKey)
     throw new Error("Usage: pkey trust --kid <kid> --public-key <base64url>");
   if (!/^[A-Za-z0-9_-]{43}$/.test(publicKey))
-    throw new Error(
+    throw new UsageError(
       `--public-key must be an Ed25519 public key: 43 base64url characters (A-Z a-z 0-9 - _); got ${publicKey.length}. Copy it from the console's Keys & secrets page.`
     );
   for (const lang of SDK_LANGS) {
@@ -45968,7 +46012,7 @@ ${setup.config.code}
 async function cmdDev(parsed, rt) {
   const port = flagString(parsed, "port");
   if (port !== void 0 && !/^\d{1,5}$/.test(port))
-    throw new Error(`--port must be a number; got ${port}.`);
+    throw new UsageError(`--port must be a number; got ${port}.`);
   const [sub, ...positional] = parsed.positional;
   const args = {
     sub,
@@ -46023,13 +46067,13 @@ ${setup.start.code}
     return 0;
   }
   if (lang === void 0 || !isSdkLang(lang))
-    throw new Error(
+    throw new UsageError(
       add5 ? `pkey sdk add needs the SDK first: pkey sdk add ${SDK_LANGS.join("|")} --expect <kid>@sha256:<fingerprint>[,...]` : `--lang must be one of ${SDK_LANGS.join(", ")}.
 ${SDK_CONFIG_USAGE}`
     );
   const expect = add5 ? parseExpect(flagString(parsed, "expect")) : null;
   if (!add5 && flagString(parsed, "expect") !== void 0)
-    throw new Error(
+    throw new UsageError(
       "--expect is only for pkey sdk add <lang>; it checks the served pins before writing."
     );
   let local = null;
@@ -46046,17 +46090,17 @@ ${SDK_CONFIG_USAGE}`
   }
   const product = flagString(parsed, "product") ?? (add5 ? void 0 : parsed.positional[0]) ?? devFacts?.product ?? local?.slug;
   if (!product)
-    throw new Error(
+    throw new UsageError(
       add5 ? "pkey sdk add needs --product <slug> (or run it in the product repo, where .pkey/ names it)." : SDK_CONFIG_USAGE
     );
   if (local && !devFacts && local.slug !== product)
-    throw new Error(
+    throw new UsageError(
       `The .pkey/ in ${cwd} is product ${local.slug}, not ${product}; run pkey sdk from ${product}'s repo or drop --product.`
     );
   const kid = flagString(parsed, "kid");
   const publicKey = flagString(parsed, "public-key");
   if (kid === void 0 !== (publicKey === void 0))
-    throw new Error("--kid and --public-key go together.");
+    throw new UsageError("--kid and --public-key go together.");
   const facts = await resolveSdkFacts({
     product,
     baseUrl: devFacts?.baseUrl ?? flagString(parsed, "base-url") ?? DEFAULT_BASE_URL,
@@ -46147,19 +46191,19 @@ async function findGodotProject(from) {
 }
 function parseExpect(raw) {
   if (raw === void 0)
-    throw new Error(
+    throw new UsageError(
       "pkey sdk add needs --expect <kid>@sha256:<fingerprint>[,...]: the pin fingerprints on the console's Integration page. It never trusts what discovery says first."
     );
   const out = /* @__PURE__ */ new Map();
   for (const part of raw.split(",").filter(Boolean)) {
     const m = /^(.+)@sha256:([0-9a-f]{64})$/i.exec(part.trim());
     if (!m)
-      throw new Error(
+      throw new UsageError(
         `--expect takes <kid>@sha256:<64 hex digits>; got ${part}.`
       );
     out.set(m[1], m[2].toLowerCase());
   }
-  if (out.size === 0) throw new Error("--expect lists no pin.");
+  if (out.size === 0) throw new UsageError("--expect lists no pin.");
   return out;
 }
 function checkExpected(expect, facts) {
@@ -46254,7 +46298,7 @@ async function releasePublish(parsed, cwd, product, common, progress) {
   ) : void 0;
   const minSupportedSeq = flagString(parsed, "min-supported-seq") !== void 0 ? Number(flagString(parsed, "min-supported-seq")) : void 0;
   if (parsed.bare.has("pin"))
-    throw new Error("--pin needs a value: --pin <packId>@<version>.");
+    throw new UsageError("--pin needs a value: --pin <packId>@<version>.");
   const contentKeyPem = flagString(parsed, "content-key-file") ? await readFile25(
     path30.resolve(cwd, flagString(parsed, "content-key-file")),
     "utf8"
@@ -46285,7 +46329,7 @@ async function releasePublish(parsed, cwd, product, common, progress) {
       `--deliverable ${deliverable} is a package: its files are extracted from --dir, its release id is <deliverable>@<version>, and it is never signed`
     );
     if (flagBool(parsed, "no-record"))
-      throw new Error(
+      throw new UsageError(
         "--no-record does not apply to a package: a package release never carries a record."
       );
     progress.stage(`Publishing ${deliverable}`);
@@ -46313,11 +46357,11 @@ async function releasePublish(parsed, cwd, product, common, progress) {
       `--deliverable ${deliverable} is a pack; the content-interface fingerprint is the app's (its pack lists content ids with --provides)`
     );
     if (parsed.bare.has("removes") || parsed.bare.has("provides"))
-      throw new Error(
+      throw new UsageError(
         "--provides needs a file and --removes a content id: --provides <file>, --removes <id>[,<id>...]."
       );
     if (parsed.bare.has("script-extensions") || parsed.bare.has("script-types"))
-      throw new Error(
+      throw new UsageError(
         "--script-extensions and --script-types need values: --script-extensions lua[,wren...], --script-types LuaScript[,...]."
       );
     const scriptExtensions = parseRemoves(
@@ -46425,9 +46469,9 @@ async function cmdRelease(parsed, cwd, stdout, stderr, ci, g) {
     }
     case "content-stamp": {
       if (parsed.bare.has("pin"))
-        throw new Error("--pin needs a value: --pin <packId>@<version>.");
+        throw new UsageError("--pin needs a value: --pin <packId>@<version>.");
       if (parsed.bare.has("hold"))
-        throw new Error(
+        throw new UsageError(
           "--hold needs a value: --hold <packId>@<version>[=<reason>]."
         );
       const outFile = flagString(parsed, "out");
@@ -46741,7 +46785,7 @@ async function cmdTransport(parsed, cwd, stdout, stderr, ci) {
   const from = () => {
     const f = flagString(parsed, "from");
     if (!f)
-      throw new Error(
+      throw new UsageError(
         `--from is required: the --out directory of pkey release publish --deliverable ${deliverable}.
 ${TRANSPORT_USAGE}`
       );
@@ -46763,7 +46807,7 @@ ${TRANSPORT_USAGE}`
     case "apple-ba upload": {
       const wait = flagString(parsed, "wait");
       if (wait !== void 0 && !/^[0-9]{1,4}$/.test(wait))
-        throw new Error("--wait takes whole minutes.");
+        throw new UsageError("--wait takes whole minutes.");
       await baUpload({
         ...common,
         dir: flagString(parsed, "dir"),
@@ -46778,7 +46822,7 @@ ${TRANSPORT_USAGE}`
     case "play-pad modules": {
       const project = flagString(parsed, "project");
       if (!project)
-        throw new Error(
+        throw new UsageError(
           `--project is required: the Godot Android Gradle build (android/build).
 ${TRANSPORT_USAGE}`
         );
@@ -46794,7 +46838,8 @@ ${TRANSPORT_USAGE}`
     }
     case "steam-depot vdf": {
       const depot = flagString(parsed, "depot");
-      if (!depot) throw new Error(`--depot is required.
+      if (!depot)
+        throw new UsageError(`--depot is required.
 ${TRANSPORT_USAGE}`);
       await steamVdf({
         ...common,
@@ -46822,7 +46867,7 @@ function flagString(parsed, name) {
 function refuseFlags(parsed, names, why) {
   const given = names.filter((n) => parsed.flags[n] !== void 0);
   if (given.length)
-    throw new Error(
+    throw new UsageError(
       `${given.map((n) => `--${n}`).join(", ")} ${given.length === 1 ? "does" : "do"} not apply here: ${why}.`
     );
 }
