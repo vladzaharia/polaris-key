@@ -15,7 +15,7 @@
 // (the folder ui:report reads, and maps onto the registry's state by its prefix).
 
 import type { ReactNode } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { commands, page } from "vitest/browser";
 import { createRoot, type Root } from "react-dom/client";
 import matrixJson from "../../../../conformance/corpus/v2/ui-matrix.json" with { type: "json" };
@@ -51,6 +51,18 @@ function inputOf(name: string, patch: Obj = {}): UiInput {
 }
 
 /** A solid square PNG, made in the page: no binary fixture to commit. */
+beforeAll(async () => {
+  // The brand fonts, as the other browser suites and the elements' presentation scenes load them.
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = new URL("../../../brand/fonts/fonts.css", import.meta.url).href;
+  document.head.append(link);
+  await new Promise<void>((resolve) => {
+    link.addEventListener("load", () => resolve(), { once: true });
+    link.addEventListener("error", () => resolve(), { once: true });
+  });
+});
+
 async function png(fill: string, size = 192): Promise<Uint8Array> {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;

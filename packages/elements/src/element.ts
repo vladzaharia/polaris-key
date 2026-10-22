@@ -285,10 +285,20 @@ export abstract class PkElement extends LitElement {
         .icon(96, typeof devicePixelRatio === "number" ? devicePixelRatio : 2)
         .then((bytes) => {
           if (!bytes || this.lastSource !== source) return;
-          if (this.iconUrl?.startsWith("blob:"))
-            URL.revokeObjectURL(this.iconUrl);
-          this.iconUrl = URL.createObjectURL(new Blob([bytes as BlobPart]));
-          this.requestUpdate();
+          const made = URL.createObjectURL(new Blob([bytes as BlobPart]));
+          // Bytes that do not decode as an image leave the monogram, not a broken picture.
+          const probe = new Image();
+          probe.src = made;
+          const shown = () => {
+            if (this.lastSource !== source) return URL.revokeObjectURL(made);
+            if (this.iconUrl?.startsWith("blob:"))
+              URL.revokeObjectURL(this.iconUrl);
+            this.iconUrl = made;
+            this.requestUpdate();
+          };
+          if (typeof probe.decode === "function")
+            probe.decode().then(shown, () => URL.revokeObjectURL(made));
+          else shown();
         })
         .catch(() => {
           // A failed icon leaves the monogram: never an error state.

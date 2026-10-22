@@ -128,12 +128,19 @@ export function licenseRows(c: KitCtx): ReactNode {
     const date = r.expiresAt
       ? new Date(r.expiresAt * 1000).toLocaleDateString(c.copy.locale)
       : "";
-    // An origin naming a store the row does not carry is left out, never drawn as "From {store}".
-    const originText = origin && has(origin) ? plain(c, origin) : "";
+    // A store-origin row with no store name says nothing of its origin (never "From {store}").
     const metaArgs = {
-      origin: /\{[A-Za-z]\w*\}/.test(originText) ? "" : originText,
+      origin:
+        origin && has(origin) && (r.origin !== "store" || r.store)
+          ? plain(c, origin, r.store ? { store: r.store } : {})
+          : "",
       term: has(term) ? plain(c, term, { date }) : "",
     };
+    const meta = metaArgs.origin
+      ? has("signin.choice.meta")
+        ? text(c, "signin.choice.meta", metaArgs)
+        : metaArgs.origin
+      : metaArgs.term;
     const body = (
       <>
         <span className="pill">{r.tierName}</span>
@@ -150,15 +157,11 @@ export function licenseRows(c: KitCtx): ReactNode {
               {seatMeter(c, r.seats.used, r.seats.limit, false)}
             </>
           ) : null}
-          <span className="meta">
-            {metaArgs.origin
-              ? has("signin.choice.meta")
-                ? text(c, "signin.choice.meta", metaArgs)
-                : metaArgs.origin
-              : metaArgs.term}
+          <span className="meta-line">
+            <span className="meta">{meta}</span>
+            {full ? tag("signin.choice.tag.full") : null}
+            {r.current ? tag("signin.choice.tag.current") : null}
           </span>
-          {full ? tag("signin.choice.tag.full") : null}
-          {r.current ? tag("signin.choice.tag.current") : null}
         </span>
       </>
     );

@@ -785,11 +785,8 @@ export function actions(
       button(
         c,
         k,
-        k === primary
-          ? "primary"
-          : k === "common.signOut" && c.view.component === "AccountAndLicense"
-            ? "link"
-            : "secondary",
+        // Sign out is a quiet secondary button, as in the native kits.
+        k === primary ? "primary" : "secondary",
         {
           busy: busy && k === primary,
           disabled: k === "common.save" && settingsInvalid(c.input),

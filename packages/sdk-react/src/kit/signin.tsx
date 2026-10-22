@@ -508,7 +508,7 @@ function SignInForm(props: SignInProps & { steps: Steps }): ReactNode {
     body_.state === "code" &&
     kit.copy.has(HANDOFF_WAITING);
   const chrome: Chrome = waiting ? { meta: [HANDOFF_WAITING] } : {};
-  const c = withChoice(kit.ctxFor(body_, chrome));
+  const c = { ...withChoice(kit.ctxFor(body_, chrome)), form: true };
   const announce = step.announce.length ? (
     <p className="visually-hidden" role="status">
       {step.announce.map((k) => (

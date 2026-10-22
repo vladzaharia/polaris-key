@@ -178,7 +178,29 @@ function progressFor(c: KitCtx): ReactNode {
     return progressBar(c, p?.fraction ?? 0);
   if (view.copy.includes("a11y.progress"))
     return progressBar(c, p?.fraction ?? 0);
+  // A counted download draws its bar wherever its line shows (a toast, the inline progress).
+  if (
+    p?.fraction !== undefined &&
+    (view.component === "Toast" || view.component === "UpdateProgress")
+  )
+    return progressBar(c, p.fraction);
   return null;
+}
+
+/** The download's percent, beside its bar (the bar itself is named for assistive tech). */
+function percentFor(c: KitCtx): ReactNode {
+  const f = c.input.update?.progress?.fraction;
+  if (c.view.component !== "UpdatePrompt" || c.view.state !== "downloading")
+    return null;
+  if (typeof f !== "number") return null;
+  const pct = new Intl.NumberFormat(c.resolved.locale, {
+    style: "percent",
+  }).format(Math.max(0, Math.min(1, f)));
+  return (
+    <p className="meta percent" aria-hidden="true">
+      {pct}
+    </p>
+  );
 }
 
 /** A locked value (ChannelPicker, a managed setting): the lock glyph, named. */
@@ -273,6 +295,67 @@ export function withBase(c: KitCtx): View {
       };
     }
   }
+  // The Replace step confirms on its own button: its "Replace a device" openers are gone.
+  if (view.component === "LicenseChoice" && view.state === "replace-open")
+    return {
+      ...view,
+      copy: view.copy.filter(
+        (k) => k !== "signin.replace.open" && k !== "signin.replace.openSystem",
+      ),
+    };
+  // The code step: how long the code lasts, that it waits, and a Cancel to leave by.
+  if (view.component === "SignInHandoff" && view.state === "code")
+    return add(
+      ...(view.args.time !== undefined ? ["signin.handoff.expires"] : []),
+      "cli.signin.waitingCode",
+      "common.cancel",
+    );
+  if (view.component === "Devices") {
+    const input = c.input;
+    if (
+      !input.devices?.length ||
+      !["renaming", "confirming"].includes(view.state)
+    )
+      return { ...view, copy: view.copy.filter((k) => k !== "devices.lede") };
+    // An edit keeps the list: the row it concerns turns into the form, in place.
+    return add(
+      "devices.title",
+      "devices.meta",
+      "a11y.formFactor",
+      "devices.rename",
+      "devices.remove",
+      "a11y.renameDevice",
+      "a11y.removeDevice",
+    );
+  }
+  if (view.component === "UpdatePrompt") {
+    const notes = c.input.releaseNotes ?? [];
+    if (view.state === "downloading")
+      // The download keeps its title: what is coming.
+      return add(
+        c.input.update?.version ? "update.title" : "update.availableTitle",
+      );
+    if (view.state !== "available" && view.state !== "ready") return view;
+    const kept = (
+      notes.length === 0
+        ? view.copy.filter((k) => k !== "update.whatsNew")
+        : view.copy
+    ).filter(
+      (k) => view.state !== "available" || k !== "update.restartWhenReady",
+    );
+    // On the web the page cannot install: one Download action and Later, a title that says so.
+    if (view.state === "available" && c.input.platform?.os === "web") {
+      const gone = new Set(["update.title", "update.skipVersion"]);
+      return {
+        ...view,
+        copy: [
+          "update.availableTitle",
+          ...kept.filter((k) => !gone.has(k) && k !== "update.availableTitle"),
+        ],
+      };
+    }
+    return { ...view, copy: kept };
+  }
   if (view.component === "Settings") {
     const titled = ["dirty", "locked", "saving"].includes(view.state)
       ? add("settings.title")
@@ -294,7 +377,7 @@ export function withBase(c: KitCtx): View {
 function place(c: KitCtx, layout: Layout) {
   const placed = ownFiltered(c.view, placeKeys(c.view, layout));
   // A line whose argument the input does not carry is dropped, never drawn as "{version}".
-  const whole = (k: string) => c.driven !== true || !unfilled(c, k);
+  const whole = (k: string) => usableKey(c, k);
   const p = {
     ...placed,
     titles: placed.titles.filter(whole),
@@ -304,7 +387,7 @@ function place(c: KitCtx, layout: Layout) {
   };
   const x = c.chrome;
   if (!x) return p;
-  if (x.meta?.length) p.meta = [...p.meta, ...x.meta];
+  if (x.meta?.length) p.meta = [...new Set([...p.meta, ...x.meta])];
   const drop = new Set(x.drop ?? []);
   return {
     ...p,
@@ -318,6 +401,8 @@ function place(c: KitCtx, layout: Layout) {
 /** A blocking step: the card on the product ambient (DL1, DL2, DL5). */
 function screen(c: KitCtx, layout: Layout): ReactNode {
   const { view } = c;
+  // One form, one card width: a step of the sign-in form splits like its first step does.
+  const split = layout.split === true || c.form === true;
   const p = place(c, layout);
   const errorKeys = p.body.filter(isErrorKey);
   const body = p.body.filter((k) => !isErrorKey(k));
@@ -336,7 +421,7 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
       className="stage"
       data-part="stage"
       data-kind="screen"
-      data-split={layout.split === true ? "" : undefined}
+      data-split={split ? "" : undefined}
     >
       {ambient ? (
         <div className="ambient" aria-hidden="true">
@@ -352,12 +437,12 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
         {loading ? shimmer() : null}
         {c.chrome?.back ? backButton(c) : null}
         <div className="split passport">
-          {layout.split && c.resolved.iconUrl ? (
+          {split && c.resolved.iconUrl ? (
             <div className="passport-ambient" aria-hidden="true">
               <img src={c.resolved.iconUrl} alt="" />
             </div>
           ) : null}
-          {layout.split && showIdentity ? (
+          {split && showIdentity ? (
             <div className="panel-icon" aria-hidden="true">
               {productIcon(c)}
             </div>
@@ -397,6 +482,7 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
         </div>
         {contentFor(c)}
         {progressFor(c)}
+        {percentFor(c)}
         {callout(c, errorKeys)}
         {actions(c, p.controls)}
         {links(c, p.links)}
@@ -502,7 +588,7 @@ function statusOf(view: View): string {
 
 /** A banner or a toast: one line plus its consequence, at most two actions. */
 function strip(c: KitCtx, layout: Layout, kind: "banner" | "toast"): ReactNode {
-  const p = placeKeys(c.view, layout);
+  const p = place(c, layout);
   const lines = [...p.titles, ...p.body, ...p.meta];
   const role = c.view.decisions.tone === "danger" ? "alert" : "status";
   return (
@@ -542,7 +628,7 @@ function strip(c: KitCtx, layout: Layout, kind: "banner" | "toast"): ReactNode {
 
 /** A small status inside the host's layout. */
 function inline(c: KitCtx, layout: Layout): ReactNode {
-  const p = placeKeys(c.view, layout);
+  const p = place(c, layout);
   const lines = [...p.titles, ...p.meta, ...p.body];
   return (
     <div

@@ -57,6 +57,10 @@ function leftOutFor(view: { component: string; state: string }, key: string) {
     (view.component === "SignIn" && view.state === "replace")
   )
     return key === "signin.replace.open" || key === "signin.replace.openSystem";
+  // Restart when ready queues the restart of a download in flight: an available update offers
+  // Update now and Later (UI-KITS.md §4.1).
+  if (view.component === "UpdatePrompt" && view.state === "available")
+    return key === "update.restartWhenReady";
   return false;
 }
 

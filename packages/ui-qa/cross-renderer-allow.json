@@ -1,114 +1,13 @@
 {
   "_": "States where the React and elements baselines differ today. Each is a finding, not a pass: pnpm ui:report fails on any other drift and on an entry that no longer differs, so this list only shrinks.",
   "states": {
-    "Devices.confirming": {
-      "reason": "Elements confirm and rename inline in the row; React swaps the list for the confirm."
-    },
-    "Devices.renaming": {
-      "reason": "Elements confirm and rename inline in the row; React swaps the list for the confirm."
-    },
-    "UpdatePrompt.available": {
-      "reason": "Elements draw the prompt as a modal dialog/bottom sheet over the host (UK-04); React draws it as a window screen."
-    },
-    "UpdatePrompt.available-presentation": {
-      "reason": "Elements draw the prompt as a modal dialog/bottom sheet over the host (UK-04); React draws it as a window screen."
-    },
-    "UpdatePrompt.downloading": {
-      "reason": "Elements draw the prompt as a modal dialog/bottom sheet over the host (UK-04); React draws it as a window screen."
-    },
-    "UpdatePrompt.platform": {
-      "reason": "Elements draw the prompt as a modal dialog/bottom sheet over the host (UK-04); React draws it as a window screen."
-    },
-    "UpdatePrompt.ready": {
-      "reason": "Elements draw the prompt as a modal dialog/bottom sheet over the host (UK-04); React draws it as a window screen."
-    },
-    "UpdatePrompt.store": {
-      "reason": "Elements draw the prompt as a modal dialog/bottom sheet over the host (UK-04); React draws it as a window screen."
-    },
-    "UpdatePrompt.up-to-date": {
-      "reason": "Elements draw the prompt as a modal dialog/bottom sheet over the host (UK-04); React draws it as a window screen."
-    },
-    "LicenseChoice.all-full": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.create": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.current": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.grant-expired": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.keep": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.many": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.mixed": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.one": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.raced": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.replace-open": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "SignIn.choose": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "SignIn.replace": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "SignInHandoff.code": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "Welcome.default-presentation-derived": {
-      "reason": "Elements set the hero title about 1 px higher and a touch heavier than React in the presentation scenes (text metrics, 0.4-5 %)."
-    },
-    "Welcome.default-presentation-icon": {
-      "reason": "Elements set the hero title about 1 px higher and a touch heavier than React in the presentation scenes (text metrics, 0.4-5 %)."
-    },
-    "Welcome.default-presentation-icon-failed": {
-      "reason": "Elements set the hero title about 1 px higher and a touch heavier than React in the presentation scenes (text metrics, 0.4-5 %)."
-    },
-    "Welcome.default-presentation-none": {
-      "reason": "Elements set the hero title about 1 px higher and a touch heavier than React in the presentation scenes (text metrics, 0.4-5 %)."
-    },
-    "Welcome.default-presentation-rtl": {
-      "reason": "Elements set the hero title about 1 px higher and a touch heavier than React in the presentation scenes (text metrics, 0.4-5 %)."
-    },
-    "AccountAndLicense.key-only": {
-      "reason": "Small layout drift of 0.1-2 %: Sign out is a link in elements and a button in React (AccountAndLicense); the banner button row sits 2 px apart (GraceBanner, PolarisKeyGate.grace); and the single-control rows of ChannelPicker, EntitlementGate, Paywall.not-available, UpdateProgress.failed differ by a few px."
-    },
-    "AccountAndLicense.signed-in": {
-      "reason": "Small layout drift of 0.1-2 %: Sign out is a link in elements and a button in React (AccountAndLicense); the banner button row sits 2 px apart (GraceBanner, PolarisKeyGate.grace); and the single-control rows of ChannelPicker, EntitlementGate, Paywall.not-available, UpdateProgress.failed differ by a few px."
-    },
-    "ChannelPicker.default": {
-      "reason": "Small layout drift of 0.1-2 %: Sign out is a link in elements and a button in React (AccountAndLicense); the banner button row sits 2 px apart (GraceBanner, PolarisKeyGate.grace); and the single-control rows of ChannelPicker, EntitlementGate, Paywall.not-available, UpdateProgress.failed differ by a few px."
-    },
-    "EntitlementGate.not-entitled": {
-      "reason": "Small layout drift of 0.1-2 %: Sign out is a link in elements and a button in React (AccountAndLicense); the banner button row sits 2 px apart (GraceBanner, PolarisKeyGate.grace); and the single-control rows of ChannelPicker, EntitlementGate, Paywall.not-available, UpdateProgress.failed differ by a few px."
-    },
-    "GraceBanner.days-left": {
-      "reason": "Small layout drift of 0.1-2 %: Sign out is a link in elements and a button in React (AccountAndLicense); the banner button row sits 2 px apart (GraceBanner, PolarisKeyGate.grace); and the single-control rows of ChannelPicker, EntitlementGate, Paywall.not-available, UpdateProgress.failed differ by a few px."
-    },
-    "PolarisKeyGate.grace": {
-      "reason": "Small layout drift of 0.1-2 %: Sign out is a link in elements and a button in React (AccountAndLicense); the banner button row sits 2 px apart (GraceBanner, PolarisKeyGate.grace); and the single-control rows of ChannelPicker, EntitlementGate, Paywall.not-available, UpdateProgress.failed differ by a few px."
-    },
-    "UpdateProgress.failed": {
-      "reason": "Small layout drift of 0.1-2 %: Sign out is a link in elements and a button in React (AccountAndLicense); the banner button row sits 2 px apart (GraceBanner, PolarisKeyGate.grace); and the single-control rows of ChannelPicker, EntitlementGate, Paywall.not-available, UpdateProgress.failed differ by a few px."
-    },
-    "Toast.with-progress": {
-      "reason": "React omits the progress bar that the view's `with-progress` state names; elements draw it. A React defect."
-    },
     "PolarisKeyGate.booting": {
       "reason": "The looping shimmer is caught at a different frame: one 390 dark render differs by 0.11 %.",
       "maxRatio": 0.005
+    },
+    "Paywall.purchasing": {
+      "reason": "The busy spinner is caught at a different frame: one 390 render differs by 0.102 %.",
+      "maxRatio": 0.0015
     }
   }
 }

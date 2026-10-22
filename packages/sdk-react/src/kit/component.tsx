@@ -118,6 +118,10 @@ export interface KitProps {
   headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
   /** Draw a screen-form component (UpdatePrompt) as an embedded pane, for a page of the app's. */
   embedded?: boolean;
+  /** `UpdatePrompt` only: an optional update is a modal dialog over the host (a bottom sheet on a
+   *  phone); `asWindow` draws it as a screen that owns the window. A mandatory or blocked update
+   *  always owns the window. */
+  asWindow?: boolean;
   /** Set by the drop-in parts (and the gate): a line whose argument the input does not carry is
    *  left out rather than drawn as `{version}`. A fixture state draws every key it lists. */
   driven?: boolean;
@@ -644,9 +648,86 @@ export function KitRoot(props: {
 }
 
 /** One §4.1 component as a React component: its view, drawn in the kit's look. */
+/** States of an update that own the window; every other is a dialog over the running app (DL2). */
+const UPDATE_BLOCKING: ReadonlySet<string> = new Set([
+  "mandatory",
+  "blocked",
+  "revoked-required-content",
+]);
+
+/** An optional update prompt: a modal `<dialog>` over the host on the scrim (a bottom sheet on a
+ *  phone), the host inert. Escape and the scrim answer Later; focus returns to what held it. It
+ *  stays closed until the state changes. */
+function UpdateDialog(props: {
+  state: string;
+  hasLater: boolean;
+  later: () => void;
+  dismissed: string | null;
+  close: () => void;
+  children: ReactNode;
+}): ReactNode {
+  const ref = useRef<HTMLDialogElement | null>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  const open = props.dismissed !== props.state;
+  useEffect(() => {
+    const d = ref.current;
+    if (!d || d.open) return;
+    opener.current ??=
+      document.activeElement && document.activeElement !== document.body
+        ? (document.activeElement as HTMLElement)
+        : null;
+    if (typeof d.showModal === "function") d.showModal();
+    else d.setAttribute("open", "");
+  });
+  useEffect(() => {
+    if (open) return;
+    const o = opener.current;
+    opener.current = null;
+    if (o?.isConnected) o.focus({ preventScroll: true });
+  }, [open]);
+  if (!open) return null;
+  const dismiss = () => (props.hasLater ? props.later() : props.close());
+  return (
+    <dialog
+      ref={ref}
+      className="sheet"
+      data-part="sheet"
+      aria-labelledby="pk-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        dismiss();
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) dismiss();
+      }}
+    >
+      {props.children}
+    </dialog>
+  );
+}
+
 export function kitComponent(component: ComponentName) {
   function KitComponent(props: KitProps): ReactNode {
-    const kit = useKit(component, props);
+    // The state the person dismissed: the update dialog stays closed until the state changes.
+    const [dismissed, setDismissed] = useState<string | null>(null);
+    const stateRef = useRef("");
+    const kit = useKit(
+      component,
+      component === "UpdatePrompt"
+        ? {
+            ...props,
+            onAction: (a) => {
+              if (a.key === "update.later") setDismissed(stateRef.current);
+              props.onAction?.(a);
+            },
+          }
+        : props,
+    );
+    stateRef.current = kit.view.state;
+    useEffect(() => {
+      if (dismissed !== null && dismissed !== kit.view.state)
+        setDismissed(null);
+    });
     if (kit.view.state === "hidden") return null;
     // A host that handles input keeps a pane's title and rows through its transient states.
     let view =
@@ -666,6 +747,13 @@ export function kitComponent(component: ComponentName) {
             "update.install": `${kit.copy.format("boot.consent.download", {})} ${version}`,
           }
         : undefined;
+    const ctx = withChoice(kit.ctxFor(view, labels ? { labels } : undefined));
+    const body = renderView(ctx);
+    const asDialog =
+      component === "UpdatePrompt" &&
+      !props.embedded &&
+      props.asWindow !== true &&
+      !UPDATE_BLOCKING.has(view.state);
     return (
       <KitRoot
         kit={kit}
@@ -673,8 +761,18 @@ export function kitComponent(component: ComponentName) {
         fill={props.fill}
         className={props.className}
       >
-        {renderView(
-          withChoice(kit.ctxFor(view, labels ? { labels } : undefined)),
+        {asDialog ? (
+          <UpdateDialog
+            state={view.state}
+            hasLater={view.copy.includes("update.later")}
+            later={() => ctx.act("update.later")}
+            dismissed={dismissed}
+            close={() => setDismissed(view.state)}
+          >
+            {body}
+          </UpdateDialog>
+        ) : (
+          body
         )}
       </KitRoot>
     );
