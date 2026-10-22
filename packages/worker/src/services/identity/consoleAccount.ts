@@ -278,10 +278,24 @@ export async function consoleSubject(
     row.account_id !== cookie.aid
   )
     return null;
-  if ((await erasureVerdict(env, now, cookie.aid)) !== "clear") return null;
-  const account = await resolveAccount(db, cookie.aid, now);
-  // A merge moved the account: the cookie names a row that is no longer this account.
-  if (!account || account.id !== cookie.aid || account.status !== "active")
+  return subjectForAccount(env, db, cookie.aid, now);
+}
+
+/**
+ * Who an account is in the console right now, or `null`: the part of `consoleSubject` after the
+ * session-row check, shared so a session and a token (ST-34.3) cannot disagree. It never writes.
+ * Callers hold no session row for the account, so nothing here may echo `accountId`.
+ */
+export async function subjectForAccount(
+  env: Env,
+  db: Db,
+  accountId: string,
+  now: number,
+): Promise<ResolvedConsoleSubject | null> {
+  if ((await erasureVerdict(env, now, accountId)) !== "clear") return null;
+  const account = await resolveAccount(db, accountId, now);
+  // A merge moved the account: the id named is no longer this account.
+  if (!account || account.id !== accountId || account.status !== "active")
     return null;
 
   const rp = adminOidcConfig(env);
@@ -407,6 +421,12 @@ export async function consoleVerifiedPrimaryEmail(
   );
   return row?.primary_email ? normalizeEmail(row.primary_email) : null;
 }
+
+/**
+ * `subjectForAccount` for a credential with no session row (a personal token, ST-34.3). Never
+ * cache it longer than `LIVE_CHECK_SECONDS`.
+ */
+export const consoleTokenSubject = subjectForAccount;
 
 /** End one console session now (sign out). The 30 s cache elsewhere is dropped by the caller. */
 export async function endConsoleSession(

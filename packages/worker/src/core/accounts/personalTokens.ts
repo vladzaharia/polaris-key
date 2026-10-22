@@ -12,9 +12,11 @@
  * the mint and never logged, echoed or stored. `hint` keeps the last four characters so a person
  * can tell two tokens apart in a list, as a registry token's does.
  *
- * ONE SCOPE PER TOKEN. `scope` is a column, not a list: exclusivity is the shape. Today the
- * vocabulary is `packages:read`; ST-34 adds `admin` (30 days at most, step-up at mint, accepted
- * by the admin API alone). A scope is refused at mint and again at use when it is not in
+ * ONE SCOPE PER TOKEN. `scope` is a column, not a list: exclusivity is the shape. The
+ * vocabulary is `packages:read` and `admin`. An `admin` token (ST-34) lives 7 days by default and
+ * 30 at most, is accepted by the admin API alone (ST-34.3), is minted only through a
+ * console-approved `pkey login` (ST-34.5/34.6; the portal refuses the scope), and is REVOKED, not
+ * moved, by an account merge (below). A scope is refused at mint and again at use when it is not in
  * {@link PERSONAL_TOKEN_SCOPES}, so a row an older Worker wrote with a scope this one does not
  * know resolves to nothing rather than to something broader. {@link resolvePersonalToken} takes
  * the scope the CALLER accepts: the registry host asks for `packages:read` and so can never be
@@ -23,8 +25,11 @@
  * LIFECYCLE. Every token expires (default 90 days, at most 365 for `packages:read`). It is
  * revoked by the person, by a Superadmin (`revokeAllAccountTokens`), and by the account's erasure
  * (`stmtRevokeAccountTokens` first, then `stmtDeleteAccountTokens` in the closing batch), and dies with a restored backup's
- * erased account through the erasure fence (below). A merge moves the tokens to the surviving
- * account (`stmtMoveAccountTokens`), and its undo moves the same rows back.
+ * erased account through the erasure fence (below). A merge moves the absorbed account's
+ * `packages:read` tokens to the surviving account (`stmtMoveAccountTokens`), and its undo moves
+ * the same rows back; its `admin` tokens are revoked (`stmtRevokeAccountAdminTokens`, reason
+ * `access_removed`) and stay on the absorbed account, because an admin token resolves to the
+ * roles of the account that holds it and must never silently take on the survivor's.
  *
  * THE ERASURE FENCE (I-11). A D1 restore can bring an erased account's unrevoked tokens back, so
  * {@link resolvePersonalToken} asks the erasure ledger before it resolves one or writes
@@ -53,8 +58,14 @@ import { erasureVerdict } from "./erasureFence.js";
 /** The one scope the registry host reads. */
 export const PACKAGES_READ_SCOPE = "packages:read";
 
-/** Every scope a personal token may hold. ST-34 appends `admin`. */
-export const PERSONAL_TOKEN_SCOPES = [PACKAGES_READ_SCOPE] as const;
+/** The admin API's scope (ST-34): never accepted by the registry host, never minted by the portal. */
+export const ADMIN_SCOPE = "admin";
+
+/** Every scope a personal token may hold. */
+export const PERSONAL_TOKEN_SCOPES = [
+  PACKAGES_READ_SCOPE,
+  ADMIN_SCOPE,
+] as const;
 export type PersonalTokenScope = (typeof PERSONAL_TOKEN_SCOPES)[number];
 
 export function isPersonalTokenScope(v: unknown): v is PersonalTokenScope {
@@ -69,6 +80,7 @@ export const PERSONAL_TOKEN_DAYS: Readonly<
   Record<PersonalTokenScope, { readonly default: number; readonly max: number }>
 > = {
   "packages:read": { default: 90, max: 365 },
+  admin: { default: 7, max: 30 },
 };
 export const PERSONAL_TOKEN_MIN_DAYS = 1;
 
@@ -417,24 +429,46 @@ export function stmtDeleteAccountTokens(accountId: string): DbStatement {
   };
 }
 
-/** The merge: the absorbed account's tokens become the survivor's. */
+/**
+ * The merge: the absorbed account's non-admin tokens become the survivor's. An `admin` row never
+ * moves ({@link stmtRevokeAccountAdminTokens} runs first in the same batch).
+ */
 export function stmtMoveAccountTokens(
   fromAccountId: string,
   toAccountId: string,
 ): DbStatement {
   return {
-    sql: "UPDATE account_tokens SET account_id = ? WHERE account_id = ?",
+    sql: `UPDATE account_tokens SET account_id = ?
+           WHERE account_id = ? AND scope <> '${ADMIN_SCOPE}'`,
     params: [toAccountId, fromAccountId],
   };
 }
 
-/** The ids of the account's tokens, for a merge snapshot (so its undo moves exactly these back). */
+/**
+ * The merge: the absorbed account's live `admin` tokens stop authenticating (reason
+ * `access_removed`) and stay on that account (ST-34 D-12). A statement, so the merge batch stays
+ * atomic.
+ */
+export function stmtRevokeAccountAdminTokens(
+  accountId: string,
+  now: number,
+  by: string,
+): DbStatement {
+  return {
+    sql: `UPDATE account_tokens
+             SET revoked_at = ?, revoked_by = ?, revoke_reason = 'access_removed'
+           WHERE account_id = ? AND scope = '${ADMIN_SCOPE}' AND revoked_at IS NULL`,
+    params: [now, by.slice(0, 320), accountId],
+  };
+}
+
+/** The ids of the account's tokens that a merge moves (never `admin`), so its undo moves exactly these back. */
 export async function accountTokenIds(
   db: Db,
   accountId: string,
 ): Promise<string[]> {
   const rows = await db.all<{ id: string }>(
-    "SELECT id FROM account_tokens WHERE account_id = ?",
+    `SELECT id FROM account_tokens WHERE account_id = ? AND scope <> '${ADMIN_SCOPE}'`,
     accountId,
   );
   return rows.map((r) => r.id);

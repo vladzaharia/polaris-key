@@ -421,6 +421,19 @@ describe("closing the account closes its credentials", () => {
       NOW,
     );
     if (!res.ok) throw new Error(JSON.stringify(res));
+    // ST-34: an admin token goes the same way (revoked first, then deleted).
+    const adminTok = await mintAccountToken(
+      w.env,
+      w.db,
+      {
+        accountId: w.id,
+        label: "pkey login",
+        scope: "admin",
+        createdBy: `portal:${w.id}`,
+      },
+      NOW,
+    );
+    if (!adminTok.ok) throw new Error(JSON.stringify(adminTok));
     forgetRegistryTokens();
     expect(
       (
@@ -449,6 +462,13 @@ describe("closing the account closes its credentials", () => {
       await count(
         w.db,
         "SELECT COUNT(*) AS n FROM account_tokens WHERE account_id = ?",
+        w.id,
+      ),
+    ).toBe(2);
+    expect(
+      await count(
+        w.db,
+        "SELECT COUNT(*) AS n FROM account_tokens WHERE account_id = ? AND scope = 'admin' AND revoked_at IS NOT NULL AND revoke_reason = 'account_deleted'",
         w.id,
       ),
     ).toBe(1);

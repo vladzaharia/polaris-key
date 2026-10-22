@@ -28,6 +28,7 @@ export {
   markConsoleMethodStrong,
   type ConsoleMethod,
   type MarkStrongResult,
+  consoleTokenSubject,
   endConsoleSession,
   type ConsoleIdentity,
   type ConsoleRefusal,
