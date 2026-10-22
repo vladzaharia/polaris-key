@@ -77,6 +77,7 @@ describe("the registry", () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual([
       "support-code",
+      "entities",
       "navigation",
       "product-pages",
       "actions",
@@ -84,9 +85,12 @@ describe("the registry", () => {
       "products",
     ]);
     expect(PALETTE_GROUPS.map((g) => g.heading)).toEqual([
+      "Pasted key",
       "Recent",
       "Support code",
       "Pages",
+      "Licenses",
+      "People",
       "Actions",
       "Settings",
       "Products",

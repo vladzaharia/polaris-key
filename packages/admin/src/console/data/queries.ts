@@ -39,6 +39,8 @@ export const qk = {
   products: (): QueryKey => ["products"],
   /** I-41: a support code resolved to its product and user. */
   supportCode: (code: string): QueryKey => ["support-code", code],
+  /** ST-52: the palette's entity search (memory only; a pasted key can be the query). */
+  search: (q: string): QueryKey => ["palette-search", q],
   /** New product (ST-43): W22 repositories, W23 create check, W24 slug check. */
   githubRepositories: (q: string): QueryKey => ["new-product", "repos", q],
   createCheck: (repo: string): QueryKey => ["new-product", "check", repo],

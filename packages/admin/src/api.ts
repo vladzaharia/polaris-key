@@ -5368,6 +5368,11 @@ const rawApi = {
     call<{ product: string; subject: string }>(
       `/manage/api/support-codes/${enc(code)}`,
     ),
+  /**
+   * ST-52: the palette's entity search. A pasted licence key resolves to `key` (its licence) and is
+   * never echoed; a key the member may not read answers `key: null`, like an unknown one.
+   */
+  search: (q: string) => call<SearchDto>(`/manage/api/search?q=${enc(q)}`),
   /** Platform ready: the first-run checklist (platform admins). */
   platformReady: () => call<PlatformReadyDto>("/manage/api/platform/ready"),
   product: (slug: string) => call<{ product: ProductDetail }>(p(slug)),
@@ -6674,3 +6679,24 @@ export type AdminApi = typeof rawApi;
  * `test/mutations.test.ts` fails if a view calls a write on `api` directly.
  */
 export const api: AdminApi = rawApi;
+
+/** `GET /manage/api/search` (ST-52; worker `console/handlers/search.ts`). */
+export interface SearchDto {
+  key: { product: string; licenseId: string } | null;
+  licenses: {
+    product: string;
+    productName: string;
+    id: string;
+    name: string | null;
+    email: string | null;
+    status: string;
+    expiresAt: number | null;
+  }[];
+  people: {
+    product: string;
+    productName: string;
+    subject: string;
+    name: string | null;
+    email: string | null;
+  }[];
+}

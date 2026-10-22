@@ -285,6 +285,8 @@ export function boot(hash: string, opts: BootOptions = {}): FetchLog {
         portalEnabled: false,
       },
     },
+    // ST-52: the palette's entity search finds nothing unless a suite says otherwise.
+    "/manage/api/search": { key: null, licenses: [], people: [] },
     ...opts.extra,
   };
   for (const p of me.products) {
