@@ -17770,6 +17770,31 @@ function channelForOutlet(kind, subkind) {
     (c) => c.outlet.kind === kind && (c.outlet.subkind ?? null) === (subkind ?? null)
   ) ?? null;
 }
+var LISTING_LIMITS = {
+  name: 30,
+  subtitle: 30,
+  shortDescription: 78,
+  description: 4e3,
+  promotionalText: 170,
+  keywords: { maxItems: 50, maxItemChars: 40 },
+  features: { maxItems: 20, maxItemChars: 200 },
+  developerName: 100,
+  category: 64,
+  copyright: 200,
+  contactEmail: 254,
+  url: 2048,
+  iarcCertificateId: 64,
+  /** The serialised content descriptors. */
+  contentDescriptorsBytes: 8192,
+  /** winget's ReleaseNotes, the largest store limit. */
+  releaseNotes: 1e4,
+  /** Play's and F-Droid's. */
+  releaseNotesShort: 500,
+  /** An override's value: generous, since it exists to exceed the model (each store still checks). */
+  override: 1e4,
+  locales: 50,
+  overrides: 400
+};
 var MAX_OUTLETS = 32;
 var TRANSPORTS = [
   "embedded",
@@ -18080,6 +18105,21 @@ function listingValid(raw) {
     return false;
   return listingRefProblems(r).length === 0;
 }
+var MODEL_LIMITED_FIELDS = ["name", "subtitle", "developerName"];
+function warnListingLimits(warnings, raw, at, label) {
+  for (const field of MODEL_LIMITED_FIELDS) {
+    const v = raw[field];
+    const limit = LISTING_LIMITS[field];
+    if (typeof v !== "string" || v.length <= limit) continue;
+    add3(
+      warnings,
+      "distribution",
+      `${at}/${field}`,
+      "listing_exceeds_model_limit",
+      `${label}.${field} is ${v.length} characters; the listing model allows ${limit}, so it will not be imported as it is. Shorten it to ${limit} or fewer.`
+    );
+  }
+}
 function reportListing(errors, warnings, raw, at, label) {
   const problem = listingProblem(raw);
   if (problem) {
@@ -18092,6 +18132,7 @@ function reportListing(errors, warnings, raw, at, label) {
     );
   }
   if (!isRecord4(raw)) return;
+  if (warnings) warnListingLimits(warnings, raw, at, label);
   for (const [below, field, refProblem2] of listingRefProblems(raw)) {
     add3(
       errors,

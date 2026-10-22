@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 257 distinct emit sites.
+codes with their JSON-pointer paths. 258 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -215,6 +215,7 @@ the offending value, or the allowed set.
 | `invalid_web_origin` | error | product | `/web/origins/${i}` | web.origins entries $\{problem\}. |
 | `invalid_web_origins` | error | product | `/web/origins` | web.origins must be an array of at most $\{MAX_WEB_ORIGINS\} origins. |
 | `invalid_web_origins` | error | product | `/web` | web must be an object. |
+| `listing_exceeds_model_limit` | warning | distribution | `${at}/${field}` | $\{label\}.$\{field\} is $\{v.length\} characters; the listing model allows $\{limit\}, so it will not be imported as it is. Shorten it to $\{limit\} or fewer. |
 | `listing_field_conflict` | error | distribution | `${at}/${alias}` | $\{label\} declares both $\{field\} and its deprecated alias $\{alias\}; keep $\{field\}. |
 | `listing_url_field_deprecated` | warning | distribution | `${at}/${alias}` | $\{label\}.$\{alias\} is deprecated; write $\{field\} instead (an https URL or a repo path). |
 | `missing_auto_issue_tier` | error | product | `/autoIssue/tierId` | autoIssue.tierId is required when autoIssue is enabled — a policy naming no tier cannot issue anything. |

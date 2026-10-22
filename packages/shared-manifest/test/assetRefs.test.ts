@@ -381,3 +381,55 @@ describe("DJDL's distribution document (vladzaharia/djdl 9ba79dd)", () => {
     expect("iconUrl" in listing).toBe(false);
   });
 });
+
+describe("listing_exceeds_model_limit (A-27.5)", () => {
+  const check = (listing: Record<string, unknown>, outlet = false) =>
+    validateManifestDocuments({
+      product: product(),
+      schema: SCHEMA,
+      release: RELEASE,
+      distribution: outlet ? { outlets: { direct: { listing } } } : { listing },
+    });
+  const hits = (r: ReturnType<typeof check>) =>
+    r.warnings.filter((w) => w.code === "listing_exceeds_model_limit");
+
+  it("warns at 31 for name and subtitle and at 101 for developerName, not at the limit", () => {
+    const over = check({
+      name: "n".repeat(31),
+      subtitle: "s".repeat(31),
+      developerName: "d".repeat(101),
+    });
+    expect(over.errors).toEqual([]);
+    expect(hits(over).map((w) => [w.path, w.message])).toEqual([
+      [
+        "/listing/name",
+        "listing.name is 31 characters; the listing model allows 30, so it will not be imported as it is. Shorten it to 30 or fewer.",
+      ],
+      [
+        "/listing/subtitle",
+        "listing.subtitle is 31 characters; the listing model allows 30, so it will not be imported as it is. Shorten it to 30 or fewer.",
+      ],
+      [
+        "/listing/developerName",
+        "listing.developerName is 101 characters; the listing model allows 100, so it will not be imported as it is. Shorten it to 100 or fewer.",
+      ],
+    ]);
+    expect(
+      hits(
+        check({
+          name: "n".repeat(30),
+          subtitle: "s".repeat(30),
+          developerName: "d".repeat(100),
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("covers an outlet override at its own path", () => {
+    const res = check({ name: "n".repeat(31) }, true);
+    expect(hits(res).map((w) => w.path)).toEqual([
+      "/outlets/direct/listing/name",
+    ]);
+    expect(res.ok).toBe(true);
+  });
+});
