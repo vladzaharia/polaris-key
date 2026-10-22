@@ -13,10 +13,13 @@
  */
 
 import type { Db } from "../../db/types.js";
+import { serviceStateOf } from "../../core/services.js";
+import type { SettingsEnv } from "../../core/platformSettings.js";
+import { platformSetting } from "../../core/settings/platformRead.js";
 import { getProductSyncState } from "../../core/products/store.js";
 import type { ProductRow } from "../../core/repo.js";
 import type { AreaId, Principal } from "../authz.js";
-import { can, productScope } from "../authz.js";
+import { can, PLATFORM, productScope } from "../authz.js";
 import { expiringCredentials } from "../../services/distribution/public.js";
 import { attentionFactsFor } from "./shape.js";
 
@@ -28,7 +31,8 @@ export type AttentionKind =
   | "secret.usage"
   | "signing.missing"
   | "mint.pending"
-  | "credential.expiring";
+  | "credential.expiring"
+  | "sync.paused";
 
 /** Where the fix lives: a product page, by the console's page id. */
 export interface AttentionAction {
@@ -103,16 +107,39 @@ export function syncReason(message: string | null): string {
   return "The last resync did not finish.";
 }
 
-/** One product's items, unfiltered by who is asking. */
+/** One product's items, unfiltered by who is asking. `syncPaused`: the platform's Cloud Sync switch. */
 export async function productAttention(
   db: Db,
   p: ProductRow,
   now: number,
+  syncPaused = false,
 ): Promise<AttentionItem[]> {
   const product = { slug: p.slug, name: p.name || p.slug };
   const items: AttentionItem[] = [];
   const id = (kind: AttentionKind, subject = "") =>
     `${p.slug}:${kind}${subject ? `:${subject}` : ""}`;
+
+  // The platform switch reaches every product with Cloud Sync on. The fix is the platform's, so
+  // only a member who can edit the platform sees the item (`area`).
+  if (syncPaused && serviceStateOf(p).services.sync.enabled)
+    items.push({
+      id: id("sync.paused"),
+      product,
+      kind: "sync.paused",
+      tone: "warning",
+      service: "sync",
+      short: "Writes paused",
+      lines: [
+        "Cloud Sync writes are paused for every product.",
+        "Devices keep their changes and send them on resume.",
+      ],
+      action: {
+        label: "Resume",
+        page: "sync-setup",
+        query: { resume: "1" },
+      },
+      area: "platform",
+    });
 
   const sync = await getProductSyncState(db, p.slug);
   if (sync?.status === "error")
@@ -218,12 +245,25 @@ export async function attentionAcross(
   products: ProductRow[],
   principal: Principal | null | undefined,
   now: number,
+  env?: SettingsEnv,
 ): Promise<AttentionItem[]> {
+  const syncPaused =
+    env !== undefined &&
+    (await platformSetting(env, db, "cloudSync.writesPaused")) === "on";
   const per = await Promise.all(
     products.map(async (p) => {
       const scope = productScope(p);
-      const items = await productAttention(db, p, now);
-      return items.filter((i) => can(principal, scope, i.area, "view"));
+      const items = await productAttention(db, p, now, syncPaused);
+      // A platform-area item (the Cloud Sync pause) is judged at platform scope: a product role
+      // never holds the Platform area.
+      return items.filter((i) =>
+        can(
+          principal,
+          i.area === "platform" ? PLATFORM : scope,
+          i.area,
+          "view",
+        ),
+      );
     }),
   );
   return per

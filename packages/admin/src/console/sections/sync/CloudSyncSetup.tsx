@@ -1,51 +1,67 @@
 /**
- * Cloud Sync → Setup (config.cloud-sync, -paused, -product-role). What the operator controls
- * today, over reads the API serves (D1):
+ * Cloud Sync → Setup (config.cloud-sync, -paused, -product-role). What the operator controls,
+ * over reads the API serves (D1):
  *
- *  - the default storage per person, `cloudSync.quota.defaultBytes` (a platform setting; its
- *    change confirms with who it reaches, `StorageDefaultDialog`);
+ *  - storage per person: the platform default `cloudSync.quota.defaultBytes` (a platform setting;
+ *    its change confirms with who it reaches, `StorageDefaultDialog`) and each tier's value, read
+ *    from the usage read and edited on Tiers; where people are near a limit, in words;
+ *  - the product's storage ceiling `cloudSync.ceiling.bytes` (a meter and `CeilingDialog`);
  *  - the platform's writes-paused switch, `cloudSync.writesPaused` (`PauseWritesDialog`), with a
- *    banner while it is on.
+ *    banner while it is on. Home's attention item for it lands here with `?resume=1`.
  *
- * Both are platform controls: a member with a product role only sees them drawn disabled, with
- * who can change them. A setting the platform list does not serve (U-05 is not live) draws nothing.
- * The per-tier values are set on Tiers, which the card links to; people near a limit and the
- * Usage tab wait for U-05's reads.
+ * The platform controls are drawn disabled for a member with a product role, with who can change
+ * them. A setting the platform list does not serve draws nothing.
  */
 
 import * as React from "react";
-import { Lock } from "lucide-react";
+import { ArrowRight, Lock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
   api,
   type PlatformIntegerSetting,
   type PlatformSwitchSetting,
   type ProductCatalog,
+  type ProductSetting,
+  type SyncUsageResponse,
 } from "../../../api.js";
-import { CLOUD_SYNC_CEILINGS, CLOUD_SYNC_DEFAULTS } from "@polaris-key/catalog";
+import { CLOUD_SYNC_DEFAULTS } from "@polaris-key/catalog";
 import { formatCount, formatDateTime } from "../../../lib/format.js";
 import { DescriptionList } from "../../../ui/DescriptionList.js";
 import { Button } from "../../../ui/Button.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { Callout } from "../../../ui/Callout.js";
+import { Meter } from "../../../ui/charts/Meter.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { PageSkeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { useWriteGate } from "../../access/useCan.js";
 import { useProduct } from "../../data/hooks.js";
 import { qk } from "../../data/queries.js";
-import { Link } from "../../router.js";
+import { Link, useLocation } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsSection } from "../../templates/Settings.js";
 import { hasSavedStepUp } from "../../../ui/ConfirmDialog.js";
 import { PauseWritesDialog, stepUpKeyFor } from "./PauseWritesDialog.js";
 import { StorageDefaultDialog } from "./StorageDefaultDialog.js";
-import { localSettings, userSettings } from "./data.js";
+import { CeilingDialog } from "./CeilingDialog.js";
+import { localSettings, useSyncUsage, userSettings } from "./data.js";
 import { SyncHeader } from "./SyncHeader.js";
 import { formatBinaryBytes } from "./pages/SyncData.js";
 
 const WRITES_PAUSED = "cloudSync.writesPaused";
 const DEFAULT_QUOTA = "cloudSync.quota.defaultBytes";
+const CEILING = "cloudSync.ceiling.bytes";
+const LIMITS_AREA = "cloudSync.limits";
+
+/** Without a license a device syncs 1 MiB of settings and no files (until LX-36 lets a tier set it). */
+const NO_LICENSE_LINE = "Without a license: 1 MiB, no files";
+
+/** The Usage tab, by its path (U-05.20 adds the route and `r.syncUsage`; this is the same hash). */
+const usageHref = (slug: string): string =>
+  r.syncSetup(slug).replace(/\/setup$/, "/usage");
+
+const people = (n: number): string =>
+  n === 1 ? "1 person" : `${formatCount(n)} people`;
 
 function PlatformPill(): React.ReactElement {
   return (
@@ -73,9 +89,21 @@ export function CloudSyncSetupPage({
     queryFn: () => api.schema(slug),
     retry: false,
   });
+  const usageQuery = useSyncUsage(slug);
+  const usage = usageQuery.data?.enabled ? usageQuery.data : null;
+  const ceilingQuery = useQuery({
+    queryKey: qk.productSettings(slug, LIMITS_AREA),
+    queryFn: () => api.productSettings(slug, LIMITS_AREA),
+    retry: false,
+  });
+  const ceiling: ProductSetting | undefined = ceilingQuery.data?.settings.find(
+    (x) => x.key === CEILING,
+  );
+  const ceilingGate = useWriteGate("sync", slug, "Cloud Sync");
   const [dialog, setDialog] = React.useState<
-    null | "storage" | "pause" | "resume"
+    null | "storage" | "pause" | "resume" | "ceiling"
   >(null);
+  const resumeAsked = useLocation().route.query.get("resume") === "1";
 
   const lastTo = React.useRef<"on" | "off">("on");
   if (dialog === "pause") lastTo.current = "on";
@@ -96,7 +124,8 @@ export function CloudSyncSetupPage({
   const isPaused = paused?.value === "on";
   const propagation = platform.data?.propagationSeconds ?? 30;
 
-  // Back from the step-up sign-in: reopen the pause dialog that was left, reason and all.
+  // Back from the step-up sign-in: reopen the pause dialog that was left, reason and all. Home's
+  // "Resume" arrives with `?resume=1` and opens the resume dialog while writes are paused.
   const reopened = React.useRef(false);
   React.useEffect(() => {
     if (reopened.current || !paused) return;
@@ -104,7 +133,9 @@ export function CloudSyncSetupPage({
     if (hasSavedStepUp(stepUpKeyFor(WRITES_PAUSED, "on"))) setDialog("pause");
     else if (hasSavedStepUp(stepUpKeyFor(WRITES_PAUSED, "off")))
       setDialog("resume");
-  }, [paused]);
+    else if (resumeAsked && gate.allowed && paused.value === "on")
+      setDialog("resume");
+  }, [paused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const header = (
     <SyncHeader
@@ -220,9 +251,9 @@ export function CloudSyncSetupPage({
                   For tiers that don&apos;t set their own
                 </p>
               </div>
-              {quota ? (
+              {quota || usage ? (
                 <p className="tabular-nums text-fg-strong">
-                  {formatBinaryBytes(quota.value)}
+                  {formatBinaryBytes(quota ? quota.value : usage!.defaultBytes)}
                 </p>
               ) : null}
               {gate.allowed ? (
@@ -236,9 +267,24 @@ export function CloudSyncSetupPage({
                 </Button>
               ) : null}
             </div>
-            <p className="text-sm text-fg-muted">
-              Lowering a limit deletes nothing. New saves wait for room.
-            </p>
+            {usage ? (
+              <TierRows
+                usage={usage}
+                defaultBytes={quota ? quota.value : usage.defaultBytes}
+              />
+            ) : null}
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-border pt-3">
+              <p className="text-sm text-fg-muted">
+                Lowering a limit deletes nothing. New saves wait for room.
+              </p>
+              <Link
+                to={usageHref(slug)}
+                className="inline-flex items-center gap-1 py-1 text-sm text-accent-fg underline underline-offset-2"
+              >
+                See Usage
+                <ArrowRight aria-hidden className="size-3.5" />
+              </Link>
+            </div>
           </div>
         </SettingsSection>
       ) : null}
@@ -247,9 +293,51 @@ export function CloudSyncSetupPage({
         <SettingsSection
           id="sync-limits"
           title="Product limits"
-          description={`Each product holds up to ${formatBinaryBytes(CLOUD_SYNC_CEILINGS.perProduct.bytes)} of Cloud Sync data.`}
+          description="What this product and every product may hold."
         >
-          <div className="space-y-3 px-5 py-4">
+          <div className="space-y-4 px-5 py-4">
+            {ceiling ? (
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <div className="min-w-0 grow basis-full sm:basis-0">
+                    <p className="font-medium text-fg-strong">Total storage</p>
+                    <p className="text-sm text-fg-muted">
+                      {ceiling.source === "default"
+                        ? "Platform default"
+                        : "Set for this product"}
+                    </p>
+                  </div>
+                  {ceilingGate.allowed ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDialog("ceiling")}
+                    >
+                      Change…
+                    </Button>
+                  ) : null}
+                </div>
+                {usage ? (
+                  <Meter
+                    label="Total storage"
+                    hideLabel
+                    value={usage.usage.bytes}
+                    max={Number(ceiling.value)}
+                    text={`${formatBinaryBytes(usage.usage.bytes)} of ${formatBinaryBytes(Number(ceiling.value))}`}
+                    tone={meterTone(usage.usage.bytes, Number(ceiling.value))}
+                  />
+                ) : (
+                  <p className="tabular-nums text-fg-strong">
+                    {formatBinaryBytes(Number(ceiling.value))}
+                  </p>
+                )}
+                {!ceilingGate.allowed && ceilingGate.disabledReason ? (
+                  <p className="text-sm text-fg-muted">
+                    {ceilingGate.disabledReason}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <div className="min-w-0 grow basis-full sm:basis-0">
                 <p className="flex flex-wrap items-center gap-2 font-medium text-fg-strong">
@@ -294,6 +382,15 @@ export function CloudSyncSetupPage({
           propagationSeconds={propagation}
         />
       ) : null}
+      {ceiling ? (
+        <CeilingDialog
+          open={dialog === "ceiling"}
+          onOpenChange={(o) => setDialog(o ? "ceiling" : null)}
+          slug={slug}
+          setting={ceiling}
+          usedBytes={usage ? usage.usage.bytes : null}
+        />
+      ) : null}
       {paused ? (
         <PauseWritesDialog
           open={dialog === "pause" || dialog === "resume"}
@@ -306,6 +403,58 @@ export function CloudSyncSetupPage({
         />
       ) : null}
     </div>
+  );
+}
+
+/** The bar warns from 80 % full and turns to danger at the ceiling. */
+function meterTone(used: number, max: number): "accent" | "warning" | "danger" {
+  if (max <= 0) return "accent";
+  return used >= max ? "danger" : used / max >= 0.8 ? "warning" : "accent";
+}
+
+type Usage = Extract<SyncUsageResponse, { enabled: true }>;
+
+/**
+ * One row per tier, read-only (a tier's value is set on Tiers): its storage, or "Uses the
+ * default"; "N people over 80%" only where N is above zero. Then people without a license.
+ */
+function TierRows({
+  usage,
+  defaultBytes,
+}: {
+  usage: Usage;
+  defaultBytes: number;
+}): React.ReactElement {
+  const over = (id: string): number =>
+    usage.usage.breakdown.byTier.find((t) => t.tierId === id)?.over80 ?? 0;
+  return (
+    <ul className="divide-y divide-border border-t border-border">
+      {usage.tiers.map((t) => {
+        const n = over(t.id);
+        return (
+          <li
+            key={t.id}
+            className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3"
+          >
+            <div className="min-w-0 grow basis-full sm:basis-0">
+              <p className="font-medium text-fg-strong [overflow-wrap:anywhere]">
+                {t.label}
+              </p>
+              {t.bytes === null ? (
+                <p className="text-sm text-fg-muted">Uses the default</p>
+              ) : null}
+              {n > 0 ? (
+                <p className="text-sm text-warning">{people(n)} over 80%</p>
+              ) : null}
+            </div>
+            <p className="tabular-nums text-fg-strong">
+              {formatBinaryBytes(t.bytes ?? defaultBytes)}
+            </p>
+          </li>
+        );
+      })}
+      <li className="py-3 text-sm text-fg-muted">{NO_LICENSE_LINE}</li>
+    </ul>
   );
 }
 

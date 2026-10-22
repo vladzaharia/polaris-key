@@ -1436,7 +1436,8 @@ export interface AttentionItemDto {
     | "secret.usage"
     | "signing.missing"
     | "mint.pending"
-    | "credential.expiring";
+    | "credential.expiring"
+    | "sync.paused";
   tone: "danger" | "warning";
   /** The service the fix belongs to (the row's accent); `null` for the product itself. */
   service: ServiceSlug | null;
@@ -6570,7 +6571,13 @@ const rawApi = {
   updateProductSetting: (
     slug: string,
     key: string,
-    body: { value: unknown; expectedVersion: number; reason?: string },
+    body: {
+      value: unknown;
+      expectedVersion: number;
+      reason?: string;
+      /** The setting's key, typed back for a change the registry confirms at L2. */
+      confirm?: string;
+    },
   ) =>
     call<{ ok: true; claimed: boolean; setting: ProductSetting }>(
       `${p(slug)}/settings/${encodeURIComponent(key)}`,

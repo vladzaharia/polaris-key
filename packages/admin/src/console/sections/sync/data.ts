@@ -4,7 +4,17 @@
  */
 
 import { syncedSettings, type SettingRoute } from "@polaris-key/catalog";
-import { ApiError, type ProductCatalog } from "../../../api.js";
+import {
+  useQuery,
+  type QueryKey,
+  type UseQueryResult,
+} from "@tanstack/react-query";
+import {
+  api,
+  ApiError,
+  type ProductCatalog,
+  type SyncUsageResponse,
+} from "../../../api.js";
 
 /** One synced setting's route (plans/U-01b.md §2.5): its scope, policy and whether it is listed. */
 export type SyncedSettingRow = Extract<SettingRoute, { route: "synced" }>;
@@ -38,4 +48,21 @@ export function localSettings(catalog: ProductCatalog | null): string[] {
   return syncedSettings({ entries: catalog?.entries ?? [] })
     .filter((r) => r.route === "local")
     .map((r) => r.key);
+}
+
+/** The key of the usage read (`GET …/sync/usage`); under the product's Cloud Sync area. */
+export const syncUsageKey = (slug: string): QueryKey => [
+  "product",
+  slug,
+  "sync",
+  "usage",
+];
+
+/** The Cloud Sync usage read: tiers with their bytes, the default, and the aggregate. */
+export function useSyncUsage(slug: string): UseQueryResult<SyncUsageResponse> {
+  return useQuery({
+    queryKey: syncUsageKey(slug),
+    queryFn: () => api.syncUsage(slug),
+    retry: false,
+  });
 }

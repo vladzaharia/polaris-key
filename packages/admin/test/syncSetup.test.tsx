@@ -12,6 +12,8 @@ import type {
   PlatformSettingsView,
   PlatformSwitchSetting,
   ProductDetail,
+  ProductSetting,
+  SyncUsageResponse,
 } from "../src/api.js";
 import { ApiError } from "../src/api.js";
 import { KitProviders } from "../src/kit/KitProviders.js";
@@ -36,6 +38,9 @@ const stepUpRedirect = vi.fn();
 const patch = vi.fn();
 const me = vi.fn();
 const schema = vi.fn();
+const usage = vi.fn();
+const productSettings = vi.fn();
+const updateSetting = vi.fn();
 
 vi.mock("../src/api.js", async () => {
   const actual =
@@ -47,6 +52,10 @@ vi.mock("../src/api.js", async () => {
       products: () => products(),
       me: () => me(),
       schema: (s: string) => schema(s),
+      syncUsage: (s: string) => usage(s),
+      productSettings: (s: string, a?: string) => productSettings(s, a),
+      updateProductSetting: (s: string, k: string, b: unknown) =>
+        updateSetting(s, k, b),
       platformSettings: () => platformSettings(),
       platformSettingReach: (k: string, v?: number) => reach(k, v),
       patchPlatformSetting: (k: string, b: unknown) => patch(k, b),
@@ -109,6 +118,72 @@ const view = (s: (PlatformSwitchSetting | PlatformIntegerSetting)[]) =>
     secrets: [],
   }) as unknown as PlatformSettingsView;
 
+const GiB = 1024 ** 3;
+const CEILING = (value = 50 * GiB, source = "default"): ProductSetting =>
+  ({
+    key: "cloudSync.ceiling.bytes",
+    area: "cloudSync.limits",
+    service: "sync",
+    label: "Product storage ceiling",
+    description: "",
+    docs: "",
+    spec: { kind: "integer", unit: "bytes", min: 0, max: 1024 ** 5 },
+    confirm: { up: "L2", down: "L1" },
+    critical: true,
+    manifestPath: null,
+    visibleWhen: null,
+    serviceEnabled: true,
+    value,
+    source,
+    defaultValue: 50 * GiB,
+    version: 3,
+    updatedAt: null,
+    updatedBy: null,
+    reason: null,
+  }) as unknown as ProductSetting;
+const USAGE = (
+  over: { free?: number; standard?: number } = { free: 41, standard: 3 },
+): SyncUsageResponse => ({
+  enabled: true,
+  usage: {
+    bytes: Math.round(18.4 * GiB),
+    people: 4812,
+    settingsBytes: 0,
+    recordBytes: 0,
+    fileBytes: 0,
+    revisionBytes: 0,
+    computedAt: 1_790_000_000,
+    breakdown: {
+      byTier: [
+        {
+          tierId: "free",
+          people: 3120,
+          bytes: 0,
+          medianBytes: 0,
+          over80: over.free ?? 0,
+        },
+        {
+          tierId: "standard",
+          people: 1402,
+          bytes: 0,
+          medianBytes: 0,
+          over80: over.standard ?? 0,
+        },
+        { tierId: "deluxe", people: 290, bytes: 0, medianBytes: 0, over80: 0 },
+      ],
+      byKind: { settings: 0, records: 0, files: 0, revisions: 0 },
+      byPlatform: [],
+    },
+  },
+  today: { day: "2026-10-22", syncs: 0, conflicts: 0 },
+  tiers: [
+    { id: "free", label: "Free", bytes: 64 * 1024 * 1024 },
+    { id: "standard", label: "Standard", bytes: null },
+    { id: "deluxe", label: "Deluxe", bytes: GiB },
+  ],
+  defaultBytes: 256 * 1024 * 1024,
+});
+
 const detail = (slug: string, name: string): ProductDetail =>
   ({ slug, name, services: { sync: { enabled: true } } }) as ProductDetail;
 
@@ -135,8 +210,18 @@ beforeEach(() => {
     patch,
     me,
     schema,
+    usage,
+    productSettings,
+    updateSetting,
   ])
     m.mockReset();
+  usage.mockResolvedValue(USAGE());
+  productSettings.mockResolvedValue({ settings: [CEILING()] });
+  updateSetting.mockResolvedValue({
+    ok: true,
+    claimed: false,
+    setting: CEILING(),
+  });
   product.mockResolvedValue({ product: detail("diceroll", "Diceroll") });
   products.mockResolvedValue({
     products: [detail("djdl", "DJDL"), detail("diceroll", "Diceroll")],
@@ -196,7 +281,7 @@ afterEach(cleanup);
 describe("Cloud Sync → Setup", () => {
   it("shows the default storage and the pause switch, with Setup and Data tabs", async () => {
     const { container } = renderPage();
-    expect(await screen.findByText("256 MiB")).toBeTruthy();
+    expect((await screen.findAllByText("256 MiB")).length).toBeGreaterThan(0);
     const tabs = screen.getByRole("navigation", { name: "Cloud Sync" });
     expect(
       within(tabs)
@@ -336,7 +421,9 @@ describe("Cloud Sync → Setup", () => {
   it("changes the default: leads with who it reaches and holds Confirm until counted", async () => {
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole("button", { name: "Change…" }));
+    await user.click(
+      (await screen.findAllByRole("button", { name: "Change…" }))[0]!,
+    );
     const dialog = await screen.findByRole("alertdialog");
     const field = within(dialog).getByLabelText(/Default storage per person/);
     await user.clear(field);
@@ -357,6 +444,184 @@ describe("Cloud Sync → Setup", () => {
     );
   });
 
+  it("shows the product ceiling as a meter, X of Y, with Change… for a member who can edit", async () => {
+    renderPage();
+    const meter = await screen.findByRole("meter");
+    expect(meter.getAttribute("aria-valuetext")).toBe("18.4 GiB of 50 GiB");
+    expect(screen.getByText("Platform default")).toBeTruthy();
+    expect(
+      screen.getAllByRole("button", { name: "Change…" }).length,
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("lists the tiers read-only: null is 'Uses the default', over 80% only where N > 0", async () => {
+    renderPage();
+    expect(await screen.findByText("Standard")).toBeTruthy();
+    expect(screen.getByText("Free")).toBeTruthy();
+    expect(screen.getByText("Deluxe")).toBeTruthy();
+    expect(screen.getAllByText("Uses the default")).toHaveLength(1);
+    expect(screen.getByText("41 people over 80%")).toBeTruthy();
+    expect(screen.getByText("3 people over 80%")).toBeTruthy();
+    expect(screen.getByText("64 MiB")).toBeTruthy();
+    expect(screen.getByText("1 GiB")).toBeTruthy();
+    // Standard shows the platform default beside its note (the Default row shows it too).
+    expect(screen.getAllByText("256 MiB").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText(/over 80%/)).toHaveLength(2);
+  });
+
+  it("says nothing about 80% when nobody is near a limit, and says it for one person", async () => {
+    usage.mockResolvedValue(USAGE({ free: 0, standard: 0 }));
+    renderPage();
+    await screen.findByText("Standard");
+    expect(screen.queryByText(/over 80%/)).toBeNull();
+    cleanup();
+    usage.mockResolvedValue(USAGE({ free: 1, standard: 0 }));
+    renderPage();
+    expect(await screen.findByText("1 person over 80%")).toBeTruthy();
+  });
+
+  it("states what a device without a license gets, and links to Usage", async () => {
+    renderPage();
+    expect(
+      await screen.findByText("Without a license: 1 MiB, no files"),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: /See Usage/ }).getAttribute("href"),
+    ).toBe("#/p/diceroll/sync/usage");
+  });
+
+  it("draws no tier rows or meter while the usage read is off for the product", async () => {
+    usage.mockResolvedValue({ enabled: false });
+    renderPage();
+    await screen.findAllByText("256 MiB");
+    expect(screen.queryByText("Standard")).toBeNull();
+    expect(screen.queryByRole("meter")).toBeNull();
+  });
+
+  it("raises the ceiling at L2: a danger confirm that writes with the typed key", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("meter");
+    const change = screen.getAllByRole("button", { name: "Change…" });
+    await user.click(change[change.length - 1]!);
+    const dialog = await screen.findByRole("alertdialog");
+    const field = within(dialog).getByLabelText(
+      /Total storage for this product/,
+    );
+    await user.clear(field);
+    await user.type(field, "100");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Raise the ceiling" }),
+    );
+    expect(updateSetting).toHaveBeenCalledWith(
+      "diceroll",
+      "cloudSync.ceiling.bytes",
+      {
+        value: 100 * GiB,
+        expectedVersion: 3,
+        reason: "Ceiling set to 100 GiB",
+        confirm: "cloudSync.ceiling.bytes",
+      },
+    );
+  });
+
+  it("lowers the ceiling at L1: a caution confirm, nothing deleted, no typed key", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("meter");
+    const change = screen.getAllByRole("button", { name: "Change…" });
+    await user.click(change[change.length - 1]!);
+    const dialog = await screen.findByRole("alertdialog");
+    const field = within(dialog).getByLabelText(
+      /Total storage for this product/,
+    );
+    await user.clear(field);
+    await user.type(field, "10");
+    expect(within(dialog).getByText("Nothing is deleted.")).toBeTruthy();
+    expect(within(dialog).getByText(/holds 18\.4 GiB/)).toBeTruthy();
+    await user.click(
+      within(dialog).getByRole("button", { name: "Lower the ceiling" }),
+    );
+    expect(updateSetting).toHaveBeenCalledWith(
+      "diceroll",
+      "cloudSync.ceiling.bytes",
+      {
+        value: 10 * GiB,
+        expectedVersion: 3,
+        reason: "Ceiling set to 10 GiB",
+      },
+    );
+  });
+
+  it("keeps the typed number when the save fails, and on a version conflict reloads the setting", async () => {
+    const user = userEvent.setup();
+    updateSetting.mockRejectedValueOnce(new ApiError(500));
+    renderPage();
+    await screen.findByRole("meter");
+    const change = screen.getAllByRole("button", { name: "Change…" });
+    await user.click(change[change.length - 1]!);
+    const dialog = await screen.findByRole("alertdialog");
+    const field = within(dialog).getByLabelText(
+      /Total storage for this product/,
+    ) as HTMLInputElement;
+    await user.clear(field);
+    await user.type(field, "20");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Lower the ceiling" }),
+    );
+    await vi.waitFor(() => expect(updateSetting).toHaveBeenCalledTimes(1));
+    expect(await within(dialog).findByRole("alert")).toBeTruthy();
+    expect(field.value).toBe("20");
+
+    // A conflict: the setting is read again and the next confirm names the version in force.
+    updateSetting.mockRejectedValueOnce(new ApiError(409));
+    productSettings.mockClear();
+    productSettings.mockResolvedValue({
+      settings: [CEILING(40 * GiB, "console")],
+    });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Lower the ceiling" }),
+    );
+    expect(
+      await within(dialog).findByText(
+        "The ceiling changed since you opened this",
+      ),
+    ).toBeTruthy();
+    expect(field.value).toBe("20");
+    await vi.waitFor(() => expect(productSettings).toHaveBeenCalled());
+  });
+
+  it("opens the resume dialog from Home's attention link and resumes through the pause write", async () => {
+    window.location.hash = "#/p/diceroll/sync/setup?resume=1";
+    platformSettings.mockResolvedValue(view([PAUSED(true), QUOTA]));
+    const user = userEvent.setup();
+    renderPage();
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByRole("heading", {
+        name: "Resume Cloud Sync writes?",
+      }),
+    ).toBeTruthy();
+    await user.type(within(dialog).getByLabelText(/Reason/), "Provider fixed");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Resume writes" }),
+    );
+    expect(patch).toHaveBeenCalledWith("cloudSync.writesPaused", {
+      value: "off",
+      expectedVersion: 4,
+      reason: "Provider fixed",
+    });
+    window.location.hash = "";
+  });
+
+  it("does not open the resume dialog when writes are not paused", async () => {
+    window.location.hash = "#/p/diceroll/sync/setup?resume=1";
+    renderPage();
+    await screen.findByRole("button", { name: "Pause writes…" });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    window.location.hash = "";
+  });
+
   it("draws the platform controls disabled for a product role, with who can change them", async () => {
     gate.value = {
       allowed: false,
@@ -371,6 +636,8 @@ describe("Cloud Sync → Setup", () => {
     ).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "Change…" })).toBeNull();
     expect(screen.queryByRole("button", { name: /Pause writes/ })).toBeNull();
+    // The usage read still draws the default and the tiers, read-only.
+    expect(await screen.findByText("Standard")).toBeTruthy();
     expect(platformSettings).not.toHaveBeenCalled();
   });
 });

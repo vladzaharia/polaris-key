@@ -16,7 +16,8 @@ deleting are on [Product actions](/docs/operate/console/product-actions/).
 
 - **Needs attention**: what is broken across your products, one fact per line, each with the one
   link that fixes it. A failed resync, a required secret with no value, a missing signing key, an
-  edge-mint recipe awaiting approval and a store credential expiring within 14 days appear. What a
+  edge-mint recipe awaiting approval, a store credential expiring within 14 days and, for platform
+  admins, paused Cloud Sync writes (with **Resume**) appear. What a
   product has not set up yet does not: that is its Overview. You see only items whose fix you can
   open.
 - **Platform ready**, for platform admins until every step is done: the open steps with their fix,

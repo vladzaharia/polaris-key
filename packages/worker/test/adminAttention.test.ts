@@ -9,6 +9,10 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
+import { listProducts } from "../src/core/products/store.js";
+import { attentionAcross } from "../src/console/lib/attention.js";
+import { PRINCIPALS } from "./rbacFixtures.js";
+import { invalidatePlatformSettings } from "../src/core/platformSettings.js";
 import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
 
 const PLATFORM_GROUP = "platform-admins";
@@ -120,6 +124,67 @@ describe("GET /manage/api/attention", () => {
 
   it("answers a session with no grant 403", async () => {
     expect((await get("/api/attention", ["nobody"])).status).toBe(403);
+  });
+});
+
+describe("Cloud Sync writes paused (U-05.21)", () => {
+  const setPaused = async (value: "on" | "off") => {
+    await db.run(
+      `INSERT OR REPLACE INTO platform_settings (key, value_json, version, updated_at, updated_by)
+       VALUES ('cloudSync.writesPaused', ?, 1, ?, 'test')`,
+      JSON.stringify(value),
+      NOW,
+    );
+    invalidatePlatformSettings(adminEnv(), db);
+  };
+  const syncOn = (slug: string) =>
+    db.run(
+      "UPDATE products SET services_json = ? WHERE slug = ?",
+      JSON.stringify({
+        license: { enabled: true },
+        config: { enabled: true },
+        identity: { enabled: true },
+        sync: { enabled: true },
+      }),
+      slug,
+    );
+
+  it("appears only while paused, for a product with Cloud Sync on, and goes on resume", async () => {
+    await syncOn("djdl");
+    expect((await get("/api/attention")).json).toEqual({ items: [] });
+
+    await setPaused("on");
+    const items = (await get("/api/attention")).json.items as (Item & {
+      action: { label: string; page: string };
+      area: string;
+    })[];
+    expect(items.map((i) => [i.kind, i.tone, i.product.slug])).toEqual([
+      ["sync.paused", "warning", "djdl"],
+    ]);
+    expect(items[0]!.lines[0]).toBe(
+      "Cloud Sync writes are paused for every product.",
+    );
+    expect(items[0]!.action).toMatchObject({
+      label: "Resume",
+      page: "sync-setup",
+    });
+    expect(items[0]!.area).toBe("platform");
+
+    await setPaused("off");
+    expect((await get("/api/attention")).json).toEqual({ items: [] });
+  });
+
+  it("is the platform's to fix: a product admin without Platform access does not see it", async () => {
+    await seedProduct(db, "alpha");
+    await syncOn("alpha");
+    await setPaused("on");
+    const products = await listProducts(db);
+    const kinds = async (name: "alphaAdmin" | "platformAdmin") =>
+      (
+        await attentionAcross(db, products, PRINCIPALS[name], NOW, adminEnv())
+      ).map((i) => `${i.product.slug}:${i.kind}`);
+    expect(await kinds("alphaAdmin")).toEqual([]);
+    expect(await kinds("platformAdmin")).toEqual(["alpha:sync.paused"]);
   });
 });
 
