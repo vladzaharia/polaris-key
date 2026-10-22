@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useLargeTextFlag } from "../../lib/useLargeTextFlag.js";
 import { Compass, Library, TriangleAlert } from "lucide-react";
 import { TOAST_BOTTOM_INSET_VAR } from "../../ui/toast.js";
 import { cn } from "../../lib/cn.js";
@@ -215,31 +216,6 @@ export function PortalShell({
       </nav>
     </div>
   );
-}
-
-/**
- * Marks the document `data-large-text` while the root font is at least 1.5 times the default
- * (24 px): the styles' `bigtext` and `tight` variants answer to it. Re-read on resize and when the
- * root's style changes.
- */
-function useLargeTextFlag(): void {
-  React.useEffect(() => {
-    const root = document.documentElement;
-    const apply = (): void => {
-      const px = parseFloat(getComputedStyle(root).fontSize);
-      if (px >= 24) root.setAttribute("data-large-text", "");
-      else root.removeAttribute("data-large-text");
-    };
-    apply();
-    window.addEventListener("resize", apply);
-    const mo = new MutationObserver(apply);
-    mo.observe(root, { attributes: true, attributeFilter: ["style", "class"] });
-    return () => {
-      window.removeEventListener("resize", apply);
-      mo.disconnect();
-      root.removeAttribute("data-large-text");
-    };
-  }, []);
 }
 
 /**

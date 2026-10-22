@@ -58,25 +58,25 @@ export const buttonVariants = cva(
         variant: [...WRAPPING],
         size: "xs",
         class:
-          "console:whitespace-nowrap h-auto min-h-7 whitespace-normal py-1.5 text-center bigtext:gap-1 bigtext:px-2 bigtext:[&>svg:not(:only-child)]:hidden",
+          "console:whitespace-nowrap console:cramped:whitespace-normal conbig:gap-1 conbig:px-2 conbig:[&>svg:not(:only-child)]:hidden h-auto min-h-7 whitespace-normal py-1.5 text-center bigtext:gap-1 bigtext:px-2 bigtext:[&>svg:not(:only-child)]:hidden",
       },
       {
         variant: [...WRAPPING],
         size: "sm",
         class:
-          "console:whitespace-nowrap h-auto min-h-8 whitespace-normal py-1.5 text-center bigtext:gap-1 bigtext:px-2 bigtext:[&>svg:not(:only-child)]:hidden",
+          "console:whitespace-nowrap console:cramped:whitespace-normal conbig:gap-1 conbig:px-2 conbig:[&>svg:not(:only-child)]:hidden h-auto min-h-8 whitespace-normal py-1.5 text-center bigtext:gap-1 bigtext:px-2 bigtext:[&>svg:not(:only-child)]:hidden",
       },
       {
         variant: [...WRAPPING],
         size: "md",
         class:
-          "console:whitespace-nowrap h-auto min-h-9 whitespace-normal py-1.5 text-center bigtext:gap-1 bigtext:px-2 bigtext:[&>svg:not(:only-child)]:hidden",
+          "console:whitespace-nowrap console:cramped:whitespace-normal conbig:gap-1 conbig:px-2 conbig:[&>svg:not(:only-child)]:hidden h-auto min-h-9 whitespace-normal py-1.5 text-center bigtext:gap-1 bigtext:px-2 bigtext:[&>svg:not(:only-child)]:hidden",
       },
       {
         variant: [...WRAPPING],
         size: "lg",
         class:
-          "console:whitespace-nowrap h-auto min-h-10 whitespace-normal py-1.5 text-center bigtext:gap-1 bigtext:px-2 bigtext:[&>svg:not(:only-child)]:hidden",
+          "console:whitespace-nowrap console:cramped:whitespace-normal conbig:gap-1 conbig:px-2 conbig:[&>svg:not(:only-child)]:hidden h-auto min-h-10 whitespace-normal py-1.5 text-center bigtext:gap-1 bigtext:px-2 bigtext:[&>svg:not(:only-child)]:hidden",
       },
     ],
     defaultVariants: { variant: "primary", size: "md" },

@@ -39,6 +39,22 @@
  * (AppShell sets it), so the portal keeps its own look until its packages adopt the rest.
  */
 @custom-variant console (&:where(html[data-shell="console"] *));
+/*
+ * Cramped (console): a window under 30 rem (a phone), or large text (`data-console-large-text`, set by the
+ * console shell when the root font is at least 1.5 times the default; a rem media query does not
+ * follow a page that sets its own root size). The console keeps one-line button labels
+ * (`console:whitespace-nowrap`); here a label that cannot fit may wrap.
+ */
+/* Large text in the console alone (see `cramped`): the console twin of `bigtext`. */
+@custom-variant conbig (&:where([data-console-large-text] *));
+@custom-variant cramped {
+  @media (max-width: 30rem) {
+    @slot;
+  }
+  &:where([data-console-large-text] *) {
+    @slot;
+  }
+}
 
 @custom-variant motion-reduce {
   @media (prefers-reduced-motion: reduce) {
