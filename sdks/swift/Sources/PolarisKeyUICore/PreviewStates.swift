@@ -461,6 +461,13 @@ extension PolarisKeyPreviewState {
             .updatePrompt, "ready",
             base { $0.update = KitUpdate(action: "code-ready", version: "2.5.0") }),
         .init(
+            .toast, "info",
+            base {
+                $0.toast = KitToast(kind: "update")
+                $0.update = KitUpdate(action: "binary", version: "2.5.0")
+            }),
+        .init(.toast, "success", base { $0.toast = KitToast(kind: "copied") }),
+        .init(
             .updateProgress, "downloading",
             base {
                 $0.update = KitUpdate(

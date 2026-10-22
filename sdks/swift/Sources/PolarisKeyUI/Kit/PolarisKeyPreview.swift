@@ -102,6 +102,11 @@ public struct PolarisKeyPreview: View {
                         details: model.inputs.update, onUpdate: {}, onLater: {})
                 }
             }
+        case .toast:
+            ZStack(alignment: .bottom) {
+                PreviewHostApp()
+                PreviewToast(screen: KitStates.toast(model.inputs))
+            }
         case .updateProgress:
             PreviewSettingsHost {
                 Section {
@@ -155,6 +160,19 @@ public struct PolarisKeyPreview: View {
             }
         default:
             PreviewHostApp()
+        }
+    }
+}
+
+/// A toast over the host, as the gate draws it (no timer in a still).
+struct PreviewToast: View {
+    let screen: KitScreen<ToastState>
+    @Environment(\.polarisKeyStrings) private var strings
+
+    var body: some View {
+        if let line = screen.copy.first {
+            ToastView(
+                text: strings.string(line), tone: screen.state == .success ? .success : .neutral)
         }
     }
 }
