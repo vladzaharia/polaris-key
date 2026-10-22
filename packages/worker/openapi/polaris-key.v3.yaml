@@ -296,10 +296,15 @@ paths:
                           accountPortal: https://key.plrs.im/#/p/djdl
                       sync:
                         enabled: true
-                        settings: false
+                        settings: true
                         collections: false
                         saves: false
-                        endpoints: { pull: null, push: null, files: null }
+                        endpoints:
+                          {
+                            pull: https://key.plrs.im/djdl/sync,
+                            push: https://key.plrs.im/djdl/sync/ops,
+                            files: null,
+                          }
                 configOnly:
                   summary: A config-only product — the other six are bare `enabled:false`
                   value:

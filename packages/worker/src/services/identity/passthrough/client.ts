@@ -21,9 +21,8 @@ import type { PortalHooksFor } from "../portal/api.js";
 import { presentationFor } from "../portal/library.js";
 
 /**
- * Whether the product runs Cloud Sync. S-17's service (slug `sync`, U-05) is not in the service
- * table yet, so no product has it on; this reads the slot it will occupy, so the consent list and
- * the client record pick it up without a change here.
+ * Whether the product runs Cloud Sync (slug `sync`, U-04's service-table row). It reads the
+ * product's `services.sync.enabled`, so the consent list and the client record follow the toggle.
  */
 export function cloudSyncOn(product: ProductPublic): boolean {
   const services = product.services as Readonly<

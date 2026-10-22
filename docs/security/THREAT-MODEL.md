@@ -7303,6 +7303,25 @@ attestation_required` for the whole request, in the nested `wireError` shape eve
   survivor, so a `max` or `min` key joins by `lastWrite` until the merge hook loads the catalog.
   The push passes the policy per request; the hook is outside this route.
 
+### Cloud Sync discovery, T8 and T16 (U-05.15)
+
+Discovery turns on: `services.sync` answers `settings: true` with `endpoints.pull` and
+`endpoints.push` (`<base>/sync`, `<base>/sync/ops`); `collections` and `saves` stay false and
+`files` null. The fragment names only routes that exist and that refuse an unauthorised caller, and
+it carries no quota or subject. Rows are S-17 §5.14's.
+
+- **T8, an account switch on a shared PC (server side).** The server never trusts a client's idea of
+  who is signed in. The principal is read from the device row on every request, so after a sign-out
+  or a switch the old token's next push is `account_required` and the new account's request reaches
+  its own object only. The client half (a journal and cache partitioned by user, `onSignOut: clear`)
+  is the SDKs' and is checked by their replay of the transcripts. Residual: a journal a client keeps
+  across a switch against its own rules is client code; the server cannot see it.
+- **T16, no owner fallback for Cloud Sync.** `subjectFor` keeps Config's owner fallback (U-03);
+  Cloud Sync uses `resolveSyncPrincipal` only, so a licence-key device with no signed-in account has
+  no principal and reads and writes nothing. Operator overrides reach such a device as before and
+  carry no Cloud Sync data; a pull never returns an operator layer. `syncAccess` never widens access
+  in `legacy` mode.
+
 ### The account override layer and the licence-override migration (U-03)
 
 Operators' managed config for one account on one product (`account_overrides`, keyed by the

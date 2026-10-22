@@ -14,11 +14,10 @@
  * turn Cloud Sync on without both (nothing is pulled on with it), and turning Identity or Config
  * off turns Cloud Sync off in the same write (`applyRequirementRule`).
  *
- * U-04 landed the slug, the descriptor, its settings slice and its discovery fragment. The device
- * routes under `/<p>/sync` and the per-principal Durable Object are U-05's; records are U-09's and
- * files on records U-10's. Until a route exists the descriptor answers no route (`null` → Core's
- * not-found), and the fragment advertises no endpoint: an SDK uses an endpoint only when
- * discovery names it (WIRE-CONTRACT-V4 §13.5).
+ * U-04 landed the slug, the descriptor, its settings slice and its discovery fragment. U-05 serves
+ * the device routes under `/<p>/sync` (pull and push) from the per-principal Durable Object, and
+ * the fragment names them; records are U-09's and files on records U-10's, so those stay off. An
+ * SDK uses an endpoint only when discovery names it (WIRE-CONTRACT-V4 §13.5).
  */
 
 import type {
@@ -63,11 +62,11 @@ export const syncService: ServiceDescriptor = {
    * records) with U-10. Discovery carries no quota: it depends on the requesting device's
    * licence, so the pull carries it.
    */
-  discoveryFragment: async (_ctx: DiscoveryContext) => ({
+  discoveryFragment: async ({ base }: DiscoveryContext) => ({
     enabled: true,
-    settings: false,
+    settings: true,
     collections: false,
     saves: false,
-    endpoints: { pull: null, push: null, files: null },
+    endpoints: { pull: `${base}/sync`, push: `${base}/sync/ops`, files: null },
   }),
 };
