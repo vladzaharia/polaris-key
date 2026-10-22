@@ -93,7 +93,10 @@ function accessLines(
     seen.add(key);
     if (r.source === "root")
       lines.push(
-        <span key={key} className="inline-flex items-center gap-1.5">
+        <span
+          key={key}
+          className="inline-flex items-center gap-1.5 min-[1440px]:whitespace-nowrap"
+        >
           <Lock className="size-3.5 shrink-0" aria-hidden="true" />
           Root rule
           {group ? <code className="font-mono text-xs">{group}</code> : null}
@@ -122,7 +125,7 @@ function accessLines(
 function Dated({ at }: { at: number }): React.ReactElement {
   return (
     <span className="ms-1.5 text-fg-muted max-sm:hidden">
-      <Timestamp at={fromSeconds(at)} format="relative" />
+      <Timestamp at={fromSeconds(at)} format="date" />
     </span>
   );
 }
@@ -285,12 +288,12 @@ export function PlatformMembers(): React.ReactElement {
       header: "Access from",
       accessorFn: (r) => r.kind,
       enableSorting: false,
-      meta: { priority: 2, label: "Access from" },
+      meta: { priority: 1, label: "Access from" },
       cell: ({ row }) => {
         const r = row.original;
         if (r.kind === "invite")
           return (
-            <span className="flex flex-col gap-0.5 text-sm">
+            <span className="flex flex-col gap-0.5 min-[1440px]:whitespace-nowrap text-sm">
               <span>
                 Invited by {r.invite.invitedBy?.name ?? "a former member"}
                 <Dated at={r.invite.sentAt} />
@@ -307,7 +310,7 @@ export function PlatformMembers(): React.ReactElement {
             </span>
           );
         return (
-          <span className="flex flex-col gap-0.5 text-sm">
+          <span className="flex flex-col gap-0.5 min-[1440px]:whitespace-nowrap text-sm">
             {accessLines(r.member, group, productName).map((l, i) => (
               <span key={i}>{l}</span>
             ))}

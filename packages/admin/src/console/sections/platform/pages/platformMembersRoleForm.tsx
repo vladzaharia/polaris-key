@@ -87,7 +87,7 @@ export function RoleForm({
         </span>
         <RadioCards<RoleChoice>
           aria-labelledby={roleId}
-          columns={1}
+          columns={2}
           value={draft.choice}
           disabled={disabled}
           onChange={(choice) => onChange({ ...draft, choice })}
