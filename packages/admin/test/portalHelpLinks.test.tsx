@@ -51,7 +51,7 @@ describe("a refusal links its Help page", () => {
   });
 });
 
-describe("the Need help? card", () => {
+describe("the Help card", () => {
   const product = (presentation: object): LibraryProduct =>
     ({ name: "Nightfall", presentation }) as unknown as LibraryProduct;
 

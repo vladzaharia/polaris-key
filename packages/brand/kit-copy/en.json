@@ -7137,7 +7137,7 @@
       "note": "Portal shell, library and product pages (P0-36)."
     },
     "locker.help.title": {
-      "value": "Need help?",
+      "value": "Help",
       "role": "title",
       "note": "Portal shell, library and product pages (P0-36)."
     },
@@ -7185,6 +7185,11 @@
       "value": "Earlier versions",
       "role": "title",
       "note": "Portal shell, library and product pages (P0-36)."
+    },
+    "locker.notes.released": {
+      "value": "Released",
+      "role": "label",
+      "note": "Earlier versions table header: the release date column (LX-product)."
     },
     "locker.notes.fewer": {
       "value": "Show fewer",
@@ -7537,7 +7542,7 @@
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },
     "locker.devices.tailOf": {
-      "value": "of {limit, plural, one {# device} other {# devices}} in use",
+      "value": "of {limit} in use",
       "role": "hint",
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },

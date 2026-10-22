@@ -632,6 +632,7 @@ export type PortalCopyKey =
   | "locker.notes.full"
   | "locker.notes.none"
   | "locker.notes.earlier"
+  | "locker.notes.released"
   | "locker.notes.fewer"
   | "locker.setup.packageManager"
   | "locker.devices.inUse"
