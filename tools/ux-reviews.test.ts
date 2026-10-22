@@ -37,6 +37,7 @@ const NO_REVIEW_DEBT: Record<string, string> = {
   "UK-03": "closed with --no-ux-gate before the ledger guard; review owed",
   "UK-49": "closed with --no-ux-gate before the ledger guard; review owed",
   "UK-56": "closed with --no-ux-gate before the ledger guard; review owed",
+  "UK-59": "owner waived its review (2026-10-21); review owed",
 };
 
 const packages = json<{ workPackages: Wp[] }>("workpackages.json").workPackages;
