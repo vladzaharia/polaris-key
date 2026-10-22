@@ -6401,6 +6401,11 @@
       "role": "hint",
       "note": "Activate a license dialog (P0-36)."
     },
+    "locker.activate.updatesUntil": {
+      "value": "Updates until {date}",
+      "role": "hint",
+      "note": "Activate a license dialog, confirm step: the license term when it ends (LX-15's words). Arguments: {date} = a date already formatted by the platform."
+    },
     "locker.activate.recognized": {
       "value": "Key recognized · {product}",
       "role": "hint",

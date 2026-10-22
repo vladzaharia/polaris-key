@@ -460,6 +460,7 @@
   "locker.activate.syncOne": "在该设备上登录即可开启云同步。",
   "locker.activate.syncMany": "在这些设备上登录即可开启云同步。",
   "locker.activate.upTo": "{count, plural, other {最多 # 台设备}}",
+  "locker.activate.updatesUntil": "更新至 {date}",
   "locker.activate.recognized": "已识别密钥 · {product}",
   "locker.activate.changeKey": "更换密钥",
   "locker.activate.addToLibrary": "添加到我的资料库",

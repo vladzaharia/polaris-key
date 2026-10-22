@@ -445,6 +445,32 @@ describe("Activate license modal (PX-06)", () => {
     );
   }
 
+  it("words an ending term as when updates stop (LX-15)", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": {
+        verdict: "addable",
+        product: PREVIEW_PRODUCT,
+        entries: null,
+        license: {
+          tier: "studio",
+          tierLabel: "Studio",
+          status: "active",
+          usable: true,
+          expiresAt: Date.UTC(2027, 8, 30, 12) / 1000,
+          deviceLimit: 5,
+        },
+        platforms: ["macos"],
+      },
+    });
+    renderPortal();
+    await pasteAndContinue(await openFromHeader());
+    const confirm = await screen.findByRole("dialog", {
+      name: "Add Mossgarden to your library?",
+    });
+    expect(confirm.textContent).toContain("Updates until Sep 30, 2027");
+  });
+
   it("confirms with the preview (G22) before adding: tier, terms, the key and Change key", async () => {
     mockFetch({
       ...routes(),

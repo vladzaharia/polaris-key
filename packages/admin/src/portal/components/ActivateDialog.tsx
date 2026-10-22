@@ -692,14 +692,21 @@ function AccountRow({
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-surface-sunken px-3 py-2.5">
       {group}
-      <form method="post" action="/logout" className="shrink-0">
-        <button
-          type="submit"
-          className="inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-fg-strong underline underline-offset-2"
-        >
-          {t("signin.notYou")}
-        </button>
-      </form>
+      {/* The dialog's own form wraps this row, and forms do not nest: a detached POST form. */}
+      <button
+        type="button"
+        onClick={() => {
+          const f = document.createElement("form");
+          f.method = "post";
+          f.action = "/logout";
+          f.hidden = true;
+          document.body.append(f);
+          f.submit();
+        }}
+        className="inline-flex min-h-11 shrink-0 items-center rounded-sm text-sm font-medium text-fg-strong underline underline-offset-2"
+      >
+        {t("signin.notYou")}
+      </button>
     </div>
   );
 }
@@ -989,7 +996,9 @@ export function ConfirmStep({
     ? [
         lic.expiresAt === null
           ? t("signin.term.lifetime")
-          : t("signin.term.until", { date: formatDay(lic.expiresAt) }),
+          : t("locker.activate.updatesUntil", {
+              date: formatDay(lic.expiresAt),
+            }),
         lic.deviceLimit
           ? t("locker.activate.upTo", { count: lic.deviceLimit })
           : null,

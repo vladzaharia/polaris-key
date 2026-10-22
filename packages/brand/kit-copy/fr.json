@@ -1283,6 +1283,7 @@
     "locker.activate.syncOne": "Connectez-vous sur cet appareil pour activer la synchronisation cloud.",
     "locker.activate.syncMany": "Connectez-vous sur ces appareils pour activer la synchronisation cloud.",
     "locker.activate.upTo": "jusqu’à {count, plural, one {# appareil} many {# d’appareils} other {# appareils}}",
+    "locker.activate.updatesUntil": "Mises à jour jusqu'au {date}",
     "locker.activate.recognized": "Clé reconnue · {product}",
     "locker.activate.changeKey": "Changer de clé",
     "locker.activate.addToLibrary": "Ajouter à ma bibliothèque",

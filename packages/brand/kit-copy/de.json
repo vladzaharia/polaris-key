@@ -1283,6 +1283,7 @@
     "locker.activate.syncOne": "Melden Sie sich darauf an, um die Cloud-Synchronisierung zu aktivieren.",
     "locker.activate.syncMany": "Melden Sie sich darauf an, um die Cloud-Synchronisierung zu aktivieren.",
     "locker.activate.upTo": "bis zu {count, plural, one {# Gerät} other {# Geräte}}",
+    "locker.activate.updatesUntil": "Updates bis {date}",
     "locker.activate.recognized": "Schlüssel erkannt · {product}",
     "locker.activate.changeKey": "Schlüssel ändern",
     "locker.activate.addToLibrary": "Zu meiner Mediathek hinzufügen",

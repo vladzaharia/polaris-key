@@ -460,6 +460,7 @@
   "locker.activate.syncOne": "Accedi su di esso per attivare la sincronizzazione cloud.",
   "locker.activate.syncMany": "Accedi su di essi per attivare la sincronizzazione cloud.",
   "locker.activate.upTo": "fino a {count, plural, one {# dispositivo} many {# dispositivi} other {# dispositivi}}",
+  "locker.activate.updatesUntil": "Aggiornamenti fino al {date}",
   "locker.activate.recognized": "Chiave riconosciuta · {product}",
   "locker.activate.changeKey": "Cambia chiave",
   "locker.activate.addToLibrary": "Aggiungi alla mia libreria",

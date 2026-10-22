@@ -1283,6 +1283,7 @@
     "locker.activate.syncOne": "クラウド同期を有効にするには、そのデバイスでサインインしてください。",
     "locker.activate.syncMany": "クラウド同期を有効にするには、それぞれのデバイスでサインインしてください。",
     "locker.activate.upTo": "{count, plural, other {最大#台のデバイス}}",
+    "locker.activate.updatesUntil": "{date}まで更新",
     "locker.activate.recognized": "キーを認識しました · {product}",
     "locker.activate.changeKey": "キーを変更",
     "locker.activate.addToLibrary": "マイライブラリに追加",
