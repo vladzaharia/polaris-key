@@ -415,7 +415,7 @@ const DEFAULTS := {
 	"replace_open": "Replace a device",
 	"replace_title": "Replace %s?",
 	"replace_confirm": "Replace and continue",
-	"replace_consequence": "%s signs out of {product} and %s takes its seat. We'll email you about it.",
+	"replace_consequence": "%s signs out of {product} and %s takes its place. We'll email you about it.",
 	"replace_back": "Back",
 	"choice_devices_one": "%s of %d device",
 	"choice_devices": "%s of %d devices",

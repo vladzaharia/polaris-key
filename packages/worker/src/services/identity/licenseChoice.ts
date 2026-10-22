@@ -446,7 +446,7 @@ function noticeHtml(notice: ChoiceNotice | null | undefined): string {
     }
     case "unavailable":
       // signin.choice.raced
-      return callout("info", "That seat was just taken. Choose again.");
+      return callout("info", "That license just filled up. Choose again.");
     case "pick_device":
       return "";
   }
@@ -530,7 +530,7 @@ function rowHtml(
       .join("");
     replace =
       `<details class="replace"><summary>Replace a device</summary>` + // signin.replace.open
-      `<p class="muted small">Choose a device to sign out. ${escapeHtml(ctx.thisDevice)} takes its seat.</p>` + // signin.replace.lede
+      `<p class="muted small">Choose a device to sign out. ${escapeHtml(ctx.thisDevice)} takes its place.</p>` + // signin.replace.lede
       devices +
       `<button class="button secondary" type="submit" name="action" value="replace:${escapeHtml(row.id)}">Replace…</button>` + // signin.replace.openSystem
       `</details>`;
@@ -683,14 +683,14 @@ function replaceGroupBody(
     callout(
       "devices",
       "Your licenses are on all their devices.",
-      `Choose one to sign out. ${iso(thisDevice)} takes its seat.`,
+      `Choose one to sign out. ${iso(thisDevice)} takes its place.`,
     ) +
     other +
     `<form method="post" action="${escapeHtml(input.action)}">` +
     `<input type="hidden" name="choice" value="${escapeHtml(input.token)}">` +
     `<div class="field"><fieldset class="choices"><legend class="sr-only">Devices to replace</legend><ul class="choices">${items}</ul></fieldset>${err}</div>` +
     // signin.replace.consequence, said once for the group (§3.7).
-    `<p class="note">${icon("info", true)}<span>The device you choose signs out of ${escapeHtml(input.productName)}. It can sign in again later if a seat is free. We'll email you about it.</span></p>` +
+    `<p class="note">${icon("info", true)}<span>The device you choose signs out of ${escapeHtml(input.productName)}. It can sign in again later if there's room for another device. We'll email you about it.</span></p>` +
     `<div class="actions stack">` +
     `<button class="button" type="submit" name="action" value="replace-pick">Replace and sign in</button>` +
     keyLink(input.keyHref) +
@@ -726,7 +726,7 @@ export function replaceConfirmBody(input: {
   const d = escapeHtml(input.device);
   return (
     // signin.replace.consequence
-    `<p>${d} signs out of ${escapeHtml(input.productName)} and ${escapeHtml(input.thisDevice)} takes its seat. ${d} can sign in again later if a seat is free. We'll email you about it.</p>` +
+    `<p>${d} signs out of ${escapeHtml(input.productName)} and ${escapeHtml(input.thisDevice)} takes its place. ${d} can sign in again later if there's room for another device. We'll email you about it.</p>` +
     (input.activeNow
       ? `<p class="notice">${d} is in use right now.</p>` // signin.replace.inUse
       : "") +
