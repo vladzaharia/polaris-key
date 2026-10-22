@@ -92,9 +92,12 @@ interface World {
   ctx: (at?: number) => MigrationContext;
 }
 
-async function world(releases: Release[]): Promise<World> {
+async function world(
+  releases: Release[],
+  config: Record<string, unknown> = {},
+): Promise<World> {
   const db = makeTestDb();
-  await seedReleaseProduct(db, {});
+  await seedReleaseProduct(db, config);
   const kv = new KvMock();
   const env = envFor({ kv });
   const state = { releases };
@@ -314,6 +317,47 @@ describe("update.resolver-compare: each class", () => {
     expect(detail.paused!.unrun).toBeGreaterThan(0);
     expect(changes).toBe(1 + detail.paused!.unrun);
     expect(detail.rows[0]!.class).toBe("upstream-error");
+  });
+});
+
+describe("update.resolver-compare: pull-request selectors", () => {
+  const RUNS = /\/actions\/workflows\/ci\.yml\/runs\?event=pull_request/;
+
+  it("probes pr-<n> for a workflow product from one runs call, once per unit", async () => {
+    const w = await world(PLAIN(), { channel_workflow: "ci.yml" });
+    const runs: string[] = [];
+    const inner = w.fetchImpl;
+    const fetchImpl: FetchImpl = async (input, init) => {
+      const url = String(input);
+      if (RUNS.test(url)) {
+        runs.push(url);
+        return new Response(
+          JSON.stringify({
+            workflow_runs: [
+              { pull_requests: [{ number: 7 }, { number: 9 }] },
+              { pull_requests: [{ number: 7 }] },
+              { pull_requests: [] },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      return inner(input, init);
+    };
+    const plain = await world(PLAIN());
+    const base = (await plan(plain)).detail.probes;
+    const job = createResolverCompareJob({ fetchImpl });
+    const { detail } = await plan(w, job);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toContain("status=success&per_page=10");
+    // Two pull requests add their selectors on every surface that probes a moving selector.
+    expect(detail.probes).toBeGreaterThan(base);
+    // Product without a workflow: no runs call at all.
+    expect(
+      (await plan(plain, createResolverCompareJob({ fetchImpl }))).detail
+        .probes,
+    ).toBe(base);
+    expect(runs).toHaveLength(1);
   });
 });
 

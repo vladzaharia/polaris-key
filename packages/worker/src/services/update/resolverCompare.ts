@@ -32,7 +32,10 @@ import type {
 import { loadProduct } from "../../core/products.js";
 import { listAllProductSlugs } from "../../core/products/store.js";
 import type { FetchImpl } from "../release/githubApp.js";
-import { meterUpstreamCalls } from "../release/gateway.js";
+import {
+  meterUpstreamCalls,
+  recentChannelPullRequests,
+} from "../release/gateway.js";
 import type { Db } from "../../db/types.js";
 import { harden, upstreamUnavailable } from "../release/gateway.js";
 import { notFound } from "../../core/errors.js";
@@ -694,6 +697,8 @@ interface Checkpoint {
   /** The probe list the rows belong to: a different list starts over. */
   signature: string;
   rows: CompareRow[];
+  /** The pull requests the `pr-<n>` probes were built from, held so a resume probes the same list. */
+  prs?: number[];
 }
 
 interface Pause {
@@ -810,8 +815,13 @@ export interface CompareJobOptions {
 async function probesFor(
   ctx: MigrationContext,
   cfg: ReleaseConfigRow,
+  prs: readonly number[] = [],
 ): Promise<Probe[]> {
-  const channels = await probeChannels(ctx.db, cfg);
+  const channels = await probeChannels(
+    ctx.db,
+    cfg,
+    prs.map((n) => `pr-${n}`),
+  );
   let stableVersion: string | null = null;
   try {
     const { release } = await resolveStoreSelector(ctx.db, cfg, "stable");
@@ -863,17 +873,6 @@ export function createResolverCompareJob(
       const product = cfg ? await loadProduct(ctx.env, ctx.db, unit) : null;
       if (!cfg || !product)
         return { changes: 0, detail: { skipped: "no release config" } };
-      const probes = await probesFor(ctx, cfg);
-      const signature = signatureOf(probes);
-      const saved = await readJson<Checkpoint>(ctx.env, cursorKey(unit));
-      const rows: CompareRow[] =
-        saved &&
-        saved.signature === signature &&
-        saved.rows.length <= probes.length
-          ? [...saved.rows]
-          : [];
-      const resumedFrom = rows.length;
-
       const quota: Quota = { pause: null };
       const standing =
         (await readJson<Pause>(ctx.env, pauseKey("platform"))) ??
@@ -888,6 +887,46 @@ export function createResolverCompareJob(
         ctx.now,
         observing(upstream, quota, ctx.now),
       );
+      const saved = await readJson<Checkpoint>(ctx.env, cursorKey(unit));
+      // A workflow product also probes `pr-<n>` for the pull requests of its last 10 successful
+      // pull-request runs: one extra GitHub call, made once and held in the checkpoint.
+      let prs: number[] | undefined = saved?.prs;
+      if (
+        prs === undefined &&
+        !pause &&
+        isResolved(cfg) &&
+        cfg.channel_workflow
+      ) {
+        try {
+          prs = await recentChannelPullRequests(
+            ctx.env,
+            cfg,
+            ctx.now,
+            fetchImpl,
+          );
+        } catch {
+          prs = []; // a refusal pauses through the fetch wrapper; the PR probes are best effort
+        }
+        if (quota.pause) {
+          pause = quota.pause;
+          await writeJson(
+            ctx.env,
+            pauseKey("platform"),
+            pause,
+            pause.until - ctx.now,
+          );
+        }
+      }
+      const probes = await probesFor(ctx, cfg, prs ?? []);
+      const signature = signatureOf(probes);
+      const rows: CompareRow[] =
+        saved &&
+        saved.signature === signature &&
+        saved.rows.length <= probes.length
+          ? [...saved.rows]
+          : [];
+      const resumedFrom = rows.length;
+
       const probeCtx = {
         req: new Request(`${COMPARE_ORIGIN}/${unit}/update/version`),
         env,
@@ -908,6 +947,7 @@ export function createResolverCompareJob(
           {
             signature,
             rows: bad === -1 ? rows : rows.slice(0, bad),
+            ...(prs ? { prs } : {}),
           } satisfies Checkpoint,
           CHECKPOINT_TTL,
         );

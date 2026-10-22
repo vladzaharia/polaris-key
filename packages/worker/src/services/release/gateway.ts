@@ -552,7 +552,7 @@ export async function floorRelease(
  * the channel workflow from the relevant branch/PR head. Returns undefined when no
  * channel workflow is configured (callers then fall back to prerelease heuristics).
  */
-async function channelTagsFor(
+export async function channelTagsFor(
   env: Env,
   cfg: ResolvedConfig,
   sel: ChannelSelector,
@@ -601,6 +601,50 @@ async function channelTagsFor(
     tags.add(run.head_sha.slice(0, 7));
   }
   return tags.size ? tags : undefined;
+}
+
+/**
+ * The pull requests of the channel workflow's last 10 successful pull-request runs
+ * (P2-12.7 lead decision): one runs call, and the installation token the product already holds.
+ * GitHub gives each run its `pull_requests[].number` (empty for a fork's). Answers the numbers
+ * newest first, deduplicated; `[]` when the product has no channel workflow or GitHub answers
+ * anything but a runs list. A refusal is the caller's fetch wrapper's to observe, not thrown here.
+ */
+export async function recentChannelPullRequests(
+  env: Env,
+  cfg: ResolvedConfig,
+  now: number,
+  fetchImpl: FetchImpl,
+): Promise<number[]> {
+  if (!cfg.channel_workflow) return [];
+  const tok = await installationToken(env, cfg, now, fetchImpl);
+  const workflow = encodeURIComponent(cfg.channel_workflow);
+  const res = await fetchImpl(
+    `https://api.github.com/repos/${cfg.gh_owner}/${cfg.gh_repo}/actions/workflows/${workflow}/runs?event=pull_request&status=success&per_page=10`,
+    {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${tok}`,
+        "User-Agent": "polaris-key-release",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    },
+  );
+  if (!res.ok) return [];
+  const data = (await res.json().catch(() => null)) as {
+    workflow_runs?: Array<{ pull_requests?: Array<{ number?: unknown }> }>;
+  } | null;
+  if (!data || !Array.isArray(data.workflow_runs)) return [];
+  const out = new Set<number>();
+  for (const run of data.workflow_runs)
+    for (const pr of Array.isArray(run.pull_requests) ? run.pull_requests : [])
+      if (
+        typeof pr?.number === "number" &&
+        Number.isSafeInteger(pr.number) &&
+        pr.number > 0
+      )
+        out.add(pr.number);
+  return [...out];
 }
 
 /** Channel suffix used in asset names / install paths for non-stable selectors. */

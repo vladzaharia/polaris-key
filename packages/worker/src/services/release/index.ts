@@ -32,13 +32,21 @@ import { releaseIntegration } from "./integration.js";
 import { releaseMaintenance } from "./maintenance.js";
 
 import { scrubManifestSnapshotsJob } from "./snapshotScrub.js";
+import {
+  backfillStoreJob,
+  materialiseWorkflowBetaJob,
+} from "./resolverJobs.js";
 export const releaseService: ServiceDescriptor = {
   slug: "release",
   contributes: {
     manifest: releaseManifest,
     integration: releaseIntegration,
     maintenance: releaseMaintenance,
-    migrations: [scrubManifestSnapshotsJob],
+    migrations: [
+      scrubManifestSnapshotsJob,
+      backfillStoreJob,
+      materialiseWorkflowBetaJob,
+    ],
   },
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: RELEASE_SETTINGS_SLICE,
