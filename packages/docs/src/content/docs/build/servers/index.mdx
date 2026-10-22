@@ -1,0 +1,90 @@
+---
+title: "Verify licenses on your server"
+description: "Gate your own backend on the license a device already holds: the headers, the verdict, the one-hour replay window and the 65-minute revocation bound, with a drop-in for each framework."
+type: "concept"
+lastReviewed: "2026-10-22"
+lanes: ["server"]
+sidebar:
+  order: 1
+---
+
+import Snippet from "../../../../components/docs/Snippet.astro";
+
+A backend that grants something to a device, such as a cloud save, a download or a multiplayer seat, shouldn't trust a "licensed" flag the app sends. It verifies the device's signed license document instead, offline, against the keys your app pins. The Worker takes no part in the request.
+
+Requires the License feature and your product's pinned keys, which `pkey sdk --write` puts in the config file.
+
+## How a request is decided
+
+1. **App** The SDK's `client.backend` helper sends the cached license document in `X-PKey-License` and the device id in `X-PKey-Device`. It syncs first when the document is close to expiring, and retries once on `license_stale`.
+2. **Server** The drop-in reads both headers. It checks the signature against your pins, that the document names your product and this device, and that it is fresh.
+3. **Server** It then checks the route's requirement: the license, an entitlement, a tier or a signed-in account.
+4. **Server** A pass attaches the license to the request. A refusal answers `application/problem+json` with the status and a code from [Error codes](/docs/reference/error-codes/).
+
+A route with no gate stays open.
+
+## Pick your framework
+
+| Host   | Framework             | Page                                              |
+| ------ | --------------------- | ------------------------------------------------- |
+| Node   | Express               | [Express](/docs/build/servers/express/)           |
+| Node   | Hono                  | [Hono](/docs/build/servers/hono/)                 |
+| Node   | Next.js               | [Next.js](/docs/build/servers/next/)              |
+| Python | FastAPI               | [FastAPI](/docs/build/servers/fastapi/)           |
+| Python | Starlette             | [Starlette](/docs/build/servers/starlette/)       |
+| Python | Flask                 | [Flask](/docs/build/servers/flask/)               |
+| Python | Django                | [Django](/docs/build/servers/django/)             |
+| Python | Django REST framework | [Django REST framework](/docs/build/servers/drf/) |
+| Kotlin | Ktor                  | [Ktor](/docs/build/servers/ktor/)                 |
+
+Another framework uses [the core](#use-the-core-directly) directly.
+
+## Freshness and replay
+
+A device holds a license document that is valid for one hour at a time. By default a server accepts a document until five minutes after it expires, so a captured document replays for at most about 65 minutes. Device binding is a consistency check, not proof of possession: anyone who captures a document can replay it from another device until then. A server keeps no replay history.
+
+To accept fewer, set `maxAgeSeconds` (`max_age_seconds` in Python, `MAX_AGE_SECONDS` in Django's settings). The server then refuses a document issued more than that many seconds ago, plus the same five minutes, and never past the document's grace end. A refused request carries `license_stale`, and the SDK syncs and retries once.
+
+## Revocation
+
+A revoked, expired or disabled license stops getting fresh documents from the Worker, so its last document fails `license_stale` within the same window: about 65 minutes by default. A server learns of a revocation no sooner. If that is too slow, lower `maxAgeSeconds`; the app then syncs more often.
+
+## CORS
+
+A browser's CORS preflight carries no license, so every gate lets it through. The drop-ins set no CORS headers. Add `X-PKey-License` and `X-PKey-Device` to your own allowed headers. `POLARIS_REQUEST_HEADERS` lists both.
+
+## Trust
+
+The server starts from your pinned keys and, when you turn the refresh on, fetches the trust manifest every 15 minutes and on an unknown key id. A failed fetch keeps the last verified keys, and the pinned keys always verify, so an outage of Polaris Key never refuses a document a pinned key signed. Each fetch is a `<language>-server` sighting: **Core → Integration** shows your server as Verified after the first one.
+
+## Test
+
+Each SDK has a testing entry that signs documents with a throwaway key, so a test needs no network and no Polaris Key: `@polaris-key/server/testing`, `polaris_key.server.testing` and the Ktor test kit. The reference for your language has a worked test:
+
+- [Node](/docs/features/licensing/server-node/#test-a-gated-route)
+- [Python](/docs/features/licensing/server-python/#test-a-gated-route)
+- [Kotlin](/docs/features/licensing/server-kotlin/#test-a-gated-route)
+
+## Use the core directly
+
+The drop-ins sit on a framework-free core: it takes the header values and returns a verdict, and you write the response.
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/node/server/licensing.ts"
+  title="verify.ts"
+/>
+
+| Host   | Core                         | You pass                                                              |
+| ------ | ---------------------------- | --------------------------------------------------------------------- |
+| Node   | `verifyLicenseDocument`      | `trust`, `product`, `deviceId`, and optionally `now`                  |
+| Python | `verify_license_doc`         | the pinned keys, `expected_aud`, `device_id`, `check_freshness=False` |
+| Kotlin | `PolarisServer.authenticate` | the header pairs, the requirements and `Accept-Language`              |
+
+The Node helper returns `ok: false` for any invalid document. For a valid one it returns the document, `usable`, `ageSeconds`, `isEntitled(name)` and `entitlementValue(name)`. Both getters answer as unentitled when the gate isn't usable.
+
+## If it isn't working
+
+- Every request is `license_invalid`: the pins in the config are for another environment, or `X-PKey-Device` isn't the device the document names.
+- `license_stale` on a device that is online: the app didn't sync before sending. Use `client.backend`, which does.
+- The browser blocks the call: allow the two headers in your CORS settings.
+- Integration says **Not seen yet** for your server: see [Not seen yet](/docs/build/troubleshooting/#not-seen-yet).

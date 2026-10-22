@@ -218,6 +218,24 @@ export const DOOR_TREES: readonly DoorTree[] = [
           sdkPages("godot", "Godot", true),
           leaf("build/sdks/index", "All SDKs"),
           {
+            label: "Your server",
+            collapsed: true,
+            items: [
+              leaf("build/servers/index", "Verify licenses on your server"),
+              ...leaves(
+                "build/servers/express",
+                "build/servers/hono",
+                "build/servers/next",
+                "build/servers/fastapi",
+                "build/servers/starlette",
+                "build/servers/flask",
+                "build/servers/django",
+                "build/servers/drf",
+                "build/servers/ktor",
+              ),
+            ],
+          },
+          {
             label: "Drop-in UI kits",
             collapsed: true,
             items: leaves(

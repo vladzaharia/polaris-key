@@ -7,7 +7,7 @@ sidebar:
   order: 13
 ---
 
-A drop-in from `@polaris-key/server` reads the device's license document from the `X-PKey-License` header, verifies it offline and refuses the request when the license doesn't allow it. A route with no gate stays open. For the other backends and the steps behind this, see [Verify licenses on your server](/docs/features/licensing/server-verification/).
+A drop-in from `@polaris-key/server` reads the device's license document from the `X-PKey-License` header, verifies it offline and refuses the request when the license doesn't allow it. A route with no gate stays open. For the other frameworks and the steps behind this, see [Verify licenses on your server](/docs/build/servers/).
 
 Requires the License feature and the config file `pkey sdk --lang node --write` writes. The app sends `X-PKey-License` and `X-PKey-Device` with each call to your server.
 
