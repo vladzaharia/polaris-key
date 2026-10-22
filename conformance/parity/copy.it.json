@@ -171,7 +171,7 @@
     },
     "invalid_scope": {
       "title": "Accesso non disponibile",
-      "message": "L'app ha chiesto un accesso che questo accesso non offre. Contatta il suo sviluppatore."
+      "message": "L'app ha chiesto autorizzazioni che questo accesso non offre. Contatta il suo sviluppatore."
     },
     "redirect_uri_mismatch": {
       "title": "L'accesso non può tornare all'app",
@@ -179,7 +179,7 @@
     },
     "license_choice_required": {
       "title": "Scegli una licenza",
-      "message": "Scegli quale licenza usa questo dispositivo, poi continua."
+      "message": "Scegli quale licenza deve usare questo dispositivo, poi continua."
     },
     "auth_method_disabled": {
       "title": "Metodo di accesso non disponibile",
@@ -199,7 +199,7 @@
     },
     "invalid_code": {
       "title": "Codice errato",
-      "message": "Quel codice non ha funzionato. Controlla l'email e digitalo di nuovo."
+      "message": "Quel codice non è corretto. Controlla l'email e riprova."
     },
     "code_expired": {
       "title": "Codice scaduto",
@@ -210,8 +210,8 @@
       "message": "Un altro account Polaris Locker usa già questa email. Unisci questo accesso a quell'account oppure usa un'altra email."
     },
     "terms_required": {
-      "title": "Condizioni non accettate",
-      "message": "Accetta le condizioni per continuare."
+      "title": "Termini non accettati",
+      "message": "Accetta i termini per continuare."
     },
     "license_owned": {
       "title": "Licenza in un altro account",
@@ -355,7 +355,7 @@
     },
     "release-refused": {
       "title": "Non incluso",
-      "message": "La tua licenza non include questa release."
+      "message": "La tua licenza non include questa versione."
     },
     "bundle-rejected": {
       "title": "File di attivazione non valido",
@@ -431,11 +431,11 @@
     },
     "invalid-argument": {
       "title": "Richiesta non accettata",
-      "message": "L'app ha inviato una richiesta che il bridge delle licenze non ha potuto leggere. Contatta lo sviluppatore."
+      "message": "L'app ha inviato una richiesta che il modulo di licenza non ha potuto leggere. Contatta lo sviluppatore."
     },
     "invoke-not-allowed": {
       "title": "Richiesta non consentita",
-      "message": "L'app ha chiesto qualcosa che il suo bridge delle licenze non offre. Contatta lo sviluppatore."
+      "message": "L'app ha chiesto qualcosa che il suo modulo di licenza non offre. Contatta lo sviluppatore."
     },
     "sender-refused": {
       "title": "Finestra non consentita",
@@ -716,7 +716,7 @@
       "message": "La tua licenza è attiva."
     },
     "grace": {
-      "title": "Periodo di tolleranza offline",
+      "title": "Tolleranza offline",
       "message": "Impossibile raggiungere il servizio di licenze. Puoi continuare a usare l'app fino al termine del periodo di tolleranza."
     },
     "expired": {

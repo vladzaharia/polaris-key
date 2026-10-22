@@ -1096,12 +1096,12 @@ msgstr "Nouveautés"
 #. All changes in {version}
 #. UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1.
 msgid "update.allChanges"
-msgstr "Toutes les modifications de la version {version}"
+msgstr "Toutes les modifications de la {version}"
 
 #. macos: All Changes in {version}
 msgctxt "macos"
 msgid "update.allChanges"
-msgstr "Toutes les modifications de la version {version}"
+msgstr "Toutes les modifications de la {version}"
 
 #. Later
 #. UpdatePrompt: an app update. Dismisses the prompt.
@@ -1171,7 +1171,7 @@ msgstr "Il reste environ {time}"
 #. About {minutes} min
 #. UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more.
 msgid "common.updateTimeMinutes"
-msgstr "Environ {minutes} min"
+msgstr "Environ {minutes} min"
 
 #. Less than a minute
 #. UpdatePrompt: an app update. Time left on the download when under a minute remains.
@@ -1820,7 +1820,7 @@ msgstr "Se connecter"
 #. Use your purchase email or a work or school email.
 #. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "signin.methods.ledeApp"
-msgstr "Utilisez l’adresse e-mail de votre achat ou une adresse professionnelle ou scolaire."
+msgstr "Utilisez l’adresse e-mail associée à votre achat, ou une adresse professionnelle ou scolaire."
 
 #. Email
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
@@ -2448,7 +2448,7 @@ msgstr "Remplacer un appareil"
 #. Choose a device to sign out. {thisDevice} takes its place.
 #. Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice).
 msgid "signin.replace.lede"
-msgstr "Choisissez un appareil à déconnecter. {thisDevice} le remplace."
+msgstr "Choisissez un appareil à déconnecter : {thisDevice} prendra sa place."
 
 #. Replace a device
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title.
@@ -3310,7 +3310,7 @@ msgstr "Obtenir la licence gratuite, si {product} en propose une"
 #. Stop using your license on this device and free its seat
 #. Terminal help: what the deactivate command does.
 msgid "cli.verb.deactivate"
-msgstr "Retirer votre licence de cet appareil et libérer sa place"
+msgstr "Retirer votre licence de cet appareil et libérer de la place pour un autre"
 
 #. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
@@ -3355,7 +3355,7 @@ msgstr "Renommer un appareil (sans nom, le nom est effacé)"
 #. Remove a device and free its seat
 #. Terminal help: what 'devices deauthorize' does.
 msgid "cli.verb.devicesRemove"
-msgstr "Retirer un appareil et libérer sa place"
+msgstr "Retirer un appareil et libérer de la place pour un autre"
 
 #. Show one setting and where its value comes from
 #. Terminal help: what 'config get' does.
@@ -4385,7 +4385,7 @@ msgstr "Appareil remplacé"
 #. {device} signed out of {app}. {thisDevice} is signed in.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser".
 msgid "signin.choice.replacedBody"
-msgstr "{device} est déconnecté de {app}. {thisDevice} est connecté."
+msgstr "{device} est déconnecté de {app} et {thisDevice} est connecté."
 
 #. This sign-in has ended
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).

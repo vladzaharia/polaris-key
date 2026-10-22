@@ -403,8 +403,8 @@
     <!-- UpdatePrompt: an app update. Label over the release notes. -->
     <string name="update_whatsNew">Nouveautés</string>
     <!-- UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
-    <string name="update_allChanges">Toutes les modifications de la version %1$s</string>
-    <string name="update_allChanges__macos">Toutes les modifications de la version %1$s</string>
+    <string name="update_allChanges">Toutes les modifications de la %1$s</string>
+    <string name="update_allChanges__macos">Toutes les modifications de la %1$s</string>
     <!-- UpdatePrompt: an app update. Dismisses the prompt. -->
     <string name="update_later">Plus tard</string>
     <string name="update_later__macos">Plus tard</string>
@@ -427,7 +427,7 @@
     <!-- UpdatePrompt: an app update. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
     <string name="update_timeLeft">Il reste environ %1$s</string>
     <!-- UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more. Arguments: 1=minutes. -->
-    <string name="common_updateTimeMinutes">Environ %1$s min</string>
+    <string name="common_updateTimeMinutes">Environ %1$s min</string>
     <!-- UpdatePrompt: an app update. Time left on the download when under a minute remains. -->
     <string name="common_updateTimeLessThanMinute">Moins d’une minute</string>
     <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
@@ -675,7 +675,7 @@
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
     <string name="signin_methods_titleApp">Se connecter</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product. -->
-    <string name="signin_methods_ledeApp">Utilisez l’adresse e-mail de votre achat ou une adresse professionnelle ou scolaire.</string>
+    <string name="signin_methods_ledeApp">Utilisez l’adresse e-mail associée à votre achat, ou une adresse professionnelle ou scolaire.</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
     <string name="signin_email_label">E-mail</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
@@ -908,7 +908,7 @@
     <string name="signin_replace_open">Remplacer un appareil</string>
     <string name="signin_replace_open__macos">Remplacer un appareil</string>
     <!-- Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice). Arguments: 1=thisDevice. -->
-    <string name="signin_replace_lede">Choisissez un appareil à déconnecter. %1$s le remplace.</string>
+    <string name="signin_replace_lede">Choisissez un appareil à déconnecter : %1$s prendra sa place.</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title. -->
     <string name="signin_replace_heading">Remplacer un appareil</string>
     <!-- Replace a device in a system dialog (SIGN-IN.md §3.7). -->
@@ -1236,7 +1236,7 @@
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->
     <string name="cli_verb_enroll">Obtenir la licence gratuite, si %1$s en propose une</string>
     <!-- Terminal help: what the deactivate command does. -->
-    <string name="cli_verb_deactivate">Retirer votre licence de cet appareil et libérer sa place</string>
+    <string name="cli_verb_deactivate">Retirer votre licence de cet appareil et libérer de la place pour un autre</string>
     <!-- Terminal help: what the status command shows. -->
     <string name="cli_verb_status">Afficher la licence, les appareils et le temps hors ligne</string>
     <!-- Terminal help: what the offline-request command does. -->
@@ -1254,7 +1254,7 @@
     <!-- Terminal help: what 'devices rename' does. -->
     <string name="cli_verb_devicesRename">Renommer un appareil (sans nom, le nom est effacé)</string>
     <!-- Terminal help: what 'devices deauthorize' does. -->
-    <string name="cli_verb_devicesRemove">Retirer un appareil et libérer sa place</string>
+    <string name="cli_verb_devicesRemove">Retirer un appareil et libérer de la place pour un autre</string>
     <!-- Terminal help: what 'config get' does. -->
     <string name="cli_verb_configGet">Afficher un paramètre et l’origine de sa valeur</string>
     <!-- Terminal help: what 'config list' does. -->
@@ -1655,7 +1655,7 @@
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_choice_replacedTitle">Appareil remplacé</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser". Arguments: 1=device, 2=app, 3=thisDevice. -->
-    <string name="signin_choice_replacedBody">%1$s est déconnecté de %2$s. %3$s est connecté.</string>
+    <string name="signin_choice_replacedBody">%1$s est déconnecté de %2$s et %3$s est connecté.</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_request_goneTitle">Cette connexion est terminée</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->

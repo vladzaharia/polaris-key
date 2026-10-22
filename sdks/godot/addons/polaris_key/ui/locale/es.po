@@ -364,7 +364,7 @@ msgstr "Sin conexión"
 #. Expired
 #. Status pill: the license expired.
 msgid "part.status.expired"
-msgstr "Vencida"
+msgstr "Caducada"
 
 #. Revoked
 #. Status pill: the license was revoked.
@@ -743,7 +743,7 @@ msgstr "Escanea el código con tu teléfono, o ve a {url} y escribe este código
 #. Scan the QR code with your phone, or go to this address and enter the code below.
 #. SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it.
 msgid "signInHandoff.scanTv"
-msgstr "Escanea el código QR con tu teléfono o ve a esta dirección e introduce el código de abajo."
+msgstr "Escanea el código QR con tu teléfono o ve a esta dirección y escribe el código de abajo."
 
 #. Link copied
 #. SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link.
@@ -753,7 +753,7 @@ msgstr "Enlace copiado"
 #. Choose Sign in on {device} on the sign-in page to finish.
 #. SignInHandoff: sign-in continues on another device or in the browser. The hosted approval page ends with a “Sign in on {device}” button, next to Deny; the label stays in English. Arguments: {device} = this device's friendly name.
 msgid "signInHandoff.confirm"
-msgstr "Elige Sign in on {device} en la página de inicio de sesión para terminar."
+msgstr "Elige «Sign in on {device}» en la página de inicio de sesión para terminar."
 
 #. Signed in
 #. SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues.
@@ -763,12 +763,12 @@ msgstr "Sesión iniciada"
 #. Get a new code
 #. SignInHandoff: sign-in continues on another device or in the browser. After the code expired or was refused.
 msgid "signInHandoff.newCode"
-msgstr "Obtener un código nuevo"
+msgstr "Obtener código nuevo"
 
 #. macos: Get a New Code
 msgctxt "macos"
 msgid "signInHandoff.newCode"
-msgstr "Obtener un código nuevo"
+msgstr "Obtener código nuevo"
 
 #. Enter your license key
 #. Activate: license key entry.
@@ -982,7 +982,7 @@ msgstr "Escanea el código para reemplazar un dispositivo desde tu teléfono."
 #. Sign out of {product} on another device, then try again.
 #. DeviceLimit on the key path when the server sent no link to replace a device: the license is on all its devices, so the fix is to free one first. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "deviceLimit.noManage"
-msgstr "Cierra sesión en {product} en otro dispositivo y vuelve a intentarlo."
+msgstr "Cierra sesión de {product} en otro dispositivo y vuelve a intentarlo."
 
 #. Your devices
 #. Devices: the list of devices using the license.
@@ -1560,12 +1560,12 @@ msgstr "Predeterminado"
 #. Reset to default
 #. Settings: settings delivered by the developer.
 msgid "settings.reset"
-msgstr "Restablecer valor predeterminado"
+msgstr "Restablecer"
 
 #. macos: Reset to Default
 msgctxt "macos"
 msgid "settings.reset"
-msgstr "Restablecer valor predeterminado"
+msgstr "Restablecer"
 
 #. Show advanced settings
 #. Settings: settings delivered by the developer.
@@ -1860,12 +1860,12 @@ msgstr "Conectar {provider}"
 #. Sign in with a passkey
 #. Hosted sign-in card (SIGN-IN.md).
 msgid "signin.passkey"
-msgstr "Iniciar sesión con una llave de acceso"
+msgstr "Iniciar sesión con llave de acceso"
 
 #. macos: Sign In with a Passkey
 msgctxt "macos"
 msgid "signin.passkey"
-msgstr "Iniciar sesión con una llave de acceso"
+msgstr "Iniciar sesión con llave de acceso"
 
 #. Continue with email
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
@@ -2348,12 +2348,12 @@ msgstr "Una licencia aparte · se crea al continuar"
 #. Your licenses are on all their devices. Replace a device to use one here.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.allFull"
-msgstr "Tus licencias están en todos sus dispositivos. Reemplaza un dispositivo para usar una aquí."
+msgstr "Tus licencias ya han alcanzado su límite de dispositivos. Reemplaza un dispositivo para usar una aquí."
 
 #. Your licenses are on all their devices. Replace a device, or create a new free license.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.allFullCreate"
-msgstr "Tus licencias están en todos sus dispositivos. Reemplaza un dispositivo o crea una licencia gratuita nueva."
+msgstr "Tus licencias ya han alcanzado su límite de dispositivos. Reemplaza un dispositivo o crea una licencia gratuita nueva."
 
 #. {developer} manages devices for these licenses. Ask {developer} to free one, or use another license.
 #. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated).
@@ -2383,12 +2383,12 @@ msgstr "Usar una clave de licencia"
 #. Free a device
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.freeDevice"
-msgstr "Liberar un dispositivo"
+msgstr "Liberar dispositivo"
 
 #. macos: Free a Device
 msgctxt "macos"
 msgid "signin.choice.freeDevice"
-msgstr "Liberar un dispositivo"
+msgstr "Liberar dispositivo"
 
 #. Use this license and continue
 #. Choose a license for this device (SIGN-IN.md §3.6).
@@ -2408,7 +2408,7 @@ msgstr "Ese dispositivo acaba de reemplazarse. Vuelve a elegir."
 #. The code on {device} expired. Get a new code there and scan it again.
 #. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
 msgid "signin.choice.codeExpired"
-msgstr "El código de {device} venció. Obtén un código nuevo allí y vuelve a escanearlo."
+msgstr "El código de {device} ha caducado. Obtén un código nuevo allí y vuelve a escanearlo."
 
 #. No {product} license in this account
 #. No license in this account (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -2547,7 +2547,7 @@ msgstr "Se quitó {device}, pero alguien inició sesión antes. Vuelve a elegir.
 #. Continue to {app} as {name}?
 #. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated); {name} = the person's display name.
 msgid "signin.consent.title"
-msgstr "¿Continuar a {app} como {name}?"
+msgstr "¿Continuar en {app} como {name}?"
 
 #. License for this device
 #. Consent step before returning to the app (SIGN-IN.md §3.8).
@@ -2577,7 +2577,7 @@ msgstr "Cambiar"
 #. Continue to {app}
 #. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.consent.continue"
-msgstr "Continuar a {app}"
+msgstr "Continuar en {app}"
 
 #. {app} will also get
 #. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated).
@@ -2696,7 +2696,7 @@ msgstr "{tier} · en tu biblioteca"
 #. You're signed in to {app}
 #. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.return.signedIn"
-msgstr "Iniciaste sesión en {app}"
+msgstr "Has iniciado sesión en {app}"
 
 #. Return to {app}
 #. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
@@ -2756,12 +2756,12 @@ msgstr "Mira {device}: continúa solo."
 #. Sign the TV out
 #. Device code approval on a phone or computer (SIGN-IN.md §3.11).
 msgid "signin.device.signOut"
-msgstr "Cerrar la sesión del televisor"
+msgstr "Cerrar sesión en la TV"
 
 #. macos: Sign the TV Out
 msgctxt "macos"
 msgid "signin.device.signOut"
-msgstr "Cerrar la sesión del televisor"
+msgstr "Cerrar sesión en la TV"
 
 #. Finish in your browser
 #. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
@@ -2781,7 +2781,7 @@ msgstr "O ve a {url}"
 #. Code expires in {time}
 #. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”).
 msgid "signin.handoff.expires"
-msgstr "El código vence en {time}"
+msgstr "El código caduca en {time}"
 
 #. Open browser again
 #. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
@@ -2816,7 +2816,7 @@ msgstr "Sesión iniciada como {name} · Licencia {tier}"
 #. You're signed in
 #. Desktop app after sign-in (SIGN-IN.md §3.17).
 msgid "signin.desktop.notifyTitle"
-msgstr "Iniciaste sesión"
+msgstr "Has iniciado sesión"
 
 #. {app} is ready.
 #. Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated).
@@ -2996,7 +2996,7 @@ msgstr "Puedes cerrar la pestaña del navegador."
 #. Sign out of {product} on this device? (y/N)
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.cli.logoutConfirm"
-msgstr "¿Cerrar sesión en {product} en este dispositivo? (y/N)"
+msgstr "¿Cerrar sesión de {product} en este dispositivo? (y/N)"
 
 #. Run {command} to sign in again.
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {command} = a terminal command, shown as is.
@@ -3056,7 +3056,7 @@ msgstr "Se denegó esa solicitud. Usa otra forma de iniciar sesión."
 #. That code expired. Get a new code.
 #. Sign in with another device (SIGN-IN.md §3.11).
 msgid "signin.approve.expired"
-msgstr "Ese código venció. Obtén un código nuevo."
+msgstr "Ese código ha caducado. Obtén un código nuevo."
 
 #. Sign in to the console
 #. Console operator sign-in (SIGN-IN.md §3.12).
@@ -3071,7 +3071,7 @@ msgstr "Siguiente: {idp} en {host}"
 #. You're signed out
 #. Console operator sign-in (SIGN-IN.md §3.12).
 msgid "signin.console.signedOut"
-msgstr "Cerraste sesión"
+msgstr "Has cerrado sesión"
 
 #. Your session ended
 #. Console operator sign-in (SIGN-IN.md §3.12).
@@ -3096,7 +3096,7 @@ msgstr "El inicio de sesión de administración no está configurado"
 #. That code or link has expired
 #. Expired code or link page (SIGN-IN.md §4.12).
 msgid "signin.expired.title"
-msgstr "Ese código o enlace venció"
+msgstr "Ese código o enlace ha caducado"
 
 #. Codes and links work once, for 10 minutes.
 #. Expired code or link page (SIGN-IN.md §4.12).
@@ -3111,12 +3111,12 @@ msgstr "Enviaremos un código nuevo a {email}."
 #. Sign in again
 #. Expired code or link page (SIGN-IN.md §4.12).
 msgid "signin.again"
-msgstr "Vuelve a iniciar sesión"
+msgstr "Volver a iniciar sesión"
 
 #. macos: Sign In Again
 msgctxt "macos"
 msgid "signin.again"
-msgstr "Vuelve a iniciar sesión"
+msgstr "Volver a iniciar sesión"
 
 #. {product} doesn't use Polaris Locker sign-in. Open {product} and enter your license key there.
 #. The product doesn't use Polaris Locker sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -3131,7 +3131,7 @@ msgstr "Inicia sesión aquí para ver {product} en tu biblioteca."
 #. Sign out of {product} on this device?
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "signin.signout.title"
-msgstr "¿Cerrar sesión en {product} en este dispositivo?"
+msgstr "¿Cerrar sesión de {product} en este dispositivo?"
 
 #. {product} stops using your {tier} license on this device and frees room for another device.
 #. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
@@ -3150,12 +3150,12 @@ msgstr[2] "{n} cambios aún no se han sincronizado."
 #. Wait for sync
 #. Sign-out confirmation (SIGN-IN.md §4.9).
 msgid "signin.signout.waitSync"
-msgstr "Esperar a la sincronización"
+msgstr "Esperar a sincronizar"
 
 #. macos: Wait for Sync
 msgctxt "macos"
 msgid "signin.signout.waitSync"
-msgstr "Esperar a la sincronización"
+msgstr "Esperar a sincronizar"
 
 #. You were signed out
 #. Session ended (SIGN-IN.md §4.10).
@@ -3310,7 +3310,7 @@ msgstr "Obtener la licencia gratuita, si {product} ofrece una"
 #. Stop using your license on this device and free its seat
 #. Terminal help: what the deactivate command does.
 msgid "cli.verb.deactivate"
-msgstr "Quitar tu licencia de este dispositivo y liberar su plaza"
+msgstr "Quitar tu licencia de este dispositivo y dejar sitio para otro"
 
 #. Show your license, devices and offline time
 #. Terminal help: what the status command shows.
@@ -3355,7 +3355,7 @@ msgstr "Renombrar un dispositivo (sin nombre, quita el nombre)"
 #. Remove a device and free its seat
 #. Terminal help: what 'devices deauthorize' does.
 msgid "cli.verb.devicesRemove"
-msgstr "Quitar un dispositivo y liberar su plaza"
+msgstr "Quitar un dispositivo y dejar sitio para otro"
 
 #. Show one setting and where its value comes from
 #. Terminal help: what 'config get' does.
@@ -3565,7 +3565,7 @@ msgstr "Usar la licencia de tu cuenta"
 #. Signed out of {product} on this device.
 #. Terminal: sign-out finished.
 msgid "cli.logout.done"
-msgstr "Cerraste sesión en {product} en este dispositivo."
+msgstr "Has cerrado sesión de {product} en este dispositivo."
 
 #. {product} no longer uses your license on this device. Its seat is free.
 #. Terminal: deactivate finished; the license's seat on this device is released.
@@ -3925,7 +3925,7 @@ msgstr "No llegó ninguna clave de licencia por stdin."
 #. On a phone or computer where you're signed in, scan the code, or open Account → Approve a new device and type it.
 #. Sign in with another device: under the title (SIGN-IN.md §3.11). Account → Approve a new device is the portal's own menu path.
 msgid "signin.approve.lede"
-msgstr "En un teléfono o un ordenador donde hayas iniciado sesión, escanea el código, o abre Cuenta → Aprobar un dispositivo nuevo y escríbelo."
+msgstr "En un teléfono o una computadora donde hayas iniciado sesión, escanea el código, o abre Cuenta → Aprobar un dispositivo nuevo y escríbelo."
 
 #. Use another way to sign in
 #. Polaris Locker sign-in card (SIGN-IN.md §3.4, §3.5, §3.11).
@@ -4025,7 +4025,7 @@ msgstr "Aprobado. {device} ha iniciado sesión."
 #. Denied. Nothing changed.
 #. Approve dialog outcome.
 msgid "signin.approve.deniedDone"
-msgstr "Rechazado. No ha cambiado nada."
+msgstr "Denegado. No ha cambiado nada."
 
 #. That didn't go through. Try again.
 #. Approve dialog: a decision that failed.
@@ -4035,17 +4035,17 @@ msgstr "No se pudo completar. Inténtalo de nuevo."
 #. Your passkey wasn't used. Try again, or use another way.
 #. Passkey prompt closed or timed out.
 msgid "signin.passkey.cancelled"
-msgstr "No se usó tu passkey. Inténtalo de nuevo o usa otra forma."
+msgstr "No se usó tu llave de acceso. Inténtalo de nuevo o usa otra forma."
 
 #. This browser can't use your passkey here. Use another way.
 #. Passkey not usable in this browser.
 msgid "signin.passkey.unsupported"
-msgstr "Este navegador no puede usar tu passkey aquí. Usa otra forma."
+msgstr "Este navegador no puede usar tu llave de acceso aquí. Usa otra forma."
 
 #. Your passkey didn't work. Try again, or use another way.
 #. Passkey refused.
 msgid "signin.passkey.failed"
-msgstr "Tu passkey no funcionó. Inténtalo de nuevo o usa otra forma."
+msgstr "Tu llave de acceso no funcionó. Inténtalo de nuevo o usa otra forma."
 
 #. Signed in with {provider}
 #. Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name.
@@ -4145,12 +4145,12 @@ msgstr "En este navegador, la última vez {when}"
 #. Welcome back
 #. HintStep title when the browser kept no name.
 msgid "signin.hint.welcomeNoName"
-msgstr "Te damos la bienvenida de nuevo"
+msgstr "Hola de nuevo"
 
 #. a passkey
 #. HintStep: completes 'You usually sign in with {method}'.
 msgid "signin.hint.method.passkey"
-msgstr "una passkey"
+msgstr "una llave de acceso"
 
 #. an email code
 #. HintStep: completes 'You usually sign in with {method}'.
@@ -4160,12 +4160,12 @@ msgstr "un código por correo"
 #. Use a passkey
 #. HintStep: passkey button.
 msgid "signin.hint.usePasskey"
-msgstr "Usar una passkey"
+msgstr "Usar una llave de acceso"
 
 #. macos: Use a Passkey
 msgctxt "macos"
 msgid "signin.hint.usePasskey"
-msgstr "Usar una passkey"
+msgstr "Usar una llave de acceso"
 
 #. Email me a code
 #. HintStep: sends a sign-in code.
@@ -4215,7 +4215,7 @@ msgstr "Ese inicio de sesión ha caducado. Continúa para recibir un código nue
 #. That took too long. Continue to start again.
 #. Sign-in card, back at the email step when the single sign-on step ran out before any code was sent.
 msgid "signin.sso.expiredRestart"
-msgstr "Tardaste demasiado. Continúa para empezar de nuevo."
+msgstr "Ha pasado demasiado tiempo. Continúa para empezar de nuevo."
 
 #. No more codes can be sent for this sign-in. The latest code still works.
 #. Code step: the per-sign-in resend cap.
@@ -4265,7 +4265,7 @@ msgstr "{email} pertenece a una cuenta que no puede iniciar sesión. Prueba con 
 #. Sign-in is turned off
 #. Sign-in card: no way to sign in is enabled.
 msgid "signin.off.title"
-msgstr "El inicio de sesión está desactivado"
+msgstr "Inicio de sesión desactivado"
 
 #. The security check did not pass. Try again.
 #. Sign-in card: the bot check refused.
@@ -4420,7 +4420,7 @@ msgstr "No permitir"
 #. Cloud Sync
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.consent.cloudSync"
-msgstr "Cloud Sync"
+msgstr "Sincronización en la nube"
 
 #. New: {tier} license, created when you continue
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
@@ -4435,7 +4435,7 @@ msgstr "Guarda {product} en una cuenta"
 #. In an account you can get it back and move it to a new device yourself.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.key.upgradeLede"
-msgstr "En una cuenta puedes recuperarla y pasarla a un dispositivo nuevo tú mismo."
+msgstr "Con una cuenta puedes recuperarlo y pasarlo tú mismo a un dispositivo nuevo."
 
 #. Create account
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
@@ -4450,12 +4450,12 @@ msgstr "Crear cuenta"
 #. Sign in instead
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.key.signInInstead"
-msgstr "Iniciar sesión en su lugar"
+msgstr "Iniciar sesión"
 
 #. macos: Sign In Instead
 msgctxt "macos"
 msgid "signin.key.signInInstead"
-msgstr "Iniciar sesión en su lugar"
+msgstr "Iniciar sesión"
 
 #. Create an account to keep {product}
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -4470,7 +4470,7 @@ msgstr "{product} sigue funcionando en los dispositivos donde ya está. Solo vol
 #. {used} of {limit} key entries used
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {used} and {limit} = numbers.
 msgid "signin.key.meter"
-msgstr "{used} de {limit} entradas de clave usadas"
+msgstr "Usos de la clave: {used} de {limit}"
 
 #. Key works
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
@@ -4480,7 +4480,7 @@ msgstr "La clave funciona"
 #. Polaris Locker signs you in for {app}.
 #. PX-14a fix round. Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.footerNoDeveloper"
-msgstr "Polaris Locker te inicia sesión en {app}."
+msgstr "Polaris Locker inicia tu sesión en {app}."
 
 #. Too many device changes. Try again in {minutes, plural, one {# minute} other {# minutes}}.
 #. PX-14a fix round. Arguments: {minutes} = a number of minutes.
@@ -4559,7 +4559,7 @@ msgstr "Elige un PNG o JPEG de hasta 5 MB."
 #. Add a passkey
 #. Finish: the step after the account exists, offering one passkey.
 msgid "signin.gate.passkeyTitle"
-msgstr "Añadir una llave de acceso"
+msgstr "Añadir llave de acceso"
 
 #. Next time is one tap.
 #. Finish: under the passkey step title.
@@ -4569,12 +4569,12 @@ msgstr "La próxima vez basta un toque."
 #. Add a passkey
 #. Finish: the one-tap button that opens the browser passkey prompt.
 msgid "signin.gate.passkeyAdd"
-msgstr "Añadir una llave de acceso"
+msgstr "Añadir llave de acceso"
 
 #. macos: Add a Passkey
 msgctxt "macos"
 msgid "signin.gate.passkeyAdd"
-msgstr "Añadir una llave de acceso"
+msgstr "Añadir llave de acceso"
 
 #. Passkey added.
 #. Finish: passkey outcome, success.
@@ -4727,12 +4727,12 @@ msgstr "Unión deshecha."
 #. Joined {email}. Undo until {date}.
 #. Link dialog: a join that can still be undone.
 msgid "signin.join.undoable"
-msgstr "Unida {email}. Deshacer hasta {date}."
+msgstr "Se unió {email}. Puedes deshacerlo hasta el {date}."
 
 #. Linking took too long. Start again.
 #. Link dialog: the link flow is gone.
 msgid "signin.join.expired"
-msgstr "Vincular tardó demasiado. Empieza de nuevo."
+msgstr "La vinculación tardó demasiado. Empieza de nuevo."
 
 #. Sign in to your other account first.
 #. Link dialog: confirm before the second sign-in.
@@ -4752,7 +4752,7 @@ msgstr "Una cuenta se unió en las últimas 72 horas. Inténtalo después."
 #. Cancel the scheduled deletion first, then join.
 #. Link dialog: a scheduled deletion blocks the join.
 msgid "signin.join.reasonUnavailable"
-msgstr "Cancela primero la eliminación programada y luego une."
+msgstr "Cancela primero la eliminación programada y luego únelas."
 
 #. That's the account you started from. Sign in to your other account.
 #. Link dialog: the second sign-in was the same account.
@@ -4772,7 +4772,7 @@ msgstr "Si esa cuenta también es tuya, inicia sesión en ella y une las dos."
 #. Enter all 8 letters of the code.
 #. Approve dialog: Find it pressed with an incomplete code.
 msgid "signin.approve.codeShort"
-msgstr "Introduce las 8 letras del código."
+msgstr "Escribe las 8 letras del código."
 
 #. link accounts
 #. Link dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt.
@@ -4862,7 +4862,7 @@ msgstr "No se pudo deshacer la unión. Inténtalo de nuevo."
 #. Sign in to {email} again, then join.
 #. Link dialog: one account's proof is older than 5 minutes. {email}.
 msgid "signin.join.reasonStaleOne"
-msgstr "Inicia sesión de nuevo en {email} y luego une."
+msgstr "Inicia sesión de nuevo en {email} y luego únelas."
 
 #. Signed in more than 5 minutes ago
 #. Link dialog: marks an account whose sign-in is older than 5 minutes.
@@ -4887,7 +4887,7 @@ msgstr "Demasiados intentos. Espera un minuto e inténtalo de nuevo."
 #. Enter your license key.
 #. Activate dialog: Continue pressed with an empty field.
 msgid "signin.key.enterKey"
-msgstr "Introduce tu clave de licencia."
+msgstr "Escribe tu clave de licencia."
 
 #. Didn't get a code?
 #. Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a).
@@ -5062,7 +5062,7 @@ msgstr "Límite de dispositivos alcanzado"
 #. This license is already on all its devices. Replace a device to use it here.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_limit.message"
-msgstr "Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí."
+msgstr "Esta licencia ya ha alcanzado su límite de dispositivos. Reemplaza un dispositivo para usarla aquí."
 
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5087,12 +5087,12 @@ msgstr "Esta licencia se desactivó. Contacta con el desarrollador."
 #. License expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_expired.title"
-msgstr "Licencia vencida"
+msgstr "Licencia caducada"
 
 #. This license has expired. Renew it to continue.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_expired.message"
-msgstr "Esta licencia venció. Renuévala para continuar."
+msgstr "Esta licencia ha caducado. Renuévala para continuar."
 
 #. Not included
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5107,7 +5107,7 @@ msgstr "Tu licencia no incluye esto."
 #. Update required
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.version_blocked.title"
-msgstr "Actualización obligatoria"
+msgstr "Actualización necesaria"
 
 #. This version can't be used with your license. Update the app to continue.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5277,7 +5277,7 @@ msgstr "La app envió una solicitud que no podemos leer. Inténtalo de nuevo."
 #. Sign-in can't finish
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_client.title"
-msgstr "No se puede completar el inicio de sesión"
+msgstr "No se puede iniciar sesión"
 
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5357,7 +5357,7 @@ msgstr "El inicio de sesión por correo no está disponible en este momento. Eli
 #. Check didn't pass
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.turnstile_failed.title"
-msgstr "La comprobación no se superó"
+msgstr "Comprobación fallida"
 
 #. The security check didn't pass. Reload the page and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5382,7 +5382,7 @@ msgstr "Código incorrecto"
 #. That code isn't right. Check the email and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
-msgstr "Ese código no funcionó. Revisa el correo y vuelve a escribirlo."
+msgstr "Ese código no es correcto. Revisa el correo y vuelve a intentarlo."
 
 #. Code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5492,7 +5492,7 @@ msgstr "Oferta no disponible"
 #. This offer isn't available to your account anymore. Refresh and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not_eligible.message"
-msgstr "Esta oferta ya no está disponible para tu cuenta. Actualiza la página y vuelve a intentarlo."
+msgstr "Esta oferta ya no está disponible para tu cuenta. Recarga la página y vuelve a intentarlo."
 
 #. Can't remove
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5662,7 +5662,7 @@ msgstr "Archivo de activación no válido"
 #. The activation file is for another product or device, or it has expired.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.bundle-claims-rejected.message"
-msgstr "El archivo de activación es para otro producto u otro dispositivo, o venció."
+msgstr "El archivo de activación es para otro producto u otro dispositivo, o ha caducado."
 
 #. Activation file not trusted
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5917,12 +5917,12 @@ msgstr "Se canceló el inicio de sesión."
 #. Code expired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-expired.title"
-msgstr "Código vencido"
+msgstr "Código caducado"
 
 #. The code expired before sign-in finished. Start again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-expired.message"
-msgstr "El código venció antes de terminar el inicio de sesión. Vuelve a empezar."
+msgstr "El código caducó antes de terminar el inicio de sesión. Vuelve a empezar."
 
 #. Sign-in declined
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5952,7 +5952,7 @@ msgstr "App no configurada"
 #. The app's licensing isn't set up correctly. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.message"
-msgstr "Las licencias de la app no están configuradas correctamente. Contacta con el desarrollador."
+msgstr "El sistema de licencias de la app no está configurado correctamente. Contacta con el desarrollador."
 
 #. Request not accepted
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5982,7 +5982,7 @@ msgstr "Ventana no permitida"
 #. This window may not use the app's licensing. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sender-refused.message"
-msgstr "Esta ventana no puede usar las licencias de la app. Contacta con el desarrollador."
+msgstr "Esta ventana no puede usar el sistema de licencias de la app. Contacta con el desarrollador."
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5992,7 +5992,7 @@ msgstr "App no configurada"
 #. The app's licensing isn't set up yet. Contact the developer.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.not-configured.message"
-msgstr "Las licencias de la app todavía no están configuradas. Contacta con el desarrollador."
+msgstr "El sistema de licencias de la app todavía no está configurado. Contacta con el desarrollador."
 
 #. Not available here
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6007,7 +6007,7 @@ msgstr "Esto no está disponible aquí."
 #. Timed out
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.timeout.title"
-msgstr "Tiempo de espera agotado"
+msgstr "Tiempo agotado"
 
 #. The service took too long to answer. Check your connection and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6617,7 +6617,7 @@ msgstr "El contenido integrado de esta compilación no es válido. Reinstala la 
 #. License needed
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_required.title"
-msgstr "Se necesita una licencia"
+msgstr "Licencia necesaria"
 
 #. Activate the app, then try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6667,7 +6667,7 @@ msgstr "Tu licencia está activa."
 #. Offline grace
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.grace.title"
-msgstr "Periodo de gracia sin conexión"
+msgstr "Periodo de gracia"
 
 #. The licensing service can't be reached. You can keep using the app until the grace period ends.
 #. Core copy (conformance/parity/copy.en.json, gate).
@@ -6677,7 +6677,7 @@ msgstr "No se puede conectar con el servicio de licencias. Puedes seguir usando 
 #. License expired
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.expired.title"
-msgstr "Licencia vencida"
+msgstr "Licencia caducada"
 
 #. Connect to the internet or renew your license to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
@@ -6707,7 +6707,7 @@ msgstr "Escribe una clave de licencia o inicia sesión para continuar."
 #. Update required
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-old.title"
-msgstr "Actualización obligatoria"
+msgstr "Actualización necesaria"
 
 #. This version is no longer supported. Update {product} to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
@@ -6762,7 +6762,7 @@ msgstr "Límite de dispositivos alcanzado"
 #. This license is already on all its devices. Replace a device to use it here.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.device-limit.message"
-msgstr "Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí."
+msgstr "Esta licencia ya ha alcanzado su límite de dispositivos. Reemplaza un dispositivo para usarla aquí."
 
 #. Device check failed
 #. Core copy (conformance/parity/copy.en.json, activation).
@@ -6807,12 +6807,12 @@ msgstr "Esta licencia se desactivó. Contacta con el desarrollador."
 #. License expired
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.license-expired.title"
-msgstr "Licencia vencida"
+msgstr "Licencia caducada"
 
 #. This license has expired. Renew it to continue.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.license-expired.message"
-msgstr "Esta licencia venció. Renuévala para continuar."
+msgstr "Esta licencia ha caducado. Renuévala para continuar."
 
 #. Device check needed
 #. Core copy (conformance/parity/copy.en.json, activation).

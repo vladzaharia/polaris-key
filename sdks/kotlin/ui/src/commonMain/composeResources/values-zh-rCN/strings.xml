@@ -984,7 +984,7 @@
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_return_yours">%1$s已归你所有</string>
     <!-- Return step (SIGN-IN.md §3.10): the product row under "&lt;Product&gt; is yours". Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
-    <string name="signin_return_product">%1$s · 已在你的库中</string>
+    <string name="signin_return_product">%1$s · 已在你的资料库中</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_signedIn">你已登录%1$s</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
@@ -1077,7 +1077,7 @@
     <string name="signin_return_library">打开你的资料库</string>
     <string name="signin_return_library__macos">打开你的资料库</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
-    <string name="signin_choice_freed">此许可证现在有一台空余设备。</string>
+    <string name="signin_choice_freed">此许可证现在可以再添加一台设备。</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_opensBrowser">在浏览器中打开Polaris Locker</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
@@ -1149,7 +1149,7 @@
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_signout_title">要在此设备上退出登录%1$s吗？</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated). Arguments: 1=product, 2=tier. -->
-    <string name="signin_signout_released">%1$s将停止在此使用你的%2$s许可证，并为其他设备腾出名额。</string>
+    <string name="signin_signout_released">%1$s将停止在此设备上使用你的%2$s许可证，以便其他设备使用。</string>
     <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number. Arguments: 1=n. -->
     <plurals name="signin_signout_unsynced">
         <item quantity="other">%1$d项更改尚未同步。</item>
@@ -1172,7 +1172,7 @@
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
     <string name="signin_mail_replaced_subject">%1$s已在%2$s上退出登录</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform. Arguments: 1=device, 2=newDevice, 3=product, 4=date. -->
-    <string name="signin_mail_replaced_body">你于%4$s登录%3$s时，%1$s被%2$s替换。如果还可以再添加设备，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。</string>
+    <string name="signin_mail_replaced_body">你于%4$s登录%3$s时，%1$s已被%2$s替换。如果许可证还能再添加设备，%1$s之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
     <string name="signin_mail_newDevice_subject">有新设备登录了你的Polaris Locker账户</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->
@@ -1210,13 +1210,13 @@
     <!-- Terminal: the title when a host command that needs a license is refused because the person has none (needs-activation), and the first line of the inline activate flow. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
     <string name="cli_gate_needs">%1$s需要许可证</string>
     <!-- Terminal: the title when a host command is refused because the person's license does not hold the entitlement it needs. They have a license, so it is never 'needs a license'. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
-    <string name="cli_gate_notIncluded">您的许可证不包含%1$s</string>
+    <string name="cli_gate_notIncluded">你的许可证不包含%1$s</string>
     <!-- Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line. -->
     <string name="cli_verb_activate">添加许可证密钥（提示输入，或通过 stdin）</string>
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->
     <string name="cli_verb_enroll">获取免费许可证（如果%1$s提供）</string>
     <!-- Terminal help: what the deactivate command does. -->
-    <string name="cli_verb_deactivate">停止在此设备上使用你的许可证并释放席位</string>
+    <string name="cli_verb_deactivate">停止在此设备上使用你的许可证，以便其他设备使用</string>
     <!-- Terminal help: what the status command shows. -->
     <string name="cli_verb_status">许可证、设备和离线时间</string>
     <!-- Terminal help: what the offline-request command does. -->
@@ -1234,7 +1234,7 @@
     <!-- Terminal help: what 'devices rename' does. -->
     <string name="cli_verb_devicesRename">重命名设备（不提供名称则清除名称）</string>
     <!-- Terminal help: what 'devices deauthorize' does. -->
-    <string name="cli_verb_devicesRemove">移除设备并释放其席位</string>
+    <string name="cli_verb_devicesRemove">移除设备，以便添加其他设备</string>
     <!-- Terminal help: what 'config get' does. -->
     <string name="cli_verb_configGet">显示某项设置及其值的来源</string>
     <!-- Terminal help: what 'config list' does. -->
@@ -1483,7 +1483,7 @@
     <string name="signin_approve_look">查找</string>
     <string name="signin_approve_look__macos">查找</string>
     <!-- Approve dialog. Arguments: {code} = the 8-letter code, shown as is. Arguments: 1=code. -->
-    <string name="signin_approve_askBody">代码 %1$s 请求登录您的账户。</string>
+    <string name="signin_approve_askBody">代码 %1$s 请求登录你的账户。</string>
     <!-- Approve dialog: the request's coarse place, as a row label. -->
     <string name="signin_approve_where">位置</string>
     <!-- Approve dialog: when it asked, as a row label. -->
@@ -1493,7 +1493,7 @@
     <!-- Approve dialog: no coarse location was available. -->
     <string name="signin_approve_unknownPlace">未知位置</string>
     <!-- Approve dialog: why the person must confirm it's them first. -->
-    <string name="signin_approve_stepUpWhy">请求来自与您当前不同的位置，或无法确定的位置。</string>
+    <string name="signin_approve_stepUpWhy">请求来自与你当前不同的位置，或无法确定的位置。</string>
     <!-- Approve dialog: completes 'Use your passkey to …' in the confirm-it's-you prompt. -->
     <string name="signin_approve_stepUpVerb">批准</string>
     <!-- Approve dialog outcome. Arguments: {device} = the device label. Arguments: 1=device. -->
@@ -1503,11 +1503,11 @@
     <!-- Approve dialog: a decision that failed. -->
     <string name="signin_approve_failed">未能完成。请重试。</string>
     <!-- Passkey prompt closed or timed out. -->
-    <string name="signin_passkey_cancelled">未使用您的通行密钥。请重试或使用其他方式。</string>
+    <string name="signin_passkey_cancelled">未使用你的通行密钥。请重试或使用其他方式。</string>
     <!-- Passkey not usable in this browser. -->
-    <string name="signin_passkey_unsupported">此浏览器无法在此使用您的通行密钥。请使用其他方式。</string>
+    <string name="signin_passkey_unsupported">此浏览器无法在此使用你的通行密钥。请使用其他方式。</string>
     <!-- Passkey refused. -->
-    <string name="signin_passkey_failed">您的通行密钥无效。请重试或使用其他方式。</string>
+    <string name="signin_passkey_failed">你的通行密钥无效。请重试或使用其他方式。</string>
     <!-- Finish step strip when the provider shared no identity to show. Arguments: {provider} = a provider's name. Arguments: 1=provider. -->
     <string name="signin_gate_stripNoIdentity">已通过 %1$s 登录</string>
     <!-- Finish step title when only the terms are asked. -->
@@ -1517,7 +1517,7 @@
     <!-- Finish step: the provider's address as a radio. Arguments: {email} = an address. Arguments: 1=email. -->
     <string name="signin_gate_useEmail">使用 %1$s</string>
     <!-- Finish step: marks an Apple private-relay address. -->
-    <string name="signin_gate_relay">您的 Apple 私密地址</string>
+    <string name="signin_gate_relay">你的 Apple 私密地址</string>
     <!-- Finish step: swaps the provider's picture for initials. -->
     <string name="signin_gate_pictureInitials">使用我的首字母</string>
     <string name="signin_gate_pictureInitials__macos">使用我的首字母</string>
@@ -1527,7 +1527,7 @@
     <!-- Finish step: only when a connection offered a birth date. Arguments: {org} = the organization that offered it. Arguments: 1=org. -->
     <string name="signin_gate_birthdate">添加来自 %1$s 的出生日期</string>
     <!-- Finish step: under the birth date choice. -->
-    <string name="signin_gate_birthdateHelp">只有您能看到。应用永远不会获得。</string>
+    <string name="signin_gate_birthdateHelp">只有你能看到。应用永远不会获得。</string>
     <!-- Finish step: the product's terms checkbox. Arguments: {product} = the product's name. Arguments: 1=term. -->
     <string name="signin_gate_productTerms">我同意%1$s</string>
     <!-- Finish step: the platform's terms line, with the link below it. Polaris Locker is never translated. Arguments: 1=term. -->
@@ -1535,7 +1535,7 @@
     <!-- Finish step: the 15-minute sign-in ran out. -->
     <string name="signin_gate_expired">此次登录已过期。请重新登录。</string>
     <!-- Finish step: the join offer (SIGN-IN.md §3.5). -->
-    <string name="signin_gate_joinTitle">合并您的账户</string>
+    <string name="signin_gate_joinTitle">合并你的账户</string>
     <!-- Finish step: the join offer. Arguments: {email} = an address. Polaris Locker is never translated. Arguments: 1=email. -->
     <string name="signin_gate_joinLede">%1$s 已属于一个 Polaris Locker 账户。请将此登录合并到该账户，或使用其他邮箱。</string>
     <!-- Finish step: the join offer cannot be taken until the other account is proven. -->
@@ -1561,12 +1561,12 @@
     <!-- Sign-in card when a license key is carried through sign-in. Arguments: {product} = the product's name. Arguments: 1=product. -->
     <string name="signin_key_carriedTitle">登录以添加 %1$s</string>
     <!-- Sign-in card when a license key is carried. Arguments: {product} = the product's name. Arguments: 1=product. -->
-    <string name="signin_key_carriedLede">密钥已就绪。登录或创建账户后，%1$s 将加入您的库。</string>
+    <string name="signin_key_carriedLede">密钥已就绪。登录或创建账户后，%1$s 将加入你的资料库。</string>
     <!-- Sign-in card: drops the carried license key. -->
     <string name="signin_key_withoutKey">不使用密钥登录</string>
     <string name="signin_key_withoutKey__macos">不使用密钥登录</string>
     <!-- Have a license key? step, under the title. -->
-    <string name="signin_key_onrampLede">粘贴收据邮件中的密钥。接着登录，它就会加入您的库。</string>
+    <string name="signin_key_onrampLede">粘贴收据邮件中的密钥。接着登录，它就会加入你的资料库。</string>
     <!-- Sign-in card, back at the email step after the sign-in ran out. -->
     <string name="signin_code_expiredRestart">此次登录已过期。请继续以获取新验证码。</string>
     <!-- Sign-in card, back at the email step when the single sign-on step ran out before any code was sent. -->
@@ -1576,7 +1576,7 @@
     <!-- Sign-in card, a domain routed to its connection. Arguments: {org} = the organization's name. Arguments: 1=org. -->
     <string name="signin_sso_title">使用 %1$s 登录</string>
     <!-- Sign-in card, an enforced connection. Arguments: {host} = the email domain. Arguments: 1=host. -->
-    <string name="signin_sso_required">%1$s 地址必须使用。</string>
+    <string name="signin_sso_required">%1$s 地址必须使用此方式登录。</string>
     <!-- Sign-in card, the resend countdown on a routed step. Arguments: {time} = the wait, such as 0:42. Arguments: 1=time. -->
     <string name="signin_sso_codeIn">%1$s 后通过邮件发送验证码</string>
     <string name="signin_sso_codeIn__macos">%1$s 后通过邮件发送验证码</string>
@@ -1616,11 +1616,11 @@
     <!-- Have a license key? step: help under the field. -->
     <string name="signin_key_help">以 pkey_ 开头。区分大小写。</string>
     <!-- Have a license key? step: Continue pressed with an empty field. -->
-    <string name="signin_key_empty">请粘贴您的许可证密钥以继续。</string>
+    <string name="signin_key_empty">请粘贴你的许可证密钥以继续。</string>
     <!-- Group label of the provider buttons when adding a sign-in method. -->
     <string name="signin_provider_connectGroup">或连接其他账户</string>
     <!-- Rate limit with no wait given. -->
-    <string name="signin_rateLimitedFew">验证码过多。请几分钟后重试。</string>
+    <string name="signin_rateLimitedFew">验证码请求过多。请几分钟后重试。</string>
     <!-- Sign-in card, code step: the address belongs to another account that does not use it as a sign-in method. Polaris Locker is never translated. -->
     <string name="signin_code_emailInUse">另一个 Polaris Locker 账户正在使用此邮箱。请使用之前的方式登录。</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
@@ -1650,11 +1650,11 @@
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_consent_cloudSync">云同步</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
-    <string name="signin_consent_newLicense">新建:%1$s 许可证,继续时创建</string>
+    <string name="signin_consent_newLicense">新：%1$s许可证，继续后创建</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_key_upgradeTitle">将 %1$s 保存在账户中</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_key_upgradeLede">保存在账户中后,你可以找回它,也可以自己迁移到新设备。</string>
+    <string name="signin_key_upgradeLede">保存在账户中后，你可以找回它，也可以自己将它移到新设备。</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_key_createAccount">创建账户</string>
     <string name="signin_key_createAccount__macos">创建账户</string>
@@ -1682,7 +1682,7 @@
     <!-- Finish step: beside the Email label when a sign-in code proved the address. -->
     <string name="signin_gate_confirmedByCode">已通过验证码确认</string>
     <!-- Finish step: label above the screen-name suggestion chips. -->
-    <string name="signin_gate_nameFrom">使用来自以下的名称</string>
+    <string name="signin_gate_nameFrom">使用以下来源的名称</string>
     <!-- Finish step: under the screen name. Polaris Locker is never translated. -->
     <string name="signin_gate_nameHint">显示在 Polaris Locker 和电子邮件中。</string>
     <!-- Finish step: the picture group label. -->
@@ -1773,7 +1773,7 @@
     <!-- Link dialog: a proof is older than 5 minutes. -->
     <string name="signin_join_reasonStepUp">请重新登录两个账户，然后合并。</string>
     <!-- Link dialog: an account was joined in the last 72 hours. -->
-    <string name="signin_join_reasonPending">其中一个账户在过去 72 小时内已合并。请稍后再试。</string>
+    <string name="signin_join_reasonPending">其中一个账户在过去 72 小时内已合并。请在 72 小时后再试。</string>
     <!-- Link dialog: a scheduled deletion blocks the join. -->
     <string name="signin_join_reasonUnavailable">请先取消已安排的删除，再合并。</string>
     <!-- Link dialog: the second sign-in was the same account. -->
@@ -1828,7 +1828,7 @@
     <!-- Activate dialog: Continue pressed with an empty field. -->
     <string name="signin_key_enterKey">请输入你的许可证密钥。</string>
     <!-- Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a). -->
-    <string name="signin_code_missing">没收到验证码?</string>
+    <string name="signin_code_missing">没收到验证码？</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">出现问题</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->
@@ -1976,7 +1976,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_unknown_app_title">登录不可用</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_unknown_app_message">此应用无法登录。</string>
+    <string name="core_codes_unknown_app_message">此应用不支持登录。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_request_title">登录请求无效</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1996,7 +1996,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_scope_title">无法访问</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_scope_message">应用请求的访问权限此次登录不提供。请联系其开发者。</string>
+    <string name="core_codes_invalid_scope_message">应用请求了此次登录不提供的访问权限。请联系其开发者。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_redirect_uri_mismatch_title">登录无法返回应用</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2028,7 +2028,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_code_expired_title">验证码已过期</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_code_expired_message">该验证码已过期。请发送新的验证码。</string>
+    <string name="core_codes_code_expired_message">该验证码已过期。请重新获取验证码。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_in_use_title">电子邮件已被使用</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2072,7 +2072,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_removable_title">无法移除</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_not_removable_message">此许可证无法通过许可证密钥重新添加，因此会保留在你的库中。</string>
+    <string name="core_codes_not_removable_message">此许可证无法通过许可证密钥重新添加，因此会保留在你的资料库中。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_download_auth_required_title">登录以下载</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2256,7 +2256,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_argument_title">请求未被接受</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_argument_message">应用发送的请求，许可桥接无法读取。请联系开发者。</string>
+    <string name="core_codes_invalid_argument_message">许可桥接无法读取应用发送的请求。请联系开发者。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invoke_not_allowed_title">请求不被允许</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2558,7 +2558,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, gate). Arguments: 1=product. -->
     <string name="core_gate_version_too_old_message">此版本已不再受支持。请更新%1$s以继续。</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_version_too_new_title">此许可证不可用</string>
+    <string name="core_gate_version_too_new_title">许可证不支持此版本</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_version_too_new_message">此版本比你的许可证允许的版本更新。</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

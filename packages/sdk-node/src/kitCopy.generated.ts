@@ -1716,7 +1716,7 @@ export const KIT_COPY: Readonly<
       "Um sie auf {formFactor, select, iphone {diesem iPhone} ipad {diesem iPad} mac {diesem Mac} phone {diesem Telefon} tablet {diesem Tablet} computer {diesem Computer} tv {diesem Fernseher} other {diesem Gerät}} zu verwenden, ersetzen Sie eines. Sie können es später wieder hinzufügen.",
     "deviceLimit.confirmTitle": "{device} ersetzen?",
     "deviceLimit.consequence":
-      "{device} wird von {product} abgemeldet und {thisDevice} tritt an seine Stelle. Wir informieren Sie per E-Mail darüber.",
+      "{device} wird von {product} abgemeldet und durch {thisDevice} ersetzt. Wir informieren Sie per E-Mail darüber.",
     "deviceLimit.primary": "Ersetzen und fortfahren",
     "deviceLimit.removed":
       "{device} wurde ersetzt. {product} wird fortgesetzt.",
@@ -1738,7 +1738,7 @@ export const KIT_COPY: Readonly<
     "devices.renameLabel": "Gerätename",
     "devices.remove": "Entfernen",
     "devices.removeConfirm":
-      "{device} entfernen? Es wird von {product} abgemeldet.",
+      "{device} entfernen? Das Gerät wird von {product} abgemeldet.",
     "devices.empty": "Noch keine Geräte verwenden diese Lizenz.",
     "devices.loadFailed": "Ihre Geräte konnten nicht geladen werden.",
     "devices.renameFailed":
@@ -1890,7 +1890,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Bei Polaris Locker anmelden",
     "signin.methods.titleApp": "Anmelden",
     "signin.methods.ledeApp":
-      "Verwenden Sie die E-Mail-Adresse Ihres Kaufs oder eine Arbeits- oder Schul-E-Mail-Adresse.",
+      "Verwenden Sie die E-Mail-Adresse, mit der Sie gekauft haben, oder eine Arbeits- oder Schul-E-Mail-Adresse.",
     "signin.email.label": "E-Mail",
     "signin.email.invalid":
       "Geben Sie eine vollständige E-Mail-Adresse ein, z. B. name@example.com.",
@@ -1901,7 +1901,7 @@ export const KIT_COPY: Readonly<
     "signin.provider.connect": "{provider} verbinden",
     "signin.passkey": "Mit Passkey anmelden",
     "signin.email.continue": "Weiter mit E-Mail",
-    "signin.link.key": "Sie haben einen Lizenzschlüssel?",
+    "signin.link.key": "Lizenzschlüssel vorhanden?",
     "signin.link.anotherDevice": "Mit einem anderen Gerät anmelden",
     "signin.link.deviceCode": "Auf Ihrem Telefon oder Computer anmelden",
     "signin.header.app": "{app} möchte, dass Sie sich anmelden",
@@ -1927,7 +1927,7 @@ export const KIT_COPY: Readonly<
     "signin.code.link":
       "Oder öffnen Sie den Link in der E-Mail. Lassen Sie diesen Tab geöffnet.",
     "signin.code.resend": "Neuen Code senden",
-    "signin.code.resendIn": "Neuen Code senden in {time}",
+    "signin.code.resendIn": "Neuen Code in {time} senden",
     "signin.code.resent":
       "Wir haben einen neuen Code und Link an {email} gesendet.",
     "signin.code.triesLeft":
@@ -1937,7 +1937,7 @@ export const KIT_COPY: Readonly<
     "signin.code.differentEmail": "Andere E-Mail-Adresse verwenden",
     "signin.email.subject": "Ihr Polaris Locker-Code: {code}",
     "signin.email.body":
-      "Oder melden Sie sich über die Schaltfläche an. Code und Link sind einmal und 10 Minuten lang gültig.",
+      "Oder melden Sie sich über die Schaltfläche an. Code und Link gelten einmalig für 10 Minuten.",
     "signin.confirmLink.title":
       "Anmeldung bestätigen, angefordert um {time} aus {place}",
     "signin.confirmLink.note":
@@ -1964,7 +1964,7 @@ export const KIT_COPY: Readonly<
     "signin.profile.applePicture":
       "Apple gibt kein Bild weiter. Fügen Sie eines hinzu",
     "signin.choice.title": "Lizenz für dieses Gerät auswählen",
-    "signin.choice.lede": "{product} verwendet sie auf {device}.",
+    "signin.choice.lede": "{product} verwendet sie für {device}.",
     "signin.choice.ledeBrowser": "{product} verwendet sie in diesem Browser.",
     "signin.choice.ledeNew":
       "Sie haben noch keine Lizenz für {product}. {developer} stellt Ihnen diese bereit.",
@@ -1979,7 +1979,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.origin.signIn": "Automatisch zugewiesen",
     "signin.choice.origin.key": "Schlüssel mit Endung {last6}",
     "signin.choice.origin.keyAdded": "Mit einem Schlüssel hinzugefügt",
-    "signin.choice.origin.storeKey": "{store}-Schlüssel endet auf {last6}",
+    "signin.choice.origin.storeKey": "{store}-Schlüssel mit Endung {last6}",
     "signin.choice.origin.storeKeyAdded": "{store}-Schlüssel",
     "signin.choice.origin.store": "Von {store}",
     "signin.choice.origin.developer": "Von {developer}",
@@ -1999,9 +1999,9 @@ export const KIT_COPY: Readonly<
     "signin.choice.createMeta":
       "Eine separate Lizenz · wird beim Fortfahren erstellt",
     "signin.choice.allFull":
-      "Ihre Lizenzen sind auf allen zulässigen Geräten belegt. Ersetzen Sie ein Gerät, um hier eine zu verwenden.",
+      "Alle Ihre Lizenzen haben ihr Gerätelimit erreicht. Ersetzen Sie ein Gerät, um hier eine davon zu verwenden.",
     "signin.choice.allFullCreate":
-      "Ihre Lizenzen sind auf allen zulässigen Geräten belegt. Ersetzen Sie ein Gerät oder erstellen Sie eine neue kostenlose Lizenz.",
+      "Alle Ihre Lizenzen haben ihr Gerätelimit erreicht. Ersetzen Sie ein Gerät oder erstellen Sie eine neue kostenlose Lizenz.",
     "signin.choice.noneReplaceable":
       "{developer} verwaltet die Geräte für diese Lizenzen. Bitten Sie {developer}, eines freizugeben, oder verwenden Sie eine andere Lizenz.",
     "signin.choice.combined":
@@ -2022,16 +2022,16 @@ export const KIT_COPY: Readonly<
     "signin.none.otherAccount": "Anderes Konto verwenden",
     "signin.replace.open": "Gerät ersetzen",
     "signin.replace.lede":
-      "Wählen Sie ein Gerät zum Abmelden. {thisDevice} tritt an seine Stelle.",
+      "Wählen Sie ein Gerät zum Abmelden. Es wird durch {thisDevice} ersetzt.",
     "signin.replace.heading": "Gerät ersetzen",
     "signin.replace.openSystem": "Ersetzen…",
     "signin.replace.meta": "{platform} · zuletzt verwendet {when}",
-    "signin.replace.leastRecent": "Am längsten nicht verwendet",
+    "signin.replace.leastRecent": "Am längsten inaktiv",
     "signin.replace.activeNow": "Gerade aktiv",
     "signin.replace.thisBrowser": "Dieser Browser",
     "signin.replace.title": "{device} ersetzen?",
     "signin.replace.consequence":
-      "{device} wird von {product} abgemeldet und {thisDevice} tritt an seine Stelle. Wir informieren Sie per E-Mail darüber.",
+      "{device} wird von {product} abgemeldet und durch {thisDevice} ersetzt. Wir informieren Sie per E-Mail darüber.",
     "signin.replace.inUse": "{device} wird gerade verwendet.",
     "signin.replace.confirm": "Ersetzen und fortfahren",
     "signin.replace.confirmNamed": "{device} ersetzen und fortfahren",
@@ -2047,7 +2047,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.title": "Als {name} mit {app} fortfahren?",
     "signin.consent.license": "Lizenz für dieses Gerät",
     "signin.consent.licenseLine":
-      "{license} · {term} · {device} wird Gerät {position} von {limit}",
+      "{license} · {term} · für {device} (Gerät {position} von {limit})",
     "signin.consent.replaces": "{license} · ersetzt {device}",
     "signin.consent.licenseInApp": "Sie wählen die Lizenz in {app}.",
     "signin.consent.change": "Ändern",
@@ -2060,14 +2060,14 @@ export const KIT_COPY: Readonly<
     "signin.cancel": "Abbrechen",
     "signin.key.addTitle": "{product} zu Ihrem Konto hinzufügen",
     "signin.key.addAndUse": "Hinzufügen und auf diesem Gerät verwenden",
-    "signin.key.keep": "{product} in einem Konto aufbewahren",
+    "signin.key.keep": "{product} in einem Konto behalten",
     "signin.key.entries":
       "Noch {left} von {limit} Schlüsseleingaben · Dies wird Eingabe {n}",
     "signin.key.entriesLeftShort":
       "{left, plural, one {Noch # Schlüsseleingabe} other {Noch # Schlüsseleingaben}}",
     "signin.key.noEntries":
       "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an.",
-    "signin.key.skip": "Vorerst überspringen",
+    "signin.key.skip": "Jetzt nicht",
     "signin.key.ownedSignIn": "Bei diesem Konto anmelden",
     "signin.key.differentKey": "Anderen Schlüssel verwenden",
     "signin.return.yours": "{product} gehört Ihnen",
@@ -2084,13 +2084,13 @@ export const KIT_COPY: Readonly<
       "Sie haben das nicht selbst gestartet? Brechen Sie es ab. Möglicherweise versucht jemand, Ihr Konto zu verwenden.",
     "signin.device.done": "{app} ist auf {device} angemeldet",
     "signin.device.doneLede":
-      "Sehen Sie auf {device} nach: Es fährt automatisch fort.",
+      "Sehen Sie auf {device} nach: Dort geht es automatisch weiter.",
     "signin.device.signOut": "Fernseher abmelden",
     "signin.handoff.title": "Im Browser abschließen",
     "signin.handoff.check":
       "Prüfen Sie, ob der Code dort mit diesem übereinstimmt.",
     "signin.handoff.url": "Oder öffnen Sie {url}",
-    "signin.handoff.expires": "Code läuft ab in {time}",
+    "signin.handoff.expires": "Code läuft in {time} ab",
     "signin.handoff.again": "Browser erneut öffnen",
     "signin.handoff.cancelled":
       "Die Anmeldung wurde abgebrochen. Fordern Sie einen neuen Code an",
@@ -2124,7 +2124,8 @@ export const KIT_COPY: Readonly<
     "signin.return.cancelled":
       "Die Anmeldung wurde in {app} abgebrochen. Beginnen Sie erneut in {app}.",
     "signin.return.library": "Bibliothek öffnen",
-    "signin.choice.freed": "Auf dieser Lizenz ist jetzt ein Gerät frei.",
+    "signin.choice.freed":
+      "Diese Lizenz hat jetzt Platz für ein weiteres Gerät.",
     "signin.replace.opensBrowser": "Öffnet Polaris Locker in Ihrem Browser",
     "signin.cli.opening": "Ihr Browser wird geöffnet…",
     "signin.cli.ifNotOpened":
@@ -2144,12 +2145,12 @@ export const KIT_COPY: Readonly<
     "signin.approve.works": "Gültig für {time}",
     "signin.approve.waiting":
       "Warten auf Ihre Bestätigung auf dem anderen Gerät…",
-    "signin.approve.ask": "Neues Gerät bestätigen?",
+    "signin.approve.ask": "Neues Gerät genehmigen?",
     "signin.approve.warning":
-      "Bestätigen Sie nur, wenn Sie dies selbst auf einem Gerät vor Ihnen gestartet haben. Niemand von Polaris Locker oder einem Entwickler wird Sie jemals danach fragen.",
+      "Genehmigen Sie nur, wenn Sie dies selbst auf einem Gerät vor Ihnen gestartet haben. Niemand von Polaris Locker oder einem Entwickler wird Sie jemals danach fragen.",
     "signin.approve.checkDevice":
       "Prüfen Sie, ob Ihr Gerät diesen Code anzeigt.",
-    "signin.approve.approve": "Bestätigen und anmelden",
+    "signin.approve.approve": "Genehmigen und anmelden",
     "signin.approve.deny": "Ablehnen",
     "signin.approve.denied":
       "Diese Anfrage wurde abgelehnt. Melden Sie sich auf andere Weise an.",
@@ -2165,8 +2166,7 @@ export const KIT_COPY: Readonly<
     "signin.console.notConfigured":
       "Die Admin-Anmeldung ist nicht eingerichtet",
     "signin.expired.title": "Dieser Code oder Link ist abgelaufen",
-    "signin.expired.body":
-      "Codes und Links sind einmal und 10 Minuten lang gültig.",
+    "signin.expired.body": "Codes und Links gelten einmalig für 10 Minuten.",
     "signin.expired.sendTo": "Ein neuer Code geht an {email}.",
     "signin.again": "Erneut anmelden",
     "signin.identityOff.notice":
@@ -2181,18 +2181,18 @@ export const KIT_COPY: Readonly<
     "signin.signout.waitSync": "Auf Synchronisierung warten",
     "signin.session.toastTitle": "Sie wurden abgemeldet",
     "signin.session.toastBody":
-      "Melden Sie sich erneut an, um dort weiterzumachen, wo Sie waren.",
+      "Melden Sie sich erneut an, um dort weiterzumachen, wo Sie aufgehört haben.",
     "signin.session.kitEnded":
       "Ihre Anmeldung ist abgelaufen. Melden Sie sich erneut an, um {product} weiter zu verwenden.",
     "signin.provider.manage": "Anmeldemethoden in Polaris Locker verwalten",
     "signin.profile.changePicture": "Bild ändern",
     "signin.mail.replaced.subject": "{product} auf {device} abgemeldet",
     "signin.mail.replaced.body":
-      "{device} wurde durch {newDevice} ersetzt, als Sie sich am {date} bei {product} angemeldet haben. Es kann sich später wieder anmelden, wenn ein wenn Platz für ein weiteres Gerät frei ist. Falls Sie das nicht waren, öffnen Sie Polaris Locker und prüfen Sie Ihre Geräte.",
+      "{device} wurde durch {newDevice} ersetzt, als Sie sich am {date} bei {product} angemeldet haben. Das Gerät kann sich später wieder anmelden, wenn Platz für ein weiteres Gerät frei ist. Falls Sie das nicht waren, öffnen Sie Polaris Locker und prüfen Sie Ihre Geräte.",
     "signin.mail.newDevice.subject":
       "Ein neues Gerät hat sich bei Ihrem Polaris Locker-Konto angemeldet",
     "signin.mail.newDevice.body":
-      "{device} hat sich am {date} von {place} aus angemeldet. Falls Sie das nicht waren, melden Sie es in Polaris Locker unter „Wo Sie angemeldet sind“ ab.",
+      "{device} hat sich am {date} von {place} aus angemeldet. Falls Sie das nicht waren, melden Sie das Gerät in Polaris Locker unter „Wo Sie angemeldet sind“ ab.",
     "signin.mail.open": "Polaris Locker öffnen",
     "signin.code.label": "6-stelliger Code",
     "cli.group.license": "Lizenz",
@@ -2215,7 +2215,7 @@ export const KIT_COPY: Readonly<
     "cli.verb.enroll":
       "Kostenlose Lizenz erhalten, falls {product} eine anbietet",
     "cli.verb.deactivate":
-      "Lizenz auf diesem Gerät nicht mehr nutzen, Platz freigeben",
+      "Lizenz auf diesem Gerät nicht mehr nutzen und Platz für ein weiteres Gerät schaffen",
     "cli.verb.status": "Lizenz, Geräte und Offline-Zeit",
     "cli.verb.offlineRequest":
       "Anforderungscode für die Offline-Aktivierung ausgeben",
@@ -2226,7 +2226,8 @@ export const KIT_COPY: Readonly<
     "cli.verb.devicesList": "Geräte auflisten, die Ihre Lizenz verwenden",
     "cli.verb.devicesRename":
       "Gerät umbenennen (ohne Namen wird der Name entfernt)",
-    "cli.verb.devicesRemove": "Gerät entfernen und seinen Platz freigeben",
+    "cli.verb.devicesRemove":
+      "Gerät entfernen und Platz für ein weiteres schaffen",
     "cli.verb.configGet":
       "Eine Einstellung und die Herkunft ihres Werts anzeigen",
     "cli.verb.configList": "Einstellungen auflisten, die Sie sehen können",
@@ -2365,7 +2366,7 @@ export const KIT_COPY: Readonly<
       "Holen Sie sich die neue Version dort, wo Sie {product} bekommen haben.",
     "cli.activate.noKeyPiped": "Auf stdin ist kein Lizenzschlüssel angekommen.",
     "signin.approve.lede":
-      "Scannen Sie auf einem Handy oder Computer, auf dem Sie angemeldet sind, den Code oder öffnen Sie Konto → Neues Gerät genehmigen und geben Sie ihn ein.",
+      "Scannen Sie auf einem Telefon oder Computer, auf dem Sie angemeldet sind, den Code oder öffnen Sie Konto → Neues Gerät genehmigen und geben Sie ihn ein.",
     "signin.approve.other": "Andere Anmeldeart verwenden",
     "signin.approve.minuteLeft": "Noch eine Minute für diesen Code.",
     "signin.approve.starting": "Code wird angefordert",
@@ -2405,7 +2406,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.birthdateHelp":
       "Nur Sie können es sehen. Apps erhalten es nie.",
     "signin.gate.productTerms": "Ich stimme den {term} zu",
-    "signin.gate.platformTerms": "Ich stimme den {term} zu",
+    "signin.gate.platformTerms": "Ich akzeptiere die {term}",
     "signin.gate.expired":
       "Diese Anmeldung ist abgelaufen. Melden Sie sich erneut an.",
     "signin.gate.joinTitle": "Konten zusammenführen",
@@ -2477,19 +2478,19 @@ export const KIT_COPY: Readonly<
     "signin.request.gone":
       "Gehen Sie zurück zur App und melden Sie sich erneut an.",
     "signin.header.onDevice": "auf {device}",
-    "signin.thisBrowser": "diesem Browser",
+    "signin.thisBrowser": "diesen Browser",
     "signin.consent.deny": "Nicht erlauben",
-    "signin.consent.cloudSync": "Cloud Sync",
+    "signin.consent.cloudSync": "Cloud-Synchronisierung",
     "signin.consent.newLicense":
       "Neu: {tier}-Lizenz, wird beim Fortfahren erstellt",
     "signin.key.upgradeTitle": "{product} in einem Konto behalten",
     "signin.key.upgradeLede":
-      "In einem Konto können Sie ihn zurückholen und selbst auf ein neues Gerät übertragen.",
+      "In einem Konto können Sie es zurückholen und selbst auf ein neues Gerät übertragen.",
     "signin.key.createAccount": "Konto erstellen",
     "signin.key.signInInstead": "Stattdessen anmelden",
     "signin.key.noEntriesTitle": "Konto erstellen, um {product} zu behalten",
     "signin.key.noEntriesKeeps":
-      "{product} läuft weiter auf den Geräten, auf denen es schon ist. Nur die erneute Eingabe des Schlüssels braucht ein Konto.",
+      "{product} läuft auf den Geräten weiter, auf denen es bereits installiert ist. Ein Konto ist nur nötig, um den Schlüssel erneut einzugeben.",
     "signin.key.meter": "{used} von {limit} Schlüsseleingaben verwendet",
     "signin.key.keyWorks": "Schlüssel gültig",
     "signin.footerNoDeveloper": "Polaris Locker meldet Sie bei {app} an.",
@@ -2542,7 +2543,7 @@ export const KIT_COPY: Readonly<
       "Eine Bibliothek: {count, plural, one {# Produkt} other {# Produkte}}. {email} bleibt die Haupt-E-Mail-Adresse.",
     "signin.join.done":
       "Zusammengeführt. Sie können das 72 Stunden lang rückgängig machen.",
-    "signin.join.undo": "Zusammenführung rückgängig",
+    "signin.join.undo": "Rückgängig machen",
     "signin.join.undone": "Zusammenführung rückgängig gemacht.",
     "signin.join.undoable": "{email} zusammengeführt. Rückgängig bis {date}.",
     "signin.join.expired":
@@ -2638,7 +2639,7 @@ export const KIT_COPY: Readonly<
       "Der Dienst kann derzeit kein Dokument signieren. Versuchen Sie es in einigen Minuten erneut.",
     "core.codes.device_limit.title": "Gerätelimit erreicht",
     "core.codes.device_limit.message":
-      "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden.",
+      "Diese Lizenz hat ihr Gerätelimit bereits erreicht. Ersetzen Sie ein Gerät, um sie hier zu verwenden.",
     "core.codes.key_entry_limit.title": "Keine Schlüsseleingaben mehr",
     "core.codes.key_entry_limit.message":
       "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.",
@@ -2711,17 +2712,17 @@ export const KIT_COPY: Readonly<
       "Diese Anmeldung ist abgelaufen oder wurde bereits verwendet. Melden Sie sich erneut an.",
     "core.codes.unsupported_grant_type.title": "Anmeldeanfrage ungültig",
     "core.codes.unsupported_grant_type.message":
-      "Die App hat eine Anmeldeart angefragt, die wir nicht unterstützen. Wende dich an den Entwickler.",
+      "Die App hat eine Anmeldeart angefragt, die wir nicht unterstützen. Wenden Sie sich an den Entwickler.",
     "core.codes.invalid_scope.title": "Zugriff nicht verfügbar",
     "core.codes.invalid_scope.message":
-      "Die App hat Zugriff angefragt, den diese Anmeldung nicht bietet. Wende dich an den Entwickler.",
+      "Die App hat Zugriff angefragt, den diese Anmeldung nicht bietet. Wenden Sie sich an den Entwickler.",
     "core.codes.redirect_uri_mismatch.title":
       "Anmeldung kann nicht zur App zurückkehren",
     "core.codes.redirect_uri_mismatch.message":
       "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz Ihres Kontos angehalten. Informieren Sie den Entwickler.",
     "core.codes.license_choice_required.title": "Lizenz wählen",
     "core.codes.license_choice_required.message":
-      "Wähle, welche Lizenz dieses Gerät verwendet, und fahre dann fort.",
+      "Wählen Sie, welche Lizenz dieses Gerät verwendet, und fahren Sie dann fort.",
     "core.codes.auth_method_disabled.title": "Anmeldemethode nicht verfügbar",
     "core.codes.auth_method_disabled.message":
       "Diese Anmeldemethode ist deaktiviert. Wählen Sie eine andere.",
@@ -2737,13 +2738,13 @@ export const KIT_COPY: Readonly<
       "Diese Anmeldung ist abgelaufen. Beginnen Sie erneut.",
     "core.codes.invalid_code.title": "Falscher Code",
     "core.codes.invalid_code.message":
-      "Dieser Code hat nicht funktioniert. Prüfen Sie die E-Mail und geben Sie ihn erneut ein.",
+      "Dieser Code ist nicht korrekt. Prüfen Sie die E-Mail und geben Sie ihn erneut ein.",
     "core.codes.code_expired.title": "Code abgelaufen",
     "core.codes.code_expired.message":
       "Dieser Code ist abgelaufen. Fordern Sie einen neuen an.",
     "core.codes.email_in_use.title": "E-Mail-Adresse bereits verwendet",
     "core.codes.email_in_use.message":
-      "Ein anderes Polaris Locker-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse.",
+      "Ein anderes Polaris Locker-Konto verwendet diese E-Mail-Adresse bereits. Fügen Sie diese Anmeldung dem anderen Konto hinzu oder verwenden Sie eine andere E-Mail-Adresse.",
     "core.codes.terms_required.title": "Bedingungen nicht akzeptiert",
     "core.codes.terms_required.message":
       "Stimmen Sie den Bedingungen zu, um fortzufahren.",
@@ -2765,7 +2766,7 @@ export const KIT_COPY: Readonly<
     "core.codes.last_link.title": "Entfernen nicht möglich",
     "core.codes.last_link.message":
       "Dies ist die einzige Anmeldemethode Ihres Kontos. Fügen Sie eine weitere hinzu, bevor Sie sie entfernen.",
-    "core.codes.step_up_required.title": "Bestätigen Sie, dass Sie es sind",
+    "core.codes.step_up_required.title": "Identität bestätigen",
     "core.codes.step_up_required.message":
       "Melden Sie sich zu Ihrer Sicherheit erneut an, um fortzufahren.",
     "core.codes.not_eligible.title": "Angebot nicht verfügbar",
@@ -3151,7 +3152,7 @@ export const KIT_COPY: Readonly<
     "core.activation.ok.message": "Ihre Lizenz ist auf diesem Gerät aktiv.",
     "core.activation.device-limit.title": "Gerätelimit erreicht",
     "core.activation.device-limit.message":
-      "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden.",
+      "Diese Lizenz hat ihr Gerätelimit bereits erreicht. Ersetzen Sie ein Gerät, um sie hier zu verwenden.",
     "core.activation.fingerprint-required.title":
       "Geräteprüfung fehlgeschlagen",
     "core.activation.fingerprint-required.message":
@@ -3382,7 +3383,7 @@ export const KIT_COPY: Readonly<
     "update.current": "Vous avez la version {version} · {size} à télécharger",
     "common.updateCurrentNoSize": "Vous avez la version {version}",
     "update.whatsNew": "Nouveautés",
-    "update.allChanges": "Toutes les modifications de la version {version}",
+    "update.allChanges": "Toutes les modifications de la {version}",
     "update.later": "Plus tard",
     "update.restartWhenReady": "Redémarrer une fois prêt",
     "update.restartNow": "Redémarrer maintenant",
@@ -3391,7 +3392,7 @@ export const KIT_COPY: Readonly<
     "common.updateDownload": "Télécharger {version}",
     "update.downloading": "Téléchargement · {size} sur {total}",
     "update.timeLeft": "Il reste environ {time}",
-    "common.updateTimeMinutes": "Environ {minutes} min",
+    "common.updateTimeMinutes": "Environ {minutes} min",
     "common.updateTimeLessThanMinute": "Moins d’une minute",
     "update.readyTitle": "{product} {version} est prêt",
     "update.readyBody": "Redémarrez pour terminer la mise à jour.",
@@ -3518,7 +3519,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Se connecter à Polaris Locker",
     "signin.methods.titleApp": "Se connecter",
     "signin.methods.ledeApp":
-      "Utilisez l’adresse e-mail de votre achat ou une adresse professionnelle ou scolaire.",
+      "Utilisez l’adresse e-mail associée à votre achat, ou une adresse professionnelle ou scolaire.",
     "signin.email.label": "E-mail",
     "signin.email.invalid":
       "Saisissez une adresse e-mail complète, par exemple nom@example.com.",
@@ -3649,7 +3650,7 @@ export const KIT_COPY: Readonly<
     "signin.none.otherAccount": "Utiliser un autre compte",
     "signin.replace.open": "Remplacer un appareil",
     "signin.replace.lede":
-      "Choisissez un appareil à déconnecter. {thisDevice} le remplace.",
+      "Choisissez un appareil à déconnecter : {thisDevice} prendra sa place.",
     "signin.replace.heading": "Remplacer un appareil",
     "signin.replace.openSystem": "Remplacer…",
     "signin.replace.meta": "{platform} · dernière utilisation {when}",
@@ -3839,7 +3840,7 @@ export const KIT_COPY: Readonly<
     "cli.verb.enroll":
       "Obtenir la licence gratuite, si {product} en propose une",
     "cli.verb.deactivate":
-      "Retirer votre licence de cet appareil et libérer sa place",
+      "Retirer votre licence de cet appareil et libérer de la place pour un autre",
     "cli.verb.status":
       "Afficher la licence, les appareils et le temps hors ligne",
     "cli.verb.offlineRequest":
@@ -3852,7 +3853,8 @@ export const KIT_COPY: Readonly<
     "cli.verb.devicesList": "Lister les appareils qui utilisent votre licence",
     "cli.verb.devicesRename":
       "Renommer un appareil (sans nom, le nom est effacé)",
-    "cli.verb.devicesRemove": "Retirer un appareil et libérer sa place",
+    "cli.verb.devicesRemove":
+      "Retirer un appareil et libérer de la place pour un autre",
     "cli.verb.configGet": "Afficher un paramètre et l’origine de sa valeur",
     "cli.verb.configList": "Lister les paramètres que vous pouvez voir",
     "cli.verb.configSet": "Modifier un paramètre sur cet appareil",
@@ -4092,7 +4094,7 @@ export const KIT_COPY: Readonly<
       "L’appareil choisi sera déconnecté de {app}. Il pourra se reconnecter plus tard s’il y a de la place. Nous vous préviendrons par e-mail.",
     "signin.choice.replacedTitle": "Appareil remplacé",
     "signin.choice.replacedBody":
-      "{device} est déconnecté de {app}. {thisDevice} est connecté.",
+      "{device} est déconnecté de {app} et {thisDevice} est connecté.",
     "signin.request.goneTitle": "Cette connexion est terminée",
     "signin.request.gone": "Retournez dans l’app et reconnectez-vous.",
     "signin.header.onDevice": "sur {device}",
@@ -4864,7 +4866,7 @@ export const KIT_COPY: Readonly<
     "part.poweredBy": "Con la tecnología de Polaris Locker",
     "part.status.ok": "Activa",
     "part.status.grace": "Sin conexión",
-    "part.status.expired": "Vencida",
+    "part.status.expired": "Caducada",
     "part.status.revoked": "Revocada",
     "part.status.inactive": "Inactivo",
     "part.status.blocked": "Bloqueada",
@@ -4934,12 +4936,12 @@ export const KIT_COPY: Readonly<
     "signInHandoff.scan":
       "Escanea el código con tu teléfono, o ve a {url} y escribe este código.",
     "signInHandoff.scanTv":
-      "Escanea el código QR con tu teléfono o ve a esta dirección e introduce el código de abajo.",
+      "Escanea el código QR con tu teléfono o ve a esta dirección y escribe el código de abajo.",
     "signInHandoff.linkCopied": "Enlace copiado",
     "signInHandoff.confirm":
-      "Elige Sign in on {device} en la página de inicio de sesión para terminar.",
+      "Elige «Sign in on {device}» en la página de inicio de sesión para terminar.",
     "signInHandoff.ok": "Sesión iniciada",
-    "signInHandoff.newCode": "Obtener un código nuevo",
+    "signInHandoff.newCode": "Obtener código nuevo",
     "activate.title": "Escribe tu clave de licencia",
     "activate.lede": "La encontrarás en el correo de tu compra.",
     "activate.submit": "Activar licencia",
@@ -4977,7 +4979,7 @@ export const KIT_COPY: Readonly<
     "deviceLimit.scan":
       "Escanea el código para reemplazar un dispositivo desde tu teléfono.",
     "deviceLimit.noManage":
-      "Cierra sesión en {product} en otro dispositivo y vuelve a intentarlo.",
+      "Cierra sesión de {product} en otro dispositivo y vuelve a intentarlo.",
     "devices.title": "Tus dispositivos",
     "devices.lede": "Dispositivos que usan esta licencia.",
     "devices.meta": "{platform} · usado por última vez {when}",
@@ -5089,7 +5091,7 @@ export const KIT_COPY: Readonly<
     "settings.source.local": "Cambiado por ti",
     "settings.source.env": "Establecido por el entorno",
     "settings.source.default": "Predeterminado",
-    "settings.reset": "Restablecer valor predeterminado",
+    "settings.reset": "Restablecer",
     "settings.advanced": "Mostrar ajustes avanzados",
     "settings.saving": "Guardando…",
     "settings.saved": "Guardado",
@@ -5144,7 +5146,7 @@ export const KIT_COPY: Readonly<
     "signin.provider.group": "O continúa con",
     "signin.provider.continue": "Continuar con {provider}",
     "signin.provider.connect": "Conectar {provider}",
-    "signin.passkey": "Iniciar sesión con una llave de acceso",
+    "signin.passkey": "Iniciar sesión con llave de acceso",
     "signin.email.continue": "Continuar con correo",
     "signin.link.key": "¿Tienes una clave de licencia?",
     "signin.link.anotherDevice": "Iniciar sesión con otro dispositivo",
@@ -5241,9 +5243,9 @@ export const KIT_COPY: Readonly<
     "signin.choice.create": "Crear una licencia gratuita nueva",
     "signin.choice.createMeta": "Una licencia aparte · se crea al continuar",
     "signin.choice.allFull":
-      "Tus licencias están en todos sus dispositivos. Reemplaza un dispositivo para usar una aquí.",
+      "Tus licencias ya han alcanzado su límite de dispositivos. Reemplaza un dispositivo para usar una aquí.",
     "signin.choice.allFullCreate":
-      "Tus licencias están en todos sus dispositivos. Reemplaza un dispositivo o crea una licencia gratuita nueva.",
+      "Tus licencias ya han alcanzado su límite de dispositivos. Reemplaza un dispositivo o crea una licencia gratuita nueva.",
     "signin.choice.noneReplaceable":
       "{developer} administra los dispositivos de estas licencias. Pide a {developer} que libere uno, o usa otra licencia.",
     "signin.choice.combined":
@@ -5251,12 +5253,12 @@ export const KIT_COPY: Readonly<
     "signin.choice.portalOff":
       "{developer} administra los dispositivos de esta licencia.",
     "signin.choice.keyInstead": "Usar una clave de licencia",
-    "signin.choice.freeDevice": "Liberar un dispositivo",
+    "signin.choice.freeDevice": "Liberar dispositivo",
     "signin.choice.continue": "Usar esta licencia y continuar",
     "signin.choice.raced":
       "Ese dispositivo acaba de reemplazarse. Vuelve a elegir.",
     "signin.choice.codeExpired":
-      "El código de {device} venció. Obtén un código nuevo allí y vuelve a escanearlo.",
+      "El código de {device} ha caducado. Obtén un código nuevo allí y vuelve a escanearlo.",
     "signin.none.title": "No hay ninguna licencia de {product} en esta cuenta",
     "signin.none.body":
       "¿Lo compraste con otro correo? Inicia sesión con esa cuenta.",
@@ -5285,14 +5287,14 @@ export const KIT_COPY: Readonly<
       "Alguien reemplazó ese dispositivo antes. Vuelve a elegir.",
     "signin.replace.racedAfterFree":
       "Se quitó {device}, pero alguien inició sesión antes. Vuelve a elegir.",
-    "signin.consent.title": "¿Continuar a {app} como {name}?",
+    "signin.consent.title": "¿Continuar en {app} como {name}?",
     "signin.consent.license": "Licencia para este dispositivo",
     "signin.consent.licenseLine":
       "{license} · {term} · {device} pasa a ser el dispositivo {position} de {limit}",
     "signin.consent.replaces": "{license} · reemplaza a {device}",
     "signin.consent.licenseInApp": "Elegirás una licencia en {app}.",
     "signin.consent.change": "Cambiar",
-    "signin.consent.continue": "Continuar a {app}",
+    "signin.consent.continue": "Continuar en {app}",
     "signin.consent.alsoGets": "{app} también recibirá",
     "signin.consent.profile": "Tu perfil y correo",
     "signin.consent.pairwise":
@@ -5313,7 +5315,7 @@ export const KIT_COPY: Readonly<
     "signin.key.differentKey": "Usar otra clave",
     "signin.return.yours": "{product} es tuyo",
     "signin.return.product": "{tier} · en tu biblioteca",
-    "signin.return.signedIn": "Iniciaste sesión en {app}",
+    "signin.return.signedIn": "Has iniciado sesión en {app}",
     "signin.return.button": "Volver a {app}",
     "signin.return.timer": "Volviendo automáticamente en {s} s",
     "signin.return.stay": "Quedarme aquí",
@@ -5325,18 +5327,18 @@ export const KIT_COPY: Readonly<
       "¿No lo iniciaste tú? Cancélalo. Puede que alguien esté intentando usar tu cuenta.",
     "signin.device.done": "{app} inició sesión en {device}",
     "signin.device.doneLede": "Mira {device}: continúa solo.",
-    "signin.device.signOut": "Cerrar la sesión del televisor",
+    "signin.device.signOut": "Cerrar sesión en la TV",
     "signin.handoff.title": "Termina en tu navegador",
     "signin.handoff.check":
       "Comprueba que el código de allí coincide con este.",
     "signin.handoff.url": "O ve a {url}",
-    "signin.handoff.expires": "El código vence en {time}",
+    "signin.handoff.expires": "El código caduca en {time}",
     "signin.handoff.again": "Volver a abrir el navegador",
     "signin.handoff.cancelled":
       "Se canceló el inicio de sesión. Obtén un código nuevo",
     "signin.desktop.continue": "Continuar en el navegador",
     "signin.desktop.toast": "Sesión iniciada como {name} · Licencia {tier}",
-    "signin.desktop.notifyTitle": "Iniciaste sesión",
+    "signin.desktop.notifyTitle": "Has iniciado sesión",
     "signin.desktop.notifyBody": "{app} está listo.",
     "signin.desktop.notifyChoose":
       "Elige una licencia · {app} está listo para terminar de iniciar sesión.",
@@ -5375,7 +5377,7 @@ export const KIT_COPY: Readonly<
       "{license} · {term} · {device} es el dispositivo {position} de {limit}",
     "signin.cli.closeTab": "Puedes cerrar la pestaña del navegador.",
     "signin.cli.logoutConfirm":
-      "¿Cerrar sesión en {product} en este dispositivo? (y/N)",
+      "¿Cerrar sesión de {product} en este dispositivo? (y/N)",
     "signin.cli.signInAgain": "Ejecuta {command} para volver a iniciar sesión.",
     "signin.approve.title": "Iniciar sesión con otro dispositivo",
     "signin.approve.works": "Funciona durante {time}",
@@ -5390,31 +5392,31 @@ export const KIT_COPY: Readonly<
     "signin.approve.deny": "Denegar",
     "signin.approve.denied":
       "Se denegó esa solicitud. Usa otra forma de iniciar sesión.",
-    "signin.approve.expired": "Ese código venció. Obtén un código nuevo.",
+    "signin.approve.expired": "Ese código ha caducado. Obtén un código nuevo.",
     "signin.console.title": "Inicia sesión en la consola",
     "signin.console.next": "Siguiente: {idp} en {host}",
-    "signin.console.signedOut": "Cerraste sesión",
+    "signin.console.signedOut": "Has cerrado sesión",
     "signin.console.sessionEnded": "Tu sesión terminó",
     "signin.console.sessionEndedBody":
       "Vuelve a iniciar sesión para continuar. Tus cambios sin guardar se mantienen en esta pestaña.",
     "signin.console.notOperator": "{email} no está en el grupo de operadores.",
     "signin.console.notConfigured":
       "El inicio de sesión de administración no está configurado",
-    "signin.expired.title": "Ese código o enlace venció",
+    "signin.expired.title": "Ese código o enlace ha caducado",
     "signin.expired.body":
       "Los códigos y enlaces funcionan una sola vez, durante 10 minutos.",
     "signin.expired.sendTo": "Enviaremos un código nuevo a {email}.",
-    "signin.again": "Vuelve a iniciar sesión",
+    "signin.again": "Volver a iniciar sesión",
     "signin.identityOff.notice":
       "{product} no usa el inicio de sesión de Polaris Locker. Abre {product} y escribe allí tu clave de licencia.",
     "signin.identityOff.lede":
       "Inicia sesión aquí para ver {product} en tu biblioteca.",
-    "signin.signout.title": "¿Cerrar sesión en {product} en este dispositivo?",
+    "signin.signout.title": "¿Cerrar sesión de {product} en este dispositivo?",
     "signin.signout.released":
       "{product} dejará de usar aquí tu licencia {tier} y liberará espacio para otro dispositivo.",
     "signin.signout.unsynced":
       "{n, plural, one {# cambio aún no se ha sincronizado.} many {# de cambios aún no se han sincronizado.} other {# cambios aún no se han sincronizado.}}",
-    "signin.signout.waitSync": "Esperar a la sincronización",
+    "signin.signout.waitSync": "Esperar a sincronizar",
     "signin.session.toastTitle": "Se cerró tu sesión",
     "signin.session.toastBody":
       "Vuelve a iniciar sesión para continuar donde estabas.",
@@ -5452,7 +5454,7 @@ export const KIT_COPY: Readonly<
     "cli.verb.activate": "Añadir una clave de licencia (se pide, o por stdin)",
     "cli.verb.enroll": "Obtener la licencia gratuita, si {product} ofrece una",
     "cli.verb.deactivate":
-      "Quitar tu licencia de este dispositivo y liberar su plaza",
+      "Quitar tu licencia de este dispositivo y dejar sitio para otro",
     "cli.verb.status": "Licencia, dispositivos y tiempo sin conexión",
     "cli.verb.offlineRequest":
       "Mostrar el código de solicitud para activar sin conexión",
@@ -5464,7 +5466,7 @@ export const KIT_COPY: Readonly<
     "cli.verb.devicesList": "Listar los dispositivos que usan tu licencia",
     "cli.verb.devicesRename":
       "Renombrar un dispositivo (sin nombre, quita el nombre)",
-    "cli.verb.devicesRemove": "Quitar un dispositivo y liberar su plaza",
+    "cli.verb.devicesRemove": "Quitar un dispositivo y dejar sitio para otro",
     "cli.verb.configGet": "Mostrar un ajuste y de dónde viene su valor",
     "cli.verb.configList": "Listar los ajustes que puedes ver",
     "cli.verb.configSet": "Cambiar un ajuste en este dispositivo",
@@ -5513,7 +5515,7 @@ export const KIT_COPY: Readonly<
     "cli.status.fixes": "Para seguir usando {product}:",
     "cli.status.portal": "Siguiente paso en la página de {product}:",
     "cli.fix.signIn": "Usar la licencia de tu cuenta",
-    "cli.logout.done": "Cerraste sesión en {product} en este dispositivo.",
+    "cli.logout.done": "Has cerrado sesión de {product} en este dispositivo.",
     "cli.deactivate.done":
       "{product} ya no usa tu licencia en este dispositivo. Su plaza quedó libre.",
     "cli.nothingChanged": "No se cambió nada.",
@@ -5599,7 +5601,7 @@ export const KIT_COPY: Readonly<
       "Consigue la nueva versión donde conseguiste {product}.",
     "cli.activate.noKeyPiped": "No llegó ninguna clave de licencia por stdin.",
     "signin.approve.lede":
-      "En un teléfono o un ordenador donde hayas iniciado sesión, escanea el código, o abre Cuenta → Aprobar un dispositivo nuevo y escríbelo.",
+      "En un teléfono o una computadora donde hayas iniciado sesión, escanea el código, o abre Cuenta → Aprobar un dispositivo nuevo y escríbelo.",
     "signin.approve.other": "Usar otra forma de iniciar sesión",
     "signin.approve.minuteLeft": "Queda un minuto para este código.",
     "signin.approve.starting": "Obteniendo tu código",
@@ -5620,14 +5622,14 @@ export const KIT_COPY: Readonly<
       "La solicitud viene de un lugar distinto al tuyo, o de un lugar que no podemos identificar.",
     "signin.approve.stepUpVerb": "aprobarlo",
     "signin.approve.approved": "Aprobado. {device} ha iniciado sesión.",
-    "signin.approve.deniedDone": "Rechazado. No ha cambiado nada.",
+    "signin.approve.deniedDone": "Denegado. No ha cambiado nada.",
     "signin.approve.failed": "No se pudo completar. Inténtalo de nuevo.",
     "signin.passkey.cancelled":
-      "No se usó tu passkey. Inténtalo de nuevo o usa otra forma.",
+      "No se usó tu llave de acceso. Inténtalo de nuevo o usa otra forma.",
     "signin.passkey.unsupported":
-      "Este navegador no puede usar tu passkey aquí. Usa otra forma.",
+      "Este navegador no puede usar tu llave de acceso aquí. Usa otra forma.",
     "signin.passkey.failed":
-      "Tu passkey no funcionó. Inténtalo de nuevo o usa otra forma.",
+      "Tu llave de acceso no funcionó. Inténtalo de nuevo o usa otra forma.",
     "signin.gate.stripNoIdentity": "Sesión iniciada con {provider}",
     "signin.gate.termsTitle": "Un paso más",
     "signin.gate.name": "Nombre visible",
@@ -5649,10 +5651,10 @@ export const KIT_COPY: Readonly<
       "Para unirlas, inicia sesión primero en esa cuenta en este navegador y luego añade este inicio de sesión desde Cuenta.",
     "signin.gate.codeSent": "Hemos enviado un código a {email}.",
     "signin.hint.when": "En este navegador, la última vez {when}",
-    "signin.hint.welcomeNoName": "Te damos la bienvenida de nuevo",
-    "signin.hint.method.passkey": "una passkey",
+    "signin.hint.welcomeNoName": "Hola de nuevo",
+    "signin.hint.method.passkey": "una llave de acceso",
     "signin.hint.method.email": "un código por correo",
-    "signin.hint.usePasskey": "Usar una passkey",
+    "signin.hint.usePasskey": "Usar una llave de acceso",
     "signin.hint.emailCode": "Enviarme un código por correo",
     "signin.hint.change": "Cambiar",
     "signin.key.carriedTitle": "Inicia sesión para añadir {product}",
@@ -5664,7 +5666,7 @@ export const KIT_COPY: Readonly<
     "signin.code.expiredRestart":
       "Ese inicio de sesión ha caducado. Continúa para recibir un código nuevo.",
     "signin.sso.expiredRestart":
-      "Tardaste demasiado. Continúa para empezar de nuevo.",
+      "Ha pasado demasiado tiempo. Continúa para empezar de nuevo.",
     "signin.code.noMore":
       "No se pueden enviar más códigos para este inicio de sesión. El último código sigue siendo válido.",
     "signin.sso.title": "Iniciar sesión con {org}",
@@ -5674,7 +5676,7 @@ export const KIT_COPY: Readonly<
     "signin.refused.title": "Esta cuenta no puede iniciar sesión",
     "signin.refused.lede":
       "{email} pertenece a una cuenta que no puede iniciar sesión. Prueba con otro correo o con otra forma de iniciar sesión.",
-    "signin.off.title": "El inicio de sesión está desactivado",
+    "signin.off.title": "Inicio de sesión desactivado",
     "signin.turnstile.failed":
       "La comprobación de seguridad no se superó. Inténtalo de nuevo.",
     "signin.code.rateLimited":
@@ -5712,19 +5714,19 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "en {device}",
     "signin.thisBrowser": "este navegador",
     "signin.consent.deny": "No permitir",
-    "signin.consent.cloudSync": "Cloud Sync",
+    "signin.consent.cloudSync": "Sincronización en la nube",
     "signin.consent.newLicense": "Nueva: licencia {tier}, se crea al continuar",
     "signin.key.upgradeTitle": "Guarda {product} en una cuenta",
     "signin.key.upgradeLede":
-      "En una cuenta puedes recuperarla y pasarla a un dispositivo nuevo tú mismo.",
+      "Con una cuenta puedes recuperarlo y pasarlo tú mismo a un dispositivo nuevo.",
     "signin.key.createAccount": "Crear cuenta",
-    "signin.key.signInInstead": "Iniciar sesión en su lugar",
+    "signin.key.signInInstead": "Iniciar sesión",
     "signin.key.noEntriesTitle": "Crea una cuenta para guardar {product}",
     "signin.key.noEntriesKeeps":
       "{product} sigue funcionando en los dispositivos donde ya está. Solo volver a escribir la clave requiere una cuenta.",
-    "signin.key.meter": "{used} de {limit} entradas de clave usadas",
+    "signin.key.meter": "Usos de la clave: {used} de {limit}",
     "signin.key.keyWorks": "La clave funciona",
-    "signin.footerNoDeveloper": "Polaris Locker te inicia sesión en {app}.",
+    "signin.footerNoDeveloper": "Polaris Locker inicia tu sesión en {app}.",
     "signin.replace.rateLimitedMinutes":
       "Demasiados cambios de dispositivo. Inténtalo de nuevo en {minutes, plural, one {# minuto} many {# de minutos} other {# minutos}}.",
     "signin.request.tooMany":
@@ -5741,9 +5743,9 @@ export const KIT_COPY: Readonly<
     "signin.gate.pictureInUse": "En uso",
     "signin.gate.passkey": "Añadir una llave de acceso después",
     "signin.gate.pictureInvalid": "Elige un PNG o JPEG de hasta 5 MB.",
-    "signin.gate.passkeyTitle": "Añadir una llave de acceso",
+    "signin.gate.passkeyTitle": "Añadir llave de acceso",
     "signin.gate.passkeyLede": "La próxima vez basta un toque.",
-    "signin.gate.passkeyAdd": "Añadir una llave de acceso",
+    "signin.gate.passkeyAdd": "Añadir llave de acceso",
     "signin.gate.passkeyAdded": "Llave de acceso añadida.",
     "signin.gate.passkeyFailed":
       "No se añadió ninguna llave de acceso. Puedes añadir una en Cuenta.",
@@ -5773,21 +5775,22 @@ export const KIT_COPY: Readonly<
     "signin.join.done": "Unidas. Puedes deshacerlo durante 72 horas.",
     "signin.join.undo": "Deshacer unión",
     "signin.join.undone": "Unión deshecha.",
-    "signin.join.undoable": "Unida {email}. Deshacer hasta {date}.",
-    "signin.join.expired": "Vincular tardó demasiado. Empieza de nuevo.",
+    "signin.join.undoable":
+      "Se unió {email}. Puedes deshacerlo hasta el {date}.",
+    "signin.join.expired": "La vinculación tardó demasiado. Empieza de nuevo.",
     "signin.join.signInOther": "Primero inicia sesión en tu otra cuenta.",
     "signin.join.reasonStepUp":
       "Inicia sesión de nuevo en ambas cuentas y únelas.",
     "signin.join.reasonPending":
       "Una cuenta se unió en las últimas 72 horas. Inténtalo después.",
     "signin.join.reasonUnavailable":
-      "Cancela primero la eliminación programada y luego une.",
+      "Cancela primero la eliminación programada y luego únelas.",
     "signin.join.sameAccount":
       "Es la cuenta de la que partiste. Inicia sesión en tu otra cuenta.",
     "signin.join.failed": "No se pudo unir. Inténtalo de nuevo.",
     "signin.join.ownedNotice":
       "Si esa cuenta también es tuya, inicia sesión en ella y une las dos.",
-    "signin.approve.codeShort": "Introduce las 8 letras del código.",
+    "signin.approve.codeShort": "Escribe las 8 letras del código.",
     "signin.join.stepUpVerb": "vincular cuentas",
     "signin.join.otherTitle": "Inicia sesión en tu otra cuenta",
     "signin.join.otherLede":
@@ -5806,14 +5809,14 @@ export const KIT_COPY: Readonly<
     "signin.join.undoFailed":
       "No se pudo deshacer la unión. Inténtalo de nuevo.",
     "signin.join.reasonStaleOne":
-      "Inicia sesión de nuevo en {email} y luego une.",
+      "Inicia sesión de nuevo en {email} y luego únelas.",
     "signin.join.staleMark": "Sesión iniciada hace más de 5 minutos",
     "signin.join.stillSignedIn": "Sigues con la sesión de {email}.",
     "signin.join.undoConfirm":
       "¿Deshacer la unión con {email}? Puedes hasta el {date}.",
     "signin.approve.tooMany":
       "Demasiados intentos. Espera un minuto e inténtalo de nuevo.",
-    "signin.key.enterKey": "Introduce tu clave de licencia.",
+    "signin.key.enterKey": "Escribe tu clave de licencia.",
     "signin.code.missing": "¿No te llegó el código?",
     "core.fallback.title": "Algo salió mal",
     "core.fallback.message": "Algo salió mal ({code}). Vuelve a intentarlo.",
@@ -5865,19 +5868,19 @@ export const KIT_COPY: Readonly<
       "El servicio no puede firmar un documento ahora mismo. Vuelve a intentarlo en unos minutos.",
     "core.codes.device_limit.title": "Límite de dispositivos alcanzado",
     "core.codes.device_limit.message":
-      "Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí.",
+      "Esta licencia ya ha alcanzado su límite de dispositivos. Reemplaza un dispositivo para usarla aquí.",
     "core.codes.key_entry_limit.title": "No quedan usos de la clave",
     "core.codes.key_entry_limit.message":
       "A esta clave no le quedan usos. Añádela a tu cuenta e inicia sesión en su lugar.",
     "core.codes.license_disabled.title": "Licencia desactivada",
     "core.codes.license_disabled.message":
       "Esta licencia se desactivó. Contacta con el desarrollador.",
-    "core.codes.license_expired.title": "Licencia vencida",
+    "core.codes.license_expired.title": "Licencia caducada",
     "core.codes.license_expired.message":
-      "Esta licencia venció. Renuévala para continuar.",
+      "Esta licencia ha caducado. Renuévala para continuar.",
     "core.codes.not_entitled.title": "No incluido",
     "core.codes.not_entitled.message": "Tu licencia no incluye esto.",
-    "core.codes.version_blocked.title": "Actualización obligatoria",
+    "core.codes.version_blocked.title": "Actualización necesaria",
     "core.codes.version_blocked.message":
       "Esta versión no se puede usar con tu licencia. Actualiza la app para continuar.",
     "core.codes.channel_not_allowed.title": "Canal no incluido",
@@ -5932,8 +5935,7 @@ export const KIT_COPY: Readonly<
       "Solicitud de inicio de sesión no válida",
     "core.codes.invalid_request.message":
       "La app envió una solicitud que no podemos leer. Inténtalo de nuevo.",
-    "core.codes.invalid_client.title":
-      "No se puede completar el inicio de sesión",
+    "core.codes.invalid_client.title": "No se puede iniciar sesión",
     "core.codes.invalid_client.message":
       "El inicio de sesión de esta app no está bien configurado, así que se detuvo aquí para proteger tu cuenta. Avisa a su desarrollador.",
     "core.codes.invalid_grant.title": "Inicio de sesión ya no válido",
@@ -5961,7 +5963,7 @@ export const KIT_COPY: Readonly<
       "Inicio de sesión por correo no disponible",
     "core.codes.email_unavailable.message":
       "El inicio de sesión por correo no está disponible en este momento. Elige otro método de inicio de sesión.",
-    "core.codes.turnstile_failed.title": "La comprobación no se superó",
+    "core.codes.turnstile_failed.title": "Comprobación fallida",
     "core.codes.turnstile_failed.message":
       "La comprobación de seguridad no se superó. Vuelve a cargar la página e inténtalo de nuevo.",
     "core.codes.signin_expired.title": "Inicio de sesión caducado",
@@ -5969,7 +5971,7 @@ export const KIT_COPY: Readonly<
       "Este inicio de sesión ha caducado. Empieza de nuevo.",
     "core.codes.invalid_code.title": "Código incorrecto",
     "core.codes.invalid_code.message":
-      "Ese código no funcionó. Revisa el correo y vuelve a escribirlo.",
+      "Ese código no es correcto. Revisa el correo y vuelve a intentarlo.",
     "core.codes.code_expired.title": "Código caducado",
     "core.codes.code_expired.message":
       "Ese código ha caducado. Pide uno nuevo.",
@@ -6002,7 +6004,7 @@ export const KIT_COPY: Readonly<
       "Por tu seguridad, vuelve a iniciar sesión para continuar.",
     "core.codes.not_eligible.title": "Oferta no disponible",
     "core.codes.not_eligible.message":
-      "Esta oferta ya no está disponible para tu cuenta. Actualiza la página y vuelve a intentarlo.",
+      "Esta oferta ya no está disponible para tu cuenta. Recarga la página y vuelve a intentarlo.",
     "core.codes.not_removable.title": "No se puede quitar",
     "core.codes.not_removable.message":
       "Esta licencia no se puede volver a añadir con una clave de licencia, así que se queda en tu biblioteca.",
@@ -6054,7 +6056,7 @@ export const KIT_COPY: Readonly<
     "core.codes.bundle-claims-rejected.title":
       "Archivo de activación no válido",
     "core.codes.bundle-claims-rejected.message":
-      "El archivo de activación es para otro producto u otro dispositivo, o venció.",
+      "El archivo de activación es para otro producto u otro dispositivo, o ha caducado.",
     "core.codes.bundle-trust-rejected.title":
       "Archivo de activación no confiable",
     "core.codes.bundle-trust-rejected.message":
@@ -6129,9 +6131,9 @@ export const KIT_COPY: Readonly<
       "El servicio tuvo un problema. Inténtalo de nuevo en unos minutos.",
     "core.codes.cancelled.title": "Inicio de sesión cancelado",
     "core.codes.cancelled.message": "Se canceló el inicio de sesión.",
-    "core.codes.sign-in-expired.title": "Código vencido",
+    "core.codes.sign-in-expired.title": "Código caducado",
     "core.codes.sign-in-expired.message":
-      "El código venció antes de terminar el inicio de sesión. Vuelve a empezar.",
+      "El código caducó antes de terminar el inicio de sesión. Vuelve a empezar.",
     "core.codes.sign-in-denied.title": "Inicio de sesión rechazado",
     "core.codes.sign-in-denied.message":
       "Se rechazó el inicio de sesión. Vuelve a empezar.",
@@ -6140,7 +6142,7 @@ export const KIT_COPY: Readonly<
       "El inicio de sesión no está disponible en este momento. Vuelve a intentarlo en unos minutos.",
     "core.codes.invalid-options.title": "App no configurada",
     "core.codes.invalid-options.message":
-      "Las licencias de la app no están configuradas correctamente. Contacta con el desarrollador.",
+      "El sistema de licencias de la app no está configurado correctamente. Contacta con el desarrollador.",
     "core.codes.invalid-argument.title": "Solicitud no aceptada",
     "core.codes.invalid-argument.message":
       "La app envió una solicitud que el puente de licencias no pudo leer. Contacta con el desarrollador.",
@@ -6149,13 +6151,13 @@ export const KIT_COPY: Readonly<
       "La app pidió algo que su puente de licencias no ofrece. Contacta con el desarrollador.",
     "core.codes.sender-refused.title": "Ventana no permitida",
     "core.codes.sender-refused.message":
-      "Esta ventana no puede usar las licencias de la app. Contacta con el desarrollador.",
+      "Esta ventana no puede usar el sistema de licencias de la app. Contacta con el desarrollador.",
     "core.codes.not-configured.title": "App no configurada",
     "core.codes.not-configured.message":
-      "Las licencias de la app todavía no están configuradas. Contacta con el desarrollador.",
+      "El sistema de licencias de la app todavía no está configurado. Contacta con el desarrollador.",
     "core.codes.unsupported.title": "No disponible aquí",
     "core.codes.unsupported.message": "Esto no está disponible aquí.",
-    "core.codes.timeout.title": "Tiempo de espera agotado",
+    "core.codes.timeout.title": "Tiempo agotado",
     "core.codes.timeout.message":
       "El servicio tardó demasiado en responder. Revisa tu conexión y vuelve a intentarlo.",
     "core.codes.response-too-large.title": "Respuesta inesperada",
@@ -6338,7 +6340,7 @@ export const KIT_COPY: Readonly<
     "core.codes.marker-rejected.title": "Problema de la compilación",
     "core.codes.marker-rejected.message":
       "El contenido integrado de esta compilación no es válido. Reinstala la app o contacta con el desarrollador.",
-    "core.codes.license_required.title": "Se necesita una licencia",
+    "core.codes.license_required.title": "Licencia necesaria",
     "core.codes.license_required.message":
       "Activa la app y vuelve a intentarlo.",
     "core.codes.license_invalid.title": "Licencia no aceptada",
@@ -6352,10 +6354,10 @@ export const KIT_COPY: Readonly<
       "Inicia sesión en tu cuenta de Polaris Locker en la app y vuelve a intentarlo.",
     "core.gate.ok.title": "Licencia activa",
     "core.gate.ok.message": "Tu licencia está activa.",
-    "core.gate.grace.title": "Periodo de gracia sin conexión",
+    "core.gate.grace.title": "Periodo de gracia",
     "core.gate.grace.message":
       "No se puede conectar con el servicio de licencias. Puedes seguir usando la app hasta que termine el periodo de gracia.",
-    "core.gate.expired.title": "Licencia vencida",
+    "core.gate.expired.title": "Licencia caducada",
     "core.gate.expired.message":
       "Conéctate a internet o renueva la licencia para continuar.",
     "core.gate.revoked.title": "Sesión cerrada",
@@ -6364,7 +6366,7 @@ export const KIT_COPY: Readonly<
     "core.gate.needs-activation.title": "Activar",
     "core.gate.needs-activation.message":
       "Escribe una clave de licencia o inicia sesión para continuar.",
-    "core.gate.version-too-old.title": "Actualización obligatoria",
+    "core.gate.version-too-old.title": "Actualización necesaria",
     "core.gate.version-too-old.message":
       "Esta versión ya no es compatible. Actualiza {product} para continuar.",
     "core.gate.version-too-new.title": "No disponible con esta licencia",
@@ -6380,7 +6382,7 @@ export const KIT_COPY: Readonly<
       "Tu licencia está activa en este dispositivo.",
     "core.activation.device-limit.title": "Límite de dispositivos alcanzado",
     "core.activation.device-limit.message":
-      "Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí.",
+      "Esta licencia ya ha alcanzado su límite de dispositivos. Reemplaza un dispositivo para usarla aquí.",
     "core.activation.fingerprint-required.title":
       "Error al verificar el dispositivo",
     "core.activation.fingerprint-required.message":
@@ -6394,9 +6396,9 @@ export const KIT_COPY: Readonly<
     "core.activation.license-disabled.title": "Licencia desactivada",
     "core.activation.license-disabled.message":
       "Esta licencia se desactivó. Contacta con el desarrollador.",
-    "core.activation.license-expired.title": "Licencia vencida",
+    "core.activation.license-expired.title": "Licencia caducada",
     "core.activation.license-expired.message":
-      "Esta licencia venció. Renuévala para continuar.",
+      "Esta licencia ha caducado. Renuévala para continuar.",
     "core.activation.attestation-required.title":
       "Se necesita verificar el dispositivo",
     "core.activation.attestation-required.message":
@@ -6424,10 +6426,10 @@ export const KIT_COPY: Readonly<
     "common.close": "Fechar",
     "common.back": "Voltar",
     "common.continue": "Continuar",
-    "common.done": "Concluído",
+    "common.done": "OK",
     "common.save": "Salvar",
     "common.notNow": "Agora não",
-    "common.later": "Mais tarde",
+    "common.later": "Depois",
     "common.tryAgain": "Tentar novamente",
     "common.copy": "Copiar",
     "common.copied": "Copiado",
@@ -6500,7 +6502,7 @@ export const KIT_COPY: Readonly<
     "a11y.renameDevice": "Renomear {device}",
     "a11y.removeDevice": "Remover {device}",
     "gate.checking": "Verificando sua licença…",
-    "gate.error.title": "Não foi possível iniciar {product}",
+    "gate.error.title": "Falha ao iniciar {product}",
     "boot.starting": "Iniciando…",
     "boot.syncing": "Verificando atualizações…",
     "boot.deciding": "Procurando uma versão mais recente…",
@@ -6523,7 +6525,7 @@ export const KIT_COPY: Readonly<
       "{product} precisa de {size} de conteúdo novo, e você está em uma conexão limitada.",
     "boot.consent.download": "Baixar",
     "boot.error.body": "Se o problema continuar, reinicie {product}.",
-    "welcome.title": "Boas-vindas ao {product}",
+    "welcome.title": "Boas-vindas a {product}",
     "common.welcomeNoProductTitle": "Boas-vindas",
     "common.signInToContinue": "Entre para continuar.",
     "welcome.lede": "Entre ou use uma chave de licença para continuar.",
@@ -6535,7 +6537,7 @@ export const KIT_COPY: Readonly<
     "welcome.continueFree": "Continuar grátis",
     "welcome.restore": "Restaurar compra",
     "welcome.offline": "Ativar offline",
-    "signIn.title": "Entrar no {product}",
+    "signIn.title": "Entrar em {product}",
     "signIn.noMethods":
       "Nenhum método de acesso está disponível para {product}. Use uma chave de licença.",
     "signIn.methodError":
@@ -6562,7 +6564,7 @@ export const KIT_COPY: Readonly<
     "offlineActivation.codeCopied": "Código copiado",
     "offlineActivation.loadHint":
       "Carregue o arquivo de ativação que você receber ou cole o texto dele.",
-    "offlineActivation.loadFile": "Carregar arquivo…",
+    "offlineActivation.loadFile": "Abrir arquivo…",
     "offlineActivation.paste": "Cole o texto de ativação aqui",
     "offlineActivation.submit": "Ativar com arquivo",
     "offlineActivation.dropHint":
@@ -6579,8 +6581,7 @@ export const KIT_COPY: Readonly<
     "deviceLimit.consequence":
       "{device} sai de {product} e {thisDevice} entra no lugar dele. Enviaremos um e-mail sobre isso.",
     "deviceLimit.primary": "Substituir e continuar",
-    "deviceLimit.removed":
-      "{device} foi substituído. {product} está continuando.",
+    "deviceLimit.removed": "{device} foi substituído. {product} vai continuar.",
     "deviceLimit.failed":
       "Não foi possível substituir {device}. Tente novamente.",
     "deviceLimit.browser":
@@ -6592,7 +6593,7 @@ export const KIT_COPY: Readonly<
       "Saia de {product} em outro dispositivo e tente novamente.",
     "devices.title": "Seus dispositivos",
     "devices.lede": "Dispositivos que usam esta licença.",
-    "devices.meta": "{platform} · usado por último {when}",
+    "devices.meta": "{platform} · último uso {when}",
     "devices.count":
       "{count, plural, one {# dispositivo} many {# de dispositivos} other {# dispositivos}}",
     "devices.unnamed": "Dispositivo sem nome",
@@ -6610,12 +6611,12 @@ export const KIT_COPY: Readonly<
     "devices.manage": "Gerenciar dispositivos",
     "update.title": "{product} {version}",
     "update.availableTitle": "Há uma atualização disponível",
-    "update.current": "Você tem a {version} · download de {size}",
-    "common.updateCurrentNoSize": "Você tem a {version}",
+    "update.current": "Você tem a versão {version} · download de {size}",
+    "common.updateCurrentNoSize": "Você tem a versão {version}",
     "update.whatsNew": "Novidades",
     "update.allChanges": "Todas as mudanças da {version}",
-    "update.later": "Mais tarde",
-    "update.restartWhenReady": "Reiniciar quando estiver pronto",
+    "update.later": "Depois",
+    "update.restartWhenReady": "Reiniciar quando terminar",
     "update.restartNow": "Reiniciar agora",
     "update.skipVersion": "Pular esta versão",
     "update.install": "Atualizar agora",
@@ -6627,8 +6628,8 @@ export const KIT_COPY: Readonly<
     "update.readyTitle": "{product} {version} está pronto",
     "update.readyBody": "Reinicie para concluir a atualização.",
     "update.mandatoryTitle": "Atualize para continuar usando {product}",
-    "update.mandatoryBody": "Esta versão não é mais compatível.",
-    "update.blockedTitle": "Esta versão não é mais compatível",
+    "update.mandatoryBody": "Esta versão não tem mais suporte.",
+    "update.blockedTitle": "Esta versão não tem mais suporte",
     "update.blockedBody":
       "Ainda não há atualização disponível aqui. Você pode continuar usando {product} por enquanto.",
     "update.critical":
@@ -6674,7 +6675,7 @@ export const KIT_COPY: Readonly<
     "status.update": "Atualizar",
     "status.switchChannel": "Mudar de canal",
     "status.allowedRange": "Versões permitidas: {min} a {max}",
-    "status.allowedMin": "Versões permitidas: {min} ou posterior",
+    "status.allowedMin": "Versões permitidas: {min} ou posteriores",
     "status.allowedMax": "Versões permitidas: até {max}",
     "status.contact": "Contatar {developer}",
     "grace.daysLeft":
@@ -6749,7 +6750,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Entrar no Polaris Locker",
     "signin.methods.titleApp": "Entrar",
     "signin.methods.ledeApp":
-      "Use o e-mail da sua compra ou um e-mail de trabalho ou escola.",
+      "Use o e-mail com que você comprou ou um e-mail de trabalho ou escola.",
     "signin.email.label": "E-mail",
     "signin.email.invalid":
       "Digite um endereço de e-mail completo, como nome@example.com.",
@@ -6769,7 +6770,7 @@ export const KIT_COPY: Readonly<
     "signin.header.codePanel":
       "Código · {code} · Confira se é igual ao da tela",
     "signin.footer":
-      "O Polaris Locker faz seu acesso ao {app}. {developer} nunca vê seus códigos nem suas chaves de acesso.",
+      "O Polaris Locker cuida do seu acesso a {app}. {developer} nunca vê seus códigos nem suas chaves de acesso.",
     "signin.off.product":
       "O acesso está desativado para {product}. Contate {developer}.",
     "signin.off.any": "O acesso está indisponível. Tente novamente mais tarde.",
@@ -6810,13 +6811,14 @@ export const KIT_COPY: Readonly<
     "signin.gate.ledeApp":
       "Falta uma etapa para {app}. Enviamos códigos de acesso, recibos e avisos de segurança para cá.",
     "signin.gate.steam":
-      "O Steam não compartilha e-mail. Adicione um para poder voltar sem o Steam.",
+      "O Steam não compartilha e-mail. Adicione um para poder entrar de novo sem o Steam.",
     "signin.gate.verify": "Verificar e continuar",
     "signin.gate.sendCode": "Enviar código",
     "signin.gate.cancel": "Cancelar acesso",
     "signin.gate.join": "Unir em uma só conta",
-    "signin.profile.source": "Nome e foto do {provider}.",
-    "signin.profile.applePicture": "A Apple não compartilha foto. Adicione uma",
+    "signin.profile.source": "Nome e imagem importados de {provider}.",
+    "signin.profile.applePicture":
+      "A Apple não compartilha imagem. Adicione uma",
     "signin.choice.title": "Escolha uma licença para este dispositivo",
     "signin.choice.lede": "{product} vai usá-la em {device}.",
     "signin.choice.ledeBrowser": "{product} vai usá-la neste navegador.",
@@ -6863,7 +6865,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.portalOff":
       "{developer} gerencia os dispositivos desta licença.",
     "signin.choice.keyInstead": "Usar uma chave de licença",
-    "signin.choice.freeDevice": "Liberar um dispositivo",
+    "signin.choice.freeDevice": "Liberar dispositivo",
     "signin.choice.continue": "Usar esta licença e continuar",
     "signin.choice.raced":
       "Esse dispositivo acabou de ser substituído. Escolha novamente.",
@@ -6878,7 +6880,7 @@ export const KIT_COPY: Readonly<
       "Escolha um dispositivo para desconectar. {thisDevice} entra no lugar dele.",
     "signin.replace.heading": "Substituir um dispositivo",
     "signin.replace.openSystem": "Substituir…",
-    "signin.replace.meta": "{platform} · usado por último {when}",
+    "signin.replace.meta": "{platform} · último uso {when}",
     "signin.replace.leastRecent": "Menos recente",
     "signin.replace.activeNow": "Ativo agora",
     "signin.replace.thisBrowser": "Este navegador",
@@ -6902,13 +6904,13 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device} será o dispositivo {position} de {limit}",
     "signin.consent.replaces": "{license} · substitui {device}",
-    "signin.consent.licenseInApp": "Você vai escolher uma licença no {app}.",
+    "signin.consent.licenseInApp": "Você vai escolher uma licença em {app}.",
     "signin.consent.change": "Alterar",
     "signin.consent.continue": "Continuar para {app}",
     "signin.consent.alsoGets": "{app} também vai receber",
     "signin.consent.profile": "Seu perfil e e-mail",
     "signin.consent.pairwise":
-      "Ele recebe um id próprio para você e não verá seus outros produtos nem como você entra.",
+      "Ele recebe um ID próprio para você e não verá seus outros produtos nem como você entra.",
     "signin.notYou": "Não é você?",
     "signin.cancel": "Cancelar",
     "signin.key.addTitle": "Adicionar {product} à sua conta",
@@ -6919,17 +6921,17 @@ export const KIT_COPY: Readonly<
     "signin.key.entriesLeftShort":
       "{left, plural, one {# uso da chave restante} many {# de usos da chave restantes} other {# usos da chave restantes}}",
     "signin.key.noEntries":
-      "Esta chave não tem mais usos em {product}. Adicione-a à sua conta e {product} faz seu acesso no lugar dela.",
+      "Esta chave não tem mais usos em {product}. Adicione-a à sua conta e entre em {product} com sua conta.",
     "signin.key.skip": "Pular por enquanto",
     "signin.key.ownedSignIn": "Entrar nessa conta",
     "signin.key.differentKey": "Usar outra chave",
     "signin.return.yours": "{product} é seu",
     "signin.return.product": "{tier} · na sua biblioteca",
-    "signin.return.signedIn": "Você entrou no {app}",
+    "signin.return.signedIn": "Você entrou em {app}",
     "signin.return.button": "Voltar para {app}",
     "signin.return.timer": "Voltando automaticamente em {s} s",
     "signin.return.stay": "Ficar aqui",
-    "signin.done.start": "Começar a usar o {product}",
+    "signin.done.start": "Começar a usar {product}",
     "signin.device.title": "Entre para concluir em {device}",
     "signin.device.lede":
       "Use seu celular ou computador aqui. {device} continua sozinho quando você terminar.",
@@ -6950,7 +6952,7 @@ export const KIT_COPY: Readonly<
     "signin.desktop.notifyTitle": "Você entrou",
     "signin.desktop.notifyBody": "{app} está pronto.",
     "signin.desktop.notifyChoose":
-      "Escolha uma licença · O {app} está pronto para concluir o acesso.",
+      "Escolha uma licença · {app} está pronto para concluir o acesso.",
     "signin.menu.signIn": "Entrar…",
     "signin.handoff.browserBody":
       "Abrimos o Polaris Locker no seu navegador. Entre por lá e {app} continua sozinho.",
@@ -6969,10 +6971,10 @@ export const KIT_COPY: Readonly<
     "signin.handoff.openBrowser": "Abrir navegador",
     "signin.return.closeTab": "Você pode fechar esta aba e voltar para {app}.",
     "signin.return.chooseInApp":
-      "Volte ao {app} para escolher uma licença. Você pode fechar esta aba.",
+      "Volte a {app} para escolher uma licença. Você pode fechar esta aba.",
     "signin.return.signedInShort": "Você entrou",
     "signin.return.cancelled":
-      "O acesso foi cancelado em {app}. Comece de novo pelo {app}.",
+      "O acesso foi cancelado em {app}. Comece de novo a partir de {app}.",
     "signin.return.library": "Abrir sua biblioteca",
     "signin.choice.freed": "Agora há um dispositivo livre nesta licença.",
     "signin.replace.opensBrowser": "Abre o Polaris Locker no navegador",
@@ -6995,9 +6997,9 @@ export const KIT_COPY: Readonly<
     "signin.approve.checkDevice":
       "Confira se o seu dispositivo mostra este código.",
     "signin.approve.approve": "Aprovar e conectar",
-    "signin.approve.deny": "Recusar",
+    "signin.approve.deny": "Negar",
     "signin.approve.denied":
-      "Essa solicitação foi recusada. Use outra forma de entrar.",
+      "Essa solicitação foi negada. Use outra forma de entrar.",
     "signin.approve.expired": "Esse código expirou. Obtenha um novo código.",
     "signin.console.title": "Entrar no console",
     "signin.console.next": "Próximo: {idp} em {host}",
@@ -7011,9 +7013,9 @@ export const KIT_COPY: Readonly<
     "signin.expired.title": "Esse código ou link expirou",
     "signin.expired.body": "Códigos e links funcionam uma vez, por 10 minutos.",
     "signin.expired.sendTo": "Um novo código será enviado para {email}.",
-    "signin.again": "Entre novamente",
+    "signin.again": "Entrar novamente",
     "signin.identityOff.notice":
-      "{product} não usa o acesso do Polaris Locker. Abra {product} e digite sua chave de licença nele.",
+      "{product} não usa o acesso do Polaris Locker. Abra {product} e digite sua chave de licença lá.",
     "signin.identityOff.lede":
       "Entre aqui para ver {product} na sua biblioteca.",
     "signin.signout.title": "Sair de {product} neste dispositivo?",
@@ -7027,14 +7029,14 @@ export const KIT_COPY: Readonly<
     "signin.session.kitEnded":
       "Seu acesso terminou. Entre novamente para continuar usando {product}.",
     "signin.provider.manage": "Gerenciar métodos de acesso no Polaris Locker",
-    "signin.profile.changePicture": "Alterar foto",
+    "signin.profile.changePicture": "Alterar imagem",
     "signin.mail.replaced.subject": "{product} foi desconectado em {device}",
     "signin.mail.replaced.body":
-      "{device} foi substituído por {newDevice} quando você entrou no {product} em {date}. Ele poderá entrar novamente depois, se houver espaço para outro dispositivo. Se não foi você, abra o Polaris Locker e verifique seus dispositivos.",
+      "{device} foi substituído por {newDevice} em {date}, quando você entrou em {product}. Ele poderá entrar novamente depois, se houver espaço para outro dispositivo. Se não foi você, abra o Polaris Locker e verifique seus dispositivos.",
     "signin.mail.newDevice.subject":
       "Um novo dispositivo entrou na sua conta do Polaris Locker",
     "signin.mail.newDevice.body":
-      "{device} entrou em {date} de {place}. Se não foi você, desconecte-o no Polaris Locker em Onde você está conectado.",
+      "{device} entrou em {date}, a partir de {place}. Se não foi você, desconecte-o no Polaris Locker em Onde você está conectado.",
     "signin.mail.open": "Abrir o Polaris Locker",
     "signin.code.label": "Código de 6 dígitos",
     "cli.group.license": "Licença",
@@ -7056,7 +7058,7 @@ export const KIT_COPY: Readonly<
       "Adicionar uma chave de licença (digitada ou via stdin)",
     "cli.verb.enroll": "Obter a licença gratuita, se {product} oferecer uma",
     "cli.verb.deactivate":
-      "Parar de usar a licença neste dispositivo e liberar a vaga",
+      "Parar de usar a licença neste dispositivo e abrir espaço para outro",
     "cli.verb.status": "Licença, dispositivos e tempo offline",
     "cli.verb.offlineRequest":
       "Mostrar o código de solicitação para ativação offline",
@@ -7067,7 +7069,8 @@ export const KIT_COPY: Readonly<
     "cli.verb.devicesList": "Listar os dispositivos que usam sua licença",
     "cli.verb.devicesRename":
       "Renomear um dispositivo (sem nome, o nome é apagado)",
-    "cli.verb.devicesRemove": "Remover um dispositivo e liberar a vaga",
+    "cli.verb.devicesRemove":
+      "Remover um dispositivo e abrir espaço para outro",
     "cli.verb.configGet": "Mostrar uma configuração e a origem do valor",
     "cli.verb.configList": "Listar as configurações que você pode ver",
     "cli.verb.configSet": "Alterar uma configuração neste dispositivo",
@@ -7222,35 +7225,36 @@ export const KIT_COPY: Readonly<
     "signin.approve.deniedDone": "Negado. Nada mudou.",
     "signin.approve.failed": "Não foi possível concluir. Tente novamente.",
     "signin.passkey.cancelled":
-      "Sua passkey não foi usada. Tente novamente ou use outra forma.",
+      "Sua chave de acesso não foi usada. Tente novamente ou use outra forma.",
     "signin.passkey.unsupported":
-      "Este navegador não pode usar sua passkey aqui. Use outra forma.",
+      "Este navegador não pode usar sua chave de acesso aqui. Use outra forma.",
     "signin.passkey.failed":
-      "Sua passkey não funcionou. Tente novamente ou use outra forma.",
+      "Sua chave de acesso não funcionou. Tente novamente ou use outra forma.",
     "signin.gate.stripNoIdentity": "Conectado com {provider}",
     "signin.gate.termsTitle": "Mais uma etapa",
     "signin.gate.name": "Nome de exibição",
     "signin.gate.useEmail": "Usar {email}",
     "signin.gate.relay": "Seu endereço privado da Apple",
     "signin.gate.pictureInitials": "Usar minhas iniciais",
-    "signin.gate.pictureProvider": "Usar minha imagem do {provider}",
-    "signin.gate.birthdate": "Adicionar minha data de nascimento de {org}",
+    "signin.gate.pictureProvider": "Usar minha imagem de {provider}",
+    "signin.gate.birthdate":
+      "Adicionar minha data de nascimento informada por {org}",
     "signin.gate.birthdateHelp": "Só você pode ver. Os apps nunca a recebem.",
     "signin.gate.productTerms": "Concordo com os {term}",
     "signin.gate.platformTerms": "Concordo com {term}",
-    "signin.gate.expired": "Esse login expirou. Entre novamente.",
+    "signin.gate.expired": "Esse acesso expirou. Entre novamente.",
     "signin.gate.joinTitle": "Juntar suas contas",
     "signin.gate.joinLede":
-      "{email} já pertence a uma conta do Polaris Locker. Una este login a ela ou use outro e-mail.",
+      "{email} já pertence a uma conta do Polaris Locker. Una este acesso a ela ou use outro e-mail.",
     "signin.gate.joinProve":
-      "Para juntar, entre primeiro nessa conta neste navegador e depois adicione este login em Conta.",
+      "Para unir, entre primeiro nessa conta neste navegador e depois adicione este acesso em Conta.",
     "signin.gate.codeSent": "Enviamos um código para {email}.",
-    "signin.hint.when": "Neste navegador, na última vez {when}",
+    "signin.hint.when": "Neste navegador, último acesso {when}",
     "signin.hint.welcomeNoName": "Bem-vindo de volta",
-    "signin.hint.method.passkey": "uma passkey",
+    "signin.hint.method.passkey": "uma chave de acesso",
     "signin.hint.method.email": "um código por e-mail",
-    "signin.hint.usePasskey": "Usar uma passkey",
-    "signin.hint.emailCode": "Enviar um código por e-mail",
+    "signin.hint.usePasskey": "Usar chave de acesso",
+    "signin.hint.emailCode": "Enviar código por e-mail",
     "signin.hint.change": "Alterar",
     "signin.key.carriedTitle": "Entre para adicionar {product}",
     "signin.key.carriedLede":
@@ -7259,11 +7263,11 @@ export const KIT_COPY: Readonly<
     "signin.key.onrampLede":
       "Cole a chave do seu e-mail de recibo. Entre em seguida e ela entra na sua biblioteca.",
     "signin.code.expiredRestart":
-      "Esse login expirou. Continue para receber um novo código.",
+      "Esse acesso expirou. Continue para receber um novo código.",
     "signin.sso.expiredRestart":
       "Demorou demais. Continue para começar de novo.",
     "signin.code.noMore":
-      "Não é possível enviar mais códigos para este login. O último código ainda funciona.",
+      "Não é possível enviar mais códigos para este acesso. O último código ainda funciona.",
     "signin.sso.title": "Entrar com {org}",
     "signin.sso.required": "Obrigatório para endereços de {host}.",
     "signin.sso.codeIn": "Enviar um código em {time}",
@@ -7271,7 +7275,7 @@ export const KIT_COPY: Readonly<
     "signin.refused.title": "Esta conta não pode entrar",
     "signin.refused.lede":
       "{email} pertence a uma conta que não pode entrar. Tente outro e-mail ou outra forma de entrar.",
-    "signin.off.title": "O login está desativado",
+    "signin.off.title": "O acesso está desativado",
     "signin.turnstile.failed":
       "A verificação de segurança não foi aprovada. Tente novamente.",
     "signin.code.rateLimited":
@@ -7282,7 +7286,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.expiredCode":
       "Esse código expirou. Peça um novo no outro dispositivo.",
     "signin.approve.notFound":
-      "Nenhum login está aguardando esse código. Confira-o no outro dispositivo.",
+      "Nenhum acesso está aguardando esse código. Confira-o no outro dispositivo.",
     "signin.email.placeholder": "you@example.com",
     "signin.sso.name": "login único",
     "signin.off.developer": "o desenvolvedor",
@@ -7304,24 +7308,24 @@ export const KIT_COPY: Readonly<
     "signin.choice.replacedTitle": "Dispositivo substituído",
     "signin.choice.replacedBody":
       "{device} saiu de {app}. {thisDevice} está conectado.",
-    "signin.request.goneTitle": "Este login foi encerrado",
+    "signin.request.goneTitle": "Este acesso foi encerrado",
     "signin.request.gone": "Volte ao app e entre de novo.",
     "signin.header.onDevice": "em {device}",
     "signin.thisBrowser": "este navegador",
     "signin.consent.deny": "Não permitir",
-    "signin.consent.cloudSync": "Cloud Sync",
+    "signin.consent.cloudSync": "Sincronização na nuvem",
     "signin.consent.newLicense": "Nova: licença {tier}, criada ao continuar",
     "signin.key.upgradeTitle": "Guarde {product} em uma conta",
     "signin.key.upgradeLede":
-      "Em uma conta, você a recupera e a move para um novo dispositivo sozinho.",
+      "Em uma conta, você pode recuperá-la e passá-la para um novo dispositivo por conta própria.",
     "signin.key.createAccount": "Criar conta",
     "signin.key.signInInstead": "Entrar em vez disso",
     "signin.key.noEntriesTitle": "Crie uma conta para guardar {product}",
     "signin.key.noEntriesKeeps":
       "{product} continua funcionando nos dispositivos em que já está. Só digitar a chave de novo exige uma conta.",
-    "signin.key.meter": "{used} de {limit} entradas da chave usadas",
-    "signin.key.keyWorks": "A chave funciona",
-    "signin.footerNoDeveloper": "O Polaris Locker conecta você ao {app}.",
+    "signin.key.meter": "{used} de {limit} usos da chave",
+    "signin.key.keyWorks": "Chave válida",
+    "signin.footerNoDeveloper": "O Polaris Locker cuida do seu acesso a {app}.",
     "signin.replace.rateLimitedMinutes":
       "Muitas trocas de dispositivo. Tente de novo em {minutes, plural, one {# minuto} many {# de minutos} other {# minutos}}.",
     "signin.request.tooMany":
@@ -7338,14 +7342,14 @@ export const KIT_COPY: Readonly<
     "signin.gate.pictureInUse": "Em uso",
     "signin.gate.passkey": "Adicionar uma chave de acesso depois",
     "signin.gate.pictureInvalid": "Escolha um PNG ou JPEG de até 5 MB.",
-    "signin.gate.passkeyTitle": "Adicionar uma chave de acesso",
+    "signin.gate.passkeyTitle": "Criar chave de acesso",
     "signin.gate.passkeyLede": "Da próxima vez, basta um toque.",
-    "signin.gate.passkeyAdd": "Adicionar uma chave de acesso",
+    "signin.gate.passkeyAdd": "Criar chave de acesso",
     "signin.gate.passkeyAdded": "Chave de acesso adicionada.",
     "signin.gate.passkeyFailed":
       "Nenhuma chave de acesso foi adicionada. Você pode adicionar uma em Conta.",
     "signin.gate.passkeySkip": "Pular",
-    "signin.gate.pictureYours": "Seu envio",
+    "signin.gate.pictureYours": "Enviada por você",
     "signin.gate.uploadFailed":
       "Sua imagem não foi salva. Adicione uma em Conta.",
     "signin.gate.resent": "Enviamos um novo código para {email}.",
@@ -7371,7 +7375,7 @@ export const KIT_COPY: Readonly<
     "signin.join.done": "Unidas. Você pode desfazer por 72 horas.",
     "signin.join.undo": "Desfazer união",
     "signin.join.undone": "União desfeita.",
-    "signin.join.undoable": "{email} unida. Desfazer até {date}.",
+    "signin.join.undoable": "Conta {email} unida. Desfazer até {date}.",
     "signin.join.expired": "A vinculação demorou demais. Comece de novo.",
     "signin.join.signInOther": "Entre primeiro na sua outra conta.",
     "signin.join.reasonStepUp": "Entre de novo nas duas contas e una-as.",
@@ -7399,7 +7403,7 @@ export const KIT_COPY: Readonly<
     "signin.join.again": "Entrar de novo em {email}",
     "signin.join.startAgain": "Começar de novo",
     "signin.join.noUndo": "Esta união não pode mais ser desfeita.",
-    "signin.join.methodsLink": "Métodos de entrada",
+    "signin.join.methodsLink": "Métodos de acesso",
     "signin.join.undoFailed":
       "Não foi possível desfazer a união. Tente de novo.",
     "signin.join.reasonStaleOne": "Entre de novo em {email} e depois una.",
@@ -7424,16 +7428,13 @@ export const KIT_COPY: Readonly<
       "A solicitação não era válida. Atualize o app e tente novamente.",
     "core.codes.forbidden.title": "Não permitido",
     "core.codes.forbidden.message": "Você não tem permissão para fazer isso.",
-    "core.codes.attestation_required.title":
-      "Verificação do dispositivo necessária",
+    "core.codes.attestation_required.title": "Verificação necessária",
     "core.codes.attestation_required.message":
       "Isso exige um dispositivo verificado. Permita que o app verifique este dispositivo e tente novamente.",
-    "core.codes.attestation_rejected.title":
-      "Falha na verificação do dispositivo",
+    "core.codes.attestation_rejected.title": "Dispositivo não verificado",
     "core.codes.attestation_rejected.message":
       "Não foi possível verificar este dispositivo. Tente novamente.",
-    "core.codes.attestation_unavailable.title":
-      "Verificação do dispositivo indisponível",
+    "core.codes.attestation_unavailable.title": "Verificação indisponível",
     "core.codes.attestation_unavailable.message":
       "A verificação de dispositivo não está disponível para este app agora. Tente novamente em alguns minutos.",
     "core.codes.rate_limited.title": "Tentativas demais",
@@ -7482,8 +7483,7 @@ export const KIT_COPY: Readonly<
     "core.codes.hardware_mismatch.title": "Dispositivo alterado",
     "core.codes.hardware_mismatch.message":
       "O hardware deste dispositivo mudou. Ative novamente para usar sua licença aqui.",
-    "core.codes.fingerprint_required.title":
-      "Falha na verificação do dispositivo",
+    "core.codes.fingerprint_required.title": "Dispositivo não verificado",
     "core.codes.fingerprint_required.message":
       "Esta licença exige uma impressão digital de hardware, que não pôde ser lida neste dispositivo.",
     "core.codes.enroll_disabled.title": "Nenhuma licença gratuita",
@@ -7523,25 +7523,24 @@ export const KIT_COPY: Readonly<
     "core.codes.unknown_app.title": "Acesso indisponível",
     "core.codes.unknown_app.message":
       "O acesso não está disponível para este app.",
-    "core.codes.invalid_request.title": "Solicitação de login inválida",
+    "core.codes.invalid_request.title": "Solicitação de acesso inválida",
     "core.codes.invalid_request.message":
       "O app enviou uma solicitação que não conseguimos ler. Tente de novo.",
-    "core.codes.invalid_client.title": "Não foi possível concluir o login",
+    "core.codes.invalid_client.title": "Acesso não concluído",
     "core.codes.invalid_client.message":
-      "O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor.",
-    "core.codes.invalid_grant.title": "Login não é mais válido",
+      "O acesso por este app não está configurado corretamente e foi interrompido aqui para proteger sua conta. Avise o desenvolvedor.",
+    "core.codes.invalid_grant.title": "Acesso não é mais válido",
     "core.codes.invalid_grant.message":
-      "Este login expirou ou já foi usado. Entre de novo.",
-    "core.codes.unsupported_grant_type.title": "Solicitação de login inválida",
+      "Este acesso expirou ou já foi usado. Entre de novo.",
+    "core.codes.unsupported_grant_type.title": "Solicitação de acesso inválida",
     "core.codes.unsupported_grant_type.message":
-      "O app pediu um tipo de login que não aceitamos. Fale com o desenvolvedor.",
+      "O app pediu um tipo de acesso que não aceitamos. Fale com o desenvolvedor.",
     "core.codes.invalid_scope.title": "Acesso indisponível",
     "core.codes.invalid_scope.message":
-      "O app pediu um acesso que este login não oferece. Fale com o desenvolvedor.",
-    "core.codes.redirect_uri_mismatch.title":
-      "O login não consegue voltar ao app",
+      "O app pediu um tipo de acesso que esta forma de entrar não oferece. Fale com o desenvolvedor.",
+    "core.codes.redirect_uri_mismatch.title": "Não foi possível voltar ao app",
     "core.codes.redirect_uri_mismatch.message":
-      "O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor.",
+      "O acesso por este app não está configurado corretamente e foi interrompido aqui para proteger sua conta. Avise o desenvolvedor.",
     "core.codes.license_choice_required.title": "Escolha uma licença",
     "core.codes.license_choice_required.message":
       "Escolha qual licença este dispositivo usa e continue.",
@@ -7558,13 +7557,13 @@ export const KIT_COPY: Readonly<
     "core.codes.signin_expired.message": "Este acesso expirou. Comece de novo.",
     "core.codes.invalid_code.title": "Código incorreto",
     "core.codes.invalid_code.message":
-      "Esse código não funcionou. Confira o e-mail e digite de novo.",
+      "Esse código está incorreto. Confira o e-mail e tente de novo.",
     "core.codes.code_expired.title": "Código expirado",
     "core.codes.code_expired.message":
       "Esse código expirou. Envie um novo código.",
     "core.codes.email_in_use.title": "E-mail já em uso",
     "core.codes.email_in_use.message":
-      "Outra conta do Polaris Locker já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail.",
+      "Outra conta do Polaris Locker já usa este e-mail. Una este acesso a essa conta ou use outro e-mail.",
     "core.codes.terms_required.title": "Termos não aceitos",
     "core.codes.terms_required.message": "Aceite os termos para continuar.",
     "core.codes.license_owned.title": "Licença em outra conta",
@@ -7582,7 +7581,7 @@ export const KIT_COPY: Readonly<
     "core.codes.link_conflict.title": "Já vinculado",
     "core.codes.link_conflict.message":
       "Esse método de acesso pertence a outra conta do Polaris Locker. Entre nessa conta ou una as duas contas.",
-    "core.codes.last_link.title": "Não é possível remover",
+    "core.codes.last_link.title": "Impossível remover",
     "core.codes.last_link.message":
       "Este é o único método de acesso da sua conta. Adicione outro antes de removê-lo.",
     "core.codes.step_up_required.title": "Confirme que é você",
@@ -7591,7 +7590,7 @@ export const KIT_COPY: Readonly<
     "core.codes.not_eligible.title": "Oferta indisponível",
     "core.codes.not_eligible.message":
       "Esta oferta não está mais disponível para sua conta. Atualize a página e tente novamente.",
-    "core.codes.not_removable.title": "Não é possível remover",
+    "core.codes.not_removable.title": "Impossível remover",
     "core.codes.not_removable.message":
       "Esta licença não pode ser adicionada de novo com uma chave de licença, então ela continua na sua biblioteca.",
     "core.codes.download_auth_required.title": "Entre para baixar",
@@ -7600,7 +7599,7 @@ export const KIT_COPY: Readonly<
     "core.codes.delivery_gate_missing.title": "Download indisponível",
     "core.codes.delivery_gate_missing.message":
       "Este download ainda não está configurado. Contate o desenvolvedor.",
-    "core.codes.upstream_rate_limited.title": "Downloads sobrecarregados",
+    "core.codes.upstream_rate_limited.title": "Servidor ocupado",
     "core.codes.upstream_rate_limited.message":
       "Os downloads estão sobrecarregados agora. Tente novamente em alguns minutos.",
     "core.codes.server_misconfigured.title": "Serviço não configurado",
@@ -7617,9 +7616,8 @@ export const KIT_COPY: Readonly<
       "Um lançamento foi ignorado porque a tag dele corresponde a um lançamento de pacote de conteúdo. Renomeie a tag.",
     "core.codes.asset_unreachable.title": "Imagem não atualizada",
     "core.codes.asset_unreachable.message":
-      "Não foi possível obter uma imagem da sua origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente.",
-    "core.codes.feed_not_composable.title":
-      "Verificação de atualizações indisponível",
+      "Não foi possível obter uma imagem na origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente.",
+    "core.codes.feed_not_composable.title": "Atualizações indisponíveis",
     "core.codes.feed_not_composable.message":
       "Não é possível verificar atualizações agora. Tente novamente em alguns minutos.",
     "core.codes.service-unavailable.title": "Indisponível",
@@ -7653,10 +7651,10 @@ export const KIT_COPY: Readonly<
     "core.codes.bundle.message": "Não foi possível ler o arquivo de ativação.",
     "core.codes.transport.title": "Problema de conexão",
     "core.codes.transport.message": "Verifique sua conexão e tente novamente.",
-    "core.codes.network.title": "Não é possível conectar",
+    "core.codes.network.title": "Sem conexão",
     "core.codes.network.message":
       "Não foi possível acessar o Polaris Locker. Verifique sua conexão e tente novamente.",
-    "core.codes.refresh-failed.title": "Não foi possível atualizar",
+    "core.codes.refresh-failed.title": "Falha ao atualizar",
     "core.codes.refresh-failed.message":
       "Não foi possível atualizar sua licença e suas configurações. Verifique sua conexão e tente novamente.",
     "core.codes.sync-failed.title": "Não foi possível verificar sua licença",
@@ -7671,8 +7669,7 @@ export const KIT_COPY: Readonly<
     "core.codes.unknown.title": "Algo deu errado",
     "core.codes.unknown.message": "Algo deu errado. Tente novamente.",
     "core.codes.release-refused.title": "Não incluído",
-    "core.codes.release-refused.message":
-      "Sua licença não inclui este lançamento.",
+    "core.codes.release-refused.message": "Sua licença não inclui esta versão.",
     "core.codes.bundle-rejected.title": "Arquivo de ativação inválido",
     "core.codes.bundle-rejected.message": "O arquivo de ativação foi recusado.",
     "core.codes.bundle-import-unsupported.title": "Indisponível aqui",
@@ -7684,15 +7681,14 @@ export const KIT_COPY: Readonly<
     "core.codes.device-management-unsupported.title": "Indisponível aqui",
     "core.codes.device-management-unsupported.message":
       "Não é possível gerenciar dispositivos aqui. Gerencie-os na sua conta.",
-    "core.codes.device_list_failed.title":
-      "Não foi possível carregar os dispositivos",
+    "core.codes.device_list_failed.title": "Falha ao carregar dispositivos",
     "core.codes.device_list_failed.message":
       "Não foi possível carregar seus dispositivos. Verifique sua conexão e tente novamente.",
-    "core.codes.device_rename_failed.title": "Não foi possível renomear",
+    "core.codes.device_rename_failed.title": "Falha ao renomear",
     "core.codes.device_rename_failed.message":
       "Não foi possível renomear o dispositivo. Tente novamente.",
     "core.codes.device_deauthorize_failed.title":
-      "Não foi possível remover o dispositivo",
+      "Falha ao remover dispositivo",
     "core.codes.device_deauthorize_failed.message":
       "Não foi possível remover o dispositivo. Tente novamente.",
     "core.codes.key-entry-unsupported.title": "Indisponível aqui",
@@ -7707,7 +7703,7 @@ export const KIT_COPY: Readonly<
     "core.codes.bad_response.title": "Resposta inesperada",
     "core.codes.bad_response.message":
       "O serviço enviou uma resposta que o app não pôde usar. Tente novamente.",
-    "core.codes.network-error.title": "Não é possível conectar",
+    "core.codes.network-error.title": "Sem conexão",
     "core.codes.network-error.message":
       "Não foi possível acessar o Polaris Locker. Verifique sua conexão e tente novamente.",
     "core.codes.server-error.title": "Problema no serviço",
@@ -7759,7 +7755,7 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid-response.title": "Resposta inesperada",
     "core.codes.invalid-response.message":
       "O serviço enviou uma resposta que o app não pôde usar. Tente novamente.",
-    "core.codes.store-failed.title": "Problema de armazenamento",
+    "core.codes.store-failed.title": "Erro de armazenamento",
     "core.codes.store-failed.message":
       "O app não conseguiu ler nem salvar a licença neste dispositivo. Verifique se o app pode gravar na pasta de dados dele.",
     "core.codes.platform-error.title": "Problema na plataforma",
@@ -7771,10 +7767,10 @@ export const KIT_COPY: Readonly<
     "core.codes.mint-unavailable.title": "Indisponível",
     "core.codes.mint-unavailable.message":
       "Isso não está disponível para este app.",
-    "core.codes.feed-rejected.title": "Falha na verificação de atualizações",
+    "core.codes.feed-rejected.title": "Falha ao verificar atualizações",
     "core.codes.feed-rejected.message":
       "Não foi possível verificar as informações de atualização, então nada foi instalado.",
-    "core.codes.feed-rollback.title": "Falha na verificação de atualizações",
+    "core.codes.feed-rollback.title": "Falha ao verificar atualizações",
     "core.codes.feed-rollback.message":
       "As informações de atualização eram mais antigas do que as que este dispositivo já tem, então foram recusadas.",
     "core.codes.record-rejected.title": "Atualização não verificada",
@@ -7786,12 +7782,12 @@ export const KIT_COPY: Readonly<
     "core.codes.payload-mismatch.title": "Download corrompido",
     "core.codes.payload-mismatch.message":
       "A atualização não foi baixada corretamente, então não foi instalada. Tente novamente.",
-    "core.codes.swap-refused.title": "Não é possível atualizar aqui",
+    "core.codes.swap-refused.title": "Impossível atualizar aqui",
     "core.codes.swap-refused.message":
       "Esta instalação não pode se atualizar sozinha. Atualize-a da mesma forma que você a instalou.",
     "core.codes.swap-failed.title": "Atualização não concluída",
     "core.codes.swap-failed.message":
-      "Não foi possível aplicar a atualização. Ela será tentada novamente na próxima inicialização.",
+      "Não foi possível aplicar a atualização. Uma nova tentativa será feita na próxima inicialização.",
     "core.codes.files-index-invalid.title": "Conteúdo inválido",
     "core.codes.files-index-invalid.message":
       "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez.",
@@ -7885,7 +7881,7 @@ export const KIT_COPY: Readonly<
     "core.codes.plan-insufficient-disk.title": "Espaço insuficiente",
     "core.codes.plan-insufficient-disk.message":
       "Não há espaço livre suficiente para este conteúdo. Libere espaço e tente novamente.",
-    "core.codes.plan-no-strategy.title": "Não é possível instalar o conteúdo",
+    "core.codes.plan-no-strategy.title": "Impossível instalar conteúdo",
     "core.codes.plan-no-strategy.message":
       "Este conteúdo não pode ser instalado neste dispositivo.",
     "core.codes.pack-no-variant.title": "Conteúdo indisponível",
@@ -7903,7 +7899,7 @@ export const KIT_COPY: Readonly<
     "core.codes.pack-not-entitled.title": "Não incluído",
     "core.codes.pack-not-entitled.message":
       "Sua licença não inclui este conteúdo.",
-    "core.codes.pack-state-unreadable.title": "Problema de armazenamento",
+    "core.codes.pack-state-unreadable.title": "Erro de armazenamento",
     "core.codes.pack-state-unreadable.message":
       "Não foi possível ler o conteúdo instalado, então nada novo foi instalado. Reinicie o app.",
     "core.codes.pck-directory-refused.title": "Conteúdo recusado",
@@ -7951,7 +7947,7 @@ export const KIT_COPY: Readonly<
       "Digite uma chave de licença ou entre para continuar.",
     "core.gate.version-too-old.title": "Atualização necessária",
     "core.gate.version-too-old.message":
-      "Esta versão não é mais compatível. Atualize {product} para continuar.",
+      "Esta versão não tem mais suporte. Atualize {product} para continuar.",
     "core.gate.version-too-new.title": "Indisponível nesta licença",
     "core.gate.version-too-new.message":
       "Esta build é mais recente do que sua licença permite.",
@@ -7965,8 +7961,7 @@ export const KIT_COPY: Readonly<
     "core.activation.device-limit.title": "Limite de dispositivos atingido",
     "core.activation.device-limit.message":
       "Esta licença já está em todos os dispositivos permitidos. Substitua um dispositivo para usá-la aqui.",
-    "core.activation.fingerprint-required.title":
-      "Falha na verificação do dispositivo",
+    "core.activation.fingerprint-required.title": "Dispositivo não verificado",
     "core.activation.fingerprint-required.message":
       "Esta licença exige uma impressão digital de hardware, que não pôde ser lida neste dispositivo.",
     "core.activation.hardware-mismatch.title": "Dispositivo alterado",
@@ -7981,8 +7976,7 @@ export const KIT_COPY: Readonly<
     "core.activation.license-expired.title": "Licença expirada",
     "core.activation.license-expired.message":
       "Esta licença expirou. Renove-a para continuar.",
-    "core.activation.attestation-required.title":
-      "Verificação do dispositivo necessária",
+    "core.activation.attestation-required.title": "Verificação necessária",
     "core.activation.attestation-required.message":
       "Esta licença exige um dispositivo verificado. Permita que o app verifique este dispositivo e tente novamente.",
     "core.activation.rate-limited.title": "Tentativas demais",
@@ -8052,7 +8046,7 @@ export const KIT_COPY: Readonly<
     "part.keyField.empty": "Inserisci prima una chiave di licenza.",
     "part.code.label": "Codice di accesso",
     "part.qr.enlarge": "Ingrandisci",
-    "part.qr.scanInstead": "Scansiona con il telefono",
+    "part.qr.scanInstead": "Scansiona invece con il telefono",
     "part.seatMeter.caption": "{used} di {limit} in uso",
     "part.poweredBy": "Con tecnologia Polaris Locker",
     "part.status.ok": "Attiva",
@@ -8154,7 +8148,7 @@ export const KIT_COPY: Readonly<
     "offlineActivation.empty": "Prima carica o incolla un file di attivazione.",
     "deviceLimit.title": "Sostituisci un dispositivo",
     "deviceLimit.heading":
-      "La tua licenza è su {used} di {limit, plural, one {# dispositivo} many {# di dispositivi} other {# dispositivi}}",
+      "La tua licenza è in uso su {used} di {limit, plural, one {# dispositivo} many {# di dispositivi} other {# dispositivi}}",
     "deviceLimit.lede":
       "Per usarla su {formFactor, select, iphone {questo iPhone} ipad {questo iPad} mac {questo Mac} phone {questo telefono} tablet {questo tablet} computer {questo computer} tv {questa TV} other {questo dispositivo}}, sostituiscine uno. Potrai aggiungerlo di nuovo in seguito.",
     "deviceLimit.confirmTitle": "Sostituire {device}?",
@@ -8307,7 +8301,7 @@ export const KIT_COPY: Readonly<
       "Offline · le modifiche verranno sincronizzate quando ti riconnetti",
     "cloudSync.conflict": "Alcune modifiche sono in conflitto.",
     "cloudSync.error": "Impossibile sincronizzare. Riprova più tardi.",
-    "cloudSync.signedOut": "Hai effettuato la disconnessione.",
+    "cloudSync.signedOut": "Sei disconnesso.",
     "cloudSync.signIn": "Accedi per sincronizzare",
     "about.title": "Informazioni su {product}",
     "about.nav": "Informazioni",
@@ -8325,7 +8319,7 @@ export const KIT_COPY: Readonly<
     "signin.methods.title": "Accedi a Polaris Locker",
     "signin.methods.titleApp": "Accedi",
     "signin.methods.ledeApp":
-      "Usa l’email con cui hai fatto l’acquisto oppure un’email di lavoro o di scuola.",
+      "Usa l'email con cui hai fatto l'acquisto oppure un'email di lavoro o di scuola.",
     "signin.email.label": "Email",
     "signin.email.invalid":
       "Inserisci un indirizzo email completo, ad esempio nome@example.com.",
@@ -8343,7 +8337,7 @@ export const KIT_COPY: Readonly<
     "signin.header.context": "{product} · {developer}",
     "signin.header.contextLine": "La tua licenza, i download e i dispositivi",
     "signin.header.codePanel":
-      "Codice · {code} · Controlla che coincida con lo schermo",
+      "Codice · {code} · Controlla che corrisponda a quello sullo schermo",
     "signin.footer":
       "Polaris Locker gestisce il tuo accesso a {app}. {developer} non vede mai i tuoi codici o le tue passkey.",
     "signin.off.product":
@@ -8356,7 +8350,7 @@ export const KIT_COPY: Readonly<
     "signin.retry": "Riprova",
     "signin.code.title": "Controlla la tua email",
     "signin.code.sent":
-      "Abbiamo inviato un codice e un link di accesso a {email}. Entrambi valgono 10 minuti.",
+      "Abbiamo inviato un codice e un link di accesso a {email}. Entrambi sono validi per 10 minuti.",
     "signin.code.link":
       "Oppure apri il link nell'email. Tieni aperta questa scheda.",
     "signin.code.resend": "Invia un nuovo codice",
@@ -8470,7 +8464,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.gone":
       "Quel dispositivo è già stato rimosso. Scegli di nuovo.",
     "signin.replace.rateLimited":
-      "Troppe modifiche ai dispositivi. Riprova tra {seconds, plural, one {# secondo} many {# di secondi} other {# secondi}}.",
+      "Troppi cambi di dispositivo. Riprova tra {seconds, plural, one {# secondo} many {# di secondi} other {# secondi}}.",
     "signin.replace.raced":
       "Qualcun altro ha sostituito prima quel dispositivo. Scegli di nuovo.",
     "signin.replace.racedAfterFree":
@@ -8612,7 +8606,7 @@ export const KIT_COPY: Readonly<
       "Il tuo accesso è terminato. Accedi di nuovo per continuare a usare {product}.",
     "signin.provider.manage": "Gestisci i metodi di accesso in Polaris Locker",
     "signin.profile.changePicture": "Cambia immagine",
-    "signin.mail.replaced.subject": "{product} è uscito su {device}",
+    "signin.mail.replaced.subject": "{product} è stato disconnesso su {device}",
     "signin.mail.replaced.body":
       "{device} è stato sostituito da {newDevice} quando hai effettuato l'accesso a {product} il {date}. Potrà accedere di nuovo in seguito se c'è spazio per un altro dispositivo. Se non sei stato tu, apri Polaris Locker e controlla i tuoi dispositivi.",
     "signin.mail.newDevice.subject":
@@ -8640,7 +8634,7 @@ export const KIT_COPY: Readonly<
       "Aggiungi una chiave di licenza (richiesta, o da stdin)",
     "cli.verb.enroll": "Ottieni la licenza gratuita, se {product} ne offre una",
     "cli.verb.deactivate":
-      "Togli la licenza da questo dispositivo e liberane il posto",
+      "Togli la licenza da questo dispositivo e fai spazio per un altro",
     "cli.verb.status": "Licenza, dispositivi e tempo offline",
     "cli.verb.offlineRequest":
       "Mostra il codice di richiesta per l'attivazione offline",
@@ -8651,7 +8645,8 @@ export const KIT_COPY: Readonly<
     "cli.verb.devicesList": "Elenca i dispositivi che usano la tua licenza",
     "cli.verb.devicesRename":
       "Rinomina un dispositivo (senza nome, toglie il nome)",
-    "cli.verb.devicesRemove": "Rimuovi un dispositivo e liberane il posto",
+    "cli.verb.devicesRemove":
+      "Rimuovi un dispositivo e fai spazio per un altro",
     "cli.verb.configGet": "Mostra un'impostazione e l'origine del suo valore",
     "cli.verb.configList": "Elenca le impostazioni che puoi vedere",
     "cli.verb.configSet": "Modifica un'impostazione su questo dispositivo",
@@ -8735,7 +8730,7 @@ export const KIT_COPY: Readonly<
     "cli.update.timeLeft": "{time} rimanenti",
     "cli.update.ready": "{version} è pronta · {size}",
     "cli.update.readyNoSize": "{version} è pronta",
-    "cli.update.restart": "Riavvia per completare l’aggiornamento.",
+    "cli.update.restart": "Riavvia per completare l'aggiornamento.",
     "cli.update.nothingInstalled": "Non è stato installato nulla.",
     "cli.deviceLimit.body":
       "Sostituisci un dispositivo nel browser, poi riprova qui.",
@@ -8747,12 +8742,12 @@ export const KIT_COPY: Readonly<
     "cli.update.install": "Installa",
     "cli.changelog.fix":
       "Controlla la connessione ed esegui di nuovo {command}.",
-    "cli.import.fix": "Chiedi un nuovo file a chi te l’ha inviato.",
-    "cli.identityOff.notice": "{product} non offre l’accesso con un account.",
+    "cli.import.fix": "Chiedi un nuovo file a chi te l'ha inviato.",
+    "cli.identityOff.notice": "{product} non offre l'accesso con un account.",
     "cli.identityOff.fix": "Esegui {command} con la tua chiave di licenza.",
     "cli.login.attach":
       "Usare la chiave di licenza di questo dispositivo sul tuo account? (y/N)",
-    "cli.keys.confirm": "y sì · n no · Esc annulla l’accesso",
+    "cli.keys.confirm": "y sì · n no · Esc annulla l'accesso",
     "cli.signin.signedInName": "Accesso effettuato come {name}",
     "update.verifying": "Verifica in corso…",
     "cli.update.readyRestart": "{version} è pronta · Riavvia per completare",
@@ -8784,7 +8779,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.lede":
       "Su un telefono o un computer dove hai già effettuato l'accesso, inquadra il codice, oppure apri Account → Approva un nuovo dispositivo e digitalo.",
     "signin.approve.other": "Usa un altro modo per accedere",
-    "signin.approve.minuteLeft": "Resta un minuto per questo codice.",
+    "signin.approve.minuteLeft": "Questo codice scade tra un minuto.",
     "signin.approve.starting": "Recupero del codice",
     "signin.approve.disabled":
       "Questo account non può accedere. Usa un altro modo per accedere.",
@@ -8811,7 +8806,7 @@ export const KIT_COPY: Readonly<
       "Questo browser non può usare la tua passkey qui. Usa un altro modo.",
     "signin.passkey.failed":
       "La tua passkey non ha funzionato. Riprova o usa un altro modo.",
-    "signin.gate.stripNoIdentity": "Accesso eseguito con {provider}",
+    "signin.gate.stripNoIdentity": "Accesso effettuato con {provider}",
     "signin.gate.termsTitle": "Ancora un passaggio",
     "signin.gate.name": "Nome visualizzato",
     "signin.gate.useEmail": "Usa {email}",
@@ -8842,7 +8837,7 @@ export const KIT_COPY: Readonly<
       "La tua chiave è pronta. Accedi o crea un account e {product} entra nella tua libreria.",
     "signin.key.withoutKey": "Accedi senza la chiave",
     "signin.key.onrampLede":
-      "Incolla la chiave dalla email della ricevuta. Poi accedi e entra nella tua libreria.",
+      "Incolla la chiave dall'email della ricevuta. Poi accedi e il prodotto entrerà nella tua libreria.",
     "signin.code.expiredRestart":
       "Questo accesso è scaduto. Continua per ricevere un nuovo codice.",
     "signin.sso.expiredRestart":
@@ -8863,13 +8858,13 @@ export const KIT_COPY: Readonly<
       "Troppi tentativi. Attendi un minuto, poi riprova.",
     "signin.gate.termsLinkProduct": "termini di {product}",
     "signin.gate.termsLinkPlatform":
-      "i Termini e l’Informativa sulla privacy di Polaris Locker",
+      "i Termini e l'Informativa sulla privacy di Polaris Locker",
     "signin.approve.expiredCode":
       "Quel codice è scaduto. Chiedine uno nuovo sull'altro dispositivo.",
     "signin.approve.notFound":
       "Nessun accesso è in attesa di quel codice. Controllalo sull'altro dispositivo.",
     "signin.email.placeholder": "you@example.com",
-    "signin.sso.name": "accesso singolo",
+    "signin.sso.name": "single sign-on",
     "signin.off.developer": "il suo sviluppatore",
     "signin.code.changeEmail": "Cambia email",
     "signin.sso.wait": "Attendi {time}",
@@ -8884,7 +8879,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.pickDevice": "Scegli un dispositivo da sostituire.",
     "signin.choice.replaceAndSignIn": "Sostituisci e accedi",
     "signin.choice.replaceSafety":
-      "Il dispositivo scelto esce da {app}. Potrà accedere di nuovo più tardi se c'è spazio. Ti avviseremo via e-mail.",
+      "Il dispositivo scelto esce da {app}. Potrà accedere di nuovo più tardi se c'è spazio. Ti invieremo un'email al riguardo.",
     "signin.choice.replacedTitle": "Dispositivo sostituito",
     "signin.choice.replacedBody":
       "{device} è uscito da {app}. {thisDevice} ha effettuato l'accesso.",
@@ -8893,20 +8888,21 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "su {device}",
     "signin.thisBrowser": "questo browser",
     "signin.consent.deny": "Non consentire",
-    "signin.consent.cloudSync": "Cloud Sync",
+    "signin.consent.cloudSync": "Sincronizzazione cloud",
     "signin.consent.newLicense":
       "Nuova: licenza {tier}, creata quando continui",
-    "signin.key.upgradeTitle": "Tieni {product} in un account",
+    "signin.key.upgradeTitle": "Conserva {product} in un account",
     "signin.key.upgradeLede":
-      "In un account puoi recuperarla e spostarla su un nuovo dispositivo da solo.",
+      "In un account puoi recuperarlo e spostarlo su un nuovo dispositivo da solo.",
     "signin.key.createAccount": "Crea account",
     "signin.key.signInInstead": "Accedi invece",
-    "signin.key.noEntriesTitle": "Crea un account per tenere {product}",
+    "signin.key.noEntriesTitle": "Crea un account per conservare {product}",
     "signin.key.noEntriesKeeps":
-      "{product} continua a funzionare sui dispositivi in cui è già. Solo inserire di nuovo la chiave richiede un account.",
+      "{product} continua a funzionare sui dispositivi su cui è già attivo. Serve un account solo per inserire di nuovo la chiave.",
     "signin.key.meter": "{used} di {limit} inserimenti della chiave usati",
     "signin.key.keyWorks": "La chiave funziona",
-    "signin.footerNoDeveloper": "Polaris Locker ti fa accedere a {app}.",
+    "signin.footerNoDeveloper":
+      "Polaris Locker gestisce il tuo accesso a {app}.",
     "signin.replace.rateLimitedMinutes":
       "Troppi cambi di dispositivo. Riprova tra {minutes, plural, one {# minuto} many {# di minuti} other {# minuti}}.",
     "signin.request.tooMany": "Troppi tentativi. Attendi un momento e riprova.",
@@ -8931,10 +8927,10 @@ export const KIT_COPY: Readonly<
     "signin.gate.passkeySkip": "Salta",
     "signin.gate.pictureYours": "Il tuo file",
     "signin.gate.uploadFailed":
-      "L’immagine non è stata salvata. Aggiungine una in Account.",
+      "L'immagine non è stata salvata. Aggiungine una in Account.",
     "signin.gate.resent": "Abbiamo inviato un nuovo codice a {email}.",
     "signin.gate.joinOtherLede":
-      "{email} appartiene già a un account Polaris Locker. Usa un’altra email o accedi prima a quell’account.",
+      "{email} appartiene già a un account Polaris Locker. Usa un'altra email o accedi prima a quell'account.",
     "signin.gate.nameRequired": "Inserisci un nome visualizzato.",
     "signin.gate.termsLede": "Accetta i termini di {app} per continuare.",
     "signin.code.incomplete": "Inserisci tutte le 6 cifre.",
@@ -8952,18 +8948,20 @@ export const KIT_COPY: Readonly<
       "{count, plural, one {# prodotto} many {# di prodotti} other {# prodotti}}",
     "signin.join.result":
       "Una libreria: {count, plural, one {# prodotto} many {# di prodotti} other {# prodotti}}. {email} resta l'email principale.",
-    "signin.join.done": "Uniti. Puoi annullare per 72 ore.",
+    "signin.join.done": "Account uniti. Puoi annullare l'unione entro 72 ore.",
     "signin.join.undo": "Annulla unione",
     "signin.join.undone": "Unione annullata.",
-    "signin.join.undoable": "Unito {email}. Annulla entro {date}.",
-    "signin.join.expired": "Il collegamento ha richiesto troppo. Ricomincia.",
+    "signin.join.undoable":
+      "Account {email} unito. Puoi annullare entro il {date}.",
+    "signin.join.expired":
+      "Il collegamento ha richiesto troppo tempo. Ricomincia.",
     "signin.join.signInOther": "Prima accedi all'altro account.",
     "signin.join.reasonStepUp":
       "Accedi di nuovo a entrambi gli account, poi uniscili.",
     "signin.join.reasonPending":
       "Un account è stato unito nelle ultime 72 ore. Riprova dopo.",
     "signin.join.reasonUnavailable":
-      "Annulla prima l'eliminazione programmata, poi unisci.",
+      "Annulla prima l'eliminazione programmata, poi unisci gli account.",
     "signin.join.sameAccount":
       "È l'account da cui sei partito. Accedi all'altro account.",
     "signin.join.failed": "Unione non riuscita. Riprova.",
@@ -8972,24 +8970,26 @@ export const KIT_COPY: Readonly<
     "signin.approve.codeShort": "Inserisci tutte le 8 lettere del codice.",
     "signin.join.stepUpVerb": "collegare gli account",
     "signin.join.otherTitle": "Accedi al tuo altro account",
-    "signin.join.otherLede": "Usa un modo qualsiasi. Tornerai qui per unirli.",
+    "signin.join.otherLede":
+      "Usa un modo qualsiasi per accedere. Tornerai qui per unirli.",
     "signin.join.signedNow": "Connesso ora",
     "signin.join.yourOther": "Il tuo altro account",
     "signin.join.methodsLine": "Accede con {method}",
     "signin.join.provenBy": "Verificato con {method} {when}",
     "signin.join.keepsWorking":
-      "Tutti gli accessi di entrambi continuano a funzionare. Puoi annullare per 72 ore.",
+      "Tutti i metodi di accesso di entrambi gli account continuano a funzionare. Puoi annullare entro 72 ore.",
     "signin.join.doneUntil": "Uniti. Puoi annullare entro il {date}.",
     "signin.join.again": "Accedi di nuovo a {email}",
     "signin.join.startAgain": "Ricomincia",
     "signin.join.noUndo": "Questa unione non si può più annullare.",
     "signin.join.methodsLink": "Metodi di accesso",
     "signin.join.undoFailed": "Impossibile annullare l'unione. Riprova.",
-    "signin.join.reasonStaleOne": "Accedi di nuovo a {email}, poi unisci.",
-    "signin.join.staleMark": "Accesso di oltre 5 minuti fa",
+    "signin.join.reasonStaleOne":
+      "Accedi di nuovo a {email}, poi unisci gli account.",
+    "signin.join.staleMark": "Accesso effettuato più di 5 minuti fa",
     "signin.join.stillSignedIn": "Sei ancora connesso come {email}.",
     "signin.join.undoConfirm":
-      "Annullare l'unione con {email}? Puoi fino al {date}.",
+      "Annullare l'unione con {email}? Puoi farlo fino al {date}.",
     "signin.approve.tooMany": "Troppi tentativi. Aspetta un minuto e riprova.",
     "signin.key.enterKey": "Inserisci la tua chiave di licenza.",
     "signin.code.missing": "Non hai ricevuto il codice?",
@@ -9121,14 +9121,14 @@ export const KIT_COPY: Readonly<
       "L'app ha chiesto un tipo di accesso che non supportiamo. Contatta il suo sviluppatore.",
     "core.codes.invalid_scope.title": "Accesso non disponibile",
     "core.codes.invalid_scope.message":
-      "L'app ha chiesto un accesso che questo accesso non offre. Contatta il suo sviluppatore.",
+      "L'app ha chiesto autorizzazioni che questo accesso non offre. Contatta il suo sviluppatore.",
     "core.codes.redirect_uri_mismatch.title":
       "L'accesso non può tornare all'app",
     "core.codes.redirect_uri_mismatch.message":
       "L'accesso di questa app non è configurato correttamente, quindi si è fermato qui per proteggere il tuo account. Avvisa il suo sviluppatore.",
     "core.codes.license_choice_required.title": "Scegli una licenza",
     "core.codes.license_choice_required.message":
-      "Scegli quale licenza usa questo dispositivo, poi continua.",
+      "Scegli quale licenza deve usare questo dispositivo, poi continua.",
     "core.codes.auth_method_disabled.title":
       "Metodo di accesso non disponibile",
     "core.codes.auth_method_disabled.message":
@@ -9144,16 +9144,15 @@ export const KIT_COPY: Readonly<
       "Questo accesso è scaduto. Ricomincia.",
     "core.codes.invalid_code.title": "Codice errato",
     "core.codes.invalid_code.message":
-      "Quel codice non ha funzionato. Controlla l'email e digitalo di nuovo.",
+      "Quel codice non è corretto. Controlla l'email e riprova.",
     "core.codes.code_expired.title": "Codice scaduto",
     "core.codes.code_expired.message":
       "Quel codice è scaduto. Richiedine uno nuovo.",
     "core.codes.email_in_use.title": "Email già in uso",
     "core.codes.email_in_use.message":
       "Un altro account Polaris Locker usa già questa email. Unisci questo accesso a quell'account oppure usa un'altra email.",
-    "core.codes.terms_required.title": "Condizioni non accettate",
-    "core.codes.terms_required.message":
-      "Accetta le condizioni per continuare.",
+    "core.codes.terms_required.title": "Termini non accettati",
+    "core.codes.terms_required.message": "Accetta i termini per continuare.",
     "core.codes.license_owned.title": "Licenza in un altro account",
     "core.codes.license_owned.message":
       "Questa licenza di {product} è già in un altro account Polaris Locker. Una licenza non si sposta mai tramite la sua chiave.",
@@ -9260,7 +9259,7 @@ export const KIT_COPY: Readonly<
     "core.codes.unknown.message": "Si è verificato un problema. Riprova.",
     "core.codes.release-refused.title": "Non incluso",
     "core.codes.release-refused.message":
-      "La tua licenza non include questa release.",
+      "La tua licenza non include questa versione.",
     "core.codes.bundle-rejected.title": "File di attivazione non valido",
     "core.codes.bundle-rejected.message":
       "Il file di attivazione è stato rifiutato.",
@@ -9317,10 +9316,10 @@ export const KIT_COPY: Readonly<
       "La gestione delle licenze dell'app non è configurata correttamente. Contatta lo sviluppatore.",
     "core.codes.invalid-argument.title": "Richiesta non accettata",
     "core.codes.invalid-argument.message":
-      "L'app ha inviato una richiesta che il bridge delle licenze non ha potuto leggere. Contatta lo sviluppatore.",
+      "L'app ha inviato una richiesta che il modulo di licenza non ha potuto leggere. Contatta lo sviluppatore.",
     "core.codes.invoke-not-allowed.title": "Richiesta non consentita",
     "core.codes.invoke-not-allowed.message":
-      "L'app ha chiesto qualcosa che il suo bridge delle licenze non offre. Contatta lo sviluppatore.",
+      "L'app ha chiesto qualcosa che il suo modulo di licenza non offre. Contatta lo sviluppatore.",
     "core.codes.sender-refused.title": "Finestra non consentita",
     "core.codes.sender-refused.message":
       "Questa finestra non può usare le licenze dell'app. Contatta lo sviluppatore.",
@@ -9524,7 +9523,7 @@ export const KIT_COPY: Readonly<
       "Accedi al tuo account Polaris Locker nell'app, poi riprova.",
     "core.gate.ok.title": "Licenza attiva",
     "core.gate.ok.message": "La tua licenza è attiva.",
-    "core.gate.grace.title": "Periodo di tolleranza offline",
+    "core.gate.grace.title": "Tolleranza offline",
     "core.gate.grace.message":
       "Impossibile raggiungere il servizio di licenze. Puoi continuare a usare l'app fino al termine del periodo di tolleranza.",
     "core.gate.expired.title": "Licenza scaduta",
@@ -10018,23 +10017,23 @@ export const KIT_COPY: Readonly<
     "signin.choice.picker.store": "{tier} · {store}",
     "signin.choice.tag.current": "このデバイスで使用中",
     "signin.choice.tag.new": "新規",
-    "signin.choice.tag.full": "すべての端末が使用中",
+    "signin.choice.tag.full": "すべてのデバイスが使用中",
     "signin.choice.keep": "このデバイスのライセンスを使い続ける",
     "signin.choice.keepMeta": "{product}は現在のまま動作し続けます。",
     "signin.choice.create": "新しい無料ライセンスを作成",
     "signin.choice.createMeta": "別のライセンス · 続行すると作成されます",
     "signin.choice.allFull":
-      "お持ちのライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。",
+      "お持ちのライセンスはすべて、デバイス数が上限に達しています。ここで使うにはデバイスを置き換えてください。",
     "signin.choice.allFullCreate":
-      "お持ちのライセンスはすべてのデバイス枠が使用中です。デバイスを置き換えるか、新しい無料ライセンスを作成してください。",
+      "お持ちのライセンスはすべて、デバイス数が上限に達しています。デバイスを置き換えるか、新しい無料ライセンスを作成してください。",
     "signin.choice.noneReplaceable":
-      "これらのライセンスのデバイスは{developer}が管理しています。{developer}に枠を空けてもらうか、別のライセンスを使用してください。",
+      "これらのライセンスのデバイスは{developer}が管理しています。{developer}にデバイスを1台解放してもらうか、別のライセンスを使用してください。",
     "signin.choice.combined":
       "{product}のその他のアイテムも引き続き適用されます。",
     "signin.choice.portalOff":
       "このライセンスのデバイスは{developer}が管理しています。",
     "signin.choice.keyInstead": "代わりにライセンスキーを使う",
-    "signin.choice.freeDevice": "デバイスの枠を空ける",
+    "signin.choice.freeDevice": "デバイスを解放",
     "signin.choice.continue": "このライセンスを使って続ける",
     "signin.choice.raced":
       "そのデバイスはたった今置き換えられました。もう一度選択してください。",
@@ -10080,17 +10079,17 @@ export const KIT_COPY: Readonly<
     "signin.consent.alsoGets": "{app}は次の情報も取得します",
     "signin.consent.profile": "プロフィールとメールアドレス",
     "signin.consent.pairwise":
-      "アプリにはあなた専用のIDが渡され、あなたのほかの製品やサインイン方法が知られることはありません。",
+      "アプリにはこのアプリ専用のIDが渡され、あなたのほかの製品やサインイン方法が知られることはありません。",
     "signin.notYou": "別のユーザーですか？",
     "signin.cancel": "キャンセル",
     "signin.key.addTitle": "{product}をアカウントに追加",
     "signin.key.addAndUse": "追加してこのデバイスで使う",
-    "signin.key.keep": "{product}をアカウントで管理",
+    "signin.key.keep": "{product}をアカウントに保管",
     "signin.key.entries":
       "キー入力の残り：{limit}回中{left}回 · 今回は{n}回目です",
     "signin.key.entriesLeftShort": "{left, plural, other {キー入力の残り#回}}",
     "signin.key.noEntries":
-      "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりに{product}がサインインします。",
+      "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりにサインインで{product}を使えます。",
     "signin.key.skip": "今はスキップ",
     "signin.key.ownedSignIn": "そのアカウントにサインイン",
     "signin.key.differentKey": "別のキーを使う",
@@ -10099,7 +10098,7 @@ export const KIT_COPY: Readonly<
     "signin.return.signedIn": "{app}にサインインしました",
     "signin.return.button": "{app}に戻る",
     "signin.return.timer": "{s}秒後に自動的に戻ります",
-    "signin.return.stay": "このページにとどまる",
+    "signin.return.stay": "ここにとどまる",
     "signin.done.start": "{product}を使い始める",
     "signin.device.title": "{device}でのサインインを完了",
     "signin.device.lede":
@@ -10147,7 +10146,8 @@ export const KIT_COPY: Readonly<
     "signin.return.cancelled":
       "{app}でサインインがキャンセルされました。{app}からやり直してください。",
     "signin.return.library": "ライブラリを開く",
-    "signin.choice.freed": "このライセンスのデバイス枠が1つ空きました。",
+    "signin.choice.freed":
+      "このライセンスで、もう1台デバイスを使えるようになりました。",
     "signin.replace.opensBrowser": "ブラウザでPolaris Lockerが開きます",
     "signin.cli.opening": "ブラウザを開いています…",
     "signin.cli.ifNotOpened": "開かない場合は{url}にアクセスしてください",
@@ -10209,7 +10209,7 @@ export const KIT_COPY: Readonly<
     "signin.mail.replaced.subject":
       "{device}で{product}がサインアウトされました",
     "signin.mail.replaced.body":
-      "{date}に{product}にサインインした際、{device}は{newDevice}に置き換えられました。別のデバイスを登録できる空きがあれば、後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。",
+      "{date}に{product}にサインインした際、{device}は{newDevice}に置き換えられました。デバイスを追加できる空きができれば、{device}は後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。",
     "signin.mail.newDevice.subject":
       "Polaris Lockerアカウントに新しいデバイスがサインインしました",
     "signin.mail.newDevice.body":
@@ -10233,7 +10233,8 @@ export const KIT_COPY: Readonly<
     "cli.gate.notIncluded": "お使いのライセンスには{command}が含まれていません",
     "cli.verb.activate": "ライセンスキーを追加（入力、または stdin から）",
     "cli.verb.enroll": "無料ライセンスを取得（{product}が提供している場合）",
-    "cli.verb.deactivate": "このデバイスでのライセンス使用を停止し、枠を解放",
+    "cli.verb.deactivate":
+      "このデバイスでのライセンスの使用を停止し、別のデバイスで使えるようにする",
     "cli.verb.status": "ライセンス、デバイス、オフライン時間",
     "cli.verb.offlineRequest":
       "オフラインアクティベーション用のリクエストコードを出力",
@@ -10244,7 +10245,8 @@ export const KIT_COPY: Readonly<
     "cli.verb.register": "ライセンスキーなしでこのデバイスを登録",
     "cli.verb.devicesList": "ライセンスを使用中のデバイスを一覧表示",
     "cli.verb.devicesRename": "デバイスの名前を変更（名前を省略すると消去）",
-    "cli.verb.devicesRemove": "デバイスを削除して枠を解放",
+    "cli.verb.devicesRemove":
+      "デバイスを削除し、別のデバイスを追加できるようにする",
     "cli.verb.configGet": "1つの設定とその値の取得元を表示",
     "cli.verb.configList": "表示できる設定を一覧表示",
     "cli.verb.configSet": "このデバイスの設定を変更",
@@ -10285,7 +10287,7 @@ export const KIT_COPY: Readonly<
     "cli.activate.noKey":
       "ライセンスキーがありません。ターミナルで{command}を実行するか、キーをパイプで渡してください。",
     "cli.deviceLimit.again":
-      "デバイスの枠を空けてから、もう一度{command}を実行してください。",
+      "デバイスを解放してから、もう一度{command}を実行してください。",
     "cli.status.license": "ライセンス",
     "cli.status.offline": "オフライン",
     "cli.status.offlineUntil": "{date}まで",
@@ -10477,7 +10479,7 @@ export const KIT_COPY: Readonly<
     "signin.key.empty": "続行するにはライセンスキーを貼り付けてください。",
     "signin.provider.connectGroup": "または別のアカウントを接続",
     "signin.rateLimitedFew":
-      "コードが多すぎます。数分後にもう一度お試しください。",
+      "コードのリクエストが多すぎます。数分後にもう一度お試しください。",
     "signin.code.emailInUse":
       "別の Polaris Locker アカウントがこのメールアドレスを使用しています。以前の方法でサインインしてください。",
     "signin.choice.pickOne": "続けるにはライセンスを選んでください。",
@@ -10495,7 +10497,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.deny": "許可しない",
     "signin.consent.cloudSync": "クラウド同期",
     "signin.consent.newLicense":
-      "新規: {tier} ライセンス。続けると作成されます",
+      "新規：{tier}ライセンス（続けると作成されます）",
     "signin.key.upgradeTitle": "{product} をアカウントに保管",
     "signin.key.upgradeLede":
       "アカウントに保管すると、再取得したり、新しいデバイスへ自分で移したりできます。",
@@ -10506,7 +10508,8 @@ export const KIT_COPY: Readonly<
       "{product} は、すでに入っているデバイスでそのまま使えます。キーをもう一度入力する場合だけアカウントが必要です。",
     "signin.key.meter": "キー入力 {limit} 回のうち {used} 回を使用",
     "signin.key.keyWorks": "キーは有効です",
-    "signin.footerNoDeveloper": "Polaris Locker が {app} にサインインします。",
+    "signin.footerNoDeveloper":
+      "Polaris Lockerが{app}へのサインインを行います。",
     "signin.replace.rateLimitedMinutes":
       "デバイスの変更が多すぎます。{minutes, plural, other {# 分}}後にもう一度お試しください。",
     "signin.request.tooMany":
@@ -10535,7 +10538,7 @@ export const KIT_COPY: Readonly<
       "画像を保存できませんでした。アカウントから追加してください。",
     "signin.gate.resent": "新しいコードを{email}に送信しました。",
     "signin.gate.joinOtherLede":
-      "{email}はすでにPolaris Lockerのアカウントで使われています。別のメールを使うか、先にそのアカウントでログインしてください。",
+      "{email}はすでにPolaris Lockerのアカウントで使われています。別のメールアドレスを使うか、先にそのアカウントにサインインしてください。",
     "signin.gate.nameRequired": "表示名を入力してください。",
     "signin.gate.termsLede": "続けるには{app}の規約に同意してください。",
     "signin.code.incomplete": "6桁すべてを入力してください。",
@@ -10595,9 +10598,9 @@ export const KIT_COPY: Readonly<
     "signin.join.undoConfirm":
       "{email} とのまとめを元に戻しますか？{date}まで可能です。",
     "signin.approve.tooMany":
-      "試行が多すぎます。1分待ってからもう一度お試しください。",
+      "試行回数が多すぎます。1分待ってからもう一度お試しください。",
     "signin.key.enterKey": "ライセンスキーを入力してください。",
-    "signin.code.missing": "コードが届きませんか?",
+    "signin.code.missing": "コードが届きませんか？",
     "core.fallback.title": "問題が発生しました",
     "core.fallback.message":
       "問題が発生しました（{code}）。もう一度お試しください。",
@@ -10648,7 +10651,7 @@ export const KIT_COPY: Readonly<
       "現在、サービスはドキュメントに署名できません。数分後にもう一度お試しください。",
     "core.codes.device_limit.title": "デバイスの上限に達しました",
     "core.codes.device_limit.message":
-      "このライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。",
+      "このライセンスは、すでにデバイス数の上限に達しています。ここで使うにはデバイスを置き換えてください。",
     "core.codes.key_entry_limit.title": "キーの入力回数が残っていません",
     "core.codes.key_entry_limit.message":
       "このキーは入力回数が残っていません。アカウントに追加して、代わりにサインインしてください。",
@@ -10746,10 +10749,10 @@ export const KIT_COPY: Readonly<
       "このサインインは期限切れです。最初からやり直してください。",
     "core.codes.invalid_code.title": "コードが正しくありません",
     "core.codes.invalid_code.message":
-      "そのコードは使用できませんでした。メールを確認して、もう一度入力してください。",
+      "コードが正しくありません。メールを確認して、もう一度入力してください。",
     "core.codes.code_expired.title": "コードの有効期限切れ",
     "core.codes.code_expired.message":
-      "そのコードは有効期限が切れています。新しいコードを送信してください。",
+      "そのコードは有効期限が切れています。新しいコードをリクエストしてください。",
     "core.codes.email_in_use.title": "メールアドレスは使用中です",
     "core.codes.email_in_use.message":
       "別のPolaris Lockerアカウントがすでにこのメールアドレスを使用しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。",
@@ -10779,7 +10782,7 @@ export const KIT_COPY: Readonly<
       "セキュリティのため、続けるにはもう一度サインインしてください。",
     "core.codes.not_eligible.title": "オファーを利用できません",
     "core.codes.not_eligible.message":
-      "このオファーはお使いのアカウントでは利用できなくなりました。更新して、もう一度お試しください。",
+      "このオファーはお使いのアカウントでは利用できなくなりました。ページを再読み込みして、もう一度お試しください。",
     "core.codes.not_removable.title": "削除できません",
     "core.codes.not_removable.message":
       "このライセンスはライセンスキーで追加し直せないため、ライブラリに残ります。",
@@ -10853,7 +10856,7 @@ export const KIT_COPY: Readonly<
       "Polaris Lockerに接続できません。接続を確認して、もう一度お試しください。",
     "core.codes.refresh-failed.title": "更新できませんでした",
     "core.codes.refresh-failed.message":
-      "ライセンスと設定を更新できませんでした。接続を確認して、もう一度お試しください。",
+      "ライセンスと設定を最新の状態にできませんでした。接続を確認して、もう一度お試しください。",
     "core.codes.sync-failed.title": "ライセンスを確認できませんでした",
     "core.codes.sync-failed.message":
       "ライセンスを確認できなかったため、アプリを起動できません。接続を確認して、もう一度お試しください。",
@@ -11127,9 +11130,9 @@ export const KIT_COPY: Readonly<
     "core.codes.license_invalid.title": "ライセンスを受け付けられません",
     "core.codes.license_invalid.message":
       "ライセンスを確認できませんでした。アプリを再接続してから、もう一度お試しください。",
-    "core.codes.license_stale.title": "ライセンスの更新が必要です",
+    "core.codes.license_stale.title": "ライセンスの再確認が必要です",
     "core.codes.license_stale.message":
-      "アプリがライセンスを更新できるようにインターネットに接続してから、もう一度お試しください。",
+      "アプリがライセンスを最新の状態にできるよう、インターネットに接続してから、もう一度お試しください。",
     "core.codes.sign_in_required.title": "サインインが必要です",
     "core.codes.sign_in_required.message":
       "アプリでPolaris Lockerアカウントにサインインしてから、もう一度お試しください。",
@@ -11164,7 +11167,7 @@ export const KIT_COPY: Readonly<
       "このデバイスでライセンスが有効になりました。",
     "core.activation.device-limit.title": "デバイスの上限に達しました",
     "core.activation.device-limit.message":
-      "このライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。",
+      "このライセンスは、すでにデバイス数の上限に達しています。ここで使うにはデバイスを置き換えてください。",
     "core.activation.fingerprint-required.title":
       "デバイスの確認に失敗しました",
     "core.activation.fingerprint-required.message":
@@ -11321,12 +11324,12 @@ export const KIT_COPY: Readonly<
     "signIn.noMethods":
       "{product}에서 사용할 수 있는 로그인 방법이 없어요. 대신 라이선스 키를 사용하세요.",
     "signIn.methodError":
-      "{method} 로그인을 완료하지 못했어요. 다시 시도해 주세요.",
+      "{method} 로그인을 완료하지 못했어요. 다시 시도하세요.",
     "signInHandoff.starting": "로그인 코드를 받는 중…",
     "signInHandoff.scan":
       "휴대폰으로 코드를 스캔하거나 {url}에 접속해 이 코드를 입력하세요.",
     "signInHandoff.scanTv":
-      "휴대전화로 QR 코드를 스캔하거나, 이 주소로 이동해 아래 코드를 입력하세요.",
+      "휴대폰으로 QR 코드를 스캔하거나, 이 주소로 이동해 아래 코드를 입력하세요.",
     "signInHandoff.linkCopied": "링크 복사됨",
     "signInHandoff.confirm":
       "로그인 페이지에서 “Sign in on {device}”를 선택해 완료하세요.",
@@ -11367,7 +11370,7 @@ export const KIT_COPY: Readonly<
     "deviceLimit.openBrowser": "브라우저에서 열기",
     "deviceLimit.scan": "코드를 스캔해 휴대폰에서 기기를 교체하세요.",
     "deviceLimit.noManage":
-      "다른 기기에서 {product}에서 로그아웃한 다음 다시 시도하세요.",
+      "다른 기기의 {product}에서 로그아웃한 다음 다시 시도하세요.",
     "devices.title": "내 기기",
     "devices.lede": "이 라이선스를 사용하는 기기예요.",
     "devices.meta": "{platform} · 마지막 사용 {when}",
@@ -11490,7 +11493,7 @@ export const KIT_COPY: Readonly<
     "settings.off": "끔",
     "paywall.title": "{product} {tier}에서 더 많은 기능을 누리세요",
     "paywall.includes": "{tier} 포함 기능",
-    "paywall.upgrade": "{tier} 등급으로 업그레이드",
+    "paywall.upgrade": "{tier}(으)로 업그레이드",
     "paywall.redeem": "코드 사용",
     "paywall.restore": "구매 항목 복원",
     "paywall.purchasing": "구매를 완료하는 중…",
@@ -11630,7 +11633,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.combined": "다른 {product} 항목은 계속 적용돼요.",
     "signin.choice.portalOff": "이 라이선스의 기기는 {developer}에서 관리해요.",
     "signin.choice.keyInstead": "대신 라이선스 키 사용",
-    "signin.choice.freeDevice": "기기 자리 비우기",
+    "signin.choice.freeDevice": "기기 해제",
     "signin.choice.continue": "이 라이선스로 계속",
     "signin.choice.raced": "그 기기는 방금 교체됐어요. 다시 선택하세요.",
     "signin.choice.codeExpired":
@@ -11738,7 +11741,8 @@ export const KIT_COPY: Readonly<
     "signin.return.cancelled":
       "{app}에서 로그인이 취소됐어요. {app}에서 다시 시작하세요.",
     "signin.return.library": "내 라이브러리 열기",
-    "signin.choice.freed": "이제 이 라이선스에 빈 기기 자리가 있어요.",
+    "signin.choice.freed":
+      "이제 이 라이선스로 기기를 하나 더 사용할 수 있어요.",
     "signin.replace.opensBrowser": "브라우저에서 Polaris Locker가 열려요",
     "signin.cli.opening": "브라우저를 여는 중…",
     "signin.cli.ifNotOpened": "열리지 않았다면 {url}에 접속하세요",
@@ -11774,7 +11778,7 @@ export const KIT_COPY: Readonly<
     "signin.console.notConfigured": "관리자 로그인이 설정되지 않았어요",
     "signin.expired.title": "코드 또는 링크가 만료됐어요",
     "signin.expired.body": "코드와 링크는 10분 동안 한 번만 사용할 수 있어요.",
-    "signin.expired.sendTo": "새 코드를 {email}(으)로 보냅니다.",
+    "signin.expired.sendTo": "새 코드를 {email}(으)로 보내요.",
     "signin.again": "다시 로그인",
     "signin.identityOff.notice":
       "{product}에서는 Polaris Locker 로그인을 사용하지 않아요. {product}을(를) 열어 라이선스 키를 입력하세요.",
@@ -11782,7 +11786,7 @@ export const KIT_COPY: Readonly<
       "여기서 로그인하면 라이브러리에서 {product}을(를) 볼 수 있어요.",
     "signin.signout.title": "이 기기의 {product}에서 로그아웃할까요?",
     "signin.signout.released":
-      "이 기기의 {product}에서 {tier} 라이선스 사용을 중지하고 다른 기기가 쓸 수 있게 비워요.",
+      "{product}이(가) 이 기기에서 {tier} 라이선스 사용을 중지해 다른 기기를 추가할 수 있게 돼요.",
     "signin.signout.unsynced":
       "{n, plural, other {변경 사항 #개가 아직 동기화되지 않았어요.}}",
     "signin.signout.waitSync": "동기화 기다리기",
@@ -11794,7 +11798,7 @@ export const KIT_COPY: Readonly<
     "signin.profile.changePicture": "사진 변경",
     "signin.mail.replaced.subject": "{device}에서 {product} 로그아웃됨",
     "signin.mail.replaced.body":
-      "{date}에 {product}에 로그인하면서 {device} 대신 {newDevice} 기기가 등록됐어요. 다른 기기를 등록할 여유가 생기면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Locker를 열고 기기를 확인하세요.",
+      "{date}에 {product}에 로그인하면서 {device}이(가) {newDevice}(으)로 교체됐어요. 기기를 추가할 여유가 생기면 {device}에서 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Locker를 열고 기기를 확인하세요.",
     "signin.mail.newDevice.subject":
       "Polaris Locker 계정에 새 기기가 로그인했어요",
     "signin.mail.newDevice.body":
@@ -11814,11 +11818,12 @@ export const KIT_COPY: Readonly<
     "cli.help.more": "명령별 옵션을 보려면 다음을 실행하세요: {command}",
     "cli.help.group": "라이선스",
     "cli.help.namespace": "활성화, 로그인, 기기 및 업데이트",
-    "cli.gate.needs": "{command}에는 라이선스가 필요합니다",
-    "cli.gate.notIncluded": "라이선스에 {command}이(가) 포함되어 있지 않습니다",
+    "cli.gate.needs": "{command}에는 라이선스가 필요해요",
+    "cli.gate.notIncluded": "라이선스에 {command}이(가) 포함되어 있지 않아요",
     "cli.verb.activate": "라이선스 키 추가 (입력하거나 stdin으로)",
     "cli.verb.enroll": "무료 라이선스 받기 ({product}에서 제공하는 경우)",
-    "cli.verb.deactivate": "이 기기에서 라이선스 사용을 중지하고 자리 비우기",
+    "cli.verb.deactivate":
+      "이 기기에서 라이선스 사용을 중지해 다른 기기에서 쓸 수 있게 하기",
     "cli.verb.status": "라이선스, 기기 및 오프라인 시간",
     "cli.verb.offlineRequest": "오프라인 활성화용 요청 코드 출력",
     "cli.verb.importBundle": "오프라인 활성화 파일로 활성화",
@@ -11827,7 +11832,7 @@ export const KIT_COPY: Readonly<
     "cli.verb.register": "라이선스 키 없이 이 기기 등록",
     "cli.verb.devicesList": "라이선스를 사용하는 기기 목록 보기",
     "cli.verb.devicesRename": "기기 이름 변경 (이름을 비우면 지워짐)",
-    "cli.verb.devicesRemove": "기기를 제거하고 자리 비우기",
+    "cli.verb.devicesRemove": "기기를 제거해 다른 기기를 추가할 수 있게 하기",
     "cli.verb.configGet": "설정 하나와 그 값의 출처 표시",
     "cli.verb.configList": "볼 수 있는 설정 목록 보기",
     "cli.verb.configSet": "이 기기의 설정 변경",
@@ -11864,7 +11869,7 @@ export const KIT_COPY: Readonly<
       "명령 뒤에 입력한 키는 셸 기록에 저장돼요. 다음에는 키 없이 실행하고 요청할 때 키를 붙여넣으세요: {command}",
     "cli.activate.noKey":
       "라이선스 키가 없어요. 터미널에서 실행하거나 키를 파이프로 전달하세요: {command}",
-    "cli.deviceLimit.again": "기기 자리를 비운 다음 다시 실행하세요: {command}",
+    "cli.deviceLimit.again": "기기를 해제한 다음 다시 실행하세요: {command}",
     "cli.status.license": "라이선스",
     "cli.status.offline": "오프라인",
     "cli.status.offlineUntil": "{date}까지",
@@ -11954,52 +11959,51 @@ export const KIT_COPY: Readonly<
     "signin.approve.lede":
       "로그인한 휴대폰이나 컴퓨터에서 코드를 스캔하거나, 계정 → 새 기기 승인을 열어 입력하세요.",
     "signin.approve.other": "다른 방법으로 로그인",
-    "signin.approve.minuteLeft": "이 코드는 1분 남았습니다.",
+    "signin.approve.minuteLeft": "이 코드는 1분 남았어요.",
     "signin.approve.starting": "코드를 가져오는 중",
     "signin.approve.disabled":
-      "이 계정은 로그인할 수 없습니다. 다른 방법으로 로그인하세요.",
+      "이 계정은 로그인할 수 없어요. 다른 방법으로 로그인하세요.",
     "signin.approve.open": "새 기기 승인",
     "signin.approve.enter": "다른 기기에 표시된 코드를 입력하세요.",
     "signin.approve.codeLabel": "코드",
     "signin.approve.look": "찾기",
-    "signin.approve.askBody": "코드 {code}이(가) 계정에 로그인하려고 합니다.",
+    "signin.approve.askBody": "코드 {code}(으)로 계정 로그인을 요청했어요.",
     "signin.approve.where": "위치",
     "signin.approve.when": "시간",
     "signin.approve.device": "기기",
     "signin.approve.unknownPlace": "알 수 없는 위치",
     "signin.approve.stepUpWhy":
-      "현재 위치와 다른 곳이거나 위치를 알 수 없는 곳에서 요청했습니다.",
+      "지금 계신 곳과 다른 곳이나 위치를 알 수 없는 곳에서 요청했어요.",
     "signin.approve.stepUpVerb": "승인하기",
-    "signin.approve.approved": "승인했습니다. {device}이(가) 로그인되었습니다.",
-    "signin.approve.deniedDone": "거부했습니다. 변경된 내용이 없습니다.",
-    "signin.approve.failed": "처리되지 않았습니다. 다시 시도하세요.",
+    "signin.approve.approved": "승인했어요. {device}이(가) 로그인됐어요.",
+    "signin.approve.deniedDone": "거부했어요. 변경된 내용은 없어요.",
+    "signin.approve.failed": "처리되지 않았어요. 다시 시도하세요.",
     "signin.passkey.cancelled":
-      "패스키가 사용되지 않았습니다. 다시 시도하거나 다른 방법을 사용하세요.",
+      "패스키가 사용되지 않았어요. 다시 시도하거나 다른 방법을 사용하세요.",
     "signin.passkey.unsupported":
-      "이 브라우저에서는 패스키를 사용할 수 없습니다. 다른 방법을 사용하세요.",
+      "이 브라우저에서는 패스키를 사용할 수 없어요. 다른 방법을 사용하세요.",
     "signin.passkey.failed":
-      "패스키가 작동하지 않았습니다. 다시 시도하거나 다른 방법을 사용하세요.",
+      "패스키가 작동하지 않았어요. 다시 시도하거나 다른 방법을 사용하세요.",
     "signin.gate.stripNoIdentity": "{provider}(으)로 로그인됨",
-    "signin.gate.termsTitle": "한 단계 남았습니다",
+    "signin.gate.termsTitle": "한 단계 남았어요",
     "signin.gate.name": "표시 이름",
     "signin.gate.useEmail": "{email} 사용",
     "signin.gate.relay": "Apple 비공개 주소",
     "signin.gate.pictureInitials": "이니셜 사용",
     "signin.gate.pictureProvider": "{provider} 사진 사용",
     "signin.gate.birthdate": "{org}에서 생년월일 추가",
-    "signin.gate.birthdateHelp":
-      "본인만 볼 수 있습니다. 앱에는 전달되지 않습니다.",
+    "signin.gate.birthdateHelp": "본인만 볼 수 있어요. 앱에는 전달되지 않아요.",
     "signin.gate.productTerms": "{term}에 동의합니다",
     "signin.gate.platformTerms": "{term}에 동의합니다",
-    "signin.gate.expired": "이 로그인은 만료되었습니다. 다시 로그인하세요.",
+    "signin.gate.expired": "이 로그인은 만료됐어요. 다시 로그인하세요.",
     "signin.gate.joinTitle": "계정 통합",
     "signin.gate.joinLede":
-      "{email}은(는) 이미 Polaris Locker 계정에 속해 있습니다. 이 로그인을 해당 계정에 통합하거나 다른 이메일을 사용하세요.",
+      "{email}은(는) 이미 Polaris Locker 계정에 속해 있어요. 이 로그인을 해당 계정에 통합하거나 다른 이메일을 사용하세요.",
     "signin.gate.joinProve":
       "통합하려면 먼저 이 브라우저에서 해당 계정에 로그인한 다음 계정에서 이 로그인을 추가하세요.",
-    "signin.gate.codeSent": "{email}(으)로 코드를 보냈습니다.",
+    "signin.gate.codeSent": "{email}(으)로 코드를 보냈어요.",
     "signin.hint.when": "이 브라우저에서 마지막으로 {when}",
-    "signin.hint.welcomeNoName": "다시 오신 것을 환영합니다",
+    "signin.hint.welcomeNoName": "다시 오신 것을 환영해요",
     "signin.hint.method.passkey": "패스키",
     "signin.hint.method.email": "이메일 코드",
     "signin.hint.usePasskey": "패스키 사용",
@@ -12007,80 +12011,81 @@ export const KIT_COPY: Readonly<
     "signin.hint.change": "변경",
     "signin.key.carriedTitle": "{product}을(를) 추가하려면 로그인",
     "signin.key.carriedLede":
-      "키가 준비되었습니다. 로그인하거나 계정을 만들면 {product}이(가) 라이브러리에 추가됩니다.",
+      "키가 준비됐어요. 로그인하거나 계정을 만들면 {product}이(가) 라이브러리에 추가돼요.",
     "signin.key.withoutKey": "키 없이 로그인",
     "signin.key.onrampLede":
-      "영수증 이메일의 키를 붙여 넣으세요. 이어서 로그인하면 라이브러리에 추가됩니다.",
+      "영수증 이메일의 키를 붙여 넣으세요. 이어서 로그인하면 라이브러리에 추가돼요.",
     "signin.code.expiredRestart":
-      "이 로그인은 만료되었습니다. 계속하여 새 코드를 받으세요.",
+      "이 로그인은 만료됐어요. 계속하면 새 코드를 받을 수 있어요.",
     "signin.sso.expiredRestart":
-      "시간이 너무 오래 걸렸습니다. 계속하여 다시 시작하세요.",
+      "시간이 너무 오래 걸렸어요. 계속하면 다시 시작해요.",
     "signin.code.noMore":
-      "이 로그인에서는 더 이상 코드를 보낼 수 없습니다. 마지막 코드는 계속 사용할 수 있습니다.",
+      "이 로그인에서는 더 이상 코드를 보낼 수 없어요. 마지막으로 받은 코드는 계속 사용할 수 있어요.",
     "signin.sso.title": "{org}(으)로 로그인",
-    "signin.sso.required": "{host} 주소에는 필수입니다.",
+    "signin.sso.required": "{host} 주소에는 필수예요.",
     "signin.sso.codeIn": "{time} 후 이메일로 코드 받기",
     "signin.sso.code": "대신 이메일로 코드 받기",
-    "signin.refused.title": "이 계정은 로그인할 수 없습니다",
+    "signin.refused.title": "이 계정은 로그인할 수 없어요",
     "signin.refused.lede":
-      "{email}은(는) 로그인할 수 없는 계정에 속해 있습니다. 다른 이메일이나 다른 방법을 사용해 보세요.",
-    "signin.off.title": "로그인이 꺼져 있습니다",
+      "{email}은(는) 로그인할 수 없는 계정에 속해 있어요. 다른 이메일이나 다른 로그인 방법을 사용해 보세요.",
+    "signin.off.title": "로그인이 꺼져 있어요",
     "signin.turnstile.failed":
-      "보안 확인을 통과하지 못했습니다. 다시 시도하세요.",
+      "보안 확인을 통과하지 못했어요. 다시 시도하세요.",
     "signin.code.rateLimited":
-      "시도 횟수가 너무 많습니다. 1분 기다린 후 다시 시도하세요.",
+      "시도 횟수가 너무 많아요. 1분 기다린 후 다시 시도하세요.",
     "signin.gate.termsLinkProduct": "{product} 약관",
     "signin.gate.termsLinkPlatform": "Polaris Locker 약관 및 개인정보 처리방침",
     "signin.approve.expiredCode":
-      "이 코드는 만료되었습니다. 다른 기기에서 새 코드를 받으세요.",
+      "이 코드는 만료됐어요. 다른 기기에서 새 코드를 받으세요.",
     "signin.approve.notFound":
-      "해당 코드를 기다리는 로그인이 없습니다. 다른 기기에서 확인하세요.",
+      "이 코드로 기다리는 로그인이 없어요. 다른 기기에서 코드를 확인하세요.",
     "signin.email.placeholder": "you@example.com",
     "signin.sso.name": "싱글 사인온",
     "signin.off.developer": "개발사",
     "signin.code.changeEmail": "이메일 변경",
     "signin.sso.wait": "{time} 기다려 주세요",
     "signin.key.keyFor": "{product} 키",
-    "signin.key.help": "pkey_로 시작합니다. 대소문자를 구분합니다.",
+    "signin.key.help": "pkey_로 시작해요. 대소문자를 구분해요.",
     "signin.key.empty": "계속하려면 라이선스 키를 붙여 넣으세요.",
     "signin.provider.connectGroup": "또는 다른 계정 연결",
-    "signin.rateLimitedFew": "코드가 너무 많습니다. 몇 분 후 다시 시도하세요.",
+    "signin.rateLimitedFew":
+      "코드를 너무 많이 요청했어요. 몇 분 후에 다시 시도하세요.",
     "signin.code.emailInUse":
-      "다른 Polaris Locker 계정이 이 이메일을 사용하고 있습니다. 이전에 쓰던 방법으로 로그인하세요.",
+      "다른 Polaris Locker 계정에서 이 이메일을 사용하고 있어요. 이전에 로그인했던 방법으로 로그인하세요.",
     "signin.choice.pickOne": "계속하려면 라이선스를 선택하세요.",
     "signin.choice.pickDevice": "교체할 기기를 선택하세요.",
     "signin.choice.replaceAndSignIn": "교체하고 로그인",
     "signin.choice.replaceSafety":
-      "선택한 기기는 {app}에서 로그아웃됩니다. 여유가 있으면 나중에 다시 로그인할 수 있습니다. 이메일로 알려 드립니다.",
-    "signin.choice.replacedTitle": "기기를 교체했습니다",
+      "선택한 기기는 {app}에서 로그아웃돼요. 여유가 생기면 나중에 다시 로그인할 수 있어요. 이메일로 알려 드려요.",
+    "signin.choice.replacedTitle": "기기를 교체했어요",
     "signin.choice.replacedBody":
-      "{device}이(가) {app}에서 로그아웃했습니다. {thisDevice}이(가) 로그인되었습니다.",
-    "signin.request.goneTitle": "이 로그인은 종료되었습니다",
+      "{device}이(가) {app}에서 로그아웃됐어요. {thisDevice}이(가) 로그인됐어요.",
+    "signin.request.goneTitle": "이 로그인은 종료됐어요",
     "signin.request.gone": "앱으로 돌아가 다시 로그인하세요.",
     "signin.header.onDevice": "{device}에서",
     "signin.thisBrowser": "이 브라우저",
     "signin.consent.deny": "허용 안 함",
     "signin.consent.cloudSync": "클라우드 동기화",
-    "signin.consent.newLicense": "새 {tier} 라이선스: 계속하면 만들어집니다",
+    "signin.consent.newLicense": "새 {tier} 라이선스: 계속하면 생성돼요",
     "signin.key.upgradeTitle": "{product}을(를) 계정에 보관",
     "signin.key.upgradeLede":
-      "계정에 보관하면 다시 받거나 새 기기로 직접 옮길 수 있습니다.",
+      "계정에 보관하면 다시 받거나 새 기기로 직접 옮길 수 있어요.",
     "signin.key.createAccount": "계정 만들기",
     "signin.key.signInInstead": "대신 로그인",
     "signin.key.noEntriesTitle": "{product}을(를) 보관하려면 계정을 만드세요",
     "signin.key.noEntriesKeeps":
-      "{product}은(는) 이미 설치된 기기에서 계속 작동합니다. 키를 다시 입력할 때만 계정이 필요합니다.",
-    "signin.key.meter": "키 입력 {limit}회 중 {used}회 사용",
-    "signin.key.keyWorks": "키가 유효합니다",
-    "signin.footerNoDeveloper": "Polaris Locker가 {app}에 로그인합니다.",
+      "{product}은(는) 이미 사용 중인 기기에서 계속 작동해요. 키를 다시 입력할 때만 계정이 필요해요.",
+    "signin.key.meter": "키 등록 {limit}회 중 {used}회 사용",
+    "signin.key.keyWorks": "유효한 키",
+    "signin.footerNoDeveloper": "Polaris Locker가 {app} 로그인을 처리해요.",
     "signin.replace.rateLimitedMinutes":
-      "기기 변경이 너무 많습니다. {minutes, plural, other {#분}} 후에 다시 시도하세요.",
+      "기기 변경이 너무 많아요. {minutes, plural, other {#분}} 후에 다시 시도하세요.",
     "signin.request.tooMany":
-      "시도가 너무 많습니다. 잠시 기다린 뒤 다시 시도하세요.",
+      "시도 횟수가 너무 많아요. 잠시 기다린 후 다시 시도하세요.",
     "signin.gate.confirmedBy": "{provider}에서 확인됨",
     "signin.gate.confirmedByCode": "코드로 확인됨",
     "signin.gate.nameFrom": "다음에서 이름 사용",
-    "signin.gate.nameHint": "Polaris Locker와 이메일에 표시됩니다.",
+    "signin.gate.nameHint": "Polaris Locker와 이메일에 표시돼요.",
     "signin.gate.picture": "사진",
     "signin.gate.pictureInitialsTile": "이니셜",
     "signin.gate.pictureFromName": "이름에서 만들기",
@@ -12090,73 +12095,73 @@ export const KIT_COPY: Readonly<
     "signin.gate.passkey": "이후 패스키 추가",
     "signin.gate.pictureInvalid": "5 MB 이하의 PNG 또는 JPEG를 선택하세요.",
     "signin.gate.passkeyTitle": "패스키 추가",
-    "signin.gate.passkeyLede": "다음부터는 한 번의 탭으로 됩니다.",
+    "signin.gate.passkeyLede": "다음부터는 한 번만 탭하면 돼요.",
     "signin.gate.passkeyAdd": "패스키 추가",
-    "signin.gate.passkeyAdded": "패스키를 추가했습니다.",
+    "signin.gate.passkeyAdded": "패스키를 추가했어요.",
     "signin.gate.passkeyFailed":
-      "패스키가 추가되지 않았습니다. 계정에서 추가할 수 있습니다.",
+      "패스키가 추가되지 않았어요. 계정에서 추가할 수 있어요.",
     "signin.gate.passkeySkip": "건너뛰기",
     "signin.gate.pictureYours": "내 업로드",
     "signin.gate.uploadFailed":
-      "사진이 저장되지 않았습니다. 계정에서 추가하세요.",
-    "signin.gate.resent": "새 코드를 {email}(으)로 보냈습니다.",
+      "사진이 저장되지 않았어요. 계정에서 추가하세요.",
+    "signin.gate.resent": "새 코드를 {email}(으)로 보냈어요.",
     "signin.gate.joinOtherLede":
-      "{email}은(는) 이미 Polaris Locker 계정에 속해 있습니다. 다른 이메일을 사용하거나 먼저 그 계정에 로그인하세요.",
+      "{email}은(는) 이미 Polaris Locker 계정에 속해 있어요. 다른 이메일을 사용하거나 먼저 그 계정에 로그인하세요.",
     "signin.gate.nameRequired": "표시 이름을 입력하세요.",
     "signin.gate.termsLede": "계속하려면 {app} 약관에 동의하세요.",
     "signin.code.incomplete": "6자리를 모두 입력하세요.",
     "signin.nudge.title": "다른 로그인 방법 추가",
-    "signin.nudge.body": "언제든 다시 로그인할 수 있습니다.",
+    "signin.nudge.body": "언제든 다시 로그인할 수 있도록요.",
     "signin.nudge.add": "추가",
     "signin.nudge.later": "나중에",
     "signin.join.title": "기존 계정 연결",
     "signin.join.lede":
-      "다른 계정에 로그인해 두 계정을 하나로 합칩니다. 확인하기 전에는 아무것도 옮겨지지 않습니다.",
+      "다른 계정에 로그인해 두 계정을 합치세요. 확인하기 전에는 아무것도 옮겨지지 않아요.",
     "signin.join.start": "다른 계정에 로그인",
     "signin.join.thisAccount": "이 계정",
     "signin.join.otherAccount": "다른 계정",
     "signin.join.products": "{count, plural, other {제품 #개}}",
     "signin.join.result":
-      "라이브러리 하나: {count, plural, other {제품 #개}}. 기본 이메일은 {email}로 유지됩니다.",
-    "signin.join.done": "합쳤습니다. 72시간 동안 되돌릴 수 있습니다.",
+      "라이브러리 하나: {count, plural, other {제품 #개}}. 기본 이메일은 {email}(으)로 유지돼요.",
+    "signin.join.done": "합쳤어요. 72시간 동안 되돌릴 수 있어요.",
     "signin.join.undo": "합치기 되돌리기",
-    "signin.join.undone": "되돌렸습니다.",
-    "signin.join.undoable": "{email} 합침. {date}까지 되돌릴 수 있습니다.",
-    "signin.join.expired": "연결이 너무 오래 걸렸습니다. 다시 시작하세요.",
+    "signin.join.undone": "합치기를 되돌렸어요.",
+    "signin.join.undoable": "{email} 합침. {date}까지 되돌릴 수 있어요.",
+    "signin.join.expired": "연결이 너무 오래 걸렸어요. 다시 시작하세요.",
     "signin.join.signInOther": "먼저 다른 계정에 로그인하세요.",
     "signin.join.reasonStepUp": "두 계정에 다시 로그인한 뒤 합치세요.",
     "signin.join.reasonPending":
-      "한 계정이 최근 72시간 안에 합쳐졌습니다. 그 이후에 다시 시도하세요.",
+      "최근 72시간 안에 합친 계정이 있어요. 72시간이 지난 후 다시 시도하세요.",
     "signin.join.reasonUnavailable": "예약된 삭제를 먼저 취소한 뒤 합치세요.",
     "signin.join.sameAccount":
-      "처음 시작한 계정입니다. 다른 계정에 로그인하세요.",
-    "signin.join.failed": "합치지 못했습니다. 다시 시도하세요.",
+      "처음 시작한 계정이에요. 다른 계정에 로그인하세요.",
+    "signin.join.failed": "합치지 못했어요. 다시 시도하세요.",
     "signin.join.ownedNotice":
       "그 계정도 본인 것이면 로그인해 두 계정을 합치세요.",
     "signin.approve.codeShort": "코드 8글자를 모두 입력하세요.",
     "signin.join.stepUpVerb": "계정을 연결",
     "signin.join.otherTitle": "다른 계정에 로그인",
     "signin.join.otherLede":
-      "어떤 방법이든 괜찮습니다. 이후 여기로 돌아와 합칩니다.",
+      "어떤 방법으로 로그인해도 괜찮아요. 그런 다음 여기로 돌아와 두 계정을 합쳐요.",
     "signin.join.signedNow": "현재 로그인됨",
     "signin.join.yourOther": "다른 계정",
     "signin.join.methodsLine": "{method}(으)로 로그인",
     "signin.join.provenBy": "{method}(으)로 확인됨 ({when})",
     "signin.join.keepsWorking":
-      "두 계정의 모든 로그인이 계속 작동합니다. 72시간 동안 되돌릴 수 있습니다.",
-    "signin.join.doneUntil": "합쳤습니다. {date}까지 되돌릴 수 있습니다.",
+      "두 계정의 모든 로그인 방법을 계속 사용할 수 있어요. 72시간 동안 되돌릴 수 있어요.",
+    "signin.join.doneUntil": "합쳤어요. {date}까지 되돌릴 수 있어요.",
     "signin.join.again": "{email}에 다시 로그인",
     "signin.join.startAgain": "다시 시작",
-    "signin.join.noUndo": "이 합치기는 더 이상 되돌릴 수 없습니다.",
+    "signin.join.noUndo": "이 합치기는 더 이상 되돌릴 수 없어요.",
     "signin.join.methodsLink": "로그인 방법",
-    "signin.join.undoFailed": "합치기를 되돌리지 못했습니다. 다시 시도하세요.",
+    "signin.join.undoFailed": "합치기를 되돌리지 못했어요. 다시 시도하세요.",
     "signin.join.reasonStaleOne": "{email}에 다시 로그인한 뒤 합치세요.",
     "signin.join.staleMark": "5분 넘게 전에 로그인함",
-    "signin.join.stillSignedIn": "계속 {email}(으)로 로그인되어 있습니다.",
+    "signin.join.stillSignedIn": "{email}(으)로 계속 로그인되어 있어요.",
     "signin.join.undoConfirm":
-      "{email}과(와)의 합치기를 되돌릴까요? {date}까지 가능합니다.",
+      "{email}과(와)의 합치기를 되돌릴까요? {date}까지 가능해요.",
     "signin.approve.tooMany":
-      "시도가 너무 많습니다. 1분 기다린 뒤 다시 시도하세요.",
+      "시도 횟수가 너무 많아요. 1분 기다린 후 다시 시도하세요.",
     "signin.key.enterKey": "라이선스 키를 입력하세요.",
     "signin.code.missing": "코드를 받지 못하셨나요?",
     "core.fallback.title": "문제가 발생했어요",
@@ -12263,22 +12268,21 @@ export const KIT_COPY: Readonly<
       "이 앱을 통한 로그인이 꺼져 있어요. 설치와 라이선스는 계속 작동해요.",
     "core.codes.unknown_app.title": "로그인 사용 불가",
     "core.codes.unknown_app.message": "이 앱에서는 로그인을 사용할 수 없어요.",
-    "core.codes.invalid_request.title": "로그인 요청이 올바르지 않습니다",
+    "core.codes.invalid_request.title": "잘못된 로그인 요청",
     "core.codes.invalid_request.message":
-      "앱이 읽을 수 없는 요청을 보냈습니다. 다시 시도하세요.",
+      "앱에서 읽을 수 없는 로그인 요청을 보냈어요. 다시 시도하세요.",
     "core.codes.invalid_client.title": "로그인을 완료할 수 없어요",
     "core.codes.invalid_client.message":
       "이 앱의 로그인이 올바르게 설정되지 않아 계정을 보호하기 위해 여기서 중단했어요. 개발자에게 알려 주세요.",
-    "core.codes.invalid_grant.title": "로그인이 더 이상 유효하지 않습니다",
+    "core.codes.invalid_grant.title": "로그인이 유효하지 않음",
     "core.codes.invalid_grant.message":
-      "이 로그인은 만료되었거나 이미 사용되었습니다. 다시 로그인하세요.",
-    "core.codes.unsupported_grant_type.title":
-      "로그인 요청이 올바르지 않습니다",
+      "이 로그인은 만료됐거나 이미 사용됐어요. 다시 로그인하세요.",
+    "core.codes.unsupported_grant_type.title": "잘못된 로그인 요청",
     "core.codes.unsupported_grant_type.message":
-      "앱이 지원하지 않는 로그인 방식을 요청했습니다. 개발자에게 문의하세요.",
-    "core.codes.invalid_scope.title": "액세스할 수 없습니다",
+      "앱에서 지원하지 않는 로그인 방식을 요청했어요. 개발자에게 문의하세요.",
+    "core.codes.invalid_scope.title": "액세스 불가",
     "core.codes.invalid_scope.message":
-      "앱이 이 로그인에서 제공하지 않는 액세스를 요청했습니다. 개발자에게 문의하세요.",
+      "앱에서 이 로그인으로 제공되지 않는 액세스를 요청했어요. 개발자에게 문의하세요.",
     "core.codes.redirect_uri_mismatch.title":
       "로그인 후 앱으로 돌아갈 수 없어요",
     "core.codes.redirect_uri_mismatch.message":
@@ -12300,13 +12304,13 @@ export const KIT_COPY: Readonly<
       "이 로그인은 만료되었어요. 다시 시작하세요.",
     "core.codes.invalid_code.title": "잘못된 코드",
     "core.codes.invalid_code.message":
-      "그 코드는 작동하지 않았어요. 이메일을 확인하고 다시 입력하세요.",
+      "코드가 올바르지 않아요. 이메일을 확인하고 다시 입력하세요.",
     "core.codes.code_expired.title": "만료된 코드",
     "core.codes.code_expired.message":
-      "그 코드는 만료되었어요. 새 코드를 보내세요.",
+      "코드가 만료됐어요. 새 코드를 요청하세요.",
     "core.codes.email_in_use.title": "이미 사용 중인 이메일",
     "core.codes.email_in_use.message":
-      "다른 Polaris Locker 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요.",
+      "다른 Polaris Locker 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 합치거나 다른 이메일을 사용하세요.",
     "core.codes.terms_required.title": "약관 미동의",
     "core.codes.terms_required.message": "계속하려면 약관에 동의하세요.",
     "core.codes.license_owned.title": "다른 계정의 라이선스",
@@ -12359,7 +12363,7 @@ export const KIT_COPY: Readonly<
       "태그가 콘텐츠 팩 릴리스와 같아서 릴리스를 건너뛰었어요. 태그 이름을 바꾸세요.",
     "core.codes.asset_unreachable.title": "이미지가 업데이트되지 않음",
     "core.codes.asset_unreachable.message":
-      "원본에서 이미지를 가져올 수 없습니다. 이전 사본이 계속 표시되며 자동으로 다시 시도됩니다.",
+      "원본에서 이미지를 가져올 수 없어요. 이전 이미지가 계속 표시되며 자동으로 다시 시도해요.",
     "core.codes.feed_not_composable.title": "업데이트 확인 불가",
     "core.codes.feed_not_composable.message":
       "지금은 업데이트를 확인할 수 없어요. 몇 분 후에 다시 시도하세요.",
@@ -12372,9 +12376,9 @@ export const KIT_COPY: Readonly<
     "core.codes.local-only.title": "오프라인 모드",
     "core.codes.local-only.message":
       "이 앱은 오프라인으로 실행 중이라 연결하지 않았어요.",
-    "core.codes.backend-origin-not-allowed.title": "요청을 보내지 않았습니다",
+    "core.codes.backend-origin-not-allowed.title": "요청을 보내지 않음",
     "core.codes.backend-origin-not-allowed.message":
-      "앱은 자체 서버로만 라이선스를 보낼 수 있습니다.",
+      "앱은 자체 서버로만 라이선스를 보낼 수 있어요.",
     "core.codes.insecure-base-url.title": "안전하지 않은 연결",
     "core.codes.insecure-base-url.message":
       "앱이 안전하지 않은 연결을 거부했어요. 개발자에게 문의하세요.",
@@ -12668,9 +12672,9 @@ export const KIT_COPY: Readonly<
     "core.codes.license_invalid.title": "라이선스를 확인할 수 없음",
     "core.codes.license_invalid.message":
       "라이선스를 확인하지 못했어요. 앱을 다시 연결한 후 다시 시도하세요.",
-    "core.codes.license_stale.title": "라이선스 새로 고침 필요",
+    "core.codes.license_stale.title": "라이선스 새로고침 필요",
     "core.codes.license_stale.message":
-      "앱이 라이선스를 새로 고칠 수 있도록 인터넷에 연결한 후 다시 시도하세요.",
+      "앱이 라이선스를 새로고침할 수 있도록 인터넷에 연결한 후 다시 시도하세요.",
     "core.codes.sign_in_required.title": "로그인 필요",
     "core.codes.sign_in_required.message":
       "앱에서 Polaris Locker 계정에 로그인한 후 다시 시도하세요.",
@@ -13196,7 +13200,7 @@ export const KIT_COPY: Readonly<
     "signin.key.ownedSignIn": "登录那个账户",
     "signin.key.differentKey": "使用其他密钥",
     "signin.return.yours": "{product}已归你所有",
-    "signin.return.product": "{tier} · 已在你的库中",
+    "signin.return.product": "{tier} · 已在你的资料库中",
     "signin.return.signedIn": "你已登录{app}",
     "signin.return.button": "返回{app}",
     "signin.return.timer": "{s}秒后自动返回",
@@ -13241,7 +13245,7 @@ export const KIT_COPY: Readonly<
     "signin.return.signedInShort": "你已登录",
     "signin.return.cancelled": "已在{app}中取消登录。请从{app}重新开始。",
     "signin.return.library": "打开你的资料库",
-    "signin.choice.freed": "此许可证现在有一台空余设备。",
+    "signin.choice.freed": "此许可证现在可以再添加一台设备。",
     "signin.replace.opensBrowser": "在浏览器中打开Polaris Locker",
     "signin.cli.opening": "正在打开浏览器…",
     "signin.cli.ifNotOpened": "如果未打开，请前往{url}",
@@ -13281,7 +13285,7 @@ export const KIT_COPY: Readonly<
     "signin.identityOff.lede": "在此登录即可在你的资料库中看到{product}。",
     "signin.signout.title": "要在此设备上退出登录{product}吗？",
     "signin.signout.released":
-      "{product}将停止在此使用你的{tier}许可证，并为其他设备腾出名额。",
+      "{product}将停止在此设备上使用你的{tier}许可证，以便其他设备使用。",
     "signin.signout.unsynced": "{n, plural, other {#项更改尚未同步。}}",
     "signin.signout.waitSync": "等待同步",
     "signin.session.toastTitle": "你已被退出登录",
@@ -13292,7 +13296,7 @@ export const KIT_COPY: Readonly<
     "signin.profile.changePicture": "更换头像",
     "signin.mail.replaced.subject": "{product}已在{device}上退出登录",
     "signin.mail.replaced.body":
-      "你于{date}登录{product}时，{device}被{newDevice}替换。如果还可以再添加设备，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。",
+      "你于{date}登录{product}时，{device}已被{newDevice}替换。如果许可证还能再添加设备，{device}之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。",
     "signin.mail.newDevice.subject": "有新设备登录了你的Polaris Locker账户",
     "signin.mail.newDevice.body":
       "{device}于{date}从{place}登录。如果这不是你本人操作，请在Polaris Locker的“你的登录位置”中将其退出登录。",
@@ -13312,10 +13316,10 @@ export const KIT_COPY: Readonly<
     "cli.help.group": "许可证",
     "cli.help.namespace": "激活、登录、设备和更新",
     "cli.gate.needs": "{command}需要许可证",
-    "cli.gate.notIncluded": "您的许可证不包含{command}",
+    "cli.gate.notIncluded": "你的许可证不包含{command}",
     "cli.verb.activate": "添加许可证密钥（提示输入，或通过 stdin）",
     "cli.verb.enroll": "获取免费许可证（如果{product}提供）",
-    "cli.verb.deactivate": "停止在此设备上使用你的许可证并释放席位",
+    "cli.verb.deactivate": "停止在此设备上使用你的许可证，以便其他设备使用",
     "cli.verb.status": "许可证、设备和离线时间",
     "cli.verb.offlineRequest": "输出离线激活所需的请求代码",
     "cli.verb.importBundle": "从离线激活文件激活",
@@ -13324,7 +13328,7 @@ export const KIT_COPY: Readonly<
     "cli.verb.register": "不使用许可证密钥注册此设备",
     "cli.verb.devicesList": "列出使用你的许可证的设备",
     "cli.verb.devicesRename": "重命名设备（不提供名称则清除名称）",
-    "cli.verb.devicesRemove": "移除设备并释放其席位",
+    "cli.verb.devicesRemove": "移除设备，以便添加其他设备",
     "cli.verb.configGet": "显示某项设置及其值的来源",
     "cli.verb.configList": "列出你可以查看的设置",
     "cli.verb.configSet": "在此设备上更改设置",
@@ -13455,34 +13459,34 @@ export const KIT_COPY: Readonly<
     "signin.approve.enter": "输入另一台设备上显示的代码。",
     "signin.approve.codeLabel": "代码",
     "signin.approve.look": "查找",
-    "signin.approve.askBody": "代码 {code} 请求登录您的账户。",
+    "signin.approve.askBody": "代码 {code} 请求登录你的账户。",
     "signin.approve.where": "位置",
     "signin.approve.when": "时间",
     "signin.approve.device": "设备",
     "signin.approve.unknownPlace": "未知位置",
     "signin.approve.stepUpWhy":
-      "请求来自与您当前不同的位置，或无法确定的位置。",
+      "请求来自与你当前不同的位置，或无法确定的位置。",
     "signin.approve.stepUpVerb": "批准",
     "signin.approve.approved": "已批准。{device} 已登录。",
     "signin.approve.deniedDone": "已拒绝。未做任何更改。",
     "signin.approve.failed": "未能完成。请重试。",
-    "signin.passkey.cancelled": "未使用您的通行密钥。请重试或使用其他方式。",
+    "signin.passkey.cancelled": "未使用你的通行密钥。请重试或使用其他方式。",
     "signin.passkey.unsupported":
-      "此浏览器无法在此使用您的通行密钥。请使用其他方式。",
-    "signin.passkey.failed": "您的通行密钥无效。请重试或使用其他方式。",
+      "此浏览器无法在此使用你的通行密钥。请使用其他方式。",
+    "signin.passkey.failed": "你的通行密钥无效。请重试或使用其他方式。",
     "signin.gate.stripNoIdentity": "已通过 {provider} 登录",
     "signin.gate.termsTitle": "还有一步",
     "signin.gate.name": "显示名称",
     "signin.gate.useEmail": "使用 {email}",
-    "signin.gate.relay": "您的 Apple 私密地址",
+    "signin.gate.relay": "你的 Apple 私密地址",
     "signin.gate.pictureInitials": "使用我的首字母",
     "signin.gate.pictureProvider": "使用我的 {provider} 头像",
     "signin.gate.birthdate": "添加来自 {org} 的出生日期",
-    "signin.gate.birthdateHelp": "只有您能看到。应用永远不会获得。",
+    "signin.gate.birthdateHelp": "只有你能看到。应用永远不会获得。",
     "signin.gate.productTerms": "我同意{term}",
     "signin.gate.platformTerms": "我同意{term}",
     "signin.gate.expired": "此次登录已过期。请重新登录。",
-    "signin.gate.joinTitle": "合并您的账户",
+    "signin.gate.joinTitle": "合并你的账户",
     "signin.gate.joinLede":
       "{email} 已属于一个 Polaris Locker 账户。请将此登录合并到该账户，或使用其他邮箱。",
     "signin.gate.joinProve":
@@ -13497,15 +13501,15 @@ export const KIT_COPY: Readonly<
     "signin.hint.change": "更改",
     "signin.key.carriedTitle": "登录以添加 {product}",
     "signin.key.carriedLede":
-      "密钥已就绪。登录或创建账户后，{product} 将加入您的库。",
+      "密钥已就绪。登录或创建账户后，{product} 将加入你的资料库。",
     "signin.key.withoutKey": "不使用密钥登录",
     "signin.key.onrampLede":
-      "粘贴收据邮件中的密钥。接着登录，它就会加入您的库。",
+      "粘贴收据邮件中的密钥。接着登录，它就会加入你的资料库。",
     "signin.code.expiredRestart": "此次登录已过期。请继续以获取新验证码。",
     "signin.sso.expiredRestart": "耗时过长。请继续以重新开始。",
     "signin.code.noMore": "此次登录无法再发送验证码。最新的验证码仍然有效。",
     "signin.sso.title": "使用 {org} 登录",
-    "signin.sso.required": "{host} 地址必须使用。",
+    "signin.sso.required": "{host} 地址必须使用此方式登录。",
     "signin.sso.codeIn": "{time} 后通过邮件发送验证码",
     "signin.sso.code": "改为通过邮件发送验证码",
     "signin.refused.title": "该账户无法登录",
@@ -13525,9 +13529,9 @@ export const KIT_COPY: Readonly<
     "signin.sso.wait": "请等待 {time}",
     "signin.key.keyFor": "{product} 的密钥",
     "signin.key.help": "以 pkey_ 开头。区分大小写。",
-    "signin.key.empty": "请粘贴您的许可证密钥以继续。",
+    "signin.key.empty": "请粘贴你的许可证密钥以继续。",
     "signin.provider.connectGroup": "或连接其他账户",
-    "signin.rateLimitedFew": "验证码过多。请几分钟后重试。",
+    "signin.rateLimitedFew": "验证码请求过多。请几分钟后重试。",
     "signin.code.emailInUse":
       "另一个 Polaris Locker 账户正在使用此邮箱。请使用之前的方式登录。",
     "signin.choice.pickOne": "请选择一个许可证以继续。",
@@ -13544,10 +13548,10 @@ export const KIT_COPY: Readonly<
     "signin.thisBrowser": "此浏览器",
     "signin.consent.deny": "不允许",
     "signin.consent.cloudSync": "云同步",
-    "signin.consent.newLicense": "新建:{tier} 许可证,继续时创建",
+    "signin.consent.newLicense": "新：{tier}许可证，继续后创建",
     "signin.key.upgradeTitle": "将 {product} 保存在账户中",
     "signin.key.upgradeLede":
-      "保存在账户中后,你可以找回它,也可以自己迁移到新设备。",
+      "保存在账户中后，你可以找回它，也可以自己将它移到新设备。",
     "signin.key.createAccount": "创建账户",
     "signin.key.signInInstead": "改为登录",
     "signin.key.noEntriesTitle": "创建账户以保留 {product}",
@@ -13561,7 +13565,7 @@ export const KIT_COPY: Readonly<
     "signin.request.tooMany": "尝试次数过多。请稍候再试。",
     "signin.gate.confirmedBy": "已由{provider}确认",
     "signin.gate.confirmedByCode": "已通过验证码确认",
-    "signin.gate.nameFrom": "使用来自以下的名称",
+    "signin.gate.nameFrom": "使用以下来源的名称",
     "signin.gate.nameHint": "显示在 Polaris Locker 和电子邮件中。",
     "signin.gate.picture": "头像",
     "signin.gate.pictureInitialsTile": "首字母",
@@ -13606,7 +13610,7 @@ export const KIT_COPY: Readonly<
     "signin.join.signInOther": "请先登录你的另一个账户。",
     "signin.join.reasonStepUp": "请重新登录两个账户，然后合并。",
     "signin.join.reasonPending":
-      "其中一个账户在过去 72 小时内已合并。请稍后再试。",
+      "其中一个账户在过去 72 小时内已合并。请在 72 小时后再试。",
     "signin.join.reasonUnavailable": "请先取消已安排的删除，再合并。",
     "signin.join.sameAccount": "这是你开始时的账户。请登录另一个账户。",
     "signin.join.failed": "无法合并，请重试。",
@@ -13633,7 +13637,7 @@ export const KIT_COPY: Readonly<
     "signin.join.undoConfirm": "撤销与 {email} 的合并？{date} 前均可撤销。",
     "signin.approve.tooMany": "尝试次数过多，请等一分钟后再试。",
     "signin.key.enterKey": "请输入你的许可证密钥。",
-    "signin.code.missing": "没收到验证码?",
+    "signin.code.missing": "没收到验证码？",
     "core.fallback.title": "出现问题",
     "core.fallback.message": "出现问题（{code}）。请重试。",
     "core.codes.unauthorized.title": "未登录",
@@ -13726,7 +13730,7 @@ export const KIT_COPY: Readonly<
     "core.codes.identity_disabled.message":
       "已关闭通过此应用登录。你的安装和许可证仍可正常使用。",
     "core.codes.unknown_app.title": "登录不可用",
-    "core.codes.unknown_app.message": "此应用无法登录。",
+    "core.codes.unknown_app.message": "此应用不支持登录。",
     "core.codes.invalid_request.title": "登录请求无效",
     "core.codes.invalid_request.message":
       "应用发送了我们无法读取的请求。请重试。",
@@ -13741,7 +13745,7 @@ export const KIT_COPY: Readonly<
       "应用请求了我们不支持的登录方式。请联系其开发者。",
     "core.codes.invalid_scope.title": "无法访问",
     "core.codes.invalid_scope.message":
-      "应用请求的访问权限此次登录不提供。请联系其开发者。",
+      "应用请求了此次登录不提供的访问权限。请联系其开发者。",
     "core.codes.redirect_uri_mismatch.title": "登录无法返回应用",
     "core.codes.redirect_uri_mismatch.message":
       "该应用的登录设置不正确，因此在此处停止以保护你的账户。请告知其开发者。",
@@ -13763,7 +13767,7 @@ export const KIT_COPY: Readonly<
     "core.codes.invalid_code.message":
       "该验证码无效。请检查电子邮件后重新输入。",
     "core.codes.code_expired.title": "验证码已过期",
-    "core.codes.code_expired.message": "该验证码已过期。请发送新的验证码。",
+    "core.codes.code_expired.message": "该验证码已过期。请重新获取验证码。",
     "core.codes.email_in_use.title": "电子邮件已被使用",
     "core.codes.email_in_use.message":
       "另一个Polaris Locker账户已在使用此电子邮件。请将此次登录合并到该账户，或使用其他电子邮件。",
@@ -13794,7 +13798,7 @@ export const KIT_COPY: Readonly<
       "此优惠已不再适用于你的账户。请刷新后重试。",
     "core.codes.not_removable.title": "无法移除",
     "core.codes.not_removable.message":
-      "此许可证无法通过许可证密钥重新添加，因此会保留在你的库中。",
+      "此许可证无法通过许可证密钥重新添加，因此会保留在你的资料库中。",
     "core.codes.download_auth_required.title": "登录以下载",
     "core.codes.download_auth_required.message":
       "请登录或激活许可证以下载此内容。",
@@ -13911,7 +13915,7 @@ export const KIT_COPY: Readonly<
       "应用的许可功能未正确设置。请联系开发者。",
     "core.codes.invalid-argument.title": "请求未被接受",
     "core.codes.invalid-argument.message":
-      "应用发送的请求，许可桥接无法读取。请联系开发者。",
+      "许可桥接无法读取应用发送的请求。请联系开发者。",
     "core.codes.invoke-not-allowed.title": "请求不被允许",
     "core.codes.invoke-not-allowed.message":
       "应用请求了许可桥接不提供的操作。请联系开发者。",
@@ -14111,7 +14115,7 @@ export const KIT_COPY: Readonly<
     "core.gate.version-too-old.title": "需要更新",
     "core.gate.version-too-old.message":
       "此版本已不再受支持。请更新{product}以继续。",
-    "core.gate.version-too-new.title": "此许可证不可用",
+    "core.gate.version-too-new.title": "许可证不支持此版本",
     "core.gate.version-too-new.message": "此版本比你的许可证允许的版本更新。",
     "core.gate.channel-not-entitled.title": "渠道未包含",
     "core.gate.channel-not-entitled.message": "你的许可证不包含此渠道。",

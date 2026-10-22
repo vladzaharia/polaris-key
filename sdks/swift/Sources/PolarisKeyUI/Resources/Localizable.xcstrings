@@ -4838,13 +4838,13 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "デバイスの枠を空けてから、もう一度%1$@を実行してください。"
+            "value": "デバイスを解放してから、もう一度%1$@を実行してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "기기 자리를 비운 다음 다시 실행하세요: %1$@"
+            "value": "기기를 해제한 다음 다시 실행하세요: %1$@"
           }
         },
         "zh-Hans": {
@@ -5804,7 +5804,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@에는 라이선스가 필요합니다"
+            "value": "%1$@에는 라이선스가 필요해요"
           }
         },
         "zh-Hans": {
@@ -5864,13 +5864,13 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "라이선스에 %1$@이(가) 포함되어 있지 않습니다"
+            "value": "라이선스에 %1$@이(가) 포함되어 있지 않아요"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您的许可证不包含%1$@"
+            "value": "你的许可证不包含%1$@"
           }
         }
       }
@@ -6752,7 +6752,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ non offre l’accesso con un account."
+            "value": "%1$@ non offre l'accesso con un account."
           }
         },
         "ja": {
@@ -6812,7 +6812,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chiedi un nuovo file a chi te l’ha inviato."
+            "value": "Chiedi un nuovo file a chi te l'ha inviato."
           }
         },
         "ja": {
@@ -7172,7 +7172,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "y sì · n no · Esc annulla l’accesso"
+            "value": "y sì · n no · Esc annulla l'accesso"
           }
         },
         "ja": {
@@ -7520,7 +7520,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cerraste sesión en %1$@ en este dispositivo."
+            "value": "Has cerrado sesión de %1$@ en este dispositivo."
           }
         },
         "pt-BR": {
@@ -11012,7 +11012,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Riavvia per completare l’aggiornamento."
+            "value": "Riavvia per completare l'aggiornamento."
           }
         },
         "ja": {
@@ -11588,49 +11588,49 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lizenz auf diesem Gerät nicht mehr nutzen, Platz freigeben"
+            "value": "Lizenz auf diesem Gerät nicht mehr nutzen und Platz für ein weiteres Gerät schaffen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retirer votre licence de cet appareil et libérer sa place"
+            "value": "Retirer votre licence de cet appareil et libérer de la place pour un autre"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quitar tu licencia de este dispositivo y liberar su plaza"
+            "value": "Quitar tu licencia de este dispositivo y dejar sitio para otro"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Parar de usar a licença neste dispositivo e liberar a vaga"
+            "value": "Parar de usar a licença neste dispositivo e abrir espaço para outro"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Togli la licenza da questo dispositivo e liberane il posto"
+            "value": "Togli la licenza da questo dispositivo e fai spazio per un altro"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このデバイスでのライセンス使用を停止し、枠を解放"
+            "value": "このデバイスでのライセンスの使用を停止し、別のデバイスで使えるようにする"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 기기에서 라이선스 사용을 중지하고 자리 비우기"
+            "value": "이 기기에서 라이선스 사용을 중지해 다른 기기에서 쓸 수 있게 하기"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "停止在此设备上使用你的许可证并释放席位"
+            "value": "停止在此设备上使用你的许可证，以便其他设备使用"
           }
         }
       }
@@ -11708,49 +11708,49 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gerät entfernen und seinen Platz freigeben"
+            "value": "Gerät entfernen und Platz für ein weiteres schaffen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Retirer un appareil et libérer sa place"
+            "value": "Retirer un appareil et libérer de la place pour un autre"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quitar un dispositivo y liberar su plaza"
+            "value": "Quitar un dispositivo y dejar sitio para otro"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Remover um dispositivo e liberar a vaga"
+            "value": "Remover um dispositivo e abrir espaço para outro"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rimuovi un dispositivo e liberane il posto"
+            "value": "Rimuovi un dispositivo e fai spazio per un altro"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "デバイスを削除して枠を解放"
+            "value": "デバイスを削除し、別のデバイスを追加できるようにする"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "기기를 제거하고 자리 비우기"
+            "value": "기기를 제거해 다른 기기를 추가할 수 있게 하기"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "移除设备并释放其席位"
+            "value": "移除设备，以便添加其他设备"
           }
         }
       }
@@ -12944,7 +12944,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hai effettuato la disconnessione."
+            "value": "Sei disconnesso."
           }
         },
         "ja": {
@@ -13670,7 +13670,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Concluído"
+            "value": "OK"
           }
         },
         "it": {
@@ -13730,7 +13730,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mais tarde"
+            "value": "Depois"
           }
         },
         "it": {
@@ -14426,7 +14426,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Você tem a %1$@"
+            "value": "Você tem a versão %1$@"
           }
         },
         "it": {
@@ -14594,7 +14594,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Environ %1$@ min"
+            "value": "Environ %1$@ min"
           }
         },
         "es": {
@@ -14846,7 +14846,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verificação do dispositivo necessária"
+            "value": "Verificação necessária"
           }
         },
         "it": {
@@ -14888,7 +14888,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden."
+            "value": "Diese Lizenz hat ihr Gerätelimit bereits erreicht. Ersetzen Sie ein Gerät, um sie hier zu verwenden."
           }
         },
         "fr": {
@@ -14900,7 +14900,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí."
+            "value": "Esta licencia ya ha alcanzado su límite de dispositivos. Reemplaza un dispositivo para usarla aquí."
           }
         },
         "pt-BR": {
@@ -14918,7 +14918,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。"
+            "value": "このライセンスは、すでにデバイス数の上限に達しています。ここで使うにはデバイスを置き換えてください。"
           }
         },
         "ko": {
@@ -15446,7 +15446,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Falha na verificação do dispositivo"
+            "value": "Dispositivo não verificado"
           }
         },
         "it": {
@@ -15860,7 +15860,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta licencia venció. Renuévala para continuar."
+            "value": "Esta licencia ha caducado. Renuévala para continuar."
           }
         },
         "pt-BR": {
@@ -15920,7 +15920,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Licencia vencida"
+            "value": "Licencia caducada"
           }
         },
         "pt-BR": {
@@ -16586,7 +16586,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível obter uma imagem da sua origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente."
+            "value": "Não foi possível obter uma imagem na origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente."
           }
         },
         "it": {
@@ -16604,7 +16604,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "원본에서 이미지를 가져올 수 없습니다. 이전 사본이 계속 표시되며 자동으로 다시 시도됩니다."
+            "value": "원본에서 이미지를 가져올 수 없어요. 이전 이미지가 계속 표시되며 자동으로 다시 시도해요."
           }
         },
         "zh-Hans": {
@@ -16766,7 +16766,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Falha na verificação do dispositivo"
+            "value": "Dispositivo não verificado"
           }
         },
         "it": {
@@ -16886,7 +16886,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verificação do dispositivo necessária"
+            "value": "Verificação necessária"
           }
         },
         "it": {
@@ -17006,7 +17006,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verificação do dispositivo indisponível"
+            "value": "Verificação indisponível"
           }
         },
         "it": {
@@ -17204,7 +17204,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "앱은 자체 서버로만 라이선스를 보낼 수 있습니다."
+            "value": "앱은 자체 서버로만 라이선스를 보낼 수 있어요."
           }
         },
         "zh-Hans": {
@@ -17264,7 +17264,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "요청을 보내지 않았습니다"
+            "value": "요청을 보내지 않음"
           }
         },
         "zh-Hans": {
@@ -17780,7 +17780,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El archivo de activación es para otro producto u otro dispositivo, o venció."
+            "value": "El archivo de activación es para otro producto u otro dispositivo, o ha caducado."
           }
         },
         "pt-BR": {
@@ -20678,19 +20678,19 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "そのコードは有効期限が切れています。新しいコードを送信してください。"
+            "value": "そのコードは有効期限が切れています。新しいコードをリクエストしてください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "그 코드는 만료되었어요. 새 코드를 보내세요."
+            "value": "코드가 만료됐어요. 새 코드를 요청하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "该验证码已过期。请发送新的验证码。"
+            "value": "该验证码已过期。请重新获取验证码。"
           }
         }
       }
@@ -21566,7 +21566,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível remover o dispositivo"
+            "value": "Falha ao remover dispositivo"
           }
         },
         "it": {
@@ -21608,7 +21608,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden."
+            "value": "Diese Lizenz hat ihr Gerätelimit bereits erreicht. Ersetzen Sie ein Gerät, um sie hier zu verwenden."
           }
         },
         "fr": {
@@ -21620,7 +21620,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí."
+            "value": "Esta licencia ya ha alcanzado su límite de dispositivos. Reemplaza un dispositivo para usarla aquí."
           }
         },
         "pt-BR": {
@@ -21638,7 +21638,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。"
+            "value": "このライセンスは、すでにデバイス数の上限に達しています。ここで使うにはデバイスを置き換えてください。"
           }
         },
         "ko": {
@@ -21806,7 +21806,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível carregar os dispositivos"
+            "value": "Falha ao carregar dispositivos"
           }
         },
         "it": {
@@ -21926,7 +21926,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível renomear"
+            "value": "Falha ao renomear"
           }
         },
         "it": {
@@ -22328,7 +22328,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ein anderes Polaris Locker-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse."
+            "value": "Ein anderes Polaris Locker-Konto verwendet diese E-Mail-Adresse bereits. Fügen Sie diese Anmeldung dem anderen Konto hinzu oder verwenden Sie eine andere E-Mail-Adresse."
           }
         },
         "fr": {
@@ -22346,7 +22346,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Outra conta do Polaris Locker já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail."
+            "value": "Outra conta do Polaris Locker já usa este e-mail. Una este acesso a essa conta ou use outro e-mail."
           }
         },
         "it": {
@@ -22364,7 +22364,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다른 Polaris Locker 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요."
+            "value": "다른 Polaris Locker 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 합치거나 다른 이메일을 사용하세요."
           }
         },
         "zh-Hans": {
@@ -23246,7 +23246,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Falha na verificação de atualizações"
+            "value": "Falha ao verificar atualizações"
           }
         },
         "it": {
@@ -23366,7 +23366,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Falha na verificação de atualizações"
+            "value": "Falha ao verificar atualizações"
           }
         },
         "it": {
@@ -23486,7 +23486,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verificação de atualizações indisponível"
+            "value": "Atualizações indisponíveis"
           }
         },
         "it": {
@@ -24686,7 +24686,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Falha na verificação do dispositivo"
+            "value": "Dispositivo não verificado"
           }
         },
         "it": {
@@ -25832,7 +25832,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "L'app ha inviato una richiesta che il bridge delle licenze non ha potuto leggere. Contatta lo sviluppatore."
+            "value": "L'app ha inviato una richiesta che il modulo di licenza non ha potuto leggere. Contatta lo sviluppatore."
           }
         },
         "ja": {
@@ -25850,7 +25850,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "应用发送的请求，许可桥接无法读取。请联系开发者。"
+            "value": "许可桥接无法读取应用发送的请求。请联系开发者。"
           }
         }
       }
@@ -25940,7 +25940,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las licencias de la app no están configuradas correctamente. Contacta con el desarrollador."
+            "value": "El sistema de licencias de la app no está configurado correctamente. Contacta con el desarrollador."
           }
         },
         "pt-BR": {
@@ -26186,7 +26186,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
+            "value": "O acesso por este app não está configurado corretamente e foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
           }
         },
         "it": {
@@ -26240,13 +26240,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se puede completar el inicio de sesión"
+            "value": "No se puede iniciar sesión"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível concluir o login"
+            "value": "Acesso não concluído"
           }
         },
         "it": {
@@ -26288,7 +26288,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dieser Code hat nicht funktioniert. Prüfen Sie die E-Mail und geben Sie ihn erneut ein."
+            "value": "Dieser Code ist nicht korrekt. Prüfen Sie die E-Mail und geben Sie ihn erneut ein."
           }
         },
         "fr": {
@@ -26300,31 +26300,31 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ese código no funcionó. Revisa el correo y vuelve a escribirlo."
+            "value": "Ese código no es correcto. Revisa el correo y vuelve a intentarlo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esse código não funcionou. Confira o e-mail e digite de novo."
+            "value": "Esse código está incorreto. Confira o e-mail e tente de novo."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quel codice non ha funzionato. Controlla l'email e digitalo di nuovo."
+            "value": "Quel codice non è corretto. Controlla l'email e riprova."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "そのコードは使用できませんでした。メールを確認して、もう一度入力してください。"
+            "value": "コードが正しくありません。メールを確認して、もう一度入力してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "그 코드는 작동하지 않았어요. 이메일을 확인하고 다시 입력하세요."
+            "value": "코드가 올바르지 않아요. 이메일을 확인하고 다시 입력하세요."
           }
         },
         "zh-Hans": {
@@ -26426,7 +26426,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Este login expirou ou já foi usado. Entre de novo."
+            "value": "Este acesso expirou ou já foi usado. Entre de novo."
           }
         },
         "it": {
@@ -26444,7 +26444,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 로그인은 만료되었거나 이미 사용되었습니다. 다시 로그인하세요."
+            "value": "이 로그인은 만료됐거나 이미 사용됐어요. 다시 로그인하세요."
           }
         },
         "zh-Hans": {
@@ -26486,7 +26486,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Login não é mais válido"
+            "value": "Acesso não é mais válido"
           }
         },
         "it": {
@@ -26504,7 +26504,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로그인이 더 이상 유효하지 않습니다"
+            "value": "로그인이 유효하지 않음"
           }
         },
         "zh-Hans": {
@@ -26564,7 +26564,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "앱이 읽을 수 없는 요청을 보냈습니다. 다시 시도하세요."
+            "value": "앱에서 읽을 수 없는 로그인 요청을 보냈어요. 다시 시도하세요."
           }
         },
         "zh-Hans": {
@@ -26606,7 +26606,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Solicitação de login inválida"
+            "value": "Solicitação de acesso inválida"
           }
         },
         "it": {
@@ -26624,7 +26624,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로그인 요청이 올바르지 않습니다"
+            "value": "잘못된 로그인 요청"
           }
         },
         "zh-Hans": {
@@ -26648,7 +26648,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die App hat Zugriff angefragt, den diese Anmeldung nicht bietet. Wende dich an den Entwickler."
+            "value": "Die App hat Zugriff angefragt, den diese Anmeldung nicht bietet. Wenden Sie sich an den Entwickler."
           }
         },
         "fr": {
@@ -26666,13 +26666,13 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O app pediu um acesso que este login não oferece. Fale com o desenvolvedor."
+            "value": "O app pediu um tipo de acesso que esta forma de entrar não oferece. Fale com o desenvolvedor."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "L'app ha chiesto un accesso che questo accesso non offre. Contatta il suo sviluppatore."
+            "value": "L'app ha chiesto autorizzazioni che questo accesso non offre. Contatta il suo sviluppatore."
           }
         },
         "ja": {
@@ -26684,13 +26684,13 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "앱이 이 로그인에서 제공하지 않는 액세스를 요청했습니다. 개발자에게 문의하세요."
+            "value": "앱에서 이 로그인으로 제공되지 않는 액세스를 요청했어요. 개발자에게 문의하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "应用请求的访问权限此次登录不提供。请联系其开发者。"
+            "value": "应用请求了此次登录不提供的访问权限。请联系其开发者。"
           }
         }
       }
@@ -26744,7 +26744,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "액세스할 수 없습니다"
+            "value": "액세스 불가"
           }
         },
         "zh-Hans": {
@@ -26792,7 +26792,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "L'app ha chiesto qualcosa che il suo bridge delle licenze non offre. Contatta lo sviluppatore."
+            "value": "L'app ha chiesto qualcosa che il suo modulo di licenza non offre. Contatta lo sviluppatore."
           }
         },
         "ja": {
@@ -27206,7 +27206,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não é possível remover"
+            "value": "Impossível remover"
           }
         },
         "it": {
@@ -27248,7 +27248,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wähle, welche Lizenz dieses Gerät verwendet, und fahre dann fort."
+            "value": "Wählen Sie, welche Lizenz dieses Gerät verwendet, und fahren Sie dann fort."
           }
         },
         "fr": {
@@ -27272,7 +27272,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scegli quale licenza usa questo dispositivo, poi continua."
+            "value": "Scegli quale licenza deve usare questo dispositivo, poi continua."
           }
         },
         "ja": {
@@ -27620,7 +27620,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta licencia venció. Renuévala para continuar."
+            "value": "Esta licencia ha caducado. Renuévala para continuar."
           }
         },
         "pt-BR": {
@@ -27680,7 +27680,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Licencia vencida"
+            "value": "Licencia caducada"
           }
         },
         "pt-BR": {
@@ -28040,7 +28040,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se necesita una licencia"
+            "value": "Licencia necesaria"
           }
         },
         "pt-BR": {
@@ -28118,13 +28118,13 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アプリがライセンスを更新できるようにインターネットに接続してから、もう一度お試しください。"
+            "value": "アプリがライセンスを最新の状態にできるよう、インターネットに接続してから、もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "앱이 라이선스를 새로 고칠 수 있도록 인터넷에 연결한 후 다시 시도하세요."
+            "value": "앱이 라이선스를 새로고침할 수 있도록 인터넷에 연결한 후 다시 시도하세요."
           }
         },
         "zh-Hans": {
@@ -28178,13 +28178,13 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ライセンスの更新が必要です"
+            "value": "ライセンスの再確認が必要です"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "라이선스 새로 고침 필요"
+            "value": "라이선스 새로고침 필요"
           }
         },
         "zh-Hans": {
@@ -29246,7 +29246,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não é possível conectar"
+            "value": "Sem conexão"
           }
         },
         "it": {
@@ -29366,7 +29366,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não é possível conectar"
+            "value": "Sem conexão"
           }
         },
         "it": {
@@ -29540,7 +29540,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las licencias de la app todavía no están configuradas. Contacta con el desarrollador."
+            "value": "El sistema de licencias de la app todavía no está configurado. Contacta con el desarrollador."
           }
         },
         "pt-BR": {
@@ -29660,7 +29660,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta oferta ya no está disponible para tu cuenta. Actualiza la página y vuelve a intentarlo."
+            "value": "Esta oferta ya no está disponible para tu cuenta. Recarga la página y vuelve a intentarlo."
           }
         },
         "pt-BR": {
@@ -29678,7 +29678,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このオファーはお使いのアカウントでは利用できなくなりました。更新して、もう一度お試しください。"
+            "value": "このオファーはお使いのアカウントでは利用できなくなりました。ページを再読み込みして、もう一度お試しください。"
           }
         },
         "ko": {
@@ -30050,7 +30050,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "此许可证无法通过许可证密钥重新添加，因此会保留在你的库中。"
+            "value": "此许可证无法通过许可证密钥重新添加，因此会保留在你的资料库中。"
           }
         }
       }
@@ -30086,7 +30086,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não é possível remover"
+            "value": "Impossível remover"
           }
         },
         "it": {
@@ -31046,7 +31046,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Problema de armazenamento"
+            "value": "Erro de armazenamento"
           }
         },
         "it": {
@@ -32006,7 +32006,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não é possível instalar o conteúdo"
+            "value": "Impossível instalar conteúdo"
           }
         },
         "it": {
@@ -32666,7 +32666,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O login deste app não está configurado corretamente, então foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
+            "value": "O acesso por este app não está configurado corretamente e foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
           }
         },
         "it": {
@@ -32726,7 +32726,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O login não consegue voltar ao app"
+            "value": "Não foi possível voltar ao app"
           }
         },
         "it": {
@@ -32798,7 +32798,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ライセンスと設定を更新できませんでした。接続を確認して、もう一度お試しください。"
+            "value": "ライセンスと設定を最新の状態にできませんでした。接続を確認して、もう一度お試しください。"
           }
         },
         "ko": {
@@ -32846,7 +32846,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível atualizar"
+            "value": "Falha ao atualizar"
           }
         },
         "it": {
@@ -33026,13 +33026,13 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sua licença não inclui este lançamento."
+            "value": "Sua licença não inclui esta versão."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La tua licenza non include questa release."
+            "value": "La tua licenza non include questa versione."
           }
         },
         "ja": {
@@ -33620,7 +33620,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta ventana no puede usar las licencias de la app. Contacta con el desarrollador."
+            "value": "Esta ventana no puede usar el sistema de licencias de la app. Contacta con el desarrollador."
           }
         },
         "pt-BR": {
@@ -34340,7 +34340,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El código venció antes de terminar el inicio de sesión. Vuelve a empezar."
+            "value": "El código caducó antes de terminar el inicio de sesión. Vuelve a empezar."
           }
         },
         "pt-BR": {
@@ -34400,7 +34400,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Código vencido"
+            "value": "Código caducado"
           }
         },
         "pt-BR": {
@@ -35228,7 +35228,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bestätigen Sie, dass Sie es sind"
+            "value": "Identität bestätigen"
           }
         },
         "fr": {
@@ -35366,7 +35366,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Problema de armazenamento"
+            "value": "Erro de armazenamento"
           }
         },
         "it": {
@@ -35426,7 +35426,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível aplicar a atualização. Ela será tentada novamente na próxima inicialização."
+            "value": "Não foi possível aplicar a atualização. Uma nova tentativa será feita na próxima inicialização."
           }
         },
         "it": {
@@ -35606,7 +35606,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não é possível atualizar aqui"
+            "value": "Impossível atualizar aqui"
           }
         },
         "it": {
@@ -35792,7 +35792,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accetta le condizioni per continuare."
+            "value": "Accetta i termini per continuare."
           }
         },
         "ja": {
@@ -35852,7 +35852,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Condizioni non accettate"
+            "value": "Termini non accettati"
           }
         },
         "ja": {
@@ -35960,7 +35960,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tiempo de espera agotado"
+            "value": "Tiempo agotado"
           }
         },
         "pt-BR": {
@@ -36320,7 +36320,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La comprobación no se superó"
+            "value": "Comprobación fallida"
           }
         },
         "pt-BR": {
@@ -36770,7 +36770,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "此应用无法登录。"
+            "value": "此应用不支持登录。"
           }
         }
       }
@@ -36968,7 +36968,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die App hat eine Anmeldeart angefragt, die wir nicht unterstützen. Wende dich an den Entwickler."
+            "value": "Die App hat eine Anmeldeart angefragt, die wir nicht unterstützen. Wenden Sie sich an den Entwickler."
           }
         },
         "fr": {
@@ -36986,7 +36986,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O app pediu um tipo de login que não aceitamos. Fale com o desenvolvedor."
+            "value": "O app pediu um tipo de acesso que não aceitamos. Fale com o desenvolvedor."
           }
         },
         "it": {
@@ -37004,7 +37004,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "앱이 지원하지 않는 로그인 방식을 요청했습니다. 개발자에게 문의하세요."
+            "value": "앱에서 지원하지 않는 로그인 방식을 요청했어요. 개발자에게 문의하세요."
           }
         },
         "zh-Hans": {
@@ -37046,7 +37046,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Solicitação de login inválida"
+            "value": "Solicitação de acesso inválida"
           }
         },
         "it": {
@@ -37064,7 +37064,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로그인 요청이 올바르지 않습니다"
+            "value": "잘못된 로그인 요청"
           }
         },
         "zh-Hans": {
@@ -37166,7 +37166,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Downloads sobrecarregados"
+            "value": "Servidor ocupado"
           }
         },
         "it": {
@@ -37400,7 +37400,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Actualización obligatoria"
+            "value": "Actualización necesaria"
           }
         },
         "pt-BR": {
@@ -37760,7 +37760,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Licencia vencida"
+            "value": "Licencia caducada"
           }
         },
         "pt-BR": {
@@ -37880,7 +37880,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Periodo de gracia sin conexión"
+            "value": "Periodo de gracia"
           }
         },
         "pt-BR": {
@@ -37892,7 +37892,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Periodo di tolleranza offline"
+            "value": "Tolleranza offline"
           }
         },
         "ja": {
@@ -38510,7 +38510,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "此许可证不可用"
+            "value": "许可证不支持此版本"
           }
         }
       }
@@ -38546,7 +38546,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta versão não é mais compatível. Atualize %1$@ para continuar."
+            "value": "Esta versão não tem mais suporte. Atualize %1$@ para continuar."
           }
         },
         "it": {
@@ -38600,7 +38600,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Actualización obligatoria"
+            "value": "Actualización necesaria"
           }
         },
         "pt-BR": {
@@ -38768,7 +38768,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ wird von %2$@ abgemeldet und %3$@ tritt an seine Stelle. Wir informieren Sie per E-Mail darüber."
+            "value": "%1$@ wird von %2$@ abgemeldet und durch %3$@ ersetzt. Wir informieren Sie per E-Mail darüber."
           }
         },
         "fr": {
@@ -39040,7 +39040,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La tua licenza è su %1$@ di %#@limit@"
+            "value": "La tua licenza è in uso su %1$@ di %#@limit@"
           },
           "substitutions": {
             "limit": {
@@ -39494,7 +39494,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cierra sesión en %1$@ en otro dispositivo y vuelve a intentarlo."
+            "value": "Cierra sesión de %1$@ en otro dispositivo y vuelve a intentarlo."
           }
         },
         "pt-BR": {
@@ -39518,7 +39518,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다른 기기에서 %1$@에서 로그아웃한 다음 다시 시도하세요."
+            "value": "다른 기기의 %1$@에서 로그아웃한 다음 다시 시도하세요."
           }
         },
         "zh-Hans": {
@@ -39704,7 +39704,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ foi substituído. %2$@ está continuando."
+            "value": "%1$@ foi substituído. %2$@ vai continuar."
           }
         },
         "it": {
@@ -40460,7 +40460,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · usado por último %2$@"
+            "value": "%1$@ · último uso %2$@"
           }
         },
         "it": {
@@ -40562,7 +40562,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ entfernen? Es wird von %2$@ abgemeldet."
+            "value": "%1$@ entfernen? Das Gerät wird von %2$@ abgemeldet."
           }
         },
         "fr": {
@@ -41180,7 +41180,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível iniciar %1$@"
+            "value": "Falha ao iniciar %1$@"
           }
         },
         "it": {
@@ -41948,7 +41948,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Carregar arquivo…"
+            "value": "Abrir arquivo…"
           }
         },
         "it": {
@@ -43934,7 +43934,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scansiona con il telefono"
+            "value": "Scansiona invece con il telefono"
           }
         },
         "ja": {
@@ -44102,7 +44102,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vencida"
+            "value": "Caducada"
           }
         },
         "pt-BR": {
@@ -45662,7 +45662,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 등급으로 업그레이드"
+            "value": "%1$@(으)로 업그레이드"
           }
         },
         "zh-Hans": {
@@ -46502,7 +46502,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Restablecer valor predeterminado"
+            "value": "Restablecer"
           }
         },
         "pt-BR": {
@@ -47186,7 +47186,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 로그인을 완료하지 못했어요. 다시 시도해 주세요."
+            "value": "%1$@ 로그인을 완료하지 못했어요. 다시 시도하세요."
           }
         },
         "zh-Hans": {
@@ -47288,7 +47288,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entrar no %1$@"
+            "value": "Entrar em %1$@"
           }
         },
         "it": {
@@ -47342,7 +47342,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elige Sign in on %1$@ en la página de inicio de sesión para terminar."
+            "value": "Elige «Sign in on %1$@» en la página de inicio de sesión para terminar."
           }
         },
         "pt-BR": {
@@ -47474,7 +47474,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Obtener un código nuevo"
+            "value": "Obtener código nuevo"
           }
         },
         "pt-BR": {
@@ -47654,7 +47654,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Escanea el código QR con tu teléfono o ve a esta dirección e introduce el código de abajo."
+            "value": "Escanea el código QR con tu teléfono o ve a esta dirección y escribe el código de abajo."
           }
         },
         "pt-BR": {
@@ -47678,7 +47678,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "휴대전화로 QR 코드를 스캔하거나, 이 주소로 이동해 아래 코드를 입력하세요."
+            "value": "휴대폰으로 QR 코드를 스캔하거나, 이 주소로 이동해 아래 코드를 입력하세요."
           }
         },
         "zh-Hans": {
@@ -47786,13 +47786,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vuelve a iniciar sesión"
+            "value": "Volver a iniciar sesión"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entre novamente"
+            "value": "Entrar novamente"
           }
         },
         "it": {
@@ -47846,7 +47846,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bestätigen und anmelden"
+            "value": "Genehmigen und anmelden"
           }
         },
         "fr": {
@@ -47942,7 +47942,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "승인했습니다. %1$@이(가) 로그인되었습니다."
+            "value": "승인했어요. %1$@이(가) 로그인됐어요."
           }
         },
         "zh-Hans": {
@@ -47966,7 +47966,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Neues Gerät bestätigen?"
+            "value": "Neues Gerät genehmigen?"
           }
         },
         "fr": {
@@ -48062,13 +48062,13 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "코드 %1$@이(가) 계정에 로그인하려고 합니다."
+            "value": "코드 %1$@(으)로 계정 로그인을 요청했어요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "代码 %1$@ 请求登录您的账户。"
+            "value": "代码 %1$@ 请求登录你的账户。"
           }
         }
       }
@@ -48218,7 +48218,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Introduce las 8 letras del código."
+            "value": "Escribe las 8 letras del código."
           }
         },
         "pt-BR": {
@@ -48284,7 +48284,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Essa solicitação foi recusada. Use outra forma de entrar."
+            "value": "Essa solicitação foi negada. Use outra forma de entrar."
           }
         },
         "it": {
@@ -48338,7 +48338,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rechazado. No ha cambiado nada."
+            "value": "Denegado. No ha cambiado nada."
           }
         },
         "pt-BR": {
@@ -48362,7 +48362,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "거부했습니다. 변경된 내용이 없습니다."
+            "value": "거부했어요. 변경된 내용은 없어요."
           }
         },
         "zh-Hans": {
@@ -48404,7 +48404,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Recusar"
+            "value": "Negar"
           }
         },
         "it": {
@@ -48542,7 +48542,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 계정은 로그인할 수 없습니다. 다른 방법으로 로그인하세요."
+            "value": "이 계정은 로그인할 수 없어요. 다른 방법으로 로그인하세요."
           }
         },
         "zh-Hans": {
@@ -48638,7 +48638,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ese código venció. Obtén un código nuevo."
+            "value": "Ese código ha caducado. Obtén un código nuevo."
           }
         },
         "pt-BR": {
@@ -48722,7 +48722,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 코드는 만료되었습니다. 다른 기기에서 새 코드를 받으세요."
+            "value": "이 코드는 만료됐어요. 다른 기기에서 새 코드를 받으세요."
           }
         },
         "zh-Hans": {
@@ -48782,7 +48782,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "처리되지 않았습니다. 다시 시도하세요."
+            "value": "처리되지 않았어요. 다시 시도하세요."
           }
         },
         "zh-Hans": {
@@ -48806,7 +48806,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scannen Sie auf einem Handy oder Computer, auf dem Sie angemeldet sind, den Code oder öffnen Sie Konto → Neues Gerät genehmigen und geben Sie ihn ein."
+            "value": "Scannen Sie auf einem Telefon oder Computer, auf dem Sie angemeldet sind, den Code oder öffnen Sie Konto → Neues Gerät genehmigen und geben Sie ihn ein."
           }
         },
         "fr": {
@@ -48818,7 +48818,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "En un teléfono o un ordenador donde hayas iniciado sesión, escanea el código, o abre Cuenta → Aprobar un dispositivo nuevo y escríbelo."
+            "value": "En un teléfono o una computadora donde hayas iniciado sesión, escanea el código, o abre Cuenta → Aprobar un dispositivo nuevo y escríbelo."
           }
         },
         "pt-BR": {
@@ -48962,7 +48962,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Resta un minuto per questo codice."
+            "value": "Questo codice scade tra un minuto."
           }
         },
         "ja": {
@@ -48974,7 +48974,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 코드는 1분 남았습니다."
+            "value": "이 코드는 1분 남았어요."
           }
         },
         "zh-Hans": {
@@ -49016,7 +49016,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nenhum login está aguardando esse código. Confira-o no outro dispositivo."
+            "value": "Nenhum acesso está aguardando esse código. Confira-o no outro dispositivo."
           }
         },
         "it": {
@@ -49034,7 +49034,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "해당 코드를 기다리는 로그인이 없습니다. 다른 기기에서 확인하세요."
+            "value": "이 코드로 기다리는 로그인이 없어요. 다른 기기에서 코드를 확인하세요."
           }
         },
         "zh-Hans": {
@@ -49358,13 +49358,13 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "현재 위치와 다른 곳이거나 위치를 알 수 없는 곳에서 요청했습니다."
+            "value": "지금 계신 곳과 다른 곳이나 위치를 알 수 없는 곳에서 요청했어요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请求来自与您当前不同的位置，或无法确定的位置。"
+            "value": "请求来自与你当前不同的位置，或无法确定的位置。"
           }
         }
       }
@@ -49472,13 +49472,13 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "試行が多すぎます。1分待ってからもう一度お試しください。"
+            "value": "試行回数が多すぎます。1分待ってからもう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "시도가 너무 많습니다. 1분 기다린 뒤 다시 시도하세요."
+            "value": "시도 횟수가 너무 많아요. 1분 기다린 후 다시 시도하세요."
           }
         },
         "zh-Hans": {
@@ -49622,7 +49622,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bestätigen Sie nur, wenn Sie dies selbst auf einem Gerät vor Ihnen gestartet haben. Niemand von Polaris Locker oder einem Entwickler wird Sie jemals danach fragen."
+            "value": "Genehmigen Sie nur, wenn Sie dies selbst auf einem Gerät vor Ihnen gestartet haben. Niemand von Polaris Locker oder einem Entwickler wird Sie jemals danach fragen."
           }
         },
         "fr": {
@@ -49922,7 +49922,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihre Lizenzen sind auf allen zulässigen Geräten belegt. Ersetzen Sie ein Gerät, um hier eine zu verwenden."
+            "value": "Alle Ihre Lizenzen haben ihr Gerätelimit erreicht. Ersetzen Sie ein Gerät, um hier eine davon zu verwenden."
           }
         },
         "fr": {
@@ -49934,7 +49934,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tus licencias están en todos sus dispositivos. Reemplaza un dispositivo para usar una aquí."
+            "value": "Tus licencias ya han alcanzado su límite de dispositivos. Reemplaza un dispositivo para usar una aquí."
           }
         },
         "pt-BR": {
@@ -49952,7 +49952,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "お持ちのライセンスはすべてのデバイス枠が使用中です。ここで使うにはデバイスを置き換えてください。"
+            "value": "お持ちのライセンスはすべて、デバイス数が上限に達しています。ここで使うにはデバイスを置き換えてください。"
           }
         },
         "ko": {
@@ -49982,7 +49982,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihre Lizenzen sind auf allen zulässigen Geräten belegt. Ersetzen Sie ein Gerät oder erstellen Sie eine neue kostenlose Lizenz."
+            "value": "Alle Ihre Lizenzen haben ihr Gerätelimit erreicht. Ersetzen Sie ein Gerät oder erstellen Sie eine neue kostenlose Lizenz."
           }
         },
         "fr": {
@@ -49994,7 +49994,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tus licencias están en todos sus dispositivos. Reemplaza un dispositivo o crea una licencia gratuita nueva."
+            "value": "Tus licencias ya han alcanzado su límite de dispositivos. Reemplaza un dispositivo o crea una licencia gratuita nueva."
           }
         },
         "pt-BR": {
@@ -50012,7 +50012,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "お持ちのライセンスはすべてのデバイス枠が使用中です。デバイスを置き換えるか、新しい無料ライセンスを作成してください。"
+            "value": "お持ちのライセンスはすべて、デバイス数が上限に達しています。デバイスを置き換えるか、新しい無料ライセンスを作成してください。"
           }
         },
         "ko": {
@@ -50054,7 +50054,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El código de %1$@ venció. Obtén un código nuevo allí y vuelve a escanearlo."
+            "value": "El código de %1$@ ha caducado. Obtén un código nuevo allí y vuelve a escanearlo."
           }
         },
         "pt-BR": {
@@ -50654,13 +50654,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Liberar un dispositivo"
+            "value": "Liberar dispositivo"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Liberar um dispositivo"
+            "value": "Liberar dispositivo"
           }
         },
         "it": {
@@ -50672,13 +50672,13 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "デバイスの枠を空ける"
+            "value": "デバイスを解放"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "기기 자리 비우기"
+            "value": "기기 해제"
           }
         },
         "zh-Hans": {
@@ -50702,7 +50702,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Auf dieser Lizenz ist jetzt ein Gerät frei."
+            "value": "Diese Lizenz hat jetzt Platz für ein weiteres Gerät."
           }
         },
         "fr": {
@@ -50732,19 +50732,19 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このライセンスのデバイス枠が1つ空きました。"
+            "value": "このライセンスで、もう1台デバイスを使えるようになりました。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이제 이 라이선스에 빈 기기 자리가 있어요."
+            "value": "이제 이 라이선스로 기기를 하나 더 사용할 수 있어요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "此许可证现在有一台空余设备。"
+            "value": "此许可证现在可以再添加一台设备。"
           }
         }
       }
@@ -51026,7 +51026,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ verwendet sie auf %2$@."
+            "value": "%1$@ verwendet sie für %2$@."
           }
         },
         "fr": {
@@ -51356,7 +51356,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "これらのライセンスのデバイスは%1$@が管理しています。%1$@に枠を空けてもらうか、別のライセンスを使用してください。"
+            "value": "これらのライセンスのデバイスは%1$@が管理しています。%1$@にデバイスを1台解放してもらうか、別のライセンスを使用してください。"
           }
         },
         "ko": {
@@ -51866,7 +51866,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@-Schlüssel endet auf %2$@"
+            "value": "%1$@-Schlüssel mit Endung %2$@"
           }
         },
         "fr": {
@@ -52562,7 +52562,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il dispositivo scelto esce da %1$@. Potrà accedere di nuovo più tardi se c'è spazio. Ti avviseremo via e-mail."
+            "value": "Il dispositivo scelto esce da %1$@. Potrà accedere di nuovo più tardi se c'è spazio. Ti invieremo un'email al riguardo."
           }
         },
         "ja": {
@@ -52574,7 +52574,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "선택한 기기는 %1$@에서 로그아웃됩니다. 여유가 있으면 나중에 다시 로그인할 수 있습니다. 이메일로 알려 드립니다."
+            "value": "선택한 기기는 %1$@에서 로그아웃돼요. 여유가 생기면 나중에 다시 로그인할 수 있어요. 이메일로 알려 드려요."
           }
         },
         "zh-Hans": {
@@ -52604,7 +52604,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ est déconnecté de %2$@. %3$@ est connecté."
+            "value": "%1$@ est déconnecté de %2$@ et %3$@ est connecté."
           }
         },
         "es": {
@@ -52634,7 +52634,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@이(가) %2$@에서 로그아웃했습니다. %3$@이(가) 로그인되었습니다."
+            "value": "%1$@이(가) %2$@에서 로그아웃됐어요. %3$@이(가) 로그인됐어요."
           }
         },
         "zh-Hans": {
@@ -52694,7 +52694,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "기기를 교체했습니다"
+            "value": "기기를 교체했어요"
           }
         },
         "zh-Hans": {
@@ -52808,7 +52808,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "すべての端末が使用中"
+            "value": "すべてのデバイスが使用中"
           }
         },
         "ko": {
@@ -53270,7 +53270,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Cerrar sesión en %1$@ en este dispositivo? (y/N)"
+            "value": "¿Cerrar sesión de %1$@ en este dispositivo? (y/N)"
           }
         },
         "pt-BR": {
@@ -53666,7 +53666,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다른 Polaris Locker 계정이 이 이메일을 사용하고 있습니다. 이전에 쓰던 방법으로 로그인하세요."
+            "value": "다른 Polaris Locker 계정에서 이 이메일을 사용하고 있어요. 이전에 로그인했던 방법으로 로그인하세요."
           }
         },
         "zh-Hans": {
@@ -53708,7 +53708,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esse login expirou. Continue para receber um novo código."
+            "value": "Esse acesso expirou. Continue para receber um novo código."
           }
         },
         "it": {
@@ -53726,7 +53726,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 로그인은 만료되었습니다. 계속하여 새 코드를 받으세요."
+            "value": "이 로그인은 만료됐어요. 계속하면 새 코드를 받을 수 있어요."
           }
         },
         "zh-Hans": {
@@ -53960,7 +53960,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "コードが届きませんか?"
+            "value": "コードが届きませんか？"
           }
         },
         "ko": {
@@ -53972,7 +53972,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没收到验证码?"
+            "value": "没收到验证码？"
           }
         }
       }
@@ -54008,7 +54008,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não é possível enviar mais códigos para este login. O último código ainda funciona."
+            "value": "Não é possível enviar mais códigos para este acesso. O último código ainda funciona."
           }
         },
         "it": {
@@ -54026,7 +54026,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 로그인에서는 더 이상 코드를 보낼 수 없습니다. 마지막 코드는 계속 사용할 수 있습니다."
+            "value": "이 로그인에서는 더 이상 코드를 보낼 수 없어요. 마지막으로 받은 코드는 계속 사용할 수 있어요."
           }
         },
         "zh-Hans": {
@@ -54086,7 +54086,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "시도 횟수가 너무 많습니다. 1분 기다린 후 다시 시도하세요."
+            "value": "시도 횟수가 너무 많아요. 1분 기다린 후 다시 시도하세요."
           }
         },
         "zh-Hans": {
@@ -54194,7 +54194,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Neuen Code senden in %1$@"
+            "value": "Neuen Code in %1$@ senden"
           }
         },
         "fr": {
@@ -54338,7 +54338,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abbiamo inviato un codice e un link di accesso a %1$@. Entrambi valgono 10 minuti."
+            "value": "Abbiamo inviato un codice e un link di accesso a %1$@. Entrambi sono validi per 10 minuti."
           }
         },
         "ja": {
@@ -55058,7 +55058,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cloud Sync"
+            "value": "Cloud-Synchronisierung"
           }
         },
         "fr": {
@@ -55070,19 +55070,19 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cloud Sync"
+            "value": "Sincronización en la nube"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cloud Sync"
+            "value": "Sincronização na nuvem"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cloud Sync"
+            "value": "Sincronizzazione cloud"
           }
         },
         "ja": {
@@ -55130,7 +55130,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Continuar a %1$@"
+            "value": "Continuar en %1$@"
           }
         },
         "pt-BR": {
@@ -55328,7 +55328,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Você vai escolher uma licença no %1$@."
+            "value": "Você vai escolher uma licença em %1$@."
           }
         },
         "it": {
@@ -55370,7 +55370,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · %2$@ · %3$@ wird Gerät %4$@ von %5$@"
+            "value": "%1$@ · %2$@ · für %3$@ (Gerät %4$@ von %5$@)"
           }
         },
         "fr": {
@@ -55460,19 +55460,19 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "新規: %1$@ ライセンス。続けると作成されます"
+            "value": "新規：%1$@ライセンス（続けると作成されます）"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "새 %1$@ 라이선스: 계속하면 만들어집니다"
+            "value": "새 %1$@ 라이선스: 계속하면 생성돼요"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "新建:%1$@ 许可证,继续时创建"
+            "value": "新：%1$@许可证，继续后创建"
           }
         }
       }
@@ -55508,7 +55508,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ele recebe um id próprio para você e não verá seus outros produtos nem como você entra."
+            "value": "Ele recebe um ID próprio para você e não verá seus outros produtos nem como você entra."
           }
         },
         "it": {
@@ -55520,7 +55520,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アプリにはあなた専用のIDが渡され、あなたのほかの製品やサインイン方法が知られることはありません。"
+            "value": "アプリにはこのアプリ専用のIDが渡され、あなたのほかの製品やサインイン方法が知られることはありません。"
           }
         },
         "ko": {
@@ -55682,7 +55682,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Continuar a %1$@ como %2$@?"
+            "value": "¿Continuar en %1$@ como %2$@?"
           }
         },
         "pt-BR": {
@@ -56042,7 +56042,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cerraste sesión"
+            "value": "Has cerrado sesión"
           }
         },
         "pt-BR": {
@@ -56360,7 +56360,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Escolha uma licença · O %1$@ está pronto para concluir o acesso."
+            "value": "Escolha uma licença · %1$@ está pronto para concluir o acesso."
           }
         },
         "it": {
@@ -56414,7 +56414,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciaste sesión"
+            "value": "Has iniciado sesión"
           }
         },
         "pt-BR": {
@@ -56642,7 +56642,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sehen Sie auf %1$@ nach: Es fährt automatisch fort."
+            "value": "Sehen Sie auf %1$@ nach: Dort geht es automatisch weiter."
           }
         },
         "fr": {
@@ -56786,7 +56786,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cerrar la sesión del televisor"
+            "value": "Cerrar sesión en la TV"
           }
         },
         "pt-BR": {
@@ -56924,7 +56924,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Começar a usar o %1$@"
+            "value": "Começar a usar %1$@"
           }
         },
         "it": {
@@ -56966,7 +56966,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Oder melden Sie sich über die Schaltfläche an. Code und Link sind einmal und 10 Minuten lang gültig."
+            "value": "Oder melden Sie sich über die Schaltfläche an. Code und Link gelten einmalig für 10 Minuten."
           }
         },
         "fr": {
@@ -57398,7 +57398,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codes und Links sind einmal und 10 Minuten lang gültig."
+            "value": "Codes und Links gelten einmalig für 10 Minuten."
           }
         },
         "fr": {
@@ -57494,7 +57494,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "새 코드를 %1$@(으)로 보냅니다."
+            "value": "새 코드를 %1$@(으)로 보내요."
           }
         },
         "zh-Hans": {
@@ -57530,7 +57530,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ese código o enlace venció"
+            "value": "Ese código o enlace ha caducado"
           }
         },
         "pt-BR": {
@@ -57596,7 +57596,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Polaris Locker faz seu acesso ao %1$@. %2$@ nunca vê seus códigos nem suas chaves de acesso."
+            "value": "O Polaris Locker cuida do seu acesso a %1$@. %2$@ nunca vê seus códigos nem suas chaves de acesso."
           }
         },
         "it": {
@@ -57650,31 +57650,31 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Locker te inicia sesión en %1$@."
+            "value": "Polaris Locker inicia tu sesión en %1$@."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Polaris Locker conecta você ao %1$@."
+            "value": "O Polaris Locker cuida do seu acesso a %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Locker ti fa accedere a %1$@."
+            "value": "Polaris Locker gestisce il tuo accesso a %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Locker が %1$@ にサインインします。"
+            "value": "Polaris Lockerが%1$@へのサインインを行います。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Locker가 %1$@에 로그인합니다."
+            "value": "Polaris Locker가 %1$@ 로그인을 처리해요."
           }
         },
         "zh-Hans": {
@@ -57716,7 +57716,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Adicionar minha data de nascimento de %1$@"
+            "value": "Adicionar minha data de nascimento informada por %1$@"
           }
         },
         "it": {
@@ -57794,13 +57794,13 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "본인만 볼 수 있습니다. 앱에는 전달되지 않습니다."
+            "value": "본인만 볼 수 있어요. 앱에는 전달되지 않아요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "只有您能看到。应用永远不会获得。"
+            "value": "只有你能看到。应用永远不会获得。"
           }
         }
       }
@@ -57926,7 +57926,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@(으)로 코드를 보냈습니다."
+            "value": "%1$@(으)로 코드를 보냈어요."
           }
         },
         "zh-Hans": {
@@ -58088,7 +58088,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esse login expirou. Entre novamente."
+            "value": "Esse acesso expirou. Entre novamente."
           }
         },
         "it": {
@@ -58106,7 +58106,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 로그인은 만료되었습니다. 다시 로그인하세요."
+            "value": "이 로그인은 만료됐어요. 다시 로그인하세요."
           }
         },
         "zh-Hans": {
@@ -58220,7 +58220,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ já pertence a uma conta do Polaris Locker. Una este login a ela ou use outro e-mail."
+            "value": "%1$@ já pertence a uma conta do Polaris Locker. Una este acesso a ela ou use outro e-mail."
           }
         },
         "it": {
@@ -58238,7 +58238,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@은(는) 이미 Polaris Locker 계정에 속해 있습니다. 이 로그인을 해당 계정에 통합하거나 다른 이메일을 사용하세요."
+            "value": "%1$@은(는) 이미 Polaris Locker 계정에 속해 있어요. 이 로그인을 해당 계정에 통합하거나 다른 이메일을 사용하세요."
           }
         },
         "zh-Hans": {
@@ -58286,19 +58286,19 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ appartiene già a un account Polaris Locker. Usa un’altra email o accedi prima a quell’account."
+            "value": "%1$@ appartiene già a un account Polaris Locker. Usa un'altra email o accedi prima a quell'account."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@はすでにPolaris Lockerのアカウントで使われています。別のメールを使うか、先にそのアカウントでログインしてください。"
+            "value": "%1$@はすでにPolaris Lockerのアカウントで使われています。別のメールアドレスを使うか、先にそのアカウントにサインインしてください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@은(는) 이미 Polaris Locker 계정에 속해 있습니다. 다른 이메일을 사용하거나 먼저 그 계정에 로그인하세요."
+            "value": "%1$@은(는) 이미 Polaris Locker 계정에 속해 있어요. 다른 이메일을 사용하거나 먼저 그 계정에 로그인하세요."
           }
         },
         "zh-Hans": {
@@ -58340,7 +58340,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Para juntar, entre primeiro nessa conta neste navegador e depois adicione este login em Conta."
+            "value": "Para unir, entre primeiro nessa conta neste navegador e depois adicione este acesso em Conta."
           }
         },
         "it": {
@@ -58424,7 +58424,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "合并您的账户"
+            "value": "合并你的账户"
           }
         }
       }
@@ -58604,7 +58604,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "使用来自以下的名称"
+            "value": "使用以下来源的名称"
           }
         }
       }
@@ -58658,7 +58658,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Locker와 이메일에 표시됩니다."
+            "value": "Polaris Locker와 이메일에 표시돼요."
           }
         },
         "zh-Hans": {
@@ -58826,13 +58826,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Añadir una llave de acceso"
+            "value": "Añadir llave de acceso"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Adicionar uma chave de acesso"
+            "value": "Criar chave de acesso"
           }
         },
         "it": {
@@ -58910,7 +58910,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "패스키를 추가했습니다."
+            "value": "패스키를 추가했어요."
           }
         },
         "zh-Hans": {
@@ -58970,7 +58970,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "패스키가 추가되지 않았습니다. 계정에서 추가할 수 있습니다."
+            "value": "패스키가 추가되지 않았어요. 계정에서 추가할 수 있어요."
           }
         },
         "zh-Hans": {
@@ -59030,7 +59030,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다음부터는 한 번의 탭으로 됩니다."
+            "value": "다음부터는 한 번만 탭하면 돼요."
           }
         },
         "zh-Hans": {
@@ -59126,13 +59126,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Añadir una llave de acceso"
+            "value": "Añadir llave de acceso"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Adicionar uma chave de acesso"
+            "value": "Criar chave de acesso"
           }
         },
         "it": {
@@ -59576,7 +59576,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usar minha imagem do %1$@"
+            "value": "Usar minha imagem de %1$@"
           }
         },
         "it": {
@@ -59756,7 +59756,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Seu envio"
+            "value": "Enviada por você"
           }
         },
         "it": {
@@ -59798,7 +59798,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ich stimme den %1$@ zu"
+            "value": "Ich akzeptiere die %1$@"
           }
         },
         "fr": {
@@ -59960,7 +59960,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您的 Apple 私密地址"
+            "value": "你的 Apple 私密地址"
           }
         }
       }
@@ -60014,7 +60014,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "새 코드를 %1$@(으)로 보냈습니다."
+            "value": "새 코드를 %1$@(으)로 보냈어요."
           }
         },
         "zh-Hans": {
@@ -60128,7 +60128,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Steam não compartilha e-mail. Adicione um para poder voltar sem o Steam."
+            "value": "O Steam não compartilha e-mail. Adicione um para poder entrar de novo sem o Steam."
           }
         },
         "it": {
@@ -60254,7 +60254,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accesso eseguito con %1$@"
+            "value": "Accesso effettuato con %1$@"
           }
         },
         "ja": {
@@ -60374,7 +60374,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "i Termini e l’Informativa sulla privacy di Polaris Locker"
+            "value": "i Termini e l'Informativa sulla privacy di Polaris Locker"
           }
         },
         "ja": {
@@ -60506,7 +60506,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "한 단계 남았습니다"
+            "value": "한 단계 남았어요"
           }
         },
         "zh-Hans": {
@@ -60614,7 +60614,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "L’immagine non è stata salvata. Aggiungine una in Account."
+            "value": "L'immagine non è stata salvata. Aggiungine una in Account."
           }
         },
         "ja": {
@@ -60626,7 +60626,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "사진이 저장되지 않았습니다. 계정에서 추가하세요."
+            "value": "사진이 저장되지 않았어요. 계정에서 추가하세요."
           }
         },
         "zh-Hans": {
@@ -61226,7 +61226,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Code läuft ab in %1$@"
+            "value": "Code läuft in %1$@ ab"
           }
         },
         "fr": {
@@ -61238,7 +61238,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El código vence en %1$@"
+            "value": "El código caduca en %1$@"
           }
         },
         "pt-BR": {
@@ -62006,7 +62006,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codice · %1$@ · Controlla che coincida con lo schermo"
+            "value": "Codice · %1$@ · Controlla che corrisponda a quello sullo schermo"
           }
         },
         "ja": {
@@ -62312,7 +62312,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enviar um código por e-mail"
+            "value": "Enviar código por e-mail"
           }
         },
         "it": {
@@ -62426,13 +62426,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "una passkey"
+            "value": "una llave de acceso"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "uma passkey"
+            "value": "uma chave de acesso"
           }
         },
         "it": {
@@ -62570,13 +62570,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usar una passkey"
+            "value": "Usar una llave de acceso"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usar uma passkey"
+            "value": "Usar chave de acesso"
           }
         },
         "it": {
@@ -62750,7 +62750,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Te damos la bienvenida de nuevo"
+            "value": "Hola de nuevo"
           }
         },
         "pt-BR": {
@@ -62774,7 +62774,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다시 오신 것을 환영합니다"
+            "value": "다시 오신 것을 환영해요"
           }
         },
         "zh-Hans": {
@@ -62816,7 +62816,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Neste navegador, na última vez %1$@"
+            "value": "Neste navegador, último acesso %1$@"
           }
         },
         "it": {
@@ -62936,7 +62936,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ não usa o acesso do Polaris Locker. Abra %1$@ e digite sua chave de licença nele."
+            "value": "%1$@ não usa o acesso do Polaris Locker. Abra %1$@ e digite sua chave de licença lá."
           }
         },
         "it": {
@@ -63074,7 +63074,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uniti. Puoi annullare per 72 ore."
+            "value": "Account uniti. Puoi annullare l'unione entro 72 ore."
           }
         },
         "ja": {
@@ -63086,7 +63086,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "합쳤습니다. 72시간 동안 되돌릴 수 있습니다."
+            "value": "합쳤어요. 72시간 동안 되돌릴 수 있어요."
           }
         },
         "zh-Hans": {
@@ -63146,7 +63146,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "합쳤습니다. %1$@까지 되돌릴 수 있습니다."
+            "value": "합쳤어요. %1$@까지 되돌릴 수 있어요."
           }
         },
         "zh-Hans": {
@@ -63182,7 +63182,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vincular tardó demasiado. Empieza de nuevo."
+            "value": "La vinculación tardó demasiado. Empieza de nuevo."
           }
         },
         "pt-BR": {
@@ -63194,7 +63194,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il collegamento ha richiesto troppo. Ricomincia."
+            "value": "Il collegamento ha richiesto troppo tempo. Ricomincia."
           }
         },
         "ja": {
@@ -63206,7 +63206,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "연결이 너무 오래 걸렸습니다. 다시 시작하세요."
+            "value": "연결이 너무 오래 걸렸어요. 다시 시작하세요."
           }
         },
         "zh-Hans": {
@@ -63266,7 +63266,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "합치지 못했습니다. 다시 시도하세요."
+            "value": "합치지 못했어요. 다시 시도하세요."
           }
         },
         "zh-Hans": {
@@ -63314,7 +63314,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tutti gli accessi di entrambi continuano a funzionare. Puoi annullare per 72 ore."
+            "value": "Tutti i metodi di accesso di entrambi gli account continuano a funzionare. Puoi annullare entro 72 ore."
           }
         },
         "ja": {
@@ -63326,7 +63326,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "두 계정의 모든 로그인이 계속 작동합니다. 72시간 동안 되돌릴 수 있습니다."
+            "value": "두 계정의 모든 로그인 방법을 계속 사용할 수 있어요. 72시간 동안 되돌릴 수 있어요."
           }
         },
         "zh-Hans": {
@@ -63386,7 +63386,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다른 계정에 로그인해 두 계정을 하나로 합칩니다. 확인하기 전에는 아무것도 옮겨지지 않습니다."
+            "value": "다른 계정에 로그인해 두 계정을 합치세요. 확인하기 전에는 아무것도 옮겨지지 않아요."
           }
         },
         "zh-Hans": {
@@ -63500,7 +63500,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Métodos de entrada"
+            "value": "Métodos de acesso"
           }
         },
         "it": {
@@ -63578,7 +63578,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 합치기는 더 이상 되돌릴 수 없습니다."
+            "value": "이 합치기는 더 이상 되돌릴 수 없어요."
           }
         },
         "zh-Hans": {
@@ -63686,7 +63686,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usa un modo qualsiasi. Tornerai qui per unirli."
+            "value": "Usa un modo qualsiasi per accedere. Tornerai qui per unirli."
           }
         },
         "ja": {
@@ -63698,7 +63698,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "어떤 방법이든 괜찮습니다. 이후 여기로 돌아와 합칩니다."
+            "value": "어떤 방법으로 로그인해도 괜찮아요. 그런 다음 여기로 돌아와 두 계정을 합쳐요."
           }
         },
         "zh-Hans": {
@@ -64202,13 +64202,13 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "한 계정이 최근 72시간 안에 합쳐졌습니다. 그 이후에 다시 시도하세요."
+            "value": "최근 72시간 안에 합친 계정이 있어요. 72시간이 지난 후 다시 시도하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "其中一个账户在过去 72 小时内已合并。请稍后再试。"
+            "value": "其中一个账户在过去 72 小时内已合并。请在 72 小时后再试。"
           }
         }
       }
@@ -64238,7 +64238,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inicia sesión de nuevo en %1$@ y luego une."
+            "value": "Inicia sesión de nuevo en %1$@ y luego únelas."
           }
         },
         "pt-BR": {
@@ -64250,7 +64250,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accedi di nuovo a %1$@, poi unisci."
+            "value": "Accedi di nuovo a %1$@, poi unisci gli account."
           }
         },
         "ja": {
@@ -64358,7 +64358,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cancela primero la eliminación programada y luego une."
+            "value": "Cancela primero la eliminación programada y luego únelas."
           }
         },
         "pt-BR": {
@@ -64370,7 +64370,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Annulla prima l'eliminazione programmata, poi unisci."
+            "value": "Annulla prima l'eliminazione programmata, poi unisci gli account."
           }
         },
         "ja": {
@@ -64614,7 +64614,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "라이브러리 하나: %#@count@. 기본 이메일은 %2$@로 유지됩니다."
+            "value": "라이브러리 하나: %#@count@. 기본 이메일은 %2$@(으)로 유지돼요."
           },
           "substitutions": {
             "count": {
@@ -64706,7 +64706,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "처음 시작한 계정입니다. 다른 계정에 로그인하세요."
+            "value": "처음 시작한 계정이에요. 다른 계정에 로그인하세요."
           }
         },
         "zh-Hans": {
@@ -64874,7 +64874,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accesso di oltre 5 minuti fa"
+            "value": "Accesso effettuato più di 5 minuti fa"
           }
         },
         "ja": {
@@ -65150,7 +65150,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "계속 %1$@(으)로 로그인되어 있습니다."
+            "value": "%1$@(으)로 계속 로그인되어 있어요."
           }
         },
         "zh-Hans": {
@@ -65306,7 +65306,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zusammenführung rückgängig"
+            "value": "Rückgängig machen"
           }
         },
         "fr": {
@@ -65390,7 +65390,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Annullare l'unione con %1$@? Puoi fino al %2$@."
+            "value": "Annullare l'unione con %1$@? Puoi farlo fino al %2$@."
           }
         },
         "ja": {
@@ -65402,7 +65402,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@과(와)의 합치기를 되돌릴까요? %2$@까지 가능합니다."
+            "value": "%1$@과(와)의 합치기를 되돌릴까요? %2$@까지 가능해요."
           }
         },
         "zh-Hans": {
@@ -65462,7 +65462,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "합치기를 되돌리지 못했습니다. 다시 시도하세요."
+            "value": "합치기를 되돌리지 못했어요. 다시 시도하세요."
           }
         },
         "zh-Hans": {
@@ -65498,19 +65498,19 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unida %1$@. Deshacer hasta %2$@."
+            "value": "Se unió %1$@. Puedes deshacerlo hasta el %2$@."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ unida. Desfazer até %2$@."
+            "value": "Conta %1$@ unida. Desfazer até %2$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unito %1$@. Annulla entro %2$@."
+            "value": "Account %1$@ unito. Puoi annullare entro il %2$@."
           }
         },
         "ja": {
@@ -65522,7 +65522,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 합침. %2$@까지 되돌릴 수 있습니다."
+            "value": "%1$@ 합침. %2$@까지 되돌릴 수 있어요."
           }
         },
         "zh-Hans": {
@@ -65582,7 +65582,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "되돌렸습니다."
+            "value": "합치기를 되돌렸어요."
           }
         },
         "zh-Hans": {
@@ -65834,13 +65834,13 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "키가 준비되었습니다. 로그인하거나 계정을 만들면 %1$@이(가) 라이브러리에 추가됩니다."
+            "value": "키가 준비됐어요. 로그인하거나 계정을 만들면 %1$@이(가) 라이브러리에 추가돼요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "密钥已就绪。登录或创建账户后，%1$@ 将加入您的库。"
+            "value": "密钥已就绪。登录或创建账户后，%1$@ 将加入你的资料库。"
           }
         }
       }
@@ -66104,7 +66104,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请粘贴您的许可证密钥以继续。"
+            "value": "请粘贴你的许可证密钥以继续。"
           }
         }
       }
@@ -66134,7 +66134,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Introduce tu clave de licencia."
+            "value": "Escribe tu clave de licencia."
           }
         },
         "pt-BR": {
@@ -66542,7 +66542,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "pkey_로 시작합니다. 대소문자를 구분합니다."
+            "value": "pkey_로 시작해요. 대소문자를 구분해요."
           }
         },
         "zh-Hans": {
@@ -66578,7 +66578,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ in einem Konto aufbewahren"
+            "value": "%1$@ in einem Konto behalten"
           }
         },
         "fr": {
@@ -66608,7 +66608,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@をアカウントで管理"
+            "value": "%1$@をアカウントに保管"
           }
         },
         "ko": {
@@ -66716,7 +66716,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A chave funciona"
+            "value": "Chave válida"
           }
         },
         "it": {
@@ -66734,7 +66734,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "키가 유효합니다"
+            "value": "유효한 키"
           }
         },
         "zh-Hans": {
@@ -66770,13 +66770,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ de %2$@ entradas de clave usadas"
+            "value": "Usos de la clave: %1$@ de %2$@"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ de %2$@ entradas da chave usadas"
+            "value": "%1$@ de %2$@ usos da chave"
           }
         },
         "it": {
@@ -66794,7 +66794,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "키 입력 %2$@회 중 %1$@회 사용"
+            "value": "키 등록 %2$@회 중 %1$@회 사용"
           }
         },
         "zh-Hans": {
@@ -66836,7 +66836,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta chave não tem mais usos em %1$@. Adicione-a à sua conta e %1$@ faz seu acesso no lugar dela."
+            "value": "Esta chave não tem mais usos em %1$@. Adicione-a à sua conta e entre em %1$@ com sua conta."
           }
         },
         "it": {
@@ -66848,7 +66848,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このキーは%1$@での入力回数が残っていません。アカウントに追加すると、代わりに%1$@がサインインします。"
+            "value": "このキーは%1$@での入力回数が残っていません。アカウントに追加すると、代わりにサインインで%1$@を使えます。"
           }
         },
         "ko": {
@@ -66878,7 +66878,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ läuft weiter auf den Geräten, auf denen es schon ist. Nur die erneute Eingabe des Schlüssels braucht ein Konto."
+            "value": "%1$@ läuft auf den Geräten weiter, auf denen es bereits installiert ist. Ein Konto ist nur nötig, um den Schlüssel erneut einzugeben."
           }
         },
         "fr": {
@@ -66902,7 +66902,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ continua a funzionare sui dispositivi in cui è già. Solo inserire di nuovo la chiave richiede un account."
+            "value": "%1$@ continua a funzionare sui dispositivi su cui è già attivo. Serve un account solo per inserire di nuovo la chiave."
           }
         },
         "ja": {
@@ -66914,7 +66914,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@은(는) 이미 설치된 기기에서 계속 작동합니다. 키를 다시 입력할 때만 계정이 필요합니다."
+            "value": "%1$@은(는) 이미 사용 중인 기기에서 계속 작동해요. 키를 다시 입력할 때만 계정이 필요해요."
           }
         },
         "zh-Hans": {
@@ -66962,7 +66962,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Crea un account per tenere %1$@"
+            "value": "Crea un account per conservare %1$@"
           }
         },
         "ja": {
@@ -67022,7 +67022,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Incolla la chiave dalla email della ricevuta. Poi accedi e entra nella tua libreria."
+            "value": "Incolla la chiave dall'email della ricevuta. Poi accedi e il prodotto entrerà nella tua libreria."
           }
         },
         "ja": {
@@ -67034,13 +67034,13 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "영수증 이메일의 키를 붙여 넣으세요. 이어서 로그인하면 라이브러리에 추가됩니다."
+            "value": "영수증 이메일의 키를 붙여 넣으세요. 이어서 로그인하면 라이브러리에 추가돼요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "粘贴收据邮件中的密钥。接着登录，它就会加入您的库。"
+            "value": "粘贴收据邮件中的密钥。接着登录，它就会加入你的资料库。"
           }
         }
       }
@@ -67154,7 +67154,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciar sesión en su lugar"
+            "value": "Iniciar sesión"
           }
         },
         "pt-BR": {
@@ -67214,7 +67214,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vorerst überspringen"
+            "value": "Jetzt nicht"
           }
         },
         "fr": {
@@ -67274,7 +67274,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "In einem Konto können Sie ihn zurückholen und selbst auf ein neues Gerät übertragen."
+            "value": "In einem Konto können Sie es zurückholen und selbst auf ein neues Gerät übertragen."
           }
         },
         "fr": {
@@ -67286,19 +67286,19 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "En una cuenta puedes recuperarla y pasarla a un dispositivo nuevo tú mismo."
+            "value": "Con una cuenta puedes recuperarlo y pasarlo tú mismo a un dispositivo nuevo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Em uma conta, você a recupera e a move para um novo dispositivo sozinho."
+            "value": "Em uma conta, você pode recuperá-la e passá-la para um novo dispositivo por conta própria."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "In un account puoi recuperarla e spostarla su un nuovo dispositivo da solo."
+            "value": "In un account puoi recuperarlo e spostarlo su un nuovo dispositivo da solo."
           }
         },
         "ja": {
@@ -67310,13 +67310,13 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "계정에 보관하면 다시 받거나 새 기기로 직접 옮길 수 있습니다."
+            "value": "계정에 보관하면 다시 받거나 새 기기로 직접 옮길 수 있어요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存在账户中后,你可以找回它,也可以自己迁移到新设备。"
+            "value": "保存在账户中后，你可以找回它，也可以自己将它移到新设备。"
           }
         }
       }
@@ -67358,7 +67358,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tieni %1$@ in un account"
+            "value": "Conserva %1$@ in un account"
           }
         },
         "ja": {
@@ -67622,7 +67622,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sie haben einen Lizenzschlüssel?"
+            "value": "Lizenzschlüssel vorhanden?"
           }
         },
         "fr": {
@@ -67682,7 +67682,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ hat sich am %2$@ von %3$@ aus angemeldet. Falls Sie das nicht waren, melden Sie es in Polaris Locker unter „Wo Sie angemeldet sind“ ab."
+            "value": "%1$@ hat sich am %2$@ von %3$@ aus angemeldet. Falls Sie das nicht waren, melden Sie das Gerät in Polaris Locker unter „Wo Sie angemeldet sind“ ab."
           }
         },
         "fr": {
@@ -67700,7 +67700,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ entrou em %2$@ de %3$@. Se não foi você, desconecte-o no Polaris Locker em Onde você está conectado."
+            "value": "%1$@ entrou em %2$@, a partir de %3$@. Se não foi você, desconecte-o no Polaris Locker em Onde você está conectado."
           }
         },
         "it": {
@@ -67862,7 +67862,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ wurde durch %2$@ ersetzt, als Sie sich am %4$@ bei %3$@ angemeldet haben. Es kann sich später wieder anmelden, wenn ein wenn Platz für ein weiteres Gerät frei ist. Falls Sie das nicht waren, öffnen Sie Polaris Locker und prüfen Sie Ihre Geräte."
+            "value": "%1$@ wurde durch %2$@ ersetzt, als Sie sich am %4$@ bei %3$@ angemeldet haben. Das Gerät kann sich später wieder anmelden, wenn Platz für ein weiteres Gerät frei ist. Falls Sie das nicht waren, öffnen Sie Polaris Locker und prüfen Sie Ihre Geräte."
           }
         },
         "fr": {
@@ -67880,7 +67880,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ foi substituído por %2$@ quando você entrou no %3$@ em %4$@. Ele poderá entrar novamente depois, se houver espaço para outro dispositivo. Se não foi você, abra o Polaris Locker e verifique seus dispositivos."
+            "value": "%1$@ foi substituído por %2$@ em %4$@, quando você entrou em %3$@. Ele poderá entrar novamente depois, se houver espaço para outro dispositivo. Se não foi você, abra o Polaris Locker e verifique seus dispositivos."
           }
         },
         "it": {
@@ -67892,19 +67892,19 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%4$@に%3$@にサインインした際、%1$@は%2$@に置き換えられました。別のデバイスを登録できる空きがあれば、後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。"
+            "value": "%4$@に%3$@にサインインした際、%1$@は%2$@に置き換えられました。デバイスを追加できる空きができれば、%1$@は後で再びサインインできます。心当たりがない場合は、Polaris Lockerを開いてデバイスを確認してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%4$@에 %3$@에 로그인하면서 %1$@ 대신 %2$@ 기기가 등록됐어요. 다른 기기를 등록할 여유가 생기면 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Locker를 열고 기기를 확인하세요."
+            "value": "%4$@에 %3$@에 로그인하면서 %1$@이(가) %2$@(으)로 교체됐어요. 기기를 추가할 여유가 생기면 %1$@에서 나중에 다시 로그인할 수 있어요. 본인이 아니라면 Polaris Locker를 열고 기기를 확인하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你于%4$@登录%3$@时，%1$@被%2$@替换。如果还可以再添加设备，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。"
+            "value": "你于%4$@登录%3$@时，%1$@已被%2$@替换。如果许可证还能再添加设备，%1$@之后可以重新登录。如果这不是你本人操作，请打开Polaris Locker检查你的设备。"
           }
         }
       }
@@ -67946,7 +67946,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ è uscito su %2$@"
+            "value": "%1$@ è stato disconnesso su %2$@"
           }
         },
         "ja": {
@@ -68054,13 +68054,13 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verwenden Sie die E-Mail-Adresse Ihres Kaufs oder eine Arbeits- oder Schul-E-Mail-Adresse."
+            "value": "Verwenden Sie die E-Mail-Adresse, mit der Sie gekauft haben, oder eine Arbeits- oder Schul-E-Mail-Adresse."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Utilisez l’adresse e-mail de votre achat ou une adresse professionnelle ou scolaire."
+            "value": "Utilisez l’adresse e-mail associée à votre achat, ou une adresse professionnelle ou scolaire."
           }
         },
         "es": {
@@ -68072,13 +68072,13 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Use o e-mail da sua compra ou um e-mail de trabalho ou escola."
+            "value": "Use o e-mail com que você comprou ou um e-mail de trabalho ou escola."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Usa l’email con cui hai fatto l’acquisto oppure un’email di lavoro o di scuola."
+            "value": "Usa l'email con cui hai fatto l'acquisto oppure un'email di lavoro o di scuola."
           }
         },
         "ja": {
@@ -68726,7 +68726,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "언제든 다시 로그인할 수 있습니다."
+            "value": "언제든 다시 로그인할 수 있도록요."
           }
         },
         "zh-Hans": {
@@ -69074,13 +69074,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El inicio de sesión está desactivado"
+            "value": "Inicio de sesión desactivado"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O login está desativado"
+            "value": "O acesso está desativado"
           }
         },
         "it": {
@@ -69098,7 +69098,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로그인이 꺼져 있습니다"
+            "value": "로그인이 꺼져 있어요"
           }
         },
         "zh-Hans": {
@@ -69206,7 +69206,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciar sesión con una llave de acceso"
+            "value": "Iniciar sesión con llave de acceso"
           }
         },
         "pt-BR": {
@@ -69266,13 +69266,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se usó tu passkey. Inténtalo de nuevo o usa otra forma."
+            "value": "No se usó tu llave de acceso. Inténtalo de nuevo o usa otra forma."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sua passkey não foi usada. Tente novamente ou use outra forma."
+            "value": "Sua chave de acesso não foi usada. Tente novamente ou use outra forma."
           }
         },
         "it": {
@@ -69290,13 +69290,13 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "패스키가 사용되지 않았습니다. 다시 시도하거나 다른 방법을 사용하세요."
+            "value": "패스키가 사용되지 않았어요. 다시 시도하거나 다른 방법을 사용하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "未使用您的通行密钥。请重试或使用其他方式。"
+            "value": "未使用你的通行密钥。请重试或使用其他方式。"
           }
         }
       }
@@ -69326,13 +69326,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu passkey no funcionó. Inténtalo de nuevo o usa otra forma."
+            "value": "Tu llave de acceso no funcionó. Inténtalo de nuevo o usa otra forma."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sua passkey não funcionou. Tente novamente ou use outra forma."
+            "value": "Sua chave de acesso não funcionou. Tente novamente ou use outra forma."
           }
         },
         "it": {
@@ -69350,13 +69350,13 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "패스키가 작동하지 않았습니다. 다시 시도하거나 다른 방법을 사용하세요."
+            "value": "패스키가 작동하지 않았어요. 다시 시도하거나 다른 방법을 사용하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "您的通行密钥无效。请重试或使用其他方式。"
+            "value": "你的通行密钥无效。请重试或使用其他方式。"
           }
         }
       }
@@ -69386,13 +69386,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Este navegador no puede usar tu passkey aquí. Usa otra forma."
+            "value": "Este navegador no puede usar tu llave de acceso aquí. Usa otra forma."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Este navegador não pode usar sua passkey aqui. Use outra forma."
+            "value": "Este navegador não pode usar sua chave de acesso aqui. Use outra forma."
           }
         },
         "it": {
@@ -69410,13 +69410,13 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 브라우저에서는 패스키를 사용할 수 없습니다. 다른 방법을 사용하세요."
+            "value": "이 브라우저에서는 패스키를 사용할 수 없어요. 다른 방법을 사용하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "此浏览器无法在此使用您的通行密钥。请使用其他方式。"
+            "value": "此浏览器无法在此使用你的通行密钥。请使用其他方式。"
           }
         }
       }
@@ -69464,7 +69464,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A Apple não compartilha foto. Adicione uma"
+            "value": "A Apple não compartilha imagem. Adicione uma"
           }
         },
         "it": {
@@ -69536,7 +69536,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alterar foto"
+            "value": "Alterar imagem"
           }
         },
         "it": {
@@ -69596,7 +69596,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nome e foto do %1$@."
+            "value": "Nome e imagem importados de %1$@."
           }
         },
         "it": {
@@ -70040,19 +70040,19 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "コードが多すぎます。数分後にもう一度お試しください。"
+            "value": "コードのリクエストが多すぎます。数分後にもう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "코드가 너무 많습니다. 몇 분 후 다시 시도하세요."
+            "value": "코드를 너무 많이 요청했어요. 몇 분 후에 다시 시도하세요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "验证码过多。请几分钟后重试。"
+            "value": "验证码请求过多。请几分钟后重试。"
           }
         }
       }
@@ -70106,7 +70106,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@은(는) 로그인할 수 없는 계정에 속해 있습니다. 다른 이메일이나 다른 방법을 사용해 보세요."
+            "value": "%1$@은(는) 로그인할 수 없는 계정에 속해 있어요. 다른 이메일이나 다른 로그인 방법을 사용해 보세요."
           }
         },
         "zh-Hans": {
@@ -70166,7 +70166,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 계정은 로그인할 수 없습니다"
+            "value": "이 계정은 로그인할 수 없어요"
           }
         },
         "zh-Hans": {
@@ -70646,7 +70646,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ wird von %2$@ abgemeldet und %3$@ tritt an seine Stelle. Wir informieren Sie per E-Mail darüber."
+            "value": "%1$@ wird von %2$@ abgemeldet und durch %3$@ ersetzt. Wir informieren Sie per E-Mail darüber."
           }
         },
         "fr": {
@@ -70886,7 +70886,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Am längsten nicht verwendet"
+            "value": "Am längsten inaktiv"
           }
         },
         "fr": {
@@ -70946,13 +70946,13 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wählen Sie ein Gerät zum Abmelden. %1$@ tritt an seine Stelle."
+            "value": "Wählen Sie ein Gerät zum Abmelden. Es wird durch %1$@ ersetzt."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choisissez un appareil à déconnecter. %1$@ le remplace."
+            "value": "Choisissez un appareil à déconnecter : %1$@ prendra sa place."
           }
         },
         "es": {
@@ -71024,7 +71024,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · usado por último %2$@"
+            "value": "%1$@ · último uso %2$@"
           }
         },
         "it": {
@@ -71530,7 +71530,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Troppe modifiche ai dispositivi. Riprova tra %#@seconds@."
+            "value": "Troppi cambi di dispositivo. Riprova tra %#@seconds@."
           },
           "substitutions": {
             "seconds": {
@@ -71850,7 +71850,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "기기 변경이 너무 많습니다. %#@minutes@ 후에 다시 시도하세요."
+            "value": "기기 변경이 너무 많아요. %#@minutes@ 후에 다시 시도하세요."
           },
           "substitutions": {
             "minutes": {
@@ -72104,7 +72104,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Este login foi encerrado"
+            "value": "Este acesso foi encerrado"
           }
         },
         "it": {
@@ -72122,7 +72122,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 로그인은 종료되었습니다"
+            "value": "이 로그인은 종료됐어요"
           }
         },
         "zh-Hans": {
@@ -72182,7 +72182,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "시도가 너무 많습니다. 잠시 기다린 뒤 다시 시도하세요."
+            "value": "시도 횟수가 너무 많아요. 잠시 기다린 후 다시 시도하세요."
           }
         },
         "zh-Hans": {
@@ -72356,7 +72356,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O acesso foi cancelado em %1$@. Comece de novo pelo %1$@."
+            "value": "O acesso foi cancelado em %1$@. Comece de novo a partir de %1$@."
           }
         },
         "it": {
@@ -72416,7 +72416,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Volte ao %1$@ para escolher uma licença. Você pode fechar esta aba."
+            "value": "Volte a %1$@ para escolher uma licença. Você pode fechar esta aba."
           }
         },
         "it": {
@@ -72632,7 +72632,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ · 已在你的库中"
+            "value": "%1$@ · 已在你的资料库中"
           }
         }
       }
@@ -72662,13 +72662,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciaste sesión en %1$@"
+            "value": "Has iniciado sesión en %1$@"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Você entrou no %1$@"
+            "value": "Você entrou em %1$@"
           }
         },
         "it": {
@@ -72812,7 +72812,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このページにとどまる"
+            "value": "ここにとどまる"
           }
         },
         "ko": {
@@ -73022,7 +73022,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Melden Sie sich erneut an, um dort weiterzumachen, wo Sie waren."
+            "value": "Melden Sie sich erneut an, um dort weiterzumachen, wo Sie aufgehört haben."
           }
         },
         "fr": {
@@ -73178,13 +73178,13 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 기기의 %1$@에서 %2$@ 라이선스 사용을 중지하고 다른 기기가 쓸 수 있게 비워요."
+            "value": "%1$@이(가) 이 기기에서 %2$@ 라이선스 사용을 중지해 다른 기기를 추가할 수 있게 돼요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@将停止在此使用你的%2$@许可证，并为其他设备腾出名额。"
+            "value": "%1$@将停止在此设备上使用你的%2$@许可证，以便其他设备使用。"
           }
         }
       }
@@ -73214,7 +73214,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Cerrar sesión en %1$@ en este dispositivo?"
+            "value": "¿Cerrar sesión de %1$@ en este dispositivo?"
           }
         },
         "pt-BR": {
@@ -73550,7 +73550,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esperar a la sincronización"
+            "value": "Esperar a sincronizar"
           }
         },
         "pt-BR": {
@@ -73754,7 +73754,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tardaste demasiado. Continúa para empezar de nuevo."
+            "value": "Ha pasado demasiado tiempo. Continúa para empezar de nuevo."
           }
         },
         "pt-BR": {
@@ -73778,7 +73778,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "시간이 너무 오래 걸렸습니다. 계속하여 다시 시작하세요."
+            "value": "시간이 너무 오래 걸렸어요. 계속하면 다시 시작해요."
           }
         },
         "zh-Hans": {
@@ -73826,7 +73826,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "accesso singolo"
+            "value": "single sign-on"
           }
         },
         "ja": {
@@ -73898,13 +73898,13 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 주소에는 필수입니다."
+            "value": "%1$@ 주소에는 필수예요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 地址必须使用。"
+            "value": "%1$@ 地址必须使用此方式登录。"
           }
         }
       }
@@ -74222,7 +74222,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "diesem Browser"
+            "value": "diesen Browser"
           }
         },
         "fr": {
@@ -74318,7 +74318,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "보안 확인을 통과하지 못했습니다. 다시 시도하세요."
+            "value": "보안 확인을 통과하지 못했어요. 다시 시도하세요."
           }
         },
         "zh-Hans": {
@@ -74420,7 +74420,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Versões permitidas: %1$@ ou posterior"
+            "value": "Versões permitidas: %1$@ ou posteriores"
           }
         },
         "it": {
@@ -74984,7 +74984,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toutes les modifications de la version %1$@"
+            "value": "Toutes les modifications de la %1$@"
           }
         },
         "es": {
@@ -75296,7 +75296,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta versão não é mais compatível"
+            "value": "Esta versão não tem mais suporte"
           }
         },
         "it": {
@@ -75488,7 +75488,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Você tem a %1$@ · download de %2$@"
+            "value": "Você tem a versão %1$@ · download de %2$@"
           }
         },
         "it": {
@@ -75752,7 +75752,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mais tarde"
+            "value": "Depois"
           }
         },
         "it": {
@@ -75812,7 +75812,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta versão não é mais compatível."
+            "value": "Esta versão não tem mais suporte."
           }
         },
         "it": {
@@ -76736,7 +76736,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reiniciar quando estiver pronto"
+            "value": "Reiniciar quando terminar"
           }
         },
         "it": {
@@ -78320,7 +78320,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Boas-vindas ao %1$@"
+            "value": "Boas-vindas a %1$@"
           }
         },
         "it": {
