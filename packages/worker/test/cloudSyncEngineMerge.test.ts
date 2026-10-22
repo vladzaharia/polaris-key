@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import {
   SYNC_MAX_MERGE_MEMBERS,
+  SYNC_MAX_UNION_ELEMENT_BYTES,
   type MutationResult,
   type SyncMutation,
 } from "@polaris-key/protocol/sync";
@@ -58,6 +59,44 @@ function push(
 }
 
 const only = (r: MutationResult[]) => r[0] as MutationResult;
+
+describe("merge: the member name bound (SR-1 B1)", () => {
+  it("refuses a name over 1 KiB of UTF-8 as value_invalid, on both ops, at quota 0, and stores nothing", () => {
+    const store = new MemoryStore();
+    const long = "x".repeat(SYNC_MAX_UNION_ELEMENT_BYTES + 1);
+    // 342 three-byte characters are 1026 bytes: the bound counts bytes, not characters.
+    const wide = "\u20ac".repeat(342);
+    for (const member of [long, wide])
+      for (const op of ["setMember", "removeMember"] as const) {
+        const out = applyPush(store, {
+          deviceId: "dev1",
+          serverNow: NOW,
+          limits: { quotaBytes: 0 },
+          classified: [route("merge")],
+          request: {
+            clientId: C1,
+            cursor: 0,
+            mutations: [mut(op, { member, value: 1 })],
+          },
+        });
+        if (!out.ok) throw new Error(out.error);
+        expect(out.results[0]).toMatchObject({
+          status: "rejected",
+          code: "value_invalid",
+        });
+      }
+    expect(store.getSetting("k", "user")).toBeUndefined();
+    expect(store.rows()).toEqual([]);
+    expect(store.currentSeq()).toBe(0);
+    // Exactly 1 KiB is allowed.
+    const ok = "y".repeat(SYNC_MAX_UNION_ELEMENT_BYTES);
+    expect(
+      only(
+        push(store, [mut("removeMember", { member: ok })], "merge"),
+      ).status,
+    ).toBe("ok");
+  });
+});
 
 describe("merge: the 256-member cap", () => {
   it("accepts 256 live members and refuses the 257th as value_invalid", () => {

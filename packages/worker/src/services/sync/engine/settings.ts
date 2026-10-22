@@ -12,7 +12,8 @@
  *
  * A write that would grow the store past the budget, the quota or the ceiling is `rejected` with
  * `quota_exceeded` (budget.ts); nothing is written and nothing is ever deleted. A merge holds at
- * most `SYNC_MAX_MERGE_MEMBERS` live members (a further new one is `value_invalid`).
+ * most `SYNC_MAX_MERGE_MEMBERS` live members (a further new one is `value_invalid`), and a member
+ * name is at most `SYNC_MAX_UNION_ELEMENT_BYTES` of UTF-8 (a longer one is `value_invalid`).
  *
  * "Wins" is `>=` on the stamp: an equal stamp is the same client writing again (a later
  * mutation id), and the later write is the one to keep.
@@ -20,6 +21,7 @@
 
 import {
   SYNC_MAX_MERGE_MEMBERS,
+  SYNC_MAX_UNION_ELEMENT_BYTES,
   type MutationResult,
   type SyncJson,
   type SyncMutation,
@@ -176,7 +178,13 @@ export function applySettingMutation(
     m.op === "set" &&
     (route.policy === "max" || route.policy === "min") &&
     (typeof m.value !== "number" || !Number.isFinite(m.value));
-  if (route.valueInvalid || numberless)
+  // A member name is client text kept as a cell key; removals are never refused for quota, so the
+  // name is bounded (SR-1 B1) or a quota-0 device could park unlimited uncounted bytes.
+  const memberTooLong =
+    (m.op === "setMember" || m.op === "removeMember") &&
+    typeof m.member === "string" &&
+    new TextEncoder().encode(m.member).length > SYNC_MAX_UNION_ELEMENT_BYTES;
+  if (route.valueInvalid || numberless || memberTooLong)
     return {
       mutationId: m.mutationId,
       status: "rejected",

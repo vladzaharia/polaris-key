@@ -1937,6 +1937,8 @@ Body: `{"clientId":"c_…","cursor":N,"atomic":false,"mutations":[{"mutationId":
 | Record `merge`                 | `setField`, `removeField`, `delete`, each with `editedHlc`                                                                |
 | Record `union`                 | `add {element}`, `remove {element, observedSeq}`, `delete`                                                                |
 
+A `setMember` or `removeMember` whose `member` is longer than 1 KiB of UTF-8 (`SYNC_MAX_UNION_ELEMENT_BYTES`) is `rejected` with `value_invalid`, whatever the quota: a removal is never refused for quota, so the name is what bounds it.
+
 The `200` body is `{subject, serverNow, results, lastMutationId, …the pull members of §13.4}`. Each result is `{mutationId, status}`:
 
 - `ok` with `version` (and `renamedTo`, or `dropped: true`, when a catalog migration applied);
