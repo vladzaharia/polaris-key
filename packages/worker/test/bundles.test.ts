@@ -48,7 +48,7 @@ import { listAudit } from "../src/core/audit.js";
 import { transitionLicense } from "../src/core/licensing/lifecycleWrites.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { BUNDLE_IMPORT_WINDOW_SECONDS } from "../src/console/handlers/bundles.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -709,7 +709,7 @@ describe("bundle mint — audit", () => {
     const rows = await listAudit(world.db, SLUG, { limit: 10 });
     const row = rows.find((r) => r.action === "bundle.minted");
     expect(row).toBeTruthy();
-    expect(row?.actor_sub).toBe("u1");
+    expect(row?.actor_sub).toBe(await consoleActor(world.env, world.db, "u1"));
     expect(row?.target_kind).toBe("license");
     expect(row?.target_id).toBe(world.licenseId);
     // The audit anchor: the summary has to name the bundle, the device and the window, because

@@ -67,7 +67,7 @@ import { KvMock } from "./kvMock.js";
 import { R2Mock, asR2, installDigestStream } from "./r2Mock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { enableServices } from "./releaseRoutesFixture.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 beforeAll(() => installDigestStream());
 
@@ -345,8 +345,9 @@ describe("an uploaded icon survives a resync, and Revert restores the manifest's
         SLUG,
       )
     ).map((a) => `${a.action}:${a.actor_sub ?? "system"}`);
-    expect(actions).toContain("assets.ingest:u1");
-    expect(actions).toContain("assets.revert:u1");
+    const actor = await consoleActor(env, db, "u1");
+    expect(actions).toContain(`assets.ingest:${actor}`);
+    expect(actions).toContain(`assets.revert:${actor}`);
   });
 
   it("a pull whose ingest races a console upload never overwrites it (the in-batch guard)", async () => {
@@ -1040,14 +1041,20 @@ describe("the slot routes' gate", () => {
     await syncAndPull(iconManifest(URL_A), upstream({ [URL_A]: ICON_A }));
     await upload("presentation.icon", ICON_C);
     await release("presentation.icon");
+    const actor = await consoleActor(env, db, "u1");
     expect(
       await db.all(
-        "SELECT action, actor_sub, actor_email FROM audit WHERE product = ? AND actor_sub = 'u1' AND action LIKE 'assets.%' ORDER BY at, rowid",
+        "SELECT action, actor_sub, actor_email FROM audit WHERE product = ? AND actor_sub = ? AND action LIKE 'assets.%' ORDER BY at, rowid",
         SLUG,
+        actor,
       ),
     ).toEqual([
-      { action: "assets.ingest", actor_sub: "u1", actor_email: "ada@x.io" },
-      { action: "assets.revert", actor_sub: "u1", actor_email: "ada@x.io" },
+      {
+        action: "assets.ingest",
+        actor_sub: actor,
+        actor_email: "ada@x.io",
+      },
+      { action: "assets.revert", actor_sub: actor, actor_email: "ada@x.io" },
     ]);
   });
 });

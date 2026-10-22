@@ -44,7 +44,7 @@ import { handleAdmin } from "../src/console/index.js";
 import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import type { AssetUsageDto } from "../src/console/handlers/hostedAssets.js";
 import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 let db: SqliteDb;
 let env: Env;
@@ -371,7 +371,7 @@ describe("the console: usage and the settings writes", () => {
       setting_key: "assets.releases.mirror",
       origin: "console",
       reason: "GitHub serves this product's files",
-      actor_sub: "u1",
+      actor_sub: await consoleActor(env, db, "u1"),
     });
     // A stale version writes nothing.
     res = await call("PATCH", "settings/assets.releases.mirror", {

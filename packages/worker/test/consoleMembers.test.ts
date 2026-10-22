@@ -20,7 +20,6 @@ import { resetConsoleSessionCache } from "../src/console/consoleSession.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
-  issueSession,
   LIVE_CHECK_SECONDS,
 } from "../src/core/console/session.js";
 import { newBindingId, stmtInsertBinding } from "../src/core/rbac/bindings.js";

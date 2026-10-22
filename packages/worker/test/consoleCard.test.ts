@@ -20,7 +20,6 @@ import {
   ADMIN_COOKIE,
   BREAK_GLASS_TTL_SECONDS,
   CSRF_HEADER,
-  issueSession,
   issueSessionV2,
   STEP_UP_MAX_AGE_SECONDS,
   type SessionIdentity,

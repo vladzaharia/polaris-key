@@ -45,7 +45,7 @@ import {
   mintAdminApiToken,
 } from "../src/platform/crypto.js";
 import { listAudit } from "../src/core/audit.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
@@ -632,7 +632,7 @@ describe("admin API token surface", () => {
     const create = rows.find((r) => r.action === "api_token.create")!;
     const revoke = rows.find((r) => r.action === "api_token.revoke")!;
     for (const row of rows) {
-      expect(row.actor_sub).toBe("u1");
+      expect(row.actor_sub).toBe(await consoleActor(env, db, "u1"));
       expect(row.target_kind).toBe("api_token");
       expect(row.target_id).toBe(minted.id);
     }

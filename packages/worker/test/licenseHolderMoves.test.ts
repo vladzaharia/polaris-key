@@ -25,7 +25,7 @@ import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
 import { attachLicenseAccount } from "../src/core/accounts/accountSubjects.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { RELINK_UNDO_SECONDS } from "../src/services/identity/accounts/productUsers.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleActor, consoleTestSession } from "./consoleSessionHelper.js";
 
 const SLUG = "tonebox";
 const OTHER = "other";
@@ -311,7 +311,8 @@ describe("Make floating", () => {
       return realDelete(key);
     }) as typeof env.HOT.delete;
     const prior = await db.first<{ n: number }>(
-      "SELECT COUNT(*) AS n FROM license_relinks WHERE actor_sub = 'op-1'",
+      "SELECT COUNT(*) AS n FROM license_relinks WHERE actor_sub = ?",
+      await consoleActor(env, db, "op-1"),
     );
     const res = await call("POST", floatPath(id), {
       reason: "Leaked key",
@@ -334,7 +335,8 @@ describe("Make floating", () => {
     ).toMatchObject({ kind: "floating", devicesSignedOut: signedOut });
     // The move's row is there (the undo works), counted towards the alert, and audited.
     const after = await db.first<{ n: number }>(
-      "SELECT COUNT(*) AS n FROM license_relinks WHERE actor_sub = 'op-1'",
+      "SELECT COUNT(*) AS n FROM license_relinks WHERE actor_sub = ?",
+      await consoleActor(env, db, "op-1"),
     );
     expect(after!.n).toBe(prior!.n + 1);
     const audited = await db.all<{ action: string }>(

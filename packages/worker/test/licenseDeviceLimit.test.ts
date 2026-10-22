@@ -40,7 +40,7 @@ import {
 } from "../src/core/licensing/store.js";
 import { SEAT_DORMANCY_SECONDS } from "../src/core/devices/store.js";
 import { listAudit } from "../src/core/audit.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const TRUST = { [TEST_KID]: TEST_PUB };
 const PLATFORM_GROUP = "admins";
@@ -317,7 +317,7 @@ describe("per-licence device limit (LX-14a)", () => {
     expect(entries[0]).toMatchObject({
       target_kind: "license",
       target_id: licenseId,
-      actor_sub: "u1",
+      actor_sub: await consoleActor(env, db, "u1"),
     });
   });
 

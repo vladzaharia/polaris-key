@@ -26,7 +26,7 @@ import { listAudit } from "../src/core/audit.js";
 import { licenseDeleteFor } from "../src/core/licensing/licenseDelete.js";
 import { SERVICES } from "../src/mount.js";
 import { auditStatementFor } from "../src/core/audit.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const SLUG = "djdl";
 const PLATFORM_GROUP = "admins";
@@ -386,7 +386,7 @@ describe("DELETE …/license/licenses/<id>", () => {
     const actions = audit.map((a) => a.action);
     expect(actions).toContain("license.disable"); // history kept
     const del = audit.find((a) => a.action === "license.delete")!;
-    expect(del.actor_sub).toBe("u1");
+    expect(del.actor_sub).toBe(await consoleActor(env, db, "u1"));
     expect(del.summary).toBe(
       `Deleted license lic_dup (tier standard, origin oidc, account ${SUBJECT}, 1 device, 1 authorized)`,
     );

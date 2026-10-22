@@ -60,6 +60,8 @@ async function search(w: World, q: string, as: keyof typeof PRINCIPALS) {
     },
     NOW,
   );
+  // The console resolves the member id from the account; the seam is keyed by it.
+  SYNTHETIC.set(session.sub, PRINCIPALS[as]!);
   const res = await handleAdminApi(
     new Request("https://key.plrs.im/manage/api/search", {
       method: "POST",

@@ -47,12 +47,15 @@ async function get(
   path: string,
   groups: string[] = [],
 ): Promise<{ status: number; body: Record<string, unknown> }> {
-  const { token } = await consoleTestSession(
+  const { token, session } = await consoleTestSession(
     env,
     db,
     { sub, name: sub, email: `${sub}@example.test`, groups },
     NOW,
   );
+  // The console resolves the member id from the account; the seam is keyed by it.
+  const synthetic = SYNTHETIC.get(sub);
+  if (synthetic) SYNTHETIC.set(session.sub, synthetic);
   const res = await handleAdminApi(
     new Request(`https://key.plrs.im/manage/api${path}`, {
       headers: { cookie: `${ADMIN_COOKIE}=${token}` },

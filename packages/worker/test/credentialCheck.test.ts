@@ -148,7 +148,8 @@ async function call(
     {
       sub: opts.sub ?? "u1",
       name: "Ada",
-      email: "ada@x.io",
+      // One address per operator: a shared verified address joins one account (SM-3).
+      email: opts.sub ? `${opts.sub}@x.io` : "ada@x.io",
       groups: opts.groups ?? ["platform-admins"],
     },
     NOW,

@@ -65,7 +65,7 @@ import {
   transitionGrant,
   transitionLicense,
 } from "../src/core/licensing/lifecycleWrites.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const SLUG = "djdl";
 
@@ -936,7 +936,7 @@ describe("ended_reason is written with every disable", () => {
     expect(await licenseRow(db, licenseId)).toMatchObject({
       status: "disabled",
       ended_reason: "revoked",
-      modified_by: "op-1",
+      modified_by: await consoleActor(env, db, "op-1"),
     });
     const read = (await (
       await call("GET", `/license/licenses/${licenseId}`)

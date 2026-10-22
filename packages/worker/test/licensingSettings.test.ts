@@ -41,7 +41,7 @@ import { BREAK_GLASS_MAX_SECONDS } from "../src/core/settingsClaims.js";
 import type { Db, DbParam } from "../src/db/types.js";
 import { withDefaultHead } from "./githubHead.js";
 import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const SLUG = "acme";
 const PLATFORM_GROUP = "platform-admins";
@@ -388,7 +388,7 @@ describe("a console edit survives a resync, and Revert restores the manifest val
 
     const claim = await audits(ctx, "setting.claim");
     expect(claim.map((a) => [a.target_id, a.actor_sub])).toEqual([
-      ["licensing.anchorPolicy", "u1"],
+      ["licensing.anchorPolicy", await consoleActor(ctx.env, ctx.db, "u1")],
     ]);
     expect((await audits(ctx, "setting.revert"))[0]!.summary).toBe(
       'Reverted licensing.anchorPolicy to the manifest: "most-free-seats" → "rank-first"',

@@ -23,7 +23,7 @@ import {
 } from "../src/core/devices/store.js";
 import { listAudit } from "../src/core/audit.js";
 import { getTokenRecord, putTokenRecord } from "../src/platform/kv.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const PLATFORM_GROUP = "platform-admins";
 const SLUG = "djdl";
@@ -381,7 +381,7 @@ describe("device actions", () => {
     expect(a).toMatchObject({
       target_kind: "device",
       target_id: id(8),
-      actor_sub: "u1",
+      actor_sub: await consoleActor(w.env, w.db, "u1"),
     });
   });
 

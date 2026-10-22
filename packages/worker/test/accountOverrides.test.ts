@@ -85,7 +85,7 @@ import { handleAdmin } from "../src/console/index.js";
 import { deleteProduct } from "../src/core/products/store.js";
 import { dryRunOnCopy } from "../scripts/override-migration-dry-run.js";
 import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const SLUG = "djdl";
 const PLATFORM_GROUP = "platform-admins";
@@ -1548,7 +1548,7 @@ describe("U-03: GET and PUT users/<subject>/overrides", () => {
     });
     expect(ok.status).toBe(200);
     const stored = (await getAccountOverrides(w.db, SLUG, ada.subject))!;
-    expect(stored.updated_by).toBe("op-1");
+    expect(stored.updated_by).toBe(await consoleActor(w.env, w.db, "op-1"));
     expect(stored.payload_json).not.toContain("tok-EDITOR");
     expect(stored.payload_json).not.toContain("pw-EDITOR");
     const got = await w.call("GET", path);

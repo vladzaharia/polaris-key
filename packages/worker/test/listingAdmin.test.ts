@@ -15,7 +15,7 @@ import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
 import { ADMIN_COOKIE, CSRF_HEADER } from "../src/core/console/session.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 let db: Db;
 let env: Env;
@@ -194,7 +194,7 @@ describe("the listing: read, create, edit", () => {
         keywords: ["dice", "rpg"],
         features: ["Roll any die"],
         source: "admin",
-        modifiedBy: "u1",
+        modifiedBy: await consoleActor(env, db, "u1"),
       }),
     ]);
     expect(v.precedence.name).toEqual({
@@ -416,7 +416,7 @@ describe("per-release store notes (S-15 §5.5)", () => {
     expect(locales[1]).toMatchObject({
       text: "Dés plus justes.",
       short: "Dés justes.",
-      modifiedBy: "u1",
+      modifiedBy: await consoleActor(env, db, "u1"),
     });
 
     await admin("PUT", "/release-notes/v1.2.0", {

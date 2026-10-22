@@ -33,7 +33,7 @@ import {
 } from "../src/services/license/batches.js";
 import { auditStatementFor } from "../src/core/audit.js";
 import type { DbStatement } from "../src/db/types.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const SLUG = "tonebox";
 const PLATFORM_GROUP = "admins";
@@ -167,7 +167,7 @@ describe("POST …/license/batches", () => {
       label: "Steam keys, October",
       count: MAX_BATCH_COUNT,
       tier: "pro",
-      createdBy: "op-1",
+      createdBy: await consoleActor(env, db, "op-1"),
       createdAt: NOW,
       used: 0,
       unused: MAX_BATCH_COUNT,
@@ -191,7 +191,7 @@ describe("POST …/license/batches", () => {
         expires_at: NOW + 30 * 86400,
         device_limit: null,
         batch_id: body.batchId,
-        modified_by: "op-1",
+        modified_by: await consoleActor(env, db, "op-1"),
       });
     }
     const keyRows = await db.all<{
@@ -227,7 +227,7 @@ describe("POST …/license/batches", () => {
       action: "license.batch.create",
       target_kind: "license_batch",
       target_id: body.batchId,
-      actor_sub: "op-1",
+      actor_sub: await consoleActor(env, db, "op-1"),
     });
     expect(row!.summary).toBe(
       `Created batch "Steam keys, October" of ${MAX_BATCH_COUNT} licenses (tier: pro, holder: floating)`,

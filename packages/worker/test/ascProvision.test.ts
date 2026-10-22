@@ -28,7 +28,7 @@ import {
   audits,
   type AscWorld,
 } from "./ascWorld.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
@@ -420,7 +420,7 @@ describe("setup/notifications-url", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       action: "distribution.asc.app.notifications_url",
-      actor_sub: "u1",
+      actor_sub: await consoleActor(w.env, w.db, "u1"),
       target_id: APPLE_ID,
     });
     const [row] = await ledger(w);
@@ -962,7 +962,7 @@ describe("setup/checklist and the provisioning view", () => {
     expect(list.find((c) => c.item === "app_privacy")).toMatchObject({
       done: true,
       doneAt: NOW,
-      doneBy: "u1",
+      doneBy: await consoleActor(w.env, w.db, "u1"),
       link: `https://appstoreconnect.apple.com/apps/${APPLE_ID}/distribution/privacy`,
     });
     await call(w, "/setup/availability");

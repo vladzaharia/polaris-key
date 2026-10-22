@@ -57,7 +57,7 @@ import {
   type UpdateHealthNamespaceMock,
 } from "./updateHealthMock.js";
 import { NOW } from "./seed.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = join(HERE, "..", "src");
@@ -272,7 +272,7 @@ describe("auto-halt settings", () => {
       SLUG,
       AUTO_HALT_CONNECTOR,
     );
-    expect(row?.updated_by).toBe("u1");
+    expect(row?.updated_by).toBe(await consoleActor(w.env, w.db, "u1"));
     expect(JSON.parse(row!.settings_json)).toMatchObject({
       enabled: true,
       minSample: 50,
@@ -284,7 +284,7 @@ describe("auto-halt settings", () => {
     expect(audits).toEqual([
       {
         action: "distribution.auto_halt.settings",
-        actor_sub: "u1",
+        actor_sub: await consoleActor(w.env, w.db, "u1"),
         target_id: "settings",
       },
     ]);
@@ -486,7 +486,9 @@ describe("the auto-halt tick", () => {
     const resumes = (await auditRows(w.db)).filter(
       (r) => r.action === "distribution.rollout.resume",
     );
-    expect(resumes.map((r) => r.actor_sub)).toEqual(["u1"]);
+    expect(resumes.map((r) => r.actor_sub)).toEqual([
+      await consoleActor(w.env, w.db, "u1"),
+    ]);
   });
 
   it("tells the product's alert destinations when it halts (ST-27), once", async () => {

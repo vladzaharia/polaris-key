@@ -31,7 +31,7 @@ import { makeTestDb } from "./helpers.js";
 import { envFor } from "./releaseRoutesFixture.js";
 import { ascP8 } from "./ascWorld.js";
 import { NOW, seedProduct } from "./seed.js";
-import { consoleTestSession } from "./consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "./consoleSessionHelper.js";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: NOW * 1000 });
@@ -537,7 +537,7 @@ describe("A-17b: bundle ids", () => {
     expect(trail).toHaveLength(1);
     expect(trail[0]).toMatchObject({
       action: "platform.asc.bundle_id.register",
-      actor_sub: "u1",
+      actor_sub: await consoleActor(w.env, w.db, "u1"),
       target_id: "BND1XYZ",
     });
     // Nothing existed before: Apple's pre-read found no bundle id.
@@ -1000,7 +1000,7 @@ describe("A-17b: the team ledger", () => {
         naturalKey: "gg.acme.djdl",
         state: "done",
         resultIds: { bundleId: "BND1XYZ" },
-        actor: "u1",
+        actor: await consoleActor(w.env, w.db, "u1"),
       }),
     ]);
   });
