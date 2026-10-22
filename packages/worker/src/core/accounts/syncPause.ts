@@ -6,8 +6,9 @@
  * caller who may read it, why. Read for a service that may not read Core's tables itself.
  *
  * `by` is a display name from the audit row of the write that turned it on, never a subject or
- * member id: a row with no name answers `by: null`. `reason` is the operator's own text and is
- * returned only when `withReason` (the caller holds the Platform area).
+ * member id: a row with no name answers `by: null`. `reason` is the operator's own text. Both `by` and
+ * `reason` are returned only when `withWho` (the caller holds the Platform area); anyone else
+ * gets the time alone.
  */
 
 import type { Db } from "../../db/types.js";
@@ -26,7 +27,7 @@ const KEY = "cloudSync.writesPaused";
 export async function syncPauseNotice(
   env: Env,
   db: Db,
-  withReason: boolean,
+  withWho: boolean,
 ): Promise<SyncPauseNotice | null> {
   const r = await platformSettingResolved(env, db, KEY);
   if (r.value !== "on") return null;
@@ -43,7 +44,7 @@ export async function syncPauseNotice(
   );
   return {
     since: audit?.at ?? step?.at ?? null,
-    by: audit?.actor_name?.trim() ? audit.actor_name : null,
-    reason: withReason && audit?.reason?.trim() ? audit.reason : null,
+    by: withWho && audit?.actor_name?.trim() ? audit.actor_name : null,
+    reason: withWho && audit?.reason?.trim() ? audit.reason : null,
   };
 }

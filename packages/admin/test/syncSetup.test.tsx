@@ -824,13 +824,14 @@ describe("Cloud Sync → Setup", () => {
         "Ask Ana Lima (ana@example.com) for Platform edit access.",
     };
     usage.mockResolvedValue(
-      USAGE(undefined, { since: 1_790_000_000, by: "Ana Lima", reason: null }),
+      USAGE(undefined, { since: 1_790_000_000, by: null, reason: null }),
     );
     renderPage();
     expect(
       await screen.findByText("Cloud Sync writes are paused for every product"),
     ).toBeTruthy();
-    expect(screen.getByText("Ana Lima")).toBeTruthy();
+    expect(screen.getByText(/Paused since .*\./)).toBeTruthy();
+    expect(screen.queryByText(/Paused .* by /)).toBeNull();
     expect(screen.queryByRole("button", { name: /Resume writes/ })).toBeNull();
     expect(screen.getByText("Paused")).toBeTruthy();
     expect(platformSettings).not.toHaveBeenCalled();

@@ -206,7 +206,7 @@ describe("GET sync/usage", () => {
     expect(await res.json()).toEqual({ enabled: false });
   });
 
-  it("carries the platform pause for a product admin: since and a display name, never the reason or an id", async () => {
+  it("carries the platform pause for a product admin: since only: no name, no reason, no id", async () => {
     const w = await world();
     const token = await w.sessionFor({ sub: "m-djdl-sync", groups: [] }, NOW);
     const off = (await (await w.get(token, NOW)).json()) as { paused: unknown };
@@ -228,21 +228,27 @@ describe("GET sync/usage", () => {
     const body = JSON.parse(text);
     expect(body.paused).toEqual({
       since: NOW - 600,
-      by: "Ana Lima",
+      by: null,
       reason: null,
     });
-    for (const banned of ["mbr_secret123", "ana@example.test", "eu-west"])
+    for (const banned of [
+      "mbr_secret123",
+      "ana@example.test",
+      "eu-west",
+      "Ana",
+    ])
       expect(text).not.toContain(banned);
     // Nothing platform-only rides on it: the same keys as for anyone.
     expect(Object.keys(body).sort()).toEqual(
       ["defaultBytes", "enabled", "paused", "tiers", "today", "usage"].sort(),
     );
 
-    // A platform admin also gets the reason.
+    // A platform admin also gets the name and the reason.
     const root = await w.sessionFor({ sub: "u1", groups: [GROUP] }, NOW);
     const full = (await (await w.get(root, NOW)).json()) as {
-      paused: { reason: string };
+      paused: { by: string; reason: string };
     };
+    expect(full.paused.by).toBe("Ana Lima");
     expect(full.paused.reason).toBe("Storage errors in eu-west");
   });
 

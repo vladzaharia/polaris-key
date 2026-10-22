@@ -6,7 +6,7 @@
  *   - `today`: today's UTC `sync_product_daily` counters;
  *   - `tiers` / `defaultBytes`: tier labels and limits, through Core (`syncTierLimits`);
  *   - `paused`: `null`, or `{ since, by, reason }` while the platform pause is on (Core's
- *     `syncPauseNotice`; `reason` only for a caller who holds Platform).
+ *     `syncPauseNotice`; `by` and `reason` only for a caller who holds Platform).
  *
  * Counts and bytes only: no person, subject, device id or email appears in the answer, and the
  * console computes nothing from it. A product with Cloud Sync off answers `{ enabled: false }`.

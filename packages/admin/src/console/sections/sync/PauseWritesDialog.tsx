@@ -38,7 +38,7 @@ export function PauseNoticeLine({
   return (
     <>
       {notice.since
-        ? `Paused ${formatDateTime(notice.since * 1000)}`
+        ? `Paused since ${formatDateTime(notice.since * 1000)}`
         : "Paused"}
       {notice.by ? (
         <>
