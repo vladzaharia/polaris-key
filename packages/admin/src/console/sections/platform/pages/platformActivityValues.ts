@@ -8,6 +8,7 @@
 
 import type { PlatformActivityItem, PlatformSetting } from "../../../../api.js";
 import { SETTINGS_INDEX } from "../../../settings.generated.js";
+import { namesOf } from "../../../useSettingTarget.js";
 import { formatPlatformValue } from "./platformSettingRow.js";
 
 export interface ValueText {
@@ -51,14 +52,20 @@ export function valueText(
   return plain(raw);
 }
 
-/** The platform setting an event changed, from the loaded settings. */
+/**
+ * The platform setting an event changed. The audit names it by registry key; the settings read
+ * keys a row by its A-13 alias (`BLOB_GC_GRACE_DAYS`) where it has one, so both are tried.
+ */
 export function settingOf(
   item: PlatformActivityItem,
   settings: Map<string, PlatformSetting>,
 ): PlatformSetting | undefined {
-  return item.target?.kind === "setting"
-    ? settings.get(item.target.id)
-    : undefined;
+  if (item.target?.kind !== "setting") return undefined;
+  for (const name of namesOf(item.target.id)) {
+    const found = settings.get(name);
+    if (found) return found;
+  }
+  return undefined;
 }
 
 /** The registry entry of the platform setting an event changed (client-side; no API). */

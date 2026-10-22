@@ -45,7 +45,7 @@ import {
   whatOf,
 } from "./platformActivityParts.js";
 import { filterListsFor } from "./platformActivityFilters.js";
-import { valueText } from "./platformActivityValues.js";
+import { settingOf, valueText } from "./platformActivityValues.js";
 import { useProducts } from "../../../data/hooks.js";
 import { Link, navigate, useLocation } from "../../../router.js";
 import { r } from "../../../routes.js";
@@ -202,8 +202,7 @@ export function PlatformActivityPage({
         "after",
       ],
       items.map((i) => {
-        const setting =
-          i.target?.kind === "setting" ? settings.get(i.target.id) : undefined;
+        const setting = settingOf(i, settings);
         return [
           formatIso(fromSeconds(i.at)),
           actorName(i),
@@ -256,7 +255,7 @@ export function PlatformActivityPage({
           data-workbench-toolbar=""
           role="search"
           aria-label="Filter activity"
-          className="flex flex-wrap items-center gap-2 border-b border-border bg-(--pk-admin-band) px-4 py-3 [@media(max-height:500px)]:flex-nowrap [@media(max-height:500px)]:overflow-x-auto"
+          className="flex flex-wrap items-center gap-2 border-b border-border bg-(--pk-admin-band) px-4 py-3 [@media(max-height:500px)]:py-2 [@media(max-height:500px)]:flex-nowrap [@media(max-height:500px)]:overflow-x-auto"
         >
           <FacetSelect
             label="Actor"

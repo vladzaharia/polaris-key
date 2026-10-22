@@ -584,6 +584,11 @@ export function slugOfRoute(route: Route): string | null {
  */
 const DRAWER_RECORD_PAGES: ReadonlySet<string> = new Set(["platform-activity"]);
 
+/** Does this global page open its record as a drawer over the list (its title stays the page's)? */
+export function opensRecordInDrawer(page: string): boolean {
+  return DRAWER_RECORD_PAGES.has(page);
+}
+
 /**
  * The identity a view is keyed on (ADMIN.md §2.6 remount policy): product + page + record id.
  * A query parameter or a record tab does not remount the page, so a filter change keeps its draft.
@@ -597,7 +602,7 @@ export function viewKey(route: Route): string {
     return `${route.slug}\u0000${route.page}\u0000${route.id ?? ""}${child}`;
   }
   if (route.kind === "global")
-    return route.id === undefined || DRAWER_RECORD_PAGES.has(route.page)
+    return route.id === undefined || opensRecordInDrawer(route.page)
       ? route.page
       : `${route.page}\u0000${route.id}${child}`;
   return `not-found\u0000${route.slug ?? ""}\u0000${route.path}`;

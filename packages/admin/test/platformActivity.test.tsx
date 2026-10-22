@@ -170,6 +170,9 @@ describe("Platform → Activity", () => {
     expect(
       screen.queryByRole("status", { name: /Loading activity/ }),
     ).toBeNull();
+    // Focus goes back to the row that opened the drawer, not to the heading.
+    await waitFor(() => expect(document.activeElement).toBe(link));
+    expect(document.title).not.toContain("Event");
   });
 
   it("opens an event in a drawer the URL names, with before and after", async () => {
@@ -208,12 +211,25 @@ describe("Platform → Activity", () => {
       before: snap(30),
       after: snap(14),
     });
+    // The settings read keys the row by its A-13 alias, the audit by the registry key.
+    const row = {
+      key: "BLOB_GC_GRACE_DAYS",
+      area: "background-jobs",
+      label: "Blob collector grace period",
+      kind: "integer",
+      unit: "days",
+      min: 1,
+      max: 365,
+      default: 30,
+      value: 14,
+    };
     boot("#/platform/activity/e9", {
       extra: {
         "/manage/api/platform/activity": () => ({
           items: [change],
           nextCursor: null,
         }),
+        "/manage/api/platform/settings": { settings: [row] },
       },
     });
     const drawer = await screen.findByRole("dialog");
@@ -223,6 +239,8 @@ describe("Platform → Activity", () => {
       }),
     ).toBeTruthy();
     expect(drawer.textContent).not.toContain("{");
+    expect(await within(drawer).findByText("30 days")).toBeTruthy();
+    expect(within(drawer).getByText("14 days")).toBeTruthy();
     expect(drawer.textContent).toContain("Platform → Settings → Jobs");
     await userEvent.click(
       within(drawer).getByRole("button", { name: "Open the setting" }),
