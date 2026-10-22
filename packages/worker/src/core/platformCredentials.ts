@@ -52,6 +52,8 @@ import { sha256Hex } from "../platform/hash.js";
 import {
   OUTLET_CREDENTIAL_ACTOR,
   validateOutletCredential,
+  listOutletCredentials,
+  outletCredentialPin,
   validateOutletCredentialPin,
   type OutletCredentialKind,
   type OutletCredentialMeta,
@@ -65,6 +67,8 @@ import {
 } from "./ops/platformEvents.js";
 
 // ── the registry ─────────────────────────────────────────────────────────────────────────────
+
+import { PLATFORM_STORES } from "./platformStoreSettings.js";
 
 export {
   isPlatformStore,
@@ -676,6 +680,101 @@ export async function clearPlatformPin(
     product,
   );
   return before;
+}
+
+// ── the store-app binding (A-28.1) ───────────────────────────────────────────────────────────
+
+/** The store-app identity fields a credential pin can name (`pinField` of `PLATFORM_CREDENTIALS`). */
+export type StoreAppField =
+  | "appleId"
+  | "bundleId"
+  | "packageName"
+  | "productId"
+  | "appId";
+
+/** Which app a product is assigned on one store, from the pins it already holds. */
+export interface StoreAppBinding {
+  store: PlatformStore;
+  fields: Partial<
+    Record<
+      StoreAppField,
+      {
+        value: string;
+        source: "product-credential" | "platform";
+        /** The own credential id, or the platform credential id (`app-store.api-key`). */
+        credential: string;
+      }
+    >
+  >;
+  /** Fields whose active own credentials carry pins that disagree (the lowest id won). */
+  ambiguous: string[];
+}
+
+/**
+ * The app a product is assigned on `store`, field by field, with CM-20 D12's precedence:
+ *
+ *   1. The product's OWN active credential of the field's kind: the pin of the lowest credential id
+ *      that has one. An own credential with no pin leaves the field ABSENT, and an own key never
+ *      falls through to the team key (the resolvers' rule, `appStoreCredential` and friends).
+ *      Active own pins that disagree put the field in `ambiguous`.
+ *   2. Only when the product has no active own credential of that kind: its platform pin.
+ *
+ * Metadata only. Reads: `outlet_credentials` (this product: id, kind, status, `meta_json`; never
+ * the sealed column), then `platform_credential_pins` (this product's rows for this store's
+ * slots). It opens nothing, mints no token, writes no audit row and calls no store. A platform pin
+ * is reported even when its credential is absent (`deletePlatformCredential` keeps pins), so the
+ * answer is an assignment, not a promise that a key exists.
+ */
+export async function storeAppBinding(
+  db: Db,
+  product: string,
+  store: PlatformStore,
+): Promise<StoreAppBinding> {
+  const own = await listOutletCredentials(db, product);
+  const binding: StoreAppBinding = { store, fields: {}, ambiguous: [] };
+  for (const id of platformCredentialsOf(store)) {
+    const spec = PLATFORM_CREDENTIALS[id];
+    const field = spec.pinField as StoreAppField;
+    const active = own.filter(
+      (c) => c.status === "active" && c.kind === spec.kind,
+    );
+    if (active.length > 0) {
+      // `listOutletCredentials` is in credential-id order, so the first pinned one is the lowest.
+      const pinned = active
+        .map((c) => ({ id: c.id, pin: outletCredentialPin(c) }))
+        .filter((c): c is { id: string; pin: string } => c.pin !== null);
+      const first = pinned[0];
+      if (first) {
+        binding.fields[field] = {
+          value: first.pin,
+          source: "product-credential",
+          credential: first.id,
+        };
+        if (pinned.some((c) => c.pin !== first.pin))
+          binding.ambiguous.push(field);
+      }
+      continue;
+    }
+    const pin = await platformPin(db, id, product);
+    if (pin !== null)
+      binding.fields[field] = {
+        value: pin,
+        source: "platform",
+        credential: id,
+      };
+  }
+  return binding;
+}
+
+/** `storeAppBinding` for every store, in `PLATFORM_STORES` order. */
+export async function storeAppBindings(
+  db: Db,
+  product: string,
+): Promise<StoreAppBinding[]> {
+  const out: StoreAppBinding[] = [];
+  for (const store of PLATFORM_STORES)
+    out.push(await storeAppBinding(db, product, store));
+  return out;
 }
 
 // ── open ─────────────────────────────────────────────────────────────────────────────────────
