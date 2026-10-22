@@ -9,7 +9,7 @@ import {
   fileSource,
   type FileRowModel,
 } from "../../model/product.js";
-import { PLATFORM_ORDER, PlatformGlyph, type PlatformKey } from "../Glyphs.js";
+import { PLATFORM_ORDER, PlatformGlyph, type PlatformKey } from "../../../ui/Glyphs.js";
 import { DownloadButton } from "./DownloadButton.js";
 
 /**

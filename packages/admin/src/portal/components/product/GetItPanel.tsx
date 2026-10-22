@@ -19,7 +19,7 @@ import {
   openOnComputer,
 } from "../../copy/getIt.js";
 import { FileHash } from "./FileHash.js";
-import { PlatformGlyph, type PlatformKey } from "../Glyphs.js";
+import { PlatformGlyph, type PlatformKey } from "../../../ui/Glyphs.js";
 import { PILL_CLASS, StorePillList } from "../StorePills.js";
 import { SectionCard } from "./Card.js";
 import { DownloadButton } from "./DownloadButton.js";

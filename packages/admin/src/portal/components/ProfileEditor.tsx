@@ -48,7 +48,7 @@ import {
   type ProfileDraft,
 } from "../model/profile.js";
 import { Avatar } from "./Avatar.js";
-import { ProviderGlyph, providerBadge } from "./Glyphs.js";
+import { ProviderGlyph, providerBadge } from "../../ui/Glyphs.js";
 
 type FieldError = {
   field: "name" | "picture" | "birthdate" | "form";

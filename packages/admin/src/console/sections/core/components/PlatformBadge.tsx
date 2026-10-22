@@ -12,7 +12,7 @@ import {
   PLATFORM_ORDER,
   PlatformGlyph,
   type PlatformKey,
-} from "../../../../portal/components/Glyphs.js";
+} from "../../../../ui/Glyphs.js";
 
 export type PlatformBadgeState = "verified" | "waiting" | "after" | "unseen";
 

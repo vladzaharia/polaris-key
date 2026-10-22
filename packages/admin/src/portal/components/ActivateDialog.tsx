@@ -45,7 +45,7 @@ import {
 import { formatDay, normalisePlatform, tierLabel } from "../model/library.js";
 import { allowedReturn, cardReturn } from "../model/returnUrl.js";
 import { href, navigate, type ActivateNext } from "../router.js";
-import { PLATFORM_ORDER, PlatformGlyphs, type PlatformKey } from "./Glyphs.js";
+import { PLATFORM_ORDER, PlatformGlyphs, type PlatformKey } from "../../ui/Glyphs.js";
 import { helpForRefusal } from "../helpLinks.js";
 import { HelpLink } from "./HelpLink.js";
 import { KeyField } from "./KeyField.js";

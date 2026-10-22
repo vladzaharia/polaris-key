@@ -66,7 +66,7 @@ import {
   ProviderGlyph,
   SteamGlyph,
   WindowsGlyph,
-} from "../Glyphs.js";
+} from "../../../ui/Glyphs.js";
 import { ErrorPanel } from "../States.js";
 import { AccountCard as SectionCard } from "./AccountCard.js";
 import { MethodRow } from "./MethodRow.js";

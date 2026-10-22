@@ -33,7 +33,7 @@ import {
   PlatformGlyph,
   PLATFORM_ORDER,
   type PlatformKey,
-} from "../../../../portal/components/Glyphs.js";
+} from "../../../../ui/Glyphs.js";
 
 const LINK =
   "inline-flex min-h-6 items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline";
