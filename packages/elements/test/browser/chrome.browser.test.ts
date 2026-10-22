@@ -1,6 +1,6 @@
 // @pkey-feature ui.kit ui.theme
 //
-// The elements' Windows chrome baselines (UK-06.6): the same scenes as the React lane
+// The elements' desktop chrome baselines (UK-06.6 Windows, UK-06.8 macOS): the same scenes as the React lane
 // (sdk-react/test/chromeScenes.ts), drawn by the `<pk-*>` elements with `theme.platform:
 // "windows"`, so `pnpm ui:report` can hold both renderers to the same pixels. The elements share
 // the React kit's stylesheet and DOM, so the checks here are the chrome's own: the variant on the
@@ -9,7 +9,7 @@
 //
 //   PKEY_KIT_BASELINES=test/visual/__screenshots__ pnpm test:browser   (or `pnpm test:visual`)
 //
-// writes <dir>/<Component>.<state>/windows-<size>-<scheme>.png.
+// writes <dir>/<Component>.<state>/<windows|macos>-<size>-<scheme>.png.
 
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { commands, page } from "vitest/browser";
@@ -33,6 +33,8 @@ const SIZES = [
   { label: "1440", width: 1440, height: 900 },
 ] as const;
 const SCHEMES = ["dark", "light"] as const;
+const PLATFORMS = ["windows", "macos"] as const;
+type Platform = (typeof PLATFORMS)[number];
 const PRODUCT = {
   name: "Tidewater",
   developer: "Lumen Games",
@@ -51,6 +53,7 @@ afterEach(() => {
 async function mount(
   scene: Scene,
   scheme: "dark" | "light",
+  platform: Platform,
 ): Promise<PkElement> {
   document.documentElement.style.fontSize = "16px";
   document.body.style.background = scheme === "dark" ? "#101114" : "#ffffff";
@@ -59,7 +62,7 @@ async function mount(
     TAGS[scene.component as keyof typeof TAGS],
   ) as PkElement & { presentation?: string; open?: boolean };
   el.colorScheme = scheme;
-  el.theme = { platform: "windows" };
+  el.theme = { platform };
   el.input = sceneInput(scene);
   if (scene.sheet) {
     el.presentation = "sheet";
@@ -92,30 +95,38 @@ async function mount(
   return el;
 }
 
-describe("the Windows chrome, drawn by the elements", () => {
-  for (const scene of SCENES)
-    for (const scheme of SCHEMES)
-      for (const size of SIZES)
-        it(`${scene.id} ${size.label} ${scheme}`, async () => {
-          await page.viewport(size.width, size.height);
-          const el = await mount(scene, scheme);
-          const kit = el.shadowRoot!.querySelector<HTMLElement>(".pk-root")!;
-          expect(kit.getAttribute("data-pk-platform")).toBe("windows");
-          const primary = [
-            ...kit.querySelectorAll<HTMLElement>(
-              '.btn[data-variant="primary"]',
-            ),
-          ].find((b) => b.getBoundingClientRect().height > 0);
-          if (primary && !matchMedia("(pointer: coarse)").matches) {
-            const cs = getComputedStyle(primary);
-            expect(parseFloat(cs.minHeight)).toBe(32);
-            expect(parseFloat(cs.borderTopLeftRadius)).toBe(4);
-          }
-          if (scene.sheet || scene.dialog)
-            expect(kit.querySelector("dialog[open]")).not.toBeNull();
-          if (__PKEY_KIT_BASELINES__)
-            await commands.kitShot(
-              `${__PKEY_KIT_BASELINES__}/${scene.id}/windows-${size.label}-${scheme}.png`,
-            );
-        });
+describe("the desktop chrome, drawn by the elements", () => {
+  for (const platform of PLATFORMS)
+    for (const scene of SCENES)
+      for (const scheme of SCHEMES)
+        for (const size of SIZES)
+          it(`${platform} ${scene.id} ${size.label} ${scheme}`, async () => {
+            await page.viewport(size.width, size.height);
+            const el = await mount(scene, scheme, platform);
+            const kit = el.shadowRoot!.querySelector<HTMLElement>(".pk-root")!;
+            expect(kit.getAttribute("data-pk-platform")).toBe(platform);
+            const primary = [
+              ...kit.querySelectorAll<HTMLElement>(
+                '.btn[data-variant="primary"]',
+              ),
+            ].find((b) => b.getBoundingClientRect().height > 0);
+            if (primary && !matchMedia("(pointer: coarse)").matches) {
+              const cs = getComputedStyle(primary);
+              if (platform === "windows") {
+                expect(parseFloat(cs.minHeight)).toBe(32);
+                expect(parseFloat(cs.borderTopLeftRadius)).toBe(4);
+              } else {
+                expect(parseFloat(cs.minHeight)).toBe(
+                  scene.component === "Welcome" ? 36 : 28,
+                );
+                expect(parseFloat(cs.borderTopLeftRadius)).toBeGreaterThan(100);
+              }
+            }
+            if (scene.sheet || scene.dialog)
+              expect(kit.querySelector("dialog[open]")).not.toBeNull();
+            if (__PKEY_KIT_BASELINES__)
+              await commands.kitShot(
+                `${__PKEY_KIT_BASELINES__}/${scene.id}/${platform}-${size.label}-${scheme}.png`,
+              );
+          });
 });

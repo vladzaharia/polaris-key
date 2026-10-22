@@ -1697,6 +1697,96 @@ dialog.sheet .identity {
   animation: none;
 }
 
+/* ── macOS (UK-06.8): Mac scale (13 pt body, 22 pt titles, 26 pt on Welcome, 28 pt capsule controls),
+   grouped sections at radius 10 and the sheet a floating glass panel inset below the title-bar
+   row, rounded on every side and not dimming the parent. The measures are the variant's tokens
+   (tokens.ts); this block is structure. Button wording is the catalog's macos variants. ───── */
+.pk-root[data-pk-platform="macos"] {
+  --pk-kit-radius-group: var(--pk-kit-radius-form);
+  --pk-kit-radius-card: var(--pk-kit-radius-sheet);
+  --pk-gap: var(--pk-space-2);
+}
+.pk-root[data-pk-platform="macos"] .btn {
+  min-inline-size: 4.5rem;
+  padding-block: 0;
+  padding-inline: 0.875rem;
+  line-height: 1;
+}
+/* The Welcome hero's push button is the one 36 pt control. */
+.pk-root[data-pk-platform="macos"][data-component="Welcome"] .btn[data-variant="primary"] {
+  min-block-size: var(--pk-kit-control-height-hero);
+}
+.pk-root[data-pk-platform="macos"] .btn[data-variant="secondary"] {
+  background: color-mix(in oklab, var(--pk-text-strong) 12%, var(--pk-surface-raised));
+  box-shadow:
+    inset 0 0.5px 0 color-mix(in oklab, var(--pk-text-strong) 14%, transparent),
+    0 0 0 0.5px color-mix(in oklab, var(--pk-text-strong) 14%, transparent);
+}
+.pk-root[data-pk-platform="macos"] .btn:active:not([aria-disabled="true"]) {
+  transform: none;
+}
+/* The system focus ring: a soft 3 pt halo in the accent, on keyboard focus only. */
+.pk-root[data-pk-platform="macos"][data-keyboard] :focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--pk-ring) 55%, transparent);
+  outline-offset: 0;
+}
+/* The sheet floats below the title-bar row, 440 pt wide, radius 24 on every side, on a glass
+   ground; the parent stays lit (no scrim) and never docks to the bottom edge. */
+.pk-root[data-pk-platform="macos"] dialog.sheet {
+  margin-block: 3.25rem auto;
+  margin-inline: auto;
+  inline-size: min(27.5rem, 100% - 2 * var(--pk-space-4));
+  max-inline-size: none;
+  max-block-size: calc(100% - 4.25rem);
+}
+.pk-root[data-pk-platform="macos"] dialog::backdrop {
+  background: transparent;
+  backdrop-filter: none;
+}
+.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card {
+  padding: 1.375rem 1.375rem 1.125rem;
+  border-radius: 1.5rem;
+  background: color-mix(in oklab, var(--pk-surface-raised) 86%, transparent);
+  backdrop-filter: blur(40px) saturate(1.6);
+  box-shadow:
+    inset 0 0 0 0.5px var(--pk-border-subtle),
+    0 18px 40px -8px color-mix(in srgb, black 45%, transparent);
+}
+/* Cancel then the default, the default at the trailing edge (the DOM puts it first). */
+.pk-root[data-pk-platform="macos"] .actions[data-layout="row"],
+.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.pk-root[data-pk-platform="macos"] .actions[data-layout="row"] .btn,
+.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions .btn {
+  inline-size: auto;
+}
+/* The update prompt's web layout gives the primary a line of its own; on the Mac the buttons sit
+   in one trailing row, each as wide as its label. */
+.pk-root[data-pk-platform="macos"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] {
+  justify-content: flex-start;
+}
+.pk-root[data-pk-platform="macos"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] .btn,
+.pk-root[data-pk-platform="macos"][data-component="UpdatePrompt"] .card .actions[data-layout="row"] .btn[data-variant="primary"] {
+  flex: 0 0 auto;
+}
+.pk-root[data-pk-platform="macos"][data-shape] dialog.sheet .stage .card > .actions {
+  position: static;
+  margin: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+/* Increase Contrast: every hairline at full contrast. */
+@media (prefers-contrast: more) {
+  .pk-root[data-pk-platform="macos"] {
+    --pk-border-subtle: var(--pk-text-strong);
+    --pk-border-strong: var(--pk-text-strong);
+  }
+}
+
 /* ── Forced colours: system colours, borders where fills carried the shape ───────────────── */
 @media (forced-colors: active) {
   .card,
