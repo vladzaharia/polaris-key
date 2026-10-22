@@ -63,7 +63,7 @@ import { KvMock } from "../kvMock.js";
 import { makeEnv, NOW, seedProduct } from "../seed.js";
 import { CONSOLE, enableServices, envFor } from "../releaseRoutesFixture.js";
 import { R2Mock, asR2, installDigestStream } from "../r2Mock.js";
-import { consoleTestSession } from "../consoleSessionHelper.js";
+import { consoleTestSession, consoleActor } from "../consoleSessionHelper.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER_ROOT = join(HERE, "..", "..");
@@ -783,7 +783,7 @@ describe("the Steam storefront admin surface", () => {
     expect(fee).toMatchObject({
       done: true,
       doneAt: NOW,
-      doneBy: "u1",
+      doneBy: await consoleActor(env, db, "u1"),
       verified: false,
     });
     expect(list.find((c) => c.item === "release_wait").notBefore).toBe(
