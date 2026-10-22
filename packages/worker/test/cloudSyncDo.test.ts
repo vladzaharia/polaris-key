@@ -559,10 +559,10 @@ describe("CloudSyncDO: isolation (SR-1)", () => {
           (code.match(/\benv\.DB\b/g) ?? []).length,
           f,
         ).toBeLessThanOrEqual(1);
-        // The handle is `batch` only, and the environment is read in the constructor alone
+        // The handle is `batch` and its counting twin `batchChanges` (no read), and the environment is read in the constructor alone
         // (destructuring `env` is caught too: the word may not appear anywhere else).
         if (f === "cloudSyncDo.ts") {
-          expect(code).toMatch(/Pick<Db, "batch">/);
+          expect(code).toMatch(/Pick<Db, "batch" \| "batchChanges">/);
           const ctor = code.slice(
             code.indexOf("constructor("),
             code.indexOf("\n  }\n", code.indexOf("constructor(")),

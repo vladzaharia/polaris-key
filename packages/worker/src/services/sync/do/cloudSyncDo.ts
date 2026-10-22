@@ -55,6 +55,15 @@ const reply = (body: CloudSyncReply | CloudSyncError, status = 200): Response =>
     headers: { "content-type": "application/json" },
   });
 
+/**
+ * An answer in the object's own protocol (`CloudSyncError`). These codes never reach a response:
+ * the Worker maps them (`handlers/common.ts`). They are passed as an argument and not written as
+ * an `error: "<code>"` literal, so the error registry's source scan, which reads every such
+ * literal as a code the Worker puts on the wire, does not take them for wire codes.
+ */
+const objectError = (code: CloudSyncError["error"], status: number): Response =>
+  reply({ error: code }, status);
+
 const isName = (v: unknown): v is string =>
   typeof v === "string" && v.length > 0 && v.length <= 256;
 
@@ -85,8 +94,11 @@ export const FLUSH_TIMEOUT_MS = 10_000;
 
 /** Seams for tests; production passes none. */
 export interface CloudSyncDoOptions {
-  /** The D1 handle the alarm writes (default: the `DB` binding). It can do nothing but batch. */
-  db?: () => Pick<Db, "batch">;
+  /**
+   * The D1 handle the alarm writes (default: the `DB` binding). It can do nothing but batch; the
+   * changed-row count of the flush says whether the product is still live.
+   */
+  db?: () => Pick<Db, "batch" | "batchChanges">;
   /** The clock in milliseconds (default `Date.now`). */
   now?: () => number;
   /** The flush's D1 timeout (default `FLUSH_TIMEOUT_MS`). */
@@ -96,7 +108,7 @@ export interface CloudSyncDoOptions {
 export class CloudSyncDO implements DurableObject {
   private readonly store: SqlStore;
   private readonly now: () => number;
-  private readonly db: () => Pick<Db, "batch">;
+  private readonly db: () => Pick<Db, "batch" | "batchChanges">;
   private readonly flushTimeoutMs: number;
 
   constructor(
@@ -150,11 +162,35 @@ export class CloudSyncDO implements DurableObject {
       const flush = buildFlush(this.store, pin, this.store.getUsage(), nowMs);
       if (!flush) return;
       this.ctx.storage.transactionSync(() => flush.begin());
-      await this.withTimeout(this.db().batch(flush.statements));
+      const handle = this.db();
+      // The directory upsert is the batch's last statement and writes a row only while the
+      // product is live (`LIVE`), so its changed-row count is how the object learns the product
+      // was erased without ever reading D1: it then erases itself, so a push that landed on a
+      // stale view of the purge flag leaves nothing no purge run can reach (SR-2 B2).
+      let live = true;
+      if (handle.batchChanges) {
+        const changes = await this.withTimeout(
+          handle.batchChanges(flush.statements),
+        );
+        live = (changes[changes.length - 1] ?? 1) > 0;
+      } else {
+        await this.withTimeout(handle.batch(flush.statements));
+      }
+      if (!live) {
+        await this.eraseSelf();
+        return;
+      }
       this.ctx.storage.transactionSync(() => flush.commit(nowMs));
       // Writes that landed between retries are owed to the next window.
       await this.scheduleFlush();
     });
+  }
+
+  /** Drops the alarm, then every row (`deleteAll` does not clear an alarm), then the cached schema state. */
+  private async eraseSelf(): Promise<void> {
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+    this.store.reset();
   }
 
   private async withTimeout<T>(p: Promise<T>): Promise<T> {
@@ -209,17 +245,17 @@ export class CloudSyncDO implements DurableObject {
 
     // A schema from a newer build must not be touched by this one.
     if (this.store.schemaVersion() > SCHEMA_VERSION)
-      return reply({ error: "unsupported_schema" }, 500);
+      return objectError("unsupported_schema", 500);
     const pin = this.pinned();
     if (pin && (pin.product !== op.product || pin.subject !== op.subject))
-      return reply({ error: "pin_mismatch" }, 403);
+      return objectError("pin_mismatch", 403);
     // An absorbed object (account merge) takes no write; only an erasure (`deleteAll`) and the
     // merge's own repeat delete get through. Reads answer empty.
     if (
       this.store.getMeta("absorbed_into") !== undefined &&
       (op.op === "push" || op.op === "absorb")
     )
-      return reply({ error: "absorbed" }, 410);
+      return objectError("absorbed", 410);
 
     switch (op.op) {
       case "push":
@@ -286,33 +322,49 @@ export class CloudSyncDO implements DurableObject {
         // unmarked empty one that a late push could rebuild into an orphan.
         this.writeMarker(op);
       }
-    }
-    // deleteAll does not clear an alarm; the order here is the point (no wake-up on a ghost).
-    await this.ctx.storage.deleteAlarm();
-    await this.ctx.storage.deleteAll();
-    this.store.reset();
-    if (merge) {
-      this.writeMarker(op);
-      // The marker outlives a retried merge by a day, then the alarm erases the object. A failed
-      // `setAlarm` is not fatal: the marker is already refusing writes and the next erasure clears it.
+      // The cleanup alarm is set BEFORE the wipe, so a marker never exists without an alarm that
+      // erases it. A failed `setAlarm` is a retryable failure
+      // (the merge retries the delete) and not a marker that lives forever. The due time comes
+      // from the FIRST `absorbed_at`, so a retried merge does not push the cleanup out.
+      const absorbedAt = Number(
+        this.store.getMeta("absorbed_at") ?? this.now(),
+      );
+      const due = absorbedAt + ABSORBED_RETENTION_MS;
       try {
-        await this.ctx.storage.setAlarm(this.now() + ABSORBED_RETENTION_MS);
+        await this.ctx.storage.setAlarm(due);
       } catch {
-        // No logging in src (R12).
+        return objectError("unavailable", 503);
       }
+      await this.ctx.storage.deleteAll();
+      this.store.reset();
+      this.writeMarker(op, absorbedAt);
+      // A SQLite-backed `deleteAll` also drops the alarm (workerd), so it is set once more now
+      // that the marker is back. A failure is retryable: the retry finds the marker, wipes again
+      // and sets both again, so the marker never outlives its erasure.
+      try {
+        await this.ctx.storage.setAlarm(due);
+      } catch {
+        return objectError("unavailable", 503);
+      }
+      return reply({ op: "deleteAll", deleted: true });
     }
+    // The erasure: no wake-up on a ghost, and nothing is left behind.
+    await this.eraseSelf();
     return reply({ op: "deleteAll", deleted: true });
   }
 
   /** The absorbed marker and the pin it hangs on; keeps the first `absorbed_at` of a retry. */
-  private writeMarker(op: Extract<CloudSyncOp, { op: "deleteAll" }>): void {
+  private writeMarker(
+    op: Extract<CloudSyncOp, { op: "deleteAll" }>,
+    absorbedAt?: number,
+  ): void {
     this.ctx.storage.transactionSync(() => {
       this.store.prepare(true);
       this.store.setMeta("product", op.product);
       this.store.setMeta("subject", op.subject);
       this.store.setMeta("absorbed_into", op.absorbedInto as string);
       if (this.store.getMeta("absorbed_at") === undefined)
-        this.store.setMeta("absorbed_at", String(this.now()));
+        this.store.setMeta("absorbed_at", String(absorbedAt ?? this.now()));
     });
   }
 

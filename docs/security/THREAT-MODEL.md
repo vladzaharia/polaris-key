@@ -7188,7 +7188,7 @@ yet. SR-1 (isolation) follows U-05.8.
   must refuse a product that is soft-deleted or being purged (`status = 'deleted'` or a purge
   flag), before it calls the object. What U-05.9 adds meanwhile: the directory and daily writes
   are guarded on the product being live, so a recreated object writes no directory or counter row
-  for a deleted product, and the purge's next run erases it if it was listed.
+  for a deleted product, and the object erases itself at its next alarm once it finds the product not live (SR-2 B2, T17).
 
 ### The Cloud Sync pull: `GET /<p>/sync` (U-05.12)
 
@@ -7261,7 +7261,7 @@ at T16, so T17 here is the plan's: a push that outlives the data it must not rec
   ceiling:** `sync_product_usage.users` (the same 15-minute aggregate over `sync_directory`) at
   100,000 or more makes the object refuse growth with `quota_exceeded`, `scope: product`, but
   only when it never held data (`store.isEmpty()`: no settings and no tombstones), decided once
-  before the batch. People already syncing, and a person who cleared their data, keep writing.
+  before the batch. People already syncing, and a person who cleared their data, keep writing; the latter holds only until the 90-day tombstone GC removes their tombstones.
   The aggregate lags up to 15 minutes, so the count can overshoot by the new people admitted in
   one window.
 - **Device trust.** `trustRefusal(…, "cloudSyncWrite", …, "wire")`: log-only writes at most one
@@ -7292,10 +7292,13 @@ attestation_required` for the whole request, in the nested `wireError` shape eve
   (`services/sync/purgeFlag.ts`, `pk()`-scoped, one-hour TTL renewed by every run) BEFORE it erases
   an object; the push reads the flag and re-reads the product row immediately before the object
   call, and answers `404` for a soft-deleted or purging product. A KV read that fails refuses the
-  push (retryable) instead of assuming no purge. Residual: KV is eventually consistent, so a push
-  served in another location can land for up to about a minute after the first purge run; the
-  directory row it writes is guarded on the product being live (U-05.9) and the purge's next run
-  erases the object if it was listed. A delete that is started and abandoned blocks Cloud Sync
+  push (retryable) instead of assuming no purge. The flag is deleted when the purge finishes, so a
+  slug created again within the hour is not refused. Residual: KV is eventually consistent, so a
+  push served in another location can land for up to about a minute after the first purge run, and
+  the directory row it writes is guarded on the product being live (U-05.9). The object closes that
+  itself: its alarm flush reads whether the product is live (before and after the batch), and when
+  it is not, the object clears its alarm and erases all its storage. So the object a stale push
+  recreated is gone within one alarm, whether or not the purge ever listed it. A delete that is started and abandoned blocks Cloud Sync
   writes for the product for at most an hour. Pulls are not refused (a read creates nothing).
 - **An expired cursor after a landed push** is `410 cursor_expired`: the mutations were applied, the
   journal is kept, and the retry finds every mutation `duplicate` (push rule 1).

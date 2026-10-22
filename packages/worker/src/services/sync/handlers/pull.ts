@@ -126,9 +126,15 @@ export async function handlePull(ctx: ServiceContext): Promise<Response> {
   if (!outcome.ok) return wireError(410, ErrorCode.CursorExpired);
 
   const more = outcome.more;
+  // The ETag does not name the subject, so a cache shared by two people (one browser profile)
+  // must key the answer on the credential and the device (SR-2 B1).
   const headers: Record<string, string> = more
-    ? {}
-    : { etag: outcome.etag, "cache-control": "private, no-cache" };
+    ? { vary: "Authorization, X-PKey-Device" }
+    : {
+        etag: outcome.etag,
+        "cache-control": "private, no-cache",
+        vary: "Authorization, X-PKey-Device",
+      };
   if (!more && matchesTag(req.headers.get("if-none-match"), outcome.etag))
     return new Response(null, { status: 304, headers });
 

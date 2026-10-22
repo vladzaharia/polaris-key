@@ -33,8 +33,8 @@
  * `410 absorbed` (the subject was merged away while the request ran) re-resolves the principal and
  * retries once; a second one is a retryable `503 unavailable`. A batch the object finds malformed
  * is `400`, another device's `clientId` is `409 client_mismatch`; every other object failure is
- * mapped by `objectFailure` (`common.ts`). If the subject moved after the push landed, the whole
- * exchange is repeated against the survivor (mutation ids make it idempotent), exactly as the
+ * mapped by `objectFailure` (`common.ts`). If the subject moved after the push landed to a merge survivor, the whole
+ * exchange is repeated against it; if the device now belongs to someone else, `account_required` (mutation ids make it idempotent), exactly as the
  * pull does. An expired `cursor` after a landed push is `410 cursor_expired`: the journal is kept
  * (rule 1) and the client's retry finds every mutation already processed.
  */
@@ -49,6 +49,7 @@ import { CLOUD_SYNC_CEILINGS, Catalog } from "@polaris-key/catalog";
 import type { ServiceContext } from "../../../core/registry.js";
 import { ErrorCode, json, notFound, wireError } from "../../../core/errors.js";
 import { BodyTooLargeError, readBodyText } from "../../../core/cappedBody.js";
+import { resolveSubject } from "../../../core/accounts/accountSubjects.js";
 import { syncAccess } from "../../../core/accounts/syncAccess.js";
 import { platformSetting } from "../../../core/settings/platformRead.js";
 import { resolveProductSetting } from "../../../core/settings/resolve.js";
@@ -230,6 +231,9 @@ export async function handlePush(ctx: ServiceContext): Promise<Response> {
     const device = await getDevice(db, product.slug, c.device.device_id);
     return device ? await syncAccess(env, db, product, device, now) : null;
   };
+  /** The subject we pushed to resolves, through the merge aliases, to the one the device has now. */
+  const followsMerge = async (from: string, to: string): Promise<boolean> =>
+    (await resolveSubject(db, product.slug, from)) === to;
   let pushed: PushSuccess | null = null;
   let pulled: Extract<PullOutcome, { ok: true }> | null = null;
   for (let attempt = 0; attempt < 2 && pushed === null; attempt++) {
@@ -270,6 +274,10 @@ export async function handlePush(ctx: ServiceContext): Promise<Response> {
       const again = await resolveAgain(current);
       if (again === null) return await accountRequired(env, db, req, product);
       const moved = again.subject !== current.access.subject;
+      // A device that now belongs to someone else (sign-out, then another person signs in) is
+      // not replayed into that person's object: only a merge alias is followed (SR-2).
+      if (moved && !(await followsMerge(current.access.subject, again.subject)))
+        return await accountRequired(env, db, req, product);
       current = { ...current, access: again };
       if (!moved) {
         pushed = outcome;
@@ -279,6 +287,11 @@ export async function handlePush(ctx: ServiceContext): Promise<Response> {
       if (!isAbsorbed(e)) return objectFailure(e);
       const again = await resolveAgain(current);
       if (again === null) return await accountRequired(env, db, req, product);
+      if (
+        again.subject !== current.access.subject &&
+        !(await followsMerge(current.access.subject, again.subject))
+      )
+        return await accountRequired(env, db, req, product);
       current = { ...current, access: again };
     }
   }
