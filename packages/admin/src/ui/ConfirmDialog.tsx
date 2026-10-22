@@ -92,6 +92,8 @@ export interface ConfirmDialogProps {
   loading?: boolean;
   /** Legacy: keeps confirm disabled (an input in `children` is not valid yet). */
   confirmDisabled?: boolean;
+  /** Why `confirmDisabled` holds (a soft-disabled button names it: "Loading"). */
+  confirmDisabledReason?: string;
 }
 
 /**
@@ -206,6 +208,7 @@ export function ConfirmDialog({
   focusTyped = false,
   loading = false,
   confirmDisabled = false,
+  confirmDisabledReason,
 }: ConfirmDialogProps): React.ReactElement {
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<unknown>(null);
@@ -405,7 +408,9 @@ export function ConfirmDialog({
           disabledReason={
             !stepUp && !typedOk && typedConfirmation
               ? `Type ${typedConfirmation.value} to confirm`
-              : undefined
+              : !stepUp && confirmDisabled
+                ? confirmDisabledReason
+                : undefined
           }
           aria-describedby={err || stepUp ? errorId : undefined}
           onClick={() => void confirm()}

@@ -2341,4 +2341,184 @@ describe("Packages: feeds off and Turn off package feeds (F-34.8)", () => {
       expectedVersion: 9,
     });
   });
+
+  const failOnce = (answer: unknown) => {
+    let n = 0;
+    return () => {
+      n += 1;
+      return n === 1
+        ? new Response(JSON.stringify({ error: "internal" }), { status: 500 })
+        : answer;
+    };
+  };
+
+  it("B3: a failed switch read on the off card shows the box; Try again refetches and the write then works", async () => {
+    const log = boot("#/p/djdl/distribution/feeds", {
+      extra: {
+        ...feedRoutes(),
+        ...offProduct(false),
+        [SWITCH]: failOnce({ packageFeeds: OWNER_ROW }),
+        [`PUT ${SWITCH}`]: {
+          ok: true,
+          packageFeeds: { enabled: true, version: 8 },
+        },
+      },
+    });
+    const card = async () =>
+      waitFor(
+        () => {
+          const c = main().querySelector("[data-feeds-off]");
+          expect(c).not.toBeNull();
+          return c as HTMLElement;
+        },
+        { timeout: 8000 },
+      );
+    const alert = await within(await card()).findByRole(
+      "alert",
+      {},
+      { timeout: 8000 },
+    );
+    expect(
+      within(alert).getByRole("button", { name: /Copy details/ }),
+    ).toBeTruthy();
+    expect(
+      within(await card())
+        .getByRole("button", { name: "Turn on package feeds" })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    await userEvent.click(
+      within(alert).getByRole("button", { name: "Try again" }),
+    );
+    await userEvent.click(await turnOnButton());
+    await waitFor(() => expect(putCalls(log)).toHaveLength(1));
+    expect(putCalls(log)[0]!.json).toEqual({
+      enabled: true,
+      expectedVersion: 7,
+    });
+  });
+
+  it("B3: a network failure on the switch read shows the box too", async () => {
+    bootOff({ ok: true });
+    const real = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes("/distribution/package-feeds") &&
+      (init?.method ?? "GET") === "GET"
+        ? Promise.reject(new TypeError("Failed to fetch"))
+        : real(input, init),
+    );
+    const card = (await screen.findByRole("main")).querySelector(
+      "[data-feeds-off]",
+    );
+    expect(card).toBeNull(); // not mounted yet: reloading the route mounts it under the stub
+    window.location.hash = "#/p/djdl/distribution/feeds?x=1";
+    const off = await waitFor(
+      () => {
+        const c = main().querySelector("[data-feeds-off]");
+        expect(c).not.toBeNull();
+        return c as HTMLElement;
+      },
+      { timeout: 8000 },
+    );
+    expect(
+      await within(off).findByRole(
+        "button",
+        { name: "Try again" },
+        { timeout: 8000 },
+      ),
+    ).toBeTruthy();
+  });
+
+  it("B3: the dialog shows the pending reason, then the box on a failed read, then writes after Try again", async () => {
+    const pending = await openTurnOff({ ok: true }, { sw: PENDING });
+    const b = pending.dialog.getByRole("button", {
+      name: "Turn off package feeds",
+    });
+    const reason = document.getElementById(b.getAttribute("aria-describedby")!);
+    expect(reason?.textContent).toMatch(/Loading|Type djdl/);
+    await userEvent.type(
+      pending.dialog.getByLabelText(/Type the product slug/),
+      "djdl",
+    );
+    const typed = pending.dialog.getByRole("button", {
+      name: "Turn off package feeds",
+    });
+    expect(
+      document.getElementById(typed.getAttribute("aria-describedby")!)
+        ?.textContent,
+    ).toBe("Loading");
+    cleanup();
+    resetConsole();
+    const { log, dialog } = await openTurnOff(
+      {
+        ok: true,
+        packageFeeds: { enabled: false, version: 8 },
+      },
+      { sw: failOnce({ packageFeeds: { ...OWNER_ROW, enabled: true } }) },
+    );
+    const alert = await dialog.findByRole("alert", {}, { timeout: 8000 });
+    await userEvent.click(
+      within(alert).getByRole("button", { name: "Try again" }),
+    );
+    await waitFor(() => expect(dialog.queryByRole("alert")).toBeNull(), {
+      timeout: 8000,
+    });
+    await typeAndConfirm(dialog);
+    await waitFor(() => expect(putCalls(log)).toHaveLength(1));
+    expect(putCalls(log)[0]!.json).toEqual({
+      enabled: false,
+      expectedVersion: 7,
+    });
+  });
+
+  it("R3: turning feeds off from the Services switch leaves no stale focus for the Packages page", async () => {
+    const { afterWrite } =
+      await import("../src/console/sections/feeds/model/model.js");
+    afterWrite.focus = null;
+    boot("#/p/djdl/settings/features", {
+      extra: {
+        ...feedRoutes(),
+        ...offProduct(true),
+        "/manage/api/products/djdl/services": servicesResponse(ALL_ON),
+        [SWITCH]: { packageFeeds: { ...OWNER_ROW, enabled: true } },
+        [`PUT ${SWITCH}`]: {
+          ok: true,
+          packageFeeds: { enabled: false, version: 8 },
+        },
+      },
+    });
+    const sw = await within(await mainReady()).findByRole("switch", {
+      name: /Packages/,
+    });
+    await waitFor(() => expect(sw.getAttribute("aria-checked")).toBe("true"));
+    await userEvent.click(sw);
+    const dialog = within(await screen.findByRole("alertdialog"));
+    await typeAndConfirm(dialog);
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(afterWrite.focus).toBeNull();
+  });
+
+  it("F1: the Services switch toast has no Undo and says 'Package feeds turned on'", async () => {
+    boot("#/p/djdl/settings/features", {
+      extra: {
+        ...feedRoutes(),
+        ...offProduct(false),
+        "/manage/api/products/djdl/services": servicesResponse(ALL_ON),
+        [SWITCH]: { packageFeeds: OWNER_ROW },
+        [`PUT ${SWITCH}`]: {
+          ok: true,
+          packageFeeds: { enabled: true, version: 8 },
+        },
+      },
+    });
+    const sw = await within(await mainReady()).findByRole("switch", {
+      name: /Packages/,
+    });
+    await waitFor(() => expect(sw.getAttribute("aria-checked")).toBe("false"));
+    await waitFor(() =>
+      expect(sw.getAttribute("aria-disabled")).not.toBe("true"),
+    );
+    await userEvent.click(sw);
+    expect(await screen.findByText("Package feeds turned on")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+  });
 });

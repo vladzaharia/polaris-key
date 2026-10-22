@@ -24,11 +24,13 @@ import { useProduct } from "../../../data/hooks.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { navigate } from "../../../router.js";
+import { SwitchReadError } from "./SwitchReadError.js";
 import { useFeedsOverview } from "../data.js";
 import {
   ECOSYSTEM_ICONS,
   ECOSYSTEM_LABELS,
-  afterWrite,
+  markAfterWrite,
+  takeAfterWrite,
   offWhen,
   packageFeedsConflict,
   tokensHref,
@@ -63,12 +65,11 @@ export function PackageFeedsOff({
   version.current = sw.data?.packageFeeds.version ?? 0;
   const heading = React.useRef<HTMLHeadingElement>(null);
   React.useEffect(() => {
-    if (afterWrite.focus !== "off-card") return;
-    afterWrite.focus = null;
+    if (!takeAfterWrite("off-card", slug)) return;
     // After the dialog has handed focus back to its (now gone) opener.
     const id = requestAnimationFrame(() => heading.current?.focus());
     return () => cancelAnimationFrame(id);
-  }, []);
+  }, [slug]);
   const settle = (): void => {
     void queryClient.invalidateQueries({
       queryKey: qk.product(slug),
@@ -86,7 +87,7 @@ export function PackageFeedsOff({
       queryClient.setQueryData(qk.packageFeedsSwitch(slug), {
         packageFeeds: result.packageFeeds,
       });
-      afterWrite.focus = "page";
+      markAfterWrite("page", slug);
       toast.success("Package feeds turned on");
     } catch (e) {
       const current = packageFeedsConflict(e);
@@ -96,7 +97,7 @@ export function PackageFeedsOff({
         });
         settle();
         if (current.enabled) {
-          afterWrite.focus = "page";
+          markAfterWrite("page", slug);
           toast.info("Package feeds were already turned on");
         } else
           setFailure({
@@ -159,13 +160,23 @@ export function PackageFeedsOff({
               gate.allowed
                 ? sw.data
                   ? undefined
-                  : "Loading"
+                  : sw.isError
+                    ? "Try again first"
+                    : "Loading"
                 : gate.disabledReason
             }
           >
             Turn on package feeds
           </Button>
         </div>
+        {sw.isError ? (
+          <div className="mx-5 mb-5">
+            <SwitchReadError
+              error={sw.error}
+              onRetry={() => void sw.refetch()}
+            />
+          </div>
+        ) : null}
         {failure ? (
           <div
             role="alert"

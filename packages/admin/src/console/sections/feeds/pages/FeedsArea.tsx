@@ -53,7 +53,7 @@ import {
   isEcosystem,
   overviewHref,
   tokensHref,
-  afterWrite,
+  takeAfterWrite,
   type FeedScope,
 } from "../model/model.js";
 import { BootstrapEmpty, OwnersPanel } from "./FeedsOwners.js";
@@ -329,8 +329,8 @@ export function FeedsOverview({
   );
   // After Turn on moved the page back to its cards: focus the page title.
   React.useEffect(() => {
-    if (afterWrite.focus !== "page" || !query.data) return;
-    afterWrite.focus = null;
+    if (scope.kind !== "product" || !query.data) return;
+    if (!takeAfterWrite("page", scope.slug)) return;
     const id = requestAnimationFrame(() => {
       const h1 = document.querySelector<HTMLElement>("main h1");
       if (h1) {
@@ -339,7 +339,7 @@ export function FeedsOverview({
       }
     });
     return () => cancelAnimationFrame(id);
-  }, [query.data]);
+  }, [query.data, scope]);
   const columns = React.useMemo(() => overviewColumns(scope), [scope]);
   const data = query.data;
   const host = data?.registryOrigin
@@ -408,6 +408,7 @@ export function FeedsOverview({
               name={product.data?.name ?? scope.slug}
               feedCount={feeds.length}
               packageCount={feeds.reduce((n, f) => n + f.packages, 0)}
+              focusOffCard
             />
           </>
         ) : (

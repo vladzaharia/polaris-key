@@ -16,11 +16,12 @@ import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
+import { SwitchReadError } from "./SwitchReadError.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
-import { afterWrite, packageFeedsConflict } from "../model/model.js";
+import { markAfterWrite, packageFeedsConflict } from "../model/model.js";
 
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
@@ -33,6 +34,7 @@ export function TurnOffFeeds({
   name,
   feedCount,
   packageCount,
+  focusOffCard = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -41,6 +43,8 @@ export function TurnOffFeeds({
   /** Feeds the product has set up. */
   feedCount: number;
   packageCount: number;
+  /** The Packages page moves to its off card after the write; the Services switch does not. */
+  focusOffCard?: boolean;
 }): React.ReactElement {
   const queryClient = useQueryClient();
   const sw = useQuery({
@@ -60,7 +64,7 @@ export function TurnOffFeeds({
       queryClient.setQueryData(qk.packageFeedsSwitch(slug), {
         packageFeeds: result.packageFeeds,
       });
-      afterWrite.focus = "off-card";
+      if (focusOffCard) markAfterWrite("off-card", slug);
       toast.success("Package feeds turned off");
     } catch (e) {
       const current = packageFeedsConflict(e);
@@ -76,7 +80,7 @@ export function TurnOffFeeds({
       });
       if (!current.enabled) {
         // Someone else already did it: end here, resolving closes the dialog.
-        afterWrite.focus = "off-card";
+        if (focusOffCard) markAfterWrite("off-card", slug);
         toast.info("Package feeds are already off");
         return;
       }
@@ -104,7 +108,7 @@ export function TurnOffFeeds({
       intent="danger"
       title={`Turn off package feeds for ${name}?`}
       lead={
-        <ul className="m-0 list-disc space-y-1 ps-5 text-fg">
+        <ul className="list-disc space-y-1 ps-5 text-fg">
           <li>
             <strong>Installs</strong>: {installs} not found, within 30 seconds.
           </li>
@@ -125,8 +129,13 @@ export function TurnOffFeeds({
       focusTyped
       confirmLabel="Turn off package feeds"
       confirmDisabled={!sw.data}
+      confirmDisabledReason={sw.isError ? "Try again first" : "Loading"}
       describeError={describeError}
       onConfirm={save}
-    />
+    >
+      {sw.isError ? (
+        <SwitchReadError error={sw.error} onRetry={() => void sw.refetch()} />
+      ) : null}
+    </ConfirmDialog>
   );
 }

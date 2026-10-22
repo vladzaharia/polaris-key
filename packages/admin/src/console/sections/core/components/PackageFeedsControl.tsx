@@ -63,12 +63,8 @@ export function PackageFeedsControl({
         packageFeeds: result.packageFeeds,
       });
       latest.current = result.packageFeeds;
-      toast.success(`Packages turned ${next ? "on" : "off"}`, {
-        action: {
-          label: "Undo",
-          onClick: () => void save(!next).catch(() => undefined),
-        },
-      });
+      // No Undo: turning off asks for the typed confirmation, so a toast must not skip it.
+      toast.success(`Package feeds turned ${next ? "on" : "off"}`);
     } catch (failure) {
       setFailure({ error: failure, requested: next });
       throw failure;

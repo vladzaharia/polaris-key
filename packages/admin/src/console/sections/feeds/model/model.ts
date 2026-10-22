@@ -308,9 +308,31 @@ export function packageFeedsConflict(
  * the off card's title after Turn off, the page title after Turn on. Read once by the page that
  * mounts next.
  */
-export const afterWrite: { focus: "off-card" | "page" | null } = {
-  focus: null,
-};
+/** Focus the next page is owed: set by a write on the Packages page, consumed once for that slug. */
+export const afterWrite: {
+  focus: "off-card" | "page" | null;
+  slug: string | null;
+  at: number;
+} = { focus: null, slug: null, at: 0 };
+
+export function markAfterWrite(focus: "off-card" | "page", slug: string): void {
+  afterWrite.focus = focus;
+  afterWrite.slug = slug;
+  afterWrite.at = Date.now();
+}
+
+/** The owed focus for this slug, once, and only within a few seconds of the write. */
+export function takeAfterWrite(
+  want: "off-card" | "page",
+  slug: string,
+): boolean {
+  const ok =
+    afterWrite.focus === want &&
+    afterWrite.slug === slug &&
+    Date.now() - afterWrite.at < 5000;
+  if (afterWrite.focus === want) afterWrite.focus = null;
+  return ok;
+}
 
 /** The house short absolute form: "Oct 7, 2:05 PM", with the year only when it is not this one. */
 export function shortWhen(ms: number): string {
