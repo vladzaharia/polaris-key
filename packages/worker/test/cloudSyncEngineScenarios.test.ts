@@ -23,6 +23,7 @@ import {
 import { MemoryStore } from "../src/services/sync/engine/memoryStore.js";
 import { applyPush } from "../src/services/sync/engine/push.js";
 import type {
+  CatalogMigrations,
   Classification,
   SettingPolicy,
 } from "../src/services/sync/engine/types.js";
@@ -152,9 +153,43 @@ function seedFromAnswer(
       value: r.server.value,
     });
   }
-  const firstOk = scripted.find((r) => r.status === "ok");
+  // A dropped key answers ok without a version: it wrote nothing.
+  const firstOk = scripted.find(
+    (r) => r.status === "ok" && typeof r.version === "number",
+  );
   if (firstOk && firstOk.status === "ok") store.setSeq(firstOk.version - 1);
 }
+
+/**
+ * The catalog's `cloudSync.migrations`, as the script shows them: the pulls' `aliases` are the
+ * renames, and a key answered `dropped` is a dropped one (the corpus has no catalog field for it).
+ */
+function migrationsOf(
+  aliases: Record<string, string>,
+  req: PushRequest,
+  scripted: MutationResult[],
+): CatalogMigrations {
+  const dropped = new Set<string>();
+  for (const r of scripted) {
+    if (r.status !== "ok" || !r.dropped) continue;
+    const m = req.mutations.find((x) => x.mutationId === r.mutationId);
+    if (m && "setting" in m.target) dropped.add(m.target.setting);
+  }
+  return { renamedTo: new Map(Object.entries(aliases)), dropped };
+}
+
+/**
+ * The scripted `quota_exceeded` predates the result's `scope` member (§13.3 now carries one), so
+ * the comparison reads the scope off the engine's answer and checks it separately.
+ */
+const withoutQuotaScope = (r: MutationResult): MutationResult => {
+  if (r.status === "rejected" && r.code === "quota_exceeded") {
+    const { scope: _scope, ...rest } = r;
+    void _scope;
+    return rest as MutationResult;
+  }
+  return r;
+};
 
 /**
  * Scripted answers that a later slice decides. The scenario stays covered by client-core's runner;
@@ -162,10 +197,6 @@ function seedFromAnswer(
  */
 function deferredOwner(scripted: MutationResult[]): string | null {
   for (const r of scripted) {
-    if (r.status === "ok" && (r.renamedTo !== undefined || r.dropped))
-      return "U-05.5 (rule 6, catalog migrations)";
-    if (r.status === "rejected" && r.code === "quota_exceeded")
-      return "U-05.5 (quota)";
     if (r.status === "rejected" && r.code === "entitlement_required")
       return "U-09 (collections)";
   }
@@ -204,15 +235,36 @@ describe("the engine reproduces sync-scenarios.json's scripted server answers", 
             // Records are U-09's engine; see `deferredOwner` for the rest.
           } else if (res.status === 200 && Array.isArray(scripted)) {
             seedFromAnswer(store, req, scripted);
+            // The scripted answer carries the person's totals and the device's quota.
+            const usage = res.body.usage as {
+              bytes: number;
+              settings: number;
+            };
+            store.setUsage({
+              settings: usage.settings,
+              settingsBytes: 0,
+              bytes: usage.bytes,
+            });
             const out = applyPush(store, {
               deviceId: "device-1",
               serverNow: res.body.serverNow as number,
               request: req,
               classified: classify(sc.init.catalog.settings, req),
+              limits: {
+                quotaBytes: (res.body.quota as { bytes: number }).bytes,
+              },
+              migrations: migrationsOf(
+                res.body.aliases as Record<string, string>,
+                req,
+                scripted,
+              ),
             });
             expect(out.ok).toBe(true);
             if (!out.ok) continue;
-            expect(out.results).toEqual(scripted);
+            expect(out.results.map(withoutQuotaScope)).toEqual(scripted);
+            for (const r of out.results)
+              if (r.status === "rejected" && r.code === "quota_exceeded")
+                expect(r.scope).toBe("user");
             expect(out.lastMutationId).toBe(res.body.lastMutationId);
             pushes++;
           } else if (res.status === 409) {
@@ -255,9 +307,6 @@ describe("the engine reproduces sync-scenarios.json's scripted server answers", 
     expect([...new Set(deferred.map((d) => `${d.name} -> ${d.owner}`))].sort())
       .toMatchInlineSnapshot(`
       [
-        "quota-raised-retries -> U-05.5 (quota)",
-        "quota-rejected-keeps-value -> U-05.5 (quota)",
-        "renamed-and-dropped-keys -> U-05.5 (rule 6, catalog migrations)",
         "terminal-rejection-reverts -> U-09 (collections)",
       ]
     `);

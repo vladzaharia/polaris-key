@@ -39,6 +39,12 @@ export interface MemberCell {
 export interface StoredSetting {
   key: string;
   scope: SyncScope;
+  /**
+   * The platform family (`desktop`, `mobile`, `console`, `web`) a `platform`-scope row belongs to:
+   * one row per (key, family). Absent on `user` rows. A pull returns the user rows and the rows of
+   * the asking device's own family (L9); the others stay stored, dormant and exported.
+   */
+  family?: string;
   /** The store sequence of the last accepted write; the pull's `version`. */
   version: number;
   /** The newest accepted write's stamp (`editedHlc` and `updatedBy`). */
@@ -61,6 +67,7 @@ export interface ClientRecord {
  * (`transactionSync`). `transaction` must roll every write made inside it back when `fn` throws.
  */
 export interface SyncStore {
+  /** Rolls back every write made inside it, usage and watermark included, when `fn` throws. */
   transaction<T>(fn: () => T): T;
   /** The sequence of the last accepted write (0 for an empty store). */
   currentSeq(): number;
@@ -68,8 +75,39 @@ export interface SyncStore {
   nextSeq(): number;
   getClient(clientId: string): ClientRecord | undefined;
   putClient(record: ClientRecord): void;
-  getSetting(key: string, scope: SyncScope): StoredSetting | undefined;
+  /** `family` selects the row of a `platform`-scope key; it is ignored for `user`. */
+  getSetting(
+    key: string,
+    scope: SyncScope,
+    family?: string,
+  ): StoredSetting | undefined;
   putSetting(row: StoredSetting): void;
+  /** Removes a row outright (tombstone collection only). */
+  deleteSetting(key: string, scope: SyncScope, family?: string): void;
+  /** Every row, tombstones included, whose `version` is above `seq`, in ascending `version`. */
+  settingsAfter(seq: number): StoredSetting[];
+  /** No row at all, tombstones included. */
+  isEmpty(): boolean;
+  /** The person's running totals. The engine keeps them current; a store only holds them. */
+  getUsage(): StoreUsage;
+  setUsage(usage: StoreUsage): void;
+  /**
+   * The tombstone-GC watermark: a store sequence. Tombstones at or below it may be gone, so a
+   * non-zero cursor below it can no longer be served (`410 cursor_expired`). 0 until a collection.
+   */
+  getWatermark(): number;
+  setWatermark(seq: number): void;
+}
+
+/**
+ * What the person's store holds, kept as running counters. `bytes` is every kind together (the
+ * quota's measure; records and files add to it in U-09 and U-10), `settings` and `settingsBytes`
+ * are the settings budget's (256 keys, 64 KiB). Tombstones cost nothing.
+ */
+export interface StoreUsage {
+  settings: number;
+  settingsBytes: number;
+  bytes: number;
 }
 
 /**
@@ -94,9 +132,39 @@ export type Classification =
         | "entitlement_required";
     };
 
+/**
+ * What the Worker resolved about the person's room, per request. The engine decides nothing about
+ * where these numbers come from (D5's quota resolution, the product ceiling flag).
+ */
+export interface PushLimits {
+  /** The requesting device's quota in bytes (`0`: reads only). */
+  quotaBytes: number;
+  /** The product is past `cloudSync.ceiling.bytes`: a write that grows usage is refused. */
+  productOverCeiling?: boolean;
+}
+
+/**
+ * The catalog's `cloudSync.migrations` (rule 6): a renamed key is written to its new name and
+ * answers `renamedTo`; a dropped key answers `dropped: true` and writes nothing. Maps, not plain
+ * objects: a key may be called `__proto__`.
+ */
+export interface CatalogMigrations {
+  renamedTo: ReadonlyMap<string, string>;
+  dropped: ReadonlySet<string>;
+}
+
 export interface PushInput {
   /** The device the request authenticated as; a clientId binds to the first one that uses it. */
   deviceId: string;
+  /** The device row's platform family: the home of this request's `platform`-scope writes. */
+  family?: string;
+  /**
+   * The Worker always sends the limits. Absent only where nothing is to be refused by quota
+   * (tests, and U-05.8's absorb, which applies no refusal: L8). The settings budget always holds.
+   */
+  limits?: PushLimits;
+  /** For each mutation, `classified` describes the key it resolves to after these. */
+  migrations?: CatalogMigrations;
   request: PushRequest;
   /** Parallel to `request.mutations`. */
   classified: readonly Classification[];
@@ -116,6 +184,8 @@ export interface PushSuccess {
   lastMutationId: number;
   /** The store sequence after this request: the pull cursor a `200` carries. */
   seq: number;
+  /** The person's totals after this request. */
+  usage: StoreUsage;
   /** Writes accepted and conflicts answered, for the daily counters (U-05.9). */
   counts: { accepted: number; conflicts: number };
 }

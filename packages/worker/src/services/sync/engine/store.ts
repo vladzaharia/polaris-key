@@ -9,9 +9,18 @@ import type { StoredSetting } from "./types.js";
 
 export type { SyncStore } from "./types.js";
 
-/** `key` and `scope` joined into one map key. `\u0000` cannot occur in a key (SYNC_KEY_PATTERN). */
-export const settingId = (key: string, scope: string): string =>
-  `${scope}\u0000${key}`;
+/**
+ * A row's identity as one map key: `user` rows are (scope, key), `platform` rows add the family.
+ * `\u0000` cannot occur in a key (SYNC_KEY_PATTERN).
+ */
+export const settingId = (
+  key: string,
+  scope: string,
+  family?: string,
+): string =>
+  scope === "platform"
+    ? `${scope}\u0000${family ?? ""}\u0000${key}`
+    : `${scope}\u0000${key}`;
 
 /** The live members of a merged row as a JSON object (a prototype-free object: a member may be
  *  called `__proto__`). `null` when none is live. */
