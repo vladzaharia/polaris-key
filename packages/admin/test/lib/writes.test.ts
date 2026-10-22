@@ -166,4 +166,38 @@ describe("useWrite", () => {
     });
     expect(stale(["items"])).toBe(true);
   });
+
+  it("toArgs, call and onSuccess/onError shape a hook without skipping the table", async () => {
+    seed(["items"]);
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client }, children);
+    const onSuccess = vi.fn();
+    const onError = vi.fn();
+    const call = vi.fn(async (id: string) => ({ ok: true, id }));
+    const { result } = renderHook(
+      () =>
+        writes.useWrite("save", {
+          toArgs: (v: { id: string }): [string] => [v.id],
+          call,
+          onSuccess,
+          onError,
+        }),
+      { wrapper },
+    );
+    await act(async () => {
+      await result.current.mutateAsync({ id: "z" });
+    });
+    expect(call).toHaveBeenCalledWith("z");
+    expect(api.save).not.toHaveBeenCalled();
+    expect(stale(["items"])).toBe(true);
+    expect(onSuccess.mock.calls[0]!.slice(0, 2)).toEqual([
+      { ok: true, id: "z" },
+      { id: "z" },
+    ]);
+    call.mockRejectedValueOnce(new Error("no"));
+    await act(async () => {
+      await result.current.mutateAsync({ id: "y" }).catch(() => undefined);
+    });
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
 });

@@ -12,7 +12,7 @@
  */
 
 import { createWrites, type Target, type WriteSpec } from "../lib/writes.js";
-import { portalApi } from "./api.js";
+import { portalApi, PortalApiError } from "./api.js";
 import { qk, qkFamily } from "./queries.js";
 
 const exact = (key: Target["key"]): Target => ({ key, exact: true });
@@ -51,9 +51,9 @@ export const PORTAL_MUTATIONS = {
     invalidates: () => [exact(qk.me())],
   },
   updateProfile: {
-    label:
-      "Save an explicit profile choice (the answer is the whole profile, which the caller may also write into the cache)",
-    invalidates: () => [exact(qk.profile()), exact(qk.me())],
+    label: "Save an explicit profile choice",
+    invalidates: () => [],
+    why: "The answer is the whole profile: useUpdateProfile writes it into the profile and session caches (a refetch would race it).",
   },
   uploadPicture: {
     label: "Upload a profile picture",
@@ -333,3 +333,24 @@ export const {
   mutateEach,
   useWrite,
 } = writes;
+
+/** "Remove" where a 404 means it is gone already (another tab): the same outcome. */
+export async function removeLibraryEntryOrGone(product: string) {
+  try {
+    return await portalApi.removeLibraryEntry(product);
+  } catch (err) {
+    if (err instanceof PortalApiError && err.status === 404)
+      return { ok: true as const, product, inLibrary: false };
+    throw err;
+  }
+}
+
+export async function removeLicenseOrGone(product: string, licenseId: string) {
+  try {
+    return await portalApi.removeLicense(product, licenseId);
+  } catch (err) {
+    if (err instanceof PortalApiError && err.status === 404)
+      return { ok: true as const, product, licenseId };
+    throw err;
+  }
+}

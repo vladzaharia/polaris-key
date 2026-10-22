@@ -1,3 +1,13 @@
+import {
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
 import { portalApi } from "../src/portal/api.js";
@@ -191,5 +201,164 @@ describe("a write through the table", () => {
       status: 404,
     });
     expect(client.getQueryState(qk.licenses())?.isInvalidated).toBe(false);
+  });
+});
+
+describe("no portal write around the table", () => {
+  const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
+  const PORTAL = join(SRC, "portal");
+
+  /**
+   * Files that still call a `portalApi` write directly, each with the slice that moves it onto
+   * the table (P0-32 B5). The list only shrinks: a new offender fails, and so does a listed file
+   * with none left.
+   */
+  const KNOWN: Record<string, string> = {
+    "App.tsx": "P0-32.6",
+    "pages/SignInPage.tsx": "P0-32.7",
+    "components/signin/FinishStep.tsx": "P0-32.7",
+    "components/signin/DeviceStep.tsx": "P0-32.7",
+    "components/signin/HintStep.tsx": "P0-32.7",
+    "components/signin/RequestFlow.tsx": "P0-32.7",
+    "components/signin/usePasskeySignIn.ts": "P0-32.7",
+    "components/account/StepUp.tsx": "P0-32.8",
+    "components/account/SignInMethods.tsx": "P0-32.8",
+    "components/LinkAccountsDialog.tsx": "P0-32.8",
+    "components/ApproveDeviceDialog.tsx": "P0-32.8",
+  };
+
+  /** The transport and the engine's own file may call writes. `queries.ts` calls
+   *  `finishPendingSignIn` inside the session read, which is itself the refresh. */
+  const EXEMPT = new Set(["api.ts", "mutations.ts", "queries.ts"]);
+  const WRITES = new Set(Object.keys(PORTAL_MUTATIONS));
+
+  function sources(dir: string): string[] {
+    return readdirSync(dir).flatMap((name) => {
+      const path = join(dir, name);
+      if (statSync(path).isDirectory()) return sources(path);
+      return /\.(ts|tsx)$/.test(name) ? [path] : [];
+    });
+  }
+  const rel = (file: string) => relative(PORTAL, file);
+  const exempt = (file: string) =>
+    EXEMPT.has(rel(file)) || rel(file).startsWith("api/");
+
+  /**
+   * Every way a file reaches a write without the table, on the AST: `portalApi.write(...)` over
+   * line breaks, `portalApi["write"]`, `portalApi[x]`, `const a = portalApi`, `const { write } =
+   * portalApi`, and the same through `import { portalApi as a }` or `import * as m`.
+   */
+  function offences(text: string): string[] {
+    const sf = ts.createSourceFile("f.tsx", text, ts.ScriptTarget.Latest, true);
+    const names = new Set<string>();
+    const namespaces = new Set<string>();
+    for (const stmt of sf.statements) {
+      if (!ts.isImportDeclaration(stmt) || !stmt.importClause) continue;
+      const spec = (stmt.moduleSpecifier as ts.StringLiteral).text;
+      if (!/(^|\/)api(\/index)?\.js$/.test(spec)) continue;
+      const b = stmt.importClause.namedBindings;
+      if (b && ts.isNamedImports(b))
+        for (const el of b.elements)
+          if ((el.propertyName ?? el.name).text === "portalApi")
+            names.add(el.name.text);
+      if (b && ts.isNamespaceImport(b)) namespaces.add(b.name.text);
+    }
+    if (!names.size && !namespaces.size) return [];
+    const isApi = (n: ts.Node): boolean =>
+      (ts.isIdentifier(n) && names.has(n.text)) ||
+      (ts.isPropertyAccessExpression(n) &&
+        n.name.text === "portalApi" &&
+        ts.isIdentifier(n.expression) &&
+        namespaces.has(n.expression.text));
+    const found: string[] = [];
+    const at = (n: ts.Node, what: string) =>
+      found.push(
+        `${sf.getLineAndCharacterOfPosition(n.getStart()).line + 1} ${what}`,
+      );
+    const visit = (n: ts.Node): void => {
+      if (
+        ts.isPropertyAccessExpression(n) &&
+        isApi(n.expression) &&
+        WRITES.has(n.name.text)
+      )
+        at(n, `portalApi.${n.name.text}`);
+      else if (ts.isElementAccessExpression(n) && isApi(n.expression))
+        at(n, "portalApi[...]");
+      else if (
+        ts.isVariableDeclaration(n) &&
+        n.initializer &&
+        isApi(n.initializer)
+      )
+        at(n, "aliases or destructures portalApi");
+      else if (
+        ts.isBinaryExpression(n) &&
+        n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+        isApi(n.right)
+      )
+        at(n, "assigns portalApi");
+      ts.forEachChild(n, visit);
+    };
+    visit(sf);
+    return found;
+  }
+
+  const offending = (): Map<string, string[]> => {
+    const out = new Map<string, string[]>();
+    for (const file of sources(PORTAL)) {
+      if (exempt(file)) continue;
+      const found = offences(readFileSync(file, "utf8"));
+      if (found.length) out.set(rel(file), found);
+    }
+    return out;
+  };
+
+  it("every write goes through the table, bar the listed files", () => {
+    const fresh = [...offending()]
+      .filter(([file]) => !(file in KNOWN))
+      .map(([file, f]) => `${file}: ${f.join(", ")}`);
+    expect(fresh, "use useWrite or mutate from portal/mutations.ts").toEqual(
+      [],
+    );
+  });
+
+  it("every listed file still has a direct write (delete its entry when it stops)", () => {
+    const found = offending();
+    expect(Object.keys(KNOWN).filter((f) => !found.has(f))).toEqual([]);
+  });
+
+  it("the scan catches the shapes a regex would miss", () => {
+    const imp = 'import { portalApi } from "./api.js";\n';
+    const cases: [string, string][] = [
+      [imp + "portalApi\n  .deleteMe();", "portalApi.deleteMe"],
+      [
+        'import { portalApi as a } from "../api.js";\na.claimKey("k");',
+        "portalApi.claimKey",
+      ],
+      [imp + "const { claimKey } = portalApi;", "destructures"],
+      [imp + "const x = portalApi;", "aliases"],
+      [imp + 'portalApi["claimKey"]("k");', "portalApi[...]"],
+      [
+        'import * as m from "./api.js";\nm.portalApi.claimKey("k");',
+        "portalApi.claimKey",
+      ],
+    ];
+    for (const [code, expected] of cases)
+      expect(offences(code).join("\n"), code).toContain(expected);
+    // Reads are fine.
+    expect(offences(imp + "void portalApi.licenses();")).toEqual([]);
+  });
+
+  it("a stray write in a new portal file fails the scan", () => {
+    const probe = join(PORTAL, "__writeProbe__.ts");
+    writeFileSync(
+      probe,
+      'import { portalApi } from "./api.js";\nexport const f = () => portalApi.deleteMe();\n',
+    );
+    try {
+      expect(offending().has("__writeProbe__.ts")).toBe(true);
+      expect("__writeProbe__.ts" in KNOWN).toBe(false);
+    } finally {
+      rmSync(probe, { force: true });
+    }
   });
 });

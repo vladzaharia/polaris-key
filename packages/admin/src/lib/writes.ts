@@ -61,6 +61,18 @@ export interface WritesConfig<
   onError?: (error: unknown, clients: ReadonlySet<QueryClient>) => void;
 }
 
+export interface WriteOptions<
+  Api extends Record<string, AnyFn>,
+  M extends keyof Api,
+  V,
+  R,
+> {
+  toArgs?: (variables: V) => Parameters<Api[M]>;
+  call?: (...args: Parameters<Api[M]>) => Promise<R>;
+  onSuccess?: (result: R, variables: V) => void | Promise<void>;
+  onError?: (error: Error, variables: V) => void;
+}
+
 export interface Writes<
   Api extends Record<string, AnyFn>,
   K extends keyof Api & string,
@@ -81,10 +93,21 @@ export interface Writes<
     method: M,
     argLists: Parameters<Api[M]>[],
   ): Promise<(Error | null)[]>;
-  /** `mutate` as a TanStack mutation on the surrounding client; the variables are the arguments. */
-  useWrite<M extends K>(
+  /**
+   * `mutate` as a TanStack mutation on the surrounding client. By default the variables are the
+   * method's arguments; `toArgs` lets a hook keep its own variable shape, and `call` replaces the
+   * API call (a 404 that means "already gone" resolves as success there) while the table is still
+   * applied after it. `onSuccess` and `onError` run after the table, for what it cannot express
+   * (writing an answer into the cache, refreshing after a particular refusal).
+   */
+  useWrite<
+    M extends K,
+    V = Parameters<Api[M]>,
+    R = Awaited<ReturnType<Api[M]>>,
+  >(
     method: M,
-  ): UseMutationResult<Awaited<ReturnType<Api[M]>>, Error, Parameters<Api[M]>>;
+    options?: WriteOptions<Api, M, V, R>,
+  ): UseMutationResult<R, Error, V>;
 }
 
 export function createWrites<
@@ -131,10 +154,11 @@ export function createWrites<
     method: string,
     args: unknown[],
     clients: ReadonlySet<QueryClient>,
+    call?: (...a: unknown[]) => Promise<unknown>,
   ): Promise<unknown> {
     let result: unknown;
     try {
-      result = await fnOf(method)(...args);
+      result = await (call ?? fnOf(method))(...args);
     } catch (e) {
       config.onError?.(e, clients);
       throw e;
@@ -170,13 +194,24 @@ export function createWrites<
       if (changed) await apply(method, changed, bound);
       return outcomes;
     },
-    useWrite(method) {
+    useWrite(method, options) {
       const client = useQueryClient();
       return useMutation({
-        mutationFn: (args) =>
-          run(method, args as unknown[], new Set([client])) as Promise<
-            Awaited<ReturnType<Api[typeof method]>>
-          >,
+        mutationFn: (variables) => {
+          const args = (
+            options?.toArgs ? options.toArgs(variables) : variables
+          ) as unknown[];
+          return run(
+            method,
+            args,
+            new Set([client]),
+            options?.call as
+              | ((...a: unknown[]) => Promise<unknown>)
+              | undefined,
+          ) as Promise<never>;
+        },
+        onSuccess: options?.onSuccess as never,
+        onError: options?.onError as never,
       });
     },
   } as Writes<Api, K>;

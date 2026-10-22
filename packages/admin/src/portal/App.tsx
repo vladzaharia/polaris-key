@@ -51,6 +51,7 @@ import {
   type PortalRoute,
 } from "./router.js";
 import { portalApi } from "./api.js";
+import { bindWriteInvalidation } from "./mutations.js";
 import { qkFamily } from "./queries.js";
 import { t } from "../lib/copy.js";
 
@@ -67,6 +68,8 @@ export function PortalApp(): React.ReactElement {
     restoreCarriedKey();
     return createPortalQueryClient();
   });
+  // Writes made outside a hook (`mutate`) invalidate in this tree's client.
+  React.useEffect(() => bindWriteInvalidation(client), [client]);
   return (
     <ThemeProvider>
       <QueryClientProvider client={client}>

@@ -34,6 +34,11 @@ import {
 } from "./api.js";
 import { browser } from "./browser.js";
 import { isSignedOut } from "./errors.js";
+import {
+  removeLibraryEntryOrGone,
+  removeLicenseOrGone,
+  useWrite,
+} from "./mutations.js";
 import { fetchSession, pq, qk } from "./queries.js";
 
 /**
@@ -165,20 +170,8 @@ export function useStorefrontProduct(
  * the storefront pages refresh after.
  */
 export function useClaimDiscover() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (v: { product: string; path?: string }) =>
-      portalApi.claimDiscover(v.product, v.path),
-    onSuccess: (_res, v) => {
-      void qc.invalidateQueries({ queryKey: qk.licenses() });
-      void qc.invalidateQueries({ queryKey: qk.discover() });
-      void qc.invalidateQueries({ queryKey: qk.product(v.product) });
-      // The storefront page is left as it is: the page that added it moves on to the library
-      // page, and a held product's storefront page goes there too (StorefrontPage).
-      // Returned, so the Add resolves only once the library holds the product: a page that moves
-      // on to it then never finds it missing ("That product isn't in your library").
-      return qc.invalidateQueries({ queryKey: qk.library() });
-    },
+  return useWrite("claimDiscover", {
+    toArgs: (v: { product: string; path?: string }) => [v.product, v.path],
   });
 }
 
@@ -190,23 +183,9 @@ export function useClaimDiscover() {
  * again) and the product's views refresh.
  */
 export function useRemoveLibraryEntry() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (product: string) => {
-      try {
-        return await portalApi.removeLibraryEntry(product);
-      } catch (err) {
-        if (err instanceof PortalApiError && err.status === 404)
-          return { ok: true as const, product, inLibrary: false };
-        throw err;
-      }
-    },
-    onSuccess: (_res, product) => {
-      void qc.invalidateQueries({ queryKey: qk.library() });
-      void qc.invalidateQueries({ queryKey: qk.discover() });
-      qc.removeQueries({ queryKey: qk.product(product) });
-      qc.removeQueries({ queryKey: qk.storefront(product) });
-    },
+  return useWrite("removeLibraryEntry", {
+    toArgs: (product: string): [string] => [product],
+    call: removeLibraryEntryOrGone,
   });
 }
 
@@ -238,50 +217,36 @@ export function usePersonalTokens(): UseQueryResult<PortalPersonalTokens> {
 }
 
 export function useMintPersonalToken() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { label: string; expiresInDays?: number }) =>
-      portalApi.mintPersonalToken(input),
-    onSuccess: () =>
-      void qc.invalidateQueries({ queryKey: qk.personalTokens() }),
+  return useWrite("mintPersonalToken", {
+    toArgs: (input: {
+      label: string;
+      expiresInDays?: number;
+    }): [typeof input] => [input],
   });
 }
 
 export function useRevokePersonalToken() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (tokenId: string) => portalApi.revokePersonalToken(tokenId),
-    onSuccess: () =>
-      void qc.invalidateQueries({ queryKey: qk.personalTokens() }),
+  return useWrite("revokePersonalToken", {
+    toArgs: (tokenId: string): [string] => [tokenId],
   });
 }
 
 export function useMintRegistryToken(product: string, licenseId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: PortalMintTokenInput) =>
-      portalApi.mintRegistryToken(product, licenseId, input),
-    onSuccess: () => {
-      void qc.invalidateQueries({
-        queryKey: qk.registryTokens(product, licenseId),
-      });
-      void qc.invalidateQueries({ queryKey: qk.personalTokens() });
-    },
+  return useWrite("mintRegistryToken", {
+    toArgs: (
+      input: PortalMintTokenInput,
+    ): [string, string, PortalMintTokenInput] => [product, licenseId, input],
   });
 }
 
 /** Revoke a licence-bound token, from Account → Packages' per-app group (any licence). */
 export function useRevokeRegistryToken() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (t: { product: string; licenseId: string; tokenId: string }) =>
-      portalApi.revokeRegistryToken(t.product, t.licenseId, t.tokenId),
-    onSuccess: (_res, t) => {
-      void qc.invalidateQueries({
-        queryKey: qk.registryTokens(t.product, t.licenseId),
-      });
-      void qc.invalidateQueries({ queryKey: qk.personalTokens() });
-    },
+  return useWrite("revokeRegistryToken", {
+    toArgs: (t: {
+      product: string;
+      licenseId: string;
+      tokenId: string;
+    }): [string, string, string] => [t.product, t.licenseId, t.tokenId],
   });
 }
 
@@ -323,46 +288,34 @@ export function useDownloadsFor(
 
 /** G23: email the account's own address this product's download link for `platform`. */
 export function useEmailDownload() {
-  return useMutation({
-    mutationFn: (v: { product: string; platform: string }) =>
-      portalApi.emailDownload(v.product, v.platform),
+  return useWrite("emailDownload", {
+    toArgs: (v: { product: string; platform: string }): [string, string] => [
+      v.product,
+      v.platform,
+    ],
   });
 }
 
 /** The activate preview (PX-W5, G22): what adding a key would do, before it is added. */
 export function usePreviewKey() {
-  return useMutation({
-    mutationFn: (key: string) => portalApi.previewKey(key),
+  return useWrite("previewKey", {
+    toArgs: (key: string): [string] => [key],
   });
 }
 
 export function useClaimKey() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (key: string) => portalApi.claimKey(key),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: qk.licenses() });
-      void qc.invalidateQueries({ queryKey: qk.releases() });
-      void qc.invalidateQueries({ queryKey: qk.library() });
-      // A key for a product Discover offered takes it off the shelf.
-      void qc.invalidateQueries({ queryKey: qk.discover() });
-    },
+  return useWrite("claimKey", {
+    toArgs: (key: string): [string] => [key],
   });
 }
 
 export function useRemoveDevice(product: string, licenseId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (deviceId: string) =>
-      portalApi.disconnectDevice(product, licenseId, deviceId),
-    onSuccess: () => {
-      void qc.invalidateQueries({
-        queryKey: qk.license(product, licenseId),
-      });
-      void qc.invalidateQueries({ queryKey: qk.licenses() });
-      void qc.invalidateQueries({ queryKey: qk.library() });
-      void qc.invalidateQueries({ queryKey: qk.product(product) });
-    },
+  return useWrite("disconnectDevice", {
+    toArgs: (deviceId: string): [string, string, string] => [
+      product,
+      licenseId,
+      deviceId,
+    ],
   });
 }
 
@@ -381,9 +334,8 @@ export function useProfile(): UseQueryResult<PortalProfile | null> {
  */
 export function useUpdateProfile() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (change: PortalProfileChange) =>
-      portalApi.updateProfile(change),
+  return useWrite("updateProfile", {
+    toArgs: (change: PortalProfileChange): [PortalProfileChange] => [change],
     onSuccess: ({ profile }) => {
       qc.setQueryData(qk.profile(), profile);
       qc.setQueryData<PortalMe | null>(qk.me(), (me) =>
@@ -421,8 +373,8 @@ const STALE_PROFILE_REASONS = new Set([
 
 /** Upload a picture: it is kept unused (for a day) until `useUpdateProfile` picks it. */
 export function useUploadPicture() {
-  return useMutation({
-    mutationFn: (file: Blob) => portalApi.uploadPicture(file),
+  return useWrite("uploadPicture", {
+    toArgs: (file: Blob): [Blob] => [file],
   });
 }
 
@@ -434,50 +386,30 @@ export function useUploadPicture() {
  */
 export function useRemoveLicense(product: string) {
   const qc = useQueryClient();
-  const refresh = (licenseId: string): void => {
-    qc.removeQueries({ queryKey: qk.license(product, licenseId) });
-    void qc.invalidateQueries({ queryKey: qk.licenses() });
-    void qc.invalidateQueries({ queryKey: qk.library() });
-    void qc.invalidateQueries({ queryKey: qk.product(product) });
-    void qc.invalidateQueries({ queryKey: qk.releases() });
-    void qc.invalidateQueries({ queryKey: qk.discover() });
-  };
-  return useMutation({
-    mutationFn: async (licenseId: string) => {
-      try {
-        return await portalApi.removeLicense(product, licenseId);
-      } catch (err) {
-        if (err instanceof PortalApiError && err.status === 404)
-          return { ok: true as const, product, licenseId };
-        throw err;
-      }
-    },
-    onSuccess: (_res, licenseId) => refresh(licenseId),
+  return useWrite("removeLicense", {
+    toArgs: (licenseId: string): [string, string] => [product, licenseId],
+    call: removeLicenseOrGone,
+    // A refusal (`409 not_removable`) means the licence is not removable: the views re-read, so
+    // the page stops offering Remove.
     onError: (err, licenseId) => {
-      if (err instanceof PortalApiError && err.status === 409)
-        refresh(licenseId);
+      if (err instanceof PortalApiError && err.status === 409) {
+        qc.removeQueries({ queryKey: qk.license(product, licenseId) });
+        void qc.invalidateQueries({ queryKey: qk.licenses() });
+        void qc.invalidateQueries({ queryKey: qk.library() });
+        void qc.invalidateQueries({ queryKey: qk.product(product) });
+        void qc.invalidateQueries({ queryKey: qk.releases() });
+        void qc.invalidateQueries({ queryKey: qk.discover() });
+      }
     },
   });
 }
 
 export function useDeleteAccount() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => portalApi.deleteMe(),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: qk.me() });
-    },
-  });
+  return useWrite("deleteMe", { toArgs: (_v: void): [] => [] });
 }
 
 export function useCancelAccountDeletion() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => portalApi.cancelDeletion(),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: qk.me() });
-    },
-  });
+  return useWrite("cancelDeletion", { toArgs: (_v: void): [] => [] });
 }
 
 /**
@@ -505,12 +437,8 @@ export function useExportProductData(product: string) {
  * code once it exists, so a success reads that view again.
  */
 export function useCreateSupportCode(product: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => portalApi.createSupportCode(product),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: qk.product(product) });
-    },
+  return useWrite("createSupportCode", {
+    toArgs: (_v: void): [string] => [product],
   });
 }
 
@@ -530,23 +458,16 @@ export function useRemoveProductData(
   licenseIds: readonly string[],
 ) {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (alsoRemoveLicense: boolean) =>
-      portalApi.removeProductData(product, alsoRemoveLicense),
+  return useWrite("removeProductData", {
+    toArgs: (alsoRemoveLicense: boolean): [string, boolean] => [
+      product,
+      alsoRemoveLicense,
+    ],
+    // A licence that left is dropped; the table refreshes the rest.
     onSuccess: (res) => {
-      for (const id of licenseIds) {
+      for (const id of licenseIds)
         if (res.detachedLicenses.includes(id))
           qc.removeQueries({ queryKey: qk.license(product, id) });
-        else
-          void qc.invalidateQueries({
-            queryKey: qk.license(product, id),
-          });
-      }
-      void qc.invalidateQueries({ queryKey: qk.licenses() });
-      void qc.invalidateQueries({ queryKey: qk.library() });
-      void qc.invalidateQueries({ queryKey: qk.product(product) });
-      void qc.invalidateQueries({ queryKey: qk.releases() });
-      void qc.invalidateQueries({ queryKey: qk.discover() });
     },
   });
 }
@@ -591,9 +512,8 @@ export function refreshAfterMethodChange(client: QueryClient): void {
 /** Disconnect a sign-in method (step-up first; never the last one). */
 export function useRemoveMethod() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => portalApi.removeMethod(id),
-    onSuccess: () => refreshAfterMethodChange(qc),
+  return useWrite("removeMethod", {
+    toArgs: (id: string): [string] => [id],
     onError: (err) => {
       // Refused for the account's state (`last_link`, `only_email`) or gone already: re-read it,
       // so the page stops offering what the Worker refuses.
@@ -609,11 +529,10 @@ export function useRemoveMethod() {
 /** Make a verified email the primary (step-up first). The answer is the methods list. */
 export function useMakePrimary() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (methodId: string) => portalApi.makePrimary(methodId),
+  return useWrite("makePrimary", {
+    toArgs: (methodId: string): [string] => [methodId],
     onSuccess: (view) => {
       qc.setQueryData(qk.methods(), view);
-      refreshAfterMethodChange(qc);
     },
     onError: (err) => {
       if (err instanceof PortalApiError && err.status === 404)
@@ -625,10 +544,11 @@ export function useMakePrimary() {
 /** Name a passkey, or clear its name (step-up first). */
 export function useRenamePasskey() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (v: { id: string; name: string | null }) =>
-      portalApi.renamePasskey(v.id, v.name),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.methods() }),
+  return useWrite("renamePasskey", {
+    toArgs: (v: {
+      id: string;
+      name: string | null;
+    }): [string, string | null] => [v.id, v.name],
     onError: (err) => {
       if (err instanceof PortalApiError && err.status === 404)
         void qc.invalidateQueries({ queryKey: qk.methods() });
@@ -655,15 +575,16 @@ export async function refreshSession(
 /** End one other session (a browser or app signed in to this account). */
 export function useEndSession() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => portalApi.endSession(id),
-    onSettled: () => void qc.invalidateQueries({ queryKey: qk.sessions() }),
+  return useWrite("endSession", {
+    toArgs: (id: string): [string] => [id],
+    // The list is re-read whether or not the session was still there to end.
+    onError: () => void qc.invalidateQueries({ queryKey: qk.sessions() }),
   });
 }
 
 /** Sign out everywhere: every session and app of the account, this browser's included. */
 export function useSignOutEverywhere() {
-  return useMutation({ mutationFn: () => portalApi.signOutEverywhere() });
+  return useWrite("signOutEverywhere", { toArgs: (_v: void): [] => [] });
 }
 
 /**
@@ -671,12 +592,12 @@ export function useSignOutEverywhere() {
  * click") and follow it.
  */
 export function useStartDownload() {
-  return useMutation({
-    mutationFn: (v: {
+  return useWrite("downloadToken", {
+    toArgs: (v: {
       product: string;
       releaseId: string;
       artifactId: string;
-    }) => portalApi.downloadToken(v.product, v.releaseId, v.artifactId),
+    }): [string, string, string] => [v.product, v.releaseId, v.artifactId],
     onSuccess: (res) => browser.go(res.url),
   });
 }
