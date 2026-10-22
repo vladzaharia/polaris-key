@@ -10,6 +10,7 @@ import {
   type FeedEcosystem,
   type FeedPackagesPage,
   type FeedScope,
+  type FeedsOverviewDto,
 } from "../../../api.js";
 import { qk } from "../../data/queries.js";
 
@@ -17,11 +18,17 @@ export function fetchFeedsOverview(scope: FeedScope) {
   return api.feedsOverview(scope);
 }
 
-export function useFeedsOverview(scope: FeedScope, enabled = true) {
+export function useFeedsOverview(
+  scope: FeedScope,
+  enabled = true,
+  /** Re-read on this interval while it returns a number (a feed waiting for its first package). */
+  poll?: (data: FeedsOverviewDto | undefined) => number | false,
+) {
   return useQuery({
     queryKey: qk.pkgFeeds(scope),
     queryFn: () => fetchFeedsOverview(scope),
     enabled,
+    refetchInterval: poll ? (q) => poll(q.state.data) : false,
   });
 }
 

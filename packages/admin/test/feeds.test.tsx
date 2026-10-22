@@ -11,6 +11,10 @@ import {
   servicesResponse,
 } from "./consoleHarness.js";
 import { feedDetail, feedRoutes, productOverview } from "./feedsFixture.js";
+import {
+  PACKAGES_POLL_MS,
+  pollPackages,
+} from "../src/console/sections/feeds/pages/PackagesOverview.js";
 import { confirmFor } from "../src/lib/actions.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -70,6 +74,23 @@ const main = (): HTMLElement => screen.getByRole("main");
 const mainReady = (): Promise<HTMLElement> => screen.findByRole("main");
 const nav = (): HTMLElement =>
   screen.getAllByRole("navigation", { name: "Console" })[0]!;
+
+/** The product's overview with these ecosystems declared (a feed page exists only for those). */
+function declaring(...ecos: string[]): Record<string, unknown> {
+  const overview = productOverview();
+  overview.feeds = overview.feeds.map((f) =>
+    ecos.includes(f.ecosystem)
+      ? {
+          ...f,
+          configured: true,
+          enabled: true,
+          status: "enabled",
+          reason: null,
+        }
+      : f,
+  ) as typeof overview.feeds;
+  return { "/manage/api/products/djdl/distribution/feeds": overview };
+}
 
 /** The product row with its package feeds switch. */
 function product(packageFeeds: boolean): Record<string, unknown> {
@@ -530,7 +551,7 @@ describe("registry auth (F-21)", () => {
 describe("what a feed no longer sets (F-34)", () => {
   it("Maven has no yank policy: yanked versions are always hidden, so there is nothing to set", async () => {
     boot("#/p/djdl/distribution/feeds/maven/settings", {
-      extra: { ...feedRoutes(), ...product(true) },
+      extra: { ...feedRoutes(), ...declaring("maven"), ...product(true) },
     });
     await general();
     const forms = within(main())
@@ -642,45 +663,270 @@ describe("the Feeds overview", () => {
     );
   });
 
-  it("product scope: one card per provisioned feed with a read-only access chip, no owners panel", async () => {
+  it("product scope: one card per provisioned feed, in tab order, naming its packages and tracks", async () => {
     boot("#/p/djdl/distribution/feeds", {
       extra: { ...feedRoutes(), ...product(true) },
     });
     await heading("Packages");
     const page = within(await mainReady());
     const list = await page.findByRole("list", { name: "Package feeds" });
-    // The fixture provisioned npm, PyPI and OCI; the other feeds have no card.
-    const cards = within(list).getAllByRole("region");
+    // The fixture provisioned npm, PyPI and OCI; the tab order is the card order.
+    const cards = within(list).getAllByRole("region", {
+      name: /^(npm|PyPI|Docker \/ OCI)$/,
+    });
     expect(
       cards.map((c) => within(c).getByRole("heading").textContent),
     ).toEqual(["npm", "PyPI", "Docker / OCI"]);
     const npm = cards[0]!;
     expect(within(npm).getByText("pkg.plrs.im/npm/djdl/")).toBeTruthy();
     expect(npm.querySelector("[data-access-chip]")!.textContent).toBe("Public");
-    expect(within(npm).getByText(/2 packages/)).toBeTruthy();
-    expect(within(npm).queryByText(/Waiting for the first package/)).toBeNull();
+    // Each package: its name, the version on each release track, versions and last publish.
+    const rows = await within(npm).findAllByRole("listitem");
+    expect(rows.map((r) => within(r).getByRole("link").textContent)).toEqual([
+      "@djdl/sdk",
+      "@djdl/cli",
+    ]);
+    expect(rows[0]!.textContent).toMatch(/stable\s*2\.3\.0/);
+    expect(rows[0]!.textContent).toMatch(/5 versions/);
+    expect(
+      within(npm)
+        .getByRole("link", { name: "Open the npm feed" })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/distribution/feeds/npm");
+    // The count beside the title, and no subtitle repeating the host.
+    expect(main().textContent).toContain("3 feeds");
+    expect(main().textContent).not.toContain("On pkg.plrs.im");
     // No switch, no field, no button that creates a feed.
     expect(page.queryByRole("switch")).toBeNull();
     expect(
       page.queryByRole("button", { name: /new feed|turn on/i }),
     ).toBeNull();
     expect(page.queryByRole("heading", { name: "Owners" })).toBeNull();
-    // A feed with no package yet waits, in words.
-    const pypi = cards[1]!;
+    // Registry tokens stay one click away.
+    expect(page.getByRole("button", { name: "Registry tokens" })).toBeTruthy();
+    // The tabs: Overview, the declared feeds, Tokens; no undeclared ecosystem.
+    const bar = screen.getByRole("navigation", { name: "Package feeds" });
     expect(
-      within(pypi).getByText("Waiting for the first package…"),
-    ).toBeTruthy();
-    expect(
-      within(npm)
-        .getByRole("link", { name: "Open the npm feed" })
-        .getAttribute("href"),
-    ).toBe("#/p/djdl/distribution/feeds/npm");
+      within(bar)
+        .getAllByRole("link")
+        .map((l) => l.textContent),
+    ).toEqual(["Overview", "npm", "PyPI", "Docker / OCI", "Tokens"]);
     // Listed under Ship builds as Packages.
     expect(
       within(nav())
         .getByRole("link", { name: "Packages" })
         .getAttribute("href"),
     ).toBe("#/p/djdl/distribution/feeds");
+  });
+
+  it("the access chip says where access changes", async () => {
+    boot("#/p/djdl/distribution/feeds", {
+      extra: { ...feedRoutes(), ...product(true) },
+    });
+    await screen.findByRole("list", { name: "Package feeds" });
+    const chip = main().querySelector("[data-access-chip]")!;
+    expect(chip.getAttribute("aria-label")).toBe(
+      "Access: Public. Change in Settings",
+    );
+    expect(chip.getAttribute("href")).toBe(
+      "#/p/djdl/distribution/feeds/npm/settings",
+    );
+  });
+
+  it("an off feed never says it is waiting: it says what is refused and links to Settings", async () => {
+    boot("#/p/djdl/distribution/feeds", {
+      extra: { ...feedRoutes(), ...product(true) },
+    });
+    const list = await within(await mainReady()).findByRole("list", {
+      name: "Package feeds",
+    });
+    const pypi = within(list).getByRole("region", { name: "PyPI" });
+    expect(
+      within(pypi).queryByText(/Waiting for the first package/),
+    ).toBeNull();
+    expect(
+      within(pypi).getByText("Installs and CI publishes are refused."),
+    ).toBeTruthy();
+    expect(
+      within(pypi)
+        .getByRole("link", { name: "Turn it on in Settings" })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/distribution/feeds/pypi/settings");
+  });
+
+  it("a declared feed with no package yet waits, and gives the publish step for its deliverable", async () => {
+    boot("#/p/djdl/distribution/feeds", {
+      extra: {
+        ...feedRoutes(),
+        ...declaring("swift"),
+        ...product(true),
+        "/manage/api/products/djdl/release/deliverables": {
+          gateKnown: true,
+          deliverables: [
+            { id: "swift.sourcekit", kind: "package", type: "swift" },
+          ],
+        },
+      },
+    });
+    const swift = await within(await mainReady()).findByRole("region", {
+      name: "Swift",
+    });
+    expect(
+      within(swift).getByText("Waiting for the first package…"),
+    ).toBeTruthy();
+    expect(
+      await within(swift).findByText(
+        "pkey release publish --deliverable swift.sourcekit --dir <your build output>",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("without the deliverable read, a waiting feed points at Publish from CI", async () => {
+    boot("#/p/djdl/distribution/feeds", {
+      extra: { ...feedRoutes(), ...declaring("swift"), ...product(true) },
+    });
+    const swift = await within(await mainReady()).findByRole("region", {
+      name: "Swift",
+    });
+    expect(
+      within(swift)
+        .getByRole("link", { name: "How to set it up" })
+        .getAttribute("href"),
+    ).toBe("/docs/features/ship-builds/packages/publish/#publish-from-ci");
+  });
+
+  it("polls while a feed waits or nothing is declared, and stops otherwise", () => {
+    const base = productOverview();
+    const only = (...ecos: string[]) => ({
+      ...base,
+      feeds: base.feeds.map((f) => ({
+        ...f,
+        configured: ecos.includes(f.ecosystem),
+      })),
+    });
+    expect(pollPackages(only())).toBe(PACKAGES_POLL_MS);
+    expect(pollPackages(only("npm"))).toBe(false);
+    expect(pollPackages(only("npm", "swift"))).toBe(false); // swift is off in the fixture, so it waits for nothing
+    const waiting = only("npm");
+    waiting.feeds = waiting.feeds.map((f) =>
+      f.ecosystem === "npm" ? { ...f, packages: 0 } : f,
+    );
+    expect(pollPackages(waiting)).toBe(PACKAGES_POLL_MS);
+    expect(pollPackages(undefined)).toBe(false);
+  });
+
+  it("a package lists only the tracks it has, and (N more) waits for the rows", async () => {
+    boot("#/p/djdl/distribution/feeds", {
+      extra: { ...feedRoutes(), ...product(true) },
+    });
+    const list = await within(await mainReady()).findByRole("list", {
+      name: "Package feeds",
+    });
+    const npm = within(list).getByRole("region", { name: "npm" });
+    const rows = await within(npm).findAllByRole("listitem");
+    // @djdl/cli has a stable tag only: no "beta —".
+    expect(rows[1]!.textContent).toMatch(/stable\s*1\.0\.1/);
+    expect(rows[1]!.textContent).not.toContain("—");
+  });
+
+  it("a platform-off feed links to the platform page, not to Settings", async () => {
+    const overview = productOverview();
+    overview.feeds = overview.feeds.map((f) =>
+      f.ecosystem === "pypi"
+        ? {
+            ...f,
+            status: "unavailable" as const,
+            reason: "platform-off" as const,
+          }
+        : f,
+    );
+    boot("#/p/djdl/distribution/feeds", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        "/manage/api/products/djdl/distribution/feeds": overview,
+      },
+    });
+    const pypi = await within(await mainReady()).findByRole("region", {
+      name: "PyPI",
+    });
+    expect(within(pypi).queryByText(/Waiting/)).toBeNull();
+    expect(
+      within(pypi)
+        .getByRole("link", { name: "Platform package feeds" })
+        .getAttribute("href"),
+    ).toBe("#/platform/feeds");
+    expect(within(pypi).queryByText("Turn it on in Settings")).toBeNull();
+  });
+
+  it("a failed package read shows a small error with Retry", async () => {
+    boot("#/p/djdl/distribution/feeds", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        "/manage/api/products/djdl/distribution/feeds/npm/packages":
+          new Response(
+            JSON.stringify({ error: { code: "internal", message: "boom" } }),
+            { status: 500 },
+          ),
+      },
+    });
+    const npm = await within(await mainReady()).findByRole("region", {
+      name: "npm",
+    });
+    expect(
+      await within(npm).findByRole("button", { name: "Retry" }),
+    ).toBeTruthy();
+    expect(within(npm).queryByText(/more\)/)).toBeNull();
+  });
+
+  it("a deep link to an undeclared ecosystem says so and offers no way to create the feed", async () => {
+    boot("#/p/djdl/distribution/feeds/swift/settings", {
+      extra: { ...feedRoutes(), ...product(true) },
+    });
+    const page = within(await mainReady());
+    expect(
+      await page.findByText("DJDL declares no Swift package"),
+    ).toBeTruthy();
+    expect(main().querySelector("[data-code-frame]")!.textContent).toContain(
+      "ecosystem: swift",
+    );
+    expect(page.queryByRole("switch")).toBeNull();
+    expect(page.queryByRole("form")).toBeNull();
+    expect(page.queryByRole("tab")).toBeNull();
+  });
+
+  it("a 403 on the read is a refusal, with no Try again", async () => {
+    boot("#/p/djdl/distribution/feeds", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        "/manage/api/products/djdl/distribution/feeds": new Response(
+          JSON.stringify({ error: { code: "forbidden", message: "no" } }),
+          { status: 403 },
+        ),
+      },
+    });
+    const alert = await within(await mainReady()).findByRole("alert");
+    expect(alert.textContent).toMatch(/don't have access/i);
+    expect(
+      within(alert).queryByRole("button", { name: /try again/i }),
+    ).toBeNull();
+  });
+
+  it("loads as card-shaped placeholders, with no tab bar until feeds exist", async () => {
+    boot("#/p/djdl/distribution/feeds", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        "/manage/api/products/djdl/distribution/feeds": PENDING,
+      },
+    });
+    await heading("Packages");
+    expect(main().querySelector('[data-skeleton="cards"]')).not.toBeNull();
+    expect(
+      screen.queryByRole("navigation", { name: "Package feeds" }),
+    ).toBeNull();
   });
 
   it("a Customers feed reads Customers on its card", async () => {
@@ -728,7 +974,7 @@ describe("the Feeds overview", () => {
     );
     expect(
       page.getByText(
-        "pkey release publish --deliverable npm.sourcekit --dir dist/npm",
+        "pkey release publish --deliverable npm.sourcekit --dir <your build output>",
       ),
     ).toBeTruthy();
     expect(page.queryByRole("list", { name: "Package feeds" })).toBeNull();
@@ -736,6 +982,19 @@ describe("the Feeds overview", () => {
     expect(
       screen.queryByRole("navigation", { name: "Package feeds" }),
     ).toBeNull();
+    // One guided panel: sentence and named docs link, the declaration and its command.
+    expect(main().querySelector("[data-guided-panel]")).not.toBeNull();
+    expect(
+      page
+        .getByRole("link", { name: "Declaring a package" })
+        .getAttribute("href"),
+    ).toBe("/docs/features/ship-builds/packages/publish/#declare-the-package");
+    expect(main().querySelector("[data-code-frame]")!.textContent).toContain(
+      "npm | pypi | swift | maven | oci | godot | cargo | go",
+    );
+    expect(page.getByRole("region", { name: "Publish command" })).toBeTruthy();
+    // Existing tokens stay revocable from here.
+    expect(page.getByRole("button", { name: "Registry tokens" })).toBeTruthy();
     expect(page.queryByRole("switch")).toBeNull();
     expect(
       page.queryByRole("button", { name: /turn on|new feed/i }),
@@ -861,7 +1120,7 @@ describe("a feed page", () => {
     cleanup();
     resetConsole();
     boot("#/p/djdl/distribution/feeds/swift", {
-      extra: { ...feedRoutes(), ...product(true) },
+      extra: { ...feedRoutes(), ...declaring("swift"), ...product(true) },
     });
     expect(
       await within(await mainReady()).findByText("No Swift packages yet"),
@@ -1586,7 +1845,7 @@ describe("a feed page", () => {
 
   it("a namespace nobody set shows no Source row", async () => {
     boot("#/p/djdl/distribution/feeds/godot/settings", {
-      extra: { ...feedRoutes(), ...product(true) },
+      extra: { ...feedRoutes(), ...declaring("godot"), ...product(true) },
     });
     const ns = await within(await mainReady()).findByRole("form", {
       name: "Namespace",
@@ -1667,7 +1926,7 @@ describe("a feed page", () => {
 
   it("a never-saved feed reads Customers, as the server defaults it", async () => {
     boot("#/p/djdl/distribution/feeds/swift/settings", {
-      extra: { ...feedRoutes(), ...product(true) },
+      extra: { ...feedRoutes(), ...declaring("swift"), ...product(true) },
     });
     const form = await general();
     expect(

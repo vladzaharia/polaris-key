@@ -201,6 +201,16 @@ function cases(): Case[] {
       },
     },
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
+    // F-34.7: waiting feeds with a package deliverable (the one-line publish command).
+    {
+      name: "waiting:package-feeds",
+      hash: "#/p/waiting/distribution/feeds",
+    },
+    // F-34.7: a deep link to an ecosystem the product does not declare (the guided panel).
+    {
+      name: "djdl:package-feeds?undeclared",
+      hash: "#/p/djdl/distribution/feeds/swift",
+    },
     {
       name: "global:platform-activity?timeline",
       hash: "#/platform/activity?view=timeline",
@@ -363,6 +373,8 @@ const TEXT200_CASES = [
   "djdl:package-feeds",
   "empty:package-feeds",
   "feedsoff:package-feeds",
+  "djdl:package-feeds?undeclared",
+  "waiting:package-feeds",
 ];
 /** The console's content column at its widest (BRAND.md §7.6). */
 const CONSOLE_COLUMN_MAX = 1760;
@@ -422,7 +434,16 @@ const VIEWPORTS: {
         label: "small-phone",
         width: 360,
         height: 780,
-        only: [...ZOOM_CASES, "djdl:health", "djdl:rollouts"],
+        only: [
+          ...ZOOM_CASES,
+          "djdl:health",
+          "djdl:rollouts",
+          // F-34.7: the URL breaks at separators and the publish command scrolls, not splits.
+          "djdl:package-feeds",
+          "empty:package-feeds",
+          "djdl:package-feeds?undeclared",
+          "waiting:package-feeds",
+        ],
       },
       // UI-KITS.md §7.1's wide desktop: every page with content (the empty-state twins add
       // nothing to a width check). The column stays capped (CONSOLE_COLUMN_MAX).
@@ -781,6 +802,9 @@ for (const vp of VIEWPORTS) {
             if (SHOTS)
               await shoot(page, `${slug(c.name)}--${vp.label}-${theme}`);
             expect(csp, "CSP violations").toEqual([]);
+            // F-34.7: the Packages page passes axe (contrast included) in both themes.
+            if (c.name.includes("package-feeds"))
+              expect(await axeWithin(page, "#content"), "axe").toEqual([]);
             expect(
               await page.evaluate(
                 () => document.documentElement.scrollWidth - window.innerWidth,
