@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Clock, Info, Package, Plus } from "lucide-react";
+import { Clock, Info, KeyRound, Plus } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { CodeBlock } from "../../../ui/CodeBlock.js";
 import { Dialog, DialogBody, DialogFooter } from "../../../ui/Dialog.js";
@@ -136,14 +136,7 @@ export function PackagesCard(): React.ReactElement | null {
   return (
     <SectionCard
       id="packages"
-      title={
-        <span className="inline-flex items-center gap-3">
-          <span className="inline-flex size-9 items-center justify-center rounded-lg bg-surface-sunken">
-            <Package aria-hidden className="size-5 text-fg-strong" />
-          </span>
-          {t("locker.account.packages")}
-        </span>
-      }
+      title={t("locker.account.packages")}
       subtitle={t("locker.packages.subtitle")}
     >
       {q.isPending ? (
@@ -411,43 +404,51 @@ function TokenRow({
   return (
     <li className="py-3 outline-none" data-token-id={id} tabIndex={-1}>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="min-w-0 space-y-0.5">
-          <p className="break-words font-medium text-fg-strong">{label}</p>
-          <p className="text-sm text-fg-muted">
-            <span className="font-mono">{mark}</span>
-            {app ? ` · ${app}` : ""}
-          </p>
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted">
-            <span>
-              {lastUsedAt
-                ? t("locker.packages.lastUsed", {
-                    when: formatRelative(
-                      lastUsedAt * 1000,
-                      Date.now(),
-                      PORTAL_FMT,
-                    ),
-                  })
-                : t("locker.packages.neverUsed")}
-              <span aria-hidden className="ms-2">
-                ·
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <span
+            aria-hidden
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-muted [&_svg]:size-5"
+          >
+            <KeyRound />
+          </span>
+          <div className="min-w-0 space-y-0.5">
+            <p className="break-words font-medium text-fg-strong">{label}</p>
+            <p className="text-sm text-fg-muted">
+              <span className="font-mono">{mark}</span>
+              {app ? ` · ${app}` : ""}
+            </p>
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted">
+              <span>
+                {lastUsedAt
+                  ? t("locker.packages.lastUsed", {
+                      when: formatRelative(
+                        lastUsedAt * 1000,
+                        Date.now(),
+                        PORTAL_FMT,
+                      ),
+                    })
+                  : t("locker.packages.neverUsed")}
+                <span aria-hidden className="ms-2">
+                  ·
+                </span>
               </span>
-            </span>
-            {expiry.soon ? (
-              <span
-                className={cn(
-                  "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium",
-                  active
-                    ? "border-warning-border bg-warning-subtle text-warning"
-                    : "border-border bg-surface-sunken text-fg-muted",
-                )}
-              >
-                <Clock aria-hidden className="size-3.5" />
-                {expiry.text}
-              </span>
-            ) : (
-              <span>{expiry.text}</span>
-            )}
-          </p>
+              {expiry.soon ? (
+                <span
+                  className={cn(
+                    "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium",
+                    active
+                      ? "border-warning-border bg-warning-subtle text-warning"
+                      : "border-border bg-surface-sunken text-fg-muted",
+                  )}
+                >
+                  <Clock aria-hidden className="size-3.5" />
+                  {expiry.text}
+                </span>
+              ) : (
+                <span>{expiry.text}</span>
+              )}
+            </p>
+          </div>
         </div>
         {!confirming ? (
           <Button
