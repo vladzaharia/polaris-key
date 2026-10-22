@@ -5,8 +5,9 @@
  * Deny by default (ST-29; ST-28 plan §2.7). Every route is a row of the one route table
  * (`./routes.ts`), and this module walks it in a fixed order, never trusting the SPA:
  *
- *   1. **Credential, then principal.** A valid signed cookie session, or an admin API token
- *      (`Authorization: Bearer pkeya_…`, `./apiTokens.ts`), is required (401). They are
+ *   1. **Credential, then principal.** A valid signed cookie session, an admin API token
+ *      (`Authorization: Bearer pkeya_…`, `./apiTokens.ts`) or an admin-scope personal token
+ *      (`Bearer pkeyp_…`, ST-34.3: the holder's own principal, re-read per request), is required (401). They are
  *      ALTERNATIVES, never additive: a bearer that is presented decides the request, and a bad one
  *      is a 401, never a fall-through to the cookie. The principal is resolved from the session
  *      (`resolveConsoleCaller`: today the root rule, the platform admin group) or from the token's
@@ -44,7 +45,13 @@ import type { Db } from "../db/types.js";
 import { getProduct } from "../core/products/store.js";
 import { loadProductContext, type ProductContext } from "../core/products.js";
 import { rateLimitOk } from "../core/rateLimit.js";
-import { audit } from "../core/audit.js";
+import { audit, platformAudit } from "../core/audit.js";
+import { isPersonalToken } from "../platform/crypto.js";
+import {
+  ADMIN_SCOPE,
+  getAccountToken,
+  resolvePersonalToken,
+} from "../core/accounts/personalTokens.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
@@ -85,6 +92,7 @@ import {
   type AdminApiScope,
   type ValidAdminApiToken,
 } from "./apiTokens.js";
+import { consoleTokenSubject } from "../services/identity/public.js";
 import { SETTINGS } from "../mount.js";
 
 /** Admin limiter shard. One global Durable Object for the whole platform — see the note in
@@ -236,6 +244,100 @@ async function auditDenied(
     );
 }
 
+/** An admin-scope personal token that passed every check, as the session it presents. */
+interface PersonalAdminToken {
+  id: string;
+  label: string;
+  hint: string;
+  session: AdminSession;
+}
+
+/**
+ * Resolve `Bearer pkeyp_…` for the admin API (ST-34.3), or `null` for the one 401. Three checks, none
+ * cached: the token (`resolvePersonalToken`, scope `admin` only: live, unexpired, unrevoked, account
+ * not erased), then who the holder IS right now (`consoleTokenSubject`: account active and not
+ * merged, a strong console link through an allowed issuer, and the root rule recomputed from
+ * `asserted_at`, so a lapsed assertion is `root: false` with no groups), then the token's row for its
+ * label and expiry. The subject is read on every request, never held longer than
+ * `LIVE_CHECK_SECONDS` (here: not at all), so a disabled or merged holder stops on the next request.
+ * The session carries the member id as `sub`, the account as `aid` (so `resolvePrincipal` reads the
+ * holder's stored bindings), the token's expiry, no CSRF token and NO `stepUpAt`.
+ */
+async function personalAdminToken(
+  env: Env,
+  db: Db,
+  presented: string,
+  now: number,
+): Promise<PersonalAdminToken | null> {
+  const resolved = await resolvePersonalToken(
+    env,
+    db,
+    presented,
+    ADMIN_SCOPE,
+    now,
+  );
+  if (!resolved) return null;
+  const subject = await consoleTokenSubject(env, db, resolved.accountId, now);
+  if (!subject) return null;
+  const view = await getAccountToken(
+    db,
+    resolved.accountId,
+    resolved.tokenId,
+    now,
+  );
+  if (!view || view.status !== "active") return null;
+  return {
+    id: view.id,
+    label: view.label,
+    hint: view.hint,
+    session: {
+      sub: subject.sub,
+      name: subject.name,
+      email: subject.email,
+      groups: subject.groups,
+      root: subject.root,
+      aid: resolved.accountId,
+      tokenId: view.id,
+      csrf: "",
+      exp: view.expiresAt,
+    },
+  };
+}
+
+/**
+ * D-15: every use of an admin personal token is audited as `account_token.used`, before the
+ * handler: on the product for a product row, in `platform_audit` otherwise. The actor is the member
+ * id; the summary names the label and the last four characters, never the token or its hash.
+ */
+async function auditPersonalTokenUse(
+  db: Db,
+  token: PersonalAdminToken,
+  use: { method: string; path: string; product: string | null },
+  now: number,
+): Promise<void> {
+  const target = { kind: "personal_token", id: token.id };
+  const summary = `Personal token ${token.label} (…${token.hint}) used on ${use.method} ${use.path}`;
+  if (use.product)
+    await audit(
+      db,
+      use.product,
+      token.session,
+      now,
+      "account_token.used",
+      target,
+      summary,
+    );
+  else
+    await platformAudit(
+      db,
+      token.session,
+      now,
+      "account_token.used",
+      target,
+      summary,
+    );
+}
+
 /**
  * The admin API dispatcher. `path` is everything AFTER `/manage` (so it begins with `/api`).
  */
@@ -254,8 +356,15 @@ export async function handleAdminApi(
   // One request, one credential, chosen by what it presents.
   const presented = presentedToken(req);
   let token: ValidAdminApiToken | null = null;
+  let personal: PersonalAdminToken | null = null;
   let caller: ConsoleCaller | null;
-  if (presented !== null) {
+  if (presented !== null && isPersonalToken(presented)) {
+    // ST-34.3: a `pkeyp_` is routed by its prefix. Any failure (a packages token, an unknown,
+    // revoked or expired one, a holder who can no longer open the console) is the same 401.
+    personal = await personalAdminToken(env, db, presented, now);
+    if (!personal) return unauthorized();
+    caller = await callerFor(env, db, personal.session, now);
+  } else if (presented !== null) {
     const auth = await validateAdminApiToken(env, db, presented, now);
     // ONE 401 for every cause. Telling them apart would let the holder of a dead token learn
     // whether the string was ever valid; the operator who needs the distinction has the roster
@@ -286,7 +395,8 @@ export async function handleAdminApi(
       ADMIN_RL_SHARD,
       {
         bucket: "adminApi",
-        id: principal.memberId,
+        // A personal token has its own budget, so a CLI loop cannot spend the person's console one.
+        id: personal ? `ptok:${personal.id}` : principal.memberId,
         limit: 600,
         windowSec: 60,
       },
@@ -318,6 +428,11 @@ export async function handleAdminApi(
     scopeUsed = needed;
   }
 
+  // The same default deny for a personal token (ST-34.3): only a row flagged `personalToken`.
+  // The answer is the one a `pkeya_` gets, so it reveals nothing about what exists.
+  if (personal && !(found.kind === "route" && found.route.personalToken))
+    return err(403, "forbidden", "token is not scoped for this route");
+
   // A verified session whose principal holds no grant is not a member: every route answers the
   // same 403, so it learns nothing about what exists. (The sign-in gate mints no such session; one
   // appears when the platform group changes under a live cookie.) A reach into an existing
@@ -347,7 +462,7 @@ export async function handleAdminApi(
   // what makes the exemption safe only here: `tokenSession` carries an empty `csrf`, so if the
   // exemption were ever removed the token path would fail closed, refused, not waved through with
   // a blank token.
-  if (!token && isMutation(req.method)) {
+  if (!token && !personal && isMutation(req.method)) {
     const csrf = req.headers.get(CSRF_HEADER);
     if (!csrf || !constantTimeEqual(csrf, session.csrf))
       return err(403, "forbidden", "csrf");
@@ -394,6 +509,18 @@ export async function handleAdminApi(
       session,
       {
         scope: scopeUsed,
+        method: req.method,
+        path: `/${segments.join("/")}`,
+        product: product?.slug ?? null,
+      },
+      now,
+    );
+
+  if (personal)
+    await auditPersonalTokenUse(
+      db,
+      personal,
+      {
         method: req.method,
         path: `/${segments.join("/")}`,
         product: product?.slug ?? null,

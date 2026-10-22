@@ -44,7 +44,7 @@ and what binary it installs next.
 | A13  | **The R2 parent token** and the temporary credentials it mints                                                                               | Worker secrets `R2_PARENT_*`; temp credentials held by CI for ≤ 1 h                                   | The parent can write the whole bucket, locked prefixes included (subject to the age lock). A temp credential: one staging prefix.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | A14  | **Delegated content keys** (P4-19)                                                                                                           | CI: a GitHub Environment secret (`PKEY_CONTENT_KEY`) per content team                                 | Publish data-only pack releases in one scope (pack-id prefix and types) until the window closes or a CI revocation of the delegation lands.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | A16  | **`pkeya_` admin API tokens**                                                                                                                | `admin_api_tokens`, stored only as `hashKey(token, pepper)`                                           | A bearer credential for the admin API. Narrower than A4 by construction, and the reason it exists is that the alternative was worse: see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| A17  | **`pkeyp_` personal tokens**                                                                                                                 | `account_tokens`, stored only as `hashKey(token, pepper)`                                             | A person's bearer credential, one scope per token. `packages:read` reads every package the account may read across products (the registry host); ST-34 adds `admin`. Shown once, expiring, individually revocable. See "Personal tokens" below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| A17  | **`pkeyp_` personal tokens**                                                                                                                 | `account_tokens`, stored only as `hashKey(token, pepper)`                                             | A person's bearer credential, one scope per token. `packages:read` reads every package the account may read across products (the registry host); `admin` (ST-34.3) is accepted by the admin API alone, on the flagged rows and under the holder's roles at use time (see "Admin-scope personal tokens: the principal"). Shown once, expiring, individually revocable. See "Personal tokens" below.                                                                                                                                                                                                                                                                                                                                   |
 
 **A16 is deliberately narrow, and it replaced something broader.** Before it, the one non-browser
 caller of the admin API, `pkey bundle`, run from terminals and CI, authenticated by having an
@@ -6988,6 +6988,55 @@ account id, which the subject receives (the principal does not) and which is nev
 returned (`accountIdBoundary`). The binding read adds one D1 read to each console request, and
 runs before the rate limiter (ST-31.6). Nothing writes bindings yet (ST-31.6 on).
 
+### Admin-scope personal tokens: the principal (ST-34.3)
+
+**What arrived.** `Authorization: Bearer pkeyp_…` is accepted by the admin API (`console/api.ts`) when the
+row's scope is `admin` (ST-34.1; minted by a console-approved `pkey login`). The registry host still
+resolves `packages:read` only, so a packages token gets the admin API's one 401 and an admin token
+reads no feed.
+
+**Control.**
+
+- **Principal source.** The credential is routed by its prefix (`isPersonalToken`), then
+  `resolvePersonalToken(…, "admin")` (live, unexpired, unrevoked, account not on the erasure ledger),
+  then `consoleTokenSubject` (ST-34.2: account active and not merged, a strong link through an allowed
+  issuer, the root rule recomputed). The session it builds carries the member id as `sub`, the account as
+  `aid`, `root` from the rule, `csrf: ""`, `exp` = the token's expiry, `tokenId` and no `stepUpAt`.
+  `callerFor` then reads the holder's stored bindings through `aid` (ST-31.2), so the principal is the
+  holder's roles NOW, never what they were at mint. Nothing is cached: the token, the subject and the
+  bindings are three reads per request, well inside `LIVE_CHECK_SECONDS`. Any failure is the one 401.
+- **Reach is default deny (D-1).** A row must carry `personalToken: true`: `GET /me`,
+  `GET /access/admins`, `GET /products`, `POST /products/:slug/bundles`,
+  `GET /products/:slug/integration` and the three read-side `/platform/migrations` rows. Every other
+  row, unknown path and method is the same 403 a `pkeya_` gets. Each flagged row still passes
+  `can()` under the holder's principal (the token adds no authority), so a holder narrowed to `ship`
+  gets 403 `{area: "license"}` on the bundle mint on the next request, and a deleted binding ends the
+  token's reach at once. The token routes (`/tokens`, `/account-tokens`) carry no flag, so a token
+  cannot mint or list tokens. `test/adminPersonalToken.test.ts` pins the eight rows and that none needs
+  a step-up.
+- **Step-up is refused.** The session has no `stepUpAt`, so a row with `stepUp` answers 403
+  `step_up_required` (and no flagged row has one; the table test fails if one gains the flag).
+  CSRF does not apply: the credential is a header nothing attaches ambiently, and `csrf: ""` can
+  never match, so removing the exemption would fail closed.
+- **Root freshness (D-3).** The root rule is the session's: a strong link, the platform group in
+  `groups_json` and `asserted_at` under the admin session TTL. A root-only holder's token therefore
+  stops being root when the assertion goes stale (403 `console`; `/me` still answers); a token that
+  must last needs a stored Superadmin binding, which is the holder's decision with a Superadmin.
+- **Limiter.** `ptok:<token id>` in the `adminApi` bucket (600 a minute), so a CLI loop cannot spend
+  the person's console budget (keyed by the member id) and one token cannot spend another's.
+- **Audit (D-15).** Every use that clears the gates writes `account_token.used` before the handler:
+  `audit` on the product for a product row, `platform_audit` otherwise. The actor is the member id
+  (`mbr_…`); the summary names the label, the last four characters and `METHOD path`; the target is
+  the `ptok_` id. Never the token, its hash or the account id. A refused request (401, 403) writes no
+  row (a budgeted `access.denied` still records a product reach, as for a session).
+- **A merge** revokes the absorbed account's admin tokens (ST-34.1), and an account that merged away
+  answers `consoleTokenSubject` `null`, so its token is a 401 either way.
+
+**Residual.** A stolen admin `pkeyp_` acts as its holder on the eight rows for up to 7 days (30 at
+most) or until revoked, with no second factor: bounded by the roles, the rows and the use trail, not
+removed. `GET /products` and `/access/admins` disclose names and roles to anyone holding the token.
+The audit row holds the holder's name and email as every console audit row does.
+
 ### Identity as a per-product service (PX-W17)
 
 One account per person; a product's `identity` toggle gates only sign-in through that product
@@ -9485,16 +9534,16 @@ core (SP-55 to SP-57, SP-62).
 
 ## 4. Adversaries
 
-| ID  | Adversary                                                                                               | Capability                                                                           | Motivation                                                                                                                                                                    | Priority                           |
-| --- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| T1  | **Unauthenticated internet attacker**                                                                   | HTTP to `key.plrs.im`, can read public discovery/JWKS, can register nothing          | Control-plane takeover                                                                                                                                                        | **Highest**                        |
-| T2  | **Release-channel attacker**                                                                            | Holds the webhook secret, or write access to a linked repo, or GitHub App compromise | Ship code to end users                                                                                                                                                        | **Highest**                        |
-| T3  | **Malicious tenant / customer**                                                                         | Valid license, device token, portal account; possibly a product operator             | Cross-tenant data, tier escalation, extra seats                                                                                                                               | High                               |
-| T4  | **License pirate**                                                                                      | Full control of their own machine, can patch binaries and edit files                 | Use software without paying                                                                                                                                                   | Medium — bounded by §6             |
-| T5  | **Malicious or compromised IdP**: the platform IdP, or a product's own upstream IdP (tenant-controlled) | Controls claims presented to the Worker                                              | Privilege escalation via `groups`, identity confusion via `email`/`sub`; a product's IdP asserting subjects or emails that collide with another issuer's users (R5-01, R5-02) | High                               |
-| T6  | **Supply-chain attacker**                                                                               | Publishes a malicious dependency, or compromises a GitHub Action                     | Reach CI secrets and published artifacts                                                                                                                                      | High                               |
-| T7  | **Insider / compromised admin**                                                                         | Valid admin session, or a `pkeya_` token                                             | Anything the admin API permits — which for a session is everything, on every tenant; for a token, the bundle mint                                                             | High                               |
-| T8  | **Network attacker**                                                                                    | On-path between client and `key.plrs.im`                                             | Downgrade, MITM                                                                                                                                                               | Low — see the transport note below |
+| ID  | Adversary                                                                                               | Capability                                                                           | Motivation                                                                                                                                                                                        | Priority                           |
+| --- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| T1  | **Unauthenticated internet attacker**                                                                   | HTTP to `key.plrs.im`, can read public discovery/JWKS, can register nothing          | Control-plane takeover                                                                                                                                                                            | **Highest**                        |
+| T2  | **Release-channel attacker**                                                                            | Holds the webhook secret, or write access to a linked repo, or GitHub App compromise | Ship code to end users                                                                                                                                                                            | **Highest**                        |
+| T3  | **Malicious tenant / customer**                                                                         | Valid license, device token, portal account; possibly a product operator             | Cross-tenant data, tier escalation, extra seats                                                                                                                                                   | High                               |
+| T4  | **License pirate**                                                                                      | Full control of their own machine, can patch binaries and edit files                 | Use software without paying                                                                                                                                                                       | Medium — bounded by §6             |
+| T5  | **Malicious or compromised IdP**: the platform IdP, or a product's own upstream IdP (tenant-controlled) | Controls claims presented to the Worker                                              | Privilege escalation via `groups`, identity confusion via `email`/`sub`; a product's IdP asserting subjects or emails that collide with another issuer's users (R5-01, R5-02)                     | High                               |
+| T6  | **Supply-chain attacker**                                                                               | Publishes a malicious dependency, or compromises a GitHub Action                     | Reach CI secrets and published artifacts                                                                                                                                                          | High                               |
+| T7  | **Insider / compromised admin**                                                                         | Valid admin session, a `pkeya_` token, or an admin `pkeyp_`                          | Anything the admin API permits — which for a session is everything, on every tenant; for a `pkeya_` token, the bundle mint; for an admin `pkeyp_`, its holder's roles on the eight flagged routes | High                               |
+| T8  | **Network attacker**                                                                                    | On-path between client and `key.plrs.im`                                             | Downgrade, MITM                                                                                                                                                                                   | Low — see the transport note below |
 
 **T8, stated precisely.** Two different things are easy to conflate here, and they are not the same
 control.
@@ -9703,6 +9752,7 @@ Forge a signed config doc for product P
 Obtain admin authority
 ├── Forge the session cookie ─────────────► needs ADMIN_SESSION_SECRET
 ├── Steal a `pkeya_` token (A16) ─────────► LIVE but BOUNDED: default-deny scoping reaches one route (the bundle mint); the token routes name no scope; minting needs a step-up
+├── Steal an admin `pkeyp_` (A17) ────────► LIVE but BOUNDED by the holder's roles at use time (bindings re-read per request, root only while asserted_at is fresh), eight flagged routes (`personalToken`), no step-up, 7 days (30 at most), revocation (self, Superadmin, merge) and an `account_token.used` row per use
 ├── Plant your own session in an operator's browser (login CSRF) ► DEAD: the sign-in flow is bound to the browser that started it (`ADMIN_FLOW_COOKIE` hash in the flow record; the portal's `PORTAL_SSO_COOKIE` likewise), so another browser's callback is refused before the code is spent
 ├── Be granted `groups` by the IdP ───────► any IdP group-membership weakness
 ├── XSS on the platform origin ───────────► DEAD for the sign-in error pages: they carry the strict script-free CSP (`htmlError` in `console/auth.ts`)

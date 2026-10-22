@@ -88,6 +88,8 @@ export interface AdminSession {
   /** Cookie v2 only: the account and the `account_sessions` row this request resolved through. */
   aid?: string;
   sid?: string;
+  /** An admin-scope personal token (`ptok_…`, ST-34.3): the credential this request presented. */
+  tokenId?: string;
   /** Epoch-seconds expiry. */
   exp: number;
   /**
