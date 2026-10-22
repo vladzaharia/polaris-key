@@ -13,7 +13,10 @@ import { CONSOLE, enableServices, envFor } from "./releaseRoutesFixture.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
-import { handleRegistryTokensAdmin } from "../src/console/handlers/registryTokens.js";
+import {
+  handleRegistryTokensAdmin,
+  revokeAllSummary,
+} from "../src/console/handlers/registryTokens.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
@@ -658,5 +661,47 @@ describe("step-up (F-33b.7)", () => {
       revokedBy: null,
       revokeReason: null,
     });
+  });
+
+  it("POST …/ci-tokens with packages:read alone shares the service-token cap; other scopes do not", async () => {
+    for (let i = 0; i < 500; i++)
+      await issueStaticCiToken(env, db, {
+        product: OWNER,
+        scopes: ["packages:read"],
+        expiresAt: NOW + DAY,
+        label: `t${i}`,
+        createdBy: "admin:a",
+        now: NOW,
+      });
+    const read = await admin("POST", `/products/${OWNER}/ci-tokens`, {
+      scopes: ["packages:read"],
+      expiresInDays: 30,
+    });
+    expect(read.status).toBe(409);
+    expect(await read.json()).toMatchObject({
+      error: { reason: "token_limit" },
+    });
+    const count = async () =>
+      (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM ci_tokens"))!.n;
+    expect(await count()).toBe(500);
+    const publish = await admin("POST", `/products/${OWNER}/ci-tokens`, {
+      scopes: ["release:publish"],
+      expiresInDays: 30,
+    });
+    expect(publish.status).toBe(201);
+  });
+
+  it("the revoke-all audit lists at most 100 ids, then +N more", async () => {
+    const ids = Array.from({ length: 103 }, (_, i) => `cit_${i}`);
+    const text = revokeAllSummary(ids);
+    expect(
+      text.startsWith("Revoked every live service token (103): cit_0 "),
+    ).toBe(true);
+    expect(text).toContain(" cit_99");
+    expect(text).not.toContain("cit_100");
+    expect(text.endsWith(" +3 more")).toBe(true);
+    expect(revokeAllSummary(ids.slice(0, 2))).toBe(
+      "Revoked every live service token (2): cit_0 cit_1",
+    );
   });
 });

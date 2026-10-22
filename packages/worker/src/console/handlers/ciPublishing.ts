@@ -34,16 +34,20 @@ import {
 import {
   claimPublisherPolicy,
   getPublisherPolicy,
+  isServiceTokenScopes,
   issueStaticCiToken,
   listCiTokens,
+  liveServiceTokens,
   normalizeScopes,
   revokeCiToken,
+  revokeServiceToken,
   staticCiTokenMaxTtl,
   type PublisherClaim,
 } from "../../core/publisher.js";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { getProduct } from "../../core/products/store.js";
 import { audit } from "../../core/audit.js";
+import { MAX_LIVE_TOKENS_PER_OWNER } from "../../core/registry/registryVocabulary.js";
 import { forgetRegistryTokens } from "../../core/registry/registryTokens.js";
 import type { AdminSession } from "../../core/console/session.js";
 import {
@@ -249,6 +253,21 @@ export async function handleCiTokens(
         );
       label = body.label;
     }
+    // A `packages:read`-only token is a service token: the same per-product cap as the feeds mint.
+    const serviceOnly = isServiceTokenScopes(scopes);
+    const limitHit = () =>
+      err(
+        409,
+        ErrorCode.BadRequest,
+        `at most ${MAX_LIVE_TOKENS_PER_OWNER} live service tokens per product; revoke one first`,
+        { reason: "token_limit" },
+      );
+    if (
+      serviceOnly &&
+      (await liveServiceTokens(db, slug, now)).length >=
+        MAX_LIVE_TOKENS_PER_OWNER
+    )
+      return limitHit();
     const issued = await issueStaticCiToken(env, db, {
       product: slug,
       scopes,
@@ -257,6 +276,15 @@ export async function handleCiTokens(
       createdBy: session.sub,
       now,
     });
+    // The cap again after the insert: two racing mints cannot both stay above it.
+    if (
+      serviceOnly &&
+      (await liveServiceTokens(db, slug, now)).length >
+        MAX_LIVE_TOKENS_PER_OWNER
+    ) {
+      await revokeServiceToken(db, slug, issued.tokenId, now);
+      return limitHit();
+    }
     await audit(
       db,
       slug,

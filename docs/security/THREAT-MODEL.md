@@ -1928,15 +1928,28 @@ tokens (counted over every live token, then re-checked after the insert so racin
 stay above it; the loser is revoked) bounds the table. The list returns every live token and the 100
 newest revoked or expired ones. A label refuses control characters. A fresh step-up proves the
 operator's presence, not their intent: an operator with a fresh sign-in can still mint one. `POST
-…/ci-tokens` mints the same service-token equivalent (a `packages:read`-only static token, up to 365
-days) outside the 500-per-product cap, which counts only the console's service tokens.
+…/ci-tokens` with `packages:read` alone mints the same service-token equivalent and shares the
+500-per-product cap (checked before, and again after the insert with an overflow revoke); other scope
+sets are not counted. The revoke-all audit row lists at most 100 token ids, then "+N more": a token
+in the tail reads as no "Revoked by" line, which is cosmetic.
 
 **Review triggers.** A second scope accepted by the service mint, or the registry host accepting any
 scope but `packages:read` and `release:publish`; the list or revoke matching on anything but exact
 `["packages:read"]`; an owner-bound read mint returning; a service mint, `POST …/ci-tokens` or
 `PUT …/ci-publisher` losing its step-up, or a revoke gaining one; a new mint binding or scope on
-`POST …/feeds/tokens`; a decision to apply the 500 cap to `…/ci-tokens`; a null-deliverable route that
+`POST …/feeds/tokens`; the `…/ci-tokens` cap dropping its `packages:read` check; a null-deliverable route that
 names packages without `listDocument`; a token or hash reaching an audit row, a log or a list.
+
+**Owed when ST-30c.1 merges** (its break-glass realm is not in this tree). Tests, not code, unless one
+fails:
+
+- a break-glass session is refused with its own reason, before the step-up, on all four mint paths:
+  `POST …/feeds/tokens` per binding (service, publish, licence-bound) on product and platform scope,
+  `POST …/ci-tokens` and `PUT …/ci-publisher`;
+- a break-glass session carrying a `stepUpAt` is handled deliberately, not admitted by it;
+- revokes are still allowed;
+- `rbacRouteMatrix` and `STEP_UP_ROUTES` stay in sync with any new rows;
+- a `pkeya_` token is still refused.
 
 ### Native-client publish (F-22)
 

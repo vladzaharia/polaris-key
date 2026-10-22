@@ -633,11 +633,23 @@ async function revokeAll(
         now,
         "service_token.revoke",
         { kind: "product", id: owner },
-        `Revoked every live service token (${svc.length}): ${svc.join(" ")}`,
+        revokeAllSummary(svc),
       );
     n += svc.length;
   }
   return adminJson({ ok: true, revoked: n });
+}
+
+/**
+ * The revoke-all audit summary: the count, then at most 100 token ids and "+N more". "Revoked by"
+ * credits a token to a revoke-all only if its id is listed, so the unlisted tail reads as no
+ * "Revoked by" line: cosmetic, and the count still says how many were revoked.
+ */
+export const REVOKE_ALL_LISTED_IDS = 100;
+export function revokeAllSummary(ids: readonly string[]): string {
+  const shown = ids.slice(0, REVOKE_ALL_LISTED_IDS).join(" ");
+  const more = ids.length - REVOKE_ALL_LISTED_IDS;
+  return `Revoked every live service token (${ids.length}): ${shown}${more > 0 ? ` +${more} more` : ""}`;
 }
 
 /** Route `…/feeds/tokens…`; `rest` is the path after `tokens`. */

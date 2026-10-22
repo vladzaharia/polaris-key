@@ -34,7 +34,7 @@ Checked on `integ/next-stage` (2026-10-22). Where this brief disagrees, the code
 - **Lead decision: minting a durable credential needs a fresh step-up.** The service-token mint (`binding: "service"`, a `(body)` row checked in the handler), `POST …/ci-tokens` and `PUT …/ci-publisher` (table rows with `stepUp: true`) refuse with 403 `step_up_required` without a console sign-in from the last 5 minutes. Revokes stay without one. The three dialogs (New token, Issue token…, the trusted-publisher drawer) turn into "Sign in again" and reopen with their entries.
 - **Correction:** ST-30c's break-glass realm is not in this tree, so the "break-glass is refused first" test waits for ST-30c.1.
 - **Docs:** `features/ship-builds/packages/index.md`, `build/install.mdx`, `start/concepts.md` (Service token row), `operate/console/keys-and-secrets.md`. `help/packages.md` names no per-product token. THREAT-MODEL: one "Service tokens (F-33b)" subsection.
-- "Security review signed" stays open: the lead runs the final review.
+- Security review signed: REV-F33b PASS on 4270116a7. Lead fix list after it: `…/ci-tokens` `packages:read` joins the 500 cap; the revoke-all audit lists at most 100 ids. Owed when ST-30c.1 merges: see THREAT-MODEL "Service tokens (F-33b)".
 
 ## Goal
 
@@ -67,8 +67,8 @@ Checked on `integ/next-stage` (2026-10-22). Where this brief disagrees, the code
 - [x] The `registry-clients.yml` row over two owners exists
 - [x] Unlinking a licence revokes its licence-bound tokens (test; threat-model row)
 - [x] Existing `pkeyr_` tokens keep working until expiry
-- [ ] Security review signed
-- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Security review signed (REV-F33b, 2026-10-22, PASS on 4270116a7 after one fix round)
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches. (Scoped suites, typecheck, docs lint/build/links and `gen --check` ran; the full local gate, ui:lint, workerd and native SDK lanes did not: CI runs them.)
 
 ## Verify
 
