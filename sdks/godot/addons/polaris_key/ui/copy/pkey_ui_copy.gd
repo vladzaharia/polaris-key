@@ -70,7 +70,7 @@ const DEFAULTS := {
 	"activation_title": "Activate",
 	"activation_subtitle": "Sign in or use a license key to continue.",
 	"activation_subtitle_key": "Enter a license key to continue.",
-	"activation_subtitle_sign_in": "Sign in to use {product}.",
+	"activation_subtitle_sign_in": "Sign in to continue.",
 	"key_label": "License key",
 	"key_placeholder": "Paste your key",
 	"key_submit": "Activate",
@@ -229,7 +229,7 @@ const DEFAULTS := {
 	"update_blocked_body": "No update is available here yet. You can keep playing.",
 	"update_content_floor_body": "Some of this game's content needs a newer version. Please update; you can keep playing until you do.",
 	"update_revoked_title": "Content withdrawn",
-	"update_revoked_body": "Some of this game's content was withdrawn by its developer and can't be used. Update the app to keep playing.",
+	"update_revoked_body": "Some of this game's content was withdrawn by its developer and can't be used. Update the game to keep playing.",
 	# ── PKeyEntitlementBadge ────────────────────────────────────────────────────────────────
 	"badge_included": "Included with %s",
 	"badge_lead": "Included with",

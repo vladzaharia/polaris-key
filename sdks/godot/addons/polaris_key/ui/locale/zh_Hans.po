@@ -616,10 +616,10 @@ msgstr "{product}需要{size}的新内容，而你正在使用按流量计费的
 msgid "boot.consent.download"
 msgstr "下载"
 
-#. If this keeps happening, restart the app.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
+#. If this keeps happening, restart {product}.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "boot.error.body"
-msgstr "如果问题仍然存在，请重启应用。"
+msgstr "如果问题仍然存在，请重启{product}。"
 
 #. Welcome to {product}
 #. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -646,10 +646,10 @@ msgstr "登录或使用许可证密钥以继续。"
 msgid "welcome.ledeKeyOnly"
 msgstr "输入许可证密钥以继续。"
 
-#. Sign in to use {product}.
-#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Sign in to continue.
+#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. The title already names the product.
 msgid "welcome.ledeSignInOnly"
-msgstr "登录以使用{product}。"
+msgstr "登录以继续。"
 
 #. Sign in
 #. Welcome screen, the gate's first screen. Primary button.
@@ -1075,6 +1075,11 @@ msgstr "有可用的更新"
 msgid "update.current"
 msgstr "当前版本：{version} · 下载大小：{size}"
 
+#. You have {version}
+#. UpdatePrompt: an app update. The installed version, when the update decision carries no download size (update.current names a size). Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateCurrentNoSize"
+msgstr "当前版本：{version}"
+
 #. What's new
 #. UpdatePrompt: an app update. Label over the release notes.
 msgid "update.whatsNew"
@@ -1140,6 +1145,11 @@ msgctxt "macos"
 msgid "update.install"
 msgstr "立即更新"
 
+#. Download {version}
+#. UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateDownload"
+msgstr "下载 {version}"
+
 #. Downloading · {size} of {total}
 #. UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”).
 msgid "update.downloading"
@@ -1150,15 +1160,25 @@ msgstr "正在下载 · {size}/{total}"
 msgid "update.timeLeft"
 msgstr "大约还剩{time}"
 
+#. About {minutes} min
+#. UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more.
+msgid "common.updateTimeMinutes"
+msgstr "大约 {minutes} 分钟"
+
+#. Less than a minute
+#. UpdatePrompt: an app update. Time left on the download when under a minute remains.
+msgid "common.updateTimeLessThanMinute"
+msgstr "不到 1 分钟"
+
 #. {product} {version} is ready
 #. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1.
 msgid "update.readyTitle"
 msgstr "{product} {version}已就绪"
 
-#. Restart {product} to finish updating.
-#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Restart to finish updating.
+#. UpdatePrompt: an app update. The title already names the product.
 msgid "update.readyBody"
-msgstr "重启{product}以完成更新。"
+msgstr "重启以完成更新。"
 
 #. Update to keep using {product}
 #. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -1265,10 +1285,10 @@ msgstr "由你的软件包管理器安装。"
 msgid "update.platform.generic"
 msgstr "通过你获取{product}的商店或平台安装。"
 
-#. Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going.
+#. Some of {product}'s content was withdrawn and can't be used. Update to keep going.
 #. UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "update.revokedContent"
-msgstr "{product}的部分内容已被撤回，无法使用。请更新{product}以继续。"
+msgstr "{product}的部分内容已被撤回，无法使用。请更新以继续。"
 
 #. You're up to date
 #. UpdatePrompt: an app update.
@@ -1632,10 +1652,10 @@ msgstr "正在完成购买…"
 msgid "paywall.purchased"
 msgstr "{tier}已解锁"
 
-#. Purchases aren't available in this version of {product}.
-#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Purchases aren't available in this version.
+#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "paywall.notAvailable"
-msgstr "此版本的{product}不支持购买。"
+msgstr "此版本不支持购买。"
 
 #. Buy in your browser
 #. Paywall: what a tier adds, and how to get it.
@@ -1787,10 +1807,10 @@ msgstr "登录Polaris Locker"
 msgid "signin.methods.titleApp"
 msgstr "登录"
 
-#. Use your {product} purchase email or a work or school email.
-#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Use your purchase email or a work or school email.
+#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "signin.methods.ledeApp"
-msgstr "请使用购买 {product} 时的邮箱，或工作或学校邮箱。"
+msgstr "请使用购买时的邮箱，或工作或学校邮箱。"
 
 #. Email
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
@@ -6663,10 +6683,10 @@ msgstr "请输入许可证密钥或登录以继续。"
 msgid "core.gate.version-too-old.title"
 msgstr "需要更新"
 
-#. This version is no longer supported. Update the app to continue.
+#. This version is no longer supported. Update {product} to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-old.message"
-msgstr "此版本已不再受支持。请更新应用以继续。"
+msgstr "此版本已不再受支持。请更新{product}以继续。"
 
 #. Not available on this license
 #. Core copy (conformance/parity/copy.en.json, gate).

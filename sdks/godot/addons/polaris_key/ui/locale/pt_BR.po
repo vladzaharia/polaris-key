@@ -620,10 +620,10 @@ msgstr "{product} precisa de {size} de conteúdo novo, e você está em uma cone
 msgid "boot.consent.download"
 msgstr "Baixar"
 
-#. If this keeps happening, restart the app.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
+#. If this keeps happening, restart {product}.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "boot.error.body"
-msgstr "Se o problema continuar, reinicie o app."
+msgstr "Se o problema continuar, reinicie {product}."
 
 #. Welcome to {product}
 #. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -650,10 +650,10 @@ msgstr "Entre ou use uma chave de licença para continuar."
 msgid "welcome.ledeKeyOnly"
 msgstr "Digite uma chave de licença para continuar."
 
-#. Sign in to use {product}.
-#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Sign in to continue.
+#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. The title already names the product.
 msgid "welcome.ledeSignInOnly"
-msgstr "Entre para usar {product}."
+msgstr "Entre para continuar."
 
 #. Sign in
 #. Welcome screen, the gate's first screen. Primary button.
@@ -1083,6 +1083,11 @@ msgstr "Há uma atualização disponível"
 msgid "update.current"
 msgstr "Você tem a {version} · download de {size}"
 
+#. You have {version}
+#. UpdatePrompt: an app update. The installed version, when the update decision carries no download size (update.current names a size). Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateCurrentNoSize"
+msgstr "Você tem a {version}"
+
 #. What's new
 #. UpdatePrompt: an app update. Label over the release notes.
 msgid "update.whatsNew"
@@ -1148,6 +1153,11 @@ msgctxt "macos"
 msgid "update.install"
 msgstr "Atualizar agora"
 
+#. Download {version}
+#. UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateDownload"
+msgstr "Baixar {version}"
+
 #. Downloading · {size} of {total}
 #. UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”).
 msgid "update.downloading"
@@ -1158,15 +1168,25 @@ msgstr "Baixando · {size} de {total}"
 msgid "update.timeLeft"
 msgstr "Cerca de {time} restantes"
 
+#. About {minutes} min
+#. UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more.
+msgid "common.updateTimeMinutes"
+msgstr "Cerca de {minutes} min"
+
+#. Less than a minute
+#. UpdatePrompt: an app update. Time left on the download when under a minute remains.
+msgid "common.updateTimeLessThanMinute"
+msgstr "Menos de um minuto"
+
 #. {product} {version} is ready
 #. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1.
 msgid "update.readyTitle"
 msgstr "{product} {version} está pronto"
 
-#. Restart {product} to finish updating.
-#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Restart to finish updating.
+#. UpdatePrompt: an app update. The title already names the product.
 msgid "update.readyBody"
-msgstr "Reinicie {product} para concluir a atualização."
+msgstr "Reinicie para concluir a atualização."
 
 #. Update to keep using {product}
 #. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -1273,10 +1293,10 @@ msgstr "Seu gerenciador de pacotes instala a atualização."
 msgid "update.platform.generic"
 msgstr "A atualização é instalada pela loja ou plataforma onde você obteve {product}."
 
-#. Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going.
+#. Some of {product}'s content was withdrawn and can't be used. Update to keep going.
 #. UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "update.revokedContent"
-msgstr "Parte do conteúdo de {product} foi retirada e não pode ser usada. Atualize {product} para continuar."
+msgstr "Parte do conteúdo de {product} foi retirada e não pode ser usada. Atualize para continuar."
 
 #. You're up to date
 #. UpdatePrompt: an app update.
@@ -1642,10 +1662,10 @@ msgstr "Concluindo a compra…"
 msgid "paywall.purchased"
 msgstr "{tier} desbloqueado"
 
-#. Purchases aren't available in this version of {product}.
-#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Purchases aren't available in this version.
+#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "paywall.notAvailable"
-msgstr "Compras não estão disponíveis nesta versão de {product}."
+msgstr "Compras não estão disponíveis nesta versão."
 
 #. Buy in your browser
 #. Paywall: what a tier adds, and how to get it.
@@ -1797,10 +1817,10 @@ msgstr "Entrar no Polaris Locker"
 msgid "signin.methods.titleApp"
 msgstr "Entrar"
 
-#. Use your {product} purchase email or a work or school email.
-#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Use your purchase email or a work or school email.
+#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "signin.methods.ledeApp"
-msgstr "Use o e-mail da sua compra de {product} ou um e-mail de trabalho ou escola."
+msgstr "Use o e-mail da sua compra ou um e-mail de trabalho ou escola."
 
 #. Email
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
@@ -6689,10 +6709,10 @@ msgstr "Digite uma chave de licença ou entre para continuar."
 msgid "core.gate.version-too-old.title"
 msgstr "Atualização necessária"
 
-#. This version is no longer supported. Update the app to continue.
+#. This version is no longer supported. Update {product} to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-old.message"
-msgstr "Esta versão não é mais compatível. Atualize o app para continuar."
+msgstr "Esta versão não é mais compatível. Atualize {product} para continuar."
 
 #. Not available on this license
 #. Core copy (conformance/parity/copy.en.json, gate).
