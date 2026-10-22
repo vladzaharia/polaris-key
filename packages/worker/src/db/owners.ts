@@ -140,6 +140,7 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "dist_listing_assets",
     "dist_listing_release_notes",
     "dist_listing_overrides",
+    "dist_listing_truth_moves",
     "store_edit_leases",
   ],
   // CM-29: Commerce's store-product map, purchases and holder bindings (names unchanged, no migration).

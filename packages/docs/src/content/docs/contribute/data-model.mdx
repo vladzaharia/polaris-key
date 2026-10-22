@@ -147,6 +147,7 @@ this page or fails the freshness gate.
 | `dist_listing_assets` | 0099_dist_listing_assets_manifest.sql (rebuilt 0099) | `product`, `slot`, `locale`, `blob`, `sha256`, `width`, `height`, `alpha`, `derived_from`, `text_allowed`, `source`, `modified_at`, `modified_by`, `accepted_sha256`, `accepted_at`, `accepted_by` |
 | `dist_listing_release_notes` | 0065_dist_listing_model.sql | `product`, `release_id`, `locale`, `text`, `short`, `source`, `modified_at`, `modified_by` |
 | `dist_listing_overrides` | 0065_dist_listing_model.sql | `product`, `store`, `locale`, `field`, `value_json`, `source`, `modified_at`, `modified_by` |
+| `dist_listing_truth_moves` | 0129_listing_truth_moves.sql | `product`, `locale`, `field`, `had_row`, `prior_value_json`, `prior_provenance`, `applied_value_json`, `moved_at` |
 | `store_edit_leases` | 0070_store_edit_leases.sql | `store`, `app`, `holder`, `purpose`, `actor`, `acquired_at`, `expires_at` |
 
 ## commerce
