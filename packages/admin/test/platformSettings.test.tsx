@@ -2261,9 +2261,16 @@ describe("Product defaults (ST-16)", () => {
 });
 
 describe("Alert destinations in Email and alerts (ST-27)", () => {
-  const NOW_S = Math.floor(Date.now() / 1000);
-  const FRESH = { authAt: NOW_S - 30, stepUpMaxAgeSeconds: 300 };
-  const STALE = { authAt: NOW_S - 3600, stepUpMaxAgeSeconds: 300 };
+  // Read the clock when a test boots, not when the file is collected: on a slow runner this block
+  // starts minutes after collection, and a collection-time "30 s ago" ages past the 300 s step-up.
+  const fresh = () => ({
+    authAt: Math.floor(Date.now() / 1000) - 30,
+    stepUpMaxAgeSeconds: 300,
+  });
+  const stale = () => ({
+    authAt: Math.floor(Date.now() / 1000) - 3600,
+    stepUpMaxAgeSeconds: 300,
+  });
   const ALL = [
     "auto_halt",
     "store_connection",
@@ -2303,7 +2310,7 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
 
   it("lists rows by name, with the reason a delivery failed and never a URL or secret", async () => {
     boot("#/platform/settings", {
-      me: FRESH,
+      me: fresh(),
       extra: routes({
         "/manage/api/platform/alerts": listOf(WEBHOOK, EMAIL),
       }),
@@ -2330,7 +2337,7 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
   it("adds a webhook: checks https on the spot, puts the server's refusal under the field, shows the secret once", async () => {
     let posts = 0;
     const log = boot("#/platform/settings", {
-      me: FRESH,
+      me: fresh(),
       extra: routes({
         "/manage/api/platform/alerts": ALERTS_NONE,
         "POST /manage/api/platform/alerts": () => {
@@ -2392,7 +2399,7 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
 
   it("shows one sign-in callout, only when an action needs it, and sends nothing", async () => {
     const log = boot("#/platform/settings", {
-      me: STALE,
+      me: stale(),
       extra: routes({
         "/manage/api/platform/alerts": listOf(WEBHOOK, EMAIL),
       }),
@@ -2421,7 +2428,7 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
 
   it("asks for a fresh sign-in when Add is pressed, announces it and focuses its link", async () => {
     const log = boot("#/platform/settings", {
-      me: STALE,
+      me: stale(),
       extra: routes({ "/manage/api/platform/alerts": ALERTS_NONE }),
     });
     const email = await section("Email and alerts");
@@ -2448,7 +2455,7 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
       label: `Hook ${i}`,
     }));
     boot("#/platform/settings", {
-      me: FRESH,
+      me: fresh(),
       extra: routes({
         "/manage/api/platform/alerts": listOf(...five),
         "POST /manage/api/platform/alerts/dst_hook000000/test": () =>
@@ -2493,7 +2500,7 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
 
   it("edits kinds and label without asking for the URL again", async () => {
     const log = boot("#/platform/settings", {
-      me: FRESH,
+      me: fresh(),
       extra: routes({
         "/manage/api/platform/alerts": listOf(WEBHOOK),
         "PATCH /manage/api/platform/alerts/dst_hook000001": {
@@ -2532,10 +2539,10 @@ describe("Alert destinations in Email and alerts (ST-27)", () => {
 });
 
 describe("Alert destinations: focus and refusals (ST-27)", () => {
-  const FRESH = {
+  const fresh = () => ({
     authAt: Math.floor(Date.now() / 1000) - 30,
     stepUpMaxAgeSeconds: 300,
-  };
+  });
   const MAIL = {
     id: "dst_mail000001",
     scope: "_platform",
@@ -2553,7 +2560,7 @@ describe("Alert destinations: focus and refusals (ST-27)", () => {
 
   it("an empty submit puts focus on the first invalid field", async () => {
     boot("#/platform/settings", {
-      me: FRESH,
+      me: fresh(),
       extra: routes({ "/manage/api/platform/alerts": ALERTS_NONE }),
     });
     const email = await section("Email and alerts");
@@ -2571,7 +2578,7 @@ describe("Alert destinations: focus and refusals (ST-27)", () => {
 
   it("a step-up refusal inside Remove closes it and shows the one sign-in callout", async () => {
     boot("#/platform/settings", {
-      me: FRESH,
+      me: fresh(),
       extra: routes({
         "/manage/api/platform/alerts": { ...ALERTS_NONE, destinations: [MAIL] },
         "DELETE /manage/api/platform/alerts/dst_mail000001": () =>
