@@ -31,7 +31,7 @@ export interface StoreIdentity {
   assigned: string | null;
   /** A typed value that differs from the assigned one (the typed value is the one in force). */
   mismatch: boolean;
-  /** The store's own active pins for this identity field disagree (D15; the lowest id won). */
+  /** The store's own active pins disagree (D15; the lowest id won). Only for an assigned value. */
   ambiguous: boolean;
 }
 
@@ -61,7 +61,8 @@ function resolve(
       source: "typed",
       assigned,
       mismatch: assigned !== null && assigned !== typed,
-      ambiguous,
+      // The keys' disagreement decides nothing while a typed value is in force.
+      ambiguous: false,
     };
   return {
     value: assigned,

@@ -59,7 +59,8 @@ export type ErrorArea =
   | "manifest"
   | "slug"
   | "github"
-  | "services";
+  | "services"
+  | "commerce";
 
 /** One `.pkey/` manifest problem, with the file and the JSON path it is about. */
 export interface ManifestProblem {
@@ -461,14 +462,14 @@ export function errorCopy(
     if (reason === "no_access")
       return {
         title: "You don't have access to this",
-        description: needsEdit(error.area),
+        description: needsEdit(error.area ?? context.area),
         action: "none",
         details,
       };
     return {
       title: "You can't do that",
       // The server's words stay in `details`: a 403 message is a policy line, not copy.
-      description: needsEdit(),
+      description: needsEdit(context.area),
       action: "none",
       details,
     };
@@ -483,6 +484,15 @@ export function errorCopy(
     };
   }
   if (status === 409) {
+    // Someone unassigned the app between the page loading and the click.
+    if (reason === "no_assigned_app")
+      return {
+        title: "No app is assigned",
+        description:
+          "The app was unassigned. A platform admin assigns it in Platform → Store connections.",
+        action: "none",
+        details,
+      };
     const references = referencesOf(error);
     if (references || /in use|referenc/i.test(message ?? "")) {
       return {

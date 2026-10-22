@@ -1213,6 +1213,13 @@ export async function mutate<K extends WriteMethod>(
     result = await fn(...args);
   } catch (e) {
     refreshMeOnNoAccess(e);
+    // The page showed a state the server no longer has: refetch it.
+    if (
+      method === "commerceUseAssigned" &&
+      e instanceof ApiError &&
+      e.reason === "no_assigned_app"
+    )
+      invalidateAfter(method, args);
     throw e;
   }
   invalidateAfter(method, args);

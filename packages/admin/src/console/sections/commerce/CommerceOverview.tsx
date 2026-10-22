@@ -7,7 +7,12 @@
 import { channelLabel } from "@polaris-key/manifest";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, type CommerceStore, type CommerceView } from "../../../api.js";
+import {
+  api,
+  type CommerceStore,
+  type CommerceStoreIdentity,
+  type CommerceView,
+} from "../../../api.js";
 import { fromSeconds, formatTableTime } from "../../../lib/format.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
@@ -41,7 +46,10 @@ const LINK = "py-1 text-accent-fg underline underline-offset-2";
 /** The house vocabulary for what the server says about a store: no raw reasons. */
 function storefrontState(
   s: CommerceView["setup"][CommerceStore],
-): "ready" | "unset" | "credential" {
+  identity?: CommerceStoreIdentity,
+): "ready" | "unset" | "credential" | "mismatch" {
+  // A typed app that differs from the assigned one is what the callout says; the status agrees.
+  if (identity?.mismatch) return "mismatch";
   if (s.configured) return "ready";
   // No settings, or settings with no app to sell for: not set up. Anything else is the key.
   const r = s.reason ?? "";
@@ -103,7 +111,7 @@ export function CommerceOverviewPage({
     const ready = STORES.filter((s) => setup[s.id].configured).length;
     const rows = STORES.map((s) => ({
       ...s,
-      state: storefrontState(setup[s.id]),
+      state: storefrontState(setup[s.id], view.data.identity?.[s.id]),
       mapped: products.filter((p) => p.store === s.id).length,
       identityRow: {
         id: s.id,
@@ -149,10 +157,12 @@ export function CommerceOverviewPage({
           }
         >
           <div className="space-y-4 px-5 py-4">
-            <IdentityAttention
-              slug={slug}
-              rows={rows.map((s) => s.identityRow)}
-            />
+            {off ? null : (
+              <IdentityAttention
+                slug={slug}
+                rows={rows.map((s) => s.identityRow)}
+              />
+            )}
             <ul
               className="divide-y divide-border sm:hidden"
               aria-label="Storefronts"
@@ -160,7 +170,13 @@ export function CommerceOverviewPage({
               {rows.map((s) => (
                 <li key={s.id} className="space-y-1 py-3">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="font-medium">{s.label}</span>
+                    <span
+                      tabIndex={-1}
+                      data-store-row={s.id}
+                      className="font-medium"
+                    >
+                      {s.label}
+                    </span>
                     <StatusPill domain="storefront" state={s.state} size="sm" />
                   </div>
                   <StoreIdentityCell slug={slug} row={s.identityRow} />
@@ -178,13 +194,22 @@ export function CommerceOverviewPage({
               >
                 <thead className="text-xs text-fg-muted">
                   <tr className="border-b border-border">
-                    <th scope="col" className="py-2 pe-4 font-medium">
+                    <th
+                      scope="col"
+                      className="py-2 text-start pe-4 font-medium"
+                    >
                       Store
                     </th>
-                    <th scope="col" className="py-2 pe-4 font-medium">
+                    <th
+                      scope="col"
+                      className="py-2 text-start pe-4 font-medium"
+                    >
                       App
                     </th>
-                    <th scope="col" className="py-2 pe-4 font-medium">
+                    <th
+                      scope="col"
+                      className="py-2 text-start pe-4 font-medium"
+                    >
                       Status
                     </th>
                     <th scope="col" className="py-2 text-end font-medium">
@@ -195,7 +220,12 @@ export function CommerceOverviewPage({
                 <tbody className="divide-y divide-border">
                   {rows.map((s) => (
                     <tr key={s.id}>
-                      <th scope="row" className="py-2 pe-4 font-medium">
+                      <th
+                        scope="row"
+                        tabIndex={-1}
+                        data-store-row={s.id}
+                        className="py-2 text-start pe-4 font-medium"
+                      >
                         {s.label}
                       </th>
                       <td className="py-2 pe-4">
@@ -269,13 +299,22 @@ export function CommerceOverviewPage({
                   >
                     <thead className="text-xs text-fg-muted">
                       <tr className="border-b border-border">
-                        <th scope="col" className="py-2 pe-4 font-medium">
+                        <th
+                          scope="col"
+                          className="py-2 text-start pe-4 font-medium"
+                        >
                           Store
                         </th>
-                        <th scope="col" className="py-2 pe-4 font-medium">
+                        <th
+                          scope="col"
+                          className="py-2 text-start pe-4 font-medium"
+                        >
                           Product
                         </th>
-                        <th scope="col" className="py-2 pe-4 font-medium">
+                        <th
+                          scope="col"
+                          className="py-2 text-start pe-4 font-medium"
+                        >
                           State
                         </th>
                         <th scope="col" className="py-2 text-end font-medium">

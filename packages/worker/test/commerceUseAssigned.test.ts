@@ -350,6 +350,47 @@ describe("storefront.identity_ambiguous (D15)", () => {
     expect(items[0].lines.join(" ")).toContain(BUNDLE_ID);
     expect(await ambiguousItems(cw, "m-commerce")).toHaveLength(1);
     expect(await ambiguousItems(cw, "m-ship")).toEqual([]);
+    expect(items[0].short).toBe("Keys disagree");
+  });
+
+  it("is not raised while a typed value is in force: a mismatched store shows one item", async () => {
+    const cw = await world({
+      settings: {
+        appStore: { bundleId: "com.typo.app" },
+        steam: {},
+        play: { ...SETTINGS.play },
+      },
+    });
+    const r = await putOutletCredential(cw.env, cw.db, {
+      product: SLUG,
+      credentialId: "iap2",
+      kind: "app-store-server-key",
+      outletId: null,
+      value: {
+        keyId: "IAPKEY5678",
+        issuerId: "69a6de7f-0000-47e3-e053-5b8c7c11a4d1",
+        p8: p8Pem(),
+      },
+      pin: "gg.other.app",
+      expiresAt: null,
+      actor: "admin-1",
+      now: NOW,
+    });
+    expect(r.ok).toBe(true);
+    const e = await effectiveCommerceSettings(cw.db, SLUG);
+    expect(e.identity["app-store"]).toMatchObject({
+      source: "typed",
+      mismatch: true,
+      ambiguous: false,
+    });
+    expect(await storefrontIdentityAmbiguities(cw.db, SLUG)).toEqual([]);
+    expect(await ambiguousItems(cw)).toEqual([]);
+    const all = (await call(cw, "GET", "/api/attention")).json.items;
+    expect(
+      all.filter((i: { kind: string }) =>
+        i.kind.startsWith("storefront.identity"),
+      ),
+    ).toHaveLength(1);
   });
 });
 
