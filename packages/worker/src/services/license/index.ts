@@ -27,6 +27,7 @@ import {} from "./licensingSettings.js";
 import {} from "../../core/rowSettings.js";
 
 import { licenseIntegration } from "./integration.js";
+import { limitsMaterialiseJob } from "./migrations/limitsMaterialise.js";
 
 import { licenseProductDeletion } from "./productDeletion.js";
 
@@ -36,6 +37,8 @@ export const licenseService: ServiceDescriptor = {
     manifest: licenseManifest,
     productDeletion: licenseProductDeletion,
     integration: licenseIntegration,
+    // P0-49 (LX-33.5): run by an operator through the migration runner, never by a tick.
+    migrations: [limitsMaterialiseJob],
   },
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: LICENSE_SETTINGS_SLICE,

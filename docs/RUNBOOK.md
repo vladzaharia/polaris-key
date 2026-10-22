@@ -2123,6 +2123,7 @@ tracks:
 | ----------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `core.licence-override-migration`   | The lead | The dry run reports no license with an override, then a later release deletes the machinery. Applied from the console, never the runner.                                        |
 | `identity.seed-platform-connection` | The lead | An apply report exists. Its seeded audience is recorded here as above.                                                                                                          |
+| `license.limits-materialise`        | The lead | A dry run after the apply reports changes 0 and docDiffs 0, and no license has a tier of NULL. Its run ids are recorded under Entries.                                          |
 | Resolver comparison                 | The lead | Zero blocking rows, every expected row acknowledged below by class and count, and no `workflow-channel` row's old answer newer than the latest `materialise-workflow-beta` run. |
 | Resolver switch                     | The lead | The dry run after the switch shows zero blocking rows and nothing was rolled back. A later release then deletes the old resolver.                                               |
 
@@ -2136,6 +2137,29 @@ zero. The lead acknowledges each class and its count here before the switch.
 GitHub prerelease or with descriptor `channel: beta`, before the switch deploys. Second, drop
 `channelWorkflow` and `betaBranch` from its `.pkey/` manifest right after the switch deploys, not
 earlier: a resync writes `channel_workflow` as NULL when the field is absent.
+
+### License limits (`license.limits-materialise`)
+
+Gives every license a tier and copies onto it the limits its documents get from elsewhere. Run it
+after the Worker that carries it is live, before the release that switches the resolver. A dry run
+writes nothing.
+
+1. `pkey migrate dry-run license.limits-materialise`, then `pkey migrate report <run>`. Per product
+   it lists `seed`, `assigned`, `writes` per field, `dangling`, `devOnlyTiers` and `docDiffs`, with
+   up to 20 ids each.
+2. `docDiffs` or `dangling` above 0: stop. Send the report to the lead; a document would change.
+3. Apply from the console (Platform, Migrations), pinned to the run id. A killed apply resumes with
+   the same call.
+4. Dry-run again. It must show changes 0 and docDiffs 0. A license edited while the apply ran is
+   skipped, and shows here as one change: apply that run.
+5. Record both run ids under Entries.
+
+Freeze edits to product license defaults, tier limits and license limits from step 1 until the
+switch deploys; otherwise repeat steps 1 to 5.
+
+**Roll back.** Run `down` on the apply before rolling the Worker back. It puts each column back to
+its recorded value only while the column still holds the value the job wrote, and removes the
+seeded Default tier once no license uses it. A later edit stays.
 
 ### Entries
 
