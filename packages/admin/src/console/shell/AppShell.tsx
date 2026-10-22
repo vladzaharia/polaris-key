@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useLargeTextFlag } from "../../lib/useLargeTextFlag.js";
 import { docsUrl } from "../../lib/docsLinks.js";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { X } from "lucide-react";
@@ -200,6 +201,8 @@ function useRouteFocus(key: string, title: string): string {
  * button (fixes SH-2).
  */
 export function AppShell({ me }: { me: Me }): React.ReactElement {
+  // Large text lets a console button label wrap (the `cramped` variant, styles.css).
+  useLargeTextFlag("data-console-large-text");
   const { route } = useLocation();
   const page = pageOfRoute(route);
   const handOff = portalHandOff(
