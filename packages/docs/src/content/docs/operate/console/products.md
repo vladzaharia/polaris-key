@@ -267,8 +267,8 @@ product's packages are served on the registry host. It is operator-owned (a mani
 it), blocked until Ship builds is on, and saves on its own, through
 `/manage/api/products/<slug>/distribution/package-feeds` (PUT) with `{enabled, expectedVersion}`; a
 stale version is a 409 and nothing changes. Turning it off asks first, because every feed of the
-product answers not-found within 30 seconds. While it is on, **Ship builds → Package feeds** is in
-the sidebar: see [Package feeds](/docs/features/ship-builds/packages/).
+product answers not-found within 30 seconds. **Ship builds → Packages** is in the sidebar whenever Ship builds is on, and shows
+the off state with **Turn on**: see [Package feeds](/docs/features/ship-builds/packages/).
 
 ## Reference
 

@@ -1190,6 +1190,18 @@ open access was true turns false once its package rows are written. `test/feedAc
 pins `authorizeFeedRead` identical before and after, for every principal, list and per-deliverable
 read, feed mode, own-row state and app-row state.
 
+**Two options, one switch (F-34.3, F-34.5).** The console's feed write accepts only `public` and
+`licensed` (`422`, reason `access_mode_unavailable`, for `authenticated` and `entitled`), a feed
+created there starts at `licensed`, and widening to `public` stays an L1 action. Writes only
+tighten or keep what the ladder answers; rows already at an old mode keep enforcing it until the
+job above moves them. `distribution.packageFeeds` is the owner's off switch: an operator-owned
+registry setting over `dist_registry_owners` with an L1 confirm on off, audited as
+`distribution.package_feeds.update`, and the one write path for both the settings route and
+`PUT …/distribution/package-feeds`. A manifest only inserts the owner row (on), so a sync never
+turns the feeds back on. Maven always omits a yanked version from `maven-metadata.xml`; a feed
+that stored `yankHidesFromIndex: false` changes its (unsigned) document, which the job's dry run
+lists.
+
 **Same-site exposure.** The host is a `*.plrs.im` sibling of the console, so `SameSite` does not
 separate them, exactly as for the bytes host. Its compensations, against `dl.plrs.im`'s:
 
