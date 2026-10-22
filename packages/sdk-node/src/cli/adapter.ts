@@ -47,6 +47,9 @@ export interface ParsedVerbFlags {
   deviceCode?: boolean;
   allowWorkflowCommands?: boolean;
   reveal?: boolean;
+  /** `activate --key-file <path>` and `--key-stdin`. */
+  keyFile?: string;
+  keyStdin?: boolean;
 }
 
 /** A stream that hands each complete line to `print` (the adapters' legacy sink). */
@@ -167,6 +170,8 @@ export async function runKitVerb(
     ...(flags.deviceCode ? { deviceCode: true } : {}),
     ...(flags.allowWorkflowCommands ? { allowWorkflowCommands: true } : {}),
     ...(flags.reveal ? { reveal: true } : {}),
+    ...(flags.keyFile ? { keyFile: flags.keyFile } : {}),
+    ...(flags.keyStdin ? { keyStdin: true } : {}),
   };
   let r: FlowResult;
   try {

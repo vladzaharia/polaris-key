@@ -571,6 +571,8 @@ export interface VerbFlags {
   deviceCode?: boolean;
   allowWorkflowCommands?: boolean;
   reveal?: boolean;
+  keyFile?: string;
+  keyStdin?: boolean;
 }
 
 /** One verb, as both adapters declare it. */
@@ -649,8 +651,12 @@ export const CLI_VERBS: readonly CliVerb[] = [
         ? activate(c, key)
         : { ok: false, message: "Activation failed: no license key given." };
     },
-    flow: (ctx, c, a) =>
-      activateFlow(ctx, need(c), { key: one(a[0]) || undefined }),
+    flow: (ctx, c, a, f) =>
+      activateFlow(ctx, need(c), {
+        key: one(a[0]) || undefined,
+        ...(f.keyFile ? { keyFile: f.keyFile } : {}),
+        ...(f.keyStdin ? { keyStdin: true } : {}),
+      }),
   },
   {
     group: "license",

@@ -1378,6 +1378,8 @@ export const SCENARIOS: Scenario[] = [
       "activate",
       "[key]",
       "[options]",
+      "--key-file <path>",
+      "--key-stdin",
       "--json",
       "--no-color",
       "--ascii",

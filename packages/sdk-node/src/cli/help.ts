@@ -28,8 +28,11 @@ export const GLOBAL_OPTIONS: ReadonlyArray<{ flags: string; key: string }> = [
 
 /** The flags a verb adds, with their catalog keys. */
 export const VERB_OPTIONS: Readonly<
-  Record<string, ReadonlyArray<{ flags: string; key: string }>>
+  Record<string, ReadonlyArray<{ flags: string; key?: string }>>
 > = {
+  // No description yet: the catalog has no `cli.option.keyFile` / `cli.option.keyStdin`, and the
+  // kit shows catalog copy only. Python spells them out in English.
+  activate: [{ flags: "--key-file <path>" }, { flags: "--key-stdin" }],
   login: [{ flags: "--device-code", key: "cli.option.deviceCode" }],
   logout: [{ flags: "-y, --yes", key: "cli.option.yes" }],
   deactivate: [{ flags: "-y, --yes", key: "cli.option.yes" }],
@@ -84,6 +87,11 @@ function twoColumns(
       ? hostTerm(r.term)
       : ctx.painter.style(r.term, ["strong"]);
     const fits = !stacked && cellWidth(r.term) <= termWidth;
+    // A flag with no description (the catalog has none yet): the term alone, no trailing blanks.
+    if (r.text === "" && (fits || stacked)) {
+      out.push(`${" ".repeat(indent)}${term}`);
+      continue;
+    }
     // A term wider than the line wraps at its spaces, continued two cells further in; a stacked
     // command that wrapped indents its description by four, so the two read apart without bold.
     const termLines = fits
@@ -278,7 +286,10 @@ export function renderVerbHelp(ctx: KitContext, v: CliVerb): string {
   const t = ctx.copy.t.bind(ctx.copy);
   const line = (spans: Line) => ctx.painter.line(spans);
   const name = v.path.join(" ");
-  const opts = [...(VERB_OPTIONS[v.path[0]!] ?? []), ...GLOBAL_OPTIONS];
+  const opts: ReadonlyArray<{ flags: string; key?: string }> = [
+    ...(VERB_OPTIONS[v.path[0]!] ?? []),
+    ...GLOBAL_OPTIONS,
+  ];
   const out: string[] = [
     line([{ text: `${ctx.bin} ${name}`, style: ["strong"] }]),
     ...wrapSpans(
@@ -291,7 +302,10 @@ export function renderVerbHelp(ctx: KitContext, v: CliVerb): string {
     line([{ text: t("cli.help.options"), style: ["strong"] }]),
     ...twoColumns(
       ctx,
-      opts.map((o) => ({ term: o.flags, text: t(o.key) })),
+      opts.map((o) => ({
+        term: o.flags,
+        text: o.key ? t(o.key) : "",
+      })),
     ),
   ];
   return `${out.join("\n")}\n`;
@@ -345,7 +359,9 @@ export function completionScript(
     ...Object.values(VERB_OPTIONS).flatMap((os) =>
       os.flatMap((o) => o.flags.split(", ")),
     ),
-  ].filter((f, i, all) => all.indexOf(f) === i);
+  ]
+    .map((f) => f.replace(/\s*<.*>$/, ""))
+    .filter((f, i, all) => all.indexOf(f) === i);
   const desc = (v?: CliVerb) => (v ? describeVerb(ctx, v) : "");
   if (shell === "bash") {
     const cases = [...sub]

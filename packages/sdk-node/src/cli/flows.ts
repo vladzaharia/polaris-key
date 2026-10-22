@@ -9,6 +9,7 @@
 
 import { canonicalPlatform } from "@polaris-key/client-core";
 import { fstatSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { PolarisKeyClient } from "../client.js";
 import type {
@@ -788,6 +789,85 @@ export interface ActivateArgs {
   key?: string;
   /** Why the person is here, as the first line under the header (`export needs a license`). */
   reason?: string;
+  /** `--key-file`: read the key from this file. */
+  keyFile?: string;
+  /** `--key-stdin`: read the key from stdin. */
+  keyStdin?: boolean;
+}
+
+/** The environment variable that hands `activate` a key without argv (the Python kit's too). */
+export const KEY_ENV_VAR = "POLARIS_KEY_ACTIVATION_KEY";
+
+type KeyPick =
+  | { from: "file" | "stdin" | "env" | "argv"; key: string }
+  | { from: "problem"; result: FlowResult; rows: RailRow[] }
+  | null;
+
+/**
+ * The key from a named source, in the Python kit's order: `--key-file`, `--key-stdin`,
+ * `$POLARIS_KEY_ACTIVATION_KEY`, then the positional (which warns). `null` leaves the prompt or
+ * a piped stdin to `obtainKey`. A file that is empty or unreadable, and `--key-stdin` with no
+ * key, end in a usage result (exit 2).
+ */
+async function pickKey(ctx: KitContext, args: ActivateArgs): Promise<KeyPick> {
+  const t = ctx.copy.t.bind(ctx.copy);
+  if (args.keyFile) {
+    let text: string | null;
+    try {
+      text = (await readFile(args.keyFile, "utf8")).trim();
+    } catch {
+      text = null;
+    }
+    if (text) return { from: "file", key: text };
+    const message = t(
+      text === null ? "cli.keyFile.unreadable" : "cli.keyFile.empty",
+    );
+    return {
+      from: "problem",
+      rows: [
+        stepRow("warn", [{ text: message, style: ["strong"] }]),
+        { mark: "rail", spans: [{ text: args.keyFile, style: ["muted"] }] },
+        endRow(),
+      ],
+      result: {
+        exitCode: EXIT.usage,
+        state: "rejected",
+        result: { file: args.keyFile },
+        error: { code: "usage", title: message, message },
+      },
+    };
+  }
+  if (args.keyStdin) {
+    const key = await readPiped(ctx);
+    if (key !== "") return { from: "stdin", key };
+    const usage = `${ctx.bin} activate --key-stdin  (--key-stdin was given but stdin held no key)`;
+    return {
+      from: "problem",
+      rows: [
+        stepRow("fail", [
+          { text: t("cli.help.usage"), style: ["strong"] },
+          { text: `  ${usage}`, keep: true },
+        ]),
+        endRow(),
+      ],
+      result: {
+        exitCode: EXIT.usage,
+        state: "error",
+        result: { usage },
+        error: {
+          code: "usage",
+          title: t("cli.help.usage"),
+          message: usage,
+          showMessage: true,
+        },
+      },
+    };
+  }
+  const fromEnv = (ctx.env[KEY_ENV_VAR] ?? "").trim();
+  if (fromEnv !== "") return { from: "env", key: fromEnv };
+  if (args.key && args.key.trim() !== "")
+    return { from: "argv", key: args.key.trim() };
+  return null;
 }
 
 /** Where the key comes from: the prompt, a pipe, or (with a warning) the command line. */
@@ -914,8 +994,13 @@ export async function activateFlow(
       : []),
   ];
   const lead = () => hist;
+  const picked = await pickKey(ctx, args);
+  if (picked?.from === "problem") {
+    show(ctx, [...hist, ...picked.rows]);
+    return picked.result;
+  }
   // The shell-history warning sits under the header, never above the product chip (B-114).
-  if (args.key && !quiet(ctx))
+  if (picked?.from === "argv" && !quiet(ctx))
     hist.push(
       stepRow("warn", [
         {
@@ -923,7 +1008,7 @@ export async function activateFlow(
         },
       ]),
     );
-  const key = await obtainKey(ctx, args, lead);
+  const key = picked ? picked.key : await obtainKey(ctx, {}, lead);
   if (key === CANCEL)
     return {
       exitCode: EXIT.failed,
