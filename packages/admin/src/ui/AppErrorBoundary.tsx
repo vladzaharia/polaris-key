@@ -40,6 +40,7 @@ export class AppErrorBoundary extends React.Component<
     return (
       <main
         role="alert"
+        data-error-state=""
         aria-labelledby="app-error-title"
         className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-3 px-6 py-12 text-center"
       >

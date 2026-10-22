@@ -45,6 +45,7 @@ export function ErrorState({
       <div
         role="alert"
         aria-labelledby={titleId}
+        data-error-state=""
         data-error-action={copy.action}
         className={cn(
           "flex flex-wrap items-start gap-x-2 gap-y-1 px-1 py-2 text-sm",
@@ -75,6 +76,7 @@ export function ErrorState({
     <div
       role="alert"
       aria-labelledby={titleId}
+      data-error-state=""
       data-error-action={copy.action}
       className={cn(
         "flex flex-col items-center gap-3 rounded-lg border border-border bg-surface-raised px-6 py-12 text-center",
