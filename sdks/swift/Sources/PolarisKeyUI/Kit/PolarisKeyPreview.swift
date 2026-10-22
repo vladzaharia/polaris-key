@@ -50,7 +50,10 @@ public struct PolarisKeyPreview: View {
         case .gate:
             PolarisKeyGate(model: model) { PreviewHostApp() }
         case .boot:
-            BootView(boot: model.boot)
+            // A still: every action is drawn as the host would wire it.
+            BootView(
+                boot: model.boot, onDownload: {}, onNotNow: {}, onContinueOffline: {},
+                onTryAgain: {}, onUpdate: {})
         case .welcome:
             WelcomeView(
                 screen: model.welcome, onSignIn: {}, onUseKey: {},

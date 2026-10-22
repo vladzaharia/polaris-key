@@ -39,13 +39,76 @@ final class KitRenderTests: XCTestCase {
                 "The address is the content (DL14: the link in text beside the code); VoiceOver reads it."
             ),
             (
-                "Dynamic Type font sizes are partially unsupported", "", "",
+                "Dynamic Type font sizes are partially unsupported", "", "Version",
                 [
                     "AccountAndLicense.signed-in", "AccountAndLicense.signed-in.pane",
                     "AccountAndLicense.signed-in.channel-locked",
                     "AccountAndLicense.signed-in.channel-license",
                 ],
-                "The audit grows the text until the lower rows of the host's List scroll below the fold, where it cannot measure them; the AX3 and AX5 renders show every row scaling (the native preset's system fonts are flagged the same way)."
+                "A lower row of the host's List: the audit grows the text until this element sits below the fold, where it cannot measure it (the group header's fixed-size glyph now scales and is no longer flagged); the AX3 and AX5 renders show it scaling."
+            ),
+            (
+                "Dynamic Type font sizes are partially unsupported", "", "Sign out",
+                [
+                    "AccountAndLicense.signed-in", "AccountAndLicense.signed-in.pane",
+                    "AccountAndLicense.signed-in.channel-locked",
+                    "AccountAndLicense.signed-in.channel-license",
+                ],
+                "A lower row of the host's List: the audit grows the text until this element sits below the fold, where it cannot measure it (the group header's fixed-size glyph now scales and is no longer flagged); the AX3 and AX5 renders show it scaling."
+            ),
+            (
+                "Dynamic Type font sizes are partially unsupported", "", "Check for updates",
+                [
+                    "AccountAndLicense.signed-in", "AccountAndLicense.signed-in.pane",
+                    "AccountAndLicense.signed-in.channel-locked",
+                    "AccountAndLicense.signed-in.channel-license",
+                ],
+                "A lower row of the host's List: the audit grows the text until this element sits below the fold, where it cannot measure it (the group header's fixed-size glyph now scales and is no longer flagged); the AX3 and AX5 renders show it scaling."
+            ),
+            (
+                "Dynamic Type font sizes are partially unsupported", "", "Release channel",
+                [
+                    "AccountAndLicense.signed-in", "AccountAndLicense.signed-in.pane",
+                    "AccountAndLicense.signed-in.channel-locked",
+                    "AccountAndLicense.signed-in.channel-license",
+                ],
+                "A lower row of the host's List: the audit grows the text until this element sits below the fold, where it cannot measure it (the group header's fixed-size glyph now scales and is no longer flagged); the AX3 and AX5 renders show it scaling."
+            ),
+            (
+                "Dynamic Type font sizes are partially unsupported", "", "Stable",
+                [
+                    "AccountAndLicense.signed-in", "AccountAndLicense.signed-in.pane",
+                    "AccountAndLicense.signed-in.channel-locked",
+                    "AccountAndLicense.signed-in.channel-license",
+                ],
+                "A lower row of the host's List: the audit grows the text until this element sits below the fold, where it cannot measure it (the group header's fixed-size glyph now scales and is no longer flagged); the AX3 and AX5 renders show it scaling."
+            ),
+            (
+                "Dynamic Type font sizes are partially unsupported", "", "Your devices",
+                [
+                    "AccountAndLicense.signed-in", "AccountAndLicense.signed-in.pane",
+                    "AccountAndLicense.signed-in.channel-locked",
+                    "AccountAndLicense.signed-in.channel-license",
+                ],
+                "A lower row of the host's List: the audit grows the text until this element sits below the fold, where it cannot measure it (the group header's fixed-size glyph now scales and is no longer flagged); the AX3 and AX5 renders show it scaling."
+            ),
+            (
+                "Dynamic Type font sizes are partially unsupported", "", "channel",
+                [
+                    "AccountAndLicense.signed-in", "AccountAndLicense.signed-in.pane",
+                    "AccountAndLicense.signed-in.channel-locked",
+                    "AccountAndLicense.signed-in.channel-license",
+                ],
+                "A lower row of the host's List: the audit grows the text until this element sits below the fold, where it cannot measure it (the group header's fixed-size glyph now scales and is no longer flagged); the AX3 and AX5 renders show it scaling."
+            ),
+            (
+                "Dynamic Type font sizes are partially unsupported", "", "Updates",
+                [
+                    "AccountAndLicense.signed-in", "AccountAndLicense.signed-in.pane",
+                    "AccountAndLicense.signed-in.channel-locked",
+                    "AccountAndLicense.signed-in.channel-license",
+                ],
+                "A lower row of the host's List: the audit grows the text until this element sits below the fold, where it cannot measure it (the group header's fixed-size glyph now scales and is no longer flagged); the AX3 and AX5 renders show it scaling."
             ),
             (
                 "Dynamic Type font sizes are partially unsupported", "", "",
@@ -82,8 +145,8 @@ final class KitRenderTests: XCTestCase {
                 "The audit names no element, so there is nothing to measure; every named element in these states is measured on its own render and passes, and the renders were checked by eye in both schemes (L, AX3, AX5, landscape)."
             ),
             (
-                "Hit area is too small", "-", "", ["Devices.renaming"],
-                "The audit names no element and no frame; the Cancel and Save buttons are 44 pt high and wide (checked on the render), and the field is a system text field."
+                "Element has no description", "other", "", ["Devices.renaming"],
+                "The rename field is focused on begin, so the system keyboard's prediction bar is on screen; its empty cells belong to the keyboard process, not the kit (the kit's own elements, Cancel, Save and the field, are named and at least 44 pt)."
             ),
             (
                 "Text clipped", "button", "", ["Welcome.default.extras"],
