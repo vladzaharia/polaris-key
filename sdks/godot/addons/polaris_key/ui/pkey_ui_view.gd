@@ -1534,10 +1534,9 @@ func _size_controls(n: Node) -> void:
 ## The width Godot before 4.5 adds to a Button's minimum for its icon (the leaves-the-app glyph, capped
 ## by `icon_max_width`) and the gap before it. That engine's Button keeps the full label and icon on one
 ## line, so a label measured without them wraps too late and the card overflows a phone (CI 4.4.1,
-## sign_in / native28). Godot 4.5 and later lay the icon out within the width, so nothing is added there.
+## sign_in / native28). Godot 4.5 and later lay the icon out within the width once a button wraps, but a button that does not wrap (the label measured here) still counts it in its minimum: 4.7.2, sign_in / native28 on the scrim path, 400 px on a 390 px screen.
 static func _icon_extent(b: Button) -> float:
-	var v := Engine.get_version_info()
-	if b.icon == null or int(v["major"]) * 100 + int(v["minor"]) >= 405:
+	if b.icon == null:
 		return 0.0
 	var iw := float(b.icon.get_width())
 	var cap := float(b.get_theme_constant("icon_max_width"))
