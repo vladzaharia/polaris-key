@@ -902,6 +902,7 @@
     "getIt.downloadAria": "{name} {product} {version} ({platform}용)",
     "license.developerFallback": "개발자",
     "license.developerFallbackCap": "개발자",
+    "license.channelIncludedByDev": "dev 채널에 포함돼요.",
     "getIt.device.macos": "Mac",
     "getIt.device.windows": "Windows PC",
     "getIt.device.linux": "Linux 컴퓨터",

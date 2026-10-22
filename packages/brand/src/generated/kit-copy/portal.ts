@@ -159,6 +159,7 @@ export type PortalCopyKey =
   | "getIt.downloadAria"
   | "license.developerFallback"
   | "license.developerFallbackCap"
+  | "license.channelIncludedByDev"
   | "getIt.device.macos"
   | "getIt.device.windows"
   | "getIt.device.linux"

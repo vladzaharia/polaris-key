@@ -144,6 +144,7 @@
   "getIt.downloadAria": "{name} {product} {version} ({platform}向け)",
   "license.developerFallback": "開発元",
   "license.developerFallbackCap": "開発元",
+  "license.channelIncludedByDev": "dev チャンネルに含まれます。",
   "getIt.device.macos": "Mac",
   "getIt.device.windows": "Windows PC",
   "getIt.device.linux": "Linux コンピューター",

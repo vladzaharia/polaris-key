@@ -4496,6 +4496,11 @@
       "role": "label",
       "note": "The customer portal's License section on a product page (PX-28a). Stands for the developer's name when the Worker has none, at the start of a sentence."
     },
+    "license.channelIncludedByDev": {
+      "value": "Included with dev.",
+      "role": "body",
+      "note": "The console's ChannelPicker: beta is ticked and locked while dev is chosen, because dev includes beta. Not a kit component."
+    },
     "getIt.device.macos": {
       "value": "Mac",
       "role": "label",

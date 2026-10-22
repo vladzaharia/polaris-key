@@ -88,6 +88,7 @@ import {
   type ManifestDistribution,
 } from "./distribution.js";
 import { globWork } from "./globWork.js";
+import { withIncludedChannels } from "./includedChannels.js";
 
 /**
  * The opt-in services and the `modules:` vocabulary come from the GENERATED service table
@@ -5288,7 +5289,9 @@ function normalizeTier(raw: unknown): ManifestTier | null {
     policyFingerprint: isOneOf(raw.policyFingerprint, FINGERPRINT_MODE_VALUES)
       ? raw.policyFingerprint
       : null,
-    channels: arrayAt(raw, "channels")?.filter(isString) ?? [],
+    channels: withIncludedChannels(
+      arrayAt(raw, "channels")?.filter(isString) ?? [],
+    ),
     minVersion: typeof raw.minVersion === "string" ? raw.minVersion : null,
     maxVersion: typeof raw.maxVersion === "string" ? raw.maxVersion : null,
     rank:
@@ -6694,6 +6697,7 @@ function add(
 
 // The release descriptor (P2-04): its contract, validator and helpers.
 export * from "./descriptor.js";
+export { withIncludedChannels } from "./includedChannels.js";
 export * from "./packages.js";
 // The one product slug rule (P0-14).
 export * from "./productSlug.js";
