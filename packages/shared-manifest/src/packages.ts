@@ -24,6 +24,7 @@ import { OCI_PACKAGE_RULES } from "./ecosystems/oci.js";
 import { PYPI_PACKAGE_RULES } from "./ecosystems/pypi.js";
 import {
   namespaceIsEmpty,
+  type DerivedNamespace,
   type PackageEcosystemRules,
 } from "./ecosystems/rules.js";
 import { SWIFT_PACKAGE_RULES } from "./ecosystems/swift.js";
@@ -37,6 +38,7 @@ export {
 export {
   namespaceIsEmpty,
   namespaceStrings,
+  type DerivedNamespace,
   type PackageEcosystemRules,
   type PackageNamespaceField,
 } from "./ecosystems/rules.js";
@@ -202,6 +204,19 @@ export function packageNamespaceProblem(
       ? (namespace as Record<string, unknown>)
       : {};
   return PACKAGE_ECOSYSTEM_RULES[ecosystem].namespace.problem(name, ns);
+}
+
+/**
+ * The narrowest namespace `ecosystem`'s feed fields can express for exactly `names`, the packages
+ * a manifest declares (F-34). `owner` is the product slug. Several npm or Swift scopes answer `{}`
+ * and an `ambiguous` reason; no names answer `{}`. Pure: nothing calls it yet.
+ */
+export function deriveFeedNamespace(
+  ecosystem: PackageEcosystem,
+  names: readonly string[],
+  owner: string,
+): DerivedNamespace {
+  return PACKAGE_ECOSYSTEM_RULES[ecosystem].namespace.derive(names, owner);
 }
 
 /** Is a feed's namespace empty, so the feed cannot be enabled? (OCI's never is.) */

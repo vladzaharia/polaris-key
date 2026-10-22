@@ -13016,8 +13016,11 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-manifest/dist/index.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-manifest/dist/chunk-GGLMZG7G.js
+// ../shared-manifest/dist/chunk-NYQMK6PG.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
+function sortedUnique(values) {
+  return [...new Set(values)].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+}
 function namespaceStrings(v) {
   return Array.isArray(v) ? v.filter((x) => typeof x === "string" && x !== "") : [];
 }
@@ -13058,6 +13061,15 @@ var GO_PACKAGE_RULES = {
       const prefixes = namespaceStrings(ns.modulePrefixes);
       if (prefixes.length === 0) return "the Go feed has no module prefixes";
       return prefixes.some((p) => name === p || name.startsWith(`${p}/`)) ? null : `${name} is not under ${prefixes.join(", ")}`;
+    },
+    // The exact module paths. The field is a prefix list, so a module also admits its
+    // sub-paths (`example.com/m` takes `example.com/m/sub`): the narrowest it expresses.
+    derive(names) {
+      const modules = sortedUnique(names.filter((n) => n !== ""));
+      return {
+        namespace: modules.length === 0 ? {} : { modulePrefixes: modules },
+        ambiguous: null
+      };
     }
   }
 };
@@ -13102,6 +13114,21 @@ var NPM_PACKAGE_RULES = {
       const scope = typeof ns.scope === "string" ? ns.scope.toLowerCase() : "";
       if (!scope) return "the npm feed has no scope set";
       return npmScope(name.toLowerCase()) === scope ? null : `${name} is not under the feed's scope ${scope}`;
+    },
+    derive(names) {
+      const scopes = sortedUnique(
+        names.flatMap((n) => {
+          const s = npmScope(n.toLowerCase());
+          return s ? [s] : [];
+        })
+      );
+      if (scopes.length === 0) return { namespace: {}, ambiguous: null };
+      if (scopes.length > 1)
+        return {
+          namespace: {},
+          ambiguous: `the packages span several npm scopes (${scopes.join(", ")}); a feed takes one`
+        };
+      return { namespace: { scope: scopes[0] }, ambiguous: null };
     }
   }
 };
@@ -13131,9 +13158,12 @@ var CARGO_PACKAGE_RULES = {
   ],
   namespace: {
     fields: {},
-    problem: () => null
+    problem: () => null,
+    // No namespace keys: nothing to derive.
+    derive: () => ({ namespace: {}, ambiguous: null })
   }
 };
+var GODOT_PUBLISHER = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 var GODOT_PACKAGE_RULES = {
   ecosystem: "godot",
   name: {
@@ -13148,9 +13178,19 @@ var GODOT_PACKAGE_RULES = {
   metadataKeys: ["displayName", "author", "description", "script"],
   namespace: {
     fields: {
-      publisher: { kind: "string", pattern: /^[a-z0-9][a-z0-9_-]{0,63}$/ }
+      publisher: { kind: "string", pattern: GODOT_PUBLISHER }
     },
-    problem: (_name, ns) => typeof ns.publisher === "string" && ns.publisher !== "" ? null : "the Godot feed has no publisher set"
+    problem: (_name, ns) => typeof ns.publisher === "string" && ns.publisher !== "" ? null : "the Godot feed has no publisher set",
+    // An addon id carries no publisher, so the publisher is the owner (the product slug).
+    derive(names, owner) {
+      if (names.length === 0) return { namespace: {}, ambiguous: null };
+      if (!GODOT_PUBLISHER.test(owner))
+        return {
+          namespace: {},
+          ambiguous: `the owner "${owner}" is not a valid Godot publisher`
+        };
+      return { namespace: { publisher: owner }, ambiguous: null };
+    }
   }
 };
 var MAVEN_PACKAGE_RULES = {
@@ -13179,6 +13219,17 @@ var MAVEN_PACKAGE_RULES = {
       if (prefixes.length === 0) return "the Maven feed has no group prefixes";
       const group = name.split(":")[0].toLowerCase();
       return prefixes.some((p) => group === p || group.startsWith(`${p}.`)) ? null : `${name}'s groupId is not under ${prefixes.join(", ")}`;
+    },
+    // The exact groupIds. The field is a prefix list, so a groupId also admits its subgroups
+    // (`com.acme` takes `com.acme.tools`): the narrowest the field expresses.
+    derive(names) {
+      const groups = sortedUnique(
+        names.map((n) => n.split(":")[0].toLowerCase()).filter((g) => g !== "")
+      );
+      return {
+        namespace: groups.length === 0 ? {} : { groupPrefixes: groups },
+        ambiguous: null
+      };
     }
   }
 };
@@ -13198,7 +13249,9 @@ var OCI_PACKAGE_RULES = {
   metadataKeys: ["mediaType", "platforms", "root"],
   namespace: {
     fields: {},
-    problem: () => null
+    problem: () => null,
+    // No namespace keys: nothing to derive.
+    derive: () => ({ namespace: {}, ambiguous: null })
   }
 };
 function pep503(name) {
@@ -13228,6 +13281,14 @@ var PYPI_PACKAGE_RULES = {
       if (names.length === 0 && prefixes.length === 0)
         return "the PyPI feed has no names or prefixes";
       return names.includes(norm) || prefixes.some((p) => norm.startsWith(p)) ? null : `${name} is not one of the feed's names or prefixes`;
+    },
+    // Exact `names`, never `prefixes` (a prefix would also take a sibling like `<name>-evil`).
+    derive(names) {
+      const exact = sortedUnique(names.map(pep503));
+      return {
+        namespace: exact.length === 0 ? {} : { names: exact },
+        ambiguous: null
+      };
     }
   }
 };
@@ -13252,6 +13313,18 @@ var SWIFT_PACKAGE_RULES = {
       const scope = typeof ns.scope === "string" ? ns.scope.toLowerCase() : "";
       if (!scope) return "the Swift feed has no scope set";
       return name.split(".")[0].toLowerCase() === scope ? null : `${name} is not under the feed's scope ${scope}`;
+    },
+    derive(names) {
+      const scopes = sortedUnique(
+        names.map((n) => n.split(".")[0].toLowerCase()).filter((s) => s !== "")
+      );
+      if (scopes.length === 0) return { namespace: {}, ambiguous: null };
+      if (scopes.length > 1)
+        return {
+          namespace: {},
+          ambiguous: `the packages span several Swift scopes (${scopes.join(", ")}); a feed takes one`
+        };
+      return { namespace: { scope: scopes[0] }, ambiguous: null };
     }
   }
 };

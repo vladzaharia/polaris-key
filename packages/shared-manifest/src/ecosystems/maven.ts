@@ -1,6 +1,10 @@
 /** Maven's ingest rules (F-07): `groupId:artifactId`, the groupId under the feed's prefixes. */
 
-import { namespaceStrings, type PackageEcosystemRules } from "./rules.js";
+import {
+  namespaceStrings,
+  sortedUnique,
+  type PackageEcosystemRules,
+} from "./rules.js";
 
 export const MAVEN_PACKAGE_RULES: PackageEcosystemRules<"maven"> = {
   ecosystem: "maven",
@@ -30,6 +34,19 @@ export const MAVEN_PACKAGE_RULES: PackageEcosystemRules<"maven"> = {
       return prefixes.some((p) => group === p || group.startsWith(`${p}.`))
         ? null
         : `${name}'s groupId is not under ${prefixes.join(", ")}`;
+    },
+    // The exact groupIds. The field is a prefix list, so a groupId also admits its subgroups
+    // (`com.acme` takes `com.acme.tools`): the narrowest the field expresses.
+    derive(names) {
+      const groups = sortedUnique(
+        names
+          .map((n) => n.split(":")[0]!.toLowerCase())
+          .filter((g) => g !== ""),
+      );
+      return {
+        namespace: groups.length === 0 ? {} : { groupPrefixes: groups },
+        ambiguous: null,
+      };
     },
   },
 };

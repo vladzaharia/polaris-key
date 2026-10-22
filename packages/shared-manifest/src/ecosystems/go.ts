@@ -13,7 +13,11 @@
  * case-insensitive file system, and `golang.org/x/mod` refuses such pairs in one build).
  */
 
-import { namespaceStrings, type PackageEcosystemRules } from "./rules.js";
+import {
+  namespaceStrings,
+  sortedUnique,
+  type PackageEcosystemRules,
+} from "./rules.js";
 
 /** One element after the first: letters, digits and `-._~`, never starting or ending with `.`. */
 const ELEMENT = "[A-Za-z0-9_~-](?:[A-Za-z0-9._~-]*[A-Za-z0-9_~-])?";
@@ -73,6 +77,15 @@ export const GO_PACKAGE_RULES: PackageEcosystemRules<"go"> = {
       return prefixes.some((p) => name === p || name.startsWith(`${p}/`))
         ? null
         : `${name} is not under ${prefixes.join(", ")}`;
+    },
+    // The exact module paths. The field is a prefix list, so a module also admits its
+    // sub-paths (`example.com/m` takes `example.com/m/sub`): the narrowest it expresses.
+    derive(names) {
+      const modules = sortedUnique(names.filter((n) => n !== ""));
+      return {
+        namespace: modules.length === 0 ? {} : { modulePrefixes: modules },
+        ambiguous: null,
+      };
     },
   },
 };
