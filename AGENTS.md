@@ -113,9 +113,9 @@ mise exec node@22 -- pnpm test
 
 ## The green gate
 
-Run these before proposing a change as done. They are what CI runs
-(`.github/workflows/ci.yml`), plus `pnpm format`, which CI does not run because `pnpm lint`
-already covers the source files.
+This is the full list, and it is what CI runs (`.github/workflows/ci.yml`), plus `pnpm format`,
+which CI does not run because `pnpm lint` already covers the source files. Locally, run only the
+steps your change touches (see Testing); CI runs the rest.
 
 ```sh
 pnpm build                       # build all JS packages (turbo)
@@ -400,10 +400,21 @@ independent work while a job runs.
 
 ## Testing
 
-Keep a work package well under an hour. Tests are a means, not the work: run scoped tests while
-building and run the gate once at hand-off.
+Keep a work package well under an hour. Tests are a means, not the work. Run only what your change
+touches:
 
-Use `$PKEY_LEAD/gate.sh` for the scoped gate. `$PKEY_LEAD` is the lead directory set in the owner's
+- the tests for the modules you changed (`vitest related <files>` or a file filter; pytest on the
+  affected test files; Gradle on the affected module; `swift test --filter`; the affected Godot
+  suites), never a repo-wide `pnpm test` or a whole SDK suite "once at the end";
+- `prettier --check` on the files you changed, not repo-wide `pnpm lint` or `pnpm format`;
+- `pnpm gen --check` only when you changed a generator input;
+- a wire or corpus change runs every SDK's conformance and transcript runners, filtered to them.
+
+CI runs the full matrix on the push to `main`.
+
+Use `$PKEY_LEAD/gate.sh` for the scoped gate: it diffs from the branch's merge base with staging,
+runs turbo on the changed packages and their dependents, and checks formatting on the changed files
+only. `$PKEY_LEAD` is the lead directory set in the owner's
 shell profile; `_mockups/` is its sibling. The gate retries a failed step once on its own. Fix the
 failure, then rerun only that step with `GATE_ONLY=<n>` or `GATE_FROM=<n>`; never rerun the whole
 gate for one failure.
@@ -413,8 +424,7 @@ get green.
 
 ## Review
 
-Reviewers never run the gate; the builder did. A fix round reruns only the failing steps and
-affected tests.
+Reviewers review the changed files only and never run the gate; the builder did. A fix round reruns only the failing steps and affected tests.
 
 Reviewers never block on conflicts with current `main`. Diff from the branch's merge base and note
 the conflict for the lead.
