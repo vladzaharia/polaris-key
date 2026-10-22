@@ -374,6 +374,14 @@ const TEXT200_CASES = [
   "global:platform-members?edit-areas",
   "global:platform-members?edit-roles",
 ];
+/** The Members drawer's views (ST-31.12). */
+const DRAWER_CASES = [
+  "global:platform-members?invite",
+  "global:platform-members?invite-filled",
+  "global:platform-members?add-role",
+  "global:platform-members?edit-areas",
+  "global:platform-members?edit-roles",
+];
 /** The console's content column at its widest (BRAND.md §7.6). */
 const CONSOLE_COLUMN_MAX = 1760;
 /** `PK_LAYOUT_VIEWPORTS=1280x720,1920x1080` swaps the gate viewports for others locally. */
@@ -454,6 +462,16 @@ const VIEWPORTS: {
       // 200 % text on a phone (WCAG 1.4.4; a text-only zoom keeps the window): Home, and the
       // Settings tabs and a licence record, where a word broke into letters, a control ran off
       // the screen and a date input spilled.
+      // ST-31.12: the Members drawer at 150 % text on the two small phones (the areas grid once
+      // overlapped its labels there).
+      ...[
+        { label: "phone-text150-390", width: 390, height: 844 },
+        { label: "phone-text150-360", width: 360, height: 780 },
+      ].map((v) => ({
+        ...v,
+        rootFontPercent: 150,
+        only: DRAWER_CASES,
+      })),
       {
         label: "phone-text200",
         width: 390,
@@ -757,13 +775,20 @@ async function openEditDrawer(page: Page) {
 async function primaryInView(page: Page): Promise<void> {
   const ok = await page.evaluate(() => {
     const d = document.querySelector("[role=dialog]");
-    const buttons = d ? [...d.querySelectorAll("button")] : [];
-    const last = buttons.at(-1);
-    if (!last) return "no footer button";
-    const r = last.getBoundingClientRect();
-    return r.top >= 0 && r.bottom <= window.innerHeight + 0.5 && r.width > 0
-      ? "ok"
-      : `primary action out of view (${Math.round(r.top)}..${Math.round(r.bottom)} of ${window.innerHeight})`;
+    const footer = d?.querySelector("[data-drawer-footer]");
+    const buttons = footer ? [...footer.querySelectorAll("button")] : [];
+    if (buttons.length === 0) return "no footer button";
+    // Both buttons of the footer row (Cancel and the primary) are fully inside the window.
+    for (const b of buttons.slice(-2)) {
+      const r = b.getBoundingClientRect();
+      if (!(r.top >= 0 && r.bottom <= window.innerHeight + 0.5 && r.width > 0))
+        return `"${b.textContent}" out of view (${Math.round(r.top)}..${Math.round(r.bottom)} of ${window.innerHeight})`;
+    }
+    // Nothing scrolls sideways inside the drawer body.
+    const body = d?.querySelector<HTMLElement>(".pk-scroll");
+    if (body && body.scrollWidth > body.clientWidth + 1)
+      return `the drawer body scrolls sideways by ${body.scrollWidth - body.clientWidth}px`;
+    return "ok";
   });
   if (ok !== "ok") throw new Error(ok);
 }

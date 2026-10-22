@@ -5,7 +5,14 @@
  */
 
 import * as React from "react";
-import { X } from "lucide-react";
+import {
+  LayoutDashboard,
+  Lock,
+  Settings,
+  Users,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { RadioGroup } from "radix-ui";
 import type { AreaId, Me, Member, MemberRole } from "../../api.js";
 import { cn } from "../../lib/cn.js";
@@ -352,15 +359,38 @@ export function RadioRows<V extends string>({
   );
 }
 
-const WITH_GLYPH = (a: AreaId): React.ReactNode => {
-  const accent = AREA_ACCENTS[a];
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      {accent ? <ServiceGlyph id={accent as "core"} size={16} /> : null}
-      {AREA_NAMES[a]}
-    </span>
-  );
+/** Areas that are not a service get a glyph of their own, so the cube is not shared and every label aligns. */
+const OWN_GLYPH: Partial<Record<AreaId, LucideIcon>> = {
+  core: LayoutDashboard,
+  keys: Lock,
+  settings: Settings,
+  members: Users,
 };
+
+function AreaGlyph({ area }: { area: AreaId }): React.ReactElement | null {
+  const Own = OWN_GLYPH[area];
+  if (Own)
+    return (
+      <span data-service="core" className="inline-flex shrink-0 text-accent">
+        <Own aria-hidden className="size-4" />
+      </span>
+    );
+  const accent = AREA_ACCENTS[area];
+  // Sized in rem, so the glyph grows with the text.
+  return accent ? (
+    <ServiceGlyph id={accent as "core"} size={16} className="[&_svg]:size-4" />
+  ) : null;
+}
+
+const WITH_GLYPH = (a: AreaId, note?: string): React.ReactNode => (
+  <span className="inline-flex min-w-0 items-center gap-1.5">
+    <AreaGlyph area={a} />
+    <span className="min-w-0 [overflow-wrap:anywhere]">
+      {AREA_NAMES[a]}
+      {note ? <span className="text-fg-muted"> · {note}</span> : null}
+    </span>
+  </span>
+);
 
 export function RoleFields({
   draft,
@@ -626,6 +656,7 @@ export function AreaPicker({
                   offered={offered}
                   areas={draft.areas}
                   onChange={(areas) => onChange({ ...draft, areas })}
+                  offNote={`Off for ${productLabel}`}
                 />
                 {allTicked ? (
                   <p className="text-xs text-fg-muted">
@@ -643,7 +674,9 @@ export function AreaPicker({
       ) : null}
       {hint ? <p className="text-xs text-fg-muted">{hint}</p> : null}
       <span className="sr-only" aria-live="polite">
-        {draft.areaMode === "some" ? `${ticked.length} areas picked` : ""}
+        {draft.areaMode === "some"
+          ? `${ticked.length} ${ticked.length === 1 ? "area" : "areas"} picked`
+          : ""}
       </span>
     </div>
   );
@@ -656,6 +689,7 @@ export function AreaChecks({
   areas,
   onChange,
   legend,
+  offNote,
 }: {
   me: Me | undefined;
   slug: string;
@@ -663,20 +697,28 @@ export function AreaChecks({
   areas: readonly AreaId[];
   onChange: (a: AreaId[]) => void;
   legend?: string;
+  /** Said beside an area the product no longer runs (one the person still holds). */
+  offNote?: string;
 }): React.ReactElement {
+  // What is held shows even when its feature is off, so it can be taken away.
+  const shown = PRODUCT_AREAS.filter(
+    (a) => offered.includes(a) || areas.includes(a),
+  );
   return (
     <div
       role="group"
       aria-label={legend ?? "Pick the areas"}
-      className="grid grid-cols-2 gap-x-3 gap-y-2"
+      className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-x-3 gap-y-2"
     >
-      {offered.map((a) => {
+      {shown.map((a) => {
+        const off = !offered.includes(a);
         const why =
           slug === "" ? undefined : cannotGive(me, "product_admin", slug, [a]);
         return (
           <Checkbox
             key={a}
-            label={WITH_GLYPH(a)}
+            className="min-w-0"
+            label={WITH_GLYPH(a, off ? offNote : undefined)}
             checked={areas.includes(a)}
             disabled={why !== undefined}
             onCheckedChange={(on) =>

@@ -582,12 +582,10 @@ describe("Members: invite", () => {
     const user = userEvent.setup();
     open();
     const drawer = await openInvite(user);
-    expect(
-      within(drawer).getByText(
-        /They will open the console and see nothing else/,
-      ),
-    ).toBeTruthy();
     await typeEmails(user, drawer, "hana@example.com theo@example.com ");
+    expect(
+      within(drawer).getByText(/hana@ and theo@ will open the console/),
+    ).toBeTruthy();
     await user.click(
       within(drawer).getByRole("radio", { name: /^Product admin/ }),
     );
@@ -1719,6 +1717,191 @@ describe("Members: Edit roles, the fix round", () => {
       expect(document.activeElement?.textContent).toBe(
         "Add a role for Kenji Mori",
       ),
+    );
+  });
+});
+
+describe("Members: the second fix round", () => {
+  const lucia: Member = {
+    memberId: "mbr_lucia",
+    name: "Lucía Ortega",
+    email: "lucia@example.com",
+    lastSignInAt: null,
+    disabled: false,
+    you: false,
+    roles: [
+      {
+        role: "product_admin",
+        scope: "product:acme",
+        areas: ["ship", "commerce"] as AreaId[],
+        source: "grant",
+        bindingId: "b_lucia_acme",
+        grantedBy: { name: "Ada Lovelace" },
+        grantedAt: NOW - 1000,
+      },
+    ],
+  };
+
+  it("lists a held area whose feature is off, ticked and noted, so it can be unticked", async () => {
+    const user = userEvent.setup();
+    answer = view({ members: [ada, lucia] });
+    const log = boot("#/platform/members", {
+      me: asRole("superadmin"),
+      extra: {
+        [PATH]: () => answer,
+        "PATCH /manage/api/bindings/b_lucia_acme": { ok: true },
+      },
+      perProduct: { acme: { ...ALL_ON, commerce: { enabled: false } } },
+    });
+    const drawer = await openEdit(user, "Lucía Ortega");
+    await user.click(
+      within(drawer).getByRole("button", { name: /Edit areas of Acme admin/ }),
+    );
+    const commerce = await within(drawer).findByRole("checkbox", {
+      name: /Commerce/,
+    });
+    expect(commerce.getAttribute("aria-checked")).toBe("true");
+    expect(within(drawer).getByText(/Off for Acme/)).toBeTruthy();
+    expect(within(drawer).getByText("1 area picked").textContent).toBeTruthy();
+    await user.click(commerce);
+    await user.click(
+      within(drawer).getByRole("button", { name: "Save areas" }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "PATCH")?.json).toEqual({
+        areas: ["ship"],
+      }),
+    );
+  });
+
+  it("confirms Add a role inside the drawer, with an Undo that works on the first click", async () => {
+    const user = userEvent.setup();
+    const log = open({
+      [`POST ${BINDINGS}`]: { ok: true, binding: { bindingId: "b_new" } },
+      "DELETE /manage/api/bindings/b_new": { ok: true },
+    });
+    const drawer = await openEdit(user, "Kenji Mori");
+    await user.click(
+      within(drawer).getByRole("button", { name: "Add a role" }),
+    );
+    await user.click(
+      within(drawer).getByRole("radio", { name: /^Platform admin/ }),
+    );
+    await user.type(
+      within(drawer).getByLabelText(/Type the role to confirm/),
+      "Platform admin",
+    );
+    await user.click(within(drawer).getByRole("button", { name: "Add role" }));
+    const status = await within(drawer).findByText(
+      "Kenji Mori is now a Platform admin",
+    );
+    expect(status).toBeTruthy();
+    // No toast beside the open drawer.
+    expect(document.querySelector("[data-sonner-toast]")).toBeNull();
+    await user.click(within(drawer).getByRole("button", { name: "Undo" }));
+    await waitFor(() =>
+      expect(
+        log.calls.filter(
+          (c) => c.method === "DELETE" && c.path.endsWith("b_new"),
+        ).length,
+      ).toBe(1),
+    );
+    expect(
+      await within(drawer).findByText("Took the role back from Kenji Mori"),
+    ).toBeTruthy();
+  });
+
+  it("asks All products admin for the word only when an edit widens it", async () => {
+    const user = userEvent.setup();
+    const wide: Member = {
+      ...kenji,
+      memberId: "mbr_w",
+      name: "Wes Wide",
+      email: "wes@example.com",
+      roles: [
+        {
+          role: "product_admin",
+          scope: "products:*",
+          areas: ["ship", "commerce"] as AreaId[],
+          source: "grant",
+          bindingId: "b_wes",
+          grantedBy: null,
+          grantedAt: NOW,
+        },
+      ],
+    };
+    answer = view({ members: [ada, wide] });
+    const log = open({ "PATCH /manage/api/bindings/b_wes": { ok: true } });
+    const drawer = await openEdit(user, "Wes Wide");
+    await user.click(
+      within(drawer).getByRole("button", {
+        name: /Edit areas of All products/,
+      }),
+    );
+    // Narrowing: no word, one click.
+    await user.click(
+      within(drawer).getByRole("checkbox", { name: /Commerce/ }),
+    );
+    expect(
+      within(drawer).queryByLabelText(/Type the role to confirm/),
+    ).toBeNull();
+    // Widening: the word.
+    await user.click(within(drawer).getByRole("checkbox", { name: /Core/ }));
+    expect(
+      within(drawer).getByLabelText(/Type the role to confirm/),
+    ).toBeTruthy();
+    await user.click(within(drawer).getByRole("checkbox", { name: /Core/ }));
+    await user.click(
+      within(drawer).getByRole("button", { name: "Save areas" }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "PATCH")?.json).toEqual({
+        areas: ["ship"],
+      }),
+    );
+  });
+
+  it("says what a member holds on some areas, and what is added", async () => {
+    const user = userEvent.setup();
+    answer = view({ members: [ada, lucia] });
+    open();
+    const drawer = await openInvite(user);
+    await pickProduct(user, drawer, "Acme");
+    await typeEmails(user, drawer, "lucia@example.com ");
+    expect(
+      within(drawer).getByText(
+        "Lucía Ortega already has Acme admin (Ship builds and Commerce). Adds the rest.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("drops the sentence when nobody will be sent anything", async () => {
+    const user = userEvent.setup();
+    open();
+    const drawer = await openInvite(user);
+    await typeEmails(user, drawer, "ada@x.io ");
+    expect(footerOf(drawer).textContent).not.toMatch(/will open the console/);
+    expect(footerOf(drawer).textContent).not.toMatch(/Expires/);
+  });
+
+  it("does not say Superadmins are told when email is off, in Edit roles too", async () => {
+    const user = userEvent.setup();
+    open({
+      "/manage/api/platform/operations": {
+        probes: { email: { bound: false } },
+      },
+    });
+    const drawer = await openEdit(user, "Kenji Mori");
+    await user.click(
+      within(drawer).getByRole("button", { name: "Add a role" }),
+    );
+    await waitFor(() =>
+      expect(footerOf(drawer).textContent).toContain(
+        "Superadmins see it in Activity",
+      ),
+    );
+    expect(footerOf(drawer).textContent).not.toContain(
+      "Every Superadmin is told",
     );
   });
 });

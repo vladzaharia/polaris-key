@@ -119,6 +119,9 @@ function nowWords(name: string, role: string): string {
     : `${name} is now ${article(role)}`;
 }
 
+const areaWordsOf = (a: readonly AreaId[]): string =>
+  listOf(PRODUCT_AREAS.filter((x) => a.includes(x)).map((x) => AREA_NAMES[x]));
+
 const sameDraft = (a: RoleDraft, b: RoleDraft): boolean =>
   a.choice === b.choice &&
   a.product === b.product &&
@@ -204,6 +207,12 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
   const [links, setLinks] = React.useState<InviteResult | null>(null);
   const [removing, setRemoving] = React.useState<MemberRole | null>(null);
   const [askBack, setAskBack] = React.useState(false);
+  // Confirmations while the drawer is open sit in it (a toast beside a modal cannot be reached).
+  const [notice, setNotice] = React.useState<{
+    text: string;
+    undo?: () => void;
+    retry?: () => void;
+  } | null>(null);
   const ids = React.useId();
   const wordRef = React.useRef<HTMLInputElement>(null);
 
@@ -219,7 +228,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
   const ops = useQuery({
     queryKey: qk.platformOperations(),
     queryFn: () => api.platformOperations(),
-    enabled: open && !editing,
+    enabled: open,
     retry: false,
     staleTime: 60_000,
   });
@@ -241,6 +250,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
       setError(null);
       setPending(false);
       setAskBack(false);
+      setNotice(null);
       const saved = readStash(DRAWER_KEY, true);
       const f = saved?.fields;
       const mine = f && (f.member ?? "") === (member?.memberId ?? "");
@@ -358,12 +368,19 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
     const k = e.toLowerCase();
     const m = byEmail.get(k);
     if (k === selfEmail) return [];
-    if (m)
+    if (m) {
+      if (holds(m, grant))
+        return [`${m.name || m.email} already has ${roleText}.`];
+      const part = m.roles.find(
+        (r) =>
+          grant && r.role === grant.role && r.scope === grant.scope && r.areas,
+      );
       return [
-        holds(m, grant)
-          ? `${m.name || m.email} already has ${roleText}.`
+        part
+          ? `${m.name || m.email} already has ${roleText} (${areaWordsOf(part.areas!)}). Adds the rest.`
           : `${m.name || m.email} is a member. Adds ${roleText}.`,
       ];
+    }
     if (waiting.has(k))
       return [`${e} has an invitation waiting. Sending renews it.`];
     return [];
@@ -375,16 +392,21 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
       ? (member?.roles.find((r) => r.bindingId === view.bindingId) ?? null)
       : null;
   const areaSlug = areaRole ? (productOfScope(areaRole.scope) ?? "") : "";
-  const areaOffer = useOfferedAreas(areaSlug).offered;
+  const areasL2 = view.kind === "areas" && areaSlug === "";
   const areasSeed = (r: MemberRole): RoleDraft => ({
     choice: r.scope === "products:*" ? "all_products" : "product_admin",
     product: productOfScope(r.scope) ?? "",
     areaMode: r.areas === null ? "all" : "some",
     areas: r.areas ?? [],
   });
-  const areasPicked =
-    draft.areaMode === "all" ||
-    draft.areas.some((a) => (areaSlug === "" ? true : areaOffer.includes(a)));
+  const areasPicked = draft.areaMode === "all" || draft.areas.length > 0;
+  // The All products role asks for the word only when the edit widens it (the Worker's rule).
+  const widens =
+    areasL2 &&
+    !!areaRole &&
+    areaRole.areas !== null &&
+    (draft.areaMode === "all" ||
+      draft.areas.some((a) => !areaRole.areas!.includes(a)));
   const areasBody = {
     areas:
       draft.areaMode === "all"
@@ -398,7 +420,6 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
         : "Only a Superadmin can change All products admin."
       : cannotGive(me, "product_admin", areaSlug, areasBody.areas)
     : undefined;
-  const areasL2 = view.kind === "areas" && areaSlug === "";
 
   // ── the footer's one action ──────────────────────────────────────────────────────────────
   const emailOff = !editing && !emailOn && adding > 0;
@@ -445,7 +466,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
     rest = areasPicked && areasWhy === undefined;
     why = !areasPicked ? "Choose at least one area" : areasWhy;
   }
-  const needWord = l2 || areasL2;
+  const needWord = view.kind === "areas" ? widens : l2;
   const word = areasL2 ? WORD.all_products : WORD[draft.choice];
   const wordOk = !needWord || typed.trim().toLowerCase() === word.toLowerCase();
   const ready = rest && wordOk;
@@ -485,6 +506,22 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
     setView({ kind: "list" });
   };
 
+  /** Undo from the notice: the drawer is modal, so the answer stays in it too. */
+  const undoInline = async (id: string): Promise<void> => {
+    try {
+      await mutate("revokeBinding", id);
+    } catch (e) {
+      if (!(e instanceof ApiError && e.status === 404)) {
+        setNotice({
+          text: `Couldn't take the role back from ${name}.`,
+          retry: () => void undoInline(id),
+        });
+        return;
+      }
+    }
+    setNotice({ text: `Took the role back from ${name}` });
+  };
+
   const save = async (): Promise<void> => {
     if (pending) return;
     if (stepUp) {
@@ -509,6 +546,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
     }
     if (!ready) return;
     setError(null);
+    setNotice(null);
     setPending(true);
     try {
       if (!editing) await sendInvites();
@@ -518,28 +556,18 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
           member: member!.memberId,
         });
         const bindingId = r?.binding?.bindingId;
-        toast.success(nowWords(name, roleText), {
-          ...(bindingId
-            ? {
-                action: {
-                  label: "Undo",
-                  onClick: () =>
-                    void takeBack(
-                      [{ id: bindingId, label: name, kind: "updated" }],
-                      "Role taken back",
-                    ),
-                },
-              }
-            : {}),
-        });
         toList();
+        setNotice({
+          text: nowWords(name, roleText),
+          ...(bindingId ? { undo: () => void undoInline(bindingId) } : {}),
+        });
       } else if (view.kind === "areas") {
         await mutate("editBindingAreas", view.bindingId, {
           ...areasBody,
-          ...(areasL2 ? { confirm: "L2" as const } : {}),
+          ...(widens ? { confirm: "L2" as const } : {}),
         });
-        toast.success("Areas saved");
         toList();
+        setNotice({ text: "Areas saved" });
       }
       setPending(false);
     } catch (e) {
@@ -631,7 +659,9 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
           productLabel,
           areaWords,
         );
-  const showSentence = !editing || view.kind === "add";
+  // Nothing to say when nobody will be sent anything.
+  const showSentence =
+    (!editing && sendable.length > 0) || (editing && view.kind === "add");
   const lastRole = removing !== null && (member?.roles.length ?? 0) === 1;
 
   return (
@@ -707,75 +737,97 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
               />
             </>
           ) : view.kind === "list" ? (
-            <ul className="divide-y divide-border">
-              {(member?.roles ?? []).map((r, i) => {
-                const wide = r.scope === "products:*";
-                const narrowable =
-                  r.role === "product_admin" &&
-                  r.bindingId !== null &&
-                  (r.scope.startsWith("product:") ||
-                    (wide && r.areas !== null));
-                const whyTake = cannotTake(me, r, productName);
-                const whyAreas = !narrowable
-                  ? undefined
-                  : wide
-                    ? isSuperadmin(me)
-                      ? undefined
-                      : "Only a Superadmin can change All products admin."
-                    : cannotEditAreas(me, r, productName);
-                const rn = roleName(r, productName);
-                // One reason per row: the first thing it cannot do.
-                const rowWhy =
-                  writeReason ??
-                  (whyTake !== undefined &&
-                  (!narrowable || whyAreas !== undefined)
-                    ? whyTake
-                    : undefined);
-                return (
-                  <li
-                    key={r.bindingId ?? `root-${i}`}
-                    className="grid gap-x-4 gap-y-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
-                  >
-                    <div className="min-w-0 space-y-1">
-                      <RoleSet role={r} productName={productName} />
-                      <p className="text-xs text-fg-muted">{sourceText(r)}</p>
-                      {rowWhy ? (
-                        <p className="text-xs text-fg-muted">{rowWhy}</p>
-                      ) : null}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {narrowable ? (
+            <>
+              {notice ? (
+                <div
+                  role="status"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-surface-sunken p-2.5 text-sm"
+                >
+                  <p className="min-w-0 text-fg-strong">{notice.text}</p>
+                  {notice.undo || notice.retry ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={notice.undo ?? notice.retry}
+                    >
+                      {notice.undo ? "Undo" : "Retry"}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+              <ul className="divide-y divide-border">
+                {(member?.roles ?? []).map((r, i) => {
+                  const wide = r.scope === "products:*";
+                  const narrowable =
+                    r.role === "product_admin" &&
+                    r.bindingId !== null &&
+                    (r.scope.startsWith("product:") ||
+                      (wide && r.areas !== null));
+                  const whyTake = cannotTake(me, r, productName);
+                  const whyAreas = !narrowable
+                    ? undefined
+                    : wide
+                      ? isSuperadmin(me)
+                        ? undefined
+                        : "Only a Superadmin can change All products admin."
+                      : cannotEditAreas(me, r, productName);
+                  const rn = roleName(r, productName);
+                  // One reason per row: the first thing it cannot do.
+                  const rowWhy =
+                    writeReason ??
+                    (whyTake !== undefined &&
+                    (!narrowable || whyAreas !== undefined)
+                      ? whyTake
+                      : undefined);
+                  return (
+                    <li
+                      key={r.bindingId ?? `root-${i}`}
+                      className="grid gap-x-4 gap-y-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
+                    >
+                      <div className="min-w-0 space-y-1">
+                        <RoleSet role={r} productName={productName} />
+                        <p className="text-xs text-fg-muted">{sourceText(r)}</p>
+                        {rowWhy ? (
+                          <p className="text-xs text-fg-muted">{rowWhy}</p>
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {narrowable ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={whyAreas !== undefined || !!writeReason}
+                            disabledReason={writeReason ?? whyAreas}
+                            onClick={() => {
+                              setDraft(areasSeed(r));
+                              setTyped("");
+                              setError(null);
+                              setView({
+                                kind: "areas",
+                                bindingId: r.bindingId!,
+                              });
+                            }}
+                            aria-label={`Edit areas of ${rn}`}
+                          >
+                            Edit areas
+                          </Button>
+                        ) : null}
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={whyAreas !== undefined || !!writeReason}
-                          disabledReason={writeReason ?? whyAreas}
-                          onClick={() => {
-                            setDraft(areasSeed(r));
-                            setTyped("");
-                            setError(null);
-                            setView({ kind: "areas", bindingId: r.bindingId! });
-                          }}
-                          aria-label={`Edit areas of ${rn}`}
+                          disabled={whyTake !== undefined || !!writeReason}
+                          disabledReason={writeReason ?? whyTake}
+                          onClick={() => setRemoving(r)}
+                          aria-label={`Remove ${rn}`}
                         >
-                          Edit areas
+                          Remove
                         </Button>
-                      ) : null}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={whyTake !== undefined || !!writeReason}
-                        disabledReason={writeReason ?? whyTake}
-                        onClick={() => setRemoving(r)}
-                        aria-label={`Remove ${rn}`}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
           ) : view.kind === "add" ? (
             <RoleFields
               draft={draft}
@@ -831,76 +883,84 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
 
         <div
           data-drawer-footer=""
-          className="max-h-[55%] shrink-0 space-y-2 overflow-y-auto border-t border-border px-4 py-3 lg:px-6"
+          className="flex max-h-[55%] shrink-0 flex-col border-t border-border px-4 py-3 lg:px-6"
         >
-          {askBack ? (
-            <DiscardStrip
-              className="rounded-md border px-3"
-              onKeep={() => setAskBack(false)}
-              onDiscard={toList}
-            />
-          ) : null}
-          {err ? (
-            <div
-              id={errorId}
-              role="alert"
-              className="flex gap-2 rounded-md border border-danger-border bg-danger-subtle p-2.5 text-sm"
-            >
-              <CircleAlert
-                aria-hidden
-                className="mt-0.5 size-4 shrink-0 text-danger"
+          {/* What can scroll; the buttons below never do. */}
+          <div className="min-h-0 space-y-2 overflow-y-auto [&:not(:empty)]:pb-2">
+            {askBack ? (
+              <DiscardStrip
+                className="rounded-md border px-3"
+                onKeep={() => setAskBack(false)}
+                onDiscard={toList}
               />
-              <div className="space-y-0.5">
-                <p className="font-semibold text-fg-strong">{err.title}</p>
-                {err.description ? (
-                  <p className="text-fg">{err.description}</p>
-                ) : null}
-                <CopyDetails copy={err} />
+            ) : null}
+            {err ? (
+              <div
+                id={errorId}
+                role="alert"
+                className="flex gap-2 rounded-md border border-danger-border bg-danger-subtle p-2.5 text-sm"
+              >
+                <CircleAlert
+                  aria-hidden
+                  className="mt-0.5 size-4 shrink-0 text-danger"
+                />
+                <div className="space-y-0.5">
+                  <p className="font-semibold text-fg-strong">{err.title}</p>
+                  {err.description ? (
+                    <p className="text-fg">{err.description}</p>
+                  ) : null}
+                  <CopyDetails copy={err} />
+                </div>
               </div>
-            </div>
-          ) : null}
-          {stepUp ? (
-            <div
-              id={errorId}
-              role="status"
-              className="flex gap-2 rounded-md border border-border bg-surface-sunken p-2.5 text-sm"
-            >
-              <Fingerprint
-                aria-hidden
-                className="mt-0.5 size-4 shrink-0 text-fg-muted"
-              />
-              <div className="space-y-0.5">
-                <p className="font-semibold text-fg-strong">
-                  Sign in again to confirm it&apos;s you
-                </p>
-                <p className="text-fg">
-                  Your changes are kept.
-                  {typeof me?.authAt === "number"
-                    ? ` You signed in ${formatRelative(me.authAt * 1000)}.`
-                    : ""}
-                </p>
+            ) : null}
+            {stepUp ? (
+              <div
+                id={errorId}
+                role="status"
+                className="flex gap-2 rounded-md border border-border bg-surface-sunken p-2.5 text-sm"
+              >
+                <Fingerprint
+                  aria-hidden
+                  className="mt-0.5 size-4 shrink-0 text-fg-muted"
+                />
+                <div className="space-y-0.5">
+                  <p className="font-semibold text-fg-strong">
+                    Sign in again to confirm it&apos;s you
+                  </p>
+                  <p className="text-fg">
+                    Your changes are kept.
+                    {typeof me?.authAt === "number"
+                      ? ` You signed in ${formatRelative(me.authAt * 1000)}.`
+                      : ""}
+                  </p>
+                </div>
               </div>
-            </div>
-          ) : null}
-          {showSentence && sentence ? (
-            <div className="space-y-1 rounded-md border border-border bg-surface-sunken p-2.5 text-sm">
-              <p className="text-fg-strong" aria-live="polite">
-                {sentence}
-              </p>
-              <ul className="flex flex-wrap gap-x-4 text-xs text-fg-muted">
-                {!editing ? (
-                  <li>Expires {expiresText(Date.now() + 7 * 86_400_000)}</li>
-                ) : null}
-                <li>
-                  {emailOff ? "Nobody is emailed" : "Every Superadmin is told"}
-                </li>
-              </ul>
-            </div>
-          ) : null}
-          {reasonText && !stepUp ? (
-            <p className="text-xs text-fg-muted sm:hidden">{reasonText}</p>
-          ) : null}
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            ) : null}
+            {showSentence && sentence ? (
+              <div className="space-y-1 rounded-md border border-border bg-surface-sunken p-2.5 text-sm">
+                <p className="text-fg-strong" aria-live="polite">
+                  {sentence}
+                </p>
+                <ul className="flex flex-wrap gap-x-4 text-xs text-fg-muted">
+                  {!editing ? (
+                    <li>Expires {expiresText(Date.now() + 7 * 86_400_000)}</li>
+                  ) : null}
+                  {emailOn ? (
+                    <li>Every Superadmin is told</li>
+                  ) : (
+                    <>
+                      {emailOff ? <li>Nobody is emailed</li> : null}
+                      <li>Superadmins see it in Activity</li>
+                    </>
+                  )}
+                </ul>
+              </div>
+            ) : null}
+            {reasonText && !stepUp ? (
+              <p className="text-xs text-fg-muted sm:hidden">{reasonText}</p>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             {editing && view.kind !== "list" ? (
               <Button
                 variant="outline"
@@ -979,7 +1039,8 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
           } catch (e) {
             if (!(e instanceof ApiError && e.status === 404)) throw e;
           }
-          toast.success(lastRole ? `Removed ${name}` : "Role removed");
+          // The drawer is open behind this dialog: say it there, not in a toast.
+          setNotice({ text: lastRole ? `Removed ${name}` : "Role removed" });
         }}
       />
       <InviteLinksDialog

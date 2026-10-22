@@ -212,24 +212,32 @@ export function AppToaster({
               right: `calc(${drawer}rem + 24px)`,
             },
           }
-        : phoneBottom
+        : drawer !== null
           ? {
-              // The portal's toasts sit inside its content column (82rem, 1.5rem gutters), not the window's edge.
-              offset: {
-                bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 24px)`,
-                right: "max(1.5rem, calc((100% - 82rem) / 2 + 1.5rem))",
-              },
-              mobileOffset: { bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 16px)` },
+              // The full-screen drawer's header stays clear.
+              offset: { top: "5.5rem" },
+              mobileOffset: { top: "5.5rem" },
             }
-          : {
-              // Above a sticky save bar while one is up.
-              offset: {
-                bottom: `calc(24px + var(${SAVE_BAR_INSET_VAR}, 0px))`,
-              },
-              mobileOffset: {
-                bottom: `calc(16px + var(${SAVE_BAR_INSET_VAR}, 0px))`,
-              },
-            })}
+          : phoneBottom
+            ? {
+                // The portal's toasts sit inside its content column (82rem, 1.5rem gutters), not the window's edge.
+                offset: {
+                  bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 24px)`,
+                  right: "max(1.5rem, calc((100% - 82rem) / 2 + 1.5rem))",
+                },
+                mobileOffset: {
+                  bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 16px)`,
+                },
+              }
+            : {
+                // Above a sticky save bar while one is up.
+                offset: {
+                  bottom: `calc(24px + var(${SAVE_BAR_INSET_VAR}, 0px))`,
+                },
+                mobileOffset: {
+                  bottom: `calc(16px + var(${SAVE_BAR_INSET_VAR}, 0px))`,
+                },
+              })}
       visibleToasts={3}
       // Sonner's own sheet sets ui-sans-serif on the toaster; the toast reads in the app's face.
       style={{ fontFamily: "inherit" }}
