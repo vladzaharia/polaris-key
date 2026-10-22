@@ -1702,6 +1702,26 @@ msgstr "Zum Synchronisieren anmelden"
 msgid "about.title"
 msgstr "Über {product}"
 
+#. About
+#. About: product and build information. The bare section label in a navigation list; the product name is not repeated.
+msgid "about.nav"
+msgstr "Info"
+
+#. Privacy
+#. About: product and build information. Opens the developer's privacy policy.
+msgid "about.privacy"
+msgstr "Datenschutz"
+
+#. Get help
+#. About: product and build information. Opens the developer's support page.
+msgid "about.support"
+msgstr "Hilfe erhalten"
+
+#. macos: Get Help
+msgctxt "macos"
+msgid "about.support"
+msgstr "Hilfe erhalten"
+
 #. Version {version}
 #. About: product and build information. Arguments: {version} = a version string such as 2.4.1.
 msgid "about.version"
