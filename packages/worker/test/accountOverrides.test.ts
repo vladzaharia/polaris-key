@@ -12,8 +12,8 @@
  *   4. a device on a floating licence receives no account layer; its licence's overrides are in
  *      the report with an audit row;
  *   5. secret values never appear in the report;
- *   6. PUT /licenses/<id>/overrides refuses config and secrets after the run and accepts
- *      entitlements, on owned and floating licences (decision 20);
+ *   6. PUT /licenses/<id>/overrides accepts config, secrets and entitlements after the run,
+ *      on owned and floating licences (U-27.1);
  *   7. an account merge copies and reports colliding account overrides (§5.5);
  *   8. the signed corpus is unchanged: asserted by `pnpm gen corpus --check` (the gate), since
  *      no signed shape, claim or fixture changes here; the config document's shape is checked in
@@ -425,10 +425,10 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
         ?.value,
     ).toBe(sealedToken);
     const after = await configDoc(w, token, RUN_AT);
-    // The owner's secrets no longer reach a key-only device; config is unchanged.
+    // U-27.1: the licence layer is always read, so the column's config and secrets still reach
+    // the key-only device until the sweep empties them.
     expect(after.doc.config).toEqual(before.doc.config);
-    expect(after.doc.secrets).toEqual({});
-    // And the device's licence no longer delivers config or secrets itself (step 5).
+    expect(after.doc.secrets["api.token"]?.value).toBe("tok-ada-SECRET");
     const lic = (await getLicense(w.db, SLUG, "lic-ada"))!;
     expect(
       (
@@ -446,8 +446,9 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
       RUN_AT,
     );
     const emptied = await configDoc(w, token, RUN_AT);
-    expect(emptied.doc.config.theme?.value).toBe("system");
-    expect(emptied.doc.secrets["api.token"]).toBeUndefined();
+    // With the account row empty the licence's own layer is what remains (U-27.1).
+    expect(emptied.doc.config.theme?.value).toBe("dark");
+    expect(emptied.doc.secrets["api.token"]?.value).toBe("tok-ada-SECRET");
   });
 
   it("2. an owner of two licences: both receive the most recently updated value, single keys survive, the report lists the collapse", async () => {
@@ -548,8 +549,9 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
     await migrate(w);
 
     const doc = (await configDoc(w, token, RUN_AT)).doc;
-    expect(doc.config.theme?.value).toBe("system");
-    expect(doc.config.volume).toBeUndefined();
+    // U-27.1: a floating licence's own layer is still delivered after the run.
+    expect(doc.config.theme?.value).toBe("dark");
+    expect(doc.config.volume?.value).toBe(9);
     const device = (await getDevice(w.db, SLUG, "dev-1"))!;
     const lic = (await getLicense(w.db, SLUG, "lic-float"))!;
     expect(await overrideSubject(w.db, SLUG, lic, device)).toBeNull();
@@ -655,7 +657,7 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
     expect(row!.payload_json).not.toContain("pw-");
   });
 
-  it("6. PUT /licenses/<id>/overrides refuses config and secrets after the run and accepts entitlements, owned and floating (decision 20)", async () => {
+  it("6. PUT /licenses/<id>/overrides accepts config, secret and flag keys after the run, owned and floating (U-27.1)", async () => {
     const w = await world();
     const ada = await account(w.db, "ada@example.com");
     await licence(w, "lic-owned", { owner: ada.id });
@@ -667,7 +669,6 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
         { updates },
         { now },
       );
-    // Before the run: still the licence's (the expand phase).
     expect(
       (await put("lic-owned", [{ key: "theme", value: "dark" }])).status,
     ).toBe(200);
@@ -676,33 +677,16 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
       for (const update of [
         { key: "theme", value: "dark" },
         { key: "api.token", value: "tok-x" },
+        { key: "pro", value: true },
       ]) {
-        const res = await put(id, [update], RUN_AT);
-        expect(res.status).toBe(400);
-        const body = (await res.json()) as {
-          code: string;
-          message: string;
-          fields: string[];
-          accountOverrides: { subject: string | null; route: string | null };
-        };
-        expect(body.code).toBe("bad_request");
-        expect(body.fields).toEqual([update.key]);
-        if (id === "lic-owned") {
-          expect(body.accountOverrides.subject).toBe(ada.subject);
-          expect(body.message).toContain(
-            `/manage/api/products/${SLUG}/users/${ada.subject}/overrides`,
-          );
-        } else {
-          expect(body.accountOverrides).toEqual({ subject: null, route: null });
-          expect(body.message).toContain("needs an account");
-        }
+        expect((await put(id, [update], RUN_AT)).status).toBe(200);
       }
-      const ok = await put(id, [{ key: "pro", value: true }], RUN_AT);
-      expect(ok.status).toBe(200);
       const lic = (await getLicense(w.db, SLUG, id))!;
-      expect(JSON.parse(lic.overrides_json!).entitlements.pro.value).toBe(true);
+      const stored = JSON.parse(lic.overrides_json!);
+      expect(stored.config.theme.value).toBe("dark");
+      expect(stored.entitlements.pro.value).toBe(true);
+      expect(lic.overrides_json).not.toContain("tok-x");
     }
-    // The licence page says where they went.
     const detail = (await (
       await w.call(
         "GET",
@@ -712,7 +696,6 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
       )
     ).json()) as { configOverrides: Record<string, unknown> };
     expect(detail.configOverrides).toMatchObject({
-      phase: "moved",
       owned: false,
       ownerSubject: null,
       signUpUrl: `https://key.plrs.im/activate?product=${SLUG}`,
@@ -1300,7 +1283,7 @@ describe("U-03: the run's writes under concurrency", () => {
     });
   });
 
-  it("N4: a run that starts between the licence PUT's freeze check and its write makes the write refuse", async () => {
+  it("N4: a run that starts between the licence PUT's read and its write no longer refuses it (U-27.1)", async () => {
     const w = await world();
     const ada = await account(w.db, "ada@example.com");
     await licence(w, "lic-1", {
@@ -1310,7 +1293,6 @@ describe("U-03: the run's writes under concurrency", () => {
     await setOverrideMigrationPrerequisite(w.db, "loginCard", true, ACTOR, NOW);
     await setOverrideMigrationPrerequisite(w.db, "library", true, ACTOR, NOW);
     await startOverrideMigrationNotice(w.db, ACTOR, NOW);
-    const before = (await getLicense(w.db, SLUG, "lic-1"))!.overrides_json;
     const db = racing(w.db, /UPDATE licenses SET overrides_json/, async () => {
       await w.db.run(
         "UPDATE override_migration SET run_id = 'ovm_x', run_started_at = ? WHERE id = 'platform'",
@@ -1323,13 +1305,11 @@ describe("U-03: the run's writes under concurrency", () => {
       { updates: [{ key: "theme", value: "light" }] },
       { now: RUN_AT, db },
     );
-    expect(res.status).toBe(400);
-    expect(((await res.json()) as { fields: string[] }).fields).toEqual([
-      "theme",
-    ]);
-    expect((await getLicense(w.db, SLUG, "lic-1"))!.overrides_json).toBe(
-      before,
+    expect(res.status).toBe(200);
+    const stored = JSON.parse(
+      (await getLicense(w.db, SLUG, "lic-1"))!.overrides_json!,
     );
+    expect(stored.config.theme.value).toBe("light");
   });
 });
 

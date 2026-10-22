@@ -17228,16 +17228,14 @@ paths:
     put:
       operationId: putAdminLicenseOverrides
       tags: [admin]
-      summary: Edit a licence's own overrides (entitlements only from the override migration's run)
+      summary: Edit a licence's own overrides (config, secret and flag keys)
       description: >
         A batch of override updates, validated against the product's ACTIVE catalog
         all-or-nothing; a catalog-declared secret is sealed under PLATFORM_KEK before it is stored
-        and never echoed. U-03 (notes/S-17 §5.12 step 4, decision 20): from the start of the
-        licence-override migration's run, config and secret keys are refused with `400
-        bad_request` naming the account override route (`accountOverrides.route`, `null` for a
-        licence with no account), and entitlement (`flag`) keys are still accepted, on owned and
-        floating licences alike. Before the run every kind is accepted, as before. Platform admins
-        only; admin session cookie and CSRF header.
+        and never echoed. The licence override layer is layer 4 of the merge and is read for every
+        licence, so config, secret and entitlement (`flag`) keys are accepted on owned and floating
+        licences alike. For an owned licence the owner's account override layer sits above it and
+        wins for the same key. Platform admins only; admin session cookie and CSRF header.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - {
