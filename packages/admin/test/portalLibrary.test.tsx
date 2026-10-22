@@ -364,9 +364,7 @@ describe("Library on today's data (PX-02)", () => {
     // A Steam purchase comes back through the app, so it is text: Sign-in methods attaches no
     // purchase (B-075).
     expect(
-      within(strip).getByText(
-        "On Steam? Restore in the app.",
-      ),
+      within(strip).getByText("On Steam? Restore in the app."),
     ).toBeTruthy();
     expect(within(strip).queryByRole("link", { name: /Steam/ })).toBeNull();
     expect(
