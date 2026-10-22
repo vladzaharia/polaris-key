@@ -202,6 +202,8 @@ for (const family of FAMILIES) {
         .join(" ");
       for (const key of view.copy) {
         if (LEFT_OUT.has(key) || dropped.has(key)) continue;
+        // The request QR encodes the request code: with none to encode, nothing is drawn.
+        if (key === "a11y.qrRequest" && !input.offline?.requestCode) continue;
         // An available update offers Update now and Later; Restart when ready queues the restart
         // of a download in flight, so the kit leaves it to the downloading state.
         if (

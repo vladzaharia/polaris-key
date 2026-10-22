@@ -1893,6 +1893,10 @@ function offlineSteps(c: RenderCtx): TemplateResult {
   const loaded = c.input.offline?.response ?? "";
   const done = c.view.state === "done";
   if (done) return html`${nothing}`;
+  const copyVariant =
+    c.view.decisions.primary === "offlineActivation.copyCode"
+      ? "primary"
+      : "secondary";
   return html`<ol class="steps" data-part="steps">
     <li class="step-item" data-part="step">
       <p class="body" data-key="offlineActivation.request">
@@ -1903,11 +1907,11 @@ function offlineSteps(c: RenderCtx): TemplateResult {
               ><span class="code" data-mono data-part="request-code"
                 >${code}</span
               >
-              ${button(c, "offlineActivation.copyCode", "secondary", {
+              ${button(c, "offlineActivation.copyCode", copyVariant, {
                 detail: { value: code },
               })}</span
             >${qrCode(c, code, "a11y.qrRequest")}`
-        : button(c, "offlineActivation.copyCode", "secondary")}
+        : button(c, "offlineActivation.copyCode", copyVariant)}
       ${c.view.copy.includes("offlineActivation.codeCopied")
         ? html`<span
             class="meta"

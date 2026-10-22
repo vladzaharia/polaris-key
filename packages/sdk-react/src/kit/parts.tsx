@@ -727,8 +727,12 @@ const QR_INK = "#000000"; // ui-lint: allow react-colour-literal (DL14 black mod
 
 /** QrCode (DL14): only where the device cannot browse or for an offline request; black on a
  *  white tile with a quiet zone, the modules scaled by a whole factor, beside the text it encodes. */
-export function qrCode(c: KitCtx, data: string | null): ReactNode {
-  if (!data || !c.view.copy.includes("a11y.qr")) return null;
+export function qrCode(
+  c: KitCtx,
+  data: string | null,
+  key: "a11y.qr" | "a11y.qrManage" | "a11y.qrRequest" = "a11y.qr",
+): ReactNode {
+  if (!data || !c.view.copy.includes(key)) return null;
   const q = encodeQr(data);
   if (!q) return null;
   const quiet = 4;
@@ -739,11 +743,11 @@ export function qrCode(c: KitCtx, data: string | null): ReactNode {
       if (q.modules[y * q.size + x] === 1)
         d += `M${x + quiet} ${y + quiet}h1v1h-1z`;
   return (
-    <figure className="qr" data-part="qr" data-key="a11y.qr">
+    <figure className="qr" data-part="qr" data-key={key}>
       <svg
         viewBox={`0 0 ${n} ${n}`}
         role="img"
-        aria-label={plain(c, "a11y.qr")}
+        aria-label={plain(c, key)}
         shapeRendering="crispEdges"
       >
         <rect width={n} height={n} fill={QR_TILE} />
