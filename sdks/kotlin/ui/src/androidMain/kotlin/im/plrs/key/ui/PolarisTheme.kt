@@ -171,6 +171,8 @@ public class PolarisUiConfig internal constructor(
      * owner decision Q8), shown instead of the server's verification address when set.
      */
     public val deviceCodeUrl: String? = null,
+    /** The developer's name for the Welcome's "by <Developer>" line: the integrator's, else the product's presentation. */
+    public val developer: String? = null,
 )
 
 internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null }
@@ -199,6 +201,8 @@ internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null 
  *   either mode, resolved for contrast against the surfaces it sits on (the host's, neutral).
  * @param deviceCodeUrl the address a person types to sign in with a code (for example
  *   `driftkart.gg/tv`); null shows the server's verification address.
+ * @param developer the developer's name for the Welcome's "by <Developer>" line; null takes the
+ *   product presentation's `developerName`, and with neither the line is left out.
  * @param presentation the SDK's presentation seam (`client.presentationSource`, discovery's
  *   `core.presentation`): it fills only what the integrator left out. [logo] falls back to the
  *   verified product icon, then the monogram; branded, [accent] falls back to the product's accent
@@ -215,6 +219,7 @@ public fun PolarisTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     accent: Color? = null,
     deviceCodeUrl: String? = null,
+    developer: String? = null,
     presentation: PresentationSource? = LocalPolarisKey.current?.presentationSource,
     content: @Composable () -> Unit,
 ) {
@@ -231,6 +236,7 @@ public fun PolarisTheme(
         darkTheme = darkTheme,
         accent = themeAccent(accent, branding, member, darkTheme, art?.derivedAccent),
         deviceCodeUrl = deviceCodeUrl,
+        developer = developer ?: member?.developerName?.takeIf { it.isNotBlank() },
         content = content,
     )
 }
@@ -246,6 +252,7 @@ private fun PolarisThemeResolved(
     darkTheme: Boolean,
     accent: Color?,
     deviceCodeUrl: String?,
+    developer: String?,
     content: @Composable () -> Unit,
 ) {
     when (branding) {
@@ -273,6 +280,7 @@ private fun PolarisThemeResolved(
                 accentText = resolved?.let { colorOf(it.fg) },
                 focus = resolved?.let { colorOf(it.focus) },
                 deviceCodeUrl = deviceCodeUrl,
+                developer = developer,
             )
             if (resolved == null) {
                 // Neutral means inherited: no MaterialTheme of the kit's own, dynamic colour and all.
@@ -304,6 +312,7 @@ private fun PolarisThemeResolved(
                 fieldShape = RoundedCornerShape(16.dp),
                 focus = resolved?.let { colorOf(it.focus) } ?: inkText,
                 deviceCodeUrl = deviceCodeUrl,
+                developer = developer,
             )
             MaterialTheme(colorScheme = scheme, typography = typography, shapes = polarisBrandShapes) {
                 CompositionLocalProvider(LocalPolarisUi provides config, content = content)

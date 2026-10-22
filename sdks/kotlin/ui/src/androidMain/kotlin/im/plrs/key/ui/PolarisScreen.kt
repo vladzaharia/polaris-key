@@ -24,6 +24,7 @@ package im.plrs.key.ui
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -97,11 +98,14 @@ import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -972,5 +976,51 @@ public fun PolarisSection(
             }
             content()
         }
+    }
+}
+
+/** The most segments the seat meter draws; a larger limit draws one continuous bar. */
+internal const val SEAT_METER_SEGMENTS: Int = 12
+
+/**
+ * The neutral seat meter (UI-KITS.md 1.5 rule 9, 4.3 DeviceLimit): [limit] segments, [used] of them
+ * filled in the strongest text colour at 80 % and the rest at 10 %, with no status colour (a full
+ * license is a limit, not an error) and its caption ("3 of 3 in use") under it. The bar is one image
+ * to TalkBack, labelled with the count; the caption is the visible text label (rule: never colour alone).
+ *
+ * @param description what TalkBack says for the bar ("3 of 3 devices in use").
+ */
+@Composable
+internal fun PolarisSeatMeter(used: Int, limit: Int, caption: String, description: String, modifier: Modifier = Modifier) {
+    val ink = MaterialTheme.colorScheme.onSurface
+    val segments = limit.coerceIn(1, SEAT_METER_SEGMENTS)
+    val filled = if (limit <= SEAT_METER_SEGMENTS) used.coerceIn(0, segments) else 0
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(PolarisSpace.tight)) {
+        Row(
+            Modifier.fillMaxWidth().semantics { contentDescription = description; role = Role.Image },
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (limit <= SEAT_METER_SEGMENTS) {
+                for (i in 0 until segments) {
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .height(8.dp)
+                            .clip(CircleShape)
+                            .background(ink.copy(alpha = if (i < filled) 0.8f else 0.1f)),
+                    )
+                }
+            } else {
+                val share = (used.toFloat() / limit).coerceIn(0f, 1f)
+                Box(Modifier.weight(1f).height(8.dp).clip(CircleShape).background(ink.copy(alpha = 0.1f))) {
+                    Box(Modifier.fillMaxWidth(share).height(8.dp).clip(CircleShape).background(ink.copy(alpha = 0.8f)))
+                }
+            }
+        }
+        Text(
+            text = caption,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

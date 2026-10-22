@@ -61,7 +61,6 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import im.plrs.key.core.Copy
 import im.plrs.key.core.LicenseStatus
 import im.plrs.key.core.ManageLink
 import im.plrs.key.license.ActivationResult
@@ -269,16 +268,12 @@ public fun PolarisActivationScreen(
         PolarisActivationError.KeyEmpty -> copy.activationKeyEmpty
         is PolarisActivationError.Refused -> if (error.result is ActivationResult.DeviceLimit) null else copy.activationMessage(error.result)
     }
-    val supporting = if (limit == null) {
-        emptyList()
-    } else {
-        val reason = if (manage != null) copy.activationMessage(limit) else copy.format(copy.deviceLimitNoManage, copy.productName)
-        val seats = limit.deviceCount?.let { used -> limit.limit?.let { max -> copy.format(copy.seatCaption, used, max) } }
-        listOfNotNull(reason, seats)
-    }
+    val seats = limit?.deviceCount?.let { used -> limit.limit?.let { max -> used.toInt() to max.toInt() } }
+    // The key path stays closed behind "Use a license key" while Sign in is on offer (UI-KITS.md 4.3
+    // Welcome); with no sign-in, a failed key or a typed one, it is the screen.
+    var keyOpen by rememberSaveable { mutableStateOf(false) }
+    val showKey = onSignIn == null || keyOpen || focusKey || ui.key.isNotEmpty() || ui.error != null
     val keyField: @Composable () -> Unit = {
-        // The reason leads the content as its lede; the field keeps only its own text.
-        val aside = limit != null
         PolarisTextField(
             value = ui.key,
             onValueChange = onKeyChange,
@@ -286,7 +281,6 @@ public fun PolarisActivationScreen(
             placeholder = copy.keyPlaceholder,
             enabled = !ui.busy,
             error = errorText,
-            supporting = if (aside) emptyList() else supporting,
             focusRequester = keyFocus,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
@@ -297,26 +291,44 @@ public fun PolarisActivationScreen(
             keyboardActions = KeyboardActions(onDone = { onActivate() }),
         )
     }
+    // Opening the key path puts the cursor in the field, so the person can type or paste at once.
+    var openedByTap by remember { mutableStateOf(false) }
+    if (openedByTap) LaunchedEffect(Unit) { runCatching { keyFocus.requestFocus() } }
     PolarisScaffold(
         modifier = modifier,
         anchor = if (limit != null) PolarisAnchor.Top else PolarisAnchor.Hero,
         contentAlign = if (limit != null) TextAlign.Start else TextAlign.Center,
         content = {
             if (limit != null) {
-                // A focused step: the product header, then the stop's own title.
+                // A focused step (UI-KITS.md 4.3 DeviceLimit): the product header, "Replace a device",
+                // the count, the lede, the neutral seat meter (only when the refusal carries the counts).
                 PolarisProductHeader()
-                PolarisTitle(Copy.activationTitle(im.plrs.key.core.ErrorCode.deviceLimit, coreLocale()))
-                // Reason and seat caption as the lede, at body size, in one column and in two panes.
-                for (line in supporting) {
+                PolarisTitle(copy.freeDevice)
+                seats?.let { (used, max) ->
                     Spacer(Modifier.height(PolarisSpace.tight))
-                    PolarisBody(line)
+                    PolarisBody(KitCopy.bundled.format("deviceLimit.heading", kitLocale(), mapOf("used" to CopyArgument.Number(used), "limit" to CopyArgument.Number(max))))
+                }
+                Spacer(Modifier.height(PolarisSpace.tight))
+                PolarisBody(
+                    when {
+                        manage == null -> copy.format(copy.deviceLimitNoManage, copy.productName)
+                        manageAsQr -> copy.freeDeviceScan
+                        else -> copy.format(copy.deviceLimitBrowser, copy.productLead())
+                    },
+                )
+                seats?.let { (used, max) ->
+                    Spacer(Modifier.height(polarisWindow.section))
+                    PolarisSeatMeter(
+                        used = used,
+                        limit = max,
+                        caption = copy.format(copy.seatCaption, used, max),
+                        description = KitCopy.bundled.format("a11y.seatMeter", kitLocale(), mapOf("used" to CopyArgument.Number(used), "limit" to CopyArgument.Number(max))),
+                    )
                 }
                 if (manageAsQr && manage != null) {
                     Spacer(Modifier.height(polarisWindow.section))
-                    // The QR and its caption are one group, set apart from the next.
+                    // The QR sits beside its sentence (the lede above), one group set apart from the next.
                     PolarisQrCode(manage, copy.freeDeviceQrDescription, Modifier.size(polarisWindow.qrSize))
-                    Spacer(Modifier.height(PolarisSpace.controls))
-                    PolarisBody(copy.freeDeviceScan)
                     Spacer(Modifier.height(PolarisSpace.group))
                 }
             } else {
@@ -324,32 +336,43 @@ public fun PolarisActivationScreen(
                 PolarisProductIcon(if (window.compactHeight) 56.dp else 120.dp)
                 if (productName(copy) != null || PolarisTheme.current.logo != null) Spacer(Modifier.height(window.section))
                 PolarisTitle(notice?.title ?: copy.format(copy.activationTitle, copy.productName))
+                // "by <Developer>" under the title, on the Welcome only (UI-KITS.md 1.2), when it is known.
+                val developer = PolarisTheme.current.developer
+                if (notice == null && developer != null) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = copy.format(copy.byDeveloper, developer),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = LocalPolarisTextAlign.current,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 Spacer(Modifier.height(PolarisSpace.tight))
                 PolarisBody(notice?.body ?: if (onSignIn != null) copy.activationSubtitle else copy.activationSubtitleKeyOnly)
             }
         },
-        detail = if (limit != null) {
-            { keyField() }
-        } else {
-            null
-        },
         actions = {
             val replace = limit != null && manage != null && !manageAsQr
             if (limit == null) {
-                if (onSignIn != null) {
-                    PolarisPrimaryButton(text = copy.signIn, onClick = onSignIn, enabled = !ui.busy, initialFocus = true)
-                    Spacer(Modifier.height(PolarisSpace.group))
+                if (!showKey) {
+                    // The Welcome: Sign in is the one primary, the key path is the secondary.
+                    PolarisPrimaryButton(text = copy.signIn, onClick = onSignIn!!, enabled = !ui.busy, initialFocus = true)
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                    PolarisSecondaryButton(text = copy.useKey, onClick = { keyOpen = true; openedByTap = true }, enabled = !ui.busy)
+                    return@PolarisScaffold
                 }
+                // The key path: Activate is the primary once a key is being entered; Sign in steps down to tonal.
                 keyField()
                 Spacer(Modifier.height(PolarisSpace.controls))
+                PolarisPrimaryButton(text = if (ui.busy) copy.activating else copy.activate, onClick = onActivate, busy = ui.busy, initialFocus = true)
                 if (onSignIn != null) {
-                    PolarisSecondaryButton(text = if (ui.busy) copy.activating else copy.activate, onClick = onActivate, busy = ui.busy)
-                } else {
-                    PolarisPrimaryButton(text = if (ui.busy) copy.activating else copy.activate, onClick = onActivate, busy = ui.busy, initialFocus = true)
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                    PolarisSecondaryButton(text = copy.signIn, onClick = onSignIn, enabled = !ui.busy)
                 }
                 return@PolarisScaffold
             }
-            // After a device-limit refusal: one filled button (Replace a device, or Try again).
+            // After a device-limit refusal: one filled button (Open in browser, or Try again).
             if (noBrowser) {
                 PolarisInlineNotice(copy.signInNoBrowser)
                 Spacer(Modifier.height(PolarisSpace.controls))
@@ -359,8 +382,10 @@ public fun PolarisActivationScreen(
                     val opened = runCatching { (onOpenManage ?: uriHandler::openUri)(manage!!) }.isSuccess
                     noBrowser = !opened
                 }
-                if (noBrowser) PolarisSecondaryButton(text = copy.freeDevice, onClick = openManage, enabled = !ui.busy) else PolarisPrimaryButton(
-                    text = copy.freeDevice,
+                // A fix that leaves the app carries the new-window glyph, never an ellipsis (rule 11).
+                val openLabel = copy.openInBrowser + " ↗"
+                if (noBrowser) PolarisSecondaryButton(text = openLabel, onClick = openManage, enabled = !ui.busy) else PolarisPrimaryButton(
+                    text = openLabel,
                     onClick = openManage,
                     enabled = !ui.busy,
                     initialFocus = true,
@@ -383,6 +408,9 @@ public fun PolarisActivationScreen(
                 Spacer(Modifier.height(PolarisSpace.controls))
                 PolarisSecondaryButton(text = copy.signIn, onClick = onSignIn, enabled = !ui.busy)
             }
+            // Back to the key (a tertiary link at the foot): editing it clears the refusal.
+            Spacer(Modifier.height(PolarisSpace.controls))
+            PolarisTextButton(text = copy.back, onClick = { onKeyChange(ui.key) }, enabled = !ui.busy)
         },
     )
 }

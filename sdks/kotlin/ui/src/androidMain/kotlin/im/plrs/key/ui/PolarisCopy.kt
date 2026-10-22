@@ -55,6 +55,7 @@ public data class PolarisCopy(
     val retry: String = "Try again",
     val playOffline: String = "Continue offline",
     val cancel: String = "Cancel",
+    val back: String = "Back",
     val close: String = "Close",
     val loading: String = "Loading…",
 
@@ -84,6 +85,10 @@ public data class PolarisCopy(
     val activationSubtitle: String = KitCopy.bundled.message("welcome.lede", "en") ?: "Sign in or use a license key to continue.",
     val activationSubtitleKeyOnly: String = KitCopy.bundled.message("welcome.ledeKeyOnly", "en") ?: "Enter a license key to continue.",
     val signIn: String = "Sign in",
+    /** The Welcome's second path, which opens the key field (welcome.useKey). */
+    val useKey: String = "Use a license key",
+    /** The developer line under the Welcome title: %1$s is the developer (common.byDeveloper). */
+    val byDeveloper: String = "by %1\$s",
     /** No longer shown: the activation screen sets its two paths apart by space (UI-KITS.md §1.5 rule 6). */
     val orDivider: String = "or",
     val keyLabel: String = "License key",
@@ -110,6 +115,10 @@ public data class PolarisCopy(
     val activationNetwork: String = "Couldn't reach the license server. Check your connection and try again.",
     // PX-W8: the action on a device-limit refusal that carries the portal link.
     val freeDevice: String = "Replace a device",
+    /** The browser-mode Replace a device action: it leaves the app, so it carries the new-window glyph (deviceLimit.openBrowser). */
+    val openInBrowser: String = "Open in browser",
+    /** The browser-mode lede: %1$s is the product (deviceLimit.browser). */
+    val deviceLimitBrowser: String = "Replace a device in your browser. %1\$s continues when you're done.",
     val freeDeviceScan: String = "Scan the code to replace a device on your phone.",
     val freeDeviceQrDescription: String = "QR code that opens your account to free a device",
 

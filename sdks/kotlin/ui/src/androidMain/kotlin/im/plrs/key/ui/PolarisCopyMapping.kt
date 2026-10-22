@@ -150,6 +150,9 @@ public fun PolarisCopy.errorCodeMessage(code: String): String? = when (code) {
     }
 }
 
+/** The browser-mode action: it leaves the app, so it carries the new-window glyph, never an ellipsis (UI-KITS.md 1.5 rule 11). */
+internal val PolarisCopy.openInBrowserAction: String get() = "$openInBrowser ↗"
+
 internal val DEFAULT_PRODUCT_NAME: String = PolarisCopy().productName
 
 /**

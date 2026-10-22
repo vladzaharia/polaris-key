@@ -76,6 +76,11 @@ class PolarisCopyCatalogTest {
         check("seatCaption", "part.seatMeter.caption", "used", "limit")
         check("deviceLimitNoManage", "deviceLimit.noManage", "product")
         check("freeDevice", "deviceLimit.title")
+        check("openInBrowser", "deviceLimit.openBrowser")
+        check("deviceLimitBrowser", "deviceLimit.browser", "product")
+        check("useKey", "welcome.useKey")
+        check("byDeveloper", "common.byDeveloper", "developer")
+        check("back", "common.back")
         check("freeDeviceScan", "deviceLimit.scan")
     }
 

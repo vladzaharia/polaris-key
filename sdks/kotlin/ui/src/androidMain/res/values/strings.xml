@@ -33,6 +33,7 @@
     <string name="pkey_ui_consent_later">Not now</string>
     <string name="pkey_ui_retry">Try again</string>
     <string name="pkey_ui_play_offline">Continue offline</string>
+    <string name="pkey_ui_back">Back</string>
     <string name="pkey_ui_cancel">Cancel</string>
     <string name="pkey_ui_close">Close</string>
     <string name="pkey_ui_loading">Loading…</string>
@@ -55,6 +56,8 @@
     <string name="pkey_ui_activation_subtitle">Sign in or use a license key to continue.</string>
     <string name="pkey_ui_activation_subtitle_key_only">Enter a license key to continue.</string>
     <string name="pkey_ui_sign_in">Sign in</string>
+    <string name="pkey_ui_use_key">Use a license key</string>
+    <string name="pkey_ui_by_developer">by %1$s</string>
     <string name="pkey_ui_or_divider">or</string>
     <string name="pkey_ui_key_label">License key</string>
     <string name="pkey_ui_key_placeholder">Paste your key</string>
@@ -76,6 +79,8 @@
     <string name="pkey_ui_activation_rate_limited_for">Too many attempts. Try again in %1$s.</string>
     <string name="pkey_ui_activation_network">Couldn\'t reach the license server. Check your connection and try again.</string>
     <string name="pkey_ui_free_device">Replace a device</string>
+    <string name="pkey_ui_open_in_browser">Open in browser</string>
+    <string name="pkey_ui_device_limit_browser">Replace a device in your browser. %1$s continues when you\'re done.</string>
     <string name="pkey_ui_free_device_scan">Scan the code to replace a device on your phone.</string>
     <string name="pkey_ui_free_device_qr_description">QR code that opens your account to free a device</string>
     <string name="pkey_ui_sign_in_title">Sign in with a code</string>
