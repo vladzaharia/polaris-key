@@ -174,7 +174,7 @@ describe("NoAccessPage", () => {
       extra: { "/manage/api/access/admins": ADMINS },
     });
     const h1 = await screen.findByRole("heading", { level: 1 });
-    expect(h1.textContent).toBe("You don’t have access to DJDL, → Licensing");
+    expect(h1.textContent).toBe("You don't have access to DJDL, → Licensing");
     expect(screen.getByText("lucia@example.com")).toBeTruthy();
     expect(screen.getByText("DJDL admin")).toBeTruthy();
     expect(screen.getByText("Ship builds, Commerce")).toBeTruthy();
@@ -235,7 +235,7 @@ describe("NoAccessPage", () => {
       },
     });
     const h1 = await screen.findByRole("heading", { level: 1 });
-    expect(h1.textContent).toBe("You don’t have access to any product yet");
+    expect(h1.textContent).toBe("You don't have access to any product yet");
     expect(screen.getByText("Console access")).toBeTruthy();
     expect(await screen.findByText("Ada Lindqvist")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Your library/ })).toBeTruthy();
@@ -251,7 +251,7 @@ describe("NoAccessPage", () => {
       extra: { "/manage/api/access/admins": { ...ADMINS, admins: [] } },
     });
     const h1 = await screen.findByRole("heading", { level: 1 });
-    expect(h1.textContent).toBe("You don’t have access to Platform");
+    expect(h1.textContent).toBe("You don't have access to Platform");
     expect(
       await screen.findByText("Ask a Superadmin of this console for access."),
     ).toBeTruthy();

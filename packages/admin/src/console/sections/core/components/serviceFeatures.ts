@@ -51,14 +51,14 @@ export const DISABLE_CONSEQUENCES: Record<ServiceSlug, string> = {
     "Licensing endpoints answer not-configured: no activation, license documents, or new device seats.",
   config:
     "Managed config endpoints answer not-configured: no config documents or minted tokens.",
-  release: "Release’s truth store stops answering clients.",
+  release: "Release's truth store stops answering clients.",
   distribution:
     "Distribution stops serving downloads and no longer manages channels.",
   update: "The update feed answers not-configured: clients see no updates.",
   identity:
-    "Sign-in through this product stops. Licenses stay attached to their owners’ accounts.",
+    "Sign-in through this product stops. Licenses stay attached to their owners' accounts.",
   sync: "Cloud Sync stops: settings stay on each device and nothing syncs.",
-  commerce: "Commerce’s endpoints answer not-found: no purchase claims.",
+  commerce: "Commerce's endpoints answer not-found: no purchase claims.",
 };
 
 /** Play drops what Commerce cannot receive: the limits an operator has to beat when it is off. */

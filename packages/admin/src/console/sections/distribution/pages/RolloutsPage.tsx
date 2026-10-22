@@ -138,7 +138,7 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
       accessorFn: (r) => versionOf(r.releaseId),
       meta: { priority: 1, primary: true },
       cell: ({ row }) => (
-        <span className="font-mono text-xs">
+        <span className="font-mono text-xs whitespace-nowrap">
           {versionOf(row.original.releaseId)}
         </span>
       ),
@@ -322,7 +322,6 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
               </span>
             ) : undefined
           }
-          description="A halt or pause reaches devices on their next feed check."
           primaryAction={
             <Button
               iconStart={<Plus aria-hidden />}
@@ -354,6 +353,9 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
       }
     >
       <div className="pk-vt-tabpanel">
+        <p className="mb-4 text-sm text-fg-muted">
+          A halt or pause reaches devices on their next feed check.
+        </p>
         {grid ? (
           <>
             <ReadinessRefreshed

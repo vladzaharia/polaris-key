@@ -1021,7 +1021,7 @@ describe("state pages (T8)", () => {
   it("still renders a Core page for a product running no services", async () => {
     boot("#/p/djdl/settings", { services: NONE });
     await ready();
-    expect(screen.queryByText(/isn’t enabled/)).toBeNull();
+    expect(screen.queryByText(/isn't enabled/)).toBeNull();
   });
 });
 

@@ -289,6 +289,8 @@ const TEXT200_CASES = [
   "djdl:storefronts?flow=listing",
   "djdl:storefronts?flow=assets",
   "djdl:storefronts?flow=run",
+  // CF5: the Rollouts masthead at 200 % text on a phone.
+  "djdl:rollouts",
   "djdl:activity",
   "global:platform-deployment",
   "djdl:settings-members",

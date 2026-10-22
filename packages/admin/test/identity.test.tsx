@@ -414,12 +414,12 @@ describe("App sign-in", () => {
   it("saves the portal switch, listing the change in words", async () => {
     renderPage();
     await waitFor(() =>
-      expect(checked(toggle("Show DJDL in players’ libraries"))).toBe(true),
+      expect(checked(toggle("Show DJDL in players' libraries"))).toBe(true),
     );
     // The lost-key switch is hidden until the Locker has the reissue action (G7).
     expect(screen.queryByText("Let customers replace a lost key")).toBeNull();
     expect(saveButton()).toBeNull();
-    await userEvent.click(toggle("Show DJDL in players’ libraries"));
+    await userEvent.click(toggle("Show DJDL in players' libraries"));
     expect(screen.getByText(/1 change: DJDL hidden in libraries/)).toBeTruthy();
     expect(screen.getAllByText("Not saved").length).toBeGreaterThan(0);
     await userEvent.click(saveButton()!);
@@ -438,12 +438,12 @@ describe("App sign-in", () => {
     renderPage();
     await userEvent.click(
       await screen.findByRole("switch", {
-        name: "Show DJDL in players’ libraries",
+        name: "Show DJDL in players' libraries",
       }),
     );
     await userEvent.click(saveButton()!);
     await waitFor(() => expect(updatePortalSettings).toHaveBeenCalled());
-    expect(checked(toggle("Show DJDL in players’ libraries"))).toBe(false);
+    expect(checked(toggle("Show DJDL in players' libraries"))).toBe(false);
     expect(saveButton()).toBeTruthy();
   });
 

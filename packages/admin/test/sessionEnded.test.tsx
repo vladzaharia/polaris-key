@@ -76,7 +76,7 @@ describe("the session-ended overlay", () => {
       name: "Your session ended",
     });
     expect(
-      within(dialog).getByText(/Changes you haven’t saved stay on this page/),
+      within(dialog).getByText(/Changes you haven't saved stay on this page/),
     ).toBeTruthy();
     expect(redirect).not.toHaveBeenCalled();
     expect(draft.value).toBe("half a sentence");

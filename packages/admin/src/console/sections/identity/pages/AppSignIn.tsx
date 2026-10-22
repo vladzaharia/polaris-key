@@ -56,6 +56,8 @@ const TIER_SYNC_COPY = {
 };
 
 const LIMIT_KEY = "identity.keyEntry.limit";
+const TIER_AREA = "identity.signIn";
+const TIER_KEY = "identity.oidc.syncTierOnSignIn";
 
 /** The save summary's words for the lost-key switch (hidden until G7, so tested here). */
 export function lostKeyWords(on: boolean): string {
@@ -83,6 +85,25 @@ function useRowsDirty(ref: React.RefObject<HTMLElement | null>): boolean {
   return dirty;
 }
 
+/**
+ * The Tier sync section draws nothing when the area has no such row (a view that cannot read it,
+ * the service off): the rail then does not list it either.
+ */
+function useHasTierSync(slug: string): boolean {
+  const area = TIER_AREA;
+  const tier = useQuery({
+    queryKey: qk.productSettings(slug, area),
+    queryFn: () => api.productSettings(slug, area),
+  });
+  return tier.data
+    ? tier.data.settings.some(
+        (st) =>
+          st.key === TIER_KEY &&
+          (st.visibleWhen?.offBehaviour !== "hide" || st.serviceEnabled),
+      )
+    : true;
+}
+
 export function AppSignInPage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug);
   const services = useQuery({
@@ -104,6 +125,7 @@ export function AppSignInPage({ slug }: { slug: string }): React.ReactElement {
     queryKey: qk.productSettings(slug, area),
     queryFn: () => api.productSettings(slug, area),
   });
+  const hasTierSync = useHasTierSync(slug);
   const name = product.data?.name ?? slug;
   const header = (
     <PageHeader
@@ -156,6 +178,7 @@ export function AppSignInPage({ slug }: { slug: string }): React.ReactElement {
       portal={portal.data}
       limit={keys.data?.settings.find((s) => s.key === LIMIT_KEY)}
       claimByKey={portal.data.claimByKey ?? false}
+      hasTierSync={hasTierSync}
     />
   );
 }
@@ -169,6 +192,7 @@ function PageBody({
   portal,
   limit,
   claimByKey,
+  hasTierSync,
 }: {
   slug: string;
   name: string;
@@ -178,6 +202,7 @@ function PageBody({
   portal: { portalEnabled: boolean; keyReissueEnabled?: boolean };
   limit: ProductSetting | undefined;
   claimByKey: boolean;
+  hasTierSync: boolean;
 }): React.ReactElement {
   const gate = useWriteGate("signin", slug);
   // The Sign-in switch is a Settings write: the one notice names the access a viewer is missing.
@@ -266,7 +291,9 @@ function PageBody({
     { id: "status", title: "Status" },
     { id: "methods", title: "Sign-in methods" },
     { id: "product-connection", title: "Product connection" },
-    { id: "tier-sync", title: "Tier sync", dirty: tierDirty },
+    ...(hasTierSync
+      ? [{ id: "tier-sync", title: "Tier sync", dirty: tierDirty }]
+      : []),
     { id: "terms", title: "Terms" },
     { id: "license-keys", title: "License keys", dirty: keysDirty },
     { id: "polaris-locker", title: "Polaris Locker", dirty: lockerDirty },
@@ -295,8 +322,8 @@ function PageBody({
           <div ref={tierRef}>
             <ProductSettingsSection
               slug={slug}
-              area="identity.signIn"
-              keys={["identity.oidc.syncTierOnSignIn"]}
+              area={TIER_AREA}
+              keys={[TIER_KEY]}
               id="tier-sync"
               title="Tier sync"
               copy={TIER_SYNC_COPY}
@@ -312,7 +339,7 @@ function PageBody({
             set={set}
           />
         </div>
-        <aside className="min-w-0 space-y-6">
+        <aside aria-label="About this page" className="min-w-0 space-y-6">
           <SignInRail sections={sections} variant="rail" />
           <LockerSection
             name={name}

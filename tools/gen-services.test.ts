@@ -38,7 +38,7 @@ function withRow(extra: Partial<ServiceRow> = {}): ServiceTable {
         requires: [],
         legacyModules: [],
         console: { accent: "telemetry", icon: "Activity", group: "commerce" },
-        docs: "/docs/services/telemetry/",
+        docs: "/docs/features/telemetry/",
         ...extra,
       },
     ],
@@ -79,7 +79,7 @@ describe("validateTable", () => {
   it.each([
     [{ slug: "license" }, 'duplicate "license"'],
     [{ slug: "Bad_Slug" }, ".slug: must match"],
-    [{ slug: "core", docs: "/docs/services/core/" }, '"core" is reserved'],
+    [{ slug: "core", docs: "/docs/features/core/" }, '"core" is reserved'],
     [{ requires: ["nope"] }, 'unknown slug "nope"'],
     [{ requires: ["telemetry"] }, "cannot require itself"],
     [{ legacyModules: ["config"] }, "is a service slug"],
@@ -109,7 +109,10 @@ describe("validateTable", () => {
       { console: { accent: "tele", icon: "Boxes", group: "licensing" } },
       'the "licensing" feature\'s rows are not contiguous',
     ],
-    [{ docs: "/docs/telemetry/" }, "/docs/services/telemetry/"],
+    [
+      { docs: "/docs/services/telemetry/" },
+      'must be a "/docs/features/<section>/" path',
+    ],
     [{ defaultEnabled: "yes" as unknown as boolean }, "must be a boolean"],
     [{ label: "" }, ".label: must be a non-empty string"],
   ] as [Partial<ServiceRow>, string][])("rejects %j", (extra, message) => {
@@ -274,7 +277,7 @@ describe("renderers", () => {
       renderKotlin(
         withRow({
           slug: "content-packs",
-          docs: "/docs/services/content-packs/",
+          docs: "/docs/features/content-packs/",
         }),
       ),
     ).toContain('    contentPacks("content-packs", false),');
@@ -287,7 +290,7 @@ describe("renderers", () => {
       renderSwift(
         withRow({
           slug: "content-packs",
-          docs: "/docs/services/content-packs/",
+          docs: "/docs/features/content-packs/",
         }),
       ),
     ).toContain('case contentPacks = "content-packs"');

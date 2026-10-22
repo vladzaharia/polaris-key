@@ -1,10 +1,10 @@
 /**
- * Core → Services: product-facing features over the Worker’s service slugs.
+ * Core → Services: product-facing features over the Worker's service slugs.
  *
  * The Worker owns the requirement rule. A feature may turn its own slugs on together (Ship
  * builds enables Release, Distribution and In-app updates in one PATCH), but the console never
  * pulls an external prerequisite on. Turning a requirement off is previewed with the same PATCH
- * the Worker will write, so the confirmation names the server’s actual cascade.
+ * the Worker will write, so the confirmation names the server's actual cascade.
  */
 
 import * as React from "react";
@@ -234,10 +234,10 @@ function ServicesForm({
         onOpenChange={setConfirmRevert}
         intent="caution"
         title="Revert services to the manifest?"
-        description="Ownership of this product’s service set returns to its repo manifest."
+        description="Ownership of this product's service set returns to its repo manifest."
         consequences={[
           "Nothing changes now: the services stay as they are.",
-          "The manifest’s values apply on the next resync (a push, or Resync from repo).",
+          "The manifest's values apply on the next resync (a push, or Resync from repo).",
         ]}
         confirmLabel="Revert to manifest"
         describeError={(error) => errorCopy(error)}
