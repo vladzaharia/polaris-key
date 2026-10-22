@@ -3,7 +3,11 @@
  * page so the Overview (Core's chunk) does not pull the Cloud Sync chunk in.
  */
 
-import { syncedSettings, type SettingRoute } from "@polaris-key/catalog";
+import {
+  CLOUD_SYNC_CEILINGS,
+  syncedSettings,
+  type SettingRoute,
+} from "@polaris-key/catalog";
 import { ApiError, type ProductCatalog } from "../../../api.js";
 
 /** One synced setting's route (plans/U-01b.md §2.5): its scope, policy and whether it is listed. */
@@ -38,4 +42,13 @@ export function localSettings(catalog: ProductCatalog | null): string[] {
   return syncedSettings({ entries: catalog?.entries ?? [] })
     .filter((r) => r.route === "local")
     .map((r) => r.key);
+}
+
+/**
+ * The most a product may hold in Cloud Sync, the figure Setup shows ("Each product holds up to…").
+ * One place, so the Usage tile and Setup agree; U-05.21 swaps it for the `cloudSync.ceiling.bytes`
+ * setting here.
+ */
+export function productCeilingBytes(): number {
+  return CLOUD_SYNC_CEILINGS.perProduct.bytes;
 }
