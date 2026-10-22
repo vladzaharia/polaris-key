@@ -84,6 +84,8 @@ export interface Facet<T> {
     counts?: Record<string, number | undefined>;
     pending?: boolean;
   };
+  /** Folded into one "More" menu after the other facet menus (see `FilterBarFacet.secondary`). */
+  secondary?: boolean;
 }
 
 export interface BulkAction<T> {
@@ -191,6 +193,17 @@ export interface DataTableProps<T> {
   toolbarActions?: React.ReactNode;
   /** The page's own filters, first on the toolbar's row (one band, not a second toolbar). */
   toolbarLead?: React.ReactNode;
+  /**
+   * `compact`: the workbench band stays on one row. Columns (quiet) and Export become icon-only
+   * buttons, each with a tooltip and an aria-label, below 1600 px, and the density toggle is not
+   * drawn. Default `full`.
+   */
+  toolbarMode?: "full" | "compact";
+  /**
+   * Names the rows for a failed load: "{errorThing} didn't load" with a centred Retry and a quiet
+   * Copy details. Without it the error is one inline line with `errorCopy`'s wording.
+   */
+  errorThing?: string;
   /** Offer "Export CSV" (client mode only). Default true in client mode. */
   exportCsv?: boolean;
   /**

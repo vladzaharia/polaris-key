@@ -2,6 +2,7 @@ import * as React from "react";
 import { channelOptions, HINT_DEV, HINT_PR } from "../lib/channels.js";
 import { cn } from "../lib/cn.js";
 import { Checkbox } from "./Checkbox.js";
+import { Tooltip } from "./Tooltip.js";
 
 /** What each built-in channel grant means (components.md §3.3). */
 const SEMANTICS: Record<string, string> = {
@@ -20,7 +21,8 @@ export interface ChannelPickerProps {
   held?: readonly string[];
   /**
    * Channels held whatever the value says (a tier's `stable`): drawn first, checked and disabled
-   * with "Always included", and never part of the value or of what `onChange` returns.
+   * with "Always included" (a dashed chip whose tooltip says so on hover or focus), and never part
+   * of the value or of what `onChange` returns.
    */
   fixed?: readonly string[];
   id?: string;
@@ -69,7 +71,19 @@ export function ChannelPicker({
         <Checkbox
           key={name}
           id={`${base}-${name}`}
-          label={<span className="font-mono text-xs">{name}</span>}
+          label={
+            <Tooltip content="Always included" side="top">
+              {/* Focusable, so the keyboard reaches the reason a disabled box cannot give. */}
+              <span
+                tabIndex={0}
+                data-locked
+                data-ui-static
+                className="inline-flex min-h-6 min-w-6 cursor-default items-center justify-center rounded-sm border border-dashed border-border-strong px-1.5 font-mono text-xs focus-visible:outline-2 focus-visible:outline-focus"
+              >
+                {name}
+              </span>
+            </Tooltip>
+          }
           description="Always included"
           checked
           disabled
