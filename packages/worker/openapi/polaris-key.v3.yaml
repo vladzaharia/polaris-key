@@ -13332,6 +13332,15 @@ paths:
         render the form again with one line and name no product. Lookups are limited per client
         network (30 per minute). `cache-control: no-store`, `referrer-policy: no-referrer`.
         `/tv` is the same page with larger type for a TV browser.
+
+        On the customer host (Polaris Locker) a hit does not redirect to the product's page: the
+        product's device handler runs on that host and answers `303` straight to sign-in, with no
+        page in between, to the API host's bind hop (`/{product}/identity/auth/device?bind=`, a
+        single-use token that carries the flow's binder cookie across hosts and then `303`s to the
+        IdP). No code is echoed into the `Location`, and no cookie is set on the customer host
+        here. A request that is a cross-site navigation (`Sec-Fetch-Site: cross-site`) or a
+        prefetch starts nothing: it answers the form with the code filled in. The approval after
+        sign-in is `/device/approve` on the same host.
       parameters:
         - name: user_code
           in: query
@@ -13345,7 +13354,11 @@ paths:
             text/html:
               schema: { type: string }
         "302":
-          description: A live code. `Location` is the product's device page, relative to this host.
+          description: A live code, off the customer host. `Location` is the product's device page, relative to this host.
+          headers:
+            Location: { schema: { type: string } }
+        "303":
+          description: A live code on the customer host. `Location` is the API host's bind hop (`?bind=` only).
           headers:
             Location: { schema: { type: string } }
         "404":
@@ -13358,6 +13371,84 @@ paths:
           content:
             text/html:
               schema: { type: string }
+  /device/approve:
+    get:
+      operationId: getCustomerDeviceApprove
+      tags: [portal]
+      summary: Device sign-in approval, on the customer host (HTML)
+      description: >
+        Customer host only (the API host answers the plain not-found). After the IdP's callback the
+        person decides here: **Sign in on {device}** or **Deny**. The product is found through the
+        `__Host-pk_lcb` binder cookie, never the URL; no cookie, an unknown binder or a finished
+        flow is the generic "This page has expired" page (`403`). `?bind=` redeems the single-use
+        token the API host's callback issued: the binder cookie is set on this host and the browser
+        is sent to this path (`303`). `?again=1` adds "check and choose again". The page is the
+        product's approval page (`/{product}/identity/auth/device/approve`) served on this host.
+        Limited per client network (60 per minute). `cache-control: no-store`,
+        `referrer-policy: no-referrer`.
+      parameters:
+        - name: bind
+          in: query
+          required: false
+          description: The single-use bind token (43 characters, 120 s).
+          schema: { type: string, maxLength: 64 }
+        - name: again
+          in: query
+          required: false
+          schema: { type: string, enum: ["1"] }
+      responses:
+        "200":
+          description: "The decision page. `text/html; charset=utf-8`."
+          content:
+            text/html:
+              schema: { type: string }
+        "303":
+          description: A redeemed bind token. `Location` is `/device/approve`; `Set-Cookie` is the host-only binder.
+          headers:
+            Location: { schema: { type: string } }
+        "403":
+          description: No binder, an unknown or spent token, or a finished flow. The generic expired page.
+          content:
+            text/html:
+              schema: { type: string }
+        "429":
+          description: Too many requests from this network.
+    post:
+      operationId: postCustomerDeviceApprove
+      tags: [portal]
+      summary: Approve or deny the device sign-in (customer host)
+      description: >
+        `application/x-www-form-urlencoded`: `token` (the single-use token the page rendered) and
+        `decision` (`approve` or `deny`). A same-origin POST only (`Sec-Fetch-Site: same-origin`,
+        else `Origin` absent, `null` or this host), with the binder cookie; anything else is the
+        generic expired page and writes nothing. A spent or foreign token is `303` back to the
+        page. The answer is the done or denied page, and the binder cookie is cleared.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                token: { type: string }
+                decision: { type: string, enum: [approve, deny] }
+      responses:
+        "200":
+          description: "The done or denied page. `text/html; charset=utf-8`."
+          content:
+            text/html:
+              schema: { type: string }
+        "303":
+          description: A spent or stale token. Back to the page with `?again=1`.
+          headers:
+            Location: { schema: { type: string } }
+        "403":
+          description: Cross-site POST, no binder, or a finished flow.
+          content:
+            text/html:
+              schema: { type: string }
+        "429":
+          description: Too many requests from this network.
   /tv:
     get:
       operationId: getPlatformDeviceEntryTv

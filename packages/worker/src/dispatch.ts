@@ -40,7 +40,10 @@ import { handleDocs } from "./docs.js";
 // The root customer portal is a PLATFORM surface implemented by the Identity service: one
 // account spans every tenant, so there is no product slug to namespace it under and its routes
 // stay reserved ahead of product slugs in `router.ts`. Only the implementation moved (D-14).
-import { handlePortal } from "./services/identity/index.js";
+import {
+  customerApproveTarget,
+  handlePortal,
+} from "./services/identity/index.js";
 import {
   withoutAccountCookies,
   withoutAccountSetCookies,
@@ -72,7 +75,6 @@ import {
 import { dispatchImgHost, isImgHost } from "./core/assets/imgHost.js";
 import {
   CUSTOMER_ROUTE_KINDS,
-  apiOrigin,
   customerDocsPath,
   customerHostOwnResponse,
   docsElsewhere,
@@ -248,12 +250,15 @@ async function routeRequest(
       now: at,
     }).hooks;
 
-  if ("product" in route && PRODUCT_ROUTES.has(route.kind)) {
-    const product = await loadProduct(env, db, route.product);
+  const runProduct = async (
+    request: Request,
+    r: Route & { product: string },
+  ): Promise<Response> => {
+    const product = await loadProduct(env, db, r.product);
     if (!product) {
       return (
-        (route.kind === "service" && route.slug === "identity"
-          ? unknownProductNavigationPage(req, route.rest)
+        (r.kind === "service" && r.slug === "identity"
+          ? unknownProductNavigationPage(request, r.rest)
           : null) ?? notFound()
       );
     }
@@ -263,16 +268,29 @@ async function routeRequest(
     // out (`core/accounts/accountCookies.ts`).
     return withoutAccountSetCookies(
       await dispatchProduct(
-        withoutAccountCookies(req),
+        withoutAccountCookies(request),
         env,
         db,
         product,
-        route,
+        r,
         now,
         exec,
       ),
     );
-  }
+  };
+  // The customer host's own device pages run a product's handler on THIS host: the same request
+  // with its path rewritten to the product's route (the handler reads its origin from the URL, so
+  // its forms, Origin checks and cookies are the customer host's). The path is built from a slug
+  // the Worker looked up, never from the request. Customer hosts reach nothing else of a product.
+  const viaProduct = async (path: string, request: Request) => {
+    const rewritten = new Request(`${url.origin}${path}`, request);
+    const r = matchRoute(new URL(rewritten.url).pathname);
+    if (!("product" in r) || !PRODUCT_ROUTES.has(r.kind)) return notFound();
+    return runProduct(rewritten, r);
+  };
+
+  if ("product" in route && PRODUCT_ROUTES.has(route.kind))
+    return runProduct(req, route);
 
   // Admin + platform routes. These never answer CORS: they share this origin with the admin
   // cookie (THREAT-MODEL R1-09).
@@ -314,12 +332,27 @@ async function routeRequest(
         env,
         route.tv,
         now,
-        // On the customer host the product's page lives on the API host: a fixed origin from
-        // configuration, never from the request. The confirmation, the IdP leg and the callback
-        // stay in one browser on one host, so the flow's binder is set by the confirming browser
-        // (R1-07; LK-04 security review).
-        onCustomerHost ? apiOrigin(env) : null,
+        // On the customer host a live code is served right here: the product's device page runs
+        // on this host, so the person never sees the API host (LK-04 A1, superseded). The slug
+        // comes from the code's index, never from the request.
+        onCustomerHost
+          ? (slug, code) =>
+              viaProduct(
+                `/${slug}/identity/auth/device?user_code=${code}${route.tv ? "&tv=1" : ""}`,
+                req,
+              )
+          : null,
       );
+    // The approval after sign-in, on the customer host: the binder cookie names the product.
+    case "deviceApprove": {
+      if (!onCustomerHost) return notFound();
+      const target = await customerApproveTarget(req, env, now);
+      if (target instanceof Response) return target;
+      return viaProduct(
+        `/${target.slug}/identity/auth/device/approve${url.search}`,
+        req,
+      );
+    }
     case "portalSpa":
     case "portalApi":
     case "portalLogin":

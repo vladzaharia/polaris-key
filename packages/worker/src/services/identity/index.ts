@@ -189,3 +189,6 @@ export const identityService: ServiceDescriptor = {
 // list of exports here is how the next module starts reaching around them.
 export { handlePortal } from "./portal/index.js";
 export { createBrowserSession } from "./browserSession.js";
+// The customer host's device approval page has no product in its URL: the dispatcher asks which
+// product the binder belongs to, then serves that product's approval handler on the customer host.
+export { customerApproveTarget } from "./productOidc/deviceApproval.js";

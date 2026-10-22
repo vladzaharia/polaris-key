@@ -277,9 +277,10 @@ export const lockerDiscoveryIdentity: Scenario = {
 
 // ── locker-devicecode ───────────────────────────────────────────────────────────────────────
 
-/** The player opens the customer host's entry, which hands the browser to the product's page on
- *  the API host; there they confirm, sign in at the mocked IdP, and the callback runs for real.
- *  Unrecorded, like the twin's. */
+/** The player opens the customer host's entry, which goes straight to sign-in: the bind hop sets
+ *  the binder on the API host and sends them to the mocked IdP; the callback runs for real and
+ *  hands the binder back to the customer host, where they press "Sign in on {device}". Unrecorded,
+ *  like the twin's. */
 async function playerSignsInAtLocker(
   w: World,
   now: number,
@@ -287,35 +288,29 @@ async function playerSignsInAtLocker(
 ): Promise<void> {
   const complete = new URL(verificationUriComplete);
   expect(complete.origin).toBe(CUSTOMER);
-  const userCode = complete.searchParams.get("user_code")!;
-  const entry = await browserAt(
-    w,
-    CUSTOMER,
+  const entry = await dispatchWith(
+    new Request(`${CUSTOMER}${complete.pathname}${complete.search}`, {
+      headers: { "sec-fetch-site": "same-origin" },
+    }),
+    w.env,
+    w.db,
     now,
-    "GET",
-    complete.pathname + complete.search,
   );
-  expect(entry.status).toBe(302);
-  const page = new URL(entry.headers.get("location")!);
-  expect(page.origin).toBe(BASE_URL);
-  const shown = await browserAt(
+  expect(entry.status).toBe(303);
+  const hopUrl = new URL(entry.headers.get("location")!);
+  expect(hopUrl.origin).toBe(BASE_URL);
+  const hop = await browserAt(
     w,
     BASE_URL,
     now,
     "GET",
-    page.pathname + page.search,
+    hopUrl.pathname + hopUrl.search,
   );
-  expect(shown.status).toBe(200);
-  const csrf = /name="csrf" value="([^"]+)"/.exec(await shown.text())?.[1];
-  expect(csrf).toBeTruthy();
-  const continued = await browserAt(w, BASE_URL, now, "POST", page.pathname, {
-    form: { user_code: userCode, csrf: csrf! },
-  });
-  expect(continued.status).toBe(303);
-  const authorize = new URL(continued.headers.get("location")!);
+  expect(hop.status).toBe(303);
+  const authorize = new URL(hop.headers.get("location")!);
   const state = authorize.searchParams.get("state")!;
   const nonce = authorize.searchParams.get("nonce")!;
-  const binder = (continued.headers.get("set-cookie") ?? "").split(";")[0]!;
+  const binder = (hop.headers.get("set-cookie") ?? "").split(";")[0]!;
   const idToken = await signIdToken(PLAYER, nonce, now);
   const callback = await answerTokenExchange(idToken, () =>
     browserAt(
@@ -327,22 +322,48 @@ async function playerSignsInAtLocker(
       { cookie: binder },
     ),
   );
-  // I-37: the callback stops at the approval page; the same browser presses "Sign in on {device}".
+  // I-37: the callback stops at the approval page, on the customer host.
   expect(callback.status).toBe(303);
-  const approvePath = `/${PRODUCT}/identity/auth/device/approve`;
-  expect(new URL(callback.headers.get("location")!).pathname).toBe(approvePath);
-  const approvePage = await browserAt(w, BASE_URL, now, "GET", approvePath, {
-    cookie: binder,
-  });
+  const toCustomer = new URL(callback.headers.get("location")!);
+  expect(toCustomer.origin).toBe(CUSTOMER);
+  expect(toCustomer.pathname).toBe("/device/approve");
+  const landed = await browserAt(
+    w,
+    CUSTOMER,
+    now,
+    "GET",
+    toCustomer.pathname + toCustomer.search,
+  );
+  expect(landed.status).toBe(303);
+  const customerBinder = (landed.headers.get("set-cookie") ?? "").split(
+    ";",
+  )[0]!;
+  const approvePage = await browserAt(
+    w,
+    CUSTOMER,
+    now,
+    "GET",
+    "/device/approve",
+    {
+      cookie: customerBinder,
+    },
+  );
   expect(approvePage.status).toBe(200);
   const token = /name="token" value="([^"]+)"/.exec(
     await approvePage.text(),
   )?.[1];
   expect(token).toBeTruthy();
-  const approved = await browserAt(w, BASE_URL, now, "POST", approvePath, {
-    form: { token: token!, decision: "approve" },
-    cookie: binder,
-  });
+  const approved = await browserAt(
+    w,
+    CUSTOMER,
+    now,
+    "POST",
+    "/device/approve",
+    {
+      form: { token: token!, decision: "approve" },
+      cookie: customerBinder,
+    },
+  );
   expect(approved.status).toBe(200);
 }
 
@@ -355,7 +376,7 @@ export const lockerDevicecode: Scenario = {
       const r = new TranscriptRecorder({
         id: "locker-devicecode",
         description:
-          "Device-code sign-in with the customer host on (plans/LK-00.md §3, §7.9): the same conversation as devicecode-happy, but verificationUri is https://polaris.locker/device and verificationUriComplete adds ?user_code=. The customer host's entry hands the player to the product's page on the API host, where they confirm and the flow's binder is set by their browser for the IdP's callback; the device code, the poll and the signed token are exactly the twin's. A client shows both URIs as given and never builds one.",
+          "Device-code sign-in with the customer host on (plans/LK-00.md §3, §7.9): the same conversation as devicecode-happy, but verificationUri is https://polaris.locker/device and verificationUriComplete adds ?user_code=. The customer host's entry sends the player straight to sign-in (the API host sets the flow's binder for the IdP's callback), and the approval is served on the customer host; the device code, the poll and the signed token are exactly the twin's. A client shows both URIs as given and never builds one.",
         features: ["identity.devicecode"],
         requires: ["core.store", "core.sync"],
         product: PRODUCT,

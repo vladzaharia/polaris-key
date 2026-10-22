@@ -34,6 +34,7 @@ export const CUSTOMER_ROUTE_KINDS: ReadonlySet<string> = new Set([
   "portalMedia",
   "signInEntry",
   "deviceEntry",
+  "deviceApprove",
   // Help (LK-09, D7): `docs` is confined to `customerDocsPath` below, not served whole.
   "docs",
   "helpAlias",

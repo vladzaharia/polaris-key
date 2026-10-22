@@ -29,7 +29,8 @@ beforeEach(async () => {
   db = makeTestDb();
   env = makeEnv(new KvMock(), ["djdl"]);
   env.CONSOLE_ORIGIN = API;
-  env.CUSTOMER_ORIGIN = CUSTOMER;
+  // No customer host here: these tests pin the product page's own markup (the API host's legacy
+  // pages). The customer host's device pages are pinned by `customerDevicePage.test.ts`.
   await seedProduct(db, "djdl");
   const map = Object.fromEntries(
     SERVICE_SLUGS.map((s) => [
@@ -125,6 +126,10 @@ describe("the code entry", () => {
     expect(html).toContain(
       "The code on your device still works until it expires.",
     );
+    // N6: the time to try again, and nothing to press (a button could only reload into the same 429).
+    expect(html).toContain("Try again in 1 minute.");
+    expect(res!.headers.get("retry-after")).toBe("60");
+    expect(html).not.toMatch(/<a [^>]*class="button/);
     expect(html).not.toContain("<form");
     expect(html).not.toContain('class="alert"');
   });
@@ -177,7 +182,7 @@ describe("the confirm step", () => {
     expect(html).toContain('name="decision" value="deny">Deny</button>');
     expect(html).toContain("wants you to sign in");
     // The passport pane (shown at 960 px landscape) and the strip (narrower) name the device.
-    expect(html).toContain('class="ac-passport"');
+    expect(html).toMatch(/class="ac-passport( ac-noart)?"/);
     expect(html).toContain("on <bdi>Living room PC</bdi>");
     expect(html).toContain("never sees your codes or passkeys.");
     expect(html).not.toMatch(/<script|\sstyle=/i);
@@ -298,7 +303,7 @@ describe("the TV variant after the code", () => {
     );
     const html = await res.text();
     expect(html).toContain('<body class="tv">');
-    expect(html).not.toContain('class="ac-passport"');
+    expect(html).not.toContain("<aside");
     const csrf = /name="csrf" value="([^"]+)"/.exec(html)![1]!;
     const denied = await send(`${API}/djdl/identity/auth/device?tv=1`, {
       method: "POST",
@@ -310,7 +315,9 @@ describe("the TV variant after the code", () => {
   });
 
   it("one 48 px trimmed lockup on every page, quiet in an app's context", async () => {
+    env.CUSTOMER_ORIGIN = CUSTOMER;
     const entry = await (await send(`${CUSTOMER}/device`)).text();
+    delete env.CUSTOMER_ORIGIN;
     const { userCode } = await start();
     const confirm = (await confirmPage(userCode)).html;
     for (const html of [entry, confirm])

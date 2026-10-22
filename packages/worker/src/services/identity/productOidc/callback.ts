@@ -340,7 +340,7 @@ export async function handleAuthCallback(
       state,
       FLOW_TTL_SECONDS,
     );
-    return redirectToApprove(req, product);
+    return redirectToApprove(req, env, product);
   }
   const result = await activateFromIdentity(db, product, identity, now, {
     env,

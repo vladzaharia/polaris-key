@@ -22,9 +22,9 @@ import { parseFlowRecord } from "../../../platform/json.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
-import { methodNotAllowed } from "../../../core/errors.js";
+import { errorResponse, methodNotAllowed } from "../../../core/errors.js";
 import { appendAudit } from "../../../core/audit.js";
-import { clientNetwork } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import {
   appHeader,
@@ -36,12 +36,20 @@ import {
 import { appForPage, pageApp } from "../../../core/brandPage.js";
 import { readBodyText } from "../../../core/cappedBody.js";
 import {
+  artefactRef,
   deleteArtefact,
   getArtefact,
+  putArtefact,
   updateArtefact,
   type ArtefactRef,
 } from "../../../core/singleUse.js";
-import { binderClearCookie, readBinder } from "../licenseChoice.js";
+import {
+  binderClearCookie,
+  binderSetCookie,
+  readBinder,
+} from "../licenseChoice.js";
+import { hostOrigin } from "../../../core/hosts.js";
+import { consumeBindToken, issueBindToken } from "../../../core/signInBind.js";
 import { requestLocation } from "../place.js";
 import { choiceKey, redirectToChooser, startAgainPage } from "./chooser.js";
 import {
@@ -199,24 +207,118 @@ async function findFlow(
   return { stateKey, indexKey, binderHash, flow };
 }
 
-function approvePath(req: Request, product: Product): string {
-  return `${new URL(req.url).origin}/${product.slug}/identity/auth/device/approve`;
+/** Is this request on the customer host (Polaris Locker)? */
+function onCustomerHost(req: Request, env: Env): boolean {
+  const customer = hostOrigin("customer", env);
+  return customer !== null && new URL(req.url).origin === customer;
 }
 
-export function redirectToApprove(
+/** Where the approval page lives for this request's host: `/device/approve` on the customer host
+ *  (the product is found through the binder), the product's own path otherwise. */
+function approvePath(req: Request, env: Env, product: Product): string {
+  const origin = new URL(req.url).origin;
+  return onCustomerHost(req, env)
+    ? `${origin}/device/approve`
+    : `${origin}/${product.slug}/identity/auth/device/approve`;
+}
+
+/**
+ * After the IdP's callback (API host) the person goes on to the approval page. With a customer
+ * host that page is `<customer>/device/approve`; the binder cookie is host-only, so a single-use
+ * bind token carries the binder there (the response sets no cookie, and the `Location` is built
+ * from configuration and the token, never from the request).
+ */
+export async function redirectToApprove(
   req: Request,
+  env: Env,
   product: Product,
   again = false,
-): Response {
-  return new Response(null, {
-    status: 303,
-    headers: {
-      // `?again=1` carries no state: the page only adds "check and choose again".
-      location: approvePath(req, product) + (again ? "?again=1" : ""),
-      "referrer-policy": "no-referrer",
-      "cache-control": "no-store",
-    },
+): Promise<Response> {
+  const customer = hostOrigin("customer", env);
+  const binder = readBinder(req);
+  const headers = new Headers({
+    "referrer-policy": "no-referrer",
+    "cache-control": "no-store",
   });
+  if (customer !== null && !onCustomerHost(req, env) && binder) {
+    const token = await issueBindToken(env, {
+      kind: "device-approve",
+      slug: product.slug,
+      binder,
+    });
+    headers.set(
+      "location",
+      `${customer}/device/approve?bind=${token}${again ? "&again=1" : ""}`,
+    );
+  } else {
+    // `?again=1` carries no state: the page only adds "check and choose again".
+    headers.set(
+      "location",
+      approvePath(req, env, product) + (again ? "?again=1" : ""),
+    );
+  }
+  return new Response(null, { status: 303, headers });
+}
+
+/** The ref of the slug a binder's approval page belongs to (customer host only). */
+function slugRef(binderHash: string): ArtefactRef {
+  return artefactRef("device-approve-slug", binderHash);
+}
+
+/**
+ * The customer host's `/device/approve` has no product in its URL. A bind token (`?bind=`) is
+ * redeemed here: the binder cookie is set on THIS host, the product's slug is remembered against
+ * the binder's hash, and the browser is sent to the clean path. Otherwise the binder cookie
+ * names the product, and the dispatcher serves the product's approval handler on this host.
+ * Anything unknown, spent or foreign is the generic start-again page.
+ */
+export async function customerApproveTarget(
+  req: Request,
+  env: Env,
+  now: number,
+): Promise<{ slug: string } | Response> {
+  if (req.method !== "GET" && req.method !== "POST") return methodNotAllowed();
+  if (
+    !(await rateLimitOk(
+      env,
+      "_portal",
+      {
+        bucket: "deviceApproveCustomer",
+        id: clientNetwork(req),
+        limit: 60,
+        windowSec: 60,
+      },
+      now,
+    ))
+  )
+    return errorResponse(429, "rate_limited", "too many requests");
+  const url = new URL(req.url);
+  if (req.method === "GET" && url.searchParams.has("bind")) {
+    const bound = await consumeBindToken(env, url.searchParams.get("bind")!);
+    if (!bound || bound.kind !== "device-approve") return startAgainPage();
+    await putArtefact(
+      env,
+      slugRef(await hashKey(bound.binder, env.KEY_HASH_PEPPER)),
+      bound.slug,
+      FLOW_TTL_SECONDS,
+    );
+    return new Response(null, {
+      status: 303,
+      headers: {
+        location: `/device/approve${url.searchParams.get("again") === "1" ? "?again=1" : ""}`,
+        "set-cookie": binderSetCookie(bound.binder, FLOW_TTL_SECONDS),
+        "referrer-policy": "no-referrer",
+        "cache-control": "no-store",
+      },
+    });
+  }
+  const binder = readBinder(req);
+  if (!binder) return startAgainPage();
+  const slug = await getArtefact(
+    env,
+    slugRef(await hashKey(binder, env.KEY_HASH_PEPPER)),
+  );
+  return slug ? { slug } : startAgainPage();
 }
 
 /** "14:32": the UTC time of day of a Unix time in seconds. */
@@ -281,7 +383,7 @@ export async function handleAuthDeviceApprove(
   const token = form.get("token") ?? "";
   const decision = form.get("decision");
   if (!token || (decision !== "approve" && decision !== "deny"))
-    return redirectToApprove(req, product, true);
+    return redirectToApprove(req, env, product, true);
   const won = await decideDeviceFlow(
     env,
     db,
@@ -292,7 +394,7 @@ export async function handleAuthDeviceApprove(
     decision,
     now,
   );
-  if (!won) return redirectToApprove(req, product, true);
+  if (!won) return redirectToApprove(req, env, product, true);
   // Finished with the browser either way: the index and the binder go.
   await deleteArtefact(env, indexKey);
   const cookies = [binderClearCookie()];
@@ -490,7 +592,7 @@ async function renderApproval(
           }</p>`
         : "") +
       originWarning(req, flow) +
-      `<form id="${formId}" method="post" action="${escapeHtml(approvePath(req, product))}">` +
+      `<form id="${formId}" method="post" action="${escapeHtml(approvePath(req, env, product))}">` +
       `<input type="hidden" name="token" value="${escapeHtml(token)}">` +
       `<div class="stack"><button class="button" type="submit" name="decision" value="approve"><span>Sign in on <bdi>${escapeHtml(label)}</bdi></span></button>` +
       `<button class="button secondary" type="submit" name="decision" value="deny">Deny</button>` +

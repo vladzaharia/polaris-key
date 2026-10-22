@@ -794,7 +794,7 @@ describe("what the page shows", () => {
     expect(html).toMatch(/just now\. Expires at \d\d:\d\d UTC\./);
     expect(html).toContain("This sign-in started in Portugal.");
     expect(html).toContain("wants you to sign in");
-    expect(html).toContain('class="ac-passport"');
+    expect(html).toMatch(/class="ac-passport( ac-noart)?"/);
     expect(html).toContain("Polaris Locker signs you in for");
     expect(html).not.toMatch(/<script|\sstyle=/i);
     // No secret and no handle: not the device code, `state`, the nonce, or the binder.
