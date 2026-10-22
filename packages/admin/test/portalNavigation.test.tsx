@@ -278,6 +278,7 @@ describe("without the View Transitions API: instant swaps that still scroll and 
       window.location.hash = "#/p/nightfall";
     });
     // The router reads the live hash (one publish per navigation), so let this one land first.
+    // The core coalesces two hash writes in one tick (one publish per navigation): let this land.
     await new Promise((r) => setTimeout(r, 30));
     html.dataset.motion = "reduce";
     calls.length = 0;
