@@ -178,8 +178,10 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       since: "F-34.3",
     }),
     // F-02/F-11: one `dist_registry_feeds` row per owner and ecosystem (enabled, access mode,
-    // namespace, size cap). F-34.2 provisions a missing row from `.pkey/release` (Customers);
-    // the operator owns it from then on: the manifest never updates, re-enables or widens it.
+    // namespace, size cap). Not console-created: the ingest INSERTS a missing row from
+    // `.pkey/release` (F-34.2: Customers, the derived namespace) and nothing else. `operator`
+    // means there is no manifest path that sets a value: a row that exists is the operator's, and
+    // the manifest never updates, re-enables or widens it (F-34.2, rule: widening is operator-only).
     setting({
       key: "distribution.feeds",
       scope: "product",
