@@ -129,13 +129,15 @@ A platform admin controls three settings: the platform default (`cloudSync.quota
 
 Retired with no replacement period: `onAttach`, `cloudSync.saves` (use a collection with `template: "saves"`), `cloudSync.open`, a collection `access` other than `owner`, and `.pkey/product`'s `cloudSync` block.
 
-## Discovery and the console
+## Discovery
 
 `services.sync` in [discovery](/docs/reference/protocol/discovery/) is `{"enabled": false}` when off. When on, it lists the kinds of data served and `endpoints` for `pull`, `push` and `files`, each a URL or `null`. Today `settings` is true and `pull` and `push` are URLs; `collections` and `saves` are false and `files` is `null`. An SDK uses an endpoint only when discovery names it.
 
+## In the console
+
 The **Cloud Sync** section's **Data** page lists the product's synced settings, collections and migrations and the platform limits. The catalog editor tunes a key's `user` block; a key whose syncing is off stays on the device (`sync: "local"`).
 
-The **Usage** page shows how many people have data, the storage they use against the product's limit, syncs and conflicts today, storage by tier with who is over 80 % of the limit, what is stored, and where people sync from. A game says players and an app says people. The figures refresh about every 15 minutes, count only, and never name a person.
+The **Usage** page shows how many people have data, the storage they use against the product's limit, syncs and conflicts today, storage by tier with who is over 80 % of the limit, what is stored, and where people sync from. A game says players and an app says people. The figures refresh about every 15 minutes, count only, and never name a person. A row named **No tier** holds people with no tier or no license; with Licensing off it is everyone, on the default. A platform row named **Not reported** is people whose device sent no platform.
 
 ## Next steps
 
