@@ -37,6 +37,7 @@ import {
 } from "./allowList.js";
 import type { StepOutlet } from "./outlets.js";
 import type { CiFileCheck } from "./types.js";
+import { UsageError } from "../errors.js";
 
 export interface StoreStep {
   /** The CI-plane store (`itch`, `snap`, `steam`, `msstore`, `epic`). */
@@ -263,7 +264,7 @@ export function checkToolPath(toolPath: string, tool: string): void {
     .basename(toolPath.replace(/\\/g, "/"))
     .replace(/\.(exe|sh|cmd|bat)$/i, "");
   if (base.toLowerCase() !== tool.toLowerCase())
-    throw new Error(
+    throw new UsageError(
       `--tool-path must point at ${tool} itself, not ${path.basename(toolPath)}.`,
     );
 }

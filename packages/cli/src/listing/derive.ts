@@ -47,6 +47,7 @@ import {
   type ScreenshotStore,
   type SlotSpec,
 } from "./specs.js";
+import { UsageError } from "../errors.js";
 
 /**
  * `ok` (green), `warn` (amber: usable, look at the note), `red` (a fallback or a missing layer:
@@ -565,7 +566,7 @@ export function fitScreenshots(
         const method: "crop" | "pad" =
           choice === "pad" ? "pad" : proposal.crop ? "crop" : "pad";
         if (choice === "pad" && !proposal.pad)
-          throw new Error(
+          throw new UsageError(
             `--pad ${id}: no pad fits ${rule.store}; accept the crop instead.`,
           );
         const raster = opaque(

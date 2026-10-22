@@ -100,6 +100,7 @@ import {
   type SourcedPin,
 } from "./contentStamp.js";
 import { packContext, requirePacksDiscovery } from "./packManifest.js";
+import { UsageError } from "./errors.js";
 
 export const PUBLISH_USAGE =
   "Usage: pkey release publish --product <slug> --version <v> --dir <path> " +
@@ -241,7 +242,7 @@ export async function scanDir(dir: string): Promise<FoundFile[]> {
     await walk(dir);
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT")
-      throw new Error(`--dir ${dir} does not exist.`);
+      throw new UsageError(`--dir ${dir} does not exist.`);
     throw e;
   }
   return out;
@@ -355,12 +356,12 @@ export async function readMeta(
   try {
     raw = JSON.parse(await readFile(file, "utf8")) as unknown;
   } catch (e) {
-    throw new Error(
+    throw new UsageError(
       `--meta ${file} is not readable JSON: ${(e as Error).message}`,
     );
   }
   if (!raw || typeof raw !== "object" || Array.isArray(raw))
-    throw new Error(`--meta ${file} must be an object keyed by build id.`);
+    throw new UsageError(`--meta ${file} must be an object keyed by build id.`);
   const out: Record<string, BuildMeta> = {};
   const problems: string[] = [];
   for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
@@ -405,7 +406,7 @@ export async function readMeta(
     out[id] = m;
   }
   if (problems.length)
-    throw new Error(
+    throw new UsageError(
       `--meta ${file}:\n${problems.map((p) => `  ${p}`).join("\n")}`,
     );
   return out;
@@ -571,20 +572,20 @@ export async function publishRelease(
   const out = opts.stdout;
   const source: PublishSource = opts.source ?? "r2";
   if (source !== "r2" && source !== "github")
-    throw new Error(`--source must be r2 or github.\n${PUBLISH_USAGE}`);
+    throw new UsageError(`--source must be r2 or github.\n${PUBLISH_USAGE}`);
   const deliverable = opts.deliverable?.trim() || APP_DELIVERABLE_ID;
   if (deliverable !== APP_DELIVERABLE_ID)
-    throw new Error(
+    throw new UsageError(
       `--deliverable ${deliverable}: publishRelease publishes the app; a pack publishes through publishPack (pkey release publish dispatches).`,
     );
   const tag = opts.tag?.trim() || undefined;
   const version = opts.version?.trim() || tag?.replace(/^v/, "");
   if (!version)
-    throw new Error(`--version (or --tag) is required.\n${PUBLISH_USAGE}`);
+    throw new UsageError(`--version (or --tag) is required.\n${PUBLISH_USAGE}`);
   if (!opts.dir?.trim())
-    throw new Error(`--dir is required.\n${PUBLISH_USAGE}`);
+    throw new UsageError(`--dir is required.\n${PUBLISH_USAGE}`);
   if (opts.strict && opts.contentInterface === undefined)
-    throw new Error("--strict needs --content-interface <file>.");
+    throw new UsageError("--strict needs --content-interface <file>.");
   // P4-20: hashed first, so a bad registry costs no upload.
   const fingerprint =
     opts.contentInterface !== undefined
@@ -608,7 +609,7 @@ export async function publishRelease(
   const context = descriptorManifestOf(loaded);
   const slug = context.product?.slug;
   if (slug !== opts.product)
-    throw new Error(
+    throw new UsageError(
       `--product ${opts.product} does not match .pkey/product's slug ${slug}.`,
     );
   const app = context.release?.app;
@@ -707,7 +708,7 @@ export async function publishRelease(
       ".pkey/release declares no pack deliverables; --content-stamp, --embedded and --pin stamp an app release's packs.",
     );
   if (opts.contentStamp !== undefined && (opts.embedded || opts.pins?.length))
-    throw new Error(
+    throw new UsageError(
       "--content-stamp is the stamp the build embedded; it cannot be combined with --embedded or --pin.",
     );
   if (packs.length > 0 && contentApi === undefined)
@@ -760,7 +761,7 @@ export async function publishRelease(
     opts.minSupportedSeq !== undefined &&
     (!Number.isSafeInteger(opts.minSupportedSeq) || opts.minSupportedSeq < 1)
   )
-    throw new Error(
+    throw new UsageError(
       "--min-supported-seq must be a whole number of at least 1.",
     );
   // The key is read, never echoed: no `::add-mask::` either (that would put it on stdout; a

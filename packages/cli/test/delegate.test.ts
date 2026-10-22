@@ -544,7 +544,7 @@ describe("pkey release revoke --delegation", () => {
       ],
       { cwd, stdout: io.stdout, stderr: io.stderr, env: {} },
     );
-    expect(code).toBe(1);
+    expect(code).toBe(2);
     expect(io.err()).toContain("no release replaces a delegation");
   });
 });

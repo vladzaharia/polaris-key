@@ -24,6 +24,7 @@ import { ciClient, type Out, type Sleep } from "./ci.js";
 import { mask, resolveCiToken, type CiEnv } from "./oidc.js";
 import { putFile } from "./s3.js";
 import { untrusted } from "./untrusted.js";
+import { UsageError } from "./errors.js";
 
 export const ASSETS_PUSH_USAGE =
   "Usage: pkey assets push <file> --slot <slot> [--locale <code>] --product <slug>\n" +
@@ -117,7 +118,7 @@ async function prepare(
     const problem = slotProblem(e.slot);
     if (problem) throw new Error(problem);
     if (e.locale !== undefined && !LOCALE_RE.test(e.locale))
-      throw new Error(
+      throw new UsageError(
         `--locale must be a language tag such as de or pt-BR (got ${JSON.stringify(e.locale)}).`,
       );
     const id = `${e.slot}@${e.locale ?? ""}`;

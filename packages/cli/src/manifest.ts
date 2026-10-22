@@ -11,6 +11,7 @@ import {
   type ServiceSlug,
 } from "@polaris-key/manifest";
 import { parse as parseYaml } from "yaml";
+import { UsageError } from "./errors.js";
 
 /**
  * What `--modules` (and `InitOptions.modules`) may name: a Polaris Key service slug or one of the
@@ -118,7 +119,7 @@ export function normalizeModules(raw: string | undefined): ServiceSlug[] {
     .filter(Boolean);
   for (const item of parsed) {
     if (!isProductModule(item))
-      throw new Error(
+      throw new UsageError(
         `Unknown module "${item}". Expected one of ${MODULES.join(", ")}.`,
       );
   }

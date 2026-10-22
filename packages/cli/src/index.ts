@@ -11,6 +11,7 @@ import {
   isInternalError,
   isUsageError,
   networkMessage,
+  UsageError,
 } from "./errors.js";
 import { CLI_VERSION } from "./version.js";
 import { MIGRATE_USAGE, formatMigrate, runMigrate } from "./migrate.js";
@@ -635,6 +636,10 @@ async function runCommand(
     // whatever the handlers table holds.
     const cmd = findCommand(parsed.command);
     const handler = cmd ? HANDLERS[cmd.name] : undefined;
+    if (!cmd && parsed.command.startsWith("-")) {
+      stderr.write(unknownOption(parsed.command, term(stderr)));
+      return 2;
+    }
     if (!cmd || !handler) {
       stderr.write(unknownCommand(parsed.command, term(stderr)));
       return 2;
@@ -664,7 +669,7 @@ async function runCommand(
     stderr.write(`${untrustedLines(message, ci.env)}\n`);
     if (ci.env.PKEY_DEBUG && err instanceof Error && err.stack)
       stderr.write(`${untrustedLines(err.stack, ci.env)}\n`);
-    return isUsageError(message) ? 2 : 1;
+    return err instanceof UsageError || isUsageError(message) ? 2 : 1;
   }
 }
 
@@ -717,10 +722,24 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
  * lines of help would push the error out of view.
  */
 function unknownCommand(name: string, term: Term, parent?: string): string {
+  return failLine(
+    parent
+      ? `Unknown ${parent} command "${name.slice(parent.length + 1)}". Run pkey help ${parent} to see its commands.`
+      : `Unknown command "${name}". Run pkey help to see every command.`,
+    term,
+  );
+}
+
+/** `✗  Unknown option --bogus. Run pkey help to see the options.` for a flag where a command goes. */
+function unknownOption(flag: string, term: Term): string {
+  return failLine(
+    `Unknown option ${flag.split("=")[0]}. Run pkey help to see the options.`,
+    term,
+  );
+}
+
+function failLine(text: string, term: Term): string {
   const { painter, symbols, caps } = term;
-  const text = parent
-    ? `Unknown ${parent} command "${name.slice(parent.length + 1)}". Run pkey help ${parent} to see its commands.`
-    : `Unknown command "${name}". Run pkey help to see every command.`;
   const lines = wrapSpans([{ text }], Math.max(1, caps.columns - 3));
   return `${lines
     .map((l, i) =>
@@ -1388,7 +1407,7 @@ function cmdTrust(
   // An Ed25519 public key is 32 bytes: 43 base64url characters. Anything else would print a
   // config no SDK could verify with, so say so here, not at the first failed verification.
   if (!/^[A-Za-z0-9_-]{43}$/.test(publicKey))
-    throw new Error(
+    throw new UsageError(
       `--public-key must be an Ed25519 public key: 43 base64url characters (A-Z a-z 0-9 - _); got ${publicKey.length}. ` +
         "Copy it from the console's Keys & secrets page.",
     );
@@ -1410,7 +1429,7 @@ function cmdTrust(
 async function cmdDev(parsed: ParsedArgs, rt: Runtime): Promise<number> {
   const port = flagString(parsed, "port");
   if (port !== undefined && !/^\d{1,5}$/.test(port))
-    throw new Error(`--port must be a number; got ${port}.`);
+    throw new UsageError(`--port must be a number; got ${port}.`);
   const [sub, ...positional] = parsed.positional;
   const args: DevArgs = {
     sub,
@@ -1474,7 +1493,7 @@ async function cmdSdk(
     return 0;
   }
   if (lang === undefined || !isSdkLang(lang))
-    throw new Error(
+    throw new UsageError(
       add
         ? `pkey sdk add needs the SDK first: pkey sdk add ${SDK_LANGS.join("|")} --expect <kid>@sha256:<fingerprint>[,...]`
         : `--lang must be one of ${SDK_LANGS.join(", ")}.\n${SDK_CONFIG_USAGE}`,
@@ -1484,7 +1503,7 @@ async function cmdSdk(
   // Outside `add` the fetched pins are written as served, so an --expect there would read as a
   // pin it never checked.
   if (!add && flagString(parsed, "expect") !== undefined)
-    throw new Error(
+    throw new UsageError(
       "--expect is only for pkey sdk add <lang>; it checks the served pins before writing.",
     );
 
@@ -1512,19 +1531,19 @@ async function cmdSdk(
     devFacts?.product ??
     local?.slug;
   if (!product)
-    throw new Error(
+    throw new UsageError(
       add
         ? "pkey sdk add needs --product <slug> (or run it in the product repo, where .pkey/ names it)."
         : SDK_CONFIG_USAGE,
     );
   if (local && !devFacts && local.slug !== product)
-    throw new Error(
+    throw new UsageError(
       `The .pkey/ in ${cwd} is product ${local.slug}, not ${product}; run pkey sdk from ${product}'s repo or drop --product.`,
     );
   const kid = flagString(parsed, "kid");
   const publicKey = flagString(parsed, "public-key");
   if ((kid === undefined) !== (publicKey === undefined))
-    throw new Error("--kid and --public-key go together.");
+    throw new UsageError("--kid and --public-key go together.");
   const facts = await resolveSdkFacts({
     product,
     baseUrl:
@@ -1633,19 +1652,19 @@ async function findGodotProject(from: string): Promise<string | null> {
 /** `--expect kid@sha256:<hex>[,kid@sha256:<hex>...]`: the pins the developer saw in the console. */
 function parseExpect(raw: string | undefined): Map<string, string> {
   if (raw === undefined)
-    throw new Error(
+    throw new UsageError(
       "pkey sdk add needs --expect <kid>@sha256:<fingerprint>[,...]: the pin fingerprints on the console's Integration page. It never trusts what discovery says first.",
     );
   const out = new Map<string, string>();
   for (const part of raw.split(",").filter(Boolean)) {
     const m = /^(.+)@sha256:([0-9a-f]{64})$/i.exec(part.trim());
     if (!m)
-      throw new Error(
+      throw new UsageError(
         `--expect takes <kid>@sha256:<64 hex digits>; got ${part}.`,
       );
     out.set(m[1] as string, (m[2] as string).toLowerCase());
   }
-  if (out.size === 0) throw new Error("--expect lists no pin.");
+  if (out.size === 0) throw new UsageError("--expect lists no pin.");
   return out;
 }
 
@@ -1799,7 +1818,7 @@ async function releasePublish(
       ? Number(flagString(parsed, "min-supported-seq"))
       : undefined;
   if (parsed.bare.has("pin"))
-    throw new Error("--pin needs a value: --pin <packId>@<version>.");
+    throw new UsageError("--pin needs a value: --pin <packId>@<version>.");
   const contentKeyPem = flagString(parsed, "content-key-file")
     ? await readFile(
         path.resolve(cwd, flagString(parsed, "content-key-file")!),
@@ -1837,7 +1856,7 @@ async function releasePublish(
       `--deliverable ${deliverable} is a package: its files are extracted from --dir, its release id is <deliverable>@<version>, and it is never signed`,
     );
     if (flagBool(parsed, "no-record"))
-      throw new Error(
+      throw new UsageError(
         "--no-record does not apply to a package: a package release never carries a record.",
       );
     progress.stage(`Publishing ${deliverable}`);
@@ -1865,11 +1884,11 @@ async function releasePublish(
       `--deliverable ${deliverable} is a pack; the content-interface fingerprint is the app's (its pack lists content ids with --provides)`,
     );
     if (parsed.bare.has("removes") || parsed.bare.has("provides"))
-      throw new Error(
+      throw new UsageError(
         "--provides needs a file and --removes a content id: --provides <file>, --removes <id>[,<id>...].",
       );
     if (parsed.bare.has("script-extensions") || parsed.bare.has("script-types"))
-      throw new Error(
+      throw new UsageError(
         "--script-extensions and --script-types need values: --script-extensions lua[,wren...], --script-types LuaScript[,...].",
       );
     const scriptExtensions = parseRemoves(
@@ -1992,9 +2011,9 @@ async function cmdRelease(
     }
     case "content-stamp": {
       if (parsed.bare.has("pin"))
-        throw new Error("--pin needs a value: --pin <packId>@<version>.");
+        throw new UsageError("--pin needs a value: --pin <packId>@<version>.");
       if (parsed.bare.has("hold"))
-        throw new Error(
+        throw new UsageError(
           "--hold needs a value: --hold <packId>@<version>[=<reason>].",
         );
       // `pkey release content-stamp` (P4-03): the pkey-content/1 stamp a build embeds.
@@ -2378,7 +2397,7 @@ async function cmdTransport(
   const from = () => {
     const f = flagString(parsed, "from");
     if (!f)
-      throw new Error(
+      throw new UsageError(
         `--from is required: the --out directory of pkey release publish --deliverable ${deliverable}.\n${TRANSPORT_USAGE}`,
       );
     return f;
@@ -2403,7 +2422,7 @@ async function cmdTransport(
     case "apple-ba upload": {
       const wait = flagString(parsed, "wait");
       if (wait !== undefined && !/^[0-9]{1,4}$/.test(wait))
-        throw new Error("--wait takes whole minutes.");
+        throw new UsageError("--wait takes whole minutes.");
       await baUpload({
         ...common,
         dir: flagString(parsed, "dir"),
@@ -2418,7 +2437,7 @@ async function cmdTransport(
     case "play-pad modules": {
       const project = flagString(parsed, "project");
       if (!project)
-        throw new Error(
+        throw new UsageError(
           `--project is required: the Godot Android Gradle build (android/build).\n${TRANSPORT_USAGE}`,
         );
       await padModules({
@@ -2433,7 +2452,8 @@ async function cmdTransport(
     }
     case "steam-depot vdf": {
       const depot = flagString(parsed, "depot");
-      if (!depot) throw new Error(`--depot is required.\n${TRANSPORT_USAGE}`);
+      if (!depot)
+        throw new UsageError(`--depot is required.\n${TRANSPORT_USAGE}`);
       await steamVdf({
         ...common,
         from: from(),
@@ -2466,7 +2486,7 @@ function refuseFlags(
 ): void {
   const given = names.filter((n) => parsed.flags[n] !== undefined);
   if (given.length)
-    throw new Error(
+    throw new UsageError(
       `${given.map((n) => `--${n}`).join(", ")} ${given.length === 1 ? "does" : "do"} not apply here: ${why}.`,
     );
 }

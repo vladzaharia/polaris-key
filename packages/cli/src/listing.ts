@@ -36,6 +36,7 @@ import {
 } from "./bundle.js";
 import { readGodotListing, type GodotListing } from "./godotProject.js";
 import { untrusted, type UntrustedEnv } from "./untrusted.js";
+import { UsageError } from "./errors.js";
 
 /** The environment variable this command reads its admin session cookie from. */
 export const ADMIN_COOKIE_ENV = "PKEY_ADMIN_COOKIE";
@@ -190,9 +191,11 @@ export async function listingImport(
   opts: ListingImportOptions,
 ): Promise<ListingImportResult> {
   if (opts.locale !== undefined && !LOCALE.test(opts.locale))
-    throw new Error(`--locale must be a code such as en-US.\n${LISTING_USAGE}`);
+    throw new UsageError(
+      `--locale must be a code such as en-US.\n${LISTING_USAGE}`,
+    );
   if (opts.fields?.length && !opts.apply)
-    throw new Error(`--fields goes with --apply.\n${LISTING_USAGE}`);
+    throw new UsageError(`--fields goes with --apply.\n${LISTING_USAGE}`);
   const read = await readGodotListing(opts.godot, {
     ...(opts.presets?.length ? { presets: opts.presets } : {}),
   });
@@ -204,7 +207,8 @@ export async function listingImport(
   if (opts.dryRun) return result;
 
   const product = opts.product?.trim();
-  if (!product) throw new Error(`--product is required.\n${LISTING_USAGE}`);
+  if (!product)
+    throw new UsageError(`--product is required.\n${LISTING_USAGE}`);
   const cookie = adminCookie(opts.cookie);
   const baseUrl = normalizeBaseUrl(
     opts.baseUrl?.trim() || DEFAULT_BASE_URL,

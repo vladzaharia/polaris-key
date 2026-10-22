@@ -30,6 +30,7 @@ import {
   providesListProblem,
   type ManifestPackDeliverable,
 } from "@polaris-key/manifest";
+import { UsageError } from "./errors.js";
 
 /** UTF-16 code-unit order, as `Array.prototype.sort` without a comparator. */
 const byCodeUnit = (a: string, b: string): number =>
@@ -116,7 +117,7 @@ export async function collectProvides(o: {
   }
   if (o.removes && o.removes.length > 0) {
     const problem = providesListProblem(o.removes);
-    if (problem) throw new Error(`--removes ${problem}.`);
+    if (problem) throw new UsageError(`--removes ${problem}.`);
     out.removes = [...o.removes].sort(byCodeUnit);
   }
   return out;

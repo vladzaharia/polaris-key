@@ -135,6 +135,7 @@ import {
   type Chunk,
   type ChunkChainBase,
 } from "./packChunks.js";
+import { UsageError } from "./errors.js";
 
 /** At most this many objects per upload ticket (`MAX_TICKET_OBJECTS`, P2-02). */
 export const STAGE_ROUND_OBJECTS = 256;
@@ -271,17 +272,17 @@ export function checkScriptKinds(
     pack.type !== "godot.pck" &&
     pack.type !== "godot.zip"
   )
-    throw new Error(
+    throw new UsageError(
       `--script-extensions and --script-types apply to a godot.pck or godot.zip pack's lint; ${pack.id} is a ${pack.type} pack.`,
     );
   const badExt = exts.find((x) => !/^[A-Za-z0-9_]{1,32}$/.test(x));
   if (badExt !== undefined)
-    throw new Error(
+    throw new UsageError(
       `--script-extensions takes bare extensions (lua, wren; letters, digits and _), not ${JSON.stringify(badExt)}.`,
     );
   const badType = types.find((x) => !/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(x));
   if (badType !== undefined)
-    throw new Error(
+    throw new UsageError(
       `--script-types takes script class names (LuaScript), not ${JSON.stringify(badType)}.`,
     );
 }
@@ -648,12 +649,12 @@ export async function publishPack(
   const packId = opts.deliverable;
   const tag = opts.tag?.trim() || undefined;
   const version = opts.version?.trim() || tag?.replace(/^v/, "");
-  if (!version) throw new Error("--version (or --tag) is required.");
+  if (!version) throw new UsageError("--version (or --tag) is required.");
   if (
     opts.minSupportedSeq !== undefined &&
     (!Number.isSafeInteger(opts.minSupportedSeq) || opts.minSupportedSeq < 1)
   )
-    throw new Error(
+    throw new UsageError(
       "--min-supported-seq must be a whole number of at least 1.",
     );
 
@@ -673,16 +674,16 @@ export async function publishPack(
     distribution: loaded.distribution,
   });
   if (ctx.slug !== opts.product)
-    throw new Error(
+    throw new UsageError(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`,
     );
   const pack = ctx.packs.find((p) => p.id === packId);
   if (!pack)
-    throw new Error(
+    throw new UsageError(
       `--deliverable ${packId} is not a pack .pkey/release declares (declared: ${ctx.packs.map((p) => p.id).join(", ") || "none"}).`,
     );
   if (parseVersion(pack.versioning.scheme, version) === null)
-    throw new Error(
+    throw new UsageError(
       `--version ${version} does not parse under ${packId}'s ${pack.versioning.scheme} scheme.`,
     );
   checkScriptKinds(pack, opts);
@@ -759,7 +760,7 @@ export async function publishPack(
         `Both a release key (${RELEASE_KEY_ENV}) and a content key (${CONTENT_KEY_ENV}) are set: a pack release is signed by one or the other. Unset one.`,
       );
     if (contentPem === undefined)
-      throw new Error(
+      throw new UsageError(
         `--delegation needs a content key: set ${CONTENT_KEY_ENV} or --content-key-file.`,
       );
     if (opts.delegation === undefined)

@@ -16,18 +16,21 @@ npm install && npm start
 | ----------------- | ------------------------ |
 | `GET /health`     | nothing                  |
 | `GET /api/export` | entitlement `export.pdf` |
+| `GET /api/team`   | tier `pro` or `team`     |
 | `POST /api/saves` | a signed-in account      |
 | `GET /whoami`     | a valid licence          |
 
 Replace `polaris.config.ts` with the file `pkey sdk --lang node --write` generates.
 
-Unit tests sign documents with a throwaway key:
+Unit tests need no network:
 
 ```ts
 import { createTestKit } from "@polaris-key/server/testing";
 
 const kit = await createTestKit({ product: "djdl" });
-const app = createApp(kit.config, { now: kit.clock.now, trustRefresh: false });
-const jws = await kit.sign({ entitlements: { "export.pdf": true } });
-const res = await app.request("/api/export", { headers: kit.headers(jws) });
+const app = createApp(kit.options());
+const headers = await kit.signedHeaders({
+  entitlements: { "export.pdf": true },
+});
+const res = await app.request("/api/export", { headers });
 ```

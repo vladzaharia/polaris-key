@@ -23,6 +23,7 @@
 import { ciClient, type CiClient, type Out, type Sleep } from "./ci.js";
 import { resolveCiToken, type CiEnv } from "./oidc.js";
 import { untrusted } from "./untrusted.js";
+import { UsageError } from "./errors.js";
 
 export const DISTRIBUTION_CI_USAGE =
   "Usage: pkey distribution report availability --product <slug> --outlet <id> (--release <id> | --version <v> [--deliverable id])\n" +
@@ -86,7 +87,7 @@ async function clientFor(opts: DistributionCommandOptions): Promise<CiClient> {
 export function normalizeFingerprint(raw: string): string {
   const hex = raw.replace(/[\s:]/g, "").toLowerCase();
   if (!/^[0-9a-f]{64}$/.test(hex))
-    throw new Error(
+    throw new UsageError(
       `--sha256 must be a SHA-256 fingerprint: 64 hex characters, colons allowed (got ${JSON.stringify(raw)}).`,
     );
   return hex;
@@ -98,10 +99,10 @@ function jsonObjectFlag(name: string, raw: string | undefined): unknown {
   try {
     v = JSON.parse(raw);
   } catch {
-    throw new Error(`--${name} must be a JSON object (got ${raw}).`);
+    throw new UsageError(`--${name} must be a JSON object (got ${raw}).`);
   }
   if (v !== null && (typeof v !== "object" || Array.isArray(v)))
-    throw new Error(`--${name} must be a JSON object (got ${raw}).`);
+    throw new UsageError(`--${name} must be a JSON object (got ${raw}).`);
   return v;
 }
 
@@ -109,7 +110,7 @@ function epochFlag(raw: string | undefined): number | undefined {
   if (raw === undefined) return undefined;
   const n = Number(raw);
   if (!Number.isSafeInteger(n) || n <= 0)
-    throw new Error(`--since must be epoch seconds (got ${raw}).`);
+    throw new UsageError(`--since must be epoch seconds (got ${raw}).`);
   return n;
 }
 
@@ -151,9 +152,9 @@ export function reportBody(opts: ReportOptions): Record<string, unknown> {
       `Give exactly one of --release or --version.\n${DISTRIBUTION_CI_USAGE}`,
     );
   if (opts.releaseId && opts.deliverable)
-    throw new Error("--deliverable goes with --version, not --release.");
+    throw new UsageError("--deliverable goes with --version, not --release.");
   if (opts.type === "submission" && (opts.buildId || opts.platformRef))
-    throw new Error(
+    throw new UsageError(
       "--build and --platform-ref go with an availability report; a submission is per release.",
     );
   const since = epochFlag(opts.since);
@@ -234,7 +235,7 @@ export async function driveRollout(
   opts: RolloutOptions,
 ): Promise<Record<string, unknown>> {
   if (!opts.outlet || !opts.channel)
-    throw new Error(
+    throw new UsageError(
       `--outlet and --channel are required.\n${DISTRIBUTION_CI_USAGE}`,
     );
   let bp: number | undefined;
@@ -245,7 +246,7 @@ export async function driveRollout(
       );
     bp = Number(opts.bp);
     if (!Number.isInteger(bp) || bp < 0 || bp > 10000)
-      throw new Error(
+      throw new UsageError(
         `--bp must be an integer from 0 to 10000 (basis points; 2500 = 25%), got ${opts.bp}.`,
       );
   }

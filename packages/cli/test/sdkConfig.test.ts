@@ -587,7 +587,7 @@ describe("pkey sdk add (D30: no trust on first use)", () => {
     const cwd = await tempDir();
     const run = async (args: string[]): Promise<string> => {
       const io = capture();
-      expect(await runPkey(args, { cwd, ...io })).toBe(1);
+      expect(await runPkey(args, { cwd, ...io })).toBe(2);
       return io.err();
     };
     expect(await run(["sdk", "add"])).toContain("needs the SDK first");

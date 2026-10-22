@@ -408,7 +408,7 @@ describe("pkey bundle — the --base-url allow-list", () => {
 
     expect(
       await runPkey(argv().slice(0, -1).concat("key.plrs.im"), { cwd, ...io }),
-    ).toBe(1);
+    ).toBe(2);
 
     expect(io.err()).toContain("--base-url is not a valid URL");
     expect(m.calls).toHaveLength(0);

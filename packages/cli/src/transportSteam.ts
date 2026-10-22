@@ -31,6 +31,7 @@ import {
   requireRouted,
   type TransportCommon,
 } from "./transport.js";
+import { UsageError } from "./errors.js";
 
 export const DEFAULT_STEAM_OUT = "build/pkey-transport/steam";
 /** The depot directory the device reads (`<install dir>/pkey_packs/<packId>/`). */
@@ -109,7 +110,7 @@ export function depotBuildVdf(o: { depot: string }): string {
 
 export async function steamVdf(o: SteamVdfOptions): Promise<SteamVdfResult> {
   if (!/^[0-9]{1,10}$/.test(o.depot))
-    throw new Error(
+    throw new UsageError(
       `--depot must be a numeric Steam depot id (got ${o.depot}).`,
     );
   const loaded = await loadTransportPack(o, o.from);
@@ -119,7 +120,7 @@ export async function steamVdf(o: SteamVdfOptions): Promise<SteamVdfResult> {
   );
   const app = o.app ?? steam.find((x) => x.identity.appId)?.identity.appId;
   if (!app || !/^[0-9]{1,10}$/.test(app))
-    throw new Error(
+    throw new UsageError(
       "--app is required (a numeric Steam app id): no steam outlet the pack is routed through declares appId.",
     );
   let branch = o.branch;
@@ -133,14 +134,14 @@ export async function steamVdf(o: SteamVdfOptions): Promise<SteamVdfResult> {
       )
       .find(Boolean);
   if (!branch)
-    throw new Error(
+    throw new UsageError(
       `--branch is required${o.channel ? ` (no steam outlet maps channel ${o.channel} to a branch)` : " (or --channel with the outlet's branches map)"}.`,
     );
   if (!/^[A-Za-z0-9_.-]{1,64}$/.test(branch))
-    throw new Error(`--branch ${branch} is not a Steam branch name.`);
+    throw new UsageError(`--branch ${branch} is not a Steam branch name.`);
   const isDefault = branch === "default" || branch === "public";
   if (o.setlive && isDefault)
-    throw new Error(
+    throw new UsageError(
       `--setlive cannot target the ${branch} branch: Steam's default branch is set live in Steamworks by a person (SetLive applies to named branches only).`,
     );
   const [v, ...more] = pickVariants(loaded, o.variant);

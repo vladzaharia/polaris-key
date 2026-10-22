@@ -80,6 +80,7 @@ import {
   recordSigner,
   RELEASE_KEY_ENV,
 } from "./releaseKeys.js";
+import { UsageError } from "./errors.js";
 
 /** The CI environment variable holding a content key's PKCS#8 PEM. */
 export const CONTENT_KEY_ENV = "PKEY_CONTENT_KEY";
@@ -312,16 +313,16 @@ export function parseDelegationTypes(
     typeof types === "string" ? types.split(/[\s,]+/) : [...types]
   ).filter(Boolean);
   if (list.length < 1 || list.length > MAX_DELEGATION_TYPES)
-    throw new Error(
+    throw new UsageError(
       `--types lists 1–${MAX_DELEGATION_TYPES} pack types (got ${list.length}).`,
     );
   if (new Set(list).size !== list.length)
-    throw new Error("--types lists a type twice.");
+    throw new UsageError("--types lists a type twice.");
   for (const t of list) {
     if (!PACK_TYPE_PATTERN.test(t))
-      throw new Error(`--types: ${JSON.stringify(t)} is not a pack type.`);
+      throw new UsageError(`--types: ${JSON.stringify(t)} is not a pack type.`);
     if (!(DELEGABLE_PACK_TYPES as readonly string[]).includes(t))
-      throw new Error(
+      throw new UsageError(
         `--types: ${t} can never be delegated; a content key signs only ${DELEGABLE_PACK_TYPES.join(", ")} (godot.pck, godot.zip, audio.bank, ml.model and custom types can load code).`,
       );
   }
@@ -344,17 +345,17 @@ export async function delegateContentKey(
 ): Promise<DelegateResult> {
   const out = opts.stdout;
   if (!isPackId(opts.prefix))
-    throw new Error(
+    throw new UsageError(
       `--prefix must be a pack id (the scope root, never app; got ${JSON.stringify(opts.prefix)}).\n${DELEGATE_USAGE}`,
     );
   const types = parseDelegationTypes(opts.types);
   if (!KEY_B64URL_RE.test(opts.publicKey))
-    throw new Error(
+    throw new UsageError(
       "--public-key must be base64url of 32 raw Ed25519 bytes (as pkey release keys generate --content prints it).",
     );
   const days = opts.expiresInDays ?? DEFAULT_DELEGATION_DAYS;
   if (!Number.isSafeInteger(days) || days < 1 || days > MAX_DELEGATION_DAYS)
-    throw new Error(
+    throw new UsageError(
       `--expires-in must be a whole number of days from 1 to ${MAX_DELEGATION_DAYS} (got ${String(opts.expiresInDays)}).`,
     );
 
@@ -368,12 +369,12 @@ export async function delegateContentKey(
     );
   const ctx = packContext(loaded);
   if (ctx.slug !== opts.product)
-    throw new Error(
+    throw new UsageError(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`,
     );
   const fingerprint = fingerprintOf(opts.publicKey);
   if (ctx.releaseKeys.some((k) => k.publicKey === opts.publicKey))
-    throw new Error(
+    throw new UsageError(
       "--public-key is a declared release key; a content key is a separate key (pkey release keys generate --content).",
     );
 
@@ -584,7 +585,7 @@ export async function contentSigner(o: {
   warn: (w: string) => void;
 }): Promise<ContentSigner> {
   if (!SHA256_RE.test(o.key.delegation))
-    throw new Error(
+    throw new UsageError(
       "--delegation must be the delegation record's sha256 (64 lowercase hex), as pkey release delegate prints it.",
     );
   const publicKey = publicKeyOfPem(

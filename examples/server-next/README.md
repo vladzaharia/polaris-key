@@ -2,7 +2,7 @@
 
 App Router route handlers, header-only: the credential is `X-PKey-License`, never a cookie.
 `polaris.requireEntitlement(name, handler)` wraps a handler; a refusal is a `401` or `403`
-`application/problem+json` response and the handler never runs. To decide inside a handler:
+`application/problem+json` response and the handler never runs. `middleware.ts` gates a path before its route runs; it can't hand the license to the route. To decide inside a handler:
 
 ```ts
 export async function POST(req: Request) {
@@ -20,9 +20,10 @@ npm install && npm run build && npm start
 | ----------------- | ------------------------ |
 | `GET /api/health` | nothing                  |
 | `GET /api/export` | entitlement `export.pdf` |
+| `GET /api/team`   | tier `pro` or `team`     |
 | `POST /api/saves` | a signed-in account      |
 | `GET /api/whoami` | a valid licence          |
 
 Replace `polaris.config.ts` with the file `pkey sdk --lang node --write` generates. Run the
-handlers in a unit test by calling them with a `Request` and signing documents with
-`createTestKit()` from `@polaris-key/server/testing`.
+handlers in a unit test by calling them with a `Request` and the headers from
+`kit.signedHeaders()` (`createTestKit()` in `@polaris-key/server/testing`).

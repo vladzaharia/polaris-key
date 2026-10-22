@@ -42,6 +42,7 @@ import {
   type TransportCommon,
   type TransportVariant,
 } from "./transport.js";
+import { UsageError } from "./errors.js";
 
 /** Godot's texture variant values → Play's texture-compression-format aliases (bundletool). */
 export const TCF_ALIASES: Readonly<Record<string, string>> = {
@@ -166,7 +167,7 @@ export function padDirectories(
   const values = textured.map((v) => v.variant.texture!);
   const def = defaultTexture ?? (values.includes("etc2") ? "etc2" : values[0]!);
   if (!values.includes(def))
-    throw new Error(
+    throw new UsageError(
       `--default-texture ${def} is not a published texture variant (published: ${values.join(", ")}).`,
     );
   for (const v of textured) {
@@ -201,7 +202,7 @@ export async function padModules(
       ? "fast-follow"
       : "on-demand");
   if (delivery !== "fast-follow" && delivery !== "on-demand")
-    throw new Error(
+    throw new UsageError(
       `--delivery must be fast-follow or on-demand (install-time content is Godot's own assetPackInstallTime, an embedded baseline).`,
     );
   const variants = pickVariants(loaded, o.variant, ["texture"]);

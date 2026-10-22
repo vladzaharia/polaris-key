@@ -44,6 +44,7 @@ import {
   storedDelegation,
   requireDelegationsDiscovery,
 } from "./delegate.js";
+import { UsageError } from "./errors.js";
 
 export const REVOKE_USAGE =
   "Usage: pkey release revoke <packId>@<version> --reason <text> --product <slug> " +
@@ -103,7 +104,7 @@ export async function requireRevocationsDiscovery(
 export function checkReason(reason: string): void {
   const bytes = new TextEncoder().encode(reason).byteLength;
   if (bytes < 1 || bytes > REVOCATION_REASON_MAX_BYTES)
-    throw new Error(
+    throw new UsageError(
       `--reason must be 1–${REVOCATION_REASON_MAX_BYTES} bytes (got ${bytes}).`,
     );
 }
@@ -118,7 +119,7 @@ export function revocationRecord(o: {
   issuedAt: number;
 }): RevocationRecordDoc {
   if (o.replacement && o.replacement.sha256 === o.target.sha256)
-    throw new Error(
+    throw new UsageError(
       "--replacement names the revoked release itself; a replacement is another release.",
     );
   return {
@@ -183,7 +184,7 @@ export async function revokePackRelease(
   if (opts.replacement !== undefined)
     parsePinFlag(`${pack}@${opts.replacement}`, "--replacement");
   if (opts.replacement === version)
-    throw new Error(
+    throw new UsageError(
       "--replacement names the revoked release itself; a replacement is another release.",
     );
   checkReason(opts.reason);
@@ -198,7 +199,7 @@ export async function revokePackRelease(
     );
   const ctx = packContext(loaded);
   if (ctx.slug !== opts.product)
-    throw new Error(
+    throw new UsageError(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`,
     );
   if (!ctx.packs.some((p) => p.id === pack))
@@ -317,7 +318,7 @@ export async function revokeDelegation(
     );
   const ctx = packContext(loaded);
   if (ctx.slug !== opts.product)
-    throw new Error(
+    throw new UsageError(
       `--product ${opts.product} does not match .pkey/product's slug ${ctx.slug}.`,
     );
 
@@ -330,7 +331,7 @@ export async function revokeDelegation(
         await readFile(path.resolve(opts.cwd, opts.delegation), "utf8")
       ).trim();
     } catch (e) {
-      throw new Error(
+      throw new UsageError(
         `--delegation is neither a sha256 nor a readable file (${(e as Error).message}).\n${REVOKE_DELEGATION_USAGE}`,
       );
     }

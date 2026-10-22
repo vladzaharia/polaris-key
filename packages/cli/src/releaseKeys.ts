@@ -30,6 +30,7 @@ import {
   RELEASE_KEY_KID_PATTERN,
   type ManifestReleaseKey,
 } from "@polaris-key/manifest";
+import { UsageError } from "./errors.js";
 
 /** The CI environment variable holding the release key's PKCS#8 PEM. */
 export const RELEASE_KEY_ENV = "PKEY_RELEASE_KEY";
@@ -84,7 +85,7 @@ export async function generateReleaseKey(opts: {
   force?: boolean;
 }): Promise<GeneratedKey> {
   if (!RELEASE_KEY_KID_PATTERN.test(opts.kid))
-    throw new Error(
+    throw new UsageError(
       `--kid must match ${RELEASE_KEY_KID_PATTERN.source}.\n${KEYS_USAGE}`,
     );
   const { privateKey, publicKey } = generateKeyPairSync("ed25519");

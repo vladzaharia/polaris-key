@@ -42,6 +42,7 @@ import {
 } from "../publish.js";
 import { extractPackage } from "./extract.js";
 import type { ExtractedFile } from "./types.js";
+import { UsageError } from "../errors.js";
 
 export interface PackagePublishOptions {
   cwd: string;
@@ -113,7 +114,7 @@ export async function publishPackage(
   opts: PackagePublishOptions,
 ): Promise<PackagePublishResult> {
   const out = opts.stdout;
-  if (!opts.dir?.trim()) throw new Error("--dir is required.");
+  if (!opts.dir?.trim()) throw new UsageError("--dir is required.");
   const loaded = await loadManifest(opts.cwd);
   const validation = validateLoadedManifest(loaded);
   if (!validation.ok)
@@ -124,14 +125,14 @@ export async function publishPackage(
     );
   const context = descriptorManifestOf(loaded);
   if (context.product?.slug !== opts.product)
-    throw new Error(
+    throw new UsageError(
       `--product ${opts.product} does not match .pkey/product's slug ${context.product?.slug}.`,
     );
   const declared = (context.packageDeliverables ?? []).find(
     (p) => p.id === opts.deliverable,
   );
   if (!declared)
-    throw new Error(
+    throw new UsageError(
       `--deliverable ${opts.deliverable} is not a package deliverable .pkey/release declares.`,
     );
 
@@ -146,7 +147,7 @@ export async function publishPackage(
     });
     const version = opts.version?.trim() || extracted.version;
     if (version !== extracted.version)
-      throw new Error(
+      throw new UsageError(
         `--version ${version} does not match the packed files' version ${extracted.version}.`,
       );
 
