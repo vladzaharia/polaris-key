@@ -51,13 +51,21 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
+
+   **Corrections (2026-10-22, from the code at 428bd13cb):**
+   - The generic routes already existed in part (LX-06 and ST-17: `GET …/settings/effective`, `GET …/settings/drift`, `PATCH|DELETE …/settings/<key>`, row-backed keys only). This package widened them rather than adding a second family: `GET …/settings/<key>` is new, and `effective` and the key routes now serve every column-backed key and every rich key that has a `SettingAdapter` (`distribution.access`). A secret is never served.
+   - The bespoke settings routes were `…/update/settings` (+ `/revert`), `…/license/policy` (+ `/revert`), `…/trust-policy` and `…/distribution/access` (+ `/revert`). `…/update-health/settings`, `…/assets/settings/<key>`, the feeds' `settings` and `policy` routes, `…/alerts` and `…/claims/<key>` are other resources and stay (see the report's follow-ups).
+   - History, as-of and restore are not built (as scoped). The S-18 notes are not in the repo, so §4.7's route list was taken from the existing generic routes.
+   - Writes are limited to row-backed keys and keys with an adapter. A column key without one (`core.services`, whose coherence rules only its own route checks; `core.name`; the web origins) is readable here and written where the console owns it.
+   - The adapters keep what each bespoke route checked: the trust policy's relax gate (step-up, reason, typed key), the license policies' shape checks and the auto-issue tier check, the edge-mint approval sweep, the update settings' semver and OS-version checks and "no release configuration", and the delivery access's deliverable check. Each key keeps its audit action.
+   - A key with an adapter takes a reason but does not require one, as its bespoke route did (the console pages for them have no reason field). The registry marks them `critical`; collecting the reason is a console follow-up.
 2. Implement the scope; run the green gate; hand off.
 
 ## Acceptance criteria
 
-- [ ] Every settings write goes through the generic path
-- [ ] No bespoke settings route answers; OpenAPI and routeCoverage list none, and the console calls only the generic routes (test)
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] Every settings write goes through the generic path
+- [x] No bespoke settings route answers; OpenAPI and routeCoverage list none, and the console calls only the generic routes (test)
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 
