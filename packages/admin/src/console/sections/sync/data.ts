@@ -68,9 +68,10 @@ export const CEILING_AREA = "cloudSync.limits";
 export function useProductCeilingSetting(
   slug: string,
 ): UseQueryResult<{ settings: ProductSetting[] }> {
+  const area = CEILING_AREA;
   return useQuery({
-    queryKey: qk.productSettings(slug, CEILING_AREA),
-    queryFn: () => api.productSettings(slug, CEILING_AREA),
+    queryKey: qk.productSettings(slug, area),
+    queryFn: () => api.productSettings(slug, area),
     retry: false,
   });
 }

@@ -55,6 +55,7 @@ const ANCHORS: Readonly<Record<string, string>> = {
   "keys|Device trust": "keys-trust",
   "portal|Polaris Locker": "portal-switches",
   "presentation|Hosting and quotas": "presentation-hosting",
+  "sync-setup|Product limits": "sync-limits",
 };
 
 /** The element id a home's section lands on, if the page has one for it. */
@@ -218,6 +219,10 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "identity.oidc": manifest("product"),
   "identity.provisioning": manifest("product"),
   "identity.oidc.syncTierOnSignIn": at("app-sign-in", "Tier sync"),
+
+  // ── Cloud Sync ─────────────────────────────────────────────────────────────────────────────
+  // U-05.20: Cloud Sync → Setup → Product limits (the meter and its Change dialog).
+  "cloudSync.ceiling.bytes": at("sync-setup", "Product limits"),
 };
 
 /**
