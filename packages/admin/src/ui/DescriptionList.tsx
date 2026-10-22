@@ -21,7 +21,7 @@ export function DescriptionList({
   items: DescriptionItem[];
   columns?: 1 | 2 | 3;
   /**
-   * A label column and a value column with a rule between rows, from 640 px up (a drawer's facts);
+   * A label column and a flush-right value column with a rule between rows, from 640 px up (a drawer's facts);
    * below that each fact stacks.
    */
   rows?: boolean;
@@ -52,7 +52,7 @@ export function DescriptionList({
             className={cn(
               "min-w-0 break-words text-sm text-fg",
               !rows && "mt-0.5",
-              rows && "mt-0.5 sm:mt-0",
+              rows && "mt-0.5 sm:mt-0 sm:text-end",
             )}
           >
             {item.detail}

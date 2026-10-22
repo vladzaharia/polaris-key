@@ -187,7 +187,7 @@ export function ActivityTable({
                   data-label="When"
                   className={cn(
                     td,
-                    "whitespace-nowrap tabular-nums sm:text-end",
+                    "whitespace-nowrap tabular-nums text-end max-sm:justify-between",
                     // The selected row's bar, in the accent of the service its event references
                     // (B17); on the cell, because a row's shadow does not paint in a table.
                     on && "shadow-[inset_3px_0_0_var(--pk-accent-fg)]",
