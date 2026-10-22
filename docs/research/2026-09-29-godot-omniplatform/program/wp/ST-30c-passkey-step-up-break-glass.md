@@ -70,6 +70,15 @@ Console sign-in: passkey step-up, break-glass link, known-operator chip, v1 read
   revoke), so the only account-bound shell entry hidden is "My library"; ST-34 and ST-30c.4 hide their
   screens with `me.breakGlass` when they land; (3) `pageBudget` fails on this base for
   `UpdateChannelsPage.tsx` (639 lines, ceiling 631), not a file of this slice.
+- **Done in ST-30c.3.** `GET /manage/api/me/methods`, `POST /me/passkeys/options`, `POST /me/passkeys`
+  and `POST /me/methods/:id/strong` (`console/handlers/myMethods.ts`; Identity's `listConsoleMethods`,
+  `consolePasskeyCeremony`, `markConsoleMethodStrong`). The console RP id is the host of
+  `CONSOLE_ORIGIN` (`consoleRpId`); `consoleEligible` is a not-yet-strong passkey whose `rp_id` equals it.
+  Corrections: (1) all three writes are `stepUp: true` rows (the dispatcher answers 403
+  `step_up_required`), and I-16 still checks `authenticatedAt` behind it (401), fed the epoch when the
+  session has no step-up; (2) an already-strong link answers 409 reason `already_strong`; (3) the
+  account copy of the notice (`consoleMethodStrongNotice`) is separate from I-16's own
+  sign-in-method-added mail, so enrolment mails the account twice. No migration, wire or errors.json change.
 
 ## Steps
 

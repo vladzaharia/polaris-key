@@ -205,6 +205,11 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/platform/ready", ["get"]],
     // ST-29, ST-31.5: who can give the caller access to an area.
     ["/manage/api/access/admins", ["get"]],
+    // ST-30c.3 (SM-3(a), (d)): the signed-in operator's own sign-in methods.
+    ["/manage/api/me/methods", ["get"]],
+    ["/manage/api/me/methods/{id}/strong", ["post"]],
+    ["/manage/api/me/passkeys", ["post"]],
+    ["/manage/api/me/passkeys/options", ["post"]],
     // U-03: the licence-override migration (notes/S-17 §5.12, decision 21).
     // P0-49: the data-migration runner.
     ["/manage/api/platform/migrations", ["get"]],

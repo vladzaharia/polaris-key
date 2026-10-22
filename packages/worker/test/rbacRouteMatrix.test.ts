@@ -374,6 +374,9 @@ describe("negative controls", () => {
         "DELETE /products/:slug/alerts/:id",
         "POST /products/:slug/alerts",
         "POST /bindings",
+        "POST /me/methods/:id/strong",
+        "POST /me/passkeys",
+        "POST /me/passkeys/options",
         "POST /products/:slug/members",
       ].sort(),
     );

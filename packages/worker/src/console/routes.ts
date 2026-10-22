@@ -39,6 +39,12 @@ import { consoleMemberIdForIdpSub } from "../services/identity/public.js";
 import { buildClearCookie } from "../core/console/session.js";
 import type { Method, RouteDecl } from "./routeMatch.js";
 import { handleMe } from "./handlers/me.js";
+import {
+  handleMyMethods,
+  handleMyMethodStrong,
+  handleMyPasskeyAdd,
+  handleMyPasskeyOptions,
+} from "./handlers/myMethods.js";
 import { handleAttention } from "./handlers/attention.js";
 import { handleAccessAdmins } from "./handlers/access.js";
 import { handleSearch } from "./handlers/search.js";
@@ -180,6 +186,18 @@ function serviceRows(slug: ServiceSlug): AdminRoute[] {
 export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // ── Membership: what every console member may use ─────────────────────────────────────────
   ...rows(["GET"], "/me", "console", me),
+  // ST-30c.3 (SM-3(a), (d)): my own sign-in methods. Session only (break-glass refused in the
+  // handler); each write needs a step-up. No removal here: that stays in the Locker account.
+  ...rows(["GET"], "/me/methods", "console", handleMyMethods),
+  ...rows(["POST"], "/me/passkeys/options", "console", handleMyPasskeyOptions, {
+    stepUp: true,
+  }),
+  ...rows(["POST"], "/me/passkeys", "console", handleMyPasskeyAdd, {
+    stepUp: true,
+  }),
+  ...rows(["POST"], "/me/methods/:id/strong", "console", handleMyMethodStrong, {
+    stepUp: true,
+  }),
   ...rows(["POST"], "/logout", "console", logout),
   // Home's Needs attention: composed on the server, filtered by product and by fix area.
   ...rows(["GET"], "/attention", "console", attention),

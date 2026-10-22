@@ -65,6 +65,9 @@ import {
   rekeyLegacyPortalIdentities,
 } from "./portal/repo.js";
 import { providerVouchesForEmail } from "./providers/vouch.js";
+import { handleAccountPasskeys } from "./passkeys/routes.js";
+import { passkeyRelyingParty } from "./passkeys/webauthn.js";
+import { PASSKEY_ISSUER } from "./accounts/repo.js";
 
 /** What the console IdP verified at the callback. */
 export interface ConsoleIdentity {
@@ -744,4 +747,154 @@ export async function consoleRootHolders(
       out.add(r.account_id);
   }
   return [...out];
+}
+
+// ── SM-3(a) and (d): the console's own sign-in methods (ST-30c.3) ─────────────────────────────
+
+/**
+ * The console's relying-party id for this request: the host of `CONSOLE_ORIGIN` (LEAD decision on
+ * plans/F-33b-ST-30c-slices.md §7), or `null` when the request did not arrive on a console origin.
+ * A passkey is `consoleEligible` only when its stored `rp_id` equals it.
+ */
+export function consoleRpId(env: Env, req: Request): string | null {
+  return passkeyRelyingParty(env, req)?.id ?? null;
+}
+
+/** One sign-in method as the console's "Sign-in methods" list shows it. */
+export interface ConsoleMethod {
+  /** The method's link id (`account_links.id`): the path segment of "Use for the console". */
+  id: string;
+  kind: string;
+  /** What its holder named it, or the address / name the provider asserted; null when none. */
+  name: string | null;
+  createdAt: number;
+  lastUsedAt: number | null;
+  /** `strong_at` is set: this method opens the console (SM-1). */
+  strong: boolean;
+  /** A passkey enrolled under the console's RP id: "Use for the console" may mark it. */
+  consoleEligible: boolean;
+}
+
+/** The account's own sign-in methods. Never another account's; never a secret. */
+export async function listConsoleMethods(
+  db: Db,
+  accountId: string,
+  rpId: string,
+): Promise<ConsoleMethod[]> {
+  const rows = await db.all<{
+    id: string;
+    kind: string;
+    email: string | null;
+    display_name: string | null;
+    created_at: number;
+    last_used_at: number | null;
+    strong_at: number | null;
+    pk_name: string | null;
+    pk_rp_id: string | null;
+    pk_last_used_at: number | null;
+  }>(
+    `SELECT l.id, l.kind, l.email, l.display_name, l.created_at, l.last_used_at, l.strong_at,
+            p.name AS pk_name, p.rp_id AS pk_rp_id, p.last_used_at AS pk_last_used_at
+       FROM account_links l
+       LEFT JOIN account_passkeys p
+         ON l.kind = 'passkey' AND l.issuer_key = ? AND p.credential_id = l.subject
+        AND p.account_id = l.account_id
+      WHERE l.account_id = ?
+      ORDER BY l.created_at, l.id`,
+    PASSKEY_ISSUER,
+    accountId,
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    kind: r.kind,
+    name:
+      r.kind === "passkey"
+        ? r.pk_name && r.pk_name !== ""
+          ? r.pk_name
+          : null
+        : (r.email ?? r.display_name ?? null),
+    createdAt: r.created_at,
+    lastUsedAt: r.kind === "passkey" ? r.pk_last_used_at : r.last_used_at,
+    strong: r.strong_at !== null,
+    consoleEligible:
+      r.kind === "passkey" && r.pk_rp_id === rpId && r.strong_at === null,
+  }));
+}
+
+/**
+ * SM-3(a): the passkey ceremony for a console session, delegated to I-16. `POST options` and
+ * `POST` only (listing, renaming and removal stay in the Locker account). The caller's
+ * `authenticatedAt` is the session's step-up and nothing else: a session with none is passed the
+ * epoch, which I-16 refuses as stale (`step_up_required`). It is never `now`.
+ *
+ * A successful add marks the new passkey link strong in the same request and reports its id.
+ */
+export async function consolePasskeyCeremony(
+  req: Request,
+  env: Env,
+  db: Db,
+  caller: { accountId: string; sid: string; stepUpAt: number | undefined },
+  rest: readonly ["options"] | readonly [],
+  now: number,
+): Promise<{ response: Response; strongLinkId: string | null }> {
+  const response = await handleAccountPasskeys(
+    req,
+    env,
+    db,
+    {
+      accountId: caller.accountId,
+      authenticatedAt: caller.stepUpAt ?? 0,
+      sessionIdHash: await sessionIdHash(env, caller.sid),
+    },
+    [...rest],
+    now,
+  );
+  if (rest.length !== 0 || response.status !== 201)
+    return { response, strongLinkId: null };
+  let linkId: string | null = null;
+  try {
+    const body = (await response.clone().json()) as {
+      passkey?: { methodId?: unknown };
+    };
+    if (typeof body.passkey?.methodId === "string")
+      linkId = body.passkey.methodId;
+  } catch {
+    // An unreadable body marks nothing.
+  }
+  if (!linkId) return { response, strongLinkId: null };
+  await markLinkStrong(db, linkId, now);
+  return { response, strongLinkId: linkId };
+}
+
+export type MarkStrongResult =
+  | { status: "marked"; kind: string }
+  | { status: "not_found" | "not_eligible" | "already_strong" };
+
+/**
+ * SM-3(d), "Use for the console": mark one of the caller's own passkeys strong. The caller has
+ * passed the console step-up. A link of another account is `not_found` (never a hint that it
+ * exists); anything that is not a passkey enrolled under the console's RP id is `not_eligible`.
+ */
+export async function markConsoleMethodStrong(
+  db: Db,
+  accountId: string,
+  linkId: string,
+  rpId: string,
+  now: number,
+): Promise<MarkStrongResult> {
+  const mine = (await listConsoleMethods(db, accountId, rpId)).find(
+    (m) => m.id === linkId,
+  );
+  if (!mine) return { status: "not_found" };
+  if (mine.strong) return { status: "already_strong" };
+  if (!mine.consoleEligible) return { status: "not_eligible" };
+  const changed = await db.runChanges(
+    `UPDATE account_links SET strong_at = ? WHERE id = ? AND account_id = ? AND strong_at IS NULL`,
+    now,
+    linkId,
+    accountId,
+  );
+  return changed > 0
+    ? { status: "marked", kind: mine.kind }
+    : { status: "already_strong" };
 }

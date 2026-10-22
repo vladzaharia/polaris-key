@@ -972,3 +972,40 @@ export function breakGlassUsedNotice(input: {
     }),
   };
 }
+
+/**
+ * ST-30c.3 (SM-3): a passkey now opens the console. Sent to the account that did it and to every
+ * Superadmin. Names who and when; carries no link and no credential detail.
+ */
+export function consoleMethodStrongNotice(input: {
+  /** Who did it (name or address). */
+  actor: string | null | undefined;
+  /** Epoch seconds. */
+  at: number;
+  /** The account's own copy ("you") or the Superadmins'. */
+  audience: "self" | "superadmin";
+  origin: string | null | undefined;
+}): NoticeMessage {
+  const actor = operatorText(input.actor, "An operator");
+  const when = new Date(input.at * 1000).toISOString().replace(/\.\d+Z$/, "Z");
+  const subject = "A passkey can now open the Polaris Key console";
+  const line =
+    input.audience === "self"
+      ? `A passkey on your account was set to open the Polaris Key console at ${when}.`
+      : `${actor} set a passkey to open the Polaris Key console at ${when}.`;
+  const footer =
+    input.audience === "self"
+      ? "If this wasn't you, sign in to your Polaris Locker account and remove that passkey, then tell a Superadmin."
+      : "You get this because you are a Superadmin. If this wasn't expected, check the audit for rbac.method_strong.";
+  return {
+    subject,
+    text: [subject, line, footer].join("\n\n"),
+    html: renderEmail({
+      subject,
+      heading: subject,
+      paragraphs: [line],
+      footer,
+      origin: emailAssetOrigin(input.origin),
+    }),
+  };
+}

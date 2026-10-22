@@ -28,6 +28,21 @@ export interface StepUpRoute {
 export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   {
     method: "POST",
+    path: "/me/passkeys/options",
+    why: "starts adding a passkey that will open the console (SM-3(a))",
+  },
+  {
+    method: "POST",
+    path: "/me/passkeys",
+    why: "adds a passkey that opens the console (SM-3(a))",
+  },
+  {
+    method: "POST",
+    path: "/me/methods/:id/strong",
+    why: "sets a passkey to open the console (SM-3(d))",
+  },
+  {
+    method: "POST",
     path: "/platform/alerts",
     why: "aims the platform's alerts at a new address or URL",
   },

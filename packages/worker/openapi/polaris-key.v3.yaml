@@ -18488,6 +18488,171 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/methods:
+    get:
+      operationId: listMyMethodsAdmin
+      tags: [admin]
+      summary: The signed-in operator's own sign-in methods
+      description: >
+        ST-30c.3 (SM-3). Each method of the caller's account: its `kind`, a `name` (the passkey's
+        name, or the address the provider asserted; `null` when none), when it was created and last
+        used, whether it is `strong` (it opens the console) and whether it is `consoleEligible` (a
+        passkey enrolled under the console's relying-party id that is not yet strong; "Use for the
+        console" may mark it). Never an id of the account, never a secret. A break-glass session has
+        no account and is refused (403, reason `break_glass_session`). Admin session cookie; a token
+        cannot call it.
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: The methods.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [methods]
+                properties:
+                  methods:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        [
+                          id,
+                          kind,
+                          name,
+                          createdAt,
+                          lastUsedAt,
+                          strong,
+                          consoleEligible,
+                        ]
+                      properties:
+                        id: { type: string }
+                        kind: { type: string }
+                        name: { type: string, nullable: true }
+                        createdAt: { type: integer }
+                        lastUsedAt: { type: integer, nullable: true }
+                        strong: { type: boolean }
+                        consoleEligible: { type: boolean }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/passkeys/options:
+    post:
+      operationId: startMyPasskeyAdmin
+      tags: [admin]
+      summary: Start adding a passkey that opens the console
+      description: >
+        ST-30c.3 (SM-3(a)). A WebAuthn registration challenge for this session, from the same
+        ceremony as the Locker account's (I-16): the relying-party id is the console host, the
+        account needs a verified email, and the account's passkey cap applies. Needs a console
+        step-up (403 `step_up_required` from the dispatcher; I-16's own check, 401, stands behind
+        it). A break-glass session is refused. Admin session cookie and the CSRF header.
+      security:
+        - adminSession: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false }
+      responses:
+        "200":
+          description: The creation options and how long the challenge lives.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [options, expiresIn]
+                properties:
+                  options: { type: object }
+                  expiresIn: { type: integer }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/passkeys:
+    post:
+      operationId: addMyPasskeyAdmin
+      tags: [admin]
+      summary: Add a passkey that opens the console
+      description: >
+        ST-30c.3 (SM-3(a)). The attestation for this session's challenge. Needs a console step-up.
+        The new passkey's sign-in method is marked strong in the same request (the one place a
+        passkey is born strong; a passkey added in the Locker account never is, SM-4), written to
+        the platform audit as `rbac.method_strong` and mailed to the account and every Superadmin.
+        Removing a passkey stays in the Locker account. Admin session cookie and the CSRF header.
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [response]
+              properties:
+                response: { type: object }
+      responses:
+        "201":
+          description: Added; the passkey now opens the console.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, passkey]
+                properties:
+                  ok: { type: boolean }
+                  passkey:
+                    type: object
+                    required: [id, methodId, createdAt]
+                    properties:
+                      id: { type: string }
+                      methodId: { type: string }
+                      createdAt: { type: integer }
+        "400": { description: "The passkey response was invalid." }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "409":
+          { description: "That passkey is already in use (`link_conflict`)." }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/me/methods/{id}/strong:
+    post:
+      operationId: useMyMethodForConsoleAdmin
+      tags: [admin]
+      summary: Use one of my passkeys for the console
+      description: >
+        ST-30c.3 (SM-3(d)). Marks the caller's own passkey strong. The method must be the caller's
+        (anything else is a 404), a passkey enrolled under the console's relying-party id
+        (otherwise 403, reason `not_eligible`) and not yet strong (otherwise 409, reason
+        `already_strong`). Needs a console step-up. Writes `rbac.method_strong` to the platform audit
+        and mails the account and every Superadmin. A break-glass session is refused. Admin session
+        cookie and the CSRF header.
+      security:
+        - adminSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The method's id, from the methods list.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Marked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, id, strong]
+                properties:
+                  ok: { type: boolean }
+                  id: { type: string }
+                  strong: { type: boolean }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404": { description: "Not one of the caller's methods." }
+        "409": { description: "Already strong (reason `already_strong`)." }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
   /manage/api/members:
     get:
       operationId: listMembersAdmin

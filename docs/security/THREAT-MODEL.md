@@ -7396,6 +7396,45 @@ a fallback: no error page offers it and no ordinary sign-in turns into it.
 **Tests:** `test/consoleBreakGlass.test.ts`, `test/consoleCard.test.ts`; `consoleSessionV2`, `adminSessions`,
 `consoleSessionReader`, `rbacStoredPrincipal`, `rbacInvites`, `consoleInviteConversion`.
 
+### Console passkeys: SM-3(a)/(d) and SM-4 (ST-30c.3)
+
+**What it is.** Two ways a passkey becomes a strong console method (ST-28 SM-3), both from a console
+session: (a) enrol a passkey from the console, which is strong at once; (d) "Use for the console" on
+a passkey already in the account. A passkey added in the Locker account is never strong (SM-4).
+
+- **Routes.** `GET /manage/api/me/methods`, `POST /me/passkeys/options`, `POST /me/passkeys`,
+  `POST /me/methods/:id/strong` (area `console`, `console/handlers/myMethods.ts`). The three writes are
+  `stepUp: true` rows, so the dispatcher refuses a session without a step-up in the last
+  `STEP_UP_MAX_AGE_SECONDS` before any handler runs. There is no remove route: removal stays in the
+  Locker account (SM-5 needs no strong session).
+- **Item 12: the step-up is the session's, never `now`.** Enrolment delegates to I-16
+  (`handleAccountPasskeys` through `consolePasskeyCeremony`). The caller's `authenticatedAt` is
+  `session.stepUpAt` only when it is inside the window, else the epoch, which I-16 refuses as stale
+  (`step_up_required`). Nothing passes the current time, so an ordinary fresh sign-in (which sets no
+  `stepUpAt`) cannot enrol. I-16's verified-email rule, passkey cap, per-account rate limit and
+  session-bound single-use ceremony apply unchanged; the ceremony is bound to the console session row.
+- **Session only.** `requireAccountSession` refuses a break-glass session (no account, reason
+  `break_glass_session`) and a v1 cookie (`account_session_required`); the rows name no `tokenScope`,
+  so an admin API token is refused before the handler.
+- **Eligibility (the lead's RP-ID decision).** The console's RP id is the host of `CONSOLE_ORIGIN`
+  (`key.plrs.im`) whatever the customer RP becomes. A passkey is `consoleEligible` only when its stored
+  `account_passkeys.rp_id` equals it and it is not yet strong; an email-code link, any non-passkey link,
+  or a passkey of another RP is refused 403 `not_eligible`. A link of another account is 404 and the
+  list names only the caller's own links, so a link id is no oracle.
+- **Loud.** Each strong-marking writes `rbac.method_strong` to `platform_audit` (actor: the member id;
+  target: the link id) and mails the account and every Superadmin (`consoleMethodStrongNotice`, at
+  most 25 addresses, exempt from the per-recipient budget). The marking is a conditional
+  `UPDATE ... WHERE strong_at IS NULL`, so two racing calls write one audit row.
+- **SM-4.** `handleAccountPasskeys` and the portal never call `markLinkStrong`; only
+  `consolePasskeyCeremony` (after a successful add) and `markConsoleMethodStrong` do. A stolen portal
+  session can add a passkey but cannot make it open the console without a console step-up.
+- **Residual.** An operator whose console session holds a fresh step-up can enrol a passkey for
+  themselves: the step-up, the audit row and the Superadmin mail are what bound and expose it. A
+  Superadmin who does it receives both the account copy and the Superadmin copy.
+
+**Tests:** `test/consolePasskeys.test.ts`; `routeCoverage`, `rbacRouteAreas`, `rbacRouteMatrix`,
+`accountIdBoundary`, `consoleBreakGlass`, `identityPasskeys`.
+
 ### Identity as a per-product service (PX-W17)
 
 One account per person; a product's `identity` toggle gates only sign-in through that product

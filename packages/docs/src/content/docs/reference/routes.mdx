@@ -23,6 +23,10 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | DELETE | `/manage/api/bindings/{id}` | admin | Take a console role back |
 | POST | `/manage/api/bindings` | admin | Grant a console role to a member |
 | GET | `/manage/api/github/repositories` | admin | The repositories the Polaris Key GitHub App can read |
+| POST | `/manage/api/me/methods/{id}/strong` | admin | Use one of my passkeys for the console |
+| GET | `/manage/api/me/methods` | admin | The signed-in operator's own sign-in methods |
+| POST | `/manage/api/me/passkeys/options` | admin | Start adding a passkey that opens the console |
+| POST | `/manage/api/me/passkeys` | admin | Add a passkey that opens the console |
 | GET | `/manage/api/members/{memberId}` | admin | Read one console member |
 | GET | `/manage/api/members` | admin | List the console's members and pending invites |
 | POST | `/manage/api/platform/alerts/{id}/test` | admin | Send a test alert to a destination |
