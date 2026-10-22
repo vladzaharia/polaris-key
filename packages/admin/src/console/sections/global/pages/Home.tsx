@@ -55,11 +55,17 @@ import { useSetupGuideHidden } from "../model/setupGuide.js";
 import { cn } from "../../../../lib/cn.js";
 import { toast } from "../../../../ui/toast.js";
 
-/** The platform row's "Since 14:06 (Ana Lima)." line; none when the server gave neither fact. */
-function sinceLine(a: AttentionItemDto): string | null {
-  const who = a.by ? ` (${a.by})` : "";
-  if (a.since) return `Since ${formatSince(a.since * 1000)}${who}.`;
-  return a.by ? `Paused by ${a.by}.` : null;
+/**
+ * The platform row's first line: the server's fact with when and by whom folded in, "Cloud Sync
+ * writes are paused for every product, since 1:14 PM (Ana Lima)." The name is isolated (FSI to
+ * PDI) so a right-to-left name cannot move the parenthesis or the period.
+ */
+function factLine(first: string, a: AttentionItemDto): string {
+  const base = first.replace(/[.]$/, "");
+  const who = a.by ? `\u2068${a.by}\u2069` : null;
+  if (a.since)
+    return `${base}, since ${formatSince(a.since * 1000)}${who ? ` (${who})` : ""}.`;
+  return who ? `${base}, paused by ${who}.` : first;
 }
 
 /**
@@ -71,12 +77,12 @@ function attentionRows(
   items: readonly AttentionItemDto[],
   logo: (slug: string) => React.ReactNode,
   onPlatform: (item: AttentionItemDto) => void,
+  platformBusy = false,
 ): AttentionItem[] {
   return items.map((a): AttentionItem => {
     if (a.product === null) {
-      const since = sinceLine(a);
       const [first = "", ...rest] = a.lines;
-      const lines = since ? [first, since, ...rest] : a.lines;
+      const lines = [factLine(first, a), ...rest];
       return {
         id: a.id,
         tone: a.tone,
@@ -85,7 +91,8 @@ function attentionRows(
             data-platform-subject=""
             className="flex min-w-0 max-w-full items-start gap-2"
           >
-            <LogoMark size={24} title="" className="shrink-0" />
+            {/* In rem, so the mark grows with the text like a product logo. */}
+            <LogoMark size={24} title="" className="size-6 shrink-0" />
             <span className="min-w-0 break-words">Platform</span>
           </span>
         ),
@@ -93,7 +100,11 @@ function attentionRows(
         reason: lines.join(" "),
         lines,
         service: a.service ?? undefined,
-        action: { label: a.action.label, onSelect: () => onPlatform(a) },
+        action: {
+          label: a.action.label,
+          onSelect: () => onPlatform(a),
+          busy: platformBusy,
+        },
       };
     }
     const { slug, name } = a.product;
@@ -203,16 +214,22 @@ export function Home(): React.ReactElement {
   // The platform's own item (the Cloud Sync pause): its resume dialog opens here, on Home.
   const platformItem = platformItems(openable)[0];
   const [resumeOpen, setResumeOpen] = React.useState(false);
+  const firstRunHeading = React.useRef<HTMLElement>(null);
+  const [resumeBusy, setResumeBusy] = React.useState(false);
   const platformSettings = useQuery({
     queryKey: qk.platformSettings(),
     queryFn: () => api.platformSettings(),
     retry: false,
     enabled: platformItem !== undefined,
   });
-  const paused = platformSettings.data?.settings?.find(
-    (x): x is PlatformSwitchSetting =>
-      x.key === "cloudSync.writesPaused" && x.kind === "switch",
-  );
+  const findPause = (
+    view: { settings?: { key: string; kind: string }[] } | undefined,
+  ): PlatformSwitchSetting | undefined =>
+    view?.settings?.find(
+      (x): x is PlatformSwitchSetting =>
+        x.key === "cloudSync.writesPaused" && x.kind === "switch",
+    );
+  const paused = findPause(platformSettings.data);
   const pauseNotice: PauseNotice | null = platformItem
     ? {
         since: platformItem.since ?? null,
@@ -220,6 +237,28 @@ export function Home(): React.ReactElement {
         reason: platformItem.reason ?? null,
       }
     : null;
+  /**
+   * Resume writes: the dialog at once when the setting is read; otherwise the button works
+   * (spinner) while the read is asked for, once more after a failure, and a second failure says
+   * so with Retry. The dialog never opens on its own.
+   */
+  const askResume = async (): Promise<void> => {
+    if (paused) {
+      setResumeOpen(true);
+      return;
+    }
+    setResumeBusy(true);
+    let res = await platformSettings.refetch();
+    if (res.isError) res = await platformSettings.refetch();
+    setResumeBusy(false);
+    if (findPause(res.data)) setResumeOpen(true);
+    else
+      toast.error(res.error ?? "Resume options didn't load", {
+        id: "home-resume-read",
+        context: { thing: "Cloud Sync setting" },
+        action: { label: "Retry", onClick: () => void askResume() },
+      });
+  };
   // A successful resume clears the item (the write invalidates the read): the row's action is
   // gone, so focus goes to the card that took its place.
   const hadPlatformItem = React.useRef(false);
@@ -227,11 +266,22 @@ export function Home(): React.ReactElement {
     if (platformItem) hadPlatformItem.current = true;
     else if (hadPlatformItem.current) {
       hadPlatformItem.current = false;
-      requestAnimationFrame(() =>
-        document
-          .querySelector<HTMLElement>("[data-home-grid] > section h2")
-          ?.focus(),
-      );
+      // The row's card is gone: the Needs attention heading, else the all-clear line, else the
+      // first-run heading, else the page heading; never the removed button's ghost.
+      requestAnimationFrame(() => {
+        for (const sel of [
+          "[data-attention-list] h2",
+          "[data-all-clear]",
+          "[data-empty=first-run] h2",
+          "h1",
+        ]) {
+          const el = document.querySelector<HTMLElement>(sel);
+          if (el) {
+            el.focus();
+            if (document.activeElement === el) return;
+          }
+        }
+      });
     }
   }, [platformItem]);
   const resumeDialog =
@@ -246,7 +296,12 @@ export function Home(): React.ReactElement {
         reachUnlisted={list.length === 0}
       />
     ) : null;
-  const items = attentionRows(openable, logoOf, () => setResumeOpen(true));
+  const items = attentionRows(
+    openable,
+    logoOf,
+    () => void askResume(),
+    resumeBusy,
+  );
   // The grid splits only when attention has rows to show (or is still loading or failed, so its
   // card holds the slot): a healthy platform's one-line all-clear never leaves a void beside the
   // guide, which then takes the row under it.
@@ -345,6 +400,7 @@ export function Home(): React.ReactElement {
               onRefresh: () => {
                 void products.refetch();
                 void attention.refetch();
+                if (platformItem) void platformSettings.refetch();
                 if (platform) void ready.refetch();
               },
               refreshing: products.isFetching || attention.isFetching,
@@ -392,8 +448,11 @@ export function Home(): React.ReactElement {
         {header}
         {platformItem ? (
           <AttentionList
-            items={attentionRows([platformItem], logoOf, () =>
-              setResumeOpen(true),
+            items={attentionRows(
+              [platformItem],
+              logoOf,
+              () => void askResume(),
+              resumeBusy,
             )}
           />
         ) : null}
@@ -401,6 +460,7 @@ export function Home(): React.ReactElement {
         <EmptyState
           kind="first-run"
           headingLevel={2}
+          headingRef={firstRunHeading}
           title="Register your first product"
           description={
             <>

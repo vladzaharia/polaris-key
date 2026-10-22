@@ -866,7 +866,7 @@ describe("Cloud Sync → Setup", () => {
     );
     renderPage();
     const dialog = await screen.findByRole("alertdialog");
-    expect(dialog.textContent).toContain("“Storage errors”.");
+    expect(dialog.textContent).toContain("“Storage errors.”");
     expect(within(dialog).getByText("Recorded in Activity.")).toBeTruthy();
     expect(within(dialog).queryByText(/banner/)).toBeNull();
     window.location.hash = "";

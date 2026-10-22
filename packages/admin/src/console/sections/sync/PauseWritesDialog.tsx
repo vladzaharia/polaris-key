@@ -6,13 +6,15 @@
  */
 
 import * as React from "react";
-import { type PlatformSwitchSetting } from "../../../api.js";
+import { useQueryClient } from "@tanstack/react-query";
+import { api, ApiError, type PlatformSwitchSetting } from "../../../api.js";
+import { qk } from "../../data/queries.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { Textarea } from "../../../ui/Textarea.js";
 import { toast } from "../../../ui/toast.js";
 import { LEVEL_RANK } from "../../../ui/settings/model.js";
-import { formatDateTime } from "../../../lib/format.js";
+import { formatSince } from "../../../lib/format.js";
 import { useMe, useProducts } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 
@@ -29,7 +31,7 @@ export interface PauseNotice {
   reason: string | null;
 }
 
-/** "Paused Oct 22, 2026, 11:46 AM by Ana Lima" and, when there is one, the reason in quotes. */
+/** "Paused since 1:14 PM by Ana Lima." and, when there is one, the reason in quotes. */
 export function PauseNoticeLine({
   notice,
 }: {
@@ -38,7 +40,7 @@ export function PauseNoticeLine({
   return (
     <>
       {notice.since
-        ? `Paused since ${formatDateTime(notice.since * 1000)}`
+        ? `Paused since ${formatSince(notice.since * 1000)}`
         : "Paused"}
       {notice.by ? (
         <>
@@ -50,8 +52,10 @@ export function PauseNoticeLine({
       {notice.reason ? (
         <>
           {" "}
-          <bdi>“{notice.reason}”</bdi>
-          {/[.!?…]$/.test(notice.reason.trim()) ? null : "."}
+          <bdi>
+            “{notice.reason}
+            {/[.!?…]$/.test(notice.reason.trim()) ? "" : "."}”
+          </bdi>
         </>
       ) : null}
     </>
@@ -86,6 +90,7 @@ export function PauseWritesDialog({
   const reasonId = React.useId();
   const all = useProducts();
   const me = useMe();
+  const qc = useQueryClient();
   // A reason put back after the step-up sign-in must survive the fresh-open reset below (this
   // effect runs after ConfirmDialog's, which restores it).
   const restored = React.useRef(false);
@@ -170,14 +175,40 @@ export function PauseWritesDialog({
         restored.current = true;
         setReason(saved.reason ?? "");
       }}
-      describeError={(e) => errorCopy(e, { thing: "Setting" })}
+      describeError={(e) =>
+        e instanceof ApiError && e.status === 409
+          ? {
+              title: "Another admin changed this first.",
+              description: "Close this and check the current state.",
+            }
+          : errorCopy(e, { thing: "Setting" })
+      }
       onConfirm={async () => {
-        await mutate("patchPlatformSetting", setting.key, {
-          value: to,
-          expectedVersion: setting.version,
-          reason: reason.trim(),
-          ...(LEVEL_RANK[level] >= 2 ? { confirm: setting.key } : {}),
-        });
+        try {
+          await mutate("patchPlatformSetting", setting.key, {
+            value: to,
+            expectedVersion: setting.version,
+            reason: reason.trim(),
+            ...(LEVEL_RANK[level] >= 2 ? { confirm: setting.key } : {}),
+          });
+        } catch (e) {
+          if (!(e instanceof ApiError) || e.status !== 409) throw e;
+          // The switch moved under us: ask again. If it already is where this write was going,
+          // the other admin did the work; say so and close.
+          const fresh = await api.platformSettings().catch(() => null);
+          void qc.invalidateQueries({ queryKey: qk.platformSettings() });
+          void qc.invalidateQueries({ queryKey: qk.attention() });
+          const now = fresh?.settings?.find((x) => x.key === setting.key);
+          if (now && "value" in now && now.value === to) {
+            toast.info(
+              pausing
+                ? "Writes were already paused."
+                : "Writes were already resumed.",
+            );
+            return;
+          }
+          throw e;
+        }
         toast.success(
           pausing ? "Cloud Sync writes paused" : "Cloud Sync writes resumed",
         );
