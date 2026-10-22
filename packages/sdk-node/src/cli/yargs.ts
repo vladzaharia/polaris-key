@@ -87,7 +87,7 @@ function makeBuildClient(factory: ClientFactory, options: YargsAdapterOptions) {
 }
 
 const camel = (s: string): string =>
-  s.replace(/-([a-z])/g, (_m, c: string) => c.toUpperCase());
+  s.replace(/-([a-z])/g, (_m, c: string) => c.toUpperCase()); // ui-lint: allow terminal-uppercase camel-cases an option name, not copy
 
 /**
  * What yargs parsed that the verb does not take: an option it never declared (yargs keeps it in

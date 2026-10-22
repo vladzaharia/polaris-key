@@ -668,8 +668,12 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       "identity.signin.hints",
       "identity.choice",
     ];
+    // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
+    // discovery-portal transcript); React's widget kit shows only server or integrator links.
+    const naHere = ["ui.cli.portal"];
     const expected = TRANSCRIPTS.filter(
-      (t) => !t.features.some((f) => plannedHere.includes(f)),
+      (t) =>
+        !t.features.some((f) => plannedHere.includes(f) || naHere.includes(f)),
     ).map((t) => t.id);
     expect(ids.sort()).toEqual(expected.sort());
   });
