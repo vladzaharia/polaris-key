@@ -2297,6 +2297,8 @@ export interface TrustPolicyDto {
   mint: TrustLevelDto;
   gatedDelivery: TrustLevelDto;
   commerceClaim: TrustLevelDto;
+  /** Cloud Sync pushes (U-05.11); absent from a Worker that predates it, which reads `basic`. */
+  cloudSyncWrite?: TrustLevelDto;
   enforce: boolean;
   appAttest: {
     teamId: string | null;

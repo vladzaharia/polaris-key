@@ -38,17 +38,24 @@ import type { ProductPublic } from "../products.js";
 export type TrustLevel = "basic" | "attested";
 
 /** The operations a policy can gate. */
-export type TrustOperation = "mint" | "gatedDelivery" | "commerceClaim";
+export type TrustOperation =
+  | "mint"
+  | "gatedDelivery"
+  | "commerceClaim"
+  | "cloudSyncWrite";
 export const TRUST_OPERATIONS: readonly TrustOperation[] = [
   "mint",
   "gatedDelivery",
   "commerceClaim",
+  "cloudSyncWrite",
 ];
 
 export interface TrustPolicy {
   mint: TrustLevel;
   gatedDelivery: TrustLevel;
   commerceClaim: TrustLevel;
+  /** Cloud Sync pushes (`POST /<p>/sync/ops`, U-05.13). A policy stored before U-05.11 reads as `basic`. */
+  cloudSyncWrite: TrustLevel;
   /** false (default): a would-be refusal is audited and the request proceeds. */
   enforce: boolean;
   /** App Attest: the Apple Developer Team ID and which aaguid the product's builds carry.
@@ -74,6 +81,7 @@ export const DEFAULT_TRUST_POLICY: TrustPolicy = Object.freeze({
   mint: "basic",
   gatedDelivery: "basic",
   commerceClaim: "basic",
+  cloudSyncWrite: "basic",
   enforce: false,
   appAttest: null,
   playIntegrity: null,
@@ -247,10 +255,10 @@ export function relaxesTrustPolicy(
  *
  * Lenient where the admin PUT is strict (the expand step of the two-release rule, for a JSON
  * column; plans/U-01b.md §6.1): a stored member this build does not know whose value is a trust
- * level (`basic` or `attested`) is an operation a later build added (U-05's `cloudSyncWrite`), and
+ * level (`basic` or `attested`) is an operation a later build added, and
  * is dropped, so every other member and `enforce` still read as stored. Without it, a revert past
  * that later build would read each policy saved under it as `DEFAULT_TRUST_POLICY` and silently
- * turn off `mint`, `gatedDelivery` and `commerceClaim` enforcement. Any other unknown member still
+ * turn off `mint`, `gatedDelivery`, `commerceClaim` and `cloudSyncWrite` enforcement. Any other unknown member still
  * makes the stored policy unreadable, as `validateTrustPolicy` (the PUT) does.
  */
 export function parseTrustPolicy(json: string | null | undefined): TrustPolicy {
