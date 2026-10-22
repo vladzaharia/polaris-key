@@ -12,7 +12,7 @@ setting has one form with one set of rules:
 
 | Action                                                        | What it does                                                                                                                                                                 |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Open overview**, **Open settings**, **Open keys & secrets** | Go to that page of the product. Name and per-license defaults are edited in Settings; secrets and signing keys in [Keys & secrets](/docs/operate/console/keys-and-secrets/). |
+| **Open overview**, **Open settings**, **Open keys and secrets** | Go to that page of the product. Name and per-license defaults are edited in Settings; secrets and signing keys in [Keys and secrets](/docs/operate/console/keys-and-secrets/). |
 | **Resync from repo…**                                         | Repository-linked products only. Re-fetches `.pkey/` from the repo's default branch and re-applies it — see below. You confirm the consequences first.                       |
 | **Delete product…** (also the Danger zone on Settings)        | Tombstones the product. See below.                                                                                                                                           |
 
@@ -121,7 +121,7 @@ Releases page before the first release. Both open the same drawer, and it works 
      publisher, and so on);
    - **Stays (set in the console)**: values the manifest declares but an operator already set
      here (services, the compatibility window, the fingerprint and auto-issue policies, release
-     access, a trusted publisher saved in Keys & secrets). The ownership rule above applies from
+     access, a trusted publisher saved in Keys and secrets). The ownership rule above applies from
      the first apply;
    - **Removes**: tiers, profiles, catalog keys, token recipes and so on that the product has and
      the manifest does not declare;
@@ -132,7 +132,7 @@ Releases page before the first release. Both open the same drawer, and it works 
    manifest applied is always the one you read. Otherwise the product's source becomes the
    repository and the manifest is applied by the same code as **Resync from repo**. The signing
    key is not touched. Secrets the manifest names but cannot carry are listed for you to set in
-   [Keys & secrets](/docs/operate/console/keys-and-secrets/).
+   [Keys and secrets](/docs/operate/console/keys-and-secrets/).
 
 The link is recorded in Activity as _linked the product to a repository_. After it, every push to
 the default branch re-applies `.pkey/`, exactly as for a product created from its repository. The

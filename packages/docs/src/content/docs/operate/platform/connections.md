@@ -53,7 +53,7 @@ the state of the store's primary credential and how many apps are assigned.
   confirmation lists what is pinned, including the bundle ID for the In-App Purchase key.
   Afterwards a result panel lists every pin set, any pin released, the product's own keys
   re-pinned, and the own keys left alone because their account could not be told from their
-  metadata. Check those and re-pin them on the product's Keys & secrets page. An app held through
+  metadata. Check those and re-pin them on the product's Keys and secrets page. An app held through
   a product's own key can only be assigned to that product.
 - **Set up** (the row menu of an assigned app, for a store with a storefront adapter) opens the
   holding product's [Add to storefronts](/docs/features/ship-builds/channels/storefronts/) flow, scoped to this store.
@@ -284,7 +284,7 @@ recorded in the platform audit trail with the admin who made them. So is every p
 write (`platform.asc.bundle_id.register`, `platform.asc.capability.enable`), with App Store
 Connect's own view of the object before and after.
 
-See also [Channel credentials](/docs/operate/platform/outlet-credentials/) for a product's own store keys, [Keys & secrets](/docs/operate/console/keys-and-secrets/) for its secrets and signing keys, and [the KEK keyring](/docs/operate/platform/runbook/rotate-the-kek/): the re-seal sweep includes the console
+See also [Channel credentials](/docs/operate/platform/outlet-credentials/) for a product's own store keys, [Keys and secrets](/docs/operate/console/keys-and-secrets/) for its secrets and signing keys, and [the KEK keyring](/docs/operate/platform/runbook/rotate-the-kek/): the re-seal sweep includes the console
 store credentials.
 
 ## Sign-in connections

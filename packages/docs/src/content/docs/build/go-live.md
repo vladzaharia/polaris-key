@@ -18,7 +18,7 @@ An app that ships pins the keys that sign its documents, so the pins you build w
 
 ## Steps
 
-1. **Console** Open **Core → Keys & secrets**. In **Signing keys**, select **Prepare signing key**, and confirm.
+1. **Console** Open **Core → Keys and secrets**. In **Signing keys**, select **Prepare signing key**, and confirm.
 
    You should see a second key listed as **Staged**. A new product has one signing key, and an app that pins only one can't recover if that key is revoked. `pkey sdk` warns while discovery lists only one.
 
@@ -38,7 +38,7 @@ An app that ships pins the keys that sign its documents, so the pins you build w
 
    You should see both key ids with their SHA-256 fingerprints, and the release keys instead of `Release keys: none`. Build the app from this file.
 
-4. **Console** Compare each key in the file with **Public key** under **Core → Keys & secrets**. A pin that doesn't match is a key someone else could sign for.
+4. **Console** Compare each key in the file with **Public key** under **Core → Keys and secrets**. A pin that doesn't match is a key someone else could sign for.
 
    You should see each pin match a listed key.
 

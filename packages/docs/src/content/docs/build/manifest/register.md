@@ -40,7 +40,7 @@ A product that keeps its manifest in its own repo is registered by linking that 
 
    You should see the product's **Integration** with "Tidewater Studio is ready" and its signing key.
 
-5. **Console** Open **Core → Keys & secrets** and set any secret the manifest names but has no value yet. The Check step named them. A secret's value is never shown again.
+5. **Console** Open **Core → Keys and secrets** and set any secret the manifest names but has no value yet. The Check step named them. A secret's value is never shown again.
 
 6. **CLI** Check the registered product.
 

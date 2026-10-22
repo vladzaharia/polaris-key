@@ -197,26 +197,28 @@ navigation or the palette.
 
 Every product has **Core**, drawn as a flat list (no group header; Settings sits at the foot):
 
-| Page        | Path and route detail                                                                 |
-| ----------- | ------------------------------------------------------------------------------------- |
-| Overview    | `#/p/<slug>`: attention, the Integration card, one tile per enabled feature, activity |
-| Integration | `#/p/<slug>/integration`                                                              |
-| Devices     | `#/p/<slug>/devices`, with a routed device record                                     |
-| Users       | `#/p/<slug>/users`, with overview, licenses, devices, activity, and data record tabs  |
-| Activity    | `#/p/<slug>/activity`                                                                 |
-| Settings    | `#/p/<slug>/settings`, the hub below                                                  |
+| Page        | Path and route detail                                                                  |
+| ----------- | -------------------------------------------------------------------------------------- |
+| Overview    | `#/p/<slug>`: the hero, the feature board, the Integration-steps rail, recent activity |
+| Integration | `#/p/<slug>/integration`                                                               |
+| Devices     | `#/p/<slug>/devices`, with a routed device record                                      |
+| Users       | `#/p/<slug>/users`, with overview, licenses, devices, activity, and data record tabs   |
+| Activity    | `#/p/<slug>/activity`                                                                  |
+| Settings    | `#/p/<slug>/settings`, the hub below                                                   |
 
-**Settings** is a hub with five tabs, none of them a sidebar item: **Features & general**
+**Settings** is a hub with five tabs, none of them a sidebar item: **Features and general**
 (`settings/features`: the feature switches, then the product's name, origins, repository, storage,
 alerts and the danger zone), **Presentation** (`settings/presentation`), **Polaris Locker**
-(`settings/portal`), **Keys & secrets** (`settings/keys`) and **Members** (`settings/members`).
+(`settings/portal`), **Keys and secrets** (`settings/keys`) and **Members** (`settings/members`).
 **All settings** (`settings/all`) lists every setting with its value where the registry has one, its
 source and the page that edits it.
 
-Overview draws one tile per feature the product runs, in the feature's accent with no accent top
-rule. **Ship builds** is one tile for Release, Distribution and Update (the version on stable, the
-rollouts live, the updater's state), as it is one group in the sidebar. The page's one filled
-primary is the first Needs attention action; with none, the Integration card's next step.
+The Overview opens with a hero: the product's state and the one next step, with the Integration
+pane beside it. The one filled primary on the page is that step. Under it, the feature board draws
+one tile per feature the product runs, in the feature's accent with no accent top rule. **Ship
+builds** is one tile for Release, Distribution and Update (the version on stable, the rollouts
+live, the updater's state), as it is one group in the sidebar. The Integration-steps rail lists the
+steps with a platform badge on each. Recent activity runs under the board.
 
 Enabled services add their sections. Release, Distribution and Update share one sidebar group,
 **Ship builds**; the rows below keep them apart because routes, docs and the feature switches do.
