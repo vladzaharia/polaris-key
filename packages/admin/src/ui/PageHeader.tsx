@@ -34,6 +34,11 @@ export interface PageHeaderProps {
    * only.
    */
   size?: "default" | "display";
+  /**
+   * Let a title of fixed copy (not a record's name) wrap to every line it needs: the two-line clamp
+   * is for a name of any length, and would cut a sentence at a large text size (no-access pages).
+   */
+  unclampedTitle?: boolean;
   /** Beside the title: a `StatusPill`, a count. */
   titleAside?: React.ReactNode;
   /** Scope and context, one line. */
@@ -103,6 +108,7 @@ export function PageHeader({
   eyebrow,
   title,
   size = "default",
+  unclampedTitle = false,
   titleAside,
   description,
   meta,
@@ -240,7 +246,8 @@ export function PageHeader({
                       : // 24/32 on a phone, 36/44 on a collection, 32/40 on a record (B4, B6:
                         // never a display size in the console). A long name wraps twice, then ends.
                         cn(
-                          "line-clamp-2 text-2xl leading-8 [overflow-wrap:anywhere]",
+                          unclampedTitle ? "" : "line-clamp-2",
+                          "text-2xl leading-8 [overflow-wrap:anywhere]",
                           masthead?.record
                             ? "sm:text-headline-lg sm:leading-10"
                             : "sm:text-4xl sm:leading-11",
@@ -257,7 +264,7 @@ export function PageHeader({
               // description and the meta share lines instead of stacking (masthead <= 140 px).
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted [&>span.flex]:contents">
                 {description ? (
-                  <p className="max-w-[72ch]">{description}</p>
+                  <p className="min-w-0 max-w-[72ch]">{description}</p>
                 ) : null}
                 {meta}
               </div>

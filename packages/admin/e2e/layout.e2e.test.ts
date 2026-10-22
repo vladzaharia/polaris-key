@@ -109,6 +109,220 @@ interface Case {
   act?: (page: Page) => Promise<void>;
   /** The case needs a window at least this wide (a control that is not drawn below it). */
   minWidth?: number;
+  /** Replaces what `resolve` answers for a path (ST-31.15: who the member is, who can help). */
+  api?: Record<string, unknown>;
+}
+
+const LONG_NAME =
+  "Starfall Chronicles Remastered Definitive Collector's Edition of the Long Night, Part Two: The Reckoning of the Seven Moons and the Ninefold Tide, Anniversary Re-release";
+
+/** ST-31.15: the no-access cases; the 200 %-text and small-phone rows open every one. */
+const NO_ACCESS_CASES = [
+  "no-access:product",
+  "no-access:two-products",
+  "no-access:unknown-role",
+  "no-access:nobody",
+  "no-access:home",
+  "no-access:long-name",
+  "no-access:long-address",
+];
+
+/** ST-31.15: the no-access states, each a different member (`admin.no-access`, `.no-access-home`). */
+function noAccessCases(): Case[] {
+  const me = (
+    email: string,
+    roles: unknown[],
+    products: { slug: string; name: string; schemaVersion: number }[],
+    productAreas: Record<string, string[]> = {},
+  ) => ({
+    sub: "m-x",
+    name: "Lucía Ortega",
+    email,
+    csrf: "c",
+    platformAdmin: false,
+    sessionExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+    products,
+    permissions: {
+      roles,
+      platform: { view: ["console"], edit: ["console"] },
+      products: Object.fromEntries(
+        Object.entries(productAreas).map(([k, v]) => [k, { view: v, edit: v }]),
+      ),
+    },
+  });
+  const djdl = [{ slug: "djdl", name: "DJDL", schemaVersion: 1 }];
+  const narrowed = {
+    role: "product_admin",
+    scope: "product:djdl",
+    areas: ["ship", "commerce"],
+    source: "grant",
+  };
+  const admins = (list: unknown[]) => ({
+    "/manage/api/access/admins": {
+      scope: "product:djdl",
+      area: "license",
+      admins: list,
+    },
+  });
+  const people = [
+    { name: "Kenji Mori", email: "kenji@example.com", role: "product_admin" },
+    { name: "Ada Lindqvist", email: "ada@example.com", role: "superadmin" },
+    { name: "Jonas Weber", email: "jonas@example.com", role: "superadmin" },
+  ];
+  const lucia = me("lucia@example.com", [narrowed], djdl, {
+    djdl: ["ship", "commerce"],
+  });
+  const list: Case[] = [
+    {
+      name: "no-access:product",
+      hash: "#/p/djdl/license/licenses",
+      api: { "/manage/api/me": lucia, ...admins(people) },
+    },
+    {
+      name: "no-access:two-products",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": me(
+          "lucia@example.com",
+          [
+            narrowed,
+            {
+              role: "product_admin",
+              scope: "product:acme",
+              areas: null,
+              source: "grant",
+            },
+          ],
+          [...djdl, { slug: "acme", name: "Acme", schemaVersion: 2 }],
+          {
+            djdl: ["ship", "commerce"],
+            acme: ["core", "license", "ship", "commerce"],
+          },
+        ),
+        ...admins(people),
+      },
+    },
+    {
+      name: "no-access:unknown-role",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": me(
+          "lucia@example.com",
+          [
+            {
+              role: "workspace_auditor",
+              scope: "platform",
+              areas: null,
+              source: "grant",
+            },
+          ],
+          djdl,
+          {},
+        ),
+        ...admins(people),
+      },
+    },
+    {
+      name: "no-access:nobody",
+      hash: "#/p/djdl/license/licenses",
+      api: { "/manage/api/me": lucia, ...admins([]) },
+    },
+    {
+      name: "no-access:home",
+      hash: "#/",
+      api: {
+        "/manage/api/me": me(
+          "noor@studio.example.com",
+          [
+            {
+              role: "console_access",
+              scope: "platform",
+              areas: null,
+              source: "rule",
+            },
+          ],
+          [],
+        ),
+        "/manage/api/access/admins": {
+          scope: "platform",
+          area: "console",
+          admins: people.slice(1),
+        },
+      },
+    },
+    {
+      name: "no-access:long-address",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": {
+          ...lucia,
+          email: "lucia.ortega@studio-operations.example.com",
+          products: [{ ...djdl[0]!, name: LONG_NAME }],
+        },
+        "/manage/api/products/djdl": {
+          product: {
+            ...(resolve("/manage/api/products/djdl") as { product: object })
+              .product,
+            name: LONG_NAME,
+          },
+        },
+        ...admins(people),
+      },
+    },
+    {
+      name: "no-access:long-name",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": {
+          ...lucia,
+          products: [{ ...djdl[0]!, name: LONG_NAME }],
+        },
+        "/manage/api/products/djdl": {
+          product: {
+            ...(resolve("/manage/api/products/djdl") as { product: object })
+              .product,
+            name: LONG_NAME,
+          },
+        },
+        ...admins(people),
+      },
+      // No title is cut: the h1 shows every line it wraps to (ST-31.15 B1).
+      act: async (page) => {
+        const h1 = page.getByRole("heading", { level: 1 });
+        await h1.waitFor();
+        const clipped = await h1.evaluate(
+          (el) =>
+            el.scrollHeight > el.clientHeight + 1 ||
+            getComputedStyle(el).webkitLineClamp !== "none",
+        );
+        expect(clipped, "the h1 is clipped").toBe(false);
+      },
+    },
+  ];
+  // Each case's `/products` is the member's own, so the switcher and sidebar are what they see.
+  return list.map((c) => {
+    const m = c.api!["/manage/api/me"] as { products: { slug: string }[] };
+    const all = (
+      resolve("/manage/api/products") as {
+        products: { slug: string; name: string }[];
+      }
+    ).products;
+    const own = new Set(m.products.map((p) => p.slug));
+    const names = new Map(
+      m.products.map((p) => [p.slug, (p as { name?: string }).name]),
+    );
+    return {
+      ...c,
+      api: {
+        ...c.api,
+        "/manage/api/products": {
+          products: all
+            .filter((p) => own.has(p.slug))
+            .map((p) => ({ ...p, name: names.get(p.slug) ?? p.name })),
+        },
+      },
+    };
+  });
 }
 
 // ── The case list: nav.ts's pages, their records and tabs, the overlays ──────────────────────
@@ -323,7 +537,7 @@ function cases(): Case[] {
       },
     },
   );
-  return list;
+  return [...list, ...noAccessCases()];
 }
 
 const CASES = cases();
@@ -356,6 +570,7 @@ const HOME_CASES = ["global:home", "home:table", "djdl:overview"];
 const TEXT200_CASES = [
   // ST-31.13: the Roles tab's tiles and one-column matrix.
   "global:platform-members?tab=roles",
+  ...NO_ACCESS_CASES,
   "djdl:settings",
   "djdl:services",
   "djdl:portal",
@@ -448,7 +663,12 @@ const VIEWPORTS: {
         label: "small-phone",
         width: 360,
         height: 780,
-        only: [...ZOOM_CASES, "djdl:health", "djdl:rollouts"],
+        only: [
+          ...ZOOM_CASES,
+          "djdl:health",
+          "djdl:rollouts",
+          "no-access:long-name",
+        ],
       },
       // UI-KITS.md §7.1's wide desktop: every page with content (the empty-state twins add
       // nothing to a width check). The column stays capped (CONSOLE_COLUMN_MAX).
@@ -676,7 +896,10 @@ async function open(
     if (url.pathname.startsWith("/manage/api/")) {
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });
-      const body = resolve(url.pathname);
+      const body =
+        c.api && url.pathname in c.api
+          ? c.api[url.pathname]
+          : resolve(url.pathname);
       if (body === undefined) {
         gaps.push(url.pathname);
         return route.fulfill({ status: 404, json: { error: "not_found" } });
