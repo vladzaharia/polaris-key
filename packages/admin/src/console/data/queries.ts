@@ -222,6 +222,7 @@ export const qk = {
 
   // config
   catalog: (slug: string) => product(slug, "config", "catalog"),
+  syncUsage: (slug: string) => product(slug, "sync", "usage"),
   /** The version history (A-6). Under the catalog prefix, so a publish refreshes it. */
   catalogVersions: (slug: string) =>
     product(slug, "config", "catalog", "versions"),

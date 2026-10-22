@@ -201,6 +201,8 @@ function cases(): Case[] {
       },
     },
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
+    // U-05.20: Cloud Sync's Usage tab is a route tab, not a nav row: its empty twin by hand.
+    { name: "empty:sync-usage", hash: "#/p/empty/sync/usage" },
     {
       name: "global:platform-activity?timeline",
       hash: "#/platform/activity?view=timeline",
@@ -283,6 +285,7 @@ const ZOOM_CASES = [
   "djdl:releases",
   "djdl:deliverables/record/delivery",
   "djdl:activity?table",
+  "djdl:sync-usage",
   "djdl:storefronts?flow=prerequisites",
   "djdl:storefronts?flow=listing",
   "djdl:storefronts?flow=assets",
@@ -295,6 +298,7 @@ const ZOOM_CASES = [
 const HOME_CASES = ["global:home", "home:table", "djdl:overview"];
 /** The pages the phone-at-200%-text row opens. */
 const TEXT200_CASES = [
+  "djdl:sync-usage",
   "djdl:settings",
   // U-05.21: Cloud Sync Setup's tier rows, ceiling meter and pause row.
   "djdl:sync-setup",

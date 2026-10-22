@@ -15646,9 +15646,9 @@
       "surface": "console",
       "overlays": ["ST-48", "ST-50", "UK-58"],
       "owners": ["U-32", "U-05"],
-      "built": "mockup-only",
+      "built": "partial",
       "brandV2": "no",
-      "evidence": "packages/admin/src/console/pages/sync/SyncData.tsx (only 'sync-data' read-only page in nav.ts; no Setup/Usage tabs, no storage-per-player, no pause switch, no 'writesPaused' in admin)"
+      "evidence": "packages/admin/src/console/sections/sync/pages/SyncUsage.tsx (U-05.20): tiles, storage by tier with over-80 warning text, what's stored bar (max 640 px) with text alternative, where people sync from, player/person from the catalog, MiB/GiB, phone and wide layouts, empty/error/off states; not built: the week delta, the product total on Storage used, 'waiting for room' and the platform status line"
     },
     {
       "id": "config.cloud-sync",
