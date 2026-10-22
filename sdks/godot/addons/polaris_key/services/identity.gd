@@ -300,10 +300,13 @@ func request_sign_in(device_name := "") -> PKeySignInPrompt:
 ##   ready        {identity, attached, stored, sync}
 ##                               the token is stored and the forced sync has run
 ##   timeout                     the server no longer knows the code
-##   denied                      the server answered `error`
+##   denied                      the server answered `error` with `reason: access_denied`
+##                               (the person pressed Deny)
 ##   device-mismatch             401
 ##   transient    {code}         no answer, or a 5xx: says nothing about the sign-in
 ##   error        {code, message, status}
+##                               a bare `error` (no reason) is the sign-in failing after
+##                               approval: code `sign-in-failed`
 ## A coroutine.
 func poll_sign_in(prompt: PKeySignInPrompt) -> Dictionary:
 	return await _poll(prompt, prompt.interval if prompt != null else 0, null)
@@ -349,7 +352,10 @@ func _poll(prompt: PKeySignInPrompt, current: int, decision: Variant) -> Diction
 		"timeout":
 			return {"status": "timeout"}
 		"error":
-			return {"status": "denied"}
+			# DENY-01: only `reason: access_denied` is a refusal; a bare `error` is a failure.
+			if b.get("reason") == "access_denied":
+				return {"status": "denied"}
+			return {"status": "error", "code": PKeyErrors.SIGN_IN_FAILED, "message": "The sign-in failed after approval; begin again.", "status_code": status}
 		"confirm":
 			return {"status": "confirm", "identity": _shown(b.get("identity")), "attachable": PKeyClaims.is_true(b.get("attachable"))}
 		"ready":
@@ -438,7 +444,7 @@ func _wait(prompt: PKeySignInPrompt, gen: int) -> PKeySignInResult:
 			"timeout":
 				return PKeySignInResult.ended(PKeySignInResult.KIND_TIMEOUT, PKeyErrors.SIGN_IN_EXPIRED, "The sign-in code is no longer known to the server; begin again.", 200)
 			"denied":
-				return PKeySignInResult.ended(PKeySignInResult.KIND_DENIED, PKeyErrors.SIGN_IN_DENIED, "The sign-in failed or was refused; begin again.", 200)
+				return PKeySignInResult.ended(PKeySignInResult.KIND_DENIED, PKeyErrors.SIGN_IN_DENIED, "The sign-in was declined; begin again.", 200)
 			"device-mismatch":
 				return PKeySignInResult.ended(PKeySignInResult.KIND_DEVICE_MISMATCH, p["code"], p["message"], 401)
 			_:

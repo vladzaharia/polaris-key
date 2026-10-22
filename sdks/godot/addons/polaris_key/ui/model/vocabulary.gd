@@ -4,7 +4,7 @@ extends RefCounted
 ## pins them for every language; a screen reads them from here instead of spelling a string.
 
 ## The UI matrix version these models implement (the generated `UI_MATRIX_VERSION`).
-const UI_MATRIX_VERSION := 4
+const UI_MATRIX_VERSION := 5
 
 ## UI-KITS.md §4.1: every component, must and should.
 const COMPONENTS := [
@@ -52,7 +52,7 @@ const CHANNELS := ["browser", "device-code"]
 const OUTCOMES := ["pending", "choose", "signedIn", "cancelled", "expired"]
 ## The kit events the sign-in form reacts to.
 const EVENTS := ["use-code", "copy-link", "have-key", "open-replace", "confirm-replace", "reopen"]
-const DEVICE_CODE_PHASES := ["starting", "waiting", "slow-down", "ok", "denied", "expired", "cancelled"]
+const DEVICE_CODE_PHASES := ["starting", "waiting", "slow-down", "ok", "denied", "failed", "expired", "cancelled"]
 const REGISTRATION := ["open", "requires-identity", "requires-license"]
 const PENDING := ["sign-in", "activate", "replace", "save", "purchase", "restore"]
 const TOASTS := ["update", "copied", "warning", "error", "progress"]

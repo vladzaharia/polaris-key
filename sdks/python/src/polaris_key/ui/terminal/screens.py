@@ -462,7 +462,7 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
             body += k.step("fail", [title])
             if code == "network":
                 body += k.body([message])
-            if v.state in ("expired", "denied", "cancelled") or code == "network":
+            if v.state in ("expired", "denied", "failed", "cancelled") or code == "network":
                 body += _again(k, verb)
     return _frame(k, verb, body, end, hints)
 

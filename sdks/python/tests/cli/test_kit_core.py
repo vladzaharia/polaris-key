@@ -356,7 +356,7 @@ def test_sign_in_model_walks_its_states() -> None:
     done = SignInModel().finished(type("R", (), {"status": "ready", "identity": type("I", (), {"name": "M", "email": "m@x"})()})())
     assert (done.state, done.name, done.email) == ("done", "M", "m@x")
     assert SignInModel().finished(type("R", (), {"status": "expired"})()).state == "expired"
-    assert SignInModel().finished(type("R", (), {"status": "error", "message": "access_denied"})()).state == "denied"
+    assert SignInModel().finished(type("R", (), {"status": "error", "code": "sign-in-denied"})()).state == "denied"
 
 
 def test_update_view_maps_every_action() -> None:
