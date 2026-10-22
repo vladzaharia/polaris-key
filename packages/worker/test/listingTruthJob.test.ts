@@ -468,6 +468,34 @@ describe("distribution.listing-truth apply and down (A-27.7)", () => {
     expect(await listingTruthJob.down(ctxOf(db, NOW + 2), "dice")).toBe(0);
   });
 
+  it("down leaves a field a store import rewrote with the identical value", async () => {
+    const db = await makeTestDb();
+    await blob(db, "dice", BLOB);
+    await listingTruthJob.apply(ctxOf(db), "dice");
+    // The App Store import takes the field over with the very same text.
+    await db.run(
+      `UPDATE dist_listings
+          SET provenance_json = json_set(provenance_json, '$."name"', 'app-store')
+        WHERE product = 'dice'`,
+    );
+    await db.run(
+      `UPDATE dist_listing_locales
+          SET provenance_json = json_set(provenance_json, '$."subtitle"', 'play')
+        WHERE product = 'dice'`,
+    );
+    expect(await listingTruthJob.down(ctxOf(db, NOW + 1), "dice")).toBe(3);
+    const app = await db.first<{ name: string; provenance_json: string }>(
+      "SELECT name, provenance_json FROM dist_listings WHERE product = 'dice'",
+    );
+    expect(app?.name).toBe("Dice");
+    expect(JSON.parse(app!.provenance_json)).toEqual({ name: "app-store" });
+    const loc = await db.first<{ subtitle: string }>(
+      "SELECT subtitle FROM dist_listing_locales WHERE product = 'dice'",
+    );
+    expect(loc?.subtitle).toBe("Roll");
+    expect(await ledger(db, "dice")).toEqual([]);
+  });
+
   it("a unit with no blob, or already equal, applies nothing and writes no ledger", async () => {
     const db = await makeTestDb();
     await seedProduct(db, "bare");

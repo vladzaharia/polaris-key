@@ -286,6 +286,12 @@ function restoreStatement(
       ? null
       : (JSON.parse(r.applied_value_json) as string);
   const prov = r.prior_provenance;
+  // A value the apply SET must still be the manifest's: a store import or an edit that rewrote the
+  // identical text took ownership and is not reverted. A clear (applied NULL) has no owner to check.
+  const stillManifest = (key: string) =>
+    applied === null
+      ? ""
+      : ` AND json_extract(provenance_json, '${pk(key)}') = 'manifest'`;
   const provSet = (key: string) =>
     prov === null
       ? `json_remove(provenance_json, '${pk(key)}')`
@@ -306,7 +312,7 @@ function restoreStatement(
       sql: `UPDATE dist_listings
                SET ${store.column} = ${value}, provenance_json = ${provSet(r.field)},
                    modified_at = ?, modified_by = ?
-             WHERE product = ? AND ${read} IS ?`,
+             WHERE product = ? AND ${read} IS ?${stillManifest(r.field)}`,
       params: [
         ...(store.urlKey && prior === null ? [] : [prior]),
         ...provParams,
@@ -323,7 +329,7 @@ function restoreStatement(
     sql: `UPDATE dist_listing_locales
              SET ${column} = ?, provenance_json = ${provSet(r.field)},
                  modified_at = ?, modified_by = ?
-           WHERE product = ? AND locale = ? AND ${column} IS ?`,
+           WHERE product = ? AND locale = ? AND ${column} IS ?${stillManifest(r.field)}`,
     params: [prior, ...provParams, now, ACTOR, product, r.locale, applied],
   };
 }
@@ -340,15 +346,20 @@ async function downListingTruth(
   let restored = 0;
   for (const r of rows) {
     const s = restoreStatement(product, r, ctx.now);
-    // The WHERE holds the guard: a field that no longer equals what the apply wrote is left alone.
-    if (s) restored += await ctx.db.runChanges(s.sql, ...s.params);
-    // The move is over either way (restored, or superseded by a later edit).
-    await ctx.db.run(
-      "DELETE FROM dist_listing_truth_moves WHERE product = ? AND locale = ? AND field = ?",
-      product,
-      r.locale,
-      r.field,
-    );
+    // One batch per field: the guarded restore and the ledger delete land together. The WHERE
+    // holds the guard (still the applied value, still manifest-owned); a field that fails it is
+    // left alone and its move is over all the same.
+    const del: DbStatement = {
+      sql: "DELETE FROM dist_listing_truth_moves WHERE product = ? AND locale = ? AND field = ?",
+      params: [product, r.locale, r.field],
+    };
+    if (!s) {
+      await ctx.db.batch([del]);
+      continue;
+    }
+    const changes = await ctx.db.batchChanges?.([s, del]);
+    if (!changes) await ctx.db.batch([s, del]);
+    restored += changes?.[0] ?? 0;
   }
   return restored;
 }
