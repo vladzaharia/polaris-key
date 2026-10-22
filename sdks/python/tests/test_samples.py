@@ -24,6 +24,10 @@ def _load(path: Path):
 
 def test_cli_sample_mounts_every_verb_next_to_its_own_command(capsys: pytest.CaptureFixture[str]) -> None:
     sample = _load(EXAMPLES / "python-cli" / "mytool.py")
+    # As shipped the sample's pins are placeholders, which the mount refuses (polaris-bad-config).
+    with pytest.raises(ValueError, match="pkey sdk --lang python --write"):
+        sample.build_parser()
+    sample.CONFIG["trust"] = {"k1": "A" * 43}
     with pytest.raises(SystemExit) as exit_:
         sample.main(["--help"])
     assert exit_.value.code == 0
