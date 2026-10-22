@@ -1,45 +1,6 @@
 {
   "_": "States where the React and elements baselines differ today. Each is a finding, not a pass: pnpm ui:report fails on any other drift and on an entry that no longer differs, so this list only shrinks.",
   "states": {
-    "LicenseChoice.all-full": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.create": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.current": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.grant-expired": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.keep": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.many": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.mixed": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.one": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.raced": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "LicenseChoice.replace-open": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "SignIn.choose": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "SignIn.replace": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
-    "SignInHandoff.code": {
-      "reason": "Elements: a two-pane gate row with the identity panel at 1440 and a slightly different row rhythm (520ebff17); React: one card."
-    },
     "AccountAndLicense.key-only": {
       "reason": "Small layout drift of 0.1-2 %: Sign out is a link in elements and a button in React (AccountAndLicense); the banner button row sits 2 px apart (GraceBanner, PolarisKeyGate.grace); and the single-control rows of ChannelPicker, EntitlementGate, Paywall.not-available, UpdateProgress.failed differ by a few px."
     },

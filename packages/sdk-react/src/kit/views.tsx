@@ -295,6 +295,21 @@ export function withBase(c: KitCtx): View {
       };
     }
   }
+  // The Replace step confirms on its own button: its "Replace a device" openers are gone.
+  if (view.component === "LicenseChoice" && view.state === "replace-open")
+    return {
+      ...view,
+      copy: view.copy.filter(
+        (k) => k !== "signin.replace.open" && k !== "signin.replace.openSystem",
+      ),
+    };
+  // The code step: how long the code lasts, that it waits, and a Cancel to leave by.
+  if (view.component === "SignInHandoff" && view.state === "code")
+    return add(
+      ...(view.args.time !== undefined ? ["signin.handoff.expires"] : []),
+      "cli.signin.waitingCode",
+      "common.cancel",
+    );
   if (view.component === "Devices") {
     const input = c.input;
     if (
@@ -372,7 +387,7 @@ function place(c: KitCtx, layout: Layout) {
   };
   const x = c.chrome;
   if (!x) return p;
-  if (x.meta?.length) p.meta = [...p.meta, ...x.meta];
+  if (x.meta?.length) p.meta = [...new Set([...p.meta, ...x.meta])];
   const drop = new Set(x.drop ?? []);
   return {
     ...p,
@@ -386,6 +401,8 @@ function place(c: KitCtx, layout: Layout) {
 /** A blocking step: the card on the product ambient (DL1, DL2, DL5). */
 function screen(c: KitCtx, layout: Layout): ReactNode {
   const { view } = c;
+  // One form, one card width: a step of the sign-in form splits like its first step does.
+  const split = layout.split === true || c.form === true;
   const p = place(c, layout);
   const errorKeys = p.body.filter(isErrorKey);
   const body = p.body.filter((k) => !isErrorKey(k));
@@ -404,7 +421,7 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
       className="stage"
       data-part="stage"
       data-kind="screen"
-      data-split={layout.split === true ? "" : undefined}
+      data-split={split ? "" : undefined}
     >
       {ambient ? (
         <div className="ambient" aria-hidden="true">
@@ -420,12 +437,12 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
         {loading ? shimmer() : null}
         {c.chrome?.back ? backButton(c) : null}
         <div className="split passport">
-          {layout.split && c.resolved.iconUrl ? (
+          {split && c.resolved.iconUrl ? (
             <div className="passport-ambient" aria-hidden="true">
               <img src={c.resolved.iconUrl} alt="" />
             </div>
           ) : null}
-          {layout.split && showIdentity ? (
+          {split && showIdentity ? (
             <div className="panel-icon" aria-hidden="true">
               {productIcon(c)}
             </div>

@@ -44,6 +44,8 @@ export interface KitCtx {
   licenseRows?: (c: KitCtx) => ReactNode;
   /** A screen-form component drawn as an embedded pane. */
   embedded?: boolean;
+  /** The step is the sign-in form's body: every step shares one card width (the split). */
+  form?: boolean;
   chrome?: Chrome;
   view: View;
   copy: Copy;
