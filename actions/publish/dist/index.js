@@ -5828,8 +5828,8 @@ ${ctx.indent}`;
         const vs0 = valueStr[0];
         const nl0 = valueStr.indexOf("\n");
         const hasNewline = nl0 !== -1;
-        const flow = ctx.inFlow ?? value.flow ?? value.items.length === 0;
-        if (hasNewline || !flow) {
+        const flow2 = ctx.inFlow ?? value.flow ?? value.items.length === 0;
+        if (hasNewline || !flow2) {
           let hasPropsLine = false;
           if (hasNewline && (vs0 === "&" || vs0 === "!")) {
             let sp0 = valueStr.indexOf(" ");
@@ -6060,8 +6060,8 @@ var require_stringifyCollection = __commonJS({
     var stringify2 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyCollection(collection, ctx, options) {
-      const flow = ctx.inFlow ?? collection.flow;
-      const stringify3 = flow ? stringifyFlowCollection : stringifyBlockCollection;
+      const flow2 = ctx.inFlow ?? collection.flow;
+      const stringify3 = flow2 ? stringifyFlowCollection : stringifyBlockCollection;
       return stringify3(collection, ctx, options);
     }
     function stringifyBlockCollection({ comment, items }, ctx, { blockItemPrefix, flowChars, itemIndent, onChompKeep, onComment }) {
@@ -7729,7 +7729,7 @@ var require_Document = __commonJS({
           options = replacer;
           replacer = void 0;
         }
-        const { aliasDuplicateObjects, anchorPrefix, flow, keepUndefined, onTagObj, tag: tag2 } = options ?? {};
+        const { aliasDuplicateObjects, anchorPrefix, flow: flow2, keepUndefined, onTagObj, tag: tag2 } = options ?? {};
         const { onAnchor, setAnchors, sourceObjects } = anchors.createNodeAnchors(
           this,
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -7745,7 +7745,7 @@ var require_Document = __commonJS({
           sourceObjects
         };
         const node = createNode.createNode(value, tag2, ctx);
-        if (flow && identity.isCollection(node))
+        if (flow2 && identity.isCollection(node))
           node.flow = true;
         setAnchors();
         return node;
@@ -7995,7 +7995,7 @@ var require_resolve_props = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/dist/compose/resolve-props.js"(exports) {
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
-    function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
+    function resolveProps(tokens, { flow: flow2, indicator, next, offset, onError, parentIndent, startOnNewline }) {
       let spaceBefore = false;
       let atNewline = startOnNewline;
       let hasSpace = startOnNewline;
@@ -8024,7 +8024,7 @@ var require_resolve_props = __commonJS({
         }
         switch (token.type) {
           case "space":
-            if (!flow && (indicator !== "doc-start" || next?.type !== "flow-collection") && token.source.includes("	")) {
+            if (!flow2 && (indicator !== "doc-start" || next?.type !== "flow-collection") && token.source.includes("	")) {
               tab = token;
             }
             hasSpace = true;
@@ -8080,15 +8080,15 @@ var require_resolve_props = __commonJS({
             if (anchor || tag2)
               onError(token, "BAD_PROP_ORDER", `Anchors and tags must be after the ${token.source} indicator`);
             if (found)
-              onError(token, "UNEXPECTED_TOKEN", `Unexpected ${token.source} in ${flow ?? "collection"}`);
+              onError(token, "UNEXPECTED_TOKEN", `Unexpected ${token.source} in ${flow2 ?? "collection"}`);
             found = token;
             atNewline = indicator === "seq-item-ind" || indicator === "explicit-key-ind";
             hasSpace = false;
             break;
           case "comma":
-            if (flow) {
+            if (flow2) {
               if (comma)
-                onError(token, "UNEXPECTED_TOKEN", `Unexpected , in ${flow}`);
+                onError(token, "UNEXPECTED_TOKEN", `Unexpected , in ${flow2}`);
               comma = token;
               atNewline = false;
               hasSpace = false;
@@ -23722,14 +23722,21 @@ var COMMANDS = [
   {
     name: "login",
     group: "account",
-    json: false,
+    json: true,
+    valueless: ["json", "no-browser"],
     context: ["baseUrl"],
     summary: "Sign in to the console from this terminal",
     rows: [["login", "Sign in to the console from this terminal"]],
-    usage: ["pkey login [--base-url url]"],
+    usage: ["pkey login [--base-url url] [--no-browser] [--json]"],
     about: [
       {
-        text: "Not available yet. Signing in will keep a personal token in your operating system's credential store, bound to the origin that issued it."
+        text: "Shows a code, opens the console's approval page in your browser (not over SSH, without a display or with --no-browser: it prints the link instead) and waits. Check that the code in your browser matches the one here before you approve: it is how you know the request is yours. On approval a personal token (admin, 7 days) goes to your operating system's credential store, bound to the origin that issued it. The token is never printed. Keys: Enter opens the page again, c copies the code, Esc cancels."
+      },
+      {
+        text: "A second pkey login first ends the token it replaces. It refuses (exit 4) in CI, where PKEY_ADMIN_TOKEN is the credential; without a credential store; and when you already have the most personal tokens allowed (revoke one at Personal tokens, then run it again). A denied code exits 4; an expired code or an unreachable console exits 1; Esc and Ctrl+C cancel and exit 130."
+      },
+      {
+        text: '--json prints one line when the code is ready, {"v":1,"command":"login","event":"started","host","code","url","expiresIn"}, then one result line, {"v":1,"command":"login","event":"result","ok","exit"} with name, email, roles, token (no secret) and storedIn on success, or error (denied, expired, token_limit, cancelled, refused or error) and message. It never prompts or opens a browser.'
       }
     ]
   },
@@ -25834,114 +25841,11 @@ function cmdLogout(io) {
     );
   });
 }
-function cmdLogin(io) {
-  return guarded(io, async () => {
-    throw new Refusal("pkey login is not available in this build yet.");
-  });
-}
 
-// src/context.ts
+// src/login.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var BASE_URL_ENV = "PKEY_BASE_URL";
-async function resolveContext(input) {
-  const found = await findProductManifest(input.cwd);
-  const env = input.env[BASE_URL_ENV]?.trim();
-  return {
-    product: input.product ? {
-      slug: input.product,
-      source: "flag",
-      // The name is the manifest's only when the flag names the manifest's own product.
-      ...found?.slug === input.product && found.name ? { name: found.name } : {}
-    } : found ? {
-      slug: found.slug,
-      ...found.name ? { name: found.name } : {},
-      source: "manifest",
-      file: found.file
-    } : null,
-    baseUrl: input.baseUrl ? { url: input.baseUrl, source: "flag" } : env ? { url: env, source: "env" } : { url: DEFAULT_BASE_URL, source: "default" }
-  };
-}
-async function applyContext(keys, flags, input) {
-  if (!keys?.length) return;
-  const given = (name) => typeof flags[name] === "string" && String(flags[name]).trim() !== "";
-  const wantProduct = keys.includes("product") && !given("product");
-  const wantBase = keys.includes("baseUrl") && !given("base-url");
-  if (!wantProduct && !wantBase) return;
-  const ctx = await resolveContext(input);
-  if (wantProduct && ctx.product) flags["product"] = ctx.product.slug;
-  if (wantBase && ctx.baseUrl.source === "env")
-    flags["base-url"] = ctx.baseUrl.url;
-}
-
-// src/doctor.ts
-init_define_PKEY_EMBEDDED_SCHEMAS();
-function manifestFact(result, problem) {
-  if (!result)
-    return {
-      id: "manifest",
-      state: "todo",
-      detail: problem ?? "no .pkey/ manifest"
-    };
-  if (!result.ok)
-    return {
-      id: "manifest",
-      state: "todo",
-      detail: `${result.errors.length} error${result.errors.length === 1 ? "" : "s"}`
-    };
-  return {
-    id: "manifest",
-    state: result.warnings.length ? "warn" : "ok",
-    detail: result.warnings.length ? `${result.warnings.length} warning${result.warnings.length === 1 ? "" : "s"}` : "valid"
-  };
-}
-async function checkRemote(opts) {
-  const url = `${opts.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
-  let res;
-  try {
-    res = await (opts.fetchImpl ?? fetch)(url);
-  } catch (err) {
-    throw new Error(networkMessage(err, url));
-  }
-  if (!res.ok)
-    return {
-      url,
-      status: res.status,
-      services: [],
-      signing: null,
-      facts: [
-        {
-          id: "discovery",
-          state: "todo",
-          detail: `failed (${res.status})`
-        }
-      ]
-    };
-  const body = await res.json();
-  const services = Object.entries(body.services ?? {}).filter(([, service]) => service?.enabled === true).map(([slug]) => slug);
-  const signing = body.signing ?? body.trust ?? {};
-  const keys = signing !== null && typeof signing === "object" ? Object.keys(signing).length : 0;
-  return {
-    url,
-    services,
-    signing,
-    facts: [
-      { id: "discovery", state: "ok", detail: "answers" },
-      {
-        id: "services",
-        state: services.length ? "ok" : "warn",
-        detail: services.length ? services.join(", ") : "none enabled"
-      },
-      {
-        id: "signing-keys",
-        state: keys ? "ok" : "warn",
-        detail: keys ? `${keys} exposed` : "none exposed"
-      }
-    ]
-  };
-}
-function doctorOk(facts) {
-  return facts.every((f) => f.state !== "todo");
-}
+import { spawn } from "node:child_process";
+import { hostname as osHostname, platform as osPlatform } from "node:os";
 
 // src/terminal.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -26073,6 +25977,673 @@ var Spinner = class {
     return `${glyph}  ${truncateEnd(this.label, max - 3, symbols.ellipsis)}`;
   }
 };
+
+// src/login.ts
+var CODE_SHAPE = /^[BCDFGHJKLMNPQRSTVWXZ]{4}-[BCDFGHJKLMNPQRSTVWXZ]{4}$/;
+var POLL_ID_SHAPE = /^dl_[A-Za-z0-9_-]{43}$/;
+var COOKIE_NAME = "__Host-pkey_device_login";
+var COOKIE_VALUE_SHAPE = /^[A-Za-z0-9_-]{16,128}$/;
+var NETWORK_FAILURES = 5;
+var MAX_INTERVAL_MS = 3e4;
+function underCi(env) {
+  const v = env["CI"]?.trim().toLowerCase();
+  return v !== void 0 && v !== "" && v !== "0" && v !== "false";
+}
+function hasDisplay(env, platform) {
+  if (platform === "darwin" || platform === "win32") return true;
+  return Boolean(env["DISPLAY"] || env["WAYLAND_DISPLAY"]);
+}
+function backendName(platform) {
+  if (platform === "darwin") return "macOS Keychain";
+  if (platform === "win32") return "Windows Credential Manager";
+  return "Secret Service";
+}
+function defaultOpen(url) {
+  const platform = osPlatform();
+  const [cmd, args] = platform === "darwin" ? ["open", [url]] : platform === "win32" ? ["rundll32", ["url.dll,FileProtocolHandler", url]] : ["xdg-open", [url]];
+  return new Promise((resolve2, reject) => {
+    const child = spawn(cmd, args, { stdio: "ignore", detached: true });
+    child.once("error", reject);
+    child.once("spawn", () => {
+      child.unref();
+      resolve2();
+    });
+  });
+}
+function defaultCopy(text) {
+  const platform = osPlatform();
+  const [cmd, args] = platform === "darwin" ? ["pbcopy", []] : platform === "win32" ? ["clip", []] : ["xclip", ["-selection", "clipboard"]];
+  return new Promise((resolve2) => {
+    const child = spawn(cmd, args, { stdio: ["pipe", "ignore", "ignore"] });
+    child.once("error", () => resolve2(false));
+    child.once("close", (code) => resolve2(code === 0));
+    child.stdin.end(text);
+  });
+}
+function defaultSeams() {
+  return {
+    openUrl: defaultOpen,
+    copyText: defaultCopy,
+    stdin: process.stdin.isTTY ? process.stdin : void 0,
+    onInterrupt: (cb) => {
+      process.on("SIGINT", cb);
+      return () => void process.removeListener("SIGINT", cb);
+    },
+    hostname: osHostname,
+    platform: osPlatform(),
+    now: Date.now,
+    sleep: (ms) => new Promise((r) => setTimeout(r, ms))
+  };
+}
+function setCookieOf(res) {
+  const all = typeof res.headers.getSetCookie === "function" ? res.headers.getSetCookie() : [res.headers.get("set-cookie") ?? ""];
+  for (const line of all) {
+    const pair = line.split(";")[0].trim();
+    const eq = pair.indexOf("=");
+    if (pair.slice(0, eq) !== COOKIE_NAME) continue;
+    const value = pair.slice(eq + 1);
+    if (COOKIE_VALUE_SHAPE.test(value)) return value;
+  }
+  return null;
+}
+function outcomeText(o, t) {
+  const { painter, symbols, caps } = t;
+  const width = Math.max(1, caps.columns - 3);
+  const glyph = o.kind === "warn" ? painter.style(symbols.warn, ["warning"]) : painter.style(symbols.fail, ["danger"]);
+  const wrap = (text, first) => /^https?:\/\/\S+$/.test(text) ? `   ${text}` : wrapSpans([{ text }], width).map(
+    (l, i) => `${first && i === 0 ? `${glyph}  ` : "   "}${painter.line(l)}`
+  ).join("\n");
+  return `${[wrap(o.text, true), ...(o.fix ?? []).map((f) => wrap(f, false))].join("\n")}
+`;
+}
+function localDay(epochSeconds) {
+  const d = new Date(epochSeconds * 1e3);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function roleLabel(role, scope) {
+  const name = role.charAt(0).toUpperCase() + role.slice(1);
+  const where2 = scope.startsWith("product:") ? scope.slice(8) : scope;
+  return where2 ? `${name} (${where2})` : name;
+}
+function cmdLogin(io) {
+  const given = Object.fromEntries(
+    Object.entries(io.seams).filter(([, v]) => v !== void 0)
+  );
+  const seams = { ...defaultSeams(), ...given };
+  let code = 0;
+  return guarded(io, async () => {
+    try {
+      code = await flow(io, seams);
+    } catch (e) {
+      if (io.json && e instanceof Refusal) {
+        io.stdout.write(
+          `${JSON.stringify({ v: 1, command: "login", event: "result", ok: false, exit: 4, error: "refused", message: e.message, ...e.fix ? { fix: e.fix } : {} })}
+`
+        );
+        return 4;
+      }
+      throw e;
+    }
+    return code;
+  });
+}
+async function flow(io, seams) {
+  if (underCi(io.env))
+    throw new Refusal(
+      `pkey login needs a person; in CI use ${ADMIN_TOKEN_ENV}.`
+    );
+  const origin = originOf(io.baseUrl);
+  const host = hostOf2(origin);
+  const platform = seams.platform ?? osPlatform();
+  const now = seams.now ?? Date.now;
+  const sleep = seams.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+  const f = io.fetchImpl ?? fetch;
+  const store = await io.store();
+  const existing = store.get(origin);
+  const out = io.term(io.stdout);
+  const errTerm = io.term(io.stderr);
+  const say = (s) => io.stdout.write(s);
+  const lines4 = (text, indent = "") => wrapSpans([{ text }], Math.max(1, out.caps.columns - indent.length)).map((l) => `${indent}${out.painter.line(l)}
+`).join("");
+  if (existing && (existing.expiresAt === null || existing.expiresAt * 1e3 > now())) {
+    try {
+      await call(
+        io,
+        {
+          token: existing.token,
+          source: "store",
+          origin,
+          expiresAt: existing.expiresAt
+        },
+        "DELETE",
+        "/me/personal-tokens/current"
+      );
+    } catch {
+    }
+  }
+  if (!io.json) {
+    say(`${lines4(`Polaris Key console ${out.symbols.separator} ${host}`)}
+`);
+    if (io.env[ADMIN_TOKEN_ENV]?.trim())
+      io.stderr.write(
+        note(
+          `${ADMIN_TOKEN_ENV} is set and takes precedence over this sign-in. Unset it to use the one pkey login saves.`,
+          errTerm,
+          "warn"
+        )
+      );
+  }
+  const abort = new AbortController();
+  let cancelled = null;
+  let wake;
+  const cancelSignal = new Promise((resolve2) => wake = resolve2);
+  const cancel = (why) => {
+    if (cancelled) return;
+    cancelled = why;
+    abort.abort();
+    wake?.();
+  };
+  const wait = (ms) => Promise.race([sleep(ms), cancelSignal]);
+  const startRes = await request(f, `${origin}/api/device-login/start`, {
+    method: "POST",
+    redirect: "manual",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify({
+      purpose: "cli",
+      scope: "admin",
+      client: {
+        name: "pkey",
+        version: CLI_VERSION,
+        host: (seams.hostname ?? osHostname)()
+      }
+    }),
+    signal: abort.signal
+  });
+  refuseRedirect(startRes, host);
+  if (startRes.status === 429)
+    throw new Refusal(
+      "Too many sign-in attempts from this network.",
+      "Wait a few minutes, then run pkey login again."
+    );
+  if ([404, 405, 422, 501].includes(startRes.status))
+    throw new Refusal(
+      `${host} doesn't offer terminal sign-in; use ${ADMIN_TOKEN_ENV}.`
+    );
+  if (startRes.status !== 201)
+    throw new Error(
+      `${host} did not start a sign-in (HTTP ${startRes.status}).`
+    );
+  const started = await jsonOf(startRes);
+  const pollId = String(started["id"] ?? "");
+  const userCode = String(started["code"] ?? "");
+  const cookie = setCookieOf(startRes);
+  if (!POLL_ID_SHAPE.test(pollId) || !CODE_SHAPE.test(userCode) || !cookie)
+    throw new Error(`${host} answered the sign-in start unexpectedly.`);
+  const expiresIn = typeof started["expiresIn"] === "number" ? started["expiresIn"] : 300;
+  let interval = clampInterval(started["interval"], 3e3);
+  const deadline = now() + expiresIn * 1e3;
+  const approveUrl = `${origin}/manage/device?code=${userCode}`;
+  const mayOpen = !io.json && !io.noBrowser && !io.env["SSH_CONNECTION"] && !io.env["SSH_TTY"] && hasDisplay(io.env, platform);
+  const interactive = !io.json && Boolean(seams.stdin?.isTTY);
+  const open2 = async () => {
+    try {
+      await (seams.openUrl ?? defaultOpen)(approveUrl);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  if (io.json) {
+    say(
+      `${JSON.stringify({ v: 1, command: "login", event: "started", host, code: userCode, url: approveUrl, expiresIn })}
+`
+    );
+  } else {
+    const opened = mayOpen ? await open2() : false;
+    if (opened)
+      say(lines4(`Opening Polaris Key in your browser${out.symbols.ellipsis}`));
+    say(lines4(opened ? "Didn't open? Go to" : "Open this link in a browser:"));
+    say(`${approveUrl}
+
+`);
+    say(lines4("Check that the code in your browser matches:"));
+    say(`${out.painter.style(` ${userCode} `, ["code"])}
+
+`);
+  }
+  const spinner = new Spinner(io.stderr, io.env, io.flags);
+  const wrapped = spinner.wrap(io.stdout);
+  const wsay = (s) => wrapped.write(s);
+  let cleanup = [];
+  const finish = (v) => {
+    spinner.stop();
+    for (const c of cleanup) c();
+    cleanup = [];
+    return v;
+  };
+  const removeInterrupt = (seams.onInterrupt ?? (() => () => {
+  }))(
+    () => cancel("interrupt")
+  );
+  cleanup.push(removeInterrupt);
+  if (interactive) {
+    const stdin = seams.stdin;
+    const keys = [
+      mayOpen ? "Enter open again" : "",
+      "c copy the code",
+      "Esc cancel"
+    ].filter(Boolean);
+    say(
+      `${wrapSpans(
+        [{ text: keys.join(` ${out.symbols.separator} `) }],
+        Math.max(1, out.caps.columns - 2)
+      ).map((l) => `  ${out.painter.style(out.painter.line(l), ["muted"])}
+`).join("")}
+`
+    );
+    const onData = (chunk) => {
+      const k = chunk.toString();
+      if (k === "") cancel("interrupt");
+      else if (k === "\x1B") cancel("esc");
+      else if ((k === "\r" || k === "\n") && mayOpen) void open2();
+      else if (k === "c" || k === "C")
+        void (seams.copyText ?? defaultCopy)(userCode).then(
+          (ok) => wsay(
+            ok ? note(`Copied ${userCode}.`, out, "ok") : note("No clipboard here.", out, "warn")
+          )
+        );
+    };
+    try {
+      stdin.setRawMode?.(true);
+    } catch {
+    }
+    stdin.resume();
+    stdin.on("data", onData);
+    cleanup.push(() => {
+      stdin.removeListener("data", onData);
+      try {
+        stdin.setRawMode?.(false);
+      } catch {
+      }
+      stdin.pause();
+    });
+  }
+  if (!io.json) {
+    if (spinner.active)
+      spinner.stage("Waiting for you to approve in the browser");
+    else
+      say(
+        lines4(
+          `Waiting for you to approve in the browser${out.symbols.ellipsis}`
+        )
+      );
+  }
+  const report = (o) => {
+    finish(void 0);
+    if (io.json)
+      io.stdout.write(
+        `${JSON.stringify({ v: 1, command: "login", event: "result", ok: false, exit: o.exit, error: o.state, message: o.text, host, code: userCode, ...o.extra })}
+`
+      );
+    else io.stderr.write(outcomeText(o, errTerm));
+    return o.exit;
+  };
+  const rerun = ["Run pkey login to try again."];
+  let failures = 0;
+  while (true) {
+    await wait(interval);
+    if (cancelled) return cancelOutcome(finish, io, cancelled, errTerm, host);
+    if (now() >= deadline)
+      return report({
+        state: "expired",
+        exit: 1,
+        kind: "fail",
+        text: `Code ${userCode} expired before it was approved.`,
+        fix: ["Run pkey login to get a new one."]
+      });
+    let res;
+    try {
+      res = await request(f, `${origin}/api/device-login/${pollId}`, {
+        method: "GET",
+        redirect: "manual",
+        headers: {
+          accept: "application/json",
+          cookie: `${COOKIE_NAME}=${cookie}`
+        },
+        signal: abort.signal
+      });
+    } catch {
+      if (cancelled) return cancelOutcome(finish, io, cancelled, errTerm, host);
+      if (++failures >= NETWORK_FAILURES)
+        return report({
+          state: "error",
+          exit: 1,
+          kind: "fail",
+          text: `Lost contact with ${host} while waiting for code ${userCode}.`,
+          fix: rerun
+        });
+      interval = Math.min(interval * 2, MAX_INTERVAL_MS);
+      continue;
+    }
+    if (res.status >= 300 && res.status < 400) {
+      finish(void 0);
+      refuseRedirect(res, host);
+    }
+    if (res.status === 429 || res.status === 503) {
+      if (++failures >= NETWORK_FAILURES)
+        return report({
+          state: "error",
+          exit: 1,
+          kind: "fail",
+          text: `${host} is not answering right now (HTTP ${res.status}).`,
+          fix: rerun
+        });
+      interval = Math.min(interval * 2, MAX_INTERVAL_MS);
+      continue;
+    }
+    failures = 0;
+    if (res.status === 410)
+      return report({
+        state: "expired",
+        exit: 1,
+        kind: "fail",
+        text: `Code ${userCode} expired before it was approved.`,
+        fix: ["Run pkey login to get a new one."]
+      });
+    const body = await jsonOf(res);
+    if (res.status === 409 && body["reason"] === "token_limit") {
+      const limit = /at most (\d{1,3}) /.exec(
+        String(body["message"] ?? "")
+      )?.[1];
+      return report({
+        state: "token_limit",
+        exit: 4,
+        kind: "warn",
+        text: limit ? `You already have ${limit} personal tokens, the most allowed.` : "You already have the most personal tokens allowed.",
+        fix: [
+          "Revoke one in Personal tokens, then run pkey login again.",
+          `${origin}/manage/#/personal-tokens`
+        ],
+        extra: { url: `${origin}/manage/#/personal-tokens` }
+      });
+    }
+    if (res.status === 403)
+      return report({
+        state: "refused",
+        exit: 4,
+        kind: "warn",
+        text: "This account can't sign in.",
+        fix: ["Ask a Superadmin to check your access."]
+      });
+    if (!res.ok)
+      return report({
+        state: "error",
+        exit: 1,
+        kind: "fail",
+        text: `${host} refused the sign-in (HTTP ${res.status}).`,
+        fix: rerun
+      });
+    const status = body["status"];
+    if (status === "pending") {
+      interval = clampInterval(body["interval"], interval);
+      continue;
+    }
+    if (status === "denied")
+      return report({
+        state: "denied",
+        exit: 4,
+        kind: "warn",
+        text: `Code ${userCode} was denied in the browser.`,
+        fix: rerun
+      });
+    if (status !== "approved")
+      return report({
+        state: "error",
+        exit: 1,
+        kind: "fail",
+        text: `${host} answered the sign-in unexpectedly.`,
+        fix: rerun
+      });
+    finish(void 0);
+    return approved(io, {
+      origin,
+      host,
+      platform,
+      store,
+      token: body["token"],
+      expiresAt: body["expiresAt"]
+    });
+  }
+}
+function refuseRedirect(res, host) {
+  if (res.status >= 300 && res.status < 400)
+    throw new Refusal(
+      `${host} answered with a redirect, so pkey sent nothing further.`,
+      "Check --base-url."
+    );
+}
+function clampInterval(v, fallback) {
+  return typeof v === "number" && v > 0 ? Math.min(Math.max(v * 1e3, 1e3), MAX_INTERVAL_MS) : fallback;
+}
+function cancelOutcome(finish, io, _why, errTerm, host) {
+  finish(void 0);
+  const exit = 130;
+  if (io.json)
+    io.stdout.write(
+      `${JSON.stringify({ v: 1, command: "login", event: "result", ok: false, exit, error: "cancelled", message: "Cancelled.", host })}
+`
+    );
+  else io.stderr.write(note("Cancelled. Nothing was saved.", errTerm, "warn"));
+  return exit;
+}
+async function approved(io, a) {
+  const { origin, host, store } = a;
+  if (typeof a.token !== "string" || !a.token.startsWith("pkeyp_") || !isCredentialShape(a.token) || typeof a.expiresAt !== "number" || !Number.isInteger(a.expiresAt) || a.expiresAt <= 0)
+    throw new Error(`${host} answered the sign-in unexpectedly.`);
+  const token = a.token;
+  const expiresAt = a.expiresAt;
+  const cred = {
+    token,
+    source: "store",
+    origin,
+    expiresAt
+  };
+  let kept = false;
+  try {
+    store.set(origin, { token, expiresAt });
+    kept = store.get(origin)?.token === token;
+  } catch {
+    kept = false;
+  }
+  if (!kept) {
+    try {
+      await call(io, cred, "DELETE", "/me/personal-tokens/current");
+    } catch {
+    }
+    throw new Refusal(
+      "The credential store wouldn't keep the token, so pkey ended it.",
+      `Fix the ${backendName(a.platform)}, or set ${ADMIN_TOKEN_ENV} instead.`
+    );
+  }
+  let name = "";
+  let email = "";
+  let roles = [];
+  try {
+    const res = await call(io, cred, "GET", "/me");
+    if (res.ok) {
+      const me = await jsonOf(res);
+      name = untrusted(me["name"] ?? "", io.env);
+      email = untrusted(me["email"] ?? "", io.env);
+      const perms = me["permissions"] ?? {};
+      roles = (perms.roles ?? []).map((r) => ({
+        role: untrusted(r.role, io.env),
+        scope: untrusted(r.scope, io.env)
+      }));
+    }
+  } catch {
+  }
+  const backend = backendName(a.platform);
+  const t = io.term(io.stdout);
+  const hint2 = `pkeyp_${t.symbols.ellipsis}${token.slice(-4)}`;
+  if (io.json) {
+    io.stdout.write(
+      `${JSON.stringify({
+        v: 1,
+        command: "login",
+        event: "result",
+        ok: true,
+        exit: 0,
+        host,
+        name,
+        email,
+        roles,
+        token: {
+          type: "personal",
+          scope: "admin",
+          expiresAt: new Date(expiresAt * 1e3).toISOString()
+        },
+        storedIn: backend
+      })}
+`
+    );
+    return 0;
+  }
+  const who = name ? `${name}${email ? ` (${email})` : ""}` : email;
+  io.stdout.write(
+    `
+${note(who ? `Signed in to ${host} as ${who}` : `Signed in to ${host}`, t, "ok")}
+`
+  );
+  const label = (k) => t.painter.style(k.padEnd(10), ["muted"]);
+  const width = Math.max(1, t.caps.columns - 12);
+  const rows = [];
+  if (roles.length)
+    rows.push([
+      "Roles",
+      [...new Set(roles.map((r) => roleLabel(r.role, r.scope)))].join(", ")
+    ]);
+  const dot = ` ${t.symbols.separator} `;
+  rows.push([
+    "Token",
+    [hint2, "admin", `ends ${localDay(expiresAt)}`].join(dot)
+  ]);
+  rows.push(["Saved in", backend]);
+  for (const [k, v] of rows)
+    wrapSpans([{ text: v }], width).forEach(
+      (l, i) => io.stdout.write(
+        `  ${i === 0 ? label(k) : " ".repeat(10)}${t.painter.line(l)}
+`
+      )
+    );
+  io.stdout.write(`
+  End it with pkey logout.
+`);
+  return 0;
+}
+
+// src/context.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var BASE_URL_ENV = "PKEY_BASE_URL";
+async function resolveContext(input) {
+  const found = await findProductManifest(input.cwd);
+  const env = input.env[BASE_URL_ENV]?.trim();
+  return {
+    product: input.product ? {
+      slug: input.product,
+      source: "flag",
+      // The name is the manifest's only when the flag names the manifest's own product.
+      ...found?.slug === input.product && found.name ? { name: found.name } : {}
+    } : found ? {
+      slug: found.slug,
+      ...found.name ? { name: found.name } : {},
+      source: "manifest",
+      file: found.file
+    } : null,
+    baseUrl: input.baseUrl ? { url: input.baseUrl, source: "flag" } : env ? { url: env, source: "env" } : { url: DEFAULT_BASE_URL, source: "default" }
+  };
+}
+async function applyContext(keys, flags, input) {
+  if (!keys?.length) return;
+  const given = (name) => typeof flags[name] === "string" && String(flags[name]).trim() !== "";
+  const wantProduct = keys.includes("product") && !given("product");
+  const wantBase = keys.includes("baseUrl") && !given("base-url");
+  if (!wantProduct && !wantBase) return;
+  const ctx = await resolveContext(input);
+  if (wantProduct && ctx.product) flags["product"] = ctx.product.slug;
+  if (wantBase && ctx.baseUrl.source === "env")
+    flags["base-url"] = ctx.baseUrl.url;
+}
+
+// src/doctor.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+function manifestFact(result, problem) {
+  if (!result)
+    return {
+      id: "manifest",
+      state: "todo",
+      detail: problem ?? "no .pkey/ manifest"
+    };
+  if (!result.ok)
+    return {
+      id: "manifest",
+      state: "todo",
+      detail: `${result.errors.length} error${result.errors.length === 1 ? "" : "s"}`
+    };
+  return {
+    id: "manifest",
+    state: result.warnings.length ? "warn" : "ok",
+    detail: result.warnings.length ? `${result.warnings.length} warning${result.warnings.length === 1 ? "" : "s"}` : "valid"
+  };
+}
+async function checkRemote(opts) {
+  const url = `${opts.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
+  let res;
+  try {
+    res = await (opts.fetchImpl ?? fetch)(url);
+  } catch (err) {
+    throw new Error(networkMessage(err, url));
+  }
+  if (!res.ok)
+    return {
+      url,
+      status: res.status,
+      services: [],
+      signing: null,
+      facts: [
+        {
+          id: "discovery",
+          state: "todo",
+          detail: `failed (${res.status})`
+        }
+      ]
+    };
+  const body = await res.json();
+  const services = Object.entries(body.services ?? {}).filter(([, service]) => service?.enabled === true).map(([slug]) => slug);
+  const signing = body.signing ?? body.trust ?? {};
+  const keys = signing !== null && typeof signing === "object" ? Object.keys(signing).length : 0;
+  return {
+    url,
+    services,
+    signing,
+    facts: [
+      { id: "discovery", state: "ok", detail: "answers" },
+      {
+        id: "services",
+        state: services.length ? "ok" : "warn",
+        detail: services.length ? services.join(", ") : "none enabled"
+      },
+      {
+        id: "signing-keys",
+        state: keys ? "ok" : "warn",
+        detail: keys ? `${keys} exposed` : "none exposed"
+      }
+    ]
+  };
+}
+function doctorOk(facts) {
+  return facts.every((f) => f.state !== "todo");
+}
 
 // src/publish.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
@@ -42066,7 +42637,7 @@ function generateCask(i, o = {}) {
 
 // src/storefronts/run.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-import { spawn } from "node:child_process";
+import { spawn as spawn2 } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFile as readFile20 } from "node:fs/promises";
 import path24 from "node:path";
@@ -42188,7 +42759,7 @@ function toolEnv(env) {
   return out;
 }
 var defaultSpawn = (tool, argv2, cwd) => new Promise((resolve2, reject) => {
-  const child = spawn(tool, [...argv2], {
+  const child = spawn2(tool, [...argv2], {
     cwd,
     env: toolEnv(process.env),
     stdio: "inherit",
@@ -46307,7 +46878,8 @@ async function runCommand(argv2, io) {
       ci,
       g,
       term,
-      store: io.credentialStore ?? defaultStore
+      store: io.credentialStore ?? defaultStore,
+      login: io.login
     });
   } catch (err) {
     const message = isInternalError(err) ? internalMessage(err) : networkMessage(err);
@@ -46320,7 +46892,12 @@ async function runCommand(argv2, io) {
   }
 }
 var HANDLERS = {
-  login: (p, rt) => cmdLogin(accountIo(p, rt)),
+  login: (p, rt) => cmdLogin({
+    ...accountIo(p, rt),
+    noBrowser: flagBool(p, "no-browser"),
+    flags: rt.g,
+    seams: { sleep: rt.ci.sleep, ...rt.login }
+  }),
   whoami: (p, rt) => cmdWhoami(accountIo(p, rt)),
   logout: (p, rt) => cmdLogout(accountIo(p, rt)),
   init: (p, rt) => cmdInit(p, rt.cwd, rt.stdout),

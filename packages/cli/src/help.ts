@@ -143,16 +143,38 @@ export const COMMANDS: readonly PkeyCommand[] = [
   {
     name: "login",
     group: "account",
-    json: false,
+    json: true,
+    valueless: ["json", "no-browser"],
     context: ["baseUrl"],
     summary: "Sign in to the console from this terminal",
     rows: [["login", "Sign in to the console from this terminal"]],
-    usage: ["pkey login [--base-url url]"],
+    usage: ["pkey login [--base-url url] [--no-browser] [--json]"],
     about: [
       {
         text:
-          "Not available yet. Signing in will keep a personal token in your operating " +
-          "system's credential store, bound to the origin that issued it.",
+          "Shows a code, opens the console's approval page in your browser (not over SSH, " +
+          "without a display or with --no-browser: it prints the link instead) and waits. Check " +
+          "that the code in your browser matches the one here before you approve: it is how " +
+          "you know the request is yours. On approval a personal token (admin, 7 days) goes " +
+          "to your operating system's credential store, bound to the origin that issued it. " +
+          "The token is never printed. Keys: Enter opens the page again, c copies the code, " +
+          "Esc cancels.",
+      },
+      {
+        text:
+          "A second pkey login first ends the token it replaces. It refuses (exit 4) in CI, " +
+          "where PKEY_ADMIN_TOKEN is the credential; without a credential store; and when you " +
+          "already have the most personal tokens allowed (revoke one at Personal tokens, then run " +
+          "it again). A denied code exits 4; an expired code or an unreachable console exits 1; " +
+          "Esc and Ctrl+C cancel and exit 130.",
+      },
+      {
+        text:
+          "--json prints one line when the code is ready, " +
+          '{"v":1,"command":"login","event":"started","host","code","url","expiresIn"}, then ' +
+          'one result line, {"v":1,"command":"login","event":"result","ok","exit"} with name, ' +
+          "email, roles, token (no secret) and storedIn on success, or error (denied, expired, " +
+          "token_limit, cancelled, refused or error) and message. It never prompts or opens a browser.",
       },
     ],
   },

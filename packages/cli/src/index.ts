@@ -36,7 +36,8 @@ import {
   type DevInfo,
 } from "./devCommand.js";
 import { fixManifest, type FixMove } from "./fix.js";
-import { cmdLogin, cmdLogout, cmdWhoami, type AccountIo } from "./account.js";
+import { cmdLogout, cmdWhoami, type AccountIo } from "./account.js";
+import { cmdLogin, type LoginSeams } from "./login.js";
 import { keyringStore, type CredentialStore } from "./credentials.js";
 import { applyContext, resolveContext, type PkeyContext } from "./context.js";
 import {
@@ -535,6 +536,8 @@ export interface CliIo {
   sleep?: (ms: number) => Promise<void>;
   /** The credential store behind login, whoami and logout (tests pass `memoryStore()`). */
   credentialStore?: () => Promise<CredentialStore>;
+  /** The browser, clipboard, keys and clock behind `pkey login` (tests pass fakes). */
+  login?: LoginSeams;
 }
 
 interface ParsedArgs {
@@ -669,6 +672,7 @@ async function runCommand(
       g,
       term,
       store: io.credentialStore ?? defaultStore,
+      login: io.login,
     });
   } catch (err) {
     // An error's message may quote the server (a refusal, a URL it answered, a field it sent):
@@ -694,6 +698,7 @@ interface Runtime {
   g: TermFlags;
   term: (out: TermOut) => Term;
   store: () => Promise<CredentialStore>;
+  login?: LoginSeams;
 }
 
 type Handler = (parsed: ParsedArgs, rt: Runtime) => number | Promise<number>;
@@ -704,7 +709,13 @@ type Handler = (parsed: ParsedArgs, rt: Runtime) => number | Promise<number>;
  * listed without running, or run without being listed.
  */
 export const HANDLERS: Readonly<Record<string, Handler>> = {
-  login: (p, rt) => cmdLogin(accountIo(p, rt)),
+  login: (p, rt) =>
+    cmdLogin({
+      ...accountIo(p, rt),
+      noBrowser: flagBool(p, "no-browser"),
+      flags: rt.g,
+      seams: { sleep: rt.ci.sleep, ...rt.login },
+    }),
   whoami: (p, rt) => cmdWhoami(accountIo(p, rt)),
   logout: (p, rt) => cmdLogout(accountIo(p, rt)),
   init: (p, rt) => cmdInit(p, rt.cwd, rt.stdout),

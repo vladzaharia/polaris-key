@@ -113,6 +113,7 @@ describe("the command table", () => {
       "doctor",
       "feeds",
       "listing",
+      "login",
       "logout",
       "migrate",
       "storefront",

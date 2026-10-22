@@ -1,5 +1,6 @@
 /**
- * `pkey whoami` and `pkey logout` (ST-34.7), and the `pkey login` stub until ST-34.8.
+ * `pkey whoami` and `pkey logout` (ST-34.7); `pkey login` is login.ts (ST-34.8), which shares
+ * these helpers.
  *
  * A refusal is a ▲ line on stderr and exit 4 (D-6); a failure (network, server) is exit 1. The
  * token is never printed: not on a screen, in `--json`, in an error or under `PKEY_DEBUG`. Only
@@ -35,11 +36,11 @@ export interface AccountIo {
   now?: () => number;
 }
 
-const day = (epochSeconds: number): string =>
+export const day = (epochSeconds: number): string =>
   new Date(epochSeconds * 1000).toISOString().slice(0, 10);
 
 /** `▲  text` and an indented fix line, wrapped to the terminal. */
-function refusalText(r: Refusal, t: Term): string {
+export function refusalText(r: Refusal, t: Term): string {
   const { painter, symbols, caps } = t;
   const width = Math.max(1, caps.columns - 3);
   const body = (text: string, first: boolean) =>
@@ -52,7 +53,7 @@ function refusalText(r: Refusal, t: Term): string {
   return `${[body(r.message, true), ...(r.fix ? [body(r.fix, false)] : [])].join("\n")}\n`;
 }
 
-function note(text: string, t: Term, kind: "warn" | "ok"): string {
+export function note(text: string, t: Term, kind: "warn" | "ok"): string {
   const { painter, symbols, caps } = t;
   const glyph =
     kind === "warn"
@@ -65,10 +66,10 @@ function note(text: string, t: Term, kind: "warn" | "ok"): string {
   );
 }
 
-const hostOf = (origin: string): string => new URL(origin).host;
+export const hostOf = (origin: string): string => new URL(origin).host;
 
 /** A GET or DELETE to the console API with the credential; a redirect is a failure, not followed. */
-async function call(
+export async function call(
   io: AccountIo,
   cred: ResolvedCredential,
   method: "GET" | "DELETE",
@@ -94,7 +95,7 @@ async function call(
   return res;
 }
 
-async function jsonOf(res: Response): Promise<Record<string, unknown>> {
+export async function jsonOf(res: Response): Promise<Record<string, unknown>> {
   try {
     const v = (await res.json()) as unknown;
     return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
@@ -104,7 +105,7 @@ async function jsonOf(res: Response): Promise<Record<string, unknown>> {
 }
 
 /** Run an account command; a `Refusal` becomes ▲ on stderr and exit 4. */
-async function guarded(
+export async function guarded(
   io: AccountIo,
   run: () => Promise<number>,
 ): Promise<number> {
@@ -307,11 +308,5 @@ export function cmdLogout(io: AccountIo): Promise<number> {
       "warn",
       `Revoke it at ${cred.origin}/manage/#/personal-tokens.`,
     );
-  });
-}
-
-export function cmdLogin(io: AccountIo): Promise<number> {
-  return guarded(io, async () => {
-    throw new Refusal("pkey login is not available in this build yet.");
   });
 }

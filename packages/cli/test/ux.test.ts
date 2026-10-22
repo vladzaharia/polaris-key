@@ -377,10 +377,22 @@ describe("CI never waits on a prompt", () => {
       );
     for (const f of files(src)) {
       const text = readFileSync(f, "utf8");
-      expect(text, f).not.toMatch(
-        /node:readline|process\.stdin|createInterface/,
-      );
+      // `pkey login` alone reads keys (Enter, c, Esc), from a TTY and never under CI or --json.
+      const pattern =
+        path.basename(f) === "login.ts"
+          ? /node:readline|createInterface/
+          : /node:readline|process\.stdin|createInterface/;
+      expect(text, f).not.toMatch(pattern);
     }
+  });
+
+  it("pkey login under CI refuses (4) without waiting, and names the fix", async () => {
+    const r = await run(["login"]);
+    expect(r.code).toBe(4);
+    expect(r.err).toContain(
+      "pkey login needs a person; in CI use PKEY_ADMIN_TOKEN",
+    );
+    expect(r.out).toBe("");
   });
 });
 
