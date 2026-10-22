@@ -141,14 +141,15 @@ jobs:
           node-version: 22
           cache: pnpm
       # The docs snippet lane compiles every Python block on a covered page against the SDK with
-      # mypy, so `pnpm test` needs the SDK's own venv, as in ci.yml's JS/TS job.
+      # mypy, so `pnpm test` needs the SDK's own venv with the same extras as ci.yml's JS/TS job
+      # (`qt`: the Qt kit page imports PySide6).
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - name: Python venv for the docs snippet lane
         run: |
           python -m venv sdks/python/.venv
-          sdks/python/.venv/bin/pip install -e "sdks/python[dev]"
+          sdks/python/.venv/bin/pip install -e "sdks/python[dev,qt]"
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm typecheck
