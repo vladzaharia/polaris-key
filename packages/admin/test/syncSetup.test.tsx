@@ -32,6 +32,7 @@ const product = vi.fn();
 const products = vi.fn();
 const platformSettings = vi.fn<() => Promise<PlatformSettingsView>>();
 const reach = vi.fn();
+const stepUpRedirect = vi.fn();
 const patch = vi.fn();
 const me = vi.fn();
 const schema = vi.fn();
@@ -41,7 +42,6 @@ vi.mock("../src/api.js", async () => {
     await vi.importActual<typeof import("../src/api.js")>("../src/api.js");
   return {
     ...actual,
-    startStepUp: vi.fn(),
     api: {
       product: (s: string) => product(s),
       products: () => products(),
@@ -53,6 +53,8 @@ vi.mock("../src/api.js", async () => {
     },
   };
 });
+
+import { setStepUpRedirectForTests } from "../src/lib/stepUp.js";
 
 const { CloudSyncSetupPage } =
   await import("../src/console/sections/sync/CloudSyncSetup.js");
@@ -121,6 +123,8 @@ function renderPage() {
 }
 
 beforeEach(() => {
+  stepUpRedirect.mockReset();
+  setStepUpRedirectForTests(() => stepUpRedirect());
   gate.value = { allowed: true, canView: true, disabledReason: undefined };
   for (const m of [
     product,
@@ -271,7 +275,7 @@ describe("Cloud Sync → Setup", () => {
     await user.click(
       within(dialog).getByRole("button", { name: "Sign in again" }),
     );
-    expect(api.startStepUp).toHaveBeenCalled();
+    expect(stepUpRedirect).toHaveBeenCalled();
   });
 
   it("shows the paused banner and resumes", async () => {

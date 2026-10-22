@@ -5,6 +5,8 @@ import type { TrustPolicyDto, TrustPolicyResponse } from "../src/api.js";
 import { expectNoAxeViolations, renderAt, resetCore } from "./coreTestUtils.js";
 import { WriteLock } from "../src/ui/WriteLock.js";
 
+import { setStepUpRedirectForTests } from "../src/lib/stepUp.js";
+
 const fns = vi.hoisted(() => ({
   trustPolicy: vi.fn(),
   putTrustPolicy: vi.fn(),
@@ -17,7 +19,6 @@ vi.mock("../src/api.js", async () => {
     await vi.importActual<typeof import("../src/api.js")>("../src/api.js");
   return {
     ...actual,
-    startStepUp: () => fns.startStepUp(),
     api: Object.fromEntries(
       ["trustPolicy", "putTrustPolicy", "resetTrustPolicy"].map((k) => [
         k,
@@ -69,6 +70,7 @@ async function openEditor() {
 beforeEach(() => {
   resetCore();
   for (const f of Object.values(fns)) f.mockReset();
+  setStepUpRedirectForTests(() => fns.startStepUp());
   fns.trustPolicy.mockResolvedValue(reply(STRICT, "admin", 3));
 });
 afterEach(cleanup);

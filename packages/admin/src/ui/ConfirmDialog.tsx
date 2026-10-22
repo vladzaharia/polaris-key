@@ -5,7 +5,7 @@ import {
   KeyRound,
   OctagonAlert,
 } from "lucide-react";
-import { startStepUp } from "../api.js";
+import { startStepUp } from "../lib/stepUp.js";
 import { cn } from "../lib/cn.js";
 import { formatRelative } from "../lib/format.js";
 import { Button, type ButtonVariant } from "./Button.js";

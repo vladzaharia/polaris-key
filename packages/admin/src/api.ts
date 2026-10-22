@@ -51,6 +51,7 @@ import type { ManagementState, ProductCatalog } from "@polaris-key/catalog";
 import type { ArtifactRole } from "@polaris-key/manifest";
 import type { LicenseTerms } from "../../worker/src/core/licensing/terms.js";
 import type { ServiceSlug } from "./services.generated.js";
+import { startStepUp } from "./lib/stepUp.js";
 import { RELEASE_POLICY_ERROR_MESSAGES } from "./lib/releasePolicyMessages.js";
 
 // ── identity ──────────────────────────────────────────────────────────────────
@@ -4802,25 +4803,8 @@ export function setCsrf(token: string): void {
   csrf = token;
 }
 
-/** A gated action refused for a stale step-up goes to the step-up sign-in and back. */
-let redirectToStepUp = (): void => {
-  const back = `/manage/${window.location.hash}`;
-  window.location.href = `/manage/login?stepUp=1&returnTo=${encodeURIComponent(back)}`;
-};
-/** Override the step-up redirect (tests pass a spy; call with no arg to restore the default). */
-export function setStepUpRedirectForTests(fn?: () => void): void {
-  redirectToStepUp =
-    fn ??
-    (() => {
-      const back = `/manage/${window.location.hash}`;
-      window.location.href = `/manage/login?stepUp=1&returnTo=${encodeURIComponent(back)}`;
-    });
-}
-
-/** Send the operator to the step-up sign-in, back to this page (a write that needs a fresh one). */
-export function startStepUp(): void {
-  redirectToStepUp();
-}
+// A gated action refused for a stale step-up goes to the step-up sign-in and back.
+export { setStepUpRedirectForTests, startStepUp } from "./lib/stepUp.js";
 
 /**
  * The 401 sign-in. The Worker marks a session that existed and no longer holds
@@ -4989,7 +4973,7 @@ async function send(
       code === "step_up_required" &&
       opts.stepUpRedirect
     )
-      redirectToStepUp();
+      startStepUp();
     throw error;
   }
   return res;
