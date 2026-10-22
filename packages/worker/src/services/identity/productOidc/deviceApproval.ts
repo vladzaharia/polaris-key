@@ -26,7 +26,13 @@ import { methodNotAllowed } from "../../../core/errors.js";
 import { appendAudit } from "../../../core/audit.js";
 import { clientNetwork } from "../../../core/rateLimit.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
-import { appHeader, callout, renderAuthCard } from "../../../core/brandHtml.js";
+import {
+  appHeader,
+  callout,
+  note,
+  personRow,
+  renderAuthCard,
+} from "../../../core/brandHtml.js";
 import { appForPage, pageApp } from "../../../core/brandPage.js";
 import { readBodyText } from "../../../core/cappedBody.js";
 import {
@@ -368,15 +374,10 @@ export function approvalFacts(
   flow: FlowRecord,
   now: number,
 ): string {
-  const dev = isolate(deviceLabelOf(flow));
   const identity = flow.identity;
   const who = identity?.name || identity?.email || "your account";
   const startedAt = typeof flow.startedAt === "number" ? flow.startedAt : null;
   const place = flow.startPlace?.label ?? null;
-  const here = requestLocation(req);
-  const startCountry = flow.startPlace?.country ?? null;
-  const mismatch =
-    !startCountry || !here.country || startCountry !== here.country;
   const started =
     startedAt === null
       ? ""
@@ -393,16 +394,27 @@ export function approvalFacts(
       ? `<dt>Code</dt><dd><span class="code">${escapeHtml(flow.userCode)}</span></dd>`
       : "") +
     (started ? `<dt>Started</dt><dd>${escapeHtml(started)}</dd>` : "");
+  return `<dl>${rows}</dl>${originWarning(req, flow)}`;
+}
+
+/** The place callout (D4: shown, never a refusal): where the sign-in started, and "only continue if
+ *  the device is with you" when the countries differ or either is unknown. Empty when they match. */
+export function originWarning(req: Request, flow: FlowRecord): string {
+  const dev = isolate(deviceLabelOf(flow));
+  const place = flow.startPlace?.label ?? null;
+  const here = requestLocation(req);
+  const startCountry = flow.startPlace?.country ?? null;
+  const mismatch =
+    !startCountry || !here.country || startCountry !== here.country;
   // Both countries known and different: "not where you are". The approver's unknown: just where.
   const title = place
     ? here.country && startCountry && here.country !== startCountry
       ? `This sign-in started in ${place}, not where you are.`
       : `This sign-in started in ${place}.`
     : "We can't tell where this sign-in started.";
-  const warn = mismatch
+  return mismatch
     ? callout("shield", title, `Only continue if ${dev} is with you.`)
     : "";
-  return `<dl>${rows}</dl>${warn}`;
 }
 
 async function renderApproval(
@@ -425,7 +437,9 @@ async function renderApproval(
 
   const label = deviceLabelOf(flow);
   const dev = isolate(label);
-  const facts = approvalFacts(req, flow, now);
+  const who = flow.identity?.name || flow.identity?.email || "your account";
+  const startedAt = typeof flow.startedAt === "number" ? flow.startedAt : null;
+  const formId = "pk-approve";
   const html = renderAuthCard({
     title: `Sign in on ${label}?`,
     heading: `Sign in on ${dev}?`,
@@ -438,17 +452,28 @@ async function renderApproval(
       device: label,
       action: "wants you to sign in",
     },
+    // The person row sits above the heading; "Not you?" is a Deny (nothing signs in).
+    preface: personRow({
+      name: who,
+      email: flow.identity?.email ?? null,
+      notYouForm: { form: formId, field: "decision", value: "deny" },
+    }),
     body:
       (again
         ? `<p class="note">Check the details, then choose again.</p>`
         : "") +
-      facts +
-      `<form method="post" action="${escapeHtml(approvePath(req, product))}">` +
+      (flow.userCode
+        ? `<p>It showed the code <span class="code">${escapeHtml(flow.userCode)}</span>${
+            startedAt === null ? "" : ` ${escapeHtml(agoText(now - startedAt))}`
+          }.</p>`
+        : "") +
+      originWarning(req, flow) +
+      `<form id="${formId}" method="post" action="${escapeHtml(approvePath(req, product))}">` +
       `<input type="hidden" name="token" value="${escapeHtml(token)}">` +
       `<div class="stack"><button class="button" type="submit" name="decision" value="approve"><span>Sign in on <bdi>${escapeHtml(label)}</bdi></span></button>` +
       `<button class="button secondary" type="submit" name="decision" value="deny">Deny</button>` +
       `</div></form>` +
-      `<p class="muted small">Only sign in if ${escapeHtml(dev)} is in front of you. Didn't start this? Deny.</p>`,
+      note("info", "Didn't start this? Deny, and nothing signs in."),
     focusHeading: true,
     footer: {
       icon: "lock",

@@ -817,3 +817,18 @@ html[data-shell="console"] label:not(.sr-only) {
     overflow: visible;
   }
 }
+
+/* The sign-in provider buttons (mockup .provider): the overlay fill with a subtle edge on dark;
+   on light, white with a 3:1 edge (the providers' allowed fills, never a tint). */
+.provider-btn {
+  border: 1px solid var(--pk-border-subtle);
+  background-color: var(--pk-surface-overlay);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .provider-btn {
+    border-color: var(--pk-border-strong);
+  }
+}
+[data-theme="light"] .provider-btn {
+  border-color: var(--pk-border-strong);
+}

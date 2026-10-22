@@ -357,14 +357,10 @@ export function SignInPage({
           </Button>
         ) : handle !== null && request.data && !requestGone ? (
           <RequestFooter view={request.data} />
-        ) : (
-          legalNav
-        )
+        ) : undefined
       }
       after={
-        !other && handle !== null && Boolean(request.data) && !requestGone
-          ? legalNav
-          : undefined
+        !other && !(handle !== null && request.isPending) ? legalNav : undefined
       }
       stepKey={stepKey}
       direction={direction}
@@ -920,7 +916,7 @@ function MethodsStep({
         </div>
       ) : null}
       {!other && (carried || caps.modules.claim || magic) ? (
-        <QuietLinks>
+        <QuietLinks stacked>
           {carried ? (
             <QuietLink
               onClick={() => setParams({ activate: null })}
