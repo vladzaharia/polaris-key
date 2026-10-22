@@ -26,6 +26,7 @@ import { releaseCatalog } from "./catalog.js";
 import { releaseKeyFingerprints } from "./records.js";
 import { sweepNativeSessions } from "./packages/native/index.js";
 import { sweepPruneNotice } from "./packages/prune.js";
+import { releaseFreshness } from "./freshness.js";
 import { RELEASE_SETTINGS_SLICE } from "./settings.js";
 
 import { releaseIntegration } from "./integration.js";
@@ -70,10 +71,13 @@ export const releaseService: ServiceDescriptor = {
    * finished rows (`packages/native/sessions.ts`). One indexed read for a product with none.
    * F-36: the same tick raises the one-time dry-run notice of feed cleanup for a product that
    * never chose (`packages/prune.ts` `sweepPruneNotice`).
+   * P2-12: the same tick runs the freshness pass (`freshness.ts`), which re-syncs a linked
+   * product's truth store when no webhook did (at most 25 syncs per tick).
    */
   scheduled: async (ctx) => ({
     nativeUploads: await sweepNativeSessions(ctx),
     pruneNotice: await sweepPruneNotice(ctx),
+    ...(await releaseFreshness(ctx)),
   }),
   /**
    * Release's slice of `/.well-known/polaris.json` (design spec §4.3).

@@ -15,6 +15,7 @@ import type { Env } from "../src/platform/env.js";
 import {
   AUDIT_RETENTION_SECONDS,
   CONNECTOR_POLL_CRON,
+  MAINTENANCE_CRON,
   PRUNE_BATCH_ROWS,
   PRUNE_MAX_BATCHES,
   REQUIRED_INDEXES,
@@ -1538,5 +1539,18 @@ describe("scheduled erasure ledger replay (I-11)", () => {
     expect(later.counts.accountDeletions).toBe(1);
     expect(await getAccountRow(db, account.id)).toBeNull();
     expect(r2.keys()).toEqual([`erasures/${account.id}`]);
+  });
+});
+
+describe("the cron triggers stay pinned (P2-12.9)", () => {
+  // The freshness pass rides the connector cron and its 25-sync cap and 1-h rule assume a 15-minute
+  // tick; moving either cron would change what the pass costs and how fresh the store is.
+  it("are exactly the nightly maintenance and the 15-minute connector poll", () => {
+    expect(MAINTENANCE_CRON).toBe("17 3 * * *");
+    expect(CONNECTOR_POLL_CRON).toBe("*/15 * * * *");
+    const here = dirname(fileURLToPath(import.meta.url));
+    const toml = readFileSync(join(here, "..", "wrangler.toml"), "utf8");
+    const crons = /^\[triggers\]\s*\ncrons\s*=\s*(\[[^\]]*\])/m.exec(toml)?.[1];
+    expect(JSON.parse(crons!)).toEqual(["17 3 * * *", "*/15 * * * *"]);
   });
 });

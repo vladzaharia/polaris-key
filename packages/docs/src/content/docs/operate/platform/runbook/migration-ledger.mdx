@@ -2,7 +2,7 @@
 title: "Migration ledger"
 description: "Every expand and contract pair, compatibility window and data-migration report, each with the production fact that closes it."
 type: "runbook"
-lastReviewed: "2026-10-17"
+lastReviewed: "2026-10-22"
 sidebar:
   order: 10
 ---
@@ -21,8 +21,17 @@ Use this before a release that drops a table, removes a branch or switches a res
 
 - Each row you act on has an entry that states its exit fact and a date.
 - A job's run id in an entry opens with `pkey migrate report <run>`.
+- For the resolver jobs (`update.resolver-compare`, `release.backfill-store`,
+  `release.materialise-workflow-beta`), the latest comparison report has zero `stale-store` and
+  `unexpected` rows, no `paused` unit and no unrun probes, and an entry acknowledges each expected
+  class by count.
+- After a materialise apply, a second dry run of it reports `changes` 0.
 
 ## Roll back
+
+Undo `release.materialise-workflow-beta` with its down step from the console. It clears only the
+rows the apply marked that still hold `beta` and are still undescribed. `release.backfill-store`
+has nothing to undo, and `update.resolver-compare` changes no data.
 
 A recorded entry is never edited. If the fact stops being true, add a new entry that says so and reopen the row.
 
