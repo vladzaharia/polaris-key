@@ -403,54 +403,44 @@
       "note": "test/cli/cliContract.test.ts runs the cli family's exit, capabilities, stdin and outcomes rows of ui-matrix.json against the terminal kit (EXIT.licenseRequired is 4; refusals are a triangle with their fix). The mount, help and gate rows are ui.cli.mount's (UK-46)."
     },
     "ui.gate": {
-      "status": "planned",
-      "wp": "UK-06",
-      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+      "status": "implemented",
+      "note": "ui-core's runner (UK-03, uiMatrix.test.ts) runs every row in Node's testRoots; packages/sdk-node/test/electron/bridgeViews.test.ts renders each row through exposePolarisBridge over fake IPC (a fake client in the row's state, the BridgeState the renderer receives, ui-core's view models) and snapshots the view as JSON; a hidden row sends no view (UK-06.2). The terminal render is UK-14's."
     },
     "ui.activate": {
-      "status": "planned",
-      "wp": "UK-06",
-      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+      "status": "implemented",
+      "note": "ui-core's runner (UK-03, uiMatrix.test.ts) runs every row in Node's testRoots; packages/sdk-node/test/electron/bridgeViews.test.ts renders each row through exposePolarisBridge over fake IPC (a fake client in the row's state, the BridgeState the renderer receives, ui-core's view models) and snapshots the view as JSON; a hidden row sends no view (UK-06.2). The terminal render is UK-14's."
     },
     "ui.signin": {
-      "status": "planned",
-      "wp": "UK-06",
-      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+      "status": "implemented",
+      "note": "ui-core's runner (UK-03, uiMatrix.test.ts) runs every row in Node's testRoots; packages/sdk-node/test/electron/bridgeViews.test.ts renders each row through exposePolarisBridge over fake IPC (a fake client in the row's state, the BridgeState the renderer receives, ui-core's view models) and snapshots the view as JSON; a hidden row sends no view (UK-06.2). The terminal render is UK-14's."
     },
     "ui.devicelimit": {
-      "status": "planned",
-      "wp": "UK-06",
-      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+      "status": "implemented",
+      "note": "ui-core's runner (UK-03, uiMatrix.test.ts) runs every row in Node's testRoots; packages/sdk-node/test/electron/bridgeViews.test.ts renders each row through exposePolarisBridge over fake IPC (a fake client in the row's state, the BridgeState the renderer receives, ui-core's view models) and snapshots the view as JSON; a hidden row sends no view (UK-06.2). The terminal render is UK-14's."
     },
     "ui.devices": {
-      "status": "planned",
-      "wp": "UK-06",
-      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+      "status": "implemented",
+      "note": "ui-core's runner (UK-03, uiMatrix.test.ts) runs every row in Node's testRoots; packages/sdk-node/test/electron/bridgeViews.test.ts renders each row through exposePolarisBridge over fake IPC (a fake client in the row's state, the BridgeState the renderer receives, ui-core's view models) and snapshots the view as JSON; a hidden row sends no view (UK-06.2). The terminal render is UK-14's."
     },
     "ui.update": {
-      "status": "planned",
-      "wp": "UK-06",
-      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+      "status": "implemented",
+      "note": "ui-core's runner (UK-03, uiMatrix.test.ts) runs every row in Node's testRoots; packages/sdk-node/test/electron/bridgeViews.test.ts renders each row through exposePolarisBridge over fake IPC (a fake client in the row's state, the BridgeState the renderer receives, ui-core's view models) and snapshots the view as JSON; a hidden row sends no view (UK-06.2). The terminal render is UK-14's."
     },
     "ui.settings": {
-      "status": "planned",
-      "wp": "UK-06",
-      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+      "status": "implemented",
+      "note": "ui-core's runner (UK-03, uiMatrix.test.ts) runs every row in Node's testRoots; packages/sdk-node/test/electron/bridgeViews.test.ts renders each row through exposePolarisBridge over fake IPC (a fake client in the row's state, the BridgeState the renderer receives, ui-core's view models) and snapshots the view as JSON; a hidden row sends no view (UK-06.2). The terminal render is UK-14's."
     },
     "ui.paywall": {
-      "status": "planned",
-      "wp": "UK-06",
-      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+      "status": "implemented",
+      "note": "ui-core's runner (UK-03, uiMatrix.test.ts) runs every row in Node's testRoots; packages/sdk-node/test/electron/bridgeViews.test.ts renders each row through exposePolarisBridge over fake IPC (a fake client in the row's state, the BridgeState the renderer receives, ui-core's view models) and snapshots the view as JSON; a hidden row sends no view (UK-06.2). The terminal render is UK-14's."
     },
     "ui.theme": {
-      "status": "planned",
-      "wp": "UK-06",
-      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+      "status": "implemented",
+      "note": "ui-core's runner (UK-03, uiMatrix.test.ts) runs every row in Node's testRoots; packages/sdk-node/test/electron/bridgeViews.test.ts renders each row through exposePolarisBridge over fake IPC (a fake client in the row's state, the BridgeState the renderer receives, ui-core's view models) and snapshots the view as JSON; a hidden row sends no view (UK-06.2). The terminal render is UK-14's."
     },
     "ui.i18n": {
-      "status": "planned",
-      "wp": "UK-06",
-      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+      "status": "implemented",
+      "note": "ui-core's runner (UK-03, uiMatrix.test.ts) runs every row in Node's testRoots; packages/sdk-node/test/electron/bridgeViews.test.ts renders each row through exposePolarisBridge over fake IPC (a fake client in the row's state, the BridgeState the renderer receives, ui-core's view models) and snapshots the view as JSON; a hidden row sends no view (UK-06.2). The terminal render is UK-14's."
     },
     "commerce.receipt": {
       "status": "implemented",

@@ -2214,16 +2214,16 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "ui.cli.mount": { status: "implemented", service: "sdk", na: [] },
   "ui.cli.contract": { status: "implemented", service: "sdk", na: [] },
   "ui.cli.portal": { status: "implemented", service: "core", na: [] },
-  "ui.gate": { status: "planned", service: "sdk", na: [] },
-  "ui.activate": { status: "planned", service: "sdk", na: [] },
-  "ui.signin": { status: "planned", service: "sdk", na: [] },
-  "ui.devicelimit": { status: "planned", service: "sdk", na: [] },
-  "ui.devices": { status: "planned", service: "sdk", na: [] },
-  "ui.update": { status: "planned", service: "sdk", na: [] },
-  "ui.settings": { status: "planned", service: "sdk", na: [] },
-  "ui.paywall": { status: "planned", service: "sdk", na: [] },
-  "ui.theme": { status: "planned", service: "sdk", na: [] },
-  "ui.i18n": { status: "planned", service: "sdk", na: [] },
+  "ui.gate": { status: "implemented", service: "sdk", na: [] },
+  "ui.activate": { status: "implemented", service: "sdk", na: [] },
+  "ui.signin": { status: "implemented", service: "sdk", na: [] },
+  "ui.devicelimit": { status: "implemented", service: "sdk", na: [] },
+  "ui.devices": { status: "implemented", service: "sdk", na: [] },
+  "ui.update": { status: "implemented", service: "sdk", na: [] },
+  "ui.settings": { status: "implemented", service: "sdk", na: [] },
+  "ui.paywall": { status: "implemented", service: "sdk", na: [] },
+  "ui.theme": { status: "implemented", service: "sdk", na: [] },
+  "ui.i18n": { status: "implemented", service: "sdk", na: [] },
   "commerce.receipt": { status: "implemented", service: "commerce", na: [] },
   "server.license": { status: "implemented", service: "license", na: [] },
   "server.signin": { status: "implemented", service: "identity", na: [] },
@@ -2233,4 +2233,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "6fdea0ba59f92e598b37cc79da2f12beeab64e36a353e3c978f74754dba1b73a";
+  "1b1d4ae05a00fbf0d6adf2200fb312d219761131d0a425b44c3964dcd5371812";

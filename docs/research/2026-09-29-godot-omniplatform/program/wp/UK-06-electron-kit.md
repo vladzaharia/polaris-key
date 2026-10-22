@@ -194,7 +194,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 ## Verify
 
 ```sh
-mise exec node@22 -- pnpm --filter @polaris-key/electron test
+mise exec node@22 -- pnpm --filter @polaris-key/node test bridgeViews
 ```
 
 ## Hand-off
