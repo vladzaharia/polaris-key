@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ME, resetConsole } from "./consoleHarness.js";
+import { ALL_ON, ME, productRow, resetConsole } from "./consoleHarness.js";
 import { P, apiError, bootWith, writes } from "./distributionFixture.js";
 import type { CommerceView } from "../src/api.js";
 import { r } from "../src/console/routes.js";
@@ -427,5 +427,74 @@ describe("store identity on the Commerce overview", () => {
       name: "Use the assigned app",
     });
     expect(btn.getAttribute("aria-disabled")).toBe("true");
+  });
+});
+
+/** A-28.7 chain merge: A-20.7's channel scope and A-28's identity attention share this page. */
+const scoped = (ids: string[]) => ({
+  "/manage/api/products/djdl": {
+    product: {
+      ...productRow("djdl", "DJDL", ALL_ON),
+      channels: ids.map((id) => ({
+        id,
+        label: id,
+        inScope: true,
+        delivery: "not_set_up",
+        notUsing: false,
+      })),
+      platforms: [
+        {
+          platform: "windows",
+          arches: ["x64"],
+          formats: ["zip"],
+          sources: ["builds"],
+        },
+      ],
+    },
+  },
+});
+const mismatch = (assigned: string) => ({
+  value: "typo",
+  source: "typed" as const,
+  assigned,
+  mismatch: true,
+  ambiguous: false,
+});
+
+describe("identity attention follows the channel scope (chain merge)", () => {
+  it("an in-scope mismatched store is not ready and raises an attention", async () => {
+    const v = view();
+    v.identity.steam = mismatch("480");
+    v.setup.steam = { configured: true, credential: "cred", reason: null };
+    bootWith(PAGE, {
+      ...scoped(["polaris-key", "steam"]),
+      [VIEW_PATH]: v,
+    });
+    expect(await screen.findByText("Steam app mismatch")).toBeTruthy();
+    expect((await row("Steam")).getByText("App mismatch")).toBeTruthy();
+    expect(screen.queryByText(/storefronts? ready\./)).toBeNull();
+  });
+
+  it("an out-of-scope store with a mismatch has no row, no attention, and is not counted", async () => {
+    const v = view();
+    v.identity["app-store"] = mismatch("com.djdl.app");
+    v.setup.steam = { configured: true, credential: "cred", reason: null };
+    bootWith(PAGE, {
+      ...scoped(["polaris-key", "steam"]),
+      [VIEW_PATH]: v,
+    });
+    expect(await screen.findByText("1 storefront ready.")).toBeTruthy();
+    expect((await rows()).queryByText("App Store")).toBeNull();
+    expect(screen.queryByText("App Store app mismatch")).toBeNull();
+  });
+
+  it("an in-scope healthy store is counted ready, and out-of-scope ready stores are not", async () => {
+    bootWith(PAGE, {
+      ...scoped(["polaris-key", "app-store"]),
+      [VIEW_PATH]: view(),
+    });
+    expect(await screen.findByText("1 storefront ready.")).toBeTruthy();
+    expect((await row("App Store")).getByText("Ready")).toBeTruthy();
+    expect((await rows()).queryByText("Google Play")).toBeNull();
   });
 });
