@@ -717,7 +717,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
     usage: [
       "pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a] " +
         "[--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]",
-      "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot --owner slug " +
+      "pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot|cargo|go --owner slug " +
         "[--namespace key=value ...] [--package name [--version v]] [--origin url] " +
         "[--token-env NAME] [--json]",
       "pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]",
@@ -1057,7 +1057,23 @@ export const COMMON_OPTIONS: ReadonlyArray<readonly [string, string]> = [
   ["-h, --help", "Help for pkey, or for one command"],
 ];
 
-/** Flags that take no value: they swallow the next bare word (the parse note). */
+/** The exit codes every command shares (the reference page and the README render this). */
+export const EXIT_CODES: ReadonlyArray<readonly [string, string]> = [
+  ["0", "Success."],
+  [
+    "1",
+    "Failure: an invalid manifest, a refused request, a server or network error. The message says what to do next.",
+  ],
+  [
+    "2",
+    "Usage: an unknown command or subcommand, or a missing or misused flag. The message shows the command's usage.",
+  ],
+];
+
+/**
+ * Flags that take no value, whatever command they are on: parse never lets one swallow the
+ * next word (`init --force dir`). A command's own `valueless` adds to this list.
+ */
 const VALUELESS = [
   "--dry-run",
   "--force",
@@ -1080,9 +1096,10 @@ export function findCommand(name: string): PkeyCommand | undefined {
 }
 
 /** Every flag the table declares valueless, which parse reads so no flag is listed twice. */
-export const VALUELESS_FLAGS: ReadonlySet<string> = new Set(
-  COMMANDS.flatMap((c) => c.valueless ?? []),
-);
+export const VALUELESS_FLAGS: ReadonlySet<string> = new Set([
+  ...VALUELESS.map((f) => f.slice(2)),
+  ...COMMANDS.flatMap((c) => c.valueless ?? []),
+]);
 
 /**
  * What is wrong with a command table, one sentence each (empty when it is sound). The table is
@@ -1498,31 +1515,6 @@ export function renderCommandHelp(
           rows.map(([n]) => n),
         ),
       ),
-    );
-  }
-  const shown = usage.join(" ");
-  const valueless = VALUELESS.filter((f) =>
-    new RegExp(`${f}(?![\\w-])`).test(shown),
-  );
-  if (valueless.length) {
-    const list =
-      valueless.length === 1
-        ? valueless[0]!
-        : `${valueless.slice(0, -1).join(", ")} and ${valueless.at(-1)}`;
-    out.push(
-      "",
-      ...wrapSpans(
-        [
-          {
-            text:
-              `Note: ${list} ${valueless.length === 1 ? "takes" : "take"} no value. A ` +
-              "valueless flag swallows the next bare word, so pass it last or as " +
-              `${valueless[0]}=true.`,
-            style: ["muted"],
-          },
-        ],
-        term.caps.columns,
-      ).map(line),
     );
   }
   out.push(

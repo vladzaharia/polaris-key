@@ -724,7 +724,7 @@ describe("pkey listing assets: --out and the CLI", () => {
         stderr: bad.stderr,
         env: {},
       }),
-    ).toBe(1);
+    ).toBe(2);
     expect(bad.err).toContain("Usage: pkey listing assets");
   }, 60_000);
 });

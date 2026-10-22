@@ -390,7 +390,7 @@ describe("pkey bundle — the --base-url allow-list", () => {
         cwd,
         ...io,
       }),
-    ).toBe(1);
+    ).toBe(2);
 
     expect(io.err()).toContain("--base-url must be https:");
     expect(io.err()).toContain("http://evil.example");
@@ -616,7 +616,7 @@ describe("pkey bundle — local refusals", () => {
       { cwd, ...io },
     );
 
-    expect(code).toBe(1);
+    expect(code).toBe(2);
     expect(io.err()).toContain("--device must be 32 base64url characters");
     expect(m.calls).toHaveLength(0);
   });
@@ -649,7 +649,7 @@ describe("pkey bundle — local refusals", () => {
         { cwd, ...io },
       );
 
-      expect(code).toBe(1);
+      expect(code).toBe(2);
       expect(io.err()).toContain(
         "--grace-days must be a whole number from 1 to 365",
       );
@@ -668,7 +668,7 @@ describe("pkey bundle — local refusals", () => {
       { cwd, ...io },
     );
 
-    expect(code).toBe(1);
+    expect(code).toBe(2);
     expect(io.err()).toContain(
       "Usage: pkey bundle --product <slug> --device <id> --grace-days <n>",
     );

@@ -207,9 +207,9 @@ describe("pkey distribution outlet-ids", () => {
 
   it("requires --outlet and the outlet-ids subcommand", async () => {
     const cwd = await product();
-    expect((await outletIds(cwd)).code).toBe(1);
+    expect((await outletIds(cwd)).code).toBe(2);
     const io = capture();
-    expect(await runPkey(["distribution"], { cwd, ...io })).toBe(1);
+    expect(await runPkey(["distribution"], { cwd, ...io })).toBe(2);
     expect(io.err()).toContain("Usage: pkey distribution outlet-ids --outlet");
   });
 });

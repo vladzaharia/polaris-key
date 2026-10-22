@@ -223,7 +223,7 @@ describe("pkey release revoke", () => {
         stdout: usage.stdout,
         stderr: usage.stderr,
       }),
-    ).toBe(1);
+    ).toBe(2);
     expect(usage.err()).toMatch(/Usage: pkey release revoke/);
   });
 });

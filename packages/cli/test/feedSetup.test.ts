@@ -124,7 +124,7 @@ describe("pkey feeds setup", () => {
 
   it("refuses bad input with the reason", async () => {
     const usage = await run(["feeds", "setup", "--ecosystem", "npm"]);
-    expect(usage.code).toBe(1);
+    expect(usage.code).toBe(2);
     expect(usage.err).toContain("pkey feeds setup --ecosystem");
     const eco = await run([
       "feeds",

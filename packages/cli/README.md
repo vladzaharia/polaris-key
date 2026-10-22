@@ -53,14 +53,15 @@ pkey completion bash|zsh|fish
 pkey help [command]   # also pkey --help / -h, and pkey <command> --help / -h
 ```
 
-Exit codes: `0` success, `1` a validation/runtime failure, `2` an unrecognized command or a
-usage error (`pkey completion` without a shell it knows).
+Exit codes: `0` success, `1` a validation or runtime failure (an invalid manifest, a refused
+request, a network error), `2` a usage error (an unknown command or subcommand, a missing or
+misused flag; the message shows the usage). A failure never prints a stack trace; `PKEY_DEBUG=1`
+adds one to an unexpected error.
 
 ### Help
 
 `pkey <command> --help`, `pkey <command> -h` and `pkey help <command>` print that command's usage
-lines, the paragraphs that explain it, the environment variables it reads and a note on its
-valueless flags, and exit `0` **without running the command** — `pkey init --help` writes no
+lines, the paragraphs that explain it, and the environment variables it reads, and exit `0` **without running the command** — `pkey init --help` writes no
 files, `pkey release publish --help` sends nothing. A subcommand narrows it
 (`pkey release publish --help`, `pkey help feeds prune`). `--help` and `-h` count anywhere before a
 bare `--`; after it (`pkey storefront exec … -- <argv>`) they belong to the store's command.
@@ -389,15 +390,12 @@ tightens its mode but still refuses a link.
 route is outside a token's `bundles:mint` scope, so it reads the `__Host-pkey_admin` cookie from
 `PKEY_ADMIN_COOKIE` and applies the same `--base-url` rule before sending it anywhere.
 
-### The valueless-flag gotcha
+### Boolean flags
 
-`--no-config`, `--force`, `--dry-run` and the other boolean flags take no value. The argument
-parser hands a _valueless_ flag the next bare word as its value if that word doesn't itself start
-with `--`, so placing one of these immediately before a positional argument would swallow it.
-The safe habit is to pass boolean flags **last**, or spelled out as `--no-config=true` /
-`--force=true`; each command's `--help` ends with a note naming its valueless flags. The global
-flags `--help`, `-h`, `--no-color`, `--color`, `--ascii` and `--json` never take a value, so
-`pkey validate --json game` validates `game`.
+`--no-config`, `--force`, `--dry-run` and the other boolean flags take no value, so none of them
+takes the next word: `pkey init --force dir` and `pkey validate --json game` keep `dir` and `game`
+as arguments. `--force=true` is accepted too. The global flags `--help`, `-h`, `--no-color`,
+`--color` and `--ascii` never take a value either.
 
 ## Develop
 

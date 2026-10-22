@@ -212,7 +212,7 @@ describe("per-command help", () => {
     expect(r.out).toContain("matches the files under --dir against");
     expect(r.out).toContain("PKEY_CI_TOKEN");
     expect(r.out).not.toContain("pkey release yank");
-    expect(r.out).toMatch(/Note: .*--dry-run/s);
+    expect(r.out).not.toContain("swallows");
 
     const whole = await run(["help", "release"]);
     expect(whole.out).toContain("pkey release yank releaseId --reason text");

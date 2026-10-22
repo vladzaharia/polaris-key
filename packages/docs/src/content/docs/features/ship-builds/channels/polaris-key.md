@@ -269,7 +269,7 @@ listed with their digest and size. Other flags: `--locale` (a new listing's defa
 `--overwrite` (replace values typed in the console), `--fields a,b` with `--apply` (write some
 changes only), `--json`, `--base-url` (https, or http on localhost or 127.0.0.1: the cookie goes to
 whatever origin it names), and `--dry-run`, which prints what would be uploaded and
-contacts nothing. Pass valueless flags last.
+contacts nothing.
 
 ## The AltStore and Obtainium feeds
 

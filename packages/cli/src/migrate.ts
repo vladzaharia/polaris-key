@@ -85,7 +85,7 @@ export async function runMigrate(opts: MigrateOptions): Promise<MigrateResult> {
     throw new Error(
       `${opts.verb === "dry-run" ? "A job id" : "A run id"} is required.\n${MIGRATE_USAGE}`,
     );
-  const token = adminToken(opts.token);
+  const token = adminToken(opts.token, "migrate");
   const baseUrl = normalizeBaseUrl(
     opts.baseUrl?.trim() || DEFAULT_BASE_URL,
     ADMIN_TOKEN_ENV,

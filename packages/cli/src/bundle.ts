@@ -297,20 +297,28 @@ export async function mintBundle(
 }
 
 /** The bearer token, or an error that says exactly what is wrong and how to get a good one. */
-export function adminToken(raw: string | undefined): string {
+export function adminToken(
+  raw: string | undefined,
+  command: "bundle" | "migrate" = "bundle",
+): string {
   const value = raw?.trim();
   if (!value) {
     throw new Error(
       `${ADMIN_TOKEN_ENV} is not set.\n` +
-        "`pkey bundle` mints through the admin API, which authenticates this command with an " +
+        `\`pkey ${command}\` calls the admin API, which authenticates it with an ` +
         "admin API token sent as `Authorization: Bearer pkeya_…`.\n" +
+        (command === "migrate"
+          ? "The token needs the `migrations:report` scope.\n"
+          : "The token needs the `bundles:mint` scope.\n") +
         "Mint one in the console: /manage -> API tokens -> New token. Choose a label that says " +
         "where it will run and an expiry. The value is shown ONCE, at mint — nothing stored can " +
         "reproduce it — so copy it then, and run:\n" +
         `  export ${ADMIN_TOKEN_ENV}='${ADMIN_TOKEN_PREFIX}…'\n` +
-        "It can mint an offline bundle for any product on the platform: do not commit it, and do " +
-        "not export it into a shell other people share. If it leaks, revoke that one token in the " +
-        "console.",
+        (command === "migrate"
+          ? "It reaches the migration job list, reports and dry runs, and nothing else: "
+          : "It can mint an offline bundle for any product on the platform: ") +
+        "do not commit it, and do not export it into a shell other people share. If it leaks, " +
+        "revoke that one token in the console.",
     );
   }
   if (!ADMIN_TOKEN.test(value)) {

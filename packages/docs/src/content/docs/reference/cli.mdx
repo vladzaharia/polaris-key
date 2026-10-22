@@ -21,6 +21,16 @@ Every `pkey` command and flag. Run `pkey help` for the same table in your termin
 | `--ascii` | ASCII symbols only |
 | `-h, --help` | Help for pkey, or for one command |
 
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success. |
+| `1` | Failure: an invalid manifest, a refused request, a server or network error. The message says what to do next. |
+| `2` | Usage: an unknown command or subcommand, or a missing or misused flag. The message shows the command's usage. |
+
+Errors go to stderr and `--json` results to stdout, so a pipe or a CI log keeps them apart. No command asks a question: with no terminal, or with `CI=true`, `pkey` never waits for input. A stack trace is never printed; set `PKEY_DEBUG=1` to add one to an unexpected error.
+
 ## Manifest
 
 ### `pkey init`
@@ -274,7 +284,7 @@ The F-Droid feed, package-feed setup and feed pruning.
 
 ```text
 pkey feeds fdroid --product slug --channel c --out dir [--keystore path --alias a] [--ks-pass-env NAME] [--apksigner path] [--icon png] [--base-url url] [--dry-run]
-pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot --owner slug [--namespace key=value ...] [--package name [--version v]] [--origin url] [--token-env NAME] [--json]
+pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot|cargo|go --owner slug [--namespace key=value ...] [--package name [--version v]] [--origin url] [--token-env NAME] [--json]
 pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]
 ```
 

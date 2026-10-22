@@ -595,7 +595,7 @@ describe("pkey feeds fdroid", () => {
         stderr: io.stderr,
         env: {},
       }),
-    ).toBe(1);
+    ).toBe(2);
     expect(io.err()).toContain("Usage: pkey feeds fdroid");
     const server = serverWithInputs();
     const io2 = capture();

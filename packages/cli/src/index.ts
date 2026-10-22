@@ -6,6 +6,12 @@ import {
   DEFAULT_BASE_URL,
   mintBundle,
 } from "./bundle.js";
+import {
+  internalMessage,
+  isInternalError,
+  isUsageError,
+  networkMessage,
+} from "./errors.js";
 import { MIGRATE_USAGE, formatMigrate, runMigrate } from "./migrate.js";
 import {
   COMPLETION_SHELLS,
@@ -627,13 +633,32 @@ async function runCommand(
       stderr.write(unknownCommand(parsed.command, term(stderr)));
       return 2;
     }
+    const sub = parsed.positional[0];
+    if (
+      cmd.tree &&
+      cmd.name !== "completion" &&
+      sub !== undefined &&
+      !(sub in cmd.tree)
+    ) {
+      stderr.write(
+        unknownCommand(`${cmd.name} ${sub}`, term(stderr), cmd.name),
+      );
+      return 2;
+    }
     await applyContext(cmd.context, parsed.flags, { cwd, env: ci.env });
     return await handler(parsed, { cwd, stdout, stderr, ci, g, term });
   } catch (err) {
     // An error's message may quote the server (a refusal, a URL it answered, a field it sent):
     // cleaned per line, so it draws no escape and no line of it reads as a workflow command.
-    stderr.write(`${untrustedLines((err as Error).message, ci.env)}\n`);
-    return 1;
+    // A bug's exception prints one line and no stack (PKEY_DEBUG=1 adds it); a failed request
+    // says what to check; a message that carries `Usage:` lines is a usage error (exit 2).
+    const message = isInternalError(err)
+      ? internalMessage(err)
+      : networkMessage(err);
+    stderr.write(`${untrustedLines(message, ci.env)}\n`);
+    if (ci.env.PKEY_DEBUG && err instanceof Error && err.stack)
+      stderr.write(`${untrustedLines(err.stack, ci.env)}\n`);
+    return isUsageError(message) ? 2 : 1;
   }
 }
 
@@ -685,9 +710,11 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
  * `✗  Unknown command "bogus". Run pkey help to see every command.` and nothing else: the hundred
  * lines of help would push the error out of view.
  */
-function unknownCommand(name: string, term: Term): string {
+function unknownCommand(name: string, term: Term, parent?: string): string {
   const { painter, symbols, caps } = term;
-  const text = `Unknown command "${name}". Run pkey help to see every command.`;
+  const text = parent
+    ? `Unknown ${parent} command "${name.slice(parent.length + 1)}". Run pkey help ${parent} to see its commands.`
+    : `Unknown command "${name}". Run pkey help to see every command.`;
   const lines = wrapSpans([{ text }], Math.max(1, caps.columns - 3));
   return `${lines
     .map((l, i) =>
@@ -1193,7 +1220,8 @@ async function cmdDoctor(
   });
   if (remote.status !== undefined) {
     stdout.write(
-      `\nRemote discovery: failed (${remote.status}) ${remote.url}\n`,
+      `\nRemote discovery: failed (${remote.status}) ${remote.url}\n` +
+        "Is the product registered, and is --base-url (or $PKEY_BASE_URL) the right origin?\n",
     );
     return 1;
   }
@@ -1284,14 +1312,13 @@ async function cmdBundle(
     product,
     deviceId: device,
     graceDays: Number(graceRaw),
-    // `--no-config` is a boolean flag, so it is read with flagBool; see the note in
-    // `pkey bundle --help` about passing valueless flags last or with `=`.
+    // `--no-config` is a boolean flag, so it is read with flagBool.
     includeConfig: !flagBool(parsed, "no-config"),
     licenseId: flagString(parsed, "license"),
     baseUrl: flagString(parsed, "base-url"),
     out: flagString(parsed, "out"),
     force: flagBool(parsed, "force"),
-    token: process.env[ADMIN_TOKEN_ENV],
+    token: env[ADMIN_TOKEN_ENV],
   });
 
   const rel = path.relative(cwd, result.file);
@@ -1331,7 +1358,7 @@ async function cmdMigrate(
     verb,
     target,
     baseUrl: flagString(parsed, "base-url"),
-    token: process.env[ADMIN_TOKEN_ENV],
+    token: env[ADMIN_TOKEN_ENV],
     fetchImpl,
   });
   stdout.write(
@@ -1350,6 +1377,13 @@ function cmdTrust(
   const publicKey = flagString(parsed, "public-key") ?? parsed.positional[1];
   if (!kid || !publicKey)
     throw new Error("Usage: pkey trust --kid <kid> --public-key <base64url>");
+  // An Ed25519 public key is 32 bytes: 43 base64url characters. Anything else would print a
+  // config no SDK could verify with, so say so here, not at the first failed verification.
+  if (!/^[A-Za-z0-9_-]{43}$/.test(publicKey))
+    throw new Error(
+      `--public-key must be an Ed25519 public key: 43 base64url characters (A-Z a-z 0-9 - _); got ${publicKey.length}. ` +
+        "Copy it from the console's Keys & secrets page.",
+    );
   // The pin as every SDK's config module holds it: the same renderer `pkey sdk` writes with.
   for (const lang of SDK_LANGS) {
     const setup = renderSdkSetup(lang, {
@@ -2060,7 +2094,7 @@ async function cmdRelease(
         return 0;
       }
       if (parsed.positional[1] !== "generate" || !kid || !outFile)
-        throw new Error(KEYS_USAGE);
+        throw new Error(`${KEYS_USAGE}\n${CONTENT_KEYS_USAGE}`);
       const generated = await generateReleaseKey({
         kid,
         out: path.resolve(cwd, outFile),
@@ -2092,7 +2126,16 @@ async function cmdRelease(
     }
     default:
       throw new Error(
-        `${PUBLISH_USAGE}\n${CONTENT_STAMP_USAGE}\n${CHANNEL_USAGE}`,
+        [
+          PUBLISH_USAGE,
+          CONTENT_STAMP_USAGE,
+          REVOKE_USAGE,
+          REVOKE_DELEGATION_USAGE,
+          KEYS_USAGE,
+          CONTENT_KEYS_USAGE,
+          DELEGATE_USAGE,
+          CHANNEL_USAGE,
+        ].join("\n"),
       );
   }
 }
