@@ -51,6 +51,7 @@ import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import { R2Mock, asR2 } from "../r2Mock.js";
 import { NOW } from "../seed.js";
+import { issueStaticCiToken } from "../../src/core/publisher.js";
 import {
   BYTES,
   SLUG,
@@ -820,6 +821,29 @@ describe("Godot URL tokens (F-21, plans/F-20.md §6.3)", () => {
         await ((await r2.get(key)) as R2ObjectBody).text(),
         key,
       ).not.toContain(token);
+  });
+
+  it("a CI token, packages:read included, is never a path credential (F-33b.2)", async () => {
+    await setFeed({ access: "authenticated" });
+    const ci = (
+      await issueStaticCiToken(env, db, {
+        product: SLUG,
+        label: "svc",
+        scopes: ["packages:read"],
+        expiresAt: NOW + 86_400,
+        createdBy: "admin:a",
+        now: NOW,
+      })
+    ).token;
+    expect((await get(`${base}/t/${ci}/index.json`)).status).toBe(401);
+    // As a header it reads, which is what a service token is for.
+    expect(
+      (
+        await get(`${base}/index.json`, {
+          headers: { authorization: `Bearer ${ci}` },
+        })
+      ).status,
+    ).toBe(200);
   });
 
   it("only a URL token satisfies the segment, and a URL token is no header credential", async () => {

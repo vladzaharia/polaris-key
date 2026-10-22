@@ -60,6 +60,7 @@ import { type LicenseRow } from "../repo.js";
 import { getLicense } from "../licensing/store.js";
 import { CI_TOKEN_PREFIX } from "../ciVocabulary.js";
 import { lookupCiToken } from "../publisher.js";
+import { PACKAGES_READ_CI_SCOPE } from "../ciVocabulary.js";
 import { erasureVerdict } from "../accounts/erasureFence.js";
 import {
   PACKAGES_READ_SCOPE,
@@ -758,6 +759,21 @@ export async function lookupRegistryCredential(
   }
   if (isCi) {
     const ci = await lookupCiToken(env, db, token, now);
+    // F-33b.2 (D-F5): "last used" for a service token, hourly, on this path only.
+    if (
+      ci &&
+      (ci.lastUsedAt === null || ci.lastUsedAt < now - LAST_USED_GRANULARITY)
+    ) {
+      const write = db
+        .run(
+          "UPDATE ci_tokens SET last_used_at = ? WHERE token_hash = ?",
+          now,
+          ci.tokenHash,
+        )
+        .catch(() => undefined);
+      if (opts.waitUntil) opts.waitUntil(write);
+      else await write;
+    }
     const value: ResolvedRegistryToken | null = ci
       ? {
           kind: "ci",
@@ -890,8 +906,15 @@ export async function lookupRegistrySubject(
   );
 }
 
-/** The CI scope that lets a `pkeyci_` token read the owner's non-public feeds. */
-export const CI_FEED_READ_SCOPE = "release:publish";
+/**
+ * The CI scopes that let a `pkeyci_` token read the owner's non-public feeds: the publish scope
+ * (a pipeline that verifies its own feeds) or the read-only service scope (F-33b.2). Reading is
+ * all `packages:read` buys; `registryPublisher` and the `/ci/*` guards ask for their own scopes.
+ */
+export const CI_FEED_READ_SCOPES: readonly string[] = [
+  "release:publish",
+  PACKAGES_READ_CI_SCOPE,
+];
 
 /** The principal a resolution is, for an owner and ecosystem the ladder then judges. */
 export function principalOf(
@@ -899,10 +922,10 @@ export function principalOf(
 ): FeedPrincipal {
   if (resolved === null) return ANONYMOUS;
   if (resolved.kind === "ci") {
-    // A CI token reads private feeds (and mints OCI pull tokens) only with the
-    // publish scope, the one a pipeline that verifies its own feeds holds; a report-only or
-    // promote-only token is no credential here.
-    if (!resolved.scopes.includes(CI_FEED_READ_SCOPE)) return ANONYMOUS;
+    // A CI token reads private feeds (and mints OCI pull tokens) only with the publish scope or
+    // `packages:read`; a report-only or promote-only token is no credential here.
+    if (!CI_FEED_READ_SCOPES.some((s) => resolved.scopes.includes(s)))
+      return ANONYMOUS;
     return { kind: "ci", product: resolved.product, tokenId: resolved.tokenId };
   }
   if (resolved.kind === "person")

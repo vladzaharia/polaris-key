@@ -35,7 +35,7 @@ import {
   listCiTokens,
   normalizeScopes,
   revokeCiToken,
-  STATIC_CI_TOKEN_MAX_TTL_SECONDS,
+  staticCiTokenMaxTtl,
   type PublisherClaim,
 } from "../../core/publisher.js";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
@@ -227,10 +227,10 @@ export async function handleCiTokens(
       typeof days !== "number" ||
       !Number.isSafeInteger(days) ||
       days < 1 ||
-      days * 86400 > STATIC_CI_TOKEN_MAX_TTL_SECONDS
+      days * 86400 > staticCiTokenMaxTtl(scopes)
     )
       return bad(
-        "expiresInDays must be an integer from 1 to 90",
+        `expiresInDays must be an integer from 1 to ${staticCiTokenMaxTtl(scopes) / 86400}`,
         "expiresInDays",
       );
     let label: string | null = null;

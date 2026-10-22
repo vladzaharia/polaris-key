@@ -355,6 +355,20 @@ describe("publish tokens (F-22)", () => {
     expect(await judge(bearer(feedsOnly))).toMatchObject({
       refusal: "forbidden",
     });
+    // F-33b.2: a read-only service token reads feeds and never publishes.
+    const readOnly = (
+      await issueStaticCiToken(env, db, {
+        product: SLUG,
+        scopes: ["packages:read"],
+        expiresAt: NOW + 3600,
+        label: null,
+        createdBy: "u1",
+        now: NOW,
+      })
+    ).token;
+    expect(await judge(bearer(readOnly))).toMatchObject({
+      refusal: "forbidden",
+    });
     const views = await db.all<{ token_id: string }>(
       "SELECT token_id FROM registry_tokens WHERE product = ? AND label = 'laptop' LIMIT 1",
       SLUG,

@@ -1815,6 +1815,45 @@ scope but `packages:read`; a personal token accepted by a publish path; a licenc
 `personMayRead`; `personMayRead` admitting `SYSTEM_PRODUCT_SLUG` without a console role; the mint
 losing its step-up or its budget; a token or its hash reaching an audit row, a log or the export.
 
+### The registry host and the CI principal: the `packages:read` service token (F-33b.2)
+
+**What it is.** A static `pkeyci_` token whose scope is `packages:read` (`core/ciVocabulary.ts`,
+`CI_SCOPES`; not in `DEFAULT_CI_SCOPES`, so an operator grants it deliberately). It is the credential
+of a service that installs a product's own non-public packages: a build server, a deploy host.
+`principalOf` admits a `ci` resolution that holds `packages:read` or `release:publish`
+(`CI_FEED_READ_SCOPES`). Tests: `test/ciFeedRead.test.ts`, `test/registryAuth.test.ts`,
+`test/publisher.test.ts`, `test/registry/godot.test.ts`.
+
+**What it can do.** Read the private, licensed and entitled feeds of its own product, on every
+ecosystem that takes a header credential, and mint an OCI pull token (`pull` only, for the
+repositories of its own product). A `ci` principal passes every access mode of its own product, the
+way a publish-scoped one always has (F-20 Q4), so the entitlement flag is not judged.
+
+**What it cannot do, each refused where the capability is decided.**
+
+- Publish: `registryPublisher` needs `release:publish` (CI) or an owner-bound `pkeyr_` holding
+  `publish`; `packages:read` is neither. `OCI_PUSH_CI_SCOPE` stays `release:publish`, so a `push`
+  scope on `/v2/token` is a 403 `DENIED`.
+- Pass a `/ci/*` guard: `requireCiScope` asks for the route's own scope, and no route names
+  `packages:read`, so every CI route answers 403 `missing_scope`.
+- Be a Godot path credential: a path presentation accepts a URL-presented `pkeyr_` only; no CI
+  token is one, with or without the scope.
+- Read another product: a `ci` principal is bound to its product, so another owner's feed is a 401
+  or 403 as for any foreign credential.
+
+**Blast radius of a leak.** The token is product-wide (no ecosystem narrowing, D-F1): whoever holds
+it reads every non-public package of that one product, until it expires or an operator revokes it
+(the 30-second resolution cache bounds the revocation lag). It reaches no signing key, no licence,
+no admin API, no upload and no other product. That is the same read surface a licence-bound or
+owner-bound read token has, for the same product, with a longer life: **up to 365 days** (default 90) when `packages:read` is the only scope, against 90 for every other scope set. `issueStaticCiToken`
+refuses a longer expiry and the console route caps it first; a token with another scope beside it
+keeps 90, so the long life never rides on a publish credential.
+
+**Last used.** `ci_tokens.last_used_at` (migration `ci_tokens_last_used_at`) is written at most
+hourly, through `waitUntil`, on the registry lookup path only (never the `/ci/*` guards, so the CI
+hot path gains no write). A failed write is swallowed. It is the operator's evidence for revoking
+an idle token; it is not a security control and carries no secret.
+
 ### Native-client publish (F-22)
 
 **What it is.** Release's write routes on `pkg.plrs.im` (`services/release/packages/native/`):

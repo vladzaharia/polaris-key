@@ -61,6 +61,7 @@ import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import {
   CI_SCOPES,
   CI_TOKEN_PREFIX,
+  PACKAGES_READ_CI_SCOPE,
   type CiPrincipal,
 } from "./ciVocabulary.js";
 import { sha256Hex } from "../platform/hash.js";
@@ -88,6 +89,15 @@ const MAX_JWKS_BYTES = 64 * 1024;
 export const OIDC_CI_TOKEN_TTL_SECONDS = 30 * 60;
 /** An operator-issued static token expires at most this far out. */
 export const STATIC_CI_TOKEN_MAX_TTL_SECONDS = 90 * 24 * 60 * 60;
+/** A static token whose only scope is `packages:read` (F-33b.2, D-F1) may live this long. */
+export const STATIC_CI_READ_TOKEN_MAX_TTL_SECONDS = 365 * 24 * 60 * 60;
+
+/** The longest a static token with `scopes` may live: 365 days read-only, otherwise 90. */
+export function staticCiTokenMaxTtl(scopes: readonly string[]): number {
+  return scopes.length === 1 && scopes[0] === PACKAGES_READ_CI_SCOPE
+    ? STATIC_CI_READ_TOKEN_MAX_TTL_SECONDS
+    : STATIC_CI_TOKEN_MAX_TTL_SECONDS;
+}
 
 /** The scopes a new policy grants. `release:yank` is opt-in (an operator edits `scopes_json`). */
 export const DEFAULT_CI_SCOPES: readonly string[] = [
@@ -639,6 +649,8 @@ export interface CiTokenRecord extends CiPrincipal {
   readonly tokenHash: string;
   readonly kind: "oidc" | "static";
   readonly expiresAt: number;
+  /** When the registry host last accepted this token (F-33b.2); null before its first use. */
+  readonly lastUsedAt: number | null;
 }
 
 export function mintCiToken(): string {
@@ -665,6 +677,7 @@ interface CiTokenRow {
   expires_at: number;
   revoked_at: number | null;
   created_by: string;
+  last_used_at?: number | null;
 }
 
 /**
@@ -695,6 +708,7 @@ export async function lookupCiToken(
     tokenHash: r.token_hash,
     kind: r.kind === "static" ? "static" : "oidc",
     expiresAt: r.expires_at,
+    lastUsedAt: r.last_used_at ?? null,
   };
 }
 
@@ -847,6 +861,8 @@ export async function issueStaticCiToken(
     now: number;
   },
 ): Promise<IssuedCiToken> {
+  if (input.expiresAt - input.now > staticCiTokenMaxTtl(input.scopes))
+    throw new RangeError("static CI token expiry is beyond its scopes' limit");
   const token = mintCiToken();
   const tokenHash = await hashCiCredential(env, token);
   const tokenId = randomId("cit");
@@ -883,6 +899,8 @@ export interface CiTokenListing {
   expiresAt: number;
   revokedAt: number | null;
   createdBy: string;
+  /** Last accepted on the registry host, at hourly resolution; null if never. */
+  lastUsedAt: number | null;
 }
 
 /** A product's tokens, newest first — never a hash, never a token. */
@@ -907,6 +925,7 @@ export async function listCiTokens(
     expiresAt: r.expires_at,
     revokedAt: r.revoked_at,
     createdBy: r.created_by,
+    lastUsedAt: r.last_used_at ?? null,
   }));
 }
 

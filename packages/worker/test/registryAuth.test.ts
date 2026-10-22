@@ -660,3 +660,114 @@ describe("SwiftPM login (§6.3)", () => {
     expect(authed.status).toBe(404);
   });
 });
+
+describe("the packages:read CI token (F-33b.2)", () => {
+  const manifest = `/v2/${NAME}/tags/list`;
+
+  async function readToken(product = OWNER, scopes = ["packages:read"]) {
+    return (
+      await issueStaticCiToken(env, db, {
+        product,
+        label: "service",
+        scopes,
+        expiresAt: NOW + 86_400,
+        createdBy: "admin:a",
+        now: NOW,
+      })
+    ).token;
+  }
+
+  const q = (scope: string) =>
+    `/v2/token?service=${HOST}&scope=${encodeURIComponent(scope)}`;
+
+  beforeEach(() => {
+    env.REGISTRY_TOKEN_KEY = KEY;
+  });
+
+  it("pulls the private, licensed and entitled feeds of its own product", async () => {
+    const t = await readToken();
+    for (const mode of ["authenticated", "licensed", "entitled"]) {
+      await setMode(mode);
+      await db.run(
+        "UPDATE dist_access SET mode = ? WHERE product = ? AND deliverable_id = ?",
+        mode,
+        OWNER,
+        OCI_ID,
+      );
+      forgetRegistrySettings();
+      const res = await get(q(`repository:${NAME}:pull`), {
+        headers: { authorization: basic(t) },
+      });
+      expect(res.status, mode).toBe(200);
+      const pull = ((await res.json()) as { token: string }).token;
+      const read = await get(manifest, {
+        headers: { authorization: `Bearer ${pull}` },
+      });
+      expect(read.status, mode).toBe(200);
+    }
+  });
+
+  it("gets 403 on another owner's repository and 401 on its Swift login", async () => {
+    const t = await readToken(OTHER);
+    await setMode("authenticated");
+    const denied = await get(q(`repository:${NAME}:pull`), {
+      headers: { authorization: basic(t) },
+    });
+    expect(denied.status).toBe(403);
+    expect(await ociCode(denied)).toBe("DENIED");
+    const login = await get(`/swift/${OWNER}/login`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${t}` },
+    });
+    expect(login.status).toBe(401);
+  });
+
+  it("never pushes: a push scope is refused, though the same token pulls", async () => {
+    const t = await readToken();
+    await setMode("authenticated");
+    const auth = { headers: { authorization: basic(t) } };
+    expect((await get(q(`repository:${NAME}:pull`), auth)).status).toBe(200);
+    expect((await get(q(`repository:${NAME}:pull,push`), auth)).status).toBe(
+      403,
+    );
+    expect((await get(q(`repository:${NAME}:push`), auth)).status).toBe(403);
+  });
+
+  it("logs in to SwiftPM, and a token with no read scope does not", async () => {
+    const t = await readToken();
+    const login = (token: string) =>
+      get(`/swift/${OWNER}/login`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+      });
+    expect((await login(t)).status).toBe(200);
+    expect(
+      (await login(await readToken(OWNER, ["distribution:report"]))).status,
+    ).toBe(401);
+  });
+
+  it("writes last_used_at once an hour, on the registry lookup only", async () => {
+    const t = await readToken();
+    const lastUsed = async () =>
+      (
+        await db.first<{ last_used_at: number | null }>(
+          "SELECT last_used_at FROM ci_tokens WHERE product = ?",
+          OWNER,
+        )
+      )?.last_used_at;
+    expect(await lastUsed()).toBeNull();
+    const look = async (at: number) => {
+      forgetRegistryTokens();
+      await lookupRegistryCredential(env, db, t, { nowMs: at * 1000 });
+    };
+    await look(NOW);
+    expect(await lastUsed()).toBe(NOW);
+    await look(NOW + 3599);
+    expect(await lastUsed()).toBe(NOW);
+    await look(NOW + 3601);
+    expect(await lastUsed()).toBe(NOW + 3601);
+    // The listing returns it.
+    const { listCiTokens } = await import("../src/core/publisher.js");
+    expect((await listCiTokens(db, OWNER))[0]!.lastUsedAt).toBe(NOW + 3601);
+  });
+});
