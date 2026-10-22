@@ -18,6 +18,16 @@ extends PKeyUiView
 ## link), downloads a code pack, or restarts into a staged one ("Restart now"). With an SDK the
 ## button runs PolarisKey.update.apply(result); every link it opens is https.
 ##
+## In play (`PolarisKey.in_play`, the game sets it) a dismissable answer is only a toast at the
+## `toast_anchor` (PolarisKey.toasts()): Update now and Dismiss, and the download's counted bar
+## once it runs. The prompt itself waits; when play ends it shows as it would have (the modal opens
+## on Later with input ignored for 250 ms). A toast that ran out or was replaced does not count as
+## a dismissal; Dismiss does. A locked answer is the banner either way.
+##
+## The modal also shows the changelog entry of the offered version (PolarisKey.release): up to
+## three plain lines under "What's new" and an "All changes in <version> ↗" link to the release
+## page. Without a summary the label stays hidden; without a page the link does.
+##
 ## Layout (PKeyUiView): a banner is one row on a wide screen (the words, then the action and the
 ## dismiss at the end) and stacks on a narrow one; the modal is a centred column. The action is
 ## the one primary.
@@ -37,6 +47,9 @@ signal dismissed()
 @export var show_when_current := false
 ## Override the build's outlet ("" reads PolarisKey.build_info()).
 @export var outlet := ""
+## Where the in-play toast sits: "" is the SDK's `toast_anchor` (bottom centre by default),
+## else "bottom_center", "bottom_right" or "top_right".
+@export var toast_anchor := ""
 
 var result: PKeyResult = null
 var is_dismissed := false
@@ -62,6 +75,17 @@ var _page_link := false
 var _checking := false
 var _check_note := ""
 var _note: Label
+var _notes_head: Label
+var _notes_body: Label
+var _all_changes: Button
+var _notes_url := ""
+## Changelog entries read for a version: {version: {lines: Array, url: String}}; asked once.
+var _notes: Dictionary = {}
+var _notes_asked: Dictionary = {}
+var _toasting := false
+var _toast_version := ""
+var _toast_done := ""
+var _toast_bound: Object = null
 
 
 func _build() -> void:
@@ -80,6 +104,10 @@ func _build() -> void:
 	_title = label(words, "Title", "PKeyTitle")
 	_body = label(words, "Message", "PKeyMuted")
 	_note = label(words, "CheckNote", "PKeyMuted")
+	_notes_head = label(words, "WhatsNew", "PKeySection")
+	_notes_body = label(words, "WhatsNewLines", "PKeyMuted", true)
+	_all_changes = button(words, "AllChanges", _on_all_changes, "PKeyLink")
+	_all_changes.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_actions = actions_row(_card, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_actions.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_action = button(_actions, "Action", _on_action, "PKeyPrimary")
@@ -89,6 +117,11 @@ func _build() -> void:
 
 func _floats() -> bool:
 	return not _covering
+
+
+## The modal's optional lines give way on a short screen (`_render_notes`).
+func squeeze_max() -> int:
+	return 3 if _covering else 0
 
 
 ## The modal card dims the game with the scrim instead of replacing it with a page.
@@ -105,7 +138,7 @@ func _guard_for_modal() -> bool:
 
 
 func _screen_key() -> String:
-	return "%s|%s|%s" % [model.get("state", ""), model.get("locked", false), _covering]
+	return "%s|%s|%s|%s" % [model.get("state", ""), model.get("locked", false), _covering, _toasting]
 
 
 ## A modal opens on its way out ("Not now"), never on the update, so a stray press cannot start it.
@@ -209,6 +242,12 @@ func follow_updates() -> void:
 	if not _bound:
 		_bound = true
 		sdk.update.update_available.connect(show_result)
+		if sdk.has_signal("in_play_changed"):
+			sdk.in_play_changed.connect(_on_in_play_changed)
+		if sdk.update.has_signal("download_progress"):
+			sdk.update.download_progress.connect(_on_download)
+		if sdk.update.has_signal("update_staged"):
+			sdk.update.update_staged.connect(_on_staged)
 	var last = sdk.update.get("last_available")
 	if result == null and last is PKeyResult:
 		show_result(last)
@@ -242,7 +281,95 @@ func show_result(r: PKeyResult) -> void:
 	_check_note = ""
 	result = r
 	is_dismissed = false
+	_toast_done = ""
 	refresh_view()
+
+
+func _in_play() -> bool:
+	return sdk != null and is_instance_valid(sdk) and sdk.get("in_play") == true
+
+
+func _on_in_play_changed(_playing: bool) -> void:
+	refresh_view()
+
+
+## The toast host, or null without an SDK that has one.
+func _toaster() -> PKeyToast:
+	if sdk == null or not is_instance_valid(sdk) or not sdk.has_method("toasts"):
+		return null
+	var host: PKeyToast = sdk.toasts()
+	if _toast_bound != host:
+		_toast_bound = host
+		host.toast_action.connect(_on_toast_action)
+		host.toast_closed.connect(_on_toast_closed)
+	if toast_anchor != "":
+		host.toast_anchor = toast_anchor
+	return host
+
+
+## Whether the answer is shown as a toast now: in play, dismissable, and a real update to offer.
+func _wants_toast() -> bool:
+	return _in_play() and model.get("visible", false) and not model.get("locked", false) and not is_dismissed and not superseded and String(model.get("state", "")) in ["binary", "store", "platform", "version"] and String(model.get("version", "")) != ""
+
+
+func _sync_toast(want: bool) -> void:
+	_toasting = want
+	var host := _toaster() if (want or _toast_version != "") else null
+	if host == null:
+		_toast_version = ""
+		return
+	if want:
+		if _toast_version != String(model["version"]) and _toast_done != String(model["version"]):
+			_toast_version = String(model["version"])
+			var actions: Array = [] if model.get("action", "") != "" else [{"id": "dismiss", "key": "dismiss"}]
+			host.push({"kind": "update", "version": _toast_version, "actions": actions, "source": get_instance_id()})
+	elif _toast_version != "":
+		# Play ended (or the answer changed): the toast gives way to the prompt.
+		var current := host.current
+		_toast_version = ""
+		if current.get("source") == get_instance_id():
+			host.dismiss()
+
+
+func _on_toast_action(toast: Dictionary, id: String) -> void:
+	if toast.get("source") != get_instance_id():
+		return
+	if id == "install":
+		_on_action()
+
+
+func _on_toast_closed(toast: Dictionary, reason: String) -> void:
+	if toast.get("source") != get_instance_id() or _toast_version == "":
+		return
+	if reason != "replaced":
+		_toast_done = _toast_version
+	if reason == "dismissed" and _toasting and not _install_pressed():
+		is_dismissed = true
+		dismissed.emit()
+	_toast_version = ""
+	if _toasting:
+		refresh_view()
+
+
+func _install_pressed() -> bool:
+	return _checking or _installing
+
+
+var _installing := false
+
+
+func _on_download(received: int, total: int) -> void:
+	if not _in_play() or not _installing:
+		return
+	var host := _toaster()
+	if host != null:
+		host.show_progress(received, total)
+
+
+func _on_staged(_version: String) -> void:
+	_installing = false
+	if _toast_bound != null and is_instance_valid(_toast_bound) and (_toast_bound as PKeyToast).current.get("kind") == "progress":
+		(_toast_bound as PKeyToast).finish_progress()
 
 
 ## The outlet KIND the prompt renders for: `outlet`, else this install's (PolarisKey.update.outlet(),
@@ -277,6 +404,8 @@ func _plan() -> Dictionary:
 
 ## The mode in use: "banner" or "modal" ("" when hidden).
 func presentation() -> String:
+	if _toasting and _toast_version != "":
+		return "toast"
 	if not visible:
 		return ""
 	return "modal" if _covering else "banner"
@@ -286,7 +415,8 @@ func _render() -> void:
 	var t := c()
 	model = PKeyUpdatePromptController.model(result, _outlet(), release_url, show_when_current, _plan())
 	var locked: bool = model["locked"]
-	visible = model["visible"] and (locked or not is_dismissed) and not superseded
+	var toasting := _wants_toast()
+	visible = model["visible"] and (locked or not is_dismissed) and not superseded and not toasting
 	var as_modal := modal and not locked
 	if as_modal:
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -305,6 +435,7 @@ func _render() -> void:
 		size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		theme_type_variation = ""
 		_queue_fit()
+	_sync_toast(toasting)
 	var product := String(PKeyUiTheme.product_identity()["name"])
 	var title_text: String = t.text(model["title"]) if model["title"] != "" else ""
 	var body_text: String = t.text(model["body"], model["body_arg"]) if model["body"] != "" else ""
@@ -329,6 +460,7 @@ func _render() -> void:
 		body_text = ""
 	show_text(_title, title_text)
 	show_text(_body, body_text)
+	_render_notes(t, titled and visible)
 	_product.refresh()
 	# A locked answer is never a dead end: with nothing to open or install, the action asks again.
 	if model["visible"] and locked and model["action"] == "" and model["state"] not in ["", "current"] and sdk != null and sdk.get("update") != null:
@@ -342,8 +474,49 @@ func _render() -> void:
 	_dismiss.text = t.text("update_dismiss")
 
 
+## "What's new" and "All changes in <version> ↗" for the offered version, in the modal only. Each
+## shows only when it has something to say: no summary, no label; no page, no link.
+func _render_notes(t: PKeyUiCopy, wanted: bool) -> void:
+	var version := String(model.get("version", ""))
+	var known: Dictionary = _notes.get(version, {})
+	if wanted and not _notes_asked.has(version) and sdk != null and is_instance_valid(sdk) and sdk.get("release") != null and sdk.get("core") != null and sdk.core != null:
+		_notes_asked[version] = true
+		_fetch_notes.call_deferred(version)
+	var lines: Array = known.get("lines", []) if wanted else []
+	# A short screen gives the notes up before the action leaves it: first to one line, then to the
+	# link alone, then to nothing (the action and Later never scroll away).
+	var squeeze := squeeze_level()
+	if squeeze == 1:
+		lines = lines.slice(0, 1)
+	elif squeeze >= 2:
+		lines = []
+	_notes_url = String(known.get("url", "")) if wanted and squeeze < 3 else ""
+	if not PKeyOutletAdapter.is_https(_notes_url):
+		_notes_url = ""
+	show_text(_notes_head, t.text("update_notes") if not lines.is_empty() else "")
+	show_text(_notes_body, "\n".join(lines))
+	show_text(_all_changes, t.text("update_all_changes", version) if _notes_url != "" else "")
+	leaves_app(_all_changes, _notes_url != "")
+
+
+func _fetch_notes(version: String) -> void:
+	var changes: PKeyChangelogResult = await sdk.release.changelog()
+	if not is_instance_valid(self):
+		return
+	var entry: Variant = PKeyUpdatePromptController.entry_for(changes.entries, version) if changes.ok else null
+	if entry != null:
+		_notes[version] = {"lines": PKeyUpdatePromptController.summary_lines(entry.summary), "url": entry.url}
+		if is_inside_tree():
+			refresh_view()
+
+
+func _on_all_changes() -> void:
+	if _notes_url != "":
+		OS.shell_open(_notes_url)
+
+
 func _focus_chain() -> Array:
-	return [_action, _dismiss]
+	return [_all_changes, _action, _dismiss]
 
 
 func _on_action() -> void:
@@ -375,7 +548,9 @@ func _on_action() -> void:
 		return
 	if result is PKeyUpdateCheck and not _page_link and sdk != null and sdk.get("core") != null and sdk.get("update") != null and sdk.update.has_method("apply") and outlet == "":
 		action_taken.emit(result)
+		_installing = true
 		var applied: PKeyApplyResult = await sdk.update.apply(result)
+		_installing = false
 		action_applied.emit(applied)
 		return
 	if model.get("behaviour", "") == PKeyApplyResult.LINK and PKeyOutletAdapter.is_https(model.get("action_url", "")):

@@ -8,6 +8,11 @@ Anchor/Card/Body/Timer: ProgressBar
 Anchor/Card/Body/Row/Glyph: TextureRect
 Anchor/Card/Body/Row/Texts/Title: Label "Copied"
 Anchor/Card/Body/Timer: ProgressBar
+== success: signed in ==
+Anchor/Card/Body/Row/Glyph: TextureRect
+Anchor/Card/Body/Row/Texts/Title: Label "Signed in as Mara"
+Anchor/Card/Body/Row/Texts/Consequence: Label "Pro license"
+Anchor/Card/Body/Timer: ProgressBar
 == warning ==
 Anchor/Card/Body/Row/Glyph: TextureRect
 Anchor/Card/Body/Row/Texts/Title: Label "Autosave is off"

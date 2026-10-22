@@ -273,6 +273,7 @@ const SCREENS := [
 	["boot.offline", "boot", "offline", "full"],
 	["boot.consent", "boot", "consent metered", "full"],
 	["update.modal", "update_prompt", "binary, modal", "full"],
+	["update.notes", "update_prompt", "binary, modal with release notes", "full"],
 	["update.banner", "update_prompt", "store", "strip"],
 	["update.locked", "update_prompt", "binary mandatory (locked, modal asked)", "strip"],
 	["banner", "banner", "grace", "strip"],

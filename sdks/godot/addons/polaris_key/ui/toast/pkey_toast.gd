@@ -8,6 +8,7 @@ extends PKeyUiView
 ##
 ##   $PKeyToast.show_update("2.5.0")             # "Tidewater 2.5.0 is available"  [Update now] [Dismiss]
 ##   $PKeyToast.show_copied()                    # "Copied"
+##   $PKeyToast.show_success("Signed in as Mara", "Pro license")
 ##   $PKeyToast.show_warning("Autosave is off")  # a message the game words itself
 ##   $PKeyToast.show_error("sync-failed")        # the error's own title and message; stays
 ##   $PKeyToast.show_progress(38_000_000, 91_000_000, 60.0)   # the counted bar and Undo
@@ -26,6 +27,10 @@ extends PKeyUiView
 signal action_pressed(id: String)
 ## The toast went away: `reason` is `timeout`, `dismissed` or `replaced`.
 signal closed(reason: String)
+## The same two events with the toast they belong to (its `source`, the pusher's own tag, says whose
+## it was): the shared toast host (PolarisKey.toasts()) serves several screens at once.
+signal toast_action(toast: Dictionary, id: String)
+signal toast_closed(toast: Dictionary, reason: String)
 
 ## Add a toast layer over the game in one line (a full-rect view that lets the game's clicks through):
 ##
@@ -186,10 +191,12 @@ func push(toast: Dictionary) -> void:
 	_last_serial = t["serial"]
 	if current.is_empty() or current.get("kind") != "error" or t.get("kind") == "error":
 		var replaced := not current.is_empty()
+		var before := current
 		current = t
 		_start()
 		if replaced:
 			closed.emit("replaced")
+			toast_closed.emit(before, "replaced")
 	else:
 		_queue.append(t)
 	refresh_view()
@@ -208,6 +215,11 @@ func show_update(version: String, actions: Array = []) -> void:
 
 func show_copied() -> void:
 	push({"kind": "copied"})
+
+
+## A good-news note in the game's (or the kit's) own words: the success glyph, the 6 s timer.
+func show_success(title: String, consequence := "", actions: Array = []) -> void:
+	push({"kind": "success", "title": title, "consequence": consequence, "actions": actions})
 
 
 func show_warning(title: String, consequence := "", actions: Array = []) -> void:
@@ -254,12 +266,14 @@ func _start() -> void:
 
 func _close(reason: String) -> void:
 	var had_focus := _has_focus_inside()
+	var gone := current
 	current = {}
 	if not _queue.is_empty():
 		current = _queue.pop_front()
 		_start()
 	refresh_view()
 	closed.emit(reason)
+	toast_closed.emit(gone, reason)
 	if had_focus:
 		restore_opener()
 
@@ -305,7 +319,7 @@ func _input_for_model() -> Dictionary:
 	var inp: Dictionary = {}
 	if kind == "":
 		return inp
-	inp["toast"] = {"kind": kind}
+	inp["toast"] = {"kind": PKeyToastController.model_kind(kind)}
 	match kind:
 		"update":
 			inp["update"] = {"action": "binary", "version": current.get("version", "")}
@@ -330,7 +344,7 @@ func _render() -> void:
 	show_text(_consequence, words["consequence"])
 	# A game's own warning and the core's heading are data, not the kit's copy.
 	for l in [_title, _consequence]:
-		if bool(words["data"]) and kind in ["warning"] or (kind == "error" and l == _title):
+		if bool(words["data"]) and kind in ["warning", "success"] or (kind == "error" and l == _title):
 			l.set_meta(DATA_META, true)
 		elif l.has_meta(DATA_META):
 			l.remove_meta(DATA_META)
@@ -478,6 +492,7 @@ func _on_action(i: int) -> void:
 	var b: Button = _buttons[i]
 	var id := String(b.get_meta(&"pkey_action", ""))
 	action_pressed.emit(id)
+	toast_action.emit(current, id)
 	if id == "dismiss" or id == "install":
 		_close("dismissed")
 	elif id == "undo":
