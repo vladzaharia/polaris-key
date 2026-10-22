@@ -51,12 +51,14 @@ export function RoleTag({
     <span
       data-role-tag={role.role}
       className={cn(
-        "inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-surface-sunken px-2 py-0.5 text-xs font-medium text-fg-strong",
+        "inline-flex max-w-[13rem] items-center gap-1.5 whitespace-nowrap rounded-md border border-border bg-surface-sunken px-2 py-0.5 text-xs font-medium text-fg-strong",
         className,
       )}
     >
       <Glyph role={role} />
-      <span className="min-w-0 truncate">{label}</span>
+      <span className="min-w-0 truncate" title={label}>
+        {label}
+      </span>
     </span>
   );
 }
@@ -92,7 +94,7 @@ export function RoleSet({
   return (
     <span
       data-role-set
-      className="inline-flex min-w-0 max-w-full whitespace-nowrap items-center gap-2 max-sm:flex-col max-sm:items-start max-sm:gap-1"
+      className="inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 max-sm:flex-col max-sm:items-start"
     >
       <RoleTag role={role} productName={productName} />
       {areas && areas.length > 0 ? <AreaList areas={areas} /> : null}

@@ -104,7 +104,16 @@ function membersView() {
         7,
         "Bartholomew Featherstonehaugh-Cholmondeley",
         "bartholomew.featherstonehaugh-cholmondeley@a-very-long-company-name.example.com",
-        [role("product_admin", "product:djdl", { areas: ["license"] })],
+        [
+          // A 38-character product (a slug the console cannot name) with three areas.
+          role(
+            "product_admin",
+            "product:northwind-broadcast-audio-workstations",
+            {
+              areas: ["license", "config", "ship"],
+            },
+          ),
+        ],
       ),
       member(
         8,

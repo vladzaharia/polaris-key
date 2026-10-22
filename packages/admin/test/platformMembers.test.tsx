@@ -17,6 +17,10 @@ import type {
 import { resetRouterForTests } from "../src/console/router.js";
 import { setStepUpRedirectForTests } from "../src/lib/stepUp.js";
 import { ALL_ON, boot, resetConsole, type FetchLog } from "./consoleHarness.js";
+import {
+  cannotEditAreas,
+  cannotTake,
+} from "../src/console/sections/platform/pages/platformMembersModel.js";
 
 /** Platform → Members (`#/platform/members`, ST-31.11): the roster, invites and role changes. */
 
@@ -1201,5 +1205,20 @@ describe("Members: the second round (ST-31.11 fix)", () => {
       /Only a Superadmin or an admin of DJDL with Members can remove DJDL admin\./i,
     );
     expect(item.textContent).not.toMatch(/Platform admin or an All products/);
+  });
+});
+
+describe("Members: copy by action", () => {
+  const pa = asRole("platform_admin") as unknown as Me;
+  const role = kenji.roles[0]!;
+  const name = (s: string) => s.toUpperCase();
+  it("names the action it refuses", () => {
+    expect(cannotTake(pa, role, name, "revoke")).toMatch(
+      /can revoke DJDL admin/,
+    );
+    expect(cannotTake(pa, role, name)).toMatch(/can remove DJDL admin/);
+    const areas = cannotEditAreas(pa, role, name)!;
+    expect(areas).toMatch(/change the areas of DJDL admin/);
+    expect(areas).not.toMatch(/remove/);
   });
 });

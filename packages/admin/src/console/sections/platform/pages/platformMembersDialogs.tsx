@@ -84,6 +84,8 @@ export function RemoveMemberDialog({
   const member = memberId === null ? null : (live ?? last.current);
   // Bindings this dialog already deleted (a refetch may not have landed yet).
   const gone = React.useRef(new Set<string>());
+  // The partial-failure toast, dismissed once a retry succeeds.
+  const partial = React.useRef<string | number | null>(null);
   React.useEffect(() => {
     if (memberId === null) {
       gone.current.clear();
@@ -129,11 +131,14 @@ export function RemoveMemberDialog({
           }
         } catch (e) {
           if (done > 0)
-            toast.error(`Removed ${done} of ${todo.length} roles`, {
-              description: "Try again to remove the rest.",
-            });
+            partial.current = toast.error(
+              `Removed ${done} of ${todo.length} roles`,
+              { description: "Try again to remove the rest." },
+            );
           throw e;
         }
+        if (partial.current !== null) toast.dismiss(partial.current);
+        partial.current = null;
         toast.success(`Removed ${member!.name || member!.email}`);
       }}
     />

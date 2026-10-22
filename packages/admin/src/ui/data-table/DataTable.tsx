@@ -1167,6 +1167,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                 value: state.q,
                 onChange: (q) => update({ q }),
                 placeholder: search.placeholder,
+                label: search.label,
               }
             : undefined
         }

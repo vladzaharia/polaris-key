@@ -354,6 +354,24 @@ export function FilterBar({
     search?.value ?? "",
     search?.onChange ?? (() => undefined),
   );
+  const rowRef = React.useRef<HTMLDivElement>(null);
+  const [fade, setFade] = React.useState(false);
+  // A one-row bar that overflows fades at its end until the last control is in view.
+  React.useEffect(() => {
+    const el = rowRef.current;
+    if (!oneRow || !el) return;
+    const measure = (): void =>
+      setFade(el.scrollWidth - el.clientWidth - el.scrollLeft > 2);
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    const ro =
+      typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    return () => {
+      el.removeEventListener("scroll", measure);
+      ro?.disconnect();
+    };
+  }, [oneRow]);
   const chips: Chip[] = facets.flatMap((f) =>
     f.counted
       ? []
@@ -370,10 +388,24 @@ export function FilterBar({
   return (
     <div className={cn("space-y-2", className)}>
       <div
+        ref={rowRef}
+        // Padded so a focus ring is not clipped by the scroller; a focused control scrolls into view.
+        onFocusCapture={
+          oneRow
+            ? (e) =>
+                (e.target as HTMLElement).scrollIntoView?.({
+                  block: "nearest",
+                  inline: "nearest",
+                })
+            : undefined
+        }
         className={cn(
           "flex flex-wrap items-center gap-2",
           oneRow &&
-            "max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:pb-0.5 max-sm:[&>*]:shrink-0",
+            "max-sm:-m-1 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:p-1 max-sm:[&>*]:shrink-0",
+          oneRow &&
+            fade &&
+            "max-sm:[mask-image:linear-gradient(to_right,#000_calc(100%-2rem),transparent)]",
         )}
       >
         {lead}
