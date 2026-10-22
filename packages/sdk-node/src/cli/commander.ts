@@ -33,6 +33,7 @@ import type { CliIO, CliVerb } from "./kit.js";
 import { cellWidth, wrapSpans } from "./term/width.js";
 import {
   clientFactoryFor,
+  DEFAULT_ACTION,
   END_USER,
   planMount,
   reportSkipped,
@@ -348,8 +349,13 @@ export function registerPolarisCommands(
       verb.path.at(-1)!,
       ...(kit ? verb.args.map(optionalArg) : verb.args),
     ].join(" ");
+    // A bare group runs its default action (`devices` lists, `update` checks), as the Python kit does.
+    const isDefault =
+      kit &&
+      verb.path.length > 1 &&
+      DEFAULT_ACTION[verb.path[0]!] === verb.path[1];
     const cmd = parent
-      .command(name)
+      .command(name, isDefault ? { isDefault: true } : undefined)
       .description(
         kit
           ? describeVerb(helpContext(program, true), verb)

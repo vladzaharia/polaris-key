@@ -478,7 +478,7 @@ export function requireLicense<A extends unknown[], R>(
     } else target = latest;
     if (!options.client && !target)
       throw new Error(
-        "requireLicense: register the kit commands first, or pass { client }.",
+        "requireLicense: call registerPolarisCommands(program, { config, version }) before the program runs, or pass { client }.",
       );
     const code = await gateCall(context, command, flags, options, target);
     if (code === null) return handler(...args);

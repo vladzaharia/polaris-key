@@ -30,6 +30,18 @@ Kit screens.
   `polaris_key.server.testing`: `create_test_kit()` with `options()`, `signed_headers()`,
   `headers_for(verdict)`, a clock and a fake trust service. Verdicts are unchanged (the corpus rows
   replay as before); the default statuses stay 401 and 403.
+- **The CLI drop-ins fail at startup with the fix, and never with a traceback.**
+  `register_argparse`, `register_click` and `register_typer` refuse a `config=` with no
+  `product_slug`, no `trust`, a placeholder pin or a bad `base_url` when they register, with
+  `polaris-bad-config` (a `ValueError`) and `pkey sdk --lang python --write`. A client that can't be
+  built or an unexpected failure in a verb ends in the generic screen (exit 1, `"error": "internal"`
+  under `--json`); `DEBUG=polaris` prints the traceback. A usage error under `--json` is the exit-2
+  result line on `GroupedHelpParser`, click and typer hosts. Result lines name the command by its id
+  (`devices list`, `login`), as the Node kit does. `on_collision="skip"` is silent unless `on_skip=`,
+  `warn=` or `DEBUG=polaris` asks, as in Node (it printed to stderr before; pass `warn=` to keep a
+  line), and the collision error names `on_collision="skip"` too. `deactivate` and `logout` take `-y`/`--yes`, as in Node. Migration: a `config=` that was
+  a placeholder now fails at registration.
+
 - **The async `wait_for_sign_in` keeps `code`.** `AsyncPolarisKey.identity.wait_for_sign_in` and `sign_in_with_browser` dropped the `code` of an `error` result, so an async caller could not tell `sign-in-denied` from `sign-in-failed`; the sync client already set it. A 503 on the device-code poll (the Worker retrying a transient failure after approval) is a `server-error` the wait loop rides out, as before.
 - **The Qt kit's `run_gate` runs activation and sign-in.** The gate shows Welcome, license-key entry
   (Paste, a live verdict, refusals as an info callout with their next step), sign-in in the browser or

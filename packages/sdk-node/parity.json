@@ -378,7 +378,7 @@
     },
     "ui.cli.mount": {
       "status": "implemented",
-      "note": "registerPolarisCommands (commander) and polarisCommands (@polaris-key/node/cli/yargs) mount the kit's verbs into a host CLI: the ui-matrix cli family's mount, help and gate rows run in test/cli/cliMount.test.ts, and requireLicense / polarisGate (exit 4, fix rows on stderr) in test/cli/cliGate.test.ts (UK-46)."
+      "note": "registerPolarisCommands (commander) and polarisCommands (@polaris-key/node/cli/yargs) mount the kit's verbs into a host CLI: the ui-matrix cli family's mount, help and gate rows run in test/cli/cliMount.test.ts, and requireLicense / polarisGate (exit 4, fix rows on stderr) in test/cli/cliGate.test.ts (UK-46). test/cli/cliDx.test.ts proves the developer-facing wiring: a config with no slug, no pins, a placeholder pin or a bad base URL fails the registration with polaris-bad-config and `pkey sdk --lang node --write`; a bare devices/update runs its default action on commander and yargs; a strict yargs host still ends in the usage result; DEBUG=polaris shows an internal failure's cause."
     },
     "ui.cli.contract": {
       "status": "implemented",

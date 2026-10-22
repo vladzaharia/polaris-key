@@ -406,7 +406,7 @@ def require_license(
             target = _latest
             if client is None and (target is None or target.client is None):
                 raise RuntimeError(
-                    "require_license: mount the kit commands with client= or config= first, or pass client=."
+                    "require_license: call register_argparse (or register_click, register_typer) with client= or config= (and version=) before the program runs, or pass client=."
                 )
             flags = _flags(args, kwargs)
             own = client is None and target is not None and target.owns_client

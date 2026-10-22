@@ -54,6 +54,8 @@ class Opt:
     kind: str = "str"
     help: str = ""
     default: Any = None
+    #: A one-letter alias (``y`` for ``--yes``).
+    short: str = ""
 
 
 @dataclass(frozen=True)
@@ -309,14 +311,15 @@ _REVEAL = (
     Opt("reveal", "flag", "Print the value."),
     Opt("allow-workflow-commands", "flag", "Print the value even if a CI log would run a line of it as a command."),
 )
-_YES = (Opt("yes", "flag", "Do not ask for confirmation."),)
+_YES = (Opt("yes", "flag", "Do not ask for confirmation.", short="y"),)
 
 #: Every verb. ``login`` and ``logout`` are ``sign-in`` and ``sign-out`` (SIGN-IN.md §4.15).
 VERBS: Tuple[Verb, ...] = (
     Verb("activate", "license", "Add a license key (a masked prompt, stdin or a file).", activate,
          opts=_KEY_SOURCE, arg="key"),
     Verb("enroll", "license", "Get a license with no key and no sign-in.", enroll),
-    Verb("deactivate", "license", "Release this device's seat and wipe local credentials.", deactivate),
+    Verb("deactivate", "license", "Release this device's seat and wipe local credentials.", deactivate,
+         opts=(Opt("yes", "flag", "Accepted for compatibility; deactivate does not ask.", short="y"),)),
     Verb("status", "license", "License, devices and offline time.", status),
     Verb("sign-in", "identity", "Sign in in your browser, or with a code.", sign_in, opts=_SIGN_IN),
     Verb("login", "identity", "Same as sign-in.", sign_in, opts=_SIGN_IN),
@@ -359,6 +362,30 @@ def namespace(verb: Verb, words: Sequence[str], values: Dict[str, Any]) -> Dict[
     return ns
 
 
+def _command_id(verb: str, words: Sequence[str]) -> str:
+    """The verb id a result line names: ``sign-in`` is ``login``, and a bare ``devices`` is ``devices list``."""
+    from .mount import DEFAULT_ACTION, IDS
+
+    verb = ALIASES_OF.get(verb, verb)
+    ids = {i for i, _ in IDS}
+    action = words[0] if words else DEFAULT_ACTION.get(verb, "")
+    return f"{verb} {action}" if f"{verb} {action}" in ids else verb
+
+
+def _internal(term: Any, verb: Verb, e: BaseException) -> CommandResult:
+    """An unexpected failure: the generic screen (exit 1, ``"error": "internal"`` under ``--json``) and,
+    when ``DEBUG`` names polaris, the traceback on stderr. A person never meets a traceback."""
+    from .mount import debug_on
+
+    code = getattr(e, "code", None)
+    if debug_on():
+        import traceback
+
+        traceback.print_exception(type(e), e, e.__traceback__)
+    # A typed failure keeps its registry code; anything else is "internal".
+    return core.result_of(_flows()._error_outcome(term, code if isinstance(code, str) and code else "internal", verb.name), term)
+
+
 def run(
     factory: "core.ClientFactory",
     opts: "core.ClientOptions",
@@ -380,11 +407,11 @@ def run(
 
     try:
         client = factory(opts)
-    except Exception:
-        if not ns.get("json"):
-            raise
-        term = Terminal.create(product=opts.product, verb=verb.name, json=True)
-        return CommandResult(EXIT.failed, [], terminal=term, data={"error": "internal"})
+    except Exception as e:
+        term = Terminal.create(
+            product=opts.product, prog=prog, verb=verb.name, json=bool(ns.get("json")), no_color=bool(ns.get("no_color")), ascii=bool(ns.get("ascii"))
+        )
+        return _internal(term, verb, e)
     try:
         term = Terminal.create(
             product=opts.product,
@@ -411,13 +438,14 @@ def run(
             result = verb.run(client, ns)
         except KeyboardInterrupt:
             return CommandResult(EXIT.interrupted, [], terminal=term if term.env.json else None, data={"error": "interrupted"})
-        except Exception:
-            if not term.env.json:
-                raise
-            # --json always ends with a result line, whatever went wrong.
-            return CommandResult(EXIT.failed, [], terminal=term, data={"error": "internal"})
+        except Exception as e:
+            # Whatever went wrong ends in a result: the generic screen, or --json's result line.
+            return _internal(term, verb, e)
         if result.terminal is None:
             result.terminal = term
+        # The result line names the command by its id, as the Node kit does: `devices list`, `login`.
+        if result.terminal is term:
+            term.verb = _command_id(verb.name, ns.get("words") or [])
         return result
     finally:
         if close:

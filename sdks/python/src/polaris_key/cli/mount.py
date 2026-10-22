@@ -28,6 +28,10 @@ __all__ = [
     "plan_mount",
     "select_verbs",
     "skip_warning",
+    "report_skipped",
+    "check_config",
+    "debug_on",
+    "BAD_CONFIG_CODE",
     "allowed_actions",
     "Binding",
     "resolve_binding",
@@ -67,6 +71,9 @@ BOUND_OPTIONS: Tuple[str, ...] = CONFIG_OPTIONS + ("--config-dir", "--service", 
 
 #: The registration error's code.
 COLLISION_CODE = "polaris-verb-collision"
+
+#: The code of a ``config`` the mount cannot build a client from.
+BAD_CONFIG_CODE = "polaris-bad-config"
 
 #: Developer ids: mounted only when named.
 _DEVELOPER: Tuple[Tuple[str, str], ...] = (
@@ -303,10 +310,12 @@ def _collision_error(words: Sequence[str], prog: str) -> Exception:
 
             def __init__(self, words: Sequence[str], prog: str = "mytool") -> None:
                 listed = ", ".join(f'"{w}"' for w in words)
+                many = len(words) > 1
                 super().__init__(
                     COLLISION_CODE,
-                    f'{COLLISION_CODE}: {listed} {"are" if len(words) > 1 else "is"} already a command. '
-                    f'Set namespace="license" ({prog} license {words[0]}), or leave {listed} out of verbs.',
+                    f'{COLLISION_CODE}: {listed} {"are" if many else "is"} already {"commands" if many else "a command"}. '
+                    f'Set namespace="license" ({prog} license {words[0]}), leave {"them" if many else "it"} out of verbs, '
+                    'or set on_collision="skip".',
                 )
                 self.words = list(words)
 
@@ -319,6 +328,61 @@ def __getattr__(name: str) -> Any:
         _collision_error(["x"], "x")
         return _collision_class
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+_REGENERATE = "run `pkey sdk --lang python --write` to regenerate it"
+_config_class: Any = None
+
+
+def _config_error(message: str) -> Exception:
+    """A ``PolarisConfigError``, made on first use for the reason ``VerbCollisionError`` is."""
+    global _config_class
+    if _config_class is None:
+        from ..core.errors import PolarisError
+
+        class PolarisConfigError(PolarisError, ValueError):
+            """The registration failed: the ``config`` cannot build a client."""
+
+            def __init__(self, message: str) -> None:
+                super().__init__(BAD_CONFIG_CODE, f"{BAD_CONFIG_CODE}: {message}")
+
+        _config_class = PolarisConfigError
+    return _config_class(message)
+
+
+def check_config(config: Any) -> None:
+    """Refuse a ``config`` the CLI cannot work from, at registration, with the command that fixes
+    it: no product slug, no pinned keys (so no license could verify), a pin that is a placeholder,
+    or a base URL that is not an http(s) origin. Raises ``PolarisConfigError`` (a ``ValueError``)."""
+    import re
+
+    def bad(what: str) -> Exception:
+        return _config_error(f"{what}; {_REGENERATE}.")
+
+    if not isinstance(config, Mapping):
+        raise bad("config is missing, pass your generated polaris_config.CONFIG")
+    slug = config.get("product_slug") or config.get("product")
+    if not isinstance(slug, str) or not slug:
+        raise bad("config has no product_slug")
+    trust = config.get("trust")
+    if not isinstance(trust, Mapping):
+        raise bad(f'config for "{slug}" has no trust')
+    if not trust:
+        raise bad(f'trust for "{slug}" is empty, so no license could verify')
+    for kid, key in trust.items():
+        if not isinstance(key, str) or not re.fullmatch(r"[A-Za-z0-9_-]{43}", key):
+            raise bad(f'the pinned key "{kid}" for "{slug}" is not a raw Ed25519 public key (43 base64url characters), as a placeholder is')
+    base = config.get("base_url")
+    if base is not None and not (isinstance(base, str) and re.match(r"^https?://[^/\s]+", base, re.I)):
+        raise bad(f'base_url {base!r} for "{slug}" is not an http(s) origin such as https://key.plrs.im')
+
+
+def debug_on(env: Optional[Mapping[str, str]] = None) -> bool:
+    """Whether ``DEBUG`` names polaris (or ``*``): the developer asked to see why a verb failed."""
+    import os
+    import re
+
+    return bool(re.search(r"(^|[,\s])(polaris|\*)", (env if env is not None else os.environ).get("DEBUG", "")))
 
 
 @dataclass(frozen=True)
@@ -415,6 +479,25 @@ def skip_warning(skipped: Sequence[str], prog: str) -> str:
     return f"{prog}: skipped {', '.join(skipped)}; already a command here."
 
 
+def report_skipped(
+    plan: "MountPlan",
+    prog: str,
+    warn: Optional[Any] = None,
+    on_skip: Optional[Any] = None,
+    default: Optional[Any] = None,
+) -> None:
+    """Tell the developer about a skipped mount, as the Node kit does: ``on_skip`` gets the ids, and
+    ``warn`` the one line. With no ``warn``, nothing reaches the people using the program unless
+    ``DEBUG`` names polaris, which prints it through ``default`` (stderr)."""
+    if not plan.skipped:
+        return
+    if on_skip is not None:
+        on_skip(list(plan.skipped))
+    sink = warn or (default if debug_on() else None)
+    if sink is not None:
+        sink(skip_warning(plan.skipped, prog))
+
+
 def allowed_actions(plan_actions: Mapping[str, Tuple[str, ...]], verb: str, words: Sequence[str]) -> bool:
     """Whether the words a person typed after ``verb`` name a mounted action (a bare verb runs its
     default action)."""
@@ -452,6 +535,8 @@ def resolve_binding(
 
     if client is not None and config is not None:
         raise ValueError("polaris-bound-twice: pass client= or config=, not both.")
+    if config is not None:
+        check_config(config)
     if client is not None:
         product = str(getattr(client, "product", None) or "")
         return Binding(lambda _o: client, core.ClientOptions(product=product), True, False, product or None)

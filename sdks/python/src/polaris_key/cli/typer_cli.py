@@ -12,10 +12,32 @@ import sys
 from typing import Any, Callable, List, Mapping, Optional, Sequence, Union
 
 import typer
+from typer.core import TyperCommand
+
+_UsageError: Any
+try:  # Typer 0.27 vendors its own click; older Typers raise click's.
+    from typer._click.exceptions import UsageError as _UsageError
+except ImportError:  # pragma: no cover
+    from click.exceptions import UsageError as _UsageError  # type: ignore[assignment]
 
 from ..ui.core import Copy
 from . import core, mount
 from . import verbs as verbs_mod
+
+
+class _VerbCommand(TyperCommand):
+    """A verb's command: under ``--json`` a usage error is still a result line on stdout (exit 2,
+    ``"error": "usage"``), as the Node kit's, not click's text on stderr."""
+
+    def parse_args(self, ctx: Any, args: List[str]) -> List[str]:
+        try:
+            return super().parse_args(ctx, args)
+        except _UsageError as e:
+            if "--json" not in args:
+                raise
+            from .argparse_cli import json_usage_error
+
+            raise SystemExit(json_usage_error(self.name or "", e.format_message()))
 
 
 def _options(product, version, base_url, config_dir, trust, service, binding: Optional[mount.Binding] = None) -> core.ClientOptions:
@@ -51,6 +73,7 @@ def register_typer(
     verbs: Union[Sequence[str], str, None] = None,
     on_collision: str = "error",
     warn: Optional[Callable[[str], None]] = None,
+    on_skip: Optional[Callable[[List[str]], None]] = None,
     _nested: bool = False,
     _nested_name: Optional[str] = None,
 ) -> typer.Typer:
@@ -64,8 +87,7 @@ def register_typer(
     names = [c.name or (c.callback.__name__.replace("_", "-") if c.callback else "") for c in host.registered_commands]
     names += [g.name or "" for g in host.registered_groups]
     plan = mount.plan_mount(names, namespace=namespace, verbs=verbs, on_collision=on_collision, bound=binding.bound, prog=host_prog)
-    if plan.skipped:
-        (warn or (lambda m: print(m, file=sys.stderr)))(mount.skip_warning(plan.skipped, host_prog))
+    mount.report_skipped(plan, host_prog, warn, on_skip, lambda m: print(m, file=sys.stderr))
     base = prog or host.info.name
     shown = (f"{base} {namespace}" if namespace else base) if base else None
     product = binding.product or host_prog
@@ -84,6 +106,7 @@ def register_typer(
         verb = by_name[name]
         target.command(
             name=verb.name,
+            cls=_VerbCommand,
             help=mount.verb_help(verb.name, plan.ids, product),
             rich_help_panel=None if namespace else heading,
             hidden=verb.name in mount.ALIASES,
@@ -142,7 +165,7 @@ def _typer_verb(
         ann: Any = bool if o.kind == "flag" else (Optional[int] if o.kind == "int" else Optional[str])
         text = mount.option_help(o)
         default = typer.Option(
-            False if o.kind == "flag" else o.default, f"--{o.name}", help=None if text == "==SUPPRESS==" else text, hidden=text == "==SUPPRESS=="
+            False if o.kind == "flag" else o.default, *([f"-{o.short}"] if o.short else []), f"--{o.name}", help=None if text == "==SUPPRESS==" else text, hidden=text == "==SUPPRESS=="
         )
         params.append(P(verbs_mod.option_dest(o.name), P.KEYWORD_ONLY, default=default, annotation=ann))
 

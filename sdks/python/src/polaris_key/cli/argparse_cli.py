@@ -98,6 +98,7 @@ def register_argparse(
     verbs: Union[Sequence[str], str, None] = None,
     on_collision: str = "error",
     warn: Optional[Callable[[str], None]] = None,
+    on_skip: Optional[Callable[[List[str]], None]] = None,
 ) -> "argparse._SubParsersAction":
     """Add the Polaris Key subcommands to an existing subparsers object.
 
@@ -112,7 +113,9 @@ def register_argparse(
       (:data:`polaris_key.cli.mount.END_USER`), ``"all"`` mounts every verb.
     * ``namespace="license"`` nests every verb: ``mytool license activate``.
     * ``on_collision``: a verb whose first word the host already uses fails the registration with
-      ``polaris-verb-collision`` (``"error"``, default); ``"skip"`` drops the verb and warns once.
+      ``polaris-verb-collision`` (``"error"``, default); ``"skip"`` drops the verb. Skipping is silent
+      for the people using your program: read the ids in ``on_skip``, or set ``DEBUG=polaris`` to print
+      the one warning (``warn`` takes it instead).
     * ``client_factory`` (default: build from the parsed options) lets a consumer pin trust keys or
       the base URL; ``theme`` restyles the terminal kit; ``prog`` is the command the kit's fix lines
       name (default: the host parser's).
@@ -127,8 +130,7 @@ def register_argparse(
         bound=binding.bound,
         prog=host_prog,
     )
-    if plan.skipped:
-        (warn or (lambda m: print(m, file=sys.stderr)))(mount.skip_warning(plan.skipped, host_prog))
+    mount.report_skipped(plan, host_prog, warn, on_skip, lambda m: print(m, file=sys.stderr))
     shown = f"{host_prog} {namespace}" if namespace else host_prog
     heading = Copy("en")("cli.help.group")
     target = subparsers
@@ -170,10 +172,11 @@ def register_argparse(
             p.add_argument("words", nargs="*", default=None, metavar="ARG", help=argparse.SUPPRESS if not legacy else verb.help)
         for o in verb.opts:
             flag = f"--{o.name}"
+            names = [f"-{o.short}", flag] if o.short else [flag]
             hide = (not legacy) and bool(allowed) and o.name == "to" and "download" not in allowed
             text = mount.option_help(o, hide) if not legacy else o.help
             if o.kind == "flag":
-                p.add_argument(flag, action="store_true", help=text)
+                p.add_argument(*names, action="store_true", help=text)
             else:
                 p.add_argument(flag, type=int if o.kind == "int" else str, default=o.default, help=text)
         p.set_defaults(func=_verb(binding.factory, verb, theme, shown, binding, plan.actions or None, plan.ids))
@@ -392,6 +395,32 @@ class _HelpWriter:
         return "\n".join(r.rstrip() for r in self.rows) + "\n"
 
 
+class _JsonUsageExit(SystemExit):
+    """The exit after a usage error's result line was written (nothing more to print)."""
+
+
+def _fail_as_json(parser: argparse.ArgumentParser, message: str) -> None:
+    """Under ``--json`` a usage error is still a result line on stdout, not argparse's text on stderr
+    (exit 2, ``"error": "usage"``), as the Node kit's. Returns when the person did not ask for JSON."""
+    argv = getattr(parser, "_pk_argv", None) or []
+    if "--json" not in argv:
+        return
+    command = next((a for a in argv if not a.startswith("-")), "")
+    raise _JsonUsageExit(json_usage_error(command, message))
+
+
+class _RecordsArgv(argparse.ArgumentParser):
+    """Remembers the arguments it was asked to parse, so ``error`` can tell whether ``--json`` was given."""
+
+    def parse_known_args(self, args: Any = None, namespace: Any = None) -> Any:  # type: ignore[override]
+        self._pk_argv = list(sys.argv[1:] if args is None else args)
+        return super().parse_known_args(args, namespace)
+
+    def error(self, message: str) -> NoReturn:  # type: ignore[override]
+        _fail_as_json(self, message)
+        super().error(message)
+
+
 class _GroupedSubParsers(argparse._SubParsersAction):
     """``add_parser(name, group="Build")``: the heading the command is listed under in
     :class:`GroupedHelpParser`'s help."""
@@ -402,7 +431,7 @@ class _GroupedSubParsers(argparse._SubParsersAction):
         return parser
 
 
-class GroupedHelpParser(argparse.ArgumentParser):
+class GroupedHelpParser(_RecordsArgv):
     """``polaris-key --help``: the verbs grouped by owning service, commands in ``strong`` and
     their descriptions in mute (UI-KITS §1.5 rule 13), in 80 columns or the terminal's width.
     Descriptions wrap under their column; below 50 columns each command stacks above its
@@ -420,6 +449,7 @@ class GroupedHelpParser(argparse.ArgumentParser):
         """A mistyped command says so and points at the help, instead of argparse's list of every
         choice (exit 2, as argparse's own errors)."""
         m = re.match(r"argument [^:]+: invalid choice: '([^']*)'", message)
+        _fail_as_json(self, f"'{m.group(1)}' is not a command" if m else message)
         if m is None:
             super().error(message)
         self.print_usage(sys.stderr)
@@ -514,7 +544,7 @@ class GroupedHelpParser(argparse.ArgumentParser):
         return w.text()
 
 
-class VerbHelpParser(argparse.ArgumentParser):
+class VerbHelpParser(_RecordsArgv):
     """``polaris-key <verb> --help``: the verb's title and description, its usage and its options,
     in the kit's look (the Node kit's ``renderVerbHelp``), never the whole command list."""
 
@@ -571,6 +601,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         args = build_parser().parse_args(argv)
     except SystemExit as e:
+        if isinstance(e, _JsonUsageExit):
+            return int(e.code or 0)
         # argparse printed its usage to stderr; --json still ends with a result line.
         if e.code not in (0, None) and "--json" in argv:
             command = next((a for a in argv if not a.startswith("-")), "")

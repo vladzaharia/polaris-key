@@ -32,6 +32,17 @@ export const CONFIG_OPTIONS: readonly string[] = [
 /** The registration error's code. */
 export const COLLISION_CODE = "polaris-verb-collision";
 
+/** The code of a `config` the mount cannot build a client from. */
+export const BAD_CONFIG_CODE = "polaris-bad-config";
+
+/** What a verb with no action of its own runs: `tidewater devices` is `tidewater devices list`. */
+export const DEFAULT_ACTION: Readonly<Record<string, string>> = {
+  devices: "list",
+  update: "check",
+  config: "list",
+  packs: "status",
+};
+
 /** The program's generated config: everything `PolarisKeyClient.create` needs but the version. */
 export type PolarisCliConfig = Omit<PolarisKeyClientOptions, "version">;
 
@@ -79,6 +90,59 @@ export class VerbCollisionError extends PolarisError {
     this.name = "VerbCollisionError";
     this.words = words;
   }
+}
+
+/** The registration failed: the `config` cannot build a client. */
+export class CliConfigError extends PolarisError {
+  constructor(message: string) {
+    super(BAD_CONFIG_CODE, `${BAD_CONFIG_CODE}: ${message}`);
+    this.name = "CliConfigError";
+  }
+}
+
+const REGENERATE = "run `pkey sdk --lang node --write` to regenerate it";
+/** A raw Ed25519 public key, base64url: what a pin is. */
+const PIN = /^[A-Za-z0-9_-]{43}$/;
+
+/**
+ * Refuse a `config` the CLI cannot work from, at registration, with the command that fixes it:
+ * no product slug, no pinned keys (so no license could verify), a pin that is a placeholder, or a
+ * base URL that is not an http(s) origin. Throws `CliConfigError`.
+ */
+export function checkCliConfig(
+  config: unknown,
+): asserts config is PolarisCliConfig {
+  const bad = (what: string): never => {
+    throw new CliConfigError(`${what}; ${REGENERATE}.`);
+  };
+  if (typeof config !== "object" || config === null)
+    return bad("config is missing, pass your generated polarisConfig");
+  const c = config as {
+    productSlug?: unknown;
+    baseUrl?: unknown;
+    trust?: { pinnedKeys?: unknown };
+  };
+  if (typeof c.productSlug !== "string" || c.productSlug === "")
+    bad("config.productSlug is missing");
+  const slug = c.productSlug as string;
+  const pins = c.trust?.pinnedKeys;
+  if (typeof pins !== "object" || pins === null)
+    bad(`config for "${slug}" has no trust.pinnedKeys`);
+  const entries = Object.entries(pins as Record<string, unknown>);
+  if (entries.length === 0)
+    bad(`trust.pinnedKeys for "${slug}" is empty, so no license could verify`);
+  for (const [kid, key] of entries)
+    if (typeof key !== "string" || !PIN.test(key))
+      bad(
+        `the pinned key "${kid}" for "${slug}" is not a raw Ed25519 public key (43 base64url characters), as a placeholder is`,
+      );
+  if (
+    c.baseUrl !== undefined &&
+    (typeof c.baseUrl !== "string" || !/^https?:\/\/[^/\s]+/i.test(c.baseUrl))
+  )
+    bad(
+      `baseUrl ${JSON.stringify(c.baseUrl)} for "${slug}" is not an http(s) origin such as https://key.plrs.im`,
+    );
 }
 
 /** A verb's id: its words joined with a space. */
@@ -179,9 +243,10 @@ export function clientFactoryFor(o: {
 }): ClientFactory {
   const { config } = o;
   if (!config)
-    throw new Error(
-      "polaris-no-config: pass config (your generated polarisConfig) or a client factory.",
+    throw new CliConfigError(
+      `pass config (your generated polarisConfig) or a client factory; ${REGENERATE}.`,
     );
+  checkCliConfig(config);
   return (f) =>
     PolarisKeyClient.create({
       ...config,

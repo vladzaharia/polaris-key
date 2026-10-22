@@ -11,7 +11,7 @@ argparse adapter — the help text names the owner so the CLI surface matches th
 
 from __future__ import annotations
 
-from typing import Any, Callable, Mapping, Optional, Sequence, Union
+from typing import Any, Callable, List, Mapping, Optional, Sequence, Union
 
 import click
 from click.formatting import wrap_text
@@ -19,6 +19,21 @@ from click.formatting import wrap_text
 from ..ui.core import Copy
 from . import core, mount
 from . import verbs as verbs_mod
+
+class _VerbCommand(click.Command):
+    """A verb's command: under ``--json`` a usage error is still a result line on stdout (exit 2,
+    ``"error": "usage"``), as the Node kit's, not click's text on stderr."""
+
+    def parse_args(self, ctx: click.Context, args: List[str]) -> List[str]:
+        try:
+            return super().parse_args(ctx, args)
+        except click.UsageError as e:
+            if "--json" not in args:
+                raise
+            from .argparse_cli import json_usage_error
+
+            raise SystemExit(json_usage_error(self.name or "", e.format_message()))
+
 
 def _common(bound: bool):
     """The integration options; bound to a client or config they are hidden and not required."""
@@ -119,6 +134,7 @@ def register_click(
     verbs: Union[Sequence[str], str, None] = None,
     on_collision: str = "error",
     warn: Optional[Callable[[str], None]] = None,
+    on_skip: Optional[Callable[[List[str]], None]] = None,
     _nested: bool = False,
 ) -> click.Group:
     """Add the Polaris Key commands to ``host`` (a ``click.Group``), at its root or under
@@ -130,8 +146,7 @@ def register_click(
     binding = mount.resolve_binding(client_factory, client=client, config=config, version=version)
     host_prog = prog or host.name or "mytool"
     plan = mount.plan_mount(list(host.commands), namespace=namespace, verbs=verbs, on_collision=on_collision, bound=binding.bound, prog=host_prog)
-    if plan.skipped:
-        (warn or (lambda m: click.echo(m, err=True)))(mount.skip_warning(plan.skipped, host_prog))
+    mount.report_skipped(plan, host_prog, warn, on_skip, lambda m: click.echo(m, err=True))
     shown = (f"{prog} {namespace}" if namespace else prog) if prog else None
     product = binding.product or host_prog
     target = host
@@ -207,12 +222,12 @@ def _click_verb(
         params.append(click.Argument(["words"], nargs=-1))
     for o in verb.opts + verbs_mod.UI_OPTS:
         if o.kind == "flag":
-            params.append(click.Option([f"--{o.name}"], is_flag=True, default=False, help=_help(o), hidden=o.help.startswith("Accepted for compatibility")))
+            params.append(click.Option(([f"-{o.short}"] if o.short else []) + [f"--{o.name}"], is_flag=True, default=False, help=_help(o), hidden=o.help.startswith("Accepted for compatibility")))
         else:
             hide = bool(actions) and o.name == "to" and "download" not in (actions.get(verb.name) or ("download",))
             params.append(click.Option([f"--{o.name}"], type=int if o.kind == "int" else str, default=o.default, help=_help(o), hidden=hide))
     alias = verb.name in mount.ALIASES
-    cmd = click.Command(
+    cmd = _VerbCommand(
         name=verb.name,
         callback=callback,
         params=params,

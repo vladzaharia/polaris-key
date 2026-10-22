@@ -699,16 +699,16 @@ npm install @polaris-key/node commander   # or yargs
 ```ts
 import { Command } from "commander";
 import { registerPolarisCommands, requireLicense } from "@polaris-key/node/cli";
+import { polarisConfig as config } from "./polaris.config.js";
 
 const program = new Command("djdl");
-const config = {
-  productSlug: "djdl",
-  trust: { pinnedKeys: { "pkey-djdl-prod-2026-06": "…" } },
-};
 registerPolarisCommands(program, { config, version: "1.4.2" });
 program.command("export").action(requireLicense(() => undefined));
 await program.parseAsync();
 ```
+
+`polaris.config.ts` is what `pkey sdk --lang node --write` generates. A config with no slug, no pins
+or a placeholder pin fails the registration with `polaris-bad-config` and that command.
 
 The end-user verbs mount at the top level; `namespace`, `verbs` and `onCollision` shape the mount, and
 `requireLicense` (or `polarisGate(program)`) gates your own commands: a refused command prints
@@ -720,6 +720,13 @@ theming, localization, the `--json` contract and the fallbacks (`NO_COLOR`, `TER
 [Terminal (Node)](https://key.plrs.im/docs/build/ui/frameworks/terminal-node/).
 `kit: false` keeps the plain output, and each verb is also a plain function (`status(client)`,
 `devicesList(client)`, …) returning `{ ok, message, data }`.
+
+**Changed in the CLI adapters.** A bad `config` fails the registration with
+`polaris-bad-config`, naming `pkey sdk --lang node --write`. A bare `devices` runs `devices list`
+and a bare `update` runs `update check`, as the Python kit does. A strict yargs host still gets the
+kit's usage result (exit 2, and the `--json` line) for an option a verb doesn't take. Closing the
+pipe early (`| head -1`) ends quietly, and an unexpected failure prints its cause under
+`DEBUG=polaris`.
 
 **Changed in the terminal kit.** The adapters' human output is new: the rail, catalog
 copy in the active locale (nine languages), color on a terminal, and new verb names `login` and

@@ -68,12 +68,20 @@ raise SystemExit(args.func(args))
 only the verbs people need. Pass `client=` for a client you keep, or `client_factory` to build one
 from the parsed options.
 
+A `config` the program can't work from fails the registration at startup, not on the first verb:
+no `product_slug`, no `trust`, a pin that is not a 43-character key (a placeholder is one), or a
+`base_url` that is not an http(s) origin. The error is `polaris-bad-config` (a `ValueError`) and
+names the fix, `pkey sdk --lang python --write`.
+
 - `verbs=["activate", "status"]` picks the verbs by id (`devices list`), by a one-word verb's alias
   or by group (`devices`). The default is `END_USER`; developer verbs (`config`, `secret`, `mint`,
   `doctor`, …) mount only when named, or all with `verbs="all"`.
 - `namespace="license"` nests every verb: `tidewater license activate`.
 - A host command that equals a verb's first word fails the registration with
-  `polaris-verb-collision`; `on_collision="skip"` drops the verb and warns once.
+  `polaris-verb-collision`; `on_collision="skip"` drops the verb. Skipping is silent for the people
+  using your program: read the ids in `on_skip`, or set `DEBUG=polaris` to print the one warning
+  (`warn=` takes it instead).
+- A bare `devices` runs `devices list`, and a bare `update` runs `update check`.
 - `require_license` runs your command only on a usable license that holds the entitlement. At a
   terminal it first takes the person through activation; anything else prints a warning with the
   command that fixes it on stderr and exits 4 (`--json`: the result line on stdout with
@@ -87,7 +95,33 @@ from the parsed options.
 
 `polaris_click_group(client_factory, theme=…, prog=…)` and `polaris_typer_app(…)` take the same
 options and mount the verbs under a group of their own; `register_click(host, …)` and
-`register_typer(host, …)` add them to your own group or app, at its root or under `namespace`. `GroupedHelpParser`, as above, prints your commands first (pass `group="Build"` when you add a subcommand to name
+`register_typer(host, …)` add them to your own group or app, at its root or under `namespace`:
+
+```python
+import click
+
+from polaris_key.cli import register_click, require_license
+
+import polaris_config
+
+
+@click.group()
+def cli() -> None:
+    """Tidewater Studio."""
+
+
+@cli.command()
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable refusal.")
+@require_license(entitlement="export.pdf")
+def export(as_json: bool) -> None:
+    click.echo("exported")
+
+
+register_click(cli, config=polaris_config.CONFIG, version="2.4.1")
+```
+
+`register_typer(app, config=…, version=…)` is the same on a `typer.Typer`. A gated command needs its
+own `--json` option for the refusal's result line, as in Node. `GroupedHelpParser`, as above, prints your commands first (pass `group="Build"` when you add a subcommand to name
 its heading), then the license verbs under one License heading, in task order with their
 arguments. A plain `argparse.ArgumentParser` can only list every command in one block, so the
 verbs show there with the same one-line copy and no heading; click prints a License section and
@@ -224,7 +258,8 @@ object with `"v": 1` and `"command"`. Progress lines carry an `"event"` such as 
   "allowedRange": null,
   "profile": null,
   "version": "2.4.1",
-  "channel": "stable"
+  "channel": "stable",
+  "tokenStore": { "backend": "keyring", "degraded": null }
 }
 ```
 
@@ -244,12 +279,20 @@ Scripts that read the plain lines the CLI printed before the kit move to these f
 | `<key> = <value> (source: …)`        | `key`, `value`, `source` (`config`)                |
 
 Exit codes: 0 for success, 1 for a refusal, an unusable gate or a declined confirmation, 2 for a
-usage error, 4 for a gate in a host CLI that refuses the host's command (planned), and 130 when the
+usage error, 4 for a gate in a host CLI that refuses the host's command, and 130 when the
 person presses Ctrl-C. `polaris_key.ui.terminal.exit.EXIT` holds them, the same table as the `cli`
 family of the corpus's `ui-matrix.json`. Two argparse errors moved from 1 to 2 with the
 kit, because they are usage errors: a `--key-file` that cannot be read (or no key from any source
 without a terminal), and an `import-bundle` file that cannot be read or is empty. With `--json`, a
-malformed `--trust` pair also exits 2 with its result line.
+malformed `--trust` pair also exits 2 with its result line, and so does any usage error an
+argparse (a `GroupedHelpParser` host), click or typer verb meets: an option it doesn't take, a
+missing argument. The result line names the command by its id (`devices list`, `login`), as the
+Node kit's does.
+
+A failure the kit doesn't recognize (a client that can't be built, a bug) shows "Something went
+wrong" and exits 1, never a traceback; set `DEBUG=polaris` to print the traceback on stderr.
+Shell completion is the framework's: click and typer have it built in, and argparse hosts can use
+`argcomplete`. The Node kit's `completion` verb has no Python twin.
 
 ## Theming
 

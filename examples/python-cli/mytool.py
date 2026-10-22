@@ -19,7 +19,8 @@ from polaris_key.cli.argparse_cli import GroupedHelpParser
 
 PRODUCT = "mytool"
 VERSION = "1.0.0"
-# kid -> raw Ed25519 public key (base64url). PLACEHOLDERS: substitute your product's real pins.
+# kid -> raw Ed25519 public key (base64url). PLACEHOLDERS: the mount refuses them (polaris-bad-config)
+# until you substitute your product's real pins; `pkey sdk --lang python --write` writes them.
 TRUST = {"<your-signing-key-id>": "<your-product-signing-key-b64url>"}
 
 

@@ -55,6 +55,11 @@ pinned keys, the base URL and the services, so no client factory and no `--produ
 client yourself, pass a factory before the options:
 `registerPolarisCommands(program, (o) => PolarisKeyClient.create({ ...polarisConfig, version: o.version }), options)`.
 
+A `config` the program can't work from fails the registration at startup, not on the first verb:
+no `productSlug`, no `trust.pinnedKeys`, a pin that is not a 43-character key (a placeholder is
+one), or a `baseUrl` that is not an http(s) origin. The error is `polaris-bad-config` and names the
+fix, `pkey sdk --lang node --write`.
+
 The program mounts the end-user verbs at the top level. `--help` lists the program's own commands
 first, under its own headings, then the verbs under one **License** heading:
 
@@ -65,7 +70,8 @@ first, under its own headings, then the verbs under one **License** heading:
 | `devices list`, `devices rename <deviceId> [label...]`, `devices deauthorize <deviceId>` | The devices on the license |
 | `update check`, `update apply`                                                           | The program's updates      |
 
-The developer verbs mount only when `verbs` names them, or `verbs: "all"` mounts every one:
+A group word on its own runs its default action: `tidewater devices` is `devices list` and
+`tidewater update` is `update check`. The developer verbs mount only when `verbs` names them, or `verbs: "all"` mounts every one:
 
 | Group    | Verbs                                                                                                                  |
 | -------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -176,7 +182,9 @@ With yargs, import from its own entry so a commander-only project never loads ya
 `yargs(hideBin(process.argv)).command(polarisCommands({ config: polarisConfig, version }))`
 (`registerPolarisCommands(yargs, options)` is the same on an existing `Argv`). It takes the same
 options, mounts the same verbs, collides the same way (give `hostCommands` when mounting without an
-`Argv`) and gates a handler with `requireLicense`. yargs prints its commands in registration order
+`Argv`) and gates a handler with `requireLicense`. A verb ignores the host's `.strict()`: an
+option it doesn't take ends in the kit's usage result (exit 2, and the `--json` line), not yargs'
+own error. yargs prints its commands in registration order
 with no headings, so register the kit after your own to list yours first. Both adapters build from
 one verb table and run each verb through `runKitVerb`, so they draw the same screens and print the
 same JSON.
@@ -457,18 +465,22 @@ with `"error": "internal"` and exit 1.
 | `packs status`, `packs ensure`              | `packs`                                                                                                                       |
 | `offline-request`, `import-bundle`          | `product`, `requestCode`; `bundleId`, `imported`, `status`                                                                    |
 
+Closing the pipe early (`tidewater devices | head -1`) ends quietly. A failure the kit doesn't
+recognize shows "Something went wrong" and exits 1; set `DEBUG=polaris` to print its cause and
+stack on stderr.
+
 `"error"` appears on a failure that has a code: a registry code (`device_limit`, `network`),
 `usage`, `internal`, or `interrupted` for Ctrl-C. `"message"` appears only with a usage error and
 an `import-bundle` failure. A refusal from the server is `ok: false` with its `kind` and `code`,
 and an unusable license is `ok: false` with its `status`.
 
-| Exit code | Meaning                                                                                                                  |
-| --------- | ------------------------------------------------------------------------------------------------------------------------ |
-| 0         | Done; for `status`, the license is usable                                                                                |
-| 1         | A refusal, an unusable license, a device limit, a canceled or declined step, an unreachable service, any other failure   |
-| 2         | Usage: a missing argument, an option the verb does not take, no key to read                                              |
-| 4         | A gate in a host CLI refused the host's command: `"error"` is `license_required` or `not_entitled` (the gate is planned) |
-| 130       | Interrupted (Ctrl-C)                                                                                                     |
+| Exit code | Meaning                                                                                                                |
+| --------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 0         | Done; for `status`, the license is usable                                                                              |
+| 1         | A refusal, an unusable license, a device limit, a canceled or declined step, an unreachable service, any other failure |
+| 2         | Usage: a missing argument, an option the verb does not take, no key to read                                            |
+| 4         | A gate in a host CLI refused the host's command: `"error"` is `license_required` or `not_entitled`                     |
+| 130       | Interrupted (Ctrl-C)                                                                                                   |
 
 `EXIT` holds these codes (`EXIT.licenseRequired` is 4), the same table as the `cli` family of the
 corpus's `ui-matrix.json`, which both terminal kits run. A refusal the person can resolve is drawn as
