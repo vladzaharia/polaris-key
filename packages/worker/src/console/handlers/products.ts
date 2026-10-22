@@ -322,15 +322,13 @@ export async function handleProducts(
   if (!row) return notFound();
   if (req.method === "GET") {
     // A-20.4: the channels ride the record, but the shell must never fail on them: a throw leaves
-    // the two fields out and is logged to the Workers console (the error name only).
+    // the two fields out (the channels route itself still answers the error). No console logging
+    // in src (R12).
     let channels: Awaited<ReturnType<typeof channelsRead>> = null;
     try {
       channels = await channelsRead(env, db, slug, now);
-    } catch (e) {
-      console.error(
-        "channels read failed",
-        e instanceof Error ? e.name : "error",
-      );
+    } catch {
+      channels = null;
     }
     return adminJson({
       product: await productView(
