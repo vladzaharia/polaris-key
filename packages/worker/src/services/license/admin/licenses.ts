@@ -114,6 +114,7 @@ import { emailLicenseKey, handleSendKey } from "./keyEmail.js";
 import {
   emailLicenseInvitation,
   handleSendInvite,
+  invitationsOff,
   inviteRefusal,
 } from "./inviteEmail.js";
 import { handleAdminDevices } from "./devices.js";
@@ -407,16 +408,14 @@ export async function handleLicenses(
           );
       // LX-27c.4 (L15): whether an invitation can reach a licence of this product, and why not,
       // on the first page (the console's wizard and record read this one fact).
-      const invitationsOff = after ? undefined : await inviteRefusal(ctx);
+      const off = after ? undefined : await invitationsOff(ctx);
       return adminJson({
         licenses,
         nextCursor: page.nextCursor,
         ...totals,
-        ...(invitationsOff === undefined
+        ...(off === undefined
           ? {}
-          : {
-              holders: { invitations: invitationsOff === null, invitationsOff },
-            }),
+          : { holders: { invitations: off === null, invitationsOff: off } }),
       });
     }
     if (req.method === "POST") {

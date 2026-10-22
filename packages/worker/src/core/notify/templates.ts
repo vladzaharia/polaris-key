@@ -349,7 +349,8 @@ export function licenseInvitationEmail(input: {
   const holder = displayValue(input.holderName, "");
   const subject = inviteEmailSubject(name);
   const footer = INVITE_FOOTERS[input.context ?? "created"];
-  const intro = inviteEmailIntro(holder, name, displayValue(input.address, ""));
+  // The address is what the reader must type: stripped of control and bidi characters, never cut.
+  const intro = inviteEmailIntro(holder, name, plainAddress(input.address));
   const primary = input.downloadUrl
     ? { label: inviteEmailPrimaryLabel(true), url: input.downloadUrl }
     : { label: inviteEmailPrimaryLabel(false), url: input.signInUrl };
@@ -370,6 +371,7 @@ export function licenseInvitationEmail(input: {
       ? { hero: { name, ...(input.iconUrl ? { iconUrl: input.iconUrl } : {}) } }
       : {}),
     paragraphs: intro,
+    wrapAnywhere: true,
     action: primary,
     ...(secondary ? { secondary } : {}),
     footer,
@@ -377,6 +379,15 @@ export function licenseInvitationEmail(input: {
     brand: "locker",
   };
   return { subject, text, html: renderEmail(content) };
+}
+
+/** An email address for display: control, line-break, bidi and space characters removed, never cut. */
+function plainAddress(raw: string): string {
+  return raw.replace(
+    // eslint-disable-next-line no-control-regex
+    /[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200e\u200f\u202a-\u202e\u2066-\u2069\s]/g,
+    "",
+  );
 }
 
 // ── Security notices ─────────────────────────────────────────────────────────────────────────

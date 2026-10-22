@@ -56,7 +56,7 @@ export const inviteEmailIntro = (
   address: string,
 ): string[] => [
   ...(holderName ? [`Hi ${holderName},`] : []),
-  `Your ${productName || "app"} license is ready. Sign in with ${address} to use it.`,
+  `Your ${productName ? `${productName} ` : ""}license is ready. Sign in with ${address} to use it.`,
 ];
 
 /** The primary button: the product's download when it has one, else the portal sign-in. */

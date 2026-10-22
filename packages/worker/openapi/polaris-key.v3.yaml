@@ -16504,8 +16504,8 @@ paths:
                       invitations: { type: boolean }
                       invitationsOff:
                         type: [string, "null"]
-                        enum: [identity_off, auto_link_off, null]
-                        description: "Why not: Identity is off for the product, or its auto-link resolves off (a custom issuer). `null` when invitations are on."
+                        enum: [identity_off, auto_link_off, no_mail, null]
+                        description: "Why not: Identity is off for the product, its auto-link resolves off (a custom issuer), or email is not set up on this server (`no_mail`). `null` when invitations are on."
         "400":
           description: "`holder` or `state` is not one of its values, `limit` is out of range, or `cursor` is not one this list wrote (`bad_request`, `fields` names it)."
           content:

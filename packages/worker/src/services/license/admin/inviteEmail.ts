@@ -25,6 +25,7 @@ import type { LicenseAdminContext } from "./index.js";
 import {
   emailLinks,
   keyEmailBlocked,
+  mailUnavailable,
   productIconUrl,
   SEND_INVITE_ACTION,
   SEND_INVITE_FAILED_ACTION,
@@ -52,6 +53,19 @@ export async function inviteRefusal(
   const on = await newLicensesAutoLink(ctx.db, ctx.product.slug);
   if (on === null) return "identity_off";
   return on ? null : "auto_link_off";
+}
+
+/**
+ * What the licence list tells the console about invitations (L15): `null` when one can be sent,
+ * else why not. `no_mail` is no mail binding or sender: the wizard then offers no invitation
+ * that cannot go out. (A create or a resend still answers with the send's own reason.)
+ */
+export async function invitationsOff(
+  ctx: LicenseAdminContext,
+): Promise<InviteRefusal | "no_mail" | null> {
+  return (
+    (await inviteRefusal(ctx)) ?? (mailUnavailable(ctx) ? "no_mail" : null)
+  );
 }
 
 /**

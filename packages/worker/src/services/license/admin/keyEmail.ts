@@ -101,6 +101,12 @@ export async function productIconUrl(
   }
 }
 
+/** No mail binding, or no usable sender for this product: nothing can be emailed. */
+export function mailUnavailable(ctx: LicenseAdminContext): boolean {
+  const { env, product } = ctx;
+  return !env.EMAIL || !passthroughSender(env, product.name, product.slug);
+}
+
 /**
  * Refuse BEFORE minting what no retry can fix: no mail binding or sender, an unusable address,
  * a suppressed recipient, the product's spent daily cap. Answers the reason, or null when a send
@@ -111,8 +117,7 @@ export async function keyEmailBlocked(
   to: string,
 ): Promise<EmailFailure | null> {
   const { env, db, product, now } = ctx;
-  if (!env.EMAIL || !passthroughSender(env, product.name, product.slug))
-    return "no_mail_binding";
+  if (mailUnavailable(ctx)) return "no_mail_binding";
   if (
     strictEmail(to) === null ||
     (isApplePrivateRelay(to) && !applePrivateRelayRegistered(env))

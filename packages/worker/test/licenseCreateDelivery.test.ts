@@ -599,6 +599,43 @@ describe("create with deviceLimit and delivery, and send-key (LX-27)", () => {
       invitations: false,
       invitationsOff: "auto_link_off",
     });
+
+    // No mail binding: an invitation could not go out, so none is offered (B1).
+    await db.run("DELETE FROM oidc_config");
+    env.EMAIL = undefined;
+    expect(await first()).toEqual({
+      invitations: false,
+      invitationsOff: "no_mail",
+    });
+  });
+
+  it("the invitation names a long address in full, breakably, and strips control characters", () => {
+    const long42 = "nour.alhuda.the.very.long.name@studio-harbour.example";
+    const long90 = `${"abcdefghij".repeat(6)}@${"studio".repeat(4)}.example`;
+    for (const address of [long42, long90, `a\u202Eb@x.io\u0007`]) {
+      const m = licenseInvitationEmail({
+        productName: "Mossgarden",
+        holderName: null,
+        address,
+        signInUrl: "https://key.plrs.im/signin?product=djdl",
+        origin: "https://key.plrs.im",
+      });
+      const shown = address.replace(/[\u0000-\u001f\u202e]/g, "");
+      expect(m.text).toContain(`Sign in with ${shown} to use it.`);
+      expect(m.html).toContain(shown);
+      expect(m.html).toContain("overflow-wrap:anywhere");
+      expect({ address: shown, text: m.text }).toMatchSnapshot();
+    }
+    // No product name: neutral copy, not "Your app license".
+    expect(
+      licenseInvitationEmail({
+        productName: null,
+        holderName: null,
+        address: "a@b.io",
+        signInUrl: "https://key.plrs.im/signin",
+        origin: "https://key.plrs.io",
+      }).text,
+    ).toContain("Your license is ready.");
   });
 
   it("invitation template snapshots: created and assigned, with and without a name and a download", () => {
