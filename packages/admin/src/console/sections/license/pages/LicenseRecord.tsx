@@ -273,11 +273,16 @@ function LicenseRecordBody({
       aria-label={`Tier: ${tierLabel ?? "No tier"}. Change tier`}
       iconStart={<Layers />}
       iconEnd={<ChevronDown />}
+      // A long tier name truncates (its full name is in the aria-label) rather than squeezing
+      // the title into a one-word-per-line column.
+      className="max-w-full sm:max-w-[16rem]"
       onClick={() => setDialog("tier")}
     >
       <span className="text-fg-muted conbig:sr-only">Tier</span>
       {tierLabel ? (
-        <span>{tierLabel}</span>
+        <span className="min-w-0 truncate" title={tierLabel}>
+          {tierLabel}
+        </span>
       ) : (
         <span className="text-fg-muted">No tier</span>
       )}
