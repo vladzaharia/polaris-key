@@ -181,9 +181,8 @@ export function LibraryTile({
             >
               <h3
                 id={`tile-${product.slug}`}
-                dir="auto"
                 className={cn(
-                  "min-w-0 flex-1 line-clamp-2 break-words font-semibold bigtext:line-clamp-none leading-snug text-fg-strong [text-align:match-parent]",
+                  "min-w-0 flex-1 break-words font-semibold leading-snug text-fg-strong",
                   tiny ? "text-sm" : "text-base",
                 )}
               >
@@ -192,9 +191,11 @@ export function LibraryTile({
                   // block: the name's full line is the link (24 px or taller), so a short name
                   // still meets the target size (WCAG 2.5.8; PS-05). Its focus ring is the
                   // card's, which it stretches over (styles.css, .pk-press-link).
-                  className="pk-press-link block rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+                  className="pk-press-link line-clamp-2 rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none bigtext:line-clamp-none"
                 >
-                  {product.name}
+                  {/* The name reads in its own script (dir=auto) on a span, so the line
+                      itself stays the page's: an RTL name starts at the icon's edge (LF3). */}
+                  <span dir="auto">{product.name}</span>
                 </a>
               </h3>
               {tiny && noArt ? menu : null}

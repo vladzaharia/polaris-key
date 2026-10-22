@@ -421,11 +421,10 @@ describe.concurrent(
 describe.concurrent(
   "a right-to-left name stays beside its icon (B-078, LF3)",
   () => {
-    const name = "لعبة الأحجار الكريمة والمغامرات الكبرى في الصحراء";
     const base = portalRoutes("three")["/api/library"] as () => {
       body: { products: Record<string, unknown>[] };
     };
-    const routes: Record<string, Handler> = {
+    const routesFor = (name: string): Record<string, Handler> => ({
       "/api/library": () => {
         const res = base();
         return {
@@ -437,20 +436,25 @@ describe.concurrent(
           },
         };
       },
-    };
+    });
     // The name is `dir="auto"` (it reads in its own script), but its alignment follows the page: left
     // in an LTR page, so the name starts at the icon's edge whatever its script (LF3). On a phone the
     // name sits under the icon, where a right-aligned line was the far edge from it.
-    for (const [theme, width, height] of [
-      ["dark", 1440, 900],
-      ["light", 390, 844],
-    ] as [Theme, number, number][]) {
-      it(`in the Library tile (${theme}, ${width})`, async ({ expect }) => {
+    for (const [theme, width, height, name] of [
+      ["dark", 1440, 900, "لعبة الأحجار الكريمة والمغامرات الكبرى في الصحراء"],
+      ["light", 390, 844, "لعبة الأحجار الكريمة والمغامرات الكبرى في الصحراء"],
+      // A short name has room on both sides: it must start at the icon's edge, not the far one.
+      ["dark", 1440, 900, "لعبة"],
+      ["light", 390, 844, "لعبة"],
+    ] as [Theme, number, number, string][]) {
+      it(`in the Library tile (${theme}, ${width}, ${name.length} letters)`, async ({
+        expect,
+      }) => {
         const o = await portal.open("three", "/", {
           theme,
           width,
           height,
-          routes,
+          routes: routesFor(name),
         });
         try {
           await h1(o.page, "Your library");
@@ -469,12 +473,13 @@ describe.concurrent(
               textRight: box.right - first.right,
               icon: article.left,
               align: getComputedStyle(h3).textAlign,
-              dir: h3.getAttribute("dir"),
+              dir: h3.querySelector("[dir]")?.getAttribute("dir") ?? null,
             };
           }, name);
           // The line begins at the box's left edge (beside the icon), not its right, and the name
           // still reads right to left (`dir="auto"`).
           expect(at.textLeft).toBeLessThan(at.textRight + 1);
+          if (name.length < 10) expect(at.textLeft).toBeLessThan(2);
           // `text-align: match-parent`: the page's start edge, so "start" in this LTR page (the
           // lint bans the physical `left`).
           expect(["start", "left"]).toContain(at.align);
@@ -531,6 +536,33 @@ describe.concurrent("the Library skeleton is a tile's size (B-084)", () => {
         expect(Math.abs(skeleton - tile)).toBeLessThanOrEqual(4);
       } finally {
         release();
+        await o.close();
+      }
+    });
+  }
+});
+
+/**
+ * The Locker is English: a French browser still reads English dates and relative times inside
+ * English sentences ("last used 3 wk. ago", never "il y a 3 sem.", LF4).
+ */
+describe.concurrent("a French browser reads English dates", () => {
+  const FRENCH =
+    /\b(il y a|hier|avant-hier|demain|dans \d|maintenant|sem\.|semaines?|jours?|mois|heures?|min\.|déc|janv|févr|avr|juil|sept|oct\.|nov\.)\b/i;
+  for (const [name, scenario, path, heading] of [
+    ["the Account page", "three", "/#/account", "Account"],
+    ["the product page", "three", "/#/p/nightfall", /nightfall/i],
+  ] as const) {
+    it(`${name} has no French in its text`, async ({ expect }) => {
+      const o = await portal.open(scenario, path, { locale: "fr-FR" });
+      try {
+        await h1(o.page, heading);
+        await o.page.waitForTimeout(500);
+        const text = await o.page.evaluate(() => document.body.innerText);
+        expect(text.match(FRENCH)).toBeNull();
+        // The relative times are there to be checked at all.
+        expect(text).toMatch(/\bago\b/);
+      } finally {
         await o.close();
       }
     });

@@ -39,6 +39,7 @@ import {
   QuietLinks,
 } from "../../ui/auth/index.js";
 import { HELP_LINKS } from "../helpLinks.js";
+import { LegalNav } from "../components/signin/LegalNav.js";
 import { AuthLockup } from "../components/Lockup.js";
 import { ProductIcon } from "../components/ProductIcon.js";
 import { KeyField } from "../components/KeyField.js";
@@ -335,25 +336,7 @@ export function SignInPage({
             ? "unreachable"
             : (ssoKey ?? step.kind);
 
-  const legalNav = (
-    <nav
-      aria-label={t("locker.shell.help")}
-      className="flex flex-wrap justify-center gap-x-5"
-    >
-      <a
-        href={HELP_LINKS.help}
-        className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-fg-strong"
-      >
-        {t("locker.shell.helpLink")}
-      </a>
-      <a
-        href={HELP_LINKS.privacy}
-        className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-fg-strong"
-      >
-        {t("locker.shell.privacy")}
-      </a>
-    </nav>
-  );
+  const legalNav = <LegalNav />;
 
   return (
     <AuthCard

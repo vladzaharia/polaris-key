@@ -35,6 +35,7 @@ import {
   useSignInRequest,
 } from "../../requestData.js";
 import { AuthLockup } from "../Lockup.js";
+import { LegalNav } from "./LegalNav.js";
 import { ConsentStep } from "./ConsentStep.js";
 import { LicenseChoiceStep } from "./LicenseChoiceStep.js";
 import { ReplaceDeviceStep } from "./ReplaceDeviceStep.js";
@@ -396,6 +397,7 @@ export function RequestFlow({
       header={header}
       footer={footer}
       receipt={footer !== undefined}
+      after={<LegalNav />}
       stepKey={key}
       direction={direction}
     >

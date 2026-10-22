@@ -88,7 +88,7 @@ export function LibraryToolbar({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <label className="relative flex h-11 pointer-coarse:h-[46px] min-w-0 basis-full items-center rounded-md border border-border-strong bg-surface-page wide:w-80 wide:flex-none wide:basis-auto">
+      <label className="relative flex h-11 pointer-coarse:h-[46px] focus-within:outline-2 focus-within:outline-solid focus-within:outline-offset-2 focus-within:outline-focus min-w-0 basis-full items-center rounded-md border border-border-strong bg-surface-page wide:w-80 wide:flex-none wide:basis-auto">
         <Search
           aria-hidden
           className="pointer-events-none absolute start-3 size-4 text-fg-muted"

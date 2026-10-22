@@ -117,7 +117,7 @@ export function JumpPalette({
   };
 
   const item =
-    "flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-md text-fg data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong";
+    "flex min-h-11 cursor-pointer flex-wrap items-center gap-x-3 gap-y-0 rounded-md px-3 py-2 text-md text-fg data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong";
   const group =
     "[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-fg-muted";
 
@@ -195,7 +195,10 @@ export function JumpPalette({
                         src={p.presentation.iconUrl}
                         size={24}
                       />
-                      <span dir="auto" className="min-w-0 flex-1 truncate">
+                      <span
+                        dir="auto"
+                        className="min-w-0 flex-1 basis-24 truncate bigtext:whitespace-normal bigtext:[overflow-wrap:anywhere]"
+                      >
                         {p.name}
                       </span>
                       <span className="shrink-0 text-xs text-fg-muted">

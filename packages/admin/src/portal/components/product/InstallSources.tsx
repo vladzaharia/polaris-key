@@ -94,8 +94,8 @@ function InstallSourceItem({
   // A page to open in a new tab: Obtainium's web hand-off, or a source with no deep link.
   const web = paste ? null : httpsOnly(s.url);
   return (
-    <li className="flex gap-3 py-3">
-      <span className="inline-flex size-8 shrink-0 items-center justify-center text-fg-muted">
+    <li className="@container flex gap-3 py-3 @max-[12rem]:gap-0">
+      <span className="inline-flex size-8 shrink-0 @max-[12rem]:hidden items-center justify-center text-fg-muted">
         {platform ? (
           <PlatformGlyph platform={platform} className="size-5" />
         ) : null}
@@ -152,7 +152,7 @@ function InstallSourceItem({
           <SourceWebLink href={web} label={C["getIt.obtainiumWeb"]} quiet />
         ) : null}
         {desktop && s.qr ? (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <img
               src={s.qr}
               alt={qrAlt(s.label)}
@@ -160,7 +160,9 @@ function InstallSourceItem({
               height={112}
               className="size-28 shrink-0 rounded-md border border-border bg-white"
             />
-            <p className="text-sm text-fg-muted">{scanHint(platform, name)}</p>
+            <p className="min-w-0 flex-1 basis-40 text-sm text-fg-muted">
+              {scanHint(platform, name)}
+            </p>
           </div>
         ) : null}
       </div>

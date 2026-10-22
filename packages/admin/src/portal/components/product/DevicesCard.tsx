@@ -23,6 +23,7 @@ import {
   viewTransitionsSupported,
 } from "../../../ui/motion/index.js";
 import { formatRelative } from "../../../lib/format.js";
+import { PORTAL_FMT } from "../../date.js";
 import type { PortalDevice, PortalLicenseDetail } from "../../api.js";
 import { useRemoveDevice } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
@@ -352,7 +353,7 @@ export function DeviceRow({
     deviceOsName(device.platform),
     device.appVersion,
     t("locker.freeDevice.lastSeen", {
-      when: formatRelative(device.lastSeen * 1000),
+      when: formatRelative(device.lastSeen * 1000, Date.now(), PORTAL_FMT),
     }),
   ]
     .filter(Boolean)

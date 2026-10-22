@@ -20,6 +20,7 @@ import { Expand } from "../../../ui/motion/index.js";
 import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import { formatRelative } from "../../../lib/format.js";
+import { PORTAL_FMT } from "../../date.js";
 import { formatDay } from "../../date.js";
 import {
   portalApi,
@@ -559,7 +560,11 @@ function MethodGroups({
                 t("locker.methods.addedOn", { date: formatDay(e.connectedAt) }),
                 e.lastUsedAt
                   ? t("locker.methods.lastUsed", {
-                      when: formatRelative(e.lastUsedAt * 1000),
+                      when: formatRelative(
+                        e.lastUsedAt * 1000,
+                        Date.now(),
+                        PORTAL_FMT,
+                      ),
                     })
                   : t("locker.methods.neverUsed"),
               ]
@@ -704,7 +709,7 @@ function methodMeta(m: PortalMethod): string {
     t("locker.methods.connectedOn", { date: formatDay(m.connectedAt) }),
     m.lastUsedAt
       ? t("locker.methods.lastUsed", {
-          when: formatRelative(m.lastUsedAt * 1000),
+          when: formatRelative(m.lastUsedAt * 1000, Date.now(), PORTAL_FMT),
         })
       : null,
     m.tenantScoped ? t("locker.methods.gameOnly") : null,
@@ -719,7 +724,7 @@ function passkeyMeta(p: PortalPasskey): string {
     t("locker.methods.addedCap", { date: formatDay(p.createdAt) }),
     p.lastUsedAt
       ? t("locker.methods.lastUsed", {
-          when: formatRelative(p.lastUsedAt * 1000),
+          when: formatRelative(p.lastUsedAt * 1000, Date.now(), PORTAL_FMT),
         })
       : t("locker.methods.neverUsed"),
     // The browser it came from, unless it already names the passkey.

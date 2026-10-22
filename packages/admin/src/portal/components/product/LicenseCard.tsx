@@ -238,7 +238,7 @@ function LicenseFacts({
           ) : null}
         </LicenseTerm>
       )}
-      <dl className="grid grid-cols-1 gap-x-4 gap-y-4 text-sm min-[22rem]:grid-cols-2 desk:gap-y-2">
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-4 text-sm min-[22rem]:grid-cols-2 bigtext:min-[22rem]:grid-cols-1 desk:gap-y-2">
         <Fact term={t("license.fact.versions")}>
           <span
             className={
@@ -319,7 +319,13 @@ function Fact({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <div className={wide ? "min-[22rem]:col-span-2" : undefined}>
+    <div
+      className={
+        wide
+          ? "min-[22rem]:col-span-2 bigtext:min-[22rem]:col-span-1"
+          : undefined
+      }
+    >
       <dt className="text-xs text-fg-muted">{term}</dt>
       <dd className="mt-0.5 min-w-0 text-fg-strong desk:mt-0 [overflow-wrap:anywhere]">
         {children}
