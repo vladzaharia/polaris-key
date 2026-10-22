@@ -185,10 +185,9 @@ describe("a failed request says what to check", () => {
       fetchImpl: refused(),
     });
     expect(r.code).toBe(1);
-    expect(r.err).toContain("Could not reach http://127.0.0.1:1/demo/");
-    expect(r.err).toContain("the connection was refused");
-    expect(r.err).toContain("--base-url");
-    expect(r.err).not.toContain("fetch failed");
+    expect(r.out).toContain("Can't reach 127.0.0.1:1.");
+    expect(r.out).toContain("Check your network, or --base-url.");
+    expect(r.out + r.err).not.toContain("fetch failed");
   });
 
   it("doctor --json keeps the same sentence in the discovery fact", async () => {
@@ -210,7 +209,8 @@ describe("a failed request says what to check", () => {
     expect(line.ok).toBe(false);
     expect(line.facts.find((f) => f.id === "discovery")).toMatchObject({
       state: "todo",
-      detail: expect.stringContaining("Could not reach"),
+      detail: "Can't reach 127.0.0.1:1.",
+      code: "network",
     });
   });
 
@@ -234,7 +234,8 @@ describe("a failed request says what to check", () => {
         new Response("", { status: 404 })) as typeof fetch,
     });
     expect(r.code).toBe(1);
-    expect(r.out).toContain("Is the product registered");
+    expect(r.out).toContain("Answered 404 at key.plrs.im");
+    expect(r.out).toContain("register the product");
   });
 });
 

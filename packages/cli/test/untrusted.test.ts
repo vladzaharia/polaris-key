@@ -417,8 +417,8 @@ describe("pkey doctor against a hostile discovery document", () => {
         },
       );
       expect(code).toBe(0);
-      expect(io.out()).toContain("Remote discovery: ok");
-      expect(io.out()).toMatch(/Services enabled: .*release/);
+      expect(io.out()).toContain("Manifest");
+      expect(io.out()).toMatch(/Services[\s\S]*release/);
       expectInert(`${io.out()}${io.err()}`, actions);
     });
 

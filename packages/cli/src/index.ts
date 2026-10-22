@@ -3,6 +3,7 @@ import path from "node:path";
 import {
   BUNDLE_USAGE,
   DEFAULT_BASE_URL,
+  maskTokens,
   mintBundle,
   type TokenSource,
 } from "./bundle.js";
@@ -42,15 +43,16 @@ import { cmdLogin, type LoginSeams } from "./login.js";
 import { keyringStore, type CredentialStore } from "./credentials.js";
 import { applyContext, resolveContext, type PkeyContext } from "./context.js";
 import {
+  buildReport,
+  checkConfigFiles,
   checkRemote,
   DOCTOR_TIMEOUT_MS,
-  doctorOk,
   gatherSession,
-  manifestFact,
+  hostOf,
+  renderReport,
+  reportJson,
   sessionJson,
-  sessionText,
-  todoCount,
-  type DoctorFact,
+  type ManifestInput,
 } from "./doctor.js";
 import {
   Spinner,
@@ -1279,8 +1281,9 @@ async function cmdDistributionCi(
 /**
  * `pkey doctor [--product slug] [--base-url url] [--json]`: validate `.pkey/`, then, when a
  * product is known (the flag, else the nearest `.pkey/product`), check its live discovery at the
- * base URL (the flag, else `PKEY_BASE_URL`, else production). The facts are `doctor.ts`'s; the text
- * answer prints the validation then the remote lines, `--json` the facts in one result line.
+ * base URL (the flag, else `PKEY_BASE_URL`, else production), who is signed in and the product's
+ * Integration. Every step runs whatever the one before found, and the text and `--json` are drawn
+ * from one report (`doctor.ts`): the summary and the exit code are the same count.
  */
 async function cmdDoctor(
   parsed: ParsedArgs,
@@ -1290,7 +1293,7 @@ async function cmdDoctor(
   ci: CiIo & { env: CiEnv },
   admin: AdminIo,
 ): Promise<number> {
-  const u = (v: unknown) => untrusted(v, ci.env);
+  const started = performance.now();
   const ctx = await resolveContext({
     cwd,
     env: ci.env,
@@ -1300,100 +1303,62 @@ async function cmdDoctor(
   // One deadline for discovery, /me and the Integration view.
   const signal = AbortSignal.timeout(DOCTOR_TIMEOUT_MS);
   const io: AdminIo = { ...admin, baseUrl: ctx.baseUrl.url, signal };
-  if (flagBool(parsed, "json"))
-    return doctorJson(ctx, cwd, stdout, ci, io, signal);
 
-  const localCode = await validateText(cwd, cwd, stdout, term);
-  if (!ctx.product) {
-    stdout.write(
-      "\nRemote checks skipped. No product: pass --product, or run where .pkey/product is.\n",
-    );
-    return localCode;
-  }
-  const remote = await checkRemote({
-    baseUrl: ctx.baseUrl.url,
-    product: ctx.product.slug,
-    fetchImpl: ci.fetchImpl,
-    signal,
-  });
-  if (remote.status !== undefined) {
-    stdout.write(
-      `\nRemote discovery: failed (${remote.status}) ${remote.url}\n` +
-        "Is the product registered, and is --base-url (or $PKEY_BASE_URL) the right origin?\n",
-    );
-    return 1;
-  }
-  stdout.write(`\nRemote discovery: ok ${remote.url}\n`);
-  // Every name and value below is the server's: each is cleaned (`untrusted.ts`).
-  const enabled = remote.services.map((slug) => u(slug));
-  stdout.write(
-    `Services enabled: ${enabled.length ? enabled.join(", ") : "none"}\n`,
-  );
-  stdout.write(`Signing keys exposed: ${u(JSON.stringify(remote.signing))}\n`);
-  const session = await gatherSession({
-    io,
-    slug: ctx.product.slug,
-    signal,
-  });
-  stdout.write(`\n${sessionText(session, term, io.env)}`);
-  return localCode === 0 && todoCount(session.integration) === 0 ? 0 : 1;
-}
-
-/** `pkey doctor --json`: one result line, the facts beside the envelope's fields. */
-async function doctorJson(
-  ctx: PkeyContext,
-  cwd: string,
-  stdout: TermOut,
-  ci: CiIo & { env: CiEnv },
-  io: AdminIo,
-  signal: AbortSignal,
-): Promise<number> {
-  let result: ValidationResult | null = null;
-  let problem: string | undefined;
+  let manifest: ManifestInput;
   try {
-    result = validateLoadedManifest(await loadManifest(cwd));
+    const loaded = await loadManifest(cwd);
+    manifest = {
+      state: "read",
+      result: validateLoadedManifest(loaded),
+      fileWarnings: loaded.fileWarnings ?? [],
+    };
   } catch (e) {
-    problem = (e as Error).message;
+    manifest = { state: "missing", problem: (e as Error).message };
   }
-  const facts: DoctorFact[] = [manifestFact(result, problem)];
-  let services: string[] = [];
-  let signing: unknown = null;
-  if (ctx.product) {
-    try {
-      const remote = await checkRemote({
+  const remote = ctx.product
+    ? await checkRemote({
         baseUrl: ctx.baseUrl.url,
         product: ctx.product.slug,
         fetchImpl: ci.fetchImpl,
         signal,
-      });
-      facts.push(...remote.facts);
-      services = remote.services;
-      signing = remote.signing;
-    } catch (e) {
-      facts.push({
-        id: "discovery",
-        state: "todo",
-        detail: (e as Error).message,
-      });
-    }
-  }
+      })
+    : null;
   const session = await gatherSession({
     io,
     slug: ctx.product?.slug ?? null,
     signal,
   });
-  const exit = doctorOk(facts) && todoCount(session.integration) === 0 ? 0 : 1;
-  stdout.write(
-    envelope("doctor", exit, {
-      product: ctx.product?.slug ?? null,
-      baseUrl: ctx.baseUrl.url,
-      facts,
-      services,
-      signing,
-      ...sessionJson(session),
-    }),
-  );
-  return exit;
+  const reached = remote?.facts[0]?.state === "ok";
+  const config = await checkConfigFiles({
+    cwd,
+    host: hostOf(ctx.baseUrl.url),
+    exposed: reached ? remote!.keys : null,
+  });
+  const report = buildReport({
+    product: ctx.product,
+    baseUrl: ctx.baseUrl.url,
+    manifest,
+    remote,
+    session,
+    config,
+    env: ci.env,
+  });
+  if (flagBool(parsed, "json")) {
+    stdout.write(
+      envelope("doctor", report.exit, {
+        product: ctx.product?.slug ?? null,
+        baseUrl: maskTokens(ctx.baseUrl.url),
+        ...reportJson(report),
+        services: remote?.services ?? [],
+        signing: remote?.signing ?? null,
+        keys: remote?.keys ?? [],
+        ...sessionJson(session),
+      }),
+    );
+    return report.exit;
+  }
+  stdout.write(renderReport(report, term, performance.now() - started));
+  return report.exit;
 }
 
 /**

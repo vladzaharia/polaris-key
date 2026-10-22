@@ -5189,22 +5189,22 @@ var require_foldFlowLines = __commonJS({
     var FOLD_FLOW = "flow";
     var FOLD_BLOCK = "block";
     var FOLD_QUOTED = "quoted";
-    function foldFlowLines(text2, indent, mode = "flow", { indentAtStart, lineWidth = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
-      if (!lineWidth || lineWidth < 0)
+    function foldFlowLines(text2, indent, mode = "flow", { indentAtStart, lineWidth: lineWidth2 = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
+      if (!lineWidth2 || lineWidth2 < 0)
         return text2;
-      if (lineWidth < minContentWidth)
+      if (lineWidth2 < minContentWidth)
         minContentWidth = 0;
-      const endStep = Math.max(1 + minContentWidth, 1 + lineWidth - indent.length);
+      const endStep = Math.max(1 + minContentWidth, 1 + lineWidth2 - indent.length);
       if (text2.length <= endStep)
         return text2;
       const folds = [];
       const escapedFolds = {};
-      let end = lineWidth - indent.length;
+      let end = lineWidth2 - indent.length;
       if (typeof indentAtStart === "number") {
-        if (indentAtStart > lineWidth - Math.max(2, minContentWidth))
+        if (indentAtStart > lineWidth2 - Math.max(2, minContentWidth))
           folds.push(0);
         else
-          end = lineWidth - indentAtStart;
+          end = lineWidth2 - indentAtStart;
       }
       let split = void 0;
       let prev = void 0;
@@ -5331,10 +5331,10 @@ var require_stringifyString = __commonJS({
       minContentWidth: ctx.options.minContentWidth
     });
     var containsDocumentMarker = (str7) => /^(%|---|\.\.\.)/m.test(str7);
-    function lineLengthOverLimit(str7, lineWidth, indentLength) {
-      if (!lineWidth || lineWidth < 0)
+    function lineLengthOverLimit(str7, lineWidth2, indentLength) {
+      if (!lineWidth2 || lineWidth2 < 0)
         return false;
-      const limit = lineWidth - indentLength;
+      const limit = lineWidth2 - indentLength;
       const strLen = str7.length;
       if (strLen <= limit)
         return false;
@@ -5461,12 +5461,12 @@ ${indent}`) + "'";
       blockEndNewlines = /\n+(?!\n|$)/g;
     }
     function blockString({ comment, type, value }, ctx, onComment, onChompKeep) {
-      const { blockQuote, commentString, lineWidth } = ctx.options;
+      const { blockQuote, commentString, lineWidth: lineWidth2 } = ctx.options;
       if (!blockQuote || /\n[\t ]+$/.test(value)) {
         return quotedString(value, ctx);
       }
       const indent = ctx.indent || (ctx.forceBlockIndent || containsDocumentMarker(value) ? "  " : "");
-      const literal2 = blockQuote === "literal" ? true : blockQuote === "folded" || type === Scalar.Scalar.BLOCK_FOLDED ? false : type === Scalar.Scalar.BLOCK_LITERAL ? true : !lineLengthOverLimit(value, lineWidth, indent.length);
+      const literal2 = blockQuote === "literal" ? true : blockQuote === "folded" || type === Scalar.Scalar.BLOCK_FOLDED ? false : type === Scalar.Scalar.BLOCK_LITERAL ? true : !lineLengthOverLimit(value, lineWidth2, indent.length);
       if (!value)
         return literal2 ? "|\n" : ">\n";
       let chomp;
@@ -5828,8 +5828,8 @@ ${ctx.indent}`;
         const vs0 = valueStr[0];
         const nl0 = valueStr.indexOf("\n");
         const hasNewline = nl0 !== -1;
-        const flow2 = ctx.inFlow ?? value.flow ?? value.items.length === 0;
-        if (hasNewline || !flow2) {
+        const flow3 = ctx.inFlow ?? value.flow ?? value.items.length === 0;
+        if (hasNewline || !flow3) {
           let hasPropsLine = false;
           if (hasNewline && (vs0 === "&" || vs0 === "!")) {
             let sp0 = valueStr.indexOf(" ");
@@ -6060,8 +6060,8 @@ var require_stringifyCollection = __commonJS({
     var stringify2 = require_stringify();
     var stringifyComment = require_stringifyComment();
     function stringifyCollection(collection, ctx, options) {
-      const flow2 = ctx.inFlow ?? collection.flow;
-      const stringify3 = flow2 ? stringifyFlowCollection : stringifyBlockCollection;
+      const flow3 = ctx.inFlow ?? collection.flow;
+      const stringify3 = flow3 ? stringifyFlowCollection : stringifyBlockCollection;
       return stringify3(collection, ctx, options);
     }
     function stringifyBlockCollection({ comment, items }, ctx, { blockItemPrefix, flowChars, itemIndent, onChompKeep, onComment }) {
@@ -6845,11 +6845,11 @@ var require_binary = __commonJS({
         }
         type ?? (type = Scalar.Scalar.BLOCK_LITERAL);
         if (type !== Scalar.Scalar.QUOTE_DOUBLE) {
-          const lineWidth = Math.max(ctx.options.lineWidth - ctx.indent.length, ctx.options.minContentWidth);
-          const n = Math.ceil(str7.length / lineWidth);
+          const lineWidth2 = Math.max(ctx.options.lineWidth - ctx.indent.length, ctx.options.minContentWidth);
+          const n = Math.ceil(str7.length / lineWidth2);
           const lines4 = new Array(n);
-          for (let i = 0, o = 0; i < n; ++i, o += lineWidth) {
-            lines4[i] = str7.substr(o, lineWidth);
+          for (let i = 0, o = 0; i < n; ++i, o += lineWidth2) {
+            lines4[i] = str7.substr(o, lineWidth2);
           }
           str7 = lines4.join(type === Scalar.Scalar.BLOCK_LITERAL ? "\n" : " ");
         }
@@ -7729,7 +7729,7 @@ var require_Document = __commonJS({
           options = replacer;
           replacer = void 0;
         }
-        const { aliasDuplicateObjects, anchorPrefix, flow: flow2, keepUndefined, onTagObj, tag: tag2 } = options ?? {};
+        const { aliasDuplicateObjects, anchorPrefix, flow: flow3, keepUndefined, onTagObj, tag: tag2 } = options ?? {};
         const { onAnchor, setAnchors, sourceObjects } = anchors.createNodeAnchors(
           this,
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -7745,7 +7745,7 @@ var require_Document = __commonJS({
           sourceObjects
         };
         const node = createNode.createNode(value, tag2, ctx);
-        if (flow2 && identity.isCollection(node))
+        if (flow3 && identity.isCollection(node))
           node.flow = true;
         setAnchors();
         return node;
@@ -7995,7 +7995,7 @@ var require_resolve_props = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/dist/compose/resolve-props.js"(exports) {
     "use strict";
     init_define_PKEY_EMBEDDED_SCHEMAS();
-    function resolveProps(tokens, { flow: flow2, indicator, next, offset, onError, parentIndent, startOnNewline }) {
+    function resolveProps(tokens, { flow: flow3, indicator, next, offset, onError, parentIndent, startOnNewline }) {
       let spaceBefore = false;
       let atNewline = startOnNewline;
       let hasSpace = startOnNewline;
@@ -8024,7 +8024,7 @@ var require_resolve_props = __commonJS({
         }
         switch (token.type) {
           case "space":
-            if (!flow2 && (indicator !== "doc-start" || next?.type !== "flow-collection") && token.source.includes("	")) {
+            if (!flow3 && (indicator !== "doc-start" || next?.type !== "flow-collection") && token.source.includes("	")) {
               tab = token;
             }
             hasSpace = true;
@@ -8080,15 +8080,15 @@ var require_resolve_props = __commonJS({
             if (anchor || tag2)
               onError(token, "BAD_PROP_ORDER", `Anchors and tags must be after the ${token.source} indicator`);
             if (found)
-              onError(token, "UNEXPECTED_TOKEN", `Unexpected ${token.source} in ${flow2 ?? "collection"}`);
+              onError(token, "UNEXPECTED_TOKEN", `Unexpected ${token.source} in ${flow3 ?? "collection"}`);
             found = token;
             atNewline = indicator === "seq-item-ind" || indicator === "explicit-key-ind";
             hasSpace = false;
             break;
           case "comma":
-            if (flow2) {
+            if (flow3) {
               if (comma)
-                onError(token, "UNEXPECTED_TOKEN", `Unexpected , in ${flow2}`);
+                onError(token, "UNEXPECTED_TOKEN", `Unexpected , in ${flow3}`);
               comma = token;
               atNewline = false;
               hasSpace = false;
@@ -12512,10 +12512,10 @@ var LiveRegion = class {
    * Replace the region with its final screen (it stays) and stop. Without animation the first
    * frame was already printed once, so only `plain` (the result, no header) prints.
    */
-  commit(screen = [], plain3) {
+  commit(screen = [], plain4) {
     const animate2 = this.host.caps.animate;
     const extra = this.pendingRestore();
-    const rows = animate2 || plain3 === void 0 ? this.rows(screen) : rowsOf(plain3);
+    const rows = animate2 || plain4 === void 0 ? this.rows(screen) : rowsOf(plain4);
     const s = animate2 ? this.erase(extra) : "";
     const show3 = this.stop();
     const lines4 = this.host.render(rows);
@@ -23294,13 +23294,13 @@ var COMMANDS = [
     usage: ["pkey doctor [--product slug] [--base-url url] [--json]"],
     about: [
       {
-        text: "pkey doctor runs validate first. When a product is known (--product, else the nearest .pkey/product) it also fetches <base-url>/<product>/.well-known/polaris.json (--base-url, else $PKEY_BASE_URL, else key.plrs.im) and reports whether discovery answers, which services it enables and which signing keys it exposes; a failed remote check exits 1. Without a product the remote checks are skipped and it says so."
+        text: "pkey doctor checks the product in four parts and always runs all of them: Manifest (.pkey/, the services the server enables, who is signed in, polaris-key.json), Keys (the signing and release key ids), Integration (per feature and platform Verified, Waiting or Not seen yet, with CI and Commerce) and Left to do, each with its fix. The product is --product, else the nearest .pkey/product; discovery is its .well-known/polaris.json under the base URL (--base-url, else $PKEY_BASE_URL, else key.plrs.im). Outside a repository it still checks sign-in, the base URL and polaris-key.json."
       },
       {
-        text: "With a product it also shows who is signed in (pkey login, or $PKEY_ADMIN_TOKEN), and the product's Integration from the console: per feature and platform Verified, Waiting or Not seen yet, then Left to do, each open console step with its link. Signed out, or refused access, is a warning, and signed out makes no console request. Open console steps exit 1."
+        text: "Signed in is pkey login, or $PKEY_ADMIN_TOKEN. Signed out, or refused access, is a warning, and signed out makes no console request. The summary counts what is to do and what is a warning, then the run time. It exits 1 while anything is to do: a manifest error, a failed discovery or an open console step."
       },
       {
-        text: '--json prints one result line: {"v":1,"command":"doctor","event":"result","ok","exit","product","baseUrl","facts","services","signing"}, each fact as {"id","state","detail"} with id manifest, discovery, services or signing-keys and state ok, warn or todo, plus "signedIn" (state in, out, ended or unreadable, and when it ends) and "integration" (state ok, skipped, denied or unavailable; ok carries features, platforms, ci, commerce and todo). It exits 1 while any fact or console step is todo.'
+        text: '--json prints one result line with the same facts: {"v":1, "command":"doctor", "event":"result", "ok", "exit", "product", "baseUrl", "facts", "summary", "services", "signing", "keys"}. Each fact is {"id", "state", "detail"} with id manifest, discovery, services, signing-keys or config-file and state ok, warn or todo; a network failure also carries "code":"network". "summary" is {"todo", "warnings"}. "signedIn" has state in, out, ended or unreadable and when it ends; "integration" has state ok, skipped, denied or unavailable, and ok carries features, platforms, ci, commerce and todo.'
       }
     ]
   },
@@ -26814,7 +26814,30 @@ async function applyContext(keys, flags, input) {
 // src/doctor.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var DOCTOR_TIMEOUT_MS = 15e3;
-function manifestFact(result, problem) {
+var READ_LIMIT = 64 * 1024;
+async function readCapped(res, limit = READ_LIMIT) {
+  const declared = Number(res.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > limit)
+    throw new Error("The answer was too large to read.");
+  const reader = res.body?.getReader();
+  if (!reader) return JSON.parse(await res.text());
+  const chunks = [];
+  let size = 0;
+  for (; ; ) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel().catch(() => {
+      });
+      throw new Error("The answer was too large to read.");
+    }
+    chunks.push(value);
+  }
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+function manifestFact(result, problem, fileWarnings = []) {
   if (!result)
     return {
       id: "manifest",
@@ -26825,45 +26848,76 @@ function manifestFact(result, problem) {
     return {
       id: "manifest",
       state: "todo",
-      detail: `${result.errors.length} error${result.errors.length === 1 ? "" : "s"}`
+      detail: plural(result.errors.length, "error")
     };
+  const warnings = result.warnings.length + fileWarnings.length;
   return {
     id: "manifest",
-    state: result.warnings.length ? "warn" : "ok",
-    detail: result.warnings.length ? `${result.warnings.length} warning${result.warnings.length === 1 ? "" : "s"}` : "valid"
+    state: warnings ? "warn" : "ok",
+    detail: warnings ? plural(warnings, "warning") : "valid"
   };
 }
+function hostOf3(url) {
+  try {
+    return maskTokens(new URL(url).host);
+  } catch {
+    return maskTokens(url);
+  }
+}
 async function checkRemote(opts) {
-  const url = `${opts.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
+  const raw = `${opts.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
+  const url = maskTokens(raw);
+  const host = hostOf3(raw);
+  const down = (detail, code, status) => ({
+    url,
+    host,
+    keys: [],
+    ...status === void 0 ? {} : { status },
+    services: [],
+    signing: null,
+    facts: [
+      {
+        id: "discovery",
+        state: "todo",
+        detail,
+        ...code ? { code } : {}
+      }
+    ]
+  });
   let res;
   try {
     res = await (opts.fetchImpl ?? fetch)(
-      url,
+      raw,
       opts.signal ? { signal: opts.signal } : void 0
     );
   } catch (err) {
-    throw new Error(networkMessage(err, url));
+    if (opts.signal?.aborted)
+      return down("The server did not answer in time.", "timeout");
+    void err;
+    return down(`Can't reach ${host}.`, "network");
   }
   if (!res.ok)
-    return {
-      url,
-      status: res.status,
-      services: [],
-      signing: null,
-      facts: [
-        {
-          id: "discovery",
-          state: "todo",
-          detail: `failed (${res.status})`
-        }
-      ]
-    };
-  const body = await res.json();
-  const services = Object.entries(body.services ?? {}).filter(([, service]) => service?.enabled === true).map(([slug]) => slug);
-  const signing = body.signing ?? body.trust ?? {};
-  const keys = signing !== null && typeof signing === "object" ? Object.keys(signing).length : 0;
+    return down(
+      `Answered ${res.status} at ${host}`,
+      "discovery-failed",
+      res.status
+    );
+  let body;
+  try {
+    body = await readCapped(res);
+  } catch {
+    return down(
+      `${host} did not answer with discovery.`,
+      "discovery-unreadable"
+    );
+  }
+  const services = Object.entries(rec(rec(body)["services"])).filter(([, service]) => rec(service)["enabled"] === true).map(([slug]) => slug);
+  const signing = rec(body)["signing"] ?? rec(body)["trust"] ?? {};
+  const keys = signing !== null && typeof signing === "object" && !Array.isArray(signing) ? Object.keys(signing) : [];
   return {
     url,
+    host,
+    keys,
     services,
     signing,
     facts: [
@@ -26875,14 +26929,11 @@ async function checkRemote(opts) {
       },
       {
         id: "signing-keys",
-        state: keys ? "ok" : "warn",
-        detail: keys ? `${keys} exposed` : "none exposed"
+        state: keys.length ? "ok" : "warn",
+        detail: keys.length ? `${keys.length} exposed` : "none exposed"
       }
     ]
   };
-}
-function doctorOk(facts) {
-  return facts.every((f) => f.state !== "todo");
 }
 var FEATURE_LABELS = {
   licensing: "Licensing",
@@ -26916,6 +26967,10 @@ var STEP_IDS = { outlets: "channels" };
 var platformLabel2 = (id) => PLATFORM_LABELS[id] ?? id.charAt(0).toUpperCase() + id.slice(1);
 var asArray = (v) => Array.isArray(v) ? v : [];
 var rec = (v) => v && typeof v === "object" ? v : {};
+function bareFix(fix) {
+  const m = /^Run (pkey [^.]*?)(?: once| again)?\.?$/.exec(fix ?? "");
+  return m?.[1] ?? fix ?? "pkey login";
+}
 function integrationFacts(view2, slug, origin, env) {
   const u = (v) => untrusted(v, env);
   const features = asArray(rec(view2)["features"]).map(rec);
@@ -26974,17 +27029,16 @@ function integrationFacts(view2, slug, origin, env) {
         firstAt: typeof facts["firstPackageAt"] === "number" ? facts["firstPackageAt"] : null
       };
   }
+  const releaseKeys = asArray(rec(rec(view2)["snippet"])["releaseKeys"]).map((k) => rec(k)["kid"]).filter((k) => typeof k === "string" && k !== "").map(u);
   return {
     features: out,
     platforms,
     ci,
+    releaseKeys,
     commerce: have.has("commerce") ? "on" : "off",
     commerceNeedsLicensing: !have.has("licensing"),
     todo
   };
-}
-function todoCount(i) {
-  return i.state === "ok" ? i.todo.length : 0;
 }
 async function gatherSession(opts) {
   const { io, slug, signal } = opts;
@@ -26999,12 +27053,12 @@ async function gatherSession(opts) {
     });
   } catch (e) {
     if (!(e instanceof Refusal)) throw e;
-    const out = e.message.startsWith("Not signed in");
+    const out = e.code === "not-signed-in";
     return {
       signedIn: {
         state: "out",
-        detail: out ? "Not signed in" : e.message,
-        fix: out ? "pkey login" : e.fix ?? "pkey login"
+        detail: out ? "Integration needs it" : maskTokens(e.message),
+        fix: bareFix(e.fix)
       },
       integration: { state: "skipped", reason: "signed-out" }
     };
@@ -27018,7 +27072,17 @@ async function gatherSession(opts) {
     }
   });
   const api = cred.token.startsWith("pkeya_");
-  const reach = () => signal?.aborted ? "The console did not answer in time." : `Could not reach ${new URL(cred.origin).host}.`;
+  const host = hostOf3(cred.origin);
+  const reach = () => signal?.aborted ? "The console did not answer in time." : `Can't reach ${host}.`;
+  const reachFix = () => signal?.aborted ? "pkey doctor" : "Check your network, or --base-url.";
+  const ended = () => ({
+    signedIn: {
+      state: "ended",
+      detail: `Your sign-in to ${host} has ended.`,
+      fix: "pkey login"
+    },
+    integration: { state: "skipped", reason: "ended" }
+  });
   let signedIn;
   if (api) {
     signedIn = {
@@ -27029,22 +27093,15 @@ async function gatherSession(opts) {
   } else {
     try {
       const res = await get2("/me");
-      if (res.status === 401)
-        return {
-          signedIn: {
-            state: "ended",
-            detail: "Your sign-in has ended",
-            fix: "pkey login"
-          },
-          integration: { state: "skipped", reason: "ended" }
-        };
+      if (res.status === 401) return ended();
       if (!res.ok) {
         signedIn = {
           state: "unreadable",
-          detail: `Could not read your identity (HTTP ${res.status})`
+          detail: `The console answered HTTP ${res.status} for your identity.`,
+          fix: "pkey doctor"
         };
       } else {
-        const me = rec(await res.json());
+        const me = rec(await readCapped(res));
         const ends = typeof me["sessionExpiresAt"] === "number" ? me["sessionExpiresAt"] : cred.expiresAt;
         signedIn = {
           state: "in",
@@ -27055,7 +27112,11 @@ async function gatherSession(opts) {
         };
       }
     } catch {
-      signedIn = { state: "unreadable", detail: reach() };
+      signedIn = {
+        state: "unreadable",
+        detail: reach(),
+        fix: reachFix()
+      };
     }
   }
   if (!slug)
@@ -27065,15 +27126,7 @@ async function gatherSession(opts) {
     };
   try {
     const res = await get2(`/products/${encodeURIComponent(slug)}/integration`);
-    if (res.status === 401)
-      return {
-        signedIn: {
-          state: "ended",
-          detail: "Your sign-in has ended",
-          fix: "pkey login"
-        },
-        integration: { state: "skipped", reason: "ended" }
-      };
+    if (res.status === 401) return ended();
     if (res.status === 403) {
       const failure = await httpError(res, "Integration");
       if (failure.detail.reason === "no_access")
@@ -27103,40 +27156,335 @@ async function gatherSession(opts) {
         signedIn,
         integration: {
           state: "unavailable",
-          detail: `The console answered HTTP ${res.status}.`
+          detail: `The console answered HTTP ${res.status}.`,
+          fix: "pkey doctor"
         }
       };
     return {
       signedIn,
       integration: {
         state: "ok",
-        ...integrationFacts(await res.json(), slug, cred.origin, io.env)
+        ...integrationFacts(await readCapped(res), slug, cred.origin, io.env)
       }
     };
   } catch {
     return {
       signedIn,
-      integration: { state: "unavailable", detail: reach() }
+      integration: { state: "unavailable", detail: reach(), fix: reachFix() }
     };
   }
 }
-function sessionWarnings(s) {
-  return (s.signedIn.state === "in" ? 0 : 1) + (s.integration.state === "denied" || s.integration.state === "unavailable" ? 1 : 0);
+var STATE_WORD = {
+  verified: "Verified",
+  waiting: "Waiting",
+  unseen: "Not seen yet"
+};
+var STATE_MARK = {
+  verified: "ok",
+  waiting: "wait",
+  unseen: "none"
+};
+var featureState = (st) => ({
+  mark: STATE_MARK[st],
+  word: STATE_WORD[st]
+});
+var dim = (text2) => ({ text: text2 });
+var plain3 = (text2) => ({ text: text2, role: "plain" });
+function buildReport(input) {
+  const { session: s, remote, config } = input;
+  const u = (v) => untrusted(v, input.env);
+  const facts = [];
+  const sections = [];
+  const hostName = hostOf3(input.baseUrl);
+  const manifest = [];
+  const m = input.manifest;
+  if (m.state === "missing") {
+    facts.push(manifestFact(null, m.problem));
+    manifest.push({
+      lead: "todo",
+      name: ".pkey/",
+      parts: [
+        dim(/^No \.pkey\//.test(m.problem) ? "Not found here" : u(m.problem))
+      ],
+      fix: /^No \.pkey\//.test(m.problem) ? "pkey init" : "pkey validate"
+    });
+  } else {
+    facts.push(manifestFact(m.result, void 0, m.fileWarnings));
+    const r = m.result;
+    if (r.ok)
+      manifest.push({
+        lead: "ok",
+        name: ".pkey/",
+        parts: [
+          dim("valid"),
+          ...r.enabledModules.length ? [dim(r.enabledModules.join(", "))] : []
+        ]
+      });
+    for (const w of m.fileWarnings)
+      manifest.push({
+        lead: "warn",
+        name: ".pkey/",
+        parts: [dim(u(w))]
+      });
+    for (const w of r.warnings)
+      manifest.push({
+        lead: "warn",
+        name: u(`${w.file}${w.path}`),
+        parts: [dim(u(w.message))]
+      });
+    for (const e of r.errors)
+      manifest.push({
+        lead: "todo",
+        name: u(`${e.file}${e.path}`),
+        parts: [dim(u(e.message))],
+        fix: "pkey validate"
+      });
+  }
+  const signed = s.signedIn;
+  if (signed.state === "in") {
+    const person = signed.tokenType === "api" ? [dim("API token, no person")] : signed.name && signed.email ? [dim(signed.name), { text: `(${signed.email})`, glue: true }] : [dim(signed.name || signed.email || "yes")];
+    manifest.push({
+      lead: "ok",
+      name: "Signed in",
+      parts: [
+        ...person,
+        ...signed.endsAt ? [dim(`ends ${day(signed.endsAt, input.env)}`)] : []
+      ]
+    });
+  } else
+    manifest.push({
+      lead: "warn",
+      name: signed.state === "out" && signed.detail === "Integration needs it" ? "Not signed in" : "Signed in",
+      parts: [dim(u(signed.detail ?? "Not signed in"))],
+      ...signed.fix ? { fix: signed.fix } : {}
+    });
+  if (config.dirs.length) {
+    const bad = config.elsewhere.length || config.stalePins?.length;
+    facts.push({
+      id: "config-file",
+      state: bad ? "warn" : "ok",
+      detail: bad ? "does not match the base URL" : "matches"
+    });
+    manifest.push({
+      lead: bad ? "warn" : "ok",
+      name: "polaris-key.json",
+      parts: [
+        dim(config.dirs.join(" and ")),
+        dim(
+          config.elsewhere.length ? `points at ${config.elsewhere.map(u).join(", ")}, not ${hostName}` : config.stalePins?.length ? `pins ${config.stalePins.map(u).join(", ")} are not exposed by ${hostName}` : config.stalePins ? `pins match ${hostName}` : `points at ${hostName}`
+        )
+      ],
+      ...bad ? { fix: "pkey help sdk" } : {}
+    });
+  } else
+    manifest.push({
+      lead: "none",
+      name: "polaris-key.json",
+      parts: [dim("Not found here")]
+    });
+  const keys = [];
+  if (remote) {
+    facts.push(...remote.facts);
+    const d = remote.facts[0];
+    if (d.state === "todo") {
+      keys.push({
+        lead: "todo",
+        name: "Discovery",
+        parts: [dim(d.detail)],
+        fix: d.code === "network" || d.code === "timeout" ? "Check your network, or --base-url." : "Check --base-url, or register the product in the console."
+      });
+    } else {
+      const svc = remote.facts.find((f) => f.id === "services");
+      manifest.splice(1, 0, {
+        lead: svc.state === "ok" ? "ok" : "warn",
+        name: "Services",
+        parts: [
+          dim(
+            remote.services.length ? remote.services.map(u).join(", ") : "none enabled"
+          )
+        ]
+      });
+      if (!remote.keys.length)
+        keys.push({
+          lead: "warn",
+          name: "Signing key",
+          parts: [dim("none exposed")]
+        });
+      for (const kid of remote.keys)
+        keys.push({
+          lead: "ok",
+          name: "Signing key",
+          parts: [plain3(u(kid)), dim("active")]
+        });
+    }
+  } else
+    manifest.push({
+      lead: "none",
+      name: "Discovery",
+      parts: [dim("Needs a product: pass --product")]
+    });
+  if (s.integration.state === "ok")
+    for (const kid of s.integration.releaseKeys)
+      keys.push({
+        lead: "ok",
+        name: "Release key",
+        parts: [plain3(kid), dim("pinned")]
+      });
+  sections.push({ title: "Manifest", rows: manifest });
+  if (keys.length) sections.push({ title: "Keys", rows: keys });
+  const i = s.integration;
+  if (i.state === "denied") {
+    if (i.access) {
+      const a = i.access;
+      const notes = [
+        [
+          dim(
+            a.roles.length ? `Your roles: ${a.roles.map(u).join(", ")}.` : "You have no role here."
+          )
+        ],
+        [
+          dim(
+            a.people.length ? "Ask one of these people:" : "Ask an admin to give you access."
+          )
+        ],
+        ...a.people.map((p) => [
+          dim(u(p.name)),
+          { text: u(p.email), glue: true },
+          dim(u(p.role))
+        ])
+      ];
+      sections.push({
+        rows: [
+          {
+            lead: "warn",
+            name: "Integration",
+            parts: [
+              dim(`You don't have access to ${u(a.product)} (${u(a.area)}).`)
+            ],
+            notes
+          }
+        ]
+      });
+    } else
+      sections.push({
+        rows: [
+          {
+            lead: "warn",
+            name: "Integration",
+            parts: [
+              dim(
+                `Isn't available to ${i.reason === "api_token" ? "API" : "personal"} tokens.`
+              )
+            ],
+            fix: "pkey login"
+          }
+        ]
+      });
+  } else if (i.state === "unavailable") {
+    sections.push({
+      rows: [
+        {
+          lead: "warn",
+          name: "Integration",
+          parts: [dim(i.detail)],
+          fix: i.fix
+        }
+      ]
+    });
+  } else if (i.state === "skipped" && i.reason === "no-product") {
+    manifest.push({
+      lead: "none",
+      name: "Integration",
+      parts: [dim("Needs a product: pass --product")]
+    });
+  } else if (i.state === "ok") {
+    const block2 = (title, pick) => {
+      const states = i.features.map(pick);
+      return states.length && states.every((x) => x === states[0]) ? { title, collapsed: featureState(states[0]), rows: [] } : {
+        title,
+        rows: i.features.map((f) => ({
+          name: f.label,
+          state: featureState(pick(f))
+        }))
+      };
+    };
+    if (i.features.length) {
+      if (!i.platforms.length)
+        sections.push(block2("Integration", (f) => f.state));
+      for (const p of i.platforms)
+        sections.push(
+          block2(
+            `Integration on ${p.label}`,
+            (f) => f.platforms[p.id] ?? "unseen"
+          )
+        );
+    }
+    if (i.ci)
+      sections.push({
+        title: "CI",
+        rows: [
+          {
+            lead: "ok",
+            name: "First release",
+            parts: i.ci.firstAt ? [dim(day(i.ci.firstAt, input.env))] : []
+          }
+        ]
+      });
+    sections.push({
+      title: "Commerce",
+      collapsed: i.commerce === "on" ? { mark: "ok", word: "on" } : {
+        mark: null,
+        word: i.commerceNeedsLicensing ? "off, needs Licensing" : "off"
+      },
+      rows: []
+    });
+    if (i.todo.length)
+      sections.push({
+        title: "Left to do",
+        rows: i.todo.map((step) => ({
+          lead: "todo",
+          name: step.label,
+          parts: [dim(`${step.feature} needs it`)],
+          link: step.link
+        }))
+      });
+  }
+  let todo = 0;
+  let warnings = 0;
+  for (const sec of sections)
+    for (const row2 of sec.rows) {
+      if (row2.lead === "todo") todo++;
+      if (row2.lead === "warn") warnings++;
+    }
+  return {
+    header: {
+      name: input.product?.name ?? input.product?.slug ?? "Polaris Key",
+      slug: input.product?.name ? input.product.slug : null,
+      host: hostName
+    },
+    sections,
+    facts,
+    todo,
+    warnings,
+    exit: todo ? 1 : 0
+  };
 }
-var iso = (seconds) => typeof seconds === "number" ? new Date(seconds * 1e3).toISOString() : null;
 function sessionJson(s) {
+  const iso2 = (seconds) => typeof seconds === "number" ? new Date(seconds * 1e3).toISOString() : null;
   const { endsAt, ...rest } = s.signedIn;
   const i = s.integration;
   return {
     signedIn: {
       ...rest,
-      ...endsAt === void 0 ? {} : { endsAt: iso(endsAt) }
+      ...endsAt === void 0 ? {} : { endsAt: iso2(endsAt) }
     },
-    integration: i.state === "ok" ? { ...i, ci: i.ci ? { firstAt: iso(i.ci.firstAt) } : null } : { ...i }
+    integration: i.state === "ok" ? { ...i, ci: i.ci ? { firstAt: iso2(i.ci.firstAt) } : null } : { ...i }
   };
 }
+var STACK_BELOW = 36;
 var WIDE = 60;
-var NAME_W = 24;
+var VALUE_COL = 30;
+var NAME_CAP = 24;
 function breakLink(text2, width) {
   const parts = text2.match(/[^/#]*[/#]?/g)?.filter(Boolean) ?? [text2];
   const lines4 = [];
@@ -27162,158 +27510,215 @@ function breakLink(text2, width) {
   if (cur) lines4.push(cur);
   return lines4;
 }
-function sessionText(s, t, env = {}) {
+var glued = /* @__PURE__ */ new WeakSet();
+var lineWidth = (l) => l.reduce((n, sp) => n + cellWidth(sp.text), 0);
+function flow2(pieces2, width, sep) {
+  const bar = [{ text: ` ${sep} `, style: ["muted"] }];
+  const space = [{ text: " " }];
+  const lines4 = [];
+  let cur = null;
+  for (const piece of pieces2) {
+    const wrapped2 = wrapSpans(piece, Math.max(1, width));
+    if (!wrapped2.length) continue;
+    const joint = glued.has(piece) ? space : bar;
+    const jw = lineWidth(joint);
+    if (cur && wrapped2.length === 1 && lineWidth(cur) + jw + lineWidth(wrapped2[0]) <= width) {
+      cur = [...cur, ...joint, ...wrapped2[0]];
+      continue;
+    }
+    if (cur) lines4.push(cur);
+    lines4.push(...wrapped2.slice(0, -1));
+    cur = wrapped2[wrapped2.length - 1];
+  }
+  if (cur) lines4.push(cur);
+  return lines4;
+}
+function renderReport(report, t, runMs) {
   const { painter, symbols, caps } = t;
+  const cyan = new Painter(caps, null, {}, false);
   const width = Math.max(20, caps.columns);
   const wide = width >= WIDE;
+  const stackAll = width < STACK_BELOW;
+  const sep = symbols.separator;
+  const arrow = caps.unicode ? "→" : "->";
   const out = [];
-  const mark = {
-    ok: glyphOf(t, "ok"),
-    warn: glyphOf(t, "warn"),
-    fail: glyphOf(t, "fail"),
-    wait: painter.style(symbols.radioOn, ["strong"]),
-    none: painter.style(symbols.radioOff, ["muted"])
-  };
-  const text2 = (v, roles = []) => roles.length ? painter.style(v, roles) : v;
-  const heading = (v) => out.push(painter.style(v, ["strong"]));
-  const wrapAt = (v, indent) => wrapSpans([{ text: v }], Math.max(1, width - indent)).map(
-    (l) => painter.line(l)
+  const glyph = (mark) => mark === "ok" ? painter.style(symbols.ok, ["success"]) : mark === "warn" ? painter.style(symbols.warn, ["warning"]) : mark === "todo" ? painter.style(symbols.fail, ["danger"]) : mark === "wait" ? cyan.style(symbols.radioOn, ["accent"]) : painter.style(symbols.radioOff, ["muted"]);
+  const glyphCells = caps.unicode ? 1 : 3;
+  const glyphWidth = (mark) => cellWidth(
+    mark === "ok" ? symbols.ok : mark === "warn" ? symbols.warn : mark === "todo" ? symbols.fail : mark === "wait" ? symbols.radioOn : symbols.radioOff
   );
-  const row2 = (m, name, value, nameW = NAME_W) => {
-    if (wide) {
-      const indent = 4 + nameW + 2;
-      wrapAt(value, indent).forEach(
-        (l, i2) => out.push(
-          i2 === 0 ? `  ${m} ${painter.style(name.padEnd(nameW), ["strong"])}  ${l}` : `${" ".repeat(indent)}${l}`
+  const piece = (p) => {
+    const line = [
+      {
+        text: p.text,
+        ...p.role === "plain" ? {} : { style: [p.role ?? "muted"] }
+      }
+    ];
+    if (p.glue) glued.add(line);
+    return line;
+  };
+  const stateText = (st) => st.mark === null ? painter.style(st.word, ["muted"]) : `${glyph(st.mark)} ${st.mark === "wait" ? cyan.style(st.word, ["accent"]) : st.mark === "ok" ? painter.style(st.word, ["success"]) : st.mark === "none" ? painter.style(st.word, ["muted"]) : st.word}`;
+  const heading = (v) => painter.style(v, ["strong"]);
+  const paint = (l) => painter.line(l);
+  const stateWidth = (st) => st.mark === null ? cellWidth(st.word) : cellWidth(
+    st.mark === "ok" ? symbols.ok : st.mark === "warn" ? symbols.warn : st.mark === "todo" ? symbols.fail : st.mark === "wait" ? symbols.radioOn : symbols.radioOff
+  ) + 1 + cellWidth(st.word);
+  const collapsed = (title, st) => {
+    const col = wide ? VALUE_COL : cellWidth(title) + 2;
+    if (!stackAll && col + stateWidth(st) <= width)
+      out.push(
+        `${heading(title)}${" ".repeat(Math.max(2, col - cellWidth(title)))}${stateText(st)}`
+      );
+    else {
+      out.push(heading(title));
+      out.push(`  ${stateText(st)}`);
+    }
+  };
+  const row2 = (r, nameW) => {
+    const ns = r.lead ? 3 + glyphCells : 2;
+    const prefix = `  ${r.lead ? `${glyph(r.lead)}${" ".repeat(glyphCells + 1 - glyphWidth(r.lead))}` : ""}`;
+    const valuePieces = (r.parts ?? []).map(piece);
+    const stateWords = r.state ? stateText(r.state) : null;
+    const valueCol = wide ? VALUE_COL : ns + nameW + 2;
+    const avail = width - valueCol;
+    const valueLines = (w) => {
+      const lines4 = flow2(
+        valuePieces,
+        w - (r.state ? stateWidth(r.state) + 1 : 0),
+        sep
+      ).map(paint);
+      if (!r.state) return lines4;
+      const lead = stateWords;
+      if (!lines4.length) return [lead];
+      const [first, ...rest] = lines4;
+      return [`${lead} ${first}`, ...rest];
+    };
+    const hasValue = valuePieces.length > 0 || r.state;
+    let used = false;
+    if (hasValue && !(stackAll && r.state) && cellWidth(r.name) <= (wide ? VALUE_COL - ns - 2 : nameW) && avail >= 12) {
+      const lines4 = valueLines(avail);
+      if (wide || lines4.length === 1) {
+        const pad2 = " ".repeat(Math.max(2, valueCol - ns - cellWidth(r.name)));
+        lines4.forEach(
+          (l, n) => out.push(
+            n === 0 ? `${prefix}${r.name}${pad2}${l}` : `${" ".repeat(valueCol)}${l}`
+          )
+        );
+        used = true;
+      }
+    }
+    if (!used) {
+      const nameLines = wrapSpans([{ text: r.name }], Math.max(1, width - ns));
+      nameLines.forEach(
+        (l, n) => out.push(
+          n === 0 ? `${prefix}${paint(l)}` : `${" ".repeat(ns)}${paint(l)}`
         )
       );
-      return;
+      if (hasValue) for (const l of valueLines(width - 4)) out.push(`    ${l}`);
     }
-    if (4 + cellWidth(name) + 2 + cellWidth(value) <= width)
-      out.push(`  ${m} ${painter.style(name, ["strong"])}  ${value}`);
-    else {
-      out.push(`  ${m} ${painter.style(name, ["strong"])}`);
-      for (const l of wrapAt(value, 4)) out.push(`    ${l}`);
+    for (const note of r.notes ?? [])
+      for (const l of flow2(note.map(piece), width - 4, sep))
+        out.push(`    ${paint(l)}`);
+    const fixIndent = stackAll ? 4 : 6;
+    if (r.fix)
+      wrapSpans([{ text: r.fix }], Math.max(1, width - fixIndent - 2)).forEach(
+        (l, n) => out.push(
+          `${" ".repeat(fixIndent)}${n === 0 ? `${arrow} ` : "  "}${paint(l)}`
+        )
+      );
+    if (r.link) {
+      const link = r.link.replace(/^https?:\/\//, "");
+      breakLink(link, width - fixIndent - 2).forEach(
+        (l, n) => out.push(
+          `${" ".repeat(fixIndent)}${n === 0 ? `${arrow} ` : "  "}${painter.style(l, ["muted"])}`
+        )
+      );
     }
   };
-  const fix = (v) => {
-    for (const [i2, l] of wrapAt(v, wide ? 8 : 6).entries())
-      out.push(`${" ".repeat(wide ? 6 : 4)}${i2 === 0 ? "→ " : "  "}${l}`);
-  };
-  const stateWord = (st) => st === "verified" ? `${mark.ok} Verified` : st === "waiting" ? `${mark.wait} Waiting` : `${mark.none} Not seen yet`;
-  const stateMark = (st) => st === "verified" ? mark.ok : st === "waiting" ? mark.wait : mark.none;
-  const stateText = (st) => st === "verified" ? "Verified" : st === "waiting" ? "Waiting" : "Not seen yet";
-  const blank = () => out.push("");
-  const si = s.signedIn;
-  if (si.state === "in") {
-    const who = si.tokenType === "api" ? "API token, no person" : [
-      si.name && si.email ? `${si.name} (${si.email})` : si.name || si.email,
-      si.endsAt ? `ends ${day(si.endsAt, env)}` : ""
-    ].filter(Boolean).join(" · ");
-    row2(mark.ok, "Signed in", who || "yes");
-  } else {
-    row2(mark.warn, "Signed in", si.detail ?? "Not signed in");
-    if (si.fix) fix(si.fix);
+  const h = report.header;
+  const headPieces = [
+    [
+      { text: h.name, style: ["strong"] },
+      ...h.slug ? [{ text: ` (${h.slug})`, style: ["muted"] }] : []
+    ],
+    [{ text: h.host, style: ["muted"] }]
+  ];
+  for (const l of flow2(headPieces, width, sep)) out.push(paint(l));
+  for (const sec of report.sections) {
+    out.push("");
+    if (sec.collapsed && sec.title) {
+      collapsed(sec.title, sec.collapsed);
+      continue;
+    }
+    if (sec.title) out.push(heading(sec.title));
+    const room = Math.min(NAME_CAP, width - 4 - 2 - 14);
+    const nameW = Math.max(
+      8,
+      ...sec.rows.map((r) => cellWidth(r.name)).filter((w) => w <= room)
+    );
+    for (const r of sec.rows) row2(r, nameW);
   }
-  const i = s.integration;
-  if (i.state === "denied") {
-    blank();
-    if (i.access) out.push(accessText(i.access, t).trimEnd());
-    else
-      row2(
-        mark.warn,
-        "Integration",
-        `Isn't available to ${i.reason === "api_token" ? "API" : "personal"} tokens.`
-      );
-  } else if (i.state === "unavailable") {
-    blank();
-    row2(mark.warn, "Integration", i.detail);
-  } else if (i.state === "ok") {
-    const collapsed = (label, st) => {
-      if (wide)
-        out.push(
-          `${painter.style(label.padEnd(NAME_W + 6), ["strong"])}${stateWord(st)}`
-        );
-      else {
-        heading(label);
-        out.push(`  ${stateWord(st)}`);
+  out.push("");
+  const summary = [
+    [
+      {
+        text: `${report.todo} to do`,
+        style: [report.todo ? "danger" : "success"]
       }
-    };
-    const featureRows = (pick) => {
-      const nameW = Math.max(
-        NAME_W - 2,
-        ...i.features.map((f) => cellWidth(f.label))
-      );
-      for (const f of i.features) {
-        if (wide) {
-          out.push(
-            `  ${painter.style(f.label.padEnd(NAME_W + 2), ["strong"])}  ${stateWord(pick(f))}`
-          );
-        } else {
-          const w = Math.min(nameW, 16);
-          const st = pick(f);
-          out.push(
-            `  ${stateMark(st)} ${painter.style(f.label.padEnd(w), ["strong"])} ${stateText(st)}`
-          );
-        }
+    ],
+    [
+      {
+        text: plural(report.warnings, "warning"),
+        style: [report.warnings ? "warning" : "muted"]
       }
-    };
-    if (i.features.length) {
-      if (!i.platforms.length) {
-        blank();
-        heading("Integration");
-        featureRows((f) => f.state);
-      }
-      for (const p of i.platforms) {
-        blank();
-        const mine = i.features.map((f) => f.platforms[p.id] ?? "unseen");
-        if (!mine.includes("verified")) {
-          const st = mine.includes("waiting") ? "waiting" : "unseen";
-          collapsed(`Integration on ${p.label}`, st);
-          continue;
-        }
-        heading(`Integration on ${p.label}`);
-        featureRows((f) => f.platforms[p.id] ?? "unseen");
-      }
-    }
-    if (i.ci) {
-      blank();
-      heading("CI");
-      out.push(
-        `  ${mark.ok} First release${i.ci.firstAt ? `, ${day(i.ci.firstAt, env)}` : ""}`
-      );
-    }
-    if (i.commerce === "off") {
-      blank();
-      const note = i.commerceNeedsLicensing ? "off, needs Licensing" : "off";
-      out.push(
-        wide ? `${painter.style("Commerce".padEnd(NAME_W + 6), ["strong"])}${text2(note, ["muted"])}` : `${painter.style("Commerce", ["strong"])}  ${text2(note, ["muted"])}`
-      );
-    }
-    if (i.todo.length) {
-      blank();
-      heading("Left to do");
-      for (const step of i.todo) {
-        row2(mark.fail, step.label, `${step.feature} needs it`);
-        const link = step.link.replace(/^https?:\/\//, "");
-        for (const [n, l] of breakLink(link, width - (wide ? 8 : 6)).entries())
-          out.push(
-            `${" ".repeat(wide ? 6 : 4)}${n === 0 ? "→ " : "  "}${text2(l, ["muted"])}`
-          );
-      }
-    }
-  }
-  const todo = todoCount(i);
-  const warnings = sessionWarnings(s);
-  blank();
-  out.push(
-    painter.style(
-      `${todo} to do · ${warnings} warning${warnings === 1 ? "" : "s"}`,
-      [todo ? "danger" : warnings ? "warning" : "success"]
-    )
-  );
+    ],
+    [{ text: `${(runMs / 1e3).toFixed(1)} s`, style: ["muted"] }]
+  ];
+  for (const l of flow2(summary, width, sep)) out.push(paint(l));
   return `${out.join("\n")}
 `;
+}
+function reportJson(report) {
+  return {
+    facts: report.facts,
+    summary: { todo: report.todo, warnings: report.warnings }
+  };
+}
+async function checkConfigFiles(opts) {
+  const { readdir: readdir13, readFile: readFile26 } = await import("node:fs/promises");
+  const path32 = await import("node:path");
+  const found = [];
+  const tryRead = async (dir, label) => {
+    try {
+      const text2 = await readFile26(path32.join(dir, "polaris-key.json"), "utf8");
+      found.push({ dir: label, file: JSON.parse(text2) });
+    } catch {
+    }
+  };
+  await tryRead(opts.cwd, "./");
+  try {
+    const entries = await readdir13(opts.cwd, { withFileTypes: true });
+    for (const e of entries.sort((a, b) => a.name.localeCompare(b.name)))
+      if (e.isDirectory() && !e.name.startsWith(".") && e.name !== "node_modules")
+        await tryRead(path32.join(opts.cwd, e.name), `${e.name}/`);
+  } catch {
+  }
+  const elsewhere = [];
+  const pinned = /* @__PURE__ */ new Set();
+  for (const { file } of found) {
+    const base = rec(file)["baseUrl"];
+    if (typeof base === "string") {
+      const host = hostOf3(base);
+      if (host !== opts.host && !elsewhere.includes(host)) elsewhere.push(host);
+    }
+    for (const k of Object.keys(rec(rec(rec(file)["trust"])["pinnedKeys"])))
+      pinned.add(k);
+  }
+  return {
+    dirs: found.map((f) => f.dir),
+    elsewhere,
+    stalePins: opts.exposed ? [...pinned].filter((k) => !opts.exposed.includes(k)) : null
+  };
 }
 
 // src/publish.ts
@@ -35147,15 +35552,15 @@ var TomlDate = class _TomlDate extends Date {
     return this.#hasDate || this.#hasTime;
   }
   toISOString() {
-    let iso3 = super.toISOString();
+    let iso2 = super.toISOString();
     if (this.isDate())
-      return iso3.slice(0, 10);
+      return iso2.slice(0, 10);
     if (this.isTime())
-      return iso3.slice(11, 23);
+      return iso2.slice(11, 23);
     if (this.#offset === null)
-      return iso3.slice(0, -1);
+      return iso2.slice(0, -1);
     if (this.#offset === "Z" || this.#offset === "z")
-      return iso3;
+      return iso2;
     let offset = +this.#offset.slice(1, 3) * 60 + +this.#offset.slice(4, 6);
     offset = this.#offset[0] === "-" ? offset : -offset;
     let offsetDate = new Date(this.getTime() - offset * 6e4);
@@ -37394,7 +37799,7 @@ var WINDOW_WARN_DAYS = 14;
 var KEY_B64URL_RE2 = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
 var SHA256_RE5 = /^[0-9a-f]{64}$/;
 var sha256Hex3 = (s) => createHash10("sha256").update(s).digest("hex");
-var iso2 = (t) => new Date(t * 1e3).toISOString();
+var iso = (t) => new Date(t * 1e3).toISOString();
 async function generateContentKey(opts) {
   const { privateKey, publicKey } = generateKeyPairSync2("ed25519");
   const pem = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
@@ -37620,7 +38025,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       "Self-check: the delegation fails the record claims or the delegation body (plans/P4-19.md §2.2); nothing was signed."
     );
   const summary = `Delegation of ${opts.prefix} (seq ${seq}) for ${types.join(", ")} to key ${fingerprint.slice(0, 12)}…
-Window: ${iso2(record.issuedAt)} to ${iso2(record.expiresAt)} (${days} days)
+Window: ${iso(record.issuedAt)} to ${iso(record.expiresAt)} (${days} days)
 `;
   out.write(summary);
   if (opts.dryRun) {
@@ -37730,11 +38135,11 @@ async function contentSigner(o) {
     );
   if (o.now < d.issuedAt || o.now > d.expiresAt)
     throw new Error(
-      `The delegation's window (${iso2(d.issuedAt)} to ${iso2(d.expiresAt)}) does not hold now (${iso2(o.now)}); renew it with a new key and delegation.`
+      `The delegation's window (${iso(d.issuedAt)} to ${iso(d.expiresAt)}) does not hold now (${iso(o.now)}); renew it with a new key and delegation.`
     );
   if (d.expiresAt - o.now < WINDOW_WARN_DAYS * SECONDS_PER_DAY)
     o.warn(
-      `the delegation's window closes ${iso2(d.expiresAt)}, within ${WINDOW_WARN_DAYS} days: rotate the content key (a new key and delegation) before then.`
+      `the delegation's window closes ${iso(d.expiresAt)}, within ${WINDOW_WARN_DAYS} days: rotate the content key (a new key and delegation) before then.`
     );
   const kid = delegatedKid(o.key.delegation);
   const trust = trustOf(o.declared);
@@ -48516,7 +48921,7 @@ async function cmdDistributionCi(parsed, stdout, stderr, ci) {
   return 0;
 }
 async function cmdDoctor(parsed, cwd, stdout, term, ci, admin) {
-  const u = (v) => untrusted(v, ci.env);
+  const started = performance.now();
   const ctx = await resolveContext({
     cwd,
     env: ci.env,
@@ -48525,96 +48930,59 @@ async function cmdDoctor(parsed, cwd, stdout, term, ci, admin) {
   });
   const signal = AbortSignal.timeout(DOCTOR_TIMEOUT_MS);
   const io = { ...admin, baseUrl: ctx.baseUrl.url, signal };
-  if (flagBool(parsed, "json"))
-    return doctorJson(ctx, cwd, stdout, ci, io, signal);
-  const localCode = await validateText(cwd, cwd, stdout, term);
-  if (!ctx.product) {
-    stdout.write(
-      "\nRemote checks skipped. No product: pass --product, or run where .pkey/product is.\n"
-    );
-    return localCode;
+  let manifest;
+  try {
+    const loaded2 = await loadManifest(cwd);
+    manifest = {
+      state: "read",
+      result: validateLoadedManifest(loaded2),
+      fileWarnings: loaded2.fileWarnings ?? []
+    };
+  } catch (e) {
+    manifest = { state: "missing", problem: e.message };
   }
-  const remote = await checkRemote({
+  const remote = ctx.product ? await checkRemote({
     baseUrl: ctx.baseUrl.url,
     product: ctx.product.slug,
     fetchImpl: ci.fetchImpl,
     signal
-  });
-  if (remote.status !== void 0) {
-    stdout.write(
-      `
-Remote discovery: failed (${remote.status}) ${remote.url}
-Is the product registered, and is --base-url (or $PKEY_BASE_URL) the right origin?
-`
-    );
-    return 1;
-  }
-  stdout.write(`
-Remote discovery: ok ${remote.url}
-`);
-  const enabled = remote.services.map((slug) => u(slug));
-  stdout.write(
-    `Services enabled: ${enabled.length ? enabled.join(", ") : "none"}
-`
-  );
-  stdout.write(`Signing keys exposed: ${u(JSON.stringify(remote.signing))}
-`);
-  const session = await gatherSession({
-    io,
-    slug: ctx.product.slug,
-    signal
-  });
-  stdout.write(`
-${sessionText(session, term, io.env)}`);
-  return localCode === 0 && todoCount(session.integration) === 0 ? 0 : 1;
-}
-async function doctorJson(ctx, cwd, stdout, ci, io, signal) {
-  let result = null;
-  let problem;
-  try {
-    result = validateLoadedManifest(await loadManifest(cwd));
-  } catch (e) {
-    problem = e.message;
-  }
-  const facts = [manifestFact(result, problem)];
-  let services = [];
-  let signing = null;
-  if (ctx.product) {
-    try {
-      const remote = await checkRemote({
-        baseUrl: ctx.baseUrl.url,
-        product: ctx.product.slug,
-        fetchImpl: ci.fetchImpl,
-        signal
-      });
-      facts.push(...remote.facts);
-      services = remote.services;
-      signing = remote.signing;
-    } catch (e) {
-      facts.push({
-        id: "discovery",
-        state: "todo",
-        detail: e.message
-      });
-    }
-  }
+  }) : null;
   const session = await gatherSession({
     io,
     slug: ctx.product?.slug ?? null,
     signal
   });
-  const exit = doctorOk(facts) && todoCount(session.integration) === 0 ? 0 : 1;
-  stdout.write(
-    envelope("doctor", exit, {
-      product: ctx.product?.slug ?? null,
-      baseUrl: ctx.baseUrl.url,
-      facts,
-      services,
-      signing,
-      ...sessionJson(session)
-    })
-  );
-  return exit;
+  const reached = remote?.facts[0]?.state === "ok";
+  const config = await checkConfigFiles({
+    cwd,
+    host: hostOf3(ctx.baseUrl.url),
+    exposed: reached ? remote.keys : null
+  });
+  const report = buildReport({
+    product: ctx.product,
+    baseUrl: ctx.baseUrl.url,
+    manifest,
+    remote,
+    session,
+    config,
+    env: ci.env
+  });
+  if (flagBool(parsed, "json")) {
+    stdout.write(
+      envelope("doctor", report.exit, {
+        product: ctx.product?.slug ?? null,
+        baseUrl: maskTokens(ctx.baseUrl.url),
+        ...reportJson(report),
+        services: remote?.services ?? [],
+        signing: remote?.signing ?? null,
+        keys: remote?.keys ?? [],
+        ...sessionJson(session)
+      })
+    );
+    return report.exit;
+  }
+  stdout.write(renderReport(report, term, performance.now() - started));
+  return report.exit;
 }
 async function cmdBundle(parsed, cwd, stdout, env, token, fetchImpl) {
   const product = flagString(parsed, "product");
