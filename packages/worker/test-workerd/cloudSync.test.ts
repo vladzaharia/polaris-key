@@ -7,8 +7,11 @@
 import { env, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import {
+  absorbCloudSync,
   callCloudSync,
   cloudSyncObjectName,
+  deleteCloudSyncIfUnchanged,
+  exportCloudSync,
 } from "../src/services/sync/do/client.js";
 import { formatHlc } from "../src/services/sync/engine/hlc.js";
 import type { Classification } from "../src/services/sync/engine/types.js";
@@ -125,5 +128,30 @@ describe("CloudSyncDO under workerd (U-05.7)", () => {
     expect(
       (await callCloudSync<"usage">(env, pin, { op: "usage" })).empty,
     ).toBe(false);
+  });
+});
+
+describe("account-merge absorb under workerd (U-05.8)", () => {
+  it("absorbs an export into a never-written survivor, is idempotent, and deletes the source only while unchanged", async () => {
+    const from = { product: "wd", subject: "sub_from" };
+    const to = { product: "wd", subject: "sub_to" };
+    await pushTo(from, "theme");
+    const doc = (await exportCloudSync(env, from))!;
+    expect(await absorbCloudSync(env, to, doc)).toBeGreaterThan(0);
+    // The same export again changes nothing (no new sequence number).
+    const seq = (await callCloudSync<"usage">(env, to, { op: "usage" })).seq;
+    expect(await absorbCloudSync(env, to, doc)).toBe(0);
+    expect((await callCloudSync<"usage">(env, to, { op: "usage" })).seq).toBe(
+      seq,
+    );
+    const mine = (await exportCloudSync(env, to))!;
+    expect(mine.settings.map((r) => r.key)).toEqual(["theme"]);
+    // A stale sequence keeps the source; the current one deletes it.
+    expect(await deleteCloudSyncIfUnchanged(env, from, doc.seq + 1)).toBe(
+      false,
+    );
+    expect(await exportCloudSync(env, from)).not.toBeNull();
+    expect(await deleteCloudSyncIfUnchanged(env, from, doc.seq)).toBe(true);
+    expect(await exportCloudSync(env, from)).toBeNull();
   });
 });

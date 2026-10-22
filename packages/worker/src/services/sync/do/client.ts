@@ -19,6 +19,7 @@ import type {
   DoPin,
   ExportDocument,
 } from "./protocol.js";
+import type { SettingPolicy } from "../engine/types.js";
 
 /** The object's name for one person on one product. */
 export function cloudSyncObjectName(pin: DoPin): string {
@@ -74,6 +75,39 @@ export async function exportCloudSync(
 ): Promise<ExportDocument | null> {
   return (await callCloudSync<"exportAll">(env, pin, { op: "exportAll" }))
     .document;
+}
+
+/**
+ * Join an absorbed subject's export into the SURVIVOR's object (`pin` names the survivor). Only
+ * the store's `merge` hook may call this: an absorb is part of an authorised account merge, and
+ * nothing else in `src/` names it (`test/cloudSyncMerge.test.ts` pins the call sites).
+ */
+export async function absorbCloudSync(
+  env: Pick<Env, "CLOUD_SYNC">,
+  pin: DoPin,
+  document: ExportDocument,
+  policies?: [string, SettingPolicy][],
+): Promise<number> {
+  return (
+    await callCloudSync<"absorb">(env, pin, {
+      op: "absorb",
+      document,
+      ...(policies ? { policies } : {}),
+    })
+  ).changed;
+}
+
+/**
+ * Remove the object's data only if it is still at `seq`; false when it changed meanwhile.
+ */
+export async function deleteCloudSyncIfUnchanged(
+  env: Pick<Env, "CLOUD_SYNC">,
+  pin: DoPin,
+  seq: number,
+): Promise<boolean> {
+  return (
+    await callCloudSync<"deleteAll">(env, pin, { op: "deleteAll", ifSeq: seq })
+  ).deleted;
 }
 
 /** Remove the object's data (its alarm first, so nothing wakes on a ghost). */

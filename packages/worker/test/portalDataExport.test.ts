@@ -974,6 +974,7 @@ describe("GET /api/me/export", () => {
     expect(Object.keys(djdl.stores).sort()).toEqual([
       "config.accountOverrides",
       "core.entitlementEvents",
+      "sync.cloudSync",
       "test.notes",
     ]);
     expect(djdl.stores["test.notes"]).toEqual({

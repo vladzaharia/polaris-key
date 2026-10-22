@@ -14,6 +14,7 @@ import type {
   MemberCell,
   PushLimits,
   PushOutcome,
+  SettingPolicy,
   StoredSetting,
   StoreUsage,
 } from "../engine/types.js";
@@ -50,7 +51,20 @@ export type CloudSyncOp =
     })
   | (DoPin & { op: "usage" })
   | (DoPin & { op: "exportAll" })
-  | (DoPin & { op: "deleteAll" });
+  /**
+   * The survivor of an account merge takes in the absorbed subject's export (U-05.8). Only the
+   * store's `merge` hook sends it (`do/client.ts` `absorbCloudSync`); the pin names the SURVIVOR,
+   * and the document must be of the same product and another subject. `policies` is the catalog's
+   * policy per key where the caller knows it.
+   */
+  | (DoPin & {
+      op: "absorb";
+      document: ExportDocument;
+      policies?: [string, SettingPolicy][];
+    })
+  /** `ifSeq`: delete only while the store is still at that sequence (an absorbed object that
+   *  changed since its export is kept, and the caller absorbs again). */
+  | (DoPin & { op: "deleteAll"; ifSeq?: number });
 
 /** A stored row as JSON: members become `[name, cell]` pairs, in the engine's order. */
 export type ExportedSetting = Omit<StoredSetting, "members"> & {
@@ -73,7 +87,8 @@ export type CloudSyncReply =
   | { op: "pull"; outcome: PullOutcome }
   | { op: "usage"; usage: StoreUsage; seq: number; empty: boolean }
   | { op: "exportAll"; document: ExportDocument | null }
-  | { op: "deleteAll"; deleted: true };
+  | { op: "absorb"; changed: number }
+  | { op: "deleteAll"; deleted: boolean };
 
 export type CloudSyncError = {
   error: "bad_request" | "pin_mismatch" | "unsupported_schema";

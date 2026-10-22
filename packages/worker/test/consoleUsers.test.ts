@@ -633,6 +633,8 @@ describe("actions", () => {
     expect(doc.stores).toEqual({
       "config.accountOverrides": { overrides: null, migrationReport: [] },
       "core.entitlementEvents": [],
+      // U-05.8: Cloud Sync's store answers for a person who never synced.
+      "sync.cloudSync": { settings: null, directory: null },
       "test-store": { overrides: { volume: 3 }, of: f.adaAlpha },
     });
     const del = await w.json("POST", `/alpha/users/${f.adaAlpha}/data/delete`);
@@ -641,6 +643,7 @@ describe("actions", () => {
       stores: [
         "config.accountOverrides",
         "core.entitlementEvents",
+        "sync.cloudSync",
         "test-store",
       ],
     });

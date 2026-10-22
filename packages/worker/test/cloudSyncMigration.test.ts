@@ -190,20 +190,24 @@ describe("sync.cloudSync subject store", () => {
     expect(s.durableObjects).toEqual(["CloudSyncDO"]);
   });
 
-  it("merge refuses, and changes nothing, while the absorbed object holds data (until U-05.8)", async () => {
+  it("merge absorbs the object into the survivor's, then merges the directory rows (U-05.8)", async () => {
     const db = makeTestDb();
     const env = envWith();
     await put(db, "from", { bytes: 10, settings: 1, at: 9 });
     await seedObject(env, "from");
-    await expect(
-      runSubjectMerge(
-        { db, env: env as any, now: 1 },
-        { product: "acme", from: "from", to: "to" },
-      ),
-    ).rejects.toThrow(/absorb is not built/);
+    await runSubjectMerge(
+      { db, env: env as any, now: 1 },
+      { product: "acme", from: "from", to: "to" },
+    );
     expect(await db.all<any>("SELECT subject FROM sync_directory")).toEqual([
-      { subject: "from" },
+      { subject: "to" },
     ]);
+    expect(
+      lastNs
+        .instance("acme:to")
+        .storage.sql.db.prepare("SELECT key FROM settings")
+        .all(),
+    ).toEqual([{ key: "theme" }]);
   });
 
   it("delete clears the object and its alarm, export carries its settings, and a stranger's object is untouched", async () => {

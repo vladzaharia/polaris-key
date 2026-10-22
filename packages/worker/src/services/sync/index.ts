@@ -28,6 +28,7 @@ import type {
 import { SYNC_SETTINGS_SLICE } from "./settings.js";
 
 import { syncIntegration } from "./integration.js";
+import { syncProductDeletion, syncProductPurge } from "./productDeletion.js";
 import { SYNC_ROUTES } from "./routes.js";
 import { CLOUD_SYNC_STORE, cloudSyncStore } from "./subjectStore.js";
 
@@ -41,6 +42,9 @@ export const syncService: ServiceDescriptor = {
     integration: syncIntegration,
     // U-05.3: the directory row joins Core's subject-store merge, delete and export.
     subjectStores: { [CLOUD_SYNC_STORE]: cloudSyncStore },
+    // U-05.8: a deleted product's objects are erased (purge), then its rows (statements).
+    productPurge: syncProductPurge,
+    productDeletion: syncProductDeletion,
   },
   handle: SYNC_ROUTES.handle,
   surface: SYNC_ROUTES.surface,

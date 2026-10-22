@@ -1,5 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 import type { Env } from "../../../platform/env.js";
+import { absorbSettings } from "../engine/absorb.js";
 import { applyPull } from "../engine/pull.js";
 import { applyPush } from "../engine/push.js";
 import { validatePush } from "../engine/validate.js";
@@ -11,6 +12,7 @@ import type {
   ExportDocument,
   WireMigrations,
 } from "./protocol.js";
+import { parseExportDocument, parsePolicies } from "./exportDoc.js";
 import { SCHEMA_VERSION, SqlStore } from "./sqlStore.js";
 
 // One person's Cloud Sync store for one product (U-05.6; plans/U-05-slices.md §2). The Worker
@@ -95,7 +97,13 @@ export class CloudSyncDO implements DurableObject {
       }
       case "exportAll":
         return reply({ op: "exportAll", document: this.exportAll(op) });
+      case "absorb":
+        return this.absorb(op);
       case "deleteAll": {
+        // An absorbed object is deleted only while it is the one that was exported (U-05.8): a
+        // write that landed since stays, and the merge absorbs again. No `ifSeq` is an erasure.
+        if (op.ifSeq !== undefined && this.store.currentSeq() !== op.ifSeq)
+          return reply({ op: "deleteAll", deleted: false });
         // deleteAll does not clear an alarm; the order here is the point (no wake-up on a ghost).
         await this.ctx.storage.deleteAlarm();
         await this.ctx.storage.deleteAll();
@@ -148,6 +156,53 @@ export class CloudSyncDO implements DurableObject {
       }),
     );
     return reply({ op: "push", outcome });
+  }
+
+  /**
+   * Account merge, survivor side (U-05.8): join the absorbed subject's export into this object in
+   * one transaction (the schema and pin included, so an object is never half-made). The join is
+   * idempotent (`engine/absorb.ts`), so a retry writes nothing. Nothing is refused for budget or
+   * quota (L8). Marks the directory dirty when anything changed (U-05.9 reads the flag).
+   */
+  private absorb(op: Extract<CloudSyncOp, { op: "absorb" }>): Response {
+    const doc = op.document;
+    const parsed = parseExportDocument(doc);
+    const policies = parsePolicies(op.policies);
+    // The same product, and another person: an absorb of oneself would delete one's own data.
+    if (
+      !parsed ||
+      policies === null ||
+      doc.product !== op.product ||
+      doc.subject === op.subject ||
+      !isName(doc.subject)
+    )
+      return reply({ error: "bad_request" }, 400);
+    if (parsed.settings.length === 0 && parsed.clients.length === 0)
+      return reply({ op: "absorb", changed: 0 });
+    let changed = 0;
+    try {
+      this.ctx.storage.transactionSync(() => {
+        this.store.prepare(true);
+        if (!this.pinned()) {
+          this.store.setMeta("product", op.product);
+          this.store.setMeta("subject", op.subject);
+        }
+        const out = this.store.transaction(() =>
+          absorbSettings(this.store as SyncStore, {
+            settings: parsed.settings,
+            clients: parsed.clients,
+            ...(policies ? { policies } : {}),
+          }),
+        );
+        changed = out.rows + out.clients;
+        if (changed > 0) this.store.setMeta("directory_dirty", "1");
+      });
+    } catch (e) {
+      // A rolled-back first write took the tables with it; forget the cached probe.
+      this.store.reset();
+      throw e;
+    }
+    return reply({ op: "absorb", changed });
   }
 
   private pull(op: Extract<CloudSyncOp, { op: "pull" }>): Response {

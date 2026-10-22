@@ -60,13 +60,14 @@ export function serverCopy(row: StoredSetting): SyncServerCopy {
   };
 }
 
-const newer = (a: Stamp, b: Stamp): Stamp => (compareStamps(a, b) >= 0 ? a : b);
+export const newer = (a: Stamp, b: Stamp): Stamp =>
+  compareStamps(a, b) >= 0 ? a : b;
 
 const isPlainObject = (v: SyncJson): v is { [k: string]: SyncJson } =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Lifts a scalar row to a merged one: an object's entries become members at the row's stamp. */
-function asMerged(row: StoredSetting): StoredSetting {
+export function asMerged(row: StoredSetting): StoredSetting {
   if (row.members) return row;
   const members = new Map<string, MemberCell>();
   if (!row.deleted && isPlainObject(row.value)) {
@@ -285,7 +286,7 @@ function applyMerge(
  * Member tombstones keep a removed name from coming back from an older write. Bound them: past
  * twice the member cap the oldest are forgotten (they cost no budget, so nothing else limits them).
  */
-function pruneRemoved(members: Map<string, MemberCell>): void {
+export function pruneRemoved(members: Map<string, MemberCell>): void {
   const limit = 2 * SYNC_MAX_MERGE_MEMBERS;
   if (members.size <= limit) return;
   const removed = [...members]

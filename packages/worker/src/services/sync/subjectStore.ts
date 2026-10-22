@@ -5,24 +5,62 @@
  *
  * It claims `sync_directory`, the one table here keyed by a pairwise subject, and the per-person
  * Durable Object `CloudSyncDO` (U-05.7), named by `(product, subject)` through `do/client.ts`.
- * Until U-05.8 `merge` refuses (throws) when the absorbed subject's object holds data, so a merge
- * never drops it silently; U-05.8 replaces that with the absorb.
  *
- *   merge   the absorbed subject's counters are added to the survivor's (the survivor row is made
- *           if absent), the quota is the larger of the two, the platform and tier follow whichever
- *           side was active last, and the absorbed row goes, all in ONE batch, so a retry finds no
- *           absorbed row and does nothing.
+ *   merge   (U-05.8) the survivor's object ABSORBS the absorbed subject's (`engine/absorb.ts`:
+ *           every row joined by stamp, nothing refused or dropped for budget or quota: L8), then
+ *           the absorbed object is deleted, then the directory rows are merged. Retry-safe at any
+ *           crash point, because each step is idempotent and the data leaves the absorbed object
+ *           only after the survivor holds it:
+ *             1. export `from`                read-only
+ *             2. absorb into `to`             one transaction, convergent join, a repeat writes nothing
+ *             3. delete `from` if still at the exported sequence (else go back to 1)
+ *             4. directory rows, ONE batch    a retry finds no absorbed row and does nothing
+ *           A crash after 1 or 2 re-runs from 1 (the join of the same or a fresher export is the
+ *           same state); after 3, the export is empty and only 4 runs. Called only by Identity's
+ *           account merge, through Core's `runSubjectMerge`.
+ *           The directory part adds the counters (the survivor row is made if absent), takes the
+ *           larger quota, and the platform and tier of whichever side was active last.
  *   delete  the object (its alarm, then its storage), then the subject's row.
- *   export  the subject's directory counters and the object's settings dump.
- *   size    `bytes + revision_bytes`, what the person's data takes on the Users page (I-12).
+ *   export  the subject's directory counters and the object's full dump (live rows, tombstones,
+ *           dormant platform rows, member cells, client bindings).
+ *   size    the directory's `bytes + revision_bytes`, what the person's data takes on the Users
+ *           page (I-12); until the directory has the row (its first write has not been flushed),
+ *           the object's own total.
  */
 
 import type { SubjectStore } from "../../core/accounts/subjectHooks.js";
 import {
-  cloudSyncHoldsData,
+  absorbCloudSync,
+  callCloudSync,
   deleteCloudSync,
+  deleteCloudSyncIfUnchanged,
   exportCloudSync,
 } from "./do/client.js";
+
+/** How many times a merge re-exports an absorbed object that kept changing under it. */
+const ABSORB_ROUNDS = 3;
+
+/**
+ * Move one subject's object into another's: absorb, then delete the source, while the source
+ * stays the one that was absorbed. Throws when it will not settle, and the merge is retried.
+ */
+async function absorbObject(
+  env: Parameters<typeof exportCloudSync>[0],
+  product: string,
+  from: string,
+  to: string,
+): Promise<void> {
+  for (let round = 0; round < ABSORB_ROUNDS; round++) {
+    const doc = await exportCloudSync(env, { product, subject: from });
+    if (!doc) return;
+    await absorbCloudSync(env, { product, subject: to }, doc);
+    if (
+      await deleteCloudSyncIfUnchanged(env, { product, subject: from }, doc.seq)
+    )
+      return;
+  }
+  throw new Error("cloud sync: the absorbed object kept changing; retry");
+}
 
 /** The registry name (stable: the export document is keyed by it). */
 export const CLOUD_SYNC_STORE = "sync.cloudSync";
@@ -45,21 +83,14 @@ export const cloudSyncStore: SubjectStore = {
   durableObjects: ["CloudSyncDO"],
 
   async merge({ db, env, now }, { product, from, to }) {
-    // U-05.8 absorbs the object; until then a merge that would drop data stops here, and the
-    // retry (idempotent: nothing was written) finds the same state.
-    if (
-      from !== to &&
-      (await cloudSyncHoldsData(env, { product, subject: from }))
-    )
-      throw new Error(
-        "cloud sync: the absorbed subject holds synced data, and the absorb is not built yet (U-05.8)",
-      );
+    if (from === to) return;
+    await absorbObject(env, product, from, to);
     const absorbed = await db.first<DirectoryRow>(
       "SELECT * FROM sync_directory WHERE product = ? AND subject = ?",
       product,
       from,
     );
-    if (!absorbed || from === to) return;
+    if (!absorbed) return;
     const survivor = await db.first<DirectoryRow>(
       "SELECT * FROM sync_directory WHERE product = ? AND subject = ?",
       product,
@@ -142,12 +173,19 @@ export const cloudSyncStore: SubjectStore = {
     };
   },
 
-  async size({ db }, { product, subject }) {
+  async size({ db, env }, { product, subject }) {
     const r = await db.first<{ n: number }>(
       "SELECT bytes + revision_bytes AS n FROM sync_directory WHERE product = ? AND subject = ?",
       product,
       subject,
     );
-    return Number(r?.n ?? 0);
+    if (r) return Number(r.n);
+    // Not flushed to the directory yet: ask the object (a read, it creates nothing).
+    const u = await callCloudSync<"usage">(
+      env,
+      { product, subject },
+      { op: "usage" },
+    );
+    return u.usage.bytes;
   },
 };

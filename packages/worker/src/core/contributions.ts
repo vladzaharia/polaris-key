@@ -161,8 +161,23 @@ export type ProductDeletionContributor = (
   now: number,
 ) => DbStatement[];
 
+/**
+ * The part of a service's product erasure that is not a D1 statement: data it keeps outside D1
+ * (Cloud Sync's per-person Durable Objects). Runs BEFORE `deleteProduct`, while the service's own
+ * rows still say what exists, and only that batch removes those rows, so a failure here leaves
+ * the product alive and the whole erasure is simply run again. Idempotent. `done: false` means
+ * the work was bounded and more remains: the caller refuses the deletion and asks for a retry.
+ */
+export type ProductPurgeContributor = (ctx: {
+  db: Db;
+  env: Env;
+  product: string;
+  now: number;
+}) => Promise<{ done: boolean }>;
+
 export interface ServiceContributions {
   productDeletion?: ProductDeletionContributor;
+  productPurge?: ProductPurgeContributor;
   /**
    * The service's rows of a `.pkey/` ingest (P0-26): checks, statements for its OWN tables,
    * audit rows and after-commit steps, run by Core's pipeline (`core/ingest/pipeline.ts`) for
@@ -260,6 +275,30 @@ export function productDeletionStatements(
   return contributionsOf().flatMap(([, c]) =>
     c.productDeletion ? c.productDeletion(product, now) : [],
   );
+}
+
+/**
+ * Runs every mounted service's `productPurge` (whatever its enablement, in slug order). Fails
+ * closed like {@link productDeletionStatements}. False when some service has more to do.
+ */
+export async function purgeProductData(
+  db: Db,
+  env: Env,
+  product: string,
+  now: number,
+): Promise<boolean> {
+  if (!BOUND)
+    throw new Error(
+      "deleteProduct needs the service registry bound (core/contributions.ts bindServiceRegistry)",
+    );
+  let done = true;
+  for (const [, c] of contributionsOf())
+    if (
+      c.productPurge &&
+      !(await c.productPurge({ db, env, product, now })).done
+    )
+      done = false;
+  return done;
 }
 
 /** The services' maintenance contributions in canonical order. */

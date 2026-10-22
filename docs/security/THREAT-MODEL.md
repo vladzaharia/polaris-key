@@ -7105,9 +7105,32 @@ yet. SR-1 (isolation) follows U-05.8.
   through the Worker's stub.
 - **Deletion and export reach the object** through the subject-store registry: `delete` clears the
   alarm and then the storage (`deleteAll` leaves an alarm set), then the directory row; `export` adds
-  the object's settings dump. A merge that would drop an object's data **throws** until U-05.8 absorbs
-  it, so nothing is lost silently and the merge is retried.
+  the object's full dump (live rows, tombstones, member cells, dormant platform rows, client
+  bindings). Erasure leaves no table, no row and no alarm in the object.
 - **The tag is append-only.** `v4` is created by the first deploy; a deployed tag is never edited.
+
+### Cloud Sync account merge, product deletion (U-05.8)
+
+- **A merge never silently overwrites (S-16 §5.1) and never drops.** The survivor's object absorbs
+  the absorbed subject's by joining each row on its stamp (the later HLC, then clientId; a later
+  deletion beats an older value; member cells union under the later clear), and nothing is refused
+  for budget or quota: a survivor left over its limits keeps everything and only later growth is
+  refused (L8). Only Identity's account merge reaches it: `absorbCloudSync` is called by the store's
+  `merge` alone (`test/cloudSyncMerge.test.ts` pins the call sites), and the merge itself needs a
+  fresh proof of both accounts.
+- **Crash-safe by construction.** Export the absorbed object, absorb (one transaction; the join
+  is idempotent, so a repeat or a fresher export converges and writes nothing), delete the absorbed
+  object only if it is still at the exported sequence, then merge the directory rows in one batch.
+  The data leaves the absorbed object only after the survivor holds it, and a retry is safe at
+  every step. A write that lands on the absorbed object meanwhile keeps it alive and is absorbed
+  on the next round.
+- **Residual.** A request that resolved the absorbed subject before the merge committed can still
+  write to the (deleted) absorbed object afterwards. The push route (U-05.13) resolves the subject
+  through the aliases on every request, which closes it for any request that starts after the merge.
+- **Product deletion** erases every object the directory lists for the product, then the rows, before
+  the product's status flips (`contributes.productPurge`, bounded per run). The object cannot be
+  listed, so an object whose directory row was never written would survive: U-05.9's first-write
+  alarm keeps that window to seconds.
 
 ### The account override layer and the licence-override migration (U-03)
 
