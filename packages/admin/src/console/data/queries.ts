@@ -52,6 +52,19 @@ export const qk = {
   platformVersion: (): QueryKey => ["platform", "version"],
   platformDeployment: (): QueryKey => ["platform", "deployment"],
   platformActivity: (): QueryKey => ["platform", "activity"],
+  /** ST-51: Platform → Activity's feed for one filter set, and one event by id. */
+  platformActivityFeed: (filters: string): QueryKey => [
+    "platform",
+    "activity",
+    "feed",
+    filters,
+  ],
+  platformActivityEvent: (id: string): QueryKey => [
+    "platform",
+    "activity",
+    "event",
+    id,
+  ],
   platformSettings: (): QueryKey => ["platform", "settings"],
   /** ST-16: the reach of a product default or bound, per proposed value. */
   platformReach: (key: string, value?: number): QueryKey => [

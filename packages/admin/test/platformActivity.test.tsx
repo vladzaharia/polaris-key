@@ -69,7 +69,7 @@ const main = (): HTMLElement => screen.getByRole("main");
 
 describe("Platform → Activity", () => {
   it("lists every product's events and the platform's, asking for the union", async () => {
-    const log = boot("#/platform/activity?view=table", {
+    const log = boot("#/platform/activity", {
       extra: { "/manage/api/platform/activity": activity },
     });
     await screen.findByRole("heading", { level: 1, name: "Activity" });
@@ -91,7 +91,7 @@ describe("Platform → Activity", () => {
   });
 
   it("pages with Load more", async () => {
-    boot("#/platform/activity?view=table", {
+    boot("#/platform/activity", {
       extra: { "/manage/api/platform/activity": activity },
     });
     await screen.findByRole("table", { name: "Activity" });
@@ -105,7 +105,7 @@ describe("Platform → Activity", () => {
     const log = boot("#/platform/activity", {
       extra: { "/manage/api/platform/activity": activity },
     });
-    await screen.findByRole("list", { name: "Activity" });
+    await screen.findByRole("table", { name: "Activity" });
     await userEvent.click(screen.getByRole("combobox", { name: "Product" }));
     await userEvent.click(
       await screen.findByRole("option", { name: "Platform" }),
@@ -182,7 +182,7 @@ describe("Platform → Activity", () => {
   });
 
   it("sits in the Platform sidebar and passes axe in both views", async () => {
-    boot("#/platform/activity", {
+    boot("#/platform/activity?view=timeline", {
       extra: { "/manage/api/platform/activity": activity },
     });
     await screen.findByRole("list", { name: "Activity" });
@@ -193,7 +193,7 @@ describe("Platform → Activity", () => {
     expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);
     cleanup();
     resetConsole();
-    boot("#/platform/activity?view=table", {
+    boot("#/platform/activity", {
       extra: { "/manage/api/platform/activity": activity },
     });
     await screen.findByRole("table", { name: "Activity" });
