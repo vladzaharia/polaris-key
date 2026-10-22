@@ -484,7 +484,7 @@ function TokensRow({ slug }: { slug: string }): React.ReactElement {
   return (
     <SettingsRow
       label="CI tokens"
-      help="For a CI that is not GitHub Actions. A static token lasts at most 90 days."
+      help="For a CI that is not GitHub Actions. A static token lasts up to 90 days (a read service token, 365)."
       footer={
         <div className="mt-4">
           <DataTable<CiTokenDto>

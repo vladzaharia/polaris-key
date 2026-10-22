@@ -4627,6 +4627,8 @@ export interface ServiceTokenDto {
   createdAt: number;
   expiresAt: number;
   lastUsedAt: number | null;
+  /** The token's last four characters; `null` for a token made before F-33b.4. */
+  hint: string | null;
   revokedAt: number | null;
   /** From the audit trail: `admin:<who>`, or `null` when it is not there. */
   revokedBy: string | null;
@@ -4641,6 +4643,8 @@ export interface RegistryTokenFeed {
   enabled: boolean;
   accessMode: string;
   baseUrl: string | null;
+  /** The feed's namespace (npm `scope`, Maven `groupPrefixes`, …): the setup snippets name it. */
+  namespace?: Record<string, unknown>;
 }
 
 export interface RegistryTokensDto {

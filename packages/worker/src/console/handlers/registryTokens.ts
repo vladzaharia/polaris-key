@@ -117,14 +117,27 @@ async function record(
   else await audit(db, owner, session, now, action, target, summary);
 }
 
+/** A feed's stored namespace (`{}` when unset or unreadable): the setup snippets name it. */
+function namespaceOf(json: string | null | undefined): Record<string, unknown> {
+  try {
+    const v: unknown = JSON.parse(json ?? "{}");
+    return v !== null && typeof v === "object" && !Array.isArray(v)
+      ? (v as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
 /** The owner's feeds, as the snippets and the console's access hints need them. */
 async function feedsOf(env: Env, db: Db, owner: string) {
   const rows = await db.all<{
     ecosystem: string;
     enabled: number;
     access_mode: string;
+    namespace_json: string | null;
   }>(
-    "SELECT ecosystem, enabled, access_mode FROM dist_registry_feeds WHERE product = ?",
+    "SELECT ecosystem, enabled, access_mode, namespace_json FROM dist_registry_feeds WHERE product = ?",
     owner,
   );
   const origin = registryOrigin(env);
@@ -136,6 +149,7 @@ async function feedsOf(env: Env, db: Db, owner: string) {
       enabled: row?.enabled === 1,
       accessMode: row?.access_mode ?? "public",
       baseUrl: feedBaseUrl(origin, eco, owner),
+      namespace: namespaceOf(row?.namespace_json),
     };
   });
 }

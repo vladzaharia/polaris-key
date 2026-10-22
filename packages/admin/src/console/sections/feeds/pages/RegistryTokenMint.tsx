@@ -7,8 +7,8 @@
 import * as React from "react";
 import { KeyRound, Upload } from "lucide-react";
 import {
+  ApiError,
   type FeedEcosystem,
-  type MintedRegistryToken,
   type RegistryTokensDto,
 } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
@@ -24,7 +24,8 @@ import { RadioCards } from "../../../../ui/RadioCards.js";
 import { Switch } from "../../../../ui/Switch.js";
 import { mutate } from "../../../data/mutations.js";
 import { useWriteGate } from "../../../access/useCan.js";
-import { serviceRow } from "./registryTokenRows.js";
+import { PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
+import { serviceRow, type MintedRow } from "./registryTokenRows.js";
 import {
   ECOSYSTEMS,
   ECOSYSTEM_ICONS,
@@ -33,47 +34,99 @@ import {
   type FeedScope,
 } from "../model/model.js";
 
-/** Every client's setup for the feeds the new token reaches, with the real value. */
+/** The environment variable CI keeps the token in (the name the docs and `pkey feeds setup` use). */
+export const TOKEN_ENV = "PKEY_REGISTRY_TOKEN";
+
+/** Does this ecosystem's setup need the feed's namespace (an npm scope, Maven prefixes…)? */
+function needsNamespace(eco: FeedEcosystem): boolean {
+  return Object.keys(PACKAGE_ECOSYSTEM_RULES[eco].namespace.fields).length > 0;
+}
+
+/**
+ * The setup for the feeds the new token reaches. A service token is for CI: the command that
+ * prints each client's setup, then the snippets for the private feeds only, reading
+ * `${PKEY_REGISTRY_TOKEN}` rather than carrying the secret. Other tokens carry their value.
+ */
 export function MintedSnippets({
   data,
   minted,
 }: {
   data: RegistryTokensDto;
-  minted: MintedRegistryToken;
+  minted: MintedRow;
 }): React.ReactElement {
+  const service = minted.view.tokenId.startsWith("cit_");
   const reach = minted.view.ecosystems;
   const feeds = data.feeds.filter(
     (f) =>
       f.enabled &&
       f.baseUrl !== null &&
-      (reach === null || reach.includes(f.ecosystem)),
+      (reach === null || reach.includes(f.ecosystem)) &&
+      // A public feed needs no token, and a service token is never a Godot editor URL.
+      (!service || (f.accessMode !== "public" && f.ecosystem !== "godot")),
   );
   if (feeds.length === 0)
     return (
-      <Callout tone="info" title="No enabled feed to set up yet">
-        The token works once a feed it reaches is enabled.
+      <Callout
+        tone="info"
+        title={
+          service ? "No private feed to set up yet" : "No enabled feed yet"
+        }
+      >
+        {service
+          ? "Every enabled feed is public, so nothing needs this token yet. It works once a feed turns private."
+          : "The token works once a feed it reaches is enabled."}
       </Callout>
     );
+  const credential = (f: RegistryTokensDto["feeds"][number]) =>
+    service
+      ? ({ kind: "env", name: TOKEN_ENV } as const)
+      : minted.view.presentation === "url"
+        ? ({ kind: "godot-url", value: minted.token } as const)
+        : ({ kind: "token", value: minted.token } as const);
   return (
     <div className="space-y-4">
+      {service ? (
+        <div className="space-y-1">
+          <p className="text-xs text-fg-muted">
+            Print each client's setup in CI, or on your machine:
+          </p>
+          <CodeBlock
+            code={feeds
+              .map(
+                (f) =>
+                  `pkey feeds setup --ecosystem ${f.ecosystem} --owner ${data.owner} --token-env ${TOKEN_ENV}`,
+              )
+              .join("\n")}
+            language="sh"
+            copy
+          />
+        </div>
+      ) : null}
       {feeds.map((f) => {
         const Icon = ECOSYSTEM_ICONS[f.ecosystem];
-        // The shared renderer (`renderFeedSetup`, the same bytes `pkey feeds setup` prints),
-        // with the real token; null only for a token a snippet cannot carry.
-        const snippets =
-          feedSetupSnippets(
-            f.ecosystem,
-            { origin: f.baseUrl!, owner: data.owner, namespace: {} },
-            minted.view.presentation === "url"
-              ? { kind: "godot-url", value: minted.token }
-              : { kind: "token", value: minted.token },
-          ) ?? [];
+        const namespace = f.namespace ?? {};
+        const missing =
+          needsNamespace(f.ecosystem) && Object.keys(namespace).length === 0;
+        // The shared renderer (`renderFeedSetup`, the same bytes `pkey feeds setup` prints).
+        const snippets = missing
+          ? []
+          : (feedSetupSnippets(
+              f.ecosystem,
+              { origin: f.baseUrl!, owner: data.owner, namespace },
+              credential(f),
+            ) ?? []);
         return (
           <section key={f.ecosystem} className="space-y-2">
             <h3 className="inline-flex items-center gap-2 text-sm font-semibold text-fg-strong">
               <Icon aria-hidden className="size-4 text-fg-muted" />
               {f.label}
             </h3>
+            {missing ? (
+              <p className="text-xs text-fg-muted">
+                Set this feed's namespace in its settings first: the setup names
+                it.
+              </p>
+            ) : null}
             {snippets.map((s) => (
               <div key={s.id} className="space-y-1">
                 <p className="text-xs text-fg-muted">{s.title}</p>
@@ -109,7 +162,7 @@ export function MintDialog({
   licenseId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onMinted: (m: MintedRegistryToken) => void;
+  onMinted: (m: MintedRow) => void;
 }): React.ReactElement {
   const [label, setLabel] = React.useState("");
   const [everyFeed, setEveryFeed] = React.useState(true);
@@ -122,8 +175,12 @@ export function MintDialog({
   );
   const [saving, setSaving] = React.useState(false);
   const [failure, setFailure] = React.useState<unknown>(null);
+  // Errors show once the operator has typed in a field or tried to create.
+  const [attempted, setAttempted] = React.useState(false);
+  const formRef = React.useRef<HTMLFormElement>(null);
   React.useEffect(() => {
     if (!open) return;
+    setAttempted(false);
     setLabel("");
     setEveryFeed(true);
     setPicked([]);
@@ -179,9 +236,16 @@ export function MintDialog({
     setEveryFeed(false);
     setPicked((p) => {
       const kept = p.filter((e) => publishEcosystems.includes(e));
-      return kept.length === p.length ? p : kept;
+      // A sole publish feed is the only choice: tick it.
+      const next =
+        kept.length === 0 && publishEcosystems.length === 1
+          ? [...publishEcosystems]
+          : kept;
+      return next.length === p.length && next.every((e, i) => e === p[i])
+        ? p
+        : next;
     });
-  }, [publish, publishEcosystems]);
+  }, [open, publish, publishEcosystems]);
 
   const minDays = data.limits.minDays;
   const maxDays = publish
@@ -207,10 +271,26 @@ export function MintDialog({
         : "Choose at least one feed."
       : undefined;
   const invalid = !!(daysError || labelError || feedsError);
+  // What the server refused, by field (422), marked on the form instead of a bare banner.
+  const refused = failure instanceof ApiError ? (failure.fields ?? []) : [];
+  const limitHit =
+    failure instanceof ApiError && failure.reason === "token_limit";
 
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (saving || invalid) return;
+    if (saving) return;
+    if (invalid) {
+      setAttempted(true);
+      // Focus the first field the errors mark, once they have rendered.
+      window.setTimeout(
+        () =>
+          formRef.current
+            ?.querySelector<HTMLElement>('[aria-invalid="true"]')
+            ?.focus(),
+        0,
+      );
+      return;
+    }
     setSaving(true);
     setFailure(null);
     try {
@@ -258,11 +338,13 @@ export function MintDialog({
       }
       description={
         service
-          ? "For CI and servers that install from feeds that are not public. Reads every private feed of this product. Shown once; Polaris Key stores only its hash."
-          : "Access to this owner's feeds. Shown once; Polaris Key stores only its hash."
+          ? "For CI and servers that install from private feeds. Reads every private feed of this product."
+          : licenseId !== undefined
+            ? "Access to this license's feeds."
+            : "Access to this product's feeds."
       }
     >
-      <form onSubmit={submit} noValidate>
+      <form ref={formRef} onSubmit={submit} noValidate>
         <DialogBody className="space-y-4">
           <FormField
             name="label"
@@ -270,7 +352,13 @@ export function MintDialog({
             required
             value={label}
             onChange={(v: string) => setLabel(v)}
-            error={label === "" ? undefined : labelError}
+            error={
+              refused.includes("label")
+                ? "The server refused this label. Change it and try again."
+                : attempted || label !== ""
+                  ? labelError
+                  : undefined
+            }
           >
             {(f) => <Input {...f} maxLength={64} />}
           </FormField>
@@ -292,7 +380,7 @@ export function MintDialog({
                       label: "Read",
                       description: noKeys
                         ? keys.disabledReason
-                        : "Service token: install from every private feed of this product.",
+                        : "Service token: install from every private feed.",
                       disabled: noKeys,
                       icon: <KeyRound aria-hidden className="size-4" />,
                     },
@@ -323,7 +411,7 @@ export function MintDialog({
               {!publish ? (
                 <Checkbox
                   label="Every feed"
-                  description="Today's and any this owner enables later."
+                  description="Today's and any this product enables later."
                   checked={everyFeed}
                   onCheckedChange={setEveryFeed}
                 />
@@ -352,8 +440,10 @@ export function MintDialog({
                   })}
                 </div>
               ) : null}
-              {feedsError ? (
-                <p className="text-xs text-danger">{feedsError}</p>
+              {feedsError && attempted ? (
+                <p className="text-xs text-danger" aria-live="polite">
+                  {feedsError}
+                </p>
               ) : null}
             </fieldset>
           ) : null}
@@ -364,7 +454,11 @@ export function MintDialog({
             required
             value={days}
             onChange={(v: number | null) => setDays(v)}
-            error={daysError}
+            error={
+              refused.includes("expiresInDays")
+                ? "The server refused this expiry. Change it and try again."
+                : daysError
+            }
           >
             {(f) => (
               <NumberInput
@@ -377,7 +471,14 @@ export function MintDialog({
               />
             )}
           </FormField>
-          {failure ? (
+          {limitHit ? (
+            <Callout alert tone="danger" title="Too many active tokens">
+              {licenseId !== undefined
+                ? `This license has ${data.limits.perLicense} active tokens, the most it can have.`
+                : `${data.owner} has ${data.limits.perOwner} active tokens, the most it can have.`}{" "}
+              Revoke one, then try again.
+            </Callout>
+          ) : failure && refused.length === 0 ? (
             <Callout alert tone="danger" title={errorCopy(failure).title}>
               {errorCopy(failure).description}
             </Callout>
@@ -392,7 +493,7 @@ export function MintDialog({
           >
             Cancel
           </Button>
-          <Button type="submit" loading={saving} disabled={invalid}>
+          <Button type="submit" loading={saving}>
             Create token
           </Button>
         </DialogFooter>

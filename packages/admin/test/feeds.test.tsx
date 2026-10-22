@@ -213,7 +213,10 @@ describe("registry auth (F-21)", () => {
         createdAt: 1_700_000_000,
         expiresAt: 1_700_000_000 + 90 * 86_400,
         lastUsedAt: null,
+        hint: "kkkk",
         revokedAt: null,
+        revokedBy: null,
+        revokeReason: null,
         status: "active",
       },
     };
@@ -228,9 +231,10 @@ describe("registry auth (F-21)", () => {
     const table = await within(main()).findByRole("table", {
       name: "Service tokens",
     });
-    expect(table.textContent).toContain("Deploy box");
-    expect(table.textContent).toContain("cit_deploy");
-    expect(table.textContent).toContain("Licensee, in Polaris Locker");
+    await within(table).findByText("Deploy box");
+    // The token's hint matches the secret in CI; the access column says what it reaches.
+    expect(table.textContent).toContain("pkeyci_…R8VQ");
+    expect(table.textContent).toContain("Reads every private feed");
     await userEvent.click(
       within(main()).getByRole("button", { name: /New token/ }),
     );
@@ -261,11 +265,23 @@ describe("registry auth (F-21)", () => {
       name: "Service token created",
     });
     expect(shown.textContent).toContain(minted.token);
-    expect(shown.textContent).toContain("cit_new");
-    // The npm feed is enabled: its .npmrc carries the real token.
+    expect(shown.textContent).toContain("Build box · expires");
+    // CI's step: the secret name, the command, and snippets that read it from the environment.
     expect(shown.textContent).toContain(
-      `//pkg.plrs.im/npm/djdl/:_authToken=${minted.token}`,
+      "Add it to your CI secrets as PKEY_REGISTRY_TOKEN",
     );
+    expect(shown.textContent).toContain(
+      "pkey feeds setup --ecosystem npm --owner djdl --token-env PKEY_REGISTRY_TOKEN",
+    );
+    expect(shown.textContent).toContain(
+      "//pkg.plrs.im/npm/djdl/:_authToken=${PKEY_REGISTRY_TOKEN}",
+    );
+    // The feed's real scope, never the placeholder; the secret only in the one field.
+    expect(shown.textContent).toContain("@djdl:registry=");
+    expect(shown.textContent).not.toContain("@scope");
+    expect(shown.textContent!.split(minted.token).length).toBe(2);
+    // Godot is public here: no URL snippet.
+    expect(shown.textContent).not.toContain("asset-library");
   });
 
   it("F-22/F-23: a publish token is minted with publish and named feeds (OCI for docker push), owner-bound only", async () => {
@@ -315,17 +331,18 @@ describe("registry auth (F-21)", () => {
       within(dialog).getByRole("radio", { name: /Read and publish/ }),
     );
     expect(dialog.textContent).toContain("docker push");
-    // A publish token names its feeds: none picked yet, so it cannot be created.
+    // No error before an attempt. A publish token names its feeds: with none picked, Create
+    // says so and sends nothing.
+    expect(dialog.textContent).not.toContain(
+      "Choose the feeds this token publishes to.",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create token" }),
+    );
     expect(dialog.textContent).toContain(
       "Choose the feeds this token publishes to.",
     );
-    expect(
-      (
-        within(dialog).getByRole("button", {
-          name: "Create token",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
+    expect(log.calls.some((c) => c.method === "POST")).toBe(false);
     // Never a Godot editor URL token, and never every feed.
     expect(
       within(dialog).queryByRole("switch", { name: /Godot editor URL/ }),
@@ -463,12 +480,39 @@ const SERVICE_ROW = {
   createdAt: 1_700_000_000,
   expiresAt: 4_000_000_000,
   lastUsedAt: null,
+  hint: "abcd",
   revokedAt: null,
+  revokedBy: null,
+  revokeReason: null,
   status: "active",
+};
+const refusal = (status: number, body: Record<string, unknown>): Response =>
+  new Response(JSON.stringify({ error: body }), { status });
+/** Member permissions: Ship at the given level, optionally Keys. */
+function member(opts: { edit: boolean; keys?: boolean }) {
+  const view = ["ship", ...(opts.keys ? ["keys"] : [])];
+  return {
+    platformAdmin: false,
+    permissions: {
+      roles: [],
+      platform: { view: ["console"], edit: ["console"] },
+      products: {
+        djdl: { view, edit: opts.edit ? view : opts.keys ? ["keys"] : [] },
+      },
+    },
+  } as never;
+}
+const tokensTable = async (): Promise<HTMLElement> =>
+  within(await mainReady()).findByRole("table", { name: "Service tokens" });
+const openMint = async (name = "New service token"): Promise<HTMLElement> => {
+  await userEvent.click(
+    within(main()).getByRole("button", { name: /New token/ }),
+  );
+  return screen.findByRole("dialog", { name });
 };
 
 describe("service tokens (F-33b.4)", () => {
-  it("lists service tokens with last used, legacy owner tokens with their end date, and why a token ended", async () => {
+  it("lists service tokens by hint, what each reaches, legacy with its end date, and folds the ended ones", async () => {
     const base = tokensPage();
     const tokens = base.tokens as Record<string, unknown>[];
     boot("#/p/djdl/distribution/feeds/tokens", {
@@ -477,6 +521,18 @@ describe("service tokens (F-33b.4)", () => {
         ...product(true),
         [TOKENS_URL]: {
           ...base,
+          serviceTokens: [
+            ...(base.serviceTokens as Record<string, unknown>[]),
+            {
+              ...SERVICE_ROW,
+              tokenId: "cit_done",
+              label: "Old runner",
+              status: "revoked",
+              revokedAt: 1_700_000_100,
+              revokedBy: "admin:ada@x.io",
+              revokeReason: "manual",
+            },
+          ],
           tokens: [
             ...tokens,
             {
@@ -486,29 +542,51 @@ describe("service tokens (F-33b.4)", () => {
               revokedBy: "system",
               revokeReason: "link_removed",
             },
+            {
+              ...tokens[0],
+              tokenId: "rtok_push",
+              label: "Pusher",
+              scopes: ["publish", "read"],
+              ecosystems: ["npm"],
+              legacy: false,
+            },
           ],
         },
       },
     });
-    const table = await within(await mainReady()).findByRole("table", {
-      name: "Service tokens",
-    });
+    const table = await tokensTable();
     await within(table).findByText("Deploy box");
     const deploy = within(table).getByText("Deploy box").closest("tr")!;
-    expect(deploy.textContent).toContain("cit_deploy");
-    expect(deploy.textContent).toContain("Every private feed");
+    expect(deploy.textContent).toContain("pkeyci_…R8VQ");
+    expect(deploy.textContent).not.toContain("cit_deploy");
+    expect(deploy.textContent).toContain("Reads every private feed");
     expect(deploy.textContent).not.toContain("Never");
-    const idle = within(table).getByText("Idle runner").closest("tr")!;
-    expect(idle.textContent).toContain("Never");
+    expect(
+      within(table).getByText("Idle runner").closest("tr")!.textContent,
+    ).toContain("Never");
     const legacy = within(table).getByText("CI pull").closest("tr")!;
-    expect(legacy.textContent).toMatch(/Legacy · works until \d/);
-    const gone = within(table).getByText("Detached").closest("tr")!;
-    expect(gone.textContent).toContain("Revoked by System · link removed");
-    const old = within(table).getByText("Old laptop").closest("tr")!;
-    expect(old.textContent).toContain("Revoked by ada@x.io · manual");
+    // The console's date format, in the pill and in Expires.
+    expect(legacy.textContent).toMatch(/Legacy · works until [A-Z][a-z]{2} \d/);
+    expect(
+      within(table).getByText("Pusher").closest("tr")!.textContent,
+    ).toContain("Publishes to npm");
+    // Ended tokens are folded behind one button, with who ended them and why.
+    expect(within(table).queryByText("Detached")).toBeNull();
+    await userEvent.click(
+      within(main()).getByRole("button", { name: "Show 3 revoked" }),
+    );
+    expect(
+      within(table).getByText("Detached").closest("tr")!.textContent,
+    ).toContain("Revoked by System · link removed");
+    expect(
+      within(table).getByText("Old runner").closest("tr")!.textContent,
+    ).toContain("Revoked by ada@x.io · manual");
+    expect(
+      within(table).getByText("Old laptop").closest("tr")!.textContent,
+    ).toContain("Revoked by ada@x.io · manual");
   });
 
-  it("says what a service token is when there is none", async () => {
+  it("starts an empty product with the next step: a token, and the command that prints the setup", async () => {
     boot("#/p/djdl/distribution/feeds/tokens", {
       extra: {
         ...feedRoutes(),
@@ -516,26 +594,37 @@ describe("service tokens (F-33b.4)", () => {
         [TOKENS_URL]: tokensPage({ tokens: [], serviceTokens: [] }),
       },
     });
+    const m = await mainReady();
     expect(
-      await within(await mainReady()).findByText("No service tokens"),
+      await within(m).findByText(
+        "Give CI and servers read access to djdl's private feeds",
+      ),
     ).toBeTruthy();
+    expect(m.textContent).toContain(
+      "pkey feeds setup --ecosystem npm --owner djdl --token-env PKEY_REGISTRY_TOKEN",
+    );
+    expect(within(m).getAllByRole("button", { name: /New token/ }).length).toBe(
+      2,
+    );
   });
 
-  it("revokes a service token by its cit_ id (L2) and Revoke all covers every kind", async () => {
+  it("revokes by cit_ id at L2, names the kind in the toast, and keeps focus on the next row's actions", async () => {
+    // The list the server answers: the revoke below ends the first token in it.
+    const page = tokensPage() as {
+      serviceTokens: Record<string, unknown>[];
+    };
     const log = boot("#/p/djdl/distribution/feeds/tokens", {
       extra: {
         ...feedRoutes(),
         ...product(true),
+        [TOKENS_URL]: page,
         [`POST ${TOKENS_URL}/cit_deploy/revoke`]: {
           ok: true,
-          view: { ...SERVICE_ROW, tokenId: "cit_deploy", status: "revoked" },
+          view: { ...SERVICE_ROW, tokenId: "cit_deploy" },
         },
-        [`POST ${TOKENS_URL}/revoke-all`]: { ok: true, revoked: 3 },
       },
     });
-    const table = await within(await mainReady()).findByRole("table", {
-      name: "Service tokens",
-    });
+    const table = await tokensTable();
     await within(table).findByText("Deploy box");
     await userEvent.click(
       within(table).getByRole("button", { name: "Actions for Deploy box" }),
@@ -546,6 +635,11 @@ describe("service tokens (F-33b.4)", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(confirmFor("registryToken.revoke").level).toBe(2);
     expect(dialog.textContent).toContain("Revoke Deploy box?");
+    expect(dialog.textContent).not.toMatch(/\bmint/i);
+    Object.assign(page.serviceTokens[0]!, {
+      status: "revoked",
+      revokedAt: 1_700_000_100,
+    });
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Revoke token" }),
     );
@@ -558,7 +652,65 @@ describe("service tokens (F-33b.4)", () => {
       ).toBe(true),
     );
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
-    // Revoke all: the count names service, publish and legacy tokens together.
+    expect(await screen.findByText("Service token revoked")).toBeTruthy();
+    // Not <body>: the next row's actions, in display order.
+    await waitFor(() =>
+      expect(
+        document.activeElement?.getAttribute("aria-label") ??
+          document.activeElement?.outerHTML.slice(0, 200),
+      ).toBe("Actions for Idle runner"),
+    );
+  });
+
+  it("names a legacy token as legacy when it is revoked", async () => {
+    boot("#/p/djdl/distribution/feeds/tokens", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        [`POST ${TOKENS_URL}/rtok_ci/revoke`]: { ok: true, view: {} },
+      },
+    });
+    const table = await tokensTable();
+    await within(table).findByText("CI pull");
+    await userEvent.click(
+      within(table).getByRole("button", { name: "Actions for CI pull" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Revoke/ }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Revoke token",
+      }),
+    );
+    expect(await screen.findByText("Legacy token revoked")).toBeTruthy();
+  });
+
+  it("Revoke all is L3: the slug is typed, and the copy is the counts", async () => {
+    const base = tokensPage();
+    const log = boot("#/p/djdl/distribution/feeds/tokens", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        [TOKENS_URL]: {
+          ...base,
+          tokens: [
+            ...(base.tokens as Record<string, unknown>[]),
+            {
+              ...(base.tokens as Record<string, unknown>[])[0],
+              tokenId: "rtok_lic",
+              label: "Licensee token",
+              legacy: false,
+              binding: "license",
+              licenseId: "lic_1",
+              createdBy: "portal:pacc_1",
+            },
+          ],
+        },
+        [`POST ${TOKENS_URL}/revoke-all`]: { ok: true, revoked: 4 },
+      },
+    });
+    await tokensTable();
     await userEvent.click(
       within(main()).getAllByRole("button", { name: /More actions/i })[0]!,
     );
@@ -566,11 +718,31 @@ describe("service tokens (F-33b.4)", () => {
       await screen.findByRole("menuitem", { name: /Revoke all/ }),
     );
     const all = await screen.findByRole("alertdialog");
-    expect(confirmFor("registryToken.revokeAll").level).toBe(2);
-    expect(all.textContent).toContain("Revoke every service token?");
-    expect(all.textContent).toMatch(/3 active tokens stop working/);
+    expect(confirmFor("registryToken.revokeAll")).toMatchObject({
+      level: 3,
+      typed: "slug",
+    });
+    expect(all.textContent).toContain("Revoke all 4 active tokens?");
+    expect(all.textContent).toContain(
+      "2 service tokens and 1 legacy token stop working within 30 seconds.",
+    );
+    expect(all.textContent).toContain(
+      "1 token a licensee created in Polaris Locker stops too.",
+    );
+    expect(all.textContent).not.toMatch(/\bmint/i);
+    const confirm = within(all).getByRole("button", { name: "Revoke all" });
+    expect(
+      confirm.hasAttribute("disabled") ||
+        confirm.getAttribute("aria-disabled") === "true",
+    ).toBe(true);
+    await userEvent.type(
+      within(all).getByRole("textbox", { name: /Type djdl/ }),
+      "djdl",
+    );
     await userEvent.click(
-      within(all).getByRole("button", { name: "Revoke all" }),
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Revoke all",
+      }),
     );
     await waitFor(() =>
       expect(
@@ -581,25 +753,36 @@ describe("service tokens (F-33b.4)", () => {
     );
   });
 
+  it("leaves the licensee line out when no licensee token is active", async () => {
+    boot("#/p/djdl/distribution/feeds/tokens", {
+      extra: { ...feedRoutes(), ...product(true) },
+    });
+    await tokensTable();
+    await userEvent.click(
+      within(main()).getAllByRole("button", { name: /More actions/i })[0]!,
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Revoke all/ }),
+    );
+    const all = await screen.findByRole("alertdialog");
+    expect(all.textContent).toContain("Revoke all 3 active tokens?");
+    expect(all.textContent).not.toContain("a licensee created");
+  });
+
   it("keeps the label when a save fails, says why, and returns focus on Escape", async () => {
     boot("#/p/djdl/distribution/feeds/tokens", {
       extra: {
         ...feedRoutes(),
         ...product(true),
-        [`POST ${TOKENS_URL}`]: new Response(
-          JSON.stringify({ error: { code: "internal", message: "boom" } }),
-          { status: 500 },
-        ),
+        [`POST ${TOKENS_URL}`]: refusal(500, {
+          code: "internal",
+          message: "boom",
+        }),
       },
     });
-    await within(await mainReady()).findByRole("table", {
-      name: "Service tokens",
-    });
+    await tokensTable();
     const open = within(main()).getByRole("button", { name: /New token/ });
-    await userEvent.click(open);
-    const dialog = await screen.findByRole("dialog", {
-      name: "New service token",
-    });
+    const dialog = await openMint();
     const label = within(dialog).getByRole("textbox", { name: /Label/ });
     await userEvent.type(label, "Keep me");
     await userEvent.click(
@@ -613,36 +796,117 @@ describe("service tokens (F-33b.4)", () => {
     await waitFor(() => expect(document.activeElement).toBe(open));
   });
 
-  it("refuses a label with control characters", async () => {
+  it("says why Create does nothing: an empty or control-character label is marked and focused", async () => {
     boot("#/p/djdl/distribution/feeds/tokens", {
       extra: { ...feedRoutes(), ...product(true) },
     });
-    await within(await mainReady()).findByRole("table", {
-      name: "Service tokens",
-    });
+    await tokensTable();
+    const dialog = await openMint();
+    const label = within(dialog).getByRole("textbox", { name: /Label/ });
+    // Nothing is flagged before an attempt.
+    expect(dialog.textContent).not.toContain("Give the token a label");
     await userEvent.click(
-      within(main()).getByRole("button", { name: /New token/ }),
+      within(dialog).getByRole("button", { name: "Create token" }),
     );
-    const dialog = await screen.findByRole("dialog", {
-      name: "New service token",
-    });
-    await userEvent.type(
-      within(dialog).getByRole("textbox", { name: /Label/ }),
-      "bad\u0007label",
-    );
+    expect(dialog.textContent).toContain("Give the token a label");
+    await waitFor(() => expect(document.activeElement).toBe(label));
+    await userEvent.type(label, "bad\u0007label");
     expect(dialog.textContent).toContain(
       "Remove control characters from the label.",
     );
-    expect(
-      (
-        within(dialog).getByRole("button", {
-          name: "Create token",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
   });
 
-  it("has no Create on the platform scope, and says how team members install", async () => {
+  it("words a token limit and marks the field a 422 names", async () => {
+    boot("#/p/djdl/distribution/feeds/tokens", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        [`POST ${TOKENS_URL}`]: refusal(409, {
+          code: "conflict",
+          reason: "token_limit",
+          message: "too many",
+        }),
+      },
+    });
+    await tokensTable();
+    const dialog = await openMint();
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /Label/ }),
+      "One more",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create token" }),
+    );
+    expect(
+      await within(dialog).findByText("Too many active tokens"),
+    ).toBeTruthy();
+    expect(dialog.textContent).toContain("djdl has 500 active tokens");
+    expect(dialog.textContent).toContain("Revoke one, then try again.");
+  });
+
+  it("marks the field a 422 names, instead of a bare banner", async () => {
+    const res = new Response(
+      JSON.stringify({
+        error: { code: "invalid_token", message: "bad", fields: ["label"] },
+      }),
+      { status: 422 },
+    );
+    boot("#/p/djdl/distribution/feeds/tokens", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        [`POST ${TOKENS_URL}`]: res,
+      },
+    });
+    await tokensTable();
+    const dialog = await openMint();
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /Label/ }),
+      "Nope",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create token" }),
+    );
+    expect(
+      await within(dialog).findByText(/The server refused this label/),
+    ).toBeTruthy();
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+  });
+
+  it("returns focus to New token… when the shown-once dialog is done", async () => {
+    const minted = {
+      ok: true,
+      token: `pkeyci_${"m".repeat(43)}`,
+      view: { ...SERVICE_ROW, tokenId: "cit_m", label: "M", hint: "mmmm" },
+    };
+    boot("#/p/djdl/distribution/feeds/tokens", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        [`POST ${TOKENS_URL}`]: minted,
+      },
+    });
+    await tokensTable();
+    const open = within(main()).getByRole("button", { name: /New token/ });
+    const dialog = await openMint();
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /Label/ }),
+      "M",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create token" }),
+    );
+    const shown = await screen.findByRole("dialog", {
+      name: "Service token created",
+    });
+    await userEvent.click(
+      within(shown).getByRole("checkbox", { name: /stored it/ }),
+    );
+    await userEvent.click(within(shown).getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(document.activeElement).toBe(open));
+  });
+
+  it("has no Create on the platform scope; its empty state points to Personal tokens", async () => {
     boot("#/platform/feeds/tokens", { extra: feedRoutes() });
     await heading("Registry tokens");
     const m = await mainReady();
@@ -651,43 +915,48 @@ describe("service tokens (F-33b.4)", () => {
     expect(m.textContent).toContain(
       "Team members install with their personal token.",
     );
+    cleanup();
+    resetConsole();
+    const page = feedRoutes()["/manage/api/platform/feeds/tokens"] as object;
+    boot("#/platform/feeds/tokens", {
+      extra: {
+        ...feedRoutes(),
+        "/manage/api/platform/feeds/tokens": { ...page, tokens: [] },
+      },
+    });
+    const empty = await mainReady();
+    const link = await within(empty).findByRole("link", {
+      name: "Personal tokens",
+    });
+    expect(link.getAttribute("href")).toBe("#/personal-tokens");
+    // The sentence is said once, not as a callout and again in the empty state.
+    expect(empty.textContent!.split("personal token").length).toBe(2);
   });
 
-  it("shows the page's error with Try again", async () => {
+  it("shows the page's error with Try again, and New token… says it couldn't load", async () => {
     boot("#/p/djdl/distribution/feeds/tokens", {
       extra: {
         ...feedRoutes(),
         ...product(true),
-        [TOKENS_URL]: new Response(
-          JSON.stringify({ error: { code: "internal", message: "boom" } }),
-          { status: 500 },
-        ),
+        [TOKENS_URL]: refusal(500, { code: "internal", message: "boom" }),
       },
     });
+    const m = await mainReady();
     expect(
-      await within(await mainReady()).findByRole("button", {
-        name: /try again/i,
-      }),
+      await within(m).findByRole("button", { name: /try again/i }),
     ).toBeTruthy();
+    const btn = within(m).getByRole("button", { name: /New token/ });
+    await waitFor(() =>
+      expect(
+        document.getElementById(btn.getAttribute("aria-describedby") ?? "x")
+          ?.textContent,
+      ).toBe("Couldn't load tokens"),
+    );
   });
 
-  it("without Keys the Read option is off and says who to ask; a publish token still mints", async () => {
+  it("without Keys the Read option is off and says who to ask; a publish token still comes through", async () => {
     boot("#/p/djdl/distribution/feeds/tokens", {
-      me: {
-        platformAdmin: false,
-        permissions: {
-          roles: [
-            {
-              role: "product_admin",
-              scope: "product:djdl",
-              areas: ["ship"],
-              source: "grant",
-            },
-          ],
-          platform: { view: ["console"], edit: ["console"] },
-          products: { djdl: { view: ["ship"], edit: ["ship"] } },
-        },
-      } as never,
+      me: member({ edit: true }),
       extra: {
         ...feedRoutes(),
         ...product(true),
@@ -702,28 +971,15 @@ describe("service tokens (F-33b.4)", () => {
         }),
       },
     });
-    await within(await mainReady()).findByRole("table", {
-      name: "Service tokens",
-    });
-    await userEvent.click(
-      within(main()).getByRole("button", { name: /New token/ }),
-    );
-    const dialog = await screen.findByRole("dialog", {
-      name: "New publish token",
-    });
-    const read = within(dialog)
-      .getAllByRole("radio")
-      .find(
-        (r) =>
-          !/publish/i.test(
-            r.getAttribute("aria-label") ??
-              r.closest("label")?.textContent ??
-              "",
-          ),
-      )!;
-    expect((read as HTMLInputElement).disabled).toBe(true);
+    await tokensTable();
+    const dialog = await openMint("New publish token");
+    const read = within(dialog).getByRole("radio", { name: /^Read(?! and)/ });
+    expect(
+      read.hasAttribute("disabled") ||
+        read.getAttribute("aria-disabled") === "true",
+    ).toBe(true);
     expect(dialog.textContent).toContain("Keys and secrets access");
-    // The publish default applies from the first render: 7 days, not the read default.
+    // The publish default applies from the first render, and a sole publish feed is ticked.
     expect(
       (
         within(dialog).getByRole("textbox", {
@@ -731,27 +987,23 @@ describe("service tokens (F-33b.4)", () => {
         }) as HTMLInputElement
       ).value,
     ).toBe("7");
+    expect(
+      within(dialog)
+        .getByRole("checkbox", { name: /npm/ })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
   });
 
-  it("without Keys and without a publish feed, New token says why it is off", async () => {
+  it("without Keys and without a publish feed, New token… says why it is off", async () => {
     boot("#/p/djdl/distribution/feeds/tokens", {
-      me: {
-        platformAdmin: false,
-        permissions: {
-          roles: [],
-          platform: { view: ["console"], edit: ["console"] },
-          products: { djdl: { view: ["ship"], edit: ["ship"] } },
-        },
-      } as never,
+      me: member({ edit: true }),
       extra: {
         ...feedRoutes(),
         ...product(true),
         "/manage/api/access/admins": { admins: [] },
       },
     });
-    await within(await mainReady()).findByRole("table", {
-      name: "Service tokens",
-    });
+    await tokensTable();
     const btn = within(main()).getByRole("button", { name: /New token/ });
     expect(btn.getAttribute("aria-disabled")).toBe("true");
     await waitFor(() =>
@@ -760,15 +1012,33 @@ describe("service tokens (F-33b.4)", () => {
           ?.textContent,
       ).toContain("Keys and secrets access"),
     );
-    await waitFor(() =>
-      expect(
-        document.getElementById(btn.getAttribute("aria-describedby") ?? "x")
-          ?.textContent,
-      ).toContain("Keys and secrets access"),
-    );
   });
 
-  it("handles a few hundred service tokens", async () => {
+  it("a view-only member sees Revoke and Revoke all off, with the reason", async () => {
+    boot("#/p/djdl/distribution/feeds/tokens", {
+      me: member({ edit: false }),
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        "/manage/api/access/admins": { admins: [] },
+      },
+    });
+    const table = await tokensTable();
+    await within(table).findByText("Deploy box");
+    await userEvent.click(
+      within(table).getByRole("button", { name: "Actions for Deploy box" }),
+    );
+    const item = await screen.findByRole("menuitem", { name: /Revoke/ });
+    expect(item.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(
+      within(main()).getAllByRole("button", { name: /More actions/i })[0]!,
+    );
+    const all = await screen.findByRole("menuitem", { name: /Revoke all/ });
+    expect(all.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("handles a few hundred service tokens, with search", async () => {
     const many = Array.from({ length: 400 }, (_, i) => ({
       ...SERVICE_ROW,
       tokenId: `cit_${String(i).padStart(4, "0")}`,
@@ -781,20 +1051,17 @@ describe("service tokens (F-33b.4)", () => {
         [TOKENS_URL]: tokensPage({ serviceTokens: many }),
       },
     });
-    const table = await within(await mainReady()).findByRole("table", {
-      name: "Service tokens",
-    });
+    const table = await tokensTable();
     await within(table).findByText("Runner 0");
     expect(table.querySelectorAll("tbody tr").length).toBeGreaterThan(10);
+    expect(within(main()).getByRole("searchbox")).toBeTruthy();
   });
 
   it("passes axe", async () => {
     boot("#/p/djdl/distribution/feeds/tokens", {
       extra: { ...feedRoutes(), ...product(true) },
     });
-    await within(await mainReady()).findByRole("table", {
-      name: "Service tokens",
-    });
+    await within(await tokensTable()).findByText("Deploy box");
     expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);
   });
 });

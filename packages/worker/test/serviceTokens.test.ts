@@ -131,6 +131,10 @@ describe("minting a service token", () => {
     const listed = await (await admin("GET", tokens())).json();
     expect(listed.serviceTokens).toHaveLength(1);
     expect(listed.serviceTokens[0].hint).toBe(body.token.slice(-4));
+    // Every feed names its namespace (`{}` when unset), which the setup snippets use.
+    expect(
+      listed.feeds.every((f: Loose) => typeof f.namespace === "object"),
+    ).toBe(true);
     expect(JSON.stringify(listed)).not.toContain(body.token);
     expect(JSON.stringify(listed)).not.toContain(row!.token_hash as string);
     expect(listed.limits).toMatchObject({

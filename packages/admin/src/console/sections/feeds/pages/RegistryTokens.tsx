@@ -8,45 +8,46 @@
  * - **Platform → Package feeds → Tokens** (`#/platform/feeds/tokens`): the system product's;
  * - **the licence page's Registry tokens panel**: one licence's tokens (`LicenseRegistryTokens`).
  *
- * A token is shown once, in a dialog that also renders every client's setup with the real value
- * (`feedSetupSnippets` with a `token` credential). Revoking is L2; Revoke all needs confirmation.
- * A licensee can mint their own read tokens in the portal; those are listed here too. The
- * platform scope has no Create: team members install with their personal token.
+ * A token is shown once, in a dialog that also renders the setup. A licensee can create their own
+ * read tokens in the portal; those are listed here too. The platform scope has no Create: team
+ * members install with their personal token.
+ *
+ * Revoke is L2 and needs Ship edit; Revoke all is L3 (the owner's slug typed). After a revoke
+ * focus moves to the next row's actions, never `<body>`.
  */
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Ban, Plus } from "lucide-react";
-import {
-  api,
-  type MintedRegistryToken,
-  type RegistryTokensDto,
-} from "../../../../api.js";
+import { api, type RegistryTokensDto } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
+import { CodeBlock } from "../../../../ui/CodeBlock.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { DataTable } from "../../../../ui/data-table/index.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { OneTimeSecretDialog } from "../../../../ui/OneTimeSecretPanel.js";
 import { toast } from "../../../../ui/toast.js";
-import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { mutate } from "../../../data/mutations.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { qk } from "../../../data/queries.js";
+import { r } from "../../../routes.js";
 import { intentOf } from "../../core/pages/confirmGate.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
 import { FeedNav } from "./FeedsArea.js";
-import { MintDialog, MintedSnippets } from "./RegistryTokenMint.js";
+import { MintDialog, MintedSnippets, TOKEN_ENV } from "./RegistryTokenMint.js";
 import {
   columns,
   dateOf,
   serviceRow,
+  TokenCard,
+  type MintedRow,
   type TokenRow,
 } from "./registryTokenRows.js";
-import { feedSetupSnippets, type FeedScope } from "../model/model.js";
+import { type FeedScope } from "../model/model.js";
 
 export function fetchRegistryTokens(
   scope: FeedScope,
@@ -62,6 +63,70 @@ export function useRegistryTokens(scope: FeedScope, licenseId?: string) {
   });
 }
 
+/**
+ * Who may do what here. Revoking and creating need Ship edit (the route's area); a service token
+ * also needs Keys, like CI tokens, so without Keys only a publish token can be created.
+ */
+function useTokenGates(
+  scope: FeedScope,
+  data: RegistryTokensDto | undefined,
+  failed: boolean,
+): { revokeReason: string | undefined; mintReason: string | undefined } {
+  const slug = scope.kind === "product" ? scope.slug : null;
+  const ship = useWriteGate(slug === null ? "platform" : "ship", slug);
+  const keys = useWriteGate("keys", slug);
+  const publishable = (data?.limits.publishEcosystems ?? []).length > 0;
+  return {
+    revokeReason: ship.disabledReason,
+    mintReason: !data
+      ? failed
+        ? "Couldn't load tokens"
+        : "Loading"
+      : !ship.allowed
+        ? ship.disabledReason
+        : keys.allowed || publishable
+          ? undefined
+          : keys.disabledReason,
+  };
+}
+
+/** What a token is called in the toast and the shown-once dialog. */
+function kindOf(t: TokenRow): string {
+  if (t.service) return "Service token";
+  if (t.legacy) return "Legacy token";
+  if (t.scopes.includes("publish")) return "Publish token";
+  return "Registry token";
+}
+
+/** "2 service tokens and 1 legacy token": a count per kind, none for zero. */
+function breakdown(live: TokenRow[]): { parts: string; licensee: number } {
+  const n = (f: (t: TokenRow) => boolean) => live.filter(f).length;
+  const licensee = (t: TokenRow) => t.createdBy.startsWith("portal:");
+  const counts: [number, string][] = [
+    [n((t) => !!t.service), "service"],
+    [n((t) => !!t.legacy && !t.service), "legacy"],
+    [n((t) => t.scopes.includes("publish") && !t.service), "publish"],
+    [
+      n(
+        (t) =>
+          !t.service &&
+          !t.legacy &&
+          !t.scopes.includes("publish") &&
+          !licensee(t),
+      ),
+      "license",
+    ],
+  ];
+  const parts = counts
+    .filter(([c]) => c > 0)
+    .map(([c, k]) => `${c} ${k} token${c === 1 ? "" : "s"}`);
+  const joined =
+    parts.length > 1
+      ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
+      : (parts[0] ?? "");
+  return { parts: joined, licensee: n(licensee) };
+}
+
 /** The table, the mint dialog, the shown-once dialog and the revoke dialogs, for one scope. */
 function TokensTable({
   scope,
@@ -70,6 +135,7 @@ function TokensTable({
   onMintingChange,
   revokingAll,
   onRevokingAllChange,
+  returnFocus,
 }: {
   scope: FeedScope;
   licenseId?: string;
@@ -77,15 +143,17 @@ function TokensTable({
   onMintingChange: (open: boolean) => void;
   revokingAll: boolean;
   onRevokingAllChange: (open: boolean) => void;
+  /** Where focus goes when the shown-once dialog closes: the page's New token… button. */
+  returnFocus: React.RefObject<HTMLElement | null>;
 }): React.ReactElement {
   const query = useRegistryTokens(scope, licenseId);
-  useLoadingAnnouncement("registry tokens", query.isPending);
-  const [minted, setMinted] = React.useState<MintedRegistryToken | null>(null);
+  const gates = useTokenGates(scope, query.data, query.isError);
+  const [minted, setMinted] = React.useState<MintedRow | null>(null);
   const [revoking, setRevoking] = React.useState<TokenRow | null>(null);
-  const cols = React.useMemo(
-    () => columns(licenseId === undefined),
-    [licenseId],
-  );
+  const [showEnded, setShowEnded] = React.useState(false);
+  const box = React.useRef<HTMLDivElement>(null);
+  const forLicense = licenseId !== undefined;
+  const cols = React.useMemo(() => columns(forLicense), [forLicense]);
   const rows = React.useMemo<TokenRow[]>(
     () => [
       ...(licenseId === undefined
@@ -96,14 +164,66 @@ function TokensTable({
     [query.data, licenseId],
   );
   const live = rows.filter((t) => t.status === "active");
+  const ended = rows.filter((t) => t.status !== "active");
+  // Ended tokens fold away while any token is active; an all-ended list shows them.
+  const folded = !showEnded && live.length > 0 && ended.length > 0;
+  const shown = folded ? live : rows;
   const service = licenseId === undefined && scope.kind === "product";
-  const noun = service ? "Service token" : "Registry token";
+  const owner = query.data?.owner ?? "";
+  const now = Date.now();
+
+  /** Focus the next row's actions (or the previous one's, or New token…), never `<body>`. */
+  const refocus = (before: string[], id: string): void => {
+    window.setTimeout(() => {
+      const at = before.indexOf(id);
+      const order = [
+        ...before.slice(at + 1),
+        ...before.slice(0, Math.max(at, 0)).reverse(),
+      ];
+      const rowEls = Array.from(
+        box.current?.querySelectorAll<HTMLElement>("[data-row-id]") ?? [],
+      );
+      for (const rowId of order) {
+        const el = rowEls
+          .find((e) => e.getAttribute("data-row-id") === rowId)
+          ?.querySelector<HTMLElement>('button[aria-label^="Actions for"]');
+        if (el) return el.focus();
+      }
+      (returnFocus.current ?? box.current)?.focus();
+    }, 150);
+  };
+  const revokeConfirmed = async (t: TokenRow): Promise<void> => {
+    const before = Array.from(
+      box.current?.querySelectorAll<HTMLElement>("[data-row-id]") ?? [],
+    ).map((el) => el.getAttribute("data-row-id") ?? "");
+    await mutate("revokeRegistryToken", scope, t.tokenId);
+    toast.success(`${kindOf(t)} revoked`);
+    await query.refetch();
+    refocus(before, t.tokenId);
+  };
+
+  const sums = breakdown(live);
+  const emptyAction = (
+    <Button
+      iconStart={<Plus aria-hidden />}
+      onClick={() => onMintingChange(true)}
+      disabledReason={gates.mintReason}
+    >
+      New token…
+    </Button>
+  );
   return (
-    <>
+    <div ref={box} tabIndex={-1} className="space-y-4 outline-none">
+      {scope.kind === "platform" && rows.length > 0 ? (
+        <Callout tone="info">
+          Team members install with their personal token. The tokens here work
+          until they expire, and you can revoke them.
+        </Callout>
+      ) : null}
       <DataTable<TokenRow>
         id={`registry-tokens-${scope.kind}${licenseId ? "-license" : ""}`}
         caption={service ? "Service tokens" : "Registry tokens"}
-        data={rows}
+        data={shown}
         columns={cols}
         getRowId={(t) => t.tokenId}
         rowLabel={(t) => t.label}
@@ -114,6 +234,9 @@ function TokensTable({
                   label: "Revoke…",
                   tone: "danger",
                   onSelect: () => setRevoking(t),
+                  ...(gates.revokeReason
+                    ? { disabledReason: gates.revokeReason }
+                    : {}),
                 },
               ]
             : []
@@ -123,20 +246,79 @@ function TokensTable({
         onRetry={() => void query.refetch()}
         exportCsv={false}
         mobile="cards"
-        empty={
-          <EmptyState
-            kind="first-run"
-            variant="inline"
-            headingLevel={3}
-            title={service ? "No service tokens" : "No registry tokens"}
-            description={
-              licenseId
-                ? "Tokens bound to this license appear here, whether an operator or the licensee minted them."
-                : service
-                  ? "CI and servers present one to install from feeds that are not public. Public feeds need none."
-                  : "Team members install with their personal token. Public feeds need none."
-            }
+        cardBreakpoint="(max-width: 64em)"
+        mobileCard={(t, primary) => (
+          <TokenCard
+            row={t}
+            primary={primary}
+            now={now}
+            forLicense={forLicense}
           />
+        )}
+        search={
+          rows.length > 20
+            ? { placeholder: "Search tokens", columns: ["token"] }
+            : undefined
+        }
+        toolbarActions={
+          ended.length > 0 && live.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowEnded(!showEnded)}
+            >
+              {showEnded
+                ? "Hide ended"
+                : `Show ${ended.length} ${ended.every((t) => t.status === "revoked") ? "revoked" : "ended"}`}
+            </Button>
+          ) : undefined
+        }
+        empty={
+          licenseId ? (
+            <EmptyState
+              kind="first-run"
+              variant="inline"
+              headingLevel={3}
+              title="No registry tokens"
+              description="Tokens bound to this license appear here, whether an operator or the licensee created them."
+            />
+          ) : service ? (
+            <EmptyState
+              kind="first-run"
+              variant="inline"
+              headingLevel={3}
+              title={`Give CI and servers read access to ${owner}'s private feeds`}
+              description={
+                <span className="block min-w-0 max-w-[calc(100vw-3rem)] space-y-2">
+                  <span className="block">
+                    Create a service token, then print each client's setup:
+                  </span>
+                  <CodeBlock
+                    code={`pkey feeds setup --ecosystem npm --owner ${owner} --token-env ${TOKEN_ENV}`}
+                    language="sh"
+                    copy
+                  />
+                </span>
+              }
+              primaryAction={emptyAction}
+            />
+          ) : (
+            <EmptyState
+              kind="first-run"
+              variant="inline"
+              headingLevel={3}
+              title="No registry tokens"
+              description={
+                <span>
+                  Team members install with their personal token. See{" "}
+                  <a className="underline" href={r.personalTokens()}>
+                    Personal tokens
+                  </a>
+                  .
+                </span>
+              }
+            />
+          )
         }
       />
       {query.data ? (
@@ -158,25 +340,28 @@ function TokensTable({
           if (!o) setMinted(null);
         }}
         size="lg"
-        title={`${minted?.view.tokenId.startsWith("cit_") ? "Service" : "Registry"} token created`}
+        title={`${minted ? kindOf(minted.view) : "Registry token"} created`}
         description={
           minted
-            ? `Token ${minted.view.tokenId}, expiring ${dateOf(minted.view.expiresAt)}.`
+            ? `${minted.view.label} · expires ${dateOf(minted.view.expiresAt)}`
             : undefined
         }
-        label={
-          minted?.view.tokenId.startsWith("cit_")
-            ? "Service token"
-            : "Registry token"
-        }
+        label={minted ? kindOf(minted.view) : "Registry token"}
         value={minted?.token ?? ""}
-        hint="Shown once. Polaris Key stores only its hash. The setup below already holds it."
+        hint={
+          minted?.view.service
+            ? `Shown once. Add it to your CI secrets as ${TOKEN_ENV}.`
+            : "Shown once. The setup below already holds it."
+        }
         details={
           minted && query.data ? (
             <MintedSnippets data={query.data} minted={minted} />
           ) : null
         }
-        onDone={() => setMinted(null)}
+        onDone={() => {
+          setMinted(null);
+          window.setTimeout(() => returnFocus.current?.focus(), 150);
+        }}
       />
       <ConfirmDialog
         open={revoking !== null}
@@ -185,14 +370,11 @@ function TokensTable({
         title={`Revoke ${revoking?.label ?? "token"}?`}
         consequences={[
           "Clients presenting it are refused within 30 seconds.",
-          "A revoked token cannot be restored; mint a new one instead.",
+          "A revoked token cannot be restored; create a new one instead.",
         ]}
         confirmLabel="Revoke token"
         describeError={(e) => errorCopy(e)}
-        onConfirm={async () => {
-          await mutate("revokeRegistryToken", scope, revoking!.tokenId);
-          toast.success(`${noun} revoked`);
-        }}
+        onConfirm={() => revokeConfirmed(revoking!)}
       />
       <ConfirmDialog
         open={revokingAll}
@@ -201,16 +383,27 @@ function TokensTable({
         title={
           licenseId
             ? "Revoke every token of this license?"
-            : service
-              ? "Revoke every service token?"
-              : "Revoke every registry token?"
+            : `Revoke all ${live.length} active token${live.length === 1 ? "" : "s"}?`
         }
         consequences={[
-          `${live.length} active token${live.length === 1 ? "" : "s"} stop${live.length === 1 ? "s" : ""} working within 30 seconds, including those licensees minted in Polaris Locker.`,
+          ...(sums.parts
+            ? [
+                `${sums.parts} stop${live.length - sums.licensee === 1 ? "s" : ""} working within 30 seconds.`,
+              ]
+            : []),
+          ...(sums.licensee > 0
+            ? [
+                `${sums.licensee} token${sums.licensee === 1 ? "" : "s"} a licensee created in Polaris Locker stop${sums.licensee === 1 ? "s" : ""} too.`,
+              ]
+            : []),
           service
-            ? "Includes service, publish and legacy tokens. CI and servers need a new service token."
-            : "Clients of feeds that are not public need a new token.",
+            ? "CI and servers can't install from private feeds until they get a new service token."
+            : "Clients of private feeds need a new token.",
         ]}
+        typedConfirmation={{
+          value: owner,
+          label: `Type ${owner} to confirm`,
+        }}
         confirmLabel="Revoke all"
         describeError={(e) => errorCopy(e)}
         onConfirm={async () => {
@@ -220,7 +413,7 @@ function TokensTable({
           );
         }}
       />
-    </>
+    </div>
   );
 }
 
@@ -232,34 +425,30 @@ export function RegistryTokensPage({
 }): React.ReactElement {
   const [minting, setMinting] = React.useState(false);
   const [revokingAll, setRevokingAll] = React.useState(false);
+  const newToken = React.useRef<HTMLButtonElement>(null);
   const query = useRegistryTokens(scope);
+  const gates = useTokenGates(scope, query.data, query.isError);
   const anyLive = [
     ...(query.data?.tokens ?? []),
     ...(query.data?.serviceTokens ?? []),
   ].some((t) => t.status === "active");
   const product = scope.kind === "product";
-  const keys = useWriteGate("keys", product ? scope.slug : null);
-  // A member without Keys can still mint a publish token, when the product has a publish feed.
-  const mintReason = !query.data
-    ? "Loading"
-    : keys.allowed || (query.data.limits.publishEcosystems ?? []).length > 0
-      ? undefined
-      : keys.disabledReason;
   return (
     <div className="space-y-6">
       <PageHeader
         title={product ? "Service tokens" : "Registry tokens"}
         description={
-          query.data?.registryOrigin
-            ? `For clients of feeds that are not public, on ${new URL(query.data.registryOrigin).host}.`
-            : undefined
+          product
+            ? "For CI and servers that install from private feeds."
+            : "Tokens for private feeds on the platform's registry."
         }
         primaryAction={
           product ? (
             <Button
+              ref={newToken}
               iconStart={<Plus aria-hidden />}
               onClick={() => setMinting(true)}
-              disabledReason={mintReason}
+              disabledReason={gates.mintReason}
             >
               New token…
             </Button>
@@ -270,7 +459,11 @@ export function RegistryTokensPage({
             label: "Revoke all…",
             icon: <Ban aria-hidden />,
             onSelect: () => setRevokingAll(true),
-            ...(anyLive ? {} : { disabledReason: "No active token" }),
+            ...(gates.revokeReason
+              ? { disabledReason: gates.revokeReason }
+              : anyLive
+                ? {}
+                : { disabledReason: "No active token" }),
           },
         ]}
         tabs={<FeedNav scope={scope} current="tokens" />}
@@ -283,27 +476,20 @@ export function RegistryTokensPage({
           context={{ area: "distribution", thing: "Registry tokens" }}
         />
       ) : (
-        <>
-          {product ? null : (
-            <Callout tone="info">
-              Team members install with their personal token. Tokens listed here
-              keep working until they expire, and you can revoke them.
-            </Callout>
-          )}
-          <TokensTable
-            scope={scope}
-            minting={minting}
-            onMintingChange={setMinting}
-            revokingAll={revokingAll}
-            onRevokingAllChange={setRevokingAll}
-          />
-        </>
+        <TokensTable
+          scope={scope}
+          minting={minting}
+          onMintingChange={setMinting}
+          revokingAll={revokingAll}
+          onRevokingAllChange={setRevokingAll}
+          returnFocus={newToken}
+        />
       )}
     </div>
   );
 }
 
-/** The licence page's Registry tokens panel: this licence's tokens, minted here or in the portal. */
+/** The licence page's Registry tokens panel: this licence's tokens, created here or in the portal. */
 export function LicenseRegistryTokens({
   slug,
   licenseId,
@@ -317,7 +503,9 @@ export function LicenseRegistryTokens({
   );
   const [minting, setMinting] = React.useState(false);
   const [revokingAll, setRevokingAll] = React.useState(false);
+  const newToken = React.useRef<HTMLButtonElement>(null);
   const query = useRegistryTokens(scope, licenseId);
+  const gates = useTokenGates(scope, query.data, query.isError);
   const anyLive = (query.data?.tokens ?? []).some((t) => t.status === "active");
   return (
     <SettingsSection id="license-registry-tokens" title="Registry tokens">
@@ -333,17 +521,19 @@ export function LicenseRegistryTokens({
               onMintingChange={setMinting}
               revokingAll={revokingAll}
               onRevokingAllChange={setRevokingAll}
+              returnFocus={newToken}
             />
           </div>
         }
       >
         <span className="flex flex-wrap justify-end gap-2">
           <Button
+            ref={newToken}
             variant="outline"
             size="sm"
             iconStart={<Plus aria-hidden />}
             onClick={() => setMinting(true)}
-            disabledReason={query.data ? undefined : "Loading"}
+            disabledReason={gates.mintReason}
           >
             New token…
           </Button>
@@ -352,7 +542,9 @@ export function LicenseRegistryTokens({
             size="sm"
             iconStart={<Ban aria-hidden />}
             onClick={() => setRevokingAll(true)}
-            disabledReason={anyLive ? undefined : "No active token"}
+            disabledReason={
+              gates.revokeReason ?? (anyLive ? undefined : "No active token")
+            }
           >
             Revoke all…
           </Button>
