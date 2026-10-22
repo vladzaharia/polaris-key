@@ -36,6 +36,7 @@ import { syncAccess } from "../../../core/accounts/syncAccess.js";
 import { getDevice } from "../../../core/devices/store.js";
 import { callCloudSync } from "../do/client.js";
 import type { PullOutcome } from "../engine/pull.js";
+import { OpTally } from "./meter.js";
 import {
   accountRequired,
   authenticateSync,
@@ -66,6 +67,14 @@ const matchesTag = (header: string | null, etag: string): boolean =>
     .includes(etag);
 
 export async function handlePull(ctx: ServiceContext): Promise<Response> {
+  const tally = new OpTally();
+  return tally.stamp(await pullInner(ctx, tally), "pull");
+}
+
+async function pullInner(
+  ctx: ServiceContext,
+  tally: OpTally,
+): Promise<Response> {
   const { req, env, db, product, now } = ctx;
   if (req.method !== "GET") return wireError(405, "method_not_allowed");
   // §13.1: Config or Identity off is `404` whatever Cloud Sync's own flag says (the service
@@ -109,6 +118,7 @@ export async function handlePull(ctx: ServiceContext): Promise<Response> {
           family: current.family,
         },
       );
+      tally.add(reply.meter);
       // The subject may have been merged away while the object answered.
       const again = await resolveAgain(current);
       if (again === null) return await accountRequired(env, db, req, product);
@@ -116,6 +126,7 @@ export async function handlePull(ctx: ServiceContext): Promise<Response> {
       current = { ...current, access: again };
       if (!moved) outcome = reply.outcome;
     } catch (e) {
+      tally.add(undefined);
       if (!isAbsorbed(e)) return objectFailure(e);
       const again = await resolveAgain(current);
       if (again === null) return await accountRequired(env, db, req, product);

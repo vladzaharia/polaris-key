@@ -240,6 +240,8 @@ export class CloudSyncDO implements DurableObject {
     } catch {
       return reply({ error: "bad_request" }, 400);
     }
+    // Whatever an alarm or an earlier request left in the meter is not this operation's.
+    this.store.takeMeter();
     if (!op || !isName(op.product) || !isName(op.subject))
       return reply({ error: "bad_request" }, 400);
 
@@ -393,6 +395,7 @@ export class CloudSyncDO implements DurableObject {
       return reply({
         op: "push",
         outcome: { ok: false, error: "bad_request", reason: shape.reason },
+        meter: this.store.takeMeter(),
       });
     if (op.classified.length !== shape.request.mutations.length)
       return reply({ error: "bad_request" }, 400);
@@ -429,7 +432,7 @@ export class CloudSyncDO implements DurableObject {
       return out;
     });
     if (outcome.ok) await this.scheduleFlush();
-    return reply({ op: "push", outcome });
+    return reply({ op: "push", outcome, meter: this.store.takeMeter() });
   }
 
   /**
@@ -456,7 +459,11 @@ export class CloudSyncDO implements DurableObject {
     )
       return reply({ error: "bad_request" }, 400);
     if (parsed.settings.length === 0 && parsed.clients.length === 0)
-      return reply({ op: "absorb", changed: 0 });
+      return reply({
+        op: "absorb",
+        changed: 0,
+        meter: this.store.takeMeter(),
+      });
     let changed = 0;
     try {
       this.ctx.storage.transactionSync(() => {
@@ -481,7 +488,7 @@ export class CloudSyncDO implements DurableObject {
       throw e;
     }
     if (changed > 0) await this.scheduleFlush();
-    return reply({ op: "absorb", changed });
+    return reply({ op: "absorb", changed, meter: this.store.takeMeter() });
   }
 
   private pull(op: Extract<CloudSyncOp, { op: "pull" }>): Response {
@@ -494,7 +501,7 @@ export class CloudSyncDO implements DurableObject {
       deviceId: op.deviceId,
       family: op.family,
     });
-    return reply({ op: "pull", outcome });
+    return reply({ op: "pull", outcome, meter: this.store.takeMeter() });
   }
 
   private exportAll(op: {

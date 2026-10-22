@@ -65,6 +65,7 @@ import { validatePush } from "../engine/validate.js";
 import { productIsPurging } from "../purgeFlag.js";
 import { pushLimited } from "../limits.js";
 import { classifyMutations } from "./classify.js";
+import { OpTally } from "./meter.js";
 import {
   accountRequired,
   authenticateSync,
@@ -150,6 +151,14 @@ const wireMigrations = (view: {
 });
 
 export async function handlePush(ctx: ServiceContext): Promise<Response> {
+  const tally = new OpTally();
+  return tally.stamp(await pushInner(ctx, tally), "push");
+}
+
+async function pushInner(
+  ctx: ServiceContext,
+  tally: OpTally,
+): Promise<Response> {
   const { req, env, db, product, now } = ctx;
   if (req.method !== "POST") return wireError(405, "method_not_allowed");
   if (!product.services.config.enabled || !product.services.identity.enabled)
@@ -194,6 +203,8 @@ export async function handlePush(ctx: ServiceContext): Promise<Response> {
   // 4. The body.
   const request = await readPush(req);
   if ("response" in request) return request.response;
+
+  tally.mutations = request.mutations.length;
 
   // 5. Classification.
   const schemaRow = await getActiveSchema(db, product.slug);
@@ -256,20 +267,21 @@ export async function handlePush(ctx: ServiceContext): Promise<Response> {
         classified,
         serverNow: now * 1000,
       });
+      tally.add(reply.meter);
       const outcome = reply.outcome;
       if (!outcome.ok)
         return outcome.error === "client_mismatch"
           ? wireError(409, ErrorCode.ClientMismatch)
           : wireError(400, ErrorCode.BadRequest);
-      const pull = (
-        await callCloudSync<"pull">(env, pin, {
-          op: "pull",
-          cursor: request.cursor,
-          clientId: request.clientId,
-          deviceId: current.device.device_id,
-          family: current.family,
-        })
-      ).outcome;
+      const pullReply = await callCloudSync<"pull">(env, pin, {
+        op: "pull",
+        cursor: request.cursor,
+        clientId: request.clientId,
+        deviceId: current.device.device_id,
+        family: current.family,
+      });
+      tally.add(pullReply.meter);
+      const pull = pullReply.outcome;
       if (!pull.ok) return wireError(410, ErrorCode.CursorExpired);
       // The subject may have been merged away while the object answered.
       const again = await resolveAgain(current);
@@ -285,6 +297,7 @@ export async function handlePush(ctx: ServiceContext): Promise<Response> {
         pulled = pull;
       }
     } catch (e) {
+      tally.add(undefined);
       if (!isAbsorbed(e)) return objectFailure(e);
       const again = await resolveAgain(current);
       if (again === null) return await accountRequired(env, db, req, product);

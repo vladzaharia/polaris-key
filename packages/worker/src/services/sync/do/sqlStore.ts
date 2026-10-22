@@ -30,6 +30,12 @@ import type {
 /** The schema version this build writes. A newer one in storage is refused, never rewritten. */
 export const SCHEMA_VERSION = 2;
 
+/** Rows the SQL API read and wrote for one operation. Counts only, never a value or a name. */
+export interface RowMeter {
+  rowsRead: number;
+  rowsWritten: number;
+}
+
 /** What a storage handle must offer: the SQL API and a synchronous transaction. */
 export interface SqlHandle {
   sql: SqlStorage;
@@ -107,12 +113,33 @@ export class SqlStore implements SyncStore {
 
   // ---- schema ------------------------------------------------------------------------------
 
+  // The per-operation meter (U-05.18): rows the SQL API counted since the last `takeMeter`. A
+  // cursor's counts are final once it is drained, which `toArray` does; a rolled-back statement
+  // still counts, because the runtime bills it.
+  private meterRead = 0;
+  private meterWritten = 0;
+
+  /** The rows read and written since the last call, and a fresh count. */
+  takeMeter(): RowMeter {
+    const out = { rowsRead: this.meterRead, rowsWritten: this.meterWritten };
+    this.meterRead = 0;
+    this.meterWritten = 0;
+    return out;
+  }
+
   private all<T extends Row>(q: string, ...b: SqlStorageValue[]): T[] {
-    return this.h.sql.exec<T>(q, ...b).toArray();
+    const cursor = this.h.sql.exec<T>(q, ...b);
+    const rows = cursor.toArray();
+    this.meterRead += cursor.rowsRead;
+    this.meterWritten += cursor.rowsWritten;
+    return rows;
   }
 
   private run(q: string, ...b: SqlStorageValue[]): void {
-    this.h.sql.exec(q, ...b);
+    const cursor = this.h.sql.exec(q, ...b);
+    cursor.toArray();
+    this.meterRead += cursor.rowsRead;
+    this.meterWritten += cursor.rowsWritten;
   }
 
   private hasSchema(): boolean {

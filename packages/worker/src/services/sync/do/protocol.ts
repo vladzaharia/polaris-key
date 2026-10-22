@@ -97,12 +97,18 @@ export interface ExportDocument {
   clients: { clientId: string; deviceId: string; lastMutationId: number }[];
 }
 
+/** Rows the object's SQL read and wrote for one operation (U-05.18). Counts only. */
+export interface OpMeter {
+  rowsRead: number;
+  rowsWritten: number;
+}
+
 export type CloudSyncReply =
-  | { op: "push"; outcome: PushOutcome }
-  | { op: "pull"; outcome: PullOutcome }
+  | { op: "push"; outcome: PushOutcome; meter?: OpMeter }
+  | { op: "pull"; outcome: PullOutcome; meter?: OpMeter }
   | { op: "usage"; usage: StoreUsage; seq: number; empty: boolean }
   | { op: "exportAll"; document: ExportDocument | null }
-  | { op: "absorb"; changed: number }
+  | { op: "absorb"; changed: number; meter?: OpMeter }
   | { op: "deleteAll"; deleted: boolean };
 
 export type CloudSyncError = {
