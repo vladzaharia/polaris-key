@@ -28,7 +28,7 @@ distribution channels, **Release tracks** for a release's lanes. Route segments 
 ## 2. Application shell and session
 
 `App` loads the authenticated `/me` query before rendering the console. It shows the boot screen
-while that query is pending and an error state with **Retry** if it fails. The shell then owns the
+while that query is pending and an error state with **Try again** if it fails. The shell then owns the
 top bar, sidebar, page region, command palette, shortcut sheet, route focus management, and
 toasts.
 
@@ -278,17 +278,16 @@ their obsolete API sketches.
 The design specifications remain useful as coverage and design records, but their proposed screen
 shapes are not automatically shipped. Use the program graph or the `uxRows` map in
 [`backlog-changes.json`](../research/2026-10-07-dx-consolidation/backlog-changes.json) before
-describing any of the following as present:
+describing any of the following as present. The console sign-in card (P0-38, shipped by ST-30) and
+the settings hub with its search (ST-10, ST-39) are shipped and no longer listed:
 
-| Area                                                                              | Status                                                                                                                             |
-| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Shared console sign-in card, session-ended card, and related console sign-in work | **Planned — P0-38** (`UX-40`, `UX-43`)                                                                                             |
-| Entity search in the palette                                                      | **Parked — UX-06b**; revive when settings search and the product switcher are no longer enough (a third product or a support desk) |
-| Settings search, unified settings hub, and its row model                          | **Planned — ST-10, ST-41, and ST-39**                                                                                              |
-| Launch path and the proposed guided first-run setup                               | **Planned — ST-41** (`UX-21`, `UX-50`, `UX-51`, `UX-63`–`UX-65`)                                                                   |
-| Channel/storefront automation and the proposed per-store setup flow               | **Planned — A-19 through A-25** (`UX-52`–`UX-58`, `UX-68`, `UX-70`, `UX-71`)                                                       |
-| The redesigned New Product flow beyond the shipped route                          | **Planned — ST-43** (`UX-73`, `UX-74`, `UX-76`); `UX-72` is recorded built in the UX-row map                                       |
-| Role-request workflow and further access-policy changes                           | **Planned — ST-33**; the shipped console has no request workflow                                                                   |
+| Area                                                                | Status                                                                                                                             |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Entity search in the palette                                        | **Parked — UX-06b**; revive when settings search and the product switcher are no longer enough (a third product or a support desk) |
+| Launch path and the proposed guided first-run setup                 | **Planned — ST-41** (`UX-21`, `UX-50`, `UX-51`, `UX-63`–`UX-65`)                                                                   |
+| Channel/storefront automation and the proposed per-store setup flow | **Planned — A-19 through A-25** (`UX-52`–`UX-58`, `UX-68`, `UX-70`, `UX-71`)                                                       |
+| The redesigned New Product flow beyond the shipped route            | **Planned — ST-43** (`UX-73`, `UX-74`, `UX-76`); `UX-72` is recorded built in the UX-row map                                       |
+| Role-request workflow and further access-policy changes             | **Planned — ST-33**; the shipped console has no request workflow                                                                   |
 
 This table is deliberately not a second backlog. It prevents a design proposal from being reported
 as a shipped console capability.

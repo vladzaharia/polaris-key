@@ -1,4 +1,5 @@
 import * as React from "react";
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import { Check, EyeOff, History, Lock, Pencil, Plus } from "lucide-react";
 import type { ConfigEntry } from "../../../../api.js";
 import { inAppLabel, inAppState, typeLabel } from "../../../../lib/labels.js";
@@ -242,9 +243,8 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
 
   const noCatalog = isNotFound(catalog.error);
 
-  if (catalog.isPending && !catalog.data) {
+  if (catalog.isPending && !catalog.data)
     return <PageSkeleton template="table" label="the catalog" />;
-  }
 
   const header = (
     <PageHeader
@@ -309,7 +309,7 @@ export function CatalogPage({ slug }: { slug: string }): React.ReactElement {
           headingLevel={2}
           title="No catalog yet"
           description="A catalog declares the settings, secrets and minted tokens this product exposes. Create the first version here, or add .pkey/schema to the product's repository."
-          docs="/docs/services/config/catalog/"
+          docs={docsUrl("publishCatalog")}
           primaryAction={
             <Button
               iconStart={<Plus aria-hidden />}

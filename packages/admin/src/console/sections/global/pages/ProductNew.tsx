@@ -435,9 +435,8 @@ export function ProductNew(): React.ReactElement {
     <div className="space-y-6" data-template="flow">
       <PageHeader
         eyebrow={
-          <Breadcrumbs
-            items={[{ label: "Home", to: r.home() }, { label: "New product" }]}
-          />
+          // The shell's orientation line already starts at Home; repeating it read "Home › Home".
+          <Breadcrumbs items={[{ label: "New product" }]} />
         }
         title="New product"
         titleAside={

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import { cn } from "../../../../lib/cn.js";
 import { Plus } from "lucide-react";
 import type { ProfileSummary } from "../../../../api.js";
@@ -222,7 +223,7 @@ export function ProfilesPage({ slug }: { slug: string }): React.ReactElement {
               kind="first-run"
               title="No profiles yet"
               description="Tiers and licenses inherit a profile's values."
-              docs="/docs/services/config/profiles/"
+              docs={docsUrl("createProfile")}
               primaryAction={newButton}
             />
           )

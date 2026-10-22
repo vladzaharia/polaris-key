@@ -12,6 +12,8 @@
  * Halted rows sort first. Facets: state and outlet, in the URL.
  */
 
+import { docsUrl } from "../../../../lib/docsLinks.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import * as React from "react";
 import { Plus, RefreshCw } from "lucide-react";
 import type { Rollout, RolloutVerb } from "../../../../api.js";
@@ -96,6 +98,7 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
   const [deliverable] = useSearchParam("deliverable", QUERY.deliverable);
   const [cell] = useSearchParam("cell", QUERY.cell);
   const readiness = useReadinessRefresh(slug);
+  const gate = useWriteGate("ship", slug);
   const rollouts = useRollouts(slug);
   const store = useReleaseStore(slug);
   const [state, setState] = useTableUrlState("rollouts", {
@@ -252,7 +255,7 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
         navigate(entityHref(slug, { kind: "release", id: r.releaseId })),
     };
     // A store-owned rollout is read-only here: its store controls are in its drawer.
-    if (r.mirrored) return [openCell, openRelease];
+    if (r.mirrored || !gate.allowed) return [openCell, openRelease];
     const verbs = allowedVerbs(r);
     const safe = verbs.filter(
       (v) => confirmFor(`rollout.${v}` as ActionId).level < 2,
@@ -323,6 +326,7 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
           primaryAction={
             <Button
               iconStart={<Plus aria-hidden />}
+              disabledReason={gate.disabledReason}
               onClick={() => setStarting(true)}
             >
               Start rollout…
@@ -409,11 +413,14 @@ export function RolloutsPage({ slug }: { slug: string }): React.ReactElement {
                 title="No rollouts yet"
                 description="A rollout offers a release to a share of the devices on one channel's release track, so a bad build reaches few before you halt it. Without one, each channel offers its release to everyone."
                 primaryAction={
-                  <Button onClick={() => setStarting(true)}>
+                  <Button
+                    disabledReason={gate.disabledReason}
+                    onClick={() => setStarting(true)}
+                  >
                     Start rollout…
                   </Button>
                 }
-                docs="/docs/services/distribution/rollouts/"
+                docs={docsUrl("rollouts")}
               />
             }
           />

@@ -365,7 +365,7 @@ export function ReleasesPage({ slug }: { slug: string }): React.ReactElement {
           facets={[
             {
               id: "channel",
-              label: "Channel",
+              label: "Release track",
               options: channelNames.map((c) => ({ value: c, label: c })),
               accessor: (x) => [
                 ...servingChannels(x.releaseId, appChannels),

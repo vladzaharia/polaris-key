@@ -376,7 +376,7 @@ describe("Distribution → Channel credentials", () => {
       expect(within(asc).getByText("Connected")).toBeTruthy();
       const ms = screen.getByRole("region", { name: "Microsoft Store" });
       expect(within(ms).getByText(/Not running/)).toBeTruthy();
-      expect(within(ms).getByText(/Declare an ms-store outlet/)).toBeTruthy();
+      expect(within(ms).getByText(/Declare an ms-store channel/)).toBeTruthy();
     });
 
     it("says when App Store Connect uses the platform's team key (A-16)", async () => {

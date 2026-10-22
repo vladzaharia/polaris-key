@@ -466,6 +466,14 @@ describe("New product from scratch", () => {
       expect(el.textContent?.length).toBeGreaterThan(0);
     });
     expect(window.sessionStorage.getItem(DRAFT_KEY)).toContain("tonebox");
+    // The words promise the details: the button is there.
+    expect(
+      within(main()).getByRole("button", { name: "Copy details" }),
+    ).toBeTruthy();
+    // The shell's orientation line starts at Home; the page adds no second one.
+    expect(
+      screen.getAllByRole("link", { name: "Home" }).length,
+    ).toBeLessThanOrEqual(2);
   });
 
   it("keeps the draft across a refresh", async () => {

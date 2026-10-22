@@ -82,9 +82,9 @@ export function Switch({
     >
       <SwitchPrimitive.Thumb
         className={cn(
-          "pointer-events-none relative block size-3.5 rounded-full bg-fg-muted shadow-elevation-1 [transition:translate_var(--pk-duration-slow)_var(--pk-ease-spring),background-color_var(--pk-duration-micro)_var(--pk-ease-standard)] data-[state=checked]:translate-x-[1.125rem] data-[state=checked]:bg-accent-on light:data-[state=checked]:bg-white data-[state=unchecked]:translate-x-0.5 forced-colors:bg-[CanvasText] forced-colors:data-[state=checked]:bg-[HighlightText]",
+          "pointer-events-none relative block size-3.5 rounded-full bg-fg-muted shadow-elevation-1 [transition:translate_var(--pk-duration-slow)_var(--pk-ease-spring),background-color_var(--pk-duration-micro)_var(--pk-ease-standard)] data-[state=checked]:translate-x-[1.125rem] data-[state=checked]:bg-accent-on light:data-[state=checked]:bg-white data-[state=unchecked]:translate-x-0.5 rtl:data-[state=checked]:-translate-x-[1.125rem] rtl:data-[state=unchecked]:-translate-x-0.5 forced-colors:bg-[CanvasText] forced-colors:data-[state=checked]:bg-[HighlightText]",
           touch &&
-            "max-sm:size-[1.125rem] max-sm:data-[state=checked]:translate-x-[1.375rem] max-sm:data-[state=unchecked]:translate-x-[0.1875rem]",
+            "max-sm:size-[1.125rem] max-sm:data-[state=checked]:translate-x-[1.375rem] max-sm:data-[state=unchecked]:translate-x-[0.1875rem] max-sm:rtl:data-[state=checked]:-translate-x-[1.375rem] max-sm:rtl:data-[state=unchecked]:-translate-x-[0.1875rem]",
         )}
       >
         {saving ? (
