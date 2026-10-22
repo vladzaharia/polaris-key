@@ -695,6 +695,10 @@ const EXCEPTIONS: Record<string, { rules: string[]; why: string }> = {
     rules: ["JSON-column reader", "local copy by name"],
     why: "an A-18a declaration module: it imports only the adapter layer, so the CLI's copy is a straight serialise (boundaries.test.ts, 'the adapter layer')",
   },
+  "src/console/signinScript.ts": {
+    rules: ["base64url decoder"],
+    why: "browser code inside a hash-pinned string (the sign-in card's one script): it cannot import a Worker module",
+  },
   "src/services/distribution/dictionary.ts": {
     rules: ["hex encoder"],
     why: "the pure half of dcz with no imports at all, loaded as-is by the Chromium harness in conformance/runners/browser/dcz.setup.ts",
