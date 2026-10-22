@@ -20,6 +20,7 @@ import { feedListing } from "../src/services/distribution/listing/feed.js";
 import { projectionFor } from "../src/services/distribution/storefronts/outcome.js";
 import { makeEnv } from "./seed.js";
 import { KvMock } from "./kvMock.js";
+import { seedHosted } from "./hostedFixture.js";
 
 const SLUG = "dice";
 
@@ -178,5 +179,41 @@ describe("the admin view's inherited fields", () => {
       name: "presentation",
       tint: "presentation",
     });
+  });
+});
+
+describe("icon-master from a hosted presentation.icon copy", () => {
+  const A = "a".repeat(64);
+  const envWithImages = () => {
+    const env = makeEnv(new KvMock(), [SLUG]);
+    env.IMG_ORIGIN = "https://img.example.test";
+    return env;
+  };
+
+  it("is reported inherited when the listing has none, not when it has its own", async () => {
+    const db = await world();
+    const env = envWithImages();
+    // No hosted copy yet: nothing to inherit.
+    expect(
+      await inheritedFields(env, db, SLUG, await readListing(db, SLUG), []),
+    ).not.toHaveProperty("icon-master");
+
+    await seedHosted(db, SLUG, "presentation.icon", {
+      sha256: A,
+      widths: [64, 128],
+    });
+    const stored = await readListing(db, SLUG);
+    expect(await inheritedFields(env, db, SLUG, stored, [])).toMatchObject({
+      "icon-master": "presentation",
+    });
+    // The model's own icon-master wins: not inherited.
+    expect(
+      await inheritedFields(env, db, SLUG, stored, [{ slot: "icon-master" }]),
+    ).not.toHaveProperty("icon-master");
+    // Hosting off or no image host: nothing is served, so nothing is inherited.
+    const noHost = makeEnv(new KvMock(), [SLUG]);
+    expect(
+      await inheritedFields(noHost, db, SLUG, stored, []),
+    ).not.toHaveProperty("icon-master");
   });
 });
