@@ -305,7 +305,7 @@ drop-in.
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `keyVerdict(input, submitted?)`     | Activate: `empty`, `typing`, `parsed`, `cut-short`, `rejected`                                                                                                                                                                                       |
 | `activationOutcome(result, info?)`  | Activate: `done`, `device-limit`, `rejected`; on a device limit, `deviceLimit` is DeviceLimit `browser-mode` (with the Polaris Locker link) or `default`                                                                                             |
-| `handoffView(state, data?)`         | SignInHandoff: `starting`, `waiting`, `no-browser`, `code`, `link-copied`, `finishing`, `denied`, `expired`, `cancelled`                                                                                                                             |
+| `handoffView(state, data?)`         | SignInHandoff: `starting`, `waiting`, `no-browser`, `code`, `link-copied`, `finishing`, `denied`, `failed`, `expired`, `cancelled`                                                                                                                   |
 | `statusView(input)`                 | AccountAndLicense `signed-in` or `key-only`; GraceBanner `days-left` or `last-day`; StatusScreen `revoked`, `expired`, `version-too-old`, `version-too-new`, `channel-not-entitled`, with its fixes; PolarisKeyGate `needs-activation` or `licensed` |
 | `updateView(decision)`              | UpdatePrompt: `up-to-date`, `available`, `mandatory`, `store`, `platform`, `ready`, `blocked`                                                                                                                                                        |
 | `progressView(done, total, phase?)` | UpdateProgress: `queued`, `downloading`, `installing`, `done`                                                                                                                                                                                        |
@@ -446,7 +446,7 @@ with `"error": "internal"` and exit 1.
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `status`                                    | `status`, `usable`, `component`, `state`, `graceUntil`, `allowedRange`, `profile`, `version`, `channel`, `tier`, `tokenStore` |
 | `activate`, `enroll`                        | `kind`, `code`, `deviceCount`, `limit`, `manageUrl`; `status` and `tier` once activated                                       |
-| `login`                                     | `state` (`signedIn`, `expired`, `denied`, `cancelled`, `error`); `name`, `email`, `attached`, `status` when signed in         |
+| `login`                                     | `state` (`signedIn`, `expired`, `denied`, `failed`, `cancelled`); `name`, `email`, `attached`, `status` when signed in        |
 | `logout`, `deactivate`                      | `signedOut` (and `state: "cancelled"` when declined)                                                                          |
 | `register`                                  | `deviceId`, `status`                                                                                                          |
 | `devices list`, `rename`, `deauthorize`     | `devices` (`id`, `label`, `platform`, `current`); `renamed`, `label`; `deauthorized`, `self`                                  |
@@ -472,7 +472,13 @@ and an unusable license is `ok: false` with its `status`.
 
 `EXIT` holds these codes (`EXIT.licenseRequired` is 4), the same table as the `cli` family of the
 corpus's `ui-matrix.json`, which both terminal kits run. A refusal the person can resolve is drawn as
-▲ with its fix; a failure, an unreachable service included, as ✗.
+▲ with its fix; a failure, an unreachable service included, as ✗. Canceling is neither: Esc on a
+prompt or a wait prints "Nothing changed." (or "Nothing was installed." for an update) with no ✗, and
+exits 1. `login` tells the person's refusal from a failure: a Deny in the browser ends as
+`denied` with the error `sign-in-denied` ("Sign-in declined"), and a sign-in that fails after the
+approval as `failed` with `sign-in-failed` ("Sign-in failed"); each says to sign in again. The
+product page link on `status` is a labelled line ("Next step on the Tidewater page:") over the
+link.
 
 Under `--json`, `login` never opens a browser: it prints a `pending` line first, with the code and
 the page for the script to show, then the result line.

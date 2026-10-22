@@ -14,7 +14,7 @@ import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
-The one sign-in form. Its body morphs in place through the sign-in methods, the browser hand-off, the license choice and Done, inline, in a sheet or in the browser. No sheet or dialog stacks on it; `presentation` and `replace` take the same values in every kit.
+The one sign-in form. Its body morphs in place through the sign-in methods, the browser hand-off, the license choice and Done, inline, in a sheet or in the browser. No sheet or dialog stacks on it; `presentation` and `replace` take the same values in every kit. Every step carries the product header (icon or monogram, then the name). A person who declines the sign-in in the browser sees "Sign-in declined" (`sign-in-denied`), and any other end that is not a success sees "Sign-in failed" (`sign-in-failed`): the first is the person's answer, the second is an error with Try again.
 
 ## States and copy
 

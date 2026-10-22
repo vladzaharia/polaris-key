@@ -55,6 +55,42 @@ fun MyGate(client: PolarisKeyClient) {
 }
 ```
 
+## Sign-in on its own
+
+`KitSignIn(inputs, presentation)` draws the sign-in form for the state you give it, under the
+product's identity: the product header (icon and name) above the title, then the controls in the
+kit's buttons. It reads the name and icon from the presentation source, and the generic method
+row names its provider ("Continue with Polaris Locker", or the `provider` input). Wrap it in
+`PolarisTheme` with the same source for the product's accent. `onAction` receives the control
+pressed.
+
+```kotlin android
+import androidx.compose.runtime.Composable
+import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.ui.KitInputs
+import im.plrs.key.ui.KitSignIn
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+
+@Composable
+fun MySignIn(client: PolarisKeyClient) {
+    val inputs = KitInputs.of(
+        mapOf(
+            "signIn" to buildJsonObject {
+                put("presentation", JsonPrimitive("inline"))
+                put("replace", JsonPrimitive("inline"))
+                put("channel", JsonPrimitive("browser"))
+            },
+        ),
+    )
+    KitSignIn(inputs, presentation = client.presentationSource)
+}
+```
+
+Every message screen (blocked, offline, device limit, boot) carries the same product header, and
+a product with no name reads "Welcome". Boot draws a loading shimmer after a short delay, held
+still under the system's reduce-motion setting.
+
 ## Powered by Polaris Locker
 
 `PolarisTheme(showPoweredBy = true)` opts in; `poweredByStyle` is `PolarisPoweredByStyle.Line` (the Locker micro mark, 16 dp and growing with the text, and the phrase) by default. `PolarisSettingsScreen` and the kit's account pane draw it as their last item, after the controls; never the gate or a message screen. Place `PolarisPoweredBy` on your about or credits screen: with `PolarisPoweredByStyle.Badge` it draws the 320 × 104 dp badge where 320 dp are free, else the line.
