@@ -7,7 +7,13 @@
  * Read by the `delivery.packageFeed` hook (Release's package ingest: namespace, size ceiling,
  * Swift signing), written by the `packageFeeds` toggle (`PUT …/distribution/package-feeds`) and
  * by the system-product bootstrap. The per-feed settings routes and the console are F-11's; the
- * registry host that serves the feeds is F-02's. A manifest never writes any of these.
+ * registry host that serves the feeds is F-02's.
+ *
+ * A manifest writes these rows in exactly one way (F-34.2): {@link stmtProvisionOwner} and
+ * {@link stmtProvisionFeed} INSERT a missing owner row and a missing feed row at the strictest
+ * default (Customers, `licensed`) with the exact namespace derived from the declared packages.
+ * Both are `ON CONFLICT DO NOTHING`: a manifest never updates, re-enables or widens a row, and
+ * widening is operator-only.
  */
 
 import {
@@ -149,6 +155,56 @@ export function stmtEnsureFeed(
       JSON.stringify(ext),
       now,
       by,
+    ],
+  };
+}
+
+/** `updated_by` of a row a manifest provisioned: how the audit guard and operators tell it. */
+export const FEED_PROVISION_ACTOR = "manifest";
+
+/**
+ * The owner's `packageFeeds` row, enabled, ONLY when the product has neither an owner row nor any
+ * feed row (F-34.2, decision F2): a row an operator turned off, or a product whose feeds they
+ * have configured, is never revived. Must precede the feed inserts in the batch.
+ */
+export function stmtProvisionOwner(product: string, now: number): DbStatement {
+  return {
+    sql: `INSERT INTO dist_registry_owners (product, enabled, version, updated_at, updated_by)
+          SELECT ?, 1, 1, ?, ?
+           WHERE NOT EXISTS (SELECT 1 FROM dist_registry_owners WHERE product = ?)
+             AND NOT EXISTS (SELECT 1 FROM dist_registry_feeds WHERE product = ?)
+          ON CONFLICT(product) DO NOTHING`,
+    params: [product, now, FEED_PROVISION_ACTOR, product, product],
+  };
+}
+
+/**
+ * A feed row at Customers (`licensed`), enabled, with `namespace`, unless one exists (F-34.2).
+ * Insert only: an existing row, whatever its access, namespace or switch, is untouched. The size
+ * ceiling starts at the platform's.
+ */
+export function stmtProvisionFeed(
+  product: string,
+  ecosystem: PackageEcosystem,
+  namespace: Record<string, unknown>,
+  now: number,
+): DbStatement {
+  return {
+    sql: `INSERT INTO dist_registry_feeds
+            (product, ecosystem, enabled, access_mode, namespace_json, max_package_bytes,
+             upstream, claims_json, ext_json, version, updated_at, updated_by)
+          SELECT ?, ?, 1, 'licensed', ?,
+                 COALESCE((SELECT max_package_bytes_ceiling FROM dist_registry_policy
+                            WHERE ecosystem = ?), 52428800),
+                 'none', '[]', '{}', 1, ?, ?
+          ON CONFLICT(product, ecosystem) DO NOTHING`,
+    params: [
+      product,
+      ecosystem,
+      JSON.stringify(namespace),
+      ecosystem,
+      now,
+      FEED_PROVISION_ACTOR,
     ],
   };
 }

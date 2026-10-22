@@ -484,7 +484,8 @@ export interface ManifestRelease {
    * `deliverables.<id>` with `kind: package` (F-03, plans/F-01.md §3.1), by id. `[]` when none is
    * declared. Resync writes one `release_deliverables` row per package (kind `package`, with its
    * ecosystem and name), at most {@link MAX_PACKAGE_DELIVERABLES}. The manifest DECLARES packages;
-   * it never enables a feed (that is operator-owned, `dist_registry_*`).
+   * its ingest only INSERTS a missing feed row at Customers (F-34.2); it never updates,
+   * re-enables or widens one (that is operator-owned, `dist_registry_*`).
    */
   packageDeliverables: ManifestPackageDeliverable[];
 }

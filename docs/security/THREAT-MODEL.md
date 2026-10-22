@@ -1133,6 +1133,24 @@ Maven, OCI, Godot), F-11 the console's Feeds pages, F-30 the Cargo feed and F-31
 `test/feedAdapters.test.ts` (the adapter conformance suite), `test/registryDrain.test.ts`,
 `test-workerd/registry.test.ts`, and the curl client of `registry-clients.yml`.
 
+**Feeds a manifest provisions (F-34.2).** Distribution's ingest contribution is the one place a
+manifest writes the feed tables, and only to INSERT. For each ecosystem the manifest declares a
+package in, it adds a missing `dist_registry_feeds` row (enabled, `access_mode = 'licensed'`:
+Customers, the strictest default that still lets a customer install; the namespace is the exact
+one `deriveFeedNamespace` gives for the declared names; the size ceiling the platform's), and a
+missing `dist_registry_owners` row (enabled) only when the product has no owner row and no feed
+row. Every statement is `ON CONFLICT DO NOTHING`: a manifest never updates a row, so it cannot
+re-enable an owner or feed an operator turned off, flip a feed to public, or overwrite a namespace
+an operator set; widening is operator-only. Publishing still needs a registry token the operator
+minted. Two ecosystems have a prefix-list namespace (Maven `groupPrefixes`, Go `modulePrefixes`):
+the exact groupId or module also admits its sub-groups or sub-paths, the narrowest those fields
+express. An ecosystem whose names have no one namespace (several npm or Swift scopes) provisions
+nothing, and the ingest answer says why (`facts.feedProvision.skipped`); a feed is never created
+with an empty or wide namespace. The system product is skipped (its bootstrap writes its public
+feeds). Each created feed writes one `distribution.feed.provision` audit row. The rows are
+written whether Distribution is on or off; the feed ladder refuses reads and publishes while it
+is off.
+
 **Same-site exposure.** The host is a `*.plrs.im` sibling of the console, so `SameSite` does not
 separate them, exactly as for the bytes host. Its compensations, against `dl.plrs.im`'s:
 
@@ -1357,7 +1375,7 @@ symbol); review catches the rest.
   the configured one, and the publisher's numeric ids come from the configuration, never the
   manifest), cannot touch another product (the slug must be the system product's, checked before
   anything is written), cannot re-enable a service, `packageFeeds` or a feed an operator switched
-  off (the bootstrap only creates), cannot overwrite claimed access modes, and replaces any claimed
+  off (the bootstrap only creates; a manifest-provisioned feed is likewise insert-only, F-34.2), cannot overwrite claimed access modes, and replaces any claimed
   publisher with the manifest's while revoking the product's static CI tokens (SEC-WP-05: the
   console refuses `PUT …/ci-publisher` and `POST …/ci-tokens` on the system product, audited as
   `ci.publisher.claim.refused` and `ci.token.issue.refused`). Since ST-20 it is the system product's only manifest writer (a webhook or console
