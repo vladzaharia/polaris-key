@@ -1300,7 +1300,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-49-data-migration-runner-dry-run-report.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "P0-50",
@@ -5196,7 +5196,7 @@
       "optional": false,
       "refs": ["plans/DENY-01.md", "plans/I-37.md D3", "ledger B-096"],
       "brief": "wp/I-37c-device-poll-denied.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-37d",
@@ -5226,7 +5226,7 @@
         "wp/I-37c-device-poll-denied.md"
       ],
       "brief": "wp/I-37d-device-mint-retry.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-38",
@@ -8543,7 +8543,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/PX-W13b-display-name-settings.md",
-      "status": "in-progress"
+      "status": "todo"
     },
     {
       "id": "PX-W14",
@@ -10381,7 +10381,7 @@
         "docs/design/EXPERIENCE.md J-1"
       ],
       "brief": "wp/ST-52-palette-search.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LX-01",
@@ -12361,7 +12361,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-60)"
       ],
       "brief": "wp/SP-60-node-server-fastify-nestjs-koa.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-61",
@@ -12421,7 +12421,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-63)"
       ],
       "brief": "wp/SP-63-server-client-config.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-64",
@@ -12449,7 +12449,7 @@
         "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-64)"
       ],
       "brief": "wp/SP-64-framework-drop-ins-integration-and-docs.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-65",
@@ -14229,7 +14229,7 @@
         "DX consolidation 2026-10-07: edit (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/MO-13-motion-qa-closeout.md",
-      "status": "in-progress"
+      "status": "todo"
     },
     {
       "id": "PS-01",
@@ -16919,7 +16919,7 @@
         "section changes sdk-a-05, sdk-b-04, sdk-c-01 (merged)"
       ],
       "brief": "wp/UK-59-built-kit-boards-refresh.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-60",
@@ -18319,7 +18319,7 @@
         "docs/design/UI-KITS.md DL4, DL5, DL6, DL8, DL14, section 4.1"
       ],
       "brief": "wp/UK-64-kit-matrix-gaps.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LK-18",
@@ -18352,7 +18352,7 @@
         "docs/security/WIRE-CONTRACT-V4.md section 5.7"
       ],
       "brief": "wp/LK-18-portal-link-discovery.md",
-      "status": "in-review"
+      "status": "done"
     }
   ]
 }
