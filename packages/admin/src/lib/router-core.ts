@@ -51,6 +51,12 @@ export interface HashRouterConfig {
    * captured (React's `flushSync`). Default: call it directly.
    */
   flush?(fn: () => void): void;
+  /**
+   * Call the runner even while an overlay is on screen (default: the page then swaps at once,
+   * with no runner). For a runner that also places the page (scroll, focus) and decides about
+   * motion itself.
+   */
+  runUnderOverlay?: boolean;
   /** Called once per published change, before the page updates; `kind` is the transition type. */
   onNavigate?(from: string, to: string, kind: string | null): void;
 }
@@ -204,7 +210,7 @@ export function createHashRouter(config: HashRouterConfig): HashRouter {
     shownHash = next;
     const type = clicked?.type ?? config.classify(from, next);
     config.onNavigate?.(from, next, type);
-    if (type === null || overlayOnScreen()) {
+    if (type === null || (!config.runUnderOverlay && overlayOnScreen())) {
       emit();
       return;
     }

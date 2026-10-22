@@ -230,6 +230,28 @@ describe("router core: transitions", () => {
     expect(r.seen).toEqual(["#/b"]);
   });
 
+  it("runUnderOverlay hands the move to the runner even with an overlay on screen", () => {
+    const runs: string[] = [];
+    const router = createHashRouter({
+      redirect: () => null,
+      classify: () => "route",
+      transition: (update, run) => {
+        runs.push(run.type);
+        update();
+      },
+      runUnderOverlay: true,
+    });
+    const seen: string[] = [];
+    const off = router.subscribe(() => seen.push(router.snapshot()));
+    document.body.innerHTML = '<div role="dialog"></div>';
+    router.navigate("#/b", { replace: true });
+    off();
+    router.resetForTests();
+    router.dispose();
+    expect(runs).toEqual(["route"]);
+    expect(seen).toEqual(["#/b"]);
+  });
+
   it("a link's intent names the type and the shared element of a forward move", () => {
     r = rig();
     document.body.innerHTML = '<a><i data-vt-shared="pk-key"></i></a>';

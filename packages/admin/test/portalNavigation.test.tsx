@@ -277,6 +277,8 @@ describe("without the View Transitions API: instant swaps that still scroll and 
     act(() => {
       window.location.hash = "#/p/nightfall";
     });
+    // The router reads the live hash (one publish per navigation), so let this one land first.
+    await new Promise((r) => setTimeout(r, 30));
     html.dataset.motion = "reduce";
     calls.length = 0;
     act(() => {

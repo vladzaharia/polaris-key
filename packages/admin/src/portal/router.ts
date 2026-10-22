@@ -9,6 +9,12 @@ import {
   viewTransitionsSupported,
 } from "../ui/motion/index.js";
 import { pendingHeadingFocus } from "./focus.js";
+import {
+  CLOSING_OVERLAYS,
+  OPEN_OVERLAYS,
+  createHashRouter,
+  overlayOnScreen,
+} from "../lib/router-core.js";
 
 /**
  * The customer site's router (PORTAL.md §3.3). Hash routing for the signed-in SPA (ADMIN.md lead
@@ -342,20 +348,6 @@ export function rewriteActivatePath(loc: Location = window.location): boolean {
   return true;
 }
 
-const ROUTE_EVENT = "pk-portal-route";
-
-function current(): Resolved {
-  const resolved = resolveHash(window.location.hash || "#/");
-  if (resolved.redirect && resolved.redirect !== window.location.hash) {
-    window.history.replaceState(
-      null,
-      "",
-      `${window.location.pathname}${window.location.search}${resolved.redirect}`,
-    );
-  }
-  return resolved;
-}
-
 // ── Navigation motion, scroll and focus (notes/S-23 §6.3, §6.5; MO-05) ────────────────────────────
 
 /**
@@ -418,20 +410,6 @@ export function navigationKind(
   if (productPageHref(from) !== null && isTopLevel(to)) return "back";
   return "route";
 }
-
-/**
- * Overlays that can be on screen during a navigation: Radix keeps one mounted through its exit
- * (`data-state="closed"`) and, when it leaves, hands focus back to its trigger or opener. A menu
- * counts: the account menu's links navigate.
- */
-const OVERLAY_ROLES = ["dialog", "alertdialog", "menu"];
-const OVERLAYS = OVERLAY_ROLES.map((r) => `[role="${r}"]`).join(", ");
-const CLOSING_OVERLAYS = OVERLAY_ROLES.map(
-  (r) => `[role="${r}"][data-state="closed"]`,
-).join(", ");
-const OPEN_OVERLAYS = OVERLAY_ROLES.map(
-  (r) => `[role="${r}"]:not([data-state="closed"])`,
-).join(", ");
 
 /** A placeholder heading of a page still loading ("Loading", inside its `aria-busy` skeleton). */
 const placeholder = (el: Element | null): boolean =>
@@ -622,55 +600,62 @@ function reveal(tile: Element): void {
   }
 }
 
-// The route store: one listener set for every useRoute() (the shell, each QuickAction, the sign-in
-// page), so a navigation runs its transition, scroll and focus once.
-const listeners = new Set<() => void>();
-let snapshot: PortalRoute | null = null;
+// The route store is the shared hash-router core (lib/router-core.ts): redirects on read, the
+// one publish per navigation, the blockers (none used yet), `setParams`. The portal supplies its
+// route table (`resolveHash`), the kind of each navigation, and the runner that places the page.
 let generation = 0;
 let restoration: ScrollRestoration | null = null;
+let subscribers = 0;
+/** The navigation the core announced in `onNavigate`, for the runner that follows it. */
+let pending: { from: PortalRoute; to: PortalRoute } | null = null;
 
-function read(): PortalRoute {
-  snapshot ??= current().route;
-  return snapshot;
-}
+const routeOf = (hash: string): PortalRoute => resolveHash(hash || "#/").route;
 
-function publish(next: PortalRoute): void {
-  snapshot = next;
-  for (const listener of Array.from(listeners)) listener();
-}
+/** The route a navigation runs for: `forward`, `back` or `route`. Section and params publish at once. */
+const transitionKind = (from: string, to: string): PortalNavigation | null => {
+  const kind = navigationKind(routeOf(from), routeOf(to));
+  return kind === "forward" || kind === "back" || kind === "route"
+    ? kind
+    : null;
+};
 
-function go(from: PortalRoute, to: PortalRoute): void {
-  const kind = navigationKind(from, to);
-  if (kind === "params") {
-    publish(to);
+function onNavigate(fromHash: string, toHash: string): void {
+  const from = routeOf(fromHash);
+  const to = routeOf(toHash);
+  pending = { from, to };
+  if (navigationKind(from, to) !== "section") return;
+  const section = sectionOf(to);
+  // The page's first section is its top, as a deep link to it is on mount (ProductPage marks
+  // it with data-first-section).
+  const first = document
+    .querySelector("main [data-first-section]")
+    ?.getAttribute("data-first-section");
+  if (!section || section === first) {
+    scrollToTop(scrollBehavior());
     return;
   }
-  if (kind === "section") {
-    publish(to);
-    const section = sectionOf(to);
-    // The page's first section is its top, as a deep link to it is on mount (ProductPage marks
-    // it with data-first-section).
-    const first = document
-      .querySelector("main [data-first-section]")
-      ?.getAttribute("data-first-section");
-    if (!section || section === first) {
-      scrollToTop(scrollBehavior());
-      return;
-    }
-    document
-      .getElementById(`section-${section}`)
-      ?.scrollIntoView?.({ behavior: scrollBehavior(), block: "start" });
-    return;
-  }
+  document
+    .getElementById(`section-${section}`)
+    ?.scrollIntoView?.({ behavior: scrollBehavior(), block: "start" });
+}
 
+/**
+ * Runs a page change (`forward`, `back` or `route`): names the shared ends, scrolls to the top,
+ * swaps the page, reveals Back's tile and focuses the heading. `update` is the core's, which
+ * releases the old page.
+ */
+function runNavigation(
+  update: () => void,
+  run: { type: string },
+): { updateCallbackDone: Promise<void>; finished: Promise<void> } {
+  const kind = run.type as "forward" | "back" | "route";
+  const { from, to } = pending as { from: PortalRoute; to: PortalRoute };
   const gen = ++generation;
   // An overlay on screen (the JumpPalette, Activate or the account menu running its exit) means no
   // View Transition: one would lift the page above it and its scrim (S-23 §3.4 item 1). The page
   // swaps under the closing overlay instead, and its focus waits for the overlay to leave.
   const animate =
-    viewTransitionsSupported() &&
-    !reducedMotion() &&
-    document.querySelector(OVERLAYS) === null;
+    viewTransitionsSupported() && !reducedMotion() && !overlayOnScreen();
   const toPage = kind === "forward" ? productPageHref(to) : null;
   const source = toPage !== null ? takeSource(toPage) : null;
   // Remembered for Back, motion or not.
@@ -687,10 +672,10 @@ function go(from: PortalRoute, to: PortalRoute): void {
     animate &&
     kind === "back" &&
     document.querySelector(".pk-vt-hero") !== null;
-  const update = (): void => {
+  const swap = (): void => {
     // Before the new page renders, so its own deep link (a section) can scroll on from here.
     scrollToTop();
-    flushSync(() => publish(to));
+    flushSync(update);
     const fromPage = kind === "back" ? productPageHref(from) : null;
     if (fromPage === null) return;
     // Back lands on the tile it came from, motion or not (the router owns scroll restoration).
@@ -705,9 +690,9 @@ function go(from: PortalRoute, to: PortalRoute): void {
       );
   };
   let handle: { updateCallbackDone: Promise<void>; finished: Promise<void> };
-  if (animate) handle = viewTransition(update, { type: kind, shared });
+  if (animate) handle = viewTransition(swap, { type: kind, shared });
   else {
-    update();
+    swap();
     handle = {
       updateCallbackDone: Promise.resolve(),
       finished: Promise.resolve(),
@@ -724,29 +709,19 @@ function go(from: PortalRoute, to: PortalRoute): void {
   void handle.finished.then(() => {
     if (gen === generation) clearNamed();
   });
+  return handle;
 }
 
-function onHashChange(e: Event): void {
-  const oldURL = (e as HashChangeEvent).oldURL;
-  let from = read();
-  if (oldURL) {
-    try {
-      from = resolveHash(new URL(oldURL).hash || "#/").route;
-    } catch {
-      // an unreadable old URL: compare with the route on screen
-    }
-  }
-  go(from, current().route);
-}
-
-function onParams(): void {
-  publish(current().route);
-}
+const router = createHashRouter({
+  redirect: (hash) => resolveHash(hash || "#/").redirect ?? null,
+  classify: (from, to) => transitionKind(from, to),
+  transition: runNavigation,
+  runUnderOverlay: true,
+  onNavigate,
+});
 
 function subscribe(listener: () => void): () => void {
-  if (listeners.size === 0) {
-    window.addEventListener("hashchange", onHashChange);
-    window.addEventListener(ROUTE_EVENT, onParams);
+  if (subscribers++ === 0) {
     document.addEventListener("click", markSource);
     // The router places the page on every navigation (the top, a section, or the tile Back came
     // from); the browser's own restoration would move the outgoing page first.
@@ -755,20 +730,31 @@ function subscribe(listener: () => void): () => void {
       window.history.scrollRestoration = "manual";
     }
   }
-  listeners.add(listener);
+  const unsubscribe = router.subscribe(listener);
   return () => {
-    listeners.delete(listener);
-    if (listeners.size > 0) return;
-    window.removeEventListener("hashchange", onHashChange);
-    window.removeEventListener(ROUTE_EVENT, onParams);
+    unsubscribe();
+    if (--subscribers > 0) return;
     document.removeEventListener("click", markSource);
     if (restoration) window.history.scrollRestoration = restoration;
     restoration = null;
-    snapshot = null;
+    pending = null;
     // A navigation still waiting to focus its heading (an overlay leaving, a page loading)
     // belonged to the tree that just unmounted: it must not focus the next one's heading.
     generation++;
   };
+}
+
+let memoHash: string | null = null;
+let memoRoute: PortalRoute = routeOf("");
+
+/** The route of the hash on screen; one `PortalRoute` object per hash, so renders share it. */
+function read(): PortalRoute {
+  const hash = router.snapshot();
+  if (hash !== memoHash) {
+    memoHash = hash;
+    memoRoute = routeOf(hash);
+  }
+  return memoRoute;
 }
 
 /**
@@ -782,8 +768,7 @@ export function useRoute(): PortalRoute {
 }
 
 export function navigate(to: string): void {
-  if (window.location.hash === to) return;
-  window.location.hash = to;
+  router.navigate(to);
 }
 
 /** The current hash's query, read now (a page's `params` prop is the last render's). */
@@ -799,22 +784,12 @@ export function currentParams(): URLSearchParams {
 export function setParams(
   patch: Record<string, string | readonly string[] | null>,
 ): void {
-  const raw = window.location.hash || "#/";
-  const [path = "#/", query = ""] = raw.split("?", 2) as [string, string?];
-  const params = new URLSearchParams(query);
-  for (const [k, v] of Object.entries(patch)) {
-    params.delete(k);
-    if (typeof v === "string") {
-      if (v !== "") params.set(k, v);
-    } else if (v) for (const one of v) if (one !== "") params.append(k, one);
-  }
-  const q = params.toString();
-  window.history.replaceState(
-    null,
-    "",
-    `${window.location.pathname}${window.location.search}${path}${q ? `?${q}` : ""}`,
-  );
-  window.dispatchEvent(new Event(ROUTE_EVENT));
+  router.setParams(patch);
+}
+
+/** Register a navigation guard on the portal's router; returns the unregister function. */
+export function blockNavigation(fn: (nextHash: string) => boolean): () => void {
+  return router.blockNavigation(fn);
 }
 
 /** `document.title` as "<Page> · <brand>" (PORTAL.md naming). */
