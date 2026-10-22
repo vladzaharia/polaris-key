@@ -34,7 +34,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- One release after U-27, after a production check that nothing read or wrote them: drop override_migration and override_migration_report (lead-numbered migration, replay-safe, a down script in scripts/rollback/); P0-24 ledger row closed (about 3,000 lines and 2 tables gone across U-27 and U-27b).
+- One release after U-27, after a production check that nothing read or wrote them: drop override_migration, override_migration_report and the provisioned_secret_moves ledger, delete the core.provisioned-secrets-to-account job (core/migrate/provisionedSecrets.ts and its CORE_MIGRATIONS entry) and the subject-store claim for the tables (lead-numbered migration, replay-safe, a down script in scripts/rollback/); P0-24 ledger row closed (about 3,000 lines and 2 tables gone across U-27 and U-27b).
 
 **Out** (and where it belongs instead):
 
@@ -55,7 +55,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 ## Acceptance criteria
 
 - [ ] Production check recorded before the drop
-- [ ] Down script restores the empty tables
+- [ ] Down script restores the three empty tables
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

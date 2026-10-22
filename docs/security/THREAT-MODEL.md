@@ -7041,7 +7041,7 @@ licence values was deleted in U-27.
   owner accessor (`test/subjectStores.test.ts`). A floating licence gets no layer, even with a
   binding on the device. The owner line reads the subject without creating one, so a document GET
   writes nothing.
-- **No account id leaves.** Rows, the console route, the inventory, the job's reports, the audit
+- **No account id leaves.** Rows, the console route, the job's reports, the audit
   rows and the export name the owner only by the product's pairwise subject (S-16 §5.1). Tests
   assert no account id appears.
 - **Where a sign-in's provisioned secrets go (U-27.2).** `provisionedSecretTarget`
@@ -7058,7 +7058,9 @@ licence values was deleted in U-27.
   issuer key (the same predicate as `licenseChoice.ts:132`). Abuse needs the product's sign-in IdP
   to hand an attacker a `sub` equal to a subject the owner linked from another global issuer, and
   the attacker also needs a licence the owner holds. A malicious product operator gains nothing:
-  they already control that product's config.
+  they already control that product's config. Residual, unchanged from before U-27 (L-U1): a
+  licence handed over before its previous holder signs in again still gets that holder's
+  provisioned secret in its column, and the new owner's devices on that licence receive it.
 - **Exposure.** Only a device signed in as the owner gets the row's secrets. A key-entry device of
   an owned licence still gets the owner's config but not their secrets
   (`answer.via === "owner"`).
@@ -7069,11 +7071,11 @@ licence values was deleted in U-27.
   wherever it sits, so moving it between the licence column and the account row needs no
   re-sealing. That is acceptable because a writer of D1 can already place any sealed value in
   either home; the AAD stops a value moving to another product or key, not within one. The KEK
-  sweep covers the table. The console never echoes a value back (`redactPayload`). The inventory,
-  the job's reports (and CSV), the export and the merge's collision audit row never carry a
-  secret: a value is shown only when the active catalog positively declares the key a non-secret
-  `config` key and the stored value is not a sealed envelope (fail closed). Tests feed sealed and
-  plaintext secrets through every output and search for them.
+  sweep covers the table. The console never echoes a value back (`redactPayload`). The move job's
+  reports carry counts and capped licence ids only (a test searches them for the value). The
+  export names secrets only (`configured`). The merge's collision audit row carries non-secret
+  values only. A value is shown only when the active catalog positively declares the key a
+  non-secret `config` key and the stored value is not a sealed envelope (fail closed).
 - **The move job (`core.provisioned-secrets-to-account`, U-27.5, U-27.6).** It moves an owned
   licence's declared provisioned secrets to the owner's row, one layer up. A dry run reads only
   and carries no value (counts and capped ids). Per move, the `provisioned_secret_moves` ledger
@@ -7085,23 +7087,27 @@ licence values was deleted in U-27.
   is value-equal, not byte-identical: the order of keys inside a document's secrets may change,
   so the config ETag changes once and a device sees one full response; the SDK `onChange`
   callbacks that key on the ETag may fire once with identical values.
-- **`down` is exact and handover-safe.** The ledger stores the licence id, key, subject, a
+- **`down` is exact for every moved entry and handover-safe.** The ledger stores the licence id, key, subject, a
   SHA-256 of the moved entry and whether the job added it, never a value. `down` puts an entry
   back on its licence only while the account row still hashes to the recorded entry and the
   licence is still owned by the same account. It removes the entry from the row only when the job
   added it and every licence of that entry has its copy back, and settles a kept group before a
-  pending one. A copy the apply removed as shadowed under an existing account entry is restored
-  from that entry. A later edit stays. If the row's compare-and-set fails three times, `down`
+  pending one. A copy removed as shadowed is restored from the account entry only when its
+  recorded hash matches that entry. A shadowed copy that differed, which is the usual case after a
+  sign-in re-seals with a random IV, is not restored. The entry above it stays, so no device's
+  value changes, but the invisible copy is gone. A later edit stays. If the row's compare-and-set fails three times, `down`
   reports a counted retry and is run again.
 - **Residuals, each to be closed by U-27b.**
   - `down` is product-wide, not per run: undoing an older apply also undoes a newer one.
   - Legacy plaintext provisioned values move as they are, without sealing, and the ledger hash
-    covers the plaintext; only a database reader could use that. Sealing them is carried by U-27b.
-  - A rare kept group: an `added` row together with a non-matching shadowed copy in one group.
-    The entry stays, so devices keep what they saw, and the invisible older copy is lost.
+    covers the plaintext; only a database reader could use that. U-27b's drop removes the ledger hash. The value itself stays plaintext on the account row, as
+    it was on the licence column, until the owner's next sign-in re-seals it.
+  - One instance of the shadowed-copy rule above: an `added` row together with a non-matching
+    shadowed copy in one group. The entry stays, so devices keep what they saw, and the invisible
+    older copy is lost.
   - `override_migration_report` rows (a licence's own email, key names, non-secret values and the
     owner's subject) are no longer erased: nothing reads or deletes them from U-27, and a
-    licence, account or product deletion leaves them. U-27b drops the table.
+    licence, account or product deletion leaves them. Production has none, because no run happened. U-27b drops the table.
   - The ledger holds the owner's subject; erasure, merge, licence deletion and product deletion
     remove or re-key its rows, and U-27b drops the table.
 - **Merges never overwrite silently.** The registered store's `merge` keeps the survivor's value
