@@ -20,12 +20,13 @@ Requires the License feature, your product's trust pins and a backend on Node, P
 3. **Server** Verify the document. A document that verifies has a valid signature from a pinned key, names this product and this device, and its issue time isn't ahead of the clock. A backend keeps no per-device history, so it doesn't apply the replay floor.
 4. **Server** Read entitlements from the verified document, and deny when verification fails.
 
-| Lane              | Verifier                                           | Arguments you pass                                                                                    |
-| ----------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Node              | `verifyLicenseDocument` from `@polaris-key/server` | `trust`, `product`, `deviceId`, and optionally `now`                                                  |
-| Python            | `verify_license_doc` from `polaris_key`            | The pinned keys, `expected_aud`, `device_id`, `last_accepted_issued_at=None`, `check_freshness=False` |
-| Python web        | `polaris_key.server`                               | `PolarisKey(config=...)`, then `require_entitlement(name)`                                            |
-| Kotlin web (Ktor) | `polaris-key-server-ktor`                          | `polarisKey { products = ... }`, then `requireEntitlement(name)`                                      |
+| Lane                     | Verifier                                           | Arguments you pass                                                                                    |
+| ------------------------ | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Node                     | `verifyLicenseDocument` from `@polaris-key/server` | `trust`, `product`, `deviceId`, and optionally `now`                                                  |
+| Python                   | `verify_license_doc` from `polaris_key`            | The pinned keys, `expected_aud`, `device_id`, `last_accepted_issued_at=None`, `check_freshness=False` |
+| Python web               | `polaris_key.server`                               | `PolarisKey(config=...)`, then `require_entitlement(name)`                                            |
+| Kotlin web (Ktor)        | `polaris-key-server-ktor`                          | `polarisKey { products = ... }`, then `requireEntitlement(name)`                                      |
+| Kotlin web (Spring Boot) | `polaris-key-spring-boot-starter`                  | `http.polarisKey()`, then `access(PolarisKey.entitlement(name))`                                      |
 
 Install `@polaris-key/server` for a Node backend:
 

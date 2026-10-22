@@ -48,6 +48,16 @@ deprecated aliases).
   `networkInterceptor()` sends no licence and throws `not-configured`). Pre-sync, one forced retry at
   least 10 s apart, typed `not_entitled` and `sign_in_required`; `headers()` is raw.
 
+- **Spring Boot starter (`:spring-boot-starter`, SP-61).** `im.plrs.key:polaris-key-spring-boot-starter`
+  has the Ktor plugin's shape on Spring Security 6: auto-configuration of a `PolarisServer` from
+  `polaris-key.*` properties (a startup failure report names the property to fix), `http.polarisKey()`
+  (a filter and an `AuthenticationProvider` for steps 1 to 5), per-route `AuthorizationManager`s
+  `PolarisKey.license()/entitlement()/tier()/signIn()/all()` for step 6, an `AuthenticationEntryPoint`
+  and `AccessDeniedHandler` that answer the localized problem body (only for requests a gate refused),
+  `polaris-key.errors=throw` into `@ControllerAdvice`, `PolarisKeyRefusalHandler` and
+  `HttpServletResponse.respondProblem` for a custom status, the CORS preflight pass, `private`
+  Cache-Control on a granted response, and `PolarisKeyTestConfiguration` with MockMvc helpers over
+  `PolarisTestKit`. It replays `backend-matrix.json`'s verdict rows through Spring Security.
 - **Server drop-ins: the Node pass, in Kotlin** (`:server`, `:server-ktor`). Bad configuration fails at startup
   with the fix: `PolarisProduct` throws `IllegalArgumentException` for an empty slug or pin set, a pin that
   is not 43 base64url characters and a base URL that is not https (it used to fail silently inside the

@@ -1,0 +1,67 @@
+---
+title: "Gate a Spring Boot route with the license"
+description: "Refuse a request to your Spring MVC route unless the device's license allows it, through Spring Security. Verified offline, with no call to Polaris Key."
+type: "how-to"
+lastReviewed: "2026-10-22"
+lanes: ["server"]
+sidebar:
+  order: 11
+---
+
+The Spring Boot starter reads the device's license document from the `X-PKey-License` header, verifies it offline against your pinned keys and refuses the request when the license doesn't allow it. It plugs into Spring Security: a filter, an `AuthorizationManager` per route and the entry point and denied handler that answer. A route with no gate stays open. The contract is on [Verify licenses on your server](/docs/build/servers/).
+
+Requires the License feature and the pins `pkey sdk --lang kotlin --write` prints. The app sends `X-PKey-License` and `X-PKey-Device` with each call to your server.
+
+## Steps
+
+1. **Server** Add `im.plrs.key:polaris-key-spring-boot-starter` from Polaris Key's Maven feed, at the version the feed lists.
+2. **Server** Set `polaris-key.product` and `polaris-key.pinned-keys.<kid>` in `application.properties`.
+3. **Server** Call `http.polarisKey()` on your `SecurityFilterChain` and give each route that needs a gate a `PolarisKey` requirement: `license()`, `entitlement(name)`, `tier(...)`, `signIn()` or `all(...)`.
+
+```properties title="application.properties"
+polaris-key.product=acme
+polaris-key.pinned-keys.pkey-2026=<the 43-character public key from pkey sdk>
+```
+
+```kotlin title="SecurityConfig.kt"
+import im.plrs.key.server.spring.PolarisKey
+import im.plrs.key.server.spring.polarisKey
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.security.config.annotation.web.builders.HttpSecurity
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.web.SecurityFilterChain
+
+@Configuration(proxyBeanMethods = false)
+@EnableWebSecurity
+class SecurityConfig {
+    @Bean
+    fun api(http: HttpSecurity): SecurityFilterChain {
+        http.csrf { it.disable() }
+        http.polarisKey()
+        http.authorizeHttpRequests {
+            it.requestMatchers("/health").permitAll()
+                .requestMatchers("/api/export").access(PolarisKey.entitlement("export.pdf"))
+                .requestMatchers("/api/team").access(PolarisKey.tier("pro", "team"))
+                .anyRequest().denyAll()
+        }
+        return http.build()
+    }
+}
+```
+
+`http.polarisKey()` never refuses. Only the requirements do. A controller reads the license with `@AuthenticationPrincipal`, or `request.requirePolarisLicense()`, which throws on a route with no gate. A missing, empty or malformed product stops startup with a report that names the property to set.
+
+## Require a signed-in account
+
+`PolarisKey.signIn()` refuses with `sign_in_required` (403) while no account is signed in on the device. `PolarisKey.all(Require.signIn(), Require.tier("pro"))` checks several, in order.
+
+## Refusals and tests
+
+A missing, invalid or stale license answers `401` with a `PKey-License` challenge. A license that lacks the entitlement, tier or sign-in answers `403`. The body is `application/problem+json` in the caller's language. A `PolarisKeyRefusalHandler` bean changes the status; `polaris-key.errors=throw` hands a `PolarisKeyError` to your `@ControllerAdvice`. `PolarisKeyTestConfiguration` signs test requests with a throwaway key, so a MockMvc test needs no network.
+
+## More
+
+- Refusal shapes, your own status codes and tests without a network: [Kotlin server reference](/docs/features/licensing/server-kotlin/#spring-boot).
+- Freshness, revocation and replay: [Verify licenses on your server](/docs/build/servers/).
+- The codes a refused request carries: [Error codes](/docs/reference/error-codes/).
