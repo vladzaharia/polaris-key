@@ -14,7 +14,10 @@ import {
 import {
   activateFlow,
   busyAfter,
+  contactRows,
   ensureDiscovery,
+  ensurePortal,
+  portalLink,
   portalRows,
 } from "./flows.js";
 import { envelope, EXIT, jsonLine } from "./json.js";
@@ -132,13 +135,7 @@ function linkRows(
   link: "portal" | "contact",
 ): RailRow[] {
   if (link === "portal" && client) return portalRows(ctx, client);
-  return [
-    textRow(
-      ctx.copy.t("status.contact", {
-        developer: ctx.product.developer ?? ctx.product.name,
-      }),
-    ),
-  ];
+  return contactRows(ctx);
 }
 
 /**
@@ -271,12 +268,13 @@ async function decide(r: GateRun): Promise<number | null> {
         if (s.usable && s.entitled) return null;
       }
     }
+    await ensurePortal(client);
     const refusal = refusalFor(
       s.status,
       s.usable,
       ctx,
       r,
-      typeof client.product === "string" && client.product !== "",
+      portalLink(client) !== null,
     );
     if (ctx.caps.json) {
       ctx.stdout.write(

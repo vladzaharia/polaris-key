@@ -73,3 +73,8 @@ export {
   type PresentationIconOptions,
   type PresentationStoreOptions,
 } from "./presentation.js";
+export {
+  PORTAL_MEMBER_FILE,
+  PortalStore,
+  type PortalStoreOptions,
+} from "./portal.js";
