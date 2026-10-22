@@ -1257,6 +1257,7 @@ function licenseRows(c: RenderCtx): TemplateResult | typeof nothing {
       ? plain(c, "signin.choice.group")
       : ""}
     data-part="license-list"
+    data-scroll
     data-key=${ifDefined(
       has("signin.choice.group") ? "signin.choice.group" : undefined,
     )}
