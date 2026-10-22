@@ -38342,7 +38342,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ signs out of %2$@ and %3$@ takes its seat. We'll email you about it."
+            "value": "%1$@ signs out of %2$@ and %3$@ takes its place. We'll email you about it."
           }
         },
         "de": {
@@ -51920,7 +51920,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "That seat was just taken. Choose again."
+            "value": "That device was just replaced. Choose again."
           }
         },
         "de": {
@@ -52052,7 +52052,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The device you choose signs out of %1$@. It can sign in again later if a seat is free. We'll email you about it."
+            "value": "The device you choose signs out of %1$@. It can sign in again later if there's room. We'll email you about it."
           }
         },
         "de": {
@@ -70160,7 +70160,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ signs out of %2$@ and %3$@ takes its seat. We'll email you about it."
+            "value": "%1$@ signs out of %2$@ and %3$@ takes its place. We'll email you about it."
           }
         },
         "de": {
@@ -70460,7 +70460,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose a device to sign out. %1$@ takes its seat."
+            "value": "Choose a device to sign out. %1$@ takes its place."
           }
         },
         "de": {
@@ -70772,7 +70772,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Someone took that seat first. Choose again."
+            "value": "Someone replaced that device first. Choose again."
           }
         },
         "de": {
@@ -70832,7 +70832,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ was removed, but someone took the seat first. Choose again."
+            "value": "%1$@ was removed, but someone signed in first. Choose again."
           }
         },
         "de": {

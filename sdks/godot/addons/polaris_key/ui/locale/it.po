@@ -934,7 +934,7 @@ msgstr "Per usarla su questa TV, sostituiscine uno. Potrai aggiungerlo di nuovo 
 msgid "deviceLimit.confirmTitle"
 msgstr "Sostituire {device}?"
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "deviceLimit.consequence"
 msgstr "{device} esce da {product} e {thisDevice} ne prende il posto. Ti invieremo un'email al riguardo."
@@ -2375,7 +2375,7 @@ msgctxt "macos"
 msgid "signin.choice.continue"
 msgstr "Usa questa licenza e continua"
 
-#. That seat was just taken. Choose again.
+#. That device was just replaced. Choose again.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.raced"
 msgstr "Quel posto è appena stato occupato. Scegli di nuovo."
@@ -2420,7 +2420,7 @@ msgctxt "macos"
 msgid "signin.replace.open"
 msgstr "Sostituisci un dispositivo"
 
-#. Choose a device to sign out. {thisDevice} takes its seat.
+#. Choose a device to sign out. {thisDevice} takes its place.
 #. Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice).
 msgid "signin.replace.lede"
 msgstr "Scegli un dispositivo da disconnettere. {thisDevice} ne prende il posto."
@@ -2460,7 +2460,7 @@ msgstr "Questo browser"
 msgid "signin.replace.title"
 msgstr "Sostituire {device}?"
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "signin.replace.consequence"
 msgstr "{device} esce da {product} e {thisDevice} ne prende il posto. Ti invieremo un'email al riguardo."
@@ -2509,12 +2509,12 @@ msgstr[0] "Troppe modifiche ai dispositivi. Riprova tra {seconds} secondo."
 msgstr[1] "Troppe modifiche ai dispositivi. Riprova tra {seconds} di secondi."
 msgstr[2] "Troppe modifiche ai dispositivi. Riprova tra {seconds} secondi."
 
-#. Someone took that seat first. Choose again.
+#. Someone replaced that device first. Choose again.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
 msgid "signin.replace.raced"
 msgstr "Qualcun altro ha occupato prima quel posto. Scegli di nuovo."
 
-#. {device} was removed, but someone took the seat first. Choose again.
+#. {device} was removed, but someone signed in first. Choose again.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
 msgid "signin.replace.racedAfterFree"
 msgstr "{device} è stato rimosso, ma qualcun altro ha occupato prima il posto. Scegli di nuovo."
@@ -4332,7 +4332,7 @@ msgctxt "macos"
 msgid "signin.choice.replaceAndSignIn"
 msgstr "Sostituisci e accedi"
 
-#. The device you choose signs out of {app}. It can sign in again later if a seat is free. We'll email you about it.
+#. The device you choose signs out of {app}. It can sign in again later if there's room. We'll email you about it.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.choice.replaceSafety"
 msgstr "Il dispositivo scelto esce da {app}. Potrà accedere di nuovo più tardi se c'è un posto libero. Ti avviseremo via e-mail."
