@@ -40,8 +40,19 @@ const idOfRoute = (route: string): string =>
 const tierOfRoute = (route: string): Tier =>
   doorOf(idOfRoute(route))?.tier ?? "admin";
 
+/**
+ * Astro names a processed asset `<name>.<hash>.<ext>`: the hash is the last dot-separated segment
+ * before the extension, 8 characters of base64url. The table is keyed without it so the generated
+ * file is the same on every machine (macOS and Linux sharp/libvips emit different image bytes,
+ * hence different hashes). The Worker carries the same pattern in `stripAstroHash`
+ * (packages/worker/src/docs.ts); a Worker test pins the two to each other.
+ */
+export const ASTRO_HASH = /^([^/]+)\.[A-Za-z0-9_-]{8}(\.[A-Za-z0-9]+)$/;
+export const stripAstroHash = (name: string): string =>
+  name.replace(ASTRO_HASH, "$1$2");
+
 export interface DocsTiers {
-  /** `/docs/_astro/<file>` -> tier, for the files no public page loads. */
+  /** `/docs/_astro/<file without its hash segment>` -> tier, for the files no public page loads. */
   assets: Record<string, Exclude<Tier, "public">>;
   /** The resolved path of each moved-page redirect page -> its target's tier. */
   redirects: Record<string, Tier>;
@@ -90,8 +101,23 @@ export function collectDocsTiers(dist: string): DocsTiers {
   }
   const assets: DocsTiers["assets"] = {};
   const TIERS: Tier[] = ["public", "member", "admin"];
-  for (const [name, r] of [...rank].sort((a, b) => a[0].localeCompare(b[0])))
-    if (r > 0) assets[`/docs/_astro/${name}`] = TIERS[r] as "member" | "admin";
+  // Two different files that lose their hash to the same name cannot share a table row: fail
+  // rather than let one tier silently cover the other (a gated row would also gate a public file).
+  const byStable = new Map<string, string[]>();
+  for (const name of names) {
+    const key = stripAstroHash(name);
+    byStable.set(key, [...(byStable.get(key) ?? []), name]);
+  }
+  for (const [name, r] of [...rank].sort((a, b) => a[0].localeCompare(b[0]))) {
+    if (r === 0) continue;
+    const key = stripAstroHash(name);
+    const same = byStable.get(key) ?? [name];
+    if (same.length > 1)
+      throw new Error(
+        `collect-docs-tiers: ${same.join(", ")} share the stable name ${key} once the hash is stripped; rename a source asset`,
+      );
+    assets[`/docs/_astro/${key}`] = TIERS[r] as "member" | "admin";
+  }
 
   for (const [page, target] of [...redirectOf].sort()) {
     let route = target;
