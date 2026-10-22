@@ -48,6 +48,7 @@ const NARRATIVE_ONLY = new Set([
   "adminSpa",
   "adminApi",
   "adminLogin",
+  "adminDevice",
   "adminCallback",
   "portalSpa",
   "portalApi",

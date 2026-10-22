@@ -62,7 +62,7 @@ import {
   type OidcIdentity,
   identityTier,
 } from "../../../core/licensing/issue.js";
-import { sameOriginPost } from "./deviceFlow.js";
+import { sameOriginPost } from "../../../core/accounts/browserRequestGuard.js";
 import { isReplaceGroup } from "../licenseChoice.js";
 import { flowView, listingDeveloper } from "./pages.js";
 import { appForPage, pageApp } from "../../../core/brandPage.js";

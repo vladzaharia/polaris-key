@@ -97,6 +97,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   identityAttach: "closed",
   adminLogin: "closed",
   adminCallback: "closed",
+  // ST-34.5/34.6: approving `pkey login` releases an admin token (console card, portal API).
+  adminDeviceApprove: "closed",
+  portalDeviceApprove: "closed",
   portalLogin: "closed",
   // The platform device-code entry page (`/device`, `/tv`): a product-less guess oracle for live
   // user codes, so an outage must not make it unlimited.

@@ -52,7 +52,7 @@ import {
   isDeviceCodeFlow,
   rateLimited,
 } from "./config.js";
-import { sameOriginPost } from "./deviceFlow.js";
+import { sameOriginPost } from "../../../core/accounts/browserRequestGuard.js";
 import { deviceHtmlHeaders, listingDeveloper, type PageView } from "./pages.js";
 
 /** A name inside a sentence, isolated so a right-to-left label cannot scramble the line. */
