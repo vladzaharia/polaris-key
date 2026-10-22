@@ -2,7 +2,7 @@
 // framework drop-ins (SP-57, WIRE-CONTRACT-V4 §14). It decides a request to a product backend from the
 // app's signed licence document, offline: the six-step verdict, the problem body and the trust
 // refresh. A plain Kotlin/JVM library with no framework and no Android dependency, over :core only,
-// so each framework adapter (:server-ktor, Spring Boot next) stays thin.
+// so each framework adapter (:server-ktor, :spring-boot-starter) stays thin.
 //
 // The eight copy locales are the repository's conformance/parity/copy.<locale>.json files, copied
 // into the JAR at build time (the one source; nothing is written by hand).

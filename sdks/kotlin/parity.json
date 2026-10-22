@@ -15,6 +15,7 @@
     "sdks/kotlin/sdk/src/test",
     "sdks/kotlin/server/src/test",
     "sdks/kotlin/server-ktor/src/test",
+    "sdks/kotlin/spring-boot-starter/src/test",
     "sdks/kotlin/conformance/src/test",
     "sdks/kotlin/android/src/test",
     "sdks/kotlin/android/src/testPlay",
@@ -521,7 +522,7 @@
           "note": "An Android app is not a server."
         }
       ],
-      "note": "im.plrs.key:polaris-key-server (the verdict, the problem, the trust refresh) and polaris-key-server-ktor (SP-57), replaying backend-matrix.json's verdict and problem sections on the JCA and with Tink forced, and each verdict row over a gated Ktor route. Level with @polaris-key/server: startup config errors, tier and valued requirements (requireTier, requireAll), the CORS preflight pass, trust-fetch diagnostics through debug and PolarisTestKit. Spring Boot follows (SP-61)."
+      "note": "im.plrs.key:polaris-key-server (the verdict, the problem, the trust refresh) and polaris-key-server-ktor (SP-57), replaying backend-matrix.json's verdict and problem sections on the JCA and with Tink forced, and each verdict row over a gated Ktor route and over a gated Spring MVC route (polaris-key-spring-boot-starter, SP-61: properties, an AuthenticationProvider filter, AuthorizationManagers, the entry point and denied handler, test support). Level with @polaris-key/server: startup config errors, tier and valued requirements (requireTier, requireAll), the CORS preflight pass, trust-fetch diagnostics through debug and PolarisTestKit."
     },
     "server.signin": {
       "status": "implemented",

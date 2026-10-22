@@ -30,6 +30,11 @@ serialization = "1.8.1"
 okhttp = "4.12.0"
 # The Ktor server plugin (:server-ktor, SP-57): 3.2.x is built with Kotlin 2.1.x.
 ktor = "3.2.3"
+# The Spring Boot starter (:spring-boot-starter, SP-61): Boot 3.5.x is Spring Security 6.5 on Java 17 and builds with Kotlin 2.1.
+springBoot = "3.5.6"
+springSecurity = "6.5.5"
+springFramework = "6.2.11"
+jakartaServlet = "6.1.0"
 tink = "1.23.0"
 # zstd for pack deltas, chunks and zstd-coded objects (P6-08, notes/E9): the JNI binding to libzstd
 # 1.5.7. The JAR carries the desktop natives. :android links the Android AAR instead (16 KB page
@@ -81,6 +86,18 @@ ktor-server-core = { module = "io.ktor:ktor-server-core-jvm", version.ref = "kto
 ktor-server-auth = { module = "io.ktor:ktor-server-auth-jvm", version.ref = "ktor" }
 ktor-server-status-pages = { module = "io.ktor:ktor-server-status-pages-jvm", version.ref = "ktor" }
 ktor-server-test-host = { module = "io.ktor:ktor-server-test-host-jvm", version.ref = "ktor" }
+spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "springBoot" }
+spring-boot-autoconfigure = { module = "org.springframework.boot:spring-boot-autoconfigure", version.ref = "springBoot" }
+spring-security-config = { module = "org.springframework.security:spring-security-config", version.ref = "springSecurity" }
+spring-security-web = { module = "org.springframework.security:spring-security-web", version.ref = "springSecurity" }
+spring-webmvc = { module = "org.springframework:spring-webmvc", version.ref = "springFramework" }
+spring-boot-test = { module = "org.springframework.boot:spring-boot-test", version.ref = "springBoot" }
+spring-test = { module = "org.springframework:spring-test", version.ref = "springFramework" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
+spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security" }
+spring-security-test = { module = "org.springframework.security:spring-security-test" }
+jakarta-servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version.ref = "jakartaServlet" }
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-runtime = { module = "androidx.compose.runtime:runtime" }
 compose-ui = { module = "androidx.compose.ui:ui" }
