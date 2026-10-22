@@ -1,0 +1,234 @@
+{
+  "transcriptVersion": 1,
+  "id": "devicecode-mint-retry",
+  "description": "A device-code flow whose completion fails once after the person approved it (I-37d). beginSignIn() posts the device id alone; one poll is pending. The player confirms the code, signs in at the (mocked) IdP and presses Sign in on the approval page, server-side and unrecorded; the Worker's database then rejects the first write of the device's seat. The next poll answers 503 unavailable with Retry-After: 2 (WIRE-CONTRACT-V4 12.10 rule 5), which the client reports as a transient server-error and rides out, holding no token. The poll after the backoff answers ready with the identity and the client stores the token.",
+  "features": ["identity.devicecode"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["license", "config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "beginSignIn",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/start",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "deviceId": "TRANSCRIPTDEVICE0000000000000001" },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "status": "pending",
+                "deviceCode": "I9Bm7t1TKPXa_6PzP4jRoQ",
+                "userCode": "JMRQ-TRNW",
+                "verificationUri": "https://key.plrs.im/djdl/identity/auth/device",
+                "verificationUriComplete": "https://key.plrs.im/djdl/identity/auth/device?user_code=JMRQ-TRNW",
+                "expiresIn": 600,
+                "interval": 2,
+                "pollUrl": "https://key.plrs.im/djdl/identity/auth/device/poll",
+                "deviceName": null
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "prompt": {
+          "userCode": "JMRQ-TRNW",
+          "verificationUri": "https://key.plrs.im/djdl/identity/auth/device",
+          "verificationUriComplete": "https://key.plrs.im/djdl/identity/auth/device?user_code=JMRQ-TRNW",
+          "expiresIn": 600,
+          "interval": 2,
+          "deviceName": null
+        },
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "pollSignIn",
+      "note": "Pending.",
+      "args": {},
+      "now": 1700000002,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "deviceCode": "I9Bm7t1TKPXa_6PzP4jRoQ",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "pending" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "pending", "tokenHeld": false }
+    },
+    {
+      "action": "pollSignIn",
+      "note": "Approved, but finishing failed: 503 unavailable with Retry-After. A transient server-error; keep polling.",
+      "args": {},
+      "now": 1700000005,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "deviceCode": "I9Bm7t1TKPXa_6PzP4jRoQ",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 503,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json",
+                "retry-after": "2"
+              },
+              "body": { "error": "unavailable", "message": "try again" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "transient",
+        "code": "server-error",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "pollSignIn",
+      "note": "After the backoff the Worker finishes the sign-in: ready.",
+      "args": {},
+      "now": 1700000008,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/auth/device/poll",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "deviceCode": "I9Bm7t1TKPXa_6PzP4jRoQ",
+                  "deviceId": "TRANSCRIPTDEVICE0000000000000001"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "status": "ready",
+                "token": "pkeyt_LJZqFJHlScN80_L1DcjhhTHqZzyGGERw_VI8t_6FUm8",
+                "schemaVersion": 1,
+                "identity": { "name": "Transcript Player" }
+              }
+            },
+            "capture": { "token": "$.token" }
+          }
+        ]
+      },
+      "expect": { "result": "ready", "tokenHeld": true }
+    }
+  ]
+}

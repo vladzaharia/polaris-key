@@ -22,6 +22,7 @@ import {
   devicecodeFailed,
   devicecodeHappy,
   devicecodeLabel,
+  devicecodeMintRetry,
   identityDisabled,
 } from "./identity.js";
 import {
@@ -85,6 +86,7 @@ export const SCENARIOS: Scenario[] = [
   devicecodeDenied,
   devicecodeExpired,
   devicecodeFailed,
+  devicecodeMintRetry,
   identityDisabled,
   devicecodeLabel,
   devicecodeDefault,

@@ -545,6 +545,136 @@ export const devicecodeFailed: Scenario = {
     }),
 };
 
+/** I-37d: the person approved, but finishing the sign-in hit a transient failure. The poll answers
+ *  `503 unavailable` with `Retry-After`, the flow is kept, and the poll after the backoff is
+ *  `ready`. A client reports the 503 as a transient `server-error` and keeps polling. */
+export const devicecodeMintRetry: Scenario = {
+  id: "devicecode-mint-retry",
+  record: () =>
+    pinned("devicecode-mint-retry", async (pin) => {
+      const world = await identityWorld();
+      const r = new TranscriptRecorder({
+        id: "devicecode-mint-retry",
+        description:
+          "A device-code flow whose completion fails once after the person approved it (I-37d). beginSignIn() posts the device id alone; one poll is pending. The player confirms the code, signs in at the (mocked) IdP and presses Sign in on the approval page, server-side and unrecorded; the Worker's database then rejects the first write of the device's seat. The next poll answers 503 unavailable with Retry-After: 2 (WIRE-CONTRACT-V4 12.10 rule 5), which the client reports as a transient server-error and rides out, holding no token. The poll after the backoff answers ready with the identity and the client stores the token.",
+        features: ["identity.devicecode"],
+        requires: ["core.store"],
+        product: PRODUCT,
+        now: T0,
+        world,
+        pinned: pin,
+        initial: {
+          deviceId: DEVICE,
+          version: VERSION,
+          services: ["license", "config", "identity"],
+        },
+      });
+
+      let started!: Started;
+      const begun: Record<string, JsonValue> = {};
+      await r.step(
+        { action: "beginSignIn" },
+        async (s) => {
+          const res = await s.send({
+            method: "POST",
+            path: START,
+            body: { deviceId: DEVICE },
+            expectBody: { json: { deviceId: DEVICE }, match: "exact" },
+          });
+          expect(res.status).toBe(200);
+          started = (await res.json()) as Started;
+          Object.assign(begun, { prompt: promptOf(started), tokenHeld: false });
+        },
+        begun,
+      );
+
+      await r.step(
+        { action: "pollSignIn", now: T0 + 2, note: "Pending." },
+        async (s) => {
+          const res = await s.send(pollSpec(started.deviceCode));
+          expect(await res.json()).toEqual({ status: "pending" });
+        },
+        { result: "pending", tokenHeld: false },
+      );
+
+      await playerSignsIn(world, T0 + 3, started.verificationUriComplete);
+
+      // One D1 write of the device's seat rejects, once: a transient failure after approval.
+      let armed = true;
+      const realDb = world.db;
+      const trap = (sqls: string[]): void => {
+        if (armed && sqls.some((q) => q.includes("INSERT INTO devices"))) {
+          armed = false;
+          throw new Error("D1_ERROR: unavailable");
+        }
+      };
+      world.db = new Proxy(realDb, {
+        get(target, prop, receiver) {
+          const value = Reflect.get(target, prop, receiver) as unknown;
+          if (
+            (prop === "run" || prop === "runChanges") &&
+            typeof value === "function"
+          )
+            return (sql: string, ...rest: never[]) => {
+              trap([sql]);
+              return (value as (...a: unknown[]) => unknown).call(
+                target,
+                sql,
+                ...rest,
+              );
+            };
+          if (
+            (prop === "batch" || prop === "batchChanges") &&
+            typeof value === "function"
+          )
+            return (list: { sql: string }[]) => {
+              trap(list.map((x) => x.sql));
+              return (value as (...a: unknown[]) => unknown).call(target, list);
+            };
+          return value;
+        },
+      });
+
+      await r.step(
+        {
+          action: "pollSignIn",
+          now: T0 + 5,
+          note: "Approved, but finishing failed: 503 unavailable with Retry-After. A transient server-error; keep polling.",
+        },
+        async (s) => {
+          const res = await s.send(pollSpec(started.deviceCode));
+          expect(res.status).toBe(503);
+          expect(res.headers.get("retry-after")).toBe("2");
+          expect(await res.json()).toEqual({
+            error: "unavailable",
+            message: "try again",
+          });
+        },
+        { result: "transient", code: "server-error", tokenHeld: false },
+      );
+
+      await r.step(
+        {
+          action: "pollSignIn",
+          now: T0 + 8,
+          note: "After the backoff the Worker finishes the sign-in: ready.",
+        },
+        async (s) => {
+          const res = await s.send({
+            ...pollSpec(started.deviceCode),
+            capture: { token: "$.token" },
+          });
+          const body = (await res.json()) as { status: string; token: string };
+          expect(body.status).toBe("ready");
+          expect(body.token.startsWith("pkeyt_")).toBe(true);
+        },
+        { result: "ready", tokenHeld: true },
+      );
+      world.db = realDb;
+      return r.transcript();
+    }),
+};
+
 export const devicecodeExpired: Scenario = {
   id: "devicecode-expired",
   record: () =>
