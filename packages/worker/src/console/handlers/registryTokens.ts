@@ -19,7 +19,8 @@
  *                                          `binding: "service"` (F-33b.3) mints a read service
  *                                          token: a `pkeyci_` CI token holding only
  *                                          `packages:read`, {label, expiresInDays?} (1 to 365
- *                                          days, default 90), `service_token.create`. Not on the
+ *                                          days, default 90), `service_token.create`. Needs a
+ *                                          fresh step-up (F-33b.7). Not on the
  *                                          platform scope (`system_service_tokens`)
  *   POST  <base>/tokens/:tokenId/revoke    `registry_token.revoke`; a `cit_…` id revokes one of
  *                                          the product's service tokens (`service_token.revoke`)

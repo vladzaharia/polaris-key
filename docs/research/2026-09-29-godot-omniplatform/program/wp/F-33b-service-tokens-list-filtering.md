@@ -29,6 +29,13 @@ Checked on `integ/next-stage` (2026-10-22). Where this brief disagrees, the code
 - **(a) `pkeyci_` already reads with `release:publish`** (`CI_FEED_READ_SCOPE`). F-33b.2 adds the read-only `packages:read` scope.
 - **C4.** Role-granted access in `personMayRead` is ST-31.9's. No root-only Superadmin hook is added (D-F7).
 
+## Closeout (F-33b.7, 2026-10-22)
+
+- **Lead decision: minting a durable credential needs a fresh step-up.** The service-token mint (`binding: "service"`, a `(body)` row checked in the handler), `POST …/ci-tokens` and `PUT …/ci-publisher` (table rows with `stepUp: true`) refuse with 403 `step_up_required` without a console sign-in from the last 5 minutes. Revokes stay without one. The three dialogs (New token, Issue token…, the trusted-publisher drawer) turn into "Sign in again" and reopen with their entries.
+- **Correction:** ST-30c's break-glass realm is not in this tree, so the "break-glass is refused first" test waits for ST-30c.1.
+- **Docs:** `features/ship-builds/packages/index.md`, `build/install.mdx`, `start/concepts.md` (Service token row), `operate/console/keys-and-secrets.md`. `help/packages.md` names no per-product token. THREAT-MODEL: one "Service tokens (F-33b)" subsection.
+- "Security review signed" stays open: the lead runs the final review.
+
 ## Goal
 
 `pkeyci_` packages:read, serve-time list filtering, the registry-clients two-owner row, revoke licence-bound tokens on unlink. Done when every acceptance criterion holds and the green gate passes.
@@ -55,13 +62,13 @@ Checked on `integ/next-stage` (2026-10-22). Where this brief disagrees, the code
 
 ## Acceptance criteria
 
-- [ ] New product service tokens are `pkeyci_` with `packages:read`; `registry_tokens` keeps only licence-bound tokens
-- [ ] List documents are filtered at serve time per ecosystem adapter
-- [ ] The `registry-clients.yml` row over two owners exists
-- [ ] Unlinking a licence revokes its licence-bound tokens (test; threat-model row)
-- [ ] Existing `pkeyr_` tokens keep working until expiry
+- [x] New product service tokens are `pkeyci_` with `packages:read`; `registry_tokens` keeps only licence-bound tokens
+- [x] List documents are filtered at serve time per ecosystem adapter
+- [x] The `registry-clients.yml` row over two owners exists
+- [x] Unlinking a licence revokes its licence-bound tokens (test; threat-model row)
+- [x] Existing `pkeyr_` tokens keep working until expiry
 - [ ] Security review signed
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 

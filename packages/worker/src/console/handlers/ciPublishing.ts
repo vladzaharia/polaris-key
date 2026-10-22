@@ -8,6 +8,9 @@
  *   POST   /api/products/<slug>/ci-tokens               — issue a static token (shown ONCE)
  *   DELETE /api/products/<slug>/ci-tokens/<tokenId>     — revoke it (and its open tickets)
  *
+ * `PUT …/ci-publisher` and `POST …/ci-tokens` need a fresh console step-up (table rows, F-33b.7); a
+ * revoke needs none.
+ *
  * A claim is how an operator takes the policy away from the manifest: once claimed, resync never
  * touches it (`core/publisher.ts`). It is also the only way to grant `release:yank`. A static
  * token is for a CI that is not GitHub; it expires at most 90 days out and only its peppered hash
