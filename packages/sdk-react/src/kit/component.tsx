@@ -31,6 +31,7 @@ import {
   type View,
 } from "@polaris-key/ui-core";
 import {
+  platformVariant,
   resolveProductIdentity,
   type BundleProduct,
   type ResolvedIdentity,
@@ -353,6 +354,7 @@ export function useKit(
         preset: options.preset,
       }),
     options.iconSrc ?? iconUrl,
+    props.input?.platform,
   );
 
   // The input: the host's over what the person did here (a typed key, a picked row), with the
@@ -645,7 +647,7 @@ export function KitRoot(props: {
       data-motion={r.theme.motion}
       data-shape={shape}
       data-tight={tight ? "" : undefined}
-      data-pk-platform={r.theme.platform ?? "web"}
+      data-pk-platform={platformVariant(r.theme)}
       data-keyboard={kb ? "" : undefined}
       data-bare={props.bare ? "" : undefined}
       data-fill={props.fill ? "" : undefined}

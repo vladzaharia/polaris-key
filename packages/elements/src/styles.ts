@@ -1361,6 +1361,90 @@ dialog.sheet .card,
   transition: none;
 }
 
+/* ── Windows (Fluent 2, UK-06.6): 32 px controls at radius 4, overlays at radius 8, the sheet as a
+   ContentDialog on a smoke layer, the primary first at equal width, the two-tone focus ring. The
+   measures are the variant's tokens (tokens.ts writes them from brand); this block is structure.
+   There is no accent rule: the primary's fill is the only accent on a control. ──────────────── */
+.pk-root[data-pk-platform="windows"] {
+  --pk-kit-radius-card: var(--pk-kit-radius-overlay);
+  --pk-kit-radius-group: var(--pk-kit-radius-control);
+  --pk-gap: var(--pk-space-2);
+}
+.pk-root[data-pk-platform="windows"] .btn {
+  padding-inline: var(--pk-space-4);
+}
+.pk-root[data-pk-platform="windows"] .btn[data-variant="secondary"] {
+  border-color: var(--pk-border-subtle);
+  background: color-mix(in oklab, var(--pk-text-strong) 6%, var(--pk-surface-raised));
+}
+/* Fluent presses in place: no scale. */
+.pk-root[data-pk-platform="windows"] .btn:active:not([aria-disabled="true"]) {
+  transform: none;
+}
+/* The ring: 2 px in the strongest text colour with a 1 px gap in the surface inside it, so it
+   holds against the accent fill and the page alike (an accent ring on an accent button vanishes). */
+.pk-root[data-pk-platform="windows"][data-keyboard] :focus-visible {
+  outline: var(--pk-kit-focus-width) solid var(--pk-text-strong);
+  outline-offset: var(--pk-kit-focus-inner);
+  box-shadow: 0 0 0 var(--pk-kit-focus-inner) var(--pk-surface-raised);
+}
+.pk-root[data-pk-platform="windows"][data-keyboard] .field input:focus-visible,
+.pk-root[data-pk-platform="windows"][data-keyboard] .field textarea:focus-visible {
+  outline-offset: 0;
+  box-shadow: none;
+}
+/* A choice between actions (an update, a sheet's footer): equal width, the primary first. */
+.pk-root[data-pk-platform="windows"] .actions[data-layout="row"],
+.pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card > .actions {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: stretch;
+}
+.pk-root[data-pk-platform="windows"] .actions[data-layout="row"] .btn,
+.pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card > .actions .btn {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  inline-size: auto;
+}
+/* The sheet is a ContentDialog: centred (never docked to the bottom), 30 rem, radius 8, its
+   actions a footer bar full-bleed on the sunken ground under a hairline. */
+.pk-root[data-pk-platform="windows"] dialog.sheet {
+  margin: auto;
+  inline-size: min(30rem, 100% - 2 * var(--pk-space-4));
+  max-inline-size: none;
+}
+.pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card {
+  padding: var(--pk-kit-card-pad);
+  border-radius: var(--pk-kit-radius-overlay);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
+}
+.pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card > .actions {
+  position: static;
+  margin-block: 0 calc(-1 * var(--pk-kit-card-pad));
+  margin-inline: calc(-1 * var(--pk-kit-card-pad));
+  padding: var(--pk-kit-card-pad);
+  background: var(--pk-surface-sunken);
+  border-block-start: 1px solid var(--pk-border-subtle);
+  box-shadow: none;
+  /* Last in the card: the links the view carries sit in the body above the bar. */
+  order: 1;
+}
+.pk-root[data-pk-platform="windows"] dialog::backdrop {
+  backdrop-filter: none;
+}
+/* Three choices do not fit a phone's width in a row: they stack, the primary on top. */
+@container pk (max-width: 34.99rem) {
+  .pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card > .actions:has(> :nth-child(3)) {
+    flex-direction: column;
+  }
+}
+@media (pointer: coarse) {
+  .pk-root[data-pk-platform="windows"] .btn[data-variant="link"] {
+    min-block-size: var(--pk-kit-control-height-coarse);
+  }
+}
+
 /* ── Controls of the panes: switch, segmented choice, steps, notes ───────────────────────── */
 .switch-wrap {
   display: inline-flex;
@@ -1634,6 +1718,13 @@ dialog.sheet .identity {
   .pk-root[data-keyboard] :focus-visible,
   .field input:focus-visible {
     outline-color: Highlight;
+  }
+  .pk-root[data-pk-platform="windows"][data-keyboard] :focus-visible {
+    outline-color: Highlight;
+    box-shadow: none;
+  }
+  .pk-root[data-pk-platform="windows"][data-shape] dialog.sheet .stage .card > .actions {
+    border-block-start-color: CanvasText;
   }
   .seat-bar span[data-used],
   .progress > span {

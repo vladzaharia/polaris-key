@@ -15,7 +15,10 @@ import {
   type View,
 } from "@polaris-key/ui-core";
 import type { ResolvedIdentity } from "@polaris-key/ui-core/theme";
-import { resolveProductIdentity } from "@polaris-key/ui-core/theme";
+import {
+  platformVariant,
+  resolveProductIdentity,
+} from "@polaris-key/ui-core/theme";
 
 import { copyFor, onCopyLoaded, preloadCopy } from "./copy.js";
 import { installFonts } from "./fonts.js";
@@ -318,7 +321,7 @@ export abstract class PkElement extends LitElement {
         preset: o.preset,
       });
     const iconUrl = o.iconSrc ?? this.iconUrl;
-    return resolveFor(this, o, identity, iconUrl);
+    return resolveFor(this, o, identity, iconUrl, this.input?.platform);
   }
 
   /** The view this element draws now. */
@@ -628,7 +631,7 @@ export abstract class PkElement extends LitElement {
         data-shape=${this.shape}
         ?data-tight=${this.tight}
         ?data-fill=${this.fill || this.fillsWindow(view.state)}
-        data-pk-platform=${r.theme.platform ?? "web"}
+        data-pk-platform=${platformVariant(r.theme)}
         ?data-keyboard=${keyboard}
         lang=${c.copy.locale}
         style=${styleMap(themeVars(r))}

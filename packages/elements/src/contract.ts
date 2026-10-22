@@ -181,7 +181,11 @@ function scopeSelector(sel: string, root: string): string {
     return `${root}${attr}${sel.slice(host[0].length)}`;
   }
   if (sel.startsWith(root)) return sel;
-  if (/^\[data-(theme|motion|preset|shape|density|keyboard)\b/.test(sel))
+  if (
+    /^\[data-(theme|motion|preset|shape|density|keyboard|pk-platform)\b/.test(
+      sel,
+    )
+  )
     return `${root}${sel}`;
   return `:where(${root}) ${sel}`;
 }

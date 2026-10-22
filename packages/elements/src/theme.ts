@@ -5,7 +5,7 @@
 // has no discovery fetch and no icon cache of its own (owner decision, HA-13/HA-14).
 
 import type { PresentationSource } from "@polaris-key/client-core/presentation";
-import type { UiInput } from "@polaris-key/ui-core";
+import type { Platform, UiInput } from "@polaris-key/ui-core";
 import {
   accentFor,
   resolveKitColors,
@@ -243,10 +243,14 @@ export function resolveFor(
   options: ElementsTheme,
   identity: ResolvedIdentity,
   iconUrl: string | null,
+  platform?: Platform,
 ): Resolved {
   const native = options.preset === "native";
   const scheme = resolveTheme(options, {
     kit: "elements",
+    // `platform: "auto"` takes the platform the host reports (the desktop bridge's `host.os`,
+    // UK-06); left unset, the kit draws the web variant.
+    ...(options.platform === "auto" && platform ? { platform } : {}),
     prefersDark: native && host ? groundPrefersDark(host) : osPrefersDark(),
     reducedMotion: osReducedMotion(),
   });
