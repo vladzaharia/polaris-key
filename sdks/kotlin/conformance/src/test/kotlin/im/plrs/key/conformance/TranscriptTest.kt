@@ -302,18 +302,25 @@ object KotlinReplay {
             }
             "pollSignIn" -> {
                 val prompt = session.prompt ?: throw AssertionError("pollSignIn before beginSignIn")
-                when (val poll = client.identity.pollSignIn(prompt)) {
-                    SignInPoll.Pending -> out["result"] = JsonPrimitive("pending")
-                    is SignInPoll.SlowDown -> {
-                        out["result"] = JsonPrimitive("slow-down")
-                        out["interval"] = jsonInt(poll.interval)
+                try {
+                    when (val poll = client.identity.pollSignIn(prompt)) {
+                        SignInPoll.Pending -> out["result"] = JsonPrimitive("pending")
+                        is SignInPoll.SlowDown -> {
+                            out["result"] = JsonPrimitive("slow-down")
+                            out["interval"] = jsonInt(poll.interval)
+                        }
+                        SignInPoll.Ready -> out["result"] = JsonPrimitive("ready")
+                        SignInPoll.Expired -> out["result"] = JsonPrimitive("expired")
+                        is SignInPoll.Error -> {
+                            out["result"] = JsonPrimitive("error")
+                            poll.code?.let { out["code"] = JsonPrimitive(it) }
+                        }
                     }
-                    SignInPoll.Ready -> out["result"] = JsonPrimitive("ready")
-                    SignInPoll.Expired -> out["result"] = JsonPrimitive("expired")
-                    is SignInPoll.Error -> {
-                        out["result"] = JsonPrimitive("error")
-                        poll.code?.let { out["code"] = JsonPrimitive(it) }
-                    }
+                } catch (e: PolarisException) {
+                    // I-37d: no answer or a 5xx on the poll is transient; a wait loop keeps polling.
+                    if (e.code != "server-error" && e.code != "network-error") throw e
+                    out["result"] = JsonPrimitive("transient")
+                    out["code"] = JsonPrimitive(e.code)
                 }
             }
             "waitForSignIn" -> {
@@ -687,7 +694,7 @@ class TranscriptTest : ConformanceSuite() {
         /** Every transcript this SDK's implemented rows make applicable (P6-06, P6-07 and P6-08). */
         val REQUIRED = listOf(
             "discovery-capabilities", "discovery-failure", "sync-etag-304", "sync-errors",
-            "activate-enroll-deactivate", "config-schema-fetch", "devicecode-denied", "devicecode-failed", "devicecode-expired", "devicecode-happy",
+            "activate-enroll-deactivate", "config-schema-fetch", "devicecode-denied", "devicecode-failed", "devicecode-mint-retry", "devicecode-expired", "devicecode-happy",
             "edge-mint", "register-open", "register-reregister-401", "release-changelog",
             "release-changelog-entitled", "telemetry-report",
             // P6-08: the v4 update decision.

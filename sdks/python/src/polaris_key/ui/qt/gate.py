@@ -4,16 +4,20 @@ The kit never owns the event loop (UI-KITS §5.2). ``run_gate`` builds one :clas
 from the SDK client's own state (``client.status()``, the SDK's presentation source), shows it as a
 window transient for the host's ``window`` while the app may not proceed, and hides it when it may.
 It returns a :class:`GateController` the host keeps; ``controller.refresh()`` re-reads the client,
-and a Try again or Reconnect press does the same. Activation and sign-in screens follow with the
-rest of the drop-in flow; until then the host calls its own ``client.license.activate`` and
-``refresh()``.
+and a Try again or Reconnect press does the same.
+
+While the license is not usable the gate runs every screen that gets one (:class:`~.flow.GateFlow`):
+Welcome, license-key entry with the client's refusals in their own words, sign-in in the browser
+or by device code, Replace a device, and the blocked-status screens. The host calls nothing: the
+gate calls ``client.license.activate_with_key`` and ``client.identity`` itself, off the GUI thread,
+and re-reads the client when one succeeds.
 """
 
 from __future__ import annotations
 
 import math
 import time
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Mapping, Optional, Tuple
 
 from ..core.identity import presentation_source
 from ..core.theme import Theme
@@ -21,9 +25,14 @@ from ..core.ui_gate import gate_view, grace_banner_view
 from ..core.ui_contract import context_of
 from ..core.ui_view import View
 from . import _binding as qt
+from .flow import GateFlow
 from .kit import KitView
 
 __all__ = ["GateController", "gate_input", "run_gate"]
+
+
+def _mapping_of(value: Any) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
 
 
 def gate_input(client: Any, *, now: Optional[int] = None) -> dict:
@@ -42,17 +51,49 @@ def gate_input(client: Any, *, now: Optional[int] = None) -> dict:
 
 
 class GateController:
-    """The running gate: its view, the last model view and the open/close decision."""
+    """The running gate: its view, the screen being drawn, and the open/close decision."""
 
-    def __init__(self, client: Any, kit: KitView, window: Any = None, on_open: Optional[Callable[[], None]] = None) -> None:
+    def __init__(
+        self,
+        client: Any,
+        kit: KitView,
+        window: Any = None,
+        on_open: Optional[Callable[[], None]] = None,
+        *,
+        platform: Optional[Mapping[str, Any]] = None,
+        capabilities: Optional[Mapping[str, bool]] = None,
+        offers_free_tier: bool = False,
+        open_url: Optional[Callable[[str], bool]] = None,
+        clipboard: Any = None,
+        device_name: Optional[str] = None,
+    ) -> None:
         self.client = client
         self.kit = kit
         self.window = window
         self.on_open = on_open
         self._modal: Any = kit.view.modality() if hasattr(kit.view, "modality") else None
+        #: The gate's own view (``needs-activation``, ``licensed``, ``grace`` …): what the client says.
         self.view: Optional[View] = None
+        self.flow = GateFlow(
+            client,
+            kit,
+            on_status=self.refresh,
+            platform=platform,
+            capabilities=capabilities,
+            offers_free_tier=offers_free_tier,
+            open_url=open_url,
+            clipboard=clipboard,
+            device_name=device_name,
+        )
         kit.bridge.invoked.connect(self._invoked)
+        kit.bridge.edited.connect(self.flow.edited)
         self.refresh()
+
+    @property
+    def screen(self) -> Optional[View]:
+        """The screen the kit is drawing: Welcome, Activate, SignInHandoff … (the gate's own view while
+        no screen of the flow applies)."""
+        return self.kit.bridge.view
 
     @property
     def open(self) -> bool:
@@ -65,28 +106,40 @@ class GateController:
         if self.view.state == "grace":
             # The app renders in grace (ui-matrix PolarisKeyGate/grace). The notice is the grace
             # banner, shown as a non-modal window so it never blocks the app.
+            self.flow.reset()
             self.kit.set_view(grace_banner_view(ctx))
             self.kit.view.setModality(qt.QtCore.Qt.WindowModality.NonModal)
             self.kit.view.show()
             if self.on_open:
                 self.on_open()
             return self.view
-        self.kit.set_view(self.view)
         if self.open:
+            self.flow.reset()
+            self.kit.set_view(self.view)
             self.kit.view.hide()
             if self.on_open:
                 self.on_open()
+            return self.view
+        if self.view.state in ("needs-activation", "blocked") and self.flow.available:
+            self.flow.start(str(_mapping_of(ctx.input.get("gate")).get("status") or "needs-activation"))
+            screen, data = self.flow.render()
+            self.kit.set_view(screen, data)
         else:
-            if self._modal is not None:
-                self.kit.view.setModality(self._modal)
-            self.kit.view.show()
+            self.flow.reset()
+            self.kit.set_view(self.view)
+        if self._modal is not None:
+            self.kit.view.setModality(self._modal)
+        self.kit.view.show()
         return self.view
 
-    def _invoked(self, _key: str, action: str) -> None:
+    def _invoked(self, key: str, action: str) -> None:
+        if self.flow.handle(key, action):
+            return
         if action == "retry":
             self.refresh()
 
     def close(self) -> None:
+        self.flow.close()
         self.kit.close()
 
 
@@ -97,12 +150,34 @@ def run_gate(
     theme: Optional[Theme] = None,
     size: Tuple[int, int] = (520, 640),
     on_open: Optional[Callable[[], None]] = None,
+    platform: Optional[Mapping[str, Any]] = None,
+    capabilities: Optional[Mapping[str, bool]] = None,
+    offers_free_tier: bool = False,
+    open_url: Optional[Callable[[str], bool]] = None,
+    device_name: Optional[str] = None,
 ) -> GateController:
-    """Gate ``window`` (a ``QWidget``/``QWindow``, or ``None``) on ``client``'s licence."""
+    """Gate ``window`` (a ``QWidget``/``QWindow``, or ``None``) on ``client``'s licence.
+
+    ``platform`` is ``{"os": …, "formFactor": …}`` when the app runs somewhere the desktop rules do
+    not hold (a TV or a console opens on the device code and draws a QR, UI-KITS DL14). The paths the
+    gate offers come from the client: sign-in when the product runs Identity, a license key when it
+    runs License; ``capabilities`` overrides them, and ``offers_free_tier=True`` adds Continue free
+    (``client.license.enroll``). ``open_url`` opens a link in the browser (``QDesktopServices`` by
+    default); ``device_name`` is the label a sign-in page shows."""
     kit = KitView(theme, source=presentation_source(client), size=size)
     handle = getattr(window, "windowHandle", None)
     parent = handle() if callable(handle) else window
     if parent is not None and hasattr(kit.view, "setTransientParent"):
         kit.view.setTransientParent(parent)
     kit.view.setModality(qt.QtCore.Qt.WindowModality.ApplicationModal if parent is not None else qt.QtCore.Qt.WindowModality.NonModal)
-    return GateController(client, kit, window, on_open)
+    return GateController(
+        client,
+        kit,
+        window,
+        on_open,
+        platform=platform,
+        capabilities=capabilities,
+        offers_free_tier=offers_free_tier,
+        open_url=open_url,
+        device_name=device_name,
+    )

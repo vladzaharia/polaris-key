@@ -18,8 +18,9 @@ Every visible string in every kit comes from **one catalog**, so a state shows t
   Each message carries its English value, its role (title, body, label, button, menu, window
   title, accessibility, hint) and a note for translators.
 - **Core strings** are the error and gate copy every SDK already shows
-  (`conformance/parity/copy.en.json`). Kit tables carry them under `core.*` keys, and a kit string
-  never repeats one.
+  (`conformance/parity/copy.en.json`), also in `de`, `es`, `fr`, `it`, `ja`, `ko`, `pt-BR` and
+  `zh-Hans`: French ships in every SDK, so an app with no UI kit still reads a refusal in the
+  person's language. Kit tables carry them under `core.*` keys, and a kit string never repeats one.
 - **Which keys each state shows** is `packages/brand/kit-copy/components.json`; every
   [component page](/docs/build/ui/components/) lists its states and their keys from it.
 

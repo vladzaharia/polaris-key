@@ -625,6 +625,13 @@
     <string name="cloudSync_signIn__macos">登录以同步</string>
     <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="about_title">关于%1$s</string>
+    <!-- About: product and build information. The bare section label in a navigation list; the product name is not repeated. -->
+    <string name="about_nav">关于</string>
+    <!-- About: product and build information. Opens the developer's privacy policy. -->
+    <string name="about_privacy">隐私</string>
+    <!-- About: product and build information. Opens the developer's support page. -->
+    <string name="about_support">获取帮助</string>
+    <string name="about_support__macos">获取帮助</string>
     <!-- About: product and build information. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
     <string name="about_version">版本%1$s</string>
     <!-- About: product and build information. Opens the open-source notices. -->

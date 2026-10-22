@@ -56,6 +56,11 @@ class RowData:
     selected: Optional[int] = None
     #: This device's form factor, for "this Mac".
     form_factor: str = "computer"
+    #: The device-code sign-in the code view draws: ``userCode``, ``secondsLeft``, ``expiresIn`` (the
+    #: code's whole life, for the ring) and ``copied``.
+    device_code: Mapping[str, Any] = field(default_factory=dict)
+    #: What the key field holds (``keyField.text``): the key the person typed or pasted.
+    key_text: str = ""
 
 
 def _maps(value: Any) -> Tuple[Mapping[str, Any], ...]:
@@ -94,6 +99,8 @@ def row_data(source: Any) -> RowData:
             edit=_map(source.get("edit")),
             selected=_int(selected) if selected is not None else None,
             form_factor=str(platform.get("formFactor") or "computer"),
+            device_code=_map(source.get("deviceCode")),
+            key_text=str(_map(source.get("keyField")).get("text") or ""),
         )
     name = type(source).__name__
     if name == "SettingsView":
@@ -274,9 +281,18 @@ class Group:
     rows: Tuple[Row, ...]
     heading: str = ""
     radio: bool = False
+    #: The service the header belongs to (``config``, ``update``): its tinted glyph tile shows when the
+    #: theme asks for service cues (UI-KITS 1.2).
+    service: str = ""
 
     def as_dict(self) -> Dict[str, Any]:
-        return {"id": self.id, "heading": self.heading, "radio": self.radio, "rows": [r.as_dict() for r in self.rows]}
+        return {
+            "id": self.id,
+            "heading": self.heading,
+            "radio": self.radio,
+            "service": self.service,
+            "rows": [r.as_dict() for r in self.rows],
+        }
 
 
 @dataclass(frozen=True)
@@ -491,9 +507,11 @@ def _settings(view: View, copy: Copy, data: RowData, args: Mapping[str, Any], ad
         groups.append(Group("own", tuple(_setting_row(copy, r, args) for r in own)))
     if pushed:
         heading = copy("settings.fromDeveloper", developer=developer) if isinstance(developer, str) and developer else ""
-        groups.append(Group("developer", tuple(_setting_row(copy, r, args) for r in pushed), heading))
+        groups.append(Group("developer", tuple(_setting_row(copy, r, args) for r in pushed), heading, service="config"))
     if managed:
-        groups.append(Group("managed", tuple(_setting_row(copy, r, args) for r in managed), copy("account.managedSettings")))
+        groups.append(
+            Group("managed", tuple(_setting_row(copy, r, args) for r in managed), copy("account.managedSettings"), service="config")
+        )
     if has_advanced:
         groups.append(
             Group(
@@ -868,7 +886,9 @@ def _account(view: View, copy: Copy, data: RowData, args: Mapping[str, Any]) -> 
     if main:
         groups.append(Group("account", tuple(main)))
     if updates:
-        groups.append(Group("updates", tuple(updates), copy("account.updates") if "account.updates" in keys else ""))
+        groups.append(
+            Group("updates", tuple(updates), copy("account.updates") if "account.updates" in keys else "", service="update")
+        )
     if "common.signOut" in keys:
         groups.append(
             Group("session", (Row("signOut", "account", actions=(RowAction("common.signOut", copy("common.signOut"), "sign-out", role="dangerText"),)),))

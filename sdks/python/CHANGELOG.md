@@ -8,8 +8,25 @@ only API (no deprecated aliases).
 
 Kit screens.
 
-- **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Use another license, and Renew only when you supply a renew handler or URL; it never offers Try again or Reconnect. The TV QR on the device-limit screen is labelled as the device management page. The Qt kit draws the numbered steps with the request QR.
-  Migrating: pass an https `offers.url` in the offers input to get Buy in your browser on the paywall, and a renew handler or URL to get Renew.
+- **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Renew and Use another license, and never Try again or Reconnect; the Qt kit has no renew option, so the host handles the Renew press. The TV QR on the device-limit screen is labelled as the device management page. The Qt kit draws the numbered steps with the request QR.
+  Migrating: pass an https `offers.url` in the offers input to get Buy in your browser on the paywall, (Renew needs nothing: the host handles its press).
+
+- **The async `wait_for_sign_in` keeps `code`.** `AsyncPolarisKey.identity.wait_for_sign_in` and `sign_in_with_browser` dropped the `code` of an `error` result, so an async caller could not tell `sign-in-denied` from `sign-in-failed`; the sync client already set it. A 503 on the device-code poll (the Worker retrying a transient failure after approval) is a `server-error` the wait loop rides out, as before.
+- **The Qt kit's `run_gate` runs activation and sign-in.** The gate shows Welcome, license-key entry
+  (Paste, a live verdict, refusals as an info callout with their next step), sign-in in the browser or
+  by device code (the code with Copy, the countdown, a QR on a TV or console, the declined and failed
+  states) and Replace a device through the portal, calling `client.license` and `client.identity` itself
+  off the GUI thread. New: `run_gate(platform=, capabilities=, offers_free_tier=, open_url=,
+device_name=)`, `GateController.screen` and `.flow`, `polaris_key.ui.core.ui_signin` (`SignIn` and
+  `SignInHandoff`, replaying the `signIn` matrix).
+- **The Qt kit honours the whole `Theme`.** `preset="native"`, `colors`, `radius`, `typography`,
+  `density`, `ambient` and `service_cues` now take effect (`symbols` is the terminal's and is ignored);
+  `color_scheme="system"` reads `QStyleHints.colorScheme` and follows it live (`system_scheme=` is now only
+  the fallback when the OS says nothing); `KitView.container()` is the view as a `QWidget`. A settings row
+  with no button no longer prints `Cannot read property 'role' of undefined`. Migration: the default
+  `ambient=True` now draws the accent's glow behind the card.
+
+- **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
 
 Server drop-ins.
 

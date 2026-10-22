@@ -551,10 +551,28 @@ const CONNECTORS = join(
  * The Worker files that word the audit summaries the Activity page shows ("Pinned channel
  * credential …"), read through the same filter and rule.
  */
+const DISTRIBUTION = join(
+  here,
+  "..",
+  "..",
+  "worker",
+  "src",
+  "services",
+  "distribution",
+);
 const AUDIT_SUMMARY_SOURCES = [
-  ["console", "handlers", "outletCredentials.ts"],
-  ["services", "distribution", "admin.ts"],
-].map((parts) => join(here, "..", "..", "worker", "src", ...parts));
+  ...[
+    ["console", "handlers", "outletCredentials.ts"],
+    ["services", "distribution", "admin.ts"],
+    ["services", "distribution", "listing", "sources.ts"],
+    ["services", "distribution", "ciSecretCheck.ts"],
+  ].map((parts) => join(here, "..", "..", "worker", "src", ...parts)),
+  // The storefront setup messages (storefronts/*/setup.ts) and the feed messages (feeds/).
+  ...consoleFiles(join(DISTRIBUTION, "storefronts")).filter((p) =>
+    p.endsWith("setup.ts"),
+  ),
+  ...consoleFiles(join(DISTRIBUTION, "feeds")),
+];
 
 function connectorMessages(): string[] {
   const rule = COPY_RULES.find((r) => r.id === "outlet")!;

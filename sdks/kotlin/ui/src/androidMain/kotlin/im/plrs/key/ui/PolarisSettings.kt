@@ -8,6 +8,7 @@
 
 package im.plrs.key.ui
 
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -27,6 +28,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -35,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import im.plrs.key.config.ConfigSource
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.LicenseStatus
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 
 // ── Composables ──────────────────────────────────────────────────────────────────────────────
 
@@ -60,7 +65,15 @@ public fun PolarisSettings(
 ) {
     val ui by state.ui.collectAsState()
     androidx.compose.runtime.LaunchedEffect(state) { state.load() }
-    PolarisSettingsScreen(ui, modifier, entitlementLabel = entitlementLabel, onRetry = state::load, navigationIcon = navigationIcon)
+    PolarisSettingsScreen(
+        ui,
+        modifier,
+        entitlementLabel = entitlementLabel,
+        onRetry = state::load,
+        navigationIcon = navigationIcon,
+        onSet = state::set,
+        onReset = state::reset,
+    )
 }
 
 /**
@@ -74,6 +87,8 @@ public fun PolarisSettingsScreen(
     entitlementLabel: (String) -> String? = { null },
     onRetry: () -> Unit = {},
     navigationIcon: (@Composable () -> Unit)? = null,
+    onSet: ((String, JsonElement) -> Unit)? = null,
+    onReset: ((String) -> Unit)? = null,
 ) {
     val copy = PolarisTheme.copy
     if (ui.loading) {
@@ -88,31 +103,47 @@ public fun PolarisSettingsScreen(
             maxContentWidth = if (sideBySide) 960.dp else Dp.Unspecified,
             navigationIcon = navigationIcon,
         ) {
+            PolarisProductHeader()
             PolarisTitle(copy.settingsTitle)
             Spacer(Modifier.height(polarisWindow.section))
+            // A refused edit is announced under the title, named by the catalog's copy (never the backend's detail).
+            ui.error?.let {
+                PolarisInlineNotice(copy.settingsFailureMessage(it))
+                Spacer(Modifier.height(PolarisSpace.controls))
+            }
             val license = ui.license
             val licenseCard: @Composable (Modifier) -> Unit = { m ->
-                if (license != null) PolarisSection(copy.settingsLicense, m) { PolarisLicenseRow(license, entitlementLabel) }
+                if (license != null) PolarisSection(null, m) { PolarisLicenseRow(license, entitlementLabel) }
             }
             val valuesCard: @Composable (Modifier) -> Unit = { m ->
-                PolarisSection(copy.settingsValues, m) {
+                Column(m, verticalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
                     if (ui.loadFailure != null) {
-                        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                            PolarisInlineNotice(copy.settingsFailureMessage(ui.loadFailure))
-                            Spacer(Modifier.height(PolarisSpace.controls))
-                            PolarisSecondaryButton(copy.retry, onRetry)
+                        PolarisSection(null) {
+                            Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                                PolarisInlineNotice(copy.settingsFailureMessage(ui.loadFailure))
+                                Spacer(Modifier.height(PolarisSpace.controls))
+                                PolarisSecondaryButton(copy.retry, onRetry)
+                            }
                         }
                     } else if (ui.entries.isEmpty()) {
-                        Text(
-                            text = copy.settingsEmpty,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        )
+                        PolarisSection(null) {
+                            Text(
+                                text = copy.settingsEmpty,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            )
+                        }
                     }
-                    ui.entries.forEachIndexed { i, entry ->
-                        if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                        PolarisSettingRow(entry)
+                    // Groups by provenance (UI-KITS.md 4.3): the developer's defaults under "From <Developer>",
+                    // the rows a policy locks under "Managed settings", everything else in one list with no header.
+                    for (group in settingGroups(ui.entries, PolarisTheme.current.developer)) {
+                        PolarisSection(group.title) {
+                            group.entries.forEachIndexed { i, entry ->
+                                if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                                PolarisSettingRow(entry, onSet, onReset)
+                            }
+                        }
                     }
                 }
             }
@@ -137,6 +168,28 @@ public fun PolarisSettingsScreen(
     }
 }
 
+/** One list of rows under an optional catalog header. */
+internal class SettingGroup(val title: String?, val entries: List<PolarisSettingEntry>)
+
+/**
+ * The settings' groups (UI-KITS.md 4.3): the developer's pushed defaults the person can still change
+ * under "From <Developer>" (only when the developer is known, else they stay with the rest), then the
+ * rows a policy locks under "Managed settings", then everything else with no header. Empty groups
+ * are not drawn; a row belongs to exactly one.
+ */
+internal fun settingGroups(entries: List<PolarisSettingEntry>, developer: String?, locale: String = coreLocale()): List<SettingGroup> {
+    fun locked(e: PolarisSettingEntry) = e.source == ConfigSource.enforced || e.source == ConfigSource.hidden
+    val fromDeveloper = if (developer != null) entries.filter { !locked(it) && it.source == ConfigSource.remoteDefault } else emptyList()
+    val managed = entries.filter(::locked)
+    val rest = entries - fromDeveloper.toSet() - managed.toSet()
+    val catalog = KitCopy.bundled
+    return listOfNotNull(
+        SettingGroup(catalog.format("settings.fromDeveloper", locale, mapOf("developer" to CopyArgument.Text(developer.orEmpty()))), fromDeveloper).takeIf { fromDeveloper.isNotEmpty() },
+        SettingGroup(catalog.format("account.managedSettings", locale), managed).takeIf { managed.isNotEmpty() },
+        SettingGroup(null, rest).takeIf { rest.isNotEmpty() },
+    )
+}
+
 /** The colours of an entitlement badge for [status]. */
 @Composable
 internal fun entitlementColors(status: LicenseStatus): Pair<Color, Color> {
@@ -150,14 +203,12 @@ internal fun entitlementColors(status: LicenseStatus): Pair<Color, Color> {
     }
 }
 
-/** The entitlement badge: the licence status as a coloured pill with a section dot. */
+/** The entitlement badge: the licence status as a coloured pill, with no service-accent dot (UI-KITS.md 1.2). */
 @Composable
 public fun PolarisEntitlementBadge(status: LicenseStatus, modifier: Modifier = Modifier) {
     val (container, content) = entitlementColors(status)
     Surface(modifier = modifier, shape = CircleShape, color = container, contentColor = content) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(Modifier.size(8.dp), shape = CircleShape, color = PolarisTheme.accent("license")) {}
-            Spacer(Modifier.width(8.dp))
             Text(PolarisTheme.copy.entitlementLabel(status), style = MaterialTheme.typography.labelLarge)
         }
     }
@@ -220,9 +271,14 @@ internal fun PolarisCopy.settingsFailureMessage(failure: PolarisSettingsFailure?
 }
 
 @Composable
-internal fun PolarisSettingRow(entry: PolarisSettingEntry) {
+internal fun PolarisSettingRow(entry: PolarisSettingEntry, onSet: ((String, JsonElement) -> Unit)? = null, onReset: ((String) -> Unit)? = null) {
     val copy = PolarisTheme.copy
     val locked = entry.source == ConfigSource.enforced || entry.source == ConfigSource.hidden
+    val toggle = (entry.editor as? PolarisSettingEditor.Toggle)?.takeIf { !locked && onSet != null }
+    if (toggle != null) {
+        PolarisSwitchRow(entry, toggle.checked, onSet!!, onReset)
+        return
+    }
     // At large font scales the value moves under its name, so neither is squeezed into a sliver.
     val stacked = LocalDensity.current.fontScale >= 1.5f
     val value: @Composable (Modifier) -> Unit = { modifier ->
@@ -245,7 +301,8 @@ internal fun PolarisSettingRow(entry: PolarisSettingEntry) {
             )
         }
     }
-    val source = copy.sourceLabel(entry.source)
+    // A locked row names its config source: "Set by <Developer>" when the product's developer is known.
+    val source = if (locked) PolarisTheme.current.developer?.let { KitCopy.bundled.format("settings.setBy", kitLocale(), mapOf("org" to CopyArgument.Text(it))) } ?: copy.sourceLabel(entry.source) else copy.sourceLabel(entry.source)
     val rowModifier = Modifier
         .fillMaxWidth()
         .heightIn(min = 56.dp)
@@ -267,5 +324,40 @@ internal fun PolarisSettingRow(entry: PolarisSettingEntry) {
         Spacer(Modifier.width(16.dp))
         // The value fills its share and sits at the row's trailing edge.
         value(Modifier.weight(0.8f))
+    }
+}
+
+/**
+ * A boolean setting as a switch row (UI-KITS.md 4.3: typed controls from the catalog schema): the
+ * label and its provenance text at the start, the switch at the end, at least 52 dp and a 48 dp
+ * target. A locked setting is never a dimmed switch: it is [PolarisSettingRow]'s text row. A change
+ * the person made on this device offers "Reset to default" under the row.
+ */
+@Composable
+internal fun PolarisSwitchRow(entry: PolarisSettingEntry, checked: Boolean, onSet: (String, JsonElement) -> Unit, onReset: ((String) -> Unit)?) {
+    val copy = PolarisTheme.copy
+    val source = copy.sourceLabel(entry.source)
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 52.dp)
+                .toggleable(value = checked, role = Role.Switch, onValueChange = { onSet(entry.key, JsonPrimitive(it)) })
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(entry.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                source?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            Spacer(Modifier.width(16.dp))
+            // The row is the control (one target, one name): the switch only draws the state.
+            Switch(checked = checked, onCheckedChange = null)
+        }
+        if (entry.source == ConfigSource.local && onReset != null) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+                PolarisTextButton(KitCopy.bundled.format("settings.reset", kitLocale()), onClick = { onReset(entry.key) })
+            }
+        }
     }
 }

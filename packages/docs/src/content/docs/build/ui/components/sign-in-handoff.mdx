@@ -14,7 +14,7 @@ import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
-Step two of the sign-in form, in place: Finish in your browser, with Open browser again, Cancel and Use a code instead, or the device code with its countdown. A QR code appears only on TV and console. The step moves on by itself when the browser finishes.
+Step two of the sign-in form, in place: Finish in your browser, with Open browser again, Cancel and Use a code instead, or the device code with its countdown. A QR code appears only on TV and console. The step moves on by itself when the browser finishes. When it does not finish, the `denied` state (the person declined, `sign-in-denied`) is told apart from `failed` (anything else, `sign-in-failed`).
 
 ## States and copy
 
@@ -50,7 +50,7 @@ Step two of the sign-in form, in place: Finish in your browser, with Open browse
     `hintsRow`, with the `LiveRegion`, `spinnerFrames` and `osc52` primitives.
 
     **Headless.** `handoffView(state, data?)`: `starting`, `waiting`, `no-browser`, `code`,
-    `link-copied`, `finishing`, `denied`, `expired` or `cancelled`, with the URL, the code and the
+    `link-copied`, `finishing`, `denied`, `failed`, `expired` or `cancelled`, with the URL, the code and the
     seconds left; `clock(seconds)` formats the countdown.
 
     [Terminal (Node)](/docs/build/ui/frameworks/terminal-node/) has the adapter's options, the

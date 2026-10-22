@@ -79,6 +79,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "paywall.restore": { macos: "Restore Purchases" },
   "paywall.portal": { macos: "Buy in Your Browser" },
   "cloudSync.signIn": { macos: "Sign In to Sync" },
+  "about.support": { macos: "Get Help" },
   "about.licenses": { macos: "Open-Source Licenses" },
   "about.copyDiagnostics": { macos: "Copy Diagnostics" },
   "signin.passkey": { macos: "Sign In with a Passkey" },

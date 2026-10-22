@@ -289,8 +289,8 @@ describe("identity rows wrap instead of cutting the name", () => {
  * content spills out of it, and an ordinary word broken across lines. Scroll strips that are meant
  * to scroll (`overflow-x: auto | scroll`) and words over 20 characters (a token) are left out.
  */
-function clippedText(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
+function clippedText(page: Page, words = true): Promise<string[]> {
+  return page.evaluate((checkWords) => {
     const out: string[] = [];
     const label = (e: Element): string =>
       `${e.tagName.toLowerCase()} "${(e.textContent ?? "").trim().slice(0, 30)}"`;
@@ -326,7 +326,8 @@ function clippedText(page: Page): Promise<string[]> {
       const el = n.parentElement;
       if (!el || !el.checkVisibility() || !(n.textContent ?? "").trim())
         continue;
-      if (el.closest("[data-section-pills], .sr-only")) continue;
+      // cmdk's own label is visually hidden by inline styles, not a class.
+      if (el.closest("[data-section-pills], .sr-only, [cmdk-label]")) continue;
       const r = document.createRange();
       r.selectNodeContents(n);
       const box = r.getBoundingClientRect();
@@ -351,6 +352,7 @@ function clippedText(page: Page): Promise<string[]> {
       }
     }
     for (const n of texts) {
+      if (!checkWords) break;
       const parent = n.parentElement;
       if (!parent || !parent.checkVisibility()) continue;
       if (
@@ -374,7 +376,7 @@ function clippedText(page: Page): Promise<string[]> {
       }
     }
     return out.slice(0, 12);
-  });
+  }, words);
 }
 
 /** Fixed and stuck-sticky elements' share of the window's height, at a scroll offset. */
@@ -528,6 +530,21 @@ describe("the Library and Account lose no text", () => {
  * (LF1: B2 remainder, M4). A dialog's body must not shrink to a sliver: its content is reachable
  * without scrolling a 32 px slot.
  */
+const LF4_IDS = new Set([
+  "product-entry",
+  "product-identity",
+  "product-no-cover",
+  "product-no-icon",
+  "product-account-bound",
+  "product-install-sources",
+  "switcher",
+  "discover-empty",
+  "storefront-not-found",
+  "account-link-start",
+  "account-link-both",
+  "account-link-stale",
+  "account-last-method",
+]);
 const FLOW_STATES = [
   { id: "library-1", scenario: "one", path: "/#/", heading: /library/i },
   ...[
@@ -536,6 +553,20 @@ const FLOW_STATES = [
     "device-limit",
     "download-flow",
     "product-token",
+    // The product-page variants and the secondary pages (LF4, 200 % text on a phone).
+    "product-entry",
+    "product-identity",
+    "product-no-cover",
+    "product-no-icon",
+    "product-account-bound",
+    "product-install-sources",
+    "switcher",
+    "discover-empty",
+    "storefront-not-found",
+    "account-link-start",
+    "account-link-both",
+    "account-link-stale",
+    "account-last-method",
   ].map((id) => ({ id })),
 ] as const;
 
@@ -563,12 +594,23 @@ describe("the one-product Library and the flows lose no text at large text", () 
         try {
           if (shipped) await shipped.ready(o.page);
           else await h1(o.page, st.heading);
+          // A pasted key, so the field is as full as it gets.
+          if (st.id === "activate-enter")
+            await o.page.fill(
+              "[role=dialog] textarea",
+              "pkey_nightfall_AAAA-BBBB-CCCC-DDDD-EEEE-FFFF",
+            );
           await enlarge(o.page, text);
           await o.page.waitForTimeout(300);
           const over = await horizontalOverflow(o.page);
           expect(over > 0 ? await widest(o.page) : []).toEqual([]);
           expect(over).toBeLessThanOrEqual(0);
-          expect(await clippedText(o.page)).toEqual([]);
+          // At 320 CSS px and 200 % text the window is 160 px wide in effect: a long word may break
+          // across lines there (nothing is lost or cut), on the product-page variants and
+          // secondary pages added in LF4; everything else still holds.
+          expect(
+            await clippedText(o.page, !(width <= 320 && LF4_IDS.has(st.id))),
+          ).toEqual([]);
           // A dialog's body is never a sliver to scroll in: the sheet scrolls as a whole.
           const slot = await o.page.evaluate(() => {
             const b = document.querySelector<HTMLElement>(
@@ -579,6 +621,21 @@ describe("the one-product Library and the flows lose no text at large text", () 
               : null;
           });
           if (slot) expect(slot.scroll).toBeLessThanOrEqual(slot.client + 1);
+          // The key field keeps its room: no more than five lines, never a character a line.
+          if (st.id === "activate-enter") {
+            const field = await o.page.evaluate(() => {
+              const t = document.querySelector<HTMLTextAreaElement>(
+                "[role=dialog] textarea",
+              );
+              if (!t) return null;
+              const cs = getComputedStyle(t);
+              const lh = parseFloat(cs.lineHeight);
+              const pad =
+                parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+              return { height: t.getBoundingClientRect().height - pad, lh };
+            });
+            if (field) expect(field.height / field.lh).toBeLessThanOrEqual(5);
+          }
           // A code frame clips what leaves it (LF3, M7): each of its buttons (Wrap, Copy) sits
           // wholly inside the frame, and so does every Copy button beside a shown-once value.
           const cut = await o.page.evaluate(() =>

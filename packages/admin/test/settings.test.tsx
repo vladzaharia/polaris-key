@@ -350,9 +350,7 @@ describe("Core → Settings", () => {
     expect(screen.queryByRole("textbox", { name: /Admin group/ })).toBeNull();
     const row = value.closest("[data-align]") as HTMLElement;
     expect(within(row).getByText("Not enforced")).toBeTruthy();
-    expect(row.textContent).toContain(
-      "Not enforced: console access is platform-wide.",
-    );
+    expect(row.textContent).toContain("Console access is platform-wide.");
     // A long group wraps under the label on a phone and reads from the left.
     expect(value.className).toContain("max-sm:text-start");
     cleanup();

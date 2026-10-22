@@ -313,3 +313,59 @@ export function shellStateBreaches(page: Page): Promise<string[]> {
     return out;
   });
 }
+
+/**
+ * The status pills and chips whose text escapes their box (the pill keeps a fixed height while
+ * its word wraps, so the second line overlaps what is below). Every text node's line boxes must
+ * sit inside the pill's own box, within 1 px. One line per pill.
+ */
+export function pillTextBreaches(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const out: string[] = [];
+    const pills = document.querySelectorAll<HTMLElement>(
+      '[data-status="pill"], [data-status="text"], .pk-pill, [data-chip]',
+    );
+    for (const el of pills) {
+      if (!el.checkVisibility({ visibilityProperty: true })) continue;
+      const box = el.getBoundingClientRect();
+      if (box.width === 0) continue;
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (!n.textContent?.trim()) continue;
+        // Text a screen reader alone gets, and text an ancestor inside the pill clips (a truncated
+        // name ends in "…" by design), are not on screen outside the box.
+        let hidden = false;
+        for (
+          let a = n.parentElement;
+          a && a !== el.parentElement;
+          a = a.parentElement
+        ) {
+          const st = getComputedStyle(a);
+          if (
+            a.classList.contains("sr-only") ||
+            (a !== el && st.overflowX !== "visible")
+          )
+            hidden = true;
+        }
+        if (hidden) continue;
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        for (const r of range.getClientRects()) {
+          if (r.width === 0) continue;
+          if (
+            r.top < box.top - 1 ||
+            r.bottom > box.bottom + 1 ||
+            r.left < box.left - 1 ||
+            r.right > box.right + 1
+          ) {
+            out.push(
+              `"${(el.textContent ?? "").trim().slice(0, 30)}" text y ${Math.round(r.top)}..${Math.round(r.bottom)} x ${Math.round(r.left)}..${Math.round(r.right)} escapes its pill y ${Math.round(box.top)}..${Math.round(box.bottom)} x ${Math.round(box.left)}..${Math.round(box.right)}`,
+            );
+            break;
+          }
+        }
+      }
+    }
+    return out;
+  });
+}

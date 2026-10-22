@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16)                                     |
 | Size        | 0.4–0.6 engineer-weeks                                                                                 |
 | Depends on  | [I-37b](I-37b-device-code-denied-kits.md)                                                              |
-| Unblocks    | none                                                                                                   |
+| Unblocks    | [I-37d](I-37d-device-mint-retry.md)                                                                    |
 | Role        | `pkey-sdk-porter`                                                                                      |
 | Plan mode   | yes: [plans/DENY-01.md](../plans/DENY-01.md) is the approved plan                                      |
 | Gates       | drift-gate, corpus, all-sdks, threat-model, rule-10, docs-generated, docs-links, ui-snapshots, workerd |
@@ -40,14 +40,14 @@ outcomes, `uiMatrixVersion` 5), and the THREAT-MODEL paragraph.
 **In, phase 2:** the SDK ports in plan section 5 (ui-core, Node, React, Python, Swift, Kotlin,
 Godot), then the docs in plan section 10 step 6.
 
-**Out:** a failed mint as a 5xx (its own package).
+**Out:** a failed mint as a 5xx (its own package: [I-37d](I-37d-device-mint-retry.md), plan [MINT-01](../plans/MINT-01.md); the Python `aio.py` `code` drop is fixed there).
 
 ## Acceptance criteria
 
 - [x] Contract, Worker, transcripts, corpus and THREAT-MODEL (phase 1).
 - [x] Every device-code transcript except `devicecode-denied` and the new `devicecode-failed` is byte-identical.
-- [ ] No SDK still maps a bare `error` to `sign-in-denied`; each replays both transcripts and the new ui-matrix rows (phase 2).
-- [ ] The docs and CHANGELOG notes (phase 2).
+- [x] No SDK still maps a bare `error` to `sign-in-denied`; each replays both transcripts and the new ui-matrix rows (phase 2).
+- [x] The docs and CHANGELOG notes (phase 2).
 - [ ] The green gate passes (`AGENTS.md`).
 
 ## Verify

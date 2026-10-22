@@ -22,6 +22,7 @@
 import catalog from "../../../../conformance/parity/copy.en.json";
 import de from "../../../../conformance/parity/copy.de.json";
 import es from "../../../../conformance/parity/copy.es.json";
+import fr from "../../../../conformance/parity/copy.fr.json";
 import it from "../../../../conformance/parity/copy.it.json";
 import ja from "../../../../conformance/parity/copy.ja.json";
 import ko from "../../../../conformance/parity/copy.ko.json";
@@ -123,6 +124,7 @@ export const KNOWN_ENTRIES: ReadonlyMap<string, CatalogEntry> = new Map([
 export const TRANSLATED_CATALOGS: Readonly<Record<string, Catalog>> = {
   de: de as unknown as Catalog,
   es: es as unknown as Catalog,
+  fr: fr as unknown as Catalog,
   it: it as unknown as Catalog,
   ja: ja as unknown as Catalog,
   ko: ko as unknown as Catalog,

@@ -108,7 +108,9 @@
 //   documents       sync: slice → "applied" | "unchanged" | "unauthorized" | "blocked" |
 //                   "device-cap" | "error" (only the slices the product runs)
 //                   pollSignIn / waitForSignIn: "pending" | "slow-down" | "ready" | "expired" |
-//                     "error" (waitForSignIn only ever reports the last three)
+//                     "error" | "transient" (waitForSignIn only ever reports "ready", "expired"
+//                     and "error"). "transient" (I-37d): no answer or a 5xx, with `code`
+//                     "network-error" or "server-error"; the client keeps polling
 //                   mintToken: "ok", or the error code the call failed with — the Worker's
 //                     wire code ("not_found", "unauthorized", "rate_limited") or a client one
 //   prompt          beginSignIn: what the host shows the player — { userCode, verificationUri,

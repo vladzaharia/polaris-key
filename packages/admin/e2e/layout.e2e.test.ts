@@ -26,6 +26,7 @@ import {
   emptyStateStarBreaches,
   lintFindings,
   forcedColourBreaches,
+  pillTextBreaches,
   shellStateBreaches,
   unlabelledScrollers,
 } from "./pageChecks.js";
@@ -274,6 +275,8 @@ const TEXT200_CASES = [
   "djdl:services",
   "djdl:portal",
   "djdl:licenses/record/overview",
+  // N1: the data tables' phone cards, where a status pill wrapped out of its box.
+  "djdl:licenses",
   // CF1 / M1: the pages that scrolled sideways at 390 px with 200 % text.
   "djdl:catalog-edit",
   "djdl:catalog-editor?entry",
@@ -286,6 +289,8 @@ const TEXT200_CASES = [
   "djdl:storefronts?flow=listing",
   "djdl:storefronts?flow=assets",
   "djdl:storefronts?flow=run",
+  // CF5: the Rollouts masthead at 200 % text on a phone.
+  "djdl:rollouts",
   "djdl:activity",
   "global:platform-deployment",
   "djdl:settings-members",
@@ -695,6 +700,10 @@ for (const vp of VIEWPORTS) {
             expect(
               await shellStateBreaches(page),
               "shell state colours (B2, B4, B17)",
+            ).toEqual([]);
+            expect(
+              await pillTextBreaches(page),
+              "status text escapes its pill or chip (N1)",
             ).toEqual([]);
             expect(
               await emptyStateStarBreaches(page),

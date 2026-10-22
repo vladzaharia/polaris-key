@@ -214,20 +214,22 @@ public fun PolarisSignInScreen(
             actions = { PolarisTextButton(copy.cancel, onCancel, initialFocus = true) },
         )
         is PolarisSignInUi.Showing -> PolarisCodeView(ui, modifier, onOpenBrowser, onCancel, showQr, onCopyLink, onUseKey)
+        // The last step keeps the product's header like every other (UI-KITS.md DL5, the SwiftUI adoption).
         PolarisSignInUi.Done -> PolarisScreen(modifier = modifier, showLogo = false) {
+            PolarisProductHeader()
             PolarisTitle(copy.signInDone, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         }
         PolarisSignInUi.Expired -> PolarisMessageScreen(copy.coreMessage(SIGN_IN_EXPIRED, PolarisMessageKind.Info), modifier) {
             PolarisPrimaryButton(copy.signInNewCode, onRestart, initialFocus = true)
-            PolarisTextButton(copy.cancel, onCancel)
+            PolarisSecondaryButton(copy.cancel, onCancel)
         }
         PolarisSignInUi.Denied -> PolarisMessageScreen(copy.coreMessage(SIGN_IN_DENIED, PolarisMessageKind.Danger), modifier) {
             PolarisPrimaryButton(copy.signInNewCode, onRestart, initialFocus = true)
-            PolarisTextButton(copy.cancel, onCancel)
+            PolarisSecondaryButton(copy.cancel, onCancel)
         }
         PolarisSignInUi.Failed -> PolarisMessageScreen(copy.coreMessage(SIGN_IN_FAILED, PolarisMessageKind.Danger), modifier) {
             PolarisPrimaryButton(copy.retry, onRestart, initialFocus = true)
-            PolarisTextButton(copy.cancel, onCancel)
+            PolarisSecondaryButton(copy.cancel, onCancel)
         }
     }
 }
@@ -268,6 +270,8 @@ private fun PolarisCodeView(
         val opened = linkOk && runCatching { (onOpenBrowser ?: uriHandler::openUri)(link) }.isSuccess
         noBrowser = !opened
     }
+    // Back cancels the sign-in: the screen always backs out (UI-KITS.md DL9).
+    androidx.activity.compose.BackHandler(onBack = onCancel)
     // TalkBack hears the code once, spelled out, when it first appears.
     val view = LocalView.current
     val spoken = copy.format(copy.signInCodeDescription, spelled(ui.prompt.userCode))
@@ -280,9 +284,11 @@ private fun PolarisCodeView(
         PolarisCountdown(ui.fractionLeft, copy.format(copy.signInExpiresIn, countdown(ui.secondsLeft)))
     }
     val deviceLine: @Composable () -> Unit = {
+        val window = polarisWindow
         // PX-W13: the label the sign-in page will show (the Worker's echo), so the player can
-        // check the page belongs to this device.
-        ui.prompt.deviceName?.let { label ->
+        // check the page belongs to this device. A short single column drops it first (DL3: a
+        // secondary line gives way before the controls do).
+        ui.prompt.deviceName?.takeUnless { window.compactHeight && !window.twoPane }?.let { label ->
             Spacer(Modifier.height(PolarisSpace.controls))
             Text(
                 text = copy.format(copy.signInDeviceLabel, label),
@@ -350,7 +356,8 @@ private fun PolarisCodeView(
                     PolarisPrimaryButton(copy.signInOpenBrowser, onClick = open, initialFocus = true)
                 }
                 Spacer(Modifier.height(PolarisSpace.controls))
-                PolarisTextButton(copy.cancel, onCancel)
+                // Paired with the opener, Cancel is the secondary: tonal, never bare text (DL4, rule 10).
+                PolarisSecondaryButton(copy.cancel, onCancel)
             }
         },
     )

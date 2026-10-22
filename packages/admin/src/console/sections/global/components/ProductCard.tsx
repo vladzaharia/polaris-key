@@ -21,7 +21,7 @@ import {
  * The cover (Cards view only, from `sm`), always 72 px so a row's names and glyph rows line up,
  * and never drawn empty. With hosted header art, the art. Without it, a flat colour band and
  * nothing in it (the header tile below already carries the logo or initial): the product's own
- * tint (`presentation.accent`) when it has one, else a muted tint picked from the slug. No
+ * tint (`presentation.accent`, its `subtle` step: a band, never a block of the solid) when it has one, else a muted tint picked from the slug. No
  * generated gradient, never read from canvas pixels.
  */
 function Cover({ product: p }: { product: ProductDetail }): React.ReactElement {
@@ -32,7 +32,7 @@ function Cover({ product: p }: { product: ProductDetail }): React.ReactElement {
       ? (p.presentation?.accentDark ?? p.presentation?.accent ?? null)
       : (p.presentation?.accent ?? null);
   const own = !header && accent ? resolveAccent(accent, theme) : null;
-  const color = header ? null : (own?.solid ?? fallbackTint(p.slug, theme));
+  const color = header ? null : (own?.subtle ?? fallbackTint(p.slug, theme));
   return (
     <div
       aria-hidden

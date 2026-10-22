@@ -6,8 +6,24 @@ deprecated aliases).
 
 ## Unreleased
 
-- **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Use another license, and Renew only when you supply a renew handler or URL; it never offers Try again or Reconnect. The TV QR on the device-limit screen is labelled as the device management page. Compose draws the numbered steps and the request QR.
-  Migrating: pass an https `offers.url` in the kit's offers input to get Buy in your browser on the paywall, and a renew handler or URL to get Renew.
+- **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Use another license, and Renew only when you pass `onRenew` to `PolarisGate` or `PolarisGateScreen`; it never offers Try again or Reconnect. The TV QR on the device-limit screen is labelled as the device management page. Compose draws the numbered steps and the request QR.
+  Migrating: pass an https `offers.url` in the kit's offers input to get Buy in your browser on the paywall, and `onRenew` to get Renew.
+- **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
+- **Compose UI kit follows UI-KITS.md** (`:ui`). Welcome keeps the key field behind "Use a license
+  key" with Sign in the one primary and "by <Developer>" under the title (`PolarisTheme(developer =
+…)` or the presentation's `developerName`); a paired secondary is tonal and the primary's width;
+  resolvable refusals (revoked, expired, version, channel) are neutral callouts and a too-old version
+  offers Update (`PolarisGate(onUpdate = …)`); the device-limit step is "Replace a device" with the
+  count, the neutral seat meter and "Open in browser ↗"; Devices rename and remove inline (no stock
+  dialog); the grace banner shows the days left and the deadline and dismisses for the session; the
+  update banner has Later and no X, the update prompt is a bottom sheet below 560 dp and counts the
+  download; Settings groups rows under "From <Developer>" and "Managed settings" with a switch for a
+  boolean and "Reset to default"; no service accent on any product screen; `PolarisToast` (new); the
+  generic `PolarisKitScreen` leaves out lines with an unfilled argument and heads every screen with
+  the product. English defaults follow the catalog (`PolarisCopyCatalogTest`); `PolarisCopy` lost
+  `graceBody`, `deviceRenameTitle`, `settingsLicense` and `settingsValues` and gained `useKey`,
+  `byDeveloper`, `back`, `openInBrowser`, `deviceLimitBrowser`, `updateRestartWhenReady` and
+  `updateDownloading`.
 
 - **Client backend (`core.backend`, SP-59).** `client.backend.install(OkHttpClient.Builder())` sends
   `X-PKey-License` and `X-PKey-Device` to the app's own backend, only to `backendOrigins`. The

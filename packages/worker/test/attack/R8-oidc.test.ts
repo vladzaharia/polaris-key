@@ -48,6 +48,7 @@ import {
 import { loadProduct, type Product } from "../../src/core/products.js";
 import {
   activateFromIdentity,
+  authorizeAndMint,
   applyProvisioning,
   handleAuthCallback,
   handleAuthDevicePoll,
@@ -1980,6 +1981,119 @@ describe("R8-04 non-single-use state / flow injection", () => {
     )) as { status: string; token?: string }[];
     expect(bodies.filter((b) => b.status === "ready")).toHaveLength(1);
     expect(bodies.filter((b) => b.token)).toHaveLength(1);
+  });
+});
+
+describe("I-37d the completion attempt budget", () => {
+  let ctx: Ctx;
+  beforeEach(async () => {
+    ctx = await makeCtx();
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** Starts, confirms, signs in and approves a device flow; returns a poll at a chosen time. */
+  async function approved() {
+    const deviceCode = await deviceStart(ctx, "victim-cli");
+    const confirm = await confirmDevice(ctx, deviceCode);
+    const authorize = new URL(confirm.headers.get("location")!);
+    const state = authorize.searchParams.get("state")!;
+    const nonce = authorize.searchParams.get("nonce")!;
+    installFetchMock(
+      await signIdToken(ctx, { sub: "victim-sub", groups: ["members"], nonce }),
+    );
+    expect((await callback(ctx, state)).status).toBe(200);
+    return Object.assign(
+      (at: number) =>
+        handleAuthDevicePoll(
+          req(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+            method: "POST",
+            body: JSON.stringify({ deviceCode, deviceId: "victim-cli" }),
+          }),
+          ctx.env,
+          ctx.db,
+          ctx.product,
+          at,
+        ),
+      { state },
+    );
+  }
+
+  /** Counts statements matching `re`, and rejects every one when `failing`. */
+  function watch(re: RegExp, failing: boolean): { n: () => number } {
+    let n = 0;
+    const hit = (sqls: string[]) => {
+      if (!sqls.some((q) => re.test(q))) return;
+      n++;
+      if (failing) throw new Error("D1_ERROR: unavailable");
+    };
+    const db = ctx.db as unknown as Record<string, (...a: never[]) => unknown>;
+    for (const m of ["all", "first", "run", "runChanges"]) {
+      const orig = db[m]!.bind(ctx.db);
+      db[m] = ((sql: string, ...r: never[]) => {
+        hit([sql]);
+        return (orig as (...a: unknown[]) => unknown)(sql, ...r);
+      }) as never;
+    }
+    for (const m of ["batch", "batchChanges"]) {
+      const orig = db[m]!.bind(ctx.db);
+      db[m] = ((list: { sql: string }[]) => {
+        hit(list.map((x) => x.sql));
+        return (orig as (...a: unknown[]) => unknown)(list);
+      }) as never;
+    }
+    return { n: () => n };
+  }
+
+  it("a poller drives at most five completion attempts per approved flow, however often it polls", async () => {
+    const poll = await approved();
+    const seen = watch(/INSERT INTO devices/, true);
+    const statuses: number[] = [];
+    // Every 2 s slot for the whole 600 s lifetime of the code: 300 polls.
+    for (let t = 0; t < 600; t += 2) {
+      const res = await poll(NOW + t);
+      statuses.push(res.status);
+    }
+    expect(seen.n()).toBe(5);
+    expect(statuses.filter((s) => s === 503).length).toBeGreaterThan(0);
+  });
+
+  it("a refused mint is attempted once, not until the code lapses", async () => {
+    await ctx.db.run(
+      "UPDATE tiers SET policy_device_limit = ? WHERE product = ? AND id = ?",
+      1,
+      "djdl",
+      "pro",
+    );
+    const poll = await approved();
+    // Point the approved flow at a licence whose one seat is already taken.
+    const other = await activateFromIdentity(
+      ctx.db,
+      ctx.product,
+      { sub: "other", groups: ["members"], claims: { sub: "other" } },
+      NOW,
+    );
+    if (!("licenseId" in other)) throw new Error("expected license");
+    await authorizeAndMint(
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      other.licenseId,
+      "taken",
+      NOW,
+    );
+    const key = await flowKey(ctx.env, "djdl", poll.state);
+    const flow = JSON.parse((await artefacts(ctx.env).get(key))!) as object;
+    await artefacts(ctx.env).put(
+      key,
+      JSON.stringify({ ...flow, licenseId: other.licenseId }),
+    );
+    const seen = watch(/FROM licenses WHERE/, false);
+    const bodies: unknown[] = [];
+    for (let t = 0; t < 20; t += 2)
+      bodies.push(await (await poll(NOW + t)).json());
+    expect(bodies[0]).toEqual({ status: "error" });
+    expect(bodies[1]).toEqual({ status: "timeout" });
+    expect(seen.n()).toBe(1);
   });
 });
 

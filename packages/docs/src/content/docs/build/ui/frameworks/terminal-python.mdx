@@ -17,7 +17,7 @@ product chip, a continuous rail, step glyphs, key hints, the seat meter, progres
 and links. Color is ANSI-16 for every status role, so output follows the person's terminal
 theme; truecolor is used only for the product accent, and only when the terminal says it can.
 `NO_COLOR`, pipes and `TERM=dumb` get plain lines. An optional Textual app shows the account,
-devices and updates full screen.
+devices, updates, settings and About full screen.
 
 <KitFacts kit="terminal-python" />
 
@@ -110,6 +110,58 @@ typer a License panel. The verbs:
 Sign-in in a terminal is the browser presentation only: the license is chosen on the card, the
 terminal never lists licenses, and no terminal draws a QR for sign-in.
 
+Canceling is not an error. Esc on a prompt or a wait closes the block with "Nothing changed."
+(an update: "Nothing was installed.") and no ✗, and exits 1. A refusal the person can resolve
+prints ▲ with its fix as a command; only a failure prints ✗. `login` tells a Deny in the browser
+(hand-off state `denied`, code `sign-in-denied`, "Sign-in declined") from a sign-in that
+failed (`failed`, `sign-in-failed`, "Sign-in failed"). `status` points to the product's page with
+a labelled line, "Next step on the Tidewater page:", and the link under it.
+
+## The full-screen app
+
+`polaris_key.ui.terminal.textual_app.run_app(client)` opens a Textual app for one product, with
+`uv add "polaris-key[keyring,tui]"`. A side list holds the sections: Account (the license, Manage
+and Sign out, which asks first), Devices (rename and remove), Updates, Settings (switches, selects
+and ranged inputs, with markers, a reset, locked rows and the error under the control that caused
+it) and About. The header shows the product's monogram or name and the section; the footer lists
+the keys. Up and down move within a pane, left and right between sections. The app draws the same
+catalog copy and states as the verbs, in a Textual theme built from the product's accent
+(`preset="native"` keeps Textual's own). A refusal is ▲ with one primary fix, and a button that
+leaves the app wears ↗.
+
+On a terminal under 70 columns the sections become one row under the header; under 14 rows the
+panes drop their padding.
+
+About offers Get help and Privacy only when you give it the addresses, so a link the app has no
+page for is not drawn:
+
+```python
+from polaris_key import PolarisKeyClient
+from polaris_key.ui.core import Theme
+from polaris_key.ui.terminal.textual_app import run_app
+
+
+def open_account(client: PolarisKeyClient) -> None:
+    run_app(
+        client,
+        theme=Theme(color_scheme="dark"),
+        manage_url="https://tidewater.studio/account",
+        support_url="https://tidewater.studio/support",
+        privacy_url="https://tidewater.studio/privacy",
+    )
+```
+
+| Option        | What it does                                                                 |
+| ------------- | ---------------------------------------------------------------------------- |
+| `theme`       | The [theme](/docs/build/ui/theming/); the accent and `preset="native"` apply |
+| `scheme`      | `"dark"` or `"light"`; absent, read from the theme, else the terminal        |
+| `manage_url`  | The product page that Manage opens; absent, the page the client resolves     |
+| `support_url` | Where About's Get help opens; absent, the link is left out                   |
+| `privacy_url` | Where About's Privacy opens; absent, the link is left out                    |
+
+`run_app` returns `"update"` when the person chose to update, so the host can restart into the
+new build. `PolarisKeyApp(client, …)` takes the same options when you want the app object itself.
+
 ## Piecemeal
 
 Layer (b) is `Kit` and `screens`: each screen takes a headless view and returns lines, which
@@ -137,8 +189,8 @@ Layer (c) is `polaris_key.ui.core.models`: functions from SDK results to a catal
 state (`gate_view`, `parse_key`, `activation_view`, `update_view`, `boot_view`,
 `settings_view`, `release_notes_view`) and the `SignInModel` state machine. A host that draws its
 own terminal UI uses them with `polaris_key.ui.core.Copy` and gets the same states and copy keys
-([Your own UI](/docs/build/sdks/python/your-own-ui/#headless-views)). `run_gate` and
-`ActivateViewModel` are planned; they do not exist yet.
+([Your own UI](/docs/build/sdks/python/your-own-ui/#headless-views)). `ActivateViewModel` is planned; it
+does not exist yet. The Qt kit's `run_gate` is on its [own page](/docs/build/ui/frameworks/qt/).
 
 ## Machine-readable output
 

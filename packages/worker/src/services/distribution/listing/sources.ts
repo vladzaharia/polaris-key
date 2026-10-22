@@ -96,7 +96,7 @@ export async function appStoreSource(c: SourceContext): Promise<SourceOutcome> {
       : fail(
           404,
           "not_configured",
-          "App Store Connect is not configured: declare an app-store or testflight outlet with an appleId and store an asc-api-key credential pinned to that app",
+          "App Store Connect is not configured: declare an app-store or testflight channel with an appleId and store an asc-api-key credential pinned to that app",
         );
   const run = ascRun({
     env: c.env,
@@ -133,7 +133,7 @@ export async function playSource(c: SourceContext): Promise<SourceOutcome> {
       : fail(
           404,
           "not_configured",
-          "Google Play is not configured: declare a play or play-testing outlet with a packageName and tracks, and store a google-service-account credential pinned to that package",
+          "Google Play is not configured: declare a play or play-testing channel with a packageName and tracks, and store a google-service-account credential pinned to that package",
         );
   // The per-package edit lease (A-18e; S-15 §5.3), taken before any token is minted: the import's
   // read-only edit must not be invalidated by, or invalidate, a poll, a control or a provisioning
@@ -188,7 +188,7 @@ export async function msStoreSource(c: SourceContext): Promise<SourceOutcome> {
       : fail(
           404,
           "not_configured",
-          "the Microsoft Store is not configured: declare an ms-store outlet with a productId and store an ms-partner-center credential pinned to that app",
+          "the Microsoft Store is not configured: declare an ms-store channel with a productId and store an ms-partner-center credential pinned to that app",
         );
   const run = msStoreRun({
     env: c.env,
@@ -275,8 +275,8 @@ export async function manifestSource(
       404,
       "no_manifest_listing",
       outletId === null
-        ? "no live outlet has a .pkey/distribution listing"
-        : `outlet ${outletId} has no .pkey/distribution listing`,
+        ? "no live channel has a .pkey/distribution listing"
+        : `channel ${outletId} has no .pkey/distribution listing`,
     );
   const l = found.listing;
   const snap = emptySnapshot("manifest", found.outlet);

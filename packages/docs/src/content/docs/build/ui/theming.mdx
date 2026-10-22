@@ -113,6 +113,11 @@ Each kit has a tab with its badge. A kit that has not built the theme API says *
   <TabItem label="Qt">
     <KitStatus kit="qt" />
 
+    `Theme` goes to `KitView(theme)` and `run_gate(theme=…)`, and `kit.bridge.set_theme(theme)`
+    switches it later. The kit honours every field but `symbols`, which is the terminal's: `system`
+    follows the OS appearance live, and `native` takes the application's palette, font and highlight
+    color. What each does is on the [framework page](/docs/build/ui/frameworks/qt/#theming).
+
   </TabItem>
   <TabItem label="Terminal (Node)">
     <KitStatus kit="terminal-node" />
@@ -173,8 +178,8 @@ port must reproduce exactly (`packages/brand/fixtures/accent-vectors.json`):
 - **Compose:** the host's `MaterialTheme`, dynamic color included, with the status colors mapped
   to the host scheme's error and a computed warning.
 - **Godot:** derived from the ancestor or project theme.
-- **Qt:** the platform `QStyle` (or the Qt Quick native style), with only spacing and the type
-  hierarchy applied.
+- **Qt:** the application's palette, highlight color and default font (the kit never sets the
+  application style), with only spacing and the type hierarchy applied.
 
 ## Bring your own design system
 
@@ -182,7 +187,7 @@ Host design systems have no kits of their own. Use the `native` preset, or draw 
 
 ## Product identity
 
-The product is the hero of every kit screen. A kit's `ProductIdentity` holds `name`, `icon`, `developer`, and optionally `shortName`, `accent`, `art`, `wordmark` and `deviceCodeUrl`. The kit fills it from, in order:
+The product is the hero of every kit screen: each screen and pane, in every kit, opens with the product header (the icon or monogram, then the name). A product with no name reads "Welcome". A kit's `ProductIdentity` holds `name`, `icon`, `developer`, and optionally `shortName`, `accent`, `art`, `wordmark` and `deviceCodeUrl`. The kit fills it from, in order:
 
 1. the theme you pass (`product`);
 2. the product's **registered presentation**, the `presentation` block of `.pkey/product` ([Presentation](/docs/build/manifest/product/#presentation-presentation)), served in the discovery document and read, verified and cached by the SDK;

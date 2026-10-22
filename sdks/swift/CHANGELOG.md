@@ -6,6 +6,7 @@ deprecated aliases).
 
 ## Unreleased (LK-16)
 
+- **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
 - **Breaking: Powered by Polaris Locker.** `PolarisPoweredByBadge` draws the Locker `powered-by` badge
   (320 × 104 points minimum); its `Layout` and `Treatment` options and `PolarisPoweredByBadge.size(layout:width:)`
   are gone (`size(width:)` replaces it). `PolarisPoweredBy` and `PolarisTheme(poweredBy:)` are removed (the legacy
@@ -14,7 +15,7 @@ deprecated aliases).
 
 ## Unreleased
 
-- **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Use another license, and Renew only when you supply a renew handler or URL; it never offers Try again or Reconnect. The TV QR on the device-limit screen is labelled as the device management page. SwiftUI draws the numbered steps and the request QR.
+- **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Use another license, and Renew only when you set `GateOptions.renewURL`; it never offers Try again or Reconnect. The TV QR on the device-limit screen is labelled as the device management page. SwiftUI draws the numbered steps and the request QR.
   Migrating: pass an https `url` in `KitOffers` to get Buy in your browser on the paywall, and `renewURL` on `GateOptions` to get Renew.
 
 - **Client backend (`core.backend`, SP-59).** `client.backend.data(for:)` and `headers()` send

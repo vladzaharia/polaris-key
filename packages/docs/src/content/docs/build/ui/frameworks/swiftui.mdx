@@ -142,6 +142,13 @@ struct StyledApp: View {
 }
 ```
 
+## iPad and identity
+
+On an iPad, a tall, wide window centers a focused step (sign-in, Replace a device, a blocking
+state) instead of stretching it across the window. Every screen carries the product header (icon or monogram, then the
+name) from the presentation, and a product with no name reads "Welcome". Boot draws the loading
+shimmer after the 250 ms grace, and it stays still under Reduce Motion.
+
 ## Headless
 
 `PolarisKeyUICore` imports no SwiftUI. `PolarisKeyGateModel` is an `@Observable` view of the client

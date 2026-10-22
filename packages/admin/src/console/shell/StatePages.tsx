@@ -326,7 +326,7 @@ export function ServiceOffPage({
         description={
           signIn
             ? `No one can sign in to ${productName} until Sign-in is on. Accounts and settings are kept.`
-            : `${productName} doesn’t use ${feature}, so there is nothing here to manage. Turn it on in Features and this page comes back.`
+            : `${productName} doesn't use ${feature}, so there is nothing here to manage. Turn it on in Features and this page comes back.`
         }
         primaryAction={
           signIn ? (

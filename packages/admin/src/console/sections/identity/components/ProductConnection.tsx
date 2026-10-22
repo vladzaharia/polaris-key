@@ -1,5 +1,6 @@
 /** Product connection: the product's own sign-in provider, read from the manifest, changed by a resync. */
 
+import { useWriteGate } from "../../../access/useCan.js";
 import * as React from "react";
 import { RefreshCw } from "lucide-react";
 import type { EdgeMintIdentity, ProductDetail } from "../../../../api.js";
@@ -51,6 +52,7 @@ export function ProductConnectionSection({
   state: ConnectionState;
 }): React.ReactElement {
   const resync = useResyncFlow();
+  const gate = useWriteGate("ship", slug);
   const linked = product ? releaseSourceOf(product) === "github" : false;
   const ready = state.kind === "ready";
   const identity =
@@ -77,9 +79,10 @@ export function ProductConnectionSection({
               iconStart={<RefreshCw aria-hidden />}
               disabled={!product || !linked}
               disabledReason={
-                product && !linked
+                gate.disabledReason ??
+                (product && !linked
                   ? "This product is not linked to a GitHub repo."
-                  : undefined
+                  : undefined)
               }
               onClick={() => resync.start({ slug, name })}
             >

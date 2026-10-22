@@ -635,6 +635,13 @@
     <string name="cloudSync_signIn__macos">Accedi per sincronizzare</string>
     <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="about_title">Informazioni su %1$s</string>
+    <!-- About: product and build information. The bare section label in a navigation list; the product name is not repeated. -->
+    <string name="about_nav">Informazioni</string>
+    <!-- About: product and build information. Opens the developer's privacy policy. -->
+    <string name="about_privacy">Privacy</string>
+    <!-- About: product and build information. Opens the developer's support page. -->
+    <string name="about_support">Ottieni aiuto</string>
+    <string name="about_support__macos">Ottieni aiuto</string>
     <!-- About: product and build information. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
     <string name="about_version">Versione %1$s</string>
     <!-- About: product and build information. Opens the open-source notices. -->

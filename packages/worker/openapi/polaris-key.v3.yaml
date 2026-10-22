@@ -7900,6 +7900,16 @@ paths:
         `identity`, but `attachable` is always `false`, and `attachLicense: true` is read as
         `false`: the sign-in completes on the identity's own licence and nothing is claimed or
         merged. The fields stay so deployed SDKs keep working.
+
+
+        **A transient failure after approval is retried** (I-37d, WIRE-CONTRACT-V4 §12.10 rules
+        5-7). A database, store or vault failure in the account check, the activation or the
+        mint answers `503 unavailable` with `Retry-After` and keeps the flow. The Worker retries
+        four times, no sooner than 2, 4, 8 and 16 s after each failure; a poll inside the wait
+        gets the same 503 with the seconds left and touches no database. The fifth failure
+        answers the bare `error`, then `timeout`. A refusal at the mint is never a 503: it
+        answers the bare `error` once and drops the flow. A client treats every 5xx on the poll
+        as transient.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: Authorization
@@ -7987,6 +7997,20 @@ paths:
                 mismatch:
                   { value: { error: unauthorized, message: device mismatch } }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "503":
+          description: >
+            Approved, but the sign-in could not finish yet (WIRE-CONTRACT-V4 §12.10 rule 5). The
+            flow is kept; poll again — LEGACY FLAT, `cache-control: no-store`.
+          headers:
+            Retry-After:
+              description: Seconds until the Worker attempts the completion again.
+              schema: { type: integer }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                unavailable:
+                  { value: { error: unavailable, message: try again } }
         "429":
           description: >
             TWO different bodies at this status. Polling faster than `interval` returns the

@@ -449,6 +449,11 @@
       "verdict": "pass",
       "date": "2026-10-22",
       "evidence": "_mockups/review/stabilization/console-final/ux-review-3.md (B1 re-check)"
+    },
+    "LK-07": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "_mockups/review/stabilization/locker-final/ux-review-2.md (LK-07 re-check: refusal pages 18.75–19.89:1, mail ≥ 4.5:1)"
     }
   }
 }

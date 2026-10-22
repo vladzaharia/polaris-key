@@ -353,11 +353,11 @@ export function AttentionList({
       <ul
         ref={motion.ref}
         className={cn(
-          // From a 36rem card the rows share four columns (pill, subject, message, link); the message
-          // stops at 72ch and the link follows it, not the card's far edge (a spare 1fr track keeps the
-          // rows, and so their dividers, the card's full width), so
-          // every subject and message starts at one x whatever its pill word.
-          "divide-y divide-border @xl:grid @xl:grid-cols-[max-content_fit-content(11rem)_fit-content(72ch)_max-content_minmax(0,1fr)]",
+          // From a 36rem card the rows share four columns (pill, subject, message, action): the
+          // message takes the spare width (its text stops at 72ch) and the action sits in the last
+          // column at the card's far edge, so every subject and message starts at one x whatever
+          // its pill word and every action lines up.
+          "divide-y divide-border @xl:grid @xl:grid-cols-[max-content_fit-content(11rem)_minmax(0,1fr)_max-content]",
           motion.className,
         )}
       >
@@ -383,7 +383,7 @@ export function AttentionList({
               </span>
             </div>
             {/* The message wraps in full: nothing the row says is cut with an ellipsis. */}
-            <span className="min-w-0 space-y-0.5 text-sm leading-6 text-fg">
+            <span className="min-w-0 max-w-[72ch] space-y-0.5 text-sm leading-6 text-fg">
               {(item.lines ?? [item.reason]).map((line, i) => (
                 <span key={i} className="block break-words">
                   {inlineCode(line)}
@@ -392,7 +392,7 @@ export function AttentionList({
             </span>
             {item.action ? (
               item.action.href && primaryFirst && row === 0 ? (
-                <Button asChild size="sm" className="@xl:justify-self-start">
+                <Button asChild size="sm" className="@xl:justify-self-end">
                   <Link to={item.action.href}>
                     {item.action.label}
                     <ArrowRight aria-hidden className="size-3.5" />
@@ -401,7 +401,7 @@ export function AttentionList({
               ) : item.action.href ? (
                 <Link
                   to={item.action.href}
-                  className="flex min-h-6 min-w-0 max-w-full items-center gap-1 text-sm leading-6 text-fg-strong underline-offset-4 hover:underline @xl:justify-self-start"
+                  className="flex min-h-6 min-w-0 max-w-full items-center gap-1 text-sm leading-6 text-fg-strong underline-offset-4 hover:underline @xl:justify-self-end"
                 >
                   <span className="min-w-0 truncate">{item.action.label}</span>
                   <ArrowRight aria-hidden className="size-3.5 shrink-0" />
@@ -410,7 +410,7 @@ export function AttentionList({
                 <Button
                   variant={primaryFirst && row === 0 ? "primary" : "outline"}
                   size="sm"
-                  className="shrink-0 @xl:justify-self-start"
+                  className="shrink-0 @xl:justify-self-end"
                   onClick={item.action.onSelect}
                 >
                   {item.action.label}

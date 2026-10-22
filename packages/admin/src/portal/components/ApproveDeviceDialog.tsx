@@ -5,6 +5,7 @@ import { Callout } from "../../ui/Callout.js";
 import { Dialog, DialogBody, DialogFooter } from "../../ui/Dialog.js";
 import { Input } from "../../ui/Input.js";
 import { formatRelative } from "../../lib/format.js";
+import { PORTAL_FMT } from "../date.js";
 import { t } from "../../lib/copy.js";
 import {
   portalApi,
@@ -240,7 +241,11 @@ export function ApproveDeviceDialog({
               </dd>
               <dt className="text-fg-muted">{t("signin.approve.when")}</dt>
               <dd className="text-fg-strong">
-                {formatRelative(phase.request.requestedAt * 1000, Date.now())}
+                {formatRelative(
+                  phase.request.requestedAt * 1000,
+                  Date.now(),
+                  PORTAL_FMT,
+                )}
               </dd>
             </dl>
             <Callout tone="warning">{t("signin.approve.warning")}</Callout>

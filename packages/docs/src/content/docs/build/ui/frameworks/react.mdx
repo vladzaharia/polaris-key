@@ -108,7 +108,7 @@ export function DevicesSection(props: {
 }
 ```
 
-Paywall's **Buy in your browser** needs `offers.url` on `input`, an https page. Without it the not-available screen shows no button. StatusScreen offers Renew only when your app supplies a renew handler or URL.
+Paywall's **Buy in your browser** needs `offers.url` on `input`, an https page. Without it the not-available screen shows no button. StatusScreen's Renew reaches your app through `onAction` (copy key `status.renew`).
 
 Restyle with plain CSS. Every component draws in a `.pk-root` element carrying `data-component`,
 `data-state`, `data-theme` (`dark` or `light`), `data-preset`, `data-density` and `data-motion`.
@@ -182,6 +182,63 @@ rules are in the `@layer polaris-key` cascade layer so host CSS wins without `!i
 The presentation icon is shown as a `blob:` URL, so a page with a Content-Security-Policy allows
 `img-src blob:` and `connect-src` for the image origin. With no verified icon, the kit draws a
 monogram rather than a Polaris Key mark.
+
+### Product identity
+
+Every screen and pane opens with the product header: the icon, or a monogram tile when there is
+no icon or it fails to load, then the product's name. A product with no name reads "Welcome".
+The header comes from, in order, the theme's `product`, the presentation source and the bundle
+you pass; the accent and icon follow the same order. Give the kit the values you own through
+`<PolarisKeyTheme>`:
+
+```tsx
+import { PolarisKeyTheme, Welcome, type UiInput } from "@polaris-key/react/kit";
+
+export function BrandedWelcome(props: { input: UiInput }) {
+  return (
+    <PolarisKeyTheme
+      theme={{
+        iconSrc: "/tidewater.svg",
+        product: {
+          name: "Tidewater Studio",
+          accent: "#0b7a75",
+          accentDark: "#4fd1c5",
+        },
+      }}
+    >
+      <Welcome input={props.input} />
+    </PolarisKeyTheme>
+  );
+}
+```
+
+| Theme member         | What it sets                                                                            |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `iconSrc`            | The icon, a URL the page may load; if it fails, the monogram is drawn in its place      |
+| `product.name`       | The name beside the icon; absent, the presentation's, then the bundle's, then "Welcome" |
+| `product.accent`     | The accent in the light scheme, a `#rrggbb` color                                       |
+| `product.accentDark` | The accent in the dark scheme; absent, the light accent                                 |
+| `presentation`       | A presentation source other than the provider's; `null` shows none                      |
+
+## Layout and loading
+
+- **Landscape.** A gate in a wide window draws two equal panes in a row, up to 1040 px, with no
+  card: the product's icon alone on one side, and on the other the product header (with the tier
+  once a key parses) above the step. Portrait keeps one column.
+- **Loading.** Boot shows nothing for the first 250 to 300 ms, then the product header, a muted
+  label and a 2 px shimmer. Under reduced motion, or `motion: "none"`, the shimmer is static.
+- **The key field.** Paste is a button inside the field, so the key lands where it is checked.
+- **Replace a device.** The device unused longest is preselected and tagged "Least recent".
+  LicenseChoice shows each license's seat meter, and a full license has no radio.
+- **Toasts** sit at the bottom right, and full width at the bottom of a narrow window.
+- **The account pane** draws grouped rows (a label and its value, a switch, the channel as a
+  segmented control), with an Updates heading only when there are update rows, and no
+  placeholder where the holder has no name.
+- **The update prompt** has one primary action per state: an available update offers Update now
+  and Later, and Restart when ready belongs to the finished download.
+- **Sign-in end states.** A Deny in the browser ends the hand-off in `denied` (the code
+  `sign-in-denied`); any other end that is not a success is `failed` (`sign-in-failed`), with
+  Try again.
 
 ## Powered by Polaris Locker
 

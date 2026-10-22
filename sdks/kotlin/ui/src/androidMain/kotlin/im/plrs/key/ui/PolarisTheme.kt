@@ -171,6 +171,8 @@ public class PolarisUiConfig internal constructor(
      * owner decision Q8), shown instead of the server's verification address when set.
      */
     public val deviceCodeUrl: String? = null,
+    /** The developer's name for the Welcome's "by <Developer>" line: the integrator's, else the product's presentation. */
+    public val developer: String? = null,
 )
 
 internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null }
@@ -199,6 +201,8 @@ internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null 
  *   either mode, resolved for contrast against the surfaces it sits on (the host's, neutral).
  * @param deviceCodeUrl the address a person types to sign in with a code (for example
  *   `driftkart.gg/tv`); null shows the server's verification address.
+ * @param developer the developer's name for the Welcome's "by <Developer>" line; null takes the
+ *   product presentation's `developerName`, and with neither the line is left out.
  * @param presentation the SDK's presentation seam (`client.presentationSource`, discovery's
  *   `core.presentation`): it fills only what the integrator left out. [logo] falls back to the
  *   verified product icon, then the monogram; branded, [accent] falls back to the product's accent
@@ -215,6 +219,7 @@ public fun PolarisTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     accent: Color? = null,
     deviceCodeUrl: String? = null,
+    developer: String? = null,
     presentation: PresentationSource? = LocalPolarisKey.current?.presentationSource,
     content: @Composable () -> Unit,
 ) {
@@ -231,6 +236,7 @@ public fun PolarisTheme(
         darkTheme = darkTheme,
         accent = themeAccent(accent, branding, member, darkTheme, art?.derivedAccent),
         deviceCodeUrl = deviceCodeUrl,
+        developer = developer ?: member?.developerName?.takeIf { it.isNotBlank() },
         content = content,
     )
 }
@@ -246,6 +252,7 @@ private fun PolarisThemeResolved(
     darkTheme: Boolean,
     accent: Color?,
     deviceCodeUrl: String?,
+    developer: String?,
     content: @Composable () -> Unit,
 ) {
     when (branding) {
@@ -273,6 +280,7 @@ private fun PolarisThemeResolved(
                 accentText = resolved?.let { colorOf(it.fg) },
                 focus = resolved?.let { colorOf(it.focus) },
                 deviceCodeUrl = deviceCodeUrl,
+                developer = developer,
             )
             if (resolved == null) {
                 // Neutral means inherited: no MaterialTheme of the kit's own, dynamic colour and all.
@@ -304,6 +312,7 @@ private fun PolarisThemeResolved(
                 fieldShape = RoundedCornerShape(16.dp),
                 focus = resolved?.let { colorOf(it.focus) } ?: inkText,
                 deviceCodeUrl = deviceCodeUrl,
+                developer = developer,
             )
             MaterialTheme(colorScheme = scheme, typography = typography, shapes = polarisBrandShapes) {
                 CompositionLocalProvider(LocalPolarisUi provides config, content = content)
@@ -324,6 +333,9 @@ internal fun ColorScheme.withAccent(accent: PolarisAccent.Resolved): ColorScheme
     onPrimaryContainer = onSurface,
     surfaceTint = colorOf(accent.solid),
 )
+
+/** The update prompt's bottom sheet: radius 28 on the top edge only (UI-KITS.md 1.4, Android). */
+internal val polarisSheetShape: Shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
 
 /** The message card's radius 28. */
 private val MessageCardShape: Shape = RoundedCornerShape(28.dp)
@@ -416,8 +428,9 @@ public object PolarisTheme {
         get() = if (current.branding == PolarisBranding.PolarisKey) PolarisKitMono else FontFamily.Monospace
 
     /**
-     * The accent for a section indicator (an entitlement badge, the update glyph, a pack progress
-     * bar): the service's brand accent branded, the host's primary neutral.
+     * The accent of a Polaris Key service for a host's own section indicator: the service's brand
+     * accent branded, the host's primary neutral. The kit's screens never use it: service cues are
+     * off on product screens (UI-KITS.md 1.2) and return only for integrators who opt in by calling this.
      */
     @Composable @ReadOnlyComposable
     public fun accent(service: String): Color =

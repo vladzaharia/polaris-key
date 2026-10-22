@@ -55,7 +55,7 @@ export function ProductHeader({
   const [coverFailed, setCoverFailed] = React.useState(false);
   const hasCover = Boolean(pres.headerUrl) && !coverFailed;
   return (
-    <div className="space-y-0">
+    <div className="@container space-y-0">
       <a
         href={href.library()}
         className="mb-3 inline-flex min-h-6 items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong pointer-coarse:min-h-11"
@@ -86,7 +86,7 @@ export function ProductHeader({
           hasCover
             ? // On a short screen, the no-cover row below (the banner is hidden there).
               "flex-col desk:flex-row desk:items-end desk:px-6 short:flex-row short:flex-wrap short:items-center short:px-0 short:pt-2 short:desk:flex-nowrap"
-            : "flex-row flex-wrap items-center pt-2 desk:flex-nowrap",
+            : "flex-row flex-wrap items-center pt-2 desk:flex-nowrap @max-[17rem]:flex-col @max-[17rem]:items-start",
         )}
       >
         <ProductIcon

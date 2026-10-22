@@ -701,7 +701,7 @@ function StatusTab({
           id="release-live"
           className="border-b border-border px-5 py-3.5 text-base font-semibold text-fg-strong"
         >
-          Where it’s live
+          Where it's live
         </h2>
         {distributionOn && matrixError ? (
           <div className="p-4">
@@ -729,7 +729,7 @@ function StatusTab({
               </LiveTile>
             ))}
             {serving.map((c) => (
-              <LiveTile key={c.channel} label={`${c.channel} channel`}>
+              <LiveTile key={c.channel} label={`${c.channel} release track`}>
                 {c.where}
               </LiveTile>
             ))}

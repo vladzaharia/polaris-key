@@ -35,7 +35,13 @@ def load_fonts() -> None:
 
 
 class KitView:
-    """One kit screen in a ``QQuickView``: ``show()`` it, embed ``container()``, or ``grab()`` it."""
+    """One kit screen in a ``QQuickView``: ``show()`` it, put :meth:`container` in a widget layout, or
+    ``grab()`` it.
+
+    ``theme`` is the one theme value of UI-KITS §3.1 (see :mod:`polaris_key.ui.qt.look` for how each
+    field reads in Qt; ``symbols`` is the terminal's and has no meaning here). ``color_scheme="system"``
+    follows the OS appearance live (Qt 6.5 and later, ``QStyleHints.colorScheme``); ``system_scheme``
+    is only what it means when the OS says nothing."""
 
     def __init__(
         self,
@@ -54,6 +60,7 @@ class KitView:
             theme, source=source, font_scale=font_scale, system_scheme=system_scheme, loading_delay_ms=loading_delay_ms,
             request_code=request_code,
         )
+        self._container: Any = None
         self.view = qt.QtQuick.QQuickView()
         self.view.setResizeMode(qt.QtQuick.QQuickView.ResizeMode.SizeRootObjectToView)
         self.view.rootContext().setContextProperty("bridge", self.bridge)
@@ -65,6 +72,22 @@ class KitView:
 
     def resize(self, width: int, height: int) -> None:
         self.view.resize(width, height)
+
+    def container(self, parent: Any = None) -> Any:
+        """The view as a ``QWidget`` (``QWidget.createWindowContainer``), for a widgets layout::
+
+            layout.addWidget(kit.container())
+
+        The first call makes the widget and every later one returns it, re-parented to ``parent`` when
+        one is given. It needs a ``QApplication`` (a ``QGuiApplication`` has no widgets), and the
+        widget owns the window, so :meth:`close` before the window goes, never ``view.show()`` too."""
+        if self._container is None:
+            widgets = qt.widgets()
+            self._container = widgets.QWidget.createWindowContainer(self.view, parent)
+            self._container.resize(self.view.width(), self.view.height())
+        elif parent is not None:
+            self._container.setParent(parent)
+        return self._container
 
     def set_view(self, view: View, data: Any = None) -> None:
         """Show ``view``; ``data`` carries the rows of a settings, devices, seat-meter or account screen
@@ -78,13 +101,25 @@ class KitView:
         for _ in range(3):
             if app is not None:
                 app.processEvents()
+        # An image that loads while the first frame renders (the QR, the product's icon) paints in the
+        # next one: grab that frame, not the one before it.
+        self.view.grabWindow()
+        if app is not None:
+            app.processEvents()
         return self.view.grabWindow()
 
     def close(self) -> None:
         self.view.close()
         self.view.setSource(qt.QtCore.QUrl())  # tear the QML down before the bridge goes
         self.bridge.close()
-        self.view.destroy()
+        if self._container is not None:
+            try:
+                self._container.deleteLater()  # it owns the window: let it delete it
+            except RuntimeError:  # the host's own widget tree already deleted it
+                pass
+            self._container = None
+        else:
+            self.view.destroy()
 
 
 def render(view: View, theme: Optional[Theme] = None, **kwargs: Any) -> Any:

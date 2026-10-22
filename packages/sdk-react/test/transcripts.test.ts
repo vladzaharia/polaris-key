@@ -378,10 +378,21 @@ async function replay(t: Transcript): Promise<void> {
         break;
       }
       case "pollSignIn": {
-        const poll = await session.pollSignIn(prompt!);
-        observed.result = poll.status;
-        if (poll.status === "slow-down") observed.interval = poll.interval;
-        if (poll.status === "error" && poll.code) observed.code = poll.code;
+        try {
+          const poll = await session.pollSignIn(prompt!);
+          observed.result = poll.status;
+          if (poll.status === "slow-down") observed.interval = poll.interval;
+          if (poll.status === "error" && poll.code) observed.code = poll.code;
+        } catch (e) {
+          // I-37d: no answer or a 5xx on the poll is transient; the wait loop keeps polling.
+          if (
+            !(e instanceof PolarisError) ||
+            (e.code !== "server-error" && e.code !== "network-error")
+          )
+            throw e;
+          observed.result = "transient";
+          observed.code = e.code;
+        }
         break;
       }
       case "waitForSignIn": {

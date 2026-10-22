@@ -47,6 +47,16 @@ const USAGE_TEXT: Record<string, string> = {
   "edge-mint": "Edge-mint signing key",
 };
 
+const squash = (v: string): string => v.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/** What needs the secret, minus an entry that is only the secret's own name ("OIDC client secret"). */
+export function neededBy(
+  name: string,
+  requiredBy: readonly string[],
+): string[] {
+  return requiredBy.filter((r) => squash(r) !== squash(name));
+}
+
 export function fetchSecrets(slug: string): Promise<ProductSecretDto[]> {
   return api.productSecrets(slug).then((r) => r.secrets);
 }
@@ -153,9 +163,10 @@ export function SecretsSection({ slug }: { slug: string }): React.ReactElement {
                 {s.usage ? (
                   <p className="text-sm text-fg-muted">{USAGE_TEXT[s.usage]}</p>
                 ) : null}
-                {s.requiredBy.length ? (
+                {neededBy(s.name, s.requiredBy).length ? (
                   <p className="text-sm text-fg-muted">
-                    Needed by <span>{s.requiredBy.join(", ")}</span>.
+                    Needed by{" "}
+                    <span>{neededBy(s.name, s.requiredBy).join(", ")}</span>.
                   </p>
                 ) : null}
               </div>

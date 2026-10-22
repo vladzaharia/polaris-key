@@ -7,6 +7,7 @@ import { Expand } from "../../../ui/motion/index.js";
 import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import { formatRelative } from "../../../lib/format.js";
+import { PORTAL_FMT } from "../../date.js";
 import type { PortalSession } from "../../api.js";
 import {
   signOutQuietly,
@@ -147,7 +148,11 @@ function SessionRow({
     session.current
       ? t("locker.sessions.now")
       : t("locker.sessions.lastActive", {
-          when: formatRelative(session.lastSeenAt * 1000),
+          when: formatRelative(
+            session.lastSeenAt * 1000,
+            Date.now(),
+            PORTAL_FMT,
+          ),
         }),
   ]
     .filter(Boolean)

@@ -228,8 +228,11 @@ export function validateTable(table: unknown): string[] {
     )
       errors.push(`${at}.console.group: must match ${SLUG_RE}`);
     else groups.set(row.slug, row.console.group);
-    if (row.docs !== `/docs/services/${row.slug}/`)
-      errors.push(`${at}.docs: must be "/docs/services/${row.slug}/"`);
+    // The service's section under Features (the old /docs/services/ paths only redirect).
+    if (!/^\/docs\/features\/[a-z0-9-]+(?:\/[a-z0-9-]+)*\/$/.test(row.docs))
+      errors.push(
+        `${at}.docs: must be a "/docs/features/<section>/" path with a trailing slash`,
+      );
   }
   // Cross-row rules, once every slug is known.
   for (const [i, row] of t.services.entries()) {

@@ -181,7 +181,9 @@ export function ActivityPage({ slug }: { slug: string }): React.ReactElement {
               label: "Export CSV",
               icon: <Download aria-hidden />,
               onSelect: exportLoaded,
-              disabledReason: visible.length ? undefined : "Nothing is loaded.",
+              disabledReason: visible.length
+                ? undefined
+                : "No entries to export.",
             },
           ]}
         />
@@ -383,7 +385,7 @@ export function ActivityPage({ slug }: { slug: string }): React.ReactElement {
           onLoadMore={() => void feed.fetchNextPage()}
         />
       )}
-      {!feed.isPending && !feed.isError ? (
+      {!feed.isPending && !feed.isError && items.length > 0 ? (
         <p className="text-xs text-fg-muted" aria-live="off">
           {items.length} loaded · entries are kept for {RETENTION_DAYS} days
         </p>

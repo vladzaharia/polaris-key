@@ -20,6 +20,8 @@ import type {
 } from "../src/api.js";
 import { KitProviders } from "../src/kit/KitProviders.js";
 import { AppToaster } from "../src/ui/toast.js";
+import { createQueryClient } from "../src/console/data/queryClient.js";
+import { qk } from "../src/console/data/queries.js";
 
 const portalSettings =
   vi.fn<(slug: string) => Promise<{ settings: PortalProductSettings }>>();
@@ -412,12 +414,12 @@ describe("App sign-in", () => {
   it("saves the portal switch, listing the change in words", async () => {
     renderPage();
     await waitFor(() =>
-      expect(checked(toggle("Show DJDL in players’ libraries"))).toBe(true),
+      expect(checked(toggle("Show DJDL in players' libraries"))).toBe(true),
     );
     // The lost-key switch is hidden until the Locker has the reissue action (G7).
     expect(screen.queryByText("Let customers replace a lost key")).toBeNull();
     expect(saveButton()).toBeNull();
-    await userEvent.click(toggle("Show DJDL in players’ libraries"));
+    await userEvent.click(toggle("Show DJDL in players' libraries"));
     expect(screen.getByText(/1 change: DJDL hidden in libraries/)).toBeTruthy();
     expect(screen.getAllByText("Not saved").length).toBeGreaterThan(0);
     await userEvent.click(saveButton()!);
@@ -436,12 +438,12 @@ describe("App sign-in", () => {
     renderPage();
     await userEvent.click(
       await screen.findByRole("switch", {
-        name: "Show DJDL in players’ libraries",
+        name: "Show DJDL in players' libraries",
       }),
     );
     await userEvent.click(saveButton()!);
     await waitFor(() => expect(updatePortalSettings).toHaveBeenCalled());
-    expect(checked(toggle("Show DJDL in players’ libraries"))).toBe(false);
+    expect(checked(toggle("Show DJDL in players' libraries"))).toBe(false);
     expect(saveButton()).toBeTruthy();
   });
 
@@ -554,6 +556,36 @@ describe("App sign-in", () => {
     });
     await userEvent.click(retry);
     expect(await screen.findByText("Always on")).toBeTruthy();
+  });
+
+  it("M8: Resync from repo… is off for a member who cannot ship, with the reason, and opens nothing", async () => {
+    const queryClient = createQueryClient();
+    queryClient.setQueryData(qk.me(), {
+      sub: "u2",
+      name: "Viewer",
+      email: "v@x.io",
+      csrf: "c",
+      platformAdmin: false,
+      products: [{ slug: "djdl", name: "DJDL", schemaVersion: 1 }],
+      permissions: {
+        roles: [],
+        platform: { view: ["console"], edit: [] },
+        products: { djdl: { view: ["core", "ship", "signin"], edit: [] } },
+      },
+    });
+    render(
+      <KitProviders queryClient={queryClient}>
+        <div data-service="identity">
+          <AppSignInPage slug="djdl" />
+        </div>
+      </KitProviders>,
+    );
+    await screen.findByText("DJDL accounts");
+    const trigger = screen.getByRole("button", { name: "Resync from repo…" });
+    expect(trigger.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(trigger);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(resyncProduct).not.toHaveBeenCalled();
   });
 
   it("confirms a resync (L1, caution) with the plan before running it (IDN-1, UX-78)", async () => {

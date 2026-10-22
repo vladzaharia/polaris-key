@@ -227,7 +227,7 @@ function WhoCanHelp({
   else if (q.isError)
     body = (
       <p className="flex flex-wrap items-center gap-3 text-sm text-fg-muted">
-        The list didn’t load.
+        The list didn't load.
         <Button variant="outline" size="sm" onClick={() => void q.refetch()}>
           Try again
         </Button>
@@ -347,10 +347,10 @@ export function NoAccessPage({
       <PageHeader
         title={
           home ? (
-            "You don’t have access to any product yet"
+            "You don't have access to any product yet"
           ) : (
             <span className="[overflow-wrap:anywhere]">
-              You don’t have access to {subject}
+              You don't have access to {subject}
               {areaName ? (
                 <>
                   <span className="sr-only">,</span>{" "}

@@ -88,7 +88,7 @@ export function Checkbox({
       <div className="min-w-0">
         <label
           htmlFor={boxId}
-          className="inline-flex min-h-6 min-w-6 items-center text-sm text-fg"
+          className="inline-block min-h-6 min-w-6 py-0.5 text-sm text-fg"
         >
           {label}
         </label>

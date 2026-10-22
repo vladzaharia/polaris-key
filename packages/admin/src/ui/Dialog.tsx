@@ -533,6 +533,11 @@ export function Dialog({
               {dismissible && closeButton ? (
                 <DialogPrimitive.Close
                   aria-label="Close"
+                  // Focus can wrap to Close from the last control (Radix focuses without
+                  // scrolling): a sheet scrolled down at large text must bring it into view.
+                  onFocus={(e) =>
+                    e.currentTarget.scrollIntoView?.({ block: "nearest" })
+                  }
                   className="-me-2 -mt-1 inline-flex size-8 shrink-0 max-sm:absolute max-sm:end-1 max-sm:top-0 max-sm:m-0 max-sm:size-11 @max-[18rem]:size-[44px] items-center justify-center rounded-md text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus"
                 >
                   <X aria-hidden className="size-4" />

@@ -91,7 +91,9 @@ function Tile({
   return (
     <span
       data-service={accent}
-      className="inline-flex size-12 items-center justify-center rounded-xl bg-accent text-accent-on"
+      // BRAND.md §7.8: a flat tile (raised fill, 1 px accent border, glyph in the accent), never a
+      // solid accent plate.
+      className="inline-flex size-12 items-center justify-center rounded-xl border border-accent bg-surface-raised text-accent-fg light:border-accent-fg"
     >
       <ServiceIcon id={accent as IconId} size={24} />
     </span>

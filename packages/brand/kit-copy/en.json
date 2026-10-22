@@ -1356,6 +1356,21 @@
       "role": "windowTitle",
       "note": "About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
+    "about.nav": {
+      "value": "About",
+      "role": "label",
+      "note": "About: product and build information. The bare section label in a navigation list; the product name is not repeated."
+    },
+    "about.privacy": {
+      "value": "Privacy",
+      "role": "button",
+      "note": "About: product and build information. Opens the developer's privacy policy."
+    },
+    "about.support": {
+      "value": "Get help",
+      "role": "button",
+      "note": "About: product and build information. Opens the developer's support page."
+    },
     "about.version": {
       "value": "Version {version}",
       "role": "label",

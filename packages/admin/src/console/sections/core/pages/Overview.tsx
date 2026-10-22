@@ -694,7 +694,7 @@ function IdentityTile({ slug }: { slug: string }): React.ReactElement {
     >
       {s ? (
         <>
-          <Big>Locker {s.portalEnabled ? "on" : "off"}</Big>
+          <Big>{s.portalEnabled ? "On" : "Off"}</Big>
           <Line>Sign-in by email code and passkeys</Line>
         </>
       ) : null}

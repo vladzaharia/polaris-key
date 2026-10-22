@@ -199,7 +199,7 @@ export function DevicesPage({
               label: "Export CSV",
               icon: <Download aria-hidden />,
               onSelect: exportLoaded,
-              disabledReason: rows.length ? undefined : "Nothing is loaded.",
+              disabledReason: rows.length ? undefined : "No devices to export.",
             },
           ]}
         />

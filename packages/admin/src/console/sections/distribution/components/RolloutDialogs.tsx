@@ -32,7 +32,7 @@ import { Checkbox } from "../../../../ui/Checkbox.js";
 import { Combobox } from "../../../../ui/Combobox.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { Dialog, DialogBody, DialogFooter } from "../../../../ui/Dialog.js";
-import { FormField } from "../../../../ui/form.js";
+import { FormField, focusFirstInvalid } from "../../../../ui/form.js";
 import { NumberInput, numberRangeError } from "../../../../ui/NumberInput.js";
 import { Select } from "../../../../ui/Select.js";
 import { toast } from "../../../../ui/toast.js";
@@ -371,7 +371,6 @@ function StartRolloutForm({
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [failure, setFailure] = React.useState<unknown>(null);
   const [busy, setBusy] = React.useState(false);
-
   const deliverables = useDeliverables(slug);
   const outlets = useOutlets(slug);
   const store = useReleaseStore(slug);
@@ -402,7 +401,8 @@ function StartRolloutForm({
     });
     if (range || bp === null) next.percent = range ?? "Use 0 to 100 %.";
     setErrors(next);
-    if (Object.keys(next).length || bp === null) return;
+    if (Object.keys(next).length || bp === null)
+      return focusFirstInvalid(e.currentTarget);
     setBusy(true);
     setFailure(null);
     try {

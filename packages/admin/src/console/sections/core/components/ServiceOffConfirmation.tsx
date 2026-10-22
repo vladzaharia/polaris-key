@@ -79,7 +79,7 @@ export function ServiceOffConfirmation({
         productName
           ? [
               ...(signedIn ? [signedIn] : []),
-              "Accounts, their links, consents and synced saves are kept; licenses stay in their owners’ libraries.",
+              "Accounts, their links, consents and synced saves are kept; licenses stay in their owners' libraries.",
               "Recorded in Activity as one change. Undo turns it back on.",
             ]
           : [

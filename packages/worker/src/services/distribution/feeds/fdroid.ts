@@ -500,7 +500,7 @@ export async function registerFdroid(
     return errorResponse(
       404,
       ErrorCode.NotFound,
-      "the product declares no live fdroid-repo outlet",
+      "the product declares no live fdroid-repo channel",
       { reason: "unknown_outlet" },
     );
   const files = parseFiles(body.files);

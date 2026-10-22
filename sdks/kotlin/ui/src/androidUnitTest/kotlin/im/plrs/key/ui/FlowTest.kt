@@ -110,7 +110,7 @@ class FlowTest {
         rule.setContent {
             StockHost(false) { PolarisTheme(copy = sampleCopy, darkTheme = false) { kitScreen("gate-device-limit-manage")() } }
         }
-        rule.onNodeWithText(sampleCopy.freeDevice).performClick()
+        rule.onNodeWithText(sampleCopy.openInBrowserAction).performClick()
         rule.waitForIdle()
         rule.onNodeWithText(sampleCopy.signInNoBrowser).assertExists()
         rule.onNodeWithText(sampleCopy.signInCopyLink).assertExists()
@@ -142,10 +142,10 @@ class FlowTest {
         rule.onNodeWithText(sampleCopy.signIn).performClick()
         rule.waitForIdle()
         rule.onNodeWithText(sampleCopy.signInTitle).assertExists()
-        // Cancel comes back to the activation form.
+        // Cancel comes back to the Welcome: Sign in and, behind Use a license key, the key path.
         rule.onNodeWithText(sampleCopy.cancel).performClick()
         rule.waitForIdle()
-        rule.onNode(hasSetTextAction()).assertExists()
+        rule.onNodeWithText(sampleCopy.useKey).assertExists()
         // Sign in again: a fresh code is asked for and polled, not the old one frozen.
         rule.onNodeWithText(sampleCopy.signIn).performClick()
         rule.waitForIdle()
@@ -360,7 +360,7 @@ class FlowTest {
             }
         }
         rule.waitForIdle()
-        rule.onNodeWithText(sampleCopy.freeDevice).performClick()
+        rule.onNodeWithText(sampleCopy.openInBrowserAction).performClick()
         rule.waitForIdle()
         assertEquals(sampleCopy.signInCopyLink, focusedText())
     }

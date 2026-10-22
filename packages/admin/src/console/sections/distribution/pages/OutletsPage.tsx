@@ -11,6 +11,7 @@
  * - Keys: `GET/PUT/DELETE …/distribution/keys`, the inventory and CI's unmatched observations.
  */
 
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import * as React from "react";
 import { Plus } from "lucide-react";
 import type {
@@ -323,7 +324,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
             kind="first-run"
             title="No channels declared"
             description="Channels are where a release reaches people: Polaris Key downloads, the stores, AltStore, F-Droid, Flathub. Declare them under channels in .pkey/distribution and resync."
-            docs="/docs/services/distribution/"
+            docs={docsUrl("rolloutControl")}
           />
         }
       />

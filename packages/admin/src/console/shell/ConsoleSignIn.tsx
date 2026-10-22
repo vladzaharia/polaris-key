@@ -53,9 +53,9 @@ export function ConsoleOffline({
   return (
     // focusKey: the card's h1 takes focus and is announced when the card appears.
     <AuthCard brand={<ConsoleBrand />} stepKey="offline" focusKey={1}>
-      <AuthTitle>Can’t reach Polaris Key</AuthTitle>
+      <AuthTitle>Can't reach Polaris Key</AuthTitle>
       <p aria-live="polite" className="text-sm text-fg-muted empty:hidden">
-        {again ? "Still can’t reach Polaris Key." : ""}
+        {again ? "Still can't reach Polaris Key." : ""}
       </p>
       <div className="space-y-2">
         <Button
@@ -91,7 +91,7 @@ export function ConsoleRefused(): React.ReactElement {
   const back = `/manage/${window.location.hash}`;
   return (
     <AuthCard brand={<ConsoleBrand />} stepKey="refused" focusKey={1}>
-      <AuthTitle>This account can’t open the console</AuthTitle>
+      <AuthTitle>This account can't open the console</AuthTitle>
       <p className="text-sm text-fg-muted">
         Ask an admin to add you, or sign in with another account.
       </p>

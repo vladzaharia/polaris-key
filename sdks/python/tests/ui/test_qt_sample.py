@@ -32,3 +32,26 @@ def test_sample_gates_a_window_from_the_fixtures(kit_app, monkeypatch, tmp_path)
         assert gate.open
     finally:
         gate.close()
+
+
+def test_sample_activates_with_a_key_through_the_gate_alone(kit_app, monkeypatch, tmp_path):
+    """The host calls nothing: Use a license key, type, Activate, and the gate opens."""
+    from test_qt_gate_flow import pump
+
+    spec = importlib.util.spec_from_file_location("tidewater_qt", SAMPLE)
+    sample = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sample)
+    import tidewater_fixtures
+
+    monkeypatch.setattr(tidewater_fixtures, "STATE", str(tmp_path / "state.json"))
+    client = sample.make_client(type("A", (), {"live": False})())
+    gate = sample.build(client, Theme(color_scheme="dark"))
+    try:
+        assert gate.screen.component == "Welcome"
+        bridge = gate.kit.bridge
+        bridge.invoke("welcome.useKey", "")
+        bridge.edit("part.keyField.label", "pkey_tidewater_" + "A" * 22)
+        bridge.invoke("activate.submit", "")
+        pump(kit_app, lambda: gate.open, timeout=5)
+    finally:
+        gate.close()

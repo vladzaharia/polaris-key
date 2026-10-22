@@ -37,38 +37,39 @@ public data class PolarisCopy(
     val bootReady: String = "Ready",
     val bootOfflineTitle: String = "You're offline",
     val bootOfflineBody: String = "Connect to the internet and try again.",
-    val bootOfflinePlayableBody: String = "Some content couldn't be downloaded. You can play with what's installed, or connect and try again.",
+    val bootOfflinePlayableBody: String = "Some content couldn't be downloaded. You can keep going with what's installed, or connect and try again.",
     val bootErrorTitle: String = "Something went wrong",
-    val bootErrorBody: String = "The app couldn't finish starting (%1\$s).",
+    val bootErrorBody: String = "%1\$s couldn't finish starting (%2\$s).",
     val bootBlockedUpdateTitle: String = "Update required",
     val bootBlockedUpdateBody: String = "This version can no longer be used. Update to continue.",
     val bootBlockedUnavailableTitle: String = "Not available on your license",
     val bootBlockedUnavailableBody: String = "This build isn't available on your license.",
     val bootDeclinedTitle: String = "Content not downloaded",
-    val bootDeclinedBody: String = "The app needs this content to start. Try again when you're ready.",
+    val bootDeclinedBody: String = "%1\$s needs this content to start. Download it when you're ready.",
     val bootRolledBack: String = "The last update didn't start, so the previous version was restored.",
     val consentTitle: String = "Download content?",
-    val consentBody: String = "%1\$s of new content is needed.",
-    val consentBodyMetered: String = "%1\$s of new content is needed, and you're on a metered connection.",
+    val consentBody: String = "%1\$s needs %2\$s of new content.",
+    val consentBodyMetered: String = "%1\$s needs %2\$s of new content, and you're on a metered connection.",
     val consentDownload: String = "Download",
     val consentLater: String = "Not now",
     val retry: String = "Try again",
-    val playOffline: String = "Play offline",
+    val playOffline: String = "Continue offline",
     val cancel: String = "Cancel",
+    val back: String = "Back",
     val close: String = "Close",
-    val loading: String = "Loading",
+    val loading: String = "Loading…",
 
     // ── Gate ─────────────────────────────────────────────────────────────────────────────────
     val gateLoading: String = "Checking your license…",
-    val graceTitle: String = "Offline grace period",
-    val graceBody: String = "We couldn't reach the license server. You can keep working for %1\$s.",
+    /** The grace banner's headline when the licence names no deadline (part.status.grace). */
+    val graceTitle: String = "Offline",
     val graceBodyNoDeadline: String = "We couldn't reach the license server. You can keep working for now.",
     // Expired and revoked read core.copy's gate entries (Copy.title / Copy.message).
     /** The expired screen's second action: back to the activation form (a gate-local switch). */
     val useAnotherLicense: String = "Use another license",
     val versionTooOldTitle: String = "Update required",
-    val versionTooOldBody: String = "This version is no longer supported. Update to continue.",
-    val versionTooNewTitle: String = "Version not yet allowed",
+    val versionTooOldBody: String = "This version is no longer supported. Update the app to continue.",
+    val versionTooNewTitle: String = "Not available on this license",
     val versionTooNewBody: String = "This build is newer than your license allows.",
     val channelNotEntitledTitle: String = "Channel not included",
     val channelNotEntitledBody: String = "Your license doesn't include this channel.",
@@ -86,11 +87,15 @@ public data class PolarisCopy(
     val activationSubtitle: String = KitCopy.bundled.message("welcome.lede", "en") ?: "Sign in or use a license key to continue.",
     val activationSubtitleKeyOnly: String = KitCopy.bundled.message("welcome.ledeKeyOnly", "en") ?: "Enter a license key to continue.",
     val signIn: String = "Sign in",
+    /** The Welcome's second path, which opens the key field (welcome.useKey). */
+    val useKey: String = "Use a license key",
+    /** The developer line under the Welcome title: %1$s is the developer (common.byDeveloper). */
+    val byDeveloper: String = "by %1\$s",
     /** No longer shown: the activation screen sets its two paths apart by space (UI-KITS.md §1.5 rule 6). */
     val orDivider: String = "or",
     val keyLabel: String = "License key",
-    val keyPlaceholder: String = "pkey_…",
-    val activate: String = "Activate",
+    val keyPlaceholder: String = "Paste your key",
+    val activate: String = "Activate license",
     val activating: String = "Activating…",
     val activationKeyEmpty: String = "Enter a license key first.",
     // A device-limit refusal reads core.copy's activation entry, with the seat caption under it.
@@ -112,6 +117,10 @@ public data class PolarisCopy(
     val activationNetwork: String = "Couldn't reach the license server. Check your connection and try again.",
     // PX-W8: the action on a device-limit refusal that carries the portal link.
     val freeDevice: String = "Replace a device",
+    /** The browser-mode Replace a device action: it leaves the app, so it carries the new-window glyph (deviceLimit.openBrowser). */
+    val openInBrowser: String = "Open in browser",
+    /** The browser-mode lede: %1$s is the product (deviceLimit.browser). */
+    val deviceLimitBrowser: String = "Replace a device in your browser. %1\$s continues when you're done.",
     val freeDeviceScan: String = "Scan the code to replace a device on your phone.",
     val freeDeviceQrDescription: String = "QR code that opens your account to free a device",
 
@@ -130,7 +139,7 @@ public data class PolarisCopy(
     val signInUseKey: String = "Use a license key instead",
     val signInQrDescription: String = "QR code that opens the sign-in page",
     val signInCodeDescription: String = "Sign-in code %1\$s",
-    val signInOpenBrowser: String = "Open sign-in page",
+    val signInOpenBrowser: String = "Open browser",
     val signInExpiresIn: String = "Code expires in %1\$s",
     /** PX-W13 (WIRE-CONTRACT-V4 §12.7.1): the device label the sign-in page will show. */
     val signInDeviceLabel: String = "The sign-in page will show “%1\$s”",
@@ -147,20 +156,18 @@ public data class PolarisCopy(
     /** A boolean setting's value. */
     val settingsOn: String = "On",
     val settingsOff: String = "Off",
-    val settingsLicense: String = "License",
-    val settingsValues: String = "Configuration",
     val settingsLocked: String = "Set by your organization",
-    val settingsSourceLocal: String = "Changed on this device",
+    val settingsSourceLocal: String = "Changed by you",
     val settingsSourceEnv: String = "Set by the environment",
     val settingsSourceDefault: String = "Default",
     val settingsSourceFallback: String = "Built-in default",
-    val entitlementLicensed: String = "Licensed",
-    val entitlementGrace: String = "Offline grace",
+    val entitlementLicensed: String = "Active",
+    val entitlementGrace: String = "Offline",
     val entitlementExpired: String = "Expired",
     val entitlementRevoked: String = "Revoked",
-    val entitlementInactive: String = "Not activated",
+    val entitlementInactive: String = "Inactive",
     val entitlementBlocked: String = "Blocked",
-    val entitlementNotApplicable: String = "No license needed",
+    val entitlementNotApplicable: String = "Not required",
     val licensedTo: String = "Licensed to %1\$s",
 
     // ── Devices ──────────────────────────────────────────────────────────────────────────────
@@ -175,7 +182,6 @@ public data class PolarisCopy(
     val deviceUnnamed: String = "Unnamed device",
     val deviceLastVerified: String = "Last checked %1\$s",
     val deviceRename: String = "Rename",
-    val deviceRenameTitle: String = "Rename device",
     val deviceRenameLabel: String = "Device name",
     val deviceSave: String = "Save",
     val deviceDeauthorize: String = "Remove",
@@ -206,6 +212,10 @@ public data class PolarisCopy(
     /** %1$s is the product. */
     val updateReadyBody: String = "Restart %1\$s to finish updating.",
     val updateRestartNow: String = "Restart now",
+    /** While the download runs, the primary queues the restart: it is never disabled (update.restartWhenReady). */
+    val updateRestartWhenReady: String = "Restart when ready",
+    /** The download line: %1$s the bytes so far, %2$s the total (update.downloading). */
+    val updateDownloading: String = "Downloading · %1\$s of %2\$s",
     val updateFailed: String = "The update couldn't be installed. Try again later.",
 
     // ── Pack progress ────────────────────────────────────────────────────────────────────────

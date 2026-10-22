@@ -403,9 +403,10 @@ describe("Library on today's data (PX-02)", () => {
     expect(h1.textContent).not.toMatch(/\.$/);
     for (const name of ["Nightfall", "Tidewater Studio"]) {
       const tile = await screen.findByRole("article", { name });
-      expect(
-        within(tile).getByRole("heading", { level: 3 }).getAttribute("dir"),
-      ).toBe("auto");
+      // The name's own span carries the direction, so the line stays the page's (LF4).
+      const h3 = within(tile).getByRole("heading", { level: 3 });
+      expect(h3.querySelector("[dir]")?.getAttribute("dir")).toBe("auto");
+      expect(h3.getAttribute("dir")).toBeNull();
     }
   });
 

@@ -262,6 +262,12 @@ describe("Home table", () => {
     );
     const dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByText("Delete DJDL?")).toBeTruthy();
+    // Nothing can be confirmed until the slug is typed, so focus opens on its field.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(dialog).getByLabelText(/Type the product slug/),
+      ),
+    );
     const confirm = within(dialog).getByRole("button", {
       name: "Delete product",
     });

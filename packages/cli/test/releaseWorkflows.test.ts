@@ -448,7 +448,7 @@ describe("publish-package.yml (the trusted publisher)", () => {
     for (const s of [...downloads, ...checks])
       expect(steps.indexOf(s)).toBeLessThan(publishAt);
     expect(raw("publish-package.yml")).toMatch(
-      /id: download\n\s+uses: actions\/download-artifact@[0-9a-f]{40} # v4\.\d+\.\d+\n\s+continue-on-error: true/,
+      /id: download\n\s+uses: actions\/download-artifact@[0-9a-f]{40} # v\d+\.\d+\.\d+\n\s+continue-on-error: true/,
     );
   });
 

@@ -78,7 +78,7 @@ describe("brand blocks never set the name in live text", () => {
     expect(flow).toMatch(/<HeaderBrand\b/);
     expect(flow).not.toMatch(/<Lockup\b/);
     expect(src("src/portal/components/PortalShell.tsx")).toContain(
-      "<HeaderBrand />",
+      "<HeaderBrand container />",
     );
   });
 
