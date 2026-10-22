@@ -29,7 +29,9 @@ import { SYNC_SETTINGS_SLICE } from "./settings.js";
 
 import { syncIntegration } from "./integration.js";
 import { syncProductDeletion, syncProductPurge } from "./productDeletion.js";
+import { syncMaintenance } from "./maintenance.js";
 import { SYNC_ROUTES } from "./routes.js";
+import { syncScheduled } from "./scheduled.js";
 import { CLOUD_SYNC_STORE, cloudSyncStore } from "./subjectStore.js";
 
 /** The Durable Object class, re-exported for the Worker entry point (a composition module reads
@@ -45,7 +47,11 @@ export const syncService: ServiceDescriptor = {
     // U-05.8: a deleted product's objects are erased (purge), then its rows (statements).
     productPurge: syncProductPurge,
     productDeletion: syncProductDeletion,
+    // U-05.9: the daily counters keep 90 days.
+    maintenance: syncMaintenance,
   },
+  /** U-05.9: the 15-minute per-product aggregate (`sync_product_usage`), on the connector tick. */
+  scheduled: syncScheduled,
   handle: SYNC_ROUTES.handle,
   surface: SYNC_ROUTES.surface,
   /** The operator's product ceiling (plans/U-01b.md D6); the quota is an entitlement (D5). */

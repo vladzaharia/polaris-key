@@ -1,7 +1,10 @@
 /// <reference types="@cloudflare/workers-types" />
 import Database from "better-sqlite3";
 import type { Env } from "../src/platform/env.js";
-import { CloudSyncDO } from "../src/services/sync/do/cloudSyncDo.js";
+import {
+  CloudSyncDO,
+  type CloudSyncDoOptions,
+} from "../src/services/sync/do/cloudSyncDo.js";
 import { SqlStore } from "../src/services/sync/do/sqlStore.js";
 
 // A Durable Object SQLite storage over better-sqlite3, and an in-memory DurableObjectNamespace that
@@ -162,6 +165,7 @@ export function freshSqlStore(): { store: SqlStore; storage: DoStorageMock } {
 }
 
 export class CloudSyncNamespaceMock {
+  constructor(private readonly opts: CloudSyncDoOptions = {}) {}
   readonly instances = new Map<
     string,
     { obj: CloudSyncDO; storage: DoStorageMock }
@@ -181,13 +185,38 @@ export class CloudSyncNamespaceMock {
       inst = {
         storage,
         obj: new CloudSyncDO(
-          { storage } as unknown as DurableObjectState,
+          {
+            storage,
+            // The real one holds other events back until the callback settles; here the
+            // namespace already runs one operation at a time per object.
+            blockConcurrencyWhile: <T>(fn: () => Promise<T>) => fn(),
+          } as unknown as DurableObjectState,
           {} as Env,
+          this.opts,
         ),
       };
       this.instances.set(name, inst);
     }
     return inst;
+  }
+
+  /** Fires the object's alarm as the runtime does: cleared first, then `alarm()`, serialised. */
+  async fireAlarm(name: string): Promise<void> {
+    const inst = this.instance(name);
+    const run = async () => {
+      inst.storage.alarm = null;
+      await inst.obj.alarm();
+    };
+    const prior = this.tails.get(name) ?? Promise.resolve();
+    const result = prior.then(run, run);
+    this.tails.set(
+      name,
+      result.then(
+        () => undefined,
+        () => undefined,
+      ),
+    );
+    return result;
   }
 
   get(id: DurableObjectId) {

@@ -35,6 +35,8 @@ export type CloudSyncOp =
       op: "push";
       deviceId: string;
       family?: string;
+      /** The tier the quota came from, for the directory (U-05.9); absent until U-05.10 sends it. */
+      tierId?: string;
       limits?: PushLimits;
       migrations?: WireMigrations;
       request: PushRequest;

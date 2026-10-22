@@ -8,7 +8,7 @@
  *   settings         live rows, PK (scope, family, key); family is '' for `user` rows
  *   tombstones       deleted rows (the clear's stamp), same key, so a later edit still wins
  *   setting_members  the merge cells of a row, live or removed, in the engine's order
- *   clients          clientId -> first device, last processed mutation id
+ *   clients          clientId -> first device, last processed mutation id, last push (v2: idle ones expire)
  *
  * A row moves between `settings` and `tombstones` as `deleted` flips; its members stay put.
  *
@@ -28,7 +28,7 @@ import type {
 } from "../engine/types.js";
 
 /** The schema version this build writes. A newer one in storage is refused, never rewritten. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** What a storage handle must offer: the SQL API and a synchronous transaction. */
 export interface SqlHandle {
@@ -62,6 +62,12 @@ const MIGRATIONS: readonly (readonly string[])[] = [
     `CREATE TABLE IF NOT EXISTS clients (
        client_id TEXT PRIMARY KEY, device_id TEXT NOT NULL, last_mutation_id INTEGER NOT NULL) WITHOUT ROWID`,
   ],
+  // v2 (U-05.9): when a client last pushed (epoch seconds), so an idle binding can expire.
+  // Existing rows start their idle clock at the migration.
+  [
+    `ALTER TABLE clients ADD COLUMN last_seen INTEGER NOT NULL DEFAULT 0`,
+    `UPDATE clients SET last_seen = CAST(strftime('%s', 'now') AS INTEGER)`,
+  ],
 ];
 
 if (MIGRATIONS.length !== SCHEMA_VERSION)
@@ -93,7 +99,11 @@ interface MemberRow extends Row {
 export class SqlStore implements SyncStore {
   private schema: "unknown" | "absent" | "ready" = "unknown";
 
-  constructor(private readonly h: SqlHandle) {}
+  constructor(
+    private readonly h: SqlHandle,
+    /** Epoch seconds; stamps `clients.last_seen`. */
+    private readonly clock: () => number = () => Math.floor(Date.now() / 1000),
+  ) {}
 
   // ---- schema ------------------------------------------------------------------------------
 
@@ -240,11 +250,25 @@ export class SqlStore implements SyncStore {
   putClient(c: ClientRecord): void {
     this.requireWritable();
     this.run(
-      `INSERT OR REPLACE INTO clients (client_id, device_id, last_mutation_id) VALUES (?, ?, ?)`,
+      `INSERT OR REPLACE INTO clients (client_id, device_id, last_mutation_id, last_seen) VALUES (?, ?, ?, ?)`,
       c.clientId,
       c.deviceId,
       c.lastMutationId,
+      this.clock(),
     );
+  }
+
+  /** Forgets client bindings that have not pushed since `cutoff` (epoch seconds). Returns how many. */
+  expireClients(cutoff: number): number {
+    if (!this.hasSchema()) return 0;
+    this.requireWritable();
+    const n = this.all<{ n: number }>(
+      `SELECT COUNT(*) AS n FROM clients WHERE last_seen < ?`,
+      cutoff,
+    )[0]?.n;
+    if (!n) return 0;
+    this.run(`DELETE FROM clients WHERE last_seen < ?`, cutoff);
+    return Number(n);
   }
 
   /** Every client record, for the export. */

@@ -440,17 +440,32 @@ describe("CloudSyncDO: isolation (SR-1)", () => {
     expect(exp).toMatchObject({ product: P, subject: ALICE });
   });
 
-  it("holds no reference to D1, the catalog or the environment", () => {
+  it("holds no reference to D1, the catalog or the environment (the flush is the one write)", () => {
     const dir = join(__dirname, "../src/services/sync/do");
     // `client.ts` is the Worker's side of the wire (it reads the binding); the rest is the object.
+    // U-05.9 gives the object one D1 WRITE, its own directory flush (`cloudSyncDo.ts` takes the
+    // handle, `directory.ts` builds the statements from the pinned pair); it never reads D1.
+    const FLUSH = new Set(["cloudSyncDo.ts", "directory.ts"]);
     for (const f of readdirSync(dir).filter((f) => f !== "client.ts")) {
       const code = readFileSync(join(dir, f), "utf8").replace(
         /\/\*[\s\S]*?\*\/|\/\/.*$/gm,
         "",
       );
       expect(code, f).not.toMatch(
-        /\bD1\b|\benv\.[A-Z]|\.DB\b|\bDb\b|syncAccess|syncedSettings|validateEntryValue/,
+        /syncAccess|syncedSettings|validateEntryValue/,
       );
+      if (FLUSH.has(f)) {
+        // No read of D1, and the only binding named is `DB`, once, to make the handle.
+        expect(code, f).not.toMatch(
+          /\.(first|all)\s*[<(]|\benv\.(?!DB\b)[A-Z]/,
+        );
+        expect(
+          (code.match(/\benv\.DB\b/g) ?? []).length,
+          f,
+        ).toBeLessThanOrEqual(1);
+      } else {
+        expect(code, f).not.toMatch(/\bD1\b|\benv\.[A-Z]|\.DB\b|\bDb\b/);
+      }
     }
   });
 });

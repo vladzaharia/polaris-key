@@ -4,8 +4,12 @@
  * better-sqlite3 mock; this proves the part that mock cannot: the real `SqlStorage`, the real
  * `transactionSync`, `deleteAll` and the alarm accessors.
  */
-import { env, runInDurableObject } from "cloudflare:test";
-import { describe, expect, it } from "vitest";
+import {
+  env,
+  runDurableObjectAlarm,
+  runInDurableObject,
+} from "cloudflare:test";
+import { describe, expect, it, vi } from "vitest";
 import {
   absorbCloudSync,
   callCloudSync,
@@ -104,7 +108,7 @@ describe("CloudSyncDO under workerd (U-05.7)", () => {
           .exec("SELECT value FROM meta WHERE key = 'schema_version'")
           .one().value,
     );
-    expect(version).toBe("1");
+    expect(version).toBe("2");
   });
 
   it("deleteAll clears the data and the alarm, and the object can be written again", async () => {
@@ -153,5 +157,56 @@ describe("account-merge absorb under workerd (U-05.8)", () => {
     expect(await exportCloudSync(env, from)).not.toBeNull();
     expect(await deleteCloudSyncIfUnchanged(env, from, doc.seq)).toBe(true);
     expect(await exportCloudSync(env, from)).toBeNull();
+  });
+});
+
+describe("directory flush alarm under workerd (U-05.9)", () => {
+  const stubOf = (pin: { product: string; subject: string }) =>
+    env.CLOUD_SYNC.get(env.CLOUD_SYNC.idFromName(cloudSyncObjectName(pin)));
+  const rowOf = (pin: { product: string; subject: string }) =>
+    env.DB.prepare(
+      "SELECT bytes, settings, platform, quota_bytes FROM sync_directory WHERE product = ? AND subject = ?",
+    )
+      .bind(pin.product, pin.subject)
+      .first<{ bytes: number; settings: number; platform: string }>();
+
+  it("the first write flushes at once: the directory row and the day's counters reach real D1 with no trigger", async () => {
+    const pin = { product: "wdalarm", subject: "sub_first" };
+    await pushTo(pin, "theme");
+    // The alarm was set for now; the runtime delivers it by itself (no trigger from here).
+    await vi.waitFor(async () => expect(await rowOf(pin)).not.toBeNull(), {
+      timeout: 5000,
+    });
+    expect(await rowOf(pin)).toMatchObject({
+      settings: 1,
+      platform: "desktop",
+    });
+    const daily = await env.DB.prepare(
+      "SELECT syncs FROM sync_product_daily WHERE product = ?",
+    )
+      .bind(pin.product)
+      .first<{ syncs: number }>();
+    expect(daily?.syncs).toBe(1);
+    // Clean now: nothing is scheduled and nothing runs.
+    expect(await runDurableObjectAlarm(stubOf(pin))).toBe(false);
+  });
+
+  it("an alarm that follows deleteAll recreates no row and no storage", async () => {
+    const pin = { product: "wdalarm", subject: "sub_gone" };
+    await pushTo(pin, "theme");
+    const stub = stubOf(pin);
+    await callCloudSync<"deleteAll">(env, pin, { op: "deleteAll" });
+    // The flush may have run before the erasure; the subject store removes its row after the
+    // object (subjectStore.ts), so clear it the same way, then no alarm may bring it back.
+    await env.DB.prepare(
+      "DELETE FROM sync_directory WHERE product = ? AND subject = ?",
+    )
+      .bind(pin.product, pin.subject)
+      .run();
+    expect(await runDurableObjectAlarm(stub)).toBe(false);
+    expect(await rowOf(pin)).toBeNull();
+    expect(
+      (await callCloudSync<"usage">(env, pin, { op: "usage" })).empty,
+    ).toBe(true);
   });
 });
