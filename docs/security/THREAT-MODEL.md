@@ -7248,7 +7248,22 @@ at T16, so T17 here is the plan's: a push that outlives the data it must not rec
   what its people write inside one aggregate window (up to 15 minutes), which is acceptable for a
   cost control and is the reason the object, not the aggregate, enforces the per-person quota.
   `cloudSync.writesPaused` is the operator's kill switch (platform scope, `policyBound: lock`);
-  a push is refused and a pull still answers. Rate limits are U-05.14's.
+  a push is refused and a pull still answers. **Push limits (U-05.14, `services/sync/limits.ts`):**
+  right after the pause and before the trust audit, the body, classification, the aggregate read
+  and the object, so a limited push costs none of them: 60 pushes a minute per device
+  (`syncPushDevice`, charged first, so an over-limit device never spends the product's budget) and
+  2,000 a second per product (`syncPushProduct`), counted over eight `RateLimitDO` objects named
+  `sync:product:<p>:<0-7>` by a hash of the caller's subject. The answer is `429 rate_limited` with
+  `Retry-After` (seconds left in the window). Both buckets are fail open (L10, `FAIL_MODE`): the
+  caller holds a live device token and a principal, the client's journal survives a 429 either
+  way, and the person's object bounds the work per principal; the cost of an unlimited window
+  during a limiter outage is bounded by the per-person quota and the product ceiling. **Users
+  ceiling:** `sync_product_usage.users` (the same 15-minute aggregate over `sync_directory`) at
+  100,000 or more makes the object refuse growth with `quota_exceeded`, `scope: product`, but
+  only when it never held data (`store.isEmpty()`: no settings and no tombstones), decided once
+  before the batch. People already syncing, and a person who cleared their data, keep writing.
+  The aggregate lags up to 15 minutes, so the count can overshoot by the new people admitted in
+  one window.
 - **Device trust.** `trustRefusal(…, "cloudSyncWrite", …, "wire")`: log-only writes at most one
   `device.trust.would_refuse` audit row per device and hour and goes on; enforced is `403
 attestation_required` for the whole request, in the nested `wireError` shape every other sync

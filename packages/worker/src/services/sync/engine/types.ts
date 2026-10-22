@@ -161,6 +161,11 @@ export interface PushLimits {
   quotaBytes: number;
   /** The product is past `cloudSync.ceiling.bytes`: a write that grows usage is refused. */
   productOverCeiling?: boolean;
+  /**
+   * The product has `users` at or past the users ceiling: an object that never held data is
+   * refused growth (`quota_exceeded`, scope `product`); one that holds or held data is untouched.
+   */
+  usersAtCeiling?: boolean;
 }
 
 /**

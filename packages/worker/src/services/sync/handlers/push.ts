@@ -11,6 +11,8 @@
  *   1. Config and Identity on (`404` otherwise), the bearer, the device header, the principal
  *      (`401`, `400`, `403 account_required`). Nothing below runs for a caller with no principal.
  *   2. `cloudSync.writesPaused`: `503 writes_paused`, `Retry-After: 300`. Pulls are still served.
+ *      Then the push limits (`limits.ts`): 60 a minute per device, 2,000 a second per product over
+ *      eight limiter objects, `429 rate_limited` with `Retry-After`. Both fail open (L10).
  *   3. Device trust, `trustRefusal(…, "cloudSyncWrite", …, "wire")`: log-only audits and goes on,
  *      enforced is `403 attestation_required`. Every other sync answer is a nested
  *      `wireError` (`{"error":{"code":…}}`), so the trust refusal takes the `wire` shape too.
@@ -18,7 +20,8 @@
  *   5. Classification (`classify.ts`), against the active catalog and its migrations.
  *   6. The product ceiling: `sync_product_usage.bytes` (the 15-minute aggregate) against
  *      `cloudSync.ceiling.bytes`. Past it, growth is refused by the object (`quota_exceeded`,
- *      `scope: product`); clears and deletes still pass. The aggregate lags up to a quarter hour,
+ *      `scope: product`); clears and deletes still pass. The same row's `users` at 100,000 refuses
+ *      growth to an object that never held data (it is a new person); existing people still write. The aggregate lags up to a quarter hour,
  *      so a product can overshoot by what its people write meanwhile; this is a cost control.
  *   7. The product is still live and its objects are not being purged (`404`), read right before
  *      the object is called (SR-2): a push must never create an object a deletion has erased.
@@ -58,6 +61,7 @@ import type { PullOutcome } from "../engine/pull.js";
 import type { PushSuccess } from "../engine/types.js";
 import { validatePush } from "../engine/validate.js";
 import { productIsPurging } from "../purgeFlag.js";
+import { pushLimited } from "../limits.js";
 import { classifyMutations } from "./classify.js";
 import {
   accountRequired,
@@ -104,8 +108,14 @@ async function readPush(
   };
 }
 
-/** The product is past its ceiling: the aggregate's bytes against the setting. */
-async function overCeiling(ctx: ServiceContext): Promise<boolean> {
+/**
+ * The product's ceilings, from the `sync_product_usage` aggregate (recomputed every 15 minutes
+ * by `scheduled.ts`): `bytes` against the setting, and `users` against the fixed users ceiling.
+ * `users` counts `sync_directory` rows, so a product with no aggregate row yet has neither.
+ */
+async function overCeiling(
+  ctx: ServiceContext,
+): Promise<{ bytes: boolean; users: boolean }> {
   const { db, env, product, now } = ctx;
   let ceiling: number = CLOUD_SYNC_CEILINGS.perProduct.bytes;
   if (ctx.settings) {
@@ -117,11 +127,14 @@ async function overCeiling(ctx: ServiceContext): Promise<boolean> {
     );
     if (typeof r?.value === "number") ceiling = r.value;
   }
-  const row = await db.first<{ bytes: number }>(
-    "SELECT bytes FROM sync_product_usage WHERE product = ?",
+  const row = await db.first<{ bytes: number; users: number }>(
+    "SELECT bytes, users FROM sync_product_usage WHERE product = ?",
     product.slug,
   );
-  return (row?.bytes ?? 0) >= ceiling;
+  return {
+    bytes: (row?.bytes ?? 0) >= ceiling,
+    users: (row?.users ?? 0) >= CLOUD_SYNC_CEILINGS.perProduct.users,
+  };
 }
 
 const wireMigrations = (view: {
@@ -153,6 +166,16 @@ export async function handlePush(ctx: ServiceContext): Promise<Response> {
     );
     return res;
   }
+
+  // 2b. The push limits: a limited push costs nothing below.
+  const limited = await pushLimited(
+    env,
+    product.slug,
+    caller.access.subject,
+    caller.device.device_id,
+    now,
+  );
+  if (limited) return limited;
 
   // 3. Device trust.
   const refused = await trustRefusal(
@@ -189,7 +212,7 @@ export async function handlePush(ctx: ServiceContext): Promise<Response> {
   );
 
   // 6. The product ceiling.
-  const productOverCeiling = await overCeiling(ctx);
+  const ceilings = await overCeiling(ctx);
 
   // 7. The product is live and not being erased.
   let purging: boolean;
@@ -220,7 +243,8 @@ export async function handlePush(ctx: ServiceContext): Promise<Response> {
         ...(access.tierId !== null ? { tierId: access.tierId } : {}),
         limits: {
           quotaBytes: access.quota.bytes,
-          ...(productOverCeiling ? { productOverCeiling: true } : {}),
+          ...(ceilings.bytes ? { productOverCeiling: true } : {}),
+          ...(ceilings.users ? { usersAtCeiling: true } : {}),
         },
         migrations: wireMigrations(view),
         request,

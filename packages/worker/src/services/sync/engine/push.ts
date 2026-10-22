@@ -94,6 +94,11 @@ export function applyPush(store: SyncStore, input: PushInput): PushOutcome {
     return { ok: false, error: "client_mismatch" };
   const startLast = bound?.lastMutationId ?? 0;
 
+  // The users ceiling (U-05.14): an object that never held data refuses growth once the product
+  // is at its user limit. Decided once, before the batch, so a batch cannot admit itself.
+  if (input.limits?.usersAtCeiling && store.isEmpty())
+    input = { ...input, limits: { ...input.limits, productOverCeiling: true } };
+
   const run = (): MutationResult[] => {
     const results: MutationResult[] = [];
     let last = startLast;

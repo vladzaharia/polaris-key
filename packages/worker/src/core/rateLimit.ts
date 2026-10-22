@@ -251,6 +251,12 @@ const FAIL_MODE: Record<string, FailMode> = {
   // every licensed install from refreshing its document (as for `configDocument` above).
   licenseDoc: "open",
   deauthorize: "open",
+  // U-05.14 (L10): the Cloud Sync push, per device and per product. The caller holds a live
+  // device token and a principal; the 429 only protects cost, the client's journal survives
+  // either way, and the person's object bounds the work per principal. An outage must not stop
+  // every device's settings from saving.
+  syncPushDevice: "open",
+  syncPushProduct: "open",
 };
 
 function failModeFor(bucket: string): FailMode {

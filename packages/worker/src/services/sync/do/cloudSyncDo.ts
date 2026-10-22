@@ -65,7 +65,9 @@ const isLimits = (v: unknown): v is PushLimits =>
   Number.isFinite((v as PushLimits).quotaBytes) &&
   (v as PushLimits).quotaBytes >= 0 &&
   ((v as PushLimits).productOverCeiling === undefined ||
-    typeof (v as PushLimits).productOverCeiling === "boolean");
+    typeof (v as PushLimits).productOverCeiling === "boolean") &&
+  ((v as PushLimits).usersAtCeiling === undefined ||
+    typeof (v as PushLimits).usersAtCeiling === "boolean");
 
 function migrationsOf(
   w: WireMigrations | undefined,
