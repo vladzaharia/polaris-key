@@ -449,9 +449,16 @@ async function drive(
             u.unit,
           )
         : null;
+      // Each unit sees the time it starts, not the time the call started: a job that stamps
+      // `now` (F-34.4's cache-window ledger) must not stamp a moment its write precedes.
+      const unitCtx = { ...ctx, now: clock() };
       const outcome = await (step === "apply"
-        ? job.apply(ctx, u.unit, parseJsonColumn(reported?.detail_json ?? null))
-        : job.down(ctx, u.unit));
+        ? job.apply(
+            unitCtx,
+            u.unit,
+            parseJsonColumn(reported?.detail_json ?? null),
+          )
+        : job.down(unitCtx, u.unit));
       n = typeof outcome === "number" ? outcome : outcome.changes;
       detail = typeof outcome === "number" ? undefined : outcome.detail;
     } catch (e) {
