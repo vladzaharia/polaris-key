@@ -181,8 +181,8 @@ export class CloudSyncDO implements DurableObject {
       if (at === null) return;
       if ((await this.ctx.storage.getAlarm()) !== null) return;
       await this.ctx.storage.setAlarm(at);
-    } catch (e) {
-      console.warn("cloud sync: scheduling the directory flush failed", e);
+    } catch {
+      // No logging in src (R12): the push has committed, and the next accepted write reschedules.
     }
   }
 
@@ -292,11 +292,11 @@ export class CloudSyncDO implements DurableObject {
     if (merge) {
       this.writeMarker(op);
       // The marker outlives a retried merge by a day, then the alarm erases the object. A failed
-      // `setAlarm` is logged: the marker is already refusing writes and the next erasure clears it.
+      // `setAlarm` is not fatal: the marker is already refusing writes and the next erasure clears it.
       try {
         await this.ctx.storage.setAlarm(this.now() + ABSORBED_RETENTION_MS);
-      } catch (e) {
-        console.warn("cloud sync: scheduling the marker cleanup failed", e);
+      } catch {
+        // No logging in src (R12).
       }
     }
     return reply({ op: "deleteAll", deleted: true });

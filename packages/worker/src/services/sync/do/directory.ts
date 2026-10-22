@@ -169,6 +169,10 @@ const LIVE = `EXISTS (SELECT 1 FROM products WHERE slug = ? AND status <> 'delet
  * row of this person already carries `updated_at >= t`: statements run in order inside the
  * batch's transaction, so the first run counts and every repeat finds the stamp and adds nothing.
  * A batch that failed before committing left no stamp and counts once on its retry.
+ *
+ * Residual: an account merge that lands on this (surviving) row between `begin` and a successful
+ * batch stamps `updated_at = now >= t`, so the retry skips that one flush's daily deltas. That
+ * loses a count, never doubles one, and only for analytics counters; the next flush has a new `t`.
  */
 export function buildFlush(
   store: SqlStore,
