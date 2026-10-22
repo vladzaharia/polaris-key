@@ -238,7 +238,7 @@ class SignInModel:
     browser presentation only (SIGN-IN.md D-93): the license is chosen on the card.
 
     ``starting`` → (``waiting`` in the browser | ``code`` when headless or on **Use a code**)
-    → ``done``, or ``expired`` / ``denied`` / ``cancelled`` / ``error``."""
+    → ``done``, or ``expired`` / ``denied`` / ``failed`` / ``cancelled`` / ``error``."""
 
     def __init__(self, *, headless: bool = False, device_code_url: Optional[str] = None) -> None:
         self.headless = headless
@@ -287,9 +287,12 @@ class SignInModel:
             )
         if status == "expired":
             return self._set(component="SignInHandoff", state="expired", code="sign-in-expired")
-        message = getattr(result, "message", None) or ""
-        if getattr(result, "code", None) == "sign-in-denied" or "denied" in message or "access_denied" in message:
+        # The code decides (DENY-01): a refusal is denied, a bare poll error is failed.
+        code = getattr(result, "code", None)
+        if code == "sign-in-denied":
             return self._set(component="SignInHandoff", state="denied", code="sign-in-denied")
+        if code == "sign-in-failed":
+            return self._set(component="SignInHandoff", state="failed", code="sign-in-failed")
         return self._set(component="SignIn", state="error", code="sign-in-failed")
 
     def cancelled(self) -> SignInView:
