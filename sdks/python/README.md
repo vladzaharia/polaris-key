@@ -527,7 +527,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI
 
 import polaris_config  # the module `pkey sdk` writes
-from polaris_key.server.fastapi import PolarisAuth, PolarisKey
+from polaris_key.server.fastapi import PolarisAuth, PolarisKey, get_polaris_license
 
 app = FastAPI()
 polaris = PolarisKey(config=polaris_config)
@@ -535,22 +535,38 @@ polaris.install(app)
 
 @app.get("/api/export")
 def export(auth: Annotated[PolarisAuth, Depends(polaris.require_entitlement("export.pdf"))]):
-    return {"tier": auth.license.tier if auth.license else None}
+    return {"tier": get_polaris_license(auth).tier}
 ```
 
-| Framework | Module                         | Gate                                                                                                 |
-| --------- | ------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| FastAPI   | `polaris_key.server.fastapi`   | `Depends(polaris.require_license()` / `require_entitlement(n)` / `require_sign_in())`                |
-| Starlette | `polaris_key.server.starlette` | `@polaris.require_entitlement(n)` on an endpoint, `PolarisKeyMiddleware`                             |
-| Flask     | `polaris_key.server.flask`     | `polaris.init_app(app)`, `@polaris.require_entitlement(n)`                                           |
-| Django    | `polaris_key.server.django`    | `PolarisKeyMiddleware`, `@require_entitlement(n)`, `settings.POLARIS_KEY`                            |
-| DRF       | `polaris_key.server.drf`       | `PolarisKeyAuthentication`, `has_entitlement(n)`; raises `AuthenticationFailed` / `PermissionDenied` |
+| Framework | Module                         | Gate                                                                                                                                |
+| --------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| FastAPI   | `polaris_key.server.fastapi`   | `Depends(polaris.require_license())`, `require_entitlement(n)`, `require_tier(*t)`, `require_sign_in()`, `require_all(*r)`          |
+| Starlette | `polaris_key.server.starlette` | `@polaris.require_entitlement(n)` on an endpoint, `PolarisKeyMiddleware`                                                            |
+| Flask     | `polaris_key.server.flask`     | `polaris.init_app(app)`, `@polaris.require_entitlement(n)` below `@app.get`                                                         |
+| Django    | `polaris_key.server.django`    | `PolarisKeyMiddleware`, `@require_entitlement(n)`, `settings.POLARIS_KEY`                                                           |
+| DRF       | `polaris_key.server.drf`       | `PolarisKeyAuthentication`, `has_entitlement(n)`, `has_tier(*t)`, `has_all(*r)`; raises `AuthenticationFailed` / `PermissionDenied` |
+
+Every adapter has the same gates: `require_license`, `require_entitlement`, `require_tier`,
+`require_sign_in` and `require_all` (`has_*` in DRF). Build requirements for `require_all` with
+`entitlement(name)`, `tier(*tiers)` and `signin()`. `get_polaris_license(...)` returns the license of
+a gated request without an `Optional` and raises `PolarisKeySetupError`, saying why, on a route with
+no gate.
 
 A refusal is `application/problem+json` with a `code` of `license_required`, `license_invalid`,
 `license_stale` (401), `not_entitled` or `sign_in_required` (403), localized from `Accept-Language`.
-`max_age_seconds` tightens freshness, `on_refusal` returns your own response, and `errors="raise"`
-raises `PolarisKeyError` into the framework's handler. The header, the document and the holder's name
-and email never reach a log line or a `repr`; add `X-PKey-License` to your APM's header scrubbing.
+`max_age_seconds` tightens freshness, `on_refusal` takes the problem, and optionally the request, and returns
+your own response (`problem.with_status(402)` changes the status and keeps the localized text), and
+`errors="raise"` raises `PolarisKeyError` into the framework's handler. A CORS preflight passes every
+gate; `preflight="gate"` refuses it. A gated response gets `Cache-Control: private` unless it has one.
+A bad config stops the server at start-up with `PolarisKeySetupError` and the fix, and a failed trust
+fetch is logged at debug level with its reason while the pinned keys keep verifying. The header, the
+document and the holder's name and email never reach a log line or a `repr`; add `X-PKey-License` to
+your APM's header scrubbing.
+
+`polaris_key.server.testing` signs throwaway documents for your tests:
+`kit = create_test_kit(product="acme")`, `PolarisKey(**kit.options())`, `kit.signed_headers(entitlements=...)`,
+`kit.headers_for("license_stale")` and a fake trust service in `kit.trust`. The full guide, with Flask,
+Django and DRF, is [Gate a Python route with the license](https://key.plrs.im/docs/features/licensing/server-python/).
 
 ## Layered config
 

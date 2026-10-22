@@ -1,0 +1,285 @@
+---
+title: "Gate a Python route with the license"
+description: "Refuse a request to your FastAPI, Flask, Django or Django REST framework route unless the device's license allows it, and test the gate without a network."
+type: "how-to"
+lastReviewed: "2026-10-21"
+sidebar:
+  order: 14
+---
+
+A drop-in from `polaris_key.server` reads the device's license document from the `X-PKey-License` header, verifies it offline and refuses the request when the license doesn't allow it. A route with no gate stays open. For the other backends and the steps behind this, see [Verify licenses on your server](/docs/features/licensing/server-verification/).
+
+Requires the License feature and the config file `pkey sdk --lang python --write` writes. The app sends `X-PKey-License` and `X-PKey-Device` with each call to your server.
+
+## Steps
+
+1. **Server** Install the SDK with your framework's extra: `pip install "polaris-key[fastapi]"`, or `starlette`, `flask`, `django` or `drf`.
+2. **Server** Build one `PolarisKey` from the config file, at start-up.
+3. **Server** Put a gate on each route: `require_license`, `require_entitlement`, `require_tier` or `require_sign_in`.
+
+## FastAPI
+
+```python title="FastAPI: main.py"
+from typing import Annotated, Dict
+
+from fastapi import Depends, FastAPI
+
+import polaris_config
+from polaris_key.server.fastapi import PolarisAuth, PolarisKey, get_polaris_license
+
+app = FastAPI()
+polaris = PolarisKey(config=polaris_config)
+polaris.install(app)
+
+
+@app.get("/health")
+def health() -> Dict[str, bool]:
+    return {"ok": True}
+
+
+@app.get("/api/me")
+def me(auth: Annotated[PolarisAuth, Depends(polaris.require_license())]) -> Dict[str, object]:
+    return {"tier": get_polaris_license(auth).tier}
+
+
+@app.get("/api/export")
+def export(
+    auth: Annotated[PolarisAuth, Depends(polaris.require_entitlement("export.pdf"))],
+) -> Dict[str, bool]:
+    return {"exported": True}
+
+
+@app.get("/api/team")
+def team(auth: Annotated[PolarisAuth, Depends(polaris.require_tier("pro", "team"))]) -> Dict[str, bool]:
+    return {"team": True}
+```
+
+The dependency adds the `X-PKey-License` scheme to `/docs`. `auth.license` can be `None` to a type checker, so `get_polaris_license(auth)` returns the license without a check. `polaris.install(app)` registers the refusal handler and sets `Cache-Control: private` on every gated response that has none, streamed ones included.
+
+## Flask
+
+```python title="Flask: app.py"
+from typing import Any, Dict
+
+from flask import Flask
+
+import polaris_config
+from polaris_key.server.flask import PolarisKey, get_polaris_license
+
+app = Flask(__name__)
+polaris = PolarisKey(config=polaris_config)
+polaris.init_app(app)
+
+
+@app.get("/api/me")
+@polaris.require_license()
+def me() -> Dict[str, Any]:
+    return {"tier": get_polaris_license().tier}
+
+
+@app.get("/api/export")
+@polaris.require_entitlement("export.pdf")
+def export() -> Dict[str, bool]:
+    return {"exported": True}
+
+
+@app.get("/api/team")
+@polaris.require_tier("pro", "team")
+def team() -> Dict[str, bool]:
+    return {"team": True}
+```
+
+Put the gate below `@app.get`. Above it, the route registers the ungated function, so `require_*` raises at start-up when it sees that. `init_app` decides each request and never refuses; only the gates refuse.
+
+## Django
+
+```python title="Django: settings.py"
+MIDDLEWARE = [
+    # ...
+    "polaris_key.server.django.PolarisKeyMiddleware",
+]
+
+POLARIS_KEY = {"CONFIG": "myapp.polaris_config"}
+```
+
+```python title="Django: views.py"
+from typing import Any
+
+from django.http import HttpRequest, JsonResponse
+
+from polaris_key.server.django import get_polaris_license, require_entitlement, require_tier
+
+
+@require_entitlement("export.pdf")
+def export(request: HttpRequest) -> Any:
+    return JsonResponse({"tier": get_polaris_license(request).tier})
+
+
+@require_tier("pro", "team")
+async def team(request: HttpRequest) -> Any:
+    return JsonResponse({"team": True})
+```
+
+The gates wrap a sync or async function view. On a class-based view, wrap the method with Django's `method_decorator`. `POLARIS_KEY` also takes `MAX_AGE_SECONDS`, `ERRORS`, `ON_REFUSAL`, `PREFLIGHT`, `TRUST_REFRESH` and `PRODUCTS`; an unknown key raises `PolarisKeySetupError`. The middleware is optional for function views and sets `Cache-Control: private` on gated responses.
+
+## Django REST framework
+
+```python title="DRF: views.py"
+from typing import Any
+
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from polaris_key.server.drf import PolarisKeyAuthentication, get_polaris_license, has_entitlement
+
+
+class ExportView(APIView):
+    authentication_classes = [PolarisKeyAuthentication]
+    permission_classes = [has_entitlement("export.pdf")]
+
+    def get(self, request: Any) -> Response:
+        return Response({"tier": get_polaris_license(request).tier})
+```
+
+```python title="DRF: settings.py"
+REST_FRAMEWORK = {"EXCEPTION_HANDLER": "polaris_key.server.drf.exception_handler"}
+```
+
+The handler answers a refusal as `application/problem+json`, or through `ON_REFUSAL` when you set it. A permission on a view without `PolarisKeyAuthentication` raises at the first request and names the fix. Install the Django middleware too for `Cache-Control: private`.
+
+## Starlette
+
+```python title="Starlette: app.py"
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Route
+
+import polaris_config
+from polaris_key.server.starlette import PolarisKey, get_polaris_license
+
+polaris = PolarisKey(config=polaris_config)
+
+
+@polaris.require_tier("pro", "team")
+async def team(request: Request) -> JSONResponse:
+    return JSONResponse({"tier": get_polaris_license(request).tier})
+
+
+app = Starlette(routes=[Route("/api/team", team)])
+polaris.install(app)
+```
+
+## Several requirements
+
+`require_all` checks requirements in order and refuses with the first that fails. `has_all` is the DRF form.
+
+```python title="Several requirements"
+from typing import Annotated, Dict
+
+from fastapi import Depends, FastAPI
+
+import polaris_config
+from polaris_key.server import entitlement, signin, tier
+from polaris_key.server.fastapi import PolarisAuth, PolarisKey
+
+app = FastAPI()
+polaris = PolarisKey(config=polaris_config)
+pro = polaris.require_all(
+    signin(),
+    tier("pro"),
+    entitlement("seats", lambda value: isinstance(value, int) and value >= 5),
+)
+
+
+@app.get("/api/seats")
+def seats(auth: Annotated[PolarisAuth, Depends(pro)]) -> Dict[str, bool]:
+    return {"ok": True}
+```
+
+## What a refusal looks like
+
+A refusal is `application/problem+json` with the status, `Cache-Control: no-store` and, on a 401, a `WWW-Authenticate` challenge. The title and detail are the catalog's, in the caller's `Accept-Language`.
+
+| Code               | Status | Cause                                             |
+| ------------------ | ------ | ------------------------------------------------- |
+| `license_required` | 401    | No `X-PKey-License` header                        |
+| `license_invalid`  | 401    | Bad signature, wrong product or wrong device      |
+| `license_stale`    | 401    | Past its window: the app must refresh its license |
+| `not_entitled`     | 403    | The license lacks the entitlement or the tier     |
+| `sign_in_required` | 403    | No account is signed in on the device             |
+
+To answer in your own shape, or with another status, pass `on_refusal`. It takes the problem, and optionally the request, and returns the framework's response. `problem.with_status(402)` keeps the localized title and detail.
+
+```python title="A 402 for a missing entitlement"
+from typing import Any
+
+from polaris_key.server import Problem
+from polaris_key.server.fastapi import PolarisKey, problem_response
+
+import polaris_config
+
+
+def refuse(problem: Problem, request: Any) -> Any:
+    return problem_response(problem.with_status(402 if problem.code == "not_entitled" else problem.status))
+
+
+polaris = PolarisKey(config=polaris_config, on_refusal=refuse)
+```
+
+`errors="raise"` hands a `PolarisKeyError` to the framework's error handling instead. A browser's CORS preflight carries no license, so every gate lets it through; `preflight="gate"` turns that off. The drop-ins set no CORS headers: add `X-PKey-License` and `X-PKey-Device` to your own allowed headers.
+
+## Test a gated route
+
+`polaris_key.server.testing` signs documents with a throwaway key, so a test needs no network and no Polaris Key.
+
+```python title="Test: test_export.py"
+from typing import Annotated, Dict
+
+from fastapi import Depends, FastAPI
+from fastapi.testclient import TestClient
+
+from polaris_key.server.fastapi import PolarisAuth, PolarisKey
+from polaris_key.server.testing import create_test_kit
+
+kit = create_test_kit(product="acme")
+polaris = PolarisKey(**kit.options())
+app = FastAPI()
+polaris.install(app)
+
+
+@app.get("/api/export")
+def export(auth: Annotated[PolarisAuth, Depends(polaris.require_entitlement("export.pdf"))]) -> Dict[str, bool]:
+    return {"ok": True}
+
+
+api = TestClient(app)
+
+
+def test_a_license_with_the_entitlement_gets_in() -> None:
+    headers = kit.signed_headers(entitlements={"export.pdf": True})
+    assert api.get("/api/export", headers=headers).status_code == 200
+
+
+def test_each_refusal() -> None:
+    assert api.get("/api/export", headers=kit.headers_for("license_required")).status_code == 401
+    assert api.get("/api/export", headers=kit.headers_for("license_invalid")).status_code == 401
+    assert api.get("/api/export", headers=kit.headers_for("license_stale")).status_code == 401
+    assert api.get("/api/export", headers=kit.headers_for("not_entitled")).status_code == 403
+```
+
+The kit has a clock you move with `kit.clock.advance(seconds)`. For a trust manifest, `kit.trust` is a fake service: `kit.trust.add_key()` publishes a second key, `kit.trust.offline = True` makes the fetch fail like an unreachable Polaris Key, and `PolarisKey(**kit.options(**kit.trust.options()))` turns the refresh on against it.
+
+## Check it works
+
+Send a request with no `X-PKey-License` header to a gated route. You should get a 401 with `"code": "license_required"`. Then send the app's license from `pkey dev` ([Run Polaris Key locally](/docs/build/local/)).
+
+## If it isn't working
+
+- The server stops at start-up with `PolarisKeySetupError` and names the setting: the config is missing, empty or malformed. Run `pkey sdk --lang python --write` again.
+- Every request is `license_invalid`: the pins in the config are for another environment, or the `X-PKey-Device` header isn't the device the document names.
+- `license_stale` on a device that is online: the app didn't refresh its license before sending it.
+- `get_polaris_license` raises: the route has no gate, the request was refused, or it is a CORS preflight.
+- The browser blocks the call: allow the two headers in your CORS settings.
+- To see why a request was refused, turn on debug logging for the `polaris_key.server` logger. A line shows the refusal code and the step, never the header. A failed trust fetch is logged there with its reason, and the pinned keys keep verifying.
+- [Troubleshoot licensing](/docs/features/licensing/troubleshooting/).
