@@ -5,6 +5,7 @@ import {
   writeFileSync,
   writeSync,
 } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -205,7 +206,7 @@ function cases(): Case[] {
       hash: "#/p/djdl/config/catalog/edit?entry=network.timeout",
     },
     // B-217: the Add to storefronts flow, at the steps whose rows wrapped sideways at 200 %.
-    ...(["prerequisites", "assets", "run"] as const).map((step) => ({
+    ...(["prerequisites", "listing", "assets", "run"] as const).map((step) => ({
       name: `djdl:storefronts?flow=${step}`,
       hash: `#/p/djdl/distribution/storefronts?flow=add&stores=google-play&step=${step}`,
     })),
@@ -258,6 +259,7 @@ const ZOOM_CASES = [
   "djdl:deliverables/record/delivery",
   "djdl:activity?table",
   "djdl:storefronts?flow=prerequisites",
+  "djdl:storefronts?flow=listing",
   "djdl:storefronts?flow=assets",
   "djdl:storefronts?flow=run",
   "dialog:new-license",
@@ -281,6 +283,7 @@ const TEXT200_CASES = [
   "djdl:credentials",
   "djdl:storefronts",
   "djdl:storefronts?flow=prerequisites",
+  "djdl:storefronts?flow=listing",
   "djdl:storefronts?flow=assets",
   "djdl:storefronts?flow=run",
   "djdl:activity",
@@ -770,7 +773,7 @@ for (const vp of VIEWPORTS) {
               ),
             ).toEqual([]);
           } finally {
-            await page.context().close();
+            await closeContext(page.context());
           }
         });
       }
@@ -840,7 +843,7 @@ describe("Home's product card (owner polish 2026-10-07)", () => {
         expect(await card.textContent()).not.toMatch(/Synced|Changed|active/);
         expect(await axeWithin(page, CARDS)).toEqual([]);
       } finally {
-        await desk.page.context().close();
+        await closeContext(desk.page.context());
       }
 
       const phone = await open(HOME, theme, { width: 390, height: 844 });
@@ -900,7 +903,7 @@ describe("Home's product card (owner polish 2026-10-07)", () => {
         expect(new Set(colours.map((c) => c.got)).size).toBe(colours.length);
         expect(await axeWithin(page, CARDS)).toEqual([]);
       } finally {
-        await phone.page.context().close();
+        await closeContext(phone.page.context());
       }
     });
   }
@@ -946,7 +949,7 @@ describe("?setting= deep links", () => {
         expect(box.top).toBeGreaterThanOrEqual(0);
         expect(box.bottom).toBeLessThanOrEqual(box.h);
       } finally {
-        await page.context().close();
+        await closeContext(page.context());
       }
     });
   }
@@ -973,7 +976,7 @@ describe("a dialog whose form wraps its body and footer", () => {
       expect(box.top).toBeGreaterThanOrEqual(0);
       expect(box.bottom).toBeLessThanOrEqual(box.h);
     } finally {
-      await page.context().close();
+      await closeContext(page.context());
     }
   });
 });
@@ -1031,7 +1034,7 @@ describe("focus ring on primary and danger buttons", () => {
             `ring: ${JSON.stringify(ring)}`,
           ).toBe(true);
         } finally {
-          await page.context().close();
+          await closeContext(page.context());
         }
       });
     }

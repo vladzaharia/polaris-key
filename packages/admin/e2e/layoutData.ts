@@ -1740,6 +1740,41 @@ const PLAY_STORE = {
 };
 
 const POLARIS_KEY_ROUTES: Record<string, unknown> = {
+  // The Listing step of the Add to storefronts flow: the fit report, one store with a warning.
+  [`${PROD}/distribution/listing/fit`]: {
+    exists: true,
+    release: null,
+    stores: [
+      {
+        store: "play",
+        label: "Google Play Console",
+        status: "amber",
+        issues: [
+          {
+            store: "play",
+            field: "description",
+            from: "locales.en-US.description",
+            locale: "en-US",
+            issue: "over_limit",
+            severity: "warn",
+            limit: 4000,
+            actual: 4120,
+            unit: "characters",
+          },
+        ],
+        cells: [
+          {
+            field: "description",
+            from: "locales.en-US.description",
+            locale: "en-US",
+            plane: "api",
+            status: "amber",
+            present: true,
+          },
+        ],
+      },
+    ],
+  },
   [`${PROD}/distribution/storefronts/slots`]: {
     slots: [
       {

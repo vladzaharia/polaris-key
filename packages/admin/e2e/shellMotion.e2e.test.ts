@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
@@ -229,7 +230,7 @@ describe("shell motion at 390 px (motion on)", () => {
     expect(exit.connectedAfter).toBe(false);
     expect(await running(page)).toEqual([]);
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("a dialog is a sheet that slides up from the bottom edge and back down", async () => {
@@ -250,7 +251,7 @@ describe("shell motion at 390 px (motion on)", () => {
     expect(exit.connectedAfter).toBe(false);
     expect(await running(page)).toEqual([]);
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("a lazy section loads behind a skeleton, never a spinner or visible Loading…", async () => {
@@ -272,7 +273,7 @@ describe("shell motion at 390 px (motion on)", () => {
       .locator("[data-page-title]", { hasText: "Settings" })
       .waitFor({ timeout: 15_000 });
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 });
 
@@ -301,7 +302,7 @@ describe("shell motion under reduced motion: instant swaps", () => {
       expect(sheetExit.connectedAfter).toBe(false);
       expect(await running(page)).toEqual([]);
       expect(await violations(page)).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
   }
 });

@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
@@ -203,6 +204,6 @@ describe("account pictures under the Worker's CSP (PX-W16)", () => {
     const v = await violations(page);
     expect(v).toHaveLength(1);
     expect(v[0]).toMatch(/^img-src https:\/\/lh3\.googleusercontent\.com\//);
-    await page.context().close();
+    await closeContext(page.context());
   });
 });

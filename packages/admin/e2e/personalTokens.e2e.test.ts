@@ -6,6 +6,7 @@
  * render.
  */
 
+import { closeContext } from "./teardown.js";
 import { existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -163,7 +164,7 @@ describe.concurrent("Personal tokens roster", () => {
             .waitFor({ state: "visible" });
         }
       } finally {
-        await ctx.close();
+        await closeContext(ctx);
       }
     });
   }

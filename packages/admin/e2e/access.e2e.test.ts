@@ -6,6 +6,7 @@
  * render is written to `<dir>/admin.<state>/<width>-<theme>.png`.
  */
 
+import { closeContext } from "./teardown.js";
 import { existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -309,13 +310,13 @@ describe("NoAccessPage in the browser", () => {
               fullPage: true,
             });
           }
-          await page.context().close();
+          await closeContext(page.context());
         }, 60_000);
 
   it("keeps its parts in forced colours", async () => {
     const page = await open(STATES[0], "dark", SIZES[3]);
     await page.emulateMedia({ forcedColors: "active" });
     expect(await forcedColourBreaches(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   }, 60_000);
 });

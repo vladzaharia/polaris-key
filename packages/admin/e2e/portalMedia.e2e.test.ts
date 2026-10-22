@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { createServer, type Server } from "node:http";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -295,7 +296,7 @@ describe("portal art under the Worker's CSP (HA-07; PX-W1 as the rollback)", () 
     const v = await violations(page);
     expect(v).toHaveLength(1);
     expect(v[0]).toMatch(/^img-src https:\/\/raw\.githubusercontent\.com\//);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("rollback: same-origin /media images load with zero violations; the direct host is blocked", async () => {
@@ -325,6 +326,6 @@ describe("portal art under the Worker's CSP (HA-07; PX-W1 as the rollback)", () 
     const v = await violations(page);
     expect(v).toHaveLength(1);
     expect(v[0]).toMatch(/^img-src https:\/\/raw\.githubusercontent\.com\//);
-    await page.context().close();
+    await closeContext(page.context());
   });
 });

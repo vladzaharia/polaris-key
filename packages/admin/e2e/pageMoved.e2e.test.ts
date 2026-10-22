@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser } from "playwright";
@@ -110,7 +111,7 @@ describe("Page moved in the built console", () => {
           await page.screenshot({
             path: `${SHOTS}/page-moved-${scheme}-${name}.png`,
           });
-        await ctx.close();
+        await closeContext(ctx);
       });
     }
   }

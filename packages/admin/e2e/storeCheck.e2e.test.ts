@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
@@ -198,7 +199,7 @@ for (const theme of ["light", "dark"] as const) {
         expect(sent).toEqual([{ value: { key: STEAM_KEY } }]);
         await shoot(page, STEAM_FORM, `store-check--${state}-${theme}`);
         expect(await violations()).toEqual([]);
-        await page.context().close();
+        await closeContext(page.context());
       });
     }
 
@@ -239,7 +240,7 @@ for (const theme of ["light", "dark"] as const) {
       expect(sent).toHaveLength(1);
       await shoot(page, formSel, `store-check--field-expired-${theme}`);
       expect(await violations()).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
   });
 }

@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
@@ -665,7 +666,7 @@ describe("overlays under the Worker's CSP", () => {
   it("loads the console with no violations", async () => {
     const page = await open({ width: 1440, height: 900 });
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("desktop overlays: palette, account menu, theme menu, product switcher, shortcut sheet, a dialog", async () => {
@@ -698,7 +699,7 @@ describe("overlays under the Worker's CSP", () => {
     const v = await violations(page);
     report["product switcher"] = { violations: v.length, locked: false };
     expect(v).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("Home, the retired Products address, the new-product wizard and every Platform page load with no violations", async () => {
@@ -729,7 +730,7 @@ describe("overlays under the Worker's CSP", () => {
       await page.getByRole("menuitem", { name: "Assign to product…" }).click();
       await page.getByRole("alertdialog").waitFor();
     });
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("Storefronts (A-18j): the tiles, Add to storefronts, the Listing tabs and their dialogs", async () => {
@@ -781,7 +782,7 @@ describe("overlays under the Worker's CSP", () => {
         .click();
       await page.getByRole("alertdialog").waitFor();
     });
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("Polaris Locker (PS-06): the panel, its confirmations, the persona preview and the store switcher", async () => {
@@ -818,7 +819,7 @@ describe("overlays under the Worker's CSP", () => {
     expect(await violations(page), "persona preview: CSP violations").toEqual(
       [],
     );
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("Package feeds in both scopes: the overview, feed pages, a package record and its dialogs", async () => {
@@ -857,7 +858,7 @@ describe("overlays under the Worker's CSP", () => {
       await page.getByRole("menuitem", { name: "Yank…" }).click();
       await page.getByRole("alertdialog").waitFor();
     });
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("Registry tokens (F-21): the new-token dialog, the revoke confirmation and the access switch", async () => {
@@ -906,7 +907,7 @@ describe("overlays under the Worker's CSP", () => {
     expect(await violations(page), "registry tokens: CSP violations").toEqual(
       [],
     );
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("the licence record's Device limit… sheet (LX-14a)", async () => {
@@ -929,7 +930,7 @@ describe("overlays under the Worker's CSP", () => {
       await sheet.getByRole("textbox", { name: /Devices/ }).fill("2");
       await sheet.getByText("None is signed out").waitFor();
     });
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("Platform → Settings: a setting's confirmation", async () => {
@@ -942,7 +943,7 @@ describe("overlays under the Worker's CSP", () => {
       await page.getByRole("switch", { name: "Lazy deltas" }).click();
       await page.getByRole("alertdialog").waitFor();
     });
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("the mobile navigation drawer", async () => {
@@ -951,7 +952,7 @@ describe("overlays under the Worker's CSP", () => {
       await page.getByRole("button", { name: "Open navigation" }).click();
       await page.getByRole("dialog", { name: "Navigation" }).waitFor();
     });
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("g p below 1024 px opens the drawer with the switcher open and focus inside it", async () => {
@@ -978,7 +979,7 @@ describe("overlays under the Worker's CSP", () => {
       ),
     ).toBe(true);
     await page.unrouteAll({ behavior: "ignoreErrors" });
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("closes the drawer when the window grows past 1024 px, releasing the page", async () => {
@@ -999,7 +1000,7 @@ describe("overlays under the Worker's CSP", () => {
     // The product context has no Home link: Activity is a page it does list.
     await page.locator("aside a[data-page=activity]").click({ timeout: 2000 });
     expect(await page.evaluate(() => location.hash)).toMatch(/\/activity$/);
-    await page.context().close();
+    await closeContext(page.context());
     process.stdout.write(`CSP overlay report: ${JSON.stringify(report)}\n`);
   });
 });
@@ -1076,6 +1077,6 @@ describe("the reduce-motion preference (MO-12) under the Worker's CSP", () => {
     await expectReduced(page);
 
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 });

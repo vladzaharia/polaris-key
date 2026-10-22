@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
@@ -150,7 +151,7 @@ describe("Core pages under the Worker's CSP", () => {
           });
         }
         expect(await violations(page), `${p.name} (${theme})`).toEqual([]);
-        await page.context().close();
+        await closeContext(page.context());
       }
     });
   }
@@ -222,7 +223,7 @@ describe("Core pages under the Worker's CSP", () => {
             fullPage: true,
           });
         expect(await violations(page), `${theme} ${w}`).toEqual([]);
-        await page.context().close();
+        await closeContext(page.context());
       }
     }
   });
@@ -243,7 +244,7 @@ describe("Core pages under the Worker's CSP", () => {
     await page.keyboard.press("Escape");
     await page.waitForTimeout(300);
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   // ST-08: the old pages are removals, not aliases. The old URL stays and says where it went.
@@ -257,7 +258,7 @@ describe("Core pages under the Worker's CSP", () => {
       await page.getByText(/This page moved to/).waitFor();
       expect(new URL(page.url()).hash).toBe(old);
       await page.getByRole("link", { name: `Go to ${home}` }).waitFor();
-      await page.context().close();
+      await closeContext(page.context());
     }
   });
 
@@ -274,7 +275,7 @@ describe("Core pages under the Worker's CSP", () => {
     await page.keyboard.press("Escape");
     await page.waitForTimeout(300);
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   // The shell owns scrolling: the document itself never scrolls, so nothing (an sr-only span, a
@@ -295,7 +296,7 @@ describe("Core pages under the Worker's CSP", () => {
     const box = await heading.boundingBox();
     expect(box!.y).toBeGreaterThanOrEqual(0);
     expect(box!.y).toBeLessThan(700);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   // ST-41 F8: picking an SDK keeps the clicked tab where it was on screen.
@@ -318,7 +319,7 @@ describe("Core pages under the Worker's CSP", () => {
       .getByRole("tab", { name: "React and web" })
       .boundingBox())!.y;
     expect(Math.abs(after - before)).toBeLessThan(2);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("the document never scrolls past the viewport, desktop or phone", async () => {
@@ -355,7 +356,7 @@ describe("Core pages under the Worker's CSP", () => {
       }));
       expect(m.h, `${hash} @${viewport.width} height`).toBe(m.ih);
       expect(m.w, `${hash} @${viewport.width} width`).toBe(m.iw);
-      await page.context().close();
+      await closeContext(page.context());
     }
   });
 });
@@ -453,7 +454,7 @@ describe("One resync flow (UX-78)", () => {
         if (SHOTS)
           await page.screenshot({ path: `${SHOTS}/resync-result-${tag}.png` });
         expect(await violations(page), `result ${tag}`).toEqual([]);
-        await page.context().close();
+        await closeContext(page.context());
 
         // A conflict blocks the resync.
         page = await resyncPage(theme, viewport, {
@@ -487,7 +488,7 @@ describe("One resync flow (UX-78)", () => {
             path: `${SHOTS}/resync-conflict-${tag}.png`,
           });
         expect(await violations(page), `conflict ${tag}`).toEqual([]);
-        await page.context().close();
+        await closeContext(page.context());
 
         // A refusal, worded for its check.
         page = await resyncPage(theme, viewport, {
@@ -511,7 +512,7 @@ describe("One resync flow (UX-78)", () => {
         if (SHOTS)
           await page.screenshot({ path: `${SHOTS}/resync-refused-${tag}.png` });
         expect(await violations(page), `refused ${tag}`).toEqual([]);
-        await page.context().close();
+        await closeContext(page.context());
       }
     });
   }

@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Locator, type Page } from "playwright";
@@ -767,7 +768,7 @@ describe("motion on: the console under the Worker's CSP", () => {
       expect(await page.locator("[role=dialog]").count()).toBe(0);
       expect(await running(page)).toEqual([]);
       expect(await violations(page)).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
 
     it(`the Cmd-K palette, the product switcher and the phone navigation close through their exit (${theme})`, async () => {
@@ -830,7 +831,7 @@ describe("motion on: the console under the Worker's CSP", () => {
         // MO-10: the drawer slides back out to the inline start.
         { name: "pk-nav-out", duration: tk.base },
       );
-      await page.context().close();
+      await closeContext(page.context());
     });
 
     it(`a route change sets html[data-vt="route"], fades only the main region on the tokens, and finishes (${theme})`, async () => {
@@ -866,7 +867,7 @@ describe("motion on: the console under the Worker's CSP", () => {
       await focusedHeading(page, "Tiers");
       expect(await running(page)).toEqual([]);
       expect(await violations(page)).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
 
     it(`console navigation: forward into a record, its tabs, Back, and the name as a shared element (${theme})`, async () => {
@@ -995,7 +996,7 @@ describe("motion on: the console under the Worker's CSP", () => {
 
       expect(await running(page)).toEqual([]);
       expect(await violations(page)).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
 
     it(`the SegmentedControl's thumb slides with a transform-only animation on the slow token (${theme})`, async () => {
@@ -1069,7 +1070,7 @@ describe("motion on: the console under the Worker's CSP", () => {
         ),
       ).toBe(0);
       expect(await violations(page)).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
 
     it(`a list mutation over ${LONG_LIST.length} rows names at most 30 of them (${theme})`, async () => {
@@ -1098,7 +1099,7 @@ describe("motion on: the console under the Worker's CSP", () => {
         0,
       );
       expect(await violations(page)).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
   }
 });
@@ -1500,7 +1501,7 @@ describe("reduced motion: the same interactions are instant swaps", () => {
       ).toEqual([]);
       expect(await running(page)).toEqual([]);
       expect(await violations(page)).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
 
     it(`console navigation: drill-down, tabs, Back and the SegmentedControl are instant swaps (${theme})`, async () => {
@@ -1560,7 +1561,7 @@ describe("reduced motion: the same interactions are instant swaps", () => {
         "html[data-vt] was never set",
       ).toEqual([]);
       expect(await violations(page)).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
 
     it(`portal: the JumpPalette opens and closes with nothing animating, no transition starts (${theme})`, async () => {

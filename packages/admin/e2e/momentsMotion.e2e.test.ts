@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
@@ -284,7 +285,7 @@ describe("Overview: the first load staggers the attention list and the first rel
     expect(again.starts.filter((s) => s.name === "pk-burst")).toEqual([]);
     expect(again.v).toEqual([]);
     expect(p.v).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   for (const r of REDUCED)
@@ -320,7 +321,7 @@ describe("Overview: the first load staggers the attention list and the first rel
       expect(moving(p)).toEqual([]);
       expect(p.vt).toBe(0);
       expect(p.v).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
 });
 
@@ -361,7 +362,7 @@ describe("Keys: the trust window's ring", () => {
     expect(offset).toBeGreaterThan(18);
     expect(offset).toBeLessThan(27);
     expect((await probe(page)).v).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   for (const r of REDUCED)
@@ -388,7 +389,7 @@ describe("Keys: the trust window's ring", () => {
       const p = await probe(page);
       expect(p.vt).toBe(0);
       expect(p.v).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
 });
 
@@ -424,7 +425,7 @@ describe("Keys: the refreshed share's meter and count", () => {
       { property: "transform", cls: expect.any(String), duration: 320 },
     ]);
     expect(p.v).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   for (const r of REDUCED)
@@ -442,6 +443,6 @@ describe("Keys: the refreshed share's meter and count", () => {
       expect(moving(p)).toEqual([]);
       expect(p.vt).toBe(0);
       expect(p.v).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
 });

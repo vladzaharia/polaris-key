@@ -1,4 +1,5 @@
 import { mkdirSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -106,7 +107,7 @@ describe("console sign-in card in Chromium", () => {
         .filter((u) => u.startsWith(origin))
         .map((u) => new URL(u).pathname),
     ).toContain("/manage/login");
-    await context.close();
+    await closeContext(context);
   });
 
   it.each([
@@ -150,7 +151,7 @@ describe("console sign-in card in Chromium", () => {
           path: `${process.env.PK_SHOTS_DIR}/card-${width}-${scheme}.png`,
         });
       }
-      await context.close();
+      await closeContext(context);
     },
   );
 });

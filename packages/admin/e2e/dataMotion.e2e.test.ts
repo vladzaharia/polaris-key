@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
@@ -442,7 +443,7 @@ describe("motion on: the Licenses table under the Worker's CSP", () => {
       await atRest(page);
       expect(await running(page)).toEqual([]);
       expect(await violations(page)).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
   }
 
@@ -497,7 +498,7 @@ describe("motion on: the Licenses table under the Worker's CSP", () => {
     ).toEqual([]);
     expect(await running(page)).toEqual([]);
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("the bulk-action bar enters and exits on the tokens, then the filter bar returns", async () => {
@@ -529,7 +530,7 @@ describe("motion on: the Licenses table under the Worker's CSP", () => {
     // ~100 ms after layout (seen once on the CI runner); they must still all end.
     await expect.poll(() => running(page), { timeout: 3000 }).toEqual([]);
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("a seat meter's fill draws its share by transform: a fifth of its track", async () => {
@@ -554,7 +555,7 @@ describe("motion on: the Licenses table under the Worker's CSP", () => {
     expect(Math.abs(box.left)).toBeLessThan(0.5);
     expect(await running(page)).toEqual([]);
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 });
 
@@ -600,7 +601,7 @@ describe.skipIf(!SHOTS)("frame strips", () => {
         page.getByRole("button", { name: "Clear selection" }).click(),
       );
       expect(await violations(page)).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
   }
 });
@@ -677,7 +678,7 @@ describe("reduced motion: every data-surface change is an instant swap", () => {
         "an animation ran with a duration",
       ).toEqual([]);
       expect(await violations(page)).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
   }
 });
