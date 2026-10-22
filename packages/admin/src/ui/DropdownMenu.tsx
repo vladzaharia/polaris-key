@@ -58,7 +58,7 @@ export function DropdownMenuItem({
       ref={ref}
       className={cn(
         "relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden transition-colors",
-        "focus:bg-hover focus:text-fg-strong data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "focus:bg-menu-active focus:ring-2 focus:ring-inset focus:ring-focus focus:text-fg-strong data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         "[&_svg]:size-4 [&_svg]:shrink-0",
         inset && "ps-8",
         destructive && "text-danger focus:bg-danger-subtle focus:text-danger",
@@ -86,7 +86,7 @@ export function DropdownMenuCheckboxItem({
       checked={checked}
       className={cn(
         "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 ps-8 pe-2 text-sm outline-hidden",
-        "focus:bg-hover focus:text-fg-strong data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "focus:bg-menu-active focus:ring-2 focus:ring-inset focus:ring-focus focus:text-fg-strong data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className,
       )}
       {...props}
@@ -115,7 +115,7 @@ export function DropdownMenuRadioItem({
       ref={ref}
       className={cn(
         "relative flex cursor-pointer select-none items-center gap-2 rounded-sm py-1.5 ps-8 pe-2 text-sm outline-hidden [&_svg]:size-4 [&_svg]:shrink-0",
-        "focus:bg-hover focus:text-fg-strong data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "focus:bg-menu-active focus:ring-2 focus:ring-inset focus:ring-focus focus:text-fg-strong data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className,
       )}
       {...props}
@@ -181,7 +181,7 @@ export function DropdownMenuSubTrigger({
     <DropdownMenuPrimitive.SubTrigger
       ref={ref}
       className={cn(
-        "flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden focus:bg-hover data-[state=open]:bg-hover",
+        "flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden focus:bg-menu-active focus:ring-2 focus:ring-inset focus:ring-focus data-[state=open]:bg-menu-active",
         className,
       )}
       {...props}

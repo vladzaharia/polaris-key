@@ -183,7 +183,7 @@ export const KIT_COPY: Readonly<
       "To use it on {formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}, replace one. You can add it back later.",
     "deviceLimit.confirmTitle": "Replace {device}?",
     "deviceLimit.consequence":
-      "{device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.",
+      "{device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.",
     "deviceLimit.primary": "Replace and continue",
     "deviceLimit.removed": "{device} was replaced. {product} is continuing.",
     "deviceLimit.failed": "{device} couldn't be replaced. Try again.",
@@ -335,6 +335,7 @@ export const KIT_COPY: Readonly<
     "about.diagnosticsCopied": "Diagnostics copied",
     "channel.title": "Release channel",
     "channel.locked": "{store} sets the channel.",
+    "channel.lockedLicense": "Your license includes this channel only.",
     "toast.undo": "Undo",
     "toast.updateAvailable": "{product} {version} is available",
     "signin.methods.title": "Sign in to Polaris Locker",
@@ -451,7 +452,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.keyInstead": "Use a license key instead",
     "signin.choice.freeDevice": "Free a device",
     "signin.choice.continue": "Use this license and continue",
-    "signin.choice.raced": "That seat was just taken. Choose again.",
+    "signin.choice.raced": "That device was just replaced. Choose again.",
     "signin.choice.codeExpired":
       "The code on {device} expired. Get a new code there and scan it again.",
     "signin.none.title": "No {product} license in this account",
@@ -461,7 +462,7 @@ export const KIT_COPY: Readonly<
     "signin.none.otherAccount": "Use another account",
     "signin.replace.open": "Replace a device",
     "signin.replace.lede":
-      "Choose a device to sign out. {thisDevice} takes its seat.",
+      "Choose a device to sign out. {thisDevice} takes its place.",
     "signin.replace.heading": "Replace a device",
     "signin.replace.openSystem": "Replace…",
     "signin.replace.meta": "{platform} · last used {when}",
@@ -470,7 +471,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "This browser",
     "signin.replace.title": "Replace {device}?",
     "signin.replace.consequence":
-      "{device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.",
+      "{device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.",
     "signin.replace.inUse": "{device} is in use right now.",
     "signin.replace.confirm": "Replace and continue",
     "signin.replace.confirmNamed": "Replace {device} and continue",
@@ -478,9 +479,9 @@ export const KIT_COPY: Readonly<
     "signin.replace.gone": "That device was already removed. Choose again.",
     "signin.replace.rateLimited":
       "Too many device changes. Try again in {seconds, plural, one {# second} other {# seconds}}.",
-    "signin.replace.raced": "Someone took that seat first. Choose again.",
+    "signin.replace.raced": "Someone replaced that device first. Choose again.",
     "signin.replace.racedAfterFree":
-      "{device} was removed, but someone took the seat first. Choose again.",
+      "{device} was removed, but someone signed in first. Choose again.",
     "signin.consent.title": "Continue to {app} as {name}?",
     "signin.consent.license": "License for this device",
     "signin.consent.licenseLine":
@@ -657,12 +658,14 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsStatus": "Show installed and downloading content",
     "cli.verb.packsEnsure": "Download and install content, with progress",
     "cli.verb.doctor": "Show what this device can do, for support",
+    "cli.verb.boot": "Run startup, one line per stage",
     "cli.verb.completion": "Print shell completion for bash, zsh or fish",
     "cli.option.json": "JSON output for scripts, on every command",
     "cli.option.noColor": "Plain text (also NO_COLOR=1)",
     "cli.option.ascii": "ASCII symbols only",
     "cli.option.help": "Help for a command",
     "cli.option.yes": "Don't ask before signing out",
+    "cli.option.yesDownload": "Download required content without asking",
     "cli.option.deviceCode":
       "Sign in with a code instead of this computer's browser",
     "cli.option.keyFile": "Read the license key from a file",
@@ -863,7 +866,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.pickDevice": "Choose a device to replace.",
     "signin.choice.replaceAndSignIn": "Replace and sign in",
     "signin.choice.replaceSafety":
-      "The device you choose signs out of {app}. It can sign in again later if a seat is free. We'll email you about it.",
+      "The device you choose signs out of {app}. It can sign in again later if there's room. We'll email you about it.",
     "signin.choice.replacedTitle": "Device replaced",
     "signin.choice.replacedBody":
       "{device} signed out of {app}. {thisDevice} is signed in.",
@@ -1708,7 +1711,7 @@ export const KIT_COPY: Readonly<
       "Um sie auf {formFactor, select, iphone {diesem iPhone} ipad {diesem iPad} mac {diesem Mac} phone {diesem Telefon} tablet {diesem Tablet} computer {diesem Computer} tv {diesem Fernseher} other {diesem Gerät}} zu verwenden, ersetzen Sie eines. Sie können es später wieder hinzufügen.",
     "deviceLimit.confirmTitle": "{device} ersetzen?",
     "deviceLimit.consequence":
-      "{device} wird von {product} abgemeldet und {thisDevice} übernimmt den Platz. Wir informieren Sie per E-Mail darüber.",
+      "{device} wird von {product} abgemeldet und {thisDevice} tritt an seine Stelle. Wir informieren Sie per E-Mail darüber.",
     "deviceLimit.primary": "Ersetzen und fortfahren",
     "deviceLimit.removed":
       "{device} wurde ersetzt. {product} wird fortgesetzt.",
@@ -1874,6 +1877,7 @@ export const KIT_COPY: Readonly<
     "about.diagnosticsCopied": "Diagnosedaten kopiert",
     "channel.title": "Release-Kanal",
     "channel.locked": "{store} legt den Kanal fest.",
+    "channel.lockedLicense": "Ihre Lizenz umfasst nur diesen Kanal.",
     "toast.undo": "Rückgängig",
     "toast.updateAvailable": "{product} {version} ist verfügbar",
     "signin.methods.title": "Bei Polaris Locker anmelden",
@@ -2001,7 +2005,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.freeDevice": "Gerät freigeben",
     "signin.choice.continue": "Diese Lizenz verwenden und fortfahren",
     "signin.choice.raced":
-      "Dieser Platz wurde gerade belegt. Wählen Sie erneut.",
+      "Dieses Gerät wurde gerade ersetzt. Wählen Sie erneut.",
     "signin.choice.codeExpired":
       "Der Code auf {device} ist abgelaufen. Fordern Sie dort einen neuen Code an und scannen Sie ihn erneut.",
     "signin.none.title": "Keine Lizenz für {product} in diesem Konto",
@@ -2011,7 +2015,7 @@ export const KIT_COPY: Readonly<
     "signin.none.otherAccount": "Anderes Konto verwenden",
     "signin.replace.open": "Gerät ersetzen",
     "signin.replace.lede":
-      "Wählen Sie ein Gerät zum Abmelden. {thisDevice} übernimmt seinen Platz.",
+      "Wählen Sie ein Gerät zum Abmelden. {thisDevice} tritt an seine Stelle.",
     "signin.replace.heading": "Gerät ersetzen",
     "signin.replace.openSystem": "Ersetzen…",
     "signin.replace.meta": "{platform} · zuletzt verwendet {when}",
@@ -2020,7 +2024,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "Dieser Browser",
     "signin.replace.title": "{device} ersetzen?",
     "signin.replace.consequence":
-      "{device} wird von {product} abgemeldet und {thisDevice} übernimmt den Platz. Wir informieren Sie per E-Mail darüber.",
+      "{device} wird von {product} abgemeldet und {thisDevice} tritt an seine Stelle. Wir informieren Sie per E-Mail darüber.",
     "signin.replace.inUse": "{device} wird gerade verwendet.",
     "signin.replace.confirm": "Ersetzen und fortfahren",
     "signin.replace.confirmNamed": "{device} ersetzen und fortfahren",
@@ -2030,9 +2034,9 @@ export const KIT_COPY: Readonly<
     "signin.replace.rateLimited":
       "Zu viele Geräteänderungen. Versuchen Sie es in {seconds, plural, one {# Sekunde} other {# Sekunden}} erneut.",
     "signin.replace.raced":
-      "Jemand anderes hat diesen Platz zuerst belegt. Wählen Sie erneut.",
+      "Jemand anderes hat dieses Gerät zuerst ersetzt. Wählen Sie erneut.",
     "signin.replace.racedAfterFree":
-      "{device} wurde entfernt, aber jemand anderes hat den Platz zuerst belegt. Wählen Sie erneut.",
+      "{device} wurde entfernt, aber jemand hat sich zuerst angemeldet. Wählen Sie erneut.",
     "signin.consent.title": "Als {name} mit {app} fortfahren?",
     "signin.consent.license": "Lizenz für dieses Gerät",
     "signin.consent.licenseLine":
@@ -2229,6 +2233,7 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsEnsure":
       "Inhalte mit Fortschritt herunterladen und installieren",
     "cli.verb.doctor": "Anzeigen, was dieses Gerät kann (für den Support)",
+    "cli.verb.boot": "Start ausführen, eine Zeile pro Schritt",
     "cli.verb.completion":
       "Shell-Vervollständigung für bash, zsh oder fish ausgeben",
     "cli.option.json": "JSON-Ausgabe für Skripte, bei jedem Befehl",
@@ -2236,6 +2241,7 @@ export const KIT_COPY: Readonly<
     "cli.option.ascii": "Nur ASCII-Symbole",
     "cli.option.help": "Hilfe zu einem Befehl",
     "cli.option.yes": "Vor dem Abmelden nicht nachfragen",
+    "cli.option.yesDownload": "Erforderliche Inhalte ohne Nachfrage laden",
     "cli.option.deviceCode":
       "Mit Code statt im Browser dieses Computers anmelden",
     "cli.option.keyFile": "Lizenzschlüssel aus einer Datei lesen",
@@ -2454,7 +2460,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.pickDevice": "Wählen Sie ein Gerät zum Ersetzen.",
     "signin.choice.replaceAndSignIn": "Ersetzen und anmelden",
     "signin.choice.replaceSafety":
-      "Das gewählte Gerät wird von {app} abgemeldet. Es kann sich später wieder anmelden, wenn ein Platz frei ist. Wir benachrichtigen Sie per E-Mail.",
+      "Das gewählte Gerät wird von {app} abgemeldet. Es kann sich später wieder anmelden, wenn Platz ist. Wir benachrichtigen Sie per E-Mail.",
     "signin.choice.replacedTitle": "Gerät ersetzt",
     "signin.choice.replacedBody":
       "{device} wurde von {app} abgemeldet. {thisDevice} ist angemeldet.",
@@ -3334,7 +3340,7 @@ export const KIT_COPY: Readonly<
       "Pour l’utiliser sur {formFactor, select, iphone {cet iPhone} ipad {cet iPad} mac {ce Mac} phone {ce téléphone} tablet {cette tablette} computer {cet ordinateur} tv {ce téléviseur} other {cet appareil}}, remplacez-en un. Vous pourrez le rajouter plus tard.",
     "deviceLimit.confirmTitle": "Remplacer {device} ?",
     "deviceLimit.consequence":
-      "{device} sera déconnecté de {product} et {thisDevice} prendra sa place. Nous vous enverrons un e-mail à ce sujet.",
+      "{device} sera déconnecté de {product} et {thisDevice} le remplacera. Nous vous enverrons un e-mail à ce sujet.",
     "deviceLimit.primary": "Remplacer et continuer",
     "deviceLimit.removed": "{device} a été remplacé. {product} continue.",
     "deviceLimit.failed": "Impossible de remplacer {device}. Réessayez.",
@@ -3493,6 +3499,7 @@ export const KIT_COPY: Readonly<
     "about.diagnosticsCopied": "Diagnostics copiés",
     "channel.title": "Canal de publication",
     "channel.locked": "{store} définit le canal.",
+    "channel.lockedLicense": "Votre licence n’inclut que ce canal.",
     "toast.undo": "Annuler",
     "toast.updateAvailable": "{product} {version} est disponible",
     "signin.methods.title": "Se connecter à Polaris Locker",
@@ -3619,7 +3626,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.freeDevice": "Libérer un appareil",
     "signin.choice.continue": "Utiliser cette licence et continuer",
     "signin.choice.raced":
-      "Cette place vient d’être prise. Faites un autre choix.",
+      "Cet appareil vient d’être remplacé. Faites un autre choix.",
     "signin.choice.codeExpired":
       "Le code sur {device} a expiré. Obtenez-en un nouveau sur cet appareil et scannez-le à nouveau.",
     "signin.none.title": "Aucune licence {product} dans ce compte",
@@ -3629,7 +3636,7 @@ export const KIT_COPY: Readonly<
     "signin.none.otherAccount": "Utiliser un autre compte",
     "signin.replace.open": "Remplacer un appareil",
     "signin.replace.lede":
-      "Choisissez un appareil à déconnecter. {thisDevice} prend sa place.",
+      "Choisissez un appareil à déconnecter. {thisDevice} le remplace.",
     "signin.replace.heading": "Remplacer un appareil",
     "signin.replace.openSystem": "Remplacer…",
     "signin.replace.meta": "{platform} · dernière utilisation {when}",
@@ -3638,7 +3645,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "Ce navigateur",
     "signin.replace.title": "Remplacer {device} ?",
     "signin.replace.consequence":
-      "{device} sera déconnecté de {product} et {thisDevice} prendra sa place. Nous vous enverrons un e-mail à ce sujet.",
+      "{device} sera déconnecté de {product} et {thisDevice} le remplacera. Nous vous enverrons un e-mail à ce sujet.",
     "signin.replace.inUse": "{device} est en cours d’utilisation.",
     "signin.replace.confirm": "Remplacer et continuer",
     "signin.replace.confirmNamed": "Remplacer {device} et continuer",
@@ -3648,9 +3655,9 @@ export const KIT_COPY: Readonly<
     "signin.replace.rateLimited":
       "Trop de changements d’appareil. Réessayez dans {seconds, plural, one {# seconde} many {# de secondes} other {# secondes}}.",
     "signin.replace.raced":
-      "Quelqu’un a pris cette place avant vous. Faites un autre choix.",
+      "Quelqu’un a remplacé cet appareil avant vous. Faites un autre choix.",
     "signin.replace.racedAfterFree":
-      "{device} a été retiré, mais quelqu’un a pris la place avant vous. Faites un autre choix.",
+      "{device} a été retiré, mais quelqu’un s’est connecté avant vous. Faites un autre choix.",
     "signin.consent.title": "Continuer vers {app} en tant que {name} ?",
     "signin.consent.license": "Licence pour cet appareil",
     "signin.consent.licenseLine":
@@ -3845,12 +3852,14 @@ export const KIT_COPY: Readonly<
       "Télécharger et installer du contenu, avec progression",
     "cli.verb.doctor":
       "Afficher ce que cet appareil peut faire, pour l’assistance",
+    "cli.verb.boot": "Lancer le démarrage, une ligne par étape",
     "cli.verb.completion": "Générer la complétion shell pour bash, zsh ou fish",
     "cli.option.json": "Sortie JSON pour les scripts, sur toutes les commandes",
     "cli.option.noColor": "Texte brut (aussi NO_COLOR=1)",
     "cli.option.ascii": "Symboles ASCII uniquement",
     "cli.option.help": "Aide sur une commande",
     "cli.option.yes": "Ne pas demander avant la déconnexion",
+    "cli.option.yesDownload": "Télécharger le contenu requis sans demander",
     "cli.option.deviceCode":
       "Se connecter avec un code au lieu du navigateur local",
     "cli.option.keyFile": "Lire la clé de licence depuis un fichier",
@@ -4065,7 +4074,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.pickDevice": "Choisissez un appareil à remplacer.",
     "signin.choice.replaceAndSignIn": "Remplacer et se connecter",
     "signin.choice.replaceSafety":
-      "L’appareil choisi sera déconnecté de {app}. Il pourra se reconnecter plus tard si une place est libre. Nous vous préviendrons par e-mail.",
+      "L’appareil choisi sera déconnecté de {app}. Il pourra se reconnecter plus tard s’il y a de la place. Nous vous préviendrons par e-mail.",
     "signin.choice.replacedTitle": "Appareil remplacé",
     "signin.choice.replacedBody":
       "{device} est déconnecté de {app}. {thisDevice} est connecté.",
@@ -4942,7 +4951,7 @@ export const KIT_COPY: Readonly<
       "Para usarla en {formFactor, select, iphone {este iPhone} ipad {este iPad} mac {este Mac} phone {este teléfono} tablet {esta tableta} computer {esta computadora} tv {este televisor} other {este dispositivo}}, reemplaza uno. Puedes volver a añadirlo más tarde.",
     "deviceLimit.confirmTitle": "¿Reemplazar {device}?",
     "deviceLimit.consequence":
-      "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su plaza. Te lo notificaremos por correo.",
+      "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su lugar. Te lo notificaremos por correo.",
     "deviceLimit.primary": "Reemplazar y continuar",
     "deviceLimit.removed": "Se reemplazó {device}. {product} continúa.",
     "deviceLimit.failed":
@@ -5102,6 +5111,7 @@ export const KIT_COPY: Readonly<
     "about.diagnosticsCopied": "Diagnóstico copiado",
     "channel.title": "Canal de versiones",
     "channel.locked": "{store} establece el canal.",
+    "channel.lockedLicense": "Tu licencia solo incluye este canal.",
     "toast.undo": "Deshacer",
     "toast.updateAvailable": "{product} {version} está disponible",
     "signin.methods.title": "Inicia sesión en Polaris Locker",
@@ -5226,7 +5236,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.freeDevice": "Liberar un dispositivo",
     "signin.choice.continue": "Usar esta licencia y continuar",
     "signin.choice.raced":
-      "Alguien acaba de ocupar esa plaza. Vuelve a elegir.",
+      "Ese dispositivo acaba de reemplazarse. Vuelve a elegir.",
     "signin.choice.codeExpired":
       "El código de {device} venció. Obtén un código nuevo allí y vuelve a escanearlo.",
     "signin.none.title": "No hay ninguna licencia de {product} en esta cuenta",
@@ -5236,7 +5246,7 @@ export const KIT_COPY: Readonly<
     "signin.none.otherAccount": "Usar otra cuenta",
     "signin.replace.open": "Reemplazar un dispositivo",
     "signin.replace.lede":
-      "Elige un dispositivo para cerrar su sesión. {thisDevice} ocupará su plaza.",
+      "Elige un dispositivo para cerrar su sesión. {thisDevice} ocupará su lugar.",
     "signin.replace.heading": "Reemplazar un dispositivo",
     "signin.replace.openSystem": "Reemplazar…",
     "signin.replace.meta": "{platform} · usado por última vez {when}",
@@ -5245,7 +5255,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "Este navegador",
     "signin.replace.title": "¿Reemplazar {device}?",
     "signin.replace.consequence":
-      "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su plaza. Te lo notificaremos por correo.",
+      "Se cerrará la sesión de {product} en {device} y {thisDevice} ocupará su lugar. Te lo notificaremos por correo.",
     "signin.replace.inUse": "{device} se está usando ahora mismo.",
     "signin.replace.confirm": "Reemplazar y continuar",
     "signin.replace.confirmNamed": "Reemplazar {device} y continuar",
@@ -5253,9 +5263,10 @@ export const KIT_COPY: Readonly<
     "signin.replace.gone": "Ese dispositivo ya se quitó. Vuelve a elegir.",
     "signin.replace.rateLimited":
       "Demasiados cambios de dispositivo. Vuelve a intentarlo en {seconds, plural, one {# segundo} many {# de segundos} other {# segundos}}.",
-    "signin.replace.raced": "Alguien ocupó esa plaza antes. Vuelve a elegir.",
+    "signin.replace.raced":
+      "Alguien reemplazó ese dispositivo antes. Vuelve a elegir.",
     "signin.replace.racedAfterFree":
-      "Se quitó {device}, pero alguien ocupó la plaza antes. Vuelve a elegir.",
+      "Se quitó {device}, pero alguien inició sesión antes. Vuelve a elegir.",
     "signin.consent.title": "¿Continuar a {app} como {name}?",
     "signin.consent.license": "Licencia para este dispositivo",
     "signin.consent.licenseLine":
@@ -5447,6 +5458,7 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsEnsure": "Descargar e instalar contenido, con progreso",
     "cli.verb.doctor":
       "Mostrar lo que puede hacer este dispositivo, para soporte",
+    "cli.verb.boot": "Ejecutar el inicio, una línea por etapa",
     "cli.verb.completion":
       "Generar el autocompletado de shell para bash, zsh o fish",
     "cli.option.json": "Salida JSON para scripts, en todos los comandos",
@@ -5454,6 +5466,7 @@ export const KIT_COPY: Readonly<
     "cli.option.ascii": "Solo símbolos ASCII",
     "cli.option.help": "Ayuda de un comando",
     "cli.option.yes": "No preguntar antes de cerrar sesión",
+    "cli.option.yesDownload": "Descargar el contenido necesario sin preguntar",
     "cli.option.deviceCode":
       "Iniciar sesión con un código en vez del navegador local",
     "cli.option.keyFile": "Leer la clave de licencia de un archivo",
@@ -5670,7 +5683,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.pickDevice": "Elige un dispositivo para reemplazar.",
     "signin.choice.replaceAndSignIn": "Reemplazar e iniciar sesión",
     "signin.choice.replaceSafety":
-      "El dispositivo que elijas cerrará sesión en {app}. Podrá iniciar sesión de nuevo más tarde si hay un puesto libre. Te avisaremos por correo.",
+      "El dispositivo que elijas cerrará sesión en {app}. Podrá iniciar sesión de nuevo más tarde si hay espacio. Te avisaremos por correo.",
     "signin.choice.replacedTitle": "Dispositivo reemplazado",
     "signin.choice.replacedBody":
       "{device} cerró sesión en {app}. {thisDevice} ha iniciado sesión.",
@@ -6544,7 +6557,7 @@ export const KIT_COPY: Readonly<
       "Para usá-la {formFactor, select, iphone {neste iPhone} ipad {neste iPad} mac {neste Mac} phone {neste celular} tablet {neste tablet} computer {neste computador} tv {nesta TV} other {neste dispositivo}}, substitua um. Você pode adicioná-lo de volta depois.",
     "deviceLimit.confirmTitle": "Substituir {device}?",
     "deviceLimit.consequence":
-      "{device} sai de {product} e {thisDevice} ocupa a vaga. Enviaremos um e-mail sobre isso.",
+      "{device} sai de {product} e {thisDevice} entra no lugar dele. Enviaremos um e-mail sobre isso.",
     "deviceLimit.primary": "Substituir e continuar",
     "deviceLimit.removed":
       "{device} foi substituído. {product} está continuando.",
@@ -6707,6 +6720,7 @@ export const KIT_COPY: Readonly<
     "about.diagnosticsCopied": "Diagnóstico copiado",
     "channel.title": "Canal de lançamento",
     "channel.locked": "{store} define o canal.",
+    "channel.lockedLicense": "Sua licença inclui apenas este canal.",
     "toast.undo": "Desfazer",
     "toast.updateAvailable": "{product} {version} está disponível",
     "signin.methods.title": "Entrar no Polaris Locker",
@@ -6829,7 +6843,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.freeDevice": "Liberar um dispositivo",
     "signin.choice.continue": "Usar esta licença e continuar",
     "signin.choice.raced":
-      "Essa vaga acabou de ser ocupada. Escolha novamente.",
+      "Esse dispositivo acabou de ser substituído. Escolha novamente.",
     "signin.choice.codeExpired":
       "O código em {device} expirou. Obtenha um novo código lá e escaneie-o novamente.",
     "signin.none.title": "Nenhuma licença de {product} nesta conta",
@@ -6838,7 +6852,7 @@ export const KIT_COPY: Readonly<
     "signin.none.otherAccount": "Usar outra conta",
     "signin.replace.open": "Substituir um dispositivo",
     "signin.replace.lede":
-      "Escolha um dispositivo para desconectar. {thisDevice} fica com a vaga dele.",
+      "Escolha um dispositivo para desconectar. {thisDevice} entra no lugar dele.",
     "signin.replace.heading": "Substituir um dispositivo",
     "signin.replace.openSystem": "Substituir…",
     "signin.replace.meta": "{platform} · usado por último {when}",
@@ -6847,7 +6861,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "Este navegador",
     "signin.replace.title": "Substituir {device}?",
     "signin.replace.consequence":
-      "{device} sai de {product} e {thisDevice} ocupa a vaga. Enviaremos um e-mail sobre isso.",
+      "{device} sai de {product} e {thisDevice} entra no lugar dele. Enviaremos um e-mail sobre isso.",
     "signin.replace.inUse": "{device} está em uso agora.",
     "signin.replace.confirm": "Substituir e continuar",
     "signin.replace.confirmNamed": "Substituir {device} e continuar",
@@ -6857,9 +6871,9 @@ export const KIT_COPY: Readonly<
     "signin.replace.rateLimited":
       "Muitas alterações de dispositivo. Tente novamente em {seconds, plural, one {# segundo} many {# de segundos} other {# segundos}}.",
     "signin.replace.raced":
-      "Outra pessoa ocupou essa vaga antes. Escolha novamente.",
+      "Outra pessoa substituiu esse dispositivo antes. Escolha novamente.",
     "signin.replace.racedAfterFree":
-      "{device} foi removido, mas outra pessoa ocupou a vaga antes. Escolha novamente.",
+      "{device} foi removido, mas outra pessoa entrou antes. Escolha novamente.",
     "signin.consent.title": "Continuar para {app} como {name}?",
     "signin.consent.license": "Licença para este dispositivo",
     "signin.consent.licenseLine":
@@ -7042,6 +7056,7 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsEnsure": "Baixar e instalar conteúdo, com progresso",
     "cli.verb.doctor":
       "Mostrar o que este dispositivo pode fazer, para suporte",
+    "cli.verb.boot": "Executar a inicialização, uma linha por etapa",
     "cli.verb.completion":
       "Gerar o autocompletar do shell para bash, zsh ou fish",
     "cli.option.json": "Saída JSON para scripts, em todos os comandos",
@@ -7049,6 +7064,7 @@ export const KIT_COPY: Readonly<
     "cli.option.ascii": "Somente símbolos ASCII",
     "cli.option.help": "Ajuda de um comando",
     "cli.option.yes": "Não perguntar antes de sair",
+    "cli.option.yesDownload": "Baixar o conteúdo necessário sem perguntar",
     "cli.option.deviceCode":
       "Entrar com um código, sem o navegador deste computador",
     "cli.option.keyFile": "Ler a chave de licença de um arquivo",
@@ -7259,7 +7275,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.pickDevice": "Escolha um dispositivo para substituir.",
     "signin.choice.replaceAndSignIn": "Substituir e entrar",
     "signin.choice.replaceSafety":
-      "O dispositivo escolhido sai de {app}. Ele poderá entrar de novo mais tarde se houver uma vaga livre. Avisaremos você por e-mail.",
+      "O dispositivo escolhido sai de {app}. Ele poderá entrar de novo mais tarde se houver espaço. Avisaremos você por e-mail.",
     "signin.choice.replacedTitle": "Dispositivo substituído",
     "signin.choice.replacedBody":
       "{device} saiu de {app}. {thisDevice} está conectado.",
@@ -8118,7 +8134,7 @@ export const KIT_COPY: Readonly<
       "Per usarla su {formFactor, select, iphone {questo iPhone} ipad {questo iPad} mac {questo Mac} phone {questo telefono} tablet {questo tablet} computer {questo computer} tv {questa TV} other {questo dispositivo}}, sostituiscine uno. Potrai aggiungerlo di nuovo in seguito.",
     "deviceLimit.confirmTitle": "Sostituire {device}?",
     "deviceLimit.consequence":
-      "{device} esce da {product} e {thisDevice} ne prende il posto. Ti invieremo un'email al riguardo.",
+      "{device} esce da {product} e {thisDevice} lo sostituisce. Ti invieremo un'email al riguardo.",
     "deviceLimit.primary": "Sostituisci e continua",
     "deviceLimit.removed": "{device} è stato sostituito. {product} continua.",
     "deviceLimit.failed": "Impossibile sostituire {device}. Riprova.",
@@ -8274,6 +8290,7 @@ export const KIT_COPY: Readonly<
     "about.diagnosticsCopied": "Diagnostica copiata",
     "channel.title": "Canale di rilascio",
     "channel.locked": "Il canale è impostato da {store}.",
+    "channel.lockedLicense": "La tua licenza include solo questo canale.",
     "toast.undo": "Annulla",
     "toast.updateAvailable": "{product} {version} è disponibile",
     "signin.methods.title": "Accedi a Polaris Locker",
@@ -8397,7 +8414,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.freeDevice": "Libera un dispositivo",
     "signin.choice.continue": "Usa questa licenza e continua",
     "signin.choice.raced":
-      "Quel posto è appena stato occupato. Scegli di nuovo.",
+      "Quel dispositivo è appena stato sostituito. Scegli di nuovo.",
     "signin.choice.codeExpired":
       "Il codice su {device} è scaduto. Ottieni lì un nuovo codice e scansionalo di nuovo.",
     "signin.none.title": "Nessuna licenza di {product} in questo account",
@@ -8407,7 +8424,7 @@ export const KIT_COPY: Readonly<
     "signin.none.otherAccount": "Usa un altro account",
     "signin.replace.open": "Sostituisci un dispositivo",
     "signin.replace.lede":
-      "Scegli un dispositivo da disconnettere. {thisDevice} ne prende il posto.",
+      "Scegli un dispositivo da disconnettere. {thisDevice} lo sostituisce.",
     "signin.replace.heading": "Sostituisci un dispositivo",
     "signin.replace.openSystem": "Sostituisci…",
     "signin.replace.meta": "{platform} · usato l'ultima volta {when}",
@@ -8416,7 +8433,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "Questo browser",
     "signin.replace.title": "Sostituire {device}?",
     "signin.replace.consequence":
-      "{device} esce da {product} e {thisDevice} ne prende il posto. Ti invieremo un'email al riguardo.",
+      "{device} esce da {product} e {thisDevice} lo sostituisce. Ti invieremo un'email al riguardo.",
     "signin.replace.inUse": "{device} è in uso in questo momento.",
     "signin.replace.confirm": "Sostituisci e continua",
     "signin.replace.confirmNamed": "Sostituisci {device} e continua",
@@ -8426,9 +8443,9 @@ export const KIT_COPY: Readonly<
     "signin.replace.rateLimited":
       "Troppe modifiche ai dispositivi. Riprova tra {seconds, plural, one {# secondo} many {# di secondi} other {# secondi}}.",
     "signin.replace.raced":
-      "Qualcun altro ha occupato prima quel posto. Scegli di nuovo.",
+      "Qualcun altro ha sostituito prima quel dispositivo. Scegli di nuovo.",
     "signin.replace.racedAfterFree":
-      "{device} è stato rimosso, ma qualcun altro ha occupato prima il posto. Scegli di nuovo.",
+      "{device} è stato rimosso, ma qualcun altro ha effettuato l'accesso prima. Scegli di nuovo.",
     "signin.consent.title": "Continuare su {app} come {name}?",
     "signin.consent.license": "Licenza per questo dispositivo",
     "signin.consent.licenseLine":
@@ -8618,12 +8635,14 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsEnsure": "Scarica e installa contenuti, con avanzamento",
     "cli.verb.doctor":
       "Mostra cosa può fare questo dispositivo, per l'assistenza",
+    "cli.verb.boot": "Esegui l'avvio, una riga per fase",
     "cli.verb.completion": "Genera il completamento shell per bash, zsh o fish",
     "cli.option.json": "Output JSON per gli script, su ogni comando",
     "cli.option.noColor": "Testo semplice (anche NO_COLOR=1)",
     "cli.option.ascii": "Solo simboli ASCII",
     "cli.option.help": "Aiuto per un comando",
     "cli.option.yes": "Non chiedere conferma prima di uscire",
+    "cli.option.yesDownload": "Scarica i contenuti richiesti senza chiedere",
     "cli.option.deviceCode": "Accedi con un codice invece del browser locale",
     "cli.option.keyFile": "Leggi la chiave di licenza da un file",
     "cli.option.keyStdin": "Leggi la chiave di licenza dallo standard input",
@@ -8834,7 +8853,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.pickDevice": "Scegli un dispositivo da sostituire.",
     "signin.choice.replaceAndSignIn": "Sostituisci e accedi",
     "signin.choice.replaceSafety":
-      "Il dispositivo scelto esce da {app}. Potrà accedere di nuovo più tardi se c'è un posto libero. Ti avviseremo via e-mail.",
+      "Il dispositivo scelto esce da {app}. Potrà accedere di nuovo più tardi se c'è spazio. Ti avviseremo via e-mail.",
     "signin.choice.replacedTitle": "Dispositivo sostituito",
     "signin.choice.replacedBody":
       "{device} è uscito da {app}. {thisDevice} ha effettuato l'accesso.",
@@ -9700,7 +9719,7 @@ export const KIT_COPY: Readonly<
       "{formFactor, select, iphone {このiPhone} ipad {このiPad} mac {このMac} phone {このスマートフォン} tablet {このタブレット} computer {このコンピュータ} tv {このテレビ} other {このデバイス}}で使うには、いずれかのデバイスを置き換えてください。置き換えたデバイスは後で戻すこともできます。",
     "deviceLimit.confirmTitle": "{device}を置き換えますか？",
     "deviceLimit.consequence":
-      "{device}は{product}からサインアウトし、{thisDevice}がその枠を使用します。この件についてはメールでお知らせします。",
+      "{device}は{product}からサインアウトされ、代わりに{thisDevice}が使われます。この件についてはメールでお知らせします。",
     "deviceLimit.primary": "置き換えて続ける",
     "deviceLimit.removed": "{device}を置き換えました。{product}を続行します。",
     "deviceLimit.failed":
@@ -9860,6 +9879,7 @@ export const KIT_COPY: Readonly<
     "about.diagnosticsCopied": "診断情報をコピーしました",
     "channel.title": "リリースチャンネル",
     "channel.locked": "チャンネルは{store}で設定されます。",
+    "channel.lockedLicense": "ライセンスにはこのチャンネルのみ含まれます。",
     "toast.undo": "取り消す",
     "toast.updateAvailable": "{product} {version}が利用可能です",
     "signin.methods.title": "Polaris Lockerにサインイン",
@@ -9983,7 +10003,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.freeDevice": "デバイスの枠を空ける",
     "signin.choice.continue": "このライセンスを使って続ける",
     "signin.choice.raced":
-      "その枠はたった今使用されました。もう一度選択してください。",
+      "そのデバイスはたった今置き換えられました。もう一度選択してください。",
     "signin.choice.codeExpired":
       "{device}のコードの有効期限が切れました。そちらで新しいコードを取得して、もう一度スキャンしてください。",
     "signin.none.title": "このアカウントに{product}のライセンスはありません",
@@ -9993,7 +10013,7 @@ export const KIT_COPY: Readonly<
     "signin.none.otherAccount": "別のアカウントを使う",
     "signin.replace.open": "デバイスを置き換える",
     "signin.replace.lede":
-      "サインアウトするデバイスを選んでください。{thisDevice}がその枠を使用します。",
+      "サインアウトするデバイスを選んでください。代わりに{thisDevice}が使われます。",
     "signin.replace.heading": "デバイスを置き換える",
     "signin.replace.openSystem": "置き換え…",
     "signin.replace.meta": "{platform} · 最終使用：{when}",
@@ -10002,7 +10022,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "このブラウザ",
     "signin.replace.title": "{device}を置き換えますか？",
     "signin.replace.consequence":
-      "{device}は{product}からサインアウトし、{thisDevice}がその枠を使用します。この件についてはメールでお知らせします。",
+      "{device}は{product}からサインアウトされ、代わりに{thisDevice}が使われます。この件についてはメールでお知らせします。",
     "signin.replace.inUse": "{device}は現在使用中です。",
     "signin.replace.confirm": "置き換えて続ける",
     "signin.replace.confirmNamed": "{device}を置き換えて続ける",
@@ -10012,9 +10032,9 @@ export const KIT_COPY: Readonly<
     "signin.replace.rateLimited":
       "デバイスの変更が多すぎます。{seconds, plural, other {#秒}}後にもう一度お試しください。",
     "signin.replace.raced":
-      "先に別のデバイスがその枠を使用しました。もう一度選択してください。",
+      "先に別の人がそのデバイスを置き換えました。もう一度選択してください。",
     "signin.replace.racedAfterFree":
-      "{device}は削除されましたが、先に別のデバイスがその枠を使用しました。もう一度選択してください。",
+      "{device}は削除されましたが、先に別のデバイスがサインインしました。もう一度選択してください。",
     "signin.consent.title": "{name}として{app}に進みますか？",
     "signin.consent.license": "このデバイスのライセンス",
     "signin.consent.licenseLine":
@@ -10203,12 +10223,14 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsEnsure":
       "コンテンツをダウンロードしてインストール（進捗表示）",
     "cli.verb.doctor": "このデバイスでできることを表示（サポート用）",
+    "cli.verb.boot": "起動処理を実行（段階ごとに1行）",
     "cli.verb.completion": "bash、zsh、fish用のシェル補完を出力",
     "cli.option.json": "スクリプト用のJSON出力（全コマンド共通）",
     "cli.option.noColor": "プレーンテキスト（NO_COLOR=1でも可）",
     "cli.option.ascii": "ASCII記号のみ",
     "cli.option.help": "コマンドのヘルプ",
     "cli.option.yes": "サインアウト前に確認しない",
+    "cli.option.yesDownload": "必要なコンテンツを確認せずにダウンロード",
     "cli.option.deviceCode":
       "このコンピュータのブラウザの代わりにコードでサインイン",
     "cli.option.keyFile": "ライセンスキーをファイルから読み込む",
@@ -10426,7 +10448,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.pickDevice": "置き換えるデバイスを選んでください。",
     "signin.choice.replaceAndSignIn": "置き換えてサインイン",
     "signin.choice.replaceSafety":
-      "選んだデバイスは {app} からサインアウトされます。空きがあれば、後でもう一度サインインできます。メールでお知らせします。",
+      "選んだデバイスは {app} からサインアウトされます。台数に余裕があれば、後でもう一度サインインできます。メールでお知らせします。",
     "signin.choice.replacedTitle": "デバイスを置き換えました",
     "signin.choice.replacedBody":
       "{device} は {app} からサインアウトしました。{thisDevice} はサインイン済みです。",
@@ -11299,7 +11321,7 @@ export const KIT_COPY: Readonly<
       "{formFactor, select, iphone {이 iPhone} ipad {이 iPad} mac {이 Mac} phone {이 휴대폰} tablet {이 태블릿} computer {이 컴퓨터} tv {이 TV} other {이 기기}}에서 사용하려면 기기 하나를 교체하세요. 나중에 다시 추가할 수 있어요.",
     "deviceLimit.confirmTitle": "{device}을(를) 교체할까요?",
     "deviceLimit.consequence":
-      "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요.",
+      "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 대신 사용돼요. 이 내용은 이메일로 알려 드려요.",
     "deviceLimit.primary": "교체하고 계속",
     "deviceLimit.removed":
       "{device}을(를) 교체했어요. {product}에서 계속 진행해요.",
@@ -11454,6 +11476,7 @@ export const KIT_COPY: Readonly<
     "about.diagnosticsCopied": "진단 정보 복사됨",
     "channel.title": "릴리스 채널",
     "channel.locked": "{store}에서 채널을 설정해요.",
+    "channel.lockedLicense": "라이선스에 이 채널만 포함되어 있어요.",
     "toast.undo": "실행 취소",
     "toast.updateAvailable": "{product} {version} 업데이트가 있어요",
     "signin.methods.title": "Polaris Locker에 로그인",
@@ -11569,8 +11592,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.keyInstead": "대신 라이선스 키 사용",
     "signin.choice.freeDevice": "기기 자리 비우기",
     "signin.choice.continue": "이 라이선스로 계속",
-    "signin.choice.raced":
-      "방금 다른 기기가 그 자리를 차지했어요. 다시 선택하세요.",
+    "signin.choice.raced": "그 기기는 방금 교체됐어요. 다시 선택하세요.",
     "signin.choice.codeExpired":
       "{device}의 코드가 만료됐어요. 그 기기에서 새 코드를 받아 다시 스캔하세요.",
     "signin.none.title": "이 계정에 {product} 라이선스가 없어요",
@@ -11579,7 +11601,7 @@ export const KIT_COPY: Readonly<
     "signin.none.otherAccount": "다른 계정 사용",
     "signin.replace.open": "기기 교체",
     "signin.replace.lede":
-      "로그아웃할 기기를 선택하세요. {thisDevice}이(가) 그 자리를 사용해요.",
+      "로그아웃할 기기를 선택하세요. {thisDevice}이(가) 대신 사용돼요.",
     "signin.replace.heading": "기기 교체",
     "signin.replace.openSystem": "교체…",
     "signin.replace.meta": "{platform} · 마지막 사용 {when}",
@@ -11588,7 +11610,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "이 브라우저",
     "signin.replace.title": "{device}을(를) 교체할까요?",
     "signin.replace.consequence":
-      "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 그 자리를 사용해요. 이 내용은 이메일로 알려 드려요.",
+      "{device}은(는) {product}에서 로그아웃되고 {thisDevice}이(가) 대신 사용돼요. 이 내용은 이메일로 알려 드려요.",
     "signin.replace.inUse": "{device}에서 지금 사용 중이에요.",
     "signin.replace.confirm": "교체하고 계속",
     "signin.replace.confirmNamed": "{device} 교체하고 계속",
@@ -11597,9 +11619,9 @@ export const KIT_COPY: Readonly<
     "signin.replace.rateLimited":
       "기기 변경이 너무 많아요. {seconds, plural, other {#초}} 후에 다시 시도하세요.",
     "signin.replace.raced":
-      "다른 사람이 먼저 그 자리를 차지했어요. 다시 선택하세요.",
+      "다른 사람이 먼저 그 기기를 교체했어요. 다시 선택하세요.",
     "signin.replace.racedAfterFree":
-      "{device}을(를) 제거했지만 다른 사람이 먼저 자리를 차지했어요. 다시 선택하세요.",
+      "{device}을(를) 제거했지만 다른 기기가 먼저 로그인했어요. 다시 선택하세요.",
     "signin.consent.title": "{app}에서 {name} 님으로 계속할까요?",
     "signin.consent.license": "이 기기의 라이선스",
     "signin.consent.licenseLine":
@@ -11777,12 +11799,14 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsStatus": "설치된 콘텐츠와 다운로드 중인 콘텐츠 표시",
     "cli.verb.packsEnsure": "진행률을 표시하며 콘텐츠 다운로드 및 설치",
     "cli.verb.doctor": "이 기기에서 가능한 기능 표시 (지원용)",
+    "cli.verb.boot": "시작 과정을 실행해요(단계마다 한 줄)",
     "cli.verb.completion": "bash, zsh, fish용 셸 자동 완성 출력",
     "cli.option.json": "스크립트용 JSON 출력 (모든 명령 지원)",
     "cli.option.noColor": "일반 텍스트 (NO_COLOR=1도 가능)",
     "cli.option.ascii": "ASCII 기호만 사용",
     "cli.option.help": "명령 도움말",
     "cli.option.yes": "로그아웃 전에 확인하지 않음",
+    "cli.option.yesDownload": "필요한 콘텐츠를 묻지 않고 다운로드",
     "cli.option.deviceCode": "이 컴퓨터의 브라우저 대신 코드로 로그인",
     "cli.option.keyFile": "라이선스 키를 파일에서 읽기",
     "cli.option.keyStdin": "라이선스 키를 표준 입력에서 읽기",
@@ -11986,7 +12010,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.pickDevice": "교체할 기기를 선택하세요.",
     "signin.choice.replaceAndSignIn": "교체하고 로그인",
     "signin.choice.replaceSafety":
-      "선택한 기기는 {app}에서 로그아웃됩니다. 자리가 나면 나중에 다시 로그인할 수 있습니다. 이메일로 알려 드립니다.",
+      "선택한 기기는 {app}에서 로그아웃됩니다. 여유가 있으면 나중에 다시 로그인할 수 있습니다. 이메일로 알려 드립니다.",
     "signin.choice.replacedTitle": "기기를 교체했습니다",
     "signin.choice.replacedBody":
       "{device}이(가) {app}에서 로그아웃했습니다. {thisDevice}이(가) 로그인되었습니다.",
@@ -12820,7 +12844,7 @@ export const KIT_COPY: Readonly<
       "要在{formFactor, select, iphone {这台iPhone} ipad {这台iPad} mac {这台Mac} phone {这部手机} tablet {这台平板电脑} computer {这台电脑} tv {这台电视} other {这台设备}}上使用，请替换其中一台设备。你之后可以再将其添加回来。",
     "deviceLimit.confirmTitle": "替换{device}？",
     "deviceLimit.consequence":
-      "{device}将退出登录{product}，{thisDevice}将占用它的席位。我们会通过电子邮件通知你。",
+      "{device}将退出登录{product}，由{thisDevice}取代。我们会通过电子邮件通知你。",
     "deviceLimit.primary": "替换并继续",
     "deviceLimit.removed": "{device}已被替换。{product}正在继续。",
     "deviceLimit.failed": "无法替换{device}。请重试。",
@@ -12964,6 +12988,7 @@ export const KIT_COPY: Readonly<
     "about.diagnosticsCopied": "诊断信息已复制",
     "channel.title": "发布渠道",
     "channel.locked": "渠道由{store}设置。",
+    "channel.lockedLicense": "你的许可证仅包含此渠道。",
     "toast.undo": "撤销",
     "toast.updateAvailable": "{product} {version}现已推出",
     "signin.methods.title": "登录Polaris Locker",
@@ -13073,7 +13098,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.keyInstead": "改用许可证密钥",
     "signin.choice.freeDevice": "释放设备",
     "signin.choice.continue": "使用此许可证并继续",
-    "signin.choice.raced": "该席位刚刚被占用。请重新选择。",
+    "signin.choice.raced": "该设备刚刚已被替换。请重新选择。",
     "signin.choice.codeExpired":
       "{device}上的代码已过期。请在那台设备上获取新代码并重新扫描。",
     "signin.none.title": "此账户中没有{product}许可证",
@@ -13081,7 +13106,7 @@ export const KIT_COPY: Readonly<
     "signin.none.get": "获取{product}",
     "signin.none.otherAccount": "使用其他账户",
     "signin.replace.open": "替换设备",
-    "signin.replace.lede": "选择要退出登录的设备。{thisDevice}将占用其席位。",
+    "signin.replace.lede": "选择要退出登录的设备。由{thisDevice}取代。",
     "signin.replace.heading": "替换设备",
     "signin.replace.openSystem": "替换…",
     "signin.replace.meta": "{platform} · 上次使用：{when}",
@@ -13090,7 +13115,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "此浏览器",
     "signin.replace.title": "替换{device}？",
     "signin.replace.consequence":
-      "{device}将退出登录{product}，{thisDevice}将占用它的席位。我们会通过电子邮件通知你。",
+      "{device}将退出登录{product}，由{thisDevice}取代。我们会通过电子邮件通知你。",
     "signin.replace.inUse": "{device}正在使用中。",
     "signin.replace.confirm": "替换并继续",
     "signin.replace.confirmNamed": "替换{device}并继续",
@@ -13098,9 +13123,9 @@ export const KIT_COPY: Readonly<
     "signin.replace.gone": "该设备已被移除。请重新选择。",
     "signin.replace.rateLimited":
       "设备更改次数过多。请在{seconds, plural, other {#秒}}后重试。",
-    "signin.replace.raced": "有人先占用了该席位。请重新选择。",
+    "signin.replace.raced": "有人先替换了该设备。请重新选择。",
     "signin.replace.racedAfterFree":
-      "{device}已移除，但有人先占用了该席位。请重新选择。",
+      "{device}已移除，但有人先登录了。请重新选择。",
     "signin.consent.title": "以{name}的身份继续使用{app}？",
     "signin.consent.license": "此设备的许可证",
     "signin.consent.licenseLine":
@@ -13267,12 +13292,14 @@ export const KIT_COPY: Readonly<
     "cli.verb.packsStatus": "显示已安装和正在下载的内容",
     "cli.verb.packsEnsure": "下载并安装内容，并显示进度",
     "cli.verb.doctor": "显示此设备支持的功能，供技术支持使用",
+    "cli.verb.boot": "运行启动流程，每个阶段一行",
     "cli.verb.completion": "输出bash、zsh或fish的shell补全脚本",
     "cli.option.json": "供脚本使用的JSON输出，适用于所有命令",
     "cli.option.noColor": "纯文本（也可用NO_COLOR=1）",
     "cli.option.ascii": "仅使用ASCII符号",
     "cli.option.help": "命令帮助",
     "cli.option.yes": "退出登录前不再询问",
+    "cli.option.yesDownload": "无需询问即下载所需内容",
     "cli.option.deviceCode": "使用代码登录，而非此电脑的浏览器",
     "cli.option.keyFile": "从文件读取许可证密钥",
     "cli.option.keyStdin": "从标准输入读取许可证密钥",
@@ -13462,7 +13489,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.pickDevice": "请选择要替换的设备。",
     "signin.choice.replaceAndSignIn": "替换并登录",
     "signin.choice.replaceSafety":
-      "你选择的设备将退出 {app}。如有空位，它之后可以重新登录。我们会通过电子邮件通知你。",
+      "你选择的设备将退出 {app}。如果设备数量未达上限，它之后可以重新登录。我们会通过电子邮件通知你。",
     "signin.choice.replacedTitle": "设备已替换",
     "signin.choice.replacedBody":
       "{device} 已退出 {app}。{thisDevice} 已登录。",

@@ -97,4 +97,53 @@ class PolarisUpdateStateTest {
         runCurrent()
         assertEquals(PolarisUpdateFailure("platform_error"), state.offer.value?.error)
     }
+
+    @Test
+    fun factsRideOnlyOnTheirOwnVersion() {
+        val state = PolarisUpdateState()
+        state.show(PolarisUpdateUi("2.5.0"))
+        state.describe("2.5.0", currentVersion = "2.4.1", notes = listOf("a", "b", "c", "d"), notesUrl = "https://x/y", outlet = "play")
+        val offer = state.offer.value!!
+        assertEquals("2.4.1", offer.currentVersion)
+        assertEquals(listOf("a", "b", "c"), offer.notes)
+        assertEquals("play", offer.outlet)
+        state.show(PolarisUpdateUi("2.6.0"))
+        assertEquals(emptyList<String>(), state.offer.value!!.notes)
+        assertNull(state.offer.value!!.notesUrl)
+        assertEquals("2.4.1", state.offer.value!!.currentVersion)
+    }
+
+    @Test
+    fun notesAreAtMostThreePlainLines() {
+        assertEquals(listOf("one", "two", "three"), PolarisUpdateUi.notesFrom("- one\n\n* two\n\u2022 three\nfour"))
+        assertEquals(emptyList<String>(), PolarisUpdateUi.notesFrom(null))
+    }
+
+    @Test
+    fun skipClosesTheOfferTellsTheHostAndSticks() {
+        val state = PolarisUpdateState()
+        val skipped = mutableListOf<String>()
+        state.onSkip = { skipped += it }
+        state.show(PolarisUpdateUi("2.5.0"))
+        state.skip()
+        assertNull(state.offer.value)
+        assertEquals(listOf("2.5.0"), skipped)
+        state.show(PolarisUpdateUi("2.5.0"))
+        assertNull(state.offer.value)
+        state.show(PolarisUpdateUi("2.5.0", mandatory = true))
+        state.skip()
+        assertEquals("2.5.0", state.offer.value?.version)
+    }
+
+    @Test
+    fun timeLeftComesFromTheRateSoFar() {
+        var t = 0L
+        val state = PolarisUpdateState().apply { now = { t } }
+        state.show(PolarisUpdateUi("2.5.0"))
+        state.progress(0, 100)
+        assertNull(state.offer.value!!.secondsLeft)
+        t = 10_000
+        state.progress(20, 100)
+        assertEquals(40, state.offer.value!!.secondsLeft)
+    }
 }

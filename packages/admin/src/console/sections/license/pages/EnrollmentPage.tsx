@@ -20,6 +20,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   api,
   type FingerprintMode,
+  type FingerprintPolicyDto,
   type FingerprintProbeDto,
 } from "../../../../api.js";
 import { useProduct } from "../../../data/hooks.js";
@@ -151,6 +152,7 @@ export function EnrollmentPage({ slug }: { slug: string }): React.ReactElement {
             slug={slug}
             policy={policyQ.data.policy}
             source={policyQ.data.source}
+            version={policyQ.data.version}
           />
           <ProbesSection slug={slug} probes={policyQ.data.policy.probes} />
         </>
@@ -250,10 +252,13 @@ function PolicySection({
   slug,
   policy,
   source,
+  version,
 }: {
   slug: string;
-  policy: { enabled: boolean; defaultMode: FingerprintMode };
+  policy: FingerprintPolicyDto;
   source: "manifest" | "admin";
+  /** The row version the page loaded: the write names it. */
+  version: number;
 }): React.ReactElement {
   const [reverting, setReverting] = React.useState(false);
   const values = React.useMemo<PolicyValues>(
@@ -263,7 +268,10 @@ function PolicySection({
   const form = useAdminForm<PolicyValues>({
     values,
     onSubmit: async (v) => {
-      await mutate("updateFingerprintPolicy", slug, policyPatch(v.mode));
+      await mutate("updateFingerprintPolicy", slug, policyPatch(v.mode), {
+        policy,
+        version,
+      });
       toast.success("Fingerprint policy saved");
     },
   });
@@ -324,7 +332,7 @@ function PolicySection({
         confirmLabel="Return to manifest"
         describeError={(e) => errorCopy(e)}
         onConfirm={async () => {
-          await mutate("revertFingerprintPolicy", slug);
+          await mutate("revertFingerprintPolicy", slug, version);
           toast.success("Returned to manifest control", {
             description: "The manifest's policy applies at the next resync.",
           });

@@ -135,14 +135,6 @@
   text-decoration-thickness: 2px;
 }
 
-/* Shown when the search engine cannot start (astro.config.mjs, pk-help-search-bundle). */
-.pk-search-failed {
-  margin: 0;
-  padding: 0.75rem 1rem;
-  color: var(--sl-color-text);
-  font-size: var(--sl-text-sm);
-}
-
 .pk-section {
   display: contents;
 }
@@ -232,7 +224,7 @@ h6,
 }
 
 /* The brand is an outlined lockup (SiteTitle.astro), never live text: a 4 rem header carries the
-   Key lockup's 48 px glyph with 8 px of clear space. Under 26 rem there is no room for the Key
+   Key lockup's 48 px glyph with 8 px of clear space. Under 24 rem there is no room for the Key
    lockup's 180 px, so the mark stands alone (Locker guide p.7). */
 :root {
   --sl-nav-height: 4rem;
@@ -254,7 +246,7 @@ h6,
   display: none;
 }
 
-@media (max-width: 26rem) {
+@media (max-width: 24rem) {
   .pk-site-title:not([data-kind="locker"]) .pk-lockup {
     display: none;
   }
@@ -270,6 +262,32 @@ h6,
   }
   .pk-site-title[data-kind="locker"] .pk-lockup-mark {
     display: block;
+  }
+}
+
+/* Large text: the lockup is a fixed 218 px, so a header that text size has shrunk to under 18 em
+   (a 390 px window at 200 %, a 320 px one at 100 %) takes the mark alone rather than a scaled-down
+   lockup. The em is the header's own, so it follows the reader's text size, which a window-width
+   media query cannot. */
+@supports (container-type: inline-size) {
+  [data-brand="locker"] header.header {
+    container: pk-header / inline-size;
+  }
+  @container pk-header (max-width: 18em) {
+    .pk-site-title[data-kind="locker"] .pk-lockup {
+      display: none;
+    }
+    .pk-site-title[data-kind="locker"] .pk-lockup-mark {
+      display: block;
+    }
+    /* The mark keeps its 32 px: the tag beside it goes (it squeezed the title to nothing). */
+    .pk-site-title[data-kind="locker"] {
+      flex: none;
+      min-width: 2rem;
+    }
+    [data-brand="locker"] .title-wrapper .pk-help-tag {
+      display: none;
+    }
   }
 }
 

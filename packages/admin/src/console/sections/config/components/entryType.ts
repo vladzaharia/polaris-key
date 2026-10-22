@@ -42,10 +42,22 @@ export const TYPE_HELP: Record<EntryType, string> = {
   flag: "An entitlement the license includes.",
 };
 
+/** The two short lines on a Type card. */
+export const TYPE_CARD_HELP: Record<EntryType, string> = {
+  setting: "A value the app reads",
+  secret: "Write-only here. Never listed in the app",
+  minted: "Signed on request from a recipe. Never stored",
+  flag: "An entitlement the license includes",
+};
+
 /** The In the app row for a type that is never listed. */
-export function codeOnlyText(type: EntryType, key: string): string {
+export function codeOnlyText(
+  type: EntryType,
+  key: string,
+  app = "The app",
+): string {
   return type === "minted"
-    ? `Code only. The app calls mintToken("${key}").`
+    ? `Code only. ${app} calls mintToken("${key}").`
     : "Code only. Write-only; set per profile or license.";
 }
 

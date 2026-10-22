@@ -334,7 +334,7 @@
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block under the selected device. On macOS the kit wraps {device} in curly quotes. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="deviceLimit_confirmTitle">%1$sを置き換えますか？</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="deviceLimit_consequence">%1$sは%2$sからサインアウトし、%3$sがその枠を使用します。この件についてはメールでお知らせします。</string>
+    <string name="deviceLimit_consequence">%1$sは%2$sからサインアウトされ、代わりに%3$sが使われます。この件についてはメールでお知らせします。</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button. -->
     <string name="deviceLimit_primary">置き換えて続ける</string>
     <string name="deviceLimit_primary__macos">置き換えて続ける</string>
@@ -646,6 +646,8 @@
     <string name="channel_title">リリースチャンネル</string>
     <!-- ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
     <string name="channel_locked">チャンネルは%1$sで設定されます。</string>
+    <!-- ChannelPicker: the license allows one release channel, so the choice is locked. -->
+    <string name="channel_lockedLicense">ライセンスにはこのチャンネルのみ含まれます。</string>
     <!-- Toast action. -->
     <string name="toast_undo">取り消す</string>
     <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
@@ -868,7 +870,7 @@
     <string name="signin_choice_continue">このライセンスを使って続ける</string>
     <string name="signin_choice_continue__macos">このライセンスを使って続ける</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
-    <string name="signin_choice_raced">その枠はたった今使用されました。もう一度選択してください。</string>
+    <string name="signin_choice_raced">そのデバイスはたった今置き換えられました。もう一度選択してください。</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_choice_codeExpired">%1$sのコードの有効期限が切れました。そちらで新しいコードを取得して、もう一度スキャンしてください。</string>
     <!-- No license in this account (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -884,7 +886,7 @@
     <string name="signin_replace_open">デバイスを置き換える</string>
     <string name="signin_replace_open__macos">デバイスを置き換える</string>
     <!-- Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice). Arguments: 1=thisDevice. -->
-    <string name="signin_replace_lede">サインアウトするデバイスを選んでください。%1$sがその枠を使用します。</string>
+    <string name="signin_replace_lede">サインアウトするデバイスを選んでください。代わりに%1$sが使われます。</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title. -->
     <string name="signin_replace_heading">デバイスを置き換える</string>
     <!-- Replace a device in a system dialog (SIGN-IN.md §3.7). -->
@@ -900,7 +902,7 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_title">%1$sを置き換えますか？</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="signin_replace_consequence">%1$sは%2$sからサインアウトし、%3$sがその枠を使用します。この件についてはメールでお知らせします。</string>
+    <string name="signin_replace_consequence">%1$sは%2$sからサインアウトされ、代わりに%3$sが使われます。この件についてはメールでお知らせします。</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_inUse">%1$sは現在使用中です。</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -918,9 +920,9 @@
         <item quantity="other">デバイスの変更が多すぎます。%1$d秒後にもう一度お試しください。</item>
     </plurals>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
-    <string name="signin_replace_raced">先に別のデバイスがその枠を使用しました。もう一度選択してください。</string>
+    <string name="signin_replace_raced">先に別の人がそのデバイスを置き換えました。もう一度選択してください。</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
-    <string name="signin_replace_racedAfterFree">%1$sは削除されましたが、先に別のデバイスがその枠を使用しました。もう一度選択してください。</string>
+    <string name="signin_replace_racedAfterFree">%1$sは削除されましたが、先に別のデバイスがサインインしました。もう一度選択してください。</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated); {name} = the person's display name. Arguments: 1=app, 2=name. -->
     <string name="signin_consent_title">%2$sとして%1$sに進みますか？</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
@@ -1247,6 +1249,8 @@
     <string name="cli_verb_packsEnsure">コンテンツをダウンロードしてインストール（進捗表示）</string>
     <!-- Terminal help: what the doctor command does. -->
     <string name="cli_verb_doctor">このデバイスでできることを表示（サポート用）</string>
+    <!-- Terminal help: what the boot command does. -->
+    <string name="cli_verb_boot">起動処理を実行（段階ごとに1行）</string>
     <!-- Terminal help: what the completion command does. bash, zsh and fish are shell names; keep them. -->
     <string name="cli_verb_completion">bash、zsh、fish用のシェル補完を出力</string>
     <!-- Terminal help: what the -json flag does. -->
@@ -1259,6 +1263,8 @@
     <string name="cli_option_help">コマンドのヘルプ</string>
     <!-- Terminal help: what the -yes flag does. -->
     <string name="cli_option_yes">サインアウト前に確認しない</string>
+    <!-- Terminal help: what the -yes flag does on boot. -->
+    <string name="cli_option_yesDownload">必要なコンテンツを確認せずにダウンロード</string>
     <!-- Terminal help: what the -device-code flag does. -->
     <string name="cli_option_deviceCode">このコンピュータのブラウザの代わりにコードでサインイン</string>
     <!-- Terminal help: what the -key-file flag of the activate command does. -->
@@ -1615,7 +1621,7 @@
     <string name="signin_choice_replaceAndSignIn">置き換えてサインイン</string>
     <string name="signin_choice_replaceAndSignIn__macos">置き換えてサインイン</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_choice_replaceSafety">選んだデバイスは %1$s からサインアウトされます。空きがあれば、後でもう一度サインインできます。メールでお知らせします。</string>
+    <string name="signin_choice_replaceSafety">選んだデバイスは %1$s からサインアウトされます。台数に余裕があれば、後でもう一度サインインできます。メールでお知らせします。</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_choice_replacedTitle">デバイスを置き換えました</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser". Arguments: 1=device, 2=app, 3=thisDevice. -->

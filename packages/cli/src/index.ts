@@ -17,10 +17,12 @@ import { CLI_VERSION } from "./version.js";
 import { MIGRATE_USAGE, formatMigrate, runMigrate } from "./migrate.js";
 import {
   COMPLETION_SHELLS,
+  COMMANDS,
   completionScript,
   findCommand,
   renderCommandHelp,
   renderHelp,
+  shortUrl,
   VALUELESS_FLAGS,
   type CompletionShell,
   type HelpHere,
@@ -38,11 +40,13 @@ import {
 import { fixManifest, type FixMove } from "./fix.js";
 import { applyContext, resolveContext, type PkeyContext } from "./context.js";
 import {
-  checkRemote,
+  doctorCounts,
   doctorOk,
-  manifestFact,
+  gatherDoctor,
   type DoctorFact,
+  type DoctorModel,
 } from "./doctor.js";
+import { nearest } from "./suggest.js";
 import {
   Spinner,
   termFor,
@@ -57,6 +61,7 @@ import {
   normalizeModules,
   outletIdsFor,
   validateLoadedManifest,
+  ManifestSyntaxError,
   type LoadedManifest,
   type ProductModule,
   type ValidationMessage,
@@ -531,6 +536,8 @@ export interface CliIo {
   fetchImpl?: typeof fetch;
   /** The back-off seam (tests pass an instant one). */
   sleep?: (ms: number) => Promise<void>;
+  /** How long `pkey doctor` waits for discovery (default 10 s; tests pass a short one). */
+  doctorTimeoutMs?: number;
 }
 
 interface ParsedArgs {
@@ -614,6 +621,7 @@ async function runCommand(
     env: io.env,
     fetchImpl: io.fetchImpl,
     sleep: io.sleep,
+    doctorTimeoutMs: io.doctorTimeoutMs,
   };
   const g: TermFlags = { color: global.flags.color, ascii: global.flags.ascii };
   const term = (out: TermOut): Term => termFor(out, ci.env, g);
@@ -663,6 +671,10 @@ async function runCommand(
     // cleaned per line, so it draws no escape and no line of it reads as a workflow command.
     // A bug's exception prints one line and no stack (PKEY_DEBUG=1 adds it); a failed request
     // says what to check; a message that carries `Usage:` lines is a usage error (exit 2).
+    if (err instanceof ManifestSyntaxError) {
+      stderr.write(failLine(untrustedLines(err.message, ci.env), term(stderr)));
+      return 1;
+    }
     const message = isInternalError(err)
       ? internalMessage(err)
       : networkMessage(err);
@@ -692,11 +704,13 @@ type Handler = (parsed: ParsedArgs, rt: Runtime) => number | Promise<number>;
  */
 export const HANDLERS: Readonly<Record<string, Handler>> = {
   init: (p, rt) => cmdInit(p, rt.cwd, rt.stdout),
-  validate: (p, rt) => cmdValidate(p, rt.cwd, rt.stdout, rt.term(rt.stdout)),
+  validate: (p, rt) =>
+    cmdValidate(p, rt.cwd, rt.stdout, rt.stderr, rt.term(rt.stdout)),
   completion: (p, rt) => cmdCompletion(p, rt.stdout, rt.stderr),
   distribution: (p, rt) =>
     cmdDistribution(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
-  doctor: (p, rt) => cmdDoctor(p, rt.cwd, rt.stdout, rt.term(rt.stdout), rt.ci),
+  doctor: (p, rt) =>
+    cmdDoctor(p, rt.cwd, rt.stdout, rt.stderr, rt.term(rt.stdout), rt.ci, rt.g),
   bundle: (p, rt) => cmdBundle(p, rt.cwd, rt.stdout, rt.ci.env),
   migrate: (p, rt) => cmdMigrate(p, rt.stdout, rt.ci.env, rt.ci.fetchImpl),
   trust: (p, rt) => cmdTrust(p, rt.stdout),
@@ -722,10 +736,20 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
  * lines of help would push the error out of view.
  */
 function unknownCommand(name: string, term: Term, parent?: string): string {
+  const sub = parent ? name.slice(parent.length + 1) : name;
+  const near = nearest(
+    sub,
+    parent
+      ? Object.keys(findCommand(parent)?.tree ?? {})
+      : COMMANDS.map((c) => c.name),
+  );
+  const hint = near
+    ? ` Did you mean ${parent ? `${parent} ${near}` : near}?`
+    : "";
   return failLine(
     parent
-      ? `Unknown ${parent} command "${name.slice(parent.length + 1)}". Run pkey help ${parent} to see its commands.`
-      : `Unknown command "${name}". Run pkey help to see every command.`,
+      ? `Unknown ${parent} command "${sub}".${hint} Run pkey help ${parent} to see its commands.`
+      : `Unknown command "${name}".${hint} Run pkey help to see every command.`,
     term,
   );
 }
@@ -881,8 +905,14 @@ async function cmdValidate(
   parsed: ParsedArgs,
   cwd: string,
   stdout: TermOut,
+  stderr: TermOut,
   term: Term,
 ): Promise<number> {
+  const bad = checkFlags(parsed, "validate", ["fix", "json"], term);
+  if (bad) {
+    stderr.write(bad);
+    return 2;
+  }
   if (parsed.positional.length > 1) throw new Error(VALIDATE_USAGE);
   const target = parsed.positional[0];
   const dir = target === undefined ? cwd : path.resolve(cwd, target);
@@ -928,8 +958,39 @@ async function validateText(
 ): Promise<number> {
   const manifest = await loadManifest(dir);
   const result = validateLoadedManifest(manifest);
+  writeRows(validateRows(manifest, result, cwd, term), stdout, term);
+  return result.ok ? 0 : 1;
+}
+
+/** One line of a report: a mark (a glyph, or a blank) and the spans that wrap beside it. */
+interface Row {
+  mark: string;
+  spans: Line;
+}
+
+/** Print rows: on a terminal each wraps under its own column, elsewhere each is one plain line. */
+function writeRows(rows: readonly Row[], stdout: TermOut, term: Term): void {
   const { painter, symbols, caps } = term;
-  const rows: Array<{ mark: string; spans: Line }> = [];
+  const gap = " ".repeat(2);
+  for (const row of rows) {
+    const lines = caps.tty
+      ? wrapSpans(row.spans, Math.max(1, caps.columns - 3), symbols.ellipsis)
+      : [row.spans];
+    lines.forEach((l, i) =>
+      stdout.write(`${i === 0 ? row.mark : " "}${gap}${painter.line(l)}\n`),
+    );
+  }
+}
+
+/** The verdict, the features and the required secrets, then every warning (▲) and error (✗). */
+function validateRows(
+  manifest: LoadedManifest,
+  result: ValidationResult,
+  cwd: string,
+  term: Term,
+): Row[] {
+  const { painter, symbols } = term;
+  const rows: Row[] = [];
   const mark = (glyph: string, role: string) => painter.style(glyph, [role]);
   rows.push({
     mark: result.ok
@@ -945,7 +1006,7 @@ async function validateText(
   rows.push({
     mark: " ",
     spans: [
-      { text: "Modules: ", style: ["muted"] },
+      { text: "Features: ", style: ["muted"] },
       {
         text: result.enabledModules.length
           ? result.enabledModules.join(", ")
@@ -961,11 +1022,7 @@ async function validateText(
         { text: result.requiredSecrets.join(", ") },
       ],
     });
-  const message = (
-    kind: "warning" | "error",
-    at: Line,
-    text: string,
-  ): { mark: string; spans: Line } => {
+  const message = (kind: "warning" | "error", at: Line, text: string): Row => {
     const role = kind === "warning" ? "warning" : "danger";
     return {
       mark: mark(kind === "warning" ? symbols.warn : symbols.fail, role),
@@ -986,16 +1043,7 @@ async function validateText(
     rows.push(
       message("error", pointerSpans(manifest, cwd, error), error.message),
     );
-  const gap = " ".repeat(2);
-  for (const row of rows) {
-    const lines = caps.tty
-      ? wrapSpans(row.spans, Math.max(1, caps.columns - 3), symbols.ellipsis)
-      : [row.spans];
-    lines.forEach((l, i) =>
-      stdout.write(`${i === 0 ? row.mark : " "}${gap}${painter.line(l)}\n`),
-    );
-  }
-  return result.ok ? 0 : 1;
+  return rows;
 }
 
 /**
@@ -1020,7 +1068,7 @@ async function validateJson(
   } catch (e) {
     stdout.write(
       envelope(1, {
-        error: /is not valid (?:JSON|YAML)/.test((e as Error).message)
+        error: /not valid (?:JSON|YAML)/.test((e as Error).message)
           ? "unreadable-manifest"
           : "no-manifest",
         message: (e as Error).message,
@@ -1212,110 +1260,229 @@ async function cmdDistributionCi(
 }
 
 /**
- * `pkey doctor [--product slug] [--base-url url] [--json]`: validate `.pkey/`, then, when a
- * product is known (the flag, else the nearest `.pkey/product`), check its live discovery at the
- * base URL (the flag, else `PKEY_BASE_URL`, else production). The facts are `doctor.ts`'s; the text
- * answer prints the validation then the remote lines, `--json` the facts in one result line.
+ * `pkey doctor [--product slug] [--base-url url] [--json]`: validate the `.pkey/` at or above
+ * here (the one `pkey help` names), then, when a product is known (the flag, else that manifest's),
+ * check its live discovery at the base URL (the flag, else `PKEY_BASE_URL`, else production). The
+ * facts are gathered once (`doctor.ts`); the text answer renders them, `--json` prints them in one
+ * result line.
  */
 async function cmdDoctor(
   parsed: ParsedArgs,
   cwd: string,
   stdout: TermOut,
+  stderr: TermOut,
   term: Term,
   ci: CiIo & { env: CiEnv },
+  g: TermFlags,
 ): Promise<number> {
-  const u = (v: unknown) => untrusted(v, ci.env);
+  const bad = checkFlags(
+    parsed,
+    "doctor",
+    ["product", "base-url", "json"],
+    term,
+  );
+  if (bad) {
+    stderr.write(bad);
+    return 2;
+  }
+  const json = flagBool(parsed, "json");
   const ctx = await resolveContext({
     cwd,
     env: ci.env,
     product: flagString(parsed, "product"),
     baseUrl: flagString(parsed, "base-url"),
   });
-  if (flagBool(parsed, "json")) return doctorJson(ctx, cwd, stdout, ci);
-
-  const localCode = await validateText(cwd, cwd, stdout, term);
-  if (!ctx.product) {
-    stdout.write(
-      "\nRemote checks skipped. No product: pass --product, or run where .pkey/product is.\n",
-    );
-    return localCode;
+  // The progress line goes to stderr, only on a terminal, and never into `--json`.
+  const spinner = new Spinner(stderr, ci.env, g);
+  let model: DoctorModel;
+  try {
+    model = await gatherDoctor({
+      ctx,
+      cwd,
+      fetchImpl: ci.fetchImpl,
+      timeoutMs: ci.doctorTimeoutMs,
+      onStage: (label) => (json ? undefined : spinner.stage(label)),
+    });
+  } finally {
+    spinner.stop();
   }
-  const remote = await checkRemote({
-    baseUrl: ctx.baseUrl.url,
-    product: ctx.product.slug,
-    fetchImpl: ci.fetchImpl,
-  });
-  if (remote.status !== undefined) {
-    stdout.write(
-      `\nRemote discovery: failed (${remote.status}) ${remote.url}\n` +
-        "Is the product registered, and is --base-url (or $PKEY_BASE_URL) the right origin?\n",
-    );
-    return 1;
+  const exit = doctorOk(model.facts) ? 0 : 1;
+  if (json) {
+    stdout.write(doctorJson(model, exit));
+    return exit;
   }
-  stdout.write(`\nRemote discovery: ok ${remote.url}\n`);
-  // Every name and value below is the server's: each is cleaned (`untrusted.ts`).
-  const enabled = remote.services.map((slug) => u(slug));
-  stdout.write(
-    `Services enabled: ${enabled.length ? enabled.join(", ") : "none"}\n`,
-  );
-  stdout.write(`Signing keys exposed: ${u(JSON.stringify(remote.signing))}\n`);
-  return localCode;
+  writeDoctorText(model, cwd, stdout, term, ci.env);
+  return exit;
 }
 
 /** `pkey doctor --json`: one result line, the facts beside the envelope's fields. */
-async function doctorJson(
-  ctx: PkeyContext,
+function doctorJson(model: DoctorModel, exit: number): string {
+  return `${untrustedJson({
+    v: 1,
+    command: "doctor",
+    event: "result",
+    ok: exit === 0,
+    exit,
+    product: model.product?.slug ?? null,
+    baseUrl: model.baseUrl,
+    facts: model.facts,
+    services: model.services,
+    signing: model.signing,
+  }).replace(
+    /[\u007f-\uffff]/g,
+    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  )}\n`;
+}
+
+const FACT_LABEL: Record<DoctorFact["id"], string> = {
+  manifest: "Manifest",
+  discovery: "Live product",
+  services: "Live features",
+  "signing-keys": "Signing key",
+  "in-sync": "Features differ",
+};
+
+/**
+ * The text answer, from the facts: a header naming the product and origin, a row per fact (the
+ * manifest's rows are `pkey validate`'s), a `→` fix row after each to do, and a closing count.
+ * Everything the server said is cleaned on its way out.
+ */
+function writeDoctorText(
+  model: DoctorModel,
   cwd: string,
   stdout: TermOut,
-  ci: CiIo & { env: CiEnv },
-): Promise<number> {
-  let result: ValidationResult | null = null;
-  let problem: string | undefined;
-  try {
-    result = validateLoadedManifest(await loadManifest(cwd));
-  } catch (e) {
-    problem = (e as Error).message;
-  }
-  const facts: DoctorFact[] = [manifestFact(result, problem)];
-  let services: string[] = [];
-  let signing: unknown = null;
-  if (ctx.product) {
-    try {
-      const remote = await checkRemote({
-        baseUrl: ctx.baseUrl.url,
-        product: ctx.product.slug,
-        fetchImpl: ci.fetchImpl,
+  term: Term,
+  env: CiEnv,
+): void {
+  const { painter, symbols } = term;
+  const u = (v: unknown) => untrusted(v, env);
+  const origin = shortUrl(model.baseUrl);
+  const who = model.product
+    ? model.product.name
+      ? `${model.product.name} (${model.product.slug})`
+      : model.product.slug
+    : "no product";
+  const rows: Row[] = [];
+  const fix = (text: string) =>
+    rows.push({
+      mark: " ",
+      spans: [
+        { text: `${term.caps.unicode ? "→" : "->"} ${text}`, style: ["muted"] },
+      ],
+    });
+  const mark = (state: DoctorFact["state"]) =>
+    painter.style(
+      state === "ok"
+        ? symbols.ok
+        : state === "warn"
+          ? symbols.warn
+          : symbols.fail,
+      [state === "ok" ? "success" : state === "warn" ? "warning" : "danger"],
+    );
+  stdout.write(
+    `${wrapSpans(
+      [
+        { text: u(who), style: ["strong"] },
+        { text: ` ${symbols.separator} ${u(origin)}`, style: ["muted"] },
+      ],
+      term.caps.columns,
+    )
+      .map((l) => painter.line(l))
+      .join("\n")}\n`,
+  );
+  for (const f of model.facts) {
+    if (f.id === "manifest" && model.loaded && model.result) {
+      rows.push(...validateRows(model.loaded, model.result, cwd, term));
+      if (f.fix) fix(f.fix);
+      continue;
+    }
+    const label = FACT_LABEL[f.id];
+    if (f.id === "signing-keys" && model.signing?.length) {
+      model.signing.forEach((k, i) =>
+        rows.push({
+          mark: i === 0 ? mark("ok") : " ",
+          spans:
+            i === 0
+              ? [
+                  { text: `${label}  ` },
+                  { text: `${u(k.kid)}, ${u(k.status)}`, style: ["muted"] },
+                ]
+              : [{ text: `${u(k.kid)}, ${u(k.status)}`, style: ["muted"] }],
+        }),
+      );
+      continue;
+    }
+    if (f.id === "services" && f.state === "ok")
+      rows.push({
+        mark: mark("ok"),
+        spans: [
+          { text: `${label}  ` },
+          { text: model.services.map(u).join(", "), style: ["muted"] },
+        ],
       });
-      facts.push(...remote.facts);
-      services = remote.services;
-      signing = remote.signing;
-    } catch (e) {
-      facts.push({
-        id: "discovery",
-        state: "todo",
-        detail: (e as Error).message,
+    else if (f.state === "ok")
+      rows.push({
+        mark: mark("ok"),
+        spans: [
+          { text: `${label}  ` },
+          { text: u(f.detail), style: ["muted"] },
+        ],
+      });
+    else {
+      const role = f.state === "warn" ? "warning" : "danger";
+      const word = f.state === "warn" ? "warning" : "error";
+      rows.push({
+        mark: mark(f.state),
+        spans:
+          f.id === "manifest"
+            ? [{ text: `${word} `, style: [role] }, { text: u(f.detail) }]
+            : [
+                { text: `${word} `, style: [role] },
+                { text: `${label}: ${u(f.detail)}` },
+              ],
       });
     }
+    if (f.fix) fix(u(f.fix));
   }
-  const exit = doctorOk(facts) ? 0 : 1;
+  writeRows(rows, stdout, term);
+  const { todo, warnings } = doctorCounts(model);
+  const secs = `${(model.ms / 1000).toFixed(1)} s`;
+  const role = todo ? "danger" : warnings ? "warning" : "success";
   stdout.write(
-    `${untrustedJson({
-      v: 1,
-      command: "doctor",
-      event: "result",
-      ok: exit === 0,
-      exit,
-      product: ctx.product?.slug ?? null,
-      baseUrl: ctx.baseUrl.url,
-      facts,
-      services,
-      signing,
-    }).replace(
-      /[\u007f-\uffff]/g,
-      (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
-    )}\n`,
+    `\n${painter.line([
+      {
+        text: `${todo} to do ${symbols.separator} ${warnings} warning${warnings === 1 ? "" : "s"} ${symbols.separator} ${secs}`,
+        style: [role],
+      },
+    ])}\n`,
   );
-  return exit;
+}
+
+/**
+ * Refuse what a command does not take: an option it does not know (`--prodcut`, with the nearest
+ * it does know) and an option that needs a value and got none. `null` when all is well.
+ */
+function checkFlags(
+  parsed: ParsedArgs,
+  command: string,
+  known: readonly string[],
+  term: Term,
+): string | null {
+  const unknown = Object.keys(parsed.flags).find((k) => !known.includes(k));
+  if (unknown !== undefined) {
+    const near = nearest(unknown, known);
+    return failLine(
+      `Unknown option --${unknown}.${near ? ` Did you mean --${near}?` : ` Run pkey help ${command} to see the options.`}`,
+      term,
+    );
+  }
+  const valueless = new Set(
+    findCommand(command)?.valueless ?? ([] as readonly string[]),
+  );
+  const missing = known.find((k) => parsed.bare.has(k) && !valueless.has(k));
+  if (missing !== undefined)
+    return failLine(`Option --${missing} needs a value.`, term);
+  return null;
 }
 
 /**
@@ -1751,6 +1918,7 @@ interface CiIo {
   env: CiEnv;
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
+  doctorTimeoutMs?: number;
 }
 
 const AUTH_USAGE =

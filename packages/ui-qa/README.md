@@ -19,6 +19,7 @@ src/
   config.ts         rule profiles (web, native) and baseline folders
   rules.ts          the modernity rules
   strings.ts        the string lint
+  ux-bar.ts         the console and customer-site UX bar (B6, B7, B17) over the rendered DOM
   kits.ts           re-exports the per-kit source lints
   report.ts         the side-by-side report
   pixeldiff.ts      the cross-renderer pixel diff
@@ -33,6 +34,7 @@ e2e/                browser suites: a seeded violation per rule, and clean board
 test/               unit tests
 ```
 
+- `uxBarFindings(page, { focus })` (UK-63) is the brand-transition bar for the built console and customer site: coloured shadows and glows, gradients, accent-tinted rims, an eyebrow repeating the breadcrumb, taglines, a name drawn over art, weight 700, a focus ring that is not the service ring, and a blur kept under reduced transparency. The admin package's `e2e/portalUxBar.e2e.test.ts` and `e2e/layout.e2e.test.ts` run it; breaches that predate it are `UX_BAR_DEBT` in `packages/admin/e2e/uxBar.ts`, which only shrinks. `PK_UXBAR_COLLECT=<file>` records every finding instead of failing.
 - `lintPage(page)` serves a kit's own Playwright component tests. Call `prepare(page)` before navigating, so `alert()` calls are recorded.
 - `rules/strings.debt.json` only shrinks. Re-record it with `pnpm ui:lint --record-string-debt`.
 - `rules/kit-debt.json` only shrinks. Re-record it with `--record` on `bin/kit-lint.mjs`.

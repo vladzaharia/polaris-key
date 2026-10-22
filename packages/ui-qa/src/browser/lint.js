@@ -52,6 +52,17 @@
   const STATEFUL =
     '[aria-selected="true"], [aria-current="page"], [aria-current="true"], [aria-checked="true"], [aria-pressed="true"], [data-state="checked"], [data-state="on"], [data-state="active"]';
   const ORDERED = "ol, [data-ordered], [data-step], [data-wizard]";
+  // Design language v2 (UK-55): the Polaris mark (Pinned K, Star Cut, the Locker mark) and the one
+  // place it may appear, the opt-in Powered-by line or badge (DL5).
+  const MARK =
+    'svg[aria-label="Polaris Key"], svg[aria-label="Polaris Locker"], [data-polaris-mark], [data-part~="polaris-mark"], img[src*="polaris-mark"], img[src*="/marks/"], img[alt="Polaris Key"], img[alt="Polaris Locker"]';
+  const POWERED_BY =
+    '[data-part~="powered-by"], [data-part~="powered-by-badge"], .powered-by, .powered-by-line, [data-powered-by]';
+  // The --pk-space-* steps in rem (BRAND §4.6): 0, 0.125 ... 6. A kit token resolves to one of these.
+  const SPACE_REM = [
+    0, 0.125, 0.25, 0.375, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6,
+  ];
+  const WEIGHTS = new Set([400, 500, 600]);
   const SEPARATORS = new Set(["·", "•", "|", "—", "–", "/"]);
   const KEY_RE =
     /^(pkey_[a-z0-9]+_[A-Z0-9…]{4,}|[A-Z0-9]{4,6}(-[A-Z0-9]{4,6}){2,})$/;
@@ -90,6 +101,10 @@
     const fonts = new Set(
       (o.fonts.length ? o.fonts : themeFonts()).map((f) => norm(f)),
     );
+
+    const scale = spaceScale();
+    const refusals = (o.refusals || []).map((r) => new RegExp(r));
+    const danger = dangerColours();
 
     for (const scope of scopes) {
       const scopeName =
@@ -145,12 +160,17 @@
               el,
               `font-family ${cs.fontFamily.split(",")[0]} is not the theme's (${[...fonts].join(", ")})`,
             );
+          // DL12: three weights. 700 stays allowed on the wordmark fallback (allowWeight700).
           const weight = parseInt(cs.fontWeight, 10);
           if (
-            weight >= 700 &&
+            !WEIGHTS.has(weight) &&
             !o.allowWeight700.some((s) => el.matches(s) || el.closest(s))
           )
-            report("font-weight-700", el, `font-weight ${weight}`);
+            report(
+              "weights",
+              el,
+              `font-weight ${weight} (400, 500 and 600 only)`,
+            );
           const size = parseFloat(cs.fontSize);
           if (size < o.minFont)
             report("text-size-floor", el, `font-size ${size}px (min 12px)`);
@@ -192,6 +212,56 @@
               "orphan",
               el,
               `last line is the single word "${orphan}" (text-wrap: balance for headings, pretty for body, or rewrite)`,
+            );
+        }
+
+        // DL3: padding and gap sit on the --pk-space-* scale (margins are checked as authored,
+        // because a computed margin resolves `auto` to pixels).
+        const off = offScale(cs, scale);
+        if (off.length && !native)
+          report(
+            "spacing-off-scale",
+            el,
+            `${off.join(", ")} (a --pk-space-* step or a kit token)`,
+          );
+
+        // DL5 and mark-size: the Polaris mark lives in Powered-by only, never below the 16 px cut.
+        if (el.matches(MARK)) {
+          if (!el.closest(POWERED_BY))
+            report(
+              "polaris-mark",
+              el,
+              "a Polaris mark outside the Powered-by line or badge",
+            );
+          const w = el.getBoundingClientRect().width;
+          if (w > 0 && w < 16)
+            report(
+              "mark-size",
+              el,
+              `the mark is ${Math.round(w)} px (16 px favicon cut is the floor)`,
+            );
+          else if (
+            w >= 16 &&
+            w < 24 &&
+            !/favicon/i.test(
+              `${el.getAttribute("data-cut") || ""} ${el.getAttribute("src") || ""} ${el.textContent}`,
+            )
+          )
+            report(
+              "mark-size",
+              el,
+              `the mark is ${Math.round(w)} px: 16 to 23 px must be the favicon cut`,
+            );
+        }
+
+        // DL14: a link in the kit is https (loopback http aside); nothing else is shown or opened.
+        if (el.matches("a[href]")) {
+          const bad = badLink(el.getAttribute("href"));
+          if (bad)
+            report(
+              "link-validation",
+              el,
+              `href ${bad} (only https, or loopback http, through the kit's opener)`,
             );
         }
 
@@ -259,6 +329,33 @@
         }
       }
 
+      // DL6: the text of a refusal is never in the danger role, and never beside an invalid field.
+      if (refusals.length)
+        for (const el of els) {
+          if (!hasOwnText(el)) continue;
+          const text = el.textContent.replace(/\s+/g, " ").trim();
+          if (!text || !refusals.some((re) => re.test(text))) continue;
+          const cs = getComputedStyle(el);
+          const hit = danger.has(cs.color)
+            ? "text"
+            : danger.has(cs.backgroundColor)
+              ? "ground"
+              : paintedDanger(el, scope, danger);
+          if (hit)
+            report(
+              "refusal-styling",
+              el,
+              `a refusal is drawn in the danger role (${hit}); it is a neutral callout (DL6)`,
+            );
+          const field = invalidField(el, scope);
+          if (field)
+            report(
+              "refusal-styling",
+              el,
+              `a refusal sits beside ${describe(field)} with aria-invalid; a refused well-formed key is not invalid input (DL6)`,
+            );
+        }
+
       // Regions: one primary, one dismissal.
       const regions = new Set();
       for (const el of els) {
@@ -300,6 +397,7 @@
 
       // Console shell v2 (B4, B17).
       const accents = serviceAccents();
+      const forced = window.matchMedia("(forced-colors: active)").matches;
       for (const el of els) {
         if (el.matches(STATUS)) {
           // Core is the platform's own violet, which the info status shares in the light theme
@@ -324,6 +422,17 @@
               "state-accent",
               el,
               `a selected or checked state paints the ${hit} accent inside ${own} (the nearest data-service decides)`,
+            );
+        }
+        // Under the native preset and forced colours the platform owns the accents: no border,
+        // rim or shadow tinted with a service accent (BRAND-TRANSITION B17).
+        if (forced || el.closest('[data-ui-preset="native"]')) {
+          const hit = accentIn(edgePaint(el), accents, null, null);
+          if (hit)
+            report(
+              "native-accent-tint",
+              el,
+              `a border, rim or shadow tinted with the ${hit} accent under ${forced ? "forced colours" : "the native preset"}`,
             );
         }
         if (el.matches(HEADINGS) && !el.closest(ORDERED) && indexed(el))
@@ -458,6 +567,46 @@
         });
     }
 
+    // DL9: after a full-window state mounts with keyboard modality, focus is inside the kit root.
+    const rootSel = o.initialFocus || "[data-pk-fullwindow]";
+    const kitRoot = document.querySelector(rootSel);
+    if (
+      kitRoot &&
+      !kitRoot.closest("[data-ui-chrome]") &&
+      !allowed(kitRoot, "initial-focus")
+    ) {
+      const active = document.activeElement;
+      if (!active || active === document.body || !kitRoot.contains(active))
+        violations.push({
+          rule: "initial-focus",
+          scope: "page",
+          target: describe(kitRoot),
+          detail: `focus is ${active && active !== document.body ? describe(active) : "on the document"}, outside the kit root; a screen focuses its primary or first sign-in method (DL9)`,
+        });
+    }
+
+    // DL14: a link opens only through the kit's one validating opener.
+    for (const call of window.__pkUiLintOpens || [])
+      violations.push({
+        rule: "link-validation",
+        scope: "page",
+        target: "window",
+        detail: `window.open(${call}) outside the kit's opener`,
+      });
+    for (const sc of document.querySelectorAll("script:not([src])")) {
+      if (sc.textContent.includes("__pkUiLint")) continue;
+      const m = sc.textContent.match(
+        /\b(window\.open\s*\(|(?:window\.|document\.)?location\s*(?:\.href\s*)?=[^=]|location\.(?:assign|replace)\s*\(|\.href\s*=[^=])/,
+      );
+      if (m)
+        violations.push({
+          rule: "link-validation",
+          scope: "page",
+          target: "inline script",
+          detail: `${m[1].trim()} in an inline script (only the kit's validating opener may open a link)`,
+        });
+    }
+
     // Board captions (UK-59): every figure that holds a shot says which tier the frame is, as
     // the caption's last words: "Built today" or "UK-11 target", then at most one parenthetical.
     // A "Built today" frame is true by construction: it holds an <img> whose src is a committed
@@ -501,6 +650,148 @@
 
     return { violations, strings };
   };
+
+  // ── design language v2 helpers (UK-55) ───────────────────────────────────────────────────
+  function rootPx() {
+    return (
+      parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+    );
+  }
+
+  /** The px values a margin, padding or gap may take: the scale, 1 px hairlines, and kit tokens. */
+  function spaceScale() {
+    const root = rootPx();
+    const set = new Set(SPACE_REM.map((r) => Math.round(r * root * 100) / 100));
+    set.add(1);
+    const names = new Set();
+    for (const { rule } of styleRules())
+      for (let i = 0; i < rule.style.length; i++) {
+        const n = rule.style[i];
+        if (
+          /^--pk-space-/.test(n) ||
+          /^--(pk-)?kit-[\w-]*(space|gap|pad|inset|margin)/.test(n)
+        )
+          names.add(n);
+      }
+    const probe = document.createElement("div");
+    probe.style.cssText =
+      "position:absolute;visibility:hidden;pointer-events:none";
+    document.body.appendChild(probe);
+    for (const n of names) {
+      probe.style.paddingLeft = `var(${n})`;
+      const px = parseFloat(getComputedStyle(probe).paddingLeft);
+      if (!Number.isNaN(px)) set.add(Math.round(px * 100) / 100);
+    }
+    probe.remove();
+    return set;
+  }
+
+  /** Padding and gap of `cs` that are neither on the scale nor a kit token. */
+  function offScale(cs, scale) {
+    const out = [];
+    const props = [
+      "padding-top",
+      "padding-right",
+      "padding-bottom",
+      "padding-left",
+      "row-gap",
+      "column-gap",
+    ];
+    for (const p of props) {
+      const v = cs.getPropertyValue(p);
+      const px = parseFloat(v);
+      if (!v || v === "normal" || Number.isNaN(px)) continue;
+      if (![...scale].some((s) => Math.abs(s - px) < 0.51))
+        out.push(`${p}: ${v}`);
+    }
+    return out;
+  }
+
+  /** Literal lengths in an authored margin value that are off the scale (var(), calc(), % skip). */
+  function offScaleLengths(v) {
+    if (/var\(|calc\(|clamp\(|min\(|max\(|env\(/.test(v)) return [];
+    const root = rootPx();
+    const scale = SPACE_REM.map((r) => r * root);
+    const bad = [];
+    for (const m of v.matchAll(/(-?[\d.]+)(px|rem)\b/g)) {
+      const px = Math.abs(parseFloat(m[1])) * (m[2] === "rem" ? root : 1);
+      if (px === 1) continue;
+      if (!scale.some((s) => Math.abs(s - px) < 0.51)) bad.push(m[0]);
+    }
+    return bad;
+  }
+
+  /** A link the kit would not open: http beyond loopback, javascript:, data:, file:. */
+  function badLink(href) {
+    if (!href) return null;
+    const h = href.trim();
+    if (/^(javascript|data|file|vbscript):/i.test(h)) return h.slice(0, 40);
+    if (/^http:\/\/(?!(localhost|127\.0\.0\.1|\[::1\])(:|\/|$))/i.test(h))
+      return h.slice(0, 40);
+    return null;
+  }
+
+  /** The computed colours of every danger / error token the page defines, as rgb strings. */
+  function dangerColours() {
+    const set = new Set();
+    const probe = document.createElement("div");
+    probe.style.cssText =
+      "position:absolute;visibility:hidden;pointer-events:none";
+    document.body.appendChild(probe);
+    const names = new Set();
+    for (const { rule } of styleRules())
+      for (let i = 0; i < rule.style.length; i++) {
+        const n = rule.style[i];
+        // The roles a refusal could wrongly take: text, ground, edge. Not `-on` (the ink drawn on
+        // a solid danger fill), which is white or near-black and shared with ordinary text.
+        if (
+          /^--[\w-]*(danger|error|destructive)[\w-]*$/.test(n) &&
+          !/-on$/.test(n)
+        )
+          names.add(n);
+      }
+    for (const n of names) {
+      probe.style.color = `var(${n})`;
+      const c = getComputedStyle(probe).color;
+      if (c && c !== "rgba(0, 0, 0, 0)") set.add(c);
+    }
+    probe.remove();
+    return set;
+  }
+
+  /** A danger ground behind a refusal's text (the callout it sits in), up to the scope. */
+  function paintedDanger(el, scope, danger) {
+    for (
+      let p = el.parentElement;
+      p && scope.contains(p);
+      p = p.parentElement
+    ) {
+      const cs = getComputedStyle(p);
+      if (danger.has(cs.backgroundColor)) return "callout ground";
+      if (danger.has(cs.borderTopColor) && parseFloat(cs.borderTopWidth) > 0)
+        return "callout border";
+    }
+    return null;
+  }
+
+  /** An aria-invalid field in the refusal's own callout or described by it. */
+  function invalidField(el, scope) {
+    if (el.id) {
+      const d = document.querySelector(
+        `[aria-invalid="true"][aria-describedby~="${CSS.escape(el.id)}"]`,
+      );
+      if (d) return d;
+    }
+    for (
+      let p = el.parentElement, i = 0;
+      p && scope.contains(p) && i < 3;
+      p = p.parentElement, i++
+    ) {
+      const f = p.querySelector('[aria-invalid="true"]');
+      if (f) return f;
+    }
+    return null;
+  }
 
   // ── style-rule checks ──────────────────────────────────────────────────────────────────────
   function cssRules(rule, sheet, hit, out, scopes) {
@@ -582,6 +873,26 @@
         );
       if (/(^|[\s(,])-?[\d.]+(vw|svw|lvw|dvw|vmin|vmax)\b/.test(v))
         push("no-vw", `${p}: ${v} (container units only)`);
+      if (
+        /^margin(-(top|right|bottom|left|block|inline)(-(start|end))?)?$/.test(
+          p,
+        )
+      ) {
+        const bad = offScaleLengths(v);
+        if (bad.length)
+          push(
+            "spacing-off-scale",
+            `${p}: ${v} (${bad.join(", ")} is off the --pk-space-* scale)`,
+          );
+      }
+      if (
+        (p === "font-size" && /(^|[\s(,])-?[\d.]+px\b/.test(v)) ||
+        (p === "font" && /\s[\d.]+px(\s|\/|$)/.test(v))
+      )
+        push(
+          "px-font",
+          `${p}: ${v} (size type in rem, a clamp of rem and container units, or a token)`,
+        );
       if (p === "font-size" && fractionalPx(v))
         push("fractional-font-size", `font-size: ${v}`);
       if (
@@ -1079,6 +1390,22 @@
     for (const layer of shadowLayers(cs.boxShadow))
       if (layer.color) list.push(layer.color);
     return list.filter(Boolean);
+  }
+  // The colours of an element's edges: borders (where drawn), outline and shadows.
+  function edgePaint(el) {
+    const cs = getComputedStyle(el);
+    const list = [];
+    for (const side of ["Top", "Right", "Bottom", "Left"])
+      if (
+        cs[`border${side}Style`] !== "none" &&
+        parseFloat(cs[`border${side}Width`]) > 0
+      )
+        list.push(cs[`border${side}Color`]);
+    if (cs.outlineStyle !== "none" && parseFloat(cs.outlineWidth) > 0)
+      list.push(cs.outlineColor);
+    for (const layer of shadowLayers(cs.boxShadow))
+      if (layer.color) list.push(layer.color);
+    return list;
   }
   // The first service whose accent is among `colours`, other than `own` (null: any service).
   function accentIn(colours, accents, own, skip) {

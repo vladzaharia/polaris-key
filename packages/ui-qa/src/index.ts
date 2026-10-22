@@ -16,3 +16,10 @@ export type {
   Violation,
   VisibleString,
 } from "./types.ts";
+export {
+  UX_BAR_RULES,
+  reduceTransparency,
+  uxBarFindings,
+  withoutUxDebt,
+} from "./ux-bar.ts";
+export type { UxBarDebt, UxBarOptions, UxBarRule } from "./ux-bar.ts";

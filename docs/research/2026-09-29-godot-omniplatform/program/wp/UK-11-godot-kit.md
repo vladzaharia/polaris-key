@@ -1,16 +1,16 @@
 # UK-11 Godot UI kit modernised in place: brand default (dark), glass `PKeySheet`, wordmark and display face, input glyphs, console focus ring, themed engine icons, Tween motion, new scenes, POT export
 
-| Field       | Value                                                                                                                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                              |
-| Size        | 5–7 engineer-weeks                                                                                                                                                                        |
-| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-29](UK-29-godot-dotnet-facade.md), [UK-41](UK-41-must-tier-closeout.md), [UK-43](UK-43-activation-holders-native.md)                          |
-| Role        | `pkey-godot-engineer`                                                                                                                                                                     |
-| Plan mode   | no                                                                                                                                                                                        |
-| Gates       | `tools/ui_screenshots.gd` promoted to a compared suite; the Godot focus-chain tests; the Godot lint equivalent (every engine control icon themed); `sdks/godot/tools/run_tests.sh`        |
-| Human input | none                                                                                                                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                 |
+| Field       | Value                                                                                                                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                           |
+| Size        | 5–7 engineer-weeks                                                                                                                                                                                                     |
+| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md)                              |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-11b](UK-11b-godot-game-look-scenes-baselines.md), [UK-29](UK-29-godot-dotnet-facade.md), [UK-41](UK-41-must-tier-closeout.md), [UK-43](UK-43-activation-holders-native.md) |
+| Role        | `pkey-godot-engineer`                                                                                                                                                                                                  |
+| Plan mode   | no                                                                                                                                                                                                                     |
+| Gates       | `tools/ui_screenshots.gd` promoted to a compared suite; the Godot focus-chain tests; the Godot lint equivalent (every engine control icon themed); `sdks/godot/tools/run_tests.sh`                                     |
+| Human input | none                                                                                                                                                                                                                   |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                              |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -280,3 +280,7 @@ Branch `wp/UK-11-continue`. Done:
 - Known: `offline / custom / ja` failed at `750x1334@2` (Import below the fold) in the first full run; not caused by this slice as far as seen, check against main.
 
 Still to do, in order: priority 3 (move the screens onto `view_of()` and catalog keys through `copy_format.gd`; of 300 `PKeyUiCopy` keys only 117 have a catalog string with the same English, the rest need the catalog's wording and the tests that pin the old strings updated; start with `PKeyGate` and `PKeyActivationPanel`), then the new scenes, the modern-game look, baselines and the design review as listed above.
+
+## Split 2026-10-22 (triage)
+
+UK-11 closes after KX-GD-PLAY and KX-GD-ID land. The game look, five standalone scenes, PNG baselines, UK-59 leftovers, the BUILT UX pass and the Godot `sign_in / native28` overflow are **[UK-11b](UK-11b-godot-game-look-scenes-baselines.md)**.

@@ -12,7 +12,7 @@ import {
   sourceSummary,
 } from "../model/profile.js";
 import { Avatar } from "./Avatar.js";
-import { providerBadge } from "./Glyphs.js";
+import { providerBadge } from "../../ui/Glyphs.js";
 import { ProfileEditor } from "./ProfileEditor.js";
 import { AccountCard as SectionCard } from "./account/AccountCard.js";
 

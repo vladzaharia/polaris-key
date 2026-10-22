@@ -25,6 +25,12 @@ import { VersionInput } from "../../../../ui/VersionInput.js";
 import { InlineFailure } from "./InlineFailure.js";
 import { useManualChannels, useProfiles } from "./shared.js";
 
+/**
+ * Every license holds `stable` whatever its tier lists ("none means stable only", terms.ts), so
+ * the form never edits it: it is drawn checked and disabled, and kept out of the draft and the diff.
+ */
+const CHANNEL_STABLE = "stable";
+
 /** The manifest's tier id rule. */
 export const TIER_ID_RE = /^[a-z0-9][a-z0-9_-]*$/;
 
@@ -58,7 +64,7 @@ export function tierValues(t: TierSummary): TierValues {
     profile: t.profile,
     policyExpiryDays: t.policyExpiryDays,
     policyDeviceLimit: t.policyDeviceLimit,
-    channels: t.channels,
+    channels: t.channels.filter((c) => c !== CHANNEL_STABLE),
     minVersion: t.minVersion ?? "",
     maxVersion: t.maxVersion ?? "",
   };
@@ -236,7 +242,14 @@ export function TierFields({
         group
         className="sm:col-span-2"
       >
-        {(f) => <ChannelPicker {...f} manual={manual} held={heldChannels} />}
+        {(f) => (
+          <ChannelPicker
+            {...f}
+            manual={manual}
+            held={heldChannels}
+            fixed={[CHANNEL_STABLE]}
+          />
+        )}
       </FormField>
     </div>
   );
@@ -338,7 +351,12 @@ export function TierGroups({
             group
           >
             {(f) => (
-              <ChannelPicker {...f} manual={manual} held={heldChannels} />
+              <ChannelPicker
+                {...f}
+                manual={manual}
+                held={heldChannels}
+                fixed={[CHANNEL_STABLE]}
+              />
             )}
           </FormField>
         </div>

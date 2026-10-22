@@ -138,7 +138,7 @@ export function ConflictPanel({
                 </dd>
               </div>
               <div className="min-w-0 rounded-md border border-border bg-surface-raised p-2">
-                <dt className="text-xs text-fg-muted">The repository’s</dt>
+                <dt className="text-xs text-fg-muted">The repository's</dt>
                 <dd className="font-mono text-xs break-words whitespace-pre-wrap text-fg">
                   {f.field === WHOLE_ENTRY && f.theirs !== null
                     ? "Edited"
@@ -163,7 +163,7 @@ export function ConflictPanel({
                 variant="outline"
                 onClick={() => onSettle(f.field, true)}
               >
-                Take the repo’s
+                Take the repo's
                 <span className="sr-only">
                   {" "}
                   for {f.field === WHOLE_ENTRY ? conflict.key : f.field}

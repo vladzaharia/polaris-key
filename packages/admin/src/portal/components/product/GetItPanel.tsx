@@ -19,11 +19,12 @@ import {
   openOnComputer,
 } from "../../copy/getIt.js";
 import { FileHash } from "./FileHash.js";
-import { PlatformGlyph, type PlatformKey } from "../Glyphs.js";
+import { PlatformGlyph, type PlatformKey } from "../../../ui/Glyphs.js";
 import { PILL_CLASS, StorePillList } from "../StorePills.js";
 import { SectionCard } from "./Card.js";
 import { DownloadButton } from "./DownloadButton.js";
 import { InstallSourceList } from "./InstallSources.js";
+import { cn } from "../../../lib/cn.js";
 import { t } from "../../../lib/copy.js";
 import { platformInSentence } from "../../../lib/vocab/platforms.js";
 
@@ -225,18 +226,21 @@ export function GetItPanel({
           role="region"
           aria-label={t("getIt.table")}
           tabIndex={0}
-          className="relative -mx-5 overflow-x-auto border-y border-border desk:-mx-6"
+          className="@container relative -mx-5 overflow-x-auto border-y border-border desk:-mx-6"
         >
           <table className="w-full min-w-[17rem] border-collapse text-start text-sm">
             <caption className="sr-only">{t("getIt.table")}</caption>
             <thead>
               <tr className="text-xs text-fg-muted">
-                <th scope="col" className="px-5 py-2 font-medium desk:px-6">
+                <th
+                  scope="col"
+                  className="px-5 py-2 text-start font-medium desk:px-6"
+                >
                   {t("getIt.col.platform")}
                 </th>
                 <th
                   scope="col"
-                  className="hidden px-2 py-2 font-medium sm:table-cell"
+                  className="hidden px-2 py-2 text-start font-medium sm:table-cell"
                 >
                   {C["getIt.flow.sha256"]}
                 </th>
@@ -309,10 +313,20 @@ function FileRow({
   describe: string;
 }): React.ReactElement {
   return (
-    <tr className={mine ? "bg-surface-sunken" : undefined}>
+    // Under 24rem the action goes under the row (the card is too narrow to hold both side by
+    // side at 400 % zoom); `@max-[24rem]` is the file table's container, not the window.
+    <tr
+      className={cn(
+        "@max-[24rem]:block",
+        mine ? "bg-surface-sunken" : undefined,
+      )}
+    >
       {/* The device's own build: tinted, and named "for your device" below (a tint plus one
           indicator, UI-KITS §1.5 rule 2; no heavy edge). */}
-      <th scope="row" className="px-4 py-3 text-start font-normal desk:px-5">
+      <th
+        scope="row"
+        className="px-4 py-3 text-start font-normal @max-[24rem]:block @max-[24rem]:pb-1 desk:px-5"
+      >
         <span className="flex items-center gap-3">
           <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-page text-fg-muted">
             {r.platform ? (
@@ -347,7 +361,7 @@ function FileRow({
           <FileHash value={r.artifact.sha256} file={r.artifact.name} />
         ) : null}
       </td>
-      <td className="px-5 py-3 text-end desk:px-6">
+      <td className="px-5 py-3 text-end @max-[24rem]:block @max-[24rem]:pt-1 @max-[24rem]:text-start desk:px-6">
         {r.elsewhere ? (
           r.elsewhere.href ? (
             <Button

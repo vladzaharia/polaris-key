@@ -106,7 +106,7 @@ export interface TestKit {
   headers(jws: string, deviceId?: string): Record<string, string>;
   /** A core on the kit's pins and clock, with the trust refresh off. */
   polarisKey(options?: Partial<PolarisKeyOptions>): PolarisKey;
-  /** The options for an adapter: `polarisKey(kit.options())` in Express or Hono,
+  /** The options for an adapter: `polarisKey(kit.options())` in Express, Hono or Koa, `app.register(polarisKey, kit.options())` in Fastify, `PolarisKeyModule.register(kit.options())` in NestJS,
    *  `createNextPolarisKey(kit.options())` in Next. Kit config and clock, trust refresh off. */
   options(extra?: Partial<PolarisKeyOptions>): PolarisKeyOptions;
   /** Sign and return the headers in one step. */

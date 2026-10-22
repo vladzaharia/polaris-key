@@ -334,7 +334,7 @@
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block under the selected device. On macOS the kit wraps {device} in curly quotes. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="deviceLimit_confirmTitle">替换%1$s？</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="deviceLimit_consequence">%1$s将退出登录%2$s，%3$s将占用它的席位。我们会通过电子邮件通知你。</string>
+    <string name="deviceLimit_consequence">%1$s将退出登录%2$s，由%3$s取代。我们会通过电子邮件通知你。</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button. -->
     <string name="deviceLimit_primary">替换并继续</string>
     <string name="deviceLimit_primary__macos">替换并继续</string>
@@ -646,6 +646,8 @@
     <string name="channel_title">发布渠道</string>
     <!-- ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
     <string name="channel_locked">渠道由%1$s设置。</string>
+    <!-- ChannelPicker: the license allows one release channel, so the choice is locked. -->
+    <string name="channel_lockedLicense">你的许可证仅包含此渠道。</string>
     <!-- Toast action. -->
     <string name="toast_undo">撤销</string>
     <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
@@ -868,7 +870,7 @@
     <string name="signin_choice_continue">使用此许可证并继续</string>
     <string name="signin_choice_continue__macos">使用此许可证并继续</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
-    <string name="signin_choice_raced">该席位刚刚被占用。请重新选择。</string>
+    <string name="signin_choice_raced">该设备刚刚已被替换。请重新选择。</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_choice_codeExpired">%1$s上的代码已过期。请在那台设备上获取新代码并重新扫描。</string>
     <!-- No license in this account (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -884,7 +886,7 @@
     <string name="signin_replace_open">替换设备</string>
     <string name="signin_replace_open__macos">替换设备</string>
     <!-- Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice). Arguments: 1=thisDevice. -->
-    <string name="signin_replace_lede">选择要退出登录的设备。%1$s将占用其席位。</string>
+    <string name="signin_replace_lede">选择要退出登录的设备。由%1$s取代。</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title. -->
     <string name="signin_replace_heading">替换设备</string>
     <!-- Replace a device in a system dialog (SIGN-IN.md §3.7). -->
@@ -900,7 +902,7 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_title">替换%1$s？</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
-    <string name="signin_replace_consequence">%1$s将退出登录%2$s，%3$s将占用它的席位。我们会通过电子邮件通知你。</string>
+    <string name="signin_replace_consequence">%1$s将退出登录%2$s，由%3$s取代。我们会通过电子邮件通知你。</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_replace_inUse">%1$s正在使用中。</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -918,9 +920,9 @@
         <item quantity="other">设备更改次数过多。请在%1$d秒后重试。</item>
     </plurals>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
-    <string name="signin_replace_raced">有人先占用了该席位。请重新选择。</string>
+    <string name="signin_replace_raced">有人先替换了该设备。请重新选择。</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
-    <string name="signin_replace_racedAfterFree">%1$s已移除，但有人先占用了该席位。请重新选择。</string>
+    <string name="signin_replace_racedAfterFree">%1$s已移除，但有人先登录了。请重新选择。</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated); {name} = the person's display name. Arguments: 1=app, 2=name. -->
     <string name="signin_consent_title">以%2$s的身份继续使用%1$s？</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
@@ -1247,6 +1249,8 @@
     <string name="cli_verb_packsEnsure">下载并安装内容，并显示进度</string>
     <!-- Terminal help: what the doctor command does. -->
     <string name="cli_verb_doctor">显示此设备支持的功能，供技术支持使用</string>
+    <!-- Terminal help: what the boot command does. -->
+    <string name="cli_verb_boot">运行启动流程，每个阶段一行</string>
     <!-- Terminal help: what the completion command does. bash, zsh and fish are shell names; keep them. -->
     <string name="cli_verb_completion">输出bash、zsh或fish的shell补全脚本</string>
     <!-- Terminal help: what the -json flag does. -->
@@ -1259,6 +1263,8 @@
     <string name="cli_option_help">命令帮助</string>
     <!-- Terminal help: what the -yes flag does. -->
     <string name="cli_option_yes">退出登录前不再询问</string>
+    <!-- Terminal help: what the -yes flag does on boot. -->
+    <string name="cli_option_yesDownload">无需询问即下载所需内容</string>
     <!-- Terminal help: what the -device-code flag does. -->
     <string name="cli_option_deviceCode">使用代码登录，而非此电脑的浏览器</string>
     <!-- Terminal help: what the -key-file flag of the activate command does. -->
@@ -1615,7 +1621,7 @@
     <string name="signin_choice_replaceAndSignIn">替换并登录</string>
     <string name="signin_choice_replaceAndSignIn__macos">替换并登录</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
-    <string name="signin_choice_replaceSafety">你选择的设备将退出 %1$s。如有空位，它之后可以重新登录。我们会通过电子邮件通知你。</string>
+    <string name="signin_choice_replaceSafety">你选择的设备将退出 %1$s。如果设备数量未达上限，它之后可以重新登录。我们会通过电子邮件通知你。</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
     <string name="signin_choice_replacedTitle">设备已替换</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {device} = the replaced device's label; {app} = the requesting app's name (never translated); {thisDevice} = this device's label or "this browser". Arguments: 1=device, 2=app, 3=thisDevice. -->

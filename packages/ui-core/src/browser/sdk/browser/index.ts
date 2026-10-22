@@ -1,0 +1,57 @@
+// @polaris-key/react/browser — the cookie-session OIDC transport (online-only).
+
+export {
+  BrowserAdapter,
+  InsecureBaseUrlError,
+  browserAdapter,
+  splitSessionDoc,
+  WEB_OUTLET_STAMP,
+  type BrowserAdapterOptions,
+  type BrowserUpdateConfig,
+} from "./browserAdapter.js";
+export {
+  SKIP_WAITING_MESSAGE,
+  hasWaitingWorker,
+  pageServiceWorker,
+  type SwContainer,
+  type SwRegistration,
+  type SwWorker,
+} from "./serviceWorkerUpdate.js";
+export {
+  installViaServiceWorker,
+  type ServiceWorkerInstallDeps,
+} from "./serviceWorkerInstall.js";
+export {
+  pageOutletEnvironment,
+  readOutletSignals,
+  type WebOutletEnvironment,
+} from "./outlet.js";
+export {
+  buildDownloadUrlFor,
+  decideBrowserUpdate,
+  type BrowserDecideOptions,
+  type BrowserDecideResult,
+  type UpdateSlices,
+} from "./update.js";
+export {
+  discoverProduct,
+  parseDiscovery,
+  parseServices,
+  type DiscoverOptions,
+  type DiscoveryDocument,
+  type DiscoveryResult,
+  type ServiceFragment,
+} from "./discovery.js";
+export { fetchCatalog, type CatalogRequestOptions } from "./catalog.js";
+export {
+  buildDownloadUrl,
+  buildInstallUrl,
+  fetchChangelog,
+  type ReleaseRequestOptions,
+} from "./release.js";
+export {
+  indexedDbOfflineStore,
+  newDeviceId,
+  type OfflineRecord,
+  type OfflineStore,
+} from "./offline.js";

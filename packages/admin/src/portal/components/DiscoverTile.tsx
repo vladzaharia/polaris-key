@@ -28,7 +28,7 @@ import {
 } from "../model/discover.js";
 import { discoverTileFacts } from "../model/tileFacts.js";
 import { href } from "../router.js";
-import { SteamGlyph } from "./Glyphs.js";
+import { SteamGlyph } from "../../ui/Glyphs.js";
 import { TileFacts } from "./TileFacts.js";
 import { ProductArt } from "./ProductArt.js";
 import { ProductIcon } from "./ProductIcon.js";
@@ -53,7 +53,7 @@ export type DiscoverTileState = "offer" | "adding" | "added";
  * link's one-line description instead) with platform glyphs, **why you can add it** (always
  * visible, owner decision Q-6: the first way to add it, with "+1 more way" when there are others)
  * and the outlined **Add to library**. Added, the tile turns green-edged with **In your
- * library** on the art and **Open <product>**. Errors are inline on the tile; an offer that ended
+ * library** in the caption under the art and **Open <product>**. Errors are inline on the tile; an offer that ended
  * loses its button.
  *
  * A link-only listing (an operator showed it to everyone signed in, with nothing to add) has no
@@ -146,17 +146,6 @@ export function DiscoverTile({
               className="absolute start-1/2 top-1/2 -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2"
             />
           ) : null}
-          {added ? (
-            <span
-              className={cn(
-                "absolute end-2 top-2 inline-flex items-center gap-1.5 rounded-full border border-success-border bg-surface-overlay px-2 py-0.5 text-xs font-medium text-success shadow-elevation-2",
-                pop && "pk-pop-in",
-              )}
-            >
-              <Check aria-hidden className="size-4" />
-              {t("locker.activate.inLibrary")}
-            </span>
-          ) : null}
         </ProductArt>
         <div className="flex flex-1 flex-col px-3 pb-3 desk:px-3.5 desk:pb-3.5">
           <div
@@ -202,6 +191,20 @@ export function DiscoverTile({
                   </p>
                 ) : null}
               </div>
+              {added ? (
+                // Below the art, in the caption: B6 keeps text off customer art (ux-name-over-art).
+                <p className="mt-1.5">
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border border-success-border bg-surface-sunken px-2 py-0.5 text-xs font-medium text-success",
+                      pop && "pk-pop-in",
+                    )}
+                  >
+                    <Check aria-hidden className="size-4" />
+                    {t("locker.activate.inLibrary")}
+                  </span>
+                </p>
+              ) : null}
             </div>
           </div>
           <TileFacts

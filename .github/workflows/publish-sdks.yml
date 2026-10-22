@@ -496,7 +496,7 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
           tools/check_publication.sh
-          expected="android-direct android-play billing config core desktop godot-direct godot-play identity license packs platform-direct platform-play release sdk server server-ktor ui ui-android ui-core update zstd"
+          expected="android-direct android-play billing config core desktop godot-direct godot-play identity license packs platform-direct platform-play release sdk server server-ktor spring-boot-starter ui ui-android ui-core update zstd"
           repo=build/repo/im/plrs/key
           actual="$(find "$repo" -mindepth 1 -maxdepth 1 -type d -name 'polaris-key-*' -printf '%f\n' | sed 's/^polaris-key-//' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
           if [ "$actual" != "$expected" ]; then
@@ -562,6 +562,7 @@ jobs:
           - ui-core
           - server
           - server-ktor
+          - spring-boot-starter
     permissions:
       contents: read
       id-token: write

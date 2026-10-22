@@ -454,6 +454,41 @@
       "verdict": "pass",
       "date": "2026-10-22",
       "evidence": "_mockups/review/stabilization/locker-final/ux-review-2.md (LK-07 re-check: refusal pages 18.75–19.89:1, mail ≥ 4.5:1)"
+    },
+    "ST-30": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/console-final/ux-review.md (line 362: ST-30 listed as a pass; BUILT review, console-final)"
+    },
+    "F-33": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/F-33/ux-review-2.md (BUILT re-review of slice 2, pass with fixes; fixes landed)"
+    },
+    "DOC-02c": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/DOC-02c-search.md (BUILT review FIX: 3 blocking; all fixed with tests in the one fix round fix/doc-02c-search-review 70b5f46eb)"
+    },
+    "UK-04": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/UK-04-05/ux-review-2.md (BUILT re-review: pass-with-fixes; fixes landed in WEB-parity 0832e0bfb, eabc4ef23, 674e9a90b; live drop-in KX-EL-DRIVE bdef6358d)"
+    },
+    "UK-05": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/UK-04-05/ux-review-2.md (BUILT re-review: pass-with-fixes; fixes landed in WEB-parity 0832e0bfb, eabc4ef23, 674e9a90b; live drop-in KX-EL-DRIVE bdef6358d)"
+    },
+    "UK-09": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/UK-09-compose.md (BUILT review PASS, 0 blocking; majors F-1..F-4 → KX-CMP-FIX, V-1 two-pane → UK-09b)"
+    },
+    "P0-45": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/P0-45-cli.md (BUILT terminal review FIX: 4 blocking; all fixed in the one fix round fix/p0-45-review 743cf2f70)"
     }
   }
 }

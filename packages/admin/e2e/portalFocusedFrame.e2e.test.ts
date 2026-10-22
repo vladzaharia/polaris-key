@@ -173,7 +173,7 @@ describe.concurrent(
                 }
                 if (flow.userAgent) {
                   await o.page
-                    .getByText("You’re viewing desktop builds.", {
+                    .getByText("You're viewing desktop builds.", {
                       exact: false,
                     })
                     .or(o.page.getByText("You're viewing desktop builds."))

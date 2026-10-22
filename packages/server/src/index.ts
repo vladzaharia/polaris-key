@@ -1,11 +1,12 @@
 // @polaris-key/server: gate a server route with the app's signed licence document, verified
 // offline (framework drop-ins plan §5, WIRE-CONTRACT-V4 §14). The root is the Fetch core; the
-// frameworks are subpaths: ./express, ./hono, ./next, and ./testing for unit tests.
+// frameworks are subpaths: ./express, ./hono, ./next, ./fastify, ./nestjs, ./koa, and ./testing for unit tests.
 
 export {
   createPolarisKey,
   headerFields,
   isCorsPreflight,
+  PolarisKeyConfigError,
   PolarisKeyError,
   requirement,
   type HeadersInput,

@@ -58,6 +58,32 @@ public data class PolarisSettingEntry(
 /** A settings operation's SDK error; renderers map [code] to catalog copy and never expose [detail] verbatim. */
 public data class PolarisSettingsFailure(val code: String, val detail: String? = null)
 
+/**
+ * The release channel choice (UI-KITS ChannelPicker): [current] among [options], or fixed by the
+ * outlet [lockedBy] (its id or kind, as `channelChoices()` reports it). Locked always names why.
+ */
+public data class PolarisChannelUi(
+    val current: String,
+    val options: List<String>,
+    val lockedBy: String? = null,
+) {
+    public val locked: Boolean get() = lockedBy != null
+
+    /** A picker with nothing to pick and nothing fixing it has no reason to draw. */
+    public val drawn: Boolean get() = locked || options.distinct().size > 1
+}
+
+/** A store's name for an outlet id or kind ("play" is Google Play), the id itself for one the kit does not know. */
+public fun outletStoreName(outlet: String): String = when (outlet) {
+    "play", "play-testing" -> "Google Play"
+    "app-store" -> "App Store"
+    "testflight" -> "TestFlight"
+    "altstore", "altstore-pal" -> "AltStore"
+    "steam" -> "Steam"
+    "itch" -> "itch.io"
+    else -> outlet.replaceFirstChar { it.uppercase() }
+}
+
 public data class PolarisSettingsUi(
     val loading: Boolean = true,
     val license: PolarisLicenseSummary? = null,
@@ -66,6 +92,8 @@ public data class PolarisSettingsUi(
     val error: PolarisSettingsFailure? = null,
     /** A values-read failure; the renderer offers Try again. */
     val loadFailure: PolarisSettingsFailure? = null,
+    /** The release channel choice, or null when the host offers none (no release service). */
+    val channel: PolarisChannelUi? = null,
 )
 
 /** The SDK calls the settings screen makes. [PolarisKeyClient.settingsActions] adapts the umbrella client. */
@@ -78,6 +106,12 @@ public interface PolarisSettingsActions {
 
     /** Clear the local override for [key]. */
     public suspend fun reset(key: String)
+
+    /** The release channel choice, or null when there is none to show. */
+    public suspend fun channel(): PolarisChannelUi? = null
+
+    /** Switch the release channel. Throws `channel_not_allowed` when the outlet or the licence refuses. */
+    public suspend fun setChannel(channel: String) {}
 }
 
 /** The editor the catalog [entry] implies for [value], or null when the kit has no input for it. */
@@ -126,6 +160,15 @@ public fun PolarisKeyClient.settingsActions(labels: Map<String, String> = emptyM
             client.config.clear(key)
         }
 
+        override suspend fun channel(): PolarisChannelUi {
+            val choices = client.channelChoices()
+            return PolarisChannelUi(choices.current, choices.options, choices.lockedBy)
+        }
+
+        override suspend fun setChannel(channel: String) {
+            client.setChannel(channel)
+        }
+
         override suspend fun license(): PolarisLicenseSummary {
             val state: LicenseState = client.status()
             val profile = client.license.profile()
@@ -161,11 +204,13 @@ public class PolarisSettingsState(private val actions: PolarisSettingsActions, p
             _ui.value = _ui.value.copy(loading = true, error = null)
             val license = attempt { actions.license() }
             val entries = attempt { actions.entries() }
+            val channel = attempt { actions.channel() }
             _ui.value = PolarisSettingsUi(
                 loading = false,
                 license = license.getOrNull(),
                 entries = entries.getOrNull().orEmpty(),
                 loadFailure = entries.exceptionOrNull()?.toSettingsFailure(),
+                channel = channel.getOrNull(),
             )
         }
     }
@@ -178,6 +223,15 @@ public class PolarisSettingsState(private val actions: PolarisSettingsActions, p
     /** Clear [key]'s local override (the row's Reset), then re-read the rows. */
     public fun reset(key: String) {
         scope.launch { change { actions.reset(key) } }
+    }
+
+    /** Switch the release channel to [channel], then re-read the choice. */
+    public fun setChannel(channel: String) {
+        scope.launch {
+            val failure = attempt { actions.setChannel(channel) }.exceptionOrNull()?.toSettingsFailure()
+            val choice = attempt { actions.channel() }.getOrNull() ?: _ui.value.channel
+            _ui.value = _ui.value.copy(channel = choice, error = failure)
+        }
     }
 
     /** Dismiss the last refusal. */

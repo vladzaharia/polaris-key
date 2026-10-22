@@ -24,7 +24,9 @@
  * AT-2): see `rules.ts` for what the registry refuses by construction.
  */
 
-import type { DbParam, DbStatement } from "../../db/types.js";
+import type { Db, DbParam, DbStatement } from "../../db/types.js";
+import type { ServiceHooks } from "../hooks.js";
+import type { SettingsEnv } from "../platformSettings.js";
 import type { AreaId } from "../rbac/areas.js";
 import type { ServiceSlug } from "../services.js";
 
@@ -339,6 +341,81 @@ export interface SettingColumnAdapter {
   reset?(args: ColumnWriteArgs): DbStatement[];
 }
 
+/** What a setting adapter is handed: the product the request is about and the request's reads. */
+export interface SettingAdapterContext {
+  env: SettingsEnv;
+  db: Db;
+  /** The `products` row. */
+  product: { slug: string; [column: string]: unknown };
+  now: number;
+  /** The product's read-only service hooks (a hook whose service is off answers `null`). */
+  hooks: ServiceHooks;
+}
+
+/** A value an adapter refused: the message, and the request fields it is about. */
+export interface SettingRefusal {
+  message: string;
+  fields?: string[];
+}
+
+/**
+ * What the generic product settings routes (`console/handlers/productSettings.ts`, ST-05b) need
+ * of ONE key beyond its `ValueSpec`, because a `json` value is a shape the spec cannot check and a
+ * rich value has no column to decode. It is the part of each retired bespoke route (the fingerprint
+ * policy, the device trust policy, the update settings, the delivery access) that was not routing.
+ * Contributed per key by the owner of the key: Core's in `core/settings/adapters.ts`, a service's
+ * through `ServiceSettingsSlice.adapters`. Every member is optional.
+ */
+export interface SettingAdapter {
+  /**
+   * The value as the readers see it when the stored one is unset or partial: a policy reads as
+   * its defaults, so the console shows what is enforced rather than `null`.
+   */
+  inForce?(value: unknown): unknown;
+  /**
+   * Why a write is refused right now whatever the value (no row to write it to), or `null`. The
+   * view carries it so the console can lock the control before the caller finds out by saving.
+   */
+  blocked?(ctx: SettingAdapterContext): Promise<string | null> | string | null;
+  /** The value is a value of the key beyond its spec (a shape, a reference to another row). */
+  validate?(
+    value: unknown,
+    ctx: SettingAdapterContext,
+  ): Promise<SettingRefusal | null> | SettingRefusal | null;
+  /**
+   * Does moving the key from `current` to `next` (`undefined`: a reset) relax a control? Such a
+   * change needs a step-up proved in the last five minutes, a reason and the typed key, whatever
+   * the registry's confirm level says of a change in the other direction.
+   */
+  relaxes?(current: unknown, next: unknown): boolean;
+  /** Runs once before a write is attempted (a sweep that must precede the value it guards). */
+  beforeWrite?(ctx: SettingAdapterContext): Promise<void>;
+  /** The audit row's action, target and summary for this write; absent: the registry default. */
+  audit?(a: {
+    op: "set" | "reset";
+    slug: string;
+    before: unknown;
+    after: unknown;
+  }): {
+    action: string;
+    summary: string;
+    target?: { kind: string; id: string } | null;
+  };
+  /** A RICH key's value in force (a key whose storage is `rich` is served only with this). */
+  read?(ctx: SettingAdapterContext): Promise<{
+    value: unknown;
+    source: "default" | "manifest" | "console";
+  }>;
+  /** A RICH key's write: the statements that store `value`, each ANDing `guard` into its WHERE. */
+  set?(a: {
+    value: unknown;
+    ctx: SettingAdapterContext;
+    guard: SqlGuard;
+  }): DbStatement[];
+  /** A RICH key's reset (hand back to the manifest). Absent: the key cannot be reset. */
+  reset?(a: { ctx: SettingAdapterContext; guard: SqlGuard }): DbStatement[];
+}
+
 /**
  * One service's settings, contributed through its descriptor (`ServiceDescriptor.settings`).
  * `namespaces` are the key prefixes the service owns (its slug, plus any it was given by design:
@@ -352,4 +429,6 @@ export interface ServiceSettingsSlice {
    * (ST-04), keyed by registry key. Core's own tables are adapted in `core/settings/columns.ts`.
    */
   columns?: Readonly<Record<string, SettingColumnAdapter>>;
+  /** The generic routes' per-key adapters (ST-05b) for this slice's entries, keyed by registry key. */
+  adapters?: Readonly<Record<string, SettingAdapter>>;
 }

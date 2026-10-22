@@ -5,6 +5,7 @@
  */
 
 import * as React from "react";
+import { EffectivePolicy } from "../components/EffectivePolicy.js";
 import { ChevronRight } from "lucide-react";
 import type { ProductDetail, TierSummary } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
@@ -25,7 +26,6 @@ import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { InlineFailure } from "../components/InlineFailure.js";
 import {
-  EffectivePolicy,
   effectivePolicy,
   resolvedDeviceLimit,
   tierSummary,

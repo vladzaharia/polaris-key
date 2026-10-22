@@ -20,6 +20,7 @@ import type {
   SettingDef,
 } from "../../core/settings/types.js";
 import { LICENSING_SETTINGS } from "./licensingSettings.js";
+import { LICENSE_ADAPTERS } from "./settingsAdapters.js";
 
 const VISIBLE = { service: "license", offBehaviour: "hide" } as const;
 
@@ -93,7 +94,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     manifest: { path: "product:fingerprint" },
     confirm: { change: "L1" },
     visibleWhen: VISIBLE,
-    readers: ["core/fingerprint.ts", "services/license/admin/policy.ts"],
+    readers: ["core/fingerprint.ts", "services/license/settingsAdapters.ts"],
     storage: {
       kind: "column",
       table: "products",
@@ -119,7 +120,10 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     critical: true,
     confirm: { change: "L1" },
     visibleWhen: VISIBLE,
-    readers: ["services/license/admin/policy.ts", "core/edgeMintApproval.ts"],
+    readers: [
+      "services/license/settingsAdapters.ts",
+      "core/edgeMintApproval.ts",
+    ],
     storage: { kind: "column", table: "products", column: "auto_issue_json" },
   }),
   setting({
@@ -147,5 +151,6 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
 
 export const LICENSE_SETTINGS_SLICE: ServiceSettingsSlice = {
   namespaces: ["license", "licensing"],
+  adapters: LICENSE_ADAPTERS,
   entries: [...LICENSE_SETTINGS, ...LICENSING_SETTINGS],
 };

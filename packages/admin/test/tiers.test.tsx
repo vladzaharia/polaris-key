@@ -38,8 +38,9 @@ describe("Tiers", () => {
     const l = await list();
     await within(l).findByText("Pro");
     await waitFor(() =>
-      expect(within(item(l, "Pro")).getByText("2 licenses")).toBeTruthy(),
+      expect(within(item(l, "Pro")).getByText(/2 licenses/)).toBeTruthy(),
     );
+    expect(within(item(l, "Pro")).getByText(/^1 of 3/)).toBeTruthy();
     // Rows open the tier (TIR-5); the first tier is open by default.
     const pro = within(item(l, "Pro")).getByRole("link", { name: /Pro/ });
     expect(pro.getAttribute("href")).toBe("#/p/djdl/license/tiers/pro");
@@ -67,20 +68,26 @@ describe("Tiers", () => {
     const log = bootLicense("#/p/djdl/license/tiers");
     const l = await list();
     await waitFor(() =>
-      expect(within(item(l, "Pro")).getByText("2 licenses")).toBeTruthy(),
+      expect(within(item(l, "Pro")).getByText(/2 licenses/)).toBeTruthy(),
     );
-    await userEvent.click(
-      within(item(l, "Pro")).getByRole("button", { name: "Actions for Pro" }),
-    );
+    // One Delete, in the record's menu; the rows have none.
+    expect(
+      screen.queryByRole("button", { name: "Actions for Pro" }),
+    ).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
     const del = await screen.findByRole("menuitem", { name: /Delete/ });
     expect(del.getAttribute("aria-disabled")).toBe("true");
-    expect(within(del).getByText("Used by 2 licenses")).toBeTruthy();
+    expect(
+      within(del).getByText(
+        "Used by 2 licenses. Move them to another tier first.",
+      ),
+    ).toBeTruthy();
     await userEvent.keyboard("{Escape}");
-    await userEvent.click(
-      within(item(l, "Trial")).getByRole("button", {
-        name: "Actions for Trial",
-      }),
+    await userEvent.click(within(l).getByRole("link", { name: /Trial/ }));
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Trial" })).toBeTruthy(),
     );
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
     await userEvent.click(
       await screen.findByRole("menuitem", { name: /Delete/ }),
     );
@@ -97,7 +104,7 @@ describe("Tiers", () => {
   });
 
   it("says a 409 on delete in the dialog", async () => {
-    bootLicense("#/p/djdl/license/tiers", {
+    bootLicense("#/p/djdl/license/tiers/trial", {
       routes: {
         [`DELETE ${TIERS}/trial`]: new Response(
           JSON.stringify({ error: "bad_request", references: 3 }),
@@ -105,13 +112,8 @@ describe("Tiers", () => {
         ),
       },
     });
-    const l = await list();
-    await within(l).findByText("Trial");
-    await userEvent.click(
-      within(item(l, "Trial")).getByRole("button", {
-        name: "Actions for Trial",
-      }),
-    );
+    await screen.findByRole("heading", { name: "Trial" });
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
     await userEvent.click(
       await screen.findByRole("menuitem", { name: /Delete/ }),
     );
@@ -138,7 +140,14 @@ describe("Tiers", () => {
     const channels = within(drawer)
       .getAllByRole("group", { name: "Release tracks" })
       .at(-1)!;
-    await userEvent.click(within(channels).getByLabelText("stable"));
+    // `stable` is held by every license: checked, disabled, never sent.
+    expect(
+      within(channels).getByLabelText("stable").hasAttribute("disabled") ||
+        within(channels)
+          .getByLabelText("stable")
+          .getAttribute("aria-disabled") === "true",
+    ).toBe(true);
+    await userEvent.click(within(channels).getByLabelText("beta"));
     await userEvent.click(
       within(drawer).getByRole("button", { name: "Create tier" }),
     );
@@ -150,7 +159,7 @@ describe("Tiers", () => {
           body: {
             id: "team",
             label: "Team",
-            channels: ["stable"],
+            channels: ["beta"],
             policyDeviceLimit: 10,
           },
         },
@@ -294,7 +303,6 @@ describe("tier record", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save Pro" }));
     await waitFor(() => expect(writes(log)).toHaveLength(1));
     expect((writes(log)[0]!.body as { channels: string[] }).channels).toEqual([
-      "stable",
       "Legacy.X",
     ]);
   });
@@ -337,6 +345,38 @@ describe("tier record", () => {
     );
     const del = await screen.findByRole("menuitem", { name: /Delete tier/ });
     expect(del.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("says a failed save above the save bar, and a 409 offers Reload", async () => {
+    bootLicense(REC, {
+      routes: {
+        [`PATCH ${TIERS}/pro`]: new Response(
+          JSON.stringify({ error: "version_conflict" }),
+          { status: 409, headers: { "content-type": "application/json" } },
+        ),
+      },
+    });
+    const f = await form();
+    await userEvent.type(within(f).getByLabelText(/^Label/), "x");
+    await userEvent.click(screen.getByRole("button", { name: "Save Pro" }));
+    expect(await screen.findByText("This tier changed elsewhere")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Reload" })).toBeTruthy();
+  });
+
+  it("draws stable checked and disabled, outside the change count", async () => {
+    const log = bootLicense(REC);
+    const f = await form();
+    const stable = within(f).getByRole("checkbox", { name: /stable/ });
+    expect(stable.getAttribute("aria-checked") ?? "true").toBe("true");
+    expect(
+      stable.hasAttribute("disabled") ||
+        stable.getAttribute("aria-disabled") === "true",
+    ).toBe(true);
+    expect(within(f).getByText("Always included")).toBeTruthy();
+    expect(writes(log)).toEqual([]);
+    expect(
+      screen.queryByRole("region", { name: /Unsaved changes/ }),
+    ).toBeNull();
   });
 
   it("says a tier that doesn't exist is not found", async () => {

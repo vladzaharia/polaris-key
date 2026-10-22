@@ -315,7 +315,7 @@ export function ChecksTable({
                   key={c.id}
                   className="border-b border-border last:border-b-0 max-sm:grid max-sm:gap-1.5 max-sm:border-b-0 max-sm:py-3"
                 >
-                  <td className="min-w-0 py-3 pe-3 align-top max-sm:p-0">
+                  <td className="min-w-0 py-3 pe-3 max-sm:p-0">
                     <div className="break-words font-medium text-fg-strong">
                       {c.title}
                     </div>
@@ -323,7 +323,7 @@ export function ChecksTable({
                       {c.sub}
                     </div>
                   </td>
-                  <td className="min-w-0 py-3 pe-3 align-top max-sm:p-0">
+                  <td className="min-w-0 py-3 pe-3 max-sm:p-0">
                     <span className={label}>Result </span>
                     <span
                       className={`inline-flex items-start gap-1.5 ${TONE_TEXT[c.tone]}`}
@@ -332,7 +332,7 @@ export function ChecksTable({
                       <span className="break-words">{c.result}</span>
                     </span>
                   </td>
-                  <td className="min-w-0 py-3 align-top max-sm:p-0">
+                  <td className="min-w-0 py-3 max-sm:p-0">
                     <span className={label}>Next </span>
                     <span className="break-words text-fg">{c.next}</span>
                   </td>

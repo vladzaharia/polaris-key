@@ -18,7 +18,12 @@
 
 import * as React from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { ArrowRight, Eye, Settings as SettingsIcon } from "lucide-react";
+import {
+  ArrowRight,
+  Eye,
+  Server,
+  Settings as SettingsIcon,
+} from "lucide-react";
 import {
   ApiError,
   api,
@@ -27,13 +32,16 @@ import {
   type ReleaseDto,
   type ServiceSlug,
 } from "../../../../api.js";
-import { formatCount, fromSeconds } from "../../../../lib/format.js";
+import {
+  formatCount,
+  formatDateTime,
+  fromSeconds,
+} from "../../../../lib/format.js";
 import { cn } from "../../../../lib/cn.js";
 import { Button } from "../../../../ui/Button.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageSkeleton, Skeleton } from "../../../../ui/Skeleton.js";
-import { Timeline, TimelineItem } from "../../../../ui/Timeline.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import {
@@ -43,13 +51,17 @@ import {
   type MomentObservation,
 } from "../../../components/Moment.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
-import { serviceLabel } from "../../../../ui/ServiceBadge.js";
 import { useWriteGate } from "../../../access/useCan.js";
 import { useAttention, useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { OverviewAttention } from "../components/OverviewAttention.js";
 import { Link, navigate } from "../../../router.js";
-import { FeatureCard, OffCard, SectionHead } from "../components/TileFrame.js";
+import {
+  FeatureCard,
+  OffCard,
+  SectionHead,
+  tileTitle,
+} from "../components/TileFrame.js";
 import {
   ShipBuildsTile,
   latestAppRelease,
@@ -167,13 +179,23 @@ function OverviewBody({
   // Show Integration puts the pane back and the pane takes focus; nothing else moves it.
   const [justShown, setJustShown] = React.useState(false);
   const paneShown = enabled.length > 0 && !hidden;
+  // Hide unmounts its own button: focus goes to ⋯ More, where Show Integration now lives.
+  const focusHeroMenu = (): void => {
+    requestAnimationFrame(() =>
+      document
+        .querySelector<HTMLElement>(
+          '[data-testid="overview-hero"] button[aria-label="More"]',
+        )
+        ?.focus(),
+    );
+  };
   const attention = productAttentionItems(
     slug,
     serverAttention.data,
     licenses.data?.licenses,
   );
   const step = heroStep(attention, next, (service) =>
-    service ? serviceLabel(service as ServiceSlug) : "Core",
+    service ? tileTitle(service as ServiceSlug) : "Core",
   );
   const attentionOf = (s: ServiceSlug): number =>
     attention.filter((i) => i.service === s).length;
@@ -291,7 +313,10 @@ function OverviewBody({
                 hide={
                   canHide
                     ? {
-                        onHide: () => void setup.setIntegrationHidden(true),
+                        onHide: () =>
+                          void setup.setIntegrationHidden(true).then((ok) => {
+                            if (ok) focusHeroMenu();
+                          }),
                         disabledReason: setup.allowed
                           ? undefined
                           : setup.disabledReason,
@@ -713,8 +738,13 @@ function IdentityTile({
       loading={portal.isPending}
       error={portal.isError ? portal.error : undefined}
       onRetry={() => void portal.refetch()}
-      number={s ? (s.portalEnabled ? "On" : "Off") : undefined}
-      foot={s ? "Sign-in by email code and passkeys" : undefined}
+      foot={
+        s
+          ? s.portalEnabled
+            ? "Sign-in by email code and passkeys"
+            : "Sign-in is off"
+          : undefined
+      }
     />
   );
 }
@@ -757,6 +787,30 @@ function SyncTile({
   );
 }
 
+/** "Today, 10:42" or "Oct 6, 4:20 PM": the mockup's flat-row time, in the viewer's locale. */
+function activityWhen(at: number, now = Date.now()): string {
+  const day = (t: number): string => new Date(t).toDateString();
+  const time = new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(at);
+  if (day(at) === day(now)) return `Today, ${time}`;
+  const date = new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  }).format(at);
+  return `${date}, ${time}`;
+}
+
+function activityInitials(name: string): string {
+  const w = name.trim().split(/\s+/).filter(Boolean);
+  const l =
+    w.length >= 2
+      ? `${w[0]![0]}${w[w.length - 1]![0]}`
+      : (w[0] ?? "?").slice(0, 2);
+  return l.toUpperCase();
+}
+
 // ── Recent activity ────────────────────────────────────────────────────────────────────────────
 
 function RecentActivity({
@@ -790,21 +844,39 @@ function RecentActivity({
         ) : items.length === 0 ? (
           <p className="text-sm text-fg-muted">No activity yet.</p>
         ) : (
-          <Timeline
-            label="Recent activity"
-            groupBy="day"
-            items={items}
-            getKey={(i) => i.id}
-            getTime={(i) => fromSeconds(i.at)}
-            renderItem={(i) => (
-              <TimelineItem
-                actor={i.actor.sub ? { name: actorName(i) } : "system"}
-                verb={verbFor(i.action)}
-                target={<ActivityTarget slug={slug} item={i} />}
-                at={fromSeconds(i.at)}
-              />
-            )}
-          />
+          <ul aria-label="Recent activity" className="divide-y divide-border">
+            {items.map((i) => {
+              const name = i.actor.sub ? actorName(i) : "Polaris Key";
+              return (
+                <li
+                  key={i.id}
+                  className="flex items-center gap-3 py-2.5 text-sm first:pt-0 last:pb-0"
+                >
+                  <span
+                    aria-hidden
+                    className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-xs font-medium text-fg-muted"
+                  >
+                    {i.actor.sub ? (
+                      activityInitials(name)
+                    ) : (
+                      <Server className="size-3.5" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1 text-fg [overflow-wrap:anywhere]">
+                    <span className="font-medium text-fg-strong">{name}</span>{" "}
+                    {verbFor(i.action)} <ActivityTarget slug={slug} item={i} />
+                  </span>
+                  <time
+                    dateTime={new Date(fromSeconds(i.at)).toISOString()}
+                    title={formatDateTime(fromSeconds(i.at))}
+                    className="shrink-0 text-xs text-fg-subtle tabular-nums"
+                  >
+                    {activityWhen(fromSeconds(i.at))}
+                  </time>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
     </section>

@@ -61,11 +61,13 @@ export function libraryTileFacts(p: LibraryProduct): TileFacts {
     lines.push({
       kind: "term",
       text:
-        kind === "expired"
-          ? t("locker.status.ended", { date: day })
-          : kind === "expiresSoon"
-            ? t("locker.status.ends", { date: day })
-            : t("locker.status.until", { date: day }),
+        kind === "updatesEnded"
+          ? t("locker.status.keepsWorking")
+          : kind === "expired"
+            ? t("locker.status.ended", { date: day })
+            : kind === "expiresSoon"
+              ? t("locker.status.ends", { date: day })
+              : t("locker.status.until", { date: day }),
     });
   }
   if ((l.origin === "store" || l.origin === "store-key") && l.originStore)

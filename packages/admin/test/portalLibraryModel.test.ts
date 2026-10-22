@@ -20,6 +20,7 @@ import {
   type QuickAction,
 } from "../src/portal/model/library.js";
 import { applyView, justAddedFirst } from "../src/portal/model/libraryView.js";
+import { libraryTileFacts } from "../src/portal/model/tileFacts.js";
 import {
   artifact,
   DAY,
@@ -722,10 +723,17 @@ describe("PX-08: the Worker's status, in words", () => {
       NOW_S,
       new Map([["ember", d]]),
     );
+    // A warning that keeps working, never "Expired · Renew to use it again" (B4).
     expect(p!.status).toMatchObject({
-      kind: "expired",
+      kind: "updatesEnded",
+      label: "Updates ended",
+      tone: "warning",
       note: "Updates ended at 1.8",
+      version: "1.8",
     });
+    expect(libraryTileFacts(p!).lines).toEqual([
+      { kind: "term", text: "Keeps working" },
+    ]);
     expect(quickAction(p!, MAC, ph)).toMatchObject({
       kind: "download",
       label: "Download 1.8",

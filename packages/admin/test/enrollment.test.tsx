@@ -14,7 +14,13 @@ beforeEach(resetConsole);
 afterEach(cleanup);
 
 const HASH = "#/p/djdl/license/enrollment";
-const POLICY = `${API}/license/policy`;
+// ST-05b: the policy is two settings of the generic settings API.
+const POLICY = `${API}/settings/license.fingerprint`;
+const AUTO = `${API}/settings/license.autoIssue`;
+const setting = (key: string, value: unknown, source: string, version = 2) => ({
+  setting: { key, value, source, version },
+});
+/** The routes the page reads and writes: the fingerprint policy and the auto-issue policy. */
 const policy = (
   over: Partial<{ enabled: boolean; defaultMode: string }> = {},
   source = "admin",
@@ -23,8 +29,20 @@ const policy = (
     { id: "serato", label: "Serato DJ" },
   ],
 ) => ({
-  policy: { enabled: true, defaultMode: "normal", probes, ...over },
-  source,
+  ...(() => {
+    const fp = setting(
+      "license.fingerprint",
+      { enabled: true, defaultMode: "normal", probes, ...over },
+      source === "admin" ? "console" : "manifest",
+    );
+    return {
+      [POLICY]: fp,
+      [`PATCH ${POLICY}`]: fp,
+      [`DELETE ${POLICY}`]: fp,
+      [AUTO]: setting("license.autoIssue", { enabled: false }, "console", 1),
+      [`DELETE ${AUTO}`]: setting("license.autoIssue", {}, "manifest", 0),
+    };
+  })(),
 });
 
 async function section(name: string) {
@@ -34,7 +52,7 @@ async function section(name: string) {
 
 describe("Enrollment", () => {
   it("shows derived registration with a way to change services (FPP-2)", async () => {
-    bootLicense(HASH, { routes: { [POLICY]: policy() } });
+    bootLicense(HASH, { routes: policy() });
     const reg = await section("Registration");
     expect(await within(reg).findByText("License required")).toBeTruthy();
     expect(
@@ -47,7 +65,7 @@ describe("Enrollment", () => {
 
   it("says a registration lookup failure instead of claiming one", async () => {
     bootLicense(HASH, {
-      routes: { [POLICY]: policy(), [`${API}/services`]: failing(500) },
+      routes: { ...policy(), [`${API}/services`]: failing(500) },
     });
     const reg = await section("Registration");
     expect(
@@ -56,7 +74,7 @@ describe("Enrollment", () => {
   });
 
   it("is one mode choice, with its owner, and saves both fields without the probes (FPP-1)", async () => {
-    const log = bootLicense(HASH, { routes: { [POLICY]: policy() } });
+    const log = bootLicense(HASH, { routes: policy() });
     const fp = await section("Fingerprint policy");
     expect(within(fp).queryByRole("switch")).toBeNull();
     expect(
@@ -74,28 +92,43 @@ describe("Enrollment", () => {
         {
           path: POLICY,
           method: "PATCH",
-          body: { enabled: true, defaultMode: "strict" },
+          // The whole policy is the setting's value: the chosen mode on what was read.
+          body: {
+            value: {
+              enabled: true,
+              defaultMode: "strict",
+              probes: [
+                {
+                  id: "rekordbox",
+                  label: "rekordbox",
+                  macos: "/Applications/rekordbox 7",
+                },
+                { id: "serato", label: "Serato DJ" },
+              ],
+            },
+            expectedVersion: 2,
+          },
         },
       ]),
     );
   });
 
   it("maps Off to enforcement off for every tier", async () => {
-    const log = bootLicense(HASH, { routes: { [POLICY]: policy() } });
+    const log = bootLicense(HASH, { routes: policy() });
     const fp = await section("Fingerprint policy");
     await userEvent.click(within(fp).getByRole("radio", { name: /^Off/ }));
     await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
     await waitFor(() =>
-      expect(writes(log)[0]!.body).toEqual({
-        enabled: false,
-        defaultMode: "off",
+      expect(writes(log)[0]!.body).toMatchObject({
+        value: { enabled: false, defaultMode: "off" },
+        expectedVersion: 2,
       }),
     );
   });
 
   it("reads a disabled policy as Off", async () => {
     bootLicense(HASH, {
-      routes: { [POLICY]: policy({ enabled: false, defaultMode: "strict" }) },
+      routes: policy({ enabled: false, defaultMode: "strict" }),
     });
     const fp = await section("Fingerprint policy");
     const off = within(fp).getByRole("radio", { name: /^Off/ });
@@ -103,7 +136,7 @@ describe("Enrollment", () => {
   });
 
   it("returns the policy to the manifest behind a confirm that names auto-issue too (FPP-3)", async () => {
-    const log = bootLicense(HASH, { routes: { [POLICY]: policy() } });
+    const log = bootLicense(HASH, { routes: policy() });
     const fp = await section("Fingerprint policy");
     await userEvent.click(
       within(fp).getByRole("button", { name: /Set in console/ }),
@@ -123,13 +156,14 @@ describe("Enrollment", () => {
     );
     await waitFor(() =>
       expect(writes(log)).toEqual([
-        { path: `${POLICY}/revert`, method: "POST" },
+        { path: POLICY, method: "DELETE", body: { expectedVersion: 2 } },
+        { path: AUTO, method: "DELETE", body: { expectedVersion: 1 } },
       ]),
     );
   });
 
   it("lists the probes, sortable, and says where they come from (FPP-4)", async () => {
-    bootLicense(HASH, { routes: { [POLICY]: policy() } });
+    bootLicense(HASH, { routes: policy() });
     const probes = await section("Probes");
     const t = await within(probes).findByRole("table", { name: "Probes" });
     expect(within(t).getByText("Serato DJ")).toBeTruthy();
@@ -140,7 +174,7 @@ describe("Enrollment", () => {
   });
 
   it("resyncs from the repository behind an L1 confirm, only when linked", async () => {
-    const log = bootLicense(HASH, { routes: { [POLICY]: policy() } });
+    const log = bootLicense(HASH, { routes: policy() });
     const probes = await section("Probes");
     // The harness's product has no linked repository.
     const resync = within(probes).getByRole("button", {
@@ -155,7 +189,7 @@ describe("Enrollment", () => {
   it("a linked product resyncs through the shared flow; the result shows above the probes (UX-78)", async () => {
     const log = bootLicense(HASH, {
       routes: {
-        [POLICY]: policy(),
+        ...policy(),
         [API]: {
           product: {
             ...productRow("djdl", "DJDL", ALL_ON),
@@ -208,7 +242,7 @@ describe("Enrollment", () => {
   });
 
   it("says plainly when the manifest declares no probes", async () => {
-    bootLicense(HASH, { routes: { [POLICY]: policy({}, "manifest", []) } });
+    bootLicense(HASH, { routes: policy({}, "manifest", []) });
     const probes = await section("Probes");
     expect(await within(probes).findByText("No probes declared")).toBeTruthy();
   });
@@ -227,7 +261,7 @@ describe("Enrollment", () => {
   });
 
   it("passes axe", async () => {
-    bootLicense(HASH, { routes: { [POLICY]: policy() } });
+    bootLicense(HASH, { routes: policy() });
     await section("Probes");
     const results = await axe(document.body);
     expect(results.violations.map((v) => v.id)).toEqual([]);

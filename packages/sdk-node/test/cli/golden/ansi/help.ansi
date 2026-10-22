@@ -42,6 +42,7 @@
                             Download and install content, with progress
 
 [1mSupport[22m
+  [1mboot[22m                      Run startup, one line per stage
   [1moffline-request[22m           Print the request code for offline activation
   [1mimport-bundle <file>[22m      Activate from an offline activation file
   [1mdoctor[22m                    Show what this device can do, for support
@@ -99,6 +100,7 @@
                             Download and install content, with progress
 
 [1mSupport[22m
+  [1mboot[22m                      Run startup, one line per stage
   [1moffline-request[22m           Print the request code for offline activation
   [1mimport-bundle <file>[22m      Activate from an offline activation file
   [1mdoctor[22m                    Show what this device can do, for support
@@ -156,6 +158,7 @@
                             Download and install content, with progress
 
 [1mSupport[22m
+  [1mboot[22m                      Run startup, one line per stage
   [1moffline-request[22m           Print the request code for offline activation
   [1mimport-bundle <file>[22m      Activate from an offline activation file
   [1mdoctor[22m                    Show what this device can do, for support
@@ -213,6 +216,7 @@ Usage  tidewater <command> [options]
                             Download and install content, with progress
 
 [1mSupport[22m
+  [1mboot[22m                      Run startup, one line per stage
   [1moffline-request[22m           Print the request code for offline activation
   [1mimport-bundle <file>[22m      Activate from an offline activation file
   [1mdoctor[22m                    Show what this device can do, for support
@@ -270,6 +274,7 @@ Run tidewater <command> --help for one command's options.
                             Download and install content, with progress
 
 [1mSupport[22m
+  [1mboot[22m                      Run startup, one line per stage
   [1moffline-request[22m           Print the request code for offline activation
   [1mimport-bundle <file>[22m      Activate from an offline activation file
   [1mdoctor[22m                    Show what this device can do, for support
@@ -334,6 +339,7 @@ Run tidewater <command> --help for one command's options.
                     with progress
 
 [1mSupport[22m
+  [1mboot[22m              Run startup, one line per stage
   [1moffline-request[22m   Print the request code for
                     offline activation
   [1mimport-bundle <file>[22m
@@ -404,6 +410,7 @@ Run tidewater <command> --help for one command's options.
                     with progress
 
 [1mSupport[22m
+  [1mboot[22m              Run startup, one line per stage
   [1moffline-request[22m   Print the request code for
                     offline activation
   [1mimport-bundle <file>[22m
@@ -474,6 +481,7 @@ Run tidewater <command> --help for one command's options.
                     with progress
 
 [1mSupport[22m
+  [1mboot[22m              Run startup, one line per stage
   [1moffline-request[22m   Print the request code for
                     offline activation
   [1mimport-bundle <file>[22m
@@ -544,6 +552,7 @@ Usage  tidewater <command> [options]
                     with progress
 
 [1mSupport[22m
+  [1mboot[22m              Run startup, one line per stage
   [1moffline-request[22m   Print the request code for
                     offline activation
   [1mimport-bundle <file>[22m
@@ -614,6 +623,7 @@ Run tidewater <command> --help for one command's options.
                     with progress
 
 [1mSupport[22m
+  [1mboot[22m              Run startup, one line per stage
   [1moffline-request[22m   Print the request code for
                     offline activation
   [1mimport-bundle <file>[22m

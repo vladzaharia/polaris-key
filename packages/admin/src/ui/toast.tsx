@@ -154,10 +154,10 @@ export function AppToaster({
       }
       {...(phoneBottom
         ? {
-            // The portal's toasts sit inside its content column (82rem, 2rem gutters), not the window's edge.
+            // The portal's toasts sit inside its content column (82rem, 1.5rem gutters), not the window's edge.
             offset: {
               bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 24px)`,
-              right: "max(2rem, calc((100% - 82rem) / 2 + 2rem))",
+              right: "max(1.5rem, calc((100% - 82rem) / 2 + 1.5rem))",
             },
             mobileOffset: { bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 16px)` },
           }
@@ -188,10 +188,8 @@ export function AppToaster({
         classNames: {
           toast:
             "group flex w-full items-start gap-3 rounded-lg border border-border bg-surface-overlay p-4 pe-11 text-sm max-sm:pe-14 text-fg shadow-elevation-3 sm:w-[22rem]",
-          success: "border-success-border",
-          info: "border-info-border",
-          warning: "border-warning-border",
-          error: "border-danger-border",
+          // The mockups' toast has one neutral border for every variant (components `.toast`); the
+          // icon carries the variant.
           icon: "mt-0.5",
           content: "flex min-w-0 flex-1 flex-col gap-0.5",
           title: "font-semibold text-fg-strong",

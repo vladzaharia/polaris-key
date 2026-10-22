@@ -4,14 +4,18 @@
  * (BRAND.md §5.4: section chrome only). The marker is decorative; the word names the section,
  * so the section is never told by colour alone (BRAND.md §9).
  *
+ * On the developer and Operate doors (docs.reference, docs.operate-guide) the same row: the
+ * eyebrow (the section's name on a feature page, else the sidebar group the page sits in, behind
+ * "Operate ›" in Operate), the title and Copy page. The landing has the eyebrow and the title.
+ *
  * On Help (docs.help-article): the topic's name with the marker, the title, and a Copy page button
  * that copies the page's text. The topic is the sidebar group the page sits in; the home and the
  * messages pages name themselves.
  */
-import Default from "@astrojs/starlight/components/PageTitle.astro";
 import { helpRoute } from "../lib/helpHost";
 import { HELP_ICONS } from "../lib/helpIcons";
 import { isServiceSection, sectionFor } from "../lib/section";
+import { doorOf } from "../lib/doors";
 
 const route = Astro.locals.starlightRoute;
 const section = sectionFor(route.id);
@@ -25,18 +29,49 @@ interface Node {
 }
 const holdsCurrent = (n: Node): boolean =>
   n.isCurrent === true || (n.entries ?? []).some(holdsCurrent);
+const groupName = (route.sidebar as Node[]).find((n) => n.type === "group" && holdsCurrent(n))?.label;
 const topic =
   route.id === "help"
     ? "Help"
     : route.id.startsWith("help/messages")
       ? "Messages"
-      : ((route.sidebar as Node[]).find((n) => n.type === "group" && holdsCurrent(n))?.label ??
-        "Help");
+      : (groupName ?? "Help");
+const door = doorOf(route.id)?.door;
+const landing = route.id === "" || route.id === "index";
+const eyebrow = landing
+  ? "Start here"
+  : isServiceSection(section)
+    ? section.label
+    : door === "operate"
+      ? groupName === undefined
+        ? "Operate"
+        : `Operate › ${groupName}`
+      : groupName;
+
+// What search shows under a result, and the door filter "Help only" uses (Search.astro): the door's
+// name, then the path the page sits in ("Developers › Features › Licensing"). Help names its topic.
+const DOOR_NAMES = { help: "Help", developers: "Developers", operate: "Operate" } as const;
+const doorName = door === undefined || door === "landing" ? "developers" : door;
+// The sidebar's own names for the groups the page sits in ("Build › UI kits"), not its slugs; a
+// group named like the door ("Operate") is the door already.
+const names = (nodes: Node[]): string[] => {
+  const g = nodes.find((n) => n.type === "group" && holdsCurrent(n));
+  return g === undefined ? [] : [g.label ?? "", ...names(g.entries ?? [])];
+};
+const path = names(route.sidebar as Node[])
+  .filter((l) => l !== "" && l !== DOOR_NAMES[doorName])
+  .slice(0, 2);
+const trail = [
+  DOOR_NAMES[doorName],
+  ...(help ? (topic === "Help" ? [] : [topic]) : path),
+].join(" › ");
 ---
 
 {
   route.id === "404" ? null : help ? (
     <div class="pk-help-header">
+      <meta data-pagefind-filter="door[content]" content={doorName} />
+      <meta data-pagefind-meta="trail[content]" content={trail} />
       <p class="pk-eyebrow pk-help-eyebrow">
         <span class="pk-eyebrow__marker" aria-hidden="true" />
         {topic}
@@ -46,7 +81,7 @@ const topic =
           {route.entry.data.title}
         </h1>
         {route.id !== "help" && (
-          <button type="button" class="pk-help-copy" aria-label="Copy page">
+          <button type="button" class="pk-help-copy" aria-label="Copy page" data-pagefind-ignore>
             <span set:html={HELP_ICONS.copy} />
             <span class="pk-help-copy__label">Copy page</span>
           </button>
@@ -54,15 +89,27 @@ const topic =
       </pk-help-copy>
     </div>
   ) : (
-    <>
-      {isServiceSection(section) && (
+    <div class="pk-doc-header">
+      <meta data-pagefind-filter="door[content]" content={doorName} />
+      <meta data-pagefind-meta="trail[content]" content={trail} />
+      {eyebrow && (
         <p class="pk-eyebrow">
           <span class="pk-eyebrow__marker" aria-hidden="true" />
-          {section.label}
+          {eyebrow}
         </p>
       )}
-      <Default />
-    </>
+      <pk-help-copy class="pk-help-titlerow">
+        <h1 id="_top" data-page-title>
+          {route.entry.data.title}
+        </h1>
+        {door !== undefined && door !== "landing" && (
+          <button type="button" class="pk-help-copy" aria-label="Copy page" data-pagefind-ignore>
+            <span set:html={HELP_ICONS.copy} />
+            <span class="pk-help-copy__label">Copy page</span>
+          </button>
+        )}
+      </pk-help-copy>
+    </div>
   )
 }
 

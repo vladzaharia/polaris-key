@@ -8,22 +8,16 @@ lastReviewed: "2026-10-10"
 
 import CardGrid from "../../../components/docs/CardGrid.astro";
 import { LinkCard } from "@astrojs/starlight/components";
+import { START_HERE } from "../../../lib/suggestions";
 
 Polaris Key gives an app licensing, managed config, sign-in, Cloud Sync and delivery of its builds. Here you add them to an app. It covers a first product, the SDKs, and the reference.
 
 ## Get started
 
 <CardGrid>
-  <LinkCard
-    title="Your first product"
-    href="/docs/start/first-product/"
-    description="Create a product, install an SDK, activate a test license."
-  />
-  <LinkCard
-    title="Choose your integration"
-    href="/docs/start/choose-your-integration/"
-    description="Drop-in UI kit or your own UI, and your SDK."
-  />
+  {START_HERE.map((c) => (
+    <LinkCard title={c.title} href={c.href} description={c.description} />
+  ))}
 </CardGrid>
 
 ## Build and look up

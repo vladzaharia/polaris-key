@@ -66,7 +66,7 @@ import {
   ProviderGlyph,
   SteamGlyph,
   WindowsGlyph,
-} from "../Glyphs.js";
+} from "../../../ui/Glyphs.js";
 import { ErrorPanel } from "../States.js";
 import { AccountCard as SectionCard } from "./AccountCard.js";
 import { MethodRow } from "./MethodRow.js";
@@ -174,6 +174,7 @@ export function SignInMethods({
           account
           error={methods.error}
           onRetry={() => void methods.refetch()}
+          message={t("locker.error.loadFailedMethods")}
           className="border-0 p-0 shadow-none"
         />
       ) : (
@@ -199,7 +200,7 @@ function SignInEmailOnly({
       <h3 className="mb-2 text-xs font-semibold text-fg-muted">
         {t("signin.email.label")}
       </h3>
-      <ul className="divide-y divide-border border-y border-border">
+      <ul className="divide-y divide-border border-b border-border -mx-4 desk:-mx-5 bigtext:max-sm:mx-0 [&>li]:px-4 desk:[&>li]:px-5 bigtext:max-sm:[&>li]:px-0">
         <li className="flex items-center gap-3 py-3">
           <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
             <Mail aria-hidden className="size-5" />
@@ -456,7 +457,7 @@ function MethodGroups({
         <h3 id={ids.accounts} tabIndex={-1} className={GROUP_HEADING}>
           {t("locker.methods.accounts")}
         </h3>
-        <ul className="divide-y divide-border">
+        <ul className="divide-y divide-border border-b border-border -mx-4 desk:-mx-5 bigtext:max-sm:mx-0 [&>li]:px-4 desk:[&>li]:px-5 bigtext:max-sm:[&>li]:px-0">
           {(["apple", "google", "steam"] as const).flatMap((kind) => {
             const linked = accounts.filter((m) => m.kind === kind);
             const provider = view.providers.find((p) => p.kind === kind);
@@ -527,7 +528,7 @@ function MethodGroups({
             · {t("locker.methods.signInWithCode")}
           </span>
         </h3>
-        <ul className="divide-y divide-border">
+        <ul className="divide-y divide-border border-b border-border -mx-4 desk:-mx-5 bigtext:max-sm:mx-0 [&>li]:px-4 desk:[&>li]:px-5 bigtext:max-sm:[&>li]:px-0">
           {view.emails.map((e) => {
             const m = view.methods.find((x) => x.id === e.methodId);
             if (!m) return null;
@@ -593,7 +594,7 @@ function MethodGroups({
         <h3 id={ids.passkeys} tabIndex={-1} className={GROUP_HEADING}>
           {t("locker.methods.passkeys")}
         </h3>
-        <ul className="divide-y divide-border">
+        <ul className="divide-y divide-border border-b border-border -mx-4 desk:-mx-5 bigtext:max-sm:mx-0 [&>li]:px-4 desk:[&>li]:px-5 bigtext:max-sm:[&>li]:px-0">
           {view.methods
             .filter((m) => m.group === "passkeys")
             .map((m) => {
@@ -679,6 +680,7 @@ function MethodGroups({
           ))}
           <Button
             variant="outline"
+            size="sm"
             className="max-sm:min-h-11"
             onClick={() => navigate("#/account/link")}
           >
@@ -1065,7 +1067,7 @@ function AddEmail({
         <Button
           ref={buttonRef}
           variant="link"
-          className="h-11 font-medium sm:ms-13"
+          className="h-11 font-medium ms-13 bigtext:max-sm:ms-0"
           iconStart={<Plus aria-hidden />}
           aria-expanded={false}
           onClick={() => setStep({ kind: "enter" })}
@@ -1313,7 +1315,7 @@ function AddPasskey({
         <Button
           ref={buttonRef}
           variant="link"
-          className="h-11 font-medium sm:ms-13"
+          className="h-11 font-medium ms-13 bigtext:max-sm:ms-0"
           iconStart={<KeyRound aria-hidden />}
           loading={busy}
           aria-disabled={reason ? true : undefined}

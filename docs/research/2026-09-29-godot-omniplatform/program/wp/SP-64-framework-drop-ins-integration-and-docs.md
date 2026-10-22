@@ -77,15 +77,18 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
+
+   Corrections (SP-64): `sdkFit` already returned `{sdk, host, target, framework}` from SP-33a; this package added tests for each must-tier framework and the server start block's framework fallback. The error reference already lists the four backend codes (generated). The docs have no host/framework select: the Your server lane is a section of `<Lanes>` (lane id `server`, the only tab set) with a framework table, and the framework is chosen on the console card (`?server=`, `?cli=`). Sign-in snippets exist for Express, Hono, Next.js and FastAPI only; the other drop-ins' pages name their gate. The Commerce and Cloud Sync pages have no Your server lane (no server snippet exists). The core link anchors at `#use-the-core-directly`. `build/servers/` pages Snippet the SP-33a goldens, so the compiled golden is the page's code.
+
 2. Implement the scope; run the green gate; hand off.
 
 ## Acceptance criteria
 
 - [ ] `sdkFit` detects each must-tier framework from its repo signal; the server card turns Verified on a `<lang>-server` sighting.
-- [ ] The Your server lane renders for Licensing, Sign-in and Managed config; lanes stay the only tab set (docs plan §3.6).
-- [ ] Every server snippet compiles as an SP-33a golden.
+- [x] The Your server lane renders for Licensing, Sign-in and Managed config; lanes stay the only tab set (docs plan §3.6).
+- [x] Every server snippet compiles as an SP-33a golden.
 - [ ] `build/servers/` states the one-hour replay window and the ~65-minute revocation bound.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 

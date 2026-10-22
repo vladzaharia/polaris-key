@@ -334,6 +334,46 @@ describe("product page on today's data (PX-04)", () => {
     expect(card.textContent).not.toMatch(/Updates included|newer versions/);
   });
 
+  it("an ended licence that keeps its last version says Updates ended, not Expired (B4)", async () => {
+    const lapsed = license({
+      product: "nightfall",
+      tier: "deluxe",
+      expiresAt: NOW_S - 3 * DAY,
+    });
+    mockFetch(
+      signedIn([lapsed], {
+        "/api/releases": { releases },
+        "/api/licenses/nightfall/lic_nightfall": detail(lapsed, {
+          devices: [],
+        }),
+        "/api/products/nightfall/downloads": downloadsView(
+          "nightfall",
+          [dlFile({ artifactId: "m18", platform: "macos", version: "1.8" })],
+          { latest: false },
+        ),
+      }),
+    );
+    renderPortal();
+    const h1 = await screen.findByRole("heading", {
+      level: 1,
+      name: "Nightfall",
+    });
+    const card = await screen.findByRole("region", { name: "License" });
+    const term = await waitFor(() => {
+      const el = card.querySelector("[data-license-term]");
+      expect(el?.textContent).toContain("Updates ended at 1.8");
+      return el!;
+    });
+    // The warning pill beside the name, once; the term says it keeps working, and "Renew to use
+    // it again" is for a license that stopped everything.
+    expect(within(h1.parentElement!).getByText("Updates ended")).toBeTruthy();
+    expect(within(card).queryByText("Updates ended")).toBeNull();
+    expect(screen.queryByText("Expired")).toBeNull();
+    expect(term.textContent).toContain("Keeps working");
+    expect(term.textContent).toMatch(/Renewal stopped [A-Z][a-z]{2} \d/);
+    expect(card.textContent).not.toContain("Renew to use it again");
+  });
+
   it("a licence with an end date reads Until <date> in the term (P0-47)", async () => {
     const term = license({
       product: "nightfall",
@@ -595,9 +635,7 @@ describe("product page on today's data (PX-04)", () => {
       within(devices).getByText(
         (_, el) =>
           el?.tagName === "P" &&
-          /1 more device signed in, not using a seat/.test(
-            el.textContent ?? "",
-          ),
+          /1 more device signed in, not counted/.test(el.textContent ?? ""),
       ),
     ).toBeTruthy();
     await userEvent.click(
@@ -609,7 +647,7 @@ describe("product page on today's data (PX-04)", () => {
     await waitFor(() => expect(document.activeElement).toBe(heading));
     expect(
       within(devices).getByText(
-        "Its seat is free straight away: 1 device in use.",
+        "Another device can sign in straight away: 1 device in use.",
       ),
     ).toBeTruthy();
     // Mail is configured in this fixture (capabilities.auth.magic), so the notice is promised.
@@ -654,9 +692,13 @@ describe("product page on today's data (PX-04)", () => {
       ),
     );
     expect(await screen.findByText("Studio PC was removed")).toBeTruthy();
-    // The row is gone; focus goes to the product's h1, never body (FLOWS.md P-7).
-    const h1 = screen.getByRole("heading", { level: 1, name: "Nightfall" });
-    await waitFor(() => expect(document.activeElement).toBe(h1));
+    // The row is gone; focus goes to the Devices heading (the page's h1 is off screen from a
+    // long list), never body (FLOWS.md P-7).
+    const devicesHeading = screen.getByRole("heading", {
+      level: 2,
+      name: "Devices",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(devicesHeading));
   });
 
   it("promises no confirmation email when the Worker can't send mail", async () => {
@@ -879,7 +921,7 @@ describe("product page on today's data (PX-04)", () => {
         within(devices).getByRole("button", { name: "Remove Studio Mac" }),
       );
       expect(
-        within(devices).getByText("Its seat is free straight away."),
+        within(devices).getByText("Another device can sign in straight away."),
       ).toBeTruthy();
     });
 

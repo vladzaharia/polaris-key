@@ -69,9 +69,9 @@ describe("docs components", () => {
       expect(c.summary.length, c.name).toBeGreaterThan(10);
   });
 
-  it("the pickers cover every SDK and both lanes", () => {
+  it("the pickers cover every SDK and every lane", () => {
     expect(SDK_IDS).toHaveLength(6);
-    expect([...LANE_IDS]).toEqual(["kit", "library"]);
+    expect([...LANE_IDS]).toEqual(["kit", "library", "server"]);
   });
 
   it("the contributor page uses every component that renders without data", () => {

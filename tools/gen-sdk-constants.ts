@@ -2018,7 +2018,7 @@ export const TARGETS: readonly Target[] = [
     parser: "typescript",
   },
   {
-    path: "packages/sdk-react/src/constants.generated.ts",
+    path: "packages/ui-core/src/browser/sdk/constants.generated.ts",
     sdk: "react",
     render: renderTs,
     parser: "typescript",
@@ -2056,7 +2056,7 @@ export const COPY_TARGETS: readonly Target[] = [
     parser: "typescript",
   },
   {
-    path: "packages/sdk-react/src/copy.generated.ts",
+    path: "packages/ui-core/src/browser/sdk/copy.generated.ts",
     sdk: "react",
     render: renderCopyTs,
     parser: "typescript",

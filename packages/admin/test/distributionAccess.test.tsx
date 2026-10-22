@@ -13,6 +13,7 @@ import { resetConsole } from "./consoleHarness.js";
 import { qk } from "../src/console/data/queries.js";
 import {
   ACCESS,
+  accessSetting,
   apiError,
   bootWith,
   P,
@@ -23,6 +24,7 @@ const axe = configureAxe({
   rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
 });
 const HASH = "#/p/djdl/distribution/access";
+const KEY = P("/settings/distribution.access");
 
 beforeEach(() => resetConsole());
 afterEach(() => {
@@ -58,9 +60,7 @@ describe("Distribution → Access", () => {
   });
 
   it("saves the app's mode to Distribution's delivery access only", async () => {
-    const { calls } = bootWith(HASH, {
-      [`PUT ${P("/distribution/access")}`]: ACCESS,
-    });
+    const { calls } = bootWith(HASH);
     const app = await section("App");
     await userEvent.click(within(app).getByRole("radio", { name: /Entitled/ }));
     const bar = await screen.findByRole("region", {
@@ -72,21 +72,22 @@ describe("Distribution → Access", () => {
     await waitFor(() =>
       expect(writes(calls)).toEqual([
         expect.objectContaining({
-          path: P("/distribution/access"),
-          method: "PUT",
-          body: { mode: "entitled" },
+          path: KEY,
+          method: "PATCH",
+          body: { value: { app: { mode: "entitled" } }, expectedVersion: 0 },
         }),
       ]),
     );
     expect(
-      calls.some((c) => c.path === P("/update/settings") && c.method !== "GET"),
+      calls.some(
+        (c) =>
+          c.path === P("/settings/update.metadataAccess") && c.method !== "GET",
+      ),
     ).toBe(false);
   });
 
   it("sets a pack's gate from the catalog's flags, saving only that pack", async () => {
-    const { calls } = bootWith(HASH, {
-      [`PUT ${P("/distribution/access")}`]: ACCESS,
-    });
+    const { calls } = bootWith(HASH);
     const app = await section("App");
     await userEvent.click(within(app).getByRole("radio", { name: /Public/ }));
     const pack = await section("textures");
@@ -109,10 +110,12 @@ describe("Distribution → Access", () => {
     await waitFor(() =>
       expect(writes(calls)).toEqual([
         expect.objectContaining({
+          path: KEY,
           body: {
-            mode: "entitled",
-            deliverable: "textures",
-            entitlement: "pro-content",
+            value: {
+              textures: { mode: "entitled", entitlement: "pro-content" },
+            },
+            expectedVersion: 0,
           },
         }),
       ]),
@@ -120,12 +123,13 @@ describe("Distribution → Access", () => {
   });
 
   it("offers Revert to manifest only on a console-owned app row", async () => {
+    const owned = {
+      ...ACCESS,
+      app: { ...ACCESS.app, source: "admin" },
+      deliverables: ACCESS.deliverables.map((d) => ({ ...d, source: "admin" })),
+    };
     const { calls } = bootWith(HASH, {
-      [P("/distribution/access")]: {
-        ...ACCESS,
-        app: { ...ACCESS.app, source: "admin" },
-      },
-      [`POST ${P("/distribution/access/revert")}`]: ACCESS,
+      [KEY]: () => accessSetting(owned),
     });
     const app = await section("App");
     await userEvent.click(
@@ -139,8 +143,8 @@ describe("Distribution → Access", () => {
       within(confirm).getByRole("button", { name: "Revert to manifest" }),
     );
     await waitFor(() =>
-      expect(writes(calls).map((c) => c.path)).toEqual([
-        P("/distribution/access/revert"),
+      expect(writes(calls).map((c) => `${c.method} ${c.path}`)).toEqual([
+        `DELETE ${KEY}`,
       ]),
     );
   });
@@ -167,8 +171,7 @@ describe("Distribution → Access", () => {
   it("never shows a mode it could not read (UPS-3)", async () => {
     let fail = true;
     bootWith(HASH, {
-      [P("/distribution/access")]: () =>
-        fail ? apiError(500, "internal") : ACCESS,
+      [KEY]: () => (fail ? apiError(500, "internal") : accessSetting()),
     });
     const retry = await screen.findByRole("button", { name: "Try again" });
     expect(screen.queryByRole("radio", { name: /Public/ })).toBeNull();
@@ -179,7 +182,7 @@ describe("Distribution → Access", () => {
 
   it("shows a server refusal in the section that saved", async () => {
     bootWith(HASH, {
-      [`PUT ${P("/distribution/access")}`]: () =>
+      [`PATCH ${KEY}`]: () =>
         apiError(500, "internal", {}, "storage unavailable"),
     });
     const app = await section("App");

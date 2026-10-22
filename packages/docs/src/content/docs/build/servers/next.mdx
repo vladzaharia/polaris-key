@@ -1,0 +1,43 @@
+---
+title: "Gate a Next.js route with the license"
+description: "Refuse a request to your Next.js route handler or middleware unless the device's license allows it. Verified offline, with no call to Polaris Key."
+type: "how-to"
+lastReviewed: "2026-10-22"
+lanes: ["server"]
+sidebar:
+  order: 4
+---
+
+import Snippet from "../../../../components/docs/Snippet.astro";
+
+The Node drop-in reads the device's license document from the `X-PKey-License` header, verifies it offline against your pinned keys and refuses the request when the license doesn't allow it. A route with no gate stays open. The contract is on [Verify licenses on your server](/docs/build/servers/).
+
+Requires the License feature and the config file `pkey sdk --lang node --write` writes. The app sends `X-PKey-License` and `X-PKey-Device` with each call to your server.
+
+## Steps
+
+1. **Server** Install `@polaris-key/server` from Polaris Key's npm feed, and generate the config file with `pkey sdk --lang node --write`.
+2. **Server** Build one `createNextPolarisKey({ config })` in a shared module and import it from each route.
+3. **Server** Wrap each route handler in a gate: `requireLicense`, `requireEntitlement`, `requireTier` or `requireSignIn`.
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/node/server/licensing.next.ts"
+  title="app/api/pro/route.ts"
+/>
+
+A gated handler receives the request, then the license context, then Next's own route context with its params. To refuse before a route runs, export `polaris.middleware([...])` from `middleware.ts`: the first rule whose path matches decides, and a path no rule matches passes. The middleware can't hand the license to the route, so a route that reads it wraps its handler too; the verdict is cached, so it isn't verified twice.
+
+## Require a signed-in account
+
+`requireSignIn()` refuses with `sign_in_required` (403) while no account is signed in on the device. The handler's context has `user.subject`, the account's pairwise subject.
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/node/server/identity.next.ts"
+  title="app/api/me/route.ts"
+/>
+
+## More
+
+- Refusal shapes, several requirements, your own status codes and tests without a network: [Node server reference](/docs/features/licensing/server-node/).
+- Freshness, revocation and replay: [Verify licenses on your server](/docs/build/servers/).
+- The codes a refused request carries: [Error codes](/docs/reference/error-codes/).

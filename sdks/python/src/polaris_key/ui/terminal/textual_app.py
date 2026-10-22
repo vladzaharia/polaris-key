@@ -23,6 +23,7 @@ from textual.theme import Theme as TextualTheme
 from textual.widgets import Button, Footer, Input, ListItem, ListView, Select, Static, Switch
 
 from .. import _tokens, ansi
+from ...constants_generated import ErrorCode
 from ..core.copy import Copy
 from ..core.identity import ResolvedIdentity, presentation_source, resolve_identity
 from ...core.models import license_user
@@ -92,6 +93,15 @@ class Pane(VerticalScroll, inherit_bindings=False):
     taller than the window; focus scrolls the pane to the control instead."""
 
     BINDINGS = [Binding("pageup", "scroll_page_up", show=False), Binding("pagedown", "scroll_page_down", show=False)]
+
+
+def _ascii_symbols(theme: Theme) -> bool:
+    """Whether the app draws ASCII symbols: the theme says so, or (``auto``) the terminal needs it."""
+    if theme.symbols != "auto":
+        return theme.symbols == "ascii"
+    from .env import detect
+
+    return detect().symbols == "ascii"
 
 
 class PolarisKeyApp(App):
@@ -175,7 +185,11 @@ class PolarisKeyApp(App):
     ) -> None:
         self.client = client
         self.kit_theme = theme or Theme()
-        self.copy = Copy(self.kit_theme.locale, self.kit_theme.copy_overrides)
+        #: ASCII symbols (``theme.symbols``, ``--ascii``, ``TERM=dumb``): the catalog's "·" and "…"
+        #: read as "-" and "...", and the header's own separator follows.
+        self.pk_ascii = _ascii_symbols(self.kit_theme)
+        self.pk_sep = " - " if self.pk_ascii else " · "
+        self.copy = Copy(self.kit_theme.locale, self.kit_theme.copy_overrides, ascii=self.pk_ascii)
         slug = product or getattr(client, "product", None)
         self.identity = resolve_identity(
             integrator=self.kit_theme.product, source=presentation_source(client), slug=slug, accent=self.kit_theme.accent
@@ -384,7 +398,7 @@ class PolarisKeyApp(App):
         as markup. The name is on this line once (DL5); the pane under it does not repeat it."""
         # Narrow, the section row under it names the section; the header keeps the identity whole
         # rather than cut the title mid-word.
-        section = [] if self.has_class("-narrow") else [" · " + clean(self.copy(key))]
+        section = [] if self.has_class("-narrow") else [self.pk_sep + clean(self.copy(key))]
         return Text.assemble(self._monogram(), " ", (clean(self.identity.name), "bold"), *section, no_wrap=True, overflow="ellipsis")
 
     def _label(self, key: str) -> str:
@@ -410,7 +424,7 @@ class PolarisKeyApp(App):
         t = self.copy
         code = getattr(exc, "code", None)
         if code is None and isinstance(exc, OSError):
-            code = "network"
+            code = ErrorCode.NETWORK
         if isinstance(code, str) and t.has(f"core.codes.{code}.message"):
             title = t(f"core.codes.{code}.title") if t.has(f"core.codes.{code}.title") else t("core.fallback.title")
             return title, t(f"core.codes.{code}.message")
@@ -530,7 +544,7 @@ class PolarisKeyApp(App):
 
         out.append(_text(f"{t('cli.doctor.sdk')} {SDK_VERSION}", classes="pk-muted"))
         if g.tier:
-            line = t("account.tier", tier=g.tier) + (f" · {g.term}" if g.term else "")
+            line = t("account.tier", tier=g.tier) + (f"{self.pk_sep}{g.term}" if g.term else "")
             out.append(_text(line, classes="pk-gap"))
         links: List[Any] = []
         if self.page_url():
@@ -562,7 +576,7 @@ class PolarisKeyApp(App):
         out: List[Any] = head + [_text(t("devices.count", count=len(v.rows)), classes="pk-muted")]
         for r in v.rows:
             name = r.label or t("devices.unnamed")
-            tag = f" · {t('part.thisDeviceTitle', formFactor='computer')}" if r.current else ""
+            tag = f"{self.pk_sep}{t('part.thisDeviceTitle', formFactor='computer')}" if r.current else ""
             out.append(_text(f"{name}{tag}", classes="pk-gap"))
             if r.platform:
                 out.append(_text(platform_name(r.platform) or "", classes="pk-muted"))
@@ -665,7 +679,7 @@ class PolarisKeyApp(App):
         # Licensed: the tier is the title and the product is in the header (DL5, DL8).
         title: Text = Text(clean(t("account.tier", tier=g.tier) if g.tier else t("part.status.ok")), "bold")
         if g.term:
-            title.append(f" · {clean(g.term)}", "dim")
+            title.append(f"{self.pk_sep}{clean(g.term)}", "dim")
         out.append(Static(title, markup=False, classes="pk-row"))
         if g.signed_in and (g.holder or g.email):
             out.append(_text(t("account.holder", name=g.holder or g.email), classes="pk-muted"))

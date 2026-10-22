@@ -50,6 +50,8 @@ export function doorOf(
   id: string,
 ): { door: DoorId; tier: Tier; prefix: string } | null {
   let best: (typeof TIER_PREFIXES)[number] | null = null;
+  // Starlight's route id for the site's root page is empty; the table calls it `index`.
+  if (id === "") id = "index";
   for (const row of TIER_PREFIXES) {
     // A section's own page (`help` for help/index) belongs to the section.
     const hit = row[0].endsWith("/")
@@ -215,6 +217,25 @@ export const DOOR_TREES: readonly DoorTree[] = [
           sdkPages("kotlin", "Kotlin", true),
           sdkPages("godot", "Godot", true),
           leaf("build/sdks/index", "All SDKs"),
+          {
+            label: "Your server",
+            collapsed: true,
+            items: [
+              leaf("build/servers/index", "Verify licenses on your server"),
+              ...leaves(
+                "build/servers/express",
+                "build/servers/hono",
+                "build/servers/next",
+                "build/servers/fastapi",
+                "build/servers/starlette",
+                "build/servers/flask",
+                "build/servers/django",
+                "build/servers/drf",
+                "build/servers/ktor",
+                "build/servers/spring",
+              ),
+            ],
+          },
           {
             label: "Drop-in UI kits",
             collapsed: true,

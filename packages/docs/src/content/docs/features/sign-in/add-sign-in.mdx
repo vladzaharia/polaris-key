@@ -8,6 +8,8 @@ sidebar:
 ---
 
 import Requires from "../../../../components/docs/Requires.astro";
+import Snippet from "../../../../components/docs/Snippet.astro";
+import Lanes from "../../../../components/docs/Lanes.astro";
 
 Your app starts a sign-in, the person finishes it in a browser, and the app ends up with a device token or a browser session and a license.
 
@@ -26,7 +28,7 @@ Before you start:
 4. **Console** Optional: open **App sign-in** and set what customers can do: adding a license by key, showing the product in libraries and key reissue. Email codes and passkeys are always on.
 5. **App** Start the sign-in from your SDK, per the table. A client with no browser shows the user code and a QR code, then polls. A browser app redirects.
 6. **App** On success, store the result the SDK hands back and refresh the license status. A device flow ends in a device token. A browser flow with a `return_to` ends in a session cookie.
-7. **Server** Optional: read the signed-in account on your backend. The license document carries `profile.user` with the account's pairwise subject (`ps_…`) while an account is signed in on that device. A drop-in verifies the document and hands you the account as `user.subject`: `@polaris-key/server` (Express, Hono, Next.js), `polaris_key.server` (FastAPI, Starlette, Django, DRF, Flask) as `auth.user`, and `polaris-key-server-ktor`. See [Verify licenses on your server](/docs/features/licensing/server-verification/). Without a drop-in, verify the document yourself, then read `profile.user.subject`. In `@polaris-key/client-core/license`, `licenseUserOf(doc)` returns `{ subject }` or `null` and never throws.
+7. **Server** Optional: read the signed-in account on your backend, as [Your backend](#your-backend) shows. The license document carries `profile.user` with the account's pairwise subject (`ps_…`) while an account is signed in on that device.
 
 | SDK    | Sign-in                                                          | Where the code is                              |
 | ------ | ---------------------------------------------------------------- | ---------------------------------------------- |
@@ -38,6 +40,43 @@ Before you start:
 | Godot  | Device flow, with a sign-in dialog in the kit                    | [Godot](/docs/build/sdks/godot/your-own-ui/)   |
 
 The kit's form is [SignIn](/docs/build/ui/components/sign-in/). Which SDK has each part is listed in [Parity](/docs/reference/parity/).
+
+## Your backend
+
+<Lanes lanes={["server"]} intro="Your backend can require a signed-in account. The drop-in verifies the license document and hands you the account as user.subject, a pairwise subject that is stable per product.">
+  <Fragment slot="server">
+
+Express and FastAPI read the account like this. A device with no account is refused with `sign_in_required` (403).
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/node/server/identity.express.ts"
+  title="app.ts"
+/>
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/python/server/identity.fastapi.py"
+  title="main.py"
+/>
+
+The other frameworks have the same gate: see the sign-in section of each page.
+
+| Host   | Framework             | Gate a route                                      |
+| ------ | --------------------- | ------------------------------------------------- |
+| Node   | Express               | [Express](/docs/build/servers/express/)           |
+| Node   | Hono                  | [Hono](/docs/build/servers/hono/)                 |
+| Node   | Next.js               | [Next.js](/docs/build/servers/next/)              |
+| Python | FastAPI               | [FastAPI](/docs/build/servers/fastapi/)           |
+| Python | Starlette             | [Starlette](/docs/build/servers/starlette/)       |
+| Python | Flask                 | [Flask](/docs/build/servers/flask/)               |
+| Python | Django                | [Django](/docs/build/servers/django/)             |
+| Python | Django REST framework | [Django REST framework](/docs/build/servers/drf/) |
+| Kotlin | Ktor                  | [Ktor](/docs/build/servers/ktor/)                 |
+| Kotlin | Spring Boot           | [Spring Boot](/docs/build/servers/spring/)        |
+
+Without a drop-in, verify the document yourself, then read `profile.user.subject`. In `@polaris-key/client-core/license`, `licenseUserOf(doc)` returns `{ subject }` or `null` and never throws.
+
+  </Fragment>
+</Lanes>
 
 ## Check it works
 

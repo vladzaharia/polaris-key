@@ -171,7 +171,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // I-41: a support code resolved to {product, subject}; the handler checks the caller's product access.
   ...rows(["GET"], "/support-codes/:code", "console", supportCodes),
   // ST-52: the palette's entity search and pasted-key resolution; each product is held to its own area.
-  ...rows(["GET"], "/search", "console", search),
+  ...rows(["POST"], "/search", "console", search),
   // The product list, filtered the same way.
   ...rows(["GET"], "/products", "console", registry),
   // NoAccessPage: who can give the caller access to a scope and area.
@@ -376,10 +376,11 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ),
 
   // ── One product: Core's resources ─────────────────────────────────────────────────────────
-  // Every row-backed key; the handler lists only the keys whose area the caller holds.
+  // Every product setting the registry serves (ST-05b); the handler lists only the keys whose
+  // area the caller holds, and `byKey` takes a key's own area.
   ...rows(["GET"], `${P}/settings/effective`, "core", product),
   ...rows(["GET"], `${P}/settings/drift`, "core", product),
-  ...rows(["PATCH", "DELETE"], `${P}/settings/:key`, "byKey", product),
+  ...rows(["GET", "PATCH", "DELETE"], `${P}/settings/:key`, "byKey", product),
   ...rows(["GET", "POST"], `${P}/settings/backfill`, "settings", product),
   ...rows(["GET"], `${P}/settings/backfill/:reportId`, "settings", product),
   ...rows(["DELETE"], `${P}/claims/:key`, "byKey", product),
@@ -467,7 +468,6 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET", "PUT"], `${P}/ci-publisher`, "keys", product),
   ...rows(["GET", "POST"], `${P}/ci-tokens`, "keys", product),
   ...rows(["DELETE"], `${P}/ci-tokens/:id`, "keys", product),
-  ...rows(["GET", "PUT", "DELETE"], `${P}/trust-policy`, "keys", product),
 ];
 
 /** True for a row under `/products/:slug` (product scope). */

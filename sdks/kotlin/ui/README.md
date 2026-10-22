@@ -147,6 +147,10 @@ runs `finish()`). It provides the client through `LocalPolarisKey`, so any scree
 
 - `PolarisGateState.continueFree()` runs keyless enrolment (`client.enroll()`); a refusal lands on
   the activation form like an activation's.
+- The settings screen carries the release channel choice (`PolarisChannelPicker`, from
+  `client.channelChoices()`): a radio list that draws only when `PolarisSettings` can act on a pick,
+  and, when the outlet fixes the channel, the current channel with the lock and "<Store> sets the
+  channel." A single channel with no lock draws nothing.
 - `client.settingsActions(editable = true)` types each row from the served catalog
   (`PolarisSettingEntry.editor`: `Toggle`, `Choice`, `Number`, `Text`; none for an enforced row or a
   secret), and `PolarisSettingsState.set(key, value)` / `reset(key)` persist or clear a local

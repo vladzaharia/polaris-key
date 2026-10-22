@@ -45,7 +45,7 @@ A device with a usable license calling the token route gets a token whose payloa
 
 A recipe is repo-authored, so it must not be enough to mint. The token route signs only when two more conditions hold, and neither can be set from a manifest.
 
-1. **The signing secret has usage `edge-mint`.** An operator sets it in the console's **Keys & secrets** view or through the secrets API with `"usage": "edge-mint"`. A recipe naming a general secret reads as if the secret were missing: `500 misconfigured`, nothing signed.
+1. **The signing secret has usage `edge-mint`.** An operator sets it in the console's **Keys and secrets** view or through the secrets API with `"usage": "edge-mint"`. A recipe naming a general secret reads as if the secret were missing: `500 misconfigured`, nothing signed.
 2. **The recipe is approved in the exact form it runs.** The approval stores `alg`, `signingKeySecret`, `kid`, `claimsTemplate`, `ttlSeconds`, `audience`, `requires` and `requiredEntitlement`. A push that changes any of them makes the recipe inert until it is approved again. A resync that drops the id deletes the approval. `authPageTemplate` isn't part of it.
 
 An unapproved or changed recipe answers exactly like an unknown one: `404 not_found`.

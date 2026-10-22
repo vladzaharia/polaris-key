@@ -3,7 +3,7 @@
  * minus delivery access (now Distribution → Access). Fixes UPS-1 to UPS-7.
  *
  * Four sections, three of them saved on their own (one form and SaveBar each; UPS-1, UPS-6), all
- * through `PATCH …/update/settings` with only that section's fields:
+ * through `PATCH …/settings/<key>` of the section's own setting:
  *
  * - **Metadata access** (manifest-owned until saved; Revert to manifest while the console owns
  *   it, UPS-7). Needs a release configuration: without one it is read-only and says why.
@@ -133,11 +133,14 @@ export function FeedPage({ slug }: { slug: string }): React.ReactElement {
 
 function RevertConfirm({
   slug,
+  settings,
   block,
   open,
   onOpenChange,
 }: {
   slug: string;
+  /** The view the page loaded: its versions guard the write. */
+  settings: UpdateSettings;
   block: "access" | "compat";
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -157,7 +160,7 @@ function RevertConfirm({
       confirmLabel="Revert to manifest"
       describeError={(e) => errorCopy(e, { thing: "Update settings" })}
       onConfirm={async () => {
-        await mutate("revertUpdateSettings", slug, [block]);
+        await mutate("revertUpdateSettings", slug, [block], settings);
         toast.success(`The ${name} returns to the manifest on the next resync`);
       }}
     />
@@ -177,9 +180,12 @@ function AccessSection({
     values: { metadataAccess: settings.metadataAccess },
     mapServerErrors: serverFieldErrors,
     onSubmit: async (v) => {
-      await mutate("saveUpdateSettings", slug, {
-        metadataAccess: v.metadataAccess,
-      });
+      await mutate(
+        "saveUpdateSettings",
+        slug,
+        { metadataAccess: v.metadataAccess },
+        settings,
+      );
       toast.success(
         `Metadata access set to ${ACCESS_LABELS[v.metadataAccess] ?? v.metadataAccess}`,
       );
@@ -274,6 +280,7 @@ function AccessSection({
       </SettingsSection>
       <RevertConfirm
         slug={slug}
+        settings={settings}
         block="access"
         open={reverting}
         onOpenChange={setReverting}
@@ -312,7 +319,7 @@ function CompatSection({
         body.compatMin = v.compatMin.trim();
       if (v.compatMax.trim() !== server.compatMax)
         body.compatMax = v.compatMax.trim();
-      await mutate("saveUpdateSettings", slug, body);
+      await mutate("saveUpdateSettings", slug, body, settings);
       toast.success("Compatibility window saved");
     },
   });
@@ -361,6 +368,7 @@ function CompatSection({
       </SettingsSection>
       <RevertConfirm
         slug={slug}
+        settings={settings}
         block="compat"
         open={reverting}
         onOpenChange={setReverting}
@@ -405,7 +413,7 @@ function PolicySection({
         body.minimumSystemVersion = min === "" ? null : min;
       if (v.requireSparkleSignature !== server.requireSparkleSignature)
         body.requireSparkleSignature = v.requireSparkleSignature;
-      await mutate("saveUpdateSettings", slug, body);
+      await mutate("saveUpdateSettings", slug, body, settings);
       toast.success("Artifact policy saved");
     },
   });

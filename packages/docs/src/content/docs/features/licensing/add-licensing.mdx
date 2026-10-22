@@ -8,6 +8,7 @@ sidebar:
 ---
 
 import Requires from "../../../../components/docs/Requires.astro";
+import Lanes from "../../../../components/docs/Lanes.astro";
 
 Your app activates a license key, caches the signed license document and unlocks while the document is valid.
 
@@ -42,7 +43,7 @@ Before you start:
 
 6. **App** When the status is `needs-activation`, ask for the key and activate it. A refused activation carries a code: show the fix for `device_limit` ([Handle the device limit](/docs/features/licensing/device-limit/)) and for the others the message the SDK gives you.
 7. **App** Call the client's sync to refresh the document. The client keeps the last verified document, so the app works offline until the document's grace window ends ([Going offline](/docs/features/licensing/offline/)).
-8. **Server** Optional: gate your own backend on the same license. See [Verify licenses on your server](/docs/features/licensing/server-verification/) for the Node, Python and Kotlin drop-ins.
+8. **Server** Optional: gate your own backend on the same license, as [Your server](#your-backend) shows.
 
 Show the person what each refusal state means. The app is usable on `ok` and `grace`.
 
@@ -56,6 +57,31 @@ Show the person what each refusal state means. The app is usable on `ok` and `gr
 | `channel-not-entitled` | Say the license doesn't cover this build's channel | [License status](/docs/help/license-status/) |
 
 The full set is `ok`, `grace`, `expired`, `revoked`, `needs-activation`, `version-too-old`, `version-too-new`, `channel-not-entitled` and `not-applicable`.
+
+## Your backend
+
+<Lanes lanes={["server"]} intro="Your own backend checks the license the app already holds. The drop-in reads it from the X-PKey-License header and verifies it offline, so a route needs one line and no call to Polaris Key.">
+  <Fragment slot="server">
+
+Pick your framework. Each page has the route, the sign-in gate and the steps.
+
+| Host   | Framework             | Gate a route                                      |
+| ------ | --------------------- | ------------------------------------------------- |
+| Node   | Express               | [Express](/docs/build/servers/express/)           |
+| Node   | Hono                  | [Hono](/docs/build/servers/hono/)                 |
+| Node   | Next.js               | [Next.js](/docs/build/servers/next/)              |
+| Python | FastAPI               | [FastAPI](/docs/build/servers/fastapi/)           |
+| Python | Starlette             | [Starlette](/docs/build/servers/starlette/)       |
+| Python | Flask                 | [Flask](/docs/build/servers/flask/)               |
+| Python | Django                | [Django](/docs/build/servers/django/)             |
+| Python | Django REST framework | [Django REST framework](/docs/build/servers/drf/) |
+| Kotlin | Ktor                  | [Ktor](/docs/build/servers/ktor/)                 |
+| Kotlin | Spring Boot           | [Spring Boot](/docs/build/servers/spring/)        |
+
+For any other framework, or a CLI host, use [the core](/docs/build/servers/#use-the-core-directly). [How a request is decided](/docs/build/servers/), including the replay window and revocation.
+
+  </Fragment>
+</Lanes>
 
 ## Check it works
 
@@ -75,4 +101,4 @@ On **Integration**, Licensing shows **Verified** for the platform you ran. If it
 
 - [The license model](/docs/features/licensing/model/): tiers, keys, devices and seats.
 - [Manage licenses](/docs/features/licensing/manage-licenses/): disable, extend and move licenses.
-- [Verify licenses on your server](/docs/features/licensing/server-verification/): check a document on your backend.
+- [Verify licenses on your server](/docs/build/servers/): check a document on your backend.

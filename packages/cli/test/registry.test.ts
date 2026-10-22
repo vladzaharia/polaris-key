@@ -452,7 +452,7 @@ describe("pkey doctor", () => {
       return new Response(
         JSON.stringify({
           services: { license: { enabled: true }, config: { enabled: false } },
-          signing: { "djdl-2026": "key" },
+          trust: { keys: [{ kid: "djdl-2026", status: "active" }] },
         }),
       );
     }) as typeof fetch;
@@ -484,6 +484,7 @@ describe("pkey doctor", () => {
         ["services", "ok"],
         ["signing-keys", "ok"],
       ]);
+      expect(line.signing).toEqual([{ kid: "djdl-2026", status: "active" }]);
       expect(out.out.trim().split("\n")).toHaveLength(1);
     } finally {
       globalThis.fetch = real;
@@ -502,7 +503,8 @@ describe("pkey doctor", () => {
       expect(line.facts).toContainEqual({
         id: "discovery",
         state: "todo",
-        detail: "failed (404)",
+        detail: "not found (404)",
+        fix: "Is djdl registered at key.plrs.im?",
       });
     } finally {
       globalThis.fetch = real;
@@ -515,8 +517,14 @@ describe("pkey doctor", () => {
     expect(out.code).toBe(1);
     const line = JSON.parse(out.out.trim());
     expect(line.product).toBeNull();
-    expect(line.facts).toHaveLength(1);
+    expect(line.facts).toHaveLength(2);
     expect(line.facts[0]).toMatchObject({ id: "manifest", state: "todo" });
+    expect(line.facts[1]).toEqual({
+      id: "discovery",
+      state: "warn",
+      detail: "skipped: no product",
+      fix: "Pass --product, or run where .pkey/product is.",
+    });
   });
 
   it("text: outside a repository with no product it validates (and fails), never fetches", async () => {
@@ -540,15 +548,14 @@ describe("pkey doctor", () => {
     const real = globalThis.fetch;
     globalThis.fetch = discovery({
       services: { license: { enabled: true } },
-      signing: { "djdl-2026": "key" },
+      trust: { keys: [{ kid: "djdl-2026", status: "active" }] },
     });
     try {
       const out = await run(["doctor"], { cwd });
       expect(out.code).toBe(0);
-      expect(out.out).toContain(
-        "Remote discovery: ok https://key.plrs.im/djdl/.well-known/polaris.json",
-      );
-      expect(out.out).toContain("Services enabled: license");
+      expect(out.out).toContain("✓  Live product  answers");
+      expect(out.out).toContain("✓  Live features  license");
+      expect(out.out).toContain("✓  Signing key  djdl-2026, active");
     } finally {
       globalThis.fetch = real;
     }

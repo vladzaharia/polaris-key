@@ -108,7 +108,7 @@ class FlowTest {
     fun noBrowserNeverCrashesReplaceADevice() {
         shadowOf(ApplicationProvider.getApplicationContext<Application>()).checkActivities(true)
         rule.setContent {
-            StockHost(false) { PolarisTheme(copy = sampleCopy, darkTheme = false) { kitScreen("gate-device-limit-manage")() } }
+            StockHost(false) { PolarisTheme(copy = sampleCopy, darkTheme = false) { kitScreen("deviceLimit-browser-mode")() } }
         }
         rule.onNodeWithText(sampleCopy.openInBrowser).performClick()
         rule.waitForIdle()
@@ -119,7 +119,7 @@ class FlowTest {
     @Test
     fun anExpiredLicenceCanUseAnotherLicense() {
         rule.setContent {
-            StockHost(false) { PolarisTheme(copy = sampleCopy, darkTheme = false) { kitScreen("gate-expired")() } }
+            StockHost(false) { PolarisTheme(copy = sampleCopy, darkTheme = false) { kitScreen("statusScreen-expired")() } }
         }
         rule.onNodeWithText(sampleCopy.useAnotherLicense).performClick()
         rule.waitForIdle()
@@ -356,7 +356,7 @@ class FlowTest {
             androidx.compose.runtime.CompositionLocalProvider(
                 androidx.compose.ui.platform.LocalInputModeManager provides FixedInputMode(androidx.compose.ui.input.InputMode.Keyboard),
             ) {
-                StockHost(false) { PolarisTheme(copy = sampleCopy, darkTheme = false) { kitScreen("gate-device-limit-manage")() } }
+                StockHost(false) { PolarisTheme(copy = sampleCopy, darkTheme = false) { kitScreen("deviceLimit-browser-mode")() } }
             }
         }
         rule.waitForIdle()

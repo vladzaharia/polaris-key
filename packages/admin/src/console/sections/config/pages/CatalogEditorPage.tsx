@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AlertCircle, GitMerge, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, GitMerge, Pencil, Plus } from "lucide-react";
 import type { ConfigEntry, ProductCatalog } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
 import { diffSummary } from "../../../../lib/diff.js";
@@ -22,7 +22,7 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useProduct } from "../../../data/hooks.js";
 import { codecs, navigate, useSearchParam } from "../../../router.js";
 import { r } from "../../../routes.js";
-import { CatalogEntryForm } from "../components/CatalogEntryForm.js";
+import { EntryPane } from "../components/EntryPane.js";
 import { CatalogFilters, ViewOnlyNote } from "../components/CatalogFilters.js";
 import { WriteLock } from "../../../../ui/WriteLock.js";
 import { useWriteGate } from "../../../access/useCan.js";
@@ -38,7 +38,6 @@ import {
   draftDiff,
   draftDocument,
   draftFrom,
-  flagKeysOf,
   loadDraft,
   newEntry,
   saveDraft,
@@ -532,52 +531,29 @@ function Editor({
           <section
             aria-label={selected ? `Entry ${selected.key}` : "Entry"}
             // Its own height, not the key list's (a long list would stretch it into a tall empty card).
-            className="min-w-0 max-w-[55rem] self-start rounded-lg border border-border bg-surface-raised p-4"
+            className="min-w-0 max-w-[55rem] self-start"
           >
             {selected ? (
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="font-mono text-sm font-semibold text-fg-strong">
-                    {selected.key || "(no key)"}
-                  </h2>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    iconStart={<Trash2 aria-hidden />}
-                    onClick={() => removeEntry(selectedIndex)}
-                  >
-                    Remove entry
-                  </Button>
-                </div>
-                {conflicts
-                  .filter((c) => c.key === selected.key)
-                  .map((c) => (
-                    <ConflictPanel
-                      key={c.key}
-                      conflict={c}
-                      onSettle={(field, take) =>
-                        setDraft(settle(draft, c.key, field, take))
-                      }
-                    />
-                  ))}
-                <CatalogEntryForm
-                  key={selectedIndex}
-                  entry={selected}
-                  issues={issuesAt(selectedIndex)}
-                  categories={categories}
-                  fresh={!draft.baseEntries.some((e) => e.key === selected.key)}
-                  slug={slug}
-                  syncEnabled={product?.services?.sync?.enabled === true}
-                  flagKeys={flagKeysOf(draft.entries)}
-                  baseEntry={draft.baseEntries.find(
-                    (e) => e.key === selected.key,
-                  )}
-                  removal={removals[selected.key]}
-                  onChange={(next) => updateEntry(selectedIndex, next)}
-                />
-              </div>
+              <EntryPane
+                key={selectedIndex}
+                slug={slug}
+                entry={selected}
+                draft={draft}
+                issues={issuesAt(selectedIndex)}
+                categories={categories}
+                changed={changeOf(selected.key) !== null}
+                conflicts={conflicts.filter((c) => c.key === selected.key)}
+                removal={removals[selected.key]}
+                productName={product?.name}
+                syncEnabled={product?.services?.sync?.enabled === true}
+                onSettle={(key, field, take) =>
+                  setDraft(settle(draft, key, field, take))
+                }
+                onChange={(next) => updateEntry(selectedIndex, next)}
+                onRemove={() => removeEntry(selectedIndex)}
+              />
             ) : (
-              <p className="flex items-center justify-center py-8 text-center text-sm text-fg-muted lg:min-h-48">
+              <p className="flex items-center justify-center rounded-lg border border-border bg-surface-raised p-4 py-8 text-center text-sm text-fg-muted lg:min-h-48">
                 Choose an entry to edit it, or add one.
               </p>
             )}

@@ -1,16 +1,16 @@
 # SP-52 Swift package footprint
 
-| Field       | Value                                                                              |
-| ----------- | ---------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK usability review (2026-10-08)) |
-| Size        | 0.5–0.8 engineer-weeks                                                             |
-| Depends on  | none                                                                               |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-62](SP-62-swift-server-vapor.md)       |
-| Role        | `pkey-sdk-porter`                                                                  |
-| Plan mode   | no                                                                                 |
-| Gates       | `ci:macos`                                                                         |
-| Human input | none                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                          |
+| Field       | Value                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK usability review (2026-10-08))                                  |
+| Size        | 0.5–0.8 engineer-weeks                                                                                              |
+| Depends on  | none                                                                                                                |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-52b](SP-52b-ios-app-footprint.md), [SP-62](SP-62-swift-server-vapor.md) |
+| Role        | `pkey-sdk-porter`                                                                                                   |
+| Plan mode   | no                                                                                                                  |
+| Gates       | `ci:macos`                                                                                                          |
+| Human input | none                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                           |
 
 ## Goal
 
@@ -56,10 +56,10 @@ In progress. The 25% size target is not met: main CI run 39571880256 measured 3,
 
 ## Acceptance criteria
 
-- [ ] The published archive is under 6 MB with no Tests directory.
-- [ ] A Release arm64 iOS app with the kit and `decide()` is at least 25% smaller than at 0.8.33 (measured in CI).
-- [ ] `swift package resolve` clones only the macOS Sparkle binary dependency; zstd is vendored (UK-08 can remove the residual Sparkle clone).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] The published archive is under 6 MB with no Tests directory.
+- [ ] A Release arm64 iOS app with the kit and `decide()` is at least 25% smaller than at 0.8.33 (measured in CI): moved to SP-52b (2026-10-22); +7.7% today.
+- [x] `swift package resolve` clones only the macOS Sparkle binary dependency; zstd is vendored (UK-08 can remove the residual Sparkle clone).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 
@@ -69,3 +69,7 @@ Each acceptance item's test in its SDK lane, then the full green gate in `AGENTS
 
 The role agent sets `--set SP-52 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set SP-52 done`.
+
+## Split 2026-10-22 (triage)
+
+Set done on the met criteria. The size target is **[SP-52b](SP-52b-ios-app-footprint.md)** (1 to 2 days). SP-62 does not need the target.

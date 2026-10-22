@@ -8,6 +8,7 @@ import { href, type PortalRoute } from "../router.js";
 import { AccountMenu } from "./AccountMenu.js";
 import { HeaderBrand } from "./Lockup.js";
 import { MissingLicense } from "./MissingLicense.js";
+import { PortalErrorBoundary } from "./PortalErrorBoundary.js";
 import { t } from "../../lib/copy.js";
 import { formatDay } from "../date.js";
 
@@ -61,7 +62,9 @@ export function PortalShell({
   const onLibrary = route.kind === "library" || route.kind === "product";
   // A storefront product page (PS-05) lives inside Discover: its tab stays current there.
   const onDiscover = route.kind === "discover" || route.kind === "storefront";
-  const showDiscover = discoverCount !== null;
+  // Reserved while the Library loads (libraryCount null), so the tab doesn't pop in; it leaves only
+  // when the Library answered without Discover.
+  const showDiscover = discoverCount !== null || libraryCount === null;
   const mainRef = React.useRef<HTMLElement>(null);
   usePhoneBarToastInset();
   useLargeTextFlag();
@@ -83,7 +86,7 @@ export function PortalShell({
       </a>
       {/* pk-vt-chrome: kept above a list transition's moving content (src/motion.css). */}
       <header className="@container pk-vt-chrome sticky top-0 z-30 border-b border-border bg-surface-page short:static tight:max-desk:static">
-        <div className="mx-auto flex h-[calc(3.5rem-1px)] w-full max-w-[82rem] items-center gap-4 px-4 @max-[16rem]:gap-2 @max-[16rem]:px-2 desk:h-[calc(4rem-1px)] desk:gap-6 desk:px-8 mid:gap-8">
+        <div className="mx-auto flex h-[calc(3.5rem-1px)] w-full max-w-[82rem] items-center gap-4 px-4 @max-[16rem]:gap-2 @max-[16rem]:px-2 desk:h-[calc(4rem-1px)] desk:gap-6 desk:px-6 mid:gap-8">
           <a
             href={href.library()}
             aria-label={t("locker.shell.home")}
@@ -132,7 +135,7 @@ export function PortalShell({
           role="status"
           className="border-b border-warning-border bg-warning-subtle"
         >
-          <p className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm text-fg desk:px-8">
+          <p className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm text-fg desk:px-6">
             <TriangleAlert aria-hidden className="size-4 shrink-0" />
             <span>
               {t("locker.delete.banner", {
@@ -154,14 +157,16 @@ export function PortalShell({
         tabIndex={-1}
         // A short screen (§8) keeps the space above the page's title small.
         className={cn(
-          "mx-auto w-full max-w-[82rem] flex-1 px-4 pt-5 outline-none desk:px-8 desk:pt-6 short:pt-4",
+          "mx-auto w-full max-w-[82rem] flex-1 px-4 pt-6 outline-none desk:px-6 sm:pt-10 short:pt-4",
           // Room for the phone bar; the Library's sticky strip ends the page, so it adds none.
           route.kind === "library"
             ? "pb-[calc(3.25rem+1px+env(safe-area-inset-bottom)+1.5rem)] desk:pb-8"
             : "pb-[calc(3.25rem+1px+env(safe-area-inset-bottom)+1.5rem)] desk:pb-12",
         )}
       >
-        {children}
+        <PortalErrorBoundary resetKey={window.location.hash}>
+          {children}
+        </PortalErrorBoundary>
       </main>
       {/* The Library's sticky footer, static help every state of it has (PX-35). */}
       {route.kind === "library" ? (

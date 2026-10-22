@@ -60,6 +60,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | PATCH | `/manage/api/products/{product}/license/licenses/{licenseId}` | admin | Change a licence's terms or holder |
 | GET | `/manage/api/products/{product}/license/licenses` | admin | The product's licences, each with its derived holder, optionally filtered by holder |
 | POST | `/manage/api/products/{product}/license/licenses` | admin | Create a licence and mint its first key (shown once) |
+| GET | `/manage/api/products/{product}/settings/{key}` | admin | One product setting, with the value in force and where it came from |
 | PATCH | `/manage/api/products/{product}/settings/{key}` | admin | Set a product setting in the console, claiming it from the manifest |
 | DELETE | `/manage/api/products/{product}/settings/{key}` | admin | Revert a console setting to the manifest (or to its default) |
 | GET | `/manage/api/products/{product}/settings/drift` | admin | The console's claims against the last applied manifest, and the last apply's plan |
@@ -73,7 +74,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/manage/api/products/slug-check` | admin | Is a slug free for a new product |
 | GET | `/manage/api/products` | admin | Every registered product, as the console's registry, Home and switcher read it |
 | POST | `/manage/api/products` | admin | Create a product by hand, ready for an SDK in one call |
-| GET | `/manage/api/search` | admin | Command palette search across the products the caller may read |
+| POST | `/manage/api/search` | admin | Command palette search across the products the caller may read |
 | GET | `/manage/api/support-codes/{code}` | admin | Resolve a support code a customer read out to its product and user |
 | DELETE | `/manage/api/tokens/{tokenId}` | admin | Revoke an admin API token |
 | GET | `/manage/api/tokens` | admin | List admin API tokens |

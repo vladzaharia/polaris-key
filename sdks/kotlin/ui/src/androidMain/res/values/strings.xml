@@ -154,6 +154,18 @@
     <string name="pkey_ui_update_downloading">Downloading · %1$s of %2$s</string>
     <string name="pkey_ui_update_restart_now">Restart now</string>
     <string name="pkey_ui_update_failed">The update couldn\'t be installed. Try again later.</string>
+    <string name="pkey_ui_update_current">You have %1$s · %2$s download</string>
+    <string name="pkey_ui_update_current_no_size">You have %1$s</string>
+    <string name="pkey_ui_update_whats_new">What\'s new</string>
+    <string name="pkey_ui_update_all_changes">All changes in %1$s</string>
+    <string name="pkey_ui_update_skip">Skip this version</string>
+    <string name="pkey_ui_update_time_left">About %1$s left</string>
+    <string name="pkey_ui_update_app_store">Update on the App Store</string>
+    <string name="pkey_ui_update_google_play">Update on Google Play</string>
+    <string name="pkey_ui_update_steam">Get it on Steam</string>
+    <string name="pkey_ui_update_testflight">Open TestFlight</string>
+    <string name="pkey_ui_update_altstore">Open AltStore</string>
+    <string name="pkey_ui_update_reload">Reload</string>
     <string name="pkey_ui_packs_title">Downloading content</string>
     <string name="pkey_ui_packs_downloading">Downloading</string>
     <string name="pkey_ui_packs_installing">Installing</string>
@@ -169,6 +181,8 @@
     <string name="pkey_ui_duration_minutes">%1$s minutes</string>
     <string name="pkey_ui_duration_minute">1 minute</string>
     <string name="pkey_ui_duration_less_than_minute">less than a minute</string>
+    <string name="pkey_ui_duration_seconds">%1$s seconds</string>
+    <string name="pkey_ui_duration_second">1 second</string>
     <string name="pkey_ui_time_ago">%1$s ago</string>
     <string name="pkey_ui_time_just_now">just now</string>
     <string name="pkey_ui_bytes_b">%1$s B</string>

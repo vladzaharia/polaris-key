@@ -48,7 +48,7 @@ import {
   type ProfileDraft,
 } from "../model/profile.js";
 import { Avatar } from "./Avatar.js";
-import { ProviderGlyph, providerBadge } from "./Glyphs.js";
+import { ProviderGlyph, providerBadge } from "../../ui/Glyphs.js";
 
 type FieldError = {
   field: "name" | "picture" | "birthdate" | "form";
@@ -299,12 +299,17 @@ export function ProfileEditor({
 
         <div className="min-w-0 space-y-5">
           <div className="space-y-2">
-            <label
-              htmlFor={`${id}-name`}
-              className="text-sm font-medium text-fg-strong"
-            >
-              {C["profile.name.label"]}
-            </label>
+            {/* The tag sits beside the label, not inside the field, so at 200 % text on a phone it
+                wraps under the label instead of squeezing the input or scrolling sideways. */}
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <label
+                htmlFor={`${id}-name`}
+                className="text-sm font-medium text-fg-strong"
+              >
+                {C["profile.name.label"]}
+              </label>
+              <YourChoiceTag show={yourChoice} />
+            </div>
             <Input
               ref={nameRef}
               id={`${id}-name`}
@@ -323,8 +328,6 @@ export function ProfileEditor({
                   .join(" ") || undefined
               }
               onValueChange={typeName}
-              // Always framed, so the input is not re-mounted (and focus lost) as the tag appears.
-              suffix={<YourChoiceTag show={yourChoice} />}
             />
             {error?.field === "name" ? (
               <p id={nameErrId} role="alert" className="text-sm text-danger">
@@ -592,7 +595,7 @@ function YourChoiceTag({ show }: { show: boolean }): React.ReactElement {
   return (
     <span
       hidden={!show}
-      className="inline-flex h-6 items-center rounded-full bg-accent-subtle px-2 text-xs font-medium text-accent-fg"
+      className="inline-flex min-h-6 items-center rounded-xl bg-accent-subtle px-2 py-0.5 text-xs font-medium text-accent-fg [overflow-wrap:anywhere]"
     >
       {C["profile.name.yourChoice"]}
     </span>

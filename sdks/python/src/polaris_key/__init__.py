@@ -60,6 +60,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from ._version import DIST_NAME, SDK_NAME, SDK_VERSION, __version__
     from .client import DeviceInfo, PolarisKeyClient, SyncState
     from .boot import ActivationOutcome, BootOutcome
+    from .server_client import resolve_server_device_id, server_client
     from .aio import AsyncClient, AsyncPolarisKeyClient
     from .update.bootguard import BootGuard, BootGuardOutcome
     from .commerce import (
@@ -313,6 +314,10 @@ _EXPORTS: Dict[str, Tuple[str, ...]] = {
     ".boot": (
         "ActivationOutcome",
         "BootOutcome",
+    ),
+    ".server_client": (
+        "resolve_server_device_id",
+        "server_client",
     ),
     ".aio": (
         "AsyncClient",

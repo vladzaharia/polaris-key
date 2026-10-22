@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AlertTriangle, RotateCw } from "lucide-react";
+import { AlertTriangle, CircleX, RotateCw } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { errorCopy, type ErrorContext } from "../lib/errorCopy.js";
 import { Button } from "./Button.js";
@@ -17,6 +17,11 @@ export interface ErrorStateProps {
   onRetry?: () => void;
   context?: ErrorContext;
   compact?: boolean;
+  /**
+   * Names what failed: the title becomes "{thing} didn't load" and the retry reads "Retry", with
+   * "Copy details" beside it as a quiet second action. Without it the wording is `errorCopy`'s.
+   */
+  thing?: string;
   className?: string;
 }
 
@@ -25,9 +30,14 @@ export function ErrorState({
   onRetry,
   context,
   compact = false,
+  thing,
   className,
 }: ErrorStateProps): React.ReactElement {
-  const copy = errorCopy(error, context);
+  const base = errorCopy(error, context);
+  const copy =
+    thing && base.action !== "sign-in"
+      ? { ...base, title: `${thing} didn't load` }
+      : base;
   const titleId = React.useId();
   if (compact) {
     // Inside a tile, a card or a table body: one line, so a failure never stretches its row.
@@ -51,7 +61,13 @@ export function ErrorState({
           </span>{" "}
           <span className="text-fg-muted">{copy.description}</span>
         </p>
-        <Actions copy={copy} onRetry={onRetry} context={context} compact />
+        <Actions
+          copy={copy}
+          onRetry={onRetry}
+          context={context}
+          compact
+          named={Boolean(thing)}
+        />
       </div>
     );
   }
@@ -65,7 +81,11 @@ export function ErrorState({
         className,
       )}
     >
-      <AlertTriangle aria-hidden className="size-8 text-danger" />
+      {thing ? (
+        <CircleX aria-hidden className="size-8 text-danger" />
+      ) : (
+        <AlertTriangle aria-hidden className="size-8 text-danger" />
+      )}
       <div className="max-w-md space-y-1">
         <p id={titleId} className="text-base font-semibold text-fg-strong">
           {copy.title}
@@ -88,7 +108,12 @@ export function ErrorState({
           </ul>
         ) : null}
       </div>
-      <Actions copy={copy} onRetry={onRetry} context={context} />
+      <Actions
+        copy={copy}
+        onRetry={onRetry}
+        context={context}
+        named={Boolean(thing)}
+      />
     </div>
   );
 }
@@ -98,11 +123,13 @@ function Actions({
   onRetry,
   context,
   compact = false,
+  named = false,
 }: {
   copy: ReturnType<typeof errorCopy>;
   onRetry?: () => void;
   context?: ErrorContext;
   compact?: boolean;
+  named?: boolean;
 }): React.ReactElement {
   const variant = compact ? "ghost" : "outline";
   const size = compact ? "xs" : "sm";
@@ -116,7 +143,7 @@ function Actions({
             iconStart={<RotateCw />}
             onClick={onRetry}
           >
-            Try again
+            {named ? "Retry" : "Try again"}
           </Button>
         ) : null}
         {copy.action === "reload" ? (
@@ -147,12 +174,12 @@ function Actions({
             <a href={context.collectionHref}>Back to the list</a>
           </Button>
         ) : null}
-        {copy.action === "copy-details" ? (
+        {copy.action === "copy-details" || named ? (
           <CopyButton
             value={JSON.stringify(copy.details, null, 2)}
             label="Copy details"
             showLabel
-            size={size}
+            size={named ? "xs" : size}
             text="Copy details"
           />
         ) : null}

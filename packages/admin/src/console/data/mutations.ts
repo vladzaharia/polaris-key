@@ -45,6 +45,7 @@ const exact = (key: QueryKey): Target => ({ key, exact: true });
 
 /** The API methods that write. Kept in step with `api.ts` by `test/mutations.test.ts`. */
 export type WriteMethod =
+  | "search"
   | "logout"
   | "patchPlatformSetting"
   | "revertPlatformSetting"
@@ -313,6 +314,11 @@ const hostedAssets = (slug: string): Target[] => [
 ];
 
 export const MUTATIONS: MutationTable = {
+  search: {
+    label: "palette search",
+    invalidates: () => [],
+    why: "A read sent as POST so a pasted key stays out of the URL; it writes nothing.",
+  },
   logout: {
     label: "sign out",
     invalidates: () => [],
@@ -663,11 +669,18 @@ export const MUTATIONS: MutationTable = {
   },
   putTrustPolicy: {
     label: "device trust policy save",
-    invalidates: (slug) => [prefix(qk.trustPolicy(slug))],
+    // The same setting is listed by the settings pages (one store, ST-05b).
+    invalidates: (slug) => [
+      prefix(qk.trustPolicy(slug)),
+      prefix(qk.productSettingsAll(slug)),
+    ],
   },
   resetTrustPolicy: {
     label: "device trust policy reset",
-    invalidates: (slug) => [prefix(qk.trustPolicy(slug))],
+    invalidates: (slug) => [
+      prefix(qk.trustPolicy(slug)),
+      prefix(qk.productSettingsAll(slug)),
+    ],
   },
   putCiPublisher: {
     label: "trusted publisher claim",
@@ -706,17 +719,26 @@ export const MUTATIONS: MutationTable = {
   },
   saveUpdateSettings: {
     label: "update feed settings save",
-    invalidates: (slug) => [prefix(qk.feed(slug)), exact(qk.product(slug))],
+    invalidates: (slug) => [
+      prefix(qk.feed(slug)),
+      exact(qk.product(slug)),
+      prefix(qk.productSettingsAll(slug)),
+    ],
   },
   revertUpdateSettings: {
     label: "update feed settings revert",
-    invalidates: (slug) => [prefix(qk.feed(slug)), exact(qk.product(slug))],
+    invalidates: (slug) => [
+      prefix(qk.feed(slug)),
+      exact(qk.product(slug)),
+      prefix(qk.productSettingsAll(slug)),
+    ],
   },
   saveDeliveryAccess: {
     label: "delivery access save",
     invalidates: (slug) => [
       prefix(qk.access(slug)),
       prefix(qk.deliverables(slug)),
+      prefix(qk.productSettingsAll(slug)),
     ],
   },
   revertDeliveryAccess: {
@@ -724,6 +746,7 @@ export const MUTATIONS: MutationTable = {
     invalidates: (slug) => [
       prefix(qk.access(slug)),
       prefix(qk.deliverables(slug)),
+      prefix(qk.productSettingsAll(slug)),
     ],
   },
   rolloutAction: {
@@ -881,11 +904,17 @@ export const MUTATIONS: MutationTable = {
   },
   updateFingerprintPolicy: {
     label: "fingerprint policy update",
-    invalidates: (slug) => [prefix(qk.fingerprintPolicy(slug))],
+    invalidates: (slug) => [
+      prefix(qk.fingerprintPolicy(slug)),
+      prefix(qk.productSettingsAll(slug)),
+    ],
   },
   revertFingerprintPolicy: {
     label: "fingerprint policy revert",
-    invalidates: (slug) => [prefix(qk.fingerprintPolicy(slug))],
+    invalidates: (slug) => [
+      prefix(qk.fingerprintPolicy(slug)),
+      prefix(qk.productSettingsAll(slug)),
+    ],
   },
   updateProductSetting: {
     label: "product setting update",

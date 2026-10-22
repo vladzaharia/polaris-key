@@ -34,7 +34,7 @@ An App Attest key doesn't survive a reinstall, restore or migration, so the SDK 
 
 ## The trust policy
 
-Only a platform admin sets the policy; a manifest or resync never does. It is served at `/manage/api/products/<slug>/trust-policy` (`GET`, `PUT` and `DELETE`). `DELETE` restores the default: every operation `basic`, `enforce: false`, nothing configured.
+Only a member who holds the Keys & secrets area (`keys`) for the product sets the policy; a manifest or resync never does. It is the setting `core.trustPolicy`, at `/manage/api/products/<slug>/settings/core.trustPolicy` (`GET`, `PATCH` with the policy as `value`, and `DELETE`). `DELETE` restores the default: every operation `basic`, `enforce: false`, nothing configured.
 
 ```json title="Trust policy"
 {

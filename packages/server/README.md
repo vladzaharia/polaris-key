@@ -1,6 +1,6 @@
 # @polaris-key/server
 
-Gate a server route with the app's signed licence document, verified offline, for developers whose app talks to their own backend. The root is a Fetch core, `createPolarisKey().authenticate(request)`, that runs on Node, Bun, Deno and Workers. `./express`, `./hono` and `./next` are drop-ins over it, and `./testing` signs documents for your unit tests.
+Gate a server route with the app's signed licence document, verified offline, for developers whose app talks to their own backend. The root is a Fetch core, `createPolarisKey().authenticate(request)`, that runs on Node, Bun, Deno and Workers. `./express`, `./hono`, `./next`, `./fastify`, `./nestjs` and `./koa` are drop-ins over it, and `./testing` signs documents for your unit tests.
 
 ## Install
 
@@ -14,7 +14,7 @@ The `@polaris-key` scope is published only on Polaris Key's feed. Route the scop
 npm install @polaris-key/server
 ```
 
-See [Installing the SDKs from the feeds](https://key.plrs.im/docs/build/install/) for the other feeds. Express, Hono and Next are optional peers: install the one you use.
+See [Installing the SDKs from the feeds](https://key.plrs.im/docs/build/install/) for the other feeds. Express, Hono, Next, Fastify, NestJS and Koa are optional peers: install the one you use.
 
 ## Quick start
 
@@ -94,6 +94,24 @@ export const config = { matcher: "/api/:path*" };
 ```
 
 The first matching rule decides; a path no rule matches passes. The middleware can't hand the license to the route.
+
+### Fastify, NestJS and Koa
+
+```ts
+import Fastify from "fastify";
+import { polarisKey, requireEntitlement } from "@polaris-key/server/fastify";
+import { polarisConfig } from "./polaris.config";
+
+const app = Fastify();
+await app.register(polarisKey, { config: polarisConfig });
+app.get(
+  "/api/export",
+  { preHandler: requireEntitlement("export.pdf") },
+  async () => ({ ok: true }),
+);
+```
+
+Koa is `app.use(polarisKey({ config }))` with `requireEntitlement(...)` as route middleware, and the license in `ctx.state.polaris`. NestJS is `PolarisKeyModule.register({ config })` plus the `@RequireEntitlement(...)`, `@RequireTier(...)`, `@RequireLicense()`, `@RequireSignIn()` and `@RequireAll(...)` decorators, with `@GetPolarisLicense()` for the license. See [Gate a Node route](https://key.plrs.im/docs/features/licensing/server-node/).
 
 ### How it decides
 

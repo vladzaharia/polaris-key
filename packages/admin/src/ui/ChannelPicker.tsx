@@ -2,6 +2,7 @@ import * as React from "react";
 import { channelOptions, HINT_DEV, HINT_PR } from "../lib/channels.js";
 import { cn } from "../lib/cn.js";
 import { Checkbox } from "./Checkbox.js";
+import { Tooltip } from "./Tooltip.js";
 
 /** What each built-in channel grant means (components.md §3.3). */
 const SEMANTICS: Record<string, string> = {
@@ -18,6 +19,12 @@ export interface ChannelPickerProps {
   manual?: readonly string[];
   /** The value when the form opened, so an unticked held grant stays listed. */
   held?: readonly string[];
+  /**
+   * Channels held whatever the value says (a tier's `stable`): drawn first, checked and disabled
+   * with "Always included" (a dashed chip whose tooltip says so on hover or focus), and never part
+   * of the value or of what `onChange` returns.
+   */
+  fixed?: readonly string[];
   id?: string;
   disabled?: boolean;
   readOnly?: boolean;
@@ -38,6 +45,7 @@ export function ChannelPicker({
   onChange,
   manual = [],
   held,
+  fixed = [],
   id,
   disabled,
   readOnly,
@@ -46,7 +54,9 @@ export function ChannelPicker({
   ...aria
 }: ChannelPickerProps): React.ReactElement {
   const selected = value ?? [];
-  const options = channelOptions(manual, held ?? selected);
+  const options = channelOptions(manual, held ?? selected).filter(
+    (o) => !fixed.includes(o.name),
+  );
   const reactId = React.useId();
   const base = id ?? `ch-${reactId.replace(/:/g, "")}`;
   return (
@@ -57,6 +67,28 @@ export function ChannelPicker({
       className={cn("flex flex-col gap-2", className)}
       {...aria}
     >
+      {fixed.map((name) => (
+        <Checkbox
+          key={name}
+          id={`${base}-${name}`}
+          label={
+            <Tooltip content="Always included" side="top">
+              {/* Focusable, so the keyboard reaches the reason a disabled box cannot give. */}
+              <span
+                tabIndex={0}
+                data-locked
+                data-ui-static
+                className="inline-flex min-h-6 min-w-6 cursor-default items-center justify-center rounded-sm border border-dashed border-border-strong px-1.5 font-mono text-xs focus-visible:outline-2 focus-visible:outline-focus"
+              >
+                {name}
+              </span>
+            </Tooltip>
+          }
+          description="Always included"
+          checked
+          disabled
+        />
+      ))}
       {options.map((o) => (
         <Checkbox
           key={o.name}

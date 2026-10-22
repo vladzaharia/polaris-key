@@ -293,12 +293,12 @@ describe("Catalog editor: removing a value that is still in use", () => {
         },
       }),
     });
-    const allowed = await screen.findByRole("textbox", {
-      name: /^Allowed values/,
-    });
-    await userEvent.clear(allowed);
-    await userEvent.type(allowed, "flac, any");
-    await screen.findByRole("list", { name: "Removed values" });
+    const chips = await screen.findByRole("list", { name: "Allowed values" });
+    // Each chip says who uses it: the profile that sets mp3-320 is named on it.
+    await waitFor(() => expect(within(chips).getByText("Studio")).toBeTruthy());
+    await userEvent.click(
+      within(chips).getByRole("button", { name: "Remove mp3-320" }),
+    );
     const warning = await screen.findByText(/is still in use/);
     expect(warning.closest("[data-tone]")!.textContent).toContain("Studio");
     expect(warning.closest("[data-tone]")!.textContent).toContain("mp3-320");
@@ -308,11 +308,16 @@ describe("Catalog editor: removing a value that is still in use", () => {
         .getAttribute("aria-disabled"),
     ).toBe("true");
     // The removed chip stays, struck, with Undo.
+    expect(within(chips).getByText("(removed)")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: /Undo/ }));
     await waitFor(() =>
       expect(screen.queryByText(/is still in use/)).toBeNull(),
     );
-    expect((allowed as HTMLInputElement).value).toBe("flac, mp3-320, any");
+    expect(
+      within(screen.getByRole("list", { name: "Allowed values" })).getByText(
+        "mp3-320",
+      ),
+    ).toBeTruthy();
     held = "flac";
   });
 });
@@ -366,7 +371,7 @@ describe("Catalog review: a failed publish", () => {
       within(drawer).getByRole("button", { name: "Publish version 10" }),
     );
     const alert = await within(drawer).findByRole("alert");
-    expect(alert.textContent).toContain("Publish didn’t finish");
+    expect(alert.textContent).toContain("Publish didn't finish");
     expect(alert.textContent).toContain(
       "Devices still get v9. Your draft is kept.",
     );
@@ -428,7 +433,7 @@ describe("Minted token with no signing key", () => {
     const key = screen.getByRole("region", { name: "Signing key" });
     expect(key.textContent).toContain("No key yet");
     expect(key.textContent).toContain("3HWR8C2N6T");
-    expect(key.textContent).toContain("can’t be read back");
+    expect(key.textContent).toContain("can't be read back");
     await userEvent.click(screen.getByRole("button", { name: "Add the key…" }));
     const dialog = await screen.findByRole("dialog", {
       name: "Add the signing key",
@@ -445,5 +450,130 @@ describe("Minted token with no signing key", () => {
       method: "PUT",
       body: { value: "-----BEGIN PRIVATE KEY-----", usage: "edge-mint" },
     });
+  });
+});
+
+describe("Catalog review: who it reaches", () => {
+  it("counts who sets a changed key and says when devices get it", async () => {
+    await openEditor({
+      [`${P}/config/catalog/usage`]: {
+        keys: {
+          "quality.floor": {
+            profiles: [{ id: "studio", name: "Studio" }],
+            tiers: [],
+            licenses: [{ id: "L1", name: "Ana", email: null }],
+            accounts: [{ subject: "s1" }, { subject: "s2" }],
+          },
+        },
+      },
+      [`${P}/config/profiles/studio`]: {
+        id: "studio",
+        name: "Studio",
+        payload: { config: {}, secrets: {}, entitlements: {} },
+      },
+    });
+    const label = await screen.findByRole("textbox", { name: /^Label/ });
+    await userEvent.type(label, "!");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Review changes" }),
+    );
+    const drawer = await screen.findByRole("dialog");
+    const rail = await within(drawer).findByRole("heading", {
+      name: "Who it reaches",
+    });
+    const card = rail.closest("section")!;
+    await waitFor(() =>
+      expect(card.textContent).toContain("1 set a changed key"),
+    );
+    expect(card.textContent).toContain("2 set their own");
+    expect(card.textContent).toContain("Devices get v10 at their next check.");
+  });
+});
+
+describe("Minted token: a lifetime changed since approval", () => {
+  it("heads the entry with the pill, marks Was, offers Keep, and previews the token", async () => {
+    const TOKEN = E("applemusic.token", {
+      kind: "secret",
+      delivery: "edgeMint",
+      label: "Apple Music token",
+      category: "Integrations",
+    });
+    const base = {
+      id: "applemusic.token",
+      alg: "ES256",
+      signingKeySecret: "APPLE_MUSIC_KEY",
+      kid: "3HWR8C2N6T",
+      claimsTemplateJson: '{"iss":"K7Q2M9X4PL"}',
+      claimsTemplate: { iss: "K7Q2M9X4PL" },
+      audience: null,
+      requires: "licensed",
+      requiredEntitlement: null,
+    };
+    const approval = {
+      ...base,
+      ttlSeconds: 900,
+      openRegistrationAcknowledged: false,
+      licenseEnabled: true,
+      identity: null,
+      approvedAt: 1791000000,
+      approvedBy: "Ana Lima",
+    };
+    bootConfig("#/p/djdl/config/catalog/edit?entry=applemusic.token", {
+      [`${P}/config/catalog`]: { schemaVersion: 9, entries: [TOKEN] },
+      [`${P}/config/catalog/usage`]: { keys: {} },
+      [`${P}/secrets`]: {
+        secrets: [
+          {
+            name: "APPLE_MUSIC_KEY",
+            configured: true,
+            usage: "edge-mint",
+            createdAt: 1790000000,
+            updatedAt: 1790000000,
+            requiredBy: [],
+          },
+        ],
+      },
+      [`${P}/config/mint`]: {
+        registration: "requires-license",
+        anonymousEnroll: false,
+        oidcDefault: false,
+        publicMint: false,
+        licenseEnabled: true,
+        identity: null,
+        recipes: [
+          {
+            ...base,
+            ttlSeconds: 3600,
+            status: "changed",
+            secretUsage: "edge-mint",
+            changedFields: ["ttlSeconds"],
+            approval,
+          },
+        ],
+      },
+    });
+    await screen.findByRole("heading", { level: 1, name: "Edit catalog" });
+    expect(await screen.findByText("Changed since approval")).toBeTruthy();
+    expect(
+      await screen.findByText("Lifetime changed from 15 minutes to 1 hour"),
+    ).toBeTruthy();
+    expect(screen.getByText("Was 15 minutes")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Keep 15 minutes" }),
+    ).toBeTruthy();
+    expect(screen.getByText(/Sealed /)).toBeTruthy();
+    expect(screen.getByText("Used only for this token")).toBeTruthy();
+    const preview = screen.getByText(/decoded preview/);
+    expect(preview.closest("[data-code-frame]")!.textContent).toContain(
+      '"kid":"3HWR8C2N6T"',
+    );
+    expect(screen.getByText("Ana Lima approved")).toBeTruthy();
+    expect(screen.getByText("Who can get one")).toBeTruthy();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Keep 15 minutes" }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText("Was 15 minutes")).toBeNull(),
+    );
   });
 });

@@ -441,7 +441,7 @@ describe("negative controls", () => {
     );
     const res = await handleAdminApi(
       new Request(
-        "https://key.plrs.im/manage/api/products/alpha/trust-policy",
+        "https://key.plrs.im/manage/api/products/alpha/ci-publisher",
         {
           method: "POST",
           headers: {
@@ -453,11 +453,11 @@ describe("negative controls", () => {
       ),
       e,
       db,
-      "/api/products/alpha/trust-policy",
+      "/api/products/alpha/ci-publisher",
       NOW,
     );
     expect(res.status).toBe(405);
-    expect(res.headers.get("allow")).toBe("GET, PUT, DELETE");
+    expect(res.headers.get("allow")).toBe("GET, PUT");
   });
 
   it("answers no session 401, and an expired one too", async () => {

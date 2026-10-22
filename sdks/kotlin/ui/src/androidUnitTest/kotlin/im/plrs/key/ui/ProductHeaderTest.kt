@@ -57,9 +57,9 @@ class ProductHeaderTest {
     @Test
     fun everyStopScreenCarriesTheProductHeader() {
         val names = listOf(
-            "gate-expired", "gate-version-too-old", "gate-version-too-new", "gate-channel-not-entitled",
-            "gate-device-limit-manage", "boot-consent", "boot-offline", "boot-blocked", "boot-error",
-            "sign-in-starting", "sign-in-expired", "sign-in-denied", "sign-in-failed",
+            "statusScreen-expired", "statusScreen-version-too-old", "statusScreen-version-too-new", "statusScreen-channel-not-entitled",
+            "deviceLimit-browser-mode", "boot-consent", "boot-offline", "boot-blocked", "boot-error",
+            "signInHandoff-starting", "sign-in-expired", "signInHandoff-denied", "signInHandoff-failed",
         )
         val screens = kitScreens.toMap()
         for (name in names) {

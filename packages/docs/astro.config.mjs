@@ -43,52 +43,6 @@ export default defineConfig({
       importedMarkdown(),
       tailwindcss(),
       {
-        // Starlight's search always loads <base>/pagefind/, the bundle of every public page. Help is
-        // the customer's site (polaris.locker), where a developer result would be a dead end, so on
-        // a Help page the search loads the Help-only bundle (scripts/build-search-bundles.ts).
-        // Starlight has no option for the path, so the one line is rewritten here; a Starlight
-        // upgrade that moves it fails the build rather than silently searching everything.
-        name: "pk-help-search-bundle",
-        enforce: "pre",
-        transform(code, id) {
-          if (!/starlight\/(dist\/)?components\/Search\.astro\?/.test(id))
-            return null;
-          if (!code.includes("new PagefindUI(")) return null;
-          const from = `bundlePath: import.meta.env.BASE_URL.replace(/\\/$/, "") + "/pagefind/",`;
-          if (!code.includes(from))
-            throw new Error(
-              "pk-help-search-bundle: Starlight's Search.astro bundlePath line moved",
-            );
-          const bundle = `import.meta.env.BASE_URL.replace(/\\/$/, "") + (location.pathname.startsWith(import.meta.env.BASE_URL.replace(/\\/$/, "") + "/help") ? "/pagefind-help/" : "/pagefind/")`;
-          // Pagefind logs a WASM compile failure and carries on, so the dialog would say
-          // "Searching…" forever. Probe the engine once; if it cannot answer, say so in the dialog.
-          const probe = `(async () => {
-  const box = document.querySelector("#starlight__search");
-  const note = () => box?.parentElement?.querySelector(".pk-search-failed");
-  const fail = () => {
-    if (!box || note()) return;
-    const p = document.createElement("p");
-    p.className = "pk-search-failed";
-    p.setAttribute("role", "alert");
-    p.textContent = "Search isn\u2019t working right now. Try again in a moment.";
-    box.after(p);
-  };
-  try {
-    const pf = await import(/* @vite-ignore */ ${bundle} + "pagefind.js");
-    await pf.init();
-    const timeout = new Promise((_, no) => setTimeout(no, 10000));
-    await Promise.race([pf.search("a"), timeout]);
-  } catch {
-    fail();
-  }
-})();
-new PagefindUI(`;
-          return code
-            .replace(from, `bundlePath: ${bundle},`)
-            .replace("new PagefindUI(", probe);
-        },
-      },
-      {
         // Expressive Code's `<Code>` component resolves ec.config.mjs relative to a virtual
         // module, finds nothing, and renders with the defaults, so a block from `<Code>`
         // (Snippet, InstallSteps) would not match one from Markdown. Point it at the file.
@@ -129,6 +83,8 @@ new PagefindUI(`;
         "@polaris-key/brand/fonts.css",
         "./src/styles/global.css",
         "./src/styles/help.css",
+        "./src/styles/chrome.css",
+        "./src/styles/search.css",
       ],
       // The launch kit's Pinned K web identity, copied into public/branding/key/ by
       // scripts/copy-artifacts.mjs (no terminal bit on favicons; BRAND.md §6 rule 0).
@@ -169,6 +125,10 @@ new PagefindUI(`;
         },
       ],
       components: {
+        Header: "./src/components/Header.astro",
+        // The search dialog on Pagefind's JS API (src/components/Search.astro).
+        Search: "./src/components/Search.astro",
+        ThemeProvider: "./src/components/ThemeProvider.astro",
         SiteTitle: "./src/components/SiteTitle.astro",
         PageFrame: "./src/components/PageFrame.astro",
         PageTitle: "./src/components/PageTitle.astro",
@@ -182,7 +142,7 @@ new PagefindUI(`;
       },
       // "On this page" for the Help messages pages, whose headings come from components rather
       // than from Markdown (src/routeData.ts).
-      routeMiddleware: "./src/routeData.ts",
+      routeMiddleware: ["./src/routeData.ts", "./src/routeToc.ts"],
       // The three doors' trees (src/lib/doors.ts), in door order. Stubs are hidden by their own
       // frontmatter. DOC-02b's Sidebar override renders only the current door's tree.
       sidebar: starlightSidebar(),

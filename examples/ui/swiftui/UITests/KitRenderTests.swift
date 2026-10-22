@@ -40,7 +40,11 @@ final class KitRenderTests: XCTestCase {
             ),
             (
                 "Dynamic Type font sizes are partially unsupported", "", "",
-                ["AccountAndLicense.signed-in"],
+                [
+                    "AccountAndLicense.signed-in", "AccountAndLicense.signed-in.pane",
+                    "AccountAndLicense.signed-in.channel-locked",
+                    "AccountAndLicense.signed-in.channel-license",
+                ],
                 "The audit grows the text until the lower rows of the host's List scroll below the fold, where it cannot measure them; the AX3 and AX5 renders show every row scaling (the native preset's system fonts are flagged the same way)."
             ),
             (
@@ -78,6 +82,10 @@ final class KitRenderTests: XCTestCase {
                 "The audit names no element, so there is nothing to measure; every named element in these states is measured on its own render and passes, and the renders were checked by eye in both schemes (L, AX3, AX5, landscape)."
             ),
             (
+                "Hit area is too small", "-", "", ["Devices.renaming"],
+                "The audit names no element and no frame; the Cancel and Save buttons are 44 pt high and wide (checked on the render), and the field is a system text field."
+            ),
+            (
                 "Text clipped", "button", "", ["Welcome.default.extras"],
                 "The native preset's quiet links are system-font buttons that scale with Dynamic Type; the render shows each label whole."
             ),
@@ -106,11 +114,15 @@ final class KitRenderTests: XCTestCase {
         "StatusScreen.expired", "StatusScreen.version-too-old", "StatusScreen.version-too-new",
         "StatusScreen.channel-not-entitled", "GraceBanner.days-left", "GraceBanner.last-day",
         "UpdatePrompt.available", "UpdatePrompt.mandatory", "UpdatePrompt.store",
-        "UpdatePrompt.ready", "UpdateProgress.downloading", "ReleaseNotes.list",
+        "UpdatePrompt.ready", "Toast.info", "Toast.success", "UpdateProgress.downloading", "ReleaseNotes.list",
         "AccountAndLicense.signed-in", "AccountAndLicense.key-only", "AccountAndLicense.offline",
+        "AccountAndLicense.signed-in.pane", "AccountAndLicense.signed-in.channel-locked",
+        "AccountAndLicense.signed-in.channel-license", "Settings.list.controls",
+        "Settings.error", "Devices.renaming",
         "Settings.list", "Settings.locked", "Devices.list", "Devices.empty", "Devices.error",
         "Devices.browser-mode", "Paywall.offers", "Paywall.not-available",
-        "EntitlementGate.not-entitled",
+        "EntitlementGate.not-entitled", "Boot.progress", "Boot.consent", "Boot.fetching",
+        "Boot.offline", "Boot.blocked", "Boot.declined", "Boot.rolled-back", "Boot.error",
     ]
 
     /// The states rendered again in a launch pack, for the catalog's i18n proof.

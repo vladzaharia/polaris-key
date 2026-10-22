@@ -10,13 +10,16 @@ export function SectionCard({
   subtitle,
   children,
   className,
+  plain = false,
 }: {
   id: string;
   title: React.ReactNode;
   aside?: React.ReactNode;
   subtitle?: React.ReactNode;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
+  /** A card of only a head (Help: its action sits in the head): no space under it. */
+  plain?: boolean;
 }): React.ReactElement {
   return (
     <section
@@ -32,7 +35,12 @@ export function SectionCard({
         className,
       )}
     >
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-x-3 gap-y-1 desk:mb-2">
+      <div
+        className={cn(
+          "flex flex-wrap justify-between gap-x-3 gap-y-1",
+          plain ? "items-center" : "mb-4 items-start desk:mb-2",
+        )}
+      >
         <div className="min-w-0 space-y-1">
           {/* tabIndex -1: a jump from the section nav moves focus here (PS-05 review M4). */}
           <h2

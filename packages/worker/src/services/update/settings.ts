@@ -6,6 +6,7 @@
 import { setting } from "../../core/settings/define.js";
 import type { ServiceSettingsSlice } from "../../core/settings/types.js";
 import { UPDATE_COLUMN_ADAPTERS } from "../release/settingsColumns.js";
+import { UPDATE_ADAPTERS } from "../release/settingsAdapters.js";
 
 const VISIBLE = { service: "update", offBehaviour: "hide" } as const;
 
@@ -15,6 +16,7 @@ export const UPDATE_SETTINGS_SLICE: ServiceSettingsSlice = {
   // (Update → Release is the one sanctioned cross-service edge, D-05). The operator policy is a
   // `product_settings` row since ST-11.
   columns: UPDATE_COLUMN_ADAPTERS,
+  adapters: UPDATE_ADAPTERS,
   entries: [
     setting({
       key: "update.metadataAccess",
@@ -40,7 +42,10 @@ export const UPDATE_SETTINGS_SLICE: ServiceSettingsSlice = {
       critical: true,
       confirm: { change: "L1" },
       visibleWhen: VISIBLE,
-      readers: ["services/update/admin.ts", "services/release/access.ts"],
+      readers: [
+        "services/release/settingsAdapters.ts",
+        "services/release/access.ts",
+      ],
       storage: {
         kind: "column",
         table: "release_config",
@@ -64,7 +69,10 @@ export const UPDATE_SETTINGS_SLICE: ServiceSettingsSlice = {
       critical: true,
       confirm: { change: "L1" },
       visibleWhen: VISIBLE,
-      readers: ["services/update/feed.ts", "services/update/admin.ts"],
+      readers: [
+        "services/update/feed.ts",
+        "services/release/settingsAdapters.ts",
+      ],
       storage: { kind: "scalar" },
     }),
   ],

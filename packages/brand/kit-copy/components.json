@@ -971,7 +971,7 @@
           "copy": ["channel.title"]
         },
         "locked": {
-          "copy": ["channel.locked", "a11y.locked"]
+          "copy": ["channel.locked", "channel.lockedLicense", "a11y.locked"]
         }
       }
     },

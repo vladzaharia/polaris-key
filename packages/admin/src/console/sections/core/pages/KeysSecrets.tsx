@@ -33,6 +33,7 @@ import { Input } from "../../../../ui/Input.js";
 import { SecretInput } from "../../../../ui/SecretInput.js";
 import { Select } from "../../../../ui/Select.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
+import { fetchSecrets } from "../../../data/hooks.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { codecs } from "../../../routes.js";
@@ -55,10 +56,6 @@ export function neededBy(
   requiredBy: readonly string[],
 ): string[] {
   return requiredBy.filter((r) => squash(r) !== squash(name));
-}
-
-export function fetchSecrets(slug: string): Promise<ProductSecretDto[]> {
-  return api.productSecrets(slug).then((r) => r.secrets);
 }
 
 export function SecretsSection({ slug }: { slug: string }): React.ReactElement {

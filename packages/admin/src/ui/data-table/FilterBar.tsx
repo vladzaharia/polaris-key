@@ -27,6 +27,11 @@ export interface FilterBarFacet {
    * in the filter row. `pending` shows a skeleton where a count is not yet known.
    */
   counted?: { icons?: Record<string, React.ReactNode>; pending?: boolean };
+  /**
+   * Fold this facet's menu into the one "More filters" menu at the end of the facet row, so a
+   * band with many facets stays on one row. Its chip row and counts are unchanged.
+   */
+  secondary?: boolean;
 }
 
 export interface FilterBarProps {
@@ -82,14 +87,59 @@ function useDebouncedField(
   return [local, set];
 }
 
+function toggleIn(facet: FilterBarFacet, value: string, on: boolean): void {
+  facet.onChange(
+    on ? [...facet.selected, value] : facet.selected.filter((v) => v !== value),
+  );
+}
+
+/** One facet's checkboxes, as a fieldset. */
+function FacetOptions({
+  facet,
+  legend = true,
+}: {
+  facet: FilterBarFacet;
+  legend?: boolean;
+}): React.ReactElement {
+  return (
+    <fieldset>
+      <legend
+        className={cn(
+          "px-2 pb-1 text-xs font-semibold text-fg-muted",
+          !legend && "sr-only",
+        )}
+      >
+        {facet.label}
+      </legend>
+      <ul className="max-h-72 overflow-y-auto pk-scroll">
+        {facet.options.map((o) => {
+          const checked = facet.selected.includes(o.value);
+          return (
+            <li key={o.value}>
+              <label className="flex min-h-8 cursor-pointer items-center gap-2 rounded-md px-2 text-sm text-fg hover:bg-hover">
+                <input
+                  type="checkbox"
+                  className="size-4 accent-accent"
+                  checked={checked}
+                  onChange={(e) => toggleIn(facet, o.value, e.target.checked)}
+                />
+                <span className="min-w-0 flex-1 truncate">{o.label}</span>
+                {o.count !== undefined ? (
+                  <span className="text-xs text-fg-subtle tabular-nums">
+                    {o.count}
+                  </span>
+                ) : null}
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    </fieldset>
+  );
+}
+
 function FacetMenu({ facet }: { facet: FilterBarFacet }): React.ReactElement {
   const count = facet.selected.length;
-  const toggle = (value: string, on: boolean): void =>
-    facet.onChange(
-      on
-        ? [...facet.selected, value]
-        : facet.selected.filter((v) => v !== value),
-    );
   return (
     <Popover
       label={`Filter by ${facet.label.toLowerCase()}`}
@@ -114,34 +164,44 @@ function FacetMenu({ facet }: { facet: FilterBarFacet }): React.ReactElement {
       }
       className="w-64 p-2"
     >
-      <fieldset>
-        <legend className="px-2 pb-1 text-xs font-semibold text-fg-muted">
-          {facet.label}
-        </legend>
-        <ul className="max-h-72 overflow-y-auto pk-scroll">
-          {facet.options.map((o) => {
-            const checked = facet.selected.includes(o.value);
-            return (
-              <li key={o.value}>
-                <label className="flex min-h-8 cursor-pointer items-center gap-2 rounded-md px-2 text-sm text-fg hover:bg-hover">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-accent"
-                    checked={checked}
-                    onChange={(e) => toggle(o.value, e.target.checked)}
-                  />
-                  <span className="min-w-0 flex-1 truncate">{o.label}</span>
-                  {o.count !== undefined ? (
-                    <span className="text-xs text-fg-subtle tabular-nums">
-                      {o.count}
-                    </span>
-                  ) : null}
-                </label>
-              </li>
-            );
-          })}
-        </ul>
-      </fieldset>
+      <FacetOptions facet={facet} />
+    </Popover>
+  );
+}
+
+/** The secondary facets in one menu: each facet's options under its own heading. */
+function MoreFilters({
+  facets,
+}: {
+  facets: FilterBarFacet[];
+}): React.ReactElement {
+  const count = facets.reduce((n, f) => n + f.selected.length, 0);
+  return (
+    <Popover
+      label="More filters"
+      trigger={
+        <Button
+          variant="outline"
+          size="sm"
+          iconEnd={<ChevronDown aria-hidden />}
+          aria-label={
+            count ? `More filters: ${count} selected` : "More filters"
+          }
+        >
+          More
+          {count ? (
+            <span className="rounded-full bg-accent-subtle px-1.5 text-xs font-medium text-fg-strong tabular-nums">
+              {count}
+            </span>
+          ) : null}
+        </Button>
+      }
+      align="end"
+      className="max-h-96 w-64 space-y-2 overflow-y-auto p-2"
+    >
+      {facets.map((f) => (
+        <FacetOptions key={f.id} facet={f} />
+      ))}
     </Popover>
   );
 }
@@ -337,10 +397,15 @@ export function FilterBar({
             <CountedChips key={f.id} facet={f} />
           ))}
         {facets
-          .filter((f) => !f.counted)
+          .filter((f) => !f.counted && !f.secondary)
           .map((f) => (
             <FacetMenu key={f.id} facet={f} />
           ))}
+        {facets.some((f) => !f.counted && f.secondary) ? (
+          <MoreFilters
+            facets={facets.filter((f) => !f.counted && f.secondary)}
+          />
+        ) : null}
         {dateRange}
         {actions ? (
           <div className="ms-auto flex flex-wrap items-center gap-2">

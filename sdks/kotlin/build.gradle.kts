@@ -39,7 +39,7 @@ if (findProject(":platform") != null) {
 // allowed to see both core and platform is :android (P6-12), and it is a leaf: no module but the
 // :boundary probe depends on it. `./gradlew checkModuleBoundaries` fails on any edge that breaks
 // this; the kotlin and android CI jobs run it.
-val jvmModules = listOf(":core", ":license", ":config", ":identity", ":release", ":update", ":packs", ":sdk", ":desktop", ":zstd", ":ui-core", ":server", ":server-ktor")
+val jvmModules = listOf(":core", ":license", ":config", ":identity", ":release", ":update", ":packs", ":sdk", ":desktop", ":zstd", ":ui-core", ":server", ":server-ktor", ":spring-boot-starter")
 val serviceModules = listOf(":license", ":config", ":identity", ":release", ":update", ":packs")
 val checkModuleBoundaries = tasks.register("checkModuleBoundaries") {
     group = "verification"

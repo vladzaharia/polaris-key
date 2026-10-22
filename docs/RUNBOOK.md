@@ -649,7 +649,7 @@ CSRF=$(curl -fsS "$BASE/me" -H "$COOKIE" | jq -er .csrf) || echo "STOP: no CSRF 
    echo "STOP: the live build predates the legacy key, or its commit is unknown"
    ```
 
-   Platform → Deployment shows the same commit. If `gitSha` is `null`, take the live commit from
+   Platform → Status shows the same commit. If `gitSha` is `null`, take the live commit from
    the deploy log and run the `git merge-base` line on it. Then record the legacy kid and the
    counts:
 
@@ -2297,7 +2297,7 @@ mode, read-only switch or traffic switch, and none should be assumed.
      "SELECT job, cron, datetime(started_at/1000,'unixepoch') AS started_utc, outcome, rows_affected, error_summary FROM platform_job_runs WHERE step = 'erasureLedger' ORDER BY started_at DESC LIMIT 12"
    ```
 
-   (`started_at` is epoch milliseconds.) The same rows are on the console's Operations page
+   (`started_at` is epoch milliseconds.) The same rows are on the console's Status page
    (`GET /manage/api/platform/operations`, `jobs`). `rows_affected` is the sum of tombstones
    created, accounts re-erased and ledger copies made in that pass: expect it above 0 on the first
    tick after a restore that brought erased accounts back, then 0 once D1 and the ledger agree.

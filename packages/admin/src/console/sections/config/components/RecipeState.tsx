@@ -67,8 +67,8 @@ export function SigningKeyEmpty({
         ) : (
           "this recipe"
         )}{" "}
-        from the provider’s developer account. It is sealed as you add it and
-        can’t be read back.
+        from the provider's developer account. It is sealed as you add it and
+        can't be read back.
       </p>
     </section>
   );
@@ -81,11 +81,14 @@ export function SigningKeyEmpty({
 export function AddSigningKey({
   slug,
   recipe,
+  replace = false,
   open,
   onOpenChange,
 }: {
   slug: string;
   recipe: EdgeMintRecipe;
+  /** The key exists: this swaps it. */
+  replace?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }): React.ReactElement {
@@ -115,7 +118,7 @@ export function AddSigningKey({
         value,
         "edge-mint",
       );
-      toast.success("Signing key added");
+      toast.success(replace ? "Signing key replaced" : "Signing key added");
       onOpenChange(false);
     } catch (err) {
       setFailure(errorCopy(err, { thing: "The key" }).description);
@@ -129,7 +132,7 @@ export function AddSigningKey({
       onOpenChange={onOpenChange}
       dismissible={!saving}
       unsaved={!saving && value !== ""}
-      title="Add the signing key"
+      title={replace ? "Replace the signing key" : "Add the signing key"}
       description="Sealed as you add it. It is never shown again."
     >
       <form onSubmit={submit} noValidate>
@@ -164,7 +167,7 @@ export function AddSigningKey({
             Cancel
           </Button>
           <Button type="submit" loading={saving}>
-            Add key
+            {replace ? "Replace key" : "Add key"}
           </Button>
         </DialogFooter>
       </form>

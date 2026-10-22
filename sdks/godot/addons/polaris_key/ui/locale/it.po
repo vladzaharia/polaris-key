@@ -934,10 +934,10 @@ msgstr "Per usarla su questa TV, sostituiscine uno. Potrai aggiungerlo di nuovo 
 msgid "deviceLimit.confirmTitle"
 msgstr "Sostituire {device}?"
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "deviceLimit.consequence"
-msgstr "{device} esce da {product} e {thisDevice} ne prende il posto. Ti invieremo un'email al riguardo."
+msgstr "{device} esce da {product} e {thisDevice} lo sostituisce. Ti invieremo un'email al riguardo."
 
 #. Replace and continue
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button.
@@ -1772,6 +1772,11 @@ msgstr "Canale di rilascio"
 msgid "channel.locked"
 msgstr "Il canale è impostato da {store}."
 
+#. Your license includes this channel only.
+#. ChannelPicker: the license allows one release channel, so the choice is locked.
+msgid "channel.lockedLicense"
+msgstr "La tua licenza include solo questo canale."
+
 #. Undo
 #. Toast action.
 msgid "toast.undo"
@@ -2375,10 +2380,10 @@ msgctxt "macos"
 msgid "signin.choice.continue"
 msgstr "Usa questa licenza e continua"
 
-#. That seat was just taken. Choose again.
+#. That device was just replaced. Choose again.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.raced"
-msgstr "Quel posto è appena stato occupato. Scegli di nuovo."
+msgstr "Quel dispositivo è appena stato sostituito. Scegli di nuovo."
 
 #. The code on {device} expired. Get a new code there and scan it again.
 #. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
@@ -2420,10 +2425,10 @@ msgctxt "macos"
 msgid "signin.replace.open"
 msgstr "Sostituisci un dispositivo"
 
-#. Choose a device to sign out. {thisDevice} takes its seat.
+#. Choose a device to sign out. {thisDevice} takes its place.
 #. Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice).
 msgid "signin.replace.lede"
-msgstr "Scegli un dispositivo da disconnettere. {thisDevice} ne prende il posto."
+msgstr "Scegli un dispositivo da disconnettere. {thisDevice} lo sostituisce."
 
 #. Replace a device
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title.
@@ -2460,10 +2465,10 @@ msgstr "Questo browser"
 msgid "signin.replace.title"
 msgstr "Sostituire {device}?"
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "signin.replace.consequence"
-msgstr "{device} esce da {product} e {thisDevice} ne prende il posto. Ti invieremo un'email al riguardo."
+msgstr "{device} esce da {product} e {thisDevice} lo sostituisce. Ti invieremo un'email al riguardo."
 
 #. {device} is in use right now.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
@@ -2509,15 +2514,15 @@ msgstr[0] "Troppe modifiche ai dispositivi. Riprova tra {seconds} secondo."
 msgstr[1] "Troppe modifiche ai dispositivi. Riprova tra {seconds} di secondi."
 msgstr[2] "Troppe modifiche ai dispositivi. Riprova tra {seconds} secondi."
 
-#. Someone took that seat first. Choose again.
+#. Someone replaced that device first. Choose again.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
 msgid "signin.replace.raced"
-msgstr "Qualcun altro ha occupato prima quel posto. Scegli di nuovo."
+msgstr "Qualcun altro ha sostituito prima quel dispositivo. Scegli di nuovo."
 
-#. {device} was removed, but someone took the seat first. Choose again.
+#. {device} was removed, but someone signed in first. Choose again.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
 msgid "signin.replace.racedAfterFree"
-msgstr "{device} è stato rimosso, ma qualcun altro ha occupato prima il posto. Scegli di nuovo."
+msgstr "{device} è stato rimosso, ma qualcun altro ha effettuato l'accesso prima. Scegli di nuovo."
 
 #. Continue to {app} as {name}?
 #. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated); {name} = the person's display name.
@@ -3387,6 +3392,11 @@ msgstr "Scarica e installa contenuti, con avanzamento"
 msgid "cli.verb.doctor"
 msgstr "Mostra cosa può fare questo dispositivo, per l'assistenza"
 
+#. Run startup, one line per stage
+#. Terminal help: what the boot command does.
+msgid "cli.verb.boot"
+msgstr "Esegui l'avvio, una riga per fase"
+
 #. Print shell completion for bash, zsh or fish
 #. Terminal help: what the completion command does. bash, zsh and fish are shell names; keep them.
 msgid "cli.verb.completion"
@@ -3416,6 +3426,11 @@ msgstr "Aiuto per un comando"
 #. Terminal help: what the --yes flag does.
 msgid "cli.option.yes"
 msgstr "Non chiedere conferma prima di uscire"
+
+#. Download required content without asking
+#. Terminal help: what the --yes flag does on boot.
+msgid "cli.option.yesDownload"
+msgstr "Scarica i contenuti richiesti senza chiedere"
 
 #. Sign in with a code instead of this computer's browser
 #. Terminal help: what the --device-code flag does.
@@ -4332,10 +4347,10 @@ msgctxt "macos"
 msgid "signin.choice.replaceAndSignIn"
 msgstr "Sostituisci e accedi"
 
-#. The device you choose signs out of {app}. It can sign in again later if a seat is free. We'll email you about it.
+#. The device you choose signs out of {app}. It can sign in again later if there's room. We'll email you about it.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.choice.replaceSafety"
-msgstr "Il dispositivo scelto esce da {app}. Potrà accedere di nuovo più tardi se c'è un posto libero. Ti avviseremo via e-mail."
+msgstr "Il dispositivo scelto esce da {app}. Potrà accedere di nuovo più tardi se c'è spazio. Ti avviseremo via e-mail."
 
 #. Device replaced
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).

@@ -16,7 +16,11 @@ import type { Env } from "../src/platform/env.js";
 import { subjectFor } from "../src/core/accounts/accountSubjects.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
 import { handleAdminApi } from "../src/console/api.js";
-import { ADMIN_COOKIE, issueSession } from "../src/core/console/session.js";
+import {
+  ADMIN_COOKIE,
+  CSRF_HEADER,
+  issueSession,
+} from "../src/core/console/session.js";
 import { insertLicense } from "../src/core/licensing/store.js";
 import { SEARCH_KIND_CAP } from "../src/console/handlers/search.js";
 
@@ -48,7 +52,7 @@ async function world() {
 type World = Awaited<ReturnType<typeof world>>;
 
 async function search(w: World, q: string, as: keyof typeof PRINCIPALS) {
-  const { token } = await issueSession(
+  const { token, session } = await issueSession(
     w.env,
     {
       sub: PRINCIPALS[as]!.memberId,
@@ -59,10 +63,14 @@ async function search(w: World, q: string, as: keyof typeof PRINCIPALS) {
     NOW,
   );
   const res = await handleAdminApi(
-    new Request(
-      `https://key.plrs.im/manage/api/search?q=${encodeURIComponent(q)}`,
-      { headers: { cookie: `${ADMIN_COOKIE}=${token}` } },
-    ),
+    new Request("https://key.plrs.im/manage/api/search", {
+      method: "POST",
+      headers: {
+        cookie: `${ADMIN_COOKIE}=${token}`,
+        [CSRF_HEADER]: session.csrf,
+      },
+      body: JSON.stringify({ q }),
+    }),
     w.env,
     w.db,
     "/api/search",
@@ -72,7 +80,12 @@ async function search(w: World, q: string, as: keyof typeof PRINCIPALS) {
     status: res.status,
     text: await res.clone().text(),
     body: (await res.json()) as {
-      key: { product: string; licenseId: string } | null;
+      key: {
+        product: string;
+        licenseId: string;
+        email: string | null;
+        tier: string | null;
+      } | null;
       licenses: { product: string; id: string }[];
       people: { product: string; subject: string; email: string }[];
     },
@@ -111,11 +124,14 @@ describe("GET /manage/api/search", () => {
   it("resolves a pasted key to its licence and never echoes it", async () => {
     const w = await world();
     const r = await search(w, w.alpha.key, "alphaAdmin");
-    expect(r.body).toEqual({
-      key: { product: "alpha", licenseId: w.alpha.licenseId },
-      licenses: [],
-      people: [],
+    expect(r.body.key).toMatchObject({
+      product: "alpha",
+      licenseId: w.alpha.licenseId,
+      email: "ada@example.com",
+      status: "active",
     });
+    expect(r.body.licenses).toEqual([]);
+    expect(r.body.people).toEqual([]);
     expect(r.text).not.toContain(w.alpha.key);
   });
 
@@ -129,6 +145,40 @@ describe("GET /manage/api/search", () => {
     );
     expect(refused.body).toEqual({ key: null, licenses: [], people: [] });
     expect(refused.body).toEqual(unknown.body);
+  });
+
+  it("leaves out a product whose Licensing is off", async () => {
+    const w = await world();
+    await w.db.run(
+      "UPDATE products SET services_json = ? WHERE slug = 'alpha'",
+      JSON.stringify({ license: { enabled: false } }),
+    );
+    const r = await search(w, "ada@example", "allProducts");
+    expect(r.body.licenses.map((l) => l.product)).toEqual(["beta"]);
+  });
+
+  it("no longer answers GET", async () => {
+    const w = await world();
+    const { token } = await issueSession(
+      w.env,
+      {
+        sub: PRINCIPALS.alphaAdmin.memberId,
+        name: "a",
+        email: "a@x.test",
+        groups: [],
+      },
+      NOW,
+    );
+    const res = await handleAdminApi(
+      new Request("https://key.plrs.im/manage/api/search?q=ada", {
+        headers: { cookie: `${ADMIN_COOKIE}=${token}` },
+      }),
+      w.env,
+      w.db,
+      "/api/search",
+      NOW,
+    );
+    expect(res.status).toBeGreaterThanOrEqual(400);
   });
 
   it("caps each kind and reads % and _ literally", async () => {

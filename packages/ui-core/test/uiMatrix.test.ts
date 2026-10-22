@@ -50,7 +50,9 @@ describe(`${MATRIX_FILE}: the version`, () => {
       generatedVersion("packages/sdk-node/src/constants.generated.ts"),
     ).toBe(UI_MATRIX_VERSION);
     expect(
-      generatedVersion("packages/sdk-react/src/constants.generated.ts"),
+      generatedVersion(
+        "packages/ui-core/src/browser/sdk/constants.generated.ts",
+      ),
     ).toBe(UI_MATRIX_VERSION);
   });
 

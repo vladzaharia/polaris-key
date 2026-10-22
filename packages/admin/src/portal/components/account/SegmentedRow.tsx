@@ -23,7 +23,7 @@ export function SegmentedRow<V extends string>({
 }): React.ReactElement {
   const id = React.useId();
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-1 first:pt-0 last:pb-0">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-4 first:pt-1 last:pb-1">
       <div className="min-w-0">
         <p id={id} className="font-medium text-fg-strong">
           {label}
@@ -41,7 +41,7 @@ export function SegmentedRow<V extends string>({
             key={o.value}
             value={o.value}
             className={cn(
-              "inline-flex min-h-9 items-center justify-center rounded-md border border-transparent px-3 text-sm text-fg-muted outline-none",
+              "inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-md border border-transparent px-3 text-sm max-sm:px-2 text-fg-muted outline-none",
               "max-desk:min-h-11 max-sm:flex-1",
               "hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-focus",
               "data-[state=checked]:border-border-strong data-[state=checked]:bg-surface-raised data-[state=checked]:font-semibold data-[state=checked]:text-fg-strong",

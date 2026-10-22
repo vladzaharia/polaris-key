@@ -38,15 +38,37 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 const src = join(here, "..", "src");
 
-/** The HTTP method each API method sends, learned by calling it. */
+/**
+ * Methods that carry the version the page loaded (ST-05b: the generic settings API checks it, and
+ * a policy patch merges onto the policy the page loaded) are called with arguments that reach the
+ * write; junk arguments would leave them with nothing to send.
+ */
+const LOADED_UPDATE = {
+  versions: { access: 1, compat: 1, policy: 1 },
+  compatMin: "1.0.0",
+  compatMax: "2.0.0",
+};
+const PROBES: Record<string, unknown[]> = {
+  saveUpdateSettings: ["djdl", { metadataAccess: "public" }, LOADED_UPDATE],
+  revertUpdateSettings: ["djdl", ["access"], LOADED_UPDATE],
+  saveDeliveryAccess: ["djdl", { mode: "public" }, 1],
+  revertDeliveryAccess: ["djdl", 1],
+  updateFingerprintPolicy: ["djdl", {}, { policy: {}, version: 1 }],
+  revertFingerprintPolicy: ["djdl", 1],
+};
+
+/** The HTTP method each API method sends, learned by calling it (a write anywhere in a method's
+ *  requests makes it a write, however many reads surround it). */
 async function httpMethods(): Promise<Record<string, string>> {
   const seen: Record<string, string> = {};
   let current = "";
   vi.stubGlobal(
     "fetch",
     vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-      seen[current] = init?.method ?? "GET";
-      return new Response("{}", {
+      const method = init?.method ?? "GET";
+      if (seen[current] === undefined || seen[current] === "GET")
+        seen[current] = method;
+      return new Response(JSON.stringify({ setting: {} }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -58,7 +80,7 @@ async function httpMethods(): Promise<Record<string, string>> {
       name
     ]!;
     try {
-      await fn("djdl", "id_1", "x", {}, null, true);
+      await fn(...(PROBES[name] ?? ["djdl", "id_1", "x", {}, null, true]));
     } catch {
       // A method that throws before fetching is reported by the "classifies every" test.
     }

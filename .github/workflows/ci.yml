@@ -887,12 +887,13 @@ jobs:
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test
-          :release:test :update:test :packs:test :sdk:test :ui-core:test :server:test :server-ktor:test :desktop:test :conformance:test :sample-cli:test checkModuleBoundaries
+          :release:test :update:test :packs:test :sdk:test :ui-core:test :server:test :server-ktor:test :spring-boot-starter:test :desktop:test :conformance:test :sample-cli:test checkModuleBoundaries
           :core:publishCorePublicationToLocalRepository :license:publishLicensePublicationToLocalRepository
           :config:publishConfigPublicationToLocalRepository :identity:publishIdentityPublicationToLocalRepository
           :release:publishReleasePublicationToLocalRepository :update:publishUpdatePublicationToLocalRepository
           :packs:publishPacksPublicationToLocalRepository :sdk:publishSdkPublicationToLocalRepository
           :server:publishServerPublicationToLocalRepository :server-ktor:publishServerKtorPublicationToLocalRepository
+          :spring-boot-starter:publishSpringBootStarterPublicationToLocalRepository
           :zstd:publishZstdPublicationToLocalRepository :desktop:publishDesktopPublicationToLocalRepository
       - name: zstd-jni's Android natives are 16 KB page aligned
         working-directory: sdks/kotlin

@@ -119,7 +119,8 @@ export const SDK_KIT_DOCS: Record<SdkId, string> = {
   kotlin: "/docs/build/ui/frameworks/compose/",
   godot: "/docs/build/ui/frameworks/godot/",
 };
-const SERVER_DOCS = "/docs/features/licensing/server-verification/";
+/** The servers section; a framework has its own page under it. */
+const SERVER_DOCS = "/docs/build/servers/";
 
 const q = (v: string | number | boolean): string => JSON.stringify(v);
 const py = (v: string | number | boolean): string =>
@@ -273,13 +274,13 @@ const NODE_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
 
 const NODE_KIT: Partial<Record<IntegrationFeature, Maker>> = {
   licensing: (c) => ({
-    title: "Mount the Polaris Key verbs in your CLI",
+    title: "Mount the Polaris Key verbs and gate a command",
     filename: "cli.ts",
     language: "ts",
     code: lines(
       `import { Command } from "commander";`,
       `import { PolarisKeyClient } from "@polaris-key/node";`,
-      `import { registerPolarisCommands } from "@polaris-key/node/cli";`,
+      `import { registerPolarisCommands, requireLicense } from "@polaris-key/node/cli";`,
       `import { polarisConfig } from "./polaris.config.js";`,
       ``,
       `const program = new Command(${q(c.appName)});`,
@@ -295,6 +296,9 @@ const NODE_KIT: Partial<Record<IntegrationFeature, Maker>> = {
       `    expectedServices: polarisConfig.expectedServices,`,
       `  },`,
       `);`,
+      `program`,
+      `  .command("export")`,
+      `  .action(requireLicense(() => console.log("exported"), { entitlement: ${q(c.entitlement)} }));`,
       `await program.parseAsync();`,
     ),
   }),
@@ -351,6 +355,134 @@ const NODE_SERVER: Partial<Record<IntegrationFeature, Maker>> = {
       `  });`,
       `  return v.ok && v.usable && v.isEntitled(${q(c.entitlement)});`,
       `}`,
+    ),
+  }),
+};
+
+const NODE_EXPRESS: Partial<Record<IntegrationFeature, Maker>> = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app.ts",
+    language: "ts",
+    code: lines(
+      `import express from "express";`,
+      `import { polarisKey, requireEntitlement } from "@polaris-key/server/express";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const app = express();`,
+      `app.use(polarisKey({ config: polarisConfig }));`,
+      ``,
+      `app.get("/api/pro", requireEntitlement(${q(c.entitlement)}), (_req, res) => {`,
+      `  res.json({ ok: true });`,
+      `});`,
+      ``,
+      `app.listen(3000);`,
+    ),
+  }),
+  identity: () => ({
+    title: "Read the signed-in account",
+    filename: "app.ts",
+    language: "ts",
+    code: lines(
+      `import express from "express";`,
+      `import {`,
+      `  getPolarisAuth,`,
+      `  polarisKey,`,
+      `  requireSignIn,`,
+      `} from "@polaris-key/server/express";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const app = express();`,
+      `app.use(polarisKey({ config: polarisConfig }));`,
+      ``,
+      `app.get("/api/me", requireSignIn(), (req, res) => {`,
+      `  res.json({ subject: getPolarisAuth(req).user?.subject });`,
+      `});`,
+      ``,
+      `app.listen(3000);`,
+    ),
+  }),
+};
+
+const NODE_HONO: Partial<Record<IntegrationFeature, Maker>> = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app.ts",
+    language: "ts",
+    code: lines(
+      `import { Hono } from "hono";`,
+      `import {`,
+      `  polarisKey,`,
+      `  requireEntitlement,`,
+      `  type PolarisEnv,`,
+      `} from "@polaris-key/server/hono";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const app = new Hono<PolarisEnv>();`,
+      `app.use("/api/*", polarisKey({ config: polarisConfig }));`,
+      ``,
+      `app.get("/api/pro", requireEntitlement(${q(c.entitlement)}), (c) =>`,
+      `  c.json({ tier: c.var.polaris.license.tier }),`,
+      `);`,
+      ``,
+      `export default app;`,
+    ),
+  }),
+  identity: () => ({
+    title: "Read the signed-in account",
+    filename: "app.ts",
+    language: "ts",
+    code: lines(
+      `import { Hono } from "hono";`,
+      `import {`,
+      `  polarisKey,`,
+      `  requireSignIn,`,
+      `  type PolarisEnv,`,
+      `} from "@polaris-key/server/hono";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const app = new Hono<PolarisEnv>();`,
+      `app.use("/api/*", polarisKey({ config: polarisConfig }));`,
+      ``,
+      `app.get("/api/me", requireSignIn(), (c) =>`,
+      `  c.json({ subject: c.var.polaris.user?.subject }),`,
+      `);`,
+      ``,
+      `export default app;`,
+    ),
+  }),
+};
+
+const NODE_NEXT: Partial<Record<IntegrationFeature, Maker>> = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app/api/pro/route.ts",
+    language: "ts",
+    code: lines(
+      `import { createNextPolarisKey } from "@polaris-key/server/next";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const polaris = createNextPolarisKey({ config: polarisConfig });`,
+      ``,
+      `export const GET = polaris.requireEntitlement(`,
+      `  ${q(c.entitlement)},`,
+      `  async (_req, { license }) => Response.json({ tier: license.tier }),`,
+      `);`,
+    ),
+  }),
+  identity: () => ({
+    title: "Read the signed-in account",
+    filename: "app/api/me/route.ts",
+    language: "ts",
+    code: lines(
+      `import { createNextPolarisKey } from "@polaris-key/server/next";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const polaris = createNextPolarisKey({ config: polarisConfig });`,
+      ``,
+      `export const GET = polaris.requireSignIn(async (_req, { user }) =>`,
+      `  Response.json({ subject: user?.subject }),`,
+      `);`,
     ),
   }),
 };
@@ -589,22 +721,31 @@ const PY_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
 
 const PY_KIT: Partial<Record<IntegrationFeature, Maker>> = {
   licensing: (c) => ({
-    title: "Mount the Polaris Key verbs in your CLI",
+    title: "Mount the Polaris Key verbs and gate a command",
     filename: "cli.py",
     language: "python",
     code: lines(
       `import argparse`,
       ``,
-      `from polaris_key.cli import register_argparse`,
+      `from polaris_key.cli import register_argparse, require_license`,
       ``,
       `import polaris_config`,
       ``,
+      ``,
+      `@require_license(entitlement=${q(c.entitlement)})`,
+      `def export(args: argparse.Namespace) -> int:`,
+      `    print("exported")`,
+      `    return 0`,
+      ``,
+      ``,
       `parser = argparse.ArgumentParser(prog=${q(c.appName)})`,
+      `sub = parser.add_subparsers(dest="command", required=True)`,
       `register_argparse(`,
-      `    parser.add_subparsers(dest="command", required=True),`,
+      `    sub,`,
       `    config=polaris_config.CONFIG,`,
       `    version=${q(c.appVersion)},  # your app's version`,
       `)`,
+      `sub.add_parser("export", help="Export a mix.").set_defaults(func=export)`,
       `args = parser.parse_args()`,
       `raise SystemExit(args.func(args))`,
     ),
@@ -741,6 +882,315 @@ const GODOT_LIBRARY: Partial<Record<IntegrationFeature, Maker>> = {
   }),
 };
 
+// ── Server frameworks: Python, Kotlin ────────────────────────────────────────────────────────
+
+const PY_FASTAPI: Partial<Record<IntegrationFeature, Maker>> = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "main.py",
+    language: "python",
+    code: lines(
+      `from typing import Annotated, Dict`,
+      ``,
+      `from fastapi import Depends, FastAPI`,
+      ``,
+      `import polaris_config`,
+      `from polaris_key.server.fastapi import PolarisAuth, PolarisKey`,
+      ``,
+      `app = FastAPI()`,
+      `polaris = PolarisKey(config=polaris_config)`,
+      `polaris.install(app)`,
+      ``,
+      ``,
+      `@app.get("/api/pro")`,
+      `def pro(`,
+      `    auth: Annotated[PolarisAuth, Depends(polaris.require_entitlement(${q(c.entitlement)}))],`,
+      `) -> Dict[str, bool]:`,
+      `    return {"ok": True}`,
+    ),
+  }),
+  identity: () => ({
+    title: "Read the signed-in account",
+    filename: "main.py",
+    language: "python",
+    code: lines(
+      `from typing import Annotated, Dict, Optional`,
+      ``,
+      `from fastapi import Depends, FastAPI`,
+      ``,
+      `import polaris_config`,
+      `from polaris_key.server.fastapi import PolarisAuth, PolarisKey`,
+      ``,
+      `app = FastAPI()`,
+      `polaris = PolarisKey(config=polaris_config)`,
+      `polaris.install(app)`,
+      ``,
+      ``,
+      `@app.get("/api/me")`,
+      `def me(auth: Annotated[PolarisAuth, Depends(polaris.require_sign_in())]) -> Dict[str, Optional[str]]:`,
+      `    return {"subject": auth.user.subject if auth.user else None}`,
+    ),
+  }),
+};
+
+const PY_STARLETTE: Partial<Record<IntegrationFeature, Maker>> = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app.py",
+    language: "python",
+    code: lines(
+      `from starlette.applications import Starlette`,
+      `from starlette.requests import Request`,
+      `from starlette.responses import JSONResponse`,
+      `from starlette.routing import Route`,
+      ``,
+      `import polaris_config`,
+      `from polaris_key.server.starlette import PolarisKey, get_polaris_license`,
+      ``,
+      `polaris = PolarisKey(config=polaris_config)`,
+      ``,
+      ``,
+      `@polaris.require_entitlement(${q(c.entitlement)})`,
+      `async def pro(request: Request) -> JSONResponse:`,
+      `    return JSONResponse({"tier": get_polaris_license(request).tier})`,
+      ``,
+      ``,
+      `app = Starlette(routes=[Route("/api/pro", pro)])`,
+      `polaris.install(app)`,
+    ),
+  }),
+};
+
+const PY_FLASK: Partial<Record<IntegrationFeature, Maker>> = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "app.py",
+    language: "python",
+    code: lines(
+      `from typing import Any, Dict`,
+      ``,
+      `from flask import Flask`,
+      ``,
+      `import polaris_config`,
+      `from polaris_key.server.flask import PolarisKey, get_polaris_license`,
+      ``,
+      `app = Flask(__name__)`,
+      `polaris = PolarisKey(config=polaris_config)`,
+      `polaris.init_app(app)`,
+      ``,
+      ``,
+      `@app.get("/api/pro")`,
+      `@polaris.require_entitlement(${q(c.entitlement)})`,
+      `def pro() -> Dict[str, Any]:`,
+      `    return {"tier": get_polaris_license().tier}`,
+    ),
+  }),
+};
+
+const PY_DJANGO: Partial<Record<IntegrationFeature, Maker>> = {
+  licensing: (c) => ({
+    title: "Gate a view with the license",
+    filename: "views.py",
+    language: "python",
+    code: lines(
+      `from typing import Any`,
+      ``,
+      `from django.http import HttpRequest, JsonResponse`,
+      ``,
+      `from polaris_key.server.django import get_polaris_license, require_entitlement`,
+      ``,
+      `# settings.py: add "polaris_key.server.django.PolarisKeyMiddleware" to MIDDLEWARE, and`,
+      `# POLARIS_KEY = {"CONFIG": "myapp.polaris_config"}`,
+      ``,
+      ``,
+      `@require_entitlement(${q(c.entitlement)})`,
+      `def pro(request: HttpRequest) -> Any:`,
+      `    return JsonResponse({"tier": get_polaris_license(request).tier})`,
+    ),
+  }),
+};
+
+const PY_DRF: Partial<Record<IntegrationFeature, Maker>> = {
+  licensing: (c) => ({
+    title: "Gate a view with the license",
+    filename: "views.py",
+    language: "python",
+    code: lines(
+      `from typing import Any`,
+      ``,
+      `from rest_framework.response import Response`,
+      `from rest_framework.views import APIView`,
+      ``,
+      `from polaris_key.server.drf import PolarisKeyAuthentication, get_polaris_license, has_entitlement`,
+      ``,
+      `# settings.py: REST_FRAMEWORK = {"EXCEPTION_HANDLER": "polaris_key.server.drf.exception_handler"}`,
+      `# and POLARIS_KEY = {"CONFIG": "myapp.polaris_config"}`,
+      ``,
+      ``,
+      `class ProView(APIView):`,
+      `    authentication_classes = [PolarisKeyAuthentication]`,
+      `    permission_classes = [has_entitlement(${q(c.entitlement)})]`,
+      ``,
+      `    def get(self, request: Any) -> Response:`,
+      `        return Response({"tier": get_polaris_license(request).tier})`,
+    ),
+  }),
+};
+
+const KOTLIN_KTOR: Partial<Record<IntegrationFeature, Maker>> = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "Application.kt",
+    language: "kotlin",
+    code: lines(
+      `import com.acme.polaris.PolarisConfig`,
+      `import im.plrs.key.server.ktor.polarisKey`,
+      `import im.plrs.key.server.ktor.requireEntitlement`,
+      `import io.ktor.server.application.Application`,
+      `import io.ktor.server.application.install`,
+      `import io.ktor.server.auth.Authentication`,
+      `import io.ktor.server.response.respondText`,
+      `import io.ktor.server.routing.get`,
+      `import io.ktor.server.routing.routing`,
+      ``,
+      `fun Application.module() {`,
+      `    install(Authentication) {`,
+      `        polarisKey {`,
+      `            product(PolarisConfig.PRODUCT_SLUG, PolarisConfig.pinnedKeys, PolarisConfig.BASE_URL)`,
+      `        }`,
+      `    }`,
+      `    routing {`,
+      `        requireEntitlement(${q(c.entitlement)}) {`,
+      `            get("/api/pro") { call.respondText("ok") }`,
+      `        }`,
+      `    }`,
+      `}`,
+    ),
+  }),
+};
+
+const KOTLIN_SPRING: Partial<Record<IntegrationFeature, Maker>> = {
+  licensing: (c) => ({
+    title: "Gate a route with the license",
+    filename: "SecurityConfig.kt",
+    language: "kotlin",
+    code: lines(
+      `import im.plrs.key.server.spring.PolarisKey`,
+      `import im.plrs.key.server.spring.polarisKey`,
+      `import org.springframework.context.annotation.Bean`,
+      `import org.springframework.context.annotation.Configuration`,
+      `import org.springframework.security.config.annotation.web.builders.HttpSecurity`,
+      `import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity`,
+      `import org.springframework.security.web.SecurityFilterChain`,
+      ``,
+      `@Configuration(proxyBeanMethods = false)`,
+      `@EnableWebSecurity`,
+      `class SecurityConfig {`,
+      `    @Bean`,
+      `    fun api(http: HttpSecurity): SecurityFilterChain {`,
+      `        http.csrf { it.disable() }`,
+      `        http.polarisKey()`,
+      `        http.authorizeHttpRequests {`,
+      `            it.requestMatchers("/health").permitAll()`,
+      `                .requestMatchers("/api/pro").access(PolarisKey.entitlement(${q(c.entitlement)}))`,
+      `                .anyRequest().denyAll()`,
+      `        }`,
+      `        return http.build()`,
+      `    }`,
+      `}`,
+    ),
+  }),
+};
+
+// ── CLI frameworks beyond the first: yargs, click, typer ─────────────────────────────────────
+
+const NODE_YARGS: Partial<Record<IntegrationFeature, Maker>> = {
+  licensing: (c) => ({
+    title: "Mount the Polaris Key verbs and gate a command",
+    filename: "cli.ts",
+    language: "ts",
+    code: lines(
+      `import yargs from "yargs";`,
+      `import { hideBin } from "yargs/helpers";`,
+      `import { requireLicense } from "@polaris-key/node/cli";`,
+      `import { registerPolarisCommands } from "@polaris-key/node/cli/yargs";`,
+      `import { polarisConfig } from "./polaris.config.js";`,
+      ``,
+      `const cli = yargs(hideBin(process.argv)).scriptName(${q(c.appName)});`,
+      `registerPolarisCommands(cli, { config: polarisConfig, version: ${q(c.appVersion)} });`,
+      `cli.command(`,
+      `  "export",`,
+      `  "Export a mix",`,
+      `  {},`,
+      `  requireLicense(() => console.log("exported"), { entitlement: ${q(c.entitlement)} }),`,
+      `);`,
+      `await cli.parseAsync();`,
+    ),
+  }),
+};
+
+const PY_CLICK: Partial<Record<IntegrationFeature, Maker>> = {
+  licensing: (c) => ({
+    title: "Mount the Polaris Key verbs and gate a command",
+    filename: "cli.py",
+    language: "python",
+    code: lines(
+      `import click`,
+      ``,
+      `from polaris_key.cli import register_click, require_license`,
+      ``,
+      `import polaris_config`,
+      ``,
+      ``,
+      `@click.group()`,
+      `def cli() -> None:`,
+      `    pass`,
+      ``,
+      ``,
+      `@cli.command()`,
+      `@click.option("--json", "as_json", is_flag=True, help="Machine-readable refusal.")`,
+      `@require_license(entitlement=${q(c.entitlement)})`,
+      `def export(as_json: bool) -> None:`,
+      `    click.echo("exported")`,
+      ``,
+      ``,
+      `register_click(cli, config=polaris_config.CONFIG, version=${q(c.appVersion)})  # your app's version`,
+      ``,
+      `if __name__ == "__main__":`,
+      `    cli()`,
+    ),
+  }),
+};
+
+const PY_TYPER: Partial<Record<IntegrationFeature, Maker>> = {
+  licensing: (c) => ({
+    title: "Mount the Polaris Key verbs and gate a command",
+    filename: "cli.py",
+    language: "python",
+    code: lines(
+      `import typer`,
+      ``,
+      `from polaris_key.cli import register_typer, require_license`,
+      ``,
+      `import polaris_config`,
+      ``,
+      `app = typer.Typer()`,
+      ``,
+      ``,
+      `@app.command()`,
+      `@require_license(entitlement=${q(c.entitlement)})`,
+      `def export(as_json: bool = typer.Option(False, "--json", help="Machine-readable refusal.")) -> None:`,
+      `    typer.echo("exported")`,
+      ``,
+      ``,
+      `register_typer(app, config=polaris_config.CONFIG, version=${q(c.appVersion)})  # your app's version`,
+      ``,
+      `if __name__ == "__main__":`,
+      `    app()`,
+    ),
+  }),
+};
+
 // ── The table ────────────────────────────────────────────────────────────────────────────────
 
 type Table = Partial<
@@ -758,17 +1208,38 @@ type Table = Partial<
 /** Per SDK, lane and framework (`_` is the default): the features it renders. */
 const TABLE: Table = {
   node: {
-    kit: { _: NODE_KIT, commander: NODE_KIT, electron: NODE_ELECTRON },
+    kit: {
+      _: NODE_KIT,
+      commander: NODE_KIT,
+      yargs: NODE_YARGS,
+      electron: NODE_ELECTRON,
+    },
     library: { _: NODE_LIBRARY },
-    server: { _: NODE_SERVER },
+    server: {
+      _: NODE_SERVER,
+      express: NODE_EXPRESS,
+      hono: NODE_HONO,
+      next: NODE_NEXT,
+    },
   },
   react: { kit: { _: REACT_KIT }, library: { _: REACT_LIBRARY } },
   python: {
-    kit: { _: PY_KIT, argparse: PY_KIT },
+    kit: { _: PY_KIT, argparse: PY_KIT, click: PY_CLICK, typer: PY_TYPER },
     library: { _: PY_LIBRARY },
+    server: {
+      fastapi: PY_FASTAPI,
+      starlette: PY_STARLETTE,
+      flask: PY_FLASK,
+      django: PY_DJANGO,
+      drf: PY_DRF,
+    },
   },
   swift: { kit: { _: SWIFT_KIT }, library: { _: SWIFT_LIBRARY } },
-  kotlin: { kit: { _: KOTLIN_KIT }, library: { _: KOTLIN_LIBRARY } },
+  kotlin: {
+    kit: { _: KOTLIN_KIT },
+    library: { _: KOTLIN_LIBRARY },
+    server: { ktor: KOTLIN_KTOR, spring: KOTLIN_SPRING },
+  },
   godot: { kit: { _: GODOT_KIT }, library: { _: GODOT_LIBRARY } },
 };
 
@@ -783,9 +1254,10 @@ export function usageFrameworks(sdk: SdkId, lane: IntegrationLane): string[] {
  * Render one feature's usage for an SDK and lane, from the product's real names (`ctx`, defaulting
  * to the docs' example product). `framework` picks a variant inside the lane (Node's kit lane has
  * `commander` and `electron`; Python's `argparse`); an unknown framework renders `null`, so a page
- * never shows another framework's code under its name. Server frameworks (Express, Hono, FastAPI,
- * Flask, Django and the rest) render `null` until the server adapter packages ship: the `server`
- * lane renders the framework-free core.
+ * never shows another framework's code under its name. The `server` lane has the framework-free
+ * core (Node) and one variant per shipped drop-in: Express, Hono, Next.js, FastAPI, Starlette,
+ * Flask, Django, DRF, Ktor and Spring Boot. A framework with no drop-in yet (Fastify, NestJS, Koa,
+ * Vapor) renders `null`.
  */
 export function renderUsage(
   feature: IntegrationFeature,
@@ -802,7 +1274,9 @@ export function renderUsage(
   const made = make({ ...DEFAULT_USAGE_CONTEXT, ...ctx });
   const docs =
     lane === "server"
-      ? SERVER_DOCS
+      ? framework
+        ? `${SERVER_DOCS}${framework}/`
+        : SERVER_DOCS
       : lane === "kit"
         ? SDK_KIT_DOCS[sdk]
         : SDK_LIBRARY_DOCS[sdk];

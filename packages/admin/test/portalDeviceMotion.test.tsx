@@ -244,7 +244,7 @@ describe("the Devices card: a change to the devices using a seat is one list tra
       within(card()).getByRole("img", { name: "1 of 3 devices in use" }),
     ).toBeTruthy();
     expect(card().textContent).toContain(
-      "2 more devices signed in, not using a seat",
+      "2 more devices signed in, not counted",
     );
     // The visible digits count down to the same number.
     await waitFor(() =>
@@ -336,7 +336,7 @@ describe("the Devices card: a change to the devices using a seat is one list tra
     );
     expect(
       screen.getByText(
-        "Its seat is free straight away: 1 of 3 devices in use.",
+        "Another device can sign in straight away: 1 of 3 devices in use.",
       ),
     ).toBeTruthy();
     // Removing it now leaves no seat in use (live: 1 in use, not the held 2).
@@ -357,7 +357,7 @@ describe("the Devices card: a change to the devices using a seat is one list tra
     ).toBeTruthy();
     expect(
       screen.getByText(
-        "Its seat is free straight away: 0 of 3 devices in use.",
+        "Another device can sign in straight away: 0 of 3 devices in use.",
       ),
     ).toBeTruthy();
   });
@@ -397,7 +397,7 @@ describe("the Devices card: a change to the devices using a seat is one list tra
 
 describe("the Devices card: Remove opens in place, then frees the seat", () => {
   for (const reduced of [false, true])
-    it(`focus to the confirm's heading, back to Remove on Keep it, then to the h1 with the count said (${reduced ? "reduced motion" : "motion"})`, async () => {
+    it(`focus to the confirm's heading, back to Remove on Keep it, then to the Devices heading with the count said (${reduced ? "reduced motion" : "motion"})`, async () => {
       if (reduced) html.dataset.motion = "reduce";
       else installFake();
       mockFetch({
@@ -444,8 +444,11 @@ describe("the Devices card: Remove opens in place, then frees the seat", () => {
           "Studio PC was removed. 1 of 3 devices in use.",
         ),
       );
-      const h1 = screen.getByRole("heading", { level: 1, name: "Nightfall" });
-      await waitFor(() => expect(document.activeElement).toBe(h1));
+      const devicesHeading = screen.getByRole("heading", {
+        level: 2,
+        name: "Devices",
+      });
+      await waitFor(() => expect(document.activeElement).toBe(devicesHeading));
     });
 
   it("brings the opened confirm into view once it has opened, smoothly or (reduced motion) at once", async () => {

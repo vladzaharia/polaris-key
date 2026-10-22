@@ -51,6 +51,7 @@ The scoped gate with retry-once and step rerun exists only in `_lead/gate.sh`, o
 ## Acceptance criteria
 
 - [ ] A docs-only branch runs only the docs steps.
+- [ ] The gate reads `tools/ci-scope.mjs` for which lanes a change runs (taken over from P0-43, 2026-10-22; the lead's `gate.sh` still uses its own `touches` regexes).
 - [ ] The lead's `gate.sh` is a wrapper or removed.
 - [ ] The step list in `AGENTS.md` is generated and `pnpm gen --check` covers it.
 - [ ] Its eval report (plan §7.4) is attached to the hand-off: the suite and arms it should move, and the measured difference with its interval. It never blocks the merge.
@@ -67,3 +68,7 @@ AX-03b's router names `pnpm gate` as the one gate command.
 
 The role agent sets `--set AX-04 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set AX-04 done`.
+
+## Consolidation 2026-10-22 (triage)
+
+P0-43 was set done. Its "gate.sh reads `ci-scope.mjs`" item moves here: this package replaces gate.sh, so the wrapper reads the scope file (acceptance above).

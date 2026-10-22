@@ -1,0 +1,208 @@
+// @polaris-key/react/core — the mode-agnostic surface (no React, no DOM transport specifics).
+// Useful for tests, custom adapters, or non-React consumers that still want the shared
+// state model.
+//
+// The gate is re-exported from `@polaris-key/client-core` rather than reimplemented: this package
+// used to carry a hand-kept port of it, which is exactly how the monotonic clock floor went
+// missing here while every other SDK enforced it. One implementation, one corpus.
+
+export {
+  licenseState,
+  isUsable,
+  effectiveNow,
+  highWaterMark,
+  type LicenseState,
+  type GateInput,
+  type BlockedState,
+  type ConfigSource,
+} from "@polaris-key/client-core";
+
+export {
+  PolarisError,
+  initialState,
+  isSecureTransportUrl,
+  type PolarisAdapter,
+  type PolarisDocs,
+  type PolarisMode,
+  type PolarisPhase,
+  type PolarisErrorCode,
+  type PolarisState,
+  type OidcSignInHandle,
+  type DeviceInfo,
+  type UserConfigEntry,
+  type VersionCheck,
+  type ChangelogEntry,
+  type DownloadUrlOptions,
+  type ImportBundleResult,
+  type UpdateDecideOptions,
+  type FeedKind,
+  type FeedUrl,
+  type FeedUrlOptions,
+} from "./types.js";
+export {
+  runBoot,
+  reacquire,
+  bootDecisionOf,
+  type BootDriver,
+  type BootPacks,
+  type BootResult,
+  type BootRunOptions,
+  type BootStep,
+  type ReacquireResult,
+} from "./boot.js";
+// ui.stages: client-core's boot stage machine, which `boot()` drives.
+export {
+  BOOT_CONFIRMATIONS,
+  BOOT_OK_SECONDS,
+  BOOT_OUTCOMES,
+  BOOT_STAGES,
+  bootConfirmation,
+  bootTransition,
+  initialBootState,
+  type BootDecision,
+  type BootEmit,
+  type BootEvent,
+  type BootOptions,
+  type BootState,
+  type BootStage,
+} from "@polaris-key/client-core";
+export {
+  crashTagsFor,
+  type CrashTags,
+  type CrashTagsOptions,
+} from "./crash.js";
+export type { UpdateEventEntry, UpdateEventInput } from "./updateEvents.js";
+// update.driver and update.bootguard (SP-15)
+export type { InstallOptions, InstallOutcome } from "./install.js";
+export {
+  BootGuard,
+  MAX_FAILED_BOOTS,
+  bootGuardStorageKey,
+  browserBootSlotStore,
+  type BootAttempt,
+  type BootGuardOptions,
+  type BootSlotStore,
+  type BootSlots,
+} from "./bootGuard.js";
+export type {
+  StagedUpdate,
+  UpdateCheck,
+  UpdateDecision,
+} from "@polaris-key/protocol/update";
+export type { ProductCatalog } from "@polaris-key/catalog";
+
+export {
+  SERVICE_SLUGS,
+  anyBusy,
+  copyServices,
+  defaultServices,
+  firstError,
+  noBusy,
+  noErrors,
+  noServices,
+  servicesEqual,
+  servicesFromList,
+  withBusy,
+  withError,
+  type ServiceSlug,
+  type ServicesMap,
+  type ServiceBusyMap,
+  type ServiceErrorMap,
+} from "./services.js";
+
+export { createStore, type Store } from "./store.js";
+export {
+  UnsupportedError,
+  capabilityContext,
+  capsIn,
+  refuse,
+  requireSupported,
+  supportsIn,
+  type ReactRuntime,
+  type Support,
+  type Supported,
+  type Unsupported,
+} from "./caps.js";
+export {
+  projectState,
+  flattenEntries,
+  readConfig,
+  readEntitled,
+  readEntitlementValue,
+  readEntitledChannels,
+  resolveConfig,
+  resolveConfigValue,
+  configSource,
+  currentDeviceFromState,
+  listUserConfig,
+  type ProjectFlags,
+} from "./adapter.js";
+
+export {
+  bodyCode,
+  classifyActivation,
+  networkOutcome,
+  retryAfterSeconds,
+  type ActivationKind,
+  type ActivationOutcome,
+} from "./activation.js";
+export { activationError } from "./activationError.js";
+export {
+  activationMessage,
+  activationTitle,
+  copyLocales,
+  copyMessage,
+  copyTitle,
+  describeError,
+  hasCopy,
+  registerCopyLocale,
+  type CopyBundle,
+  type CopyParams,
+} from "./copy.js";
+export {
+  COPY_ACTIVATION,
+  COPY_CODES,
+  COPY_FALLBACK,
+  COPY_GATE,
+  COPY_LOCALE,
+  COPY_VERSION,
+  type CopyEntry,
+} from "../copy.generated.js";
+
+export type { ManagedEntry, JSONValue } from "@polaris-key/protocol/core";
+export type {
+  ActivationSource,
+  AllowedRange,
+  BlockReason,
+  DocProfile,
+  LicenseDoc,
+  LicenseStatus,
+} from "@polaris-key/protocol/license";
+export type { ConfigDoc } from "@polaris-key/protocol/config";
+// config.local: device-local overrides (SDK-PARITY-PASS §3.11).
+export {
+  LocalConfigEngine,
+  browserLocalConfigBackend,
+  localConfigStorageKey,
+  type ConfigChange,
+  type ConfigSetting,
+  type ConfigStorage,
+  type LocalConfig,
+  type LocalConfigBackend,
+} from "./localConfig.js";
+// Discovery's `core.presentation` (HA-13): the adapters' `presentationSource()`.
+export {
+  BridgePresentationSource,
+  BrowserPresentationSource,
+  fetchIconBytes,
+  indexedDbPresentationCache,
+  memoryPresentationCache,
+  namedIcons,
+  safeIconUrl,
+  type BridgeInvoke,
+  type BrowserPresentationOptions,
+  type PresentationCache,
+  type PresentationSource,
+  type ProductPresentation,
+  type ReactPresentationSource,
+} from "./presentation.js";

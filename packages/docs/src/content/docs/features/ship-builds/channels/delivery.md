@@ -146,16 +146,18 @@ gate (a catalog flag). The app's section carries its owner badge, with **Revert 
 while the console owns it; a pack has no manifest spelling. The admin API (narrative-only, not in
 the wire spec):
 
-| Method | Path                                                     | Does                                                        |
-| ------ | -------------------------------------------------------- | ----------------------------------------------------------- |
-| GET    | `/manage/api/products/<slug>/distribution/access`        | the app's mode in force, and every stored row               |
-| PUT    | `/manage/api/products/<slug>/distribution/access`        | `{ "mode", "deliverable"?, "entitlement"? }`: set and claim |
-| POST   | `/manage/api/products/<slug>/distribution/access/revert` | hand the `app` row back to the manifest                     |
+Delivery access is the setting `distribution.access`; its value maps each deliverable to its mode.
+
+| Method | Path                                                       | Does                                                                          |
+| ------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| GET    | `/manage/api/products/<slug>/settings/distribution.access` | every stored row, each with its mode, `entitlement` and owner                 |
+| PATCH  | `/manage/api/products/<slug>/settings/distribution.access` | `{ "value": { "<deliverable>": { "mode", "entitlement"? } } }`: set and claim |
+| DELETE | `/manage/api/products/<slug>/settings/distribution.access` | hand the `app` row back to the manifest                                       |
 
 Writes are audited as `distribution.access.update` and `distribution.access.revert`.
 A pack row's `entitlement` is the pack's **gate**: the license flag the blob route demands for
 its gated objects ([Pack bytes](#pack-bytes)); the app row's is stored and not enforced.
-`update/settings` no longer accepts `artifactsAccess` and refuses it by name.
+No update setting carries `artifactsAccess`: this is its only home.
 
 Turning Distribution on in the console runs no ingest, which is why the row is kept current
 while Distribution is off: a product whose manifest says `licensed` is `licensed` the moment

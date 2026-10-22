@@ -1242,6 +1242,19 @@ export const SHIPPED: ShippedState[] = [
     ready: (p) => h1(p, "Ember Tactics"),
   },
   {
+    // Expired, but the license keeps 1.8: the warning pill "Updates ended" beside the name, "Updates
+    // ended at 1.8" over "Keeps working" in the License card, and the download of 1.8 (B4).
+    section: "4.20",
+    id: "product-updates-ended",
+    title: "Product page, updates ended, keeps the last version",
+    scenario: "updatesEnded",
+    path: "/#/p/ember-tactics",
+    ready: async (p) => {
+      await h1(p, "Ember Tactics");
+      await p.getByText("Updates ended at 1.8").first().waitFor();
+    },
+  },
+  {
     section: "4.20",
     id: "product-account-bound",
     title: "Product page, account-bound product (Quill)",

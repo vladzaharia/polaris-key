@@ -293,7 +293,7 @@ describe("Licenses list", () => {
     const log = bootLicense("#/p/djdl/license/licenses", {
       routes: { [`${API}/license/licenses`]: failing(500) },
     });
-    const retry = await screen.findByRole("button", { name: /Try again/ });
+    const retry = await screen.findByRole("button", { name: /Retry/ });
     const reads = () =>
       log.calls.filter((c) => c.path === `${API}/license/licenses`).length;
     const before = reads();
@@ -305,7 +305,7 @@ describe("Licenses list", () => {
     bootLicense("#/p/djdl/license/licenses?tier=pro", {
       routes: { [`${API}/license/licenses`]: failing(500) },
     });
-    await screen.findByRole("button", { name: /Try again/ });
+    await screen.findByRole("button", { name: /Retry/ });
     expect(screen.getByRole("columnheader", { name: /^License/ })).toBeTruthy();
     expect(window.location.hash).toContain("tier=pro");
   });
@@ -317,6 +317,37 @@ describe("Licenses list", () => {
       screen.getByText(/No license has a name, email or id containing “zzzz”/),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: /Clear filters/ })).toBeTruthy();
+  });
+
+  it("disables one license from its row menu, through the same confirm", async () => {
+    const log = bootLicense("#/p/djdl/license/licenses");
+    const t = await table();
+    await within(t).findByText("Ada Lovelace");
+    await userEvent.click(
+      within(row(t, "Ada Lovelace")).getByRole("button", {
+        name: /^Actions for/,
+      }),
+    );
+    const menu = await screen.findByRole("menu");
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((i) => i.textContent?.replace(/\s+/g, " ").trim()),
+    ).toEqual(expect.arrayContaining(["Open", "Copy id", "Disable…"]));
+    await userEvent.click(
+      within(menu).getByRole("menuitem", { name: /^Disable…/ }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText("Disable 1 license?")).toBeTruthy();
+    expect(location.hash).toBe("#/p/djdl/license/licenses");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Disable 1 license" }),
+    );
+    await waitFor(() =>
+      expect(writes(log).map((c) => c.path)).toEqual([
+        `${API}/license/licenses/lic_1/disable`,
+      ]),
+    );
   });
 
   it("disables the selected licenses after a caution confirm that lists the effect", async () => {

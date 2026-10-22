@@ -1,6 +1,6 @@
 // The docs snippet lane (SP-45b): every ```kotlin block on a covered docs page is written to
 // build/snippets/src by packages/docs/test/snippets/nativeLanes.ts and compiled here against the
-// documented JVM artifact set (polaris-key-sdk, polaris-key-desktop, polaris-key-zstd, polaris-key-server-ktor), exactly as
+// documented JVM artifact set (polaris-key-sdk, polaris-key-desktop, polaris-key-zstd, polaris-key-server-ktor, polaris-key-spring-boot-starter), exactly as
 // a desktop or CLI app declares it. No sources are committed; not published.
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -20,6 +20,13 @@ dependencies {
     // The server drop-ins page (features/licensing/server-kotlin): Ktor, the framework-free core and the test kit.
     implementation(project(":server-ktor"))
     implementation(libs.ktor.server.test.host)
+    // The Spring Boot section of that page: the starter, the servlet API, Spring MVC and the MockMvc test support.
+    implementation(project(":spring-boot-starter"))
+    implementation(libs.jakarta.servlet.api)
+    implementation(libs.spring.webmvc)
+    implementation(libs.spring.test)
+    implementation(libs.spring.boot.test)
+    implementation("org.springframework.boot:spring-boot-test-autoconfigure:${libs.versions.springBoot.get()}")
     // The Compose Desktop recipe (build/sdks/kotlin/your-own-ui, "Compose Desktop").
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)

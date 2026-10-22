@@ -11,7 +11,7 @@ import {
   sourceName,
   versionLine,
 } from "../../copy/getIt.js";
-import { PlatformGlyph, type PlatformKey } from "../Glyphs.js";
+import { PlatformGlyph, type PlatformKey } from "../../../ui/Glyphs.js";
 import { PILL_CLASS } from "../StorePills.js";
 import { platformInSentence } from "../../../lib/vocab/platforms.js";
 

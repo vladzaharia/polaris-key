@@ -4,6 +4,7 @@ import {
   Check,
   Clock,
   KeyRound,
+  TriangleAlert,
   User,
   type LucideIcon,
 } from "lucide-react";
@@ -14,6 +15,7 @@ import type { ProductStatus as Status, StatusKind } from "../model/library.js";
 const ICON: Record<StatusKind, LucideIcon> = {
   suspended: AlertCircle,
   expired: AlertCircle,
+  updatesEnded: TriangleAlert,
   deviceLimit: AlertCircle,
   keyNotActivated: KeyRound,
   expiresSoon: Clock,

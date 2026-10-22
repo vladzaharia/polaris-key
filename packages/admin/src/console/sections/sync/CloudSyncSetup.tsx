@@ -9,11 +9,12 @@
  *
  * Both are platform controls: a member with a product role only sees them drawn disabled, with
  * who can change them. A setting the platform list does not serve (U-05 is not live) draws nothing.
- * The per-tier values are set on Tiers, which the card links to; players near a limit and the
+ * The per-tier values are set on Tiers, which the card links to; people near a limit and the
  * Usage tab wait for U-05's reads.
  */
 
 import * as React from "react";
+import { Lock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
   api,
@@ -25,6 +26,7 @@ import { CLOUD_SYNC_CEILINGS, CLOUD_SYNC_DEFAULTS } from "@polaris-key/catalog";
 import { formatCount, formatDateTime } from "../../../lib/format.js";
 import { DescriptionList } from "../../../ui/DescriptionList.js";
 import { Button } from "../../../ui/Button.js";
+import { ErrorState } from "../../../ui/ErrorState.js";
 import { Callout } from "../../../ui/Callout.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { PageSkeleton } from "../../../ui/Skeleton.js";
@@ -35,7 +37,8 @@ import { qk } from "../../data/queries.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsSection } from "../../templates/Settings.js";
-import { PauseWritesDialog } from "./PauseWritesDialog.js";
+import { hasSavedStepUp } from "../../../ui/ConfirmDialog.js";
+import { PauseWritesDialog, stepUpKeyFor } from "./PauseWritesDialog.js";
 import { StorageDefaultDialog } from "./StorageDefaultDialog.js";
 import { localSettings, userSettings } from "./data.js";
 import { SyncHeader } from "./SyncHeader.js";
@@ -93,6 +96,16 @@ export function CloudSyncSetupPage({
   const isPaused = paused?.value === "on";
   const propagation = platform.data?.propagationSeconds ?? 30;
 
+  // Back from the step-up sign-in: reopen the pause dialog that was left, reason and all.
+  const reopened = React.useRef(false);
+  React.useEffect(() => {
+    if (reopened.current || !paused) return;
+    reopened.current = true;
+    if (hasSavedStepUp(stepUpKeyFor(WRITES_PAUSED, "on"))) setDialog("pause");
+    else if (hasSavedStepUp(stepUpKeyFor(WRITES_PAUSED, "off")))
+      setDialog("resume");
+  }, [paused]);
+
   const header = (
     <SyncHeader
       slug={slug}
@@ -131,40 +144,57 @@ export function CloudSyncSetupPage({
       </div>
     );
 
+  // A member without Platform access sees who can change these once, at the top, not per row.
   const who = gate.disabledReason
     ? `Platform admins only. ${gate.disabledReason}`
     : undefined;
+  const readFailed = gate.allowed && platform.isError;
 
   return (
     <div className="space-y-6" data-template="record">
       {header}
+
+      {!gate.allowed && who ? (
+        <p className="flex items-start gap-2 text-sm text-fg-muted">
+          <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {who}
+        </p>
+      ) : null}
+
+      {readFailed ? (
+        <ErrorState
+          error={platform.error}
+          onRetry={() => void platform.refetch()}
+        />
+      ) : null}
 
       {isPaused && paused ? (
         <Callout
           tone="warning"
           title="Cloud Sync writes are paused for every product"
           action={
-            <Button
-              variant="outline"
-              size="sm"
-              disabledReason={who}
-              onClick={() => setDialog("resume")}
-            >
-              Resume writes
-            </Button>
+            gate.allowed ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDialog("resume")}
+              >
+                Resume writes
+              </Button>
+            ) : undefined
           }
         >
           {paused.stored
-            ? `Paused since ${formatDateTime(paused.stored.updatedAt * 1000)}. `
+            ? `Paused ${formatDateTime(paused.stored.updatedAt * 1000)}${paused.stored.updatedBy ? ` by ${paused.stored.updatedBy}` : ""}. `
             : ""}
           Devices keep their changes and send them on resume.
         </Callout>
       ) : null}
 
-      {drawn.quota ? (
+      {drawn.quota && !readFailed ? (
         <SettingsSection
           id="sync-storage"
-          title="Storage per player"
+          title="Storage per person"
           description={
             <>
               The{" "}
@@ -182,7 +212,7 @@ export function CloudSyncSetupPage({
         >
           <div className="space-y-3 px-5 py-4">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 grow basis-full sm:basis-0">
                 <p className="flex flex-wrap items-center gap-2 font-medium text-fg-strong">
                   Default <PlatformPill />
                 </p>
@@ -195,18 +225,17 @@ export function CloudSyncSetupPage({
                   {formatBinaryBytes(quota.value)}
                 </p>
               ) : null}
-              <Button
-                variant="ghost"
-                size="sm"
-                disabledReason={quota ? who : (who ?? "Not available yet.")}
-                onClick={() => setDialog("storage")}
-              >
-                Change…
-              </Button>
+              {gate.allowed ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabledReason={quota ? undefined : "Not available yet."}
+                  onClick={() => setDialog("storage")}
+                >
+                  Change…
+                </Button>
+              ) : null}
             </div>
-            {!gate.allowed && who ? (
-              <p className="text-xs text-fg-muted">{who}</p>
-            ) : null}
             <p className="text-sm text-fg-muted">
               Lowering a limit deletes nothing. New saves wait for room.
             </p>
@@ -214,7 +243,7 @@ export function CloudSyncSetupPage({
         </SettingsSection>
       ) : null}
 
-      {drawn.paused ? (
+      {drawn.paused && !readFailed ? (
         <SettingsSection
           id="sync-limits"
           title="Product limits"
@@ -222,7 +251,7 @@ export function CloudSyncSetupPage({
         >
           <div className="space-y-3 px-5 py-4">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 grow basis-full sm:basis-0">
                 <p className="flex flex-wrap items-center gap-2 font-medium text-fg-strong">
                   Pause all writes <PlatformPill />
                 </p>
@@ -240,18 +269,17 @@ export function CloudSyncSetupPage({
                   {isPaused ? "Paused" : "Off"}
                 </StatusPill>
               ) : null}
-              <Button
-                variant="outline"
-                size="sm"
-                disabledReason={paused ? who : (who ?? "Not available yet.")}
-                onClick={() => setDialog(isPaused ? "resume" : "pause")}
-              >
-                {isPaused ? "Resume writes" : "Pause writes…"}
-              </Button>
+              {gate.allowed ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabledReason={paused ? undefined : "Not available yet."}
+                  onClick={() => setDialog(isPaused ? "resume" : "pause")}
+                >
+                  {isPaused ? "Resume writes" : "Pause writes…"}
+                </Button>
+              ) : null}
             </div>
-            {!gate.allowed && who ? (
-              <p className="text-xs text-fg-muted">{who}</p>
-            ) : null}
           </div>
         </SettingsSection>
       ) : null}
@@ -341,17 +369,17 @@ function WhatSyncs({
               ))}
             </p>
           ) : null}
-          <p className="text-fg-muted">Keys the game adds itself also sync.</p>
+          <p className="text-fg-muted">Keys the app adds itself also sync.</p>
         </div>
         <DescriptionList
           columns={2}
           items={[
             {
-              term: "Keys per player",
+              term: "Keys per person",
               detail: `Up to ${formatCount(CLOUD_SYNC_DEFAULTS.settings.maxKeys)}`,
             },
             {
-              term: "Size per player",
+              term: "Size per person",
               detail: `Up to ${formatBinaryBytes(CLOUD_SYNC_DEFAULTS.settings.maxBytes)}`,
             },
           ]}

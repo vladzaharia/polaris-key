@@ -17,6 +17,11 @@ export interface PageAction {
   disabledReason?: string;
   /** Left out of the phone's "More actions" menu: the page draws it another way there. */
   hideOnPhone?: boolean;
+  /**
+   * `ghost` draws a quiet inline action (no border) for a link-like destination beside the
+   * outline ones (Licenses' Batches). Default `outline`.
+   */
+  variant?: "outline" | "ghost";
 }
 
 export interface PageHeaderProps {
@@ -344,7 +349,7 @@ export function PageHeader({
             {inline.map((a) => (
               <Button
                 key={a.label}
-                variant="outline"
+                variant={a.variant ?? "outline"}
                 className="hidden sm:inline-flex"
                 iconStart={a.icon}
                 disabledReason={a.disabledReason}

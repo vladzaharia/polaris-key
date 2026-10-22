@@ -30,9 +30,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -227,7 +224,7 @@ public fun PolarisInfoBanner(text: String, modifier: Modifier = Modifier, onDism
                     .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Filled.Info, contentDescription = null, modifier = Modifier.size(24.dp))
+                Icon(PolarisSymbols.Info, contentDescription = null, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(12.dp))
                 Text(
                     text,
@@ -235,7 +232,7 @@ public fun PolarisInfoBanner(text: String, modifier: Modifier = Modifier, onDism
                     modifier = Modifier.weight(1f).padding(vertical = 8.dp).semantics { liveRegion = LiveRegionMode.Polite },
                 )
                 if (onDismiss != null) {
-                    IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, contentDescription = PolarisTheme.copy.close) }
+                    IconButton(onClick = onDismiss) { Icon(PolarisSymbols.Close, contentDescription = PolarisTheme.copy.close) }
                 }
             }
         }

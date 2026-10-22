@@ -15,6 +15,10 @@ import { LEVEL_RANK } from "../../../ui/settings/model.js";
 import { useMe, useProducts } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 
+/** Where the dialog's typed state waits across a step-up sign-in. */
+export const stepUpKeyFor = (key: string, to: "on" | "off"): string =>
+  `${key}:${to}`;
+
 const products = (n: number): string => (n === 1 ? "product" : "products");
 
 export function PauseWritesDialog({
@@ -35,8 +39,13 @@ export function PauseWritesDialog({
   const reasonId = React.useId();
   const all = useProducts();
   const me = useMe();
+  // A reason put back after the step-up sign-in must survive the fresh-open reset below (this
+  // effect runs after ConfirmDialog's, which restores it).
+  const restored = React.useRef(false);
   React.useEffect(() => {
-    if (open) setReason("");
+    if (!open) return;
+    if (restored.current) restored.current = false;
+    else setReason("");
   }, [open]);
 
   const reached = (all.data ?? []).filter((p) => p.services?.sync?.enabled);
@@ -92,7 +101,12 @@ export function PauseWritesDialog({
       }
       confirmDisabled={reason.trim() === ""}
       signedInAt={me.data?.authAt}
-      stepUpKey={`${setting.key}:${to}`}
+      stepUpKey={stepUpKeyFor(setting.key, to)}
+      stepUpState={{ reason }}
+      onRestore={(saved) => {
+        restored.current = true;
+        setReason(saved.reason ?? "");
+      }}
       describeError={(e) => errorCopy(e, { thing: "Setting" })}
       onConfirm={async () => {
         await mutate("patchPlatformSetting", setting.key, {

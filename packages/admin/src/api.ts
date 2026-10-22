@@ -10,7 +10,8 @@
  *
  *   licenses[/…] → license/licenses[/…]      schema  → config/catalog
  *   tiers[/…]    → license/tiers[/…]         profiles[/…] → config/profiles[/…]
- *   policy[…]    → license/policy[…]         portal  → identity/portal
+ *   portal       → identity/portal            policy  → the settings `license.fingerprint` and
+ *                                              `license.autoIssue` (the generic settings API)
  *
  * Core/platform resources keep their top-level spelling because they belong to no service:
  * `secrets/*`, `keys/rotate`, `activity`, `services[/revert]`, `bundles`.
@@ -51,6 +52,7 @@ import type { ManagementState, ProductCatalog } from "@polaris-key/catalog";
 import type { ArtifactRole } from "@polaris-key/manifest";
 import type { LicenseTerms } from "../../worker/src/core/licensing/terms.js";
 import type { ServiceSlug } from "./services.generated.js";
+import { startStepUp } from "./lib/stepUp.js";
 import { RELEASE_POLICY_ERROR_MESSAGES } from "./lib/releasePolicyMessages.js";
 
 // ── identity ──────────────────────────────────────────────────────────────────
@@ -213,12 +215,25 @@ export interface PlatformActivityItem {
   id: string;
   /** Epoch seconds. */
   at: number;
+  /**
+   * The product the event belongs to; `null` for a platform event. Only a read that names a
+   * `product` can return product events: without one the feed is the platform's alone.
+   */
+  product?: string | null;
   actor: { sub: string; name: string; email: string };
   action: string;
   target: { kind: string; id: string } | null;
   summary: string;
   before: unknown;
   after: unknown;
+}
+
+/** The platform feed's filters: a product feed's, plus which trails to read (ST-51). */
+export interface PlatformActivityFilters extends ActivityFilters {
+  /** `all` (every product and the platform), `platform`, or a product slug. */
+  product?: string;
+  /** One event, by id (a deep link to its drawer). */
+  id?: string;
 }
 
 export interface PlatformActivityPage {
@@ -1665,8 +1680,9 @@ export type SettingConfirmSpec =
   | { change: SettingConfirmLevel };
 
 /**
- * One row-backed product setting with its value in force (LX-06, `GET …/settings/effective`):
- * `licensing.*` on License → Settings, `identity.oidc.syncTierOnSignIn` on Identity → Sign-in.
+ * One product setting with its value in force (`GET …/settings/effective`, the generic settings
+ * API of S-18 §4.7): `licensing.*` on License → Settings, the device trust policy on Keys, the
+ * fingerprint policy on Enrollment, the update settings and the delivery access.
  */
 export interface ProductSetting {
   key: string;
@@ -1688,6 +1704,15 @@ export interface ProductSetting {
   serviceEnabled: boolean;
   /** The console area a write needs; absent on older responses. */
   rbacArea?: AreaId;
+  /** Who may write it; a `manifest` or `read-only` key is shown, not edited. */
+  ownership?:
+    | "operator"
+    | "manifest"
+    | "claimable"
+    | "narrow-only"
+    | "read-only";
+  /** Why a write is refused now whatever the value (no release configuration), when it is. */
+  blocked?: string;
   value: unknown;
   source: "default" | "manifest" | "console";
   defaultValue: unknown;
@@ -2010,7 +2035,7 @@ export interface LinkRepoResult {
 
 /**
  * NOTE what is absent: `compatMin`/`compatMax`. Spec §8 relocated the compatibility window to
- * `update/settings`, and the worker's product PATCH now DROPS them rather than rejecting them —
+ * the setting `release.compatWindow`, and the worker's product PATCH now DROPS them rather than rejecting them —
  * so a console that still sent them would appear to save a value that never changed. Removing
  * them from the type is what makes that unrepresentable instead of merely unused.
  */
@@ -2520,6 +2545,12 @@ export interface UpdateSettings {
   /** False when the product has no release configuration: the access modes and artifact policy
    *  are defaults and a PATCH of them has nothing to write to (the server 422s). */
   configured: boolean;
+  /** The caller may not see the access mode (its area is Settings), so `metadataAccess` is a
+   *  placeholder and no page should show it. */
+  hidden?: true;
+  /** The row version of each key as this view read it: a write names it as `expectedVersion`, so
+   *  a page that went stale gets the 409 and the conflict UI rather than overwriting. */
+  versions: { access: number; compat: number; policy: number };
 }
 
 export type UpdateSettingsBody = Partial<
@@ -2533,7 +2564,7 @@ export type UpdateSettingsBody = Partial<
   >
 >;
 
-/** The blocks `update/settings/revert` can hand back to the manifest. */
+/** The blocks of the update settings Revert can hand back to the manifest (the settings `update.metadataAccess` and `release.compatWindow`). */
 export type UpdateSettingsBlock = "access" | "compat";
 
 // ── distribution: delivery access + rollouts (P2b-04) ────────────────────────
@@ -2543,6 +2574,8 @@ export type UpdateSettingsBlock = "access" | "compat";
  * saves it; a pack with no row inherits the app's.
  */
 export interface DeliveryAccess {
+  /** The row version this view read: a write names it as `expectedVersion`. */
+  version: number;
   modes: ReleaseAccess[];
   app: { deliverableId: string; mode: ReleaseAccess; source: SettingsSource };
   deliverables: Array<{
@@ -4217,6 +4250,8 @@ export interface FingerprintPolicyDto {
 }
 
 export interface FingerprintPolicyResponse {
+  /** The row version this view read: a write names it as `expectedVersion`. */
+  version: number;
   policy: FingerprintPolicyDto;
   /** `manifest` means a resync still owns it; `admin` means an operator has taken it over. */
   source: "manifest" | "admin";
@@ -4802,25 +4837,8 @@ export function setCsrf(token: string): void {
   csrf = token;
 }
 
-/** A gated action refused for a stale step-up goes to the step-up sign-in and back. */
-let redirectToStepUp = (): void => {
-  const back = `/manage/${window.location.hash}`;
-  window.location.href = `/manage/login?stepUp=1&returnTo=${encodeURIComponent(back)}`;
-};
-/** Override the step-up redirect (tests pass a spy; call with no arg to restore the default). */
-export function setStepUpRedirectForTests(fn?: () => void): void {
-  redirectToStepUp =
-    fn ??
-    (() => {
-      const back = `/manage/${window.location.hash}`;
-      window.location.href = `/manage/login?stepUp=1&returnTo=${encodeURIComponent(back)}`;
-    });
-}
-
-/** Send the operator to the step-up sign-in, back to this page (a write that needs a fresh one). */
-export function startStepUp(): void {
-  redirectToStepUp();
-}
+// A gated action refused for a stale step-up goes to the step-up sign-in and back.
+export { setStepUpRedirectForTests, startStepUp } from "./lib/stepUp.js";
 
 /**
  * The 401 sign-in. The Worker marks a session that existed and no longer holds
@@ -4989,7 +5007,7 @@ async function send(
       code === "step_up_required" &&
       opts.stepUpRedirect
     )
-      redirectToStepUp();
+      startStepUp();
     throw error;
   }
   return res;
@@ -5058,10 +5076,25 @@ const rawApi = {
   platformOperations: () =>
     call<PlatformOperations>("/manage/api/platform/operations"),
   /** `platform_audit`, newest first (keyset `cursor`). */
-  platformActivity: (cursor?: PlatformCursor | null) =>
-    call<PlatformActivityPage>(
-      `/manage/api/platform/activity${cursorQuery(cursor)}`,
-    ),
+  platformActivity: (
+    cursor?: PlatformCursor | null,
+    filters: PlatformActivityFilters = {},
+    limit?: number,
+  ) => {
+    const search = new URLSearchParams();
+    if (limit) search.set("limit", String(limit));
+    if (cursor) {
+      search.set("beforeAt", String(cursor.beforeAt));
+      search.set("beforeId", cursor.beforeId);
+    }
+    for (const [k, v] of Object.entries(filters)) {
+      if (v !== undefined && v !== null && v !== "") search.set(k, String(v));
+    }
+    const qs = search.toString();
+    return call<PlatformActivityPage>(
+      `/manage/api/platform/activity${qs ? `?${qs}` : ""}`,
+    );
+  },
   // ── admin API tokens (platform, not product-scoped) ─────────────────────────
   /** The roster. Never carries a secret or a hash: see `AdminApiToken`. */
   apiTokens: () => call<{ tokens: AdminApiToken[] }>("/manage/api/tokens"),
@@ -5369,10 +5402,15 @@ const rawApi = {
       `/manage/api/support-codes/${enc(code)}`,
     ),
   /**
-   * ST-52: the palette's entity search. A pasted licence key resolves to `key` (its licence) and is
-   * never echoed; a key the member may not read answers `key: null`, like an unknown one.
+   * ST-52: the palette's entity search. The query goes in the body, never the URL: a pasted key
+   * must not reach request logs. A pasted licence key resolves to `key` (its licence) and is never
+   * echoed; a key the member may not read answers `key: null`, like an unknown one.
    */
-  search: (q: string) => call<SearchDto>(`/manage/api/search?q=${enc(q)}`),
+  search: (q: string) =>
+    call<SearchDto>("/manage/api/search", {
+      method: "POST",
+      body: JSON.stringify({ q }),
+    }),
   /** Platform ready: the first-run checklist (platform admins). */
   platformReady: () => call<PlatformReadyDto>("/manage/api/platform/ready"),
   product: (slug: string) => call<{ product: ProductDetail }>(p(slug)),
@@ -5413,14 +5451,10 @@ const rawApi = {
    * (fixes PRD-4: an auto-filled guard guards nothing).
    */
   deleteProduct: (slug: string, confirmSlug: string) =>
-    call<{ ok: true; slug: string }>(
-      p(slug),
-      {
-        method: "DELETE",
-        body: JSON.stringify({ confirmSlug }),
-      },
-      { stepUpRedirect: true },
-    ),
+    call<{ ok: true; slug: string }>(p(slug), {
+      method: "DELETE",
+      body: JSON.stringify({ confirmSlug }),
+    }),
   resyncProduct: (slug: string) =>
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
   /** The resync's dry run: reads the manifest and plans. Writes nothing. */
@@ -5587,7 +5621,6 @@ const rawApi = {
         method: "POST",
         body: JSON.stringify(breakGlass ? { kid, breakGlass } : { kid }),
       },
-      { stepUpRedirect: true },
     ),
   retireProductKey: (slug: string, kid: string) =>
     call<{ ok: true; kid: string; status: "retired" }>(
@@ -5603,19 +5636,28 @@ const rawApi = {
   productSecrets: (slug: string) =>
     call<{ secrets: ProductSecretDto[] }>(`${p(slug)}/secrets`),
   /** ST-12: the device trust policy, its source and the version a write must carry. */
-  trustPolicy: (slug: string) =>
-    call<TrustPolicyResponse>(`${p(slug)}/trust-policy`),
+  trustPolicy: async (slug: string): Promise<TrustPolicyResponse> =>
+    trustPolicyOf(await getSetting(slug, TRUST_POLICY_KEY)),
   /** A relaxing change also carries `reason` and `confirm` and needs a fresh step-up. */
-  putTrustPolicy: (slug: string, body: TrustPolicyWrite) =>
-    call<TrustPolicyResponse>(`${p(slug)}/trust-policy`, {
-      method: "PUT",
-      body: JSON.stringify(body),
-    }),
-  resetTrustPolicy: (slug: string, body: TrustPolicyGuard) =>
-    call<TrustPolicyResponse>(`${p(slug)}/trust-policy`, {
-      method: "DELETE",
-      body: JSON.stringify(body),
-    }),
+  putTrustPolicy: async (
+    slug: string,
+    { policy, ...guard }: TrustPolicyWrite,
+  ): Promise<TrustPolicyResponse> =>
+    trustPolicyOf(
+      (
+        await writeSetting(slug, TRUST_POLICY_KEY, "PATCH", {
+          value: policy,
+          ...guard,
+        })
+      ).setting,
+    ),
+  resetTrustPolicy: async (
+    slug: string,
+    guard: TrustPolicyGuard,
+  ): Promise<TrustPolicyResponse> =>
+    trustPolicyOf(
+      (await writeSetting(slug, TRUST_POLICY_KEY, "DELETE", guard)).setting,
+    ),
   ciPublisher: (slug: string) =>
     call<{ ok: true; policy: PublisherPolicyDto | null }>(
       `${p(slug)}/ci-publisher`,
@@ -5708,26 +5750,78 @@ const rawApi = {
   revertServices: (slug: string) =>
     call<ServicesResponse>(`${p(slug)}/services/revert`, { method: "POST" }),
 
-  // ── update settings ─────────────────────────────────────────────────────────
-  updateSettings: (slug: string) =>
-    call<UpdateSettings>(`${p(slug)}/update/settings`),
-  saveUpdateSettings: (slug: string, body: UpdateSettingsBody) =>
-    call<UpdateSettings>(`${p(slug)}/update/settings`, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    }),
+  // ── update settings (the generic settings API: `update.metadataAccess`,
+  //    `release.compatWindow`, `update.operatorPolicy`) ────────────────────────
+  updateSettings: async (slug: string): Promise<UpdateSettings> =>
+    updateSettingsOf(await getSettings(slug, UPDATE_KEYS)),
+  /**
+   * Each key the body names is one write, carrying the version the page loaded (`versions`, from
+   * the `UpdateSettings` it shows). The three blocks are three registry keys and the generic API
+   * writes one key per request, so a save that spans blocks is several requests; the pages each
+   * save one block, so in practice it is one. The merge base for a partial compat window or
+   * operator policy is the view the page loaded too.
+   */
+  saveUpdateSettings: async (
+    slug: string,
+    body: UpdateSettingsBody,
+    cur: UpdateSettings,
+  ): Promise<UpdateSettings> => {
+    if (body.metadataAccess !== undefined)
+      await writeSetting(slug, UPDATE_ACCESS_KEY, "PATCH", {
+        value: body.metadataAccess,
+        expectedVersion: cur.versions.access,
+      });
+    if (body.compatMin !== undefined || body.compatMax !== undefined)
+      await writeSetting(slug, UPDATE_COMPAT_KEY, "PATCH", {
+        value: {
+          min: body.compatMin ?? cur.compatMin,
+          max: body.compatMax ?? cur.compatMax,
+        },
+        expectedVersion: cur.versions.compat,
+      });
+    if (
+      body.minimumSystemVersion !== undefined ||
+      body.requireSparkleSignature !== undefined
+    ) {
+      const min =
+        body.minimumSystemVersion === undefined
+          ? cur.minimumSystemVersion
+          : body.minimumSystemVersion;
+      await writeSetting(slug, UPDATE_POLICY_KEY, "PATCH", {
+        value: {
+          requireSparkleSignature:
+            body.requireSparkleSignature ?? cur.requireSparkleSignature,
+          ...(min === null ? {} : { minimumSystemVersion: min }),
+        },
+        expectedVersion: cur.versions.policy,
+      });
+    }
+    return updateSettingsOf(await getSettings(slug, UPDATE_KEYS));
+  },
   /** Hand the named blocks back to the manifest. Changes nothing live — the manifest re-applies
-   *  on the NEXT resync (worker `services/update/admin.ts`). */
-  revertUpdateSettings: (slug: string, fields: UpdateSettingsBlock[]) =>
-    call<UpdateSettings>(`${p(slug)}/update/settings/revert`, {
-      method: "POST",
-      body: JSON.stringify({ fields }),
-    }),
+   *  on the NEXT resync (worker `core/settings/columns.ts`). */
+  revertUpdateSettings: async (
+    slug: string,
+    fields: UpdateSettingsBlock[],
+    cur: UpdateSettings,
+  ): Promise<UpdateSettings> => {
+    for (const block of fields)
+      await writeSetting(
+        slug,
+        block === "access" ? UPDATE_ACCESS_KEY : UPDATE_COMPAT_KEY,
+        "DELETE",
+        {
+          expectedVersion:
+            block === "access" ? cur.versions.access : cur.versions.compat,
+        },
+      );
+    return updateSettingsOf(await getSettings(slug, UPDATE_KEYS));
+  },
 
-  // ── distribution: delivery access + rollouts (P2b-04) ───────────────────────
-  deliveryAccess: (slug: string) =>
-    call<DeliveryAccess>(`${p(slug)}/distribution/access`),
-  saveDeliveryAccess: (
+  // ── distribution: delivery access + rollouts (P2b-04; the setting `distribution.access`) ──
+  deliveryAccess: async (slug: string): Promise<DeliveryAccess> =>
+    deliveryAccessOf(await getSetting(slug, DELIVERY_ACCESS_KEY)),
+  saveDeliveryAccess: async (
     slug: string,
     body: {
       mode: ReleaseAccess;
@@ -5735,17 +5829,38 @@ const rawApi = {
       /** A pack's delivery gate, for `entitled`: the catalog flag a license must grant (`null` clears it). */
       entitlement?: string | null;
     },
-  ) =>
-    call<DeliveryAccess>(`${p(slug)}/distribution/access`, {
-      method: "PUT",
-      body: JSON.stringify(body),
-    }),
+    /** The `DeliveryAccess.version` the page loaded. */
+    expectedVersion: number,
+  ): Promise<DeliveryAccess> => {
+    return deliveryAccessOf(
+      (
+        await writeSetting(slug, DELIVERY_ACCESS_KEY, "PATCH", {
+          value: {
+            [body.deliverable ?? "app"]: {
+              mode: body.mode,
+              ...(body.entitlement !== undefined
+                ? { entitlement: body.entitlement }
+                : {}),
+            },
+          },
+          expectedVersion,
+        })
+      ).setting,
+    );
+  },
   /** Hand the app's delivery access back to the manifest; it re-applies on the next resync. */
-  revertDeliveryAccess: (slug: string) =>
-    call<DeliveryAccess>(`${p(slug)}/distribution/access/revert`, {
-      method: "POST",
-      body: JSON.stringify({}),
-    }),
+  revertDeliveryAccess: async (
+    slug: string,
+    expectedVersion: number,
+  ): Promise<DeliveryAccess> => {
+    return deliveryAccessOf(
+      (
+        await writeSetting(slug, DELIVERY_ACCESS_KEY, "DELETE", {
+          expectedVersion,
+        })
+      ).setting,
+    );
+  },
   rollouts: (slug: string) =>
     call<RolloutsResponse>(`${p(slug)}/distribution/rollouts`),
   /** The release × outlet matrix (P2b-06). */
@@ -6369,7 +6484,6 @@ const rawApi = {
     call<{ ok: true; stores: string[] }>(
       `${p(slug)}/users/${enc(subject)}/data/delete`,
       { method: "POST" },
-      { stepUpRedirect: true },
     ),
   detachProductUserLicense: (
     slug: string,
@@ -6379,7 +6493,6 @@ const rawApi = {
     call<{ ok: true }>(
       `${p(slug)}/users/${enc(subject)}/licenses/${enc(licenseId)}/detach`,
       { method: "POST" },
-      { stepUpRedirect: true },
     ),
   /** Needs a step-up (403 `step_up_required` otherwise). */
   relinkProductUserLicense: (
@@ -6482,21 +6595,42 @@ const rawApi = {
       body: JSON.stringify(body),
     }),
 
-  // ── enrollment & fingerprint policy (License) ───────────────────────────────
-  fingerprintPolicy: (slug: string) =>
-    call<FingerprintPolicyResponse>(`${p(slug)}/license/policy`),
-  updateFingerprintPolicy: (
+  // ── enrollment & fingerprint policy (the settings `license.fingerprint`, `license.autoIssue`) ──
+  fingerprintPolicy: async (slug: string): Promise<FingerprintPolicyResponse> =>
+    fingerprintOf(await getSetting(slug, FINGERPRINT_KEY)),
+  /** A partial patch: what the body omits keeps the policy the page loaded (`cur`), whose
+   *  version the write carries. */
+  updateFingerprintPolicy: async (
     slug: string,
     patch: Partial<FingerprintPolicyDto>,
-  ) =>
-    call<FingerprintPolicyResponse>(`${p(slug)}/license/policy`, {
-      method: "PATCH",
-      body: JSON.stringify(patch),
-    }),
-  revertFingerprintPolicy: (slug: string) =>
-    call<FingerprintPolicyResponse>(`${p(slug)}/license/policy/revert`, {
-      method: "POST",
-    }),
+    cur: Pick<FingerprintPolicyResponse, "policy" | "version">,
+  ): Promise<FingerprintPolicyResponse> => {
+    return fingerprintOf(
+      (
+        await writeSetting(slug, FINGERPRINT_KEY, "PATCH", {
+          value: { ...cur.policy, ...patch },
+          expectedVersion: cur.version,
+        })
+      ).setting,
+    );
+  },
+  /** Both policies go back to the manifest (the auto-issue one only when it is claimed). */
+  revertFingerprintPolicy: async (
+    slug: string,
+    expectedVersion: number,
+  ): Promise<FingerprintPolicyResponse> => {
+    const reverted = await writeSetting(slug, FINGERPRINT_KEY, "DELETE", {
+      expectedVersion,
+    });
+    // The auto-issue policy is the secondary key of this revert; the page does not load it, so
+    // it is read here, and only to learn whether the console holds it.
+    const auto = await getSetting(slug, AUTO_ISSUE_KEY);
+    if (auto.source === "console")
+      await writeSetting(slug, AUTO_ISSUE_KEY, "DELETE", {
+        expectedVersion: auto.version,
+      });
+    return fingerprintOf(reverted.setting);
+  },
 
   // ── profiles ────────────────────────────────────────────────────────────────
   profiles: (slug: string) =>
@@ -6678,20 +6812,172 @@ export type AdminApi = typeof rawApi;
  * `console/data/mutations.ts`, which runs each write's declared invalidation (ADMIN.md §5.4).
  * `test/mutations.test.ts` fails if a view calls a write on `api` directly.
  */
+
+// ── The generic settings API (S-18 §4.7) as the pages that used bespoke routes read it ───────
+// `GET …/settings/<key>`, `PATCH|DELETE …/settings/<key>`: one route family for every
+// product setting. The pages keep their view models (`UpdateSettings`, `DeliveryAccess`,
+// `FingerprintPolicyResponse`, `TrustPolicyResponse`); these functions build them.
+
+const settingPath = (slug: string, key: string): string =>
+  `/manage/api/products/${encodeURIComponent(slug)}/settings/${encodeURIComponent(key)}`;
+
+async function getSetting(slug: string, key: string): Promise<ProductSetting> {
+  return (await call<{ setting: ProductSetting }>(settingPath(slug, key)))
+    .setting;
+}
+
+/**
+ * Several settings by key, in parallel. A key the caller may not view answers 403 and is left out
+ * (ST-29): the view built from the rest says what it could not read.
+ */
+async function getSettings(
+  slug: string,
+  keys: readonly string[],
+): Promise<Map<string, ProductSetting>> {
+  const got = await Promise.allSettled(keys.map((k) => getSetting(slug, k)));
+  const out = new Map<string, ProductSetting>();
+  got.forEach((r, i) => {
+    if (r.status === "fulfilled") out.set(keys[i]!, r.value);
+    else if (!(r.reason instanceof ApiError && r.reason.status === 403))
+      throw r.reason;
+  });
+  return out;
+}
+
+async function writeSetting(
+  slug: string,
+  key: string,
+  method: "PATCH" | "DELETE",
+  body: object,
+): Promise<{ setting: ProductSetting }> {
+  return call<{ setting: ProductSetting }>(settingPath(slug, key), {
+    method,
+    body: JSON.stringify(body),
+  });
+}
+
+/** The console's two owners of a block a resync can also write. */
+const ownerOf = (s: ProductSetting): SettingsSource =>
+  s.source === "console" ? "admin" : "manifest";
+
+const TRUST_POLICY_KEY = "core.trustPolicy";
+const FINGERPRINT_KEY = "license.fingerprint";
+const AUTO_ISSUE_KEY = "license.autoIssue";
+const DELIVERY_ACCESS_KEY = "distribution.access";
+const UPDATE_ACCESS_KEY = "update.metadataAccess";
+const UPDATE_COMPAT_KEY = "release.compatWindow";
+const UPDATE_POLICY_KEY = "update.operatorPolicy";
+const UPDATE_KEYS = [
+  UPDATE_ACCESS_KEY,
+  UPDATE_COMPAT_KEY,
+  UPDATE_POLICY_KEY,
+] as const;
+
+function trustPolicyOf(s: ProductSetting): TrustPolicyResponse {
+  return {
+    ok: true,
+    policy: s.value as TrustPolicyDto,
+    source: s.source === "console" ? "admin" : "default",
+    version: s.version,
+  };
+}
+
+function fingerprintOf(s: ProductSetting): FingerprintPolicyResponse {
+  return {
+    version: s.version,
+    policy: s.value as FingerprintPolicyDto,
+    source: ownerOf(s),
+  };
+}
+
+function updateSettingsOf(by: Map<string, ProductSetting>): UpdateSettings {
+  // The API lists only the keys whose area the caller holds (ST-29): a member of Ship builds
+  // without Settings does not get the access mode, which the view then says it could not read.
+  const access = by.get(UPDATE_ACCESS_KEY);
+  const compat = by.get(UPDATE_COMPAT_KEY);
+  const policy = by.get(UPDATE_POLICY_KEY);
+  const window = (compat?.value ?? { min: "", max: "" }) as {
+    min: string;
+    max: string;
+  };
+  const operator = (policy?.value ?? {}) as {
+    requireSparkleSignature?: boolean;
+    minimumSystemVersion?: string;
+  };
+  return {
+    metadataAccess: (access?.value ?? "public") as ReleaseAccess,
+    accessSource: access ? ownerOf(access) : "manifest",
+    compatMin: window.min,
+    compatMax: window.max,
+    compatSource: compat ? ownerOf(compat) : "manifest",
+    minimumSystemVersion: operator.minimumSystemVersion ?? null,
+    requireSparkleSignature: operator.requireSparkleSignature !== false,
+    configured: access?.blocked === undefined,
+    ...(access ? {} : { hidden: true as const }),
+    versions: {
+      access: access?.version ?? 0,
+      compat: compat?.version ?? 0,
+      policy: policy?.version ?? 0,
+    },
+  };
+}
+
+const ACCESS_MODES: ReleaseAccess[] = [
+  "public",
+  "authenticated",
+  "licensed",
+  "entitled",
+];
+
+function deliveryAccessOf(s: ProductSetting): DeliveryAccess {
+  const rows = Object.entries(
+    (s.value ?? {}) as Record<
+      string,
+      {
+        mode: ReleaseAccess;
+        entitlement: string | null;
+        source: SettingsSource;
+        modifiedAt: number;
+      }
+    >,
+  );
+  const app = rows.find(([id]) => id === "app")?.[1];
+  return {
+    version: s.version,
+    modes: ACCESS_MODES,
+    // Fail closed, as the worker does: no `app` row reads `entitled`.
+    app: {
+      deliverableId: "app",
+      mode: app?.mode ?? "entitled",
+      source: app?.source ?? "manifest",
+    },
+    deliverables: rows.map(([deliverableId, r]) => ({
+      deliverableId,
+      mode: r.mode,
+      entitlement: r.entitlement,
+      source: r.source,
+      modifiedAt: r.modifiedAt,
+    })),
+  };
+}
+
 export const api: AdminApi = rawApi;
 
 /** `GET /manage/api/search` (ST-52; worker `console/handlers/search.ts`). */
+export interface SearchLicenseDto {
+  product: string;
+  productName: string;
+  id: string;
+  name: string | null;
+  email: string | null;
+  status: string;
+  expiresAt: number | null;
+  tier: string | null;
+}
+
 export interface SearchDto {
-  key: { product: string; licenseId: string } | null;
-  licenses: {
-    product: string;
-    productName: string;
-    id: string;
-    name: string | null;
-    email: string | null;
-    status: string;
-    expiresAt: number | null;
-  }[];
+  key: (SearchLicenseDto & { licenseId: string }) | null;
+  licenses: SearchLicenseDto[];
   people: {
     product: string;
     productName: string;

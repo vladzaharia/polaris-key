@@ -27,6 +27,7 @@ import { cn } from "../../lib/cn.js";
 import { formatCount } from "../../lib/format.js";
 import { ActionMenu } from "../ActionMenu.js";
 import { Button } from "../Button.js";
+import { IconButton } from "../IconButton.js";
 import { EmptyState } from "../EmptyState.js";
 import { ErrorState } from "../ErrorState.js";
 import { announce, LiveRegion } from "../LiveRegion.js";
@@ -241,16 +242,18 @@ export function tableCsv<T>(rows: T[], columns: DataColumn<T>[]): string {
 function RowMenu({
   label,
   items,
+  size = "sm",
 }: {
   label: string;
   items: RowActionItem[];
+  size?: "xs" | "sm";
 }): React.ReactElement | null {
   if (!items.some((i) => !("type" in i && i.type === "separator"))) return null;
   return (
     <ActionMenu
       label={`Actions for ${label}`}
       items={items}
-      size="sm"
+      size={size}
       align="end"
     />
   );
@@ -400,6 +403,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     mobile = "scroll",
     mobileCard,
     toolbarActions,
+    toolbarMode = "full",
+    errorThing,
     toolbarLead,
     chrome = "auto",
     className,
@@ -461,6 +466,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const isPhone = useMediaQuery("(max-width: 767px)");
   // Cards below 1024 px (a phone, a tablet, a narrow window): a wide table there would scroll
   // sideways and hide its end-most columns, Actions included.
+  const compactBar = toolbarMode === "compact";
+  const iconOnlyBar = useMediaQuery("(max-width: 1599px)") && compactBar;
   const isCardWidth = useMediaQuery("(max-width: 1023px)");
   const isMobileCards = isCardWidth && mobile === "cards";
 
@@ -792,6 +799,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     if (!rowHref) return;
     const target = e.target as Element;
     if (target.closest(INTERACTIVE)) return;
+    // A portalled menu's padding bubbles to the row through React, not through the DOM.
+    if (!e.currentTarget.contains(target)) return;
     if (window.getSelection?.()?.toString()) return;
     e.currentTarget.querySelector<HTMLAnchorElement>(ROW_LINK)?.click();
   };
@@ -830,6 +839,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     const meta = col.columnDef.meta;
     return cn(
       TABLE.cell,
+      compactBar && "px-2",
       alignClass(meta?.numeric ? "end" : meta?.align),
       (meta?.numeric || meta?.align === "end") && "tabular-nums",
       meta?.mono && "font-mono text-xs",
@@ -866,7 +876,12 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         )}
       >
         {selection ? (
-          <td className="sticky start-0 z-[1] w-10 bg-inherit px-3 align-middle">
+          <td
+            className={cn(
+              "sticky start-0 z-[1] w-10 bg-inherit align-middle",
+              compactBar ? "px-2" : "px-3",
+            )}
+          >
             <TriCheckbox
               checked={selected}
               onChange={(v) => row.toggleSelected(v)}
@@ -883,8 +898,17 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           </td>
         ))}
         {rowActions ? (
-          <td className="w-12 px-2 text-end align-middle">
-            <RowMenu label={label} items={rowActions(row.original)} />
+          <td
+            className={cn(
+              "text-end align-middle",
+              compactBar ? "w-10 px-1" : "w-12 px-2",
+            )}
+          >
+            <RowMenu
+              label={label}
+              items={rowActions(row.original)}
+              size={compactBar ? "xs" : "sm"}
+            />
           </td>
         ) : null}
       </tr>
@@ -972,6 +996,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       ...(f.counted
         ? { counted: { icons: f.counted.icons, pending: f.counted.pending } }
         : {}),
+      ...(f.secondary ? { secondary: true } : {}),
       // The controls (the menu's checkboxes, a chip's remove button) work on the live selection,
       // so changes made while a transition holds the old view build on each other instead of on
       // a stale copy; only the chips are drawn from the held view, since the chip row moves the
@@ -1016,6 +1041,27 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     const visibleDefs = columns.filter((c) => !hidden.includes(columnId(c)));
     const sorted = allRows.map((r) => r.original);
     downloadCsv(`${id}.csv`, tableCsv(sorted, visibleDefs));
+  };
+
+  const exportLabel = exportAll
+    ? `Export all${
+        pagination.mode === "cursor" && pagination.total !== undefined
+          ? ` ${formatCount(pagination.total)}`
+          : ""
+      }`
+    : loadedOnlyCursor &&
+        pagination.mode === "cursor" &&
+        pagination.hasMore &&
+        allRows.length > 0
+      ? `Export ${formatCount(allRows.length)} loaded`
+      : "Export CSV";
+  const exportDisabled =
+    allRows.length === 0 ? "There are no rows to export." : undefined;
+  const onExport = (): void => {
+    if (exportAll) {
+      exportAfterWalk.current = true;
+      startSearchAll();
+    } else exportCsv();
   };
 
   // The bulk-action bar enters and exits through <Presence> (S-23 §6.1 "enter"/"exit"). While it
@@ -1106,13 +1152,22 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
               <Popover
                 label="Columns"
                 trigger={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    iconStart={<Columns3 aria-hidden />}
-                  >
-                    Columns
-                  </Button>
+                  iconOnlyBar ? (
+                    <IconButton
+                      label="Columns"
+                      icon={<Columns3 aria-hidden />}
+                      variant="ghost"
+                      size="sm"
+                    />
+                  ) : (
+                    <Button
+                      variant={compactBar ? "ghost" : "outline"}
+                      size="sm"
+                      iconStart={<Columns3 aria-hidden />}
+                    >
+                      Columns
+                    </Button>
+                  )
                 }
                 align="end"
                 className="w-56 p-2"
@@ -1140,7 +1195,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                 </fieldset>
               </Popover>
             ) : null}
-            {showViewControls ? (
+            {showViewControls && !compactBar ? (
               <div
                 role="group"
                 aria-label="Row density"
@@ -1163,36 +1218,26 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
               </div>
             ) : null}
             {csvEnabled ? (
-              <Button
-                variant="outline"
-                size="sm"
-                iconStart={<Download aria-hidden />}
-                onClick={() => {
-                  if (exportAll) {
-                    exportAfterWalk.current = true;
-                    startSearchAll();
-                  } else exportCsv();
-                }}
-                disabledReason={
-                  allRows.length === 0
-                    ? "There are no rows to export."
-                    : undefined
-                }
-              >
-                {exportAll
-                  ? `Export all${
-                      pagination.mode === "cursor" &&
-                      pagination.total !== undefined
-                        ? ` ${formatCount(pagination.total)}`
-                        : ""
-                    }`
-                  : loadedOnlyCursor &&
-                      pagination.mode === "cursor" &&
-                      pagination.hasMore &&
-                      allRows.length > 0
-                    ? `Export ${formatCount(allRows.length)} loaded`
-                    : "Export CSV"}
-              </Button>
+              iconOnlyBar ? (
+                <IconButton
+                  label={exportLabel}
+                  icon={<Download aria-hidden />}
+                  variant="outline"
+                  size="sm"
+                  onClick={onExport}
+                  disabledReason={exportDisabled}
+                />
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  iconStart={<Download aria-hidden />}
+                  onClick={onExport}
+                  disabledReason={exportDisabled}
+                >
+                  {exportLabel}
+                </Button>
+              )
             ) : null}
           </>
         }
@@ -1348,7 +1393,15 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
 
   let body: React.ReactNode;
   if (error) {
-    body = fullRow(<ErrorState error={error} onRetry={onRetry} compact />);
+    body = fullRow(
+      <ErrorState
+        error={error}
+        onRetry={onRetry}
+        compact={!errorThing}
+        thing={errorThing}
+        className={errorThing ? "border-0 bg-transparent py-8" : undefined}
+      />,
+    );
   } else if (showSkeleton) {
     body = Array.from({ length: 5 }, (_, i) => (
       <tr
@@ -1410,7 +1463,10 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           {selection ? (
             <th
               scope="col"
-              className="sticky start-0 z-[3] w-10 bg-surface-raised px-3 text-start"
+              className={cn(
+                "sticky start-0 z-[3] w-10 bg-surface-raised text-start",
+                compactBar ? "px-2" : "px-3",
+              )}
             >
               <TriCheckbox
                 checked={headerAllChecked}
@@ -1442,6 +1498,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                 }
                 className={cn(
                   TABLE.headCell,
+                  compactBar && "px-2",
                   alignClass(meta?.numeric ? "end" : meta?.align),
                   stickyPrimary(col) &&
                     cn(stickyPrimary(col), "z-[3] bg-surface-raised"),
@@ -1466,7 +1523,13 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             );
           })}
           {rowActions ? (
-            <th scope="col" className="w-12 px-2 font-medium">
+            <th
+              scope="col"
+              className={cn(
+                "font-medium",
+                compactBar ? "w-10 px-1" : "w-12 px-2",
+              )}
+            >
               <span className="sr-only">Actions</span>
             </th>
           ) : null}
@@ -1508,7 +1571,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             data-selected={row.getIsSelected() || undefined}
             onClick={followRow}
             className={cn(
-              "@container rounded-lg border border-border bg-surface-raised p-3 max-sm:px-2 data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
+              "@container relative rounded-lg border border-border bg-surface-raised p-3 max-sm:px-2 data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
               rowHref && "cursor-pointer",
             )}
           >
@@ -1531,7 +1594,15 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                     : label}
               </div>
               {rowActions ? (
-                <RowMenu label={label} items={rowActions(row.original)} />
+                // In a card too narrow to spare a column (a phone at 200 % text), the menu floats
+                // over the card's corner instead of taking width from the name.
+                <div className="shrink-0 @max-[18rem]:absolute @max-[18rem]:end-1 @max-[18rem]:top-1">
+                  <RowMenu
+                    label={label}
+                    items={rowActions(row.original)}
+                    size={compactBar ? "xs" : "sm"}
+                  />
+                </div>
               ) : null}
             </div>
             {!mobileCard && rest.length > 0 ? (
@@ -1765,7 +1836,15 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             // Cards draw rows; a state is one full-width block, never a table in a scroller.
             <div className="rounded-lg border border-border bg-surface-raised p-4">
               {error ? (
-                <ErrorState error={error} onRetry={onRetry} compact />
+                <ErrorState
+                  error={error}
+                  onRetry={onRetry}
+                  compact={!errorThing}
+                  thing={errorThing}
+                  className={
+                    errorThing ? "border-0 bg-transparent py-8" : undefined
+                  }
+                />
               ) : showSkeleton ? (
                 <ul aria-hidden className="pk-skeleton-group space-y-2">
                   {[0, 1, 2].map((i) => (

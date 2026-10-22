@@ -79,13 +79,13 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   },
   { method: "POST", path: "/products/kek", why: "re-seals stored secrets" },
   {
-    method: "PUT",
-    path: "/products/:slug/trust-policy (body)",
-    why: "relaxes the device trust policy: fewer attested operations, log-only, or another App Attest or Play Integrity anchor",
+    method: "PATCH",
+    path: "/products/:slug/settings/:key (body)",
+    why: "relaxes a control the key's adapter names: the device trust policy with fewer attested operations, log-only, or another App Attest or Play Integrity anchor",
   },
   {
     method: "DELETE",
-    path: "/products/:slug/trust-policy (body)",
+    path: "/products/:slug/settings/:key (body)",
     why: "resets a non-default device trust policy, which relaxes it",
   },
   {

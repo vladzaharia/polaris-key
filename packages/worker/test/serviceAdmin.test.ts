@@ -6,12 +6,15 @@
  * having a branch in `console/handlers/products.ts`. Five of the six services have one
  * (distribution has no `adminHandle` yet — its console view is read-only, P2b-01):
  *
- *   license/{licenses…,tiers…,policy}  MOVED in P7 off the dispatcher's own destructure; the
- *                                      pre-suite spellings are GONE, not aliased
+ *   license/{licenses…,tiers…}         MOVED in P7 off the dispatcher's own destructure; the
+ *                                      pre-suite spellings are GONE, not aliased (the policy is
+ *                                      the settings `license.fingerprint` and `license.autoIssue`
+ *                                      since ST-05b)
  *   config/{catalog,profiles…}         MOVED in P7 (`schema` → `catalog`, see that module)
  *   release/{health,resync,releases}   moved verbatim, plus the truth store's new read
- *   update/settings                    NEW — access modes (incl. `entitled`, D-13) and the
- *                                      compatibility window, relocated off the product PATCH
+ *   update/simulate                    the update simulator; its settings (access modes incl.
+ *                                      `entitled`, D-13, and the compatibility window) are the
+ *                                      generic settings routes since ST-05b
  *   identity/portal                    moved verbatim from `console/handlers/products.ts`; the
  *                                      console's old `portal` spelling is GONE, not rewritten —
  *                                      it 404s (asserted below)
@@ -119,57 +122,73 @@ async function fixture(withReleaseConfig = true) {
   return { db, env, auth };
 }
 
-describe("update/settings", () => {
-  const PATH = `/api/products/${SLUG}/update/settings`;
+describe("update settings, through the generic settings routes", () => {
+  const KEY = (key: string) => `/api/products/${SLUG}/settings/${key}`;
+  const METADATA = "update.metadataAccess";
+  const WINDOW = "release.compatWindow";
 
-  it("reports the access modes and the compatibility window", async () => {
-    const { db, env, auth } = await fixture();
+  async function read(
+    ctx: Awaited<ReturnType<typeof fixture>>,
+    key: string,
+  ): Promise<{ value: unknown; source: string; version: number }> {
     const res = await dispatch(
-      mkReq("GET", PATH, { cookie: auth.cookie }),
-      env,
-      db,
-      PATH,
+      mkReq("GET", KEY(key), { cookie: ctx.auth.cookie }),
+      ctx.env,
+      ctx.db,
+      KEY(key),
     );
     expect(res.status).toBe(200);
-    // `artifactsAccess` moved to Distribution's delivery access in P2b-04
-    // (`…/distribution/access`), so it is no longer reported here.
-    expect(await res.json()).toEqual({
-      metadataAccess: "public",
-      // Never touched by an operator, so both claimable blocks are still the manifest's (P0-01).
-      accessSource: "manifest",
-      compatMin: "0.0.0",
-      compatMax: "99.0.0",
-      compatSource: "manifest",
-      // The operator-only artifact policy, on its fail-safe defaults.
-      minimumSystemVersion: null,
-      requireSparkleSignature: true,
-      configured: true,
+    return ((await res.json()) as { setting: never }).setting;
+  }
+
+  async function patch(
+    ctx: Awaited<ReturnType<typeof fixture>>,
+    key: string,
+    value: unknown,
+  ): Promise<Response> {
+    return dispatch(
+      mkReq("PATCH", KEY(key), {
+        cookie: ctx.auth.cookie,
+        csrf: ctx.auth.csrf,
+        body: { value, expectedVersion: (await read(ctx, key)).version },
+      }),
+      ctx.env,
+      ctx.db,
+      KEY(key),
+    );
+  }
+
+  it("reports the access mode and the compatibility window", async () => {
+    const ctx = await fixture();
+    // Never touched by an operator: `artifactsAccess` is Distribution's delivery access (P2b-04),
+    // and the window is the manifest's (P0-01).
+    expect(await read(ctx, METADATA)).toMatchObject({ value: "public" });
+    expect(await read(ctx, WINDOW)).toMatchObject({
+      value: { min: "0.0.0", max: "99.0.0" },
+    });
+    // The operator-only artifact policy, on its fail-safe defaults.
+    expect(await read(ctx, "update.operatorPolicy")).toMatchObject({
+      value: { requireSparkleSignature: true },
     });
   });
 
   it("accepts `entitled` and persists it to release_config", async () => {
-    const { db, env, auth } = await fixture();
-    const res = await dispatch(
-      mkReq("PATCH", PATH, {
-        cookie: auth.cookie,
-        csrf: auth.csrf,
-        body: { metadataAccess: "entitled" },
-      }),
-      env,
-      db,
-      PATH,
-    );
+    const ctx = await fixture();
+    const res = await patch(ctx, METADATA, "entitled");
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ metadataAccess: "entitled" });
+    expect(await res.json()).toMatchObject({
+      setting: { value: "entitled", source: "console" },
+    });
     // Validation is in CODE, not DDL: `release_config`'s columns carry no CHECK, so the new
     // value needed no migration (plan §R2).
-    expect((await getReleaseConfig(db, SLUG))?.metadata_access).toBe(
+    expect((await getReleaseConfig(ctx.db, SLUG))?.metadata_access).toBe(
       "entitled",
     );
   });
 
   it("relocates the compatibility window off the product PATCH", async () => {
-    const { db, env, auth } = await fixture();
+    const ctx = await fixture();
+    const { db, env, auth } = ctx;
 
     // The product PATCH no longer accepts it — dropped, not ignored, so a console cannot appear
     // to save a value that never changes (spec §8).
@@ -192,114 +211,75 @@ describe("update/settings", () => {
     expect(row?.name).toBe("DJDL");
 
     // Its new home does accept it.
-    const moved = await dispatch(
-      mkReq("PATCH", PATH, {
-        cookie: auth.cookie,
-        csrf: auth.csrf,
-        body: { compatMin: "5.0.0", compatMax: "6.0.0" },
-      }),
-      env,
-      db,
-      PATH,
-    );
+    const moved = await patch(ctx, WINDOW, { min: "5.0.0", max: "6.0.0" });
     expect(moved.status).toBe(200);
     expect(await moved.json()).toMatchObject({
-      compatMin: "5.0.0",
-      compatMax: "6.0.0",
+      setting: { value: { min: "5.0.0", max: "6.0.0" } },
     });
     row = await getProduct(db, SLUG);
     expect(row?.compat_min).toBe("5.0.0");
     expect(row?.compat_max).toBe("6.0.0");
   });
 
-  it("patches partially: an omitted field keeps its value", async () => {
-    const { db, env, auth } = await fixture();
-    await dispatch(
-      mkReq("PATCH", PATH, {
-        cookie: auth.cookie,
-        csrf: auth.csrf,
-        body: { compatMin: "2.0.0" },
-      }),
-      env,
-      db,
-      PATH,
-    );
-    const res = await dispatch(
-      mkReq("GET", PATH, { cookie: auth.cookie }),
-      env,
-      db,
-      PATH,
-    );
-    expect(await res.json()).toMatchObject({
-      compatMin: "2.0.0",
-      compatMax: "99.0.0",
-      metadataAccess: "public",
+  it("writes one key at a time: another keeps its value", async () => {
+    const ctx = await fixture();
+    await patch(ctx, WINDOW, { min: "2.0.0", max: "99.0.0" });
+    expect(await read(ctx, WINDOW)).toMatchObject({
+      value: { min: "2.0.0", max: "99.0.0" },
     });
+    expect(await read(ctx, METADATA)).toMatchObject({ value: "public" });
   });
 
   it("refuses an unknown access mode or a malformed version", async () => {
-    const { db, env, auth } = await fixture();
-    for (const [body, fields] of [
-      [{ metadataAccess: "everyone" }, ["metadataAccess"]],
-      [{ artifactsAccess: 7 }, ["artifactsAccess"]],
-      [{ compatMin: "one.two.three" }, ["compatMin"]],
-      [{ compatMax: "1.2" }, ["compatMax"]],
-    ] as Array<[Record<string, unknown>, string[]]>) {
-      const res = await dispatch(
-        mkReq("PATCH", PATH, {
-          cookie: auth.cookie,
-          csrf: auth.csrf,
-          body,
-        }),
-        env,
-        db,
-        PATH,
-      );
+    const ctx = await fixture();
+    for (const [key, value, fields] of [
+      [METADATA, "everyone", undefined],
+      [WINDOW, { min: "one.two.three", max: "99.0.0" }, ["compatMin"]],
+      [WINDOW, { min: "1.0.0", max: "1.2" }, ["compatMax"]],
+    ] as Array<[string, unknown, string[] | undefined]>) {
+      const res = await patch(ctx, key, value);
       expect(res.status).toBe(422);
-      expect(await res.json()).toMatchObject({ fields });
+      if (fields) expect(await res.json()).toMatchObject({ fields });
     }
     // Nothing was written on the way to any of those refusals.
-    expect((await getReleaseConfig(db, SLUG))?.metadata_access).toBe("public");
-    expect((await getProduct(db, SLUG))?.compat_min).toBe("0.0.0");
+    expect((await getReleaseConfig(ctx.db, SLUG))?.metadata_access).toBe(
+      "public",
+    );
+    expect((await getProduct(ctx.db, SLUG))?.compat_min).toBe("0.0.0");
   });
 
   it("refuses an access-mode change on a product with no release config", async () => {
     // `setReleaseAccess` would match no rows, and the console would show a saved value the next
-    // GET does not return.
-    const { db, env, auth } = await fixture(false);
-    const res = await dispatch(
-      mkReq("PATCH", PATH, {
-        cookie: auth.cookie,
-        csrf: auth.csrf,
-        body: { metadataAccess: "entitled" },
-      }),
-      env,
-      db,
-      PATH,
-    );
+    // read does not return.
+    const ctx = await fixture(false);
+    const res = await patch(ctx, METADATA, "entitled");
     expect(res.status).toBe(422);
-    const get = await dispatch(
-      mkReq("GET", PATH, { cookie: auth.cookie }),
-      env,
-      db,
-      PATH,
-    );
-    expect(await get.json()).toMatchObject({ configured: false });
+    expect(await res.json()).toMatchObject({ fields: ["metadataAccess"] });
+  });
+
+  it("serves no key of the retired bespoke route", async () => {
+    const { db, env, auth } = await fixture();
+    for (const [method, path] of [
+      ["GET", `/api/products/${SLUG}/update/settings`],
+      ["POST", `/api/products/${SLUG}/update/settings/revert`],
+      ["GET", `/api/products/${SLUG}/license/policy`],
+      ["GET", `/api/products/${SLUG}/distribution/access`],
+      ["GET", `/api/products/${SLUG}/trust-policy`],
+    ] as const) {
+      const res = await dispatch(
+        mkReq(method, path, { cookie: auth.cookie, csrf: auth.csrf }),
+        env,
+        db,
+        path,
+      );
+      expect(res.status, path).toBe(404);
+    }
   });
 
   it("audits the change", async () => {
-    const { db, env, auth } = await fixture();
-    await dispatch(
-      mkReq("PATCH", PATH, {
-        cookie: auth.cookie,
-        csrf: auth.csrf,
-        body: { metadataAccess: "licensed" },
-      }),
-      env,
-      db,
-      PATH,
-    );
-    const rows = await listAudit(db, SLUG, { limit: 10 });
+    const ctx = await fixture();
+    await patch(ctx, METADATA, "licensed");
+    const rows = await listAudit(ctx.db, SLUG, { limit: 10 });
     expect(rows.map((r) => r.action)).toContain("update.settings.update");
   });
 
@@ -520,7 +500,7 @@ describe("service admin dispatch", () => {
       }),
       SLUG,
     );
-    const path = `/api/products/${SLUG}/update/settings`;
+    const path = `/api/products/${SLUG}/settings/update.metadataAccess`;
     const res = await dispatch(
       mkReq("GET", path, { cookie: auth.cookie }),
       env,
@@ -638,7 +618,6 @@ describe("the admin regroup (§R1)", () => {
   const MOVED: [string, string][] = [
     ["licenses", "license/licenses"],
     ["tiers", "license/tiers"],
-    ["policy", "license/policy"],
     ["schema", "config/catalog"],
     ["profiles", "config/profiles"],
   ];
@@ -779,14 +758,17 @@ describe("the admin regroup (§R1)", () => {
     });
   });
 
-  it("edits the fingerprint policy under License and reverts it to the manifest", async () => {
+  it("edits the fingerprint policy through the settings routes and reverts it to the manifest", async () => {
     const { db, env, auth } = await fixture(false);
-    const path = `/api/products/${SLUG}/license/policy`;
+    const path = `/api/products/${SLUG}/settings/license.fingerprint`;
     const patched = await dispatch(
       mkReq("PATCH", path, {
         cookie: auth.cookie,
         csrf: auth.csrf,
-        body: { enabled: true, defaultMode: "strict" },
+        body: {
+          value: { enabled: true, defaultMode: "strict", probes: [] },
+          expectedVersion: 0,
+        },
       }),
       env,
       db,
@@ -794,19 +776,27 @@ describe("the admin regroup (§R1)", () => {
     );
     expect(patched.status).toBe(200);
     expect(await patched.json()).toMatchObject({
-      policy: { enabled: true, defaultMode: "strict" },
-      source: "admin",
+      setting: {
+        value: { enabled: true, defaultMode: "strict" },
+        source: "console",
+      },
     });
 
-    const revertPath = `${path}/revert`;
     const reverted = await dispatch(
-      mkReq("POST", revertPath, { cookie: auth.cookie, csrf: auth.csrf }),
+      mkReq("DELETE", path, {
+        cookie: auth.cookie,
+        csrf: auth.csrf,
+        body: { expectedVersion: 0 },
+      }),
       env,
       db,
-      revertPath,
+      path,
     );
     expect(reverted.status).toBe(200);
-    expect(await reverted.json()).toMatchObject({ source: "manifest" });
+    expect(await reverted.json()).toMatchObject({ applied: false });
+    expect((await getProduct(db, SLUG))?.fingerprint_policy_source).toBe(
+      "manifest",
+    );
   });
 
   it("reaches a DISABLED service's settings — configure-then-enable has to be possible", async () => {

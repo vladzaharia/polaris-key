@@ -13,17 +13,57 @@ import SwiftUI
 /// static under Reduce Motion). Never a part-filled bar for a stage.
 public struct BootView: View {
     let line: CopyLine
+    let boot: KitScreen<BootScreenState>?
+    var onDownload: () -> Void
+    var onNotNow: () -> Void
+    var onContinueOffline: () -> Void
+    var onTryAgain: () -> Void
+    var onUpdate: () -> Void
+
     public init(screen: KitScreen<GateState>) {
         line = screen.copy.first ?? CopyLine("gate.checking")
+        boot = nil
+        onDownload = {}
+        onNotNow = {}
+        onContinueOffline = {}
+        onTryAgain = {}
+        onUpdate = {}
     }
 
-    public init(boot: KitScreen<BootScreenState>) {
+    /// The stage machine's view; the handlers are the host's answers to a stop state.
+    public init(
+        boot: KitScreen<BootScreenState>,
+        onDownload: @escaping () -> Void = {}, onNotNow: @escaping () -> Void = {},
+        onContinueOffline: @escaping () -> Void = {}, onTryAgain: @escaping () -> Void = {},
+        onUpdate: @escaping () -> Void = {}
+    ) {
         line = boot.copy.first ?? CopyLine("boot.starting")
+        self.boot = boot
+        self.onDownload = onDownload
+        self.onNotNow = onNotNow
+        self.onContinueOffline = onContinueOffline
+        self.onTryAgain = onTryAgain
+        self.onUpdate = onUpdate
     }
 
     @State private var shown = false
 
     public var body: some View {
+        switch boot?.state {
+        case .consent?, .offline?, .blocked?, .declined?, .error?:
+            if let boot { BootStop(boot: boot, actions: actions) }
+        default:
+            waiting
+        }
+    }
+
+    private var actions: BootStopActions {
+        BootStopActions(
+            download: onDownload, notNow: onNotNow, continueOffline: onContinueOffline,
+            tryAgain: onTryAgain, update: onUpdate)
+    }
+
+    private var waiting: some View {
         kitStyle { style in
             KitScreenScaffold(hero: true, header: false) {
                 EmptyView()
@@ -44,6 +84,67 @@ public struct BootView: View {
                 shown = true
             }
         }
+    }
+}
+
+/// What a boot stop can do; the host's closures.
+struct BootStopActions {
+    var download: () -> Void
+    var notNow: () -> Void
+    var continueOffline: () -> Void
+    var tryAgain: () -> Void
+    var update: () -> Void
+}
+
+/// The stage machine's stops (UI-KITS §4.1 Boot): consent (metered download), offline, blocked,
+/// declined and error. Each names the state in the title, says what it means in a sentence and
+/// gives the next step as the one primary.
+struct BootStop: View {
+    let boot: KitScreen<BootScreenState>
+    let actions: BootStopActions
+
+    var body: some View {
+        let title = boot.copy.first { $0.key.hasSuffix(".title") }
+        let message = boot.copy.first {
+            $0.key.hasSuffix(".body") || $0.key.hasSuffix(".message")
+                || $0.key == "boot.offline.playable" || $0.key == "boot.consent.bodyMetered"
+        }
+        KitScreenScaffold(hero: true, header: false) {
+            if let title {
+                KitText(title, .title, color: .strong, alignment: .center)
+                    .accessibilityAddTraits(.isHeader)
+            }
+        } content: {
+            if let message { KitText(message, .body, color: .default, alignment: .center) }
+        } actions: {
+            KitActionStack {
+                switch boot.state {
+                case .consent:
+                    primary("boot.consent.download", actions.download)
+                    secondary("common.notNow", actions.notNow)
+                case .offline:
+                    if boot.shows("boot.continueOffline") {
+                        primary("boot.continueOffline", actions.continueOffline)
+                        secondary("common.tryAgain", actions.tryAgain)
+                    } else {
+                        primary("common.tryAgain", actions.tryAgain)
+                    }
+                case .blocked:
+                    primary("status.update", actions.update)
+                default:
+                    primary("common.tryAgain", actions.tryAgain)
+                }
+            }
+        }
+    }
+
+    private func primary(_ key: String, _ action: @escaping () -> Void) -> some View {
+        KitButton(line: boot.lineOrKey(key), kind: .primary, action: action)
+            .keyboardShortcut(.defaultAction)
+    }
+
+    private func secondary(_ key: String, _ action: @escaping () -> Void) -> some View {
+        KitButton(line: boot.lineOrKey(key), kind: .secondary, action: action)
     }
 }
 
@@ -400,5 +501,28 @@ public struct ToastView: View {
                 if !Task.isCancelled { onDismiss() }
             }
         }
+    }
+}
+
+/// The gate's toast: the model's line in the user's language, with the tone its kind has.
+struct GateToastView: View {
+    let toast: KitGateToast
+    var onDismiss: () -> Void
+    @Environment(\.polarisKeyStrings) private var strings
+
+    var body: some View {
+        ToastView(
+            text: strings.string(toast.line), tone: toast.kind == .update ? .neutral : .success,
+            onDismiss: onDismiss)
+    }
+}
+
+/// The floating surface of the compact update progress row.
+struct KitFloatingProgressSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        KitStyleReader { style in
+            content.modifier(KitFloatingSurface(style: style))
+        }
+        .padding(.horizontal)
     }
 }

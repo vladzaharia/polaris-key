@@ -61,6 +61,8 @@ include(":ui-core")
 // The server drop-ins (SP-57): the framework-free verdict core and the Ktor plugin over it.
 include(":server")
 include(":server-ktor")
+// The Spring Boot starter (SP-61): auto-configuration and Spring Security over :server.
+include(":spring-boot-starter")
 // The opt-in native zstd decoder for :packs (SP-50): no code, a JVM and an Android variant.
 include(":zstd")
 // The JVM desktop start, PolarisKeyDesktop, with the OS keyring (SP-50).
