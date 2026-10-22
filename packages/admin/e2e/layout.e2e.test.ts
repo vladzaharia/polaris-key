@@ -368,6 +368,11 @@ const TEXT200_CASES = [
   "djdl:activity",
   "global:platform-status",
   "djdl:settings-members",
+  // ST-31.12: the Members drawer, at its tallest views.
+  "global:platform-members?invite-filled",
+  "global:platform-members?add-role",
+  "global:platform-members?edit-areas",
+  "global:platform-members?edit-roles",
 ];
 /** The console's content column at its widest (BRAND.md §7.6). */
 const CONSOLE_COLUMN_MAX = 1760;

@@ -5244,7 +5244,10 @@ const rawApi = {
       body: JSON.stringify(body),
     }),
   /** Change a product admin's areas. Widening needs a recent sign-in (403 `step_up_required`). */
-  editBindingAreas: (id: string, body: { areas: AreaId[] | null }) =>
+  editBindingAreas: (
+    id: string,
+    body: { areas: AreaId[] | null; confirm?: "L2" },
+  ) =>
     call<{ ok: true }>(`/manage/api/bindings/${enc(id)}`, {
       method: "PATCH",
       body: JSON.stringify(body),

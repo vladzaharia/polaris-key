@@ -428,6 +428,7 @@ export function PlatformMembers(): React.ReactElement {
         onClose={() => setDrawer(null)}
         me={me}
         members={roster?.members ?? []}
+        invites={roster?.invites ?? []}
         products={products}
         productName={productName}
         writeReason={write.disabledReason}

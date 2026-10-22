@@ -6,6 +6,7 @@
 
 import * as React from "react";
 import { X } from "lucide-react";
+import { RadioGroup } from "radix-ui";
 import type { AreaId, Me, Member, MemberRole } from "../../api.js";
 import { cn } from "../../lib/cn.js";
 import { Checkbox } from "../../ui/Checkbox.js";
@@ -19,7 +20,9 @@ import {
   type RoleChoice,
   type RoleDraft,
 } from "../sections/platform/pages/platformMembersModel.js";
-import { AREA_NAMES, listOf } from "./can.js";
+import { AREA_ACCENTS, AREA_NAMES, listOf } from "./can.js";
+import { RoleGlyph } from "./RoleTag.js";
+import { ServiceGlyph } from "../../ui/ServiceBadge.js";
 
 // ── emails ──────────────────────────────────────────────────────────────────────────────────
 
@@ -62,6 +65,8 @@ export function EmailChips({
   text,
   onText,
   members,
+  selfEmail,
+  pending,
   inputId,
   describedBy,
   invalid,
@@ -72,6 +77,10 @@ export function EmailChips({
   text: string;
   onText: (t: string) => void;
   members: readonly Member[];
+  /** The signed-in member's own address: it cannot be invited. */
+  selfEmail: string;
+  /** Addresses with an invitation waiting (lower case). */
+  pending: ReadonlySet<string>;
   inputId: string;
   describedBy?: string;
   invalid?: boolean;
@@ -79,6 +88,16 @@ export function EmailChips({
 }): React.ReactElement {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const byEmail = new Map(members.map((m) => [m.email.toLowerCase(), m]));
+  const [said, setSaid] = React.useState("");
+  const before = React.useRef<readonly string[]>(tokens);
+  React.useEffect(() => {
+    const was = before.current;
+    before.current = tokens;
+    const added = tokens.filter((t) => !was.includes(t));
+    const gone = was.filter((t) => !tokens.includes(t));
+    if (added.length > 0) setSaid(`${added.join(", ")} added`);
+    else if (gone.length > 0) setSaid(`${gone.join(", ")} removed`);
+  }, [tokens]);
   const commit = (rest: string): void => {
     const parts = splitEmails(rest);
     if (parts.length > 0) onTokens(mergeEmails(tokens, parts));
@@ -93,46 +112,76 @@ export function EmailChips({
         invalid ? "border-danger" : "border-border-strong",
       )}
     >
-      {tokens.map((e) => {
-        const member = byEmail.get(e.toLowerCase());
-        const bad = !isEmail(e);
-        return (
-          <span
-            key={e.toLowerCase()}
-            data-chip={bad ? "invalid" : member ? "member" : "email"}
-            className={cn(
-              "inline-flex max-w-full items-center gap-1.5 rounded-md border bg-surface-raised py-0.5 ps-2 pe-1 text-sm text-fg-strong",
-              bad ? "border-danger bg-danger-subtle" : "border-border-strong",
-            )}
-          >
-            {member ? (
-              <span
-                aria-hidden
-                className="inline-flex size-5 items-center justify-center rounded-full bg-surface-sunken text-[10px] font-semibold"
+      {tokens.length > 0 ? (
+        <ul
+          aria-label="Addresses"
+          className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5"
+        >
+          {tokens.map((e) => {
+            const k = e.toLowerCase();
+            const member = byEmail.get(k);
+            const self = k === selfEmail;
+            const bad = !isEmail(e) || self;
+            return (
+              <li
+                key={k}
+                data-chip={
+                  !isEmail(e)
+                    ? "invalid"
+                    : self
+                      ? "self"
+                      : member
+                        ? "member"
+                        : pending.has(k)
+                          ? "waiting"
+                          : "email"
+                }
+                className={cn(
+                  "inline-flex max-w-full items-center gap-1.5 rounded-md border bg-surface-raised py-0.5 ps-2 pe-1 text-sm text-fg-strong",
+                  bad
+                    ? "border-danger bg-danger-subtle"
+                    : "border-border-strong",
+                )}
               >
-                {initialsOf(member.name, member.email)}
-              </span>
-            ) : null}
-            <span className="min-w-0 [overflow-wrap:anywhere]">{e}</span>
-            {bad ? (
-              <span className="sr-only">, not an email address</span>
-            ) : null}
-            <button
-              type="button"
-              disabled={disabled}
-              aria-label={`Remove ${e}`}
-              onClick={(ev) => {
-                ev.stopPropagation();
-                onTokens(tokens.filter((x) => x !== e));
-                inputRef.current?.focus();
-              }}
-              className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus pointer-coarse:size-8"
-            >
-              <X aria-hidden className="size-3.5" />
-            </button>
-          </span>
-        );
-      })}
+                {member && !bad ? (
+                  <span
+                    aria-hidden
+                    className="inline-flex size-5 items-center justify-center rounded-full bg-surface-sunken text-[10px] font-semibold"
+                  >
+                    {initialsOf(member.name, member.email)}
+                  </span>
+                ) : null}
+                <span className="min-w-0 [overflow-wrap:anywhere]">{e}</span>
+                {!isEmail(e) ? (
+                  <span className="sr-only">, not an email address</span>
+                ) : self ? (
+                  <span className="sr-only">, that&apos;s you</span>
+                ) : member ? (
+                  <span className="sr-only">, already a member</span>
+                ) : pending.has(k) ? (
+                  <span className="sr-only">, invitation waiting</span>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={disabled}
+                  aria-label={`Remove ${e}`}
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    onTokens(tokens.filter((x) => x !== e));
+                    inputRef.current?.focus();
+                  }}
+                  className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-fg-muted hover:bg-hover hover:text-fg-strong focus-visible:outline-2 focus-visible:outline-focus pointer-coarse:size-8"
+                >
+                  <X aria-hidden className="size-3.5" />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      <span role="status" aria-live="polite" className="sr-only">
+        {said}
+      </span>
       <input
         ref={inputRef}
         id={inputId}
@@ -152,9 +201,9 @@ export function EmailChips({
           // Everything before the last separator is done; the rest is still being typed.
           const ends = /[\s,;]$/.test(v);
           const parts = splitEmails(v);
-          const pending = ends ? "" : (parts.pop() ?? "");
+          const rest = ends ? "" : (parts.pop() ?? "");
           onTokens(mergeEmails(tokens, parts));
-          onText(pending);
+          onText(rest);
         }}
         onPaste={(ev) => {
           // A single-line input drops the line breaks of a pasted list, gluing the addresses.
@@ -223,6 +272,7 @@ export type ProductName = (slug: string) => string;
 
 /** The area's feature: the area is offered only while that service runs on the product. */
 const AREA_SERVICE: Partial<Record<AreaId, string>> = {
+  commerce: "commerce",
   license: "license",
   config: "config",
   ship: "release",
@@ -239,6 +289,78 @@ export function giveableProducts(
     (p) => cannotGive(me, "product_admin", p.slug, []) === undefined,
   );
 }
+
+/** Plain radio rows (a small circle and a label), with whatever belongs to the row nested below. */
+export function RadioRows<V extends string>({
+  value,
+  onChange,
+  options,
+  label,
+  disabled,
+  idPrefix,
+}: {
+  value: V;
+  onChange: (v: V) => void;
+  label: string;
+  disabled?: boolean;
+  idPrefix: string;
+  options: {
+    value: V;
+    label: React.ReactNode;
+    disabled?: boolean;
+    children?: React.ReactNode;
+  }[];
+}): React.ReactElement {
+  return (
+    <RadioGroup.Root
+      aria-label={label}
+      value={value}
+      disabled={disabled}
+      onValueChange={(v) => onChange(v as V)}
+      className="space-y-2"
+    >
+      {options.map((o) => {
+        const id = `${idPrefix}-${o.value}`;
+        return (
+          <div key={o.value} className="space-y-2">
+            <div className="flex min-h-6 items-center gap-2.5 pointer-coarse:min-h-9">
+              <RadioGroup.Item
+                id={id}
+                value={o.value}
+                disabled={o.disabled}
+                className="group relative flex size-4 shrink-0 items-center justify-center rounded-full border border-border-strong bg-surface-raised after:absolute after:-inset-2 after:content-[''] focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2 disabled:opacity-50 data-[state=checked]:border-accent forced-colors:border-[ButtonText]"
+              >
+                <RadioGroup.Indicator className="size-2 rounded-full bg-accent forced-colors:bg-[Highlight]" />
+              </RadioGroup.Item>
+              <label
+                htmlFor={id}
+                className={cn(
+                  "text-sm text-fg-strong",
+                  o.disabled && "text-fg-muted",
+                )}
+              >
+                {o.label}
+              </label>
+            </div>
+            {o.value === value && o.children ? (
+              <div className="ps-6">{o.children}</div>
+            ) : null}
+          </div>
+        );
+      })}
+    </RadioGroup.Root>
+  );
+}
+
+const WITH_GLYPH = (a: AreaId): React.ReactNode => {
+  const accent = AREA_ACCENTS[a];
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {accent ? <ServiceGlyph id={accent as "core"} size={16} /> : null}
+      {AREA_NAMES[a]}
+    </span>
+  );
+};
 
 export function RoleFields({
   draft,
@@ -287,25 +409,25 @@ export function RoleFields({
     );
   }
   // A person with any role already has Console access; offering it again is a dead end.
-  const hasConsole = held.length > 0;
-  const cardReason: Partial<Record<Card, string>> = {};
-  if (hasConsole && !off.has("console_access")) {
+  if (held.length > 0 && !off.has("console_access")) {
     off.add("console_access");
-    cardReason.console_access = `${name ?? "They"} already ${name ? "has" : "have"} it.`;
+    reasons.push(`${name ?? "They"} already has Console access.`);
   }
   if (mayProducts.length === 0) {
     off.add("product_admin");
-    cardReason.product_admin =
+    reasons.push(
       products.length === 0
         ? "There are no products yet."
-        : "You can give it only on products you administer.";
+        : "You can give Product admin only on products you administer.",
+    );
   }
   const reason = reasons.join(" ");
   const allWhy = cannotGive(me, "all_products");
   const slug = draft.choice === "product_admin" ? draft.product : "";
+  const sel = CARDS.find((c) => c.value === card);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="space-y-1.5">
         <span id={roleId} className="block text-sm font-medium text-fg-strong">
           Role
@@ -315,6 +437,8 @@ export function RoleFields({
           aria-describedby={reason ? groupId : undefined}
           id={`${idPrefix}-card`}
           columns={2}
+          // Two by two on a phone too.
+          className="grid-cols-2"
           value={card}
           disabled={disabled}
           onChange={(c) =>
@@ -329,11 +453,24 @@ export function RoleFields({
           options={CARDS.map((c) => ({
             value: c.value,
             label: c.label,
-            description: c.description,
+            icon: (
+              <RoleGlyph
+                role={{
+                  role: c.value,
+                  scope: c.value === "product_admin" ? "product:x" : "platform",
+                  areas: null,
+                }}
+                className="size-4"
+              />
+            ),
+            // On a phone the chosen role's words sit once below the tiles.
+            description: <span className="max-sm:hidden">{c.description}</span>,
             disabled: off.has(c.value),
-            reason: cardReason[c.value],
           }))}
         />
+        {sel ? (
+          <p className="text-xs text-fg-muted sm:hidden">{sel.description}</p>
+        ) : null}
         {reason ? (
           <p id={groupId} className="text-xs text-fg-muted">
             {reason}
@@ -341,15 +478,14 @@ export function RoleFields({
         ) : null}
       </div>
       {card === "product_admin" ? (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="space-y-1.5">
             <span className="block text-sm font-medium text-fg-strong">
               Products
             </span>
-            <RadioCards<"one" | "all">
-              aria-label="Products"
-              id={`${idPrefix}-scope`}
-              columns={2}
+            <RadioRows<"one" | "all">
+              label="Products"
+              idPrefix={`${idPrefix}-scope`}
               disabled={disabled}
               value={draft.choice === "all_products" ? "all" : "one"}
               onChange={(v) =>
@@ -362,40 +498,36 @@ export function RoleFields({
                 {
                   value: "one",
                   label: "One product",
-                  description: "Pick it below.",
+                  children: (
+                    <Select
+                      id={productId}
+                      aria-label="Product"
+                      value={draft.product || null}
+                      disabled={disabled}
+                      placeholder="Choose a product"
+                      onChange={(product) =>
+                        onChange({
+                          ...draft,
+                          product: product ?? "",
+                          areas: [],
+                        })
+                      }
+                      options={mayProducts.map((p) => ({
+                        value: p.slug,
+                        label: p.name,
+                      }))}
+                    />
+                  ),
                 },
                 {
                   value: "all",
-                  label: "All products",
-                  description: "Including ones added later.",
+                  label: "All products, including ones added later",
                   disabled: allWhy !== undefined,
                 },
               ]}
             />
+            {allWhy ? <p className="text-xs text-fg-muted">{allWhy}</p> : null}
           </div>
-          {draft.choice === "product_admin" ? (
-            <div className="space-y-1.5">
-              <label
-                htmlFor={productId}
-                className="block text-sm font-medium text-fg-strong"
-              >
-                Product
-              </label>
-              <Select
-                id={productId}
-                value={draft.product || null}
-                disabled={disabled}
-                placeholder="Choose a product"
-                onChange={(product) =>
-                  onChange({ ...draft, product: product ?? "", areas: [] })
-                }
-                options={mayProducts.map((p) => ({
-                  value: p.slug,
-                  label: p.name,
-                }))}
-              />
-            </div>
-          ) : null}
           {slug ? (
             <AreaPicker
               me={me}
@@ -413,7 +545,7 @@ export function RoleFields({
   );
 }
 
-/** The areas a product offers: only those whose feature is on, only those the viewer holds. */
+/** The areas a product offers: only those whose feature is on. */
 export function useOfferedAreas(slug: string): {
   offered: AreaId[];
   missing: AreaId[];
@@ -435,7 +567,8 @@ export function useOfferedAreas(slug: string): {
   }, [services]);
 }
 
-function AreaPicker({
+/** "Every area of X" or "Only these areas" with the offered areas ticked below. */
+export function AreaPicker({
   me,
   draft,
   onChange,
@@ -447,26 +580,33 @@ function AreaPicker({
   me: Me | undefined;
   draft: RoleDraft;
   onChange: (d: RoleDraft) => void;
+  /** The product's slug; empty for All products. */
   slug: string;
   productLabel: string;
   disabled?: boolean;
   idPrefix: string;
 }): React.ReactElement {
   const { offered, missing } = useOfferedAreas(slug);
-  const everyWhy = isSuperadmin(me)
-    ? undefined
-    : cannotGive(me, "product_admin", slug, null);
+  const everyWhy =
+    slug === "" || isSuperadmin(me)
+      ? undefined
+      : cannotGive(me, "product_admin", slug, null);
   const hint =
     missing.length > 0
       ? `${listOf(missing.map((a) => AREA_NAMES[a]))} ${missing.length === 1 ? "is" : "are"} off for ${productLabel}.`
       : "";
+  const ticked = draft.areas.filter((a) => offered.includes(a));
+  const allTicked =
+    draft.areaMode === "some" &&
+    offered.length > 0 &&
+    offered.every((a) => draft.areas.includes(a));
   return (
-    <fieldset className="space-y-2" disabled={disabled}>
-      <legend className="text-sm font-medium text-fg-strong">Areas</legend>
-      <RadioCards<"all" | "some">
-        aria-label="Areas"
-        id={`${idPrefix}-areamode`}
-        columns={2}
+    <div className="space-y-1.5">
+      <span className="block text-sm font-medium text-fg-strong">Areas</span>
+      <RadioRows<"all" | "some">
+        label="Areas"
+        idPrefix={`${idPrefix}-areamode`}
+        disabled={disabled}
         value={draft.areaMode}
         onChange={(m) => onChange({ ...draft, areaMode: m })}
         options={[
@@ -474,22 +614,38 @@ function AreaPicker({
             value: "all",
             label: `Every area of ${productLabel}`,
             disabled: everyWhy !== undefined,
-            reason: everyWhy ? "You hold only some areas." : undefined,
           },
-          { value: "some", label: "Only these areas" },
+          {
+            value: "some",
+            label: "Only these areas",
+            children: (
+              <div className="space-y-1.5">
+                <AreaChecks
+                  me={me}
+                  slug={slug}
+                  offered={offered}
+                  areas={draft.areas}
+                  onChange={(areas) => onChange({ ...draft, areas })}
+                />
+                {allTicked ? (
+                  <p className="text-xs text-fg-muted">
+                    That&apos;s every area now. Choose Every area of{" "}
+                    {productLabel} to include ones added later.
+                  </p>
+                ) : null}
+              </div>
+            ),
+          },
         ]}
       />
-      {draft.areaMode === "some" ? (
-        <AreaChecks
-          me={me}
-          slug={slug}
-          offered={offered}
-          areas={draft.areas}
-          onChange={(areas) => onChange({ ...draft, areas })}
-        />
+      {everyWhy ? (
+        <p className="text-xs text-fg-muted">You hold only some areas.</p>
       ) : null}
       {hint ? <p className="text-xs text-fg-muted">{hint}</p> : null}
-    </fieldset>
+      <span className="sr-only" aria-live="polite">
+        {draft.areaMode === "some" ? `${ticked.length} areas picked` : ""}
+      </span>
+    </div>
   );
 }
 
@@ -512,14 +668,15 @@ export function AreaChecks({
     <div
       role="group"
       aria-label={legend ?? "Pick the areas"}
-      className="grid gap-2 sm:grid-cols-2"
+      className="grid grid-cols-2 gap-x-3 gap-y-2"
     >
       {offered.map((a) => {
-        const why = cannotGive(me, "product_admin", slug, [a]);
+        const why =
+          slug === "" ? undefined : cannotGive(me, "product_admin", slug, [a]);
         return (
           <Checkbox
             key={a}
-            label={AREA_NAMES[a]}
+            label={WITH_GLYPH(a)}
             checked={areas.includes(a)}
             disabled={why !== undefined}
             onCheckedChange={(on) =>
@@ -560,8 +717,10 @@ export function previewOf(
       return `${who} will manage every area of every product, now and later.`;
     case "product_admin":
       if (!d.product) return `${who} will manage the product you pick.`;
-      return d.areaMode === "some" && d.areas.length > 0
-        ? `${who} will manage ${areaWords} in ${productLabel}.`
-        : `${who} will manage every area of ${productLabel}.`;
+      if (d.areaMode === "some")
+        return d.areas.length > 0
+          ? `${who} will manage ${areaWords} in ${productLabel}.`
+          : "Choose at least one area.";
+      return `${who} will manage every area of ${productLabel}.`;
   }
 }

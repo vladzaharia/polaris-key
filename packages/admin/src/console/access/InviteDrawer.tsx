@@ -1,8 +1,9 @@
 /**
  * The Invite drawer and Edit roles (ST-31.12; mockup `admin.invite`). One drawer, two modes:
  *
- * - **Invite**: email chips, one role, a product and areas, a live sentence, the facts, one button.
- * - **Edit roles** (a member): their roles, with Edit areas and Remove, and "Add a role" and "Edit
+ * - **Invite**: email chips, one role, a product and areas. The sentence, the facts, any error and
+ *   the primary sit in one footer band, so what will happen is always beside the button.
+ * - **Edit roles** (a member): their roles with Edit areas and Remove, and "Add a role" and "Edit
  *   areas" as views of the same drawer.
  *
  * A write the Worker refuses for a stale sign-in (403 `step_up_required`) turns the footer into
@@ -14,33 +15,48 @@
  */
 
 import * as React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Fingerprint } from "lucide-react";
 import {
+  api,
   ApiError,
   type AreaId,
   type InviteResult,
   type Me,
   type Member,
+  type MemberInvite,
   type MemberRole,
 } from "../../api.js";
 import { Button } from "../../ui/Button.js";
-import { ConfirmDialog, isStepUpRequired } from "../../ui/ConfirmDialog.js";
+import {
+  ConfirmDialog,
+  isStepUpRequired,
+  readStash,
+  stashStepUp,
+} from "../../ui/ConfirmDialog.js";
 import { CopyButton } from "../../ui/CopyButton.js";
 import { CopyDetails } from "../../ui/CopyDetails.js";
-import { Dialog, DialogBody, DialogFooter } from "../../ui/Dialog.js";
-import { Drawer, DrawerBody, DrawerFooter } from "../../ui/Drawer.js";
+import {
+  Dialog,
+  DialogBody,
+  DialogFooter,
+  DiscardStrip,
+} from "../../ui/Dialog.js";
+import { Drawer, DrawerBody } from "../../ui/Drawer.js";
 import { toast } from "../../ui/toast.js";
-import { readStash, stashStepUp } from "../../ui/ConfirmDialog.js";
 import { startStepUp } from "../../lib/stepUp.js";
-import { formatDate, formatRelative } from "../../lib/format.js";
+import { formatRelative } from "../../lib/format.js";
+import { qk } from "../data/queries.js";
 import { mutate } from "../data/mutations.js";
 import {
+  cannotEditAreas,
   cannotGive,
   cannotTake,
   describeMembersError,
   EMPTY_DRAFT,
   grantOf,
   isL2,
+  isSuperadmin,
   PRODUCT_AREAS,
   productOfScope,
   type RoleChoice,
@@ -48,7 +64,7 @@ import {
 } from "../sections/platform/pages/platformMembersModel.js";
 import { AREA_NAMES, listOf, roleLabel } from "./can.js";
 import {
-  AreaChecks,
+  AreaPicker,
   EmailChips,
   giveableProducts,
   isEmail,
@@ -82,6 +98,47 @@ const sourceText = (r: MemberRole): string => {
 const roleName = (r: MemberRole, productName: ProductName): string =>
   roleLabel({ ...r, source: "" }, productName).label;
 
+/** "Sep 28", with the year only when it is not this year. */
+export function expiresText(ms: number): string {
+  const d = new Date(ms);
+  const year = d.getFullYear() !== new Date().getFullYear();
+  return new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "short",
+    ...(year ? { year: "numeric" } : {}),
+  }).format(d);
+}
+
+const article = (label: string): string =>
+  `${/^[AEIOU]/.test(label) ? "an" : "a"} ${label}`;
+
+/** "Sam Okoye is now a Superadmin". */
+function nowWords(name: string, role: string): string {
+  return role === "Console access"
+    ? `${name} now has Console access`
+    : `${name} is now ${article(role)}`;
+}
+
+const sameDraft = (a: RoleDraft, b: RoleDraft): boolean =>
+  a.choice === b.choice &&
+  a.product === b.product &&
+  a.areaMode === b.areaMode &&
+  a.areas.length === b.areas.length &&
+  a.areas.every((x) => b.areas.includes(x));
+
+/** Whether a member already holds what the draft would give. */
+function holds(m: Member, g: ReturnType<typeof grantOf>): boolean {
+  if (!g) return false;
+  if (g.role === "console_access") return m.roles.length > 0;
+  return m.roles.some(
+    (r) =>
+      r.role === g.role &&
+      r.scope === g.scope &&
+      (r.areas === null ||
+        (g.areas !== null && g.areas.every((a) => r.areas!.includes(a)))),
+  );
+}
+
 export interface InviteDrawerProps {
   /** Whether the drawer is shown. */
   open: boolean;
@@ -92,15 +149,49 @@ export interface InviteDrawerProps {
   onClose: () => void;
   me: Me | undefined;
   members: readonly Member[];
+  /** Invitations waiting (their addresses get a note). */
+  invites?: readonly MemberInvite[];
   products: readonly { slug: string; name: string }[];
   productName: ProductName;
   /** Why writes are off right now (read-only, no `members` edit), else `undefined`. */
   writeReason?: string | undefined;
 }
 
+type Undoable = { id: string; label: string; kind: "invited" | "updated" };
+
+/** Take bindings back one by one; what could not be, with a Retry for just those. */
+async function takeBack(items: Undoable[], done: string): Promise<void> {
+  const left: Undoable[] = [];
+  for (const it of items) {
+    try {
+      await mutate("revokeBinding", it.id);
+    } catch (e) {
+      // Already gone is the outcome we want.
+      if (!(e instanceof ApiError && e.status === 404)) left.push(it);
+    }
+  }
+  if (left.length === 0) {
+    toast.success(done);
+    return;
+  }
+  const open = left.filter((l) => l.kind === "invited").map((l) => l.label);
+  const kept = left.filter((l) => l.kind === "updated").map((l) => l.label);
+  toast.error(`Took back ${items.length - left.length} of ${items.length}`, {
+    description: [
+      open.length > 0
+        ? `The invitation for ${listOf(open)} is still open.`
+        : "",
+      kept.length > 0 ? `${listOf(kept)} still has the role.` : "",
+    ]
+      .filter(Boolean)
+      .join(" "),
+    action: { label: "Retry", onClick: () => void takeBack(left, done) },
+  });
+}
+
 export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
   const { open, member, onReopen, onClose, me, members, products } = props;
-  const { productName, writeReason } = props;
+  const { productName, writeReason, invites = [] } = props;
   const editing = member !== null;
 
   const [tokens, setTokens] = React.useState<string[]>([]);
@@ -108,12 +199,31 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
   const [draft, setDraft] = React.useState<RoleDraft>(EMPTY_DRAFT);
   const [typed, setTyped] = React.useState("");
   const [view, setView] = React.useState<View>({ kind: "list" });
-  const [areas, setAreas] = React.useState<AreaId[]>([]);
   const [error, setError] = React.useState<unknown>(null);
   const [pending, setPending] = React.useState(false);
   const [links, setLinks] = React.useState<InviteResult | null>(null);
   const [removing, setRemoving] = React.useState<MemberRole | null>(null);
+  const [askBack, setAskBack] = React.useState(false);
   const ids = React.useId();
+  const wordRef = React.useRef<HTMLInputElement>(null);
+
+  // Who opened the drawer, so focus goes back there after the links dialog too.
+  const opener = React.useRef<HTMLElement | null>(null);
+  const wasOpen = React.useRef(false);
+  if (open && !wasOpen.current && typeof document !== "undefined") {
+    const a = document.activeElement;
+    opener.current = a instanceof HTMLElement && a !== document.body ? a : null;
+  }
+
+  // Email on or off (a refused or failed read counts as on: the Worker says when a link is needed).
+  const ops = useQuery({
+    queryKey: qk.platformOperations(),
+    queryFn: () => api.platformOperations(),
+    enabled: open && !editing,
+    retry: false,
+    staleTime: 60_000,
+  });
+  const emailOn = ops.data?.probes?.email?.bound ?? true;
 
   const name = member?.name || member?.email || "";
   const stepUp = isStepUpRequired(error);
@@ -126,11 +236,11 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A fresh drawer every time it opens; a saved one comes back whole.
-  const wasOpen = React.useRef(false);
   React.useEffect(() => {
     if (open && !wasOpen.current) {
       setError(null);
       setPending(false);
+      setAskBack(false);
       const saved = readStash(DRAWER_KEY, true);
       const f = saved?.fields;
       const mine = f && (f.member ?? "") === (member?.memberId ?? "");
@@ -143,7 +253,6 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
           areaMode: f.areaMode === "some" ? "some" : "all",
           areas: splitEmails(f.areas ?? "") as AreaId[],
         });
-        setAreas(splitEmails(f.editAreas ?? "") as AreaId[]);
         setTyped(saved.typed);
         setView(
           f.view === "add"
@@ -156,13 +265,25 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
         setTokens([]);
         setText("");
         setDraft(EMPTY_DRAFT);
-        setAreas([]);
         setTyped("");
         setView({ kind: "list" });
       }
     }
     wasOpen.current = open;
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A new view: say its title.
+  const firstView = React.useRef(true);
+  React.useEffect(() => {
+    if (firstView.current) {
+      firstView.current = false;
+      return;
+    }
+    if (!open) return;
+    document
+      .querySelector<HTMLElement>('[data-pk-overlay-header] [tabindex="-1"]')
+      ?.focus({ preventScroll: true });
+  }, [view.kind]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const changeDraft = (d: RoleDraft): void => {
     setDraft(d);
@@ -171,24 +292,20 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
 
   // ── the addresses ────────────────────────────────────────────────────────────────────────
   const all = React.useMemo(() => {
-    const pendingTokens = splitEmails(text);
     const seen = new Set(tokens.map((t) => t.toLowerCase()));
     return [
       ...tokens,
-      ...pendingTokens.filter((t) => !seen.has(t.toLowerCase())),
+      ...splitEmails(text).filter((t) => !seen.has(t.toLowerCase())),
     ];
   }, [tokens, text]);
+  const selfEmail = (me?.email ?? "").toLowerCase();
   // Only finished chips are called wrong; what is still being typed is not.
   const invalid = tokens.filter((e) => !isEmail(e));
   const valid = all.filter(isEmail);
   const byEmail = new Map(members.map((m) => [m.email.toLowerCase(), m]));
-  const existing = valid.filter((e) => byEmail.has(e.toLowerCase()));
+  const waiting = new Map(invites.map((i) => [i.email.toLowerCase(), i]));
+  const selfIn = valid.some((e) => e.toLowerCase() === selfEmail);
   const tooMany = valid.length > MAX_INVITES;
-  const emailProblem = tooMany
-    ? `Invite up to ${MAX_INVITES} people at a time.`
-    : invalid.length > 0
-      ? `${invalid.join(", ")} ${invalid.length === 1 ? "isn't an email address, so it isn't" : "aren't email addresses, so they aren't"} counted.`
-      : undefined;
 
   // ── what is being given ──────────────────────────────────────────────────────────────────
   const grant = grantOf(draft);
@@ -219,6 +336,39 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
       ? `${productLabel} admin`
       : WORD[draft.choice];
 
+  // Who is sent: not you, and not anyone who already has it.
+  const sendable = valid.filter((e) => {
+    const k = e.toLowerCase();
+    if (k === selfEmail) return false;
+    const m = byEmail.get(k);
+    return !(m && holds(m, grant));
+  });
+  const updating = sendable.filter((e) => byEmail.has(e.toLowerCase())).length;
+  const adding = sendable.length - updating;
+
+  const problems: string[] = [];
+  if (tooMany) problems.push(`Invite up to ${MAX_INVITES} people at a time.`);
+  if (invalid.length > 0)
+    problems.push(
+      `${invalid.join(", ")} ${invalid.length === 1 ? "isn't an email address, so it isn't" : "aren't email addresses, so they aren't"} counted.`,
+    );
+  if (selfIn)
+    problems.push("That's your address. You can't give yourself a role.");
+  const notes = valid.flatMap((e) => {
+    const k = e.toLowerCase();
+    const m = byEmail.get(k);
+    if (k === selfEmail) return [];
+    if (m)
+      return [
+        holds(m, grant)
+          ? `${m.name || m.email} already has ${roleText}.`
+          : `${m.name || m.email} is a member. Adds ${roleText}.`,
+      ];
+    if (waiting.has(k))
+      return [`${e} has an invitation waiting. Sending renews it.`];
+    return [];
+  });
+
   // ── the areas view ───────────────────────────────────────────────────────────────────────
   const areaRole =
     view.kind === "areas"
@@ -226,53 +376,114 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
       : null;
   const areaSlug = areaRole ? (productOfScope(areaRole.scope) ?? "") : "";
   const areaOffer = useOfferedAreas(areaSlug).offered;
-  React.useEffect(() => {
-    if (view.kind === "areas" && areaRole && areas.length === 0)
-      setAreas([...(areaRole.areas ?? PRODUCT_AREAS)]);
-  }, [view.kind, areaRole?.bindingId]); // eslint-disable-line react-hooks/exhaustive-deps
-  const areasAll = areas.length === PRODUCT_AREAS.length;
+  const areasSeed = (r: MemberRole): RoleDraft => ({
+    choice: r.scope === "products:*" ? "all_products" : "product_admin",
+    product: productOfScope(r.scope) ?? "",
+    areaMode: r.areas === null ? "all" : "some",
+    areas: r.areas ?? [],
+  });
+  const areasPicked =
+    draft.areaMode === "all" ||
+    draft.areas.some((a) => (areaSlug === "" ? true : areaOffer.includes(a)));
+  const areasBody = {
+    areas:
+      draft.areaMode === "all"
+        ? null
+        : PRODUCT_AREAS.filter((a) => draft.areas.includes(a)),
+  };
   const areasWhy = areaRole
-    ? cannotGive(me, "product_admin", areaSlug, areasAll ? null : areas)
+    ? areaSlug === ""
+      ? isSuperadmin(me)
+        ? undefined
+        : "Only a Superadmin can change All products admin."
+      : cannotGive(me, "product_admin", areaSlug, areasBody.areas)
     : undefined;
+  const areasL2 = view.kind === "areas" && areaSlug === "";
 
   // ── the footer's one action ──────────────────────────────────────────────────────────────
-  let ready = false;
+  const emailOff = !editing && !emailOn && adding > 0;
+  const draftWhy = !draftOk
+    ? draft.choice === "product_admin" && !draft.product
+      ? "Choose a product"
+      : draft.choice === "product_admin" &&
+          draft.areaMode === "some" &&
+          draft.areas.length === 0
+        ? "Choose at least one area"
+        : "Pick a role you can give"
+    : undefined;
   let label = "";
   let why: string | undefined;
+  let rest = false; // everything but the typed word is in order
   if (!editing) {
-    const adding = valid.length - existing.length;
-    ready =
-      valid.length > 0 && !tooMany &&
-      draftOk &&
-      typedOk;
     label =
-      valid.length === 0
+      sendable.length === 0
         ? "Invite people"
-        : existing.length === 0
-          ? `Invite ${people(valid.length)}`
-          : adding === 0
-            ? `Add the role to ${people(existing.length)}`
-            : `Invite ${people(adding)} and update ${existing.length}`;
-    why = valid.length === 0 ? "Add an email address" : undefined;
-  } else if (view.kind === "add") {
-    ready = draftOk && typedOk;
-    label = "Add role";
-  } else if (view.kind === "areas") {
-    ready = areas.length > 0 && areasWhy === undefined;
-    label = "Save areas";
-    why = areas.length === 0 ? "Pick at least one area" : areasWhy;
-  }
-  if (!ready && !why && l2 && !typedOk)
-    why = `Type ${WORD[draft.choice]} to confirm`;
-  if (!ready && !why && !draftOk && (!editing || view.kind === "add"))
+        : emailOff
+          ? "Create invite links"
+          : updating === 0
+            ? `Invite ${people(sendable.length)}`
+            : adding === 0
+              ? `Add the role to ${people(updating)}`
+              : `Invite ${people(adding)} and update ${updating}`;
+    rest = sendable.length > 0 && !tooMany && draftOk;
     why =
-      draft.choice === "product_admin" && !draft.product
-        ? "Choose a product"
-        : undefined;
+      valid.length === 0
+        ? "Add an email address"
+        : sendable.length === 0
+          ? selfIn && valid.length === 1
+            ? "You can't give yourself a role"
+            : "They already have this role"
+          : tooMany
+            ? `Invite up to ${MAX_INVITES} people at a time`
+            : draftWhy;
+  } else if (view.kind === "add") {
+    label = "Add role";
+    rest = draftOk;
+    why = draftWhy;
+  } else if (view.kind === "areas") {
+    label = "Save areas";
+    rest = areasPicked && areasWhy === undefined;
+    why = !areasPicked ? "Choose at least one area" : areasWhy;
+  }
+  const needWord = l2 || areasL2;
+  const word = areasL2 ? WORD.all_products : WORD[draft.choice];
+  const wordOk = !needWord || typed.trim().toLowerCase() === word.toLowerCase();
+  const ready = rest && wordOk;
+  const wordMissing = rest && !wordOk;
+  const reasonText = !ready
+    ? (why ?? (wordMissing ? `Type ${word} to confirm` : undefined))
+    : undefined;
+  void typedOk;
 
+  // ── is there anything to lose ────────────────────────────────────────────────────────────
+  const addDefault = (): RoleDraft => {
+    const order: RoleChoice[] =
+      (member?.roles.length ?? 0) === 0
+        ? ["console_access", "product_admin", "platform_admin", "superadmin"]
+        : ["product_admin", "platform_admin", "superadmin"];
+    const choice =
+      order.find((c) =>
+        c === "product_admin"
+          ? giveableProducts(me, products).length > 0
+          : cannotGive(me, c) === undefined,
+      ) ?? "product_admin";
+    return { ...EMPTY_DRAFT, choice };
+  };
   const dirty = !editing
-    ? tokens.length > 0 || text.trim() !== "" || draft !== EMPTY_DRAFT
-    : view.kind !== "list";
+    ? tokens.length > 0 || text.trim() !== "" || !sameDraft(draft, EMPTY_DRAFT)
+    : view.kind === "add"
+      ? !sameDraft(draft, addDefault()) || typed !== ""
+      : view.kind === "areas" && areaRole
+        ? !sameDraft(draft, areasSeed(areaRole)) || typed !== ""
+        : false;
+
+  const toList = (): void => {
+    setError(null);
+    setAskBack(false);
+    setDraft(EMPTY_DRAFT);
+    setTyped("");
+    setView({ kind: "list" });
+  };
 
   const save = async (): Promise<void> => {
     if (pending) return;
@@ -287,9 +498,13 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
         product: draft.product,
         areaMode: draft.areaMode,
         areas: draft.areas.join(","),
-        editAreas: areas.join(","),
       });
       startStepUp();
+      return;
+    }
+    if (wordMissing) {
+      wordRef.current?.scrollIntoView({ block: "center" });
+      wordRef.current?.focus();
       return;
     }
     if (!ready) return;
@@ -298,20 +513,33 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
     try {
       if (!editing) await sendInvites();
       else if (view.kind === "add") {
-        await mutate("grantRole", { ...grant!, member: member!.memberId });
-        toast.success(`Gave ${name} ${roleText}`);
-        setView({ kind: "list" });
-        setDraft(EMPTY_DRAFT);
-        setTyped("");
+        const r = await mutate("grantRole", {
+          ...grant!,
+          member: member!.memberId,
+        });
+        const bindingId = r?.binding?.bindingId;
+        toast.success(nowWords(name, roleText), {
+          ...(bindingId
+            ? {
+                action: {
+                  label: "Undo",
+                  onClick: () =>
+                    void takeBack(
+                      [{ id: bindingId, label: name, kind: "updated" }],
+                      "Role taken back",
+                    ),
+                },
+              }
+            : {}),
+        });
+        toList();
       } else if (view.kind === "areas") {
         await mutate("editBindingAreas", view.bindingId, {
-          areas: areasAll
-            ? null
-            : PRODUCT_AREAS.filter((a) => areas.includes(a)),
+          ...areasBody,
+          ...(areasL2 ? { confirm: "L2" as const } : {}),
         });
         toast.success("Areas saved");
-        setView({ kind: "list" });
-        setAreas([]);
+        toList();
       }
       setPending(false);
     } catch (e) {
@@ -321,12 +549,22 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
   };
 
   const sendInvites = async (): Promise<void> => {
-    const result = await mutate("inviteMembers", { ...grant!, emails: valid });
+    const result = await mutate("inviteMembers", {
+      ...grant!,
+      emails: sendable,
+    });
+    const renewed = new Set(invites.map((i) => i.bindingId));
+    const pick = (status: "invited" | "updated"): Undoable[] =>
+      result.results
+        // A renewed invitation is the earlier one: Undo must not delete it.
+        .filter(
+          (r) =>
+            r.status === status && r.bindingId && !renewed.has(r.bindingId),
+        )
+        .map((r) => ({ id: r.bindingId!, label: r.email, kind: status }));
     const invited = result.results.filter((r) => r.status === "invited");
     const updated = result.results.filter((r) => r.status === "updated");
-    const undoIds = (rs: typeof invited): string[] =>
-      rs.flatMap((r) => (r.bindingId ? [r.bindingId] : []));
-    const ids = [...undoIds(invited), ...undoIds(updated)];
+    const undo = [...pick("invited"), ...pick("updated")];
     const skipped = result.counts.exists;
     const unsent = result.emailOff ? [] : result.results.filter((r) => r.link);
     const head =
@@ -337,45 +575,33 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
           : invited.length === 0
             ? `Updated ${people(updated.length)}`
             : `Invited ${people(invited.length)} and updated ${updated.length}`;
+    // The links dialog says the mail did not go out; the toast only counts.
     toast.success(head, {
       description:
         [
           skipped > 0 ? `${skipped} already had this role.` : "",
-          unsent.length > 0
-            ? `${unsent.length === 1 ? "1 email" : `${unsent.length} emails`} didn't go out.`
-            : "",
-          !result.emailOff && result.notified.nobodyNotified
+          invalid.length > 0 ? `Skipped ${invalid.join(", ")}.` : "",
+          !result.emailOff &&
+          unsent.length === 0 &&
+          result.notified.nobodyNotified
             ? "Nobody was notified."
             : "",
         ]
           .filter(Boolean)
           .join(" ") || undefined,
-      ...(ids.length > 0
+      ...(undo.length > 0
         ? {
             action: {
               label: "Undo",
-              onClick: () => {
-                void (async () => {
-                  let undone = 0;
-                  try {
-                    for (const id of ids) {
-                      await mutate("revokeBinding", id);
-                      undone += 1;
-                    }
-                    toast.success(
-                      updated.length === 0
-                        ? "Invitations withdrawn"
-                        : invited.length === 0
-                          ? "Roles taken back"
-                          : "Invitations withdrawn and roles taken back",
-                    );
-                  } catch {
-                    toast.error(`Took back ${undone} of ${ids.length}`, {
-                      context: { thing: "the invitations" },
-                    });
-                  }
-                })();
-              },
+              onClick: () =>
+                void takeBack(
+                  undo,
+                  updated.length === 0
+                    ? "Invitations withdrawn"
+                    : invited.length === 0
+                      ? "Roles taken back"
+                      : "Invitations withdrawn and roles taken back",
+                ),
             },
           }
         : {}),
@@ -392,13 +618,21 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
       : view.kind === "areas"
         ? `Areas for ${name}`
         : `Edit roles for ${name}`;
-  const base = areaRole ? roleName(areaRole, productName) : "";
   const err = error && !stepUp ? describeMembersError(error) : null;
   const errorId = `${ids}-err`;
   const emailsId = `${ids}-emails`;
   const hintId = `${ids}-hint`;
-  const showFooterAction = !editing || view.kind !== "list";
-  const takenOut = member?.roles ?? [];
+  const sentence =
+    view.kind === "areas"
+      ? null
+      : previewOf(
+          !editing ? whoWords(sendable, "They") : name,
+          draft,
+          productLabel,
+          areaWords,
+        );
+  const showSentence = !editing || view.kind === "add";
+  const lastRole = removing !== null && (member?.roles.length ?? 0) === 1;
 
   return (
     <>
@@ -412,15 +646,11 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
         }}
         title={title}
         description={
-          editing && view.kind === "list"
-            ? "Roles add up. Console access comes with every other role."
-            : editing && view.kind === "areas" && base
-              ? base
-              : undefined
+          editing && view.kind === "list" ? member!.email : undefined
         }
         unsaved={dirty && !pending}
         dismissible={!pending}
-        closeStyle="close-narrow"
+        closeStyle="close"
       >
         <DrawerBody className="space-y-5">
           {!editing ? (
@@ -441,32 +671,31 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
                   text={text}
                   onText={setText}
                   members={members}
+                  selfEmail={selfEmail}
+                  pending={new Set(waiting.keys())}
                   inputId={emailsId}
                   describedBy={hintId}
-                  invalid={emailProblem !== undefined}
+                  invalid={problems.length > 0}
                   disabled={pending}
                 />
-                <p
-                  id={hintId}
-                  role={emailProblem ? "alert" : undefined}
-                  className={
-                    emailProblem
-                      ? "text-sm text-danger"
-                      : "text-sm text-fg-muted"
-                  }
-                >
-                  {emailProblem ??
-                    "Separate addresses with commas, spaces or new lines."}
-                </p>
-                {existing.map((e) => {
-                  const m = byEmail.get(e.toLowerCase())!;
-                  return (
-                    <p key={e} className="text-sm text-fg-muted">
-                      {m.name || m.email} is already a member.
-                      {grant ? ` Adds ${roleText}.` : ""}
+                <div id={hintId} className="space-y-0.5 text-sm">
+                  {problems.length > 0 ? (
+                    <div role="alert" className="space-y-0.5 text-danger">
+                      {problems.map((p) => (
+                        <p key={p}>{p}</p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-fg-muted">
+                      Separate addresses with commas, spaces or new lines.
                     </p>
-                  );
-                })}
+                  )}
+                  {notes.map((n) => (
+                    <p key={n} className="text-fg-muted">
+                      {n}
+                    </p>
+                  ))}
+                </div>
               </div>
               <RoleFields
                 draft={draft}
@@ -479,31 +708,51 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
             </>
           ) : view.kind === "list" ? (
             <ul className="divide-y divide-border">
-              {takenOut.map((r, i) => {
-                const rwhy = cannotTake(me, r, productName);
+              {(member?.roles ?? []).map((r, i) => {
+                const wide = r.scope === "products:*";
                 const narrowable =
                   r.role === "product_admin" &&
-                  r.scope.startsWith("product:") &&
-                  r.bindingId !== null;
+                  r.bindingId !== null &&
+                  (r.scope.startsWith("product:") ||
+                    (wide && r.areas !== null));
+                const whyTake = cannotTake(me, r, productName);
+                const whyAreas = !narrowable
+                  ? undefined
+                  : wide
+                    ? isSuperadmin(me)
+                      ? undefined
+                      : "Only a Superadmin can change All products admin."
+                    : cannotEditAreas(me, r, productName);
                 const rn = roleName(r, productName);
+                // One reason per row: the first thing it cannot do.
+                const rowWhy =
+                  writeReason ??
+                  (whyTake !== undefined &&
+                  (!narrowable || whyAreas !== undefined)
+                    ? whyTake
+                    : undefined);
                 return (
                   <li
                     key={r.bindingId ?? `root-${i}`}
-                    className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3"
+                    className="grid gap-x-4 gap-y-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
                   >
                     <div className="min-w-0 space-y-1">
                       <RoleSet role={r} productName={productName} />
                       <p className="text-xs text-fg-muted">{sourceText(r)}</p>
+                      {rowWhy ? (
+                        <p className="text-xs text-fg-muted">{rowWhy}</p>
+                      ) : null}
                     </div>
                     <div className="flex items-center gap-2">
                       {narrowable ? (
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={rwhy !== undefined || !!writeReason}
-                          disabledReason={writeReason ?? rwhy}
+                          disabled={whyAreas !== undefined || !!writeReason}
+                          disabledReason={writeReason ?? whyAreas}
                           onClick={() => {
-                            setAreas([...(r.areas ?? PRODUCT_AREAS)]);
+                            setDraft(areasSeed(r));
+                            setTyped("");
                             setError(null);
                             setView({ kind: "areas", bindingId: r.bindingId! });
                           }}
@@ -515,8 +764,8 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={rwhy !== undefined || !!writeReason}
-                        disabledReason={writeReason ?? rwhy}
+                        disabled={whyTake !== undefined || !!writeReason}
+                        disabledReason={writeReason ?? whyTake}
                         onClick={() => setRemoving(r)}
                         aria-label={`Remove ${rn}`}
                       >
@@ -533,52 +782,35 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
               onChange={changeDraft}
               me={me}
               products={products}
-              held={takenOut}
+              held={member?.roles ?? []}
               name={name}
               disabled={pending}
               idPrefix={`${ids}-a`}
             />
           ) : areaRole ? (
-            <fieldset className="space-y-2" disabled={pending}>
-              <legend className="sr-only">Areas</legend>
-              <AreaChecks
-                me={me}
-                slug={areaSlug}
-                offered={areaOffer}
-                areas={areas}
-                onChange={(a) => {
-                  setAreas(a);
-                  setError(null);
-                }}
-                legend="Pick the areas"
-              />
-              <p className="text-xs text-fg-muted">
-                Taking areas away is immediate. Giving more needs a recent
-                sign-in.
-              </p>
-            </fieldset>
+            <AreaPicker
+              me={me}
+              draft={draft}
+              onChange={changeDraft}
+              slug={areaSlug}
+              productLabel={
+                areaSlug === "" ? "every product" : productName(areaSlug)
+              }
+              disabled={pending}
+              idPrefix={`${ids}-e`}
+            />
           ) : null}
 
-          {showFooterAction && (!editing || view.kind === "add") ? (
-            <p className="text-sm text-fg" aria-live="polite">
-              {previewOf(
-                !editing ? whoWords(valid, "They") : name,
-                draft,
-                productLabel,
-                areaWords,
-              )}
-            </p>
-          ) : null}
-
-          {l2 && showFooterAction && (!editing || view.kind === "add") ? (
+          {needWord && (view.kind !== "list" || !editing) ? (
             <div className="space-y-1.5">
               <label htmlFor={`${ids}-word`} className="block text-sm text-fg">
                 Type the role to confirm{" "}
                 <code className="rounded-xs bg-surface-sunken px-1 font-mono text-xs text-fg-strong">
-                  {WORD[draft.choice]}
+                  {word}
                 </code>
               </label>
               <input
+                ref={wordRef}
                 id={`${ids}-word`}
                 value={typed}
                 autoComplete="off"
@@ -595,21 +827,24 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
               />
             </div>
           ) : null}
+        </DrawerBody>
 
-          {showFooterAction && view.kind !== "areas" ? (
-            <ul className="space-y-0.5 text-sm text-fg-muted">
-              {!editing ? (
-                <li>Expires {formatDate(Date.now() + 7 * 86_400_000)}</li>
-              ) : null}
-              <li>Every Superadmin is told</li>
-            </ul>
+        <div
+          data-drawer-footer=""
+          className="max-h-[55%] shrink-0 space-y-2 overflow-y-auto border-t border-border px-4 py-3 lg:px-6"
+        >
+          {askBack ? (
+            <DiscardStrip
+              className="rounded-md border px-3"
+              onKeep={() => setAskBack(false)}
+              onDiscard={toList}
+            />
           ) : null}
-
           {err ? (
             <div
               id={errorId}
               role="alert"
-              className="flex gap-2 rounded-md border border-danger-border bg-danger-subtle p-3"
+              className="flex gap-2 rounded-md border border-danger-border bg-danger-subtle p-2.5 text-sm"
             >
               <CircleAlert
                 aria-hidden
@@ -628,7 +863,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
             <div
               id={errorId}
               role="status"
-              className="flex gap-2 rounded-md border border-border bg-surface-sunken p-3"
+              className="flex gap-2 rounded-md border border-border bg-surface-sunken p-2.5 text-sm"
             >
               <Fingerprint
                 aria-hidden
@@ -638,97 +873,105 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
                 <p className="font-semibold text-fg-strong">
                   Sign in again to confirm it&apos;s you
                 </p>
-                {typeof me?.authAt === "number" ? (
-                  <p className="text-fg">
-                    You signed in {formatRelative(me.authAt * 1000)}.
-                  </p>
-                ) : null}
+                <p className="text-fg">
+                  Your changes are kept.
+                  {typeof me?.authAt === "number"
+                    ? ` You signed in ${formatRelative(me.authAt * 1000)}.`
+                    : ""}
+                </p>
               </div>
             </div>
           ) : null}
-        </DrawerBody>
-        <DrawerFooter>
-          {editing && view.kind !== "list" ? (
-            <Button
-              variant="outline"
-              disabled={pending}
-              onClick={() => {
-                setError(null);
-                setView({ kind: "list" });
-              }}
-            >
-              Back to roles
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              disabled={pending}
-              onClick={() => {
-                setError(null);
-                onClose();
-              }}
-            >
-              {editing ? "Close" : "Cancel"}
-            </Button>
-          )}
-          {editing && view.kind === "list" ? (
-            <Button
-              variant="primary"
-              disabled={member!.you || !!writeReason}
-              disabledReason={
-                writeReason ??
-                (member!.you ? "You can't give yourself a role." : undefined)
-              }
-              onClick={() => {
-                // The first role they can be given that adds something.
-                const order: RoleChoice[] =
-                  takenOut.length === 0
-                    ? [
-                        "console_access",
-                        "product_admin",
-                        "platform_admin",
-                        "superadmin",
-                      ]
-                    : ["product_admin", "platform_admin", "superadmin"];
-                const first: RoleChoice =
-                  order.find((c) =>
-                    c === "product_admin"
-                      ? giveableProducts(me, products).length > 0
-                      : cannotGive(me, c) === undefined,
-                  ) ?? "product_admin";
-                setDraft({ ...EMPTY_DRAFT, choice: first });
-                setTyped("");
-                setError(null);
-                setView({ kind: "add" });
-              }}
-            >
-              Add a role
-            </Button>
-          ) : (
-            <Button
-              variant="primary"
-              loading={pending}
-              disabled={!stepUp && !ready}
-              disabledReason={!stepUp && !ready ? why : undefined}
-              aria-describedby={err || stepUp ? errorId : undefined}
-              onClick={() => void save()}
-            >
-              {stepUp ? "Sign in again" : label}
-            </Button>
-          )}
-        </DrawerFooter>
+          {showSentence && sentence ? (
+            <div className="space-y-1 rounded-md border border-border bg-surface-sunken p-2.5 text-sm">
+              <p className="text-fg-strong" aria-live="polite">
+                {sentence}
+              </p>
+              <ul className="flex flex-wrap gap-x-4 text-xs text-fg-muted">
+                {!editing ? (
+                  <li>Expires {expiresText(Date.now() + 7 * 86_400_000)}</li>
+                ) : null}
+                <li>
+                  {emailOff ? "Nobody is emailed" : "Every Superadmin is told"}
+                </li>
+              </ul>
+            </div>
+          ) : null}
+          {reasonText && !stepUp ? (
+            <p className="text-xs text-fg-muted sm:hidden">{reasonText}</p>
+          ) : null}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            {editing && view.kind !== "list" ? (
+              <Button
+                variant="outline"
+                disabled={pending}
+                onClick={() => (dirty ? setAskBack(true) : toList())}
+              >
+                Back to roles
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                disabled={pending}
+                onClick={() => {
+                  setError(null);
+                  onClose();
+                }}
+              >
+                {editing ? "Close" : "Cancel"}
+              </Button>
+            )}
+            {editing && view.kind === "list" ? (
+              <Button
+                variant="primary"
+                disabled={member!.you || !!writeReason}
+                disabledReason={
+                  writeReason ??
+                  (member!.you ? "You can't give yourself a role." : undefined)
+                }
+                onClick={() => {
+                  setDraft(addDefault());
+                  setTyped("");
+                  setError(null);
+                  setView({ kind: "add" });
+                }}
+              >
+                Add a role
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                loading={pending}
+                disabled={!stepUp && !ready && !wordMissing}
+                disabledReason={
+                  !stepUp && !ready && !wordMissing ? why : undefined
+                }
+                aria-describedby={err || stepUp ? errorId : undefined}
+                onClick={() => void save()}
+              >
+                {stepUp ? "Sign in again" : label}
+              </Button>
+            )}
+          </div>
+        </div>
       </Drawer>
 
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(o) => !o && setRemoving(null)}
         intent="caution"
-        title={`Remove ${removing ? roleName(removing, productName) : "role"} from ${name}?`}
+        title={
+          lastRole
+            ? `Remove ${name} from the console?`
+            : `Remove ${removing ? roleName(removing, productName) : "role"} from ${name}?`
+        }
         consequences={[
-          "The role stops applying within 30 seconds.",
+          lastRole
+            ? `${name} loses access to the console.`
+            : "The role stops applying within 30 seconds.",
           "Every Superadmin is told.",
         ]}
-        confirmLabel="Remove role"
+        confirmLabel={lastRole ? "Remove from console" : "Remove role"}
         describeError={describeMembersError}
         onConfirm={async () => {
           try {
@@ -736,10 +979,22 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
           } catch (e) {
             if (!(e instanceof ApiError && e.status === 404)) throw e;
           }
-          toast.success("Role removed");
+          toast.success(lastRole ? `Removed ${name}` : "Role removed");
         }}
       />
-      <InviteLinksDialog result={links} onClose={() => setLinks(null)} />
+      <InviteLinksDialog
+        result={links}
+        productName={productName}
+        grant={grant}
+        onClose={() => setLinks(null)}
+        onCloseAutoFocus={(e) => {
+          const o = opener.current;
+          if (o?.isConnected) {
+            e.preventDefault();
+            o.focus();
+          }
+        }}
+      />
     </>
   );
 }
@@ -750,28 +1005,39 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
  */
 export function InviteLinksDialog({
   result,
+  grant,
+  productName,
   onClose,
+  onCloseAutoFocus,
 }: {
   result: InviteResult | null;
+  grant: ReturnType<typeof grantOf>;
+  productName: ProductName;
   onClose: () => void;
+  onCloseAutoFocus?: (e: Event) => void;
 }): React.ReactElement {
   const rows = (result?.results ?? []).filter((r) => r.link);
   const off = result?.emailOff ?? false;
   const unsent = rows.length;
+  const expires = rows.find((r) => r.expiresAt)?.expiresAt;
+  const role = grant
+    ? roleLabel({ ...grant, source: "" }, productName).label
+    : "";
   return (
     <Dialog
       open={result !== null}
       onOpenChange={(o) => !o && onClose()}
+      onCloseAutoFocus={onCloseAutoFocus}
       size="md"
       title={
         off
-          ? "Send these links"
-          : `${unsent === 1 ? "1 email" : `${unsent} emails`} didn't go out. Send ${unsent === 1 ? "this link" : "these links"}`
+          ? `Invite links for ${people(unsent)}`
+          : `${unsent === 1 ? "1 email" : `${unsent} emails`} didn't go out. Send ${unsent === 1 ? "this link" : "these links"}.`
       }
       description={
         off
-          ? "Email is off, so nobody was emailed. Each link opens the console sign-in for that address."
-          : `No email reached ${rows.map((r) => r.email).join(", ")}. Each link opens the console sign-in for that address.`
+          ? "Nothing was emailed. Each link opens the console sign-in for that address."
+          : "Each link opens the console sign-in for that address."
       }
     >
       <DialogBody className="space-y-3 text-sm">
@@ -780,6 +1046,9 @@ export function InviteLinksDialog({
             <li key={r.email} className="space-y-1">
               <p className="font-medium text-fg-strong [overflow-wrap:anywhere]">
                 {r.email}
+                {role ? (
+                  <span className="font-normal text-fg-muted"> · {role}</span>
+                ) : null}
               </p>
               <div className="flex items-center gap-2">
                 <code className="min-w-0 flex-1 truncate rounded-xs bg-surface-sunken px-2 py-1 font-mono text-xs">
@@ -793,6 +1062,11 @@ export function InviteLinksDialog({
             </li>
           ))}
         </ul>
+        {expires ? (
+          <p className="text-xs text-fg-muted">
+            Expires {expiresText(expires * 1000)}
+          </p>
+        ) : null}
       </DialogBody>
       <DialogFooter>
         <Button variant="primary" onClick={onClose}>

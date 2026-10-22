@@ -18,8 +18,14 @@ import { AREA_ACCENTS, AREA_NAMES, roleLabel } from "./can.js";
 /** The subset of a role the tag draws. */
 export type RoleLike = Pick<MeRole, "role" | "scope" | "areas">;
 
-function Glyph({ role }: { role: RoleLike }): React.ReactElement {
-  const cls = "size-3.5 shrink-0";
+export function RoleGlyph({
+  role,
+  className,
+}: {
+  role: RoleLike;
+  className?: string;
+}): React.ReactElement {
+  const cls = className ?? "size-3.5 shrink-0";
   switch (role.role) {
     case "superadmin":
       return <Crown className={cls} aria-hidden="true" />;
@@ -55,7 +61,7 @@ export function RoleTag({
         className,
       )}
     >
-      <Glyph role={role} />
+      <RoleGlyph role={role} />
       <span className="min-w-0 truncate" title={label}>
         {label}
       </span>
