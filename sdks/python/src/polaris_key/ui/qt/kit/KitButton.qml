@@ -13,6 +13,10 @@ Button {
     // DL4: a busy control keeps its label and its focus and adds the indicator.
     property bool busy: false
     property bool animate: true
+    // UI-KITS 1.5 rule 11: an action that leaves the app carries the new-window glyph after its label;
+    // the glyph is decorative, so `externalNote` ("Opens in your browser") is the description.
+    property bool external: false
+    property string externalNote: ""
     readonly property bool primary: role === "primary"
     readonly property bool quiet: role === "quiet"
     readonly property bool danger: role === "danger"
@@ -25,12 +29,13 @@ Button {
     focusPolicy: Qt.StrongFocus
     Accessible.role: Accessible.Button
     Accessible.name: text
+    Accessible.description: externalNote
 
     contentItem: Item {
         id: content
         // The label's own width, not the row's: the row clamps the label to this item, which would
         // make the button as wide as its clamped (elided) text.
-        implicitWidth: label.implicitWidth + (control.busy ? spinner.width + row.spacing : 0)
+        implicitWidth: label.implicitWidth + (control.busy ? spinner.width + row.spacing : 0) + (control.external ? leave.width + row.spacing : 0)
         implicitHeight: row.implicitHeight
         readonly property color ink: !control.enabled ? Theme.actionDisabledOn
              : control.primary ? Theme.accentOn
@@ -74,7 +79,7 @@ Button {
             Text {
                 id: label
                 text: control.text
-                width: Math.min(implicitWidth, content.width - (control.busy ? spinner.width + row.spacing : 0))
+                width: Math.min(implicitWidth, content.width - (control.busy ? spinner.width + row.spacing : 0) - (control.external ? leave.width + row.spacing : 0))
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.typeButton.size * control.scale_
                 font.weight: Theme.typeButton.weight
@@ -82,6 +87,14 @@ Button {
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
+            }
+            KitGlyph {
+                id: leave
+                visible: control.external
+                name: "external"
+                size: Theme.typeButton.size * control.scale_
+                color: content.ink
+                anchors.verticalCenter: parent.verticalCenter
             }
         }
     }

@@ -22,7 +22,7 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.theme import Theme as TextualTheme
 from textual.widgets import Button, Footer, Input, ListItem, ListView, Select, Static, Switch
 
-from .. import _tokens
+from .. import _tokens, ansi
 from ..core.copy import Copy
 from ..core.identity import ResolvedIdentity, presentation_source, resolve_identity
 from ...core.models import license_user
@@ -882,7 +882,7 @@ def _num(value: Any) -> str:
 
 def _out(label: str) -> str:
     """The new-window glyph on an action that leaves the app (UI-KITS §1.5 rule 11), never an ellipsis."""
-    return f"{label} ↗"
+    return f"{label} {ansi.SYMBOLS['unicode']['newWindow']}"
 
 
 def run_app(client: Any, *, theme: Optional[Theme] = None, scheme: Optional[str] = None, manage_url: Optional[str] = None, support_url: Optional[str] = None, privacy_url: Optional[str] = None) -> Any:
