@@ -8,7 +8,7 @@ deprecated aliases).
 
 - **Compose UI kit follows UI-KITS.md** (`:ui`). Welcome keeps the key field behind "Use a license
   key" with Sign in the one primary and "by <Developer>" under the title (`PolarisTheme(developer =
-  …)` or the presentation's `developerName`); a paired secondary is tonal and the primary's width;
+…)` or the presentation's `developerName`); a paired secondary is tonal and the primary's width;
   resolvable refusals (revoked, expired, version, channel) are neutral callouts and a too-old version
   offers Update (`PolarisGate(onUpdate = …)`); the device-limit step is "Replace a device" with the
   count, the neutral seat meter and "Open in browser ↗"; Devices rename and remove inline (no stock
