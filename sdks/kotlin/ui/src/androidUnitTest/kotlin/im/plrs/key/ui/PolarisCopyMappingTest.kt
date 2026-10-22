@@ -148,7 +148,14 @@ class PolarisCopyMappingTest {
     fun graceCountdown() {
         assertEquals(copy.graceBodyNoDeadline, copy.graceBody(null, 100))
         assertEquals(copy.graceBodyNoDeadline, copy.graceBody(50, 100))
-        assertEquals("We couldn't reach the license server. You can keep working for 3 days.", copy.graceBody(100 + 3 * 86_400 + 5, 100))
+        // The headline counts the days left (grace.daysLeft), the last day names the product (grace.lastDay).
+        assertEquals("Offline · 3 days left", copy.graceHeadline(100 + 3 * 86_400, 100, "en"))
+        assertEquals("Offline · 4 days left", copy.graceHeadline(100 + 3 * 86_400 + 5, 100, "en"))
+        assertEquals("Offline · last day to use Diceroll", copy.graceHeadline(100 + 86_400, 100, "en"))
+        assertEquals("Offline · last day to use Diceroll", copy.graceHeadline(100 + 3_600, 100, "en"))
+        assertEquals(copy.graceTitle, copy.graceHeadline(null, 100, "en"))
+        // The deadline line is the catalog's grace.deadline with a localised date.
+        assertTrue(copy.graceBody(1_790_000_000, 100, "en").startsWith("Works offline until "))
     }
 
     @Test

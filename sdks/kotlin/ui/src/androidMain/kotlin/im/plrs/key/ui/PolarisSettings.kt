@@ -150,14 +150,12 @@ internal fun entitlementColors(status: LicenseStatus): Pair<Color, Color> {
     }
 }
 
-/** The entitlement badge: the licence status as a coloured pill with a section dot. */
+/** The entitlement badge: the licence status as a coloured pill, with no service-accent dot (UI-KITS.md 1.2). */
 @Composable
 public fun PolarisEntitlementBadge(status: LicenseStatus, modifier: Modifier = Modifier) {
     val (container, content) = entitlementColors(status)
     Surface(modifier = modifier, shape = CircleShape, color = container, contentColor = content) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(Modifier.size(8.dp), shape = CircleShape, color = PolarisTheme.accent("license")) {}
-            Spacer(Modifier.width(8.dp))
             Text(PolarisTheme.copy.entitlementLabel(status), style = MaterialTheme.typography.labelLarge)
         }
     }

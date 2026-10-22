@@ -60,8 +60,8 @@ public data class PolarisCopy(
 
     // ── Gate ─────────────────────────────────────────────────────────────────────────────────
     val gateLoading: String = "Checking your license…",
-    val graceTitle: String = "Offline grace period",
-    val graceBody: String = "We couldn't reach the license server. You can keep working for %1\$s.",
+    /** The grace banner's headline when the licence names no deadline (part.status.grace). */
+    val graceTitle: String = "Offline",
     val graceBodyNoDeadline: String = "We couldn't reach the license server. You can keep working for now.",
     // Expired and revoked read core.copy's gate entries (Copy.title / Copy.message).
     /** The expired screen's second action: back to the activation form (a gate-local switch). */
@@ -204,6 +204,10 @@ public data class PolarisCopy(
     /** %1$s is the product. */
     val updateReadyBody: String = "Restart %1\$s to finish updating.",
     val updateRestartNow: String = "Restart now",
+    /** While the download runs, the primary queues the restart: it is never disabled (update.restartWhenReady). */
+    val updateRestartWhenReady: String = "Restart when ready",
+    /** The download line: %1$s the bytes so far, %2$s the total (update.downloading). */
+    val updateDownloading: String = "Downloading · %1\$s of %2\$s",
     val updateFailed: String = "The update couldn't be installed. Try again later.",
 
     // ── Pack progress ────────────────────────────────────────────────────────────────────────

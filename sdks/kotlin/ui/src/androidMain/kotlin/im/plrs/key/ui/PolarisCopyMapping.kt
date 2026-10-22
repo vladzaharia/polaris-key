@@ -71,10 +71,32 @@ public fun PolarisCopy.withAllowedRange(body: String, range: AllowedRange?): Str
     return body + "\n" + format(versionAllowed, window)
 }
 
-/** The grace banner's body: how long is left, when the licence says. */
-public fun PolarisCopy.graceBody(graceUntilSeconds: Long?, nowSeconds: Long): String =
-    if (graceUntilSeconds == null || graceUntilSeconds <= nowSeconds) graceBodyNoDeadline
-    else format(graceBody, duration(graceUntilSeconds - nowSeconds))
+/**
+ * The grace banner's headline (UI-KITS.md 4.1 GraceBanner): the count of days left ("Offline · 3
+ * days left", grace.daysLeft), or on the last day "Offline · last day to use Diceroll" (grace.lastDay).
+ * Without a deadline it is the kit's own [graceTitle]. The wording is the catalog's, in [locale].
+ */
+public fun PolarisCopy.graceHeadline(graceUntilSeconds: Long?, nowSeconds: Long, locale: String = coreLocale()): String {
+    if (graceUntilSeconds == null || graceUntilSeconds <= nowSeconds) return graceTitle
+    val days = (graceUntilSeconds - nowSeconds + 86_399) / 86_400
+    return if (days <= 1) {
+        KitCopy.bundled.format("grace.lastDay", locale, mapOf("product" to CopyArgument.Text(productName)))
+    } else {
+        KitCopy.bundled.format("grace.daysLeft", locale, mapOf("days" to CopyArgument.Number(days.toInt())))
+    }
+}
+
+/**
+ * The grace banner's body: when offline use ends ("Works offline until Nov 4, 2026", grace.deadline),
+ * in [locale] and the device's time zone, or the no-deadline sentence when the licence names none.
+ */
+public fun PolarisCopy.graceBody(graceUntilSeconds: Long?, nowSeconds: Long, locale: String = coreLocale()): String {
+    if (graceUntilSeconds == null || graceUntilSeconds <= nowSeconds) return graceBodyNoDeadline
+    val date = java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)
+        .withLocale(Locale.forLanguageTag(locale))
+        .format(java.time.Instant.ofEpochSecond(graceUntilSeconds).atZone(java.time.ZoneId.systemDefault()))
+    return KitCopy.bundled.format("grace.deadline", locale, mapOf("date" to CopyArgument.Text(date)))
+}
 
 /**
  * The error an activation result shows, or null for success: one message per §3.1 kind

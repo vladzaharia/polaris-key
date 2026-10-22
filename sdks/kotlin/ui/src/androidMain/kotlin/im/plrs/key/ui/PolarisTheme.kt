@@ -325,6 +325,9 @@ internal fun ColorScheme.withAccent(accent: PolarisAccent.Resolved): ColorScheme
     surfaceTint = colorOf(accent.solid),
 )
 
+/** The update prompt's bottom sheet: radius 28 on the top edge only (UI-KITS.md 1.4, Android). */
+internal val polarisSheetShape: Shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+
 /** The message card's radius 28. */
 private val MessageCardShape: Shape = RoundedCornerShape(28.dp)
 
@@ -416,8 +419,9 @@ public object PolarisTheme {
         get() = if (current.branding == PolarisBranding.PolarisKey) PolarisKitMono else FontFamily.Monospace
 
     /**
-     * The accent for a section indicator (an entitlement badge, the update glyph, a pack progress
-     * bar): the service's brand accent branded, the host's primary neutral.
+     * The accent of a Polaris Key service for a host's own section indicator: the service's brand
+     * accent branded, the host's primary neutral. The kit's screens never use it: service cues are
+     * off on product screens (UI-KITS.md 1.2) and return only for integrators who opt in by calling this.
      */
     @Composable @ReadOnlyComposable
     public fun accent(service: String): Color =

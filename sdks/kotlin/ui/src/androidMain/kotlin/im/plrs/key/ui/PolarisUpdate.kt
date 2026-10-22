@@ -6,10 +6,14 @@
 
 package im.plrs.key.ui
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
@@ -22,16 +26,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -58,9 +61,14 @@ public fun PolarisCopy.updateBannerText(ui: PolarisUpdateUi): String {
 internal fun PolarisCopy.updateFailureMessage(failure: PolarisUpdateFailure): String = updateFailed
 
 /**
- * A slim banner announcing an update: the version, an Update (or Restart) action, and a dismiss
- * button unless the update is mandatory. Place it at the top or bottom of the product's UI.
+ * A slim banner announcing an update: the version, an Update (or Restart now) action, and Later
+ * unless the update is mandatory. One dismissal and the verb, with no X (UI-KITS.md 4.3 UpdatePrompt).
+ * Place it at the top or bottom of the product's UI. The actions sit under the text, so neither is
+ * squeezed at a large font scale.
+ *
+ * @param onDismiss what Later does; null (or a mandatory update) leaves the banner without it.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 public fun PolarisUpdateBanner(
     ui: PolarisUpdateUi,
@@ -72,32 +80,36 @@ public fun PolarisUpdateBanner(
     val scheme = MaterialTheme.colorScheme
     Surface(modifier = modifier.fillMaxWidth(), color = scheme.secondaryContainer, contentColor = scheme.onSecondaryContainer) {
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Row(
+            Column(
                 modifier = Modifier
                     .widthIn(max = PolarisMaxContentWidth * 1.5f)
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
             ) {
-                Icon(
-                    if (ui.critical) Icons.Filled.Warning else Icons.Filled.Refresh,
-                    contentDescription = null,
-                    tint = if (ui.critical) PolarisTheme.status.warning else PolarisTheme.accent("update"),
-                    modifier = Modifier.size(24.dp),
-                )
-                Spacer(Modifier.width(12.dp))
-                Column(
-                    Modifier.weight(1f).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Text(copy.updateBannerText(ui), style = MaterialTheme.typography.bodyLarge)
-                    if (ui.critical) Text(copy.updateCritical, style = MaterialTheme.typography.bodySmall)
-                    ui.error?.let { Text(copy.updateFailureMessage(it), style = MaterialTheme.typography.bodySmall) }
+                Row(verticalAlignment = Alignment.Top) {
+                    // A section accent is a service cue, which product screens never draw (UI-KITS.md 1.2).
+                    Icon(
+                        if (ui.critical) Icons.Filled.Warning else Icons.Filled.Refresh,
+                        contentDescription = null,
+                        tint = if (ui.critical) PolarisTheme.status.warning else scheme.onSecondaryContainer,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column(
+                        Modifier.weight(1f).padding(end = 8.dp).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(copy.updateBannerText(ui), style = MaterialTheme.typography.bodyLarge)
+                        if (ui.critical) Text(copy.updateCritical, style = MaterialTheme.typography.bodySmall)
+                        ui.error?.let { Text(copy.updateFailureMessage(it), style = MaterialTheme.typography.bodySmall) }
+                    }
                 }
-                Spacer(Modifier.width(8.dp))
-                PolarisTextButton(if (ui.kind == PolarisUpdateUi.Kind.Restart) copy.updateRestart else copy.updateAction, onUpdate)
-                if (onDismiss != null && !ui.mandatory) {
-                    IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, contentDescription = copy.updateDismiss) }
+                androidx.compose.foundation.layout.FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+                ) {
+                    if (onDismiss != null && !ui.mandatory) PolarisTextButton(copy.updateLater, onDismiss)
+                    PolarisTextButton(if (ui.kind == PolarisUpdateUi.Kind.Restart) copy.updateRestartNow else copy.updateAction, onUpdate)
                 }
             }
         }
@@ -145,14 +157,17 @@ private fun PolarisUpdatePromptCard(
     onUpdate: () -> Unit,
     onLater: (() -> Unit)?,
     footer: Boolean,
+    sheet: Boolean = false,
 ) {
     val copy = PolarisTheme.copy
     val scheme = MaterialTheme.colorScheme
     val window = polarisWindow
     val (title, body) = copy.updatePromptText(ui)
+    val downloading = ui.progress != null && ui.kind == PolarisUpdateUi.Kind.Install
     Surface(
         modifier = modifier.widthIn(max = PolarisMaxContentWidth).fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
+        // A bottom sheet rounds its top edge only (radius 28); a card rounds all four.
+        shape = if (sheet) polarisSheetShape else MaterialTheme.shapes.extraLarge,
         // One step lower than the tonal Later button's container, so Later stays visible.
         color = scheme.surfaceContainerLow,
         contentColor = scheme.onSurface,
@@ -184,6 +199,20 @@ private fun PolarisUpdatePromptCard(
                         Spacer(Modifier.height(8.dp))
                         PolarisBody(copy.updateFailureMessage(it), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
+                    if (downloading) {
+                        // Counted bytes only: the bar and "Downloading · 38 of 61 MB" (UI-KITS.md 4.3).
+                        val (done, total) = ui.progress!!
+                        val line = copy.format(copy.updateDownloading, copy.bytes(done), copy.bytes(total))
+                        Spacer(Modifier.height(16.dp))
+                        PolarisProgressBar(if (total > 0) (done.toFloat() / total).coerceIn(0f, 1f) else null, line)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            line,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                        )
+                    }
                 }
             }
             if (footer) {
@@ -194,8 +223,13 @@ private fun PolarisUpdatePromptCard(
             }
             Spacer(Modifier.height(24.dp))
             PolarisActionGroup(row = window.compactHeight) {
+                // While the download runs the primary queues the restart, so it is never disabled.
                 PolarisPrimaryButton(
-                    if (ui.kind == PolarisUpdateUi.Kind.Restart) copy.updateRestartNow else copy.updateNow,
+                    when {
+                        ui.kind == PolarisUpdateUi.Kind.Restart -> copy.updateRestartNow
+                        downloading -> copy.updateRestartWhenReady
+                        else -> copy.updateNow
+                    },
                     onUpdate,
                     initialFocus = true,
                 )
@@ -205,19 +239,57 @@ private fun PolarisUpdatePromptCard(
     }
 }
 
-/** [PolarisUpdatePrompt] in a dialog; a mandatory update cannot be dismissed by back or outside tap. */
+/** The container width below which the prompt is a bottom sheet and from which it is a card (UI-KITS.md DL2). */
+internal val PolarisSheetBelow = 560.dp
+
+/**
+ * [PolarisUpdatePrompt] over the app (UI-KITS.md DL2): a bottom sheet below 560 dp wide, a card
+ * from there up, both over the scrim with the host visible behind it (32 % in light, 60 % in dark).
+ * A mandatory update cannot be dismissed by back or by a tap outside; an optional one can, and Later
+ * is its one dismissal.
+ */
 @Composable
 public fun PolarisUpdatePromptDialog(ui: PolarisUpdateUi, onUpdate: () -> Unit, onLater: () -> Unit) {
+    val dark = PolarisTheme.current.dark
     Dialog(
         onDismissRequest = { if (!ui.mandatory) onLater() },
-        properties = DialogProperties(dismissOnBackPress = !ui.mandatory, dismissOnClickOutside = !ui.mandatory),
+        // The sheet and the card span the window: the dialog's own width would cap them.
+        properties = DialogProperties(dismissOnBackPress = !ui.mandatory, dismissOnClickOutside = !ui.mandatory, usePlatformDefaultWidth = false),
     ) {
+        val dialogWindow = (androidx.compose.ui.platform.LocalView.current.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+        androidx.compose.runtime.SideEffect { dialogWindow?.setDimAmount(if (dark) 0.6f else 0.32f) }
         // Composition locals (the kit's theme included) carry into the dialog's window; the
         // dialog measures its own window, so a short one lays the actions out as a row.
-        BoxWithConstraints {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
             val window = PolarisWindow(maxWidth, maxHeight, isTelevision())
+            val sheet = maxWidth < PolarisSheetBelow
+            val available = maxHeight
             CompositionLocalProvider(LocalPolarisWindow provides window) {
-                PolarisUpdatePromptCard(ui, Modifier.padding(16.dp).heightIn(max = maxHeight), onUpdate, onLater, footer = true)
+                // The window is the scrim: a tap on it dismisses an optional update; the card takes its own taps.
+                val absorb = remember { MutableInteractionSource() }
+                Box(
+                    Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (!ui.mandatory) onLater() },
+                    contentAlignment = if (sheet) Alignment.BottomCenter else Alignment.Center,
+                ) {
+                    if (sheet) {
+                        PolarisUpdatePromptCard(
+                            ui,
+                            Modifier.navigationBarsPadding().heightIn(max = available).clickable(interactionSource = absorb, indication = null) {},
+                            onUpdate,
+                            onLater,
+                            footer = true,
+                            sheet = true,
+                        )
+                    } else {
+                        PolarisUpdatePromptCard(
+                            ui,
+                            Modifier.padding(16.dp).heightIn(max = available).clickable(interactionSource = absorb, indication = null) {},
+                            onUpdate,
+                            onLater,
+                            footer = true,
+                        )
+                    }
+                }
             }
         }
     }

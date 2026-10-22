@@ -144,6 +144,7 @@ public fun PolarisGateScreen(
     var anotherLicense by rememberSaveable { mutableStateOf(false) }
     var signingIn by rememberSaveable { mutableStateOf(false) }
     var focusKey by remember { mutableStateOf(false) }
+    var graceDismissed by rememberSaveable { mutableStateOf(false) }
     val base = gateScreen(status)
     LaunchedEffect(base) {
         // A usable licence (or a different stop) ends the gate's own detours.
@@ -151,6 +152,8 @@ public fun PolarisGateScreen(
             anotherLicense = false
             signingIn = false
         }
+        // The banner comes back the next time the licence goes offline.
+        if (base != GateScreen.Grace) graceDismissed = false
     }
     val screen = when {
         base == GateScreen.Message && status == LicenseStatus.expired && anotherLicense ->
@@ -164,12 +167,17 @@ public fun PolarisGateScreen(
             GateScreen.Loading -> PolarisProgressScreen(copy.gateLoading)
             GateScreen.Content -> content()
             GateScreen.Grace -> Column(Modifier.fillMaxSize()) {
-                PolarisGraceBanner(
-                    body = copy.graceBody(license?.graceUntil, gate.nowSeconds),
-                    onReconnect = onRetry,
-                    busy = gate.refreshing,
-                    modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
-                )
+                // Dismissible for the session (UI-KITS.md 4.1 GraceBanner); the licence and its deadline are untouched.
+                if (!graceDismissed) {
+                    PolarisGraceBanner(
+                        body = copy.graceBody(license?.graceUntil, gate.nowSeconds),
+                        title = copy.graceHeadline(license?.graceUntil, gate.nowSeconds),
+                        onReconnect = onRetry,
+                        onDismiss = { graceDismissed = true },
+                        busy = gate.refreshing,
+                        modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
+                    )
+                }
                 Box(Modifier.weight(1f)) { content() }
             }
             GateScreen.Activation -> PolarisActivationScreen(
@@ -404,39 +412,54 @@ public fun PolarisNotice(message: PolarisMessageCopy, modifier: Modifier = Modif
 }
 
 /**
- * The offline-grace banner shown over the product: the time left and a Reconnect action. A polite
- * live region, so TalkBack announces it once when it appears.
+ * The offline-grace banner shown over the product (UI-KITS.md 4.1 GraceBanner): the headline with
+ * the days left, the deadline under it, then Reconnect and, when the host can remember it for the
+ * session, Dismiss. A polite live region, so TalkBack announces it once when it appears. The
+ * actions sit under the text, so neither is squeezed at a large font scale.
+ *
+ * @param title the headline; defaults to the kit's "Offline" line, [PolarisCopy.graceHeadline] gives
+ *   the days left.
+ * @param onDismiss hides the banner for the session; null leaves it without a Dismiss.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 public fun PolarisGraceBanner(
     body: String,
     modifier: Modifier = Modifier,
     onReconnect: (() -> Unit)? = null,
     busy: Boolean = false,
+    title: String = PolarisTheme.copy.graceTitle,
+    onDismiss: (() -> Unit)? = null,
 ) {
     val copy = PolarisTheme.copy
     val status = PolarisTheme.status
     Surface(modifier = modifier.fillMaxWidth(), color = status.warningContainer, contentColor = status.onWarningContainer) {
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Row(
+            Column(
                 modifier = Modifier
                     .widthIn(max = PolarisMaxContentWidth * 1.5f)
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
             ) {
-                Icon(Icons.Filled.Warning, contentDescription = null, tint = status.warning, modifier = Modifier.size(24.dp))
-                Spacer(Modifier.width(12.dp))
-                Column(
-                    modifier = Modifier.weight(1f).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Text(copy.graceTitle, style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
-                    Text(body, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Start)
+                Row(verticalAlignment = Alignment.Top) {
+                    Icon(Icons.Filled.Warning, contentDescription = null, tint = status.warning, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column(
+                        modifier = Modifier.weight(1f).padding(end = 8.dp).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
+                        Text(body, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Start)
+                    }
                 }
-                if (onReconnect != null) {
-                    Spacer(Modifier.width(8.dp))
-                    PolarisTextButton(text = copy.reconnect, onClick = onReconnect, enabled = !busy)
+                if (onReconnect != null || onDismiss != null) {
+                    androidx.compose.foundation.layout.FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+                    ) {
+                        if (onDismiss != null) PolarisTextButton(text = copy.updateDismiss, onClick = onDismiss)
+                        if (onReconnect != null) PolarisTextButton(text = copy.reconnect, onClick = onReconnect, enabled = !busy)
+                    }
                 }
             }
         }

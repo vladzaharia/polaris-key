@@ -37,8 +37,7 @@
     <string name="pkey_ui_close">Close</string>
     <string name="pkey_ui_loading">Loading…</string>
     <string name="pkey_ui_gate_loading">Checking your license…</string>
-    <string name="pkey_ui_grace_title">Offline grace period</string>
-    <string name="pkey_ui_grace_body">We couldn\'t reach the license server. You can keep working for %1$s.</string>
+    <string name="pkey_ui_grace_title">Offline</string>
     <string name="pkey_ui_grace_body_no_deadline">We couldn\'t reach the license server. You can keep working for now.</string>
     <string name="pkey_ui_use_another_license">Use another license</string>
     <string name="pkey_ui_version_too_old_title">Update required</string>
@@ -148,6 +147,8 @@
     <string name="pkey_ui_update_restart_body">Version %1$s is ready. Restart to finish updating.</string>
     <string name="pkey_ui_update_ready_title">%1$s %2$s is ready</string>
     <string name="pkey_ui_update_ready_body">Restart %1$s to finish updating.</string>
+    <string name="pkey_ui_update_restart_when_ready">Restart when ready</string>
+    <string name="pkey_ui_update_downloading">Downloading · %1$s of %2$s</string>
     <string name="pkey_ui_update_restart_now">Restart now</string>
     <string name="pkey_ui_update_failed">The update couldn\'t be installed. Try again later.</string>
     <string name="pkey_ui_packs_title">Downloading content</string>
