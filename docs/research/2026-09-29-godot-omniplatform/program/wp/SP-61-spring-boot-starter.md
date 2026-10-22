@@ -42,10 +42,16 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+### Corrections (SP-61)
+
+- The module is `:spring-boot-starter` (`polaris-key-spring-boot-starter`), package `im.plrs.key.server.spring`, on Spring Boot 3.5 / Spring Security 6.5, over `:server`.
+- Feed publication plumbing (`.pkey/release.yaml`, `publish-sdks.yml`, the worker ingest golden) is not wired: the module has a `maven-publish` publication like `:server-ktor`, but the release lists are the lead's to extend when it ships.
+- The integration content pipeline (`usage.ts`, `fit.ts`, goldens) is untouched: Spring is documented on `build/servers/spring` and in `server-kotlin.mdx` only.
+
 ## Acceptance criteria
 
-- [ ] A gated Spring MVC route answers each §5.2 verdict through Spring Security.
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] A gated Spring MVC route answers each §5.2 verdict through Spring Security.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header (scoped: see the hand-off report; `gen settings` / `gen docs-reference` are stale at staging independent of this package).
 
 ## Verify
 

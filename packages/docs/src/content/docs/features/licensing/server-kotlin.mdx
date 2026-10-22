@@ -1,13 +1,13 @@
 ---
 title: "Gate a Kotlin route with the license"
-description: "Refuse a request to your Ktor route unless the device's license allows it, by tier, entitlement or sign-in, and test the gate without a network."
+description: "Refuse a request to your Ktor or Spring Boot route unless the device's license allows it, by tier, entitlement or sign-in, and test the gate without a network."
 type: "how-to"
 lastReviewed: "2026-10-21"
 sidebar:
   order: 14
 ---
 
-A drop-in from `polaris-key-server-ktor` reads the device's license document from the `X-PKey-License` header, verifies it offline and refuses the request when the license doesn't allow it. A route with no gate stays open. For the other frameworks and the steps behind this, see [Verify licenses on your server](/docs/build/servers/).
+A drop-in from `polaris-key-server-ktor` (Ktor) or `polaris-key-spring-boot-starter` (Spring Boot, [below](#spring-boot)) reads the device's license document from the `X-PKey-License` header, verifies it offline and refuses the request when the license doesn't allow it. A route with no gate stays open. For the other frameworks and the steps behind this, see [Verify licenses on your server](/docs/build/servers/).
 
 Requires the License feature and the `PolarisConfig.kt` that `pkey sdk --lang kotlin --write` writes. The app sends `X-PKey-License` and `X-PKey-Device` with each call to your server.
 
@@ -124,7 +124,124 @@ fun Application.refusals() {
 
 A gated response that sets no `Cache-Control` is sent `private`, streamed ones included.
 
-## Without Ktor
+## Spring Boot
+
+`im.plrs.key:polaris-key-spring-boot-starter` gates a Spring MVC route through Spring Security 6. It reads the same two headers, gives the same verdicts and refuses with the same problem body.
+
+1. **Server** Add `im.plrs.key:polaris-key-spring-boot-starter` from Polaris Key's Maven feed, at the version the feed lists.
+2. **Server** Put the product and its pins in `application.properties`.
+3. **Server** Apply the starter to your `SecurityFilterChain` and name a requirement for each route that needs a gate.
+
+```properties title="application.properties"
+polaris-key.product=acme
+polaris-key.pinned-keys.pkey-2026=<the 43-character public key from pkey sdk>
+```
+
+`pkey sdk --lang kotlin --write` prints the slug and the keys. For several products use `polaris-key.products[0].slug`, `.pinned-keys.<kid>` and `.base-url`; `polaris-key.base-url` defaults to `https://key.plrs.im`.
+
+```kotlin title="SecurityConfig.kt"
+import im.plrs.key.server.Require
+import im.plrs.key.server.spring.PolarisKey
+import im.plrs.key.server.spring.polarisKey
+import im.plrs.key.server.spring.requirePolarisLicense
+import jakarta.servlet.http.HttpServletRequest
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.security.config.annotation.web.builders.HttpSecurity
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.web.SecurityFilterChain
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RestController
+
+@Configuration(proxyBeanMethods = false)
+@EnableWebSecurity
+class SecurityConfig {
+    @Bean
+    fun api(http: HttpSecurity): SecurityFilterChain {
+        http.csrf { it.disable() }
+        http.polarisKey()
+        http.authorizeHttpRequests {
+            it.requestMatchers("/health").permitAll()
+                .requestMatchers("/api/me").access(PolarisKey.license())
+                .requestMatchers("/api/export").access(PolarisKey.entitlement("export.pdf"))
+                .requestMatchers("/api/team").access(PolarisKey.tier("pro", "team"))
+                .requestMatchers("/api/pro").access(PolarisKey.all(Require.signIn(), Require.tier("pro")))
+                .anyRequest().denyAll()
+        }
+        return http.build()
+    }
+}
+
+@RestController
+class TeamController {
+    @GetMapping("/api/team")
+    fun team(request: HttpServletRequest): String = "tier: ${request.requirePolarisLicense().tier}"
+}
+```
+
+`http.polarisKey()` adds the filter and never refuses. Only the `access(...)` requirements do: `license()`, `entitlement(name)` (or `entitlement(name) { value -> … }` for a valued one), `tier(vararg)`, `signIn()` and `all(vararg)`, which refuses with the first requirement that fails. A route no matcher names is your own rule; end with a catch-all deny, as above, so a new route isn't open by accident. The license is also the `@AuthenticationPrincipal` of the request, with the authorities `polaris:license`, `polaris:tier:<tier>` and `polaris:signed-in`.
+
+A missing, empty or malformed product stops startup with a Spring failure report that names the property to set.
+
+### Refusals
+
+A refusal is the same `application/problem+json`, `Cache-Control: no-store` and, on a 401, `PKey-License` challenge as Ktor's, in the caller's `Accept-Language`. A missing, invalid or stale license goes through your `AuthenticationEntryPoint` path (401), and a license that lacks the tier, entitlement or sign-in through `AccessDeniedHandler` (403). The starter's handlers answer only requests a Polaris Key gate refused, so your own entry point and denied handler keep every other case.
+
+To answer with another status, define a `PolarisKeyRefusalHandler` bean. `respondProblem` sends the problem's own body and headers, with the status you choose:
+
+```kotlin title="Refusals.kt"
+import im.plrs.key.server.BackendRefusal
+import im.plrs.key.server.spring.PolarisKeyRefusalHandler
+import im.plrs.key.server.spring.respondProblem
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+
+@Configuration(proxyBeanMethods = false)
+class Refusals {
+    @Bean
+    fun refusal() = PolarisKeyRefusalHandler { _, response, problem ->
+        response.respondProblem(problem, if (problem.refusal == BackendRefusal.NotEntitled) 402 else null)
+    }
+}
+```
+
+`polaris-key.errors=throw` raises `PolarisKeyError` into Spring's exception resolvers instead, so a `@ControllerAdvice` shapes the response. A browser's CORS preflight carries no license, so every gate lets it through; `polaris-key.preflight=gate` turns that off. The starter sets no CORS header: configure Spring Security's `http.cors { }` and allow `X-PKey-License` and `X-PKey-Device`, with the names in `BackendWire.POLARIS_REQUEST_HEADERS`. A gated response that sets no `Cache-Control` is sent `private`.
+
+Other properties: `polaris-key.max-age-seconds` tightens the freshness window, `polaris-key.trust-refresh=false` runs on the pins alone, and `polaris-key.enabled=false` backs the starter off. Set the `im.plrs.key.server.spring` logger to debug to see each verdict's step, key id and a short device hash, never the header. Define your own `PolarisServer` bean to share one server across adapters.
+
+### Test a Spring route
+
+`PolarisKeyTestConfiguration` serves a `PolarisTestKit`'s product from a throwaway key, so a test needs no network, no properties and no Polaris Key:
+
+```kotlin title="ExportTest.kt"
+import im.plrs.key.server.BackendRefusal
+import im.plrs.key.server.spring.testing.PolarisKeyTestConfiguration
+import im.plrs.key.server.spring.testing.license
+import im.plrs.key.server.spring.testing.refusing
+import im.plrs.key.server.testing.PolarisTestKit
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@Import(PolarisKeyTestConfiguration::class)
+class ExportTest(@Autowired val mvc: MockMvc, @Autowired val kit: PolarisTestKit) {
+    fun checks() {
+        mvc.perform(get("/api/export").with(kit.license { entitle("export.pdf") })).andExpect(status().isOk)
+        mvc.perform(get("/api/export").with(kit.refusing(BackendRefusal.LicenseRequired))).andExpect(status().isUnauthorized)
+        mvc.perform(get("/api/export").with(kit.refusing(BackendRefusal.NotEntitled))).andExpect(status().isForbidden)
+    }
+}
+```
+
+The kit's product is `polaris-key.test.product` (default `test-product`). Its clock, `kit.trust` and `headersFor` work as in [Test a gated route](#test-a-gated-route) below.
+
+## Without a framework
 
 `polaris-key-server` is the framework-free core. It decides from the header fields you pass, and you write the response.
 

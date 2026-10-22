@@ -232,6 +232,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
                 "build/servers/django",
                 "build/servers/drf",
                 "build/servers/ktor",
+                "build/servers/spring",
               ),
             ],
           },
