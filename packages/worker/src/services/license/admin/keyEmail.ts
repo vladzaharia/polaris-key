@@ -2,7 +2,7 @@
  * LX-27 (S-24 §8.4, D11/D12): emailing a licence key to the licence's holder. Used by the create
  * route (`delivery.email`) and by `POST …/licenses/<id>/send-key`.
  *
- * The key leaves only in the email body (sent as "<App> via Polaris Key", I-18's passthrough
+ * The key leaves only in the email body (sent as "<App> via Polaris Locker", I-18's passthrough
  * sender, through Core's one send choke point) and in the response of the request that minted it.
  * It is never in a log, an audit summary or the subject. A send that does not go out never rolls
  * anything back: the answer says `failed` and the operator tries again through send-key.
@@ -78,7 +78,7 @@ export const SEND_KEY_ACTION = "license.key.send";
 export const SEND_KEY_FAILED_ACTION = "license.key.send.failed";
 
 /** The product's hosted icon for the email's hero, or null. */
-async function productIconUrl(
+export async function productIconUrl(
   ctx: LicenseAdminContext,
 ): Promise<string | null> {
   try {
@@ -126,6 +126,30 @@ export async function keyEmailBlocked(
 }
 
 /**
+ * The links a licence email carries: the portal origin, the plain sign-in page (no token, no
+ * address) and the product's download page when Release and the portal are both on. Shared by the
+ * key email and the invitation.
+ */
+export async function emailLinks(ctx: LicenseAdminContext): Promise<{
+  origin: string;
+  signInUrl: string;
+  downloadUrl: string | null;
+}> {
+  const { env, db, product, req } = ctx;
+  const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
+  const downloadUrl =
+    ctx.hooks.releaseCatalog() !== null &&
+    (await portalEnabled(db, product.slug))
+      ? appLink(origin, `p/${encodeURIComponent(product.slug)}/download`)
+      : null;
+  return {
+    origin,
+    signInUrl: `${origin}/signin?product=${encodeURIComponent(product.slug)}`,
+    downloadUrl,
+  };
+}
+
+/**
  * Email `key` to the licence's address. Never throws; `failed` carries a `reason`.
  */
 export async function emailLicenseKey(
@@ -138,20 +162,15 @@ export async function emailLicenseKey(
   if (!to) return { email: "failed", reason: "address_unusable" };
   const blocked = await keyEmailBlocked(ctx, to);
   if (blocked) return { email: "failed", reason: blocked };
-  const { env, db, product, req, now } = ctx;
+  const { env, db, product, now } = ctx;
   try {
-    const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
-    const download =
-      ctx.hooks.releaseCatalog() !== null &&
-      (await portalEnabled(db, product.slug))
-        ? appLink(origin, `p/${encodeURIComponent(product.slug)}/download`)
-        : null;
+    const { origin, signInUrl, downloadUrl } = await emailLinks(ctx);
     const message = licenseKeyEmail({
       productName: product.name,
       holderName: license.name,
       key,
-      signInUrl: `${origin}/signin?product=${encodeURIComponent(product.slug)}`,
-      downloadUrl: download,
+      signInUrl,
+      downloadUrl,
       iconUrl: await productIconUrl(ctx),
       context,
       origin,

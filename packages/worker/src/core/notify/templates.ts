@@ -25,6 +25,11 @@
  */
 
 import {
+  INVITE_FOOTERS,
+  inviteEmailIntro,
+  inviteEmailPrimaryLabel,
+  inviteEmailSubject,
+  type InviteEmailContext,
   KEY_EMAIL_AFTER,
   KEY_FOOTERS,
   keyEmailIntro,
@@ -283,6 +288,64 @@ export function licenseKeyEmail(input: {
     paragraphs: intro,
     secret: input.key,
     paragraphsAfter: after,
+    action: primary,
+    ...(secondary ? { secondary } : {}),
+    footer,
+    origin: emailAssetOrigin(input.origin),
+    brand: "locker",
+  };
+  return { subject, text, html: renderEmail(content) };
+}
+
+/** Why the invitation was sent: it picks the footer. */
+export type { InviteEmailContext };
+
+/**
+ * LX-27c: the invitation an operator emailed to a licence's holder, sent as "<App> via Polaris
+ * Locker" like the key email and rendered the same way (product hero, download or **Open in Polaris
+ * Locker**). It carries no key and no token, and the sign-in link names no address, so a forwarded
+ * email signs nobody in and a URL in a log says nothing about who. The address is in the body
+ * only. The copy does not depend on whether the address has an account (D4).
+ */
+export function licenseInvitationEmail(input: {
+  productName: string | null | undefined;
+  holderName: string | null | undefined;
+  /** The licence's address, named in the body ("Sign in with ada@example.com"). */
+  address: string;
+  /** The portal's sign-in page; carries no token and no address. */
+  signInUrl: string;
+  /** The product's download page, when it has one. */
+  downloadUrl?: string | null;
+  /** The product's hosted icon (https), when it has one. */
+  iconUrl?: string | null;
+  context?: InviteEmailContext;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "");
+  const holder = displayValue(input.holderName, "");
+  const subject = inviteEmailSubject(name);
+  const footer = INVITE_FOOTERS[input.context ?? "created"];
+  const intro = inviteEmailIntro(holder, name, displayValue(input.address, ""));
+  const primary = input.downloadUrl
+    ? { label: inviteEmailPrimaryLabel(true), url: input.downloadUrl }
+    : { label: inviteEmailPrimaryLabel(false), url: input.signInUrl };
+  const secondary = input.downloadUrl
+    ? { label: inviteEmailPrimaryLabel(false), url: input.signInUrl }
+    : undefined;
+  const text = [
+    ...(name ? [name] : []),
+    ...intro,
+    `${primary.label}: ${primary.url}`,
+    ...(secondary ? [`${secondary.label}: ${secondary.url}`] : []),
+    footer,
+  ].join("\n\n");
+  const content: EmailContent = {
+    subject,
+    heading: name || "Your license",
+    ...(name
+      ? { hero: { name, ...(input.iconUrl ? { iconUrl: input.iconUrl } : {}) } }
+      : {}),
+    paragraphs: intro,
     action: primary,
     ...(secondary ? { secondary } : {}),
     footer,

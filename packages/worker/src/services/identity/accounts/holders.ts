@@ -28,6 +28,7 @@ import type { Db } from "../../../db/types.js";
 import {
   attachWaitingLicensesByEmail,
   licenseAutoLinkEnabled,
+  autoLinkEnabled,
 } from "../portal/repo.js";
 import { attachLicense } from "./claim.js";
 import { accountsVerifyingEmail, verifiedAccountEmails } from "./repo.js";
@@ -93,4 +94,5 @@ export async function licenseEmailAssigned(
 export const licenseHolderHooks: LicenseHolderHooks = {
   accountEmailVerified,
   licenseEmailAssigned,
+  autoLinksNewLicenses: autoLinkEnabled,
 };

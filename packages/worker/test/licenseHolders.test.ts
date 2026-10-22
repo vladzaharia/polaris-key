@@ -38,6 +38,7 @@ import {
   associateLicenseHolder,
   licenseHolder,
   licenseHolderHooksRegistered,
+  newLicensesAutoLink,
   onAccountEmailVerified,
 } from "../src/core/licensing/licenseHolders.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
@@ -241,6 +242,16 @@ describe("the holder rule (S-24 D1)", () => {
 
   it("Identity's hooks are registered at the composition root", () => {
     expect(licenseHolderHooksRegistered()).toBe(true);
+  });
+
+  it("LX-27c: the auto-link hook answers on for a platform product and off for a custom issuer", async () => {
+    expect(await newLicensesAutoLink(db, SLUG)).toBe(true);
+    await db.run(
+      `INSERT INTO oidc_config (product, issuer, client_id, provider)
+       VALUES (?, 'https://id.example.com', 'c', 'custom')`,
+      SLUG,
+    );
+    expect(await newLicensesAutoLink(db, SLUG)).toBe(false);
   });
 });
 

@@ -8242,13 +8242,46 @@ rate_limited`, `retryAfter`), read from the audit trail (the attempt row is writ
 - **The key appears only in the email body and the one response that minted it.** Never in the
   subject, the audit summary, a log, or the audit row's address (the recipient is not recorded).
 - **Only to the licence's own address.** There is no recipient field; a floating licence is
-  refused, so a key is never emailed to nobody (S-24 D11). The mail is "<App> via Polaris Key"
+  refused, so a key is never emailed to nobody (S-24 D11). The mail is "<App> via Polaris Locker"
   through Core's one send choke point, so suppression, the relay gate and the per-product daily
-  cap apply (I-18). The "Open in Polaris Key" link is a plain sign-in page that carries no token,
+  cap apply (I-18). The "Open in Polaris Locker" link is a plain sign-in page that carries no token,
   so a forwarded email signs nobody in.
 - **Residual, accepted.** An operator can still mint keys with `POST …/keys` as before; emailing
   adds a delivery channel, not a capability. Two concurrent send-keys can both pass the 10-minute
   check; each mints its own key and both are audited.
+
+### Licence administration: emailing an invitation (LX-27c)
+
+An operator can invite a licence's holder instead of mailing a key: `delivery: {invite: true}` on
+create, optionally with `key: false` (no key is minted at all). The email is a plain sign-in link,
+sent as "<App> via Polaris Locker" through Core's one send choke point, so suppression, the relay
+gate and the per-product daily cap apply as for the key email. Same product-admin session and CSRF
+as any licence write.
+
+- **It carries nothing secret.** No key (an invited licence may have none; one created with "also
+  a key" keeps it out of the email), no token, and no address in any URL: the body names the
+  address and the link is the plain `/signin?product=<slug>`, so a URL in a log, a history or a
+  forwarded message says nothing about who. A forwarded invitation signs nobody in: using the
+  licence needs a verified sign-in with that exact address (Identity attaches only on an address
+  the account verified, T-H3).
+- **No account oracle (D4).** The copy, the work done and the answer are the same whether or not
+  the address has an account: the email is rendered from the licence alone, the answer is built as
+  if no account took the licence (no `inAccount`), and association at creation runs on every create
+  with an email as before.
+- **Refused where it cannot work.** 422 `bad_request` with a `reason`: no email, `email` and
+  `invite` together, `key: false` without `invite`, Identity off for the product (`identity_off`),
+  auto-link resolving off (`auto_link_off`; a custom-issuer product resolves off). The last two
+  stop an operator promising a join that would never happen. License learns the auto-link rule
+  only through Core's `LicenseHolderHooks.autoLinksNewLicenses`, which Identity implements; with
+  nothing contributed the answer is "no invitation" (fail closed), and License imports nothing from
+  Identity (`boundaries.test.ts`).
+- **A failed send never undoes the licence.** The answer says `failed` with the reason. A send
+  that went out stamps `licenses.invited_at` (epoch seconds; no address, no key) and the audit
+  summary reads "invitation sent" or "invitation failed", never the address.
+- **Residual, accepted.** An operator can still mail an invitation to any address they type, as
+  they could already mail a key; the per-product daily cap and suppression bound it. No open
+  tracking and no pixel (a privacy line). The resend route and its per-licence window come in
+  LX-27c.2.
 
 ### Licence holders: association by email and the auto-attach block (LX-26)
 

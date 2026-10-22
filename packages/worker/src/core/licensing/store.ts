@@ -84,6 +84,24 @@ export function stmtInsertLicense(row: LicenseRow): DbStatement {
   };
 }
 
+/**
+ * LX-27c (0131_a): record that an invitation email for the licence went out at `at`. Written by
+ * the License service only, after a send that was accepted; a failed send leaves the column alone.
+ */
+export async function setLicenseInvitedAt(
+  db: Db,
+  product: string,
+  licenseId: string,
+  at: number,
+): Promise<void> {
+  await db.run(
+    "UPDATE licenses SET invited_at = ? WHERE product = ? AND id = ?",
+    at,
+    product,
+    licenseId,
+  );
+}
+
 /** Resolve the auto-issued license bound to a machine. Backed by the partial unique index
  *  `idx_licenses_enroll_hwid`, which is what actually guarantees one per machine. */
 export async function getLicenseByEnrollHwid(

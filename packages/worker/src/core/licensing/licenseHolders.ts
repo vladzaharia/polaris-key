@@ -272,6 +272,12 @@ export interface LicenseHolderHooks {
     ctx: LicenseHolderContext,
     args: { product: string; licenseId: string },
   ): Promise<boolean>;
+  /**
+   * LX-27c: whether a licence created now for `product` would join the account that verifies its
+   * address, that is, whether implicit auto-link resolves on. An invitation (a sign-in link, no
+   * key) is only meaningful where it does. A custom-issuer product resolves off.
+   */
+  autoLinksNewLicenses(db: Db, product: string): Promise<boolean>;
 }
 
 /** Whether a mounted service contributes the implementation (the guard test asserts it does, at the root). */
@@ -308,4 +314,17 @@ export async function associateLicenseHolder(
   return hooks
     ? hooks.licenseEmailAssigned(ctx, { product, licenseId })
     : false;
+}
+
+/**
+ * LX-27c: can an invitation reach a licence of `product`? `null` when nothing is contributed
+ * (Identity is off, so there is no account to sign in to), else whether auto-link resolves on.
+ * License reads it through here and never imports Identity (rule 6).
+ */
+export async function newLicensesAutoLink(
+  db: Db,
+  product: string,
+): Promise<boolean | null> {
+  const hooks = contributedLicenseHolders();
+  return hooks ? hooks.autoLinksNewLicenses(db, product) : null;
 }

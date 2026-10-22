@@ -20,7 +20,12 @@ import {
   unsuppressEmail,
 } from "../src/core/notify/emailDelivery.js";
 import { listAudit } from "../src/core/audit.js";
-import { licenseKeyEmail } from "../src/core/notify/templates.js";
+import {
+  licenseInvitationEmail,
+  licenseKeyEmail,
+} from "../src/core/notify/templates.js";
+import { signIn } from "../src/services/identity/accounts/signIn.js";
+import { listKeysByLicense } from "../src/core/licensing/store.js";
 
 /** ST-11: a product's own cap is the `email.dailyCap` `product_settings` row. */
 async function setProductDailyEmailCap(
@@ -337,6 +342,278 @@ describe("create with deviceLimit and delivery, and send-key (LX-27)", () => {
       revokeOthers: "yes",
     });
     expect(bad.status).toBe(422);
+  });
+
+  // ── LX-27c.1: the invitation ────────────────────────────────────────────────────────────────
+
+  async function identityOn() {
+    await db.run(
+      "UPDATE products SET services_json = ? WHERE slug = 'djdl'",
+      JSON.stringify({
+        license: { enabled: true },
+        identity: { enabled: true },
+      }),
+    );
+  }
+  async function verifiedAccount(email: string) {
+    const r = await signIn(
+      db,
+      { issuerKey: "email", subject: email, kind: "email" },
+      clock,
+      { unfenced: true, product: { slug: "djdl" } },
+    );
+    if (r.status !== "signed_in") throw new Error(r.status);
+    return r.account.id;
+  }
+  type Invited = {
+    licenseId: string;
+    key?: string;
+    hash?: string;
+    delivered?: { email?: string; invite?: string; reason?: string };
+    license: Record<string, unknown>;
+  };
+
+  it("invite with key: false mints no key row and sends one email with no key and no address in a URL", async () => {
+    await identityOn();
+    const res = await create({
+      email: "holder@example.com",
+      name: "Grace",
+      key: false,
+      delivery: { invite: true },
+    });
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as Invited;
+    expect(body.key).toBeUndefined();
+    expect(body.hash).toBeUndefined();
+    expect(body.delivered).toEqual({ invite: "sent" });
+    expect(await listKeysByLicense(db, "djdl", body.licenseId)).toHaveLength(0);
+    expect(sent).toHaveLength(1);
+    const m = sent[0]!;
+    expect(m.to).toBe("holder@example.com");
+    expect(m.subject).toBe("Your Mossgarden license is ready");
+    expect(m.from.name).toBe("Mossgarden via Polaris Locker");
+    expect(m.text + m.html).not.toContain("pkey_");
+    expect(m.text).toContain("Sign in with holder@example.com to use it.");
+    const urls = (m.text + m.html).match(/https?:\/\/[^\s"'<>)]+/g) ?? [];
+    for (const u of urls) {
+      expect(u).not.toContain("holder");
+      expect(decodeURIComponent(u)).not.toContain("@");
+    }
+    expect(m.text).toContain("/signin?product=djdl");
+    const row = await getLicense(db, "djdl", body.licenseId);
+    expect(row!.invited_at).toBe(clock);
+    expect(body.license.invitedAt).toBe(clock);
+    const audit = (await listAudit(db, "djdl", { limit: 20 })).find(
+      (a) => a.action === "license.create",
+    )!;
+    expect(audit.summary).toContain("invitation sent");
+    expect(audit.summary).toContain("no key");
+    expect(audit.summary).not.toContain("holder@");
+    expect(audit.summary).not.toContain("pkey_");
+  });
+
+  it("invite with a key returns it once, mints it, and does not email it", async () => {
+    await identityOn();
+    const res = await create({
+      email: "holder@example.com",
+      delivery: { invite: true },
+    });
+    const body = (await res.json()) as Invited;
+    expect(body.key).toMatch(/^pkey_djdl_/);
+    expect(await listKeysByLicense(db, "djdl", body.licenseId)).toHaveLength(1);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text + sent[0]!.html).not.toContain(body.key!);
+    expect(sent[0]!.text + sent[0]!.html).not.toContain("pkey_");
+  });
+
+  it("refuses each bad invitation request with 422 and a reason", async () => {
+    await identityOn();
+    const cases: [Record<string, unknown>, string | undefined, string][] = [
+      [{ delivery: { invite: true } }, undefined, "delivery"],
+      [
+        { email: "a@example.com", delivery: { invite: true, email: true } },
+        "email_and_invite",
+        "delivery",
+      ],
+      [
+        { email: "a@example.com", key: false },
+        "key_false_without_invite",
+        "delivery",
+      ],
+      [
+        { email: "a@example.com", key: false, delivery: { email: true } },
+        "key_false_without_invite",
+        "delivery",
+      ],
+      [{ email: "a@example.com", key: "no" }, undefined, "key"],
+      [
+        { email: "a@example.com", delivery: { invite: "yes" } },
+        undefined,
+        "delivery",
+      ],
+    ];
+    for (const [body, reason, field] of cases) {
+      const res = await create(body);
+      expect(res.status, JSON.stringify(body)).toBe(422);
+      const j = (await res.json()) as { reason?: string; fields?: string[] };
+      expect(j.fields).toEqual([field]);
+      expect(j.reason).toBe(reason);
+    }
+    expect(sent).toHaveLength(0);
+    expect(
+      await db.first("SELECT 1 FROM licenses WHERE product = 'djdl'"),
+    ).toBeNull();
+  });
+
+  it("refuses an invitation when Identity is off or auto-link resolves off, creating nothing", async () => {
+    const off = await create({
+      email: "a@example.com",
+      delivery: { invite: true },
+    });
+    expect(off.status).toBe(422);
+    expect(await off.json()).toMatchObject({
+      reason: "identity_off",
+      fields: ["delivery"],
+    });
+    await identityOn();
+    await db.run(
+      `INSERT INTO oidc_config (product, issuer, client_id, provider)
+       VALUES ('djdl', 'https://id.example.com', 'c', 'custom')`,
+    );
+    const noLink = await create({
+      email: "a@example.com",
+      delivery: { invite: true },
+    });
+    expect(noLink.status).toBe(422);
+    expect(await noLink.json()).toMatchObject({ reason: "auto_link_off" });
+    // The key half is unchanged on such a product.
+    expect((await create({ email: "a@example.com" })).status).toBe(201);
+    expect(sent).toHaveLength(0);
+    expect(
+      await db.first(
+        "SELECT COUNT(*) AS n FROM licenses WHERE email = 'a@example.com' HAVING n <> 1",
+      ),
+    ).toBeNull();
+  });
+
+  it("a blocked or failed invitation still creates the licence and leaves invited_at empty", async () => {
+    await identityOn();
+    failSend = true;
+    const failed = (await (
+      await create({
+        email: "a@example.com",
+        key: false,
+        delivery: { invite: true },
+      })
+    ).json()) as Invited;
+    expect(failed.delivered).toEqual({
+      invite: "failed",
+      reason: "provider_refused",
+    });
+    expect(
+      (await getLicense(db, "djdl", failed.licenseId))!.invited_at ?? null,
+    ).toBeNull();
+    failSend = false;
+    await suppressEmail(env, db, "b@example.com", "operator", clock);
+    const blocked = (await (
+      await create({
+        email: "b@example.com",
+        key: false,
+        delivery: { invite: true },
+      })
+    ).json()) as Invited;
+    expect(blocked.delivered).toEqual({
+      invite: "failed",
+      reason: "suppressed",
+    });
+    expect(blocked.license.invitedAt).toBeNull();
+    env.EMAIL = undefined;
+    const none = (await (
+      await create({
+        email: "c@example.com",
+        key: false,
+        delivery: { invite: true },
+      })
+    ).json()) as Invited;
+    expect(none.delivered).toEqual({
+      invite: "failed",
+      reason: "no_mail_binding",
+    });
+    expect(await getLicense(db, "djdl", none.licenseId)).not.toBeNull();
+  });
+
+  it("association at creation still runs, and the answer and email are identical with and without an account", async () => {
+    await identityOn();
+    const accountId = await verifiedAccount("ada@example.com");
+    const req = (email: string) =>
+      create({ email, name: "Ada", key: false, delivery: { invite: true } });
+    const withAccount = (await (
+      await req("ada@example.com")
+    ).json()) as Invited;
+    const without = (await (await req("zed@example.com")).json()) as Invited;
+    expect(
+      (await getLicense(db, "djdl", withAccount.licenseId))!.account_id,
+    ).toBe(accountId);
+    expect(
+      (await getLicense(db, "djdl", without.licenseId))!.account_id ?? null,
+    ).toBeNull();
+    const norm = (b: Invited, email: string) =>
+      JSON.stringify(b, (k, v) =>
+        k === "licenseId" || k === "id" ? "ID" : v,
+      ).replaceAll(email, "ADDR");
+    expect(norm(withAccount, "ada@example.com")).toBe(
+      norm(without, "zed@example.com"),
+    );
+    expect(sent).toHaveLength(2);
+    expect(sent[0]!.html.replaceAll("ada@example.com", "ADDR")).toBe(
+      sent[1]!.html.replaceAll("zed@example.com", "ADDR"),
+    );
+    expect(sent[0]!.text.replaceAll("ada@example.com", "ADDR")).toBe(
+      sent[1]!.text.replaceAll("zed@example.com", "ADDR"),
+    );
+    expect(withAccount.license.holder).toEqual({
+      kind: "assigned",
+      inAccount: false,
+      email: "ada@example.com",
+    });
+  });
+
+  it("invitation template snapshots: created and assigned, with and without a name and a download", () => {
+    const base = {
+      productName: "Mossgarden",
+      address: "grace@example.com",
+      signInUrl: "https://key.plrs.im/signin?product=djdl",
+      origin: "https://key.plrs.im",
+    };
+    const variants = {
+      createdNamedDownload: licenseInvitationEmail({
+        ...base,
+        holderName: "Grace",
+        downloadUrl: "https://key.plrs.im/#/p/djdl/download",
+        context: "created",
+      }),
+      createdAnonymous: licenseInvitationEmail({
+        ...base,
+        holderName: null,
+        context: "created",
+      }),
+      assignedNamed: licenseInvitationEmail({
+        ...base,
+        holderName: "Grace",
+        context: "assigned",
+      }),
+      assignedDownload: licenseInvitationEmail({
+        ...base,
+        holderName: null,
+        downloadUrl: "https://key.plrs.im/#/p/djdl/download",
+        context: "assigned",
+      }),
+    };
+    for (const [name, m] of Object.entries(variants)) {
+      expect({ name, subject: m.subject, text: m.text }).toMatchSnapshot();
+      expect(m.html, name).toMatchSnapshot();
+      expect(m.text + m.html).not.toContain("pkey_");
+    }
   });
 
   it("template snapshot", () => {

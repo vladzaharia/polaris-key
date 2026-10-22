@@ -111,6 +111,7 @@ import { withIncludedChannels } from "../../../core/channels.js";
 import type { LicenseAdminContext } from "./index.js";
 import { handleKeys } from "./keys.js";
 import { emailLicenseKey, handleSendKey } from "./keyEmail.js";
+import { emailLicenseInvitation, inviteRefusal } from "./inviteEmail.js";
 import { handleAdminDevices } from "./devices.js";
 import { deletionVerdicts, handleDeleteLicense } from "./deletion.js";
 
@@ -412,30 +413,64 @@ export async function handleLicenses(
       // LX-27: `delivery: {email: true}` emails the first key to the licence's address in this
       // request. It needs an email (a floating key is never emailed, S-24 D11).
       const delivery = body.delivery;
-      if (
-        delivery !== undefined &&
-        (typeof delivery !== "object" ||
-          delivery === null ||
-          Array.isArray(delivery) ||
-          ("email" in delivery && typeof delivery.email !== "boolean"))
-      )
+      const deliveryShape = (
+        d: unknown,
+      ): d is { email?: boolean; invite?: boolean } =>
+        typeof d === "object" &&
+        d !== null &&
+        !Array.isArray(d) &&
+        (!("email" in d) || typeof d.email === "boolean") &&
+        (!("invite" in d) || typeof d.invite === "boolean");
+      if (delivery !== undefined && !deliveryShape(delivery))
         return err(
           422,
           ErrorCode.BadRequest,
-          "delivery must be {email: boolean}",
+          "delivery must be {email?: boolean, invite?: boolean}",
           {
             fields: ["delivery"],
           },
         );
+      if ("key" in body && typeof body.key !== "boolean")
+        return err(422, ErrorCode.BadRequest, "key must be a boolean", {
+          fields: ["key"],
+        });
       const emailDelivery =
         (delivery as { email?: boolean } | undefined)?.email === true;
-      if (emailDelivery && bodyEmail(body) == null)
+      const inviteDelivery =
+        (delivery as { invite?: boolean } | undefined)?.invite === true;
+      const mintKey = body.key !== false;
+      const refuseDelivery = (message: string, reason: string) =>
+        err(422, ErrorCode.BadRequest, message, {
+          fields: ["delivery"],
+          reason,
+        });
+      if (emailDelivery && inviteDelivery)
+        return refuseDelivery(
+          "delivery.email and delivery.invite are exclusive",
+          "email_and_invite",
+        );
+      if (!mintKey && !inviteDelivery)
+        return refuseDelivery(
+          "key: false needs delivery.invite",
+          "key_false_without_invite",
+        );
+      if ((emailDelivery || inviteDelivery) && bodyEmail(body) == null)
         return err(
           422,
           ErrorCode.BadRequest,
-          "delivery.email needs an email on the license",
+          `delivery.${inviteDelivery ? "invite" : "email"} needs an email on the license`,
           { fields: ["delivery"] },
         );
+      if (inviteDelivery) {
+        const refusal = await inviteRefusal(ctx);
+        if (refusal)
+          return refuseDelivery(
+            refusal === "identity_off"
+              ? "an invitation needs Sign-in (Identity) on"
+              : "an invitation needs auto-link on for this product",
+            refusal,
+          );
+      }
       const licenseId = randomId("lic");
       const profiles = parseProfiles(body);
       const badRefs = await validateRefs(db, slug, {
@@ -496,19 +531,19 @@ export async function handleLicenses(
       });
       if (profiles.length > 0)
         await setLicenseProfiles(db, slug, licenseId, profiles);
-      // Mint the first key — returned ONCE, only here.
-      const key = mintLicenseKey(slug);
-      const keyHash = await hashKey(key, env.KEY_HASH_PEPPER);
-      await insertKey(db, {
-        product: slug,
-        key_hash: keyHash,
-        license_id: licenseId,
-        status: "active",
-        label: "Initial key",
-        created_at: now,
-        created_by: session.sub,
-        last_used_at: null,
-      });
+      // Mint the first key — returned ONCE, only here. `key: false` (an invitation only) mints none.
+      const key = mintKey ? mintLicenseKey(slug) : null;
+      if (key !== null)
+        await insertKey(db, {
+          product: slug,
+          key_hash: await hashKey(key, env.KEY_HASH_PEPPER),
+          license_id: licenseId,
+          status: "active",
+          label: "Initial key",
+          created_at: now,
+          created_by: session.sub,
+          last_used_at: null,
+        });
       // LX-26 (S-24 D3): association at creation, in the same request, when an account has
       // verified the address. Identity runs the account lookup on every create with an email,
       // whatever the outcome; the answer below has the same shape either way (D4).
@@ -518,8 +553,18 @@ export async function handleLicenses(
       // LX-27: the key email, in this request (the key exists in plaintext only here). A failure
       // never undoes the licence; the answer says `failed` and send-key tries again.
       const keyEmail =
-        emailDelivery && row ? await emailLicenseKey(ctx, row, key) : null;
+        emailDelivery && row && key !== null
+          ? await emailLicenseKey(ctx, row, key)
+          : null;
+      // LX-27c: the invitation, sent with no key. Same rule: a failure never undoes the licence.
+      const invitation =
+        inviteDelivery && row ? await emailLicenseInvitation(ctx, row) : null;
       const emailDelivered = keyEmail?.email ?? null;
+      // The send stamped `invited_at`: read the row again so the answer carries it.
+      const shown =
+        invitation?.invite === "sent"
+          ? await getLicense(db, slug, licenseId)
+          : row;
       await audit(
         db,
         slug,
@@ -530,12 +575,14 @@ export async function handleLicenses(
         // The id, never the buyer's email or name (an audit row outlives erasure by up
         // to 180 days), nor whether an account took the licence, nor the key.
         `Created license ${licenseId} (${email !== null ? "assigned" : "floating"})` +
-          (emailDelivered ? `, key email ${emailDelivered}` : ""),
+          (emailDelivered ? `, key email ${emailDelivered}` : "") +
+          (invitation ? `, invitation ${invitation.invite}` : "") +
+          (key === null ? ", no key" : ""),
       );
       return adminJson(
         {
           licenseId,
-          key,
+          ...(key !== null ? { key } : {}),
           ...(keyEmail
             ? {
                 delivered: {
@@ -543,12 +590,19 @@ export async function handleLicenses(
                   ...(keyEmail.reason ? { reason: keyEmail.reason } : {}),
                 },
               }
-            : {}),
+            : invitation
+              ? {
+                  delivered: {
+                    invite: invitation.invite,
+                    ...(invitation.reason ? { reason: invitation.reason } : {}),
+                  },
+                }
+              : {}),
           // The answer is built as if no account had taken the licence, so a create
           // is not an oracle for "does this address have an account" (no `inAccount`, no
           // `ownerSubject`, whatever the association found).
-          license: row
-            ? await summarize(ctx, { ...row, account_id: null })
+          license: shown
+            ? await summarize(ctx, { ...shown, account_id: null })
             : null,
         },
         201,

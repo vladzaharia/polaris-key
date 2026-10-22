@@ -134,6 +134,9 @@ export interface LicenseRow {
   ended_reason?: string | null;
   /** LX-08 (0105_d): the licence that replaced this one (a merge's survivor); NULL otherwise. */
   superseded_by?: string | null;
+  /** LX-27c (0131_a): epoch seconds of the last invitation email that went out; NULL (or absent on
+   *  a row read before the migration) when none did. Written only by the License service. */
+  invited_at?: number | null;
   modified_by: string | null;
   modified_at: number;
 }

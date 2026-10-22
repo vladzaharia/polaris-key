@@ -16521,10 +16521,18 @@ paths:
         The answer has the same shape either way: `license.holder` says what a read would. The
         account lookup runs on every create with an email, whatever the outcome. LX-27: `deviceLimit`
         sets the licence's own limit; `delivery: {email: true}` (needs an email) mails the key as
-        "Your <product> license", from "<product> via Polaris Key", in this request, and the answer
+        "Your <product> license", from "<product> via Polaris Locker", in this request, and the answer
         gains `delivered: {email: sent | queued | failed}`. A failed send never undoes the licence:
         send a new key with `POST …/licenses/{licenseId}/send-key`. The key is in the email body
-        and this answer only, never in the audit row. Audited `license.create` with the holder.
+        and this answer only, never in the audit row. LX-27c: `delivery: {invite: true}` (needs an
+        email, exclusive with `delivery.email`) mails an invitation instead, "Your <product>
+        license is ready", with a plain sign-in link and no key, token or address in any URL; the
+        answer gains `delivered: {invite: sent | failed}` and the licence's `invitedAt`. `key:
+        false` (valid only with `delivery.invite`) mints no key, so the answer has no `key`.
+        An invitation is refused with 422 and a `reason` when Identity is off for the product
+        (`identity_off`) or its auto-link resolves off (`auto_link_off`, as for a custom issuer),
+        since the licence could never join an account. The answer is the same whether or not the
+        address has an account. Audited `license.create` with the holder.
         Platform admins only; admin session cookie and CSRF header.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
@@ -16547,15 +16555,15 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [licenseId, key, license]
+                required: [licenseId, license]
                 properties:
                   licenseId: { type: string }
                   delivered:
                     type: object
-                    description: "Present when the request asked for `delivery.email`."
-                    required: [email]
+                    description: "Present when the request asked for `delivery.email` (`email`) or `delivery.invite` (`invite`)."
                     properties:
                       email: { type: string, enum: [sent, queued, failed] }
+                      invite: { type: string, enum: [sent, failed] }
                       reason:
                         type: string
                         enum:
@@ -16566,11 +16574,11 @@ paths:
                             daily_cap,
                             provider_refused,
                           ]
-                        description: "Present when `email` is `failed`."
+                        description: "Present when `email` or `invite` is `failed`."
                   key:
                     {
                       type: string,
-                      description: "`pkey_<slug>_…`, shown once.",
+                      description: "`pkey_<slug>_…`, shown once. Absent when the request sent `key: false`.",
                     }
                   license:
                     oneOf:
@@ -16599,7 +16607,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
-          description: "An unknown tier or profile, a bad `deviceLimit` or `delivery`, `delivery.email` without an email, or a value a signed document cannot carry. A create that names no `tier` lands on the product's Default tier (LX-33.6)."
+          description: "An unknown tier or profile, a bad `deviceLimit`, `delivery` or `key`, `delivery.email` or `delivery.invite` without an email, both together (`reason: email_and_invite`), `key: false` without `delivery.invite` (`reason: key_false_without_invite`), an invitation where Identity is off or auto-link resolves off (`reason: identity_off | auto_link_off`), or a value a signed document cannot carry. A create that names no `tier` lands on the product's Default tier (LX-33.6)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -21628,6 +21636,9 @@ components:
             description: "The licence's own email; `''` when none.",
           }
         status: { type: string, enum: [active, disabled] }
+        invitedAt:
+          type: [integer, "null"]
+          description: "LX-27c: epoch seconds of the last invitation email that went out; `null` when none did."
         endedReason:
           type: [string, "null"]
           enum: [revoked, superseded, refunded, chargeback, null]
@@ -21726,6 +21737,12 @@ components:
           description: "LX-27: how the key reaches the holder. `email: true` mails the first key to the licence's `email` in this request; refused (422) without an email."
           properties:
             email: { type: boolean }
+            invite:
+              type: boolean
+              description: "LX-27c: mails an invitation (a sign-in link, no key) instead; exclusive with `email`; refused (422, `reason`) without an email, with Identity off or with auto-link off."
+        key:
+          type: boolean
+          description: "LX-27c: `false` mints no key; valid only with `delivery.invite`. Default `true`."
     AdminLicensePatch:
       type: object
       properties:
