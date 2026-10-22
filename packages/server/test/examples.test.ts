@@ -58,12 +58,11 @@ function probes(name: string, send: () => Promise<Send>, prefix = "") {
 
     it("lets a licensed, signed-in device through", async () => {
       const s = await send();
-      const jws = await kit.sign({
+      const h = await kit.signedHeaders({
         tier: "pro",
         entitlements: { "export.pdf": true },
         user: { subject: SUBJECT },
       });
-      const h = kit.headers(jws);
       expect(await (await s("GET", `${prefix}/api/export`, h)).json()).toEqual({
         tier: "pro",
       });
@@ -77,9 +76,9 @@ function probes(name: string, send: () => Promise<Send>, prefix = "") {
         tier: "pro",
         signedIn: true,
       });
-      const keyOnly = kit.headers(
-        await kit.sign({ entitlements: { "export.pdf": true } }),
-      );
+      const keyOnly = await kit.signedHeaders({
+        entitlements: { "export.pdf": true },
+      });
       expect((await s("POST", `${prefix}/api/saves`, keyOnly)).status).toBe(
         403,
       );
@@ -101,9 +100,18 @@ probes("examples/server-express", async () => {
 
 probes("examples/server-hono", async () => {
   const { createApp } = await import(join(examples, "server-hono", "app.ts"));
-  const app = createApp(kit.config, options());
+  const app = createApp(kit.options());
   return async (method, path, headers) =>
     app.request(path, { method, headers });
+});
+
+it("examples/server-hono gates /api/team by tier", async () => {
+  const { createApp } = await import(join(examples, "server-hono", "app.ts"));
+  const app = createApp(kit.options());
+  const get = async (headers: Record<string, string>) =>
+    (await app.request("/api/team", { headers })).status;
+  expect(await get(await kit.signedHeaders({ tier: "team" }))).toBe(200);
+  expect(await get(await kit.signedHeaders({ tier: "free" }))).toBe(403);
 });
 
 describe("examples/server-next", () => {
@@ -120,12 +128,11 @@ describe("examples/server-next", () => {
       method: string,
       headers?: Record<string, string>,
     ) => h(new Request("http://localhost/x", { method, headers }), {});
-    const jws = await kit.sign({
+    const h = await kit.signedHeaders({
       tier: "pro",
       entitlements: { "export.pdf": true },
       user: { subject: SUBJECT },
     });
-    const h = kit.headers(jws);
     expect((await call((await route("health")).GET, "GET")).status).toBe(200);
     const exp = (await route("export")).GET;
     expect((await call(exp, "GET")).status).toBe(401);
@@ -134,8 +141,17 @@ describe("examples/server-next", () => {
     expect(await (await call(saves, "POST", h)).json()).toEqual({
       owner: SUBJECT,
     });
-    const keyOnly = kit.headers(await kit.sign({}));
+    const keyOnly = await kit.signedHeaders();
     expect((await call(saves, "POST", keyOnly)).status).toBe(403);
+    const team = (await import(join(examples, "server-next", "middleware.ts")))
+      .middleware as (r: Request) => Promise<Response | undefined>;
+    const at = (headers?: Record<string, string>) =>
+      team(new Request("http://localhost/api/team", { headers }));
+    expect(await at(h)).toBeUndefined();
+    expect((await at(await kit.signedHeaders({ tier: "free" })))?.status).toBe(
+      403,
+    );
+    expect((await at())?.status).toBe(401);
     const who = (await route("whoami")).GET;
     expect(await (await call(who, "GET", h)).json()).toMatchObject({
       licenseId: "lic_test",
