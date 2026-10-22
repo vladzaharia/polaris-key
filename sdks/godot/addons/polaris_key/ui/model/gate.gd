@@ -269,11 +269,12 @@ static func status_screen_view(ctx: RefCounted) -> Dictionary:
 				"tone": "neutral",
 			})
 		"version-too-new":
-			# No fix the kit can reach: it is named in words (DL6), and the heading takes focus.
+			# No fix the kit can reach is named in words (DL6); Try again stays and re-checks.
 			return View.make(ctx, "StatusScreen", {
 				"state": status,
-				"copy": head + [null if range_key == "status.allowedMin" else range_key],
+				"copy": head + [null if range_key == "status.allowedMin" else range_key, "common.tryAgain"],
 				"args": args,
+				"primary": "common.tryAgain",
 				"tone": "neutral",
 			})
 	# "channel-not-entitled": the last blocking status.

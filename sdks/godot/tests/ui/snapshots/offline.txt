@@ -2,12 +2,12 @@
 Card/Scroll/Stack/Head/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Stack/Head/Title: Label "Offline activation"
-Card/Scroll/Stack/Body/Request/SendTitle: Label "1  Send this code"
-Card/Scroll/Stack/Body/Request/RequestText: Label "Send this request code to whoever issues your license."
+Card/Scroll/Stack/Body/Request/SendRow/SendTitle: Label "1"
+Card/Scroll/Stack/Body/Request/SendRow/RequestText: Label "Send this request code to whoever gave you your license."
 Card/Scroll/Stack/Body/Request/CodeField/CodeRow/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
 Card/Scroll/Stack/Body/Request/CodeField/CodeRow/CopyCode: Button "Copy code" [focus 1]
-Card/Scroll/Stack/Body/Import/LoadTitle: Label "2  Load the reply"
-Card/Scroll/Stack/Body/Import/LoadHint: Label "Load the activation file you receive, or paste its text."
+Card/Scroll/Stack/Body/Import/LoadTitleRow/LoadTitle: Label "2"
+Card/Scroll/Stack/Body/Import/LoadTitleRow/LoadHint: Label "Load the activation file you get back, or paste its text."
 Card/Scroll/Stack/Body/Import/LoadRow/LoadFile: Button "Load file…" [focus 2]
 Card/Scroll/Stack/Body/Import/Paste: TextEdit [placeholder "Paste the activation text here", focus 3]
 Card/Scroll/Stack/Body/Import/DropHint: Label "You can also drop the file onto this window."
@@ -17,12 +17,12 @@ Card/Scroll/Stack/Actions/Close: Button "Close" [focus 5]
 Card/Scroll/Stack/Head/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Stack/Head/Title: Label "Offline activation"
-Card/Scroll/Stack/Body/Request/SendTitle: Label "1  Send this code"
-Card/Scroll/Stack/Body/Request/RequestText: Label "Send this request code to whoever issues your license."
+Card/Scroll/Stack/Body/Request/SendRow/SendTitle: Label "1"
+Card/Scroll/Stack/Body/Request/SendRow/RequestText: Label "Send this request code to whoever gave you your license."
 Card/Scroll/Stack/Body/Request/CodeField/CodeRow/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
 Card/Scroll/Stack/Body/Request/CodeField/CodeRow/CopyCode: Button "Copy code" [focus 1]
-Card/Scroll/Stack/Body/Import/LoadTitle: Label "2  Load the reply"
-Card/Scroll/Stack/Body/Import/LoadHint: Label "Load the activation file you receive, or paste its text."
+Card/Scroll/Stack/Body/Import/LoadTitleRow/LoadTitle: Label "2"
+Card/Scroll/Stack/Body/Import/LoadTitleRow/LoadHint: Label "Load the activation file you get back, or paste its text."
 Card/Scroll/Stack/Body/Import/Paste: TextEdit [placeholder "Paste the activation text here", focus 2]
 Card/Scroll/Stack/Actions/Import: Button "Activate" [focus 3]
 Card/Scroll/Stack/Actions/Close: Button "Close" [focus 4]
@@ -30,12 +30,12 @@ Card/Scroll/Stack/Actions/Close: Button "Close" [focus 4]
 Card/Scroll/Stack/Head/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Stack/Head/Title: Label "Offline activation"
-Card/Scroll/Stack/Body/Request/SendTitle: Label "1  Send this code"
-Card/Scroll/Stack/Body/Request/RequestText: Label "Send this request code to whoever issues your license."
+Card/Scroll/Stack/Body/Request/SendRow/SendTitle: Label "1"
+Card/Scroll/Stack/Body/Request/SendRow/RequestText: Label "Send this request code to whoever gave you your license."
 Card/Scroll/Stack/Body/Request/CodeField/CodeRow/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
 Card/Scroll/Stack/Body/Request/CodeField/CodeRow/CopyCode: Button "Copy code" [focus 1]
-Card/Scroll/Stack/Body/Import/LoadTitle: Label "2  Load the reply"
-Card/Scroll/Stack/Body/Import/LoadHint: Label "Load the activation file you receive, or paste its text."
+Card/Scroll/Stack/Body/Import/LoadTitleRow/LoadTitle: Label "2"
+Card/Scroll/Stack/Body/Import/LoadTitleRow/LoadHint: Label "Load the activation file you get back, or paste its text."
 Card/Scroll/Stack/Body/Import/LoadRow/LoadFile: Button "Load file…" [focus 2]
 Card/Scroll/Stack/Body/Import/Paste: TextEdit [placeholder "Paste the activation text here", focus 3]
 Card/Scroll/Stack/Body/Import/DropHint: Label "You can also drop the file onto this window."
