@@ -295,6 +295,8 @@ export interface RegistryRoute {
   readonly ecosystem: RegistryEcosystem;
   /** F-05's PyPI simple route only: may answer the inert `PYPI_HTML_TYPE` document. */
   readonly inertDocument?: true;
+  /** Set by `feedRoute` for an owner-level list document (see `FeedRouteDef.listDocument`). */
+  readonly listDocument?: true;
   /** The owner and parameters when the route handles `pathname`, else `null`. */
   match(pathname: string): RegistryRouteMatch | null;
   handle(req: Request, ctx: RegistryRouteContext): Promise<Response>;

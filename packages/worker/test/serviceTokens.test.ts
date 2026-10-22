@@ -317,6 +317,52 @@ describe("revoking", () => {
     ).toBe(200);
   });
 
+  it("the view says who revoked a service token and why, from the audit trail", async () => {
+    const one = await (await mintService({ label: "one" })).json();
+    const a = await (await mintService({ label: "a" })).json();
+    const b = await (await mintService({ label: "b" })).json();
+    const live = await (await admin("GET", tokens())).json();
+    expect(
+      live.serviceTokens.every(
+        (t: Loose) => t.revokedBy === null && t.revokeReason === null,
+      ),
+    ).toBe(true);
+    const res = await admin("POST", tokens(`/${one.view.tokenId}/revoke`));
+    expect((await res.json()).view).toMatchObject({
+      status: "revoked",
+      revokedBy: "admin:ada@x.io",
+      revokeReason: "manual",
+    });
+    await admin("POST", tokens("/revoke-all"), {});
+    const listed = (await (await admin("GET", tokens())).json())
+      .serviceTokens as Loose[];
+    const by = (id: string) => listed.find((t) => t.tokenId === id);
+    expect(by(one.view.tokenId)).toMatchObject({
+      revokedBy: "admin:ada@x.io",
+      revokeReason: "manual",
+    });
+    for (const t of [a, b])
+      expect(by(t.view.tokenId)).toMatchObject({
+        status: "revoked",
+        revokedBy: "admin:ada@x.io",
+        revokeReason: "revoke_all",
+      });
+    // A revoked token with no audit row (revoked outside the console) reads null, not a guess.
+    const c = await (await mintService({ label: "c" })).json();
+    await db.run(
+      "UPDATE ci_tokens SET revoked_at = ? WHERE token_id = ?",
+      NOW + 5,
+      c.view.tokenId,
+    );
+    const again = (await (await admin("GET", tokens())).json())
+      .serviceTokens as Loose[];
+    expect(again.find((t) => t.tokenId === c.view.tokenId)).toMatchObject({
+      status: "revoked",
+      revokedBy: null,
+      revokeReason: null,
+    });
+  });
+
   it("a cit_ that is not a packages:read-only token, or not this product's, is 404", async () => {
     const publish = await issueStaticCiToken(env, db, {
       product: OWNER,
