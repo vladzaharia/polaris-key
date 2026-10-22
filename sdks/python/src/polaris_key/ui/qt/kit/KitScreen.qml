@@ -431,6 +431,8 @@ Rectangle {
                             role: modelData.role
                             scale_: root.fs
                             busy: modelData.busy
+                            external: modelData.external
+                            externalNote: spec.externalNote
                             animate: kit.animate
                             Layout.fillWidth: true
                             onClicked: if (!modelData.busy) kit.invoke(modelData.key, modelData.action)
@@ -446,6 +448,8 @@ Rectangle {
                                 text: modelData.text
                                 role: "quiet"
                                 scale_: root.fs
+                                external: modelData.external
+                                externalNote: spec.externalNote
                                 onClicked: kit.invoke(modelData.key, modelData.action)
                             }
                         }

@@ -479,7 +479,7 @@
     "ui.theme": {
       "status": "planned",
       "wp": "UK-09",
-      "note": "Android kit; desktop via UK-10; Android Views is a recipe. Progress: PolarisBranding.PolarisKey with no accent falls back to ink, never the core violet (PresentationThemeTest, BrandingTest); the full theme-row proof still to come."
+      "note": "Android kit; desktop via UK-10; Android Views is a recipe. Progress: the Polaris look is the default and PolarisBranding.None the native preset (BrandingTest); PolarisBranding.PolarisKey with no accent falls back to ink, never the core violet (PresentationThemeTest, BrandingTest); the full theme-row proof still to come."
     },
     "ui.i18n": {
       "status": "planned",

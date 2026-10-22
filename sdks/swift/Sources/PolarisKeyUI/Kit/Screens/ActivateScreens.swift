@@ -172,7 +172,7 @@ struct ActivateActions: View {
                 if screen.line("deviceLimit.noManage") == nil, let onReplaceDevice {
                     KitButton(
                         line: screen.lineOrKey("deviceLimit.title"), kind: .primary,
-                        glyph: "arrow.up.right", action: onReplaceDevice
+                        glyph: PolarisKitGlyph.newWindow, action: onReplaceDevice
                     )
                     .keyboardShortcut(.defaultAction)
                 } else {
@@ -257,7 +257,7 @@ public struct DeviceLimitView: View {
                     if screen.shows("deviceLimit.openBrowser") {
                         KitButton(
                             line: CopyLine("deviceLimit.openBrowser"), kind: .primary,
-                            glyph: "arrow.up.right", action: onOpenBrowser
+                            glyph: PolarisKitGlyph.newWindow, action: onOpenBrowser
                         )
                         .keyboardShortcut(.defaultAction)
                     }

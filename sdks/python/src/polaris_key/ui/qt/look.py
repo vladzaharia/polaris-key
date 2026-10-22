@@ -163,7 +163,7 @@ def _mix(fg: str, alpha: float, bg: str) -> str:
 
 def _on(color: str) -> str:
     """The label for a solid ``color``: white or ink, whichever reads better."""
-    white, ink = "#ffffff", THEMES["dark"]["surface_page"]
+    white, ink = THEMES["dark"]["text_strong"], THEMES["dark"]["surface_page"]
     return white if contrast(color, white) >= contrast(color, ink) else ink
 
 
@@ -252,7 +252,7 @@ def resolve_look(theme: Theme, host: Optional[Host] = None, system_scheme: str =
     if theme.color_scheme in ("dark", "light"):
         scheme = theme.color_scheme
     elif native and _hex(palette.get("window")):
-        scheme = "dark" if _lightness(_hex(palette["window"]) or "#ffffff") < 0.5 else "light"
+        scheme = "dark" if _lightness(_hex(palette["window"]) or THEMES["light"]["surface_raised"]) < 0.5 else "light"
     else:
         scheme = host.os_scheme or (system_scheme if system_scheme in ("dark", "light") else "dark")
     colors: Dict[str, str] = {}

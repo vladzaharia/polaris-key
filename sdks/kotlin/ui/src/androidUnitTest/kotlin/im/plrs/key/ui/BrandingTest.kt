@@ -24,6 +24,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import im.plrs.key.ui.brand.PolarisBrandTokens
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -78,14 +79,13 @@ class BrandingTest {
     private fun marks(): Int = rule.onAllNodesWithContentDescription(PolarisCopy().polarisKeyMark).fetchSemanticsNodes().size
     private fun badges(): Int = rule.onAllNodesWithContentDescription(PolarisCopy().poweredBy).fetchSemanticsNodes().size
 
+    /** UI-KITS.md §1.1: the Polaris look is the default; the native preset is the opt-in. */
     @Test
-    fun defaultsResolveNeutral() {
+    fun defaultsResolveThePolarisLook() {
         var config: PolarisUiConfig? = null
         var body: FontFamily? = null
-        var hostBody: FontFamily? = null
         rule.setContent {
             StockHost(false) {
-                hostBody = MaterialTheme.typography.bodyLarge.fontFamily
                 PolarisTheme {
                     config = PolarisTheme.current
                     body = MaterialTheme.typography.bodyLarge.fontFamily
@@ -94,9 +94,31 @@ class BrandingTest {
         }
         rule.waitForIdle()
         val c = config!!
-        assertEquals(PolarisBranding.None, c.branding)
+        assertEquals(PolarisBranding.PolarisKey, c.branding)
         assertEquals(false, c.showPoweredBy)
         assertNull("no logo unless the host passes one", c.logo)
+        assertNotNull("the brand radius", c.controlShape)
+        assertEquals(PolarisRubik, body)
+    }
+
+    /** The migration line: a host keeps the old native look with `branding = PolarisBranding.None`. */
+    @Test
+    fun theNativePresetStaysAvailableAndInheritsTheHost() {
+        var config: PolarisUiConfig? = null
+        var body: FontFamily? = null
+        var hostBody: FontFamily? = null
+        rule.setContent {
+            StockHost(false) {
+                hostBody = MaterialTheme.typography.bodyLarge.fontFamily
+                PolarisTheme(branding = PolarisBranding.None) {
+                    config = PolarisTheme.current
+                    body = MaterialTheme.typography.bodyLarge.fontFamily
+                }
+            }
+        }
+        rule.waitForIdle()
+        val c = config!!
+        assertEquals(PolarisBranding.None, c.branding)
         assertNull("the host's shapes, not the brand radius", c.controlShape)
         assertEquals("the host's type, not Rubik", hostBody, body)
         assertNotEquals(PolarisRubik, body)
@@ -109,7 +131,7 @@ class BrandingTest {
     fun neutralScreensShowNoBrandDark() = neutralScreensShowNoBrand(dark = true)
 
     private fun neutralScreensShowNoBrand(dark: Boolean) {
-        host(dark) { content -> PolarisTheme(copy = sampleCopy, darkTheme = dark, content = content) }
+        host(dark) { content -> PolarisTheme(branding = PolarisBranding.None, copy = sampleCopy, darkTheme = dark, content = content) }
         for ((name, content) in kitScreens) {
             show(content)
             val leaked = pixels() intersect brandColours
@@ -157,8 +179,8 @@ class BrandingTest {
     fun theAttributionIsIndependentOfBrandingAndNeverOnTheGate() {
         var branding by mutableStateOf(PolarisBranding.None)
         host { content -> PolarisTheme(branding = branding, showPoweredBy = true, copy = sampleCopy, darkTheme = false, content = content) }
-        // UI-KITS.md section 1.6: never on the gate or a message screen.
-        for ((name, content) in kitScreens.filter { it.first != "settings" }) {
+        // UI-KITS.md section 1.6: never on the gate or a message screen (the settings and About panes place it).
+        for ((name, content) in kitScreens.filter { it.first != "settings" && it.first != "about" }) {
             show(content)
             assertEquals("$name draws the attribution", 0, badges())
         }
@@ -184,7 +206,7 @@ class BrandingTest {
         var inside: androidx.compose.material3.ColorScheme? = null
         rule.setContent {
             MaterialTheme(colorScheme = dynamic) {
-                PolarisTheme(copy = sampleCopy) {
+                PolarisTheme(branding = PolarisBranding.None, copy = sampleCopy) {
                     inside = MaterialTheme.colorScheme
                     screen()
                 }

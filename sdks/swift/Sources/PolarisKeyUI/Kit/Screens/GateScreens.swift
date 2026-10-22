@@ -238,7 +238,7 @@ public struct StatusScreenView: View {
                 ForEach(Array(fixes.enumerated()), id: \.element.key) { index, line in
                     KitButton(
                         line: line, kind: index == 0 ? .primary : .secondary,
-                        glyph: line.key == "status.renew" ? "arrow.up.right" : nil
+                        glyph: line.key == "status.renew" ? PolarisKitGlyph.newWindow : nil
                     ) { onFix(line.key) }
                 }
                 // Try again when there is no fix the host can run (version too new lists it): an

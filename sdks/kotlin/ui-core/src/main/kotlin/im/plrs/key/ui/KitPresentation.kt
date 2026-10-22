@@ -81,6 +81,20 @@ public enum class KitAction(public val id: String) {
 
         /** The action taken by a control with [copyKey], when the catalog assigns one. */
         public fun forCopyKey(copyKey: String): KitAction? = byCopyKey[copyKey]
+
+        /** Controls outside the vocabulary's three opening actions that also leave the app. */
+        private val alsoLeaving: Set<String> = setOf(
+            "status.renew", "status.update", "update.appStore", "update.googlePlay", "update.steam",
+            "update.openStore", "paywall.portal", "signin.none.get", "common.manage", "about.licenses",
+            "deviceLimit.title",
+        )
+
+        /** Whether the control with [copyKey] leaves the app, so it carries the new-window glyph (UI-KITS.md 1.5 rule 11). */
+        public fun leavesApp(copyKey: String): Boolean =
+            when (forCopyKey(copyKey)) {
+                openCard, openBrowser, openManageUrl -> true
+                else -> copyKey in alsoLeaving
+            }
     }
 }
 

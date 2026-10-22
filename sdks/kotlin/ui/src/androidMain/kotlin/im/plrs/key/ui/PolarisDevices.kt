@@ -66,6 +66,60 @@ internal val DeviceIcon: ImageVector by lazy {
 }
 
 
+private fun deviceVector(name: String, path: String): ImageVector =
+    ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).addPath(
+        pathData = PathParser().parsePathString(path).toNodes(),
+        fill = SolidColor(androidx.compose.ui.graphics.Color.Black), // polaris-lint: allow-colour (an icon mask; Icon() tints it)
+    ).build()
+
+/** The tablet glyph (Material "Tablet Android", outlined; Apache License 2.0). */
+internal val TabletIcon: ImageVector by lazy {
+    deviceVector("PolarisTablet", "M18,0L6,0C4.34,0 3,1.34 3,3v18c0,1.66 1.34,3 3,3h12c1.66,0 3,-1.34 3,-3L21,3c0,-1.66 -1.34,-3 -3,-3zM14,22h-4v-1h4v1zM19.25,19L4.75,19L4.75,3h14.5v16z")
+}
+
+/** The laptop glyph (Material "Laptop", outlined; Apache License 2.0). */
+internal val LaptopIcon: ImageVector by lazy {
+    deviceVector("PolarisLaptop", "M20,18c1.1,0 1.99,-0.9 1.99,-2L22,6c0,-1.1 -0.9,-2 -2,-2L4,4c-1.1,0 -2,0.9 -2,2v10c0,1.1 0.9,2 2,2L0,18v2h24v-2h-4zM4,6h16v10L4,16L4,6z")
+}
+
+/** The desktop glyph (Material "Desktop Windows", outlined; Apache License 2.0): a tower or a Mac mini sits on a desk. */
+internal val DesktopIcon: ImageVector by lazy {
+    deviceVector("PolarisDesktop", "M21,2L3,2c-1.1,0 -2,0.9 -2,2v12c0,1.1 0.9,2 2,2h7v2L8,20v2h8v-2h-2v-2h7c1.1,0 2,-0.9 2,-2L23,4c0,-1.1 -0.9,-2 -2,-2zM21,16L3,16L3,4h18v12z")
+}
+
+/** The television glyph (Material "Tv", outlined; Apache License 2.0). */
+internal val TvIcon: ImageVector by lazy {
+    deviceVector("PolarisTv", "M21,3L3,3c-1.1,0 -2,0.9 -2,2v12c0,1.1 0.9,2 2,2h5v2h8v-2h5c1.1,0 1.99,-0.9 1.99,-2L23,5c0,-1.1 -0.9,-2 -2,-2zM21,17L3,17L3,5h18v12z")
+}
+
+/** The glyph a device row draws, by form factor (UI-KITS.md 4.3 DeviceLimit item 5). */
+internal enum class DeviceGlyph(val icon: () -> ImageVector) {
+    Phone({ DeviceIcon }),
+    Tablet({ TabletIcon }),
+    Laptop({ LaptopIcon }),
+    Desktop({ DesktopIcon }),
+    Tv({ TvIcon }),
+}
+
+/**
+ * The glyph for a roster device. The Worker's roster reports the OS (`platform`) and no form
+ * factor, so a device other than this one gets what its OS implies: a phone for Android and iOS,
+ * a laptop for the desktop OSes, a television for tvOS and a desktop for the web or an unknown
+ * OS. This device knows its own screen ([own]: "tv", "tablet" or "phone"), and that wins.
+ */
+internal fun deviceGlyph(platform: String?, own: String? = null): DeviceGlyph = when {
+    own == "tv" -> DeviceGlyph.Tv
+    own == "tablet" -> DeviceGlyph.Tablet
+    own == "phone" -> DeviceGlyph.Phone
+    else -> when (platform?.lowercase()) {
+        "android", "ios" -> DeviceGlyph.Phone
+        "ipados" -> DeviceGlyph.Tablet
+        "macos", "windows", "linux" -> DeviceGlyph.Laptop
+        "tvos" -> DeviceGlyph.Tv
+        else -> DeviceGlyph.Desktop
+    }
+}
+
 /** Material's "content paste" glyph: the key field's paste control. */
 internal val PolarisPasteIcon: ImageVector by lazy {
     ImageVector.Builder("PolarisPaste", 24.dp, 24.dp, 24f, 24f).addPath(
@@ -126,12 +180,12 @@ public fun PolarisDevicesScreen(
     val reopened = (failed as? PolarisDeviceActionError.Rename)?.takeIf { renaming == null && ui.busyId == null }
     val renameId = renaming ?: reopened?.deviceId
     // Back closes an open rename or confirm first, as Cancel does (UI-KITS.md DL9).
-    androidx.activity.compose.BackHandler(enabled = renameId != null || removing != null) {
+    val back = polarisBack(enabled = renameId != null || removing != null) {
         if (renameId != null && reopened != null) onDismissError()
         renaming = null
         removing = null
     }
-    PolarisScaffold(modifier = modifier, anchor = PolarisAnchor.Top, contentAlign = TextAlign.Start, navigationIcon = navigationIcon) {
+    PolarisScaffold(modifier = modifier.then(back), anchor = PolarisAnchor.Top, contentAlign = TextAlign.Start, navigationIcon = navigationIcon) {
         PolarisProductHeader()
         PolarisTitle(copy.devicesTitle)
         Spacer(Modifier.height(PolarisSpace.tight))
@@ -207,19 +261,44 @@ internal sealed interface DeviceRowMode {
     data object Confirming : DeviceRowMode
 }
 
+/** What this screen is: "tv", "tablet" or "phone". */
+@Composable
+internal fun ownFormFactor(): String {
+    val wide = androidx.compose.ui.platform.LocalConfiguration.current.smallestScreenWidthDp >= 600
+    return when {
+        isTelevision() -> "tv"
+        wide -> "tablet"
+        else -> "phone"
+    }
+}
+
 /** "This phone", "This tablet" or "This TV" by what the screen is (part.thisDeviceTitle), or the host's own line. */
 @Composable
 internal fun thisDeviceLabel(): String {
     val copy = PolarisTheme.copy
     if (copy.deviceThis != PolarisCopy().deviceThis) return copy.deviceThis
-    val tv = isTelevision()
-    val wide = androidx.compose.ui.platform.LocalConfiguration.current.smallestScreenWidthDp >= 600
-    val formFactor = when {
-        tv -> "tv"
-        wide -> "tablet"
-        else -> "phone"
+    return KitCopy.bundled.format("part.thisDeviceTitle", kitLocale(), mapOf("formFactor" to CopyArgument.Text(ownFormFactor())))
+}
+
+/**
+ * The second line of a device row: "<platform> · last used <when>" (UI-KITS.md 4.3) from what the
+ * roster reports, "Last checked <when>" when it reports no platform, nothing when it reports neither.
+ */
+@Composable
+internal fun deviceMeta(device: DeviceInfo, nowMillis: Long): String? {
+    val copy = PolarisTheme.copy
+    val platform = device.platform?.takeIf { it.isNotBlank() }
+    val seen = device.lastSeenAt ?: device.lastVerifiedAt
+    val ago = seen?.let { copy.ago(((nowMillis - it) / 1000).coerceAtLeast(0)) }
+    return when {
+        platform != null && ago != null -> KitCopy.bundled.format(
+            "devices.meta", kitLocale(),
+            mapOf("platform" to CopyArgument.Text(KitFormat.platformName(platform)), "when" to CopyArgument.Text(ago)),
+        )
+        platform != null -> KitFormat.platformName(platform)
+        device.lastVerifiedAt != null -> copy.format(copy.deviceLastVerified, copy.ago(((nowMillis - device.lastVerifiedAt!!) / 1000).coerceAtLeast(0)))
+        else -> null
     }
-    return KitCopy.bundled.format("part.thisDeviceTitle", kitLocale(), mapOf("formFactor" to CopyArgument.Text(formFactor)))
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -251,8 +330,8 @@ internal fun PolarisDeviceRow(
             modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // The glyph (by form factor once DeviceInfo carries one; the phone until then) on the
-            // highest container, in the strongest text colour, so it clears 3:1 in both themes.
+            // The glyph by form factor (this device's own screen, else its OS) on the highest container,
+            // in the strongest text colour, so it clears 3:1 in both themes.
             Surface(
                 Modifier.size(40.dp),
                 shape = CircleShape,
@@ -260,7 +339,7 @@ internal fun PolarisDeviceRow(
                 contentColor = MaterialTheme.colorScheme.onSurface,
             ) {
                 androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
-                    Icon(DeviceIcon, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Icon(deviceGlyph(device.platform, if (device.current) ownFormFactor() else null).icon(), contentDescription = null, modifier = Modifier.size(20.dp))
                 }
             }
             Spacer(Modifier.width(16.dp))
@@ -274,12 +353,8 @@ internal fun PolarisDeviceRow(
                         }
                     }
                 }
-                device.lastVerifiedAt?.let { at ->
-                    Text(
-                        copy.format(copy.deviceLastVerified, copy.ago(((nowMillis - at) / 1000).coerceAtLeast(0))),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                deviceMeta(device, nowMillis)?.let { meta ->
+                    Text(meta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (!open) {

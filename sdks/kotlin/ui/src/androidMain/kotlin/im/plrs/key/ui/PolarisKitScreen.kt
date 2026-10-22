@@ -124,7 +124,7 @@ private val rowOnlyKeys = setOf(
     "signin.choice.meta", "signin.choice.metaNew", "signin.choice.devices",
 )
 
-private fun isRowFragment(key: String): Boolean =
+internal fun isRowFragment(key: String): Boolean =
     key in rowOnlyKeys || key.startsWith("signin.choice.origin.") || key.startsWith("signin.choice.tag.")
 
 /** The lines whose own sentence reads without the missing name ("{method} sign-in didn't finish"). */
@@ -186,11 +186,39 @@ public fun PolarisKitScreen(
     locale: String = kitLocale(),
     requestCode: String? = null,
     onAction: (KitAction?) -> Unit = {},
+    rows: KitRowData = KitRowData(),
+    onContinue: (String) -> Unit = {},
 ) {
     // The sign-in form and its hand-off (the code, declined, expired) are focused steps: the
     // product header above a start-aligned title.
     val focused = screen.component == KitComponent.signIn || screen.component == KitComponent.signInHandoff
-    KitScreenBody(screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode)
+    // The components with a styled part of their own (UI-KITS.md 4.1) draw it from their rows.
+    val choices = rows.choices
+    when {
+        screen.isHidden -> Unit
+        screen.component == KitComponent.licenseChoice && choices != null && choices.choices.isNotEmpty() && screen.state in LicenseChoiceRowStates ->
+            PolarisLicenseChoice(screen, choices, modifier, onContinue = onContinue, onAction = onAction, catalog = catalog, locale = locale)
+        screen.component == KitComponent.releaseNotes ->
+            PolarisReleaseNotes(screen, rows.releaseNotes, modifier, onRetry = { onAction(KitAction.retry) }, catalog = catalog, locale = locale)
+        // Not available is the message KitScreenBody draws; every other state is the Paywall.
+        screen.component == KitComponent.paywall && screen.state != "not-available" ->
+            PolarisPaywall(screen, rows.features, modifier, onUpgrade = { onAction(null) }, onPortal = { onAction(null) }, onRedeem = { onAction(null) }, onDone = { onAction(null) }, catalog = catalog, locale = locale)
+        screen.component == KitComponent.entitlementGate -> KitEntitlementGate(screen, modifier, catalog, locale) { onAction(null) }
+        else -> KitScreenBody(screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode)
+    }
+}
+
+/** The EntitlementGate state as a screen: nothing while entitled, the locked card, or the loading line. */
+@Composable
+private fun KitEntitlementGate(screen: KitScreen, modifier: Modifier, catalog: KitCopy, locale: String, onUnlock: () -> Unit) {
+    val tier = screen.copy.firstOrNull { it.key == "entitlement.locked" }?.args?.get("tier").let { (it as? CopyArgument.Text)?.value?.takeIf(String::isNotBlank) }
+    when (screen.state) {
+        "entitled" -> Unit
+        "loading" -> PolarisProgressScreen(catalog.format("common.loading", locale), modifier)
+        else -> PolarisScreen(modifier = modifier, showLogo = false) {
+            PolarisEntitlementLocked(tier, onUnlock = onUnlock.takeIf { screen.shows("entitlement.unlock") })
+        }
+    }
 }
 
 /** The components whose screens are centred messages or hero screens, not focused steps. */
@@ -276,9 +304,9 @@ private fun KitScreenBody(
                 val action = KitAction.forCopyKey(line.key)
                 // One primary, then tonal secondaries (a lone action is always the primary, DL4).
                 if (index == 0) {
-                    PolarisPrimaryButton(line.text, onClick = { onAction(action) })
+                    PolarisPrimaryButton(line.text, onClick = { onAction(action) }, external = KitAction.leavesApp(line.key))
                 } else {
-                    PolarisSecondaryButton(line.text, onClick = { onAction(action) })
+                    PolarisSecondaryButton(line.text, onClick = { onAction(action) }, external = KitAction.leavesApp(line.key))
                 }
                 if (index < buttons.lastIndex) Spacer(Modifier.height(PolarisSpace.controls))
             }
@@ -491,7 +519,7 @@ private fun ColumnScope.KitAccountBody(lines: List<KitLine>, text: List<KitLine>
     if (identityRows.isNotEmpty() || manage != null) {
         PolarisSection(title = null) {
             for (row in identityRows) KitRow(row.text)
-            manage?.let { KitRow(it.text + " ↗", onClick = { onAction(KitAction.forCopyKey(it.key)) }) }
+            manage?.let { KitRow(it.text, onClick = { onAction(KitAction.forCopyKey(it.key)) }, external = true) }
         }
         Spacer(Modifier.height(PolarisSpace.controls))
     }
@@ -521,14 +549,15 @@ private fun ColumnScope.KitAccountBody(lines: List<KitLine>, text: List<KitLine>
 
 /** One row of the account pane: the label at the start, 52 dp at least, a 48 dp target when it acts. */
 @Composable
-private fun KitRow(label: String, onClick: (() -> Unit)? = null, danger: Boolean = false) {
+private fun KitRow(label: String, onClick: (() -> Unit)? = null, danger: Boolean = false, external: Boolean = false) {
     val color = if (danger) PolarisTheme.status.danger else MaterialTheme.colorScheme.onSurface
     val base = Modifier.fillMaxWidth().heightIn(min = 52.dp)
     Row(
-        modifier = (if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base).padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = (if (onClick != null) base.clickable(role = Role.Button, onClick = onClick) else base).polarisExternalSemantics(external).padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = color)
+        if (external) PolarisNewWindowGlyph()
     }
 }
 

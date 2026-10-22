@@ -187,6 +187,7 @@ describe("the drift gate covers every kit output", () => {
     "sdks/swift/Sources/PolarisKeyUI/KitTokens.generated.swift",
     "sdks/swift/Tests/PolarisKeyTests/AccentVectors.generated.swift",
     "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisKitTokens.generated.kt",
+    "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisKitGlyphs.generated.kt",
     "sdks/kotlin/ui/src/androidUnitTest/kotlin/im/plrs/key/ui/brand/AccentVectors.generated.kt",
     "sdks/kotlin/ui/src/androidMain/res/font/polaris_rubik_variable.ttf",
     "sdks/kotlin/ui/src/androidMain/res/font/polaris_jetbrains_mono_variable.ttf",

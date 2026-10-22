@@ -90,6 +90,9 @@ Each kit has a tab with its badge. A kit that has not built the theme API says *
   <TabItem label="Compose">
     <KitStatus kit="compose" />
 
+    **The look.** `PolarisTheme` renders the Polaris look by default. `branding = PolarisBranding.None`
+    is the native preset: your `MaterialTheme`, dynamic color included.
+
     **Product presentation (shipped).** `PolarisTheme(presentation = client.presentationSource)`
     fills what the integrator leaves out: `logo` falls back to the verified icon, then the
     monogram; under `PolarisBranding.PolarisKey` the accent falls back to the product's

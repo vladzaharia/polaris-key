@@ -23,7 +23,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /** One distinct (component, state) of the matrix and the inputs of its first row. */
-internal data class MatrixCase(val id: String, val screen: KitScreen) {
+internal data class MatrixCase(val id: String, val screen: KitScreen, val rows: KitRowData = KitRowData(), val inputs: KitInputs? = null, val component: KitComponent? = null) {
     override fun toString(): String = id
 }
 
@@ -34,6 +34,9 @@ internal object MatrixCases {
         val root = requireNotNull(System.getProperty("pkey.repoRoot")) { "pkey.repoRoot is set by :ui's test task" }
         return Json.parseToJsonElement(File(root, "conformance/corpus/v2/ui-matrix.json").readText()) as JsonObject
     }
+
+    /** The case [id] ("licenseChoice-many"): its screen and the row data under its lines. */
+    fun case(id: String): MatrixCase = all.first { it.id == id }
 
     /** The distinct (component, state) cases of the eight component families, first row each. */
     val all: List<MatrixCase> by lazy {
@@ -50,9 +53,12 @@ internal object MatrixCases {
                     val base = defaults[key] as? JsonObject
                     merged[key] = if (key == "capabilities" && base != null && value is JsonObject) JsonObject(base + value) else value
                 }
-                val screen = KitStates.resolve(component, KitInputs.of(merged))
+                val inputs = KitInputs.of(merged)
+                val screen = KitStates.resolve(component, inputs)
                 val id = "${component.name}-${screen.state}"
-                if (!screen.isHidden) seen.putIfAbsent(id, MatrixCase(id, screen))
+                // An entitled gate draws its children, which the matrix does not have: no picture.
+                val draws = !(component == KitComponent.entitlementGate && screen.state == "entitled")
+                if (!screen.isHidden && draws) seen.putIfAbsent(id, MatrixCase(id, screen, KitRowData.from(inputs), inputs, component))
             }
         }
         seen.values.toList()
@@ -87,7 +93,7 @@ class MatrixSnapshotTest(private val dark: Boolean) {
                 // Reduced motion holds the toast's timer full, so the picture is the same on every run.
                 androidx.compose.runtime.CompositionLocalProvider(LocalPolarisReduceMotion provides true) {
                     if (case.id == "signIn-code") PolarisSignInScreen(PolarisSignInUi.Showing(samplePrompt, NOW), showQr = false)
-                    else PolarisKitScreen(case.screen)
+                    else PolarisKitScreen(case.screen, rows = case.rows)
                 }
             }
         }

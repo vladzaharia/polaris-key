@@ -34,7 +34,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -222,6 +227,15 @@ private fun PolarisUpdatePromptCard(
                 content()
             }
             Spacer(Modifier.height(24.dp))
+            // DL9: on a TV the D-pad lands on Later, never on the verb that can open a store, and a
+            // press that arrives as the prompt opens (the one that was heading for the game) is ignored
+            // for 250 ms. A mandatory update has no Later, so its one verb keeps the focus.
+            val laterFirst = window.tv && onLater != null && !ui.mandatory
+            var armed by remember { mutableStateOf(!window.tv) }
+            if (window.tv) LaunchedEffect(Unit) {
+                delay(PolarisPromptInputDelayMs)
+                armed = true
+            }
             PolarisActionGroup(row = window.compactHeight) {
                 // While the download runs the primary queues the restart, so it is never disabled.
                 PolarisPrimaryButton(
@@ -230,14 +244,17 @@ private fun PolarisUpdatePromptCard(
                         downloading -> copy.updateRestartWhenReady
                         else -> copy.updateNow
                     },
-                    onUpdate,
-                    initialFocus = true,
+                    { if (armed) onUpdate() },
+                    initialFocus = !laterFirst,
                 )
-                if (onLater != null && !ui.mandatory) PolarisSecondaryButton(copy.updateLater, onLater)
+                if (onLater != null && !ui.mandatory) PolarisSecondaryButton(copy.updateLater, { if (armed) onLater() }, initialFocus = laterFirst)
             }
         }
     }
 }
+
+/** How long the prompt ignores input after it opens on a TV (UI-KITS.md DL9, §4.3). */
+internal const val PolarisPromptInputDelayMs: Long = 250
 
 /** The container width below which the prompt is a bottom sheet and from which it is a card (UI-KITS.md DL2). */
 internal val PolarisSheetBelow = 560.dp

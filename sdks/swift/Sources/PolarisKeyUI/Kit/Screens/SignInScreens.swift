@@ -208,7 +208,7 @@ public struct SignInView: View {
                 if model.handoff.shows("signin.handoff.openBrowser") {
                     KitButton(
                         line: CopyLine("signin.handoff.openBrowser"), kind: .primary,
-                        glyph: "arrow.up.right"
+                        glyph: PolarisKitGlyph.newWindow
                     ) { model.reopenBrowser() }
                     .keyboardShortcut(.defaultAction)
                 }
@@ -243,7 +243,7 @@ public struct SignInView: View {
                 {
                     KitButton(
                         line: CopyLine("signin.replace.open"), kind: .primary,
-                        glyph: "arrow.up.right"
+                        glyph: PolarisKitGlyph.newWindow
                     ) { openURL(link) }
                     .keyboardShortcut(.defaultAction)
                 }
@@ -277,7 +277,7 @@ public struct SignInView: View {
                 .keyboardShortcut(.defaultAction)
         default:
             KitButton(
-                line: CopyLine("signin.handoff.again"), kind: .primary, glyph: "arrow.up.right"
+                line: CopyLine("signin.handoff.again"), kind: .primary, glyph: PolarisKitGlyph.newWindow
             ) {
                 model.reopenBrowser()
             }
@@ -358,7 +358,7 @@ public struct SignInMethodsView: View {
                     if let email = screen.line("signin.email.continue")
                         ?? screen.line("signin.desktop.continue")
                     {
-                        KitButton(line: email, kind: .primary, glyph: "arrow.up.right") {
+                        KitButton(line: email, kind: .primary, glyph: PolarisKitGlyph.newWindow) {
                             onMethod(email.key)
                         }
                         .keyboardShortcut(.defaultAction)

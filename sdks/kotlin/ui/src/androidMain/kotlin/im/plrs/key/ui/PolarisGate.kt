@@ -90,10 +90,28 @@ public fun PolarisGate(
     signIn: PolarisSignInState? = null,
     onUpdate: (() -> Unit)? = null,
     onRenew: (() -> Unit)? = null,
+    signedInAs: (suspend () -> SignedInAs?)? = null,
     content: @Composable () -> Unit,
 ) {
     val gate by state.gate.collectAsState()
     val activation by state.activation.collectAsState()
+    val locale = kitLocale()
+    // The toast moments the gate owns (UI-KITS.md 4.1): the person is in after a sign-in, a link was copied.
+    var toast by remember { mutableStateOf<PolarisToastSpec?>(null) }
+    val client = LocalPolarisKey.current
+    val signedInState = signIn?.ui?.collectAsState()?.value
+    val usable = gate.license?.status?.let { gateScreen(it) } in setOf(GateScreen.Content, GateScreen.Grace)
+    var announced by remember { mutableStateOf(false) }
+    LaunchedEffect(signedInState == PolarisSignInUi.Done, usable) {
+        if (signedInState != PolarisSignInUi.Done) {
+            announced = false
+        } else if (usable && !announced) {
+            announced = true
+            val who = runCatching { signedInAs?.invoke() ?: client?.let { signedInAsOf(it) } }.getOrNull()
+            toast = PolarisToastSpec(signedInMessage(who, locale), PolarisToastKind.Success)
+        }
+    }
+    val copied = KitCopy.bundled.format("common.copied", locale)
     PolarisGateScreen(
         gate = gate,
         activation = activation,
@@ -106,8 +124,29 @@ public fun PolarisGate(
         signIn = signIn,
         onUpdate = onUpdate,
         onRenew = onRenew,
+        toast = toast,
+        onToastDismiss = { toast = null },
+        onLinkCopied = { toast = PolarisToastSpec(copied, PolarisToastKind.Success) },
         content = content,
     )
+}
+
+/** Who signed in, for the toast: the licence holder's name and the tier's label, either of which may be unknown. */
+public class SignedInAs(public val name: String?, public val tier: String?)
+
+internal suspend fun signedInAsOf(client: im.plrs.key.sdk.PolarisKeyClient): SignedInAs? {
+    val info = client.license.licenseInfo() ?: return null
+    return SignedInAs(info.profile?.name?.takeIf { it.isNotBlank() }, (info.tierLabel ?: info.tier)?.takeIf { it.isNotBlank() })
+}
+
+/** "Signed in as <name> · <Tier> license", or "You're signed in" when the name or the tier is not known. */
+internal fun signedInMessage(who: SignedInAs?, locale: String): String {
+    val catalog = KitCopy.bundled
+    return if (who?.name != null && who.tier != null) {
+        catalog.format("signin.desktop.toast", locale, mapOf("name" to CopyArgument.Text(who.name), "tier" to CopyArgument.Text(who.tier)))
+    } else {
+        catalog.format("signin.return.signedInShort", locale)
+    }
 }
 
 /** Which screen a gate state shows; the key Crossfade animates between. */
@@ -140,6 +179,9 @@ public fun PolarisGateScreen(
     manageAsQr: Boolean = false,
     signIn: PolarisSignInState? = null,
     onUpdate: (() -> Unit)? = null,
+    toast: PolarisToastSpec? = null,
+    onToastDismiss: () -> Unit = {},
+    onLinkCopied: () -> Unit = {},
     content: @Composable () -> Unit = {},
 ) {
     val copy = PolarisTheme.copy
@@ -166,7 +208,8 @@ public fun PolarisGateScreen(
         else -> base
     }
     val startSignIn: (() -> Unit)? = onSignIn ?: signIn?.let { { signingIn = true } }
-    Crossfade(targetState = screen, modifier = modifier, label = "PolarisGate") { shown ->
+    Box(modifier) {
+    Crossfade(targetState = screen, label = "PolarisGate") { shown ->
         when (shown) {
             GateScreen.Loading -> PolarisProgressScreen(copy.gateLoading)
             GateScreen.Content -> content()
@@ -192,6 +235,7 @@ public fun PolarisGateScreen(
                 notice = if (status == LicenseStatus.revoked) copy.gateMessage(LicenseStatus.revoked) else null,
                 manageAsQr = manageAsQr,
                 focusKey = focusKey,
+                onCopied = onLinkCopied,
             )
             GateScreen.SignIn -> if (signIn != null) {
                 PolarisSignIn(
@@ -215,13 +259,13 @@ public fun PolarisGateScreen(
                         // as the Swift kit does; Use another license is always offered. Never Try
                         // again or Reconnect (the matrix pins both).
                         if (onRenew != null) {
-                            PolarisPrimaryButton(text = copy.renew, onClick = onRenew, initialFocus = true)
+                            PolarisPrimaryButton(text = copy.renew, onClick = onRenew, initialFocus = true, external = true)
                             PolarisSecondaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true })
                         } else {
                             PolarisPrimaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true }, initialFocus = true)
                         }
                     } else if (update != null) {
-                        PolarisPrimaryButton(text = copy.updateAction, onClick = update, initialFocus = true)
+                        PolarisPrimaryButton(text = copy.updateAction, onClick = update, initialFocus = true, external = true)
                         PolarisSecondaryButton(copy.retry, onClick = onRetry, busy = gate.refreshing)
                     } else {
                         PolarisPrimaryButton(
@@ -234,6 +278,9 @@ public fun PolarisGateScreen(
                 }
             }
         }
+    }
+    // A toast sits at the foot of whatever is under it, over the product or a gate screen alike.
+    PolarisToastHost(toast, onToastDismiss, Modifier.align(Alignment.BottomCenter))
     }
 }
 
@@ -262,6 +309,7 @@ public fun PolarisActivationScreen(
     manageAsQr: Boolean = false,
     onOpenManage: ((String) -> Unit)? = null,
     focusKey: Boolean = false,
+    onCopied: () -> Unit = {},
 ) {
     val copy = PolarisTheme.copy
     val refused = (ui.error as? PolarisActivationError.Refused)?.result
@@ -286,8 +334,8 @@ public fun PolarisActivationScreen(
     val showKey = onSignIn == null || keyOpen || focusKey || ui.error != null
     // Back has somewhere to go (UI-KITS.md 1.4 Android): from the key path to the Welcome with the
     // draft kept, from the device-limit step to the key. The Welcome itself never consumes it.
-    androidx.activity.compose.BackHandler(enabled = limit == null && onSignIn != null && keyOpen && ui.error == null && !focusKey) { keyOpen = false }
-    androidx.activity.compose.BackHandler(enabled = limit != null && !ui.busy) { onKeyChange(ui.key) }
+    val keyBack = polarisBack(enabled = limit == null && onSignIn != null && keyOpen && ui.error == null && !focusKey) { keyOpen = false }
+    val limitBack = polarisBack(enabled = limit != null && !ui.busy) { onKeyChange(ui.key) }
     val keyField: @Composable () -> Unit = {
         PolarisTextField(
             value = ui.key,
@@ -310,7 +358,7 @@ public fun PolarisActivationScreen(
     var openedByTap by remember { mutableStateOf(false) }
     if (openedByTap) LaunchedEffect(Unit) { runCatching { keyFocus.requestFocus() } }
     PolarisScaffold(
-        modifier = modifier,
+        modifier = modifier.then(keyBack).then(limitBack),
         anchor = if (limit != null) PolarisAnchor.Top else PolarisAnchor.Hero,
         contentAlign = if (limit != null) TextAlign.Start else TextAlign.Center,
         content = {
@@ -398,12 +446,13 @@ public fun PolarisActivationScreen(
                     noBrowser = !opened
                 }
                 // A fix that leaves the app carries the new-window glyph, never an ellipsis (rule 11).
-                val openLabel = copy.openInBrowser + " ↗"
-                if (noBrowser) PolarisSecondaryButton(text = openLabel, onClick = openManage, enabled = !ui.busy) else PolarisPrimaryButton(
+                val openLabel = copy.openInBrowser
+                if (noBrowser) PolarisSecondaryButton(text = openLabel, onClick = openManage, enabled = !ui.busy, external = true) else PolarisPrimaryButton(
                     text = openLabel,
                     onClick = openManage,
                     enabled = !ui.busy,
                     initialFocus = true,
+                    external = true,
                 )
                 Spacer(Modifier.height(PolarisSpace.controls))
                 // Only the validated portal link is ever copied (offeredManageUrl validates it; a host's own value is checked here).
@@ -411,7 +460,10 @@ public fun PolarisActivationScreen(
                     PolarisPrimaryButton(
                         text = copy.signInCopyLink,
                         initialFocus = true,
-                        onClick = { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copy.signInCopyLink, manage))) } },
+                        onClick = {
+                            scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copy.signInCopyLink, manage))) }
+                            onCopied()
+                        },
                     )
                     Spacer(Modifier.height(PolarisSpace.controls))
                 }

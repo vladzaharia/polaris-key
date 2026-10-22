@@ -837,7 +837,7 @@ def _account(view: View, copy: Copy, data: RowData, args: Mapping[str, Any]) -> 
             else copy("status.renew")
         )
         renew = (
-            (RowAction("status.renew", renew_text, "renew", external=True),)
+            (RowAction("status.renew", renew_text, "renew", describe=copy("a11y.externalLink") if "a11y.externalLink" in keys else "", external=True),)
             if acct.get("renew") is True
             else ()
         )

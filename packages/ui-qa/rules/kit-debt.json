@@ -23,31 +23,19 @@
       "kit": "compose",
       "rule": "compose-legacy-icons",
       "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisScreen.kt",
-      "count": 8
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisSettings.kt",
-      "count": 2
+      "count": 7
     },
     {
       "kit": "compose",
       "rule": "compose-legacy-icons",
       "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisUpdate.kt",
-      "count": 6
+      "count": 4
     },
     {
       "kit": "compose",
       "rule": "compose-stock-spinner",
       "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisScreen.kt",
       "count": 1
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-system-alert",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisDevices.kt",
-      "count": 2
     },
     {
       "kit": "godot",

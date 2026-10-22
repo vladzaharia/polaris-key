@@ -26,9 +26,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +50,18 @@ public enum class PolarisToastKind { Info, Success, Warning, Error }
 
 /** One of a toast's at most two actions. */
 public class PolarisToastAction(public val label: String, public val onClick: () -> Unit)
+
+/**
+ * A toast as data, for a host that places [PolarisToast] itself ([PolarisToastHost]) and for the
+ * gate, which places the moments the kit owns (UI-KITS.md 4.1): "Signed in as <name> · <Tier>
+ * license" when sign-in finishes, and "Copied" when a link goes on the clipboard.
+ */
+public class PolarisToastSpec(
+    public val message: String,
+    public val kind: PolarisToastKind = PolarisToastKind.Info,
+    public val detail: String? = null,
+    public val actions: List<PolarisToastAction> = emptyList(),
+)
 
 /** The seconds an info, success or warning toast stays; an error or a progress toast stays until it is answered. */
 public const val POLARIS_TOAST_SECONDS: Int = 6
@@ -102,8 +111,8 @@ public fun PolarisToast(
         label = "PolarisToastTimer",
     )
     val glyph = when (kind) {
-        PolarisToastKind.Warning, PolarisToastKind.Error -> Icons.Filled.Warning
-        else -> Icons.Filled.Info
+        PolarisToastKind.Warning, PolarisToastKind.Error -> PolarisSymbols.Warning
+        else -> PolarisSymbols.Info
     }
     val tint = when (kind) {
         PolarisToastKind.Warning -> status.warning
@@ -174,4 +183,21 @@ private fun BoxScopeToast(modifier: Modifier, content: @Composable () -> Unit) {
             Box(if (card) Modifier.widthIn(max = 420.dp) else Modifier.fillMaxWidth()) { content() }
         }
     }
+}
+
+/**
+ * Places [toast] at the foot of the box it is called in, over whatever is under it, and calls
+ * [onDismiss] when its six seconds end (an error toast stays until an action answers it).
+ */
+@Composable
+public fun PolarisToastHost(toast: PolarisToastSpec?, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    if (toast == null) return
+    PolarisToast(
+        message = toast.message,
+        modifier = modifier,
+        kind = toast.kind,
+        detail = toast.detail,
+        actions = toast.actions,
+        onDismiss = onDismiss,
+    )
 }

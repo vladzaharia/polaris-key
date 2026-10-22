@@ -89,11 +89,6 @@
     {
       "board": "terminal",
       "state": "textual",
-      "text": "About"
-    },
-    {
-      "board": "terminal",
-      "state": "textual",
       "text": "Cloud Sync synced 2 min ago"
     },
     {

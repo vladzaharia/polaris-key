@@ -10,7 +10,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { POWERED_BY } from "@polaris-key/brand";
+import { KIT_GLYPHS, POWERED_BY } from "@polaris-key/brand";
 import { markSvg } from "@polaris-key/brand/svg";
 import type { Copy, UiInput, View } from "@polaris-key/ui-core";
 import {
@@ -215,9 +215,9 @@ export const GLYPHS = {
       cls="glyph"
       d={
         <>
-          <path d="M15 3h6v6" />
-          <path d="M10 14 21 3" />
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+          {KIT_GLYPHS.newWindow.paths.map((d) => (
+            <path key={d} d={d} />
+          ))}
         </>
       }
     />
@@ -510,8 +510,8 @@ export function button(
         <>
           {GLYPHS.external()}
           <span className="visually-hidden">
-            {c.copy.has("a11y.externalLink")
-              ? plain(c, "a11y.externalLink")
+            {c.copy.has(KIT_GLYPHS.newWindow.copyKey)
+              ? plain(c, KIT_GLYPHS.newWindow.copyKey)
               : ""}
           </span>
         </>

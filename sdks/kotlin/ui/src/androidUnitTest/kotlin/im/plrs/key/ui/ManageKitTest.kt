@@ -42,7 +42,7 @@ class ManageKitTest {
     fun theCopy() {
         val copy = PolarisCopy()
         assertEquals("Replace a device", copy.freeDevice)
-        assertEquals("Open in browser ↗", copy.openInBrowserAction)
+        assertEquals("Open in browser", copy.openInBrowser)
         assertEquals("Scan the code to replace a device on your phone.", copy.freeDeviceScan)
     }
 

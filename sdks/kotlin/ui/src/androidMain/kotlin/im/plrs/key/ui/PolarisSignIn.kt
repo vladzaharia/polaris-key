@@ -271,7 +271,7 @@ private fun PolarisCodeView(
         noBrowser = !opened
     }
     // Back cancels the sign-in: the screen always backs out (UI-KITS.md DL9).
-    androidx.activity.compose.BackHandler(onBack = onCancel)
+    val back = polarisBack(onBack = onCancel)
     // TalkBack hears the code once, spelled out, when it first appears.
     val view = LocalView.current
     val spoken = copy.format(copy.signInCodeDescription, spelled(ui.prompt.userCode))
@@ -299,7 +299,7 @@ private fun PolarisCodeView(
         }
     }
     PolarisScaffold(
-        modifier = modifier,
+        modifier = modifier.then(back),
         anchor = PolarisAnchor.Top,
         contentAlign = TextAlign.Start,
         content = {
@@ -351,9 +351,9 @@ private fun PolarisCodeView(
                 if (noBrowser && linkOk) {
                     PolarisPrimaryButton(copy.signInCopyLink, onClick = copyLink, initialFocus = true)
                     Spacer(Modifier.height(PolarisSpace.controls))
-                    PolarisSecondaryButton(copy.signInOpenBrowser, onClick = open)
+                    PolarisSecondaryButton(copy.signInOpenBrowser, onClick = open, external = true)
                 } else {
-                    PolarisPrimaryButton(copy.signInOpenBrowser, onClick = open, initialFocus = true)
+                    PolarisPrimaryButton(copy.signInOpenBrowser, onClick = open, initialFocus = true, external = true)
                 }
                 Spacer(Modifier.height(PolarisSpace.controls))
                 // Paired with the opener, Cancel is the secondary: tonal, never bare text (DL4, rule 10).
