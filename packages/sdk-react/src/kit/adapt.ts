@@ -206,6 +206,17 @@ export function adaptSignIn(
     : patched(view, { copy: union(view.copy, ["common.cancel"]) });
 }
 
+/** An available update offers one verb, Update now, and Later: "Restart when ready" belongs to
+ *  the download in flight (it queues the restart), never to a prompt that has not started one. */
+export function oneVerb(view: View): View {
+  if (view.component !== "UpdatePrompt" || view.state !== "available")
+    return view;
+  if (!view.copy.includes("update.restartWhenReady")) return view;
+  return patched(view, {
+    copy: view.copy.filter((k) => k !== "update.restartWhenReady"),
+  });
+}
+
 /** The web's update prompt: the person downloads the new version (the page cannot install it),
  *  so one Download action and Later, a title that says so, and the installed version without the
  *  size of a download that is not theirs to wait for. */

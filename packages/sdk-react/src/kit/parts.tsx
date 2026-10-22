@@ -161,6 +161,12 @@ export function text(
   return <>{parts}</>;
 }
 
+/** True when the message draws nothing: every argument it names is missing. Its element stays
+ *  (a host and a test find the key), hidden, and never leaves a separator beside it. */
+export function silent(c: KitCtx, key: string): boolean {
+  return !key.startsWith("a11y.") && plain(c, key) === "";
+}
+
 /** A plain string, for an attribute (an aria-label). */
 export function plain(
   c: KitCtx,
@@ -843,6 +849,7 @@ export function titles(
         data-key={first}
         data-size={size}
         tabIndex={-1}
+        hidden={silent(c, first!) || undefined}
       >
         {text(c, first!)}
       </H>
@@ -866,6 +873,7 @@ export function paragraphs(c: KitCtx, keys: string[], cls = "body"): ReactNode {
   return keys.map((k, i) => (
     <p
       key={k}
+      hidden={silent(c, k) || undefined}
       className={i === 0 && cls === "body" ? "lede" : cls}
       data-part={cls === "body" ? (i === 0 ? "lede" : "body") : cls}
       data-key={k}
@@ -923,11 +931,20 @@ export function statusLine(c: KitCtx, keys: string[]): ReactNode {
         </p>
       ))}
       {live.length ? (
-        <p className="status-line" data-part="status" role="status">
+        <p
+          className="status-line"
+          data-part="status"
+          role="status"
+          hidden={live.every((k) => silent(c, k)) || undefined}
+        >
           {live.map((k, i) => (
             <Fragment key={k}>
-              {i ? " · " : ""}
-              <span data-key={k}>{text(c, k)}</span>
+              {!silent(c, k) && live.slice(0, i).some((p) => !silent(c, p))
+                ? " · "
+                : ""}
+              <span data-key={k} hidden={silent(c, k) || undefined}>
+                {text(c, k)}
+              </span>
             </Fragment>
           ))}
         </p>

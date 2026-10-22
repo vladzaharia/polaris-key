@@ -65,6 +65,13 @@ internal fun kitLineRole(key: String): KitLineRole = when {
     else -> KitLineRole.Text
 }
 
+/**
+ * Keys the kit leaves out on purpose, as the React and Swift kits do: no "Or continue with" divider
+ * over the sign-in methods (DL4: it heads a provider list this kit does not draw, and read alone
+ * it ends in "with") and no "Sign in..." link on the sign-in step itself.
+ */
+private val kitLeftOut = setOf("signin.provider.group", "signin.menu.signIn")
+
 private data class KitLine(val key: String, val role: KitLineRole, val text: String)
 
 /**
@@ -81,8 +88,10 @@ public fun PolarisKitScreen(
     locale: String = kitLocale(),
     onAction: (KitAction?) -> Unit = {},
 ) {
-    // The sign-in form is a focused step: the product header above a start-aligned title.
-    KitScreenBody(screen, modifier, catalog, locale, onAction, focused = screen.component == KitComponent.signIn, productName = null)
+    // The sign-in form and its hand-off (the code, declined, expired) are focused steps: the
+    // product header above a start-aligned title.
+    val focused = screen.component == KitComponent.signIn || screen.component == KitComponent.signInHandoff
+    KitScreenBody(screen, modifier, catalog, locale, onAction, focused = focused, productName = null)
 }
 
 @Composable
@@ -97,7 +106,7 @@ private fun KitScreenBody(
 ) {
     if (screen.isHidden) return
     val lines = remember(screen, catalog, locale) {
-        screen.copy.map { line -> KitLine(line.key, kitLineRole(line.key), catalog.format(line, locale)) }
+        screen.copy.filter { it.key !in kitLeftOut }.map { line -> KitLine(line.key, kitLineRole(line.key), catalog.format(line, locale)) }
     }
     val controls = lines.filter { it.role == KitLineRole.Control }
     val announcement = lines.filter { it.role == KitLineRole.Announcement }.joinToString(". ") { it.text }

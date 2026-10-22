@@ -9,7 +9,8 @@
 //     icon at 120 pt; a focused step's header pinned at one inset (8 % of the height, 16 to 88 pt)
 //     so it never moves between steps; the act docked 24 pt above the bottom safe area and riding
 //     above the keyboard;
-//   * iPad portrait and other wide tall windows: one column of about 480 pt, never two panes;
+//   * iPad portrait and other wide tall windows: one column of about 480 pt, never two panes,
+//     a focused step centred vertically (a hero screen keeps its block in the upper quarter);
 //   * at short heights the hero gives way first (DL3): 120 → 72 → the one-line header strip.
 
 import PolarisKeyUICore
@@ -108,6 +109,12 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
                     if hero {
                         Spacer(minLength: style.space(.md))
                             .frame(maxHeight: regular ? geo.size.height * 0.25 : .infinity)
+                    } else if regular {
+                        // A focused step in a tall wide window (an iPad in portrait) settles in
+                        // the middle of it: the header pinned at the top would leave most of the
+                        // screen empty under the act. The top spacer shares the free height with
+                        // the bottom one, so the block is centred and a taller body just grows.
+                        Spacer(minLength: KitArrangement.topInset(height: window.height))
                     } else {
                         Color.clear.frame(height: KitArrangement.topInset(height: window.height))
                     }

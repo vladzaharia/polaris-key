@@ -109,6 +109,9 @@ export function matrixComponentStateFixtures(
     seen.add(id);
     // The corpus paywall rows name the entitlement but not the tier that unlocks it; a render
     // that says "Upgrade to {tier}" needs one, or the line is rightly left out.
+    // The corpus account row's holder is the word "account" and carries no tier or seats; a
+    // render with a person's name, a tier and the seats in use is the signed-in pane as people
+    // see it (the corpus keeps the minimal input for the copy it asserts).
     const input =
       component === "Paywall" &&
       row.input.entitlement !== undefined &&
@@ -117,7 +120,21 @@ export function matrixComponentStateFixtures(
             ...row.input,
             entitlement: { ...row.input.entitlement!, tier: "Pro" },
           }
-        : row.input;
+        : component === "AccountAndLicense" && row.input.account?.signedIn
+          ? {
+              ...row.input,
+              account: {
+                holder: "Mara Fennick",
+                tier: "Pro",
+                devices: { used: 2, limit: 3 },
+                autoUpdate: true,
+                ...row.input.account,
+                ...(row.input.account.holder === "account"
+                  ? { holder: "Mara Fennick" }
+                  : {}),
+              },
+            }
+          : row.input;
     fixtures.push({ id, component, state, input, row: row.name });
   }
   return fixtures;

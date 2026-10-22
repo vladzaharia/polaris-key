@@ -215,11 +215,13 @@ public struct DeviceLimitView: View {
     public var body: some View {
         KitScreenScaffold(header: true) {
             VStack(alignment: .leading, spacing: 6) {
-                KitText(
-                    screen.line("deviceLimit.heading") ?? screen.lineOrKey("deviceLimit.title"),
-                    .title, color: .strong
-                )
-                .accessibilityAddTraits(.isHeader)
+                // The component is titled Replace a device in every kit (UI-KITS DeviceLimit,
+                // owner 2026-10-05); the seat count is the line under it.
+                KitText(screen.lineOrKey("deviceLimit.title"), .title, color: .strong)
+                    .accessibilityAddTraits(.isHeader)
+                if let count = screen.line("deviceLimit.heading") {
+                    KitText(count, .headline, color: .strong)
+                }
                 if let lede = screen.line("deviceLimit.lede") ?? screen.line("deviceLimit.browser")
                 {
                     KitText(lede, .body, color: .default)
