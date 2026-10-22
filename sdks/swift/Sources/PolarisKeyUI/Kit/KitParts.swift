@@ -446,6 +446,8 @@ public struct DeviceRow: View {
                     Text(meta)
                         .font(style.font(.meta))
                         .foregroundStyle(style.palette.textMuted)
+                        // The meta wraps between words and never clips (DL11).
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
                 if selected {
