@@ -51,8 +51,10 @@ export class InMemoryStore implements Store {
   private cache: CacheRecordV3 | null = null;
   private deviceId: string;
 
-  constructor(productSlug = "test") {
-    this.deviceId = deriveDeviceId(productSlug);
+  /** `deviceId` pins the id (a server whose id must outlive its container, `serverClient()`);
+   *  omitted, one is derived from the host. */
+  constructor(productSlug = "test", deviceId?: string) {
+    this.deviceId = deviceId ?? deriveDeviceId(productSlug);
     // Prints whether a token is held, never the token (SP-46).
     printAs(this, () => ({
       deviceId: this.deviceId,

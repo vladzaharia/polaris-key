@@ -467,8 +467,8 @@
       "note": "@polaris-key/server requireSignIn() reads profile.user.subject through client-core licenseUserOf and replays the sign_in_required rows."
     },
     "server.config": {
-      "status": "planned",
-      "wp": "SP-63"
+      "status": "implemented",
+      "note": "serverClient() (packages/sdk-node/src/serverClient.ts): the normal client over an InMemoryStore pinned to PKEY_DEVICE_ID (or a 0600 file on a volume, PKEY_DEVICE_ID_FILE), the key from PKEY_LICENSE_KEY activated at start, devices.reports false (no devices/report, on sync or explicitly) and startRefresh(). test/serverClient.test.ts."
     },
     "server.webhooks": {
       "status": "planned",
