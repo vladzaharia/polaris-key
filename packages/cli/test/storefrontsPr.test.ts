@@ -289,6 +289,52 @@ describe("PR-plane generator rules (A-18i)", () => {
     expect(() => generateCask(split, { app: "../evil.app" })).toThrow(/--app/);
   });
 
+  it("A-20.6: a Windows arm64-only product's winget manifest has no x64 installer", () => {
+    const arm = WINGET_INPUTS.release!.builds.filter((b) => b.arch === "arm64");
+    expect(arm).toHaveLength(1);
+    const files = generateWinget(
+      {
+        ...WINGET_INPUTS,
+        release: { ...WINGET_INPUTS.release!, builds: arm },
+      },
+      WINGET_OPTS,
+    );
+    const installer = parseYaml(files[1]!.content) as {
+      Installers: { Architecture: string }[];
+    };
+    expect(installer.Installers.map((x) => x.Architecture)).toEqual(["arm64"]);
+    expect(files.map((f) => f.content).join("\n")).not.toMatch(
+      /Architecture: x(64|86)|x86_64|x64/,
+    );
+    // Not vacuous: the two-build fixture does carry an x64 installer.
+    const both = parseYaml(
+      generateWinget(WINGET_INPUTS, WINGET_OPTS)[1]!.content,
+    ) as { Installers: { Architecture: string }[] };
+    expect(both.Installers.map((x) => x.Architecture)).toContain("x64");
+  });
+
+  it("A-20.6: a Windows arm64-only product's Scoop manifest has no 64bit key", () => {
+    const feed = SCOOP_INPUTS.scoop as {
+      architecture: Record<string, unknown>;
+    };
+    const armOnly = {
+      ...SCOOP_INPUTS,
+      scoop: { ...feed, architecture: { arm64: feed.architecture.arm64 } },
+    };
+    const file = generateScoop(armOnly);
+    const doc = JSON.parse(file.content) as {
+      architecture: Record<string, unknown>;
+      autoupdate: { architecture: Record<string, unknown> };
+      checkver: { regex?: string };
+    };
+    expect(Object.keys(doc.architecture)).toEqual(["arm64"]);
+    expect(Object.keys(doc.autoupdate.architecture)).toEqual(["arm64"]);
+    expect(file.content).not.toContain("64bit");
+    expect(JSON.stringify(doc.checkver)).not.toContain("hashx");
+    // Not vacuous: the two-build fixture does carry it.
+    expect(generateScoop(SCOOP_INPUTS).content).toContain("64bit");
+  });
+
   it("scoop refuses a feed without a manifest or for another version", () => {
     expect(() => generateScoop({ ...SCOOP_INPUTS, scoop: null })).toThrow(
       /no manifest/,

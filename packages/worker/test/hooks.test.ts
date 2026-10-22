@@ -551,6 +551,7 @@ describe("releaseCatalog (Release)", () => {
       "builds",
       "channelPolicies",
       "channelReleases",
+      "declaredBuilds",
       "deliverables",
       "embeds",
       "embedsOf",

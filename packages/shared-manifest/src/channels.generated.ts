@@ -64,6 +64,8 @@ export interface ChannelEntry {
   /** The wire outlet kind (and, for a package manager, the `direct` subkind). Never a new kind. */
   outlet: { kind: string; subkind?: string };
   platforms: readonly string[];
+  /** Platform -> the CPU arches the channel accepts there; absent means any. */
+  arches?: Readonly<Partial<Record<string, readonly string[]>>>;
   formats: readonly string[];
   deliverableKinds: readonly string[];
   customerAction: ChannelCustomerAction;
@@ -99,6 +101,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "worker",
     outlet: { kind: "app-store" },
     platforms: ["ios", "macos"],
+    arches: { macos: ["universal", "arm64"] },
     formats: ["ipa", "pkg"],
     deliverableKinds: ["app"],
     customerAction: "open-listing",
@@ -140,6 +143,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "worker",
     outlet: { kind: "testflight" },
     platforms: ["ios", "macos"],
+    arches: { macos: ["universal", "arm64"] },
     formats: ["ipa", "pkg"],
     deliverableKinds: ["app"],
     customerAction: "open-listing",
@@ -323,7 +327,7 @@ export const CHANNELS: readonly ChannelEntry[] = [
     plane: "pr",
     outlet: { kind: "winget" },
     platforms: ["windows"],
-    formats: ["msi", "exe", "msix"],
+    formats: ["msi", "exe", "msix", "zip"],
     deliverableKinds: ["app"],
     customerAction: "run-command",
     verbs: ["submit", "status"],

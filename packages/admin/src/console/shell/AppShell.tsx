@@ -13,6 +13,7 @@ import {
   groupOf,
   isPageEnabled,
   isPlatformPage,
+  navFeaturesOf,
   isProductPage,
   pageOf,
   PRODUCT_PAGES,
@@ -52,6 +53,7 @@ import { ShortcutSheet } from "./ShortcutSheet.js";
 import { Sidebar, useNavCollapse } from "./Sidebar.js";
 import {
   MovedPage,
+  ChannelOutOfScopePage,
   NotFoundPage,
   ServiceOffPage,
   UnknownProductPage,
@@ -227,9 +229,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const productQuery = useProduct(slug);
   const products = useProducts();
   const services: ServiceState = productQuery.data?.services ?? null;
-  const features: NavFeatures = productQuery.data
-    ? { packageFeeds: productQuery.data.packageFeeds === true }
-    : null;
+  const features: NavFeatures = navFeaturesOf(productQuery.data);
   const productRef = slug
     ? (me.products.find((p) => p.slug === slug) ?? null)
     : null;
@@ -525,6 +525,10 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                       me={me}
                       knownProduct={knownProduct}
                       services={services}
+                      features={features}
+                      productLoading={
+                        productQuery.isPending || productQuery.isPlaceholderData
+                      }
                       productName={productName ?? routeSlug ?? ""}
                       onOpenPalette={openPalette}
                     />
@@ -677,6 +681,8 @@ function PageContent({
   me,
   knownProduct,
   services,
+  features,
+  productLoading,
   productName,
   onOpenPalette,
 }: {
@@ -684,6 +690,9 @@ function PageContent({
   me: Me;
   knownProduct: boolean;
   services: ServiceState;
+  features: NavFeatures;
+  /** The one-product read is not in yet (the list row may stand in): the channel facts are unknown. */
+  productLoading: boolean;
   productName: string;
   onOpenPalette: (query?: string) => void;
 }): React.ReactElement {
@@ -764,6 +773,24 @@ function PageContent({
         section={section}
         slug={route.slug}
         productName={productName}
+      />
+    );
+  }
+  // A-20.7: a link to a page of a store outside the product's scope says so, not a bare page.
+  const target = PRODUCT_PAGES.find((p) => p.page === route.page);
+  const needs = target?.requires;
+  // Until the product's facts are in (the list row stands in as placeholder data, without them), a
+  // channel page shows its loading state: the real page would flash, with the opposite advice,
+  // and fire its reads.
+  if (needs?.startsWith("channel:") && (features === null || productLoading))
+    return <PageLoading route={route} />;
+  if (needs?.startsWith("channel:") && features?.[needs] === false) {
+    return (
+      <ChannelOutOfScopePage
+        section={section}
+        title={target!.label}
+        slug={route.slug}
+        channel={needs.slice("channel:".length)}
       />
     );
   }

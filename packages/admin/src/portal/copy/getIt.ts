@@ -1,4 +1,5 @@
 import type { PlatformKey } from "../../ui/Glyphs.js";
+import { channelLabel } from "@polaris-key/manifest";
 import { t, type PortalKey } from "../../lib/copy.js";
 
 /**
@@ -43,14 +44,14 @@ export const GET_IT_COPY = Object.defineProperties(
 
 /** The product name the source's own app goes by, for a row's title ("AltStore", "Homebrew"). */
 const SOURCE_NAME: Readonly<Record<string, string>> = {
-  homebrew: "Homebrew",
-  scoop: "Scoop",
-  winget: "winget",
-  altstore: "AltStore",
+  homebrew: channelLabel("homebrew"),
+  scoop: channelLabel("scoop"),
+  winget: channelLabel("winget"),
+  altstore: channelLabel("altstore"),
   sidestore: "SideStore",
-  "altstore-pal": "AltStore PAL",
-  fdroid: "F-Droid",
-  obtainium: "Obtainium",
+  "altstore-pal": channelLabel("altstore-pal"),
+  fdroid: channelLabel("fdroid"),
+  obtainium: channelLabel("obtainium"),
 };
 
 /** A source's name: the app it is added to, else the Worker's label. */

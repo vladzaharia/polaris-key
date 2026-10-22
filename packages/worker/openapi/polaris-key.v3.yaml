@@ -16396,6 +16396,39 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/distribution/channels:
+    get:
+      operationId: getAdminProductChannels
+      tags: [admin]
+      summary: The channels a product can ship through, with delivery and commerce facets
+      description: >
+        A-20.4. The product's `platforms` (from its builds, declared artifacts, an explicit
+        `direct.platforms` and the planned platforms, with the arches and formats seen) and one row
+        per channel it can use: those whose platforms and deliverable kinds it shares, plus any
+        channel with a declared outlet (`attention` includes `out_of_scope` there). `delivery.state`
+        is `not_set_up`, `ready`, `live` or `attention`; `oneClick` says the channel's store
+        credential is already held so setting it up needs no new account step. `commerce` is `null`
+        for a channel with no commerce facet, `not_set_up` or `ready` for a store Commerce sells
+        through (reason `commerce_off` while Commerce is off). Credential facts are booleans and
+        reason codes only: no key id, issuer, credential id or app name. Labels are the catalogue's.
+        Read-only; area `ship`; admin session cookie. The one-product read (`GET /products/{product}`)
+        carries only a compact `channels` (`id`, `label`, `inScope`, `delivery` state, `notUsing`) and `platforms`,
+        for a holder of any area; `oneClick` and `commerce` are on this read alone.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The channels read.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminProductChannels" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   /manage/api/products/{product}/assets/settings/{key}:
     patch:
       operationId: setAdminAssetSetting
@@ -21488,6 +21521,85 @@ components:
           type: integer
           description: Repositories matching `q`, across every page.
         nextCursor: { type: [string, "null"] }
+    AdminProductChannels:
+      type: object
+      required: [product, now, platforms, kinds, channels]
+      properties:
+        product: { type: string }
+        now: { type: integer, description: Epoch seconds. }
+        platforms:
+          type: array
+          items:
+            type: object
+            required: [platform, arches, formats, sources]
+            properties:
+              platform: { type: string }
+              arches: { type: array, items: { type: string } }
+              formats: { type: array, items: { type: string } }
+              sources:
+                type: array
+                items:
+                  { type: string, enum: [builds, declared, outlet, planned] }
+        kinds:
+          type: array
+          description: The deliverable kinds present; empty while Release is off.
+          items: { type: string }
+        channels:
+          type: array
+          items: { $ref: "#/components/schemas/AdminChannel" }
+    AdminChannel:
+      type: object
+      required:
+        [id, label, inScope, declared, oneClick, notUsing, delivery, commerce]
+      properties:
+        id: { type: string, description: The catalogue channel id. }
+        label: { type: string }
+        inScope: { type: boolean }
+        declared:
+          { type: boolean, description: An outlet for the channel is declared. }
+        oneClick: { type: boolean }
+        notUsing: { type: boolean }
+        delivery:
+          type: object
+          required: [state, attention, platforms]
+          properties:
+            state: { type: string, enum: [not_set_up, ready, live, attention] }
+            attention:
+              type: array
+              items:
+                type: object
+                required: [code]
+                properties:
+                  code:
+                    type: string
+                    enum:
+                      [
+                        out_of_scope,
+                        no_fitting_build,
+                        credential_expiring,
+                        credential_missing,
+                      ]
+                  reasons:
+                    type: array
+                    description: With `no_fitting_build`.
+                    items:
+                      { type: string, enum: [format, arch, unknown-format] }
+            platforms:
+              type: array
+              items:
+                type: object
+                required: [platform, arches]
+                properties:
+                  platform: { type: string }
+                  arches: { type: array, items: { type: string } }
+        commerce:
+          type: [object, "null"]
+          required: [state, reason]
+          properties:
+            state: { type: string, enum: [not_set_up, ready] }
+            reason:
+              type: [string, "null"]
+              enum: [no_settings, no_credential, commerce_off, null]
     AdminIntegration:
       type: object
       required: [product, now, snippet, features, server, sightings, verified]

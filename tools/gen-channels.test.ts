@@ -9,7 +9,9 @@ import {
 } from "../packages/shared-protocol/src/distribution.js";
 import { DEFAULT_OUTLET_TRACKS } from "../packages/shared-manifest/src/distribution.js";
 import { OUTLET_SUBKINDS } from "../packages/shared-protocol/src/distribution.js";
+import { RELEASE_ARCHES } from "../packages/shared-manifest/src/index.js";
 import {
+  ARCHES,
   VERBS,
   loadTable,
   renderAll,
@@ -106,6 +108,25 @@ describe("conformance with the wire (no new outlet kinds)", () => {
         ).toContain(p);
   });
 
+  it("arches keys are platforms of the channel and values are RELEASE_ARCHES", () => {
+    expect([...ARCHES]).toEqual([...RELEASE_ARCHES]);
+    for (const c of TABLE.channels)
+      for (const [p, v] of Object.entries(c.arches ?? {})) {
+        expect(c.platforms, `${c.id} ${p}`).toContain(p);
+        for (const a of v)
+          expect(RELEASE_ARCHES as readonly string[]).toContain(a);
+      }
+  });
+
+  it("validateTable rejects a bad arches block", () => {
+    const row = { ...TABLE.channels[1]! };
+    const bad = (arches: unknown) =>
+      validateTable({ channels: [{ ...row, arches }] }).join("\n");
+    expect(bad({ web: ["arm64"] })).toContain("not one of the platforms");
+    expect(bad({ macos: ["sparc"] })).toContain("not an arch");
+    expect(bad({ macos: [] })).toContain("non-empty");
+  });
+
   it("the verb vocabulary is the storefront operations", () => {
     expect([...VERBS]).toEqual([...STOREFRONT_OPS]);
   });
@@ -139,7 +160,9 @@ describe("two-way adapter binding", () => {
         c.outlet.kind,
       );
       if (adapter?.id === c.id) {
-        expect(adapter.label.length).toBeGreaterThan(0);
+        // The declaration modules may import only types from the manifest package (boundaries
+        // test), so an adapter spells its label; it must begin with the catalogue's (the service name may extend it).
+        expect(adapter.label.startsWith(c.label), c.id).toBe(true);
         expect(adapter.credential).toBe(c.storefront.credential);
       }
     }

@@ -283,6 +283,54 @@ describe("@polaris-key/cli", () => {
     expect(validation.out()).toContain("Manifest: valid");
   });
 
+  it("prints outlet_without_build as a warning and still validates (A-20.5)", async () => {
+    const cwd = await tempDir();
+    await initManifest({
+      cwd,
+      slug: "acme",
+      name: "Acme",
+      modules: ["releases"],
+    });
+    await writeFile(
+      path.join(cwd, ".pkey/release.yaml"),
+      JSON.stringify({
+        release: {
+          provider: { type: "github", owner: "acme", repo: "desktop" },
+          binaryName: "acme",
+          deliverables: {
+            app: {
+              kind: "app",
+              artifacts: [
+                {
+                  id: "win",
+                  platform: "windows",
+                  arch: "x86_64",
+                  format: "msi",
+                  match: "Acme-*.msi",
+                },
+              ],
+            },
+          },
+        },
+      }),
+    );
+    await writeFile(
+      path.join(cwd, ".pkey/distribution.yaml"),
+      JSON.stringify({
+        apiVersion: "pkey.dev/v1",
+        outlets: { "app-store": { appleId: "1234567890" } },
+      }),
+    );
+    const validation = capture();
+    const code = await runPkey(["validate"], { cwd, ...validation });
+    const out = validation.out();
+    expect(code).toBe(0);
+    expect(out).toContain("Manifest: valid");
+    expect(out).toContain("warning");
+    expect(out).toContain("distribution/outlets/app-store");
+    expect(out).toContain("ios or macos build");
+  });
+
   it("scaffolds a release-only product that validates and parses", async () => {
     const cwd = await tempDir();
     const io = capture();

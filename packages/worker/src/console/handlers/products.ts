@@ -35,6 +35,7 @@ import {
   stmtRetireOrRevokeKey,
   stmtsActivateKey,
 } from "../../keyTransitions.js";
+import { channelsRead } from "./channels.js";
 import { Catalog } from "@polaris-key/catalog";
 import {
   MAX_WEB_ORIGINS,
@@ -322,8 +323,27 @@ export async function handleProducts(
   const slug = segments[0]!;
   const row = await getProduct(db, slug);
   if (!row) return notFound();
-  if (req.method === "GET")
-    return adminJson({ product: await productView(env, db, row, now) });
+  if (req.method === "GET") {
+    // A-20.4: the channels ride the record, but the shell must never fail on them: a throw leaves
+    // the two fields out (the channels route itself still answers the error). No console logging
+    // in src (R12).
+    let channels: Awaited<ReturnType<typeof channelsRead>> = null;
+    try {
+      channels = await channelsRead(env, db, slug, now);
+    } catch {
+      channels = null;
+    }
+    return adminJson({
+      product: await productView(
+        env,
+        db,
+        row,
+        now,
+        undefined,
+        channels ?? undefined,
+      ),
+    });
+  }
   if (req.method === "PATCH") {
     const body = await readBody(req);
     // F-03: the system product keeps its name (it is the platform's, and the feeds and the

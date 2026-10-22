@@ -24,6 +24,7 @@
  * The selected store is in the URL (`?store=`), as is the apps table's search and sort.
  */
 
+import { channelLabel } from "@polaris-key/manifest";
 import * as React from "react";
 import {
   useQuery,
@@ -114,10 +115,10 @@ const tracksCodec = codecs.oneOf(["0", "1"] as const, "0");
 
 /** A store's name before its connection has loaded. */
 const STORE_NAMES: Record<PlatformStore, string> = {
-  "app-store": "App Store",
-  "google-play": "Google Play",
-  "microsoft-store": "Microsoft Store",
-  steam: "Steam",
+  "app-store": channelLabel("app-store"),
+  "google-play": channelLabel("google-play"),
+  "microsoft-store": channelLabel("microsoft-store"),
+  steam: channelLabel("steam"),
 };
 
 /** Display metadata, in a fixed order, with its label. Never a key: the API sends none. */
@@ -797,7 +798,7 @@ const STORE_VENDORS: Record<PlatformStore, string> = {
   "app-store": "App Store Connect",
   "google-play": "Google",
   "microsoft-store": "Microsoft",
-  steam: "Steam",
+  steam: channelLabel("steam"),
 };
 
 interface ConnectField {
