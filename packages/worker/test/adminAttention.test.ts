@@ -10,6 +10,7 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/platform/env.js";
 import { handleAdmin } from "../src/console/index.js";
 import { listProducts } from "../src/core/products/store.js";
+import { platformReady } from "../src/console/lib/platformReady.js";
 import { attentionAcross } from "../src/console/lib/attention.js";
 import { canSeeProduct } from "../src/console/authz.js";
 import { PRINCIPALS } from "./rbacFixtures.js";
@@ -374,6 +375,75 @@ describe("GET /manage/api/platform/ready", () => {
     );
     expect(row.action?.label).toBe("Connect Steam");
     expect((row.action as { store?: string }).store).toBe("steam");
+  });
+
+  describe("names only the products the caller can see (ST-44b.3)", () => {
+    async function steamOn(...slugs: string[]): Promise<void> {
+      for (const slug of slugs) {
+        await seedProduct(db, slug);
+        await db.run(`UPDATE products SET name = ? WHERE slug = ?`, `Name ${slug}`, slug);
+        await db.run(
+          `INSERT INTO dist_outlets (product, outlet_id, kind, created_at, modified_at)
+            VALUES (?, 'o1', 'steam', ?, ?)`,
+          slug,
+          NOW,
+          NOW,
+        );
+      }
+    }
+    const detail = async (
+      principal: Parameters<typeof platformReady>[3],
+    ): Promise<string> =>
+      (await platformReady(adminEnv(), db, NOW, principal)).rows.find(
+        (r) => r.id === "store-accounts",
+      )!.detail!;
+
+    it("a Platform admin with no product grant gets counts only: no name or slug anywhere", async () => {
+      await steamOn("dice", "roll");
+      const ready = await platformReady(adminEnv(), db, NOW, PRINCIPALS.platformAdmin);
+      const text = JSON.stringify(ready);
+      for (const x of ["dice", "roll", "Name ", "djdl", "acme"])
+        expect(text).not.toContain(x);
+      expect(ready.rows.find((r) => r.id === "store-accounts")!.detail).toBe(
+        "2 other products' Steam uploads need a Steamworks publisher key.",
+      );
+    });
+
+    it("one hidden product is said in the singular", async () => {
+      await steamOn("dice");
+      expect(await detail(PRINCIPALS.platformAdmin)).toBe(
+        "Another product's Steam uploads need a Steamworks publisher key.",
+      );
+    });
+
+    it("a partial grant sees only its own product named, the rest counted", async () => {
+      await steamOn("dice", "roll");
+      const diceAdmin = {
+        memberId: "m-dice",
+        grants: [
+          { role: "platform_admin", scope: "platform", areas: null, source: "grant" },
+          { role: "product_admin", scope: "product:dice", areas: null, source: "grant" },
+        ],
+      } as const;
+      const text = await detail(diceAdmin);
+      expect(text).toBe(
+        "Steam uploads for Name dice and 1 other product need a Steamworks publisher key.",
+      );
+      expect(text).not.toContain("roll");
+    });
+
+    it("a Superadmin's answer names every product, as before", async () => {
+      await steamOn("dice", "roll");
+      expect(await detail(PRINCIPALS.root)).toBe(
+        "Steam uploads for Name dice and Name roll need a Steamworks publisher key.",
+      );
+      const viaRoute = (await get("/api/platform/ready")).json as {
+        rows: { id: string; detail?: string }[];
+      };
+      expect(viaRoute.rows.find((r) => r.id === "store-accounts")!.detail).toBe(
+        "Steam uploads for Name dice and Name roll need a Steamworks publisher key.",
+      );
+    });
   });
 
   it("is the platform's: a product member is refused", async () => {

@@ -220,6 +220,31 @@ export const PLATFORM_ONLY_ME = {
   products: [],
 };
 
+/**
+ * Platform ready as the Worker answers a Platform admin with no product grant (ST-44b.3): the
+ * Stores row counts the products it cannot name.
+ */
+export const PLATFORM_ONLY_READY = {
+  done: 6,
+  total: 7,
+  rows: [
+    { id: "keyring", title: "Keyring configured", done: true },
+    { id: "portal-sessions", title: "Portal sessions isolated", done: true },
+    { id: "console-sign-in", title: "Console sign-in separate", done: true },
+    { id: "background-jobs", title: "Background jobs ticking", done: true },
+    { id: "email-sender", title: "Email sender configured", done: true },
+    { id: "platform-packages", title: "Platform packages set up", done: true },
+    {
+      id: "store-accounts",
+      title: "Stores connected",
+      done: false,
+      detail:
+        "Another product's Steam uploads need a Steamworks publisher key.",
+      action: { label: "Connect Steam", to: "connections", store: "steam" },
+    },
+  ],
+};
+
 /** A member who administers the djdl product only (Cloud Sync Setup's product-role reads). */
 export const PRODUCT_ROLE_ME = {
   ...ME,

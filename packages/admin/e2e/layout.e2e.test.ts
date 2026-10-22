@@ -20,6 +20,7 @@ import {
   LONG_SLUG,
   PACK_ID,
   PLATFORM_ONLY_ME,
+  PLATFORM_ONLY_READY,
   PRODUCT_ROLE_ME,
   PLATFORM_PAUSE_ITEM,
   resolve,
@@ -217,6 +218,7 @@ function cases(): Case[] {
       override: {
         "/manage/api/me": PLATFORM_ONLY_ME,
         "/manage/api/products": { products: [] },
+        "/manage/api/platform/ready": PLATFORM_ONLY_READY,
         "/manage/api/attention": { items: [PLATFORM_PAUSE_ITEM] },
         "/manage/api/platform/settings": pausedPlatformSettings(),
       },
