@@ -71,7 +71,7 @@ export function RoleTag({
     <span
       data-role-tag={role.role}
       className={cn(
-        "inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-md border border-border bg-surface-sunken px-2 py-0.5 text-xs font-medium text-fg-strong",
+        "inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-surface-sunken px-2 py-0.5 text-xs font-medium text-fg-strong",
         className,
       )}
     >
@@ -113,9 +113,12 @@ function AreaList({ areas }: { areas: readonly AreaId[] }): React.ReactElement {
 export function RoleSet({
   role,
   productName,
+  tagClassName = "max-w-[min(24rem,100%)]",
 }: {
   role: RoleLike;
   productName: (slug: string) => string;
+  /** How far the tag may grow before its name is cut (a table cell asks for less). */
+  tagClassName?: string;
 }): React.ReactElement {
   const areas = role.role === "product_admin" ? role.areas : null;
   return (
@@ -123,11 +126,7 @@ export function RoleSet({
       data-role-set
       className="inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 max-sm:flex-col max-sm:flex-nowrap max-sm:items-start"
     >
-      <RoleTag
-        role={role}
-        productName={productName}
-        className="max-w-[min(24rem,100%)]"
-      />
+      <RoleTag role={role} productName={productName} className={tagClassName} />
       {areas && areas.length > 0 ? <AreaList areas={areas} /> : null}
     </span>
   );
@@ -148,6 +147,7 @@ export function RoleTags({
           key={`${r.role}:${r.scope}:${i}`}
           role={r}
           productName={productName}
+          tagClassName="max-w-[13rem]"
         />
       ))}
     </span>
