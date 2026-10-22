@@ -635,7 +635,7 @@ describe("the settings API refuses what the registry refuses", () => {
     });
     expect(write.status).toBe(409);
     expect(write.json.reason).toBe("pending_setting");
-    for (const key of ["license.defaults.deviceLimit", "nope.missing"]) {
+    for (const key of ["license.tiers", "nope.missing"]) {
       const res = await call(ctx, "PATCH", key, {
         value: 1,
         expectedVersion: 0,

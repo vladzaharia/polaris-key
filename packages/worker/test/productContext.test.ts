@@ -74,7 +74,7 @@ const productReads = (sql: string[]) =>
 describe("request-scoped product context", () => {
   it("reads the product row once for a product-scoped request", async () => {
     for (const path of [
-      "/api/products/alpha/trust-policy",
+      "/api/products/alpha/settings/core.trustPolicy",
       "/api/products/alpha/users",
     ]) {
       const s = spy(db);

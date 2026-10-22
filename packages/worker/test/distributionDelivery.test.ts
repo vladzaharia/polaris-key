@@ -173,6 +173,57 @@ async function admin(
   );
 }
 
+/** The generic settings routes (ST-05b): `distribution.access` is a setting, not a route. */
+async function setting(
+  w: World,
+  method: string,
+  key: string,
+  body?: unknown,
+): Promise<Response> {
+  const { token, session } = await issueSession(
+    w.env,
+    { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
+    NOW,
+  );
+  const full = `/api/products/${SLUG}/settings/${key}`;
+  return handleAdmin(
+    new Request(`${CONSOLE}/manage${full}`, {
+      method,
+      headers: {
+        cookie: `${ADMIN_COOKIE}=${token}`,
+        [CSRF_HEADER]: session.csrf,
+        "content-type": "application/json",
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    }),
+    w.env,
+    w.db,
+    full,
+    { now: NOW },
+  );
+}
+
+const ACCESS_KEY = "distribution.access";
+
+async function accessVersion(w: World): Promise<number> {
+  const read = await setting(w, "GET", ACCESS_KEY);
+  expect(read.status).toBe(200);
+  return ((await read.json()) as { setting: { version: number } }).setting
+    .version;
+}
+
+/** Set one deliverable's delivery access, as the console does: with the version it read. */
+async function putAccess(
+  w: World,
+  entry: Record<string, unknown>,
+  deliverable = "app",
+): Promise<Response> {
+  return setting(w, "PATCH", ACCESS_KEY, {
+    value: { [deliverable]: entry },
+    expectedVersion: await accessVersion(w),
+  });
+}
+
 async function services(
   w: World,
   on: { release: boolean; distribution: boolean },
@@ -374,7 +425,7 @@ async function stableOnlyToken(w: World): Promise<string> {
 
 describe("an operator's `entitled` in dist_access gates every surface the same way", () => {
   async function entitled(w: World): Promise<void> {
-    const res = await admin(w, "PUT", "/access", { mode: "entitled" });
+    const res = await putAccess(w, { mode: "entitled" });
     expect(res.status).toBe(200);
     // Release's old column still says public; nothing reads it.
     expect(
@@ -808,46 +859,50 @@ describe("dist_access", () => {
     expect(await row()).toMatchObject({ mode: "entitled", source: "admin" });
   });
 
-  it("admin: GET shows the app mode, PUT validates and audits, revert only for the app", async () => {
+  it("admin: GET shows the app mode, PATCH validates and audits, revert only for the app", async () => {
     const w = await setup();
-    const view = await admin(w, "GET", "/access");
+    const view = await setting(w, "GET", ACCESS_KEY);
     expect(view.status).toBe(200);
     expect(await view.json()).toMatchObject({
-      modes: ["public", "authenticated", "licensed", "entitled"],
-      app: { deliverableId: "app", mode: "public" },
+      setting: { value: { app: { mode: "public" } } },
     });
-    for (const [body, field] of [
-      [{ mode: "everyone" }, "mode"],
-      [{ mode: "public", deliverable: 7 }, "deliverable"],
-      [{ mode: "public", deliverable: "no-such-pack" }, "deliverable"],
-      [{ mode: "public", entitlement: "has spaces" }, "entitlement"],
+    for (const [value, field] of [
+      [{ app: { mode: "everyone" } }, "mode"],
+      [{ app: "public" }, "mode"],
+      [{ "no-such-pack": { mode: "public" } }, "deliverable"],
+      [{ app: { mode: "public", entitlement: "has spaces" } }, "entitlement"],
+      [{}, "deliverable"],
     ] as Array<[Record<string, unknown>, string]>) {
-      const res = await admin(w, "PUT", "/access", body);
-      expect(res.status, JSON.stringify(body)).toBe(422);
+      const res = await setting(w, "PATCH", ACCESS_KEY, {
+        value,
+        expectedVersion: 0,
+      });
+      expect(res.status, JSON.stringify(value)).toBe(422);
       expect(await res.json()).toMatchObject({ fields: [field] });
     }
-    const put = await admin(w, "PUT", "/access", {
+    const put = await putAccess(w, {
       mode: "licensed",
       entitlement: "supporter",
     });
     expect(put.status).toBe(200);
     expect(await put.json()).toMatchObject({
-      app: { mode: "licensed", source: "admin" },
-      deliverables: [
-        expect.objectContaining({
-          deliverableId: "app",
-          entitlement: "supporter",
-        }),
-      ],
+      setting: {
+        value: {
+          app: { mode: "licensed", source: "admin", entitlement: "supporter" },
+        },
+      },
     });
     const audit = await w.db.all<{ action: string }>(
       "SELECT action FROM audit WHERE product = ? ORDER BY rowid",
       SLUG,
     );
     expect(audit.map((a) => a.action)).toContain("distribution.access.update");
-    const reverted = await admin(w, "POST", "/access/revert", {});
+    const reverted = await setting(w, "DELETE", ACCESS_KEY, {
+      expectedVersion: await accessVersion(w),
+    });
+    expect(reverted.status).toBe(200);
     expect(await reverted.json()).toMatchObject({
-      app: { mode: "licensed", source: "manifest" },
+      setting: { value: { app: { mode: "licensed", source: "manifest" } } },
     });
   });
 
@@ -1058,7 +1113,7 @@ describe("dist_access", () => {
     // A non-public deliverable is never sent to the bytes host: the browser has no device token.
     // The account owns the product, so the refusal says why: nothing here can serve it yet
     // (licensed R2 bytes are PX-W3).
-    await admin(w, "PUT", "/access", { mode: "licensed" });
+    await putAccess(w, { mode: "licensed" });
     const gated = await mint();
     expect(gated.status).toBe(409);
     expect(await gated.json()).toMatchObject({ error: "not_hosted" });

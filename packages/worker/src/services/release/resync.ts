@@ -138,7 +138,7 @@ export function resyncNotes(result: Extract<ResyncResult, { ok: true }>): {
  * Worker is KILLED after those writes (CPU limit, a cancelled webhook), so this is not the
  * guarantee: every writer of an approval input sweeps BEFORE it writes — `applyRepoManifest`, and
  * the console's services and License-policy edits (`console/handlers/servicesAdmin.ts`,
- * `services/license/admin/policy.ts`) — so no revert can be the first thing to look.
+ * `services/license/settingsAdapters.ts`) — so no revert can be the first thing to look.
  */
 export async function resyncRepo(
   env: Env,

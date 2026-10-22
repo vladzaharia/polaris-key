@@ -1933,20 +1933,29 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     });
   }
 
+  // ST-05b: the auto-issue policy is the setting `license.autoIssue`, edited through the generic
+  // settings routes (its adapter sweeps first).
+  const AUTO_ISSUE = "/api/products/acme/settings/license.autoIssue";
+  const AUTO_ISSUE_OFF = {
+    enabled: false,
+    tierId: null,
+    mode: "anonymous",
+    rateLimitPerHour: 10,
+  };
   const KILLED_WIDENINGS: Array<
     [string, string, string, Record<string, unknown> | undefined]
   > = [
     [
       "turning anonymous enrolment off",
       "PATCH",
-      "/api/products/acme/license/policy",
-      { autoIssue: { enabled: false } },
+      AUTO_ISSUE,
+      { value: AUTO_ISSUE_OFF, expectedVersion: 0 },
     ],
     [
       "handing the device policy back to the manifest",
-      "POST",
-      "/api/products/acme/license/policy/revert",
-      undefined,
+      "DELETE",
+      AUTO_ISSUE,
+      { expectedVersion: 0 },
     ],
   ];
   for (const [label, method, path, body] of KILLED_WIDENINGS) {
@@ -1958,8 +1967,10 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
 
       // The push's `setAutoIssuePolicy` committed; the isolate died before the batch and the sweep.
       await w.db.run(
-        "UPDATE products SET auto_issue_json = ? WHERE slug = 'acme'",
+        "UPDATE products SET auto_issue_json = ?, auto_issue_source = ? WHERE slug = 'acme'",
         JSON.stringify({ enabled: true, tierId: "pro", mode: "anonymous" }),
+        // A revert hands back a claimed policy; an edit claims it itself.
+        method === "DELETE" ? "admin" : "manifest",
       );
       const anon = (await loadProduct(w.env, w.db, "acme"))!;
       expect(mintIsPublic(anon)).toBe(true);
@@ -2006,16 +2017,11 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
 
       // Close the mint in the console (the revert above only hands the row back), then check
       // the stranger is refused and stays refused across a clean push.
-      if (path.endsWith("/revert"))
-        await consoleCall(
-          w.env,
-          w.db,
-          "PATCH",
-          "/api/products/acme/license/policy",
-          {
-            autoIssue: { enabled: false },
-          },
-        );
+      if (method === "DELETE")
+        await consoleCall(w.env, w.db, "PATCH", AUTO_ISSUE, {
+          value: AUTO_ISSUE_OFF,
+          expectedVersion: 0,
+        });
       const closed = (await loadProduct(w.env, w.db, "acme"))!;
       expect(mintIsPublic(closed)).toBe(false);
       const strangerMint = async () =>
@@ -2079,12 +2085,8 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     await w.resync([BASE_RECIPE]);
     await approveEdgeMintRecipe(w.db, "acme", "applemusic");
     for (const [method, path, body] of [
-      [
-        "PATCH",
-        "/api/products/acme/license/policy",
-        { autoIssue: { enabled: false } },
-      ],
-      ["POST", "/api/products/acme/license/policy/revert", undefined],
+      ["PATCH", AUTO_ISSUE, { value: AUTO_ISSUE_OFF, expectedVersion: 0 }],
+      ["DELETE", AUTO_ISSUE, { expectedVersion: 1 }],
       [
         "PATCH",
         "/api/products/acme/services",

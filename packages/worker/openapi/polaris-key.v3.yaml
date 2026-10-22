@@ -16876,17 +16876,17 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
-  # ── Product settings (LX-06: the first slice of S-18 §4.7's generic settings API) ──
+  # ── Product settings (S-18 §4.7's generic settings API: LX-06 began it, ST-05b finished it) ──
   /manage/api/products/{product}/settings/effective:
     get:
       operationId: listAdminProductSettings
       tags: [admin]
       summary: The product's row-backed settings, with the value in force and where it came from
       description: >
-        LX-06 (notes/S-18 §4.7). Every live row-backed claimable product setting of the registry
-        (`licensing.*` and `identity.oidc.syncTierOnSignIn` today; ST-05 widens this to every
-        key), optionally limited to one settings-hub `area` (`license.licensing` is License →
-        Settings). Each carries the registry's label, description, value spec and confirm level,
+        Every live product setting of the registry that the generic API serves (S-18 §4.7;
+        ST-05b): the row-backed ones, every column-backed one, and the rich ones with an adapter
+        (`distribution.access`); a secret never. Optionally limited to one settings-hub `area`
+        (`license.licensing` is License → Settings). Each carries the registry's label, description, value spec and confirm level,
         the value in force with its `source` (`default`, `manifest` or `console`), the default
         this product falls back to (`licensing.entitlementModel` is `legacy` for products
         registered before 2026-10-06), what the last applied manifest declares (`manifestValue`,
@@ -17020,15 +17020,48 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
   /manage/api/products/{product}/settings/{key}:
+    get:
+      operationId: getAdminProductSetting
+      tags: [admin]
+      summary: One product setting, with the value in force and where it came from
+      description: >
+        ST-05b. The same entry `…/settings/effective` lists for the key, so the caller can read
+        the `version` a write passes back as `expectedVersion`. A key whose area the caller does
+        not hold on the product answers 403; a key this API does not serve is a `404
+        unknown_setting`. Admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: key, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The setting.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [setting]
+                properties:
+                  setting: { $ref: "#/components/schemas/AdminProductSetting" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: "No such product, or a key this API does not serve (`reason: unknown_setting`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
     patch:
       operationId: updateAdminProductSetting
       tags: [admin]
       summary: Set a product setting in the console, claiming it from the manifest
       description: >
-        LX-06 (notes/S-18 §4.5 model C, §4.7). Validates `value` against the registry entry and
-        stores it as a console row: on a repo-linked product that claims the setting, and every
-        later resync leaves it alone until Revert (audited `setting.claim`; `setting.update` on a
-        product no manifest feeds). A critical setting needs a `reason`. `expectedVersion` is
+        LX-06, ST-05b (notes/S-18 §4.5 model C, §4.7). Validates `value` against the registry entry
+        (and the key's adapter, for a shape the spec cannot check) and stores it: on a repo-linked
+        product that claims the setting, and every later resync leaves it alone until Revert
+        (audited `setting.claim`; `setting.update` on a product no manifest feeds, or the action the
+        key's adapter names). A critical setting needs a `reason`. A change that relaxes a control
+        (the device trust policy) also needs a step-up from the last five minutes, a `reason` and
+        `confirm` set to the key. `distribution.access` takes a map from deliverable id to
+        `{ mode, entitlement? }` and sets the deliverables it names. `expectedVersion` is
         required (the row version the console read, 0 for none; missing is `422
         invalid_expected_version`), and a concurrent change is a `409 version_conflict` carrying
         the current value. `licensing.reanchor: onRefresh` is not a
@@ -17106,6 +17139,13 @@ paths:
               required: [expectedVersion]
               properties:
                 expectedVersion: { type: integer, minimum: 0 }
+                reason:
+                  type: string
+                  maxLength: 500
+                  description: Required, with `confirm` and a step-up, for a reset that relaxes a control.
+                confirm:
+                  type: string
+                  description: The setting's key, typed, for a reset that relaxes a control.
       responses:
         "200":
           description: Reverted; the setting as it now reads.
@@ -21572,8 +21612,8 @@ components:
     AdminProductSetting:
       type: object
       description: >
-        One row-backed product setting (LX-06, `console/handlers/productSettings.ts`): the registry
-        entry's description and the value in force for this product.
+        One product setting (`console/handlers/productSettings.ts`): the registry entry's
+        description and the value in force for this product.
       required:
         [
           key,
@@ -21589,6 +21629,7 @@ components:
           visibleWhen,
           serviceEnabled,
           rbacArea,
+          ownership,
           value,
           source,
           defaultValue,
@@ -21630,6 +21671,10 @@ components:
         rbacArea:
           type: string
           description: The console area a write needs; a member without edit access sees the row read-only.
+        ownership:
+          type: string
+          enum: [operator, manifest, claimable, narrow-only, read-only]
+          description: Who may write it; a `manifest` or `read-only` key is shown, not edited.
         value: {}
         source: { type: string, enum: [default, manifest, console] }
         defaultValue: {}
@@ -21655,6 +21700,9 @@ components:
           type: string
           maxLength: 500
           description: Required for critical settings; stored on the row and in the audit summary.
+        confirm:
+          type: string
+          description: The setting's key, typed, for a change that relaxes a control.
     AdminAssetUsage:
       type: object
       description: "HA-10: `GET /manage/api/products/{product}/assets/usage`."

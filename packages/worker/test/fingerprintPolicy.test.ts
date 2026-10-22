@@ -245,63 +245,86 @@ describe("admin fingerprint policy endpoint", () => {
     });
   }
 
+  const KEY = (key: string) => `/api/products/djdl/settings/${key}`;
+  const read = async (key: string) =>
+    (
+      (await (await call("GET", KEY(key))).json()) as {
+        setting: { value: unknown; source: string; version: number };
+      }
+    ).setting;
+  const write = (key: string, value: unknown, expectedVersion = 0) =>
+    call("PATCH", KEY(key), { value, expectedVersion });
+
   it("reports the manifest-owned defaults for both policies", async () => {
-    const res = await call("GET", "/api/products/djdl/license/policy");
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({
-      policy: { enabled: true, defaultMode: "normal", probes: [] },
-      source: "manifest",
-      // Auto-issue is OFF by default — issuing licenses is never a silent default.
-      autoIssue: {
+    expect(await read("license.fingerprint")).toMatchObject({
+      value: { enabled: true, defaultMode: "normal", probes: [] },
+      source: "default",
+    });
+    // Auto-issue is OFF by default — issuing licenses is never a silent default.
+    expect(await read("license.autoIssue")).toMatchObject({
+      value: {
         enabled: false,
         tierId: null,
         mode: "anonymous",
         rateLimitPerHour: 10,
       },
-      autoIssueSource: "manifest",
+      source: "default",
     });
   });
 
   it("enables auto-issue against a real tier", async () => {
     await seedTier(db, "djdl", "free", {});
-    const res = await call("PATCH", "/api/products/djdl/license/policy", {
-      autoIssue: { enabled: true, tierId: "free", mode: "both" },
+    const res = await write("license.autoIssue", {
+      enabled: true,
+      tierId: "free",
+      mode: "both",
+      rateLimitPerHour: 10,
     });
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({
-      autoIssue: { enabled: true, tierId: "free", mode: "both" },
-      autoIssueSource: "admin",
+    expect(await read("license.autoIssue")).toMatchObject({
+      value: { enabled: true, tierId: "free", mode: "both" },
+      source: "console",
     });
   });
 
   it("refuses to enable auto-issue against a tier that does not exist", async () => {
     // Otherwise enrolment would mint licenses whose entitlements nobody configured.
-    const res = await call("PATCH", "/api/products/djdl/license/policy", {
-      autoIssue: { enabled: true, tierId: "ghost" },
+    const res = await write("license.autoIssue", {
+      enabled: true,
+      tierId: "ghost",
+      mode: "both",
+      rateLimitPerHour: 10,
     });
     expect(res.status).toBe(422);
-    expect(await res.json()).toMatchObject({ fields: ["autoIssue.tierId"] });
+    expect(await res.json()).toMatchObject({ fields: ["tierId"] });
   });
 
   it("refuses to enable auto-issue with no tier at all", async () => {
-    const res = await call("PATCH", "/api/products/djdl/license/policy", {
-      autoIssue: { enabled: true },
+    const res = await write("license.autoIssue", {
+      enabled: true,
+      tierId: null,
+      mode: "both",
+      rateLimitPerHour: 10,
     });
     expect(res.status).toBe(422);
-    expect(await res.json()).toMatchObject({ fields: ["autoIssue.tierId"] });
+    expect(await res.json()).toMatchObject({ fields: ["tierId"] });
   });
 
   it("rejects an unknown auto-issue mode", async () => {
     await seedTier(db, "djdl", "free", {});
-    const res = await call("PATCH", "/api/products/djdl/license/policy", {
-      autoIssue: { enabled: true, tierId: "free", mode: "everyone" },
+    const res = await write("license.autoIssue", {
+      enabled: true,
+      tierId: "free",
+      mode: "everyone",
+      rateLimitPerHour: 10,
     });
     expect(res.status).toBe(422);
-    expect(await res.json()).toMatchObject({ fields: ["autoIssue.mode"] });
+    expect(await res.json()).toMatchObject({ fields: ["mode"] });
   });
 
   it("takes ownership on PATCH so a later resync can't revert it", async () => {
-    const res = await call("PATCH", "/api/products/djdl/license/policy", {
+    const res = await write("license.fingerprint", {
+      enabled: true,
       defaultMode: "strict",
       probes: [
         { id: "rekordbox", label: "rekordbox", macos: "/Applications/x.app" },
@@ -309,8 +332,10 @@ describe("admin fingerprint policy endpoint", () => {
     });
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({
-      source: "admin",
-      policy: { enabled: true, defaultMode: "strict" },
+      setting: {
+        source: "console",
+        value: { enabled: true, defaultMode: "strict" },
+      },
     });
 
     await setFingerprintPolicy(
@@ -320,16 +345,17 @@ describe("admin fingerprint policy endpoint", () => {
       "manifest",
       NOW + 10,
     );
-    const after = await call("GET", "/api/products/djdl/license/policy");
-    expect(await after.json()).toMatchObject({
-      policy: { defaultMode: "strict" },
-      source: "admin",
+    expect(await read("license.fingerprint")).toMatchObject({
+      value: { defaultMode: "strict" },
+      source: "console",
     });
   });
 
   it("rejects an unknown mode with a field list", async () => {
-    const res = await call("PATCH", "/api/products/djdl/license/policy", {
+    const res = await write("license.fingerprint", {
+      enabled: true,
       defaultMode: "paranoid",
+      probes: [],
     });
     expect(res.status).toBe(422);
     expect(await res.json()).toMatchObject({ fields: ["defaultMode"] });
@@ -338,20 +364,42 @@ describe("admin fingerprint policy endpoint", () => {
   it("rejects probes the runtime parser would silently drop", async () => {
     // A probe with no id is discarded by parseFingerprintPolicy; storing it would leave the
     // admin believing they configured something that never runs.
-    const res = await call("PATCH", "/api/products/djdl/license/policy", {
+    const res = await write("license.fingerprint", {
+      enabled: true,
+      defaultMode: "normal",
       probes: [{ label: "no id here" }],
     });
     expect(res.status).toBe(422);
     expect(await res.json()).toMatchObject({ fields: ["probes"] });
   });
 
-  it("hands ownership back on revert", async () => {
-    await call("PATCH", "/api/products/djdl/license/policy", {
-      enabled: false,
+  it("refuses a write without the version it read", async () => {
+    const res = await call("PATCH", KEY("license.fingerprint"), {
+      value: { enabled: false, defaultMode: "off", probes: [] },
     });
-    const res = await call("POST", "/api/products/djdl/license/policy/revert");
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({
+      reason: "expected_version_required",
+    });
+  });
+
+  it("hands ownership back on revert", async () => {
+    await write("license.fingerprint", {
+      enabled: false,
+      defaultMode: "off",
+      probes: [],
+    });
+    const res = await call("DELETE", KEY("license.fingerprint"), {
+      expectedVersion: 0,
+    });
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ source: "manifest" });
+    expect(await res.json()).toMatchObject({ applied: false });
+    // The owner marker is back with the manifest; the value stays until the next resync.
+    expect(
+      await db.first("SELECT fingerprint_policy_source AS s FROM products"),
+    ).toEqual({
+      s: "manifest",
+    });
 
     await setFingerprintPolicy(
       db,
@@ -360,9 +408,8 @@ describe("admin fingerprint policy endpoint", () => {
       "manifest",
       NOW + 20,
     );
-    const after = await call("GET", "/api/products/djdl/license/policy");
-    expect(await after.json()).toMatchObject({
-      policy: { enabled: true, defaultMode: "lenient" },
+    expect(await read("license.fingerprint")).toMatchObject({
+      value: { enabled: true, defaultMode: "lenient" },
     });
   });
 });

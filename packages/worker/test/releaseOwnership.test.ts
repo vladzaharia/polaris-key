@@ -7,14 +7,15 @@
  * operator-only keys that lived inside `artifact_policy_json` were erased with the blob.
  *
  * The fix follows `services_source`: two ownership markers (`products.compat_source`,
- * `release_config.access_source`) that `update/settings` claims and resync's own UPDATE honours,
+ * `release_config.access_source`) that a console write of `update.metadataAccess` or
+ * `release.compatWindow` claims and resync's own UPDATE honours,
  * plus a separate `release_config.operator_policy_json` that no manifest path writes at all.
  * Since P2b-04 the ARTIFACTS mode is Distribution's delivery access, with the same rule on its
- * own marker (`dist_access.source`, claimed through `…/distribution/access`).
+ * own marker (`dist_access.source`, claimed by writing `distribution.access`).
  *
  * Every case here drives the REAL path: `linkRepo` registers the product from a stubbed GitHub,
- * the console API (`handleAdmin`) makes the operator's edit, and `resyncRepo` re-reads a changed
- * `.pkey/` from the same stub.
+ * the console API (`handleAdmin`) makes the operator's edit through the generic settings routes
+ * (ST-05b), and `resyncRepo` re-reads a changed `.pkey/` from the same stub.
  */
 
 import { readFileSync } from "node:fs";
@@ -51,9 +52,11 @@ import { withDefaultHead } from "./githubHead.js";
 const SLUG = "acme";
 const ADMIN_SECRET = "test-admin-session-secret";
 const PLATFORM_GROUP = "platform-admins";
-const SETTINGS = `/api/products/${SLUG}/update/settings`;
-const REVERT = `${SETTINGS}/revert`;
-const ACCESS = `/api/products/${SLUG}/distribution/access`;
+const KEY = (key: string) => `/api/products/${SLUG}/settings/${key}`;
+const ACCESS = "distribution.access";
+const METADATA = "update.metadataAccess";
+const WINDOW = "release.compatWindow";
+const POLICY = "update.operatorPolicy";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BACKFILL_SQL = readFileSync(
@@ -250,6 +253,31 @@ async function call(
   };
 }
 
+interface SettingView {
+  value: unknown;
+  source: string;
+  version: number;
+}
+
+async function read(ctx: Ctx, key: string): Promise<SettingView> {
+  return (await call(ctx, "GET", KEY(key))).json.setting as SettingView;
+}
+
+/** A write of `key` with the version the caller just read, as the console does. */
+async function put(ctx: Ctx, key: string, value: unknown) {
+  return call(ctx, "PATCH", KEY(key), {
+    value,
+    expectedVersion: (await read(ctx, key)).version,
+  });
+}
+
+/** Revert (or reset) `key`, with the version the caller just read. */
+async function revert(ctx: Ctx, key: string) {
+  return call(ctx, "DELETE", KEY(key), {
+    expectedVersion: (await read(ctx, key)).version,
+  });
+}
+
 async function resync(ctx: Ctx, fetchImpl: FetchImpl, at = NOW + 60) {
   const res = await resyncRepo(
     ctx.env,
@@ -272,9 +300,9 @@ describe("operator-owned access modes survive a resync", () => {
 
   it("keeps an `entitled` delivery access after a push whose manifest says public", async () => {
     const ctx = await linked(chainProduct());
-    const put = await call(ctx, "PUT", ACCESS, { mode: "entitled" });
-    expect(put.status).toBe(200);
-    expect(put.json).toMatchObject({
+    const saved = await put(ctx, ACCESS, { app: { mode: "entitled" } });
+    expect(saved.status).toBe(200);
+    expect((saved.json.setting as SettingView).value).toMatchObject({
       app: { mode: "entitled", source: "admin" },
     });
 
@@ -294,13 +322,11 @@ describe("operator-owned access modes survive a resync", () => {
 
   it("keeps an `entitled` metadata mode after a push whose manifest says public", async () => {
     const ctx = await linked(chainProduct());
-    const patched = await call(ctx, "PATCH", SETTINGS, {
-      metadataAccess: "entitled",
-    });
+    const patched = await put(ctx, METADATA, "entitled");
     expect(patched.status).toBe(200);
-    expect(patched.json).toMatchObject({
-      metadataAccess: "entitled",
-      accessSource: "admin",
+    expect(patched.json.setting).toMatchObject({
+      value: "entitled",
+      source: "console",
     });
     await resync(
       ctx,
@@ -316,7 +342,7 @@ describe("operator-owned access modes survive a resync", () => {
 
   it("claims each mode on its own owner: a resync still writes the other", async () => {
     const ctx = await linked(chainProduct());
-    await call(ctx, "PATCH", SETTINGS, { metadataAccess: "licensed" });
+    await put(ctx, METADATA, "licensed");
     await resync(
       ctx,
       pkey(
@@ -336,12 +362,12 @@ describe("operator-owned access modes survive a resync", () => {
 
   it("returns to the manifest after a revert, on the NEXT resync only", async () => {
     const ctx = await linked(chainProduct());
-    await call(ctx, "PUT", ACCESS, { mode: "entitled" });
+    await put(ctx, ACCESS, { app: { mode: "entitled" } });
 
-    const reverted = await call(ctx, "POST", `${ACCESS}/revert`, {});
+    const reverted = await revert(ctx, ACCESS);
     expect(reverted.status).toBe(200);
     // The revert flips the owner and changes nothing else.
-    expect(reverted.json).toMatchObject({
+    expect((reverted.json.setting as SettingView).value).toMatchObject({
       app: { mode: "entitled", source: "manifest" },
     });
 
@@ -358,13 +384,14 @@ describe("operator-owned access modes survive a resync", () => {
     });
   });
 
-  it("refuses artifactsAccess on update/settings by name: it moved to distribution/access", async () => {
+  it("serves no artifacts mode of its own: it is the delivery access", async () => {
     const ctx = await linked(chainProduct());
-    const res = await call(ctx, "PATCH", SETTINGS, {
-      artifactsAccess: "entitled",
+    const res = await call(ctx, "PATCH", KEY("update.artifactsAccess"), {
+      value: "entitled",
+      expectedVersion: 0,
     });
-    expect(res.status).toBe(422);
-    expect(res.json).toMatchObject({ fields: ["artifactsAccess"] });
+    expect(res.status).toBe(404);
+    expect(res.json).toMatchObject({ reason: "unknown_setting" });
     expect(await deliveryAccess(ctx)).toEqual({
       mode: "public",
       source: "manifest",
@@ -375,11 +402,11 @@ describe("operator-owned access modes survive a resync", () => {
 describe("the operator-owned compatibility window survives a resync", () => {
   it("keeps 2.0.0 over a manifest 1.0.0, and follows the manifest again after a revert", async () => {
     const ctx = await linked(productJson("1.0.0"));
-    const patched = await call(ctx, "PATCH", SETTINGS, { compatMin: "2.0.0" });
+    const patched = await put(ctx, WINDOW, { min: "2.0.0", max: "9.0.0" });
     expect(patched.status).toBe(200);
-    expect(patched.json).toMatchObject({
-      compatMin: "2.0.0",
-      compatSource: "admin",
+    expect(patched.json.setting).toMatchObject({
+      value: { min: "2.0.0", max: "9.0.0" },
+      source: "console",
     });
 
     const fetchImpl = pkey(
@@ -391,11 +418,12 @@ describe("the operator-owned compatibility window survives a resync", () => {
     expect(row?.compat_min).toBe("2.0.0");
     expect(row?.compat_source).toBe("admin");
 
-    const reverted = await call(ctx, "POST", REVERT, { fields: ["compat"] });
+    const reverted = await revert(ctx, WINDOW);
     expect(reverted.status).toBe(200);
+    // The window stays as the operator left it until the next resync.
     expect(reverted.json).toMatchObject({
-      compatMin: "2.0.0",
-      compatSource: "manifest",
+      applied: false,
+      setting: { value: { min: "2.0.0" }, source: "manifest" },
     });
 
     await resync(ctx, fetchImpl, NOW + 120);
@@ -406,7 +434,7 @@ describe("the operator-owned compatibility window survives a resync", () => {
 
   it("still rewrites the product's other manifest fields while the window is claimed", async () => {
     const ctx = await linked(productJson("1.0.0"));
-    await call(ctx, "PATCH", SETTINGS, { compatMin: "2.0.0" });
+    await put(ctx, WINDOW, { min: "2.0.0", max: "9.0.0" });
     await resync(
       ctx,
       pkey(
@@ -426,14 +454,13 @@ describe("the operator-owned compatibility window survives a resync", () => {
 describe("the operator-only artifact policy survives a resync", () => {
   it("renders minimumSystemVersion in the appcast after a push, and keeps the signature opt-out", async () => {
     const ctx = await linked();
-    const patched = await call(ctx, "PATCH", SETTINGS, {
+    const patched = await put(ctx, POLICY, {
       minimumSystemVersion: "13.0",
       requireSparkleSignature: false,
     });
     expect(patched.status).toBe(200);
-    expect(patched.json).toMatchObject({
-      minimumSystemVersion: "13.0",
-      requireSparkleSignature: false,
+    expect(patched.json.setting).toMatchObject({
+      value: { minimumSystemVersion: "13.0", requireSparkleSignature: false },
     });
 
     // A push that rewrites the manifest-owned half of the policy.
@@ -477,38 +504,38 @@ describe("the operator-only artifact policy survives a resync", () => {
 
   it("audits the policy change as its own event, naming a disabled signature requirement", async () => {
     const ctx = await linked();
-    await call(ctx, "PATCH", SETTINGS, { requireSparkleSignature: false });
+    await put(ctx, POLICY, { requireSparkleSignature: false });
     const rows = await listAudit(ctx.db, SLUG, { limit: 10 });
     const policy = rows.find((r) => r.action === "release.policy.update");
     expect(policy).toBeDefined();
     expect(JSON.stringify(policy)).toContain(
       "DISABLED the Sparkle signature requirement",
     );
-    expect(rows.map((r) => r.action)).toContain("update.settings.update");
   });
 
-  it("clears minimumSystemVersion with null and refuses a malformed one", async () => {
+  it("resets the policy to its defaults and refuses a malformed one", async () => {
     const ctx = await linked();
-    await call(ctx, "PATCH", SETTINGS, { minimumSystemVersion: "13.0" });
-    for (const [body, field] of [
+    await put(ctx, POLICY, { minimumSystemVersion: "13.0" });
+    for (const [value, field] of [
       [{ minimumSystemVersion: "thirteen" }, "minimumSystemVersion"],
       [{ minimumSystemVersion: "13.0.0.1" }, "minimumSystemVersion"],
       [{ minimumSystemVersion: 13 }, "minimumSystemVersion"],
       [{ requireSparkleSignature: "no" }, "requireSparkleSignature"],
     ] as Array<[Record<string, unknown>, string]>) {
-      const res = await call(ctx, "PATCH", SETTINGS, body);
+      const res = await put(ctx, POLICY, value);
       expect(res.status).toBe(422);
       expect(res.json).toMatchObject({ fields: [field] });
     }
     // Nothing was written on the way to any refusal.
-    expect((await call(ctx, "GET", SETTINGS)).json.minimumSystemVersion).toBe(
-      "13.0",
-    );
-
-    const cleared = await call(ctx, "PATCH", SETTINGS, {
-      minimumSystemVersion: null,
+    expect((await read(ctx, POLICY)).value).toMatchObject({
+      minimumSystemVersion: "13.0",
     });
-    expect(cleared.json).toMatchObject({ minimumSystemVersion: null });
+
+    const cleared = await revert(ctx, POLICY);
+    expect(cleared.status).toBe(200);
+    expect((cleared.json.setting as SettingView).value).toEqual({
+      requireSparkleSignature: true,
+    });
     expect((await getReleaseConfig(ctx.db, SLUG))?.operator_policy_json).toBe(
       null,
     );
@@ -549,54 +576,48 @@ describe("a product no operator has touched", () => {
     });
     // And the operator half stays on its fail-safe defaults.
     expect(cfg?.operator_policy_json ?? null).toBe(null);
-    expect((await call(ctx, "GET", SETTINGS)).json).toMatchObject({
-      requireSparkleSignature: true,
-      minimumSystemVersion: null,
-      accessSource: "manifest",
-      compatSource: "manifest",
+    expect(await read(ctx, POLICY)).toMatchObject({
+      value: { requireSparkleSignature: true },
     });
+    expect(await read(ctx, METADATA)).toMatchObject({ source: "manifest" });
+    expect(await read(ctx, WINDOW)).toMatchObject({ source: "manifest" });
   });
 });
 
-describe("update/settings/revert", () => {
-  it("refuses an empty, unknown or non-array field list", async () => {
+describe("reverting the update settings", () => {
+  it("refuses a revert without the version it read", async () => {
     const ctx = await linked();
-    for (const body of [
-      {},
-      { fields: [] },
-      { fields: ["channels"] },
-      { fields: "access" },
-      { fields: ["access", 7] },
-    ]) {
-      const res = await call(ctx, "POST", REVERT, body);
-      expect(res.status).toBe(422);
-      expect(res.json).toMatchObject({ fields: ["fields"] });
+    await put(ctx, METADATA, "entitled");
+    const res = await call(ctx, "DELETE", KEY(METADATA), {});
+    expect(res.status).toBe(422);
+    expect(res.json).toMatchObject({ reason: "expected_version_required" });
+  });
+
+  it("refuses to revert what is not claimed", async () => {
+    const ctx = await linked();
+    const res = await revert(ctx, METADATA);
+    expect(res.status).toBe(409);
+    expect(res.json).toMatchObject({ reason: "not_claimed" });
+  });
+
+  it("reverts both blocks and audits each", async () => {
+    const ctx = await linked();
+    await put(ctx, METADATA, "entitled");
+    await put(ctx, WINDOW, { min: "1.0.0", max: "8.0.0" });
+    for (const key of [WINDOW, METADATA]) {
+      const res = await revert(ctx, key);
+      expect(res.status).toBe(200);
+      expect((res.json.setting as SettingView).source).toBe("manifest");
     }
-  });
-
-  it("refuses the wrong method", async () => {
-    const ctx = await linked();
-    expect((await call(ctx, "GET", REVERT)).status).toBe(405);
-  });
-
-  it("reverts both blocks at once and audits it", async () => {
-    const ctx = await linked();
-    await call(ctx, "PATCH", SETTINGS, {
-      metadataAccess: "entitled",
-      compatMax: "8.0.0",
-    });
-    const res = await call(ctx, "POST", REVERT, {
-      fields: ["compat", "access"],
-    });
-    expect(res.status).toBe(200);
-    expect(res.json).toMatchObject({
-      accessSource: "manifest",
-      compatSource: "manifest",
-      metadataAccess: "entitled",
-      compatMax: "8.0.0",
+    // The values stay as the operator left them until the next resync.
+    expect(await read(ctx, METADATA)).toMatchObject({ value: "entitled" });
+    expect(await read(ctx, WINDOW)).toMatchObject({
+      value: { max: "8.0.0" },
     });
     const rows = await listAudit(ctx.db, SLUG, { limit: 10 });
-    expect(rows.map((r) => r.action)).toContain("update.settings.revert");
+    expect(
+      rows.filter((r) => r.action === "update.settings.revert"),
+    ).toHaveLength(2);
   });
 });
 
