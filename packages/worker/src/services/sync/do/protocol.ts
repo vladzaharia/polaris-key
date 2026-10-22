@@ -36,6 +36,8 @@ export type CloudSyncOp =
       deviceId: string;
       /** The device row's platform family; the object answers 400 without one (SR-1 N1). */
       family: string;
+      /** The device row's own platform (never the request body); the object records it only if it is in the closed set. */
+      platform?: string;
       /** The Worker always sends its limits; the object answers 400 without them (SR-1 N1). */
       /** The tier the quota came from, for the directory (U-05.9); absent until U-05.10 sends it. */
       tierId?: string;

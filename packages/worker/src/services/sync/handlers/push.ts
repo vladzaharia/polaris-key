@@ -256,6 +256,7 @@ async function pushInner(
         op: "push",
         deviceId: current.device.device_id,
         family: current.family,
+        ...(current.platform !== null ? { platform: current.platform } : {}),
         ...(access.tierId !== null ? { tierId: access.tierId } : {}),
         limits: {
           quotaBytes: access.quota.bytes,

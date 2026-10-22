@@ -52,6 +52,7 @@ const pushTo = (pin: { product: string; subject: string }, key: string) =>
     op: "push",
     deviceId: "d1",
     family: "desktop",
+    platform: "macos",
     limits: { quotaBytes: 1_000_000 },
     request: { clientId: C1, cursor: 0, mutations: [set(1, key, "dark")] },
     classified: [LAST_WRITE],
@@ -337,7 +338,7 @@ describe("directory flush alarm under workerd (U-05.9)", () => {
     });
     expect(await rowOf(pin)).toMatchObject({
       settings: 1,
-      platform: "desktop",
+      platform: "macos",
     });
     const daily = await env.DB.prepare(
       "SELECT syncs FROM sync_product_daily WHERE product = ?",

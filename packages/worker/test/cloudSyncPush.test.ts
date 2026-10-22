@@ -516,6 +516,28 @@ describe("POST /<p>/sync/ops: quota and the product ceiling", () => {
     });
   });
 
+  it("sends the device row's own platform, from the row only and only if it is a known one", async () => {
+    for (const [stored, expected] of [
+      ["ios", "ios"],
+      ["Windows 11", undefined],
+    ] as const) {
+      const w = await world();
+      const seen: Record<string, unknown>[] = [];
+      w.env.CLOUD_SYNC = scripted((_n, body) => {
+        seen.push(body);
+        return body.op === "push" ? okPush() : okPull();
+      }).ns;
+      await w.db.run(
+        "UPDATE devices SET platform = ? WHERE product = ?",
+        stored,
+        SLUG,
+      );
+      await push(w, [set("audio.gain", 1)], { platform: "macos" });
+      const sent = seen.find((b) => b.op === "push")!;
+      expect(sent.platform, stored).toBe(expected);
+    }
+  });
+
   it("sends the device's quota and tier from syncAccess, never from the request", async () => {
     const w = await world();
     const seen: Record<string, unknown>[] = [];
@@ -531,6 +553,8 @@ describe("POST /<p>/sync/ops: quota and the product ceiling", () => {
     const sent = seen.find((b) => b.op === "push")!;
     expect(sent.limits).toEqual({ quotaBytes: 5000 });
     expect(sent.family).toBe("desktop");
+    // The directory's platform is the device row's own, never a body field.
+    expect(sent.platform).toBeUndefined();
     expect(sent.deviceId).toBe(DEVICE);
     expect(Object.keys(sent.request as object).sort()).toEqual([
       "clientId",

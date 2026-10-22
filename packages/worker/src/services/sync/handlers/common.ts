@@ -36,7 +36,10 @@ import {
   syncAccess,
   type SyncAccess,
 } from "../../../core/accounts/syncAccess.js";
-import { platformFamily } from "../../../core/devices/platformFamily.js";
+import {
+  knownPlatform,
+  platformFamily,
+} from "../../../core/devices/platformFamily.js";
 import type { CatalogMigrations } from "../engine/types.js";
 import { resolveKey } from "../engine/migrations.js";
 import { CloudSyncDoError } from "../do/client.js";
@@ -46,6 +49,8 @@ export interface SyncCaller {
   access: SyncAccess;
   /** The device row's platform family: the home of its `platform`-scope rows. */
   family: string;
+  /** The device row's own platform, if it is one of the closed set; else null (the directory's "last platform seen"). */
+  platform: string | null;
 }
 
 /** The refusal to send when the device has no Cloud Sync principal (§13.1). */
@@ -92,6 +97,7 @@ export async function authenticateSync(
     device: valid.device,
     access,
     family: platformFamily(valid.device.platform),
+    platform: knownPlatform(valid.device.platform),
   };
 }
 
