@@ -81,6 +81,20 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## Corrections (2026-10-22)
+
+The code is the fact; these replace the matching claims above (slice P0-32.1).
+
+- **B1. Done already by P0-31.** The console client is provider-scoped (`console/data/queryClient.tsx`, `ConsoleQueryProvider`). `context.tsx`, `AdminProvider` and every explicit `queryClient` argument are gone; `useMe` exists. P0-31 is done, so "must not touch the shim files P0-31 deletes" is moot.
+- **B2. Fetch.** Only three call sites: `api.ts:4929` (console `send`), `portal/api.ts:1251` (portal `send`) and the portal's raw `/logout` (`portal/api.ts:1739`, `redirect: "manual"`, no CSRF, any status accepted).
+- **B3. Console reads.** 153 `queryFn` sites in 65 files; about 60 console files call `api.*` outside a data module. Section `data.ts` exists only for config, distribution, feeds, release, storefronts and sync. Duplicate hooks for one key still exist: `useCatalog` (config, distribution), `useProfiles` (license `components/shared.tsx`, config), `useDeliverables` and `useReleaseStore` (release, distribution).
+- **B4. Console writes.** `MUTATIONS` + `mutate`/`mutateEach` and the AST "no write around mutate" test (`test/mutations.test.ts:150-295`) are in place and stay the pattern.
+- **B5. Portal reads and writes.** `portal/data.ts` has 17 reads, 25 `useMutation` hooks, its own `qk` plus the `portalKeys` alias table; `portal/requestData.ts` has 4 reads plus `requestKeys`. 45 direct `portalApi` writes sit in 11 files (`SignInPage`, `signin/{FinishStep,DeviceStep,HintStep,RequestFlow,usePasskeySignIn}`, `account/{StepUp,SignInMethods}`, `LinkAccountsDialog`, `ApproveDeviceDialog`, `App.tsx`), with ad hoc cache calls in 10 files. `StepUp.tsx` invalidates everything. About 49 `portalApi` methods write.
+- **B6. Two error classes.** `ApiError` (`api.ts:4870`, positional constructor): 86 `instanceof` sites, 53 test constructions. `PortalApiError` (`portal/api.ts:1198`, `(status, code)`): 91 `instanceof` sites, 21 constructions. The console tags a network failure `isFetchFailure` (read by `lib/errorCopy.ts:327`); the portal uses status 0, code `network`. Held F-34.8 adds `packageFeeds` to `ApiError` and to `send()`.
+- **B7. Errors on screen.** `ui/ErrorState.tsx` is console-voiced (through `lib/errorCopy`). `ErrorPanel` (`portal/components/States.tsx:22`, voiced by `portal/errors.ts`) is used in 11 portal files. EXPERIENCE.md §3 wants `ErrorState` with "one interface, a portal voice table" and `ErrorPanel` deleted.
+- **B8. Boundary edges P0-32 owns.** `lib/errorCopy.ts -> api.ts` and `ui/form.tsx -> api.ts`. The other five `-> api.ts` edges are type-only and P0-33's. The rule-4 probe test asserts `portalReach().has("lib/errorCopy.ts -> api.ts")`; it is rewritten when the edge goes.
+- **B9. Older-Worker runtime branches.** Console: `core/pages/Settings.tsx:160`, `license/pages/LicenseDelete.tsx:115`, `license/components/shared.tsx:294`, `license/components/holders.tsx:48,287`, `license/pages/LicenseDeviceLimit.tsx:47,162`. Portal: `api.ts` `legacyPath` (:750), `pages/SignInPage.tsx:1364`, `pages/ProductPage.tsx:291`, `model/owned.ts:5`, `model/library.ts:327`, `product/RemoveLicenseDialog.tsx:50`, `account/SignInMethods.tsx:103`. About 30 more are optional-field comments in the two `api.ts` files (P0-33's DTOs replace those mirrors). Held U-05 adds one more (`cloudSyncWrite?`).
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
