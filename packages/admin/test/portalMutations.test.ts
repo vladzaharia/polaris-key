@@ -16,6 +16,8 @@ import {
   bindWriteInvalidation,
   invalidationFor,
   mutate,
+  refreshAfterAccountChange,
+  refreshAfterStepUp,
 } from "../src/portal/mutations.js";
 import { qk } from "../src/portal/queries.js";
 
@@ -208,17 +210,6 @@ describe("no portal write around the table", () => {
   const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
   const PORTAL = join(SRC, "portal");
 
-  /**
-   * Files that still call a `portalApi` write directly, each with the slice that moves it onto
-   * the table (P0-32 B5). The list only shrinks: a new offender fails, and so does a listed file
-   * with none left.
-   */
-  const KNOWN: Record<string, string> = {
-    "components/account/StepUp.tsx": "P0-32.8",
-    "components/account/SignInMethods.tsx": "P0-32.8",
-    "components/LinkAccountsDialog.tsx": "P0-32.8",
-  };
-
   /** The transport and the engine's own file may call writes. `queries.ts` calls
    *  `finishPendingSignIn` inside the session read, which is itself the refresh. */
   const EXEMPT = new Set(["api.ts", "mutations.ts", "queries.ts"]);
@@ -304,18 +295,13 @@ describe("no portal write around the table", () => {
     return out;
   };
 
-  it("every write goes through the table, bar the listed files", () => {
-    const fresh = [...offending()]
-      .filter(([file]) => !(file in KNOWN))
-      .map(([file, f]) => `${file}: ${f.join(", ")}`);
-    expect(fresh, "use useWrite or mutate from portal/mutations.ts").toEqual(
+  it("every write goes through the table, with no exceptions", () => {
+    const found = [...offending()].map(
+      ([file, f]) => `${file}: ${f.join(", ")}`,
+    );
+    expect(found, "use useWrite or mutate from portal/mutations.ts").toEqual(
       [],
     );
-  });
-
-  it("every listed file still has a direct write (delete its entry when it stops)", () => {
-    const found = offending();
-    expect(Object.keys(KNOWN).filter((f) => !found.has(f))).toEqual([]);
   });
 
   it("the scan catches the shapes a regex would miss", () => {
@@ -348,9 +334,72 @@ describe("no portal write around the table", () => {
     );
     try {
       expect(offending().has("__writeProbe__.ts")).toBe(true);
-      expect("__writeProbe__.ts" in KNOWN).toBe(false);
     } finally {
       rmSync(probe, { force: true });
+    }
+  });
+});
+
+describe("after a step-up", () => {
+  const seeded = (client: QueryClient) => {
+    const keys = {
+      me: qk.me(),
+      methods: qk.methods(),
+      sessions: qk.sessions(),
+      link: qk.link(),
+      profile: qk.profile(),
+      library: qk.library(),
+      licenses: qk.licenses(),
+      product: qk.product("djdl"),
+    };
+    for (const key of Object.values(keys)) client.setQueryData(key, {});
+    const stale = () =>
+      Object.entries(keys)
+        .filter(([, key]) => client.getQueryState(key)?.isInvalidated)
+        .map(([name]) => name)
+        .sort();
+    return stale;
+  };
+
+  it("re-reads exactly the methods, sessions, link view and profile", async () => {
+    const client = new QueryClient();
+    const stale = seeded(client);
+    await refreshAfterStepUp(client);
+    expect(stale()).toEqual(["link", "methods", "profile", "sessions"]);
+  });
+
+  it("signing in to another account after all re-reads everything", () => {
+    const client = new QueryClient();
+    const stale = seeded(client);
+    refreshAfterAccountChange(client);
+    expect(stale()).toEqual(
+      [
+        "library",
+        "licenses",
+        "link",
+        "me",
+        "methods",
+        "product",
+        "profile",
+        "sessions",
+      ].sort(),
+    );
+  });
+
+  it("joining accounts and undoing a join refresh the methods, session, profile, library, licences and link view", () => {
+    for (const name of ["linkConfirm", "linkUndo"] as const) {
+      const keys = (invalidationFor(name, ["m1"]) ?? []).map((t) =>
+        JSON.stringify(t.key),
+      );
+      for (const want of [
+        qk.methods(),
+        qk.me(),
+        qk.profile(),
+        qk.library(),
+        qk.licenses(),
+        qk.link(),
+      ])
+        expect(keys, name).toContain(JSON.stringify(want));
     }
   });
 });

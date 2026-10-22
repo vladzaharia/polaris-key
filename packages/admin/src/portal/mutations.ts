@@ -11,14 +11,15 @@
  * cheap, a stale security fact is not.
  */
 
+import type { QueryClient } from "@tanstack/react-query";
 import { createWrites, type Target, type WriteSpec } from "../lib/writes.js";
 import { portalApi, PortalApiError } from "./api.js";
-import { qk, qkFamily } from "./queries.js";
+import { qk, qkAll, qkFamily } from "./queries.js";
 
 const exact = (key: Target["key"]): Target => ({ key, exact: true });
 const prefix = (key: Target["key"]): Target => ({ key });
 
-/** What a changed sign-in method touches (`refreshAfterMethodChange`): the methods, the session
+/** What a changed sign-in method touches : the methods, the session
  *  (its email follows the primary), the profile's sources and the licences waiting on an address. */
 const methodChange = (): Target[] => [
   exact(qk.methods()),
@@ -357,4 +358,24 @@ export async function removeLicenseOrGone(product: string, licenseId: string) {
       return { ok: true as const, product, licenseId };
     throw err;
   }
+}
+
+/**
+ * After a step-up sign-in (the same account, a fresh session): what depends on how recently the
+ * person signed in is read again. The session itself is read by `refreshSession` (it carries the
+ * new CSRF token). The methods and sessions lists were always re-read; the link view and the
+ * profile's sources carry the same "proven within 5 minutes" facts. Nothing else is touched.
+ */
+export async function refreshAfterStepUp(client: QueryClient): Promise<void> {
+  await Promise.all([
+    client.invalidateQueries({ queryKey: qk.methods() }),
+    client.invalidateQueries({ queryKey: qk.sessions() }),
+    client.invalidateQueries({ queryKey: qk.link() }),
+    client.invalidateQueries({ queryKey: qk.profile() }),
+  ]);
+}
+
+/** Signed in to another account after all: everything on the page belongs to it now. */
+export function refreshAfterAccountChange(client: QueryClient): void {
+  void client.invalidateQueries({ queryKey: qkAll() });
 }

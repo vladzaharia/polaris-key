@@ -39,9 +39,9 @@ function qkCall(node: ts.Expression): string | null {
   if (
     ts.isCallExpression(node) &&
     ts.isIdentifier(node.expression) &&
-    node.expression.text === "qkFamily"
+    (node.expression.text === "qkFamily" || node.expression.text === "qkAll")
   )
-    return "qkFamily";
+    return node.expression.text;
   return ts.isCallExpression(node) &&
     ts.isPropertyAccessExpression(node.expression) &&
     ts.isIdentifier(node.expression.expression) &&

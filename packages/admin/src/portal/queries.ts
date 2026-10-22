@@ -47,6 +47,9 @@ export const qk = {
   signinConsent: (h: string) => ["portal", "signinConsent", h] as const,
 };
 
+/** Every portal query (the whole cache of this app). */
+export const qkAll = () => ["portal"] as const;
+
 /** Every query of one family, whatever its arguments (a prefix for `removeQueries`). */
 export const qkFamily = (name: string) => ["portal", name] as const;
 

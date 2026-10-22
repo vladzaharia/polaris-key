@@ -501,18 +501,6 @@ export function useSessions(): UseQueryResult<PortalSession[] | null> {
   return useQuery(pq.sessions());
 }
 
-/**
- * After a sign-in method changed: the methods, the session (its email follows the primary), the
- * profile's sources and the library (a verified address brings the licences waiting on it).
- */
-export function refreshAfterMethodChange(client: QueryClient): void {
-  void client.invalidateQueries({ queryKey: qk.methods() });
-  void client.invalidateQueries({ queryKey: qk.me() });
-  void client.invalidateQueries({ queryKey: qk.profile() });
-  void client.invalidateQueries({ queryKey: qk.library() });
-  void client.invalidateQueries({ queryKey: qk.licenses() });
-}
-
 /** Disconnect a sign-in method (step-up first; never the last one). */
 export function useRemoveMethod() {
   const qc = useQueryClient();

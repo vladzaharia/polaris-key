@@ -23,7 +23,6 @@ import { formatRelative } from "../../../lib/format.js";
 import { PORTAL_FMT } from "../../date.js";
 import { formatDay } from "../../date.js";
 import {
-  portalApi,
   PortalApiError,
   type PortalAccount,
   type PortalMethod,
@@ -32,11 +31,7 @@ import {
   type PortalProvider,
 } from "../../api.js";
 import { browser } from "../../browser.js";
-import {
-  refreshAfterMethodChange,
-  useLinkView,
-  useMethods,
-} from "../../data.js";
+import { useLinkView, useMethods } from "../../data.js";
 import { isStepUpRequired, portalErrorCopy } from "../../errors.js";
 import {
   PROVIDER_NAME,
@@ -76,6 +71,7 @@ import {
   type ToolSlots,
 } from "./RowTools.js";
 import { StepUp } from "./StepUp.js";
+import { mutate } from "../../mutations.js";
 
 /**
  * Account → Sign-in methods (PORTAL.md §4.26; G27 on PX-W12's API, passkeys on I-16's).
@@ -833,7 +829,7 @@ function ConnectRow({
     setBusy(true);
     setError(null);
     try {
-      const out = await portalApi.startProviderMethod(kind);
+      const out = await mutate("startProviderMethod", kind);
       browser.go(out.redirect);
     } catch (err) {
       setBusy(false);
@@ -1003,7 +999,7 @@ function AddEmail({
     setError(null);
     setInvalid(false);
     try {
-      const out = await portalApi.startEmailMethod(value);
+      const out = await mutate("startEmailMethod", value);
       if (out.status === "connected") {
         toast.success(t("locker.methods.emailAlreadyOn", { email: out.email }));
         close();
@@ -1035,13 +1031,12 @@ function AddEmail({
     setBusy(true);
     setError(null);
     try {
-      const out = await portalApi.verifyEmailMethod(value);
+      const out = await mutate("verifyEmailMethod", value);
       const text = t("locker.methods.emailAdded", { email: out.email });
       toast.success(text, {
         description: t("locker.methods.emailAddedNote"),
       });
       announce(text);
-      refreshAfterMethodChange(qc);
       setStep({ kind: "closed" });
       setEmail("");
       setCode("");
@@ -1274,14 +1269,13 @@ function AddPasskey({
     setBusy(true);
     setError(null);
     try {
-      const { options } = await portalApi.passkeyRegistrationOptions();
+      const { options } = await mutate("passkeyRegistrationOptions");
       const response = await createPasskey(options);
-      await portalApi.addPasskey(response);
+      await mutate("addPasskey", response);
       toast.success(t("locker.methods.passkeyAdded"), {
         description: t("locker.methods.passkeyAddedNote"),
       });
       announce(t("locker.methods.passkeyAdded"));
-      refreshAfterMethodChange(qc);
       setStepUp(false);
       setReady(false);
       onAdded();
