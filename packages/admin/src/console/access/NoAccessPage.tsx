@@ -11,13 +11,14 @@
  */
 
 import * as React from "react";
-import { ArrowRight, LayoutGrid, LogIn } from "lucide-react";
+import { ArrowRight, LayoutGrid } from "lucide-react";
 import type { AccessAdmin, Me, MeRole } from "../../api.js";
 import { Button } from "../../ui/Button.js";
 import { CopyButton } from "../../ui/CopyButton.js";
 import { PageHeader } from "../../ui/PageHeader.js";
 import { Panel } from "../../ui/Section.js";
 import { Skeleton } from "../../ui/Skeleton.js";
+import { RoleSet } from "./RoleTag.js";
 import { mutate } from "../data/mutations.js";
 import {
   isPageEnabled,
@@ -108,49 +109,73 @@ function initials(name: string): string {
   );
 }
 
-/** A role as Members draws it: the tag, then the areas of a narrowed one. */
-function RoleTag({ role, me }: { role: MeRole; me: Me }): React.ReactElement {
-  const { label, areas } = roleLabel(
-    role,
-    (s) => me.products.find((p) => p.slug === s)?.name ?? s,
-  );
-  return (
-    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-      <span className="inline-flex items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 text-xs font-medium text-fg-strong">
-        {role.role === "console_access" ? (
-          <LogIn aria-hidden className="size-3.5" />
-        ) : null}
-        {label}
-      </span>
-      {areas ? (
-        <span className="text-xs text-fg-muted">
-          {areas.map((a) => AREA_NAMES[a]).join(", ")}
-        </span>
-      ) : null}
-    </span>
-  );
+/** Where a role came from, in the member's words (the facts line of the no-product Home). */
+function sourceLine(role: MeRole, email: string): string {
+  switch (role.source) {
+    case "rule":
+      return `From the ${email.split("@")[1] ?? "email"} email rule`;
+    case "invite":
+      return "From an invitation";
+    case "grant":
+      return "Added by an admin";
+    case "root":
+      return "From the Superadmin group";
+    case "creator":
+      return "You created the product";
+    case "breakglass":
+      return "Emergency access";
+    default:
+      return "";
+  }
 }
 
-/** "Signed in as … with <role>", and the way to switch accounts. */
-function SignedInLine({ me }: { me: Me }): React.ReactElement {
-  const roles = me.permissions?.roles ?? [];
+/** Who the member is: the address and the roles that bear on this page. */
+function UseAnotherAccount(): React.ReactElement {
   const useAnother = (): void => {
     void mutate("logout").finally(() => {
       window.location.href = "/manage/login";
     });
   };
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-      <span>
-        Signed in as <strong className="text-fg-strong">{me.email}</strong>
-        {roles.length ? " with" : ""}
+    <Button variant="link" className="min-h-6" onClick={useAnother}>
+      Use another account
+    </Button>
+  );
+}
+
+function SignedInLine({
+  me,
+  home,
+  slug,
+}: {
+  me: Me;
+  home: boolean;
+  slug: string | null;
+}): React.ReactElement {
+  // Roles that bear on this page: the product's own and the platform-wide ones, not the
+  // member's roles in other products.
+  const roles = (me.permissions?.roles ?? []).filter(
+    (r) =>
+      home || !r.scope.startsWith("product:") || r.scope === `product:${slug}`,
+  );
+  const productName = (s: string): string =>
+    me.products.find((p) => p.slug === s)?.name ?? s;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5">
+      <span className="min-w-0 max-w-full">
+        <strong className="break-all text-fg-strong">{me.email}</strong>
       </span>
       {roles.map((role) => (
-        <RoleTag key={`${role.role}:${role.scope}`} role={role} me={me} />
+        <span
+          key={`${role.role}:${role.scope}`}
+          className="inline-flex flex-wrap items-center gap-x-2 gap-y-1"
+        >
+          <RoleSet role={role} productName={productName} />
+          {home && sourceLine(role, me.email) ? (
+            <span>{sourceLine(role, me.email)}</span>
+          ) : null}
+        </span>
       ))}
-      <Button variant="link" className="min-h-6" onClick={useAnother}>
-        Use another account
-      </Button>
     </span>
   );
 }
@@ -196,15 +221,12 @@ function PersonRow({
 }
 
 function WhoCanHelp({
-  area,
-  slug,
+  q,
   productName,
 }: {
-  area: AreaId;
-  slug: string | null;
+  q: ReturnType<typeof useAccessAdmins>;
   productName?: string;
 }): React.ReactElement {
-  const q = useAccessAdmins(area, slug);
   let body: React.ReactNode;
   if (q.isPending)
     body = (
@@ -242,13 +264,19 @@ function WhoCanHelp({
   else
     body = (
       <ul className="divide-y divide-border">
-        {q.data.admins.map((person) => (
-          <PersonRow
-            key={person.email}
-            person={person}
-            productName={productName}
-          />
-        ))}
+        {[...q.data.admins]
+          .sort(
+            (a, b) =>
+              Number(b.role === "product_admin") -
+              Number(a.role === "product_admin"),
+          )
+          .map((person) => (
+            <PersonRow
+              key={person.email}
+              person={person}
+              productName={productName}
+            />
+          ))}
       </ul>
     );
   return (
@@ -258,16 +286,7 @@ function WhoCanHelp({
   );
 }
 
-function YouCanOpen({
-  me,
-  slug,
-  services,
-}: {
-  me: Me;
-  slug: string | null;
-  services: ServiceState;
-}): React.ReactElement {
-  const places = destinations(me, slug, services);
+function YouCanOpen({ places }: { places: Destination[] }): React.ReactElement {
   return (
     <Panel title="You can open" className="h-full">
       <div className="flex flex-col gap-3">
@@ -299,7 +318,7 @@ function LibraryTile(): React.ReactElement {
   return (
     <a
       href="/"
-      className="group flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-5 shadow-elevation-1 transition-colors hover:border-border-strong focus-visible:outline-2 focus-visible:outline-focus"
+      className="group flex h-full flex-col justify-center gap-3 rounded-lg border border-border bg-surface-raised p-5 shadow-elevation-1 transition-colors hover:border-border-strong focus-visible:outline-2 focus-visible:outline-focus"
     >
       <span className="flex size-9 items-center justify-center rounded-md bg-surface-sunken">
         <LayoutGrid aria-hidden className="size-4" />
@@ -335,6 +354,12 @@ export function NoAccessPage({
 }: NoAccessPageProps): React.ReactElement {
   // The product (or Platform) wraps anywhere, so a 200-character name stays on screen; only
   // "→ Area" holds together. The arrow is decoration: a screen reader hears ", Licensing".
+  const q = useAccessAdmins(home ? "console" : area, home ? null : slug);
+  // With nobody to name the panels stack: side by side the short one would sit half empty.
+  const places = home ? [] : destinations(me, slug, services);
+  const stacked =
+    (q.isSuccess && q.data.admins.length === 0) ||
+    (!home && places.length === 0);
   const subject = slug === null ? "Platform" : (productName ?? slug);
   const areaName =
     slug === null && area === "platform" ? null : AREA_NAMES[area];
@@ -363,23 +388,27 @@ export function NoAccessPage({
             </span>
           )
         }
-        description={<SignedInLine me={me} />}
+        description={<SignedInLine me={me} home={home} slug={slug} />}
       />
       <div className="grid items-stretch gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-8">
-          <WhoCanHelp
-            area={home ? "console" : area}
-            slug={home ? null : slug}
-            productName={productName}
-          />
+        <div className={stacked ? "lg:col-span-12" : "lg:col-span-8"}>
+          <WhoCanHelp q={q} productName={productName} />
         </div>
-        <div className="lg:col-span-4">
-          {home ? (
-            <LibraryTile />
-          ) : (
-            <YouCanOpen me={me} slug={slug} services={services} />
-          )}
+        <div className={stacked ? "lg:col-span-12" : "lg:col-span-4"}>
+          {home ? <LibraryTile /> : <YouCanOpen places={places} />}
         </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        {home ? null : (
+          <p className="break-all font-mono text-xs text-fg-muted">
+            {window.location.host}
+            {window.location.pathname}
+            {window.location.hash}
+          </p>
+        )}
+        <span className="flex flex-wrap items-center gap-x-2 text-sm text-fg-muted">
+          <UseAnotherAccount />
+        </span>
       </div>
     </section>
   );

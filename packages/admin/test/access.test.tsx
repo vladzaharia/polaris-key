@@ -177,7 +177,8 @@ describe("NoAccessPage", () => {
     expect(h1.textContent).toBe("You don't have access to DJDL, → Licensing");
     expect(screen.getByText("lucia@example.com")).toBeTruthy();
     expect(screen.getByText("DJDL admin")).toBeTruthy();
-    expect(screen.getByText("Ship builds, Commerce")).toBeTruthy();
+    const lead = screen.getByText("DJDL admin").closest("[data-role-set]")!;
+    expect(lead.textContent).toBe("DJDL adminShip buildsCommerce");
     // Who can help: the people, each with an address to copy; no request button.
     expect(await screen.findByText("Kenji Mori")).toBeTruthy();
     expect(screen.getByText("DJDL admin", { selector: "li *" })).toBeTruthy();
@@ -243,6 +244,91 @@ describe("NoAccessPage", () => {
     expect(within(nav).queryByText("Platform")).toBeNull();
     // Home is the only page: there is no product to list.
     expect(within(nav).queryByRole("link", { name: "API tokens" })).toBeNull();
+  });
+
+  it("lists the product's admins before Superadmins, whatever order they arrive in", async () => {
+    boot("#/p/djdl/license/licenses", {
+      me: SHIP_ONLY,
+      services: ALL_ON,
+      extra: {
+        "/manage/api/access/admins": {
+          ...ADMINS,
+          admins: [...ADMINS.admins].reverse(),
+        },
+      },
+    });
+    await screen.findByText("Kenji Mori");
+    const rows = screen.getAllByRole("listitem").map((r) => r.textContent);
+    const k = rows.findIndex((t) => t?.includes("Kenji Mori"));
+    const a = rows.findIndex((t) => t?.includes("Ada Lindqvist"));
+    expect(k).toBeGreaterThanOrEqual(0);
+    expect(k).toBeLessThan(a);
+  });
+
+  it("says where a console-only member's access came from, in words", async () => {
+    boot("#/", {
+      me: CONSOLE_ONLY,
+      extra: {
+        "/manage/api/access/admins": {
+          scope: "platform",
+          area: "console",
+          admins: [],
+        },
+      },
+    });
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.getByText("noor@studio.example.com")).toBeTruthy();
+    expect(
+      screen.getByText("From the studio.example.com email rule"),
+    ).toBeTruthy();
+    // Nobody to ask: a Superadmin, not an empty card.
+    expect(
+      await screen.findByText("Ask a Superadmin of this console for access."),
+    ).toBeTruthy();
+  });
+
+  it("never blanks for a role this console does not know: its id stands in", async () => {
+    boot("#/p/djdl/license/licenses", {
+      me: {
+        ...SHIP_ONLY,
+        permissions: {
+          ...SHIP_ONLY.permissions!,
+          roles: [
+            ...SHIP_ONLY.permissions!.roles,
+            {
+              role: "auditor",
+              scope: "platform",
+              areas: null,
+              source: "grant",
+            } as never,
+          ],
+        },
+      },
+      services: ALL_ON,
+      extra: { "/manage/api/access/admins": ADMINS },
+    });
+    expect(
+      (await screen.findByRole("heading", { level: 1 })).textContent,
+    ).toContain("You don't have access to DJDL");
+    expect(screen.getByText("auditor")).toBeTruthy();
+    expect(screen.getByText("DJDL admin")).toBeTruthy();
+  });
+
+  it("says the list didn't load, and offers to retry, when the helpers fail", async () => {
+    boot("#/p/djdl/license/licenses", {
+      me: SHIP_ONLY,
+      services: ALL_ON,
+      extra: {
+        "/manage/api/access/admins": new Response(
+          JSON.stringify({ error: { code: "internal" } }),
+          { status: 500, headers: { "content-type": "application/json" } },
+        ),
+      },
+    });
+    expect(await screen.findByText("The list didn't load.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    // The page still offers somewhere to go.
+    expect(screen.getByRole("link", { name: "Ship builds" })).toBeTruthy();
   });
 
   it("answers a Platform page for a member without the Platform area", async () => {

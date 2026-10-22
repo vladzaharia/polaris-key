@@ -109,6 +109,134 @@ interface Case {
   act?: (page: Page) => Promise<void>;
   /** The case needs a window at least this wide (a control that is not drawn below it). */
   minWidth?: number;
+  /** Replaces what `resolve` answers for a path (ST-31.15: who the member is, who can help). */
+  api?: Record<string, unknown>;
+}
+
+/** ST-31.15: the no-access states, each a different member (`admin.no-access`, `.no-access-home`). */
+function noAccessCases(): Case[] {
+  const me = (
+    email: string,
+    roles: unknown[],
+    products: { slug: string; name: string; schemaVersion: number }[],
+    productAreas: Record<string, string[]> = {},
+  ) => ({
+    sub: "m-x",
+    name: "Lucía Ortega",
+    email,
+    csrf: "c",
+    platformAdmin: false,
+    sessionExpiresAt: Math.floor(Date.now() / 1000) + 3600,
+    products,
+    permissions: {
+      roles,
+      platform: { view: ["console"], edit: ["console"] },
+      products: Object.fromEntries(
+        Object.entries(productAreas).map(([k, v]) => [k, { view: v, edit: v }]),
+      ),
+    },
+  });
+  const djdl = [{ slug: "djdl", name: "DJDL", schemaVersion: 1 }];
+  const narrowed = {
+    role: "product_admin",
+    scope: "product:djdl",
+    areas: ["ship", "commerce"],
+    source: "grant",
+  };
+  const admins = (list: unknown[]) => ({
+    "/manage/api/access/admins": {
+      scope: "product:djdl",
+      area: "license",
+      admins: list,
+    },
+  });
+  const people = [
+    { name: "Kenji Mori", email: "kenji@example.com", role: "product_admin" },
+    { name: "Ada Lindqvist", email: "ada@example.com", role: "superadmin" },
+    { name: "Jonas Weber", email: "jonas@example.com", role: "superadmin" },
+  ];
+  const lucia = me("lucia@example.com", [narrowed], djdl, {
+    djdl: ["ship", "commerce"],
+  });
+  return [
+    {
+      name: "no-access:product",
+      hash: "#/p/djdl/license/licenses",
+      api: { "/manage/api/me": lucia, ...admins(people) },
+    },
+    {
+      name: "no-access:two-products",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": me(
+          "lucia@example.com",
+          [
+            narrowed,
+            {
+              role: "product_admin",
+              scope: "product:acme",
+              areas: null,
+              source: "grant",
+            },
+          ],
+          [...djdl, { slug: "acme", name: "Acme", schemaVersion: 2 }],
+          {
+            djdl: ["ship", "commerce"],
+            acme: ["core", "license", "ship", "commerce"],
+          },
+        ),
+        ...admins(people),
+      },
+    },
+    {
+      name: "no-access:unknown-role",
+      hash: "#/p/djdl/license/licenses",
+      api: {
+        "/manage/api/me": me(
+          "lucia@example.com",
+          [
+            {
+              role: "workspace_auditor",
+              scope: "platform",
+              areas: null,
+              source: "grant",
+            },
+          ],
+          djdl,
+          {},
+        ),
+        ...admins(people),
+      },
+    },
+    {
+      name: "no-access:nobody",
+      hash: "#/p/djdl/license/licenses",
+      api: { "/manage/api/me": lucia, ...admins([]) },
+    },
+    {
+      name: "no-access:home",
+      hash: "#/",
+      api: {
+        "/manage/api/me": me(
+          "noor@studio.example.com",
+          [
+            {
+              role: "console_access",
+              scope: "platform",
+              areas: null,
+              source: "rule",
+            },
+          ],
+          [],
+        ),
+        "/manage/api/access/admins": {
+          scope: "platform",
+          area: "console",
+          admins: people.slice(1),
+        },
+      },
+    },
+  ];
 }
 
 // ── The case list: nav.ts's pages, their records and tabs, the overlays ──────────────────────
@@ -274,7 +402,7 @@ function cases(): Case[] {
       },
     },
   );
-  return list;
+  return [...list, ...noAccessCases()];
 }
 
 const CASES = cases();
@@ -602,7 +730,10 @@ async function open(
     if (url.pathname.startsWith("/manage/api/")) {
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });
-      const body = resolve(url.pathname);
+      const body =
+        c.api && url.pathname in c.api
+          ? c.api[url.pathname]
+          : resolve(url.pathname);
       if (body === undefined) {
         gaps.push(url.pathname);
         return route.fulfill({ status: 404, json: { error: "not_found" } });
