@@ -93,8 +93,8 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 - The reader's tier comes from `/manage/api/me` (`permissions.platform.view`: `docs` is admin,
   `console` is member), asked only when the dialog opens on the console host. The customer host is
   detected by a `redirect: "manual"` probe of the public bundle (an opaque redirect).
-- The code jump reads `/docs/help/codes.json` (src/pages/help/codes.json.ts), a public file under
-  `help/`, fetched only when the query looks like a message id.
+- The code jump reads `codes.json` inside the loaded Pagefind bundle (written by scripts/build-search-bundles.ts; DOC-02c-fix: the old `/docs/help/codes.json` redirected off the console host and the CSP blocked it), served at each bundle's public path and
+  fetched only when the query looks like a message id.
 
 ## Steps
 

@@ -7,9 +7,13 @@
  */
 import { helpRoute } from "../lib/helpHost";
 import { DOOR_ICONS, HELP_ICONS } from "../lib/helpIcons";
+import { HELP_TOP_TASKS, START_HERE } from "../lib/suggestions";
 
 const help = helpRoute(Astro.locals.starlightRoute.id);
 const label = help ? "Search help" : "Search the docs";
+// What the dialog lists before a query: Help's Top tasks, else the developer landing's Get started.
+const suggestions = help ? HELP_TOP_TASKS : START_HERE;
+const suggestionsLabel = help ? "Top tasks" : "Start here";
 ---
 
 <site-search
@@ -19,7 +23,7 @@ const label = help ? "Search help" : "Search the docs";
 >
   <button data-open-modal disabled aria-label={label} aria-keyshortcuts="Control+K">
     <Fragment set:html={HELP_ICONS.search} />
-    <span class="pk-search-label">{label}</span>
+    <span class="pk-search-label" aria-hidden="true">{help ? "Search help" : "Search docs"}</span>
     <kbd class="pk-search-kbd" hidden><kbd>Ctrl</kbd><kbd>K</kbd></kbd>
   </button>
 
@@ -37,6 +41,7 @@ const label = help ? "Search help" : "Search the docs";
           autocomplete="off"
           autocapitalize="off"
           spellcheck="false"
+          dir="auto"
           enterkeyhint="search"
           placeholder={help ? "Search help" : "Search the docs"}
         />
@@ -45,7 +50,7 @@ const label = help ? "Search help" : "Search the docs";
           <span class="pk-search-cancel" aria-hidden="true">Cancel</span>
         </button>
       </div>
-      <div class="pk-search-body">
+      <div class="pk-search-body" tabindex="0">
         <div class="pk-search-scope" role="radiogroup" aria-label="Search in" hidden>
           <button type="button" role="radio" aria-checked="true" data-scope="help">Help only</button>
           <button type="button" role="radio" aria-checked="false" tabindex="-1" data-scope="all">All docs</button>
@@ -56,7 +61,7 @@ const label = help ? "Search help" : "Search the docs";
         </div>
         <div class="pk-search-failed-box" hidden>
           <p class="pk-search-failed" role="alert">
-            Search isn’t working right now. Try again in a moment.
+            Search isn’t working right now.
           </p>
           <button type="button" class="pk-search-retry">Try again</button>
         </div>
@@ -73,7 +78,7 @@ const label = help ? "Search help" : "Search the docs";
         >
         </div>
       </div>
-      <div class="pk-search-foot">
+      <div class="pk-search-foot" aria-hidden="true">
         <span class="pk-search-foot-start"><kbd>↵</kbd> Open</span>
         <span><kbd class="pk-search-mod">Ctrl</kbd><kbd>↵</kbd> New tab</span>
         <span><kbd>esc</kbd> Close</span>
@@ -82,6 +87,9 @@ const label = help ? "Search help" : "Search the docs";
     </div>
   </dialog>
 
+  <template data-suggest={suggestionsLabel}>
+    {suggestions.map((s) => <a href={s.href}><strong>{s.title}</strong><small>{s.description}</small></a>)}
+  </template>
   <template data-icon="door-help"><Fragment set:html={DOOR_ICONS.help} /></template>
   <template data-icon="door-developers"><Fragment set:html={DOOR_ICONS.code} /></template>
   <template data-icon="door-operate"><Fragment set:html={DOOR_ICONS.dashboard} /></template>
