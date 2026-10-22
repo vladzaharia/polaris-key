@@ -215,7 +215,12 @@
 // `clientId`, mutation ids and clocks are the client's own state. `expect`: `result` "ok" |
 // "not-modified" | "refused" (with `status` and `code`); on "ok" `cursor`, `more`, `empty` and
 // `settings` (the changed setting keys, sorted); a push adds `lastMutationId` and `results`, one
-// label per mutation: "ok" | "duplicate" | "conflict" | "aborted" | "rejected:<code>".
+// label per mutation: "ok" | "duplicate" | "conflict" | "aborted" | "ok:renamedTo:<key>" |
+// "ok:dropped" | "rejected:<code>" ("rejected:quota_exceeded:<scope>"). A refusal adds `retryAfter`
+// (seconds) when the Worker sent `Retry-After`; some steps add `quotaBytes`, `files` and
+// `aliases`. U-05.16 pins the request loosely on purpose (a pull always sends `?cursor=N`, a push
+// body is held to its shape); U-06 may tighten both. The CORS exchanges of `cloudsync-cors` are
+// `browser` steps and record the `access-control-*` response headers they carry.
 //
 // chunkRange (P4-32, plans/P4-32.md §4) — `{ bundle, offset, length }`: the SDK's chunk-range
 // fetch (client-core `chunkRangeFetch`, Python `chunk_range_fetch`, Swift `chunkRangeFetch`,
