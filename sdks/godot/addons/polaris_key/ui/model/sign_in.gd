@@ -222,7 +222,7 @@ static func _methods_view(ctx: RefCounted, args: Dictionary) -> Dictionary:
 # ── SignInHandoff ──────────────────────────────────────────────────────────────────────────────
 
 ## `HandoffState`.
-const HANDOFF_STATES := ["starting", "waiting", "no-browser", "code", "link-copied", "finishing", "denied", "expired", "cancelled", "hidden"]
+const HANDOFF_STATES := ["starting", "waiting", "no-browser", "code", "link-copied", "finishing", "denied", "failed", "expired", "cancelled", "hidden"]
 
 
 ## Step 2 of the form: Finish in your browser, or the device code. Moves on by itself.
@@ -283,6 +283,19 @@ static func sign_in_handoff_view(ctx: RefCounted) -> Dictionary:
 					"copy": [
 						"core.codes.sign-in-denied.title",
 						"core.codes.sign-in-denied.message",
+						"signInHandoff.newCode",
+					],
+					"args": args,
+					"primary": "signInHandoff.newCode",
+					"tone": "danger",
+					"errorSlot": "screen",
+				})
+			"failed":
+				return View.make(ctx, "SignInHandoff", {
+					"state": "failed",
+					"copy": [
+						"core.codes.sign-in-failed.title",
+						"core.codes.sign-in-failed.message",
 						"signInHandoff.newCode",
 					],
 					"args": args,
