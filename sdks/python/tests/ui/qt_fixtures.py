@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-from polaris_key.ui.core import ui_activate, ui_devices, ui_gate, ui_settings, ui_signin, ui_update
+from polaris_key.ui.core import ui_activate, ui_choice, ui_devices, ui_gate, ui_paywall, ui_settings, ui_signin, ui_update
 from polaris_key.ui.core.ui_contract import context_of
 from polaris_key.ui.core.ui_view import View
 
@@ -33,12 +33,16 @@ MODELS = {
     "ReleaseNotes": ui_update.release_notes_view,
     "AccountAndLicense": ui_settings.account_view,
     "Settings": ui_settings.settings_view,
+    "LicenseChoice": ui_choice.license_choice_view,
+    "Paywall": ui_paywall.paywall_view,
+    "EntitlementGate": ui_paywall.entitlement_gate_view,
 }
-FAMILIES = ("gate", "activate", "signIn", "deviceLimit", "devices", "update", "settings")
+FAMILIES = ("gate", "activate", "signIn", "deviceLimit", "devices", "update", "settings", "paywall")
 
 
 def rows():
-    """Every row of the families the kit draws (signIn's LicenseChoice rows are the grant roster's)."""
+    """Every row of the families the kit draws. LicenseChoice is drawn from the matrix and fixtures only:
+    no runtime path hands the Python kit a grant roster before I-10b."""
     return [row for family in FAMILIES for row in MATRIX[family] if row["expect"]["component"] in MODELS]
 
 
@@ -81,6 +85,23 @@ def with_defaults(input: Mapping[str, Any]) -> Dict[str, Any]:
     return out
 
 
+#: What a host passes besides the matrix input: the tier a paywall sells and what it adds, which no
+#: matrix row carries (the rows pin the copy, not the data).
+TIER = "Pro"
+FEATURES = ["Export to every format", "Batch processing", "Priority support"]
+
+
+def dressed(row: Mapping[str, Any]) -> Dict[str, Any]:
+    """The row's input with its defaults and, on the paywall family, the host's tier and features."""
+    out = with_defaults(row["input"])
+    if row["expect"]["component"] in ("Paywall", "EntitlementGate"):
+        if "entitlement" in out:
+            out["entitlement"] = {**out["entitlement"], "tier": TIER}
+        if "offers" in out:
+            out["offers"] = {**out["offers"], "tier": TIER, **({"features": FEATURES} if out["offers"].get("available") else {})}
+    return out
+
+
 def states() -> List[Tuple[str, str, str, View]]:
     """(component, state, row name, view) for the first row of every visible component state."""
     seen = set()
@@ -91,14 +112,14 @@ def states() -> List[Tuple[str, str, str, View]]:
         if expected["state"] == "hidden" or key in seen:
             continue
         seen.add(key)
-        view = MODELS[expected["component"]](context_of(with_defaults(row["input"])))
+        view = MODELS[expected["component"]](context_of(dressed(row)))
         out.append((key[0], key[1], str(row["name"]), view))
     return out
 
 
 def all_views() -> List[Tuple[str, View]]:
     """Every row of the families the kit draws as (row name, view)."""
-    return [(str(row["name"]), MODELS[row["expect"]["component"]](context_of(with_defaults(row["input"])))) for row in rows()]
+    return [(str(row["name"]), MODELS[row["expect"]["component"]](context_of(dressed(row)))) for row in rows()]
 
 
 #: The first view of each (component, state): ``BY_STATE_VIEWS[("Welcome", "default")]``.
