@@ -244,6 +244,10 @@ const STRANGER_OWN_TOKENS = new Set([
   "DELETE /me/personal-tokens/:id",
 ]);
 
+/** A no-grant row since the 34.7 review, but personal-token only: a cookie stranger is past the grant
+ *  gate and refused by the row's own 403, not by "no access". */
+const STRANGER_PERSONAL_ONLY = new Set(["DELETE /me/personal-tokens/current"]);
+
 describe("the route × principal matrix", () => {
   it("covers every row of the route table", () => {
     expect(PLATFORM_ROWS.length + PRODUCT_ROWS.length).toBe(
@@ -273,6 +277,8 @@ describe("the route × principal matrix", () => {
             if (o.status !== 200) wrong.push(what);
           } else if (STRANGER_OWN_TOKENS.has(routeKey(r))) {
             if (o.status !== 409 || o.code !== "reauth") wrong.push(what);
+          } else if (STRANGER_PERSONAL_ONLY.has(routeKey(r))) {
+            if (o.status !== 403 || isNoAccess(o)) wrong.push(what);
           } else if (!isNoAccess(o) || o.area !== "console") wrong.push(what);
         } else if (allowed) {
           if (o.status === 401 || isNoAccess(o)) wrong.push(what);
