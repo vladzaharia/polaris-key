@@ -11,7 +11,11 @@
 //   twoPane        a screen with a control group (sign-in, activation) puts its content on the
 //                  start side and its controls on the end side: at compact height, on Android TV,
 //                  and in a landscape window 840 dp wide or more (width / height at least 1.4),
-//                  always with at least 560 dp to split.
+//                  always with at least 560 dp to split. From 480 dp tall (not compact height, not TV) the
+//                   start pane holds the product art alone on a sunken panel and the end pane holds the
+//                   title, lede and controls (DL1); the short and TV forms keep content | controls.
+//   listDetail     the account screen (Settings, Devices) at `wide`: the list in the start pane, the
+//                   chosen item in the end pane; narrower, the list then the item with Back.
 //   card           a message screen sets itself on a card: on TV and in a wide landscape window.
 //
 // THE RHYTHM. One scale on the 4 dp grid (UI-KITS.md §1.5 rule 5):

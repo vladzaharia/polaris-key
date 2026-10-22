@@ -12,7 +12,9 @@ public struct UpdatePromptView: View {
     let screen: KitScreen<UpdatePromptState>
     /// The download's fraction while `downloading`, from counted bytes.
     var fraction: Double?
-    var onUpdate: () -> Void
+    /// The update verb, or nil when the host has no way to update: the verb then does not draw
+    /// (UI-KITS decision 7) and the mandatory screen says where to update instead.
+    var onUpdate: (() -> Void)?
     var onLater: () -> Void
     /// The offer's own facts (running version, size, notes, changes page), when the host has them.
     var details: KitUpdate?
@@ -21,7 +23,7 @@ public struct UpdatePromptView: View {
 
     public init(
         screen: KitScreen<UpdatePromptState>, fraction: Double? = nil,
-        details: KitUpdate? = nil, onUpdate: @escaping () -> Void, onLater: @escaping () -> Void
+        details: KitUpdate? = nil, onUpdate: (() -> Void)?, onLater: @escaping () -> Void
     ) {
         self.screen = screen
         self.details = details
@@ -46,9 +48,12 @@ public struct UpdatePromptView: View {
                 {
                     KitText(body, .body, color: .default, alignment: .center)
                 }
+                mandatoryFacts
             } actions: {
-                KitButton(line: CopyLine("update.install"), kind: .primary, action: onUpdate)
-                    .keyboardShortcut(.defaultAction)
+                if let onUpdate {
+                    KitButton(line: mandatoryVerb, kind: .primary, action: onUpdate)
+                        .keyboardShortcut(.defaultAction)
+                }
             }
         case .none, .upToDate, .blocked:
             EmptyView()
@@ -56,6 +61,36 @@ public struct UpdatePromptView: View {
             banner
         }
     }
+
+    /// The verb the outlet allows on the mandatory screen ("Update on the App Store"), else Update now.
+    private var mandatoryVerb: CopyLine {
+        KitStates.outletVerb(details?.outlet) ?? CopyLine("update.install")
+    }
+
+    /// The mandatory screen's facts: the version it asks for, the notes, and where to update when
+    /// the kit has no button to press.
+    @ViewBuilder private var mandatoryFacts: some View {
+        kitStyle { style in
+            VStack(spacing: style.space(.xs)) {
+                if let version = details?.version, !version.isEmpty {
+                    KitText(
+                        CopyLine(
+                            "update.title",
+                            ["product": .text(style.identity.name), "version": .text(version)]),
+                        .label, color: .strong, alignment: .center)
+                }
+                if hasBody { whatsNew }
+                if onUpdate == nil {
+                    KitText(
+                        KitStates.whereToUpdate(
+                            outlet: details?.outlet, product: style.identity.name),
+                        .body, color: .default, alignment: .center)
+                }
+            }
+        }
+    }
+
+    private var showsFacts: Bool { screen.state == .available || screen.state == .mandatory }
 
     /// "You have 2.4.1 · 61 MB download", only once both facts are known.
     private var currentLine: CopyLine? {
@@ -68,7 +103,7 @@ public struct UpdatePromptView: View {
 
     /// At most three plain lines of the release's notes (§4.3).
     private var noteLines: [String] {
-        guard screen.state == .available else { return [] }
+        guard showsFacts else { return [] }
         return Self.noteLines(details?.notes)
     }
 
@@ -77,7 +112,7 @@ public struct UpdatePromptView: View {
     }
 
     private var changesLink: URL? {
-        guard screen.state == .available else { return nil }
+        guard showsFacts else { return nil }
         return KitLinks.valid(details?.notesUrl)
     }
 
@@ -121,8 +156,11 @@ public struct UpdatePromptView: View {
                         line: later, kind: .secondary, fullWidth: false, compact: true,
                         action: onLater)
                 }
-                KitButton(
-                    line: verb, kind: .primary, fullWidth: false, compact: true, action: onUpdate)
+                if let onUpdate {
+                    KitButton(
+                        line: verb, kind: .primary, fullWidth: false, compact: true,
+                        action: onUpdate)
+                }
             }, stacked: hasBody)
     }
 
@@ -159,8 +197,9 @@ public struct UpdatePromptView: View {
 
     /// The verb the outlet allows.
     private var verb: CopyLine {
-        for key in ["update.appStore", "update.testflight", "update.altstore", "update.restartNow"]
-        {
+        // While a download runs the primary is Restart when ready (§4.3), Later the secondary.
+        let keys = ["update.appStore", "update.testflight", "update.altstore", "update.restartNow"]
+        for key in screen.state == .downloading ? keys + ["update.restartWhenReady"] : keys {
             if let line = screen.line(key) { return line }
         }
         return CopyLine("update.install")
@@ -172,18 +211,23 @@ public struct UpdateProgressView: View {
     let screen: KitScreen<UpdateProgressState>
     let fraction: Double?
     var onRetry: () -> Void
+    /// What is downloading ("Tidewater Studio 2.5.0"); nil draws the row untitled.
+    var title: CopyLine?
 
     public init(
-        screen: KitScreen<UpdateProgressState>, fraction: Double?, onRetry: @escaping () -> Void
+        screen: KitScreen<UpdateProgressState>, fraction: Double?, title: CopyLine? = nil,
+        onRetry: @escaping () -> Void
     ) {
         self.screen = screen
         self.fraction = fraction
+        self.title = title
         self.onRetry = onRetry
     }
 
     public var body: some View {
         kitStyle { style in
             VStack(alignment: .leading, spacing: style.space(.xs)) {
+                if let title { KitText(title, .label, color: .strong) }
                 // A line whose counts are unknown is not drawn: never "40% of 100%".
                 ForEach(
                     screen.copy.filter {

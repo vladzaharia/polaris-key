@@ -183,6 +183,15 @@ const ROUTES: Record<string, unknown> = {
     })),
   },
   [`${P}/config/catalog/usage`]: { keys: {} },
+  [`${P}/config/mint`]: {
+    registration: "requires-license",
+    anonymousEnroll: false,
+    oidcDefault: false,
+    publicMint: false,
+    licenseEnabled: true,
+    identity: null,
+    recipes: [],
+  },
   "/manage/api/me": ME,
   "/manage/api/products": { products: PRODUCTS },
   // Home: what needs attention (`GET /attention`, long names and lines included) and Platform ready.

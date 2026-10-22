@@ -184,6 +184,9 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     "signInHandoff-denied" to { PolarisSignInScreen(PolarisSignInUi.Denied) },
     "settings-list" to { PolarisSettingsScreen(sampleSettings, onSet = { _, _ -> }, onReset = {}) },
     "devices-list" to { PolarisDevicesScreen(PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000)) },
+    "account-list-detail" to {
+        PolarisAccountScreen(sampleSettings, PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000), onSet = { _, _ -> }, onReset = {})
+    },
     "updatePrompt-ready" to {
         Column(Modifier.fillMaxSize()) {
             PolarisUpdateBanner(PolarisUpdateUi("2.5.0", kind = PolarisUpdateUi.Kind.Restart), onDismiss = {})

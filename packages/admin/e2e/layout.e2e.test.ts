@@ -225,6 +225,11 @@ function cases(): Case[] {
       name: "djdl:catalog-editor?entry",
       hash: "#/p/djdl/config/catalog/edit?entry=network.timeout",
     },
+    // A minted token's "Code only. DJDL calls mintToken(…)" line scrolled sideways at 200 % text.
+    {
+      name: "djdl:catalog-editor?minted",
+      hash: "#/p/djdl/config/catalog/edit?entry=applemusic.token",
+    },
     // B-217: the Add to storefronts flow, at the steps whose rows wrapped sideways at 200 %.
     ...(["prerequisites", "listing", "assets", "run"] as const).map((step) => ({
       name: `djdl:storefronts?flow=${step}`,
@@ -303,6 +308,7 @@ const TEXT200_CASES = [
   // CF1 / M1: the pages that scrolled sideways at 390 px with 200 % text.
   "djdl:catalog-edit",
   "djdl:catalog-editor?entry",
+  "djdl:catalog-editor?minted",
   "djdl:integration",
   "djdl:releases/record/builds",
   "djdl:outlets",

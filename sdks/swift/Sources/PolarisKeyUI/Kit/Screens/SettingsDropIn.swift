@@ -61,8 +61,21 @@ public struct PolarisKeySettings: View {
 struct SettingsSections: View {
     @Bindable var model: PolarisKeySettingsModel
     @Environment(\.openURL) private var openURL
+    @Environment(\.polarisKeyStrings) private var strings
 
     var body: some View {
+        panes
+            // The pane's results reach VoiceOver as they land (DL7).
+            .onChange(of: model.checkResult) { _, line in announce(line) }
+            .onChange(of: model.deviceFailure) { _, line in announce(line) }
+    }
+
+    private func announce(_ line: CopyLine?) {
+        guard let line else { return }
+        AccessibilityNotification.Announcement(strings.string(line)).post()
+    }
+
+    @ViewBuilder private var panes: some View {
         AccountAndLicenseSection(
             screen: model.account, tier: model.tier, holder: model.holder, version: model.version,
             devices: model.seats, autoUpdate: Binding(get: { model.autoUpdate }, set: { model.setAutoUpdate($0) }),
@@ -70,7 +83,8 @@ struct SettingsSections: View {
             onCheckNow: { Task { await model.checkNow() } }, canManage: model.canManage,
             canAutoUpdate: model.canSetAutoUpdate, channel: model.channel,
             onChannel: model.handlers.selectChannel == nil ? nil : { model.selectChannel($0) },
-            checking: model.checking, checkNote: model.checkResult, part: .top)
+            checking: model.checking, checkNote: model.checkResult, checkFailed: model.checkFailed,
+            part: .top)
         DevicesSection(
             screen: model.devicesScreen, devices: model.deviceRows,
             onRemove: { device in

@@ -182,6 +182,12 @@ const DEFAULT_SETTINGS_PATH := "user://pkey_settings.cfg"
 ## The product icon beside it; null: the project's `application/config/icon` (else a monogram
 ## tile of the name's initial).
 @export var ui_product_icon: Texture2D = null
+## The game's wordmark, drawn beside the icon on Welcome and the boot screen (UI-KITS.md §1.2
+## ProductIdentity.wordmark); null: the icon and the name alone.
+@export var ui_product_wordmark: Texture2D = null
+## The game's key art: the landscape identity pane's ground on Welcome and the boot screen's ground
+## (ProductIdentity.art); null: the icon on the accent ground, as before.
+@export var ui_product_art: Texture2D = null
 @export_group("")
 
 ## A PKeyStore to use instead of the file store (tests, a platform secure store). Not exported.

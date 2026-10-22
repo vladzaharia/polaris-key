@@ -194,7 +194,9 @@ describe("the Library shell trim", () => {
       expect(await strip.locator("a").first().isVisible()).toBe(false);
       const closedTop = s.y;
       await toggle.click();
-      const link = strip.getByRole("link", { name: "Add it in Sign-in methods" });
+      const link = strip.getByRole("link", {
+        name: "Add it in Sign-in methods",
+      });
       await link.waitFor();
       const open = (await strip.boundingBox())!;
       // The ways open above the button, and the strip grows upward.
