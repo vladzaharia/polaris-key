@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   CLOUD_SYNC_CEILINGS,
+  CLOUD_SYNC_COLLECTION_PATTERN,
   CLOUD_SYNC_DEFAULTS,
+  CLOUD_SYNC_KEY_PATTERN,
+  CLOUD_SYNC_MAX_MERGE_MEMBERS,
+  CLOUD_SYNC_MAX_UNION_ELEMENT_BYTES,
   CLOUD_SYNC_SAVE_SLOTS,
   CLOUD_SYNC_TEMPLATES,
   CLOUD_SYNC_THUMBNAIL_MAX_CHARS,
@@ -49,6 +53,43 @@ describe("the one conflict vocabulary", () => {
 });
 
 describe("limits", () => {
+  it("are @polaris-key/protocol/sync's numbers, every value unchanged (U-05.1)", () => {
+    const KiB = 1024;
+    const MiB = 1024 * KiB;
+    // The literals this module held before the protocol subpath owned them.
+    expect(CLOUD_SYNC_DEFAULTS).toEqual({
+      quotaBytes: 256 * MiB,
+      unlicensedQuotaBytes: 1 * MiB,
+      settings: { maxKeys: 256, maxValueBytes: 8 * KiB, maxBytes: 64 * KiB },
+      records: {
+        maxRecordBytes: 64 * KiB,
+        maxRecords: 10_000,
+        maxCollections: 32,
+      },
+      files: { maxBytes: 32 * MiB, keepRevisions: 5 },
+      push: { maxMutations: 100, maxBytes: 256 * KiB, perMinutePerDevice: 60 },
+      fileTransfersPerHour: 30,
+    });
+    expect(CLOUD_SYNC_SAVE_SLOTS).toBe(16);
+    expect(CLOUD_SYNC_MAX_MERGE_MEMBERS).toBe(256);
+    expect(CLOUD_SYNC_MAX_UNION_ELEMENT_BYTES).toBe(1024);
+    expect(CLOUD_SYNC_KEY_PATTERN).toBe("^[A-Za-z0-9._:-]{1,128}$");
+    expect(CLOUD_SYNC_COLLECTION_PATTERN).toBe(
+      "^[A-Za-z0-9._:-]{1,126}(?:\\.\\*)?$",
+    );
+    expect(CLOUD_SYNC_CEILINGS).toEqual({
+      perPerson: {
+        bytes: 256 * KiB + 64 * MiB + 1024 * MiB,
+        fileBytes: 1024 * MiB,
+      },
+      perProduct: {
+        bytes: 50 * 1024 * MiB,
+        users: 100_000,
+        pushesPerSecond: 2_000,
+      },
+    });
+  });
+
   it("are the owner's numbers: 256 keys and 64 KiB per player, 256 MiB, 1 MiB without a licence", () => {
     expect(CLOUD_SYNC_DEFAULTS.settings).toEqual({
       maxKeys: 256,

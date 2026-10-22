@@ -13965,6 +13965,21 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 
 // ../shared-catalog/dist/cloudSync.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
+
+// ../shared-protocol/dist/sync.js
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var SYNC_MAX_MUTATIONS = 100;
+var SYNC_MAX_PUSH_BYTES = 262144;
+var SYNC_MAX_MERGE_MEMBERS = 256;
+var SYNC_MAX_VALUE_BYTES = 8192;
+var SYNC_MAX_SETTINGS = 256;
+var SYNC_MAX_SETTINGS_BYTES = 65536;
+var SYNC_MAX_RECORD_BYTES = 65536;
+var SYNC_SAVE_SLOTS = 16;
+var SYNC_QUOTA_BYTES = 268435456;
+var SYNC_UNLICENSED_QUOTA_BYTES = 1048576;
+
+// ../shared-catalog/dist/cloudSync.js
 var USER_SETTING_SYNC_SCOPES = [
   "user",
   "platform",
@@ -13990,8 +14005,8 @@ var CLOUD_SYNC_TEMPLATE_NAMES = [
   "session"
 ];
 var CLOUD_SYNC_COLLECTION_PATTERN = "^[A-Za-z0-9._:-]{1,126}(?:\\.\\*)?$";
-var CLOUD_SYNC_MAX_MERGE_MEMBERS = 256;
-var CLOUD_SYNC_SAVE_SLOTS = 16;
+var CLOUD_SYNC_MAX_MERGE_MEMBERS = SYNC_MAX_MERGE_MEMBERS;
+var CLOUD_SYNC_SAVE_SLOTS = SYNC_SAVE_SLOTS;
 var KiB = 1024;
 var MiB = 1024 * KiB;
 var GiB = 1024 * MiB;
@@ -14011,15 +14026,27 @@ var CLOUD_SYNC_CEILINGS = {
 var CLOUD_SYNC_DEFAULTS = {
   /** A person's quota when nothing sets `pkey.cloudSync.bytes` (the `cloudSync.quota.defaultBytes`
    *  setting's default). */
-  quotaBytes: 256 * MiB,
+  quotaBytes: SYNC_QUOTA_BYTES,
   /** A signed-in person with no usable licence, on a product with no Anonymous devices tier:
    *  1 MiB, and files are refused. */
-  unlicensedQuotaBytes: 1 * MiB,
+  unlicensedQuotaBytes: SYNC_UNLICENSED_QUOTA_BYTES,
   /** Declared and open settings share one budget (D3). `maxValueBytes` bounds an open setting. */
-  settings: { maxKeys: 256, maxValueBytes: 8 * KiB, maxBytes: 64 * KiB },
-  records: { maxRecordBytes: 64 * KiB, maxRecords: 1e4, maxCollections: 32 },
+  settings: {
+    maxKeys: SYNC_MAX_SETTINGS,
+    maxValueBytes: SYNC_MAX_VALUE_BYTES,
+    maxBytes: SYNC_MAX_SETTINGS_BYTES
+  },
+  records: {
+    maxRecordBytes: SYNC_MAX_RECORD_BYTES,
+    maxRecords: 1e4,
+    maxCollections: 32
+  },
   files: { maxBytes: 32 * MiB, keepRevisions: 5 },
-  push: { maxMutations: 100, maxBytes: 256 * KiB, perMinutePerDevice: 60 },
+  push: {
+    maxMutations: SYNC_MAX_MUTATIONS,
+    maxBytes: SYNC_MAX_PUSH_BYTES,
+    perMinutePerDevice: 60
+  },
   fileTransfersPerHour: 30
 };
 var CLOUD_SYNC_THUMBNAIL_MAX_CHARS = 4 * Math.ceil(32 * KiB / 3);
