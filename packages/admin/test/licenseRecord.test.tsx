@@ -18,6 +18,7 @@ import { NONE, resetConsole, type Enablement } from "./consoleHarness.js";
 import {
   API,
   DETAIL,
+  NOW_S,
   axe,
   bootLicense,
   failing,
@@ -42,21 +43,24 @@ async function more(item: string) {
 }
 
 describe("license record: header and tabs", () => {
-  it("shows the status once, the expiry, the holder, the id, sign-in and who changed it", async () => {
+  it("shows the status once, the holder, the id, the tier control and who changed it", async () => {
     bootLicense(REC);
     await header();
     expect(screen.getAllByText("Active")).toHaveLength(1);
-    expect(screen.getByText(/Expires .* \(in \d+ days\)/)).toBeTruthy();
     expect(screen.getByText("ada@x.io")).toBeTruthy();
-    expect(screen.getByText("Manual")).toBeTruthy();
+    // The tier is a control that opens Change tier (licenses.detail).
+    expect(
+      await screen.findByRole("button", { name: "Tier: Pro. Change tier" }),
+    ).toBeTruthy();
     // modifiedBy is the signed-in operator: named, not a raw sub (LDT-9).
     expect(screen.getByText(/Changed .* by Ada Lovelace/)).toBeTruthy();
     const tabs = screen.getByRole("navigation", { name: "License sections" });
     expect(
       within(tabs)
-        .getByRole("link", { name: /Overview/ })
+        .getByRole("link", { name: /Status/ })
         .getAttribute("aria-current"),
     ).toBe("page");
+    expect(within(tabs).getByRole("link", { name: "Activity" })).toBeTruthy();
     expect(within(tabs).getByRole("link", { name: /Keys\s*1/ })).toBeTruthy();
     expect(
       await within(tabs).findByRole("link", { name: /Devices\s*2\/5/ }),
@@ -237,9 +241,7 @@ describe("license record: header and tabs", () => {
   it("edits the holder in its own dialog", async () => {
     const log = bootLicense(REC);
     await header();
-    await userEvent.click(
-      screen.getAllByRole("button", { name: "Edit holder…" })[0]!,
-    );
+    await more("Edit holder…");
     const dialog = await screen.findByRole("dialog", { name: "Edit holder" });
     const name = within(dialog).getByLabelText(/^Name/);
     await userEvent.clear(name);
@@ -257,9 +259,7 @@ describe("license record: header and tabs", () => {
   it("asks before Escape drops unsaved holder changes (C-20)", async () => {
     bootLicense(REC);
     await header();
-    await userEvent.click(
-      screen.getAllByRole("button", { name: "Edit holder…" })[0]!,
-    );
+    await more("Edit holder…");
     const dialog = await screen.findByRole("dialog", { name: "Edit holder" });
     await userEvent.type(within(dialog).getByLabelText(/^Name/), " Jr");
     fireEvent.keyDown(dialog, { key: "Escape" });
@@ -286,147 +286,260 @@ describe("license record: header and tabs", () => {
   it("passes axe", async () => {
     bootLicense(REC);
     await header();
-    await screen.findByRole("form", { name: "Terms" });
+    await screen.findByRole("table", { name: /Limits/ });
     const results = await axe(document.body);
     expect(results.violations.map((v) => v.id)).toEqual([]);
   });
 });
 
-describe("license record: Terms", () => {
-  async function terms() {
+describe("license record: Status (Limits, Duration, Change tier)", () => {
+  async function limits() {
     await header();
-    return screen.findByRole("form", { name: "Terms" });
+    return screen.findByRole("table", { name: /Limits/ });
   }
+  const row = (table: HTMLElement, name: RegExp) =>
+    within(table).getByRole("row", { name });
 
-  it("holds every policy field in one form, profiles in order (LDT-1, LDT-3)", async () => {
+  it("lists each limit with the layer it came from (LX-32, LX-33)", async () => {
     bootLicense(REC);
-    const form = await terms();
-    for (const label of [
-      "Tier",
-      "Expires",
-      "Max offline days",
-      "Minimum version",
-      "Maximum version",
-    ])
-      expect(within(form).getByLabelText(new RegExp(`^${label}`))).toBeTruthy();
-    expect(within(form).getByText("Position 1:")).toBeTruthy();
-    const items = within(form).getAllByRole("listitem");
-    expect(items.map((li) => li.textContent)).toEqual([
-      expect.stringContaining("Base"),
-      expect.stringContaining("Studio"),
-    ]);
+    const table = await limits();
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent),
+    ).toEqual(["Limit", "Value", "From", "Action"]);
+    const offline = row(table, /Offline days/);
+    expect(within(offline).getByText("14 days")).toBeTruthy();
+    expect(within(offline).getByText("Set on this license")).toBeTruthy();
+    const tracks = row(table, /Release tracks/);
+    expect(within(tracks).getByText("stable, beta")).toBeTruthy();
+    expect(within(tracks).getByText("This license and Pro")).toBeTruthy();
+    // Without the Worker's terms the tier's fingerprint mode is unknown: the product default.
+    expect(
+      within(row(table, /Fingerprint mode/)).getByText("Platform default"),
+    ).toBeTruthy();
   });
 
-  it("clears max offline days as null and reorders profiles in one save (LDT-2, LDT-3)", async () => {
-    const log = bootLicense(REC);
-    const form = await terms();
-    await userEvent.clear(within(form).getByLabelText(/^Max offline days/));
-    await userEvent.click(
-      within(form).getByRole("button", { name: "Move Studio up" }),
-    );
-    const bar = await screen.findByRole("region", {
-      name: "Unsaved changes in Terms",
+  it("uses the Worker's terms, and links a tier-set fingerprint mode to its tier", async () => {
+    bootLicense(REC, {
+      routes: {
+        [LIC]: {
+          ...DETAIL,
+          terms: {
+            deviceLimit: { value: 7, source: "tier" },
+            inheritedDeviceLimit: { value: 7, source: "tier" },
+            maxOfflineDays: { value: 30, source: "product" },
+            channels: { value: [], source: "none" },
+            minVersion: { value: null, source: "none" },
+            maxVersion: { value: null, source: "none" },
+            fingerprintMode: { value: "strict", source: "tier" },
+          },
+        },
+      },
     });
-    expect(within(bar).getByText("2 changes in Terms")).toBeTruthy();
+    const table = await limits();
+    expect(within(row(table, /Devices/)).getByText("7")).toBeTruthy();
+    expect(within(row(table, /Versions/)).getByText("Any")).toBeTruthy();
+    expect(
+      within(row(table, /Fingerprint mode/)).getByText("Strict"),
+    ).toBeTruthy();
+    expect(
+      (
+        await within(row(table, /Fingerprint mode/)).findByRole("link", {
+          name: "Open tier",
+        })
+      ).getAttribute("href"),
+    ).toBe("#/p/djdl/license/tiers/pro");
+  });
+
+  it("clears an override with Use the platform default (null)", async () => {
+    const log = bootLicense(REC);
+    await limits();
     await userEvent.click(
-      within(bar).getByRole("button", { name: "Save terms" }),
+      screen.getByRole("button", {
+        name: "Offline days: use the platform default",
+      }),
     );
     await waitFor(() =>
       expect(writes(log)).toEqual([
-        {
-          path: LIC,
-          method: "PATCH",
-          body: { maxOfflineDays: null, profiles: ["studio", "base"] },
-        },
+        { path: LIC, method: "PATCH", body: { maxOfflineDays: null } },
       ]),
     );
   });
 
-  it("warns on a downgrade below the device count, from the server's count (LDT-12)", async () => {
-    bootLicense(REC);
-    const form = await terms();
-    await userEvent.click(within(form).getByLabelText(/^Tier/));
-    await userEvent.click(await screen.findByRole("option", { name: /Edu/ }));
-    expect(
-      await within(form).findByText(/allows 1 device and this license has 2/),
-    ).toBeTruthy();
-    // A tier change re-derives the expiry unless one is set: said before saving.
-    expect(
-      within(form).getByText(/resets the expiry to the new tier's term/),
-    ).toBeTruthy();
+  it("edits offline days in a dialog and clears them as null (LDT-2)", async () => {
+    const log = bootLicense(REC);
+    await limits();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edit offline days" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Override offline days",
+    });
+    await userEvent.clear(
+      within(dialog).getByRole("textbox", { name: /^Offline days/ }),
+    );
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        { path: LIC, method: "PATCH", body: { maxOfflineDays: null } },
+      ]),
+    );
   });
 
   it("checks the version window on the client", async () => {
     const log = bootLicense(REC);
-    const form = await terms();
+    await limits();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Override versions" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Override versions",
+    });
     await userEvent.type(
-      within(form).getByLabelText(/^Minimum version/),
+      within(dialog).getByLabelText(/^Minimum version/),
       "3.0.0",
     );
     await userEvent.type(
-      within(form).getByLabelText(/^Maximum version/),
+      within(dialog).getByLabelText(/^Maximum version/),
       "2.0.0",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Save terms" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
     expect(
-      await within(form).findByText(/maximum version must be/),
+      await within(dialog).findByText(/maximum version must be/),
     ).toBeTruthy();
     expect(writes(log)).toEqual([]);
-  });
-
-  it("keeps the draft across a tab switch and asks before leaving the record (LDT-4)", async () => {
-    bootLicense(REC);
-    const form = await terms();
-    const offline = within(form).getByLabelText(/^Max offline days/);
-    await userEvent.clear(offline);
-    await userEvent.type(offline, "7");
-    await userEvent.click(screen.getByRole("link", { name: /Keys/ }));
-    await waitFor(() => expect(window.location.hash).toBe(`${REC}/keys`));
-    expect(
-      within(screen.getByRole("main")).getByRole("link", { name: /Overview/ })
-        .textContent,
-    ).toContain("unsaved changes");
-    await userEvent.click(
-      within(screen.getByRole("main")).getByRole("link", { name: /Overview/ }),
-    );
-    expect(
-      (
-        within(await terms()).getByLabelText(
-          /^Max offline days/,
-        ) as HTMLInputElement
-      ).value,
-    ).toBe("7");
-    // Leaving the record asks first.
-    await userEvent.click(
-      within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole(
-        "link",
-        { name: "Licenses" },
-      ),
-    );
-    const confirm = await screen.findByRole("alertdialog");
-    expect(
-      within(confirm).getByText("Discard unsaved changes to these terms?"),
-    ).toBeTruthy();
   });
 
   it("removes a held dev grant and keeps a held value the picker doesn't offer", async () => {
     const log = bootLicense(REC, {
       routes: { [LIC]: { ...DETAIL, channels: ["stable", "dev", "Legacy.X"] } },
     });
-    const form = await terms();
-    const group = within(form)
+    await limits();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edit release tracks" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Override release tracks",
+    });
+    const group = within(dialog)
       .getAllByRole("group", { name: "Release tracks" })
       .at(-1)!;
     expect(within(group).getByText("Not offered")).toBeTruthy();
     await userEvent.click(within(group).getByLabelText("dev"));
     await userEvent.click(within(group).getByLabelText("beta"));
-    await userEvent.click(screen.getByRole("button", { name: "Save terms" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(writes(log)).toHaveLength(1));
     expect((writes(log)[0]!.body as { channels: string[] }).channels).toEqual([
       "stable",
       "beta",
       "Legacy.X",
     ]);
+  });
+
+  it("reorders profiles in a dialog (LDT-3)", async () => {
+    const log = bootLicense(REC);
+    await header();
+    await more("Edit profiles…");
+    const dialog = await screen.findByRole("dialog", { name: "Profiles" });
+    expect(within(dialog).getByText("Position 1:")).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Move Studio up" }),
+    );
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        {
+          path: LIC,
+          method: "PATCH",
+          body: { profiles: ["studio", "base"] },
+        },
+      ]),
+    );
+  });
+
+  it("shows the duration and changes the end date in a dialog", async () => {
+    const log = bootLicense(REC);
+    await header();
+    const card = await screen.findByRole("region", { name: "Duration" });
+    expect(within(card).getByText(/^Today · /)).toBeTruthy();
+    await userEvent.click(within(card).getByRole("button", { name: "Change" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Change duration",
+    });
+    await userEvent.clear(within(dialog).getByLabelText(/^Ends/));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        { path: LIC, method: "PATCH", body: { expiresAt: null } },
+      ]),
+    );
+  });
+
+  it("Change tier lists what changes, old to new, and moves the license", async () => {
+    const log = bootLicense(REC);
+    await header();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Tier: Pro. Change tier" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Change Ada Lovelace's tier",
+    });
+    await userEvent.click(within(dialog).getByLabelText(/^Move to/));
+    await userEvent.click(await screen.findByRole("option", { name: /Edu/ }));
+    const diff = within(dialog).getByRole("region", { name: "What changes" });
+    const devices = within(diff).getByText("Devices").closest("div")!;
+    expect(devices.textContent).toContain("5");
+    expect(devices.textContent).toContain("1");
+    expect(
+      within(devices).getByText(/2 devices are signed in; none is signed out/),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Move to Edu" }),
+    );
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        { path: LIC, method: "PATCH", body: { tier: "edu" } },
+      ]),
+    );
+  });
+
+  it("a license with no tier shows a muted No tier (D12)", async () => {
+    bootLicense(REC, { routes: { [LIC]: { ...DETAIL, tier: null } } });
+    await header();
+    expect(
+      screen.getByRole("button", { name: "Tier: No tier. Change tier" }),
+    ).toBeTruthy();
+  });
+
+  it("the Activity tab asks the server for this license's entries", async () => {
+    const log = bootLicense(`${REC}/activity`, {
+      routes: {
+        [`${API}/activity`]: {
+          items: [
+            {
+              id: "a1",
+              at: NOW_S,
+              actor: { sub: "u1", name: "Ada Lovelace", email: "ada@x.io" },
+              action: "license.disable",
+              target: { kind: "license", id: "lic_1" },
+              summary: "Disabled",
+            },
+          ],
+          nextCursor: null,
+        },
+      },
+    });
+    await header();
+    expect(await screen.findByText("disabled license")).toBeTruthy();
+    expect(
+      log.calls.some(
+        (c) =>
+          c.path === `${API}/activity` &&
+          c.query.includes("targetKind=license") &&
+          c.query.includes("targetId=lic_1"),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -476,7 +589,7 @@ describe("license record: Keys", () => {
     });
     await screen.findByRole("table", { name: "Keys" });
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Mint key" })[0]!,
+      screen.getAllByRole("button", { name: "Add key" })[0]!,
     );
     const dialog = await screen.findByRole("dialog", { name: "Mint key" });
     await userEvent.type(within(dialog).getByLabelText(/^Label/), "Studio");
@@ -712,9 +825,7 @@ describe("license record: offline bundle", () => {
       services,
     });
     await header();
-    await userEvent.click(
-      screen.getAllByRole("button", { name: "Mint offline bundle…" })[0]!,
-    );
+    await more("Mint offline bundle…");
     const dialog = await screen.findByRole("dialog", {
       name: "Mint offline bundle",
     });
@@ -830,20 +941,19 @@ describe("license record: device limit (LX-14a)", () => {
     inheritedDeviceLimitSource: "tier" as const,
   };
 
-  it("shows the effective limit and its source on the header, the policy and the meter", async () => {
+  it("shows the effective limit and its source in Limits and on the Devices tab", async () => {
     bootLicense(REC, { routes: { [LIC]: OWN } });
     await header();
-    expect(screen.getByTestId("record-device-limit").textContent).toBe(
-      "Device limit 3 · set on this license",
-    );
+    const row = within(
+      await screen.findByRole("table", { name: /Limits/ }),
+    ).getByRole("row", { name: /Devices/ });
+    expect(within(row).getByText("3")).toBeTruthy();
+    expect(within(row).getByText("Set on this license")).toBeTruthy();
+    expect(within(row).getByText("Pro gives 5")).toBeTruthy();
     const tabs = screen.getByRole("navigation", { name: "License sections" });
     expect(
       await within(tabs).findByRole("link", { name: /Devices\s*2\/3/ }),
     ).toBeTruthy();
-    const policy = await screen.findByRole("region", {
-      name: "Effective policy",
-    });
-    expect(within(policy).getByText(/\(set on this license\)/)).toBeTruthy();
 
     await userEvent.click(
       within(screen.getByRole("main")).getByRole("link", { name: /Devices/ }),
@@ -867,9 +977,14 @@ describe("license record: device limit (LX-14a)", () => {
       },
     });
     await header();
-    expect(screen.getByTestId("record-device-limit").textContent).toBe(
-      "Device limit 5 · from Pro",
-    );
+    const row = within(
+      await screen.findByRole("table", { name: /Limits/ }),
+    ).getByRole("row", { name: /Devices/ });
+    expect(within(row).getByText("5")).toBeTruthy();
+    expect(within(row).getByText("Pro")).toBeTruthy();
+    expect(
+      within(row).getByRole("button", { name: /Override devices/ }),
+    ).toBeTruthy();
   });
 
   it("sets a lower limit from the sheet, warning that nobody is signed out", async () => {

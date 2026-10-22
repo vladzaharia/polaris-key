@@ -47,8 +47,10 @@ export interface PageHeaderProps {
   };
   /** The one primary action (a `Button`). */
   primaryAction?: React.ReactNode;
-  /** Up to two show inline on ≥ 640 px; the rest go to "More actions". */
+  /** Up to two show inline on ≥ 640 px (`inlineSecondary`); the rest go to "More actions". */
   secondaryActions?: PageAction[];
+  /** How many secondary actions show inline on ≥ 640 px (default 2; 0: all in "More actions"). */
+  inlineSecondary?: number;
   /** Always last in "More actions", after a separator, styled danger. */
   dangerActions?: PageAction[];
   /** `PageTabs`, under the header. */
@@ -92,14 +94,15 @@ export function PageHeader({
   freshness,
   primaryAction,
   secondaryActions = [],
+  inlineSecondary = INLINE_SECONDARY,
   dangerActions = [],
   tabs,
   refetching = false,
   sticky = false,
   className,
 }: PageHeaderProps): React.ReactElement {
-  const inline = secondaryActions.slice(0, INLINE_SECONDARY);
-  const overflow = secondaryActions.slice(INLINE_SECONDARY);
+  const inline = secondaryActions.slice(0, inlineSecondary);
+  const overflow = secondaryActions.slice(inlineSecondary);
   const toItems = (actions: PageAction[], tone?: "danger") =>
     actions.map((a) => ({
       label: a.label,
