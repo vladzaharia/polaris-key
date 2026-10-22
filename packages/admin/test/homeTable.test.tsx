@@ -203,6 +203,39 @@ describe("Home table", () => {
     expect(rows()[0]!.textContent).not.toContain("Writes paused");
   });
 
+  it("the view switch and the overflow menu are in the table's one toolbar band, not a row above it (ST-44b.3)", async () => {
+    boot("#/", { extra: registry() });
+    await page();
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    const heading = within(main()).getByRole("heading", {
+      level: 2,
+      name: /^Products/,
+    });
+    const header = heading.parentElement!.parentElement!;
+    expect(within(header).queryByRole("radio", { name: /Table/ })).toBeNull();
+    expect(
+      within(header).queryByRole("button", { name: "More product actions" }),
+    ).toBeNull();
+    const search = within(main()).getByRole("searchbox", {
+      name: "Filter products",
+    });
+    const band = search.closest("[role=search]")!.parentElement!;
+    expect(within(band).getByRole("radio", { name: /Cards/ })).toBeTruthy();
+    expect(
+      within(band).getByRole("button", { name: "More product actions" }),
+    ).toBeTruthy();
+    // Back to Cards: they return to the heading row.
+    await userEvent.click(within(band).getByRole("radio", { name: /Cards/ }));
+    await waitFor(() =>
+      expect(
+        within(
+          within(main()).getByRole("heading", { level: 2, name: /^Products/ })
+            .parentElement!.parentElement!,
+        ).getByRole("radio", { name: /Table/ }),
+      ).toBeTruthy(),
+    );
+  });
+
   it("keeps search and facets in the URL", async () => {
     boot("#/?attention=yes", { extra: registry() });
     await page();

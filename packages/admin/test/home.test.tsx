@@ -137,6 +137,27 @@ const READY = {
   ],
 };
 
+const READY_STEAM = {
+  done: 2,
+  total: 3,
+  rows: [
+    { id: "keyring", title: "Keyring configured", done: true },
+    { id: "email-sender", title: "Email sender configured", done: true },
+    {
+      id: "store-accounts",
+      title: "Stores connected",
+      done: false,
+      detail:
+        "Another product's Steam uploads need a Steamworks publisher key.",
+      action: {
+        label: "Connect Steam",
+        to: "connections",
+        store: "steam",
+      },
+    },
+  ],
+};
+
 const cards = (): HTMLElement[] =>
   within(within(main()).getByRole("list", { name: "Products" })).getAllByRole(
     "article",
@@ -435,6 +456,18 @@ describe("Home", () => {
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(within(region).getByText("Keyring configured")).toBeTruthy();
+  });
+
+  it("Connect Steam carries the Steam mark; the link's words name it (ST-44b.3)", async () => {
+    boot("#/", {
+      extra: { ...registry(), "/manage/api/platform/ready": READY_STEAM },
+    });
+    await home();
+    const link = await within(main()).findByRole("link", {
+      name: "Connect Steam",
+    });
+    expect(link.querySelector("svg")).toBeTruthy();
+    expect(link.querySelector("svg")!.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("Connect Steam opens Store connections on that store, not the sign-in providers", async () => {
