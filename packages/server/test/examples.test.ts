@@ -114,6 +114,73 @@ it("examples/server-hono gates /api/team by tier", async () => {
   expect(await get(await kit.signedHeaders({ tier: "free" }))).toBe(403);
 });
 
+probes("examples/server-fastify", async () => {
+  const { createApp } = await import(
+    join(examples, "server-fastify", "app.ts")
+  );
+  const app = createApp(kit.options());
+  await app.ready();
+  afterAll(() => app.close());
+  return async (method, path, headers) => {
+    const r = await app.inject({
+      method: method as "GET" | "POST",
+      url: path,
+      headers,
+    });
+    return new Response(r.body, {
+      status: r.statusCode,
+      headers: r.headers as Record<string, string>,
+    });
+  };
+});
+
+probes("examples/server-koa", async () => {
+  const { createApp } = await import(join(examples, "server-koa", "app.ts"));
+  const server = createApp(kit.options()).listen(0, "127.0.0.1");
+  await new Promise((r) => server.once("listening", r));
+  afterAll(() => void server.close());
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  return (method, path, headers) => fetch(base + path, { method, headers });
+});
+
+probes("examples/server-nestjs", async () => {
+  const { createApp } = await import(join(examples, "server-nestjs", "app.ts"));
+  const app = await createApp(kit.options());
+  await app.listen(0, "127.0.0.1");
+  afterAll(() => app.close());
+  const base = (await app.getUrl()).replace("[::1]", "127.0.0.1");
+  return (method, path, headers) => fetch(base + path, { method, headers });
+});
+
+for (const name of ["fastify", "koa", "nestjs"]) {
+  it(`examples/server-${name} gates /api/team by tier`, async () => {
+    const { createApp } = await import(
+      join(examples, `server-${name}`, "app.ts")
+    );
+    const app = await createApp(kit.options());
+    let base = "";
+    let close = async () => {};
+    if (name === "fastify") {
+      base = await app.listen({ port: 0, host: "127.0.0.1" });
+      close = () => app.close();
+    } else if (name === "koa") {
+      const s = app.listen(0, "127.0.0.1");
+      await new Promise((r) => s.once("listening", r));
+      base = `http://127.0.0.1:${(s.address() as AddressInfo).port}`;
+      close = async () => void s.close();
+    } else {
+      await app.listen(0, "127.0.0.1");
+      base = (await app.getUrl()).replace("[::1]", "127.0.0.1");
+      close = () => app.close();
+    }
+    const get = async (headers: Record<string, string>) =>
+      (await fetch(base + "/api/team", { headers })).status;
+    expect(await get(await kit.signedHeaders({ tier: "team" }))).toBe(200);
+    expect(await get(await kit.signedHeaders({ tier: "free" }))).toBe(403);
+    await close();
+  });
+}
+
 describe("examples/server-next", () => {
   it("gates its route handlers", async () => {
     kitConfig.current = kit.config;

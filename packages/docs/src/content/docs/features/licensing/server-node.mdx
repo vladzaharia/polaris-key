@@ -212,6 +212,8 @@ export class AppModule {}
 
 A route with no decorator stays open. A `Require*` decorator also works on a whole controller. It runs on Nest's Express and Fastify platforms, versions 10 and 11, and needs `experimentalDecorators`, which every Nest project sets. `GetPolarisAuth()` gives the full context, and `RequireAll(...)` takes the same requirements as below.
 
+Runnable apps: [Express](https://github.com/vladzaharia/polaris-key/tree/main/examples/server-express), [Hono](https://github.com/vladzaharia/polaris-key/tree/main/examples/server-hono), [Next.js](https://github.com/vladzaharia/polaris-key/tree/main/examples/server-next), [Fastify](https://github.com/vladzaharia/polaris-key/tree/main/examples/server-fastify), [Koa](https://github.com/vladzaharia/polaris-key/tree/main/examples/server-koa) and [NestJS](https://github.com/vladzaharia/polaris-key/tree/main/examples/server-nestjs).
+
 ## Several requirements
 
 `requireAll` checks requirements in order and refuses with the first one that fails:
