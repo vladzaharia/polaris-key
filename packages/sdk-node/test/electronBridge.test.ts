@@ -1227,11 +1227,21 @@ describe("host facts and update progress over the bridge (UK-06.3)", () => {
     expect(mine.sent).toEqual([
       {
         channel: PROGRESS,
-        payload: { version: "2.0.0", done: 1000, total: 4000, phase: "download" },
+        payload: {
+          version: "2.0.0",
+          done: 1000,
+          total: 4000,
+          phase: "download",
+        },
       },
       {
         channel: PROGRESS,
-        payload: { version: "2.0.0", done: 2000, total: 4000, phase: "download" },
+        payload: {
+          version: "2.0.0",
+          done: 2000,
+          total: 4000,
+          phase: "download",
+        },
       },
     ]);
     expect(other.sent).toEqual([]);
@@ -1245,7 +1255,10 @@ describe("host facts and update progress over the bridge (UK-06.3)", () => {
       installs++;
       return { kind: "handedOff", version: "2.0.0" };
     };
-    expect(await call(evil)).toMatchObject({ ok: false, code: "sender-refused" });
+    expect(await call(evil)).toMatchObject({
+      ok: false,
+      code: "sender-refused",
+    });
     expect(installs).toBe(0);
     expect(evil.sent).toEqual([]);
   });
