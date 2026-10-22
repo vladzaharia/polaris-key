@@ -322,17 +322,25 @@ export function HolderPill({
 /** Tier: a pill with the layers glyph; a license with no tier says so, muted (D12). */
 export function TierPill({
   label,
+  className,
 }: {
   label: string | null;
+  className?: string;
 }): React.ReactElement {
   if (!label) return <span className="text-fg-muted">No tier</span>;
   return (
     <span
-      className="inline-flex h-5 max-w-[9rem] items-center gap-1 rounded-full border border-border bg-surface-sunken px-2 text-xs text-fg"
+      className={cn(
+        "inline-flex h-5 max-w-[9rem] items-center gap-1 rounded-full border border-border bg-surface-sunken px-2 text-xs text-fg",
+        className,
+      )}
       title={label}
     >
       <Layers aria-hidden className="size-3 shrink-0 text-accent-fg" />
-      <span className="truncate">{label}</span>
+      {/* Not `.truncate`: a card lets its names wrap, a pill keeps its one line and ellipsis. */}
+      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+        {label}
+      </span>
     </span>
   );
 }
@@ -469,8 +477,8 @@ export function OriginCell({
 export function originLabel(l: LicenseSummary): string {
   if (l.batchId) return "Key batch";
   if (l.origin === "oidc" || l.origin === "enroll") return "Automatic grant";
-  if (l.origin === "admin") return "By hand";
-  return "";
+  // The Worker reads a missing origin as "admin" (deletion.ts).
+  return "By hand";
 }
 
 /** The icons of the counted holder chips. */
@@ -558,7 +566,9 @@ export function LicenseCard({
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
-        <div className="min-w-44 flex-1">{primary}</div>
+        <div className="min-w-[min(11rem,100%)] flex-1 [&_.truncate]:whitespace-normal [&_.truncate]:[overflow-wrap:anywhere]">
+          {primary}
+        </div>
         <span
           className={cn(
             "inline-flex shrink-0 items-center gap-1 tabular-nums",
@@ -573,7 +583,7 @@ export function LicenseCard({
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 @xs:ps-10">
-        <TierPill label={tierLabel} />
+        <TierPill label={tierLabel} className="max-w-full" />
         {state}
       </div>
     </div>

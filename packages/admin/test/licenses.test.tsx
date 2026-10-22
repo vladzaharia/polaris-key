@@ -301,6 +301,19 @@ describe("Licenses list", () => {
     await waitFor(() => expect(reads()).toBeGreaterThan(before));
   });
 
+  it("T2/T3: a timeout names its cause, and the holder chips show no count", async () => {
+    bootLicense("#/p/djdl/license/licenses", {
+      routes: { [`${API}/license/licenses`]: failing(504) },
+    });
+    await screen.findByText("Polaris Key took too long to answer. Try again.");
+    expect(screen.getByRole("button", { name: /Copy details/ })).toBeTruthy();
+    const chips = screen
+      .getAllByRole("button", { name: /^Holder: / })
+      .map((b) => b.getAttribute("aria-label"));
+    expect(chips.length).toBe(3);
+    for (const c of chips) expect(c).not.toMatch(/,\s*\d/);
+  });
+
   it("keeps the filters through an error and a retry, and the table head", async () => {
     bootLicense("#/p/djdl/license/licenses?tier=pro", {
       routes: { [`${API}/license/licenses`]: failing(500) },
@@ -317,6 +330,13 @@ describe("Licenses list", () => {
       screen.getByText(/No license has a name, email or id containing “zzzz”/),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: /Clear filters/ })).toBeTruthy();
+  });
+
+  it("T4: a no-match under status and channel names them", async () => {
+    bootLicense("#/p/djdl/license/licenses?status=disabled&channel=zz-none");
+    expect(
+      await screen.findByText("No license is Disabled on zz-none."),
+    ).toBeTruthy();
   });
 
   it("disables one license from its row menu, through the same confirm", async () => {

@@ -6,7 +6,7 @@ import { ChannelPicker } from "../../src/ui/ChannelPicker.js";
 afterEach(cleanup);
 
 describe("ChannelPicker locked stable", () => {
-  it("draws stable ticked and locked, with Always included on focus", async () => {
+  it("draws stable ticked and locked, with Always included said once", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(
@@ -17,12 +17,11 @@ describe("ChannelPicker locked stable", () => {
     expect((stable as HTMLButtonElement).disabled).toBe(true);
     const chip = document.querySelector<HTMLElement>("[data-locked]")!;
     expect(chip.className).toContain("border-dashed");
-    // Keyboard first: the tooltip opens on keyboard focus, not after a pointer press.
     await user.tab();
     expect(document.activeElement).toBe(chip);
-    expect(
-      (await screen.findAllByText("Always included")).length,
-    ).toBeGreaterThan(0);
+    // Said once: the visible description, with no tooltip repeating it to assistive tech.
+    expect(screen.getAllByText("Always included")).toHaveLength(1);
+    expect(screen.queryByRole("tooltip")).toBeNull();
     await user.click(stable);
     expect(onChange).not.toHaveBeenCalled();
   });

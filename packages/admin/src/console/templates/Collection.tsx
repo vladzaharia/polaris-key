@@ -15,11 +15,14 @@ import * as React from "react";
 export function CollectionTemplate({
   header,
   summary,
+  summaryClassName,
   children,
 }: {
   header: React.ReactNode;
   /** 2–4 `StatTile`s or facet tiles (buttons with `aria-pressed`). */
   summary?: React.ReactNode;
+  /** Replaces the summary strip's tile grid (Licenses draws a one-line strip of chips). */
+  summaryClassName?: string;
   /** The `DataTable` (and any drawer it opens). */
   children: React.ReactNode;
 }): React.ReactElement {
@@ -27,7 +30,13 @@ export function CollectionTemplate({
     <div className="space-y-6" data-template="collection">
       {header}
       {summary ? (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{summary}</div>
+        <div
+          className={
+            summaryClassName ?? "grid grid-cols-2 gap-3 lg:grid-cols-4"
+          }
+        >
+          {summary}
+        </div>
       ) : null}
       {children}
     </div>
