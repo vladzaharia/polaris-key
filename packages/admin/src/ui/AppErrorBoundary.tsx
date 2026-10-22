@@ -33,7 +33,8 @@ export class AppErrorBoundary extends React.Component<
     if (error === null) return this.props.children;
     const details = {
       message: error instanceof Error ? error.message : String(error),
-      page: typeof window === "undefined" ? "" : window.location.hash,
+      page:
+        typeof window === "undefined" ? "" : window.location.hash.split("?")[0],
       stack: stack.trim().split("\n").slice(0, 12),
     };
     return (

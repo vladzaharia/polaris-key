@@ -37,6 +37,7 @@
  * an account", with the portal's sign-up link to send the customer (an offer, never forced).
  */
 
+import { Unlocked } from "../../../../ui/WriteLock.js";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -409,13 +410,15 @@ function ConfigEditor({
           tone="warning"
           title="Inherited values may be incomplete"
           action={
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void stackQ.refetch()}
-            >
-              Try again
-            </Button>
+            <Unlocked>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void stackQ.refetch()}
+              >
+                Try again
+              </Button>
+            </Unlocked>
           }
         >
           A profile this license inherits from couldn't be loaded, so the values

@@ -26,6 +26,15 @@ import { AppErrorBoundary } from "../src/ui/AppErrorBoundary.js";
 import { ActionMenu } from "../src/ui/ActionMenu.js";
 import { ConfirmDialog } from "../src/ui/ConfirmDialog.js";
 import { Select } from "../src/ui/Select.js";
+import { Dialog } from "../src/ui/Dialog.js";
+import { WriteLock } from "../src/ui/WriteLock.js";
+import { useInertOutside } from "../src/ui/useInertOutside.js";
+import {
+  DataTable,
+  EMPTY_TABLE_STATE,
+  type DataColumn,
+  type TableState,
+} from "../src/ui/data-table/index.js";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -335,3 +344,215 @@ describe("7 · the consequence lines", () => {
 });
 
 void ME;
+
+describe("read controls stay live under a WriteLock", () => {
+  it("the license record's revoked-keys toggle works for a view-only member", async () => {
+    bootLicense("#/p/djdl/license/licenses/lic_1/keys", { me: VIEWER });
+    const toggle = await screen.findByRole("button", {
+      name: /Show 1 revoked/,
+    });
+    expect(toggle.getAttribute("aria-disabled")).toBeNull();
+    await userEvent.click(toggle);
+    expect(
+      screen
+        .getByRole("button", { name: /Hide 1 revoked/ })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
+  });
+
+  interface Row {
+    id: string;
+    name: string;
+    status: string;
+  }
+  const ROWS: Row[] = [
+    { id: "a", name: "Studio", status: "active" },
+    { id: "b", name: "Lab", status: "expired" },
+  ];
+  const COLUMNS: DataColumn<Row>[] = [
+    { id: "name", header: "Holder", accessorKey: "name" },
+    { id: "status", header: "Status", accessorKey: "status" },
+  ];
+  function Locked({ q }: { q: string }): React.ReactElement {
+    const [state, setState] = React.useState<TableState>({
+      ...EMPTY_TABLE_STATE,
+      q,
+    });
+    return (
+      <WriteLock locked reason="View only">
+        <DataTable<Row>
+          id="t"
+          caption="Rows"
+          data={ROWS}
+          columns={COLUMNS}
+          getRowId={(r) => r.id}
+          rowLabel={(r) => r.name}
+          search={{ placeholder: "Search", columns: ["name"] }}
+          facets={[
+            {
+              id: "status",
+              label: "Status",
+              options: [
+                { value: "active", label: "Active" },
+                { value: "expired", label: "Expired" },
+              ],
+            },
+          ]}
+          state={state}
+          onStateChange={setState}
+          exportCsv={false}
+          pagination={{
+            mode: "cursor",
+            local: true,
+            hasMore: true,
+            onLoadMore: more,
+            onSearchAll: searchAll,
+          }}
+        />
+      </WriteLock>
+    );
+  }
+  const more = vi.fn();
+  const searchAll = vi.fn();
+
+  it("DataTable: Load more, Search all and the filters are not locked", async () => {
+    more.mockClear();
+    searchAll.mockClear();
+    render(<Locked q="" />);
+    const load = screen.getByRole("button", { name: "Load more" });
+    expect(load.getAttribute("aria-disabled")).toBeNull();
+    await userEvent.click(load);
+    expect(more).toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole("button", { name: /Filter by status/ }),
+    );
+    const opt = await screen.findByRole("checkbox", { name: /Active/ });
+    expect(opt.getAttribute("aria-readonly")).toBeNull();
+    await userEvent.click(opt);
+    expect(
+      screen.getByRole("button", { name: /Status: 1 selected/ }),
+    ).toBeTruthy();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clear filters" }),
+    );
+    cleanup();
+    render(<Locked q="zzz" />);
+    const all = await screen.findAllByRole("button", { name: "Search all" });
+    for (const b of all) expect(b.getAttribute("aria-disabled")).toBeNull();
+    await userEvent.click(all[0]!);
+    expect(searchAll).toHaveBeenCalled();
+  });
+});
+
+describe("popups inside a dialog, and overlapping popups", () => {
+  function InDialog(): React.ReactElement {
+    return (
+      <Dialog open onOpenChange={() => undefined} title="Edit">
+        <Select
+          aria-label="Kind"
+          value="a"
+          options={[
+            { value: "a", label: "Alpha" },
+            { value: "b", label: "Beta" },
+          ]}
+        />
+        <ActionMenu
+          label="More"
+          items={[{ label: "Go", onSelect: () => undefined }]}
+        />
+      </Dialog>
+    );
+  }
+
+  it("a select and an action menu in a dialog give the page back on Escape, and focus returns", async () => {
+    render(<InDialog />);
+    for (const [trigger, popup] of [
+      [() => screen.getByRole("combobox", { name: "Kind" }), "listbox"],
+      [() => screen.getByRole("button", { name: "More" }), "menu"],
+    ] as const) {
+      const t = trigger();
+      await userEvent.click(t);
+      await screen.findByRole(popup);
+      expect(document.querySelector("[inert]")).not.toBeNull();
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole(popup)).toBeNull());
+      expect(document.querySelector("[inert]")).toBeNull();
+      await waitFor(() => expect(document.activeElement).toBe(t));
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    }
+  });
+
+  it("unmounting the tree while a popup is open leaves nothing inert", async () => {
+    const { unmount } = render(<Page2 />);
+    await userEvent.click(screen.getByRole("combobox", { name: "Kind" }));
+    await screen.findByRole("listbox");
+    unmount();
+    expect(document.querySelector("[inert]")).toBeNull();
+  });
+
+  function Page2(): React.ReactElement {
+    return (
+      <div>
+        <button type="button">Page</button>
+        <Select
+          aria-label="Kind"
+          value="a"
+          options={[{ value: "a", label: "A" }]}
+        />
+      </div>
+    );
+  }
+
+  function Popup({ name }: { name: string }): React.ReactElement {
+    const ref = useInertOutside<HTMLDivElement>();
+    return <div ref={ref} data-popup={name} />;
+  }
+
+  it("overlapping popups: the page stays inert until the last closes, and a pre-inert element is never freed", () => {
+    const page = document.createElement("div");
+    const pre = document.createElement("div");
+    pre.setAttribute("inert", "");
+    document.body.append(page, pre);
+    const a = render(<Popup name="a" />);
+    const aEl = document.querySelector("[data-popup=a]")!.parentElement!;
+    expect(page.hasAttribute("inert")).toBe(true);
+    const b = render(<Popup name="b" />);
+    expect(aEl.hasAttribute("inert")).toBe(true);
+    a.unmount();
+    expect(page.hasAttribute("inert")).toBe(true);
+    b.unmount();
+    expect(page.hasAttribute("inert")).toBe(false);
+    expect(pre.hasAttribute("inert")).toBe(true);
+    page.remove();
+    pre.remove();
+  });
+});
+
+describe("the error boundary's copied details", () => {
+  it("carry the page path without its query", async () => {
+    const write = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: write },
+      configurable: true,
+    });
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    window.location.hash = "#/p/djdl/license/licenses?q=ada%40x.io";
+    function Boom(): React.ReactElement {
+      throw new Error("x");
+    }
+    render(
+      <AppErrorBoundary>
+        <Boom />
+      </AppErrorBoundary>,
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Copy details" }),
+    );
+    await waitFor(() => expect(write).toHaveBeenCalled());
+    const copied = String((write.mock.calls[0] as unknown[])[0]);
+    expect(copied).toContain("#/p/djdl/license/licenses");
+    expect(copied).not.toContain("ada");
+    log.mockRestore();
+  });
+});

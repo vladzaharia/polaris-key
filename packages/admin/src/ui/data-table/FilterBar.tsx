@@ -1,3 +1,4 @@
+import { Unlocked } from "../WriteLock.js";
 import * as React from "react";
 import { ChevronDown, Search, X } from "lucide-react";
 import { cn } from "../../lib/cn.js";
@@ -394,17 +395,23 @@ export function FilterBar({
         {facets
           .filter((f) => f.counted)
           .map((f) => (
-            <CountedChips key={f.id} facet={f} />
+            <Unlocked key={f.id}>
+              <CountedChips facet={f} />
+            </Unlocked>
           ))}
         {facets
           .filter((f) => !f.counted && !f.secondary)
           .map((f) => (
-            <FacetMenu key={f.id} facet={f} />
+            <Unlocked key={f.id}>
+              <FacetMenu facet={f} />
+            </Unlocked>
           ))}
         {facets.some((f) => !f.counted && f.secondary) ? (
-          <MoreFilters
-            facets={facets.filter((f) => !f.counted && f.secondary)}
-          />
+          <Unlocked>
+            <MoreFilters
+              facets={facets.filter((f) => !f.counted && f.secondary)}
+            />
+          </Unlocked>
         ) : null}
         {dateRange}
         {actions ? (
@@ -452,9 +459,11 @@ export function FilterBar({
           ))}
           {onClearAll && filtered ? (
             <li>
-              <Button variant="link" size="xs" onClick={onClearAll}>
-                Clear filters
-              </Button>
+              <Unlocked>
+                <Button variant="link" size="xs" onClick={onClearAll}>
+                  Clear filters
+                </Button>
+              </Unlocked>
             </li>
           ) : null}
         </ul>

@@ -1,6 +1,13 @@
 import * as React from "react";
 
 /**
+ * How many open popups made each element inert. An element goes back only when the last popup
+ * that inerted it closes, in any order; one that was inert before any popup opened is never
+ * touched (it has no entry here).
+ */
+const inerted = new Map<HTMLElement, number>();
+
+/**
  * While a menu or a select is open, everything outside its portal is `inert` (P1). Radix hides
  * the rest of the page from assistive tech with `aria-hidden` but leaves it focusable, which axe
  * rightly calls `aria-hidden-focus`; `inert` takes it out of the tab order and the pointer too,
@@ -23,13 +30,24 @@ export function useInertOutside<T extends HTMLElement>(
     const set: HTMLElement[] = [];
     for (const el of Array.from(document.body.children)) {
       if (!(el instanceof HTMLElement) || el.contains(node)) continue;
-      if (el.hasAttribute("inert")) continue;
       if (["SCRIPT", "STYLE", "LINK"].includes(el.tagName)) continue;
-      el.setAttribute("inert", "");
+      const n = inerted.get(el);
+      if (n === undefined) {
+        if (el.hasAttribute("inert")) continue;
+        el.setAttribute("inert", "");
+      }
+      inerted.set(el, (n ?? 0) + 1);
       set.push(el);
     }
     return () => {
-      for (const el of set) el.removeAttribute("inert");
+      for (const el of set) {
+        const n = (inerted.get(el) ?? 1) - 1;
+        if (n > 0) inerted.set(el, n);
+        else {
+          inerted.delete(el);
+          el.removeAttribute("inert");
+        }
+      }
       give(null);
     };
   }, []);

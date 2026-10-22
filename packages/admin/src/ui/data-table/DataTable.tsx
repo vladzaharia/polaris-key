@@ -1,3 +1,4 @@
+import { Unlocked } from "../WriteLock.js";
 import * as React from "react";
 import { flushSync } from "react-dom";
 import {
@@ -1095,9 +1096,11 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       !allMatching &&
       table.getIsAllRowsSelected() &&
       pagination.total > data.length ? (
-        <Button variant="link" size="xs" onClick={() => setAllMatching(true)}>
-          Select all {formatCount(pagination.total)} matching
-        </Button>
+        <Unlocked>
+          <Button variant="link" size="xs" onClick={() => setAllMatching(true)}>
+            Select all {formatCount(pagination.total)} matching
+          </Button>
+        </Unlocked>
       ) : null}
       <span aria-hidden className="text-fg-subtle">
         ·
@@ -1115,17 +1118,19 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           {a.label}
         </Button>
       ))}
-      <Button
-        size="sm"
-        variant="ghost"
-        className="ms-auto"
-        onClick={() => {
-          setAllMatching(false);
-          setRowSelection({});
-        }}
-      >
-        Clear selection
-      </Button>
+      <Unlocked>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ms-auto"
+          onClick={() => {
+            setAllMatching(false);
+            setRowSelection({});
+          }}
+        >
+          Clear selection
+        </Button>
+      </Unlocked>
     </div>
   ) : null;
 
@@ -1152,51 +1157,53 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           <>
             {toolbarActions}
             {showViewControls && hideable.length > 0 ? (
-              <Popover
-                label="Columns"
-                trigger={
-                  iconOnlyBar ? (
-                    <IconButton
-                      label="Columns"
-                      icon={<Columns3 aria-hidden />}
-                      variant="ghost"
-                      size="sm"
-                    />
-                  ) : (
-                    <Button
-                      variant={compactBar ? "ghost" : "outline"}
-                      size="sm"
-                      iconStart={<Columns3 aria-hidden />}
-                    >
-                      Columns
-                    </Button>
-                  )
-                }
-                align="end"
-                className="w-56 p-2"
-              >
-                <fieldset>
-                  <legend className="px-2 pb-1 text-xs font-semibold text-fg-muted">
-                    Show columns
-                  </legend>
-                  {hideable.map((c) => (
-                    <label
-                      key={c.id}
-                      className="flex min-h-8 cursor-pointer items-center gap-2 rounded-md px-2 text-sm text-fg hover:bg-hover"
-                    >
-                      <input
-                        type="checkbox"
-                        className="size-4 accent-accent"
-                        checked={c.getIsVisible()}
-                        onChange={(e) =>
-                          setColumnHidden(c.id, !e.target.checked)
-                        }
+              <Unlocked>
+                <Popover
+                  label="Columns"
+                  trigger={
+                    iconOnlyBar ? (
+                      <IconButton
+                        label="Columns"
+                        icon={<Columns3 aria-hidden />}
+                        variant="ghost"
+                        size="sm"
                       />
-                      {columnLabel(c.columnDef as DataColumn<T>)}
-                    </label>
-                  ))}
-                </fieldset>
-              </Popover>
+                    ) : (
+                      <Button
+                        variant={compactBar ? "ghost" : "outline"}
+                        size="sm"
+                        iconStart={<Columns3 aria-hidden />}
+                      >
+                        Columns
+                      </Button>
+                    )
+                  }
+                  align="end"
+                  className="w-56 p-2"
+                >
+                  <fieldset>
+                    <legend className="px-2 pb-1 text-xs font-semibold text-fg-muted">
+                      Show columns
+                    </legend>
+                    {hideable.map((c) => (
+                      <label
+                        key={c.id}
+                        className="flex min-h-8 cursor-pointer items-center gap-2 rounded-md px-2 text-sm text-fg hover:bg-hover"
+                      >
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-accent"
+                          checked={c.getIsVisible()}
+                          onChange={(e) =>
+                            setColumnHidden(c.id, !e.target.checked)
+                          }
+                        />
+                        {columnLabel(c.columnDef as DataColumn<T>)}
+                      </label>
+                    ))}
+                  </fieldset>
+                </Popover>
+              </Unlocked>
             ) : null}
             {showViewControls && !compactBar ? (
               <div
@@ -1221,26 +1228,28 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
               </div>
             ) : null}
             {csvEnabled ? (
-              iconOnlyBar ? (
-                <IconButton
-                  label={exportLabel}
-                  icon={<Download aria-hidden />}
-                  variant="outline"
-                  size="sm"
-                  onClick={onExport}
-                  disabledReason={exportDisabled}
-                />
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  iconStart={<Download aria-hidden />}
-                  onClick={onExport}
-                  disabledReason={exportDisabled}
-                >
-                  {exportLabel}
-                </Button>
-              )
+              <Unlocked>
+                {iconOnlyBar ? (
+                  <IconButton
+                    label={exportLabel}
+                    icon={<Download aria-hidden />}
+                    variant="outline"
+                    size="sm"
+                    onClick={onExport}
+                    disabledReason={exportDisabled}
+                  />
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    iconStart={<Download aria-hidden />}
+                    onClick={onExport}
+                    disabledReason={exportDisabled}
+                  >
+                    {exportLabel}
+                  </Button>
+                )}
+              </Unlocked>
             ) : null}
           </>
         }
@@ -1374,17 +1383,19 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       primaryAction={
         noResultsOverride?.action ??
         (unloaded?.onSearchAll && narrowedLoaded ? (
-          <Button
-            data-search-all=""
-            loading={unloaded.searchingAll}
-            onClick={startSearchAll}
-          >
-            {searchFailed
-              ? "Try again"
-              : unloaded.total !== undefined
-                ? `Search all ${formatCount(unloaded.total)}`
-                : "Search all"}
-          </Button>
+          <Unlocked>
+            <Button
+              data-search-all=""
+              loading={unloaded.searchingAll}
+              onClick={startSearchAll}
+            >
+              {searchFailed
+                ? "Try again"
+                : unloaded.total !== undefined
+                  ? `Search all ${formatCount(unloaded.total)}`
+                  : "Search all"}
+            </Button>
+          </Unlocked>
         ) : undefined)
       }
     />
@@ -1673,19 +1684,21 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             </p>
           ) : null}
           {pagination.hasMore ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-28 justify-center"
-              loading={pagination.loadingMore}
-              disabled={pagination.searchingAll}
-              onClick={() => {
-                loadMoreFrom.current = data.length;
-                pagination.onLoadMore();
-              }}
-            >
-              {pagination.loadError && !bannerUp ? "Try again" : "Load more"}
-            </Button>
+            <Unlocked>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-28 justify-center"
+                loading={pagination.loadingMore}
+                disabled={pagination.searchingAll}
+                onClick={() => {
+                  loadMoreFrom.current = data.length;
+                  pagination.onLoadMore();
+                }}
+              >
+                {pagination.loadError && !bannerUp ? "Try again" : "Load more"}
+              </Button>
+            </Unlocked>
           ) : null}
         </div>
       );
@@ -1726,24 +1739,28 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                 </select>
               </label>
             ) : null}
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={offset === 0}
-              onClick={() =>
-                setState({ ...state, offset: Math.max(0, offset - size) })
-              }
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={offset + size >= total}
-              onClick={() => setState({ ...state, offset: offset + size })}
-            >
-              Next
-            </Button>
+            <Unlocked>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={offset === 0}
+                onClick={() =>
+                  setState({ ...state, offset: Math.max(0, offset - size) })
+                }
+              >
+                Previous
+              </Button>
+            </Unlocked>
+            <Unlocked>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={offset + size >= total}
+                onClick={() => setState({ ...state, offset: offset + size })}
+              >
+                Next
+              </Button>
+            </Unlocked>
           </div>
         </nav>
       );
@@ -1812,23 +1829,27 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
               </p>
             ) : null}
             {unloaded.onSearchAll && !unloaded.searchingAll ? (
-              <Button
-                data-search-all=""
-                variant="outline"
-                size="sm"
-                onClick={startSearchAll}
-              >
-                {searchFailed ? "Try again" : "Search all"}
-              </Button>
+              <Unlocked>
+                <Button
+                  data-search-all=""
+                  variant="outline"
+                  size="sm"
+                  onClick={startSearchAll}
+                >
+                  {searchFailed ? "Try again" : "Search all"}
+                </Button>
+              </Unlocked>
             ) : null}
             {unloaded.searchingAll && unloaded.onStopSearchAll ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={unloaded.onStopSearchAll}
-              >
-                Stop
-              </Button>
+              <Unlocked>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={unloaded.onStopSearchAll}
+                >
+                  Stop
+                </Button>
+              </Unlocked>
             ) : null}
           </div>
         ) : null}
