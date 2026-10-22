@@ -171,6 +171,10 @@ var _layouts_in_frame := 0
 
 func _init() -> void:
 	focus_mode = Control.FOCUS_NONE
+	# A kit screen keeps running while the game pauses the tree (a sign-in opened from a pause menu
+	# must not freeze). The game overrides it by setting `process_mode` on the view or an ancestor
+	# that is not INHERIT. The kit itself never sets `SceneTree.paused`.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_to_group(GROUP)
 	_build()
 	# A view that brings its own panel (an empty one, say) keeps it when nested.
@@ -192,12 +196,17 @@ func _notification(what: int) -> void:
 	elif what == NOTIFICATION_VISIBILITY_CHANGED and _opener != null and not is_visible_in_tree():
 		# The dialog went away (hidden by its host, dismissed): the game's control gets its focus back.
 		restore_opener()
+		_sync_capture()
+	elif what == NOTIFICATION_VISIBILITY_CHANGED and _built:
+		_sync_capture()
 	elif what == NOTIFICATION_ENTER_TREE and _built:
 		_watch_viewport()
 	elif what == NOTIFICATION_EXIT_TREE and _built and _opener == null:
 		_unwatch_viewport()
+		_sync_capture(true)
 	elif what == NOTIFICATION_EXIT_TREE and _opener != null:
 		_unwatch_viewport()
+		_sync_capture(true)
 		# A game that frees the view instead of hiding it: the control that opened it gets the focus
 		# back (unless the view was only moved to another parent, which keeps its opener).
 		PKeyUiView._give_back.call_deferred(weakref(_opener), weakref(self))
@@ -208,6 +217,39 @@ func _notification(what: int) -> void:
 
 
 var _watched: Viewport = null
+var _capturing := false
+## True while `refresh_view()` renders: a view hidden or shown halfway through is not reported.
+var _rendering := false
+
+
+## Whether this view, as the outermost one, takes the player's input while it is on screen (the
+## scrim dialogs, and the gate and boot, which override it). PolarisKey.input_captured follows.
+func _captures_input() -> bool:
+	return _scrim_wanted()
+
+
+## A nested dialog put something on the clipboard (a sign-in link, a device code): the outermost
+## view hears of it. The gate and boot answer with a Copied toast.
+func note_copied() -> void:
+	outer_view()._on_child_copied()
+
+
+func _on_child_copied() -> void:
+	pass
+
+
+## Tell the SDK when this view takes or gives back the input. `gone`: the view left the tree.
+func _sync_capture(gone := false) -> void:
+	if _rendering and not gone:
+		return
+	var want := not gone and is_inside_tree() and is_visible_in_tree() and outer_view() == self and _captures_input()
+	if want == _capturing:
+		return
+	var owner_sdk: Node = sdk
+	if owner_sdk == null or not is_instance_valid(owner_sdk) or not owner_sdk.has_method("capture_input"):
+		return
+	_capturing = want
+	owner_sdk.call("capture_input", self, want)
 
 
 ## Follow the viewport the view is in now (a view moved into another one, a SubViewport, follows that
@@ -323,7 +365,9 @@ func refresh_view() -> void:
 	var held_at := _last_chain.find(held) if held != null else -1
 	_resolve_theme()
 	_render_brand()
+	_rendering = true
 	_render()
+	_rendering = false
 	if outer:
 		# What the device decides (a phone shows no QR code, say) is rendered by every view inside,
 		# not only the ones whose own state changed.
@@ -334,6 +378,7 @@ func refresh_view() -> void:
 	_name_controls()
 	wire_focus()
 	layout_content()
+	_sync_capture()
 	if outer:
 		if held != null and held_at >= 0 and not held.has_focus() and _lost_index < 0:
 			_lost_index = held_at
