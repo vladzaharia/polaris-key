@@ -128,17 +128,19 @@ export const PRODUCT_ROW_ORDER: readonly AreaId[] = [
   "members",
 ];
 
-export const PRODUCT_ROWS: readonly MatrixRow[] = PRODUCT_ROW_ORDER.map((id) => {
-  const def = AREAS.find((a) => a.id === id)!;
-  return {
-    area: id,
-    id,
-    name: def.name,
-    ...(PRODUCT_DETAIL[id] ? { detail: PRODUCT_DETAIL[id] } : {}),
-    probe: { kind: "product", area: id },
-    cells: productCells(id),
-  } satisfies MatrixRow;
-});
+export const PRODUCT_ROWS: readonly MatrixRow[] = PRODUCT_ROW_ORDER.map(
+  (id) => {
+    const def = AREAS.find((a) => a.id === id)!;
+    return {
+      area: id,
+      id,
+      name: def.name,
+      ...(PRODUCT_DETAIL[id] ? { detail: PRODUCT_DETAIL[id] } : {}),
+      probe: { kind: "product", area: id },
+      cells: productCells(id),
+    } satisfies MatrixRow;
+  },
+);
 
 /** The platform rows: what a role does outside any one product. */
 export const PLATFORM_ROWS: readonly MatrixRow[] = [
