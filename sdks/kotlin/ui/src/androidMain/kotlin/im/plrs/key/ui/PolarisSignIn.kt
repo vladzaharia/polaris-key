@@ -214,7 +214,9 @@ public fun PolarisSignInScreen(
             actions = { PolarisTextButton(copy.cancel, onCancel, initialFocus = true) },
         )
         is PolarisSignInUi.Showing -> PolarisCodeView(ui, modifier, onOpenBrowser, onCancel, showQr, onCopyLink, onUseKey)
+        // The last step keeps the product's header like every other (UI-KITS.md DL5, the SwiftUI adoption).
         PolarisSignInUi.Done -> PolarisScreen(modifier = modifier, showLogo = false) {
+            PolarisProductHeader()
             PolarisTitle(copy.signInDone, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         }
         PolarisSignInUi.Expired -> PolarisMessageScreen(copy.coreMessage(SIGN_IN_EXPIRED, PolarisMessageKind.Info), modifier) {
@@ -268,6 +270,8 @@ private fun PolarisCodeView(
         val opened = linkOk && runCatching { (onOpenBrowser ?: uriHandler::openUri)(link) }.isSuccess
         noBrowser = !opened
     }
+    // Back cancels the sign-in: the screen always backs out (UI-KITS.md DL9).
+    androidx.activity.compose.BackHandler(onBack = onCancel)
     // TalkBack hears the code once, spelled out, when it first appears.
     val view = LocalView.current
     val spoken = copy.format(copy.signInCodeDescription, spelled(ui.prompt.userCode))

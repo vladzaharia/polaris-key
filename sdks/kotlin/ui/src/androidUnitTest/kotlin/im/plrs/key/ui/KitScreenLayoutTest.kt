@@ -146,4 +146,10 @@ class KitScreenLayoutTest {
         show(case("statusScreen-revoked"))
         assertTrue("the product's name heads the stop: ${texts()}", "Tidewater Studio" in texts())
     }
+
+    @Test
+    fun aStateWithNothingToSayDrawsNoHeaderEither() {
+        show(case("gate-licensed"))
+        assertEquals("a licensed gate is the product, not a screen: ${texts()}", emptyList<String>(), texts())
+    }
 }

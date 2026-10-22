@@ -6,6 +6,22 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Compose UI kit follows UI-KITS.md** (`:ui`). Welcome keeps the key field behind "Use a license
+  key" with Sign in the one primary and "by <Developer>" under the title (`PolarisTheme(developer =
+  …)` or the presentation's `developerName`); a paired secondary is tonal and the primary's width;
+  resolvable refusals (revoked, expired, version, channel) are neutral callouts and a too-old version
+  offers Update (`PolarisGate(onUpdate = …)`); the device-limit step is "Replace a device" with the
+  count, the neutral seat meter and "Open in browser ↗"; Devices rename and remove inline (no stock
+  dialog); the grace banner shows the days left and the deadline and dismisses for the session; the
+  update banner has Later and no X, the update prompt is a bottom sheet below 560 dp and counts the
+  download; Settings groups rows under "From <Developer>" and "Managed settings" with a switch for a
+  boolean and "Reset to default"; no service accent on any product screen; `PolarisToast` (new); the
+  generic `PolarisKitScreen` leaves out lines with an unfilled argument and heads every screen with
+  the product. English defaults follow the catalog (`PolarisCopyCatalogTest`); `PolarisCopy` lost
+  `graceBody`, `deviceRenameTitle`, `settingsLicense` and `settingsValues` and gained `useKey`,
+  `byDeveloper`, `back`, `openInBrowser`, `deviceLimitBrowser`, `updateRestartWhenReady` and
+  `updateDownloading`.
+
 - **Client backend (`core.backend`, SP-59).** `client.backend.install(OkHttpClient.Builder())` sends
   `X-PKey-License` and `X-PKey-Device` to the app's own backend, only to `backendOrigins`. The
   network half checks every hop's origin before it is sent (OkHttp keeps custom headers across a

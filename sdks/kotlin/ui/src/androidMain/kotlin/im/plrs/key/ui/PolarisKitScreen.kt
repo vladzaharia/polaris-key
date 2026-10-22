@@ -281,8 +281,9 @@ private fun KitScreenBody(
             val window = polarisWindow
             PolarisProductIcon(if (window.compactHeight) 56.dp else 120.dp, name = product)
             if (product != null || PolarisTheme.current.logo != null) Spacer(Modifier.height(window.section))
-        } else {
+        } else if (text.isNotEmpty() || controls.isNotEmpty()) {
             // The product heads every other screen (DL5): the integrator's name, else the product the lines name.
+            // A state with nothing to say (the gate let the product through) is not a screen: no header either.
             PolarisProductHeader(productName ?: product, gap = polarisWindow.section)
         }
         if (component == KitComponent.accountAndLicense) {

@@ -271,8 +271,12 @@ public fun PolarisActivationScreen(
     val seats = limit?.deviceCount?.let { used -> limit.limit?.let { max -> used.toInt() to max.toInt() } }
     // The key path stays closed behind "Use a license key" while Sign in is on offer (UI-KITS.md 4.3
     // Welcome); with no sign-in, a failed key or a typed one, it is the screen.
-    var keyOpen by rememberSaveable { mutableStateOf(false) }
-    val showKey = onSignIn == null || keyOpen || focusKey || ui.key.isNotEmpty() || ui.error != null
+    var keyOpen by rememberSaveable { mutableStateOf(ui.key.isNotEmpty()) }
+    val showKey = onSignIn == null || keyOpen || focusKey || ui.error != null
+    // Back has somewhere to go (UI-KITS.md 1.4 Android): from the key path to the Welcome with the
+    // draft kept, from the device-limit step to the key. The Welcome itself never consumes it.
+    androidx.activity.compose.BackHandler(enabled = limit == null && onSignIn != null && keyOpen && ui.error == null && !focusKey) { keyOpen = false }
+    androidx.activity.compose.BackHandler(enabled = limit != null && !ui.busy) { onKeyChange(ui.key) }
     val keyField: @Composable () -> Unit = {
         PolarisTextField(
             value = ui.key,

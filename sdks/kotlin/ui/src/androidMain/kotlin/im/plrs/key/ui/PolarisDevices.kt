@@ -125,6 +125,12 @@ public fun PolarisDevicesScreen(
     // A refused rename reopens its row with what the player typed.
     val reopened = (failed as? PolarisDeviceActionError.Rename)?.takeIf { renaming == null && ui.busyId == null }
     val renameId = renaming ?: reopened?.deviceId
+    // Back closes an open rename or confirm first, as Cancel does (UI-KITS.md DL9).
+    androidx.activity.compose.BackHandler(enabled = renameId != null || removing != null) {
+        if (renameId != null && reopened != null) onDismissError()
+        renaming = null
+        removing = null
+    }
     PolarisScaffold(modifier = modifier, anchor = PolarisAnchor.Top, contentAlign = TextAlign.Start, navigationIcon = navigationIcon) {
         PolarisProductHeader()
         PolarisTitle(copy.devicesTitle)
