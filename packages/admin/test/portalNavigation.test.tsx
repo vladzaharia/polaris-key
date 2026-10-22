@@ -14,6 +14,18 @@ import {
   consumeHeadingFocus,
   requestHeadingFocus,
 } from "../src/portal/focus.js";
+const announced: string[] = [];
+vi.mock("../src/ui/LiveRegion.js", async (orig) => {
+  const m = await orig<typeof import("../src/ui/LiveRegion.js")>();
+  return {
+    ...m,
+    announce: (t: string) => {
+      announced.push(t);
+      m.announce(t);
+    },
+  };
+});
+
 import {
   focusPageHeading,
   navigationKind,
@@ -98,6 +110,7 @@ function installFake(): Fake {
 const route = (hash: string): PortalRoute => resolveHash(hash).route;
 
 beforeEach(() => {
+  announced.length = 0;
   window.history.replaceState(null, "", "/");
   window.localStorage.clear();
 });
@@ -221,6 +234,10 @@ describe("without the View Transitions API: instant swaps that still scroll and 
     await waitFor(() => expect(document.activeElement).toBe(h1));
     await new Promise((r) => setTimeout(r, 30));
     expect(focused.filter((t) => t === "H1")).toEqual(["H1"]);
+    // One announcement for the route change, in the shared region's words.
+    expect(announced.filter((a) => a.startsWith("Account"))).toEqual([
+      "Account, page loaded",
+    ]);
   });
 
   it("a query change (search, filters) moves nothing: focus stays where the user types", async () => {
@@ -236,6 +253,8 @@ describe("without the View Transitions API: instant swaps that still scroll and 
     await waitFor(() => expect(window.location.hash).toContain("q="));
     expect(document.activeElement).toBe(search);
     expect(scrollTo).not.toHaveBeenCalled();
+    // Typing in a filter is silent.
+    expect(announced.filter((a) => a.endsWith("page loaded"))).toEqual([]);
   });
 
   it("another section of the same product scrolls there (smooth only with motion), focus stays", async () => {
@@ -289,6 +308,8 @@ describe("without the View Transitions API: instant swaps that still scroll and 
       expect(calls).toContainEqual({ id: `section-${a}`, behavior: "instant" }),
     );
     await new Promise((r) => setTimeout(r, 30));
+    // A section jump is silent too.
+    expect(announced.filter((a) => a.endsWith("page loaded"))).toEqual([]);
     expect(document.activeElement).toBe(before);
     expect(document.activeElement).not.toBe(h1);
   });

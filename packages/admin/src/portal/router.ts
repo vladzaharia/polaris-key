@@ -9,6 +9,7 @@ import {
   viewTransitionsSupported,
 } from "../ui/motion/index.js";
 import { pendingHeadingFocus } from "./focus.js";
+import { focusRoute } from "../ui/focusRoute.js";
 import {
   CLOSING_OVERLAYS,
   OPEN_OVERLAYS,
@@ -411,6 +412,9 @@ export function navigationKind(
   return "route";
 }
 
+/** How long a page may take to show its real heading before the route's focus gives up. */
+export const ROUTE_FOCUS_DEADLINE_MS = 10_000;
+
 /** A placeholder heading of a page still loading ("Loading", inside its `aria-busy` skeleton). */
 const placeholder = (el: Element | null): boolean =>
   el?.closest('[aria-busy="true"]') != null;
@@ -703,8 +707,14 @@ function runNavigation(
     // heading exists (focus.ts); a request for any other page never holds this one's focus.
     const ownFocus =
       to.kind === "product" && pendingHeadingFocus() === to.product;
+    // focusRoute waits out a closing overlay and a loading placeholder, focuses the h1 and says
+    // "{h1}, page loaded" once (D14). Section and params changes never get here.
     if (gen === generation && !ownFocus)
-      focusPageHeading(undefined, () => gen === generation);
+      void focusRoute({
+        root: document.querySelector("main") ?? undefined,
+        alive: () => gen === generation,
+        deadline: ROUTE_FOCUS_DEADLINE_MS,
+      });
   });
   void handle.finished.then(() => {
     if (gen === generation) clearNamed();
