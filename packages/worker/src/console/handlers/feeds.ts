@@ -102,11 +102,14 @@ import {
 import {
   ECOSYSTEM_LABELS,
   FEED_ACCESS_MODES,
+  DEFAULT_ACCESS_MODE,
   FEED_CAPABILITIES,
   FEED_EXTENSIONS,
   PACKAGE_ECOSYSTEMS,
   SETTABLE_ACCESS_MODES,
+  accessDisplay,
   applyExtPatch,
+  dropUnknownExt,
   feedBaseUrl,
   isVersionVerb,
   namespaceEmpty,
@@ -266,7 +269,8 @@ function settingsView(
   if (!feed)
     return {
       enabled: false,
-      accessMode: "public",
+      accessMode: DEFAULT_ACCESS_MODE,
+      accessDisplay: accessDisplay(DEFAULT_ACCESS_MODE),
       namespace: {},
       maxPackageBytes: policy?.max_package_bytes_ceiling ?? 0,
       upstream: "none",
@@ -275,14 +279,16 @@ function settingsView(
       updatedAt: null,
       updatedBy: null,
     };
+  // Read fail-closed, as the registry does: a value outside the ladder is the strictest.
+  const accessMode = (FEED_ACCESS_MODES as readonly string[]).includes(
+    feed.access_mode,
+  )
+    ? feed.access_mode
+    : "entitled";
   return {
     enabled: feed.enabled === 1,
-    // Read fail-closed, as the registry does: a value outside the ladder is the strictest.
-    accessMode: (FEED_ACCESS_MODES as readonly string[]).includes(
-      feed.access_mode,
-    )
-      ? feed.access_mode
-      : "entitled",
+    accessMode,
+    accessDisplay: accessDisplay(accessMode),
     namespace: parseJsonObject(feed.namespace_json) ?? {},
     maxPackageBytes: feed.max_package_bytes,
     upstream: "none",
@@ -335,6 +341,7 @@ async function readContext(env: Env, db: Db, scope: FeedScope) {
       configured: feed !== undefined,
       enabled: feed?.enabled === 1,
       accessMode: settingsView(feed, policy).accessMode,
+      accessDisplay: settingsView(feed, policy).accessDisplay,
       status,
       reason,
       packages: s.packages,
@@ -525,12 +532,10 @@ async function putSettings(
     body.accessMode !== undefined &&
     !SETTABLE_ACCESS_MODES.includes(body.accessMode as string)
   )
-    return err(
-      422,
-      "bad_request",
-      "accessMode is one of public, authenticated, licensed, entitled",
-      { fields: ["accessMode"], reason: "access_mode_unavailable" },
-    );
+    return err(422, "bad_request", "accessMode is public or licensed", {
+      fields: ["accessMode"],
+      reason: "access_mode_unavailable",
+    });
   // The system product's feeds (our SDKs) change only from the platform scope (§6.5).
   if (
     scope.kind === "product" &&
@@ -565,7 +570,8 @@ async function putSettings(
       { reason: "no_policy" },
     );
   const expected = body.expectedVersion as number;
-  const accessMode = (body.accessMode as string | undefined) ?? "public";
+  const accessMode =
+    (body.accessMode as string | undefined) ?? DEFAULT_ACCESS_MODE;
   const changed = await writeFeedSettings(db, {
     owner: owner.slug,
     ecosystem: eco,
@@ -576,7 +582,7 @@ async function putSettings(
       body.accessMode === undefined ? before.accessMode : accessMode,
     namespace,
     maxPackageBytes: maxBytes,
-    ext,
+    ext: dropUnknownExt(eco, ext),
     now,
     by: session.sub,
   });

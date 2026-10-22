@@ -737,7 +737,7 @@ describe("the renderer", () => {
     expect(xml).not.toMatch(/<latest>|<release>|<lastUpdated>/);
   });
 
-  it("B-097: yanked versions are hidden unless the feed's switch is explicitly false", () => {
+  it("F-34.5: yanked versions are always hidden, whatever the feed stores", () => {
     const pkg = {
       ...base,
       versions: [v("1.0.0", "live", NOW), v("1.1.0", "yanked", NOW + 1)],
@@ -746,20 +746,16 @@ describe("the renderer", () => {
     const feed = (ext: Record<string, unknown>) => ({ namespace: {}, ext });
     const body = (ctx?: { feed: ReturnType<typeof feed> | null }) =>
       renderMaven(pkg, ctx)[0]!.body as string;
-    // Absent (the default): hidden.
-    expect(body({ feed: feed({}) })).not.toContain("1.1.0");
-    // Explicit false: listed.
-    expect(body({ feed: feed({ yankHidesFromIndex: false }) })).toContain(
-      "<version>1.1.0</version>",
-    );
-    // Explicit true: hidden.
-    const hidden = body({ feed: feed({ yankHidesFromIndex: true }) });
-    expect(hidden).not.toContain("1.1.0");
-    // No settings to read: hides.
+    for (const ext of [
+      {},
+      { yankHidesFromIndex: false },
+      { yankHidesFromIndex: true },
+    ])
+      expect(body({ feed: feed(ext) })).not.toContain("1.1.0");
     expect(body()).not.toContain("1.1.0");
     expect(body({ feed: null })).not.toContain("1.1.0");
-    // The stamp covers the settings, so a switch change re-renders.
-    expect(MAVEN_RENDERER.stamp).toBe("package+feed");
+    // Nothing in the feed's settings is read, so the stamp is the package's alone.
+    expect(MAVEN_RENDERER.stamp).toBe("package");
   });
 
   it("omits release when the stable channel serves nothing; a beta is latest only", () => {

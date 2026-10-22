@@ -4487,6 +4487,8 @@ export interface FeedSummary {
   configured: boolean;
   enabled: boolean;
   accessMode: string;
+  /** public, customers, or "customers, packages gated individually" (F-34.5). */
+  accessDisplay?: string;
   status: "enabled" | "off" | "unavailable";
   reason: FeedOffReason | null;
   packages: number;
@@ -4541,6 +4543,8 @@ export interface FeedsOverviewDto extends FeedsHead {
 export interface FeedSettings {
   enabled: boolean;
   accessMode: string;
+  /** public, customers, or "customers, packages gated individually" (F-34.5). */
+  accessDisplay?: string;
   namespace: Record<string, unknown>;
   maxPackageBytes: number;
   upstream: "none";

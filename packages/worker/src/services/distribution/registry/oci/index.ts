@@ -7,12 +7,7 @@
  */
 
 import { FEED_SETUP, PACKAGE_ECOSYSTEM_RULES } from "@polaris-key/manifest";
-import {
-  extInteger,
-  rendererOf,
-  defineFeedAdapter,
-  type FeedAdapter,
-} from "../adapter.js";
+import { rendererOf, defineFeedAdapter, type FeedAdapter } from "../adapter.js";
 import type { RegistryRenderer } from "../materialise.js";
 import { renderOci } from "./render.js";
 import { OCI_ROUTES } from "./routes.js";
@@ -29,7 +24,7 @@ export const OCI_ADAPTER: FeedAdapter<"oci"> = defineFeedAdapter({
   ownerlessRoutes: [OCI_TOKEN_ROUTE],
   renderer: { render: (pkg) => renderOci(pkg), stamp: "package" },
   ingest: PACKAGE_ECOSYSTEM_RULES.oci,
-  settings: { ext: { retainUntaggedDays: extInteger(0, 3650) } },
+  settings: { ext: {} },
   capabilities: {
     // A yank removes the version tag; the image stays pullable by digest.
     yank: true,

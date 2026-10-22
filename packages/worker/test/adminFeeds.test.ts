@@ -175,7 +175,7 @@ describe("the feed model", () => {
     expect(verbSupported("npm", "deprecate")).toBe(true);
     expect(verbSupported("pypi", "yank")).toBe(true);
     expect(verbSupported("pypi", "deprecate")).toBe(false);
-    expect(FEED_CAPABILITIES.maven.yankPolicy).toBe(true);
+    expect(FEED_CAPABILITIES.maven.yankPolicy).toBe(false);
   });
 
   it("builds each feed's base URL on the registry host", () => {
@@ -268,7 +268,9 @@ describe("product scope", () => {
       feed: { ecosystem: "pypi", configured: false },
       settings: {
         enabled: false,
-        accessMode: "public",
+        // E12: a new feed starts as customers-only, not public.
+        accessMode: "licensed",
+        accessDisplay: "customers",
         version: 0,
         maxPackageBytes: 52428800,
       },
@@ -278,9 +280,9 @@ describe("product scope", () => {
       extensions: ["htmlFallback"],
       accessModes: [
         { mode: "public", available: true },
-        { mode: "authenticated", available: true },
+        { mode: "authenticated", available: false },
         { mode: "licensed", available: true },
-        { mode: "entitled", available: true },
+        { mode: "entitled", available: false },
       ],
     });
     expect((await admin("GET", product("/nuget"))).status).toBe(404);
@@ -398,16 +400,10 @@ describe("product scope", () => {
     const ok = await put({
       expectedVersion: 1,
       enabled: true,
-      ext: { yankHidesFromIndex: true },
       maxPackageBytes: 1000,
     });
     expect(await ok.json()).toMatchObject({
-      settings: {
-        enabled: true,
-        version: 2,
-        maxPackageBytes: 1000,
-        ext: { yankHidesFromIndex: true },
-      },
+      settings: { enabled: true, version: 2, maxPackageBytes: 1000, ext: {} },
     });
     expect(await auditActions(OWNER)).toEqual([
       "feed.settings.update",
@@ -986,11 +982,81 @@ describe("registry tokens and the access switch (F-21, plans/F-20.md §6.5)", ()
     expect(detail.ungatedPackages).toEqual([
       { id: "npm.sdk", name: "@acme/sdk" },
     ]);
+    for (const mode of ["authenticated", "entitled"]) {
+      res = await admin("PUT", product("/npm/settings"), {
+        expectedVersion: 1,
+        accessMode: mode,
+      });
+      expect(res.status).toBe(422);
+      expect(await res.json()).toMatchObject({
+        error: { reason: "access_mode_unavailable" },
+      });
+    }
     res = await admin("PUT", product("/npm/settings"), {
       expectedVersion: 1,
-      accessMode: "entitled",
+      accessMode: "public",
     });
     expect(res.status).toBe(200);
+  });
+
+  it("a new feed defaults to licensed; a stored entitled row reads as per-package and survives a write without accessMode", async () => {
+    await turnOnPackageFeeds();
+    let res = await admin("PUT", product("/npm/settings"), {
+      expectedVersion: 0,
+      enabled: true,
+      namespace: { scope: "@acme" },
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).settings).toMatchObject({
+      accessMode: "licensed",
+      accessDisplay: "customers",
+    });
+    await db.run(
+      `UPDATE dist_registry_feeds SET access_mode = 'entitled' WHERE product = ? AND ecosystem = 'npm'`,
+      OWNER,
+    );
+    res = await admin("PUT", product("/npm/settings"), {
+      expectedVersion: 1,
+      maxPackageBytes: 1000,
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).settings).toMatchObject({
+      accessMode: "entitled",
+      accessDisplay: "customers, packages gated individually",
+    });
+    await db.run(
+      `UPDATE dist_registry_feeds SET access_mode = 'authenticated' WHERE product = ? AND ecosystem = 'npm'`,
+      OWNER,
+    );
+    const detail = await (await admin("GET", product("/npm"))).json();
+    expect(detail.settings.accessDisplay).toBe("customers");
+    expect(detail.feed.accessDisplay).toBe("customers");
+  });
+
+  it("tolerates a legacy ext key on read and drops it on the next write (F10)", async () => {
+    await turnOnPackageFeeds();
+    await admin("PUT", product("/oci/settings"), {
+      expectedVersion: 0,
+      namespace: {},
+    });
+    await db.run(
+      `UPDATE dist_registry_feeds SET ext_json = '{"retainUntaggedDays":30}' WHERE product = ? AND ecosystem = 'oci'`,
+      OWNER,
+    );
+    const read = await (await admin("GET", product("/oci"))).json();
+    expect(read.settings.ext).toEqual({ retainUntaggedDays: 30 });
+    expect(read.extensions).toEqual([]);
+    const res = await admin("PUT", product("/oci/settings"), {
+      expectedVersion: 1,
+      maxPackageBytes: 1000,
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).settings.ext).toEqual({});
+    const bad = await admin("PUT", product("/oci/settings"), {
+      expectedVersion: 2,
+      ext: { retainUntaggedDays: 5 },
+    });
+    expect(bad.status).toBe(422);
   });
 
   it("the platform's tokens live under the platform scope and audit to platform_audit", async () => {
