@@ -282,7 +282,7 @@ function Appearance(): React.ReactElement {
   const [motion, setMotion] = useMotionPreference();
   return (
     <SectionCard id="appearance" title={t("locker.appearance.title")}>
-      <div className="flex flex-col gap-4">
+      <div className="-mx-4 flex flex-col divide-y divide-border desk:-mx-5 bigtext:max-sm:mx-0 [&>*]:px-4 desk:[&>*]:px-5 bigtext:max-sm:[&>*]:px-0">
         <SegmentedRow
           label={t("locker.appearance.theme")}
           value={preference}
@@ -360,7 +360,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
 
   return (
     <SectionCard id="data" title={t("locker.account.yourData")}>
-      <div className="space-y-5">
+      <div className="-mx-4 divide-y divide-border desk:-mx-5 bigtext:max-sm:mx-0 [&>*]:px-4 [&>*]:py-4 desk:[&>*]:px-5 bigtext:max-sm:[&>*]:px-0">
         <DownloadData
           title={YOUR_DATA_COPY["yourData.account.copy.title"]}
           description={YOUR_DATA_COPY["yourData.account.copy.body"]}
@@ -368,7 +368,7 @@ function YourData({ account }: { account: PortalAccount }): React.ReactElement {
           download={exportData}
           account
         />
-        <div className="border-t border-border pt-5">
+        <div>
           {scheduled ? (
             <div
               role="status"
