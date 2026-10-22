@@ -583,7 +583,7 @@ function MethodGroups({
             returnTo={returnTo({ add: "email" })}
             asked={addEmailAsked}
             command={cmd.email}
-            prompt={view.emails.length === 0}
+            prompt
             onAdded={focusGroup("email")}
           />
         </ul>
@@ -640,7 +640,7 @@ function MethodGroups({
             returnTo={returnTo({ add: "passkey" })}
             asked={passkeyAsked}
             start={cmd.passkey}
-            prompt={view.passkeys.length === 0}
+            prompt
             onAdded={focusGroup("passkeys")}
           />
         </ul>
@@ -931,7 +931,7 @@ function AddEmail({
   asked: number;
   /** Changes when the header's Add asks for it: the form opens and its field takes focus. */
   command: number;
-  /** Show the inline button: only while the group is empty (the header's Add does the rest). */
+  /** Show the inline button (the mockup's add row); the header's Add does the same. */
   prompt: boolean;
   onAdded: () => void;
 }): React.ReactElement {

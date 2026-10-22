@@ -463,6 +463,7 @@
   "locker.activate.syncOne": "Entre nele para ativar a sincronização na nuvem.",
   "locker.activate.syncMany": "Entre neles para ativar a sincronização na nuvem.",
   "locker.activate.upTo": "até {count, plural, one {# dispositivo} many {# dispositivos} other {# dispositivos}}",
+  "locker.activate.updatesUntil": "Atualizações até {date}",
   "locker.activate.recognized": "Chave reconhecida · {product}",
   "locker.activate.changeKey": "Trocar chave",
   "locker.activate.addToLibrary": "Adicionar à minha biblioteca",

@@ -445,6 +445,32 @@ describe("Activate license modal (PX-06)", () => {
     );
   }
 
+  it("words an ending term as when updates stop (LX-15)", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": {
+        verdict: "addable",
+        product: PREVIEW_PRODUCT,
+        entries: null,
+        license: {
+          tier: "studio",
+          tierLabel: "Studio",
+          status: "active",
+          usable: true,
+          expiresAt: Date.UTC(2027, 8, 30, 12) / 1000,
+          deviceLimit: 5,
+        },
+        platforms: ["macos"],
+      },
+    });
+    renderPortal();
+    await pasteAndContinue(await openFromHeader());
+    const confirm = await screen.findByRole("dialog", {
+      name: "Add Mossgarden to your library?",
+    });
+    expect(confirm.textContent).toContain("Updates until Sep 30, 2027");
+  });
+
   it("confirms with the preview (G22) before adding: tier, terms, the key and Change key", async () => {
     mockFetch({
       ...routes(),
@@ -544,7 +570,7 @@ describe("Activate license modal (PX-06)", () => {
     ).toBeTruthy();
   });
 
-  it("drops the format help once the key is valid, and keeps the link's own line (B-087)", async () => {
+  it("keeps the format help under the valid verdict, as portal.activate draws it", async () => {
     mockFetch(routes());
     renderPortal();
     const dialog = await openFromHeader();
@@ -557,8 +583,8 @@ describe("Activate license modal (PX-06)", () => {
     );
     expect(within(dialog).getByText("Key format is valid")).toBeTruthy();
     expect(
-      within(dialog).queryByText("Starts with pkey_. Case-sensitive."),
-    ).toBeNull();
+      within(dialog).getByText("Starts with pkey_. Case-sensitive."),
+    ).toBeTruthy();
   });
 
   /** The preview of a floating key already on `devices` devices (PX-23, S-24 D22). */

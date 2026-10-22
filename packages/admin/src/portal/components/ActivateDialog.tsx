@@ -529,14 +529,12 @@ export function ActivateDialog({
                   </p>
                 ) : null
               }
-              // The format help ends once the key is valid ("Key format is valid" says it); a
-              // key from a link keeps its own line (B-087).
+              // The format help stays under the verdict lines (portal.activate); a key from a
+              // link keeps its own line (B-087).
               help={
                 prefill
                   ? t("locker.activate.prefillHelp")
-                  : check.kind === "valid"
-                    ? null
-                    : t("signin.key.help")
+                  : t("signin.key.help")
               }
             />
           </DialogBody>
@@ -692,14 +690,21 @@ function AccountRow({
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-surface-sunken px-3 py-2.5">
       {group}
-      <form method="post" action="/logout" className="shrink-0">
-        <button
-          type="submit"
-          className="inline-flex min-h-11 items-center rounded-sm text-sm font-medium text-fg-strong underline underline-offset-2"
-        >
-          {t("signin.notYou")}
-        </button>
-      </form>
+      {/* The dialog's own form wraps this row, and forms do not nest: a detached POST form. */}
+      <button
+        type="button"
+        onClick={() => {
+          const f = document.createElement("form");
+          f.method = "post";
+          f.action = "/logout";
+          f.hidden = true;
+          document.body.append(f);
+          f.submit();
+        }}
+        className="inline-flex min-h-11 shrink-0 items-center rounded-sm text-sm font-medium text-fg-strong underline underline-offset-2"
+      >
+        {t("signin.notYou")}
+      </button>
     </div>
   );
 }
@@ -989,7 +994,9 @@ export function ConfirmStep({
     ? [
         lic.expiresAt === null
           ? t("signin.term.lifetime")
-          : t("signin.term.until", { date: formatDay(lic.expiresAt) }),
+          : t("locker.activate.updatesUntil", {
+              date: formatDay(lic.expiresAt),
+            }),
         lic.deviceLimit
           ? t("locker.activate.upTo", { count: lic.deviceLimit })
           : null,
@@ -1052,7 +1059,7 @@ export function ConfirmStep({
         {tier || terms ? (
           <div className="flex flex-wrap items-center gap-2 text-sm text-fg">
             {tier ? (
-              <span className="inline-flex h-6 items-center rounded-md border border-border-strong px-2 text-xs text-fg-strong">
+              <span className="inline-flex h-5 items-center rounded-full border border-border bg-surface-sunken px-2 text-xs text-fg-muted">
                 {tier}
               </span>
             ) : null}
@@ -1060,7 +1067,7 @@ export function ConfirmStep({
             <PlatformGlyphs platforms={platforms} className="ms-auto" />
           </div>
         ) : null}
-        <div className="flex items-center gap-3 rounded-md border border-border bg-surface-sunken px-3 py-2.5">
+        <div className="flex items-center gap-3 rounded-md border border-border bg-surface-sunken py-1 pe-1 ps-3">
           <code className="min-w-0 flex-1 font-mono text-code leading-5 [overflow-wrap:anywhere]">
             <span className="text-fg-subtle">pkey_</span>
             <span className="font-medium text-accent-fg">{p.slug}</span>
@@ -1069,13 +1076,15 @@ export function ConfirmStep({
               {middleTruncate(licenseKey.slice(`pkey_${p.slug}_`.length))}
             </span>
           </code>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0 font-medium max-sm:min-h-11"
             onClick={onBack}
-            className="min-h-6 shrink-0 rounded-sm text-sm font-medium text-accent-fg underline decoration-2 underline-offset-4 pointer-coarse:min-h-11 hover:text-fg-strong"
           >
             {t("locker.activate.changeKey")}
-          </button>
+          </Button>
         </div>
         {entries ? (
           <p

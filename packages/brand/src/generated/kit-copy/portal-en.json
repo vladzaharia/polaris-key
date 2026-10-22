@@ -463,6 +463,7 @@
   "locker.activate.syncOne": "Sign in on it to turn on Cloud Sync.",
   "locker.activate.syncMany": "Sign in on them to turn on Cloud Sync.",
   "locker.activate.upTo": "up to {count, plural, one {# device} other {# devices}}",
+  "locker.activate.updatesUntil": "Updates until {date}",
   "locker.activate.recognized": "Key recognized · {product}",
   "locker.activate.changeKey": "Change key",
   "locker.activate.addToLibrary": "Add to my library",

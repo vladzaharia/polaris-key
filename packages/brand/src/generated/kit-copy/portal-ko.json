@@ -463,6 +463,7 @@
   "locker.activate.syncOne": "클라우드 동기화를 켜려면 그 기기에서 로그인하세요.",
   "locker.activate.syncMany": "클라우드 동기화를 켜려면 각 기기에서 로그인하세요.",
   "locker.activate.upTo": "{count, plural, other {최대 기기 #대}}",
+  "locker.activate.updatesUntil": "{date}까지 업데이트",
   "locker.activate.recognized": "키를 확인했어요 · {product}",
   "locker.activate.changeKey": "키 변경",
   "locker.activate.addToLibrary": "내 라이브러리에 추가",

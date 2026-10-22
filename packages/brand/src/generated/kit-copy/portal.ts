@@ -478,6 +478,7 @@ export type PortalCopyKey =
   | "locker.activate.syncOne"
   | "locker.activate.syncMany"
   | "locker.activate.upTo"
+  | "locker.activate.updatesUntil"
   | "locker.activate.recognized"
   | "locker.activate.changeKey"
   | "locker.activate.addToLibrary"
