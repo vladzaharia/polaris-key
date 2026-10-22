@@ -1,4 +1,5 @@
 import { columnBreaches as pageColumnBreaches } from "./pageChecks.js";
+import { closeContext } from "./teardown.js";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
@@ -286,8 +287,7 @@ export async function startPortal(): Promise<PortalHarness> {
           (window as unknown as { __v: string[] }).__v.splice(0),
         ),
       close: async () => {
-        await ctx.unrouteAll({ behavior: "ignoreErrors" });
-        await ctx.close();
+        await closeContext(ctx);
       },
     };
   };

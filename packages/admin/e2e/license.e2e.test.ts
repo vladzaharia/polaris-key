@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
@@ -256,7 +257,7 @@ describe("License deletion dialogs under the Worker's CSP", () => {
       await shot(page, `license-delete-${theme}`);
       expect(await violations(page)).toEqual([]);
       await page.keyboard.press("Escape");
-      await page.context().close();
+      await closeContext(page.context());
     });
 
     it(`the list's bulk Delete… dialog (${theme})`, async () => {
@@ -278,7 +279,7 @@ describe("License deletion dialogs under the Worker's CSP", () => {
       await shot(page, `license-bulk-delete-${theme}`);
       expect(await violations(page)).toEqual([]);
       await page.keyboard.press("Escape");
-      await page.context().close();
+      await closeContext(page.context());
     });
 
     it(`the Clean up duplicates dialog (${theme})`, async () => {
@@ -304,7 +305,7 @@ describe("License deletion dialogs under the Worker's CSP", () => {
       await shot(page, `license-cleanup-${theme}`);
       expect(await violations(page)).toEqual([]);
       await page.keyboard.press("Escape");
-      await page.context().close();
+      await closeContext(page.context());
     });
   }
 });

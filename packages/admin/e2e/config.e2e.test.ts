@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
@@ -228,7 +229,7 @@ describe("Config pages under the Worker's CSP", () => {
     await drawer(page, "Version history", async () => {
       await page.getByRole("button", { name: /Version history/ }).click();
     });
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("catalog editor: form mode, JSON mode (CodeMirror) and the review drawer", async () => {
@@ -244,7 +245,7 @@ describe("Config pages under the Worker's CSP", () => {
     await drawer(page, "Publish version 3", async () => {
       await page.getByRole("button", { name: "Review changes" }).click();
     });
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("profile: the payload editor and its review drawer", async () => {
@@ -253,7 +254,7 @@ describe("Config pages under the Worker's CSP", () => {
     await drawer(page, "Review changes", async () => {
       await page.getByRole("button", { name: "Review changes" }).click();
     });
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("minted token: the approve drawer on its entry", async () => {
@@ -264,6 +265,6 @@ describe("Config pages under the Worker's CSP", () => {
     await drawer(page, "Approve music?", async () => {
       await page.getByRole("button", { name: "Review and approve" }).click();
     });
-    await page.context().close();
+    await closeContext(page.context());
   });
 });

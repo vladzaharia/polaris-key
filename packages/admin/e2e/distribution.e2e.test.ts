@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
@@ -263,7 +264,7 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
             path: `${SHOTS}/${p.file}-${theme}.png`,
             fullPage: true,
           });
-        await page.context().close();
+        await closeContext(page.context());
       }
     });
   }
@@ -295,7 +296,7 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
       await page.getByRole("dialog", { name: "Start a rollout" }).waitFor();
     });
     expect(errors).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("rollouts: a whole row opens the rollout's drawer over the list", async () => {
@@ -314,7 +315,7 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
     expect(await locked(page)).toBe(true);
     expect(await violations(page)).toEqual([]);
     expect(errors).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("outlets: the drawer and the narrowing drawer", async () => {
@@ -329,7 +330,7 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
     expect(await locked(page)).toBe(true);
     expect(await violations(page)).toEqual([]);
     expect(errors).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("credentials: the set-credential drawer and its kind select", async () => {
@@ -353,7 +354,7 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
     await page.waitForTimeout(250);
     expect(await violations(page)).toEqual([]);
     expect(errors).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("app store: the typed submit dialog and an IAP price change open cleanly", async () => {
@@ -374,7 +375,7 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
       await page.getByRole("alertdialog").waitFor();
     });
     expect(errors).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
 
     const c = await open("#/p/djdl/commerce/in-app-purchases");
     await title(c.page, "Commerce");
@@ -387,7 +388,7 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
       await c.page.getByLabel(/App name/).waitFor();
     });
     expect(c.errors).toEqual([]);
-    await c.page.context().close();
+    await closeContext(c.page.context());
   });
 
   for (const p of [
@@ -440,7 +441,7 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
             path: `${SHOTS}/${p.file}-phone-${theme}.png`,
             fullPage: true,
           });
-        await page.context().close();
+        await closeContext(page.context());
       }
     });
   }
@@ -464,6 +465,6 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
       });
     expect(await violations(page)).toEqual([]);
     expect(errors).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 });

@@ -318,8 +318,14 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
     }
   }
   if (mainEl) scrollers.add(mainEl);
+  const restoreScroll: [HTMLElement, number][] = [];
   for (const sc of scrollers) {
     const el = sc as HTMLElement;
+    // Measure at the scroller's end, where a pinned (position: sticky) footer is back in the flow
+    // and ends the content, rather than stuck over the viewport edge: a tall page whose footer is
+    // pinned has no trailing space, however far below the stuck footer sits its flow position.
+    restoreScroll.push([el, el.scrollTop]);
+    el.scrollTop = el.scrollHeight;
     const top = el.getBoundingClientRect().top + el.clientTop - el.scrollTop;
     let boxBottom = 0;
     let inkBottom = 0;
@@ -373,6 +379,8 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
       });
     }
   }
+
+  for (const [e, y] of restoreScroll) e.scrollTop = y;
 
   // ── 4 · overflow ───────────────────────────────────────────────────────────────────────────
   for (const root of roots) {

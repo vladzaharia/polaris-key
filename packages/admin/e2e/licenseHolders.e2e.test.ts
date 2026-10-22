@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
@@ -285,7 +286,7 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
         .waitFor();
       await shot(page, `license-holders-list-${theme}`);
       expect(await violations(page)).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
 
     it(`a floating licence's record (${theme})`, async () => {
@@ -304,7 +305,7 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
         .fill("ada@example.com");
       await shot(page, `license-holders-assign-${theme}`);
       expect(await violations(page)).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
 
     it(`an assigned licence's Make floating… dialog (${theme})`, async () => {
@@ -326,7 +327,7 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
       await shot(page, `license-holders-make-floating-${theme}`);
       expect(await violations(page)).toEqual([]);
       await page.keyboard.press("Escape");
-      await page.context().close();
+      await closeContext(page.context());
     });
 
     it(`a batch's page and Disable unused keys… (${theme})`, async () => {
@@ -347,7 +348,7 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
       await shot(page, `license-holders-disable-unused-${theme}`);
       expect(await violations(page)).toEqual([]);
       await page.keyboard.press("Escape");
-      await page.context().close();
+      await closeContext(page.context());
     });
   }
 
@@ -392,7 +393,7 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
         await page.getByRole("button", { name: "Keep it open" }).click();
         await page.getByRole("button", { name: "Try again" }).waitFor();
         expect(await violations(page)).toEqual([]);
-        await page.context().close();
+        await closeContext(page.context());
       });
 
       it(`Send a new key… refusals: 429 wait, suppressed (${theme}, ${width}px)`, async () => {
@@ -431,7 +432,7 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
           await dialog.waitFor({ state: "hidden" });
         }
         expect(await violations(page)).toEqual([]);
-        await page.context().close();
+        await closeContext(page.context());
       });
 
       it(`Assign… with Email them the key (${theme}, ${width}px)`, async () => {
@@ -461,7 +462,7 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
         ).toBe(false);
         expect(await violations(page)).toEqual([]);
         await page.keyboard.press("Escape");
-        await page.context().close();
+        await closeContext(page.context());
       });
     }
   }

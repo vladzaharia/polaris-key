@@ -171,8 +171,8 @@ export function FitReport({
       >
         {rows.map((s) => (
           <li key={s.store} className="px-4 py-3" data-fit={s.store}>
-            <div className="flex min-h-8 items-center justify-between gap-3">
-              <span className="text-sm font-medium text-fg-strong">
+            <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <span className="min-w-0 break-words text-sm font-medium text-fg-strong">
                 {s.label}
               </span>
               {s.status === "green" ? (
@@ -194,13 +194,13 @@ export function FitReport({
                 {s.issues.map((i, n) => (
                   <li
                     key={`${i.field}:${i.locale ?? ""}:${n}`}
-                    className="flex min-h-8 items-center justify-between gap-3"
+                    className="flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-1"
                   >
                     <span
                       className={
                         i.severity === "block"
-                          ? "text-sm text-danger"
-                          : "text-sm text-fg"
+                          ? "min-w-0 break-words text-sm text-danger"
+                          : "min-w-0 break-words text-sm text-fg"
                       }
                     >
                       {issueLine(i)}

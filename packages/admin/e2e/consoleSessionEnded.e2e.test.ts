@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
@@ -179,7 +180,7 @@ describe("the session-ended overlay in the built console", () => {
       1,
     );
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("a different account signing in does not replay the held request as them", async () => {
@@ -209,7 +210,7 @@ describe("the session-ended overlay in the built console", () => {
     // The page reloads its own data as the new account; the held request itself was not re-sent.
     expect(await violations(page)).toEqual([]);
     expect(s.sentSince()).toBeGreaterThanOrEqual(before);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("Escape leaves the page as it is and returns focus to where it was", async () => {
@@ -250,7 +251,7 @@ describe("the session-ended overlay in the built console", () => {
       { timeout: 5_000 },
     );
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it.each(["dark", "light"] as const)(
@@ -284,7 +285,7 @@ describe("the session-ended overlay in the built console", () => {
       if (SHOTS)
         await page.screenshot({ path: `${SHOTS}/overlay-390-${scheme}.png` });
       expect(await violations(page)).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     },
   );
 });

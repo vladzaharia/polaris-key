@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import { closeContext } from "./teardown.js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Locator, type Page } from "playwright";
 import { build, preview, type PreviewServer } from "vite";
@@ -139,7 +140,7 @@ describe("the kit gallery's overlays under the Worker's CSP", () => {
       await page.waitForTimeout(300);
       expect(await violations(page)).toEqual([]);
       expect(errors).toEqual([]);
-      await page.context().close();
+      await closeContext(page.context());
     });
   }
 
@@ -182,7 +183,7 @@ describe("the kit gallery's overlays under the Worker's CSP", () => {
         await quiet(page),
         `${viewport.width}px after a theme change`,
       ).toBe(0);
-      await page.context().close();
+      await closeContext(page.context());
     }
   });
 
@@ -273,7 +274,7 @@ describe("the kit gallery's overlays under the Worker's CSP", () => {
         },
       },
     );
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("menus, selects, popovers, tooltips, toasts and the code editor log nothing", async () => {
@@ -380,7 +381,7 @@ describe("the kit gallery's overlays under the Worker's CSP", () => {
     const v = await violations(page);
     report["code editor"] = { violations: v.length, locked: false };
     expect(v, "code editor: CSP violations").toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("the phone layout: a dialog becomes a bottom sheet and still locks", async () => {
@@ -396,7 +397,7 @@ describe("the kit gallery's overlays under the Worker's CSP", () => {
       },
       { modal: true },
     );
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   afterAll(() => {
@@ -604,7 +605,7 @@ describe("overlay exit animations (MO-02)", () => {
         .toEqual([]);
     }
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("under reduced motion each overlay closes instantly with no animation", async () => {
@@ -624,7 +625,7 @@ describe("overlay exit animations (MO-02)", () => {
       }
       expect(await running(page), `${o.name}: nothing running`).toEqual([]);
     }
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("the refetch bar's sweep is defined, and stops under reduced motion", async () => {
@@ -641,7 +642,7 @@ describe("overlay exit animations (MO-02)", () => {
         return n;
       });
       expect(names, motion).toEqual(motion === "reduce" ? [] : ["pk-refetch"]);
-      await page.context().close();
+      await closeContext(page.context());
     }
   });
 });
@@ -719,7 +720,7 @@ describe("controls and the drawer (MO-08)", () => {
     expect(start.from).toBe("-100%");
     expect(await running(page)).toEqual([]);
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("buttons, icon buttons, switches and radio cards press; disabled ones do not", async () => {
@@ -765,7 +766,7 @@ describe("controls and the drawer (MO-08)", () => {
     await settleFocus(page);
     expect(await running(page)).toEqual([]);
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("a primary button's hover eases its background (no filter), and the copy swap pops", async () => {
@@ -815,7 +816,7 @@ describe("controls and the drawer (MO-08)", () => {
     await page.waitForTimeout(500);
     expect(await started()).toContain("animation:pk-pop-in:Copied");
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("under reduced motion every one of them is an instant swap", async () => {
@@ -847,6 +848,6 @@ describe("controls and the drawer (MO-08)", () => {
       "no View Transition started",
     ).toBe(false);
     expect(await violations(page)).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 });

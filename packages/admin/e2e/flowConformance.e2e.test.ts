@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync } from "node:fs";
+import { closeContext } from "./teardown.js";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
@@ -271,7 +272,7 @@ describe("New license (C-17)", () => {
         await shot(page, `new-license-result-${theme}-${width}`);
         expect(await violations(page)).toEqual([]);
         expect(errors).toEqual([]);
-        await page.context().close();
+        await closeContext(page.context());
       });
 });
 
@@ -328,7 +329,7 @@ describe("License record dialogs (C-20, C-21)", () => {
         expect(await minted.isVisible()).toBe(true);
         expect(await violations(page)).toEqual([]);
         expect(errors).toEqual([]);
-        await page.context().close();
+        await closeContext(page.context());
       });
 });
 
@@ -350,7 +351,7 @@ describe("Controlled confirms return focus (C-5, C-41)", () => {
       "feature-ship-builds-in-app-updates",
     );
     expect(errors).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 
   it("Rollouts: Escape from a row's verb confirm returns focus to its menu", async () => {
@@ -367,7 +368,7 @@ describe("Controlled confirms return focus (C-5, C-41)", () => {
     await page.waitForTimeout(250);
     expect(await focused(page)).not.toBe("body");
     expect(errors).toEqual([]);
-    await page.context().close();
+    await closeContext(page.context());
   });
 });
 
@@ -388,6 +389,6 @@ describe("Set secret (C-7)", () => {
         await shot(page, `set-secret-${theme}-${width}`);
         expect(await violations(page)).toEqual([]);
         expect(errors).toEqual([]);
-        await page.context().close();
+        await closeContext(page.context());
       });
 });
