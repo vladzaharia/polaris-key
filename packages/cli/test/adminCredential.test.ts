@@ -233,12 +233,12 @@ describe("the three admin commands share one credential", () => {
   });
 
   it.each([
-    ["whoami", ["whoami"]],
-    ["whoami --json", ["whoami", "--json"]],
-    ["migrate --json", ["migrate", "list", "--json"]],
+    ["whoami", ["whoami"], false],
+    ["whoami --json", ["whoami", "--json"], false],
+    ["migrate --json", ["migrate", "list", "--json"], true],
   ])(
     "pkey %s never prints a token pasted into --base-url",
-    async (_n, argv) => {
+    async (_n, argv, echoes) => {
       const s = server(ok);
       for (const pasted of [PERSONAL, API]) {
         const r = await run([...argv, "--base-url", pasted], {
@@ -253,7 +253,8 @@ describe("the three admin commands share one credential", () => {
             pasted.slice(0, 12) + pasted.slice(12, 20),
           );
         }
-        expect(r.err).toContain("[token]");
+        // whoami's usage line does not repeat the address at all; migrate's does, masked.
+        if (echoes) expect(r.err).toContain("[token]");
       }
       expect(s.calls).toEqual([]);
     },
