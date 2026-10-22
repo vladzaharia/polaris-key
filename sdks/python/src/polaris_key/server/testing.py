@@ -1,4 +1,4 @@
-"""Test helpers for an app that gates routes with ``polaris_key.server``: sign licence documents
+"""Test helpers for an app that gates routes with ``polaris_key.server``: sign license documents
 with a throwaway key, get the matching pins and a clock you control, with no network.
 
     kit = create_test_kit(product="acme")
@@ -7,7 +7,7 @@ with a throwaway key, get the matching pins and a clock you control, with no net
     client.get("/api/export", headers=headers)               # 200
 
     kit.headers_for("license_stale")                         # the headers that make a gate answer 401 license_stale
-    kit.headers_for("not_entitled")                          # a licence that grants nothing: 403
+    kit.headers_for("not_entitled")                          # a license that grants nothing: 403
     rotated = kit.trust.add_key("rotated-2027")              # a key only the trust manifest vouches for
     polaris = PolarisKey(**kit.options(**kit.trust.options()))  # refresh on, served by kit.trust
 
@@ -215,7 +215,7 @@ class PolarisTestKit:
         return sign_jws(doc, pem, kid, TYP_LICENSE)
 
     def sign(self, **options: Any) -> str:
-        """Sign a licence document. Keywords: ``entitlements`` (name -> ``True`` or a value), ``tier``,
+        """Sign a license document. Keywords: ``entitlements`` (name -> ``True`` or a value), ``tier``,
         ``holder`` (``{"name", "email"}`` or ``None``), ``user`` (a pairwise subject or ``None`` for
         nobody signed in; a sample subject by default), ``device_id``, ``license_id``, ``issued_at``
         (the clock's now), ``expires_in`` (3600), ``grace_for`` (30 days) and ``aud``."""
@@ -237,7 +237,7 @@ class PolarisTestKit:
         """The headers that make a gate answer ``verdict`` (``{}`` for ``license_required``).
         ``options`` shape the document like :meth:`sign`: ``"ok"`` signs exactly what you pass
         (grant the entitlement the route needs); ``"not_entitled"`` and ``"sign_in_required"`` sign
-        a licence with no entitlements and nobody signed in unless you say otherwise."""
+        a license with no entitlements and nobody signed in unless you say otherwise."""
         if verdict == "license_required":
             return {}
         if verdict == "license_invalid":

@@ -1,4 +1,4 @@
-"""Starlette: a pure-ASGI middleware that attaches the licence to ``request.state.polaris``, and
+"""Starlette: a pure-ASGI middleware that attaches the license to ``request.state.polaris``, and
 decorators that gate an endpoint. Install the framework with ``pip install polaris-key[fastapi]``.
 
     polaris = PolarisKey(config=polaris_config)
@@ -10,7 +10,7 @@ decorators that gate an endpoint. Install the framework with ``pip install polar
 
 Gates: ``require_license()``, ``require_entitlement(name)``, ``require_tier(*tiers)``,
 ``require_sign_in()`` and ``require_all(*requirements)``. ``get_polaris_license(request)`` returns
-the licence of a gated request and raises when the route has no gate. A gated response gets
+the license of a gated request and raises when the route has no gate. A gated response gets
 ``Cache-Control: private`` unless the handler set one. A CORS preflight passes every gate
 (``PolarisKey(preflight="gate")`` refuses it).
 """
@@ -73,7 +73,7 @@ _problem_response = problem_response
 
 
 def get_polaris_license(request: Any) -> PolarisLicense:
-    """The licence of a gated request (or of the :class:`PolarisAuth` a FastAPI dependency
+    """The license of a gated request (or of the :class:`PolarisAuth` a FastAPI dependency
     returned), never ``None``. Raises :class:`PolarisKeySetupError` on a route with no gate."""
     if isinstance(request, PolarisAuth):
         return _license_of(request)
@@ -114,7 +114,7 @@ class PolarisKey(_Core):
     ``require_sign_in()`` decorate an endpoint taking a ``Request``."""
 
     async def auth_of(self, request: Request) -> PolarisAuth:
-        """The request's licence, from the middleware or made now (no route requirement)."""
+        """The request's license, from the middleware or made now (no route requirement)."""
         cached = request.scope.get("state", {}).get("polaris") if "state" in request.scope else None
         if isinstance(cached, PolarisAuth):
             return cached
@@ -123,7 +123,7 @@ class PolarisKey(_Core):
         return auth
 
     async def gate(self, request: Request, require: Sequence[Requirement]) -> PolarisAuth:
-        """The licence, with the route's requirements checked. Raises :class:`PolarisHTTPError`."""
+        """The license, with the route's requirements checked. Raises :class:`PolarisHTTPError`."""
         if self.lets_through(request.method, request_headers(request)):
             return PolarisAuth(None, None, None, preflight=True)
         auth = self.check(await self.auth_of(request), require, request.headers.get("accept-language"))
@@ -171,7 +171,7 @@ class PolarisKey(_Core):
         return self._decorator((entitlement(name, test),))
 
     def require_tier(self, *tiers: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-        """The licence's tier is one of ``tiers``."""
+        """The license's tier is one of ``tiers``."""
         return self._decorator((tier(*tiers),))
 
     def require_sign_in(self) -> Callable[[Callable[..., Any]], Callable[..., Any]]:

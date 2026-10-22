@@ -68,7 +68,7 @@ _ORIGIN = re.compile(r"https?://[^/\s]+", re.IGNORECASE)
 
 
 class PolarisKeySetupError(RuntimeError, TypeError, ValueError):
-    """The drop-in is misconfigured or misused: a bad config at start-up, or a licence read on
+    """The drop-in is misconfigured or misused: a bad config at start-up, or a license read on
     a route with no gate. The message says what to change. (A ``TypeError`` and a ``ValueError``
     too, which is what a bad option raised before this class existed.)"""
 
@@ -91,13 +91,13 @@ class PolarisKeyError(Exception):
 
 @dataclass(frozen=True)
 class PolarisAuth:
-    """What the request carries after the licence check. ``problem`` is set whenever ``license``
-    is None, and also when the licence passed but the route's requirement did not."""
+    """What the request carries after the license check. ``problem`` is set whenever ``license``
+    is None, and also when the license passed but the route's requirement did not."""
 
     license: Optional[PolarisLicense]
     user: Optional[PolarisUser]
     problem: Optional[Problem]
-    #: True for a CORS preflight the gate let through (``preflight="pass"``): no licence was checked.
+    #: True for a CORS preflight the gate let through (``preflight="pass"``): no license was checked.
     preflight: bool = False
 
     def __repr__(self) -> str:
@@ -105,18 +105,18 @@ class PolarisAuth:
 
 
 def get_polaris_license(auth: Optional[PolarisAuth]) -> PolarisLicense:
-    """The licence of a gated request, never ``None``. Raises :class:`PolarisKeySetupError`
+    """The license of a gated request, never ``None``. Raises :class:`PolarisKeySetupError`
     when the request carries none: an ungated route, a refused request or a CORS preflight.
     The framework modules offer the same function taking their request."""
     if auth is not None and auth.license is not None and auth.problem is None:
         return auth.license
     if auth is not None and auth.preflight:
-        why = "this request is a CORS preflight, which carries no licence; answer OPTIONS before reading it"
+        why = "this request is a CORS preflight, which carries no license; answer OPTIONS before reading it"
     elif auth is not None and auth.problem is not None:
         why = f"the request was refused ({auth.problem.code})"
     else:
         why = "the route has no Polaris Key gate; add require_license() (or require_entitlement, require_tier, require_sign_in) to it"
-    raise PolarisKeySetupError(f"get_polaris_license: no licence on this request: {why}")
+    raise PolarisKeySetupError(f"get_polaris_license: no license on this request: {why}")
 
 
 def is_cors_preflight(method: str, headers: HeadersLike) -> bool:
@@ -173,7 +173,7 @@ def _config_fields(config: Any) -> Tuple[str, str, Dict[str, str], Optional[List
         )
     if not pins:
         raise PolarisKeySetupError(
-            f"PolarisKey: the pinned keys for {slug!r} are empty, so no licence could verify; "
+            f"PolarisKey: the pinned keys for {slug!r} are empty, so no license could verify; "
             "run `pkey sdk --lang python --write` to write the product's keys"
         )
     for kid, key in pins.items():
@@ -268,7 +268,7 @@ class PolarisKey:
             # A misconfiguration fails at start, not as a refusal of every request later.
             if services is not None and "license" not in services:
                 raise PolarisKeySetupError(
-                    f"PolarisKey: product {slug!r} does not enable the license service, so it issues no licence to verify"
+                    f"PolarisKey: product {slug!r} does not enable the license service, so it issues no license to verify"
                 )
             if slug in self._trust:
                 raise PolarisKeySetupError(f"PolarisKey: product {slug!r} is configured twice")
@@ -537,7 +537,7 @@ class PolarisKey:
         return PolarisAuth(auth.license, auth.user, backend_problem(failed, self.realm, accept_language))
 
     def lets_through(self, method: str, headers: HeadersLike) -> bool:
-        """Whether a gate passes this request without a licence: a CORS preflight, unless ``preflight="gate"``."""
+        """Whether a gate passes this request without a license: a CORS preflight, unless ``preflight="gate"``."""
         return self.preflight == "pass" and is_cors_preflight(method, headers)
 
     def refusal(self, problem: Problem) -> PolarisKeyError:

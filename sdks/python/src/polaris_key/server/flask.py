@@ -12,7 +12,7 @@
 
 Gates: ``require_license()``, ``require_entitlement(name)``, ``require_tier(*tiers)``,
 ``require_sign_in()`` and ``require_all(*requirements)``. ``get_polaris_license()`` returns the
-licence of the gated request and raises when the route has no gate. A gated response gets
+license of the gated request and raises when the route has no gate. A gated response gets
 ``Cache-Control: private`` unless the view set one. A CORS preflight passes every gate
 (``PolarisKey(preflight="gate")`` refuses it). ``on_refusal`` is ``f(problem)`` or
 ``f(problem, request)`` and returns the view's response.
@@ -41,7 +41,7 @@ def problem_response(problem: Problem) -> Response:
 
 
 def get_polaris_license() -> PolarisLicense:
-    """The licence of the gated request being handled, never ``None``. Raises
+    """The license of the gated request being handled, never ``None``. Raises
     :class:`PolarisKeySetupError` on a route with no gate."""
     auth = g.get("polaris")
     return _license_of(auth if isinstance(auth, PolarisAuth) and g.get("polaris_gated") else None)
@@ -128,7 +128,7 @@ class PolarisKey(_Core):
         return self._decorator((entitlement(name, test),))
 
     def require_tier(self, *tiers: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-        """The licence's tier is one of ``tiers``."""
+        """The license's tier is one of ``tiers``."""
         return self._decorator((tier(*tiers),))
 
     def require_sign_in(self) -> Callable[[Callable[..., Any]], Callable[..., Any]]:

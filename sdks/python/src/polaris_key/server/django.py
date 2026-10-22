@@ -1,4 +1,4 @@
-"""Django: ``PolarisKeyMiddleware`` puts the licence on ``request.polaris``; the decorators gate
+"""Django: ``PolarisKeyMiddleware`` puts the license on ``request.polaris``; the decorators gate
 a plain view. Install with ``pip install polaris-key[django]``.
 
     MIDDLEWARE = [..., "polaris_key.server.django.PolarisKeyMiddleware"]
@@ -16,7 +16,7 @@ its ``CONFIG`` mapping, or the mapping itself. A key it does not know fails at s
 Gates: ``require_license()``, ``require_entitlement(name)``, ``require_tier(*tiers)``,
 ``require_sign_in()`` and ``require_all(*requirements)``; they wrap a function view (sync or
 async) or, through ``method_decorator``, a class-based view's method. ``get_polaris_license(request)``
-returns the licence of a gated request and raises when the view has no gate. A gated response gets
+returns the license of a gated request and raises when the view has no gate. A gated response gets
 ``Cache-Control: private`` unless the view set one. A CORS preflight passes every gate
 (``"PREFLIGHT": "gate"`` refuses it).
 """
@@ -138,7 +138,7 @@ def _auth_of(request: HttpRequest) -> PolarisAuth:
 
 
 def get_polaris_license(request: Any) -> PolarisLicense:
-    """The licence of a gated request, never ``None``. Raises :class:`PolarisKeySetupError` on a view with no gate."""
+    """The license of a gated request, never ``None``. Raises :class:`PolarisKeySetupError` on a view with no gate."""
     auth = getattr(request, "polaris", None)
     return _license_of(auth if isinstance(auth, PolarisAuth) and getattr(request, "polaris_gated", False) else None)
 
@@ -237,7 +237,7 @@ def require_entitlement(
 
 
 def require_tier(*tiers: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    """The licence's tier is one of ``tiers``."""
+    """The license's tier is one of ``tiers``."""
     return _gate((tier(*tiers),))
 
 

@@ -1,6 +1,6 @@
 """Django REST framework: an authentication class and permission factories. A refusal is raised
 (``errors="throw"`` is DRF's default): ``AuthenticationFailed`` for a missing, invalid or stale
-licence and ``PermissionDenied`` for a missing entitlement or sign-in, both carrying the
+license and ``PermissionDenied`` for a missing entitlement or sign-in, both carrying the
 :class:`~polaris_key.server.Problem`. :func:`exception_handler` shapes it as problem+json; or
 use your own ``EXCEPTION_HANDLER`` and read ``exc.problem``.
 
@@ -12,7 +12,7 @@ use your own ``EXCEPTION_HANDLER`` and read ``exc.problem``.
 
 Permissions: ``has_license()``, ``has_entitlement(name)``, ``has_tier(*tiers)``, ``has_sign_in()``
 and ``has_all(*requirements)``; they need :class:`PolarisKeyAuthentication` on the view.
-``get_polaris_license(request)`` returns the licence of a gated request. ``exception_handler`` also
+``get_polaris_license(request)`` returns the license of a gated request. ``exception_handler`` also
 honors ``POLARIS_KEY["ON_REFUSAL"]``. With ``polaris_key.server.django.PolarisKeyMiddleware``
 installed, a gated response gets ``Cache-Control: private``. A CORS preflight passes
 (``"PREFLIGHT": "gate"`` refuses it).
@@ -49,7 +49,7 @@ __all__ = [
 
 
 def get_polaris_license(request: Any) -> PolarisLicense:
-    """The licence of a gated request, never ``None``. Raises :class:`PolarisKeySetupError`
+    """The license of a gated request, never ``None``. Raises :class:`PolarisKeySetupError`
     when the view has no Polaris Key permission."""
     raw = getattr(request, "_request", request)
     auth = getattr(raw, "polaris", None)
@@ -69,7 +69,7 @@ class PolarisPermissionDenied(PermissionDenied):
 
 
 class PolarisPrincipal:
-    """``request.user`` for a gated request: the licence, not an account. ``repr`` is redacted."""
+    """``request.user`` for a gated request: the license, not an account. ``repr`` is redacted."""
 
     is_authenticated = True
     is_anonymous = False
@@ -95,7 +95,7 @@ class PolarisKeyAuthentication(BaseAuthentication):
         raw = request._request
         polaris = get_polaris()
         if polaris.lets_through(raw.method or "", list(raw.headers.items())):
-            return None  # a CORS preflight carries no licence; DRF answers OPTIONS itself
+            return None  # a CORS preflight carries no license; DRF answers OPTIONS itself
         auth = getattr(raw, "polaris", None)
         if not isinstance(auth, PolarisAuth):
             auth = polaris.authenticate(list(raw.headers.items()), raw.headers.get("Accept-Language"))
@@ -140,7 +140,7 @@ def has_entitlement(name: str, test: Optional[Callable[[Any], bool]] = None) -> 
 
 
 def has_tier(*tiers: str) -> Type[BasePermission]:
-    """The licence's tier is one of ``tiers``."""
+    """The license's tier is one of ``tiers``."""
     return _permission((tier(*tiers),))
 
 

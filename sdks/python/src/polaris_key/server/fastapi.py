@@ -8,7 +8,7 @@ declares an ``APIKeyHeader("X-PKey-License")`` scheme, so ``/docs`` shows it.
     def export(auth: Annotated[PolarisAuth, Depends(polaris.require_entitlement("export.pdf"))]):
         return {"tier": get_polaris_license(auth).tier}
 
-``get_polaris_license(auth)`` is the licence without the ``Optional``. Dependencies:
+``get_polaris_license(auth)`` is the license without the ``Optional``. Dependencies:
 ``require_license()``, ``require_entitlement(name)``, ``require_tier(*tiers)``,
 ``require_sign_in()`` and ``require_all(*requirements)`` (``require`` is the same). ``install``
 registers the refusal handler and the ``Cache-Control: private`` middleware. A CORS preflight
@@ -43,7 +43,7 @@ __all__ = [
     "problem_response",
 ]
 
-_scheme = APIKeyHeader(name=HEADER_LICENSE, auto_error=False, description="The app's signed licence document")
+_scheme = APIKeyHeader(name=HEADER_LICENSE, auto_error=False, description="The app's signed license document")
 
 
 class PolarisKey(_StarlettePolarisKey):
@@ -69,7 +69,7 @@ class PolarisKey(_StarlettePolarisKey):
         return self._dependency((entitlement(name, test),))
 
     def require_tier(self, *tiers: str) -> Callable[..., Any]:  # type: ignore[override]
-        """The licence's tier is one of ``tiers``."""
+        """The license's tier is one of ``tiers``."""
         return self._dependency((tier(*tiers),))
 
     def require_sign_in(self) -> Callable[..., Any]:  # type: ignore[override]

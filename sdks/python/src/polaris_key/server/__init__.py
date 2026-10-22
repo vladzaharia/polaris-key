@@ -1,4 +1,4 @@
-"""``polaris_key.server``: gate a server route with the app's signed licence document.
+"""``polaris_key.server``: gate a server route with the app's signed license document.
 
 The app sends its ``pkey-license+jws`` in ``X-PKey-License``; the backend verifies it offline
 against the product's pinned keys and the signed trust manifest (WIRE-CONTRACT-V4 §14). The

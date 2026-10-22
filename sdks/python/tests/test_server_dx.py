@@ -1,6 +1,6 @@
 # @pkey-feature server.license server.signin
 """The developer's side of ``polaris_key.server``: start-up errors, tier and ``require_all``
-gates, the typed licence accessor, CORS preflight, ``Cache-Control: private``, refusals in the
+gates, the typed license accessor, CORS preflight, ``Cache-Control: private``, refusals in the
 app's own shape, trust-fetch diagnostics and the testing kit. Verdict rows replay in
 test_server_matrix.py."""
 
@@ -338,7 +338,7 @@ def test_fastapi_preflight_tier_all_and_refusal_shape() -> None:
     refused = c.get("/pro", headers=k.signed_headers(tier="free"))
     assert (refused.status_code, refused.json()["code"], refused.json()["status"]) == (402, "not_entitled", 402)
     assert c.get("/pro").status_code == 401
-    # A preflight carries no licence: the gate lets it through.
+    # A preflight carries no license: the gate lets it through.
     assert c.options("/pro", headers=PREFLIGHT).json() == {"preflight": True}
     assert c.get("/all", headers=k.signed_headers(tier="pro")).json() == {"tier": "pro"}
     assert c.get("/raw", headers=k.signed_headers()).headers["cache-control"] == "private"
@@ -496,7 +496,7 @@ def test_django_gates_tier_all_accessor_private_and_preflight() -> None:
         assert dj.PolarisKeyMiddleware(pro)(rf.get("/x", headers=k.signed_headers(tier="free"))).status_code == 403
         assert json.loads(both(rf.get("/x", headers=k.signed_headers(tier="pro", user=None))).content)["code"] == "sign_in_required"
         assert json.loads(Cbv.as_view()(rf.get("/x", headers=k.signed_headers(tier="pro"))).content) == {"tier": "pro"}
-        # A preflight passes the gate (and reaches the view, which has no licence to read).
+        # A preflight passes the gate (and reaches the view, which has no license to read).
         assert both(rf.options("/x", headers=PREFLIGHT)).status_code == 200
         with pytest.raises(PolarisKeySetupError, match="no Polaris Key gate"):
             forgot(rf.get("/x", headers=k.signed_headers()))
