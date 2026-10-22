@@ -1188,6 +1188,28 @@ describe("the top bar", () => {
     ).toBe("/");
   });
 
+  it("a break-glass session shows the warning banner and no My library; a normal one shows neither", async () => {
+    boot("#/", { me: { breakGlass: true } });
+    expect(
+      await screen.findByText(
+        /You’re signed in with break-glass\. Sign out when you’re done\./,
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Account menu" }),
+    );
+    expect(
+      within(await screen.findByRole("menu")).queryByRole("menuitem", {
+        name: "My library",
+      }),
+    ).toBeNull();
+    cleanup();
+    boot("#/");
+    await screen.findByRole("button", { name: "Account menu" });
+    expect(screen.queryByText(/signed in with break-glass/)).toBeNull();
+  });
+
   it("omits the session end when the worker does not send it", async () => {
     boot("#/");
     await userEvent.click(

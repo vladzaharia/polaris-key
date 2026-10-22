@@ -207,6 +207,20 @@ the person's device. A pending passkey ceremony is held for 5 minutes: its rando
 the relying party, plus the same-origin return path for a sign-in, or the account id and its user
 handle for adding a passkey.
 
+### The console sign-in card's remembered address (key.plrs.im/manage/login)
+
+The console's sign-in card remembers who signed in last, so an operator sees "email · Change"
+instead of an empty field. It is one cookie, set on the operator's own browser:
+
+| Cookie                     | Holds                                        | Lifetime | Flags                                   | Cleared by                            |
+| -------------------------- | -------------------------------------------- | -------- | --------------------------------------- | ------------------------------------- |
+| `__Host-pkey_console_hint` | The email of the last account sign-in (text) | 30 days  | `HttpOnly`, `Secure`, `SameSite=Strict` | **Change** on the card, or its expiry |
+
+It is set only by an account sign-in, never by break-glass, and it survives sign-out on purpose.
+The Worker never stores it. It is read only to fill the card and to offer the address to the
+identity provider as `login_hint`; it grants nothing. On a shared computer the card shows the
+last operator's address until someone presses **Change**.
+
 ### Product backends — the license document sent to the developer's own server
 
 An app built with a client half (`client.backend`) sends its signed license document to its

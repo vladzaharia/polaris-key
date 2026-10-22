@@ -42,6 +42,8 @@ import { ProductNew } from "../sections/global/pages/ProductNew.js";
 import { ApiTokens } from "../sections/global/pages/ApiTokens.js";
 import { PersonalTokens } from "../sections/global/pages/PersonalTokens.js";
 import { Announcer, LiveRegion } from "../../ui/LiveRegion.js";
+import { Button } from "../../ui/Button.js";
+import { Callout } from "../../ui/Callout.js";
 import type { ProductLike } from "./bits.js";
 import { OPEN_PALETTE_EVENT } from "../shortcuts.js";
 import { CommandPalette } from "./CommandPalette.js";
@@ -512,6 +514,21 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                   data-service={accent}
                   className="mx-auto w-full max-w-[110rem] px-4 py-4 sm:px-6"
                 >
+                  {me.breakGlass ? (
+                    // ST-30c.2 (D-S7): an emergency session names no account and lasts an hour.
+                    <Callout
+                      tone="warning"
+                      className="mb-4"
+                      action={
+                        <Button variant="secondary" size="sm" onClick={signOut}>
+                          Sign out
+                        </Button>
+                      }
+                    >
+                      You’re signed in with break-glass. Sign out when you’re
+                      done.
+                    </Callout>
+                  ) : null}
                   <MastheadContext.Provider value={masthead}>
                     <PageContent
                       key={key}

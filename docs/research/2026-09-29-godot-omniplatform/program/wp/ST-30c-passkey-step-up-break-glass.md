@@ -60,6 +60,16 @@ Console sign-in: passkey step-up, break-glass link, known-operator chip, v1 read
   `requireAccountSession` (`console/lib/accountSession.ts`). ST-34's personal-token rows are not on
   this base; they adopt `requireAccountSession` when the chains merge. The link on the card is
   ST-30c.2, so the "explicit link" acceptance item stays open until then.
+- **Done in ST-30c.2.** The card (known-operator chip from `__Host-pkey_console_hint`, Change at
+  `?change=1`, the quiet "Emergency sign-in" link and the break-glass start card), the shell banner
+  (`/me.breakGlass`) and N1 to N3 from the ST-30c.1 review: the break-glass cookie carries only the
+  `PLATFORM_ADMIN_GROUP` group, and `refuseBreakGlass` refuses the admin API, service (CI) and
+  registry token mints with reason `break_glass_session`. Corrections: (1) the lockup matches frame 13
+  at 52 px (checked in the built shots), so it is unchanged; (2) the base has no account-bound console
+  screen to hide (no "Yours" tab, no account settings; personal tokens here is the Superadmin list and
+  revoke), so the only account-bound shell entry hidden is "My library"; ST-34 and ST-30c.4 hide their
+  screens with `me.breakGlass` when they land; (3) `pageBudget` fails on this base for
+  `UpdateChannelsPage.tsx` (639 lines, ceiling 631), not a file of this slice.
 
 ## Steps
 
@@ -69,10 +79,10 @@ Console sign-in: passkey step-up, break-glass link, known-operator chip, v1 read
 ## Acceptance criteria
 
 - [ ] SM-3(a)/(d): a person can enrol a passkey and mark it "Use for the console"
-- [ ] Break-glass is an explicit link with an audit row and documented exit facts
-- [ ] The known-operator chip shows from a last-operator hint
+- [x] Break-glass is an explicit link with an audit row and documented exit facts
+- [x] The known-operator chip shows from a last-operator hint
 - [ ] The `session.ts:5` comment is deleted; the v1 cookie reader is removed (one release after 8 h)
-- [ ] The console card has the larger lockup
+- [x] The console card has the larger lockup (52 px, confirmed against frame 13 in ST-30c.2)
 - [ ] THREAT-MODEL rows for each; security review signed
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 

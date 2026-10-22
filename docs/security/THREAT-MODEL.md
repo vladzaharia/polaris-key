@@ -7366,6 +7366,23 @@ a fallback: no error page offers it and no ordinary sign-in turns into it.
   `sub`; a fixed summary with no secret) and emails every Superadmin (`breakGlassUsedNotice`: who,
   when, from which network, "If this wasn't expected, rotate ADMIN_SESSION_SECRET and check the
   audit"), at most 25 addresses and exempt from the per-recipient budget so it cannot be silenced.
+- **No durable credential (ST-30c.2, N3).** A break-glass session cannot mint a credential that
+  outlives the emergency hour: admin API tokens, service (CI) tokens and registry tokens are refused
+  with 403 `forbidden`, reason `break_glass_session` (`refuseBreakGlass`, `console/lib/accountSession.ts`);
+  personal tokens are minted in the portal, which a break-glass cookie cannot reach. Revocation stays
+  allowed.
+- **A small cookie (ST-30c.2, N2).** The cookie carries only the group `holdsRoot` reads
+  (`PLATFORM_ADMIN_GROUP`), never the IdP's full list, so it stays far under 4 KB in an emergency and
+  exposes nothing else. `holdsRoot` is still re-checked against the environment on every request.
+- **The record may be the notice alone (N1).** `recordPlatformSecurityEvent` swallows its write
+  errors, so in an emergency (for instance a database outage) the Superadmin email may be the only
+  record of a use. That is deliberate: the path must open when the database is the thing that broke.
+- **The remembered address never authorises (ST-30c.2, D-S5).** `__Host-pkey_console_hint` holds the
+  last account sign-in's email so the card can show "email · Change". It is HttpOnly, Secure,
+  SameSite=Strict, host-bound, 30 days, set only by an account sign-in and never by break-glass.
+  It is validated (`loginHint`) and escaped on read, a duplicate or malformed value is ignored, and
+  it is only ever offered to the IdP as `login_hint`: no route reads it to admit anyone. The card
+  stays script-free and its CSP is unchanged (`test/consoleCard.test.ts`).
 - **Residual.** Whoever holds the IdP login of a group member can open an hour of Superadmin
   authority with a fresh login. The group is deploy-time and the realm, the audit row and the
   notice are what bound and expose it.
@@ -7376,7 +7393,7 @@ a fallback: no error page offers it and no ordinary sign-in turns into it.
   or code path that sends someone to `breakGlass=1`, or that mints `issueBreakGlassSession`
   outside `breakGlassCallback`.
 
-**Tests:** `test/consoleBreakGlass.test.ts`; `consoleSessionV2`, `adminSessions`,
+**Tests:** `test/consoleBreakGlass.test.ts`, `test/consoleCard.test.ts`; `consoleSessionV2`, `adminSessions`,
 `consoleSessionReader`, `rbacStoredPrincipal`, `rbacInvites`, `consoleInviteConversion`.
 
 ### Identity as a per-product service (PX-W17)
