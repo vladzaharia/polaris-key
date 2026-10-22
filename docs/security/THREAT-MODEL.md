@@ -3629,10 +3629,21 @@ the global index and, for a live code, start the sign-in on that request: no pag
   therefore answers `200` (`no-store`, `no-referrer`) with `<meta http-equiv="refresh">` and a plain
   "Continue" link to the bind hop; `form-action` is not widened. `test-browser/` pins that a typed
   code reaches the IdP page in Chromium and WebKit.
-- _The binder is set in two places and checked in one._ The customer host sets its own host-only
-  `__Host-pk_lcb` on the response that starts the sign-in; the bind hop sets the API host's on the
-  next. The approval hop (`device-approve` token) is redeemed only by a browser whose customer-host
-  cookie equals the token's binder (constant-time compare); the token never sets that cookie.
+- _Two binders, never one value (R2-B1)._ **B** is the API host's `__Host-pk_lcb`: the IdP
+  callback, the licence chooser and the `device-approve` token's address. **C** is the customer
+  host's own `__Host-pk_lcb`, a different random value minted when the code is opened there; the
+  flow keeps only its hash (`customerBinder`). B is set only by the bind hop, so only the browser
+  that follows the hop holds it, and it never appears in a customer-host response: not as a
+  cookie, in a body or in a URL (the hop URL carries an opaque single-use token). C unlocks only
+  the customer host's `/device/approve`, and only after the approval hop has matched it to the
+  flow (the hop finds the flow by hash(B) from the token and requires hash(C) equal to
+  `customerBinder`, constant-time); the slug and the flow index are then stored by hash(C). The
+  starter holds C and no B, the person holds both, a victim's browser that follows a forwarded hop
+  holds B and no C. Neither alone approves anything. The API host's
+  `/<slug>/identity/auth/device/approve` never decides once `CUSTOMER_ORIGIN` is set: GET is a
+  `303` to `<customer>/device/approve`, POST a `404`. The decision POSTs (approval and chooser)
+  also refuse a request with neither Fetch Metadata nor an `Origin` (defence in depth: a script
+  can send `Origin: null`; C is the guard).
   Hops are in "The cross-host bind hops" (LK-04) below. The API host's old confirm page is
   forwarded to the customer host (GET and POST, `303`), never served as a second path (N1).
 
@@ -7708,16 +7719,28 @@ binder across (`core/signInBind.ts`), each 120 s, each the address of a stored a
   a live IdP session, signs in silently. Before the fix the `device-approve` token then handed the
   customer-host cookie to that same browser, and the victim landed on the starter's approval page
   without ever opening a code. Now the customer-host cookie exists only in the browser that opened
-  the code, so the victim's browser, which has none, gets the start-again page at the approval hop;
-  the starter's device stays pending. The residual is the pre-existing R1-07 (a victim who presses
-  Sign in on the approval page after reading it). `customerDevicePage.test.ts` pins both browsers.
+  the code, so the victim's browser, which has none, gets the start-again page at the approval hop.
+  The first fix round still set B itself as the customer-host cookie, so the starter kept B from
+  its own start response and, once the victim's browser had signed in under that flow, read and
+  pressed the API host's approval route with it and no `Origin`: the starter's poll returned the
+  victim's token (R2-B1, critical). The two binders close it: the starter holds only C, the API
+  host's approval route no longer decides, and the starter's device stays pending. The residual is
+  the pre-existing R1-07 (a victim who presses Sign in on the approval page after reading it, in
+  a browser that holds C). `customerDevicePage.test.ts` pins both browsers and the starter's
+  attempts on the API host, the customer host and the chooser.
 - _Open redirect._ Nothing in a query chooses a target: the `device-start` `Location` is the
   authorize URL read from the store, the `device-approve` one is `/device/approve`, both hosts come
   from configuration, and the slug is a value the Worker stored.
 - _Token in logs and Referer._ Every hop response sets `Referrer-Policy: no-referrer` and
   `Cache-Control: no-store`, and the token is dead after the first request.
-- _The chooser._ A flow with the licence chooser open is sent from the customer host's approval to
-  the API host's chooser (built from configuration) until PX-14b retires it.
+- _The chooser._ A device flow with a customer host goes from the callback through the customer
+  host's approval hop before the chooser, which needs C and the hop's B-token to be shown there:
+  the hop marks the flow (`customerOk`) and sends the browser on to the API host's chooser
+  (built from configuration) until PX-14b retires it. The chooser answers a device flow only with
+  B and `customerOk`; a B alone (a victim's browser, which has no C) gets the start-again page and
+  nothing is dropped. Residual: the chooser page itself, once opened, is reached with B alone
+  (C is not re-checked per request, because the chooser lives on the API host); the browser that
+  holds B is the one that completed the IdP leg and also passed the customer host.
 
 Residual risk: a token read from a log or history within its 120 seconds and used before the
 owner does binds the attacker's browser instead of the owner's. The attacker still needs the

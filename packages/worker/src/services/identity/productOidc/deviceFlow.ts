@@ -324,7 +324,9 @@ async function bindDeviceFlow(
   token: string | null,
   now: number,
   view: PageView,
-): Promise<string | Response> {
+  /** Started on the customer host: mint the second secret C for that host as well. */
+  withCustomerBinder = false,
+): Promise<BoundFlow | Response> {
   const refused = errorResponse(403, "forbidden", "confirmation failed");
   // The confirmation is an authorization input for the poll, so it is recorded on
   // the flow the pollers actually read, not only on the device record (R8-01). The flow must
@@ -366,6 +368,9 @@ async function bindDeviceFlow(
   // Every device-code flow is bound to its confirming browser, so the IdP leg can
   // only finish where the human confirmed, not in a victim's browser the starter phished.
   const binder = randomToken(32);
+  // B never crosses to the customer host: that host gets its own secret C, and its hash is the
+  // only thing the flow keeps of it (R2-B1).
+  const customerBinder = withCustomerBinder ? randomToken(32) : null;
   const stamped = await updateArtefact(env, stateKey, {
     // One binder per flow: a second confirmation never replaces it.
     expect: { binder: null },
@@ -374,6 +379,9 @@ async function bindDeviceFlow(
       // The large-type variant follows the person through the IdP and the chooser.
       ...(view.tv ? { tv: true } : {}),
       binder: await hashKey(binder, env.KEY_HASH_PEPPER),
+      ...(customerBinder
+        ? { customerBinder: await hashKey(customerBinder, env.KEY_HASH_PEPPER) }
+        : {}),
     },
   });
   if (!stamped.ok)
@@ -389,7 +397,14 @@ async function bindDeviceFlow(
   // photographed QR code, a guess) can re-render the page, re-mint the CSRF token or read the
   // authorize URL after the human has confirmed.
   await deleteUserCodeIndex(env, product.slug, record.userCode);
-  return binder;
+  return { binder, customerBinder };
+}
+
+/** The secrets minted for a confirmed device flow: B (API host) and, when the customer host
+ *  started it, C (customer host). */
+interface BoundFlow {
+  binder: string;
+  customerBinder: string | null;
 }
 
 /** The 303 to the IdP. On the customer host the binder cookie cannot be set here (`__Host-`
@@ -401,7 +416,7 @@ async function handOff(
   env: Env,
   product: Product,
   record: DeviceFlowRecord,
-  binder: string,
+  bound: BoundFlow,
   crossHost: boolean,
 ): Promise<Response> {
   const headers = new Headers({
@@ -415,13 +430,13 @@ async function handOff(
     const token = await issueBindToken(env, {
       kind: "device-start",
       slug: product.slug,
-      binder,
+      binder: bound.binder,
       next: record.authorizeUrl,
     });
     const hop = `${api}/${product.slug}/identity/auth/device?bind=${token}`;
     // The customer host's own binder cookie (host-only): the approval page, back on this host,
     // answers only the browser that opened the code. The hop URL alone binds nothing here (B1).
-    const cookie = binderSetCookie(binder, FLOW_TTL_SECONDS);
+    const cookie = binderSetCookie(bound.customerBinder!, FLOW_TTL_SECONDS);
     headers.append("set-cookie", cookie);
     // A typed code is a form submission under `form-action 'self'`, and browsers check that
     // directive on every redirect of the chain: answer with a page that moves on by itself (B2).
@@ -430,7 +445,10 @@ async function handOff(
     headers.set("location", hop);
   } else {
     headers.set("location", record.authorizeUrl);
-    headers.append("set-cookie", binderSetCookie(binder, FLOW_TTL_SECONDS));
+    headers.append(
+      "set-cookie",
+      binderSetCookie(bound.binder, FLOW_TTL_SECONDS),
+    );
   }
   return new Response(null, { status: 303, headers });
 }
@@ -490,6 +508,7 @@ export async function startDeviceSignIn(
     null,
     now,
     view,
+    true,
   );
   if (bound instanceof Response) return bound;
   return handOff(req, env, product, record, bound, true);
@@ -548,6 +567,19 @@ export function sameOriginPost(req: Request): boolean {
   if (site !== null) return site === "same-origin";
   const origin = req.headers.get("origin");
   return !origin || origin === "null" || origin === new URL(req.url).origin;
+}
+
+/** `sameOriginPost` for the pages that DECIDE (the approval and the licence chooser): a POST
+ *  that carries neither Fetch Metadata nor an `Origin` is a script, not a browser, and is
+ *  refused. This is defence in depth only (a script can send `Origin: null`); the guard is the
+ *  second secret the customer host asks for (R2-B1). */
+export function sameOriginDecisionPost(req: Request): boolean {
+  if (
+    req.headers.get("sec-fetch-site") === null &&
+    req.headers.get("origin") === null
+  )
+    return false;
+  return sameOriginPost(req);
 }
 
 /** The user code and CSRF token from an entry-route POST. `csrf` is `undefined` when the field

@@ -23,7 +23,7 @@ import { parseFlowRecord } from "../../../platform/json.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Db } from "../../../db/types.js";
 import { type Product } from "../../../core/products.js";
-import { methodNotAllowed } from "../../../core/errors.js";
+import { methodNotAllowed, notFound } from "../../../core/errors.js";
 import { appendAudit } from "../../../core/audit.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
@@ -64,7 +64,7 @@ import {
   isDeviceCodeFlow,
   rateLimited,
 } from "./config.js";
-import { sameOriginPost } from "./deviceFlow.js";
+import { sameOriginDecisionPost } from "./deviceFlow.js";
 import { deviceHtmlHeaders, listingDeveloper, type PageView } from "./pages.js";
 
 /** A name inside a sentence, isolated so a right-to-left label cannot scramble the line. */
@@ -184,6 +184,8 @@ async function findFlow(
   env: Env,
   product: Product,
 ): Promise<Found | Response> {
+  // On the customer host the secret is C (`customerBinder`), never B; elsewhere it is B.
+  const onCustomer = onCustomerHost(req, env);
   const binder = readBinder(req);
   if (!binder) return startAgainPage();
   const binderHash = await hashKey(binder, env.KEY_HASH_PEPPER);
@@ -199,7 +201,10 @@ async function findFlow(
     !flow.confirmedAt ||
     !flow.consumedAt ||
     !flow.identity ||
-    flow.binder !== binderHash ||
+    (onCustomer
+      ? !flow.customerBinder ||
+        !constantTimeEqual(flow.customerBinder, binderHash)
+      : flow.binder !== binderHash) ||
     flow.approvedAt !== undefined ||
     flow.error !== undefined
   ) {
@@ -209,7 +214,14 @@ async function findFlow(
   // The licence chooser is still open: that is the explicit step, not this page.
   // The chooser lives on the API host (until PX-14b retires it): the customer host has no such path.
   if (flow.choiceOpen) {
-    const api = onCustomerHost(req, env) ? apiOrigin(env) : null;
+    const api = onCustomer ? apiOrigin(env) : null;
+    // C has been shown on this host: the device chooser (API host, B) opens only after this.
+    if (onCustomer && !flow.customerOk) {
+      const marked = await updateArtefact(env, stateKey, {
+        set: { customerOk: true },
+      });
+      if (!marked.ok) return startAgainPage();
+    }
     return api === null
       ? redirectToChooser(req, product)
       : new Response(null, {
@@ -316,13 +328,32 @@ export async function customerApproveTarget(
     // The token names the flow's browser, it never makes one: the cookie this host set when the
     // code was opened must be the token's binder. A token handed to another browser (a hop URL
     // forwarded to a victim) finds no such cookie and ends here (B1).
+    // The token carries B (the API host's secret); this host's cookie is C, a different value
+    // whose hash only the flow knows. The flow is found by B and must name this C (R2-B1).
     const mine = readBinder(req);
-    if (!mine || !constantTimeEqual(mine, bound.binder))
+    if (!mine) return startAgainPage();
+    const mineHash = await hashKey(mine, env.KEY_HASH_PEPPER);
+    const state = await getArtefact(
+      env,
+      choiceKey(bound.slug, await hashKey(bound.binder, env.KEY_HASH_PEPPER)),
+    );
+    const raw = state
+      ? await getArtefact(env, await flowKey(env, bound.slug, state))
+      : null;
+    const flow = raw ? parseFlowRecord<FlowRecord>(raw) : null;
+    if (
+      !state ||
+      !flow ||
+      !flow.customerBinder ||
+      !constantTimeEqual(flow.customerBinder, mineHash)
+    )
       return startAgainPage();
+    // Both indexes are by hash(C): the slug of the approval page and the flow it decides.
+    await putArtefact(env, slugRef(mineHash), bound.slug, FLOW_TTL_SECONDS);
     await putArtefact(
       env,
-      slugRef(await hashKey(bound.binder, env.KEY_HASH_PEPPER)),
-      bound.slug,
+      choiceKey(bound.slug, mineHash),
+      state,
       FLOW_TTL_SECONDS,
     );
     return new Response(null, {
@@ -391,7 +422,22 @@ export async function handleAuthDeviceApprove(
     windowSec: 60,
   });
   if (limited) return limited;
-  if (req.method === "POST" && !sameOriginPost(req)) return startAgainPage();
+  // With a customer host the decision lives there, behind C. The API host's copy of this route
+  // never decides: GET goes to the customer page, POST is not found (R2-B1).
+  const customer = hostOrigin("customer", env);
+  if (customer !== null && !onCustomerHost(req, env)) {
+    if (req.method === "POST") return notFound();
+    return new Response(null, {
+      status: 303,
+      headers: {
+        location: `${customer}/device/approve`,
+        "referrer-policy": "no-referrer",
+        "cache-control": "no-store",
+      },
+    });
+  }
+  if (req.method === "POST" && !sameOriginDecisionPost(req))
+    return startAgainPage();
 
   const found = await findFlow(req, env, product);
   if (found instanceof Response) return found;

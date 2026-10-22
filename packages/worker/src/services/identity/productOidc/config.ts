@@ -85,6 +85,14 @@ export interface FlowRecord {
   /** I-26: the hash of the `__Host-pk_lcb` cookie of the browser that started (`/auth/start`)
    *  or confirmed (the device page's POST) the flow. The chooser answers only that browser. */
   binder?: string;
+  /** Device-code flows started on the customer host: the hash of the SECOND secret, the
+   *  customer-host binder C (`__Host-pk_lcb` on that host). B (`binder`) never leaves the API
+   *  host; the customer host's approval page answers only a browser holding C, and the
+   *  chooser only after C has been shown there (`customerOk`). */
+  customerBinder?: string;
+  /** Set on the customer host by the browser that holds C and the hop's B-token, before it
+   *  is sent to the API host's chooser. The device chooser refuses a flow without it. */
+  customerOk?: boolean;
   /** The label the device-code client sent (`deviceName`), for the chooser and its audit row. */
   deviceName?: string;
   /** I-26: the chooser is open. Nothing completes, and the poll answers `pending`, until the

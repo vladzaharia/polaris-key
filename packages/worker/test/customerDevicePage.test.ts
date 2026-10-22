@@ -18,6 +18,8 @@ import {
   type ServicesMap,
 } from "../src/core/services.js";
 import { setServices } from "../src/core/products/store.js";
+import { flowKey } from "../src/services/identity/productOidc/config.js";
+import { getArtefact, updateArtefact } from "../src/core/singleUse.js";
 import type { Env } from "../src/platform/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 
@@ -586,5 +588,166 @@ describe("the device pages on the customer host", () => {
     expect(form.headers.get("content-security-policy")).toContain(
       "form-action 'self';",
     );
+  });
+
+  // R2-B1 (the second review round): the customer host holds its OWN secret C. B, the API
+  // host's binder, is never in a customer-host response, so a cookie the starter keeps from the
+  // start response unlocks nothing once the victim's browser does the IdP leg.
+  describe("two binders: B on the API host, C on the customer host (R2-B1)", () => {
+    const post = (url: string, headers: Record<string, string>, body = "") =>
+      send(url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          ...headers,
+        },
+        body,
+      });
+    async function startWithDeviceCode() {
+      const res = await send(`${API}/djdl/identity/auth/device/start`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ deviceId: "tv-1" }),
+      });
+      return (await res.json()) as { userCode: string; deviceCode: string };
+    }
+    const poll = async (deviceCode: string) =>
+      (await (
+        await send(`${API}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ deviceCode, deviceId: "tv-1" }),
+        })
+      ).json()) as { status: string; token?: string };
+
+    it("the starter keeps its cookie and the hop URL; the victim does the IdP leg; the starter decides nothing", async () => {
+      const f = await startWithDeviceCode();
+      // The starter opens its own code with curl and keeps cookie C and the hop URL.
+      const open = await send(`${CUSTOMER}/device?user_code=${f.userCode}`, {
+        headers: nav,
+      });
+      const attacker = cookieOf(open);
+      const hopUrl = open.headers.get("location")!;
+      // A page the victim visits navigates the top level to the hop; silent IdP sign-in follows.
+      const hop = await send(hopUrl, {
+        headers: {
+          "sec-fetch-site": "cross-site",
+          "sec-fetch-mode": "navigate",
+          "sec-fetch-dest": "document",
+        },
+      });
+      const victimB = cookieOf(hop);
+      expect(victimB).not.toBe(attacker);
+      const authorize = new URL(hop.headers.get("location")!);
+      installIdp({ ...PERSON, nonce: authorize.searchParams.get("nonce") });
+      const cb = await send(
+        `${API}/djdl/identity/auth/callback?code=c&state=${authorize.searchParams.get("state")}`,
+        { headers: { cookie: victimB } },
+      );
+      expect(cb.status).toBe(303);
+      // B (its value) appears in no customer-host response: not the start response, not the
+      // body, not a URL, and not the callback's hop.
+      const bValue = victimB.split("=")[1]!;
+      expect(open.headers.get("set-cookie")).not.toContain(bValue);
+      expect(open.headers.get("location")).not.toContain(bValue);
+      expect(cb.headers.get("location")).not.toContain(bValue);
+      // The victim's browser (B, no C) is stopped at the customer host.
+      const victim = await send(cb.headers.get("location")!, {
+        headers: { cookie: victimB },
+      });
+      expect(victim.status).toBe(403);
+
+      // The starter, with C and no Origin (curl), at the API host's approval route: it never
+      // decides. GET goes to the customer page, POST is not found.
+      const apiGet = await send(`${API}/djdl/identity/auth/device/approve`, {
+        headers: { cookie: attacker },
+      });
+      expect(apiGet.status).toBe(303);
+      expect(apiGet.headers.get("location")).toBe(`${CUSTOMER}/device/approve`);
+      expect(await apiGet.text()).not.toContain('name="token"');
+      for (const c of [attacker, victimB]) {
+        const apiPost = await post(
+          `${API}/djdl/identity/auth/device/approve`,
+          { cookie: c },
+          new URLSearchParams({ token: "x", decision: "approve" }).toString(),
+        );
+        expect(apiPost.status).toBe(404);
+      }
+      // The customer host: C was never registered for an approval, so it finds nothing.
+      const page = await send(`${CUSTOMER}/device/approve`, {
+        headers: { cookie: attacker },
+      });
+      expect(page.status).toBe(403);
+      expect(await page.text()).not.toContain('name="token"');
+      // The chooser (API host), with either cookie: refused, and B alone is not enough.
+      for (const c of [attacker, victimB]) {
+        const choose = await send(`${API}/djdl/identity/auth/choose`, {
+          headers: { cookie: c },
+        });
+        expect(choose.status).toBe(403);
+      }
+      // The starter's poll stays pending.
+      expect((await poll(f.deviceCode)).status).toBe("pending");
+    });
+
+    it("the chooser for a device flow opens only after C was shown on the customer host", async () => {
+      const f = await startWithDeviceCode();
+      const s = await signInStarted(f);
+      installIdp({ ...PERSON, nonce: s.nonce });
+      const cb = await send(
+        `${API}/djdl/identity/auth/callback?code=c&state=${s.state}`,
+        { headers: { cookie: s.apiCookie } },
+      );
+      // Simulate the chooser trigger (a platform product whose account holds a licence).
+      const stateKey = await flowKey(env, "djdl", s.state);
+      await updateArtefact(env, stateKey, {
+        set: { choiceOpen: true, choiceAccount: "acct" },
+      });
+      const choose = `${API}/djdl/identity/auth/choose`;
+      // B alone (the victim's browser, or a B stolen some other way): refused.
+      expect(JSON.parse((await getArtefact(env, stateKey))!).customerOk).toBe(
+        undefined,
+      );
+      const before = await send(choose, { headers: { cookie: s.apiCookie } });
+      expect(before.status).toBe(403);
+      expect(await before.text()).toContain("This page has expired");
+      // The person: B-token and C at the customer host, then on to the chooser.
+      const step = await send(cb.headers.get("location")!, {
+        headers: { cookie: s.customerCookie },
+      });
+      expect(step.status).toBe(303);
+      const onward = await send(`${CUSTOMER}${step.headers.get("location")}`, {
+        headers: { cookie: s.customerCookie },
+      });
+      expect(onward.status).toBe(303);
+      expect(onward.headers.get("location")).toBe(choose);
+      // C was shown: the flow now lets the API host's chooser open (the fake account here is
+      // not linked, so the page itself ends at its own checks).
+      const stored = await getArtefact(env, stateKey);
+      expect(JSON.parse(stored!).customerOk).toBe(true);
+    });
+
+    it("the real person, in one browser, approves and the device gets its token", async () => {
+      const f = await startWithDeviceCode();
+      const { page, cookie } = await atApproval(f);
+      expect(page.status).toBe(200);
+      const token = /name="token" value="([^"]+)"/.exec(await page.text())![1]!;
+      // A POST with neither Fetch Metadata nor Origin is a script: refused.
+      const bare = await post(
+        `${CUSTOMER}/device/approve`,
+        { cookie },
+        new URLSearchParams({ token, decision: "approve" }).toString(),
+      );
+      expect(bare.status).toBe(403);
+      const ok = await post(
+        `${CUSTOMER}/device/approve`,
+        { cookie, origin: CUSTOMER },
+        new URLSearchParams({ token, decision: "approve" }).toString(),
+      );
+      expect(ok.status).toBe(200);
+      expect(await ok.text()).toContain("is signed in on");
+      const done = await poll(f.deviceCode);
+      expect(["ready", "confirm"]).toContain(done.status);
+    });
   });
 });
