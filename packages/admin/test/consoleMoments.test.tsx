@@ -19,7 +19,7 @@ import { renderAt, resetCore, testQueryClient } from "./coreTestUtils.js";
  *     hides or replays it, a remount and a later visit never show it again;
  *   - "first" must be new: a milestone the console could not see happen (a product older than the
  *     feature) is recorded silently, never celebrated late, and an old "before" sighting expires;
- *   - the attention lists on Overview and Home stagger in on the page's first load only: never on
+ *   - the attention list on Home staggers in on the page's first load only: never on
  *     a refetch, a list that mounts later, a remount, a return visit, inside a View Transition or
  *     after "Show all" (whose items apply at once); the class leaves when the items' animations
  *     end, at once under reduced motion;
@@ -348,7 +348,7 @@ describe("moments show once per product (EXPERIENCE §0.7)", () => {
       floors: [],
     });
     overview();
-    await screen.findByRole("heading", { level: 2, name: "Ship builds" });
+    await screen.findByRole("heading", { level: 3, name: "Ship builds" });
     await waitFor(() => expect(seen("first-release:djdl")).toBe(true));
     expect(banner("first-release:djdl")).toBeNull();
     // Later releases never bring it back.
@@ -364,7 +364,7 @@ describe("moments show once per product (EXPERIENCE §0.7)", () => {
   it("a milestone that happens while the page is open shows there and then", async () => {
     fns.releases.mockResolvedValue({ releases: [], channels: [], floors: [] });
     overview();
-    await screen.findByText("No releases");
+    await screen.findByText("No releases yet");
     expect(
       window.localStorage.getItem("pk-moment-before:first-release:djdl"),
     ).not.toBeNull();
@@ -431,7 +431,7 @@ describe("moments show once per product (EXPERIENCE §0.7)", () => {
       floors: [],
     });
     overview();
-    await screen.findByRole("heading", { level: 2, name: "Ship builds" });
+    await screen.findByRole("heading", { level: 3, name: "Ship builds" });
     await act(async () => undefined);
     expect(banner("first-release:djdl")).toBeNull();
     expect(seen("first-release:djdl")).toBe(false);
@@ -479,7 +479,7 @@ describe("moments with no time of their own count when the console saw the produ
       String(NOW - RECENT_SECONDS - DAY),
     );
     overview();
-    await screen.findByText("1 keys");
+    await screen.findByText(/1 setting/);
     await waitFor(() => expect(seen("first-catalog:djdl")).toBe(true));
     expect(banner("first-catalog:djdl")).toBeNull();
   });
@@ -490,7 +490,7 @@ describe("moments with no time of their own count when the console saw the produ
     });
     fns.schema.mockRejectedValue(new ApiError(500));
     overview();
-    await screen.findByRole("heading", { level: 2, name: "Managed config" });
+    await screen.findByRole("heading", { level: 3, name: "Managed config" });
     await waitFor(() => expect(fns.schema).toHaveBeenCalled());
     await act(async () => undefined);
     expect(
@@ -613,143 +613,6 @@ describe("moments under reduced motion: the same line, a static check", () => {
 
 // ── Attention-list stagger ──────────────────────────────────────────────────────────────────────
 
-/** The server's attention read answers `n` items for the product Overview shows. */
-const warn = (n: number): void => {
-  fns.attention.mockResolvedValue({
-    items: Array.from({ length: n }, (_, i) => ({
-      id: `djdl:secret.missing:S${i}`,
-      product: { slug: "djdl", name: "DJDL" },
-      kind: "secret.missing",
-      tone: "warning",
-      service: "config",
-      short: "Missing secret",
-      lines: [`Required secret S${i} has no value.`],
-      action: { label: "Set secret", page: "keys" },
-      area: "keys",
-    })),
-  });
-};
-
-describe("Overview's attention list staggers in on the page's first load only", () => {
-  beforeEach(() => {
-    warn(2);
-  });
-
-  it("staggers when the product arrives while the page is open", async () => {
-    overview();
-    await screen.findByRole("region", { name: "Needs attention" });
-    expect(attentionList().className).toMatch(/\bpk-stagger\b/);
-  });
-
-  it("staggers on the page's first visit even when the product is already cached", async () => {
-    // Overview gets its product at once from the products list (a placeholder): still its first load.
-    warn(2);
-    testQueryClient().setQueryData(["product", "djdl"], product());
-    overview();
-    await screen.findByRole("region", { name: "Needs attention" });
-    expect(attentionList().className).toMatch(/\bpk-stagger\b/);
-  });
-
-  it("a refetch keeps the same items (nothing restarts) and a remount does not stagger", async () => {
-    overview();
-    await screen.findByRole("region", { name: "Needs attention" });
-    const items = within(attentionList()).getAllByRole("listitem");
-    await refetch();
-    expect(within(attentionList()).getAllByRole("listitem")).toEqual(items);
-    remount(overview);
-    await screen.findByRole("region", { name: "Needs attention" });
-    expect(attentionList().className).not.toMatch(/\bpk-stagger\b/);
-  });
-
-  it("a return visit with the product on the way again does not stagger", async () => {
-    overview();
-    await screen.findByRole("region", { name: "Needs attention" });
-    cleanup();
-    testQueryClient().clear();
-    overview();
-    await screen.findByRole("region", { name: "Needs attention" });
-    expect(attentionList().className).not.toMatch(/\bpk-stagger\b/);
-  });
-
-  it("a list a refetch mounts later is not part of the first load", async () => {
-    fns.product.mockResolvedValue({ product: product() });
-    fns.attention.mockResolvedValue({ items: [] });
-    overview();
-    await screen.findByRole("heading", { level: 1, name: "DJDL" });
-    expect(
-      screen.queryByRole("region", { name: "Needs attention" }),
-    ).toBeNull();
-    warn(2);
-    await refetch();
-    await screen.findByRole("region", { name: "Needs attention" });
-    expect(attentionList().className).not.toMatch(/\bpk-stagger\b/);
-  });
-
-  it("never inside a View Transition", async () => {
-    let arrive!: (v: unknown) => void;
-    fns.product.mockReturnValue(new Promise((r) => (arrive = r)));
-    warn(2);
-    overview();
-    document.documentElement.setAttribute("data-vt", "route");
-    await act(async () => arrive({ product: product() }));
-    await screen.findByRole("region", { name: "Needs attention" });
-    expect(attentionList().className).not.toMatch(/\bpk-stagger\b/);
-  });
-
-  it("Show all turns it off for good, and the extra items apply at once", async () => {
-    warn(7);
-    overview();
-    await screen.findByRole("region", { name: "Needs attention" });
-    expect(attentionList().className).toMatch(/\bpk-stagger\b/);
-    await userEvent.click(screen.getByRole("button", { name: "Show all 7" }));
-    expect(within(attentionList()).getAllByRole("listitem")).toHaveLength(7);
-    expect(attentionList().className).not.toMatch(/\bpk-stagger\b/);
-    await userEvent.click(screen.getByRole("button", { name: "Show fewer" }));
-    expect(attentionList().className).not.toMatch(/\bpk-stagger\b/);
-  });
-});
-
-describe("the stagger class leaves when the items' animations end (never on a timer)", () => {
-  const proto = HTMLElement.prototype as unknown as {
-    getAnimations?: (o?: unknown) => unknown[];
-  };
-  afterEach(() => {
-    delete proto.getAnimations;
-  });
-
-  it("waits on the items' own animations", async () => {
-    let finish!: () => void;
-    const finished = new Promise<void>((r) => (finish = r));
-    proto.getAnimations = function (this: HTMLElement) {
-      return [...this.children].map((li) => ({
-        effect: { target: li },
-        finished,
-      }));
-    };
-    warn(2);
-    overview();
-    await screen.findByRole("region", { name: "Needs attention" });
-    expect(attentionList().className).toMatch(/\bpk-stagger\b/);
-    await act(async () => finish());
-    await waitFor(() =>
-      expect(attentionList().className).not.toMatch(/\bpk-stagger\b/),
-    );
-  });
-
-  it("under reduced motion there are none, so it comes off at once", async () => {
-    document.documentElement.dataset.motion = "reduce";
-    proto.getAnimations = () => [];
-    warn(2);
-    overview();
-    await screen.findByRole("region", { name: "Needs attention" });
-    await waitFor(() =>
-      expect(attentionList().className).not.toMatch(/\bpk-stagger\b/),
-    );
-    // The same items, all there: the end state is the same.
-    expect(within(attentionList()).getAllByRole("listitem")).toHaveLength(2);
-  });
-});
-
 const ATTENTION_ITEM = {
   id: "acme:secret.missing:S",
   product: { slug: "acme", name: "Acme" },
@@ -800,6 +663,62 @@ describe("Home's attention list staggers in on Home's first load only", () => {
     await refetch();
     await screen.findByRole("region", { name: "Needs attention" });
     expect(attentionList().className).not.toMatch(/\bpk-stagger\b/);
+  });
+});
+
+describe("the stagger class leaves when the items' animations end (never on a timer)", () => {
+  const proto = HTMLElement.prototype as unknown as {
+    getAnimations?: (o?: unknown) => unknown[];
+  };
+  beforeEach(() => {
+    fns.products.mockResolvedValue({
+      products: [product({ slug: "acme", name: "Acme" })],
+    });
+    fns.attention.mockResolvedValue({
+      items: [
+        ATTENTION_ITEM,
+        { ...ATTENTION_ITEM, id: "acme:secret.missing:T" },
+      ],
+    });
+    fns.me.mockResolvedValue({
+      sub: "u",
+      email: "u@x.io",
+      platformAdmin: true,
+      products: [],
+    });
+  });
+  afterEach(() => {
+    delete proto.getAnimations;
+  });
+
+  it("waits on the items' own animations", async () => {
+    let finish!: () => void;
+    const finished = new Promise<void>((r) => (finish = r));
+    proto.getAnimations = function (this: HTMLElement) {
+      return [...this.children].map((li) => ({
+        effect: { target: li },
+        finished,
+      }));
+    };
+    home();
+    await screen.findByRole("region", { name: "Needs attention" });
+    expect(attentionList().className).toMatch(/\bpk-stagger\b/);
+    await act(async () => finish());
+    await waitFor(() =>
+      expect(attentionList().className).not.toMatch(/\bpk-stagger\b/),
+    );
+  });
+
+  it("under reduced motion there are none, so it comes off at once", async () => {
+    document.documentElement.dataset.motion = "reduce";
+    proto.getAnimations = () => [];
+    home();
+    await screen.findByRole("region", { name: "Needs attention" });
+    await waitFor(() =>
+      expect(attentionList().className).not.toMatch(/\bpk-stagger\b/),
+    );
+    // The same items, all there: the end state is the same.
+    expect(within(attentionList()).getAllByRole("listitem")).toHaveLength(2);
   });
 });
 

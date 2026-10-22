@@ -12,6 +12,7 @@ import type { AttentionItemDto } from "../../../../api.js";
 import type { AttentionItem } from "../../../templates/Dashboard.js";
 import { attentionHref } from "../../global/model/home.js";
 import { r } from "../../../routes.js";
+import type { NextStep } from "../model/integration.js";
 
 const DAY = 86_400;
 
@@ -26,22 +27,15 @@ export function useAttentionPending(): boolean {
   return !seen.current && attention.isPending;
 }
 
-/**
- * `skip` drops the signing-key and recipe items the Integration card's next step already says.
- * The caller also skips them while that read is pending, so the first-load stagger never lifts
- * an item the next step then takes back.
- */
+/** This product's attention items: the server's read plus the licenses about to expire. */
 export function productAttentionItems(
   slug: string,
   server: readonly AttentionItemDto[] | undefined,
   licenses: { status: string; expiresAt: number | null }[] | undefined,
-  skip: { signing?: boolean; recipes?: boolean } = {},
 ): AttentionItem[] {
   const items: AttentionItem[] = [];
   for (const a of server ?? []) {
     if (a.product.slug !== slug) continue;
-    if (skip.signing && a.kind === "signing.missing") continue;
-    if (skip.recipes && a.kind === "mint.pending") continue;
     items.push({
       id: a.id,
       tone: a.tone,
@@ -65,6 +59,7 @@ export function productAttentionItems(
       items.push({
         id: "expiring",
         tone: "warning",
+        service: "license",
         object: "Licenses",
         reason: `${formatCount(expiring)} ${expiring === 1 ? "license expires" : "licenses expire"} within 14 days.`,
         action: { label: "View", href: r.licenses(slug) },
@@ -72,4 +67,52 @@ export function productAttentionItems(
     }
   }
   return items;
+}
+
+/**
+ * The hero's one next step (products.overview): the first attention item, else the integration
+ * read's next step, else none (the caller's main action follows). `more` counts the attention
+ * items behind the first. `issue` is true for an attention item: the hero then wears the warning
+ * edge and the pill; a next step is plain.
+ */
+export interface HeroStep {
+  issue: boolean;
+  tone: AttentionItem["tone"];
+  /** The service the step belongs to, for the subject's glyph and the hero's accent. */
+  service: string | undefined;
+  subject: string;
+  statement: string;
+  action: { label: string; href: string } | null;
+  more: number;
+}
+
+export function heroStep(
+  items: readonly AttentionItem[],
+  next: NextStep | null,
+  subjectOf: (service: string | undefined) => string,
+): HeroStep | null {
+  const first = items[0];
+  if (first)
+    return {
+      issue: true,
+      tone: first.tone,
+      service: first.service,
+      subject: subjectOf(first.service),
+      statement: first.lines?.join(" ") ?? first.reason,
+      action: first.action?.href
+        ? { label: first.action.label, href: first.action.href }
+        : null,
+      more: items.length - 1,
+    };
+  if (next)
+    return {
+      issue: false,
+      tone: "info",
+      service: undefined,
+      subject: "Integration",
+      statement: next.reason,
+      action: { label: next.text, href: next.to },
+      more: 0,
+    };
+  return null;
 }
