@@ -360,7 +360,7 @@ internal fun PolarisDeviceRow(
                     Icon(PolarisSymbols.Edit, contentDescription = copy.format(copy.deviceRenameDescription, name), tint = tint)
                 }
                 PolarisIconButton(onClick = onDeauthorize, enabled = !busy) {
-                    Icon(PolarisSymbols.ExitToApp, contentDescription = copy.format(copy.deviceDeauthorizeDescription, name), tint = tint)
+                    Icon(PolarisSymbols.Logout, contentDescription = copy.format(copy.deviceDeauthorizeDescription, name), tint = tint)
                 }
             }
         }

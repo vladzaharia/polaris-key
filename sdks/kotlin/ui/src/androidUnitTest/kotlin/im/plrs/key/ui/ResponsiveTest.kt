@@ -128,7 +128,7 @@ internal val messageScreens: List<String> = listOf(
 
 /** Where the layout test checks controls: the control groups and every message screen. */
 internal val controlScreens: List<String> =
-    (listOf("signInHandoff-code", "polarisKeyGate-needs-activation", "activate-device-limit", "deviceLimit-browser-mode", "statusScreen-revoked") + messageScreens).distinct()
+    (listOf("signInHandoff-code", "polarisKeyGate-needs-activation", "activate-device-limit", "deviceLimit-browser-mode", "statusScreen-revoked", "updatePrompt-available") + messageScreens).distinct()
 
 internal fun kitScreen(name: String): @Composable () -> Unit = kitScreens.first { it.first == name }.second
 
@@ -270,7 +270,7 @@ class ResponsiveLayoutTest(private val variant: SnapshotVariant) {
         if (size !in dialogSizes) return
         val failures = mutableListOf<String>()
         show(updateDialog) {
-            checkControls("update-dialog", failures, expected = listOf(sampleCopy.updateGooglePlay, sampleCopy.updateLater))
+            checkControls("update-dialog", failures, expected = listOf(sampleCopy.updateGooglePlay, sampleCopy.updateLater, sampleCopy.updateSkip))
         }
         assertTrue("${variant.name}:\n" + failures.joinToString("\n"), failures.isEmpty())
     }

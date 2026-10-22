@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -132,8 +133,9 @@ private val sentenceWithoutName = setOf("signIn.methodError")
 
 internal fun kitLineRole(key: String): KitLineRole = when {
     key.startsWith("a11y.") -> KitLineRole.Announcement
-    // A sentence that ends in "done" is the verdict, not the Done button (`common.done`).
-    key == "offlineActivation.done" -> KitLineRole.Text
+    // A sentence that ends in "done" is the verdict, not the Done button (`common.done`); "Up to date"
+    // after an update is a status, not an action.
+    key == "offlineActivation.done" || key == "updateProgress.done" -> KitLineRole.Text
     key in controlKeys || KitAction.forCopyKey(key) != null || controlSuffix.containsMatchIn(key) -> KitLineRole.Control
     else -> KitLineRole.Text
 }
@@ -204,7 +206,7 @@ public fun PolarisKitScreen(
         screen.component == KitComponent.paywall && screen.state != "not-available" ->
             PolarisPaywall(screen, rows.features, modifier, onUpgrade = { onAction(null) }, onPortal = { onAction(null) }, onRedeem = { onAction(null) }, onDone = { onAction(null) }, catalog = catalog, locale = locale)
         screen.component == KitComponent.entitlementGate -> KitEntitlementGate(screen, modifier, catalog, locale) { onAction(null) }
-        else -> KitScreenBody(screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode)
+        else -> KitScreenBody(screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode, progress = rows.progress)
     }
 }
 
@@ -237,6 +239,7 @@ private fun KitScreenBody(
     focused: Boolean,
     productName: String?,
     requestCode: String? = null,
+    progress: Float? = null,
 ) {
     if (screen.isHidden) return
     val component = screen.component
@@ -266,9 +269,19 @@ private fun KitScreenBody(
     val qrLabel = lines.firstOrNull { it.key == "a11y.qrRequest" }?.text
     val announcement = lines.filter { it.role == KitLineRole.Announcement && !(offline && it.key == "a11y.qrRequest") }
         .joinToString(". ") { it.text }
-    val text = lines.filter {
+    // Busy keeps the button's label and adds the indicator (DL4), so "Activating…" is not a sentence.
+    val activating = component == KitComponent.activate && screen.state == "busy"
+    val bar = progress != null && screen.state == "downloading" &&
+        (component == KitComponent.updateProgress || component == KitComponent.updatePrompt)
+    val spoken = lines.filter {
         it.role == KitLineRole.Text && it.key != "part.poweredBy" && !it.key.startsWith("part.keyField.") && it.key != "common.paste" &&
-            !(offline && it.key == "offlineActivation.copyCode")
+            !(offline && it.key == "offlineActivation.copyCode") && !(activating && it.key == "activate.busy")
+    }
+    // A download whose byte line is dangling still says what is happening, over its bar.
+    val text = if (bar && spoken.isEmpty()) {
+        listOf(KitLine("update.availableTitle", KitLineRole.Text, catalog.format("update.availableTitle", locale), emptyMap()))
+    } else {
+        spoken
     }
     // The optional attribution (UI-KITS.md section 1.6): the line, the pane's last item, after the
     // controls. On when the inputs carry it or the theme's `showPoweredBy` is on, and only on the
@@ -299,7 +312,11 @@ private fun KitScreenBody(
     val buttons = if (rowsOnly) emptyList() else controls.filter { it.key !in tertiaryKeys }
     val actions: (@Composable ColumnScope.() -> Unit)? = if ((controls.isEmpty() || rowsOnly) && !attribution && component != KitComponent.activate) null else {
         {
-            if (component == KitComponent.activate && screen.state != "done") KitKeyField(lines, busy = screen.state == "busy")
+            if (component == KitComponent.activate && screen.state != "done") KitKeyField(lines, busy = activating)
+            if (activating) {
+                PolarisPrimaryButton(catalog.format("activate.submit", locale), onClick = {}, busy = true)
+                Spacer(Modifier.height(PolarisSpace.controls))
+            }
             buttons.forEachIndexed { index, line ->
                 val action = KitAction.forCopyKey(line.key)
                 // One primary, then tonal secondaries (a lone action is always the primary, DL4).
@@ -335,7 +352,7 @@ private fun KitScreenBody(
             PolarisProductHeader(productName ?: product, gap = polarisWindow.section)
         }
         if (component == KitComponent.accountAndLicense) {
-            KitAccountBody(lines, text, controls, onAction)
+            KitAccountBody(lines, text, controls, onAction, loading = screen.state == "loading")
         } else {
             // The device-limit step reads: title, count, lede, the meter, then the confirm. The
             // activation hand-off to it leads with the step's own title, not the core refusal's.
@@ -378,6 +395,13 @@ private fun KitScreenBody(
             }
             // The activation hand-off has no lede line of its own to hang the meter on: it follows the text.
             if (meters && ordered.none { it.key in setOf("deviceLimit.lede", "deviceLimit.browser", "deviceLimit.noManage") }) KitSeatMeter(screen)
+            if (bar && progress != null) {
+                val percent = java.text.NumberFormat.getPercentInstance(java.util.Locale.forLanguageTag(locale)).format(progress.toDouble())
+                Spacer(Modifier.height(PolarisSpace.controls))
+                PolarisProgressBar(progress, percent)
+                Spacer(Modifier.height(PolarisSpace.tight))
+                Text(percent, style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             // With no controls, the line closes the content.
             if (attribution && controls.isEmpty()) PolarisPoweredByLine()
         }
@@ -502,11 +526,16 @@ private fun KitGraceBanner(lines: List<KitLine>, controls: List<KitLine>, onActi
  * own group in danger text.
  */
 @Composable
-private fun ColumnScope.KitAccountBody(lines: List<KitLine>, text: List<KitLine>, controls: List<KitLine>, onAction: (KitAction?) -> Unit) {
+private fun ColumnScope.KitAccountBody(lines: List<KitLine>, text: List<KitLine>, controls: List<KitLine>, onAction: (KitAction?) -> Unit, loading: Boolean = false) {
     fun has(key: String) = lines.firstOrNull { it.key == key }
     text.firstOrNull { it.key == "account.title" }?.let {
         PolarisTitle(it.text)
         Spacer(Modifier.height(polarisWindow.section))
+    }
+    // Loading draws the rows' shapes, shimmering, and says "Loading…" to assistive tech only (DL7).
+    if (loading) {
+        KitAccountSkeleton(has("common.loading")?.text.orEmpty())
+        return
     }
     // State lines that are not rows ("Activated with a license key", "Offline · showing the last saved details").
     for (line in text.filter { it.key in setOf("account.keyOnly", "account.offline", "part.status.grace") }) {
@@ -543,6 +572,24 @@ private fun ColumnScope.KitAccountBody(lines: List<KitLine>, text: List<KitLine>
     controls.firstOrNull { it.key == "common.signOut" }?.let { signOut ->
         PolarisSection(title = null) {
             KitRow(signOut.text, onClick = { onAction(KitAction.forCopyKey(signOut.key)) }, danger = true)
+        }
+    }
+}
+
+/** Three row-shaped bars in an inset group, shimmering; [label] is the announcement. */
+@Composable
+private fun KitAccountSkeleton(label: String) {
+    val scheme = MaterialTheme.colorScheme
+    val phase = rememberShimmerPhase()
+    Column(
+        Modifier.fillMaxWidth().semantics(mergeDescendants = true) {
+            contentDescription = label
+            liveRegion = LiveRegionMode.Polite
+        },
+        verticalArrangement = Arrangement.spacedBy(PolarisSpace.controls),
+    ) {
+        for (width in listOf(0.7f, 0.5f, 0.6f)) {
+            SkeletonBar(phase, scheme.surfaceContainerHighest, scheme.onSurface.copy(alpha = 0.08f), Modifier.fillMaxWidth(width).height(20.dp))
         }
     }
 }

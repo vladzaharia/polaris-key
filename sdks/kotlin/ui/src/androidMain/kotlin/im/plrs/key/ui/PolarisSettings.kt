@@ -134,7 +134,9 @@ public fun PolarisSettingsScreen(
             PolarisTitle(copy.settingsTitle)
             Spacer(Modifier.height(polarisWindow.section))
             // A refused edit is announced under the title, named by the catalog's copy (never the backend's detail).
-            ui.error?.let {
+            // A refused channel pick is said under the picker, where the person tapped.
+            val channelError = ui.error?.takeIf { ui.channel?.drawn == true && it.code == ErrorCode.channelNotAllowed }?.let(copy::settingsFailureMessage)
+            ui.error?.takeIf { channelError == null }?.let {
                 PolarisInlineNotice(copy.settingsFailureMessage(it))
                 Spacer(Modifier.height(PolarisSpace.controls))
             }
@@ -144,7 +146,7 @@ public fun PolarisSettingsScreen(
             }
             val valuesCard: @Composable (Modifier) -> Unit = { m ->
                 Column(m, verticalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
-                    ui.channel?.let { PolarisChannelPicker(it, onSelect = onChannel) }
+                    ui.channel?.let { PolarisChannelPicker(it, onSelect = onChannel, error = channelError) }
                     if (ui.loadFailure != null) {
                         PolarisSection(null) {
                             Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {

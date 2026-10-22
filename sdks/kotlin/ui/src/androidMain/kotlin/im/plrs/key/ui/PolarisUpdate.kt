@@ -7,7 +7,6 @@
 package im.plrs.key.ui
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -39,6 +38,10 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -171,6 +174,7 @@ internal fun PolarisCopy.updatePromptText(ui: PolarisUpdateUi): Pair<String, Str
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun PolarisUpdatePromptCard(
     ui: PolarisUpdateUi,
@@ -187,7 +191,8 @@ private fun PolarisUpdatePromptCard(
     val (title, body) = copy.updatePromptText(ui)
     val downloading = ui.progress != null && ui.kind == PolarisUpdateUi.Kind.Install
     Surface(
-        modifier = modifier.widthIn(max = PolarisMaxContentWidth).fillMaxWidth(),
+        // A card (not the phone's sheet) is the 560 dp message block, so its three actions fit one row.
+        modifier = modifier.widthIn(max = if (sheet) PolarisMaxContentWidth else PolarisMessageBlockWidth).fillMaxWidth(),
         // A bottom sheet rounds its top edge only (radius 28); a card rounds all four.
         shape = if (sheet) polarisSheetShape else MaterialTheme.shapes.extraLarge,
         // One step lower than the tonal Later button's container, so Later stays visible.
@@ -265,20 +270,68 @@ private fun PolarisUpdatePromptCard(
                 delay(PolarisPromptInputDelayMs)
                 armed = true
             }
-            PolarisActionGroup(row = window.compactHeight) {
-                // While the download runs the primary queues the restart, so it is never disabled.
-                PolarisPrimaryButton(
-                    when {
-                        ui.kind == PolarisUpdateUi.Kind.Restart -> copy.updateRestartNow
-                        downloading -> copy.updateRestartWhenReady
-                        else -> copy.updateVerb(ui)
-                    },
-                    { if (armed) onUpdate() },
-                    initialFocus = !laterFirst,
-                )
-                if (onLater != null && !ui.mandatory) PolarisSecondaryButton(copy.updateLater, { if (armed) onLater() }, initialFocus = laterFirst)
-                if (onSkip != null && !ui.mandatory && !downloading && ui.kind == PolarisUpdateUi.Kind.Install && ui.version != null) {
-                    PolarisTextButton(copy.updateSkip, { if (armed) onSkip() })
+            val primaryLabel = when {
+                ui.kind == PolarisUpdateUi.Kind.Restart -> copy.updateRestartNow
+                downloading -> copy.updateRestartWhenReady
+                else -> copy.updateVerb(ui)
+            }
+            val showLater = onLater != null && !ui.mandatory
+            val showSkip = onSkip != null && !ui.mandatory && !downloading && ui.kind == PolarisUpdateUi.Kind.Install && ui.version != null
+            if (!sheet && (window.compactHeight || footer) && showSkip) {
+                // Skip stays a quiet text link at the start edge; Later and the verb end the row (DL4).
+                // Where the three do not fit one row they stack, the verb first and Skip last.
+                PolarisSkipRow {
+                    PolarisTextButton(copy.updateSkip, { if (armed) onSkip!!() })
+                    CompositionLocalProvider(LocalPolarisActionRow provides true) {
+                        if (showLater) PolarisSecondaryButton(copy.updateLater, { if (armed) onLater!!() }, initialFocus = laterFirst)
+                        PolarisPrimaryButton(primaryLabel, { if (armed) onUpdate() }, initialFocus = !laterFirst)
+                    }
+                }
+            } else {
+                PolarisActionGroup(row = window.compactHeight) {
+                    // While the download runs the primary queues the restart, so it is never disabled.
+                    PolarisPrimaryButton(primaryLabel, { if (armed) onUpdate() }, initialFocus = !laterFirst)
+                    if (showLater) PolarisSecondaryButton(copy.updateLater, { if (armed) onLater!!() }, initialFocus = laterFirst)
+                    if (showSkip) PolarisTextButton(copy.updateSkip, { if (armed) onSkip!!() })
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Three actions, in the order [skip, later, verb] (the last two optional beyond skip): in one row
+ * with the first at the start edge and the rest at the end, or, when the labels do not fit, stacked
+ * at full width with the verb on top.
+ */
+@Composable
+private fun PolarisSkipRow(content: @Composable () -> Unit) {
+    Layout(content = content, modifier = Modifier.fillMaxWidth()) { measurables, constraints ->
+        val gap = PolarisSpace.controls.roundToPx()
+        val maxWidth = constraints.maxWidth
+        val minWidth = 96.dp.roundToPx()
+        val widths = measurables.mapIndexed { i, m -> m.maxIntrinsicWidth(Constraints.Infinity).coerceAtLeast(if (i == 0) 0 else minWidth) }
+        val fits = widths.sum() + gap * (measurables.size - 1).coerceAtLeast(0) <= maxWidth
+        if (fits) {
+            val height = measurables.zip(widths).maxOfOrNull { (m, w) -> m.minIntrinsicHeight(w) } ?: 0
+            val placeables = measurables.zip(widths).map { (m, w) -> m.measure(Constraints.fixed(w, height)) }
+            layout(maxWidth, height) {
+                placeables.first().placeRelative(0, (height - placeables.first().height) / 2)
+                var x = maxWidth
+                for (p in placeables.drop(1).asReversed()) {
+                    x -= p.width
+                    p.placeRelative(x, 0)
+                    x -= gap
+                }
+            }
+        } else {
+            val placeables = measurables.map { it.measure(Constraints(minWidth = maxWidth, maxWidth = maxWidth)) }.asReversed()
+            val height = placeables.sumOf { it.height } + gap * (placeables.size - 1).coerceAtLeast(0)
+            layout(maxWidth, height) {
+                var y = 0
+                for (p in placeables) {
+                    p.placeRelative(0, y)
+                    y += p.height + gap
                 }
             }
         }
@@ -345,39 +398,48 @@ public fun PolarisUpdatePromptDialog(ui: PolarisUpdateUi, onUpdate: () -> Unit, 
     ) {
         val dialogWindow = (androidx.compose.ui.platform.LocalView.current.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
         androidx.compose.runtime.SideEffect { dialogWindow?.setDimAmount(if (dark) 0.6f else 0.32f) }
-        // Composition locals (the kit's theme included) carry into the dialog's window; the
-        // dialog measures its own window, so a short one lays the actions out as a row.
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            val window = PolarisWindow(maxWidth, maxHeight, isTelevision())
-            val sheet = maxWidth < PolarisSheetBelow
-            val available = maxHeight
-            CompositionLocalProvider(LocalPolarisWindow provides window) {
-                // The window is the scrim: a tap on it dismisses an optional update; the card takes its own taps.
-                val absorb = remember { MutableInteractionSource() }
-                Box(
-                    Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (!ui.mandatory) onLater() },
-                    contentAlignment = if (sheet) Alignment.BottomCenter else Alignment.Center,
-                ) {
-                    if (sheet) {
-                        PolarisUpdatePromptCard(
-                            ui,
-                            Modifier.navigationBarsPadding().heightIn(max = available).clickable(interactionSource = absorb, indication = null) {},
-                            onUpdate,
-                            onLater,
-                            footer = true,
-                            sheet = true,
-                            onSkip = onSkip,
-                        )
-                    } else {
-                        PolarisUpdatePromptCard(
-                            ui,
-                            Modifier.padding(16.dp).heightIn(max = available).clickable(interactionSource = absorb, indication = null) {},
-                            onUpdate,
-                            onLater,
-                            footer = true,
-                            onSkip = onSkip,
-                        )
-                    }
+        PolarisUpdatePromptHosted(ui, onUpdate, onLater, onSkip)
+    }
+}
+
+/**
+ * The sheet or card of [PolarisUpdatePromptDialog] without the dialog window: it measures the
+ * window it is in (so a short one lays the actions out as a row) and sits over whatever is behind.
+ */
+@Composable
+internal fun PolarisUpdatePromptHosted(ui: PolarisUpdateUi, onUpdate: () -> Unit, onLater: () -> Unit, onSkip: (() -> Unit)?) {
+    // Composition locals (the kit's theme included) carry into the dialog's window;
+    // the dialog measures its own window, so a short one lays the actions out as a row.
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val window = PolarisWindow(maxWidth, maxHeight, isTelevision())
+        val sheet = maxWidth < PolarisSheetBelow
+        val available = maxHeight
+        CompositionLocalProvider(LocalPolarisWindow provides window) {
+            // The window is the scrim: a tap on it dismisses an optional update; the card takes its own taps.
+            // Taps, not click semantics: TalkBack gets no unnamed full-window control (Later and Back dismiss).
+            Box(
+                Modifier.fillMaxSize().pointerInput(ui.mandatory) { detectTapGestures { if (!ui.mandatory) onLater() } },
+                contentAlignment = if (sheet) Alignment.BottomCenter else Alignment.Center,
+            ) {
+                if (sheet) {
+                    PolarisUpdatePromptCard(
+                        ui,
+                        Modifier.navigationBarsPadding().heightIn(max = available).pointerInput(Unit) { detectTapGestures {} },
+                        onUpdate,
+                        onLater,
+                        footer = true,
+                        sheet = true,
+                        onSkip = onSkip,
+                    )
+                } else {
+                    PolarisUpdatePromptCard(
+                        ui,
+                        Modifier.padding(16.dp).heightIn(max = available).pointerInput(Unit) { detectTapGestures {} },
+                        onUpdate,
+                        onLater,
+                        footer = true,
+                        onSkip = onSkip,
+                    )
                 }
             }
         }

@@ -150,6 +150,20 @@ public fun PolarisLicenseChoice(
                 }
                 if (index < controls.lastIndex) Spacer(Modifier.height(PolarisSpace.controls))
             }
+            if (screen.state == "all-full") {
+                // Every license is on all its devices: Replace a device where the host can send the person there,
+                // and always a way back to the gate (never a dead end, UI-KITS.md 4.1 LicenseChoice).
+                if (KitAction.replaceInBrowser in screen.actions) {
+                    PolarisPrimaryButton(
+                        catalog.format("signin.replace.open", locale),
+                        onClick = { onAction(KitAction.replaceInBrowser) },
+                        external = true,
+                        initialFocus = true,
+                    )
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                }
+                PolarisTextButton(catalog.format("common.cancel", locale), onClick = { onAction(KitAction.cancel) })
+            }
         },
     )
 }
@@ -301,6 +315,7 @@ public fun PolarisPaywall(
  * empty, error (with Try again).
  */
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 public fun PolarisReleaseNotes(
     screen: KitScreen,
     notes: List<KitReleaseNote>,
@@ -336,12 +351,17 @@ public fun PolarisReleaseNotes(
                     if (i > 0) Spacer(Modifier.height(PolarisSpace.controls))
                     PolarisSection(title = null) {
                         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            // The date wraps under the version when they do not fit one line, so no word is cut (DL11).
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls),
+                                itemVerticalAlignment = Alignment.CenterVertically,
+                            ) {
                                 Text(
                                     lines.format("releaseNotes.version", mapOf("version" to CopyArgument.Text(note.version))),
                                     style = MaterialTheme.typography.titleSmall,
                                     color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.weight(1f).semantics { heading() },
+                                    modifier = Modifier.semantics { heading() },
                                 )
                                 if (note.date.isNotBlank()) {
                                     Text(
@@ -429,8 +449,9 @@ public fun PolarisEntitlementLocked(tier: String? = null, modifier: Modifier = M
             )
         }
         if (onUnlock != null && sentence != null) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-                PolarisTextButton(catalog.format("entitlement.unlock", locale), onUnlock)
+            // A lone action is the primary (DL4).
+            Box(Modifier.fillMaxWidth().padding(PolarisSpace.controls)) {
+                PolarisPrimaryButton(catalog.format("entitlement.unlock", locale), onUnlock)
             }
         }
     }
