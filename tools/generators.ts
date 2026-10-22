@@ -113,6 +113,22 @@ export const GENERATORS: Generator[] = [
     fast: true,
   },
   {
+    id: "roles-matrix",
+    title: "Roles matrix: the docs page and the console's Roles tab data",
+    order: 22,
+    inputs: [
+      "packages/worker/src/core/rbac/matrix.ts",
+      "packages/worker/src/core/rbac/areas.ts",
+      "tools/gen-roles-matrix.ts",
+    ],
+    outputs: [
+      "packages/docs/src/content/docs/reference/roles.mdx",
+      "packages/admin/src/console/access/rolesMatrix.generated.ts",
+    ],
+    write: [tsx("tools/gen-roles-matrix.ts")],
+    fast: true,
+  },
+  {
     id: "transcripts",
     title:
       "HTTP transcripts recorded through the Worker router, and their Godot mirror",

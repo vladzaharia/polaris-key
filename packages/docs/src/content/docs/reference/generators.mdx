@@ -64,6 +64,17 @@ Distribution-channel catalogue.
 - Reads: `tools/channels.json`, `tools/gen-channels.ts`.
 - Writes: `packages/shared-manifest/src/channels.generated.ts`, `packages/docs/src/content/docs/reference/channels.mdx`.
 
+### roles-matrix
+
+Roles matrix: the docs page and the console's Roles tab data.
+
+- Run: default, pre-commit.
+- Regenerate: `pnpm gen roles-matrix`.
+- Check: `pnpm gen roles-matrix --check`.
+- Underlying: `pnpm exec tsx tools/gen-roles-matrix.ts`.
+- Reads: `packages/worker/src/core/rbac/matrix.ts`, `packages/worker/src/core/rbac/areas.ts`, `tools/gen-roles-matrix.ts`.
+- Writes: `packages/docs/src/content/docs/reference/roles.mdx`, `packages/admin/src/console/access/rolesMatrix.generated.ts`.
+
 ### transcripts
 
 HTTP transcripts recorded through the Worker router, and their Godot mirror.

@@ -67,6 +67,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 | `ui-matrix`     | reads            | runs with `corpus`                  |
 | `services`      | reads            | `pnpm gen services`                 |
 | `channels`      | reads            | `pnpm gen channels`                 |
+| `roles-matrix`  | reads            | `pnpm gen roles-matrix`             |
 | `constants`     | reads            | `pnpm gen constants`                |
 | `registry-docs` | reads            | `pnpm gen registry-docs`            |
 | `readme-work`   | reads and writes | `pnpm gen readme-work`              |

@@ -1,0 +1,46 @@
+---
+title: "Roles"
+description: "What each console role can do, area by area: Superadmin, Platform admin, Product admin and Console access."
+---
+
+{/* GENERATED PAGE — do not edit. Regenerate with `pnpm gen roles-matrix`.
+    Source of truth: packages/worker/src/core/rbac/matrix.ts; emitter: tools/gen-roles-matrix.ts.
+    The Worker test rolesMatrix.test.ts derives every cell from the console's can() check. */}
+
+A person's roles add up. Console access lets someone sign in and read the docs, and every other role includes it. A Product admin holds one product or all of them, and can be narrowed to some of its areas.
+
+This table is generated from the console's route table. **Manage** means the role can view and change the area. Words stand for an exception, explained under the tables. A dash means no access.
+
+## In a product
+
+| Area | Superadmin | Platform admin | Product admin | Console access |
+| --- | --- | --- | --- | --- |
+| Members: Who can manage this product | Manage | — | Invite | — |
+| Core: Overview, Integration, Access, Devices, Users, Activity | Manage | Name only | Manage | — |
+| Licensing | Manage | — | Manage | — |
+| Managed config | Manage | — | Manage | — |
+| Ship builds | Manage | — | Manage | — |
+| Sign-in | Manage | — | Manage | — |
+| Cloud Sync | Manage | — | Manage | — |
+| Commerce | Manage | — | Manage | — |
+| Keys and secrets: Signing keys, secrets, CI and service tokens | Manage | — | Manage | — |
+| Settings: Features, presentation, repository, delete product | Manage | — | Manage | — |
+
+## On the platform
+
+| Area | Superadmin | Platform admin | Product admin | Console access |
+| --- | --- | --- | --- | --- |
+| Members: Members and SSO rules | Manage | Invite | — | — |
+| Connections | Manage | Manage | — | — |
+| Platform settings | Manage | Manage | — | — |
+| Packages and Status | Manage | Manage | — | — |
+| New products | Manage | Create | — | — |
+| Docs | Manage | Manage | Most | Most |
+
+## Exceptions
+
+- **Name only**: Name and status on Home.
+- **Invite** (Platform admin): Gives Console access and removes people without a platform role.
+- **Invite** (Product admin): Gives Product admin of its product, up to its own areas.
+- **Create**: Creating a product makes the person its admin.
+- **Most**: All but the operator pages.

@@ -59,6 +59,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 | Family           | Here it          | Run                       |
 | ---------------- | ---------------- | ------------------------- |
 | `services`       | writes           | `pnpm gen services`       |
+| `roles-matrix`   | writes           | `pnpm gen roles-matrix`   |
 | `constants`      | reads            | `pnpm gen constants`      |
 | `settings`       | writes           | `pnpm gen settings`       |
 | `docs-reference` | reads            | `pnpm gen docs-reference` |
