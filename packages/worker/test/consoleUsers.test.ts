@@ -633,6 +633,7 @@ describe("actions", () => {
     expect(doc.stores).toEqual({
       "config.accountOverrides": { overrides: null },
       "core.entitlementEvents": [],
+      "core.provisionedSecretMoves": [],
       "test-store": { overrides: { volume: 3 }, of: f.adaAlpha },
     });
     const del = await w.json("POST", `/alpha/users/${f.adaAlpha}/data/delete`);

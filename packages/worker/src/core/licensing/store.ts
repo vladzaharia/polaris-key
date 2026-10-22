@@ -725,6 +725,42 @@ export async function patchLicense(
   );
 }
 
+/**
+ * A compare-and-set write of ONE licence's `overrides_json` that leaves `modified_at` and
+ * `modified_by` alone (U-27.6: moving a provisioned secret between layers is not an edit). It
+ * applies only while the column is still `expected` and, when `accountGuard` is given, while the
+ * owner's account row still holds exactly `payloadJson` (`null` = no row), so a sign-in between
+ * the read and the write skips the move. Answers whether the row changed.
+ */
+export async function casLicenseOverrides(
+  db: Db,
+  product: string,
+  id: string,
+  expected: string | null,
+  next: string,
+  accountGuard?: { subject: string; payloadJson: string | null },
+): Promise<boolean> {
+  const params: (string | null)[] = [next, product, id, expected];
+  let guard = "";
+  if (accountGuard) {
+    params.push(product, accountGuard.subject);
+    if (accountGuard.payloadJson === null)
+      guard =
+        " AND NOT EXISTS (SELECT 1 FROM account_overrides WHERE product = ? AND subject = ?)";
+    else {
+      params.push(accountGuard.payloadJson);
+      guard =
+        " AND EXISTS (SELECT 1 FROM account_overrides WHERE product = ? AND subject = ? AND payload_json = ?)";
+    }
+  }
+  const changes = await db.runChanges(
+    `UPDATE licenses SET overrides_json = ?
+      WHERE product = ? AND id = ? AND overrides_json IS ?${guard}`,
+    ...params,
+  );
+  return changes > 0;
+}
+
 // ── Keys ─────────────────────────────────────────────────────────────────────
 export async function countKeysByLicense(
   db: Db,

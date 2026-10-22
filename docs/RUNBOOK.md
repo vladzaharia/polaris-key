@@ -2119,13 +2119,14 @@ to the dry-run report the lead read, so the run id is the record.
 When a row's exit depends on a job, the entry names the run id and its totals. Jobs the ledger
 tracks:
 
-| Job                                 | Owner    | Exit fact                                                                                                                                                                       |
-| ----------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `core.licence-override-migration`   | The lead | The dry run reports no license with an override, then a later release deletes the machinery. Applied from the console, never the runner.                                        |
-| `identity.seed-platform-connection` | The lead | An apply report exists. Its seeded audience is recorded here as above.                                                                                                          |
-| `license.limits-materialise`        | The lead | A dry run after the apply reports changes 0 and docDiffs 0, and no license has a tier of NULL. Its run ids are recorded under Entries.                                          |
-| Resolver comparison                 | The lead | Zero blocking rows, every expected row acknowledged below by class and count, and no `workflow-channel` row's old answer newer than the latest `materialise-workflow-beta` run. |
-| Resolver switch                     | The lead | The dry run after the switch shows zero blocking rows and nothing was rolled back. A later release then deletes the old resolver.                                               |
+| Job                                   | Owner    | Exit fact                                                                                                                                                                                                             |
+| ------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `core.licence-override-migration`     | The lead | The dry run reports no license with an override, then a later release deletes the machinery. Applied from the console, never the runner.                                                                              |
+| `core.provisioned-secrets-to-account` | The lead | A dry run after the apply reports changes 0, and its conflicts and otherSubject counts are resolved or accepted by the lead. Both run ids are recorded under Entries. The release after drops the job and its ledger. |
+| `identity.seed-platform-connection`   | The lead | An apply report exists. Its seeded audience is recorded here as above.                                                                                                                                                |
+| `license.limits-materialise`          | The lead | A dry run after the apply reports changes 0 and docDiffs 0, and no license has a tier of NULL. Its run ids are recorded under Entries.                                                                                |
+| Resolver comparison                   | The lead | Zero blocking rows, every expected row acknowledged below by class and count, and no `workflow-channel` row's old answer newer than the latest `materialise-workflow-beta` run.                                       |
+| Resolver switch                       | The lead | The dry run after the switch shows zero blocking rows and nothing was rolled back. A later release then deletes the old resolver.                                                                                     |
 
 **Resolver deviation.** The two-release rule says the switch waits for a dry run with no changes. The
 resolver comparison accepts six expected classes instead (`beta-includes-stable`,
@@ -2160,6 +2161,30 @@ switch deploys; otherwise repeat steps 1 to 5.
 **Roll back.** Run `down` on the apply before rolling the Worker back. It puts each column back to
 its recorded value only while the column still holds the value the job wrote, and removes the
 seeded Default tier once no license uses it. A later edit stays.
+
+### Provisioned secrets (`core.provisioned-secrets-to-account`)
+
+Moves an owned license's provisioned secrets (the keys a product's provisioning hooks declare) from
+the license to the owner's account overrides row, one layer up, with no document changing. Run it
+after the Worker that carries it is live. A dry run writes nothing.
+
+1. `pkey migrate dry-run core.provisioned-secrets-to-account`, then `pkey migrate report <run>`. Per
+   product it lists `moves`, `shadowed`, `conflicts`, `otherSubject`, `unowned` and `malformed`, with
+   up to 20 license ids each. No value is in the report.
+2. `conflicts` or `otherSubject` above 0: send the report to the lead. Those licenses are skipped and
+   keep their copy; nothing is lost by skipping them.
+3. Apply from the console (Platform, Migrations), pinned to the run id. A sign-in or an edit between
+   the report and the apply skips that move; the next dry run shows it.
+4. Dry-run again. It must show changes 0. Record both run ids under Entries.
+
+The ledger `provisioned_secret_moves` holds license ids, keys, the owner's subject and a SHA-256 of
+each moved entry, never a value. Erasing an account, merging accounts, deleting a license and
+deleting a product all remove or re-key its rows; the table is dropped with the job.
+
+**Roll back.** Run `down` on the apply before rolling the Worker back. It puts each entry back on
+its license, in place, only while the account row still holds the entry the job moved, and removes
+it from the row when the job added it. An account entry edited since stays. A copy that was hidden
+under a different account entry is not restored: it changed no document.
 
 ### Entries
 

@@ -61,6 +61,8 @@ const LICENSE_KEYED = [
   // U-03: Config's licence-override migration report.
   "override_migration_report",
   "portal_license_links",
+  // U-27.6: the provisioned-secret backfill ledger; Core deletes the row (`core/licensing/grants.ts`).
+  "provisioned_secret_moves",
   "registry_tokens",
 ].sort();
 

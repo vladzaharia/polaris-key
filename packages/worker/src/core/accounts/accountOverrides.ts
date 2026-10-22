@@ -238,7 +238,7 @@ export async function overrideSubject(
 }
 
 /** {@link overrideSubject} plus which line answered: the signed-in subject, or the owner line. */
-async function overrideSubjectVia(
+export async function overrideSubjectVia(
   db: Db,
   product: string,
   license: OverrideLicenseFacts | null,

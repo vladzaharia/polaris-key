@@ -114,12 +114,12 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === "object" && !Array.isArray(v);
 
 /** One canonical JSON (sorted keys) so equal entries compare equal whatever their key order. */
-function canonical(v: unknown): string {
-  if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
+export function canonicalJson(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonicalJson).join(",")}]`;
   if (isRecord(v))
     return `{${Object.keys(v)
       .sort()
-      .map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`)
+      .map((k) => `${JSON.stringify(k)}:${canonicalJson(v[k])}`)
       .join(",")}}`;
   return JSON.stringify(v) ?? "null";
 }
@@ -204,7 +204,7 @@ export function planProvisionedSecretMoves(
     const texts = new Map<string, string>();
     columnText.set(licence.id, texts);
     for (const k of held)
-      if (isEntry(secrets[k])) texts.set(k, canonical(secrets[k]));
+      if (isEntry(secrets[k])) texts.set(k, canonicalJson(secrets[k]));
     const owner = licence.ownerSubject;
     if (owner === null) {
       plan.unowned++;
@@ -225,7 +225,7 @@ export function planProvisionedSecretMoves(
         key,
         subject: owner,
         entry,
-        text: canonical(entry),
+        text: canonicalJson(entry),
         skip,
       });
     }
@@ -234,7 +234,7 @@ export function planProvisionedSecretMoves(
   // Group by (owner subject, key).
   const groups = new Map<string, Holder[]>();
   for (const h of holders) {
-    const id = canonical([h.subject, h.key]);
+    const id = canonicalJson([h.subject, h.key]);
     const g = groups.get(id);
     if (g) g.push(h);
     else groups.set(id, [h]);
