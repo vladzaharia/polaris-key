@@ -71,7 +71,7 @@ export function ShipBuildsTile({
     rollouts.data
       ? `${formatCount(live)} ${live === 1 ? "rollout" : "rollouts"} live`
       : null,
-    feed.data
+    feed.data && !feed.data.hidden
       ? `In-app updates: ${ACCESS_LABELS[feed.data.metadataAccess] ?? feed.data.metadataAccess}`
       : null,
   ].filter((x): x is string => x !== null);

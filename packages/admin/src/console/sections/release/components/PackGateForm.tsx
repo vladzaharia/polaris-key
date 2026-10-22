@@ -25,8 +25,8 @@ import { useDeliveryAccess } from "../data.js";
 
 /**
  * A pack's delivery gate (ADMIN.md §6.3.4 "Delivery tab", DLV-3): who may download it and the
- * license flag a device needs. One `dist_access` row, saved on its own (`PUT …/distribution/access`
- * with `deliverable` and `entitlement`); a pack with no row inherits the app's mode. Distribution
+ * license flag a device needs. One `dist_access` row, saved on its own (`PATCH …/settings/distribution.access`
+ * naming the pack, its mode and `entitlement`); a pack with no row inherits the app's mode. Distribution
  * owns the row, so the form reads "Distribution is off" rather than guessing when it is.
  */
 

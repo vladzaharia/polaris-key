@@ -332,6 +332,169 @@ describe("api — licence list paging (P0-29)", () => {
   });
 });
 
+describe("api — the settings-backed calls use the generic settings API (ST-05b)", () => {
+  const BASE = "/manage/api/products/djdl/settings";
+  const VALUES: Record<string, unknown> = {
+    "core.trustPolicy": { mint: "attested" },
+    "license.fingerprint": { enabled: true, defaultMode: "normal", probes: [] },
+    "license.autoIssue": { enabled: false },
+    "distribution.access": {
+      app: {
+        mode: "licensed",
+        entitlement: null,
+        source: "admin",
+        modifiedAt: 1,
+      },
+    },
+    "update.metadataAccess": "public",
+    "release.compatWindow": { min: "1.0.0", max: "2.0.0" },
+    "update.operatorPolicy": { requireSparkleSignature: true },
+  };
+  const setting = (key: string) => ({
+    key,
+    value: VALUES[key],
+    source: "console",
+    version: 3,
+  });
+
+  /** Answers the settings routes the way the worker does. */
+  function stubSettings(): void {
+    setCsrf("tok");
+    stubFetch((url) => {
+      const path = url.slice(BASE.length + 1);
+      return json({ ok: true, setting: setting(path) });
+    });
+  }
+  const seen = () =>
+    calls.map(
+      (c) =>
+        `${c.init.method ?? "GET"} ${c.url.slice("/manage/api/products/djdl/".length)}`,
+    );
+  const bodies = () =>
+    calls.map((c) => (c.init.body ? JSON.parse(String(c.init.body)) : null));
+
+  it("reads and writes the fingerprint policy as two settings", async () => {
+    stubSettings();
+    await api.fingerprintPolicy("djdl");
+    expect(seen()).toEqual(["GET settings/license.fingerprint"]);
+
+    stubSettings();
+    await api.updateFingerprintPolicy("djdl", { defaultMode: "strict" });
+    expect(seen()).toEqual([
+      "GET settings/license.fingerprint",
+      "PATCH settings/license.fingerprint",
+    ]);
+    // The patch merges onto the current policy, with the version just read.
+    expect(bodies()[1]).toEqual({
+      value: { enabled: true, defaultMode: "strict", probes: [] },
+      expectedVersion: 3,
+    });
+
+    stubSettings();
+    await api.revertFingerprintPolicy("djdl");
+    expect(seen()).toEqual([
+      "GET settings/license.fingerprint",
+      "DELETE settings/license.fingerprint",
+      "GET settings/license.autoIssue",
+      "DELETE settings/license.autoIssue",
+    ]);
+    expect(bodies()[1]).toEqual({ expectedVersion: 3 });
+  });
+
+  it("reads the update settings key by key and writes each key it names", async () => {
+    stubSettings();
+    const view = await api.updateSettings("djdl");
+    expect(seen()).toEqual([
+      "GET settings/update.metadataAccess",
+      "GET settings/release.compatWindow",
+      "GET settings/update.operatorPolicy",
+    ]);
+    expect(view).toMatchObject({
+      metadataAccess: "public",
+      compatMin: "1.0.0",
+      compatMax: "2.0.0",
+      requireSparkleSignature: true,
+      minimumSystemVersion: null,
+      accessSource: "admin",
+    });
+
+    stubSettings();
+    await api.saveUpdateSettings("djdl", {
+      metadataAccess: "entitled",
+      compatMax: "3.0.0",
+    });
+    expect(seen().filter((c) => !c.startsWith("GET"))).toEqual([
+      "PATCH settings/update.metadataAccess",
+      "PATCH settings/release.compatWindow",
+    ]);
+    expect(bodies().filter(Boolean)).toEqual([
+      { value: "entitled", expectedVersion: 3 },
+      { value: { min: "1.0.0", max: "3.0.0" }, expectedVersion: 3 },
+    ]);
+
+    stubSettings();
+    await api.revertUpdateSettings("djdl", ["access", "compat"]);
+    expect(seen().filter((c) => !c.startsWith("GET"))).toEqual([
+      "DELETE settings/update.metadataAccess",
+      "DELETE settings/release.compatWindow",
+    ]);
+  });
+
+  it("serves delivery access and the trust policy from their settings", async () => {
+    stubSettings();
+    const access = await api.deliveryAccess("djdl");
+    expect(access.app).toEqual({
+      deliverableId: "app",
+      mode: "licensed",
+      source: "admin",
+    });
+    stubSettings();
+    await api.saveDeliveryAccess("djdl", {
+      mode: "entitled",
+      deliverable: "pack",
+      entitlement: "pro",
+    });
+    expect(seen()).toEqual([
+      "GET settings/distribution.access",
+      "PATCH settings/distribution.access",
+    ]);
+    expect(bodies()[1]).toEqual({
+      value: { pack: { mode: "entitled", entitlement: "pro" } },
+      expectedVersion: 3,
+    });
+    stubSettings();
+    await api.revertDeliveryAccess("djdl");
+    expect(seen()).toEqual([
+      "GET settings/distribution.access",
+      "DELETE settings/distribution.access",
+    ]);
+
+    stubSettings();
+    expect(await api.trustPolicy("djdl")).toMatchObject({
+      policy: { mint: "attested" },
+      source: "admin",
+      version: 3,
+    });
+    stubSettings();
+    await api.putTrustPolicy("djdl", {
+      policy: { mint: "attested" } as never,
+      expectedVersion: 3,
+      reason: "r",
+      confirm: "core.trustPolicy",
+    });
+    expect(seen()).toEqual(["PATCH settings/core.trustPolicy"]);
+    expect(bodies()[0]).toEqual({
+      value: { mint: "attested" },
+      expectedVersion: 3,
+      reason: "r",
+      confirm: "core.trustPolicy",
+    });
+    stubSettings();
+    await api.resetTrustPolicy("djdl", { expectedVersion: 3 });
+    expect(seen()).toEqual(["DELETE settings/core.trustPolicy"]);
+  });
+});
+
 describe("api — every product-scoped resource is under its owning service", () => {
   /**
    * The one place the console's half of §R1 is pinned. The worker deleted the pre-suite
@@ -378,21 +541,6 @@ describe("api — every product-scoped resource is under its owning service", ()
     ["createTier", () => api.createTier("djdl", {}), "license/tiers"],
     ["patchTier", () => api.patchTier("djdl", "t1", {}), "license/tiers/t1"],
     ["deleteTier", () => api.deleteTier("djdl", "t1"), "license/tiers/t1"],
-    [
-      "fingerprintPolicy",
-      () => api.fingerprintPolicy("djdl"),
-      "license/policy",
-    ],
-    [
-      "updateFingerprintPolicy",
-      () => api.updateFingerprintPolicy("djdl", {}),
-      "license/policy",
-    ],
-    [
-      "revertFingerprintPolicy",
-      () => api.revertFingerprintPolicy("djdl"),
-      "license/policy/revert",
-    ],
     ["schema", () => api.schema("djdl"), "config/catalog"],
     [
       "publishSchema",
@@ -453,7 +601,6 @@ describe("api — every product-scoped resource is under its owning service", ()
       () => api.unyankRelease("djdl", "v1.0.0"),
       "release/releases/v1.0.0/yank",
     ],
-    ["updateSettings", () => api.updateSettings("djdl"), "update/settings"],
     ["edgeMintRecipes", () => api.edgeMintRecipes("djdl"), "config/mint"],
     [
       "approveEdgeMintRecipe",
@@ -480,16 +627,6 @@ describe("api — every product-scoped resource is under its owning service", ()
       "revokeEdgeMintRecipe",
       () => api.revokeEdgeMintRecipe("djdl", "music"),
       "config/mint/music/revoke",
-    ],
-    [
-      "saveUpdateSettings",
-      () => api.saveUpdateSettings("djdl", {}),
-      "update/settings",
-    ],
-    [
-      "revertUpdateSettings",
-      () => api.revertUpdateSettings("djdl", ["access"]),
-      "update/settings/revert",
     ],
   ];
 

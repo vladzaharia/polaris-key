@@ -14,6 +14,7 @@ import {
   apiError,
   bootWith,
   FEED,
+  feedSettings,
   P,
   RELEASES,
   writes,
@@ -28,6 +29,15 @@ const axe = configureAxe({
   rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
 });
 const HASH = "#/p/djdl/update/feed";
+const KEY = (key: string) => P(`/settings/${key}`);
+const ACCESS_KEY = KEY("update.metadataAccess");
+const WINDOW_KEY = KEY("release.compatWindow");
+const POLICY_KEY = KEY("update.operatorPolicy");
+/** The settings the page reads (one route per key), from a `FEED` view model. */
+const feedAs = (feed: typeof FEED) =>
+  Object.fromEntries(
+    feedSettings(feed).settings.map((s) => [KEY(s.key), { setting: s }]),
+  );
 
 beforeEach(() => resetConsole());
 afterEach(() => {
@@ -83,9 +93,7 @@ describe("Update → Feed", () => {
   });
 
   it("offers entitled as a metadata mode (D-13) and sends only the access mode", async () => {
-    const { calls } = bootWith(HASH, {
-      [`PATCH ${P("/update/settings")}`]: FEED,
-    });
+    const { calls } = bootWith(HASH, {});
     const access = await section("Metadata access");
     await userEvent.click(
       within(access).getByRole("radio", { name: /Entitled/ }),
@@ -94,9 +102,9 @@ describe("Update → Feed", () => {
     await waitFor(() =>
       expect(writes(calls)).toEqual([
         expect.objectContaining({
-          path: P("/update/settings"),
+          path: ACCESS_KEY,
           method: "PATCH",
-          body: { metadataAccess: "entitled" },
+          body: { value: "entitled", expectedVersion: 1 },
         }),
       ]),
     );
@@ -118,7 +126,7 @@ describe("Update → Feed", () => {
 
   it("says why artifact access is missing instead of guessing it", async () => {
     bootWith(HASH, {
-      [P("/distribution/access")]: () => apiError(500, "internal"),
+      [KEY("distribution.access")]: () => apiError(500, "internal"),
     });
     const access = await section("Metadata access");
     expect(
@@ -131,7 +139,7 @@ describe("Update → Feed", () => {
   });
 
   it("locks the access mode and the policy without a release configuration", async () => {
-    bootWith(HASH, { [P("/update/settings")]: { ...FEED, configured: false } });
+    bootWith(HASH, feedAs({ ...FEED, configured: false }));
     expect(
       await screen.findByText("No release configuration yet"),
     ).toBeTruthy();
@@ -154,7 +162,7 @@ describe("Update → Feed", () => {
 
   it("puts a 422's named field error beside the field, in the server's words", async () => {
     bootWith(HASH, {
-      [`PATCH ${P("/update/settings")}`]: () =>
+      [`PATCH ${WINDOW_KEY}`]: () =>
         apiError(
           422,
           "bad_request",
@@ -174,7 +182,7 @@ describe("Update → Feed", () => {
 
   it("shows a refusal the server attributes to no field in the section", async () => {
     bootWith(HASH, {
-      [`PATCH ${P("/update/settings")}`]: () =>
+      [`PATCH ${ACCESS_KEY}`]: () =>
         apiError(500, "internal", {}, "D1 is unavailable"),
     });
     const access = await section("Metadata access");
@@ -189,17 +197,19 @@ describe("Update → Feed", () => {
   });
 
   it("round-trips a compat edit into the save body, sending only what changed", async () => {
-    const { calls } = bootWith(HASH, {
-      [`PATCH ${P("/update/settings")}`]: FEED,
-    });
+    const { calls } = bootWith(HASH);
     const compat = await section("Compatibility window");
     const min = within(compat).getByLabelText(/Lowest supported/);
     await userEvent.clear(min);
     await userEvent.type(min, "1.2.0");
     await save("Compatibility window");
+    // The whole window is the setting's value: the edited bound, and the other as it was read.
     await waitFor(() =>
       expect(writes(calls)).toEqual([
-        expect.objectContaining({ body: { compatMin: "1.2.0" } }),
+        expect.objectContaining({
+          path: WINDOW_KEY,
+          body: { value: { min: "1.2.0", max: "2.99.0" }, expectedVersion: 0 },
+        }),
       ]),
     );
   });
@@ -228,7 +238,12 @@ describe("Update → Feed", () => {
   it("shows an error with a working Retry when the settings fail to load", async () => {
     let fail = true;
     bootWith(HASH, {
-      [P("/update/settings")]: () => (fail ? apiError(500, "internal") : FEED),
+      ...Object.fromEntries(
+        feedSettings().settings.map((s) => [
+          KEY(s.key),
+          () => (fail ? apiError(500, "internal") : { setting: s }),
+        ]),
+      ),
     });
     const retry = await screen.findByRole("button", { name: "Try again" });
     fail = false;
@@ -255,9 +270,7 @@ describe("Update → Feed", () => {
   });
 
   it("reverts one block after confirmation, sending only that block (UPS-7)", async () => {
-    const { calls } = bootWith(HASH, {
-      [`POST ${P("/update/settings/revert")}`]: FEED,
-    });
+    const { calls } = bootWith(HASH);
     const compat = await section("Compatibility window");
     await userEvent.click(
       within(compat).getByRole("button", { name: /From manifest/ }),
@@ -279,8 +292,9 @@ describe("Update → Feed", () => {
     await waitFor(() =>
       expect(writes(calls)).toEqual([
         expect.objectContaining({
-          path: P("/update/settings/revert"),
-          body: { fields: ["access"] },
+          path: ACCESS_KEY,
+          method: "DELETE",
+          body: { expectedVersion: 1 },
         }),
       ]),
     );
@@ -288,24 +302,27 @@ describe("Update → Feed", () => {
 
   describe("artifact policy", () => {
     it("sends a new minimum, and clears it to null when emptied", async () => {
-      const { calls } = bootWith(HASH, {
-        [`PATCH ${P("/update/settings")}`]: FEED,
-      });
+      const { calls } = bootWith(HASH);
       const policy = await section("Artifact policy");
       const min = within(policy).getByLabelText(/Minimum macOS version/);
       await userEvent.clear(min);
       await save("Artifact policy");
+      // Emptied: the policy is stored without a minimum.
       await waitFor(() =>
         expect(writes(calls)).toEqual([
-          expect.objectContaining({ body: { minimumSystemVersion: null } }),
+          expect.objectContaining({
+            path: POLICY_KEY,
+            body: {
+              value: { requireSparkleSignature: true },
+              expectedVersion: 1,
+            },
+          }),
         ]),
       );
     });
 
     it("asks before turning the signature requirement off (L2), and sends nothing when cancelled", async () => {
-      const { calls } = bootWith(HASH, {
-        [`PATCH ${P("/update/settings")}`]: FEED,
-      });
+      const { calls } = bootWith(HASH);
       const policy = await section("Artifact policy");
       await userEvent.click(within(policy).getByRole("switch"));
       await save("Artifact policy");
@@ -325,22 +342,38 @@ describe("Update → Feed", () => {
       );
       await waitFor(() =>
         expect(writes(calls)).toEqual([
-          expect.objectContaining({ body: { requireSparkleSignature: false } }),
+          expect.objectContaining({
+            body: {
+              value: {
+                requireSparkleSignature: false,
+                minimumSystemVersion: "13.0",
+              },
+              expectedVersion: 1,
+            },
+          }),
         ]),
       );
     });
 
     it("turns the requirement back on without a confirmation", async () => {
-      const { calls } = bootWith(HASH, {
-        [P("/update/settings")]: { ...FEED, requireSparkleSignature: false },
-        [`PATCH ${P("/update/settings")}`]: FEED,
-      });
+      const { calls } = bootWith(
+        HASH,
+        feedAs({ ...FEED, requireSparkleSignature: false }),
+      );
       const policy = await section("Artifact policy");
       await userEvent.click(within(policy).getByRole("switch"));
       await save("Artifact policy");
       await waitFor(() =>
         expect(writes(calls)).toEqual([
-          expect.objectContaining({ body: { requireSparkleSignature: true } }),
+          expect.objectContaining({
+            body: {
+              value: {
+                requireSparkleSignature: true,
+                minimumSystemVersion: "13.0",
+              },
+              expectedVersion: 1,
+            },
+          }),
         ]),
       );
       expect(screen.queryByRole("alertdialog")).toBeNull();

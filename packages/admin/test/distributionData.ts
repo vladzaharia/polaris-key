@@ -956,6 +956,129 @@ export const ASC_PRICE_POINTS = {
 
 const ASC = (path: string) => P(`/distribution/connectors/asc/${path}`);
 
+// ── The generic settings API (ST-05b) over the update and delivery-access view models ─────────
+// The pages read `FEED` and `ACCESS` as view models; the API serves them as registry settings
+// (`GET …/settings/effective?keys=`, `GET|PATCH|DELETE …/settings/<key>`). These build the settings
+// from the view models, so a test overrides `FEED` or `ACCESS` the way it always did.
+
+type Source = "manifest" | "admin";
+const consoleSource = (s: Source) => (s === "admin" ? "console" : "manifest");
+
+function settingOf(
+  key: string,
+  value: unknown,
+  source: "manifest" | "console" | "default",
+  extra: Record<string, unknown> = {},
+) {
+  return {
+    key,
+    area: key.split(".").slice(0, 2).join("."),
+    service: key.split(".")[0],
+    label: key,
+    description: "",
+    docs: "/docs/",
+    spec: { kind: "json", schema: key },
+    confirm: { change: "L1" },
+    critical: true,
+    manifestPath: null,
+    visibleWhen: null,
+    serviceEnabled: true,
+    rbacArea: "settings",
+    ownership: "claimable",
+    value,
+    source,
+    defaultValue: null,
+    version: source === "console" ? 1 : 0,
+    updatedAt: null,
+    updatedBy: null,
+    reason: null,
+    ...extra,
+  };
+}
+
+/** The three update settings a `FEED` view model stands for, one per key. */
+export function feedSettings(feed: typeof FEED = FEED) {
+  return {
+    settings: [
+      settingOf(
+        "update.metadataAccess",
+        feed.metadataAccess,
+        consoleSource(feed.accessSource as Source),
+        feed.configured
+          ? {}
+          : { blocked: "This product has no release configuration yet" },
+      ),
+      settingOf(
+        "release.compatWindow",
+        { min: feed.compatMin, max: feed.compatMax },
+        consoleSource(feed.compatSource as Source),
+      ),
+      settingOf(
+        "update.operatorPolicy",
+        {
+          requireSparkleSignature: feed.requireSparkleSignature,
+          ...(feed.minimumSystemVersion === null
+            ? {}
+            : { minimumSystemVersion: feed.minimumSystemVersion }),
+        },
+        "console",
+        { ownership: "operator" },
+      ),
+    ],
+  };
+}
+
+/** The `distribution.access` setting an `ACCESS` view model stands for. */
+export function accessSetting(access: typeof ACCESS = ACCESS) {
+  return {
+    setting: settingOf(
+      "distribution.access",
+      Object.fromEntries(
+        access.deliverables.map((d) => [
+          d.deliverableId,
+          {
+            mode: d.mode,
+            entitlement: d.entitlement,
+            source: d.source,
+            modifiedAt: d.modifiedAt,
+          },
+        ]),
+      ),
+      access.app.source === "admin" ? "console" : "manifest",
+    ),
+  };
+}
+
+function settingRoutes(): Record<string, unknown> {
+  // Static answers, so the Playwright servers can serve the same table (`e2e/`).
+  const out: Record<string, unknown> = {
+    [P("/settings/distribution.access")]: accessSetting(),
+  };
+  for (const s of feedSettings().settings)
+    out[P(`/settings/${s.key}`)] = { setting: s };
+  // A write answers the setting it left: the page reads it back from the response.
+  for (const key of [
+    "update.metadataAccess",
+    "release.compatWindow",
+    "update.operatorPolicy",
+  ])
+    for (const method of ["PATCH", "DELETE"])
+      out[`${method} ${P(`/settings/${key}`)}`] = {
+        ok: true,
+        claimed: true,
+        applied: false,
+        setting: feedSettings().settings.find((s) => s.key === key),
+      };
+  for (const method of ["PATCH", "DELETE"])
+    out[`${method} ${P("/settings/distribution.access")}`] = {
+      ok: true,
+      claimed: true,
+      applied: false,
+      ...accessSetting(),
+    };
+  return out;
+}
+
 /** Every read the chunk 9 pages make, keyed by path. */
 export const DISTRIBUTION_ROUTES: Record<string, unknown> = {
   [P("/distribution/matrix")]: MATRIX,
@@ -971,9 +1094,8 @@ export const DISTRIBUTION_ROUTES: Record<string, unknown> = {
   [ASC("iap/products")]: ASC_IAP_PRODUCTS,
   [ASC("iap/price-points")]: ASC_PRICE_POINTS,
   [P("/distribution/update-health")]: HEALTH,
-  [P("/distribution/access")]: ACCESS,
+  ...settingRoutes(),
   [P("/outlet-credentials")]: CREDENTIALS,
-  [P("/update/settings")]: FEED,
   [P("/release/releases")]: RELEASES,
   [P("/release/deliverables")]: DELIVERABLES,
   [P("/config/catalog")]: CATALOG,
