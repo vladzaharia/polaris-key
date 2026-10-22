@@ -57,7 +57,9 @@ import {
  * Does the element's content overflow it sideways? A scroller is a Tab stop (a named region) only
  * while it overflows, or every table would be one for nothing. Measured again on resize.
  */
-export function useOverflows(ref: React.RefObject<HTMLElement | null>): boolean {
+export function useOverflows(
+  ref: React.RefObject<HTMLElement | null>,
+): boolean {
   const [over, setOver] = React.useState(false);
   const watched = React.useRef<{
     el: Element | null;

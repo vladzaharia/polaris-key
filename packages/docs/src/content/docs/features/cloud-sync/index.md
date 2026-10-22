@@ -135,6 +135,8 @@ Retired with no replacement period: `onAttach`, `cloudSync.saves` (use a collect
 
 The **Cloud Sync** section's **Data** page lists the product's synced settings, collections and migrations and the platform limits. The catalog editor tunes a key's `user` block; a key whose syncing is off stays on the device (`sync: "local"`).
 
+The **Usage** page shows how many people have data, the storage they use against the product's limit, syncs and conflicts today, storage by tier with who is over 80 % of the limit, what is stored, and where people sync from. A game says players and an app says people. The figures refresh about every 15 minutes, count only, and never name a person.
+
 ## Next steps
 
 - [The catalog](/docs/features/managed-config/catalog/): declare the keys that sync.
