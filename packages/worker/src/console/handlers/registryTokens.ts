@@ -494,7 +494,24 @@ async function revokeAll(
   );
   // Product scope also ends the product's service tokens (a licence filter never does).
   if (!filter.licenseId) {
-    const svc = await revokeAllServiceTokens(db, owner, now);
+    let svc: number;
+    try {
+      svc = await revokeAllServiceTokens(db, owner, now);
+    } catch (e) {
+      // Batches commit one by one: the ones that ran stay revoked, and a retry finishes the rest.
+      forgetRegistryTokens();
+      await record(
+        db,
+        scope,
+        owner,
+        session,
+        now,
+        "service_token.revoke",
+        { kind: "product", id: owner },
+        "Revoking every live service token stopped part-way; run it again to finish",
+      );
+      throw e;
+    }
     forgetRegistryTokens();
     if (svc > 0)
       await record(

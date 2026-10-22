@@ -938,6 +938,8 @@ export function isServiceTokenScopes(scopes: readonly string[]): boolean {
   return scopes.length === 1 && scopes[0] === PACKAGES_READ_CI_SCOPE;
 }
 
+// An exact match is enough only because `issueStaticCiToken` is the one writer of `scopes_json`
+// (always `JSON.stringify`); the JS re-filter below keeps the two definitions in step.
 const SERVICE_TOKEN_SCOPES_JSON = JSON.stringify([PACKAGES_READ_CI_SCOPE]);
 
 /** Every live (unrevoked, unexpired) read service token of the product: no window, no limit. */
