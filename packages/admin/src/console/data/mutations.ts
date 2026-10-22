@@ -56,6 +56,7 @@ export type WriteMethod =
   | "deleteAlertDestination"
   | "testAlertDestination"
   | "revokePersonalToken"
+  | "revokeMyPersonalToken"
   | "createPlatformConnection"
   | "updatePlatformConnection"
   | "deletePlatformConnection"
@@ -438,6 +439,14 @@ export const MUTATIONS: MutationTable = {
     invalidates: () => [
       prefix(qk.personalTokens()),
       prefix(qk.platformActivity()),
+    ],
+  },
+  revokeMyPersonalToken: {
+    label: "own personal token revoke",
+    // The roster lists the same token: refetch it too.
+    invalidates: () => [
+      prefix(qk.myPersonalTokens()),
+      prefix(qk.personalTokens()),
     ],
   },
   revertPlatformSetting: {

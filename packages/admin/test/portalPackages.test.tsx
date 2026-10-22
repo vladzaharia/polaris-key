@@ -141,6 +141,101 @@ describe("Account → Packages (F-33)", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
+  it("lists packages tokens only, and points to the console while an admin token is live (ST-34.11)", async () => {
+    mockFetch(
+      routes({
+        [ME]: tokens({
+          tokens: [
+            token(),
+            token({
+              id: "pt_cli",
+              label: "pkey on ada-mbp.local",
+              hint: "Zz9z",
+              scope: "admin",
+            }),
+          ],
+        }),
+      }),
+    );
+    renderPortal();
+    const c = await card();
+    expect(within(c).getByText("CI build server")).toBeTruthy();
+    expect(within(c).queryByText("pkey on ada-mbp.local")).toBeNull();
+    expect(
+      within(c).getByText("Admin tokens are in the console."),
+    ).toBeTruthy();
+  });
+
+  it("has no pointer when the admin token is revoked or there is none", async () => {
+    mockFetch(
+      routes({
+        [ME]: tokens({
+          tokens: [
+            token(),
+            token({ id: "pt_cli", scope: "admin", status: "revoked" }),
+          ],
+        }),
+      }),
+    );
+    renderPortal();
+    const c = await card();
+    expect(within(c).queryByText(/Admin tokens are in the console/)).toBeNull();
+  });
+
+  it("leaves Packages out when the only live token is an admin one", async () => {
+    mockFetch(
+      routes({
+        [ME]: tokens({
+          feeds: [],
+          tokens: [token({ id: "pt_cli", scope: "admin" })],
+        }),
+      }),
+    );
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Account" });
+    await waitFor(() => expect(fetchedRequests()).toContain(`GET ${ME}`));
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: /^Packages$/ })).toBeNull(),
+    );
+  });
+
+  it("at the limit with an admin token, the disabled reason names the console's admin tokens", async () => {
+    mockFetch(
+      routes({
+        [ME]: tokens({
+          tokens: [token({ id: "pt_cli", scope: "admin" })],
+          limits: { ...tokens().limits, perAccount: 1 },
+        }),
+      }),
+    );
+    renderPortal();
+    const c = await card();
+    const create = within(c).getByRole("button", {
+      name: /Create personal token/,
+    });
+    const reason =
+      create.getAttribute("aria-description") ??
+      document.getElementById(create.getAttribute("aria-describedby") ?? "")
+        ?.textContent ??
+      create.getAttribute("title") ??
+      "";
+    expect(reason).toMatch(/admin tokens are in the console/);
+  });
+
+  it("puts the pointer line directly under the token list", async () => {
+    mockFetch(
+      routes({
+        [ME]: tokens({
+          tokens: [token(), token({ id: "pt_cli", scope: "admin" })],
+        }),
+      }),
+    );
+    renderPortal();
+    const c = await card();
+    const pointer = within(c).getByText("Admin tokens are in the console.");
+    expect(pointer.previousElementSibling?.tagName).toBe("UL");
+  });
+
   it("leaves Packages out when the account has no feed, token or per-app token", async () => {
     mockFetch(routes({ [ME]: tokens({ feeds: [], tokens: [] }) }));
     renderPortal();

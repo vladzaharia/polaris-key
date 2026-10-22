@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { AdminPersonalToken } from "../src/api.js";
 import { boot, resetConsole } from "./consoleHarness.js";
 
-/** The Superadmin's roster of people's personal tokens (`#/personal-tokens`, F-33). */
+/** The Superadmin's roster of people's personal tokens (`#/personal-tokens`, F-33): the Everyone tab (ST-34.11). */
 
 const base: AdminPersonalToken = {
   id: "pt_a",
@@ -32,6 +32,7 @@ describe("Personal tokens roster", () => {
     const user = userEvent.setup();
     const log = boot("#/personal-tokens", {
       extra: {
+        "/manage/api/me/personal-tokens": () => ({ tokens: [] }),
         "/manage/api/account-tokens": () => ({ tokens: roster }),
         "DELETE /manage/api/account-tokens/pt_a": () => {
           roster = roster.map((t) =>
@@ -49,6 +50,7 @@ describe("Personal tokens roster", () => {
       },
     });
     await screen.findByRole("heading", { level: 1, name: "Personal tokens" });
+    await user.click(await screen.findByRole("radio", { name: "Everyone" }));
     const table = await screen.findByRole("table", {
       name: "Personal tokens",
     });

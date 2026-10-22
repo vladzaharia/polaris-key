@@ -733,11 +733,8 @@ describe("global pages", () => {
     }
     expect(groupOf("home")).toBeNull();
     expect(groupOf("tiers")).toBe("license");
-    expect(platformLinks().map((p) => p.page)).toEqual([
-      "home",
-      "api-tokens",
-      "personal-tokens",
-    ]);
+    expect(platformLinks().map((p) => p.page)).toEqual(["home", "api-tokens"]);
+    // ST-34.11: Personal tokens is in the account menu, not the sidebar.
     // P0-47: Override migration (U-03, cancelled) is out of the sidebar and the palette; its
     // URL still answers until U-27 removes the page.
     expect(platformItems().map((p) => p.page)).toEqual([

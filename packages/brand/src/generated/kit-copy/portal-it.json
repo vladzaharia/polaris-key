@@ -386,6 +386,8 @@
   "locker.packages.atLimit": "Al massimo {count} token personali. Revocane prima uno",
   "locker.packages.create": "Crea token personale",
   "locker.packages.none": "Ancora nessun token personale. Creane uno per ogni computer o server di build.",
+  "locker.packages.atLimitAdmin": "Al massimo {count} token personali, compresi quelli di amministrazione. Revocane prima uno; quelli di amministrazione sono nella console",
+  "locker.packages.adminPointer": "I token di amministrazione sono nella console.",
   "locker.packages.reconnectPersonal": "Creane uno nuovo e impostalo di nuovo per riconnetterti.",
   "locker.packages.showAll": "Mostra tutti i {count}",
   "locker.packages.createTitle": "Crea un token personale",

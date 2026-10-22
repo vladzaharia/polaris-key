@@ -942,14 +942,15 @@ export const GLOBAL_PAGES: NavPage[] = [
     inNav: true,
   },
   {
-    // People's personal tokens (`pkeyp_`, F-33): who holds one, when it was last used, revoke.
+    // Personal tokens (`pkeyp_`): your own, and for a Superadmin everyone's (F-33). Account menu.
     page: "personal-tokens",
     label: "Personal tokens",
     keywords: "pkeyp packages read registry person revoke",
     path: "personal-tokens",
     icon: UserRound,
     docs: "/docs/features/ship-builds/packages/",
-    inNav: true,
+    // ST-34.11: reached from the account menu, not the sidebar (admin-4-21; D-9).
+    inNav: false,
   },
   ...PLATFORM_PAGES,
 ];

@@ -46,6 +46,8 @@ export const DOCS_LINKS = {
   storefronts: "/docs/features/ship-builds/channels/storefronts/",
   storefrontListing: "/docs/features/ship-builds/channels/polaris-key/",
   packageFeeds: "/docs/features/ship-builds/packages/",
+  // ST-34.11: the CLI reference, where `pkey login` is.
+  cliReference: "/docs/reference/cli/",
   packageFeedsHost: "/docs/features/ship-builds/packages/",
   platformSecrets: "/docs/operate/platform/deploy/",
   // Inline explainer callouts
