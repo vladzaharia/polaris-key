@@ -50,6 +50,33 @@ const SOURCE_ORDER: readonly PlatformSource[] = [
   "planned",
 ];
 
+export interface LiveBuild {
+  platform: string;
+  arch: string;
+  format: string | null;
+}
+
+/**
+ * The builds a customer can get now: every build, with a platform, of the newest non-yanked app
+ * release on each release channel. `[]` while Release is off.
+ */
+export async function liveBuilds(hooks: ServiceHooks): Promise<LiveBuild[]> {
+  const catalog = hooks.releaseCatalog();
+  if (!catalog) return [];
+  const out: LiveBuild[] = [];
+  const seen = new Set<string>();
+  for (const channel of await catalog.knownChannels()) {
+    const history = await catalog.channelReleases("app", channel);
+    const newest = history?.releases.find((r) => !r.yanked);
+    if (!newest || seen.has(newest.releaseId)) continue;
+    seen.add(newest.releaseId);
+    for (const b of await catalog.builds(newest.releaseId))
+      if (b.platform !== null)
+        out.push({ platform: b.platform, arch: b.arch, format: b.format });
+  }
+  return out;
+}
+
 export async function productPlatforms(
   ctx: FactsContext,
 ): Promise<ProductPlatforms> {
@@ -79,18 +106,10 @@ export async function productPlatforms(
       e.formats.add(b.format);
     }
 
-    const seen = new Set<string>();
-    for (const channel of await catalog.knownChannels()) {
-      const history = await catalog.channelReleases("app", channel);
-      const newest = history?.releases.find((r) => !r.yanked);
-      if (!newest || seen.has(newest.releaseId)) continue;
-      seen.add(newest.releaseId);
-      for (const b of await catalog.builds(newest.releaseId)) {
-        if (b.platform === null) continue;
-        const e = entry(b.platform, "builds");
-        e.arches.add(b.arch);
-        if (b.format !== null) e.formats.add(b.format);
-      }
+    for (const b of await liveBuilds(hooks)) {
+      const e = entry(b.platform, "builds");
+      e.arches.add(b.arch);
+      if (b.format !== null) e.formats.add(b.format);
     }
   }
 

@@ -55,3 +55,9 @@ export {
   type MissingStoreAccount,
   storesMissingAccount,
 } from "./attentionFacts.js";
+export {
+  channelFacts,
+  type DeliveryAttention,
+  type DeliveryFacet,
+  type DeliveryState,
+} from "./channels.js";
