@@ -60,14 +60,18 @@ public data class PolarisSettingsFailure(val code: String, val detail: String? =
 
 /**
  * The release channel choice (UI-KITS ChannelPicker): [current] among [options], or fixed by the
- * outlet [lockedBy] (its id or kind, as `channelChoices()` reports it). Locked always names why.
+ * outlet [lockedBy] (its id or kind, as `channelChoices()` reports it), or fixed by the license
+ * ([lockedByLicense]: the license or tier forbids switching and no store fixes the channel). Locked
+ * always names why. [labels] are the catalog's display names by channel id.
  */
 public data class PolarisChannelUi(
     val current: String,
     val options: List<String>,
     val lockedBy: String? = null,
+    val lockedByLicense: Boolean = false,
+    val labels: Map<String, String> = emptyMap(),
 ) {
-    public val locked: Boolean get() = lockedBy != null
+    public val locked: Boolean get() = lockedBy != null || lockedByLicense
 
     /** A picker with nothing to pick and nothing fixing it has no reason to draw. */
     public val drawn: Boolean get() = locked || options.distinct().size > 1

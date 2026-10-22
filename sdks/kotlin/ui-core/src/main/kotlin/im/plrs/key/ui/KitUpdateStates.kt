@@ -66,8 +66,9 @@ internal fun updatePromptScreen(inputs: KitInputs): KitScreen {
                         context.line("update.downloading", context.progressArgs()),
                         context.line("update.timeLeft", context.progressArgs()),
                         context.line("a11y.progress", context.progressArgs()),
-                        context.line("update.later"),
+                        // Restart when ready is the primary, Later the quiet dismissal (UI-KITS.md 4.3).
                         context.line("update.restartWhenReady"),
+                        context.line("update.later"),
                     ),
                 )
             }

@@ -53,6 +53,8 @@ public data class KitRowData(
     val releaseNotes: List<KitReleaseNote> = emptyList(),
     /** What the tier adds, as the product names it. */
     val features: List<String> = emptyList(),
+    /** The update's download fraction (0..1) when the inputs carry one, for the bar of a progress state. */
+    val progress: Float? = null,
 ) {
     public companion object {
         /** The row data in [inputs] (the matrix's `choices`, `releaseNotes` and `offers.features` members). */
@@ -65,7 +67,16 @@ public data class KitRowData(
                 choices = choices?.let { KitLicenseChoices(it, inputs.obj("choices").string("preselected")) },
                 releaseNotes = notes.orEmpty(),
                 features = inputs.obj("offers")?.array("features")?.strings().orEmpty(),
+                progress = progressOf(inputs.obj("update").obj("progress")),
             )
+        }
+
+        private fun progressOf(progress: JsonObject?): Float? {
+            progress ?: return null
+            val total = progress.integer("totalBytes")
+            val bytes = progress.integer("bytes")
+            val fraction = progress.double("fraction") ?: if (bytes != null && total != null && total > 0) bytes.toDouble() / total else null
+            return fraction?.toFloat()?.coerceIn(0f, 1f)
         }
 
         private fun choiceOf(o: JsonObject): KitLicenseChoice? {

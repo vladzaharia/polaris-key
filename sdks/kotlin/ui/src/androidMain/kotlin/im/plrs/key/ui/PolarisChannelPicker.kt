@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -23,7 +24,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
@@ -31,8 +34,13 @@ import androidx.compose.ui.unit.dp
 private val RowInset = 16.dp
 private val LineGap = 2.dp
 
-/** "Stable" from a channel id: the kit has no channel names, the product's ids read as words. */
-internal fun channelLabel(id: String): String = id.replaceFirstChar { it.uppercase() }
+/**
+ * A channel's name: the catalog's label when it has one, else the id as words ("early-access" is
+ * "Early access"), never the raw slug (DL8).
+ */
+internal fun channelLabel(id: String, labels: Map<String, String> = emptyMap()): String =
+    labels[id]?.takeIf { it.isNotBlank() }
+        ?: id.replace('-', ' ').replace('_', ' ').trim().replaceFirstChar { it.uppercase() }
 
 /** Why the picker is locked: the catalog's sentence with the outlet's store name. */
 internal fun channelLockedReason(lockedBy: String, locale: String): String =
@@ -47,6 +55,8 @@ public fun PolarisChannelPicker(
     channel: PolarisChannelUi,
     modifier: Modifier = Modifier,
     onSelect: ((String) -> Unit)? = null,
+    /** Why the host's switch failed, shown under the list (DL7); null when the last pick went through. */
+    error: String? = null,
 ) {
     if (!channel.drawn) return
     if (!channel.locked && onSelect == null) return
@@ -54,9 +64,11 @@ public fun PolarisChannelPicker(
     val catalog = KitCopy.bundled
     PolarisSection(catalog.format("channel.title", locale), modifier) {
         val lockedBy = channel.lockedBy
-        if (lockedBy != null) {
-            PolarisChannelLocked(channel.current, channelLockedReason(lockedBy, locale), catalog.format("a11y.locked", locale))
+        if (lockedBy != null || channel.lockedByLicense) {
+            val reason = if (lockedBy != null) channelLockedReason(lockedBy, locale) else catalog.format("channel.lockedLicense", locale)
+            PolarisChannelLocked(channelLabel(channel.current, channel.labels), reason, catalog.format("a11y.locked", locale))
         } else {
+            Column(Modifier.selectableGroup()) {
             channel.options.distinct().forEachIndexed { i, id ->
                 if (i > 0) HorizontalDivider(Modifier.padding(horizontal = RowInset), color = MaterialTheme.colorScheme.outlineVariant)
                 val selected = id == channel.current
@@ -68,9 +80,19 @@ public fun PolarisChannelPicker(
                         .padding(horizontal = RowInset, vertical = PolarisSpace.controls),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(channelLabel(id), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                    Text(channelLabel(id, channel.labels), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                     if (selected) Icon(PolarisSymbols.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 }
+            }
+            }
+            if (error != null) {
+                Text(
+                    error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = PolarisTheme.status.danger,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = RowInset, vertical = PolarisSpace.controls)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
+                )
             }
         }
     }
@@ -78,13 +100,13 @@ public fun PolarisChannelPicker(
 
 /** The fixed channel, the lock and the reason under it, read as one row. */
 @Composable
-private fun PolarisChannelLocked(current: String, reason: String, lockLabel: String) {
+private fun PolarisChannelLocked(label: String, reason: String, lockLabel: String) {
     Row(
         Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = RowInset, vertical = PolarisSpace.controls).semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LineGap)) {
-            Text(channelLabel(current), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+            Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
             Text(reason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.width(RowInset))

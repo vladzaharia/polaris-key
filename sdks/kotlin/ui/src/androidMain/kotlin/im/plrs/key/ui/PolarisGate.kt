@@ -396,6 +396,17 @@ public fun PolarisActivationScreen(
                 val window = polarisWindow
                 PolarisProductIcon(if (window.compactHeight) 56.dp else 120.dp)
                 if (productName(copy) != null || PolarisTheme.current.logo != null) Spacer(Modifier.height(window.section))
+                // A notice replaces the welcome's title, which carried the product's name: say it here (DL5).
+                if (notice != null) productName(copy)?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = LocalPolarisTextAlign.current,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(PolarisSpace.tight))
+                }
                 PolarisTitle(notice?.title ?: copy.format(copy.activationTitle, copy.productName))
                 // "by <Developer>" under the title, on the Welcome only (UI-KITS.md 1.2), when it is known.
                 val developer = PolarisTheme.current.developer
