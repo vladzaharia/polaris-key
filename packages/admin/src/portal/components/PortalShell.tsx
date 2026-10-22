@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useLargeTextFlag } from "../../lib/useLargeTextFlag.js";
-import { Compass, Library, TriangleAlert } from "lucide-react";
+import { LayoutGrid, Sparkles, TriangleAlert } from "lucide-react";
 import { TOAST_BOTTOM_INSET_VAR } from "../../ui/toast.js";
 import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
@@ -185,7 +185,7 @@ export function PortalShell({
               onLibrary ? TAB_MARK : "text-fg-muted",
             )}
           >
-            <Library aria-hidden className="size-5" />
+            <LayoutGrid aria-hidden className="size-5" />
             {t("locker.library.title")}
           </a>
           {showDiscover ? (
@@ -198,7 +198,7 @@ export function PortalShell({
               )}
             >
               <span className="relative">
-                <Compass aria-hidden className="size-5" />
+                <Sparkles aria-hidden className="size-5" />
                 {discoverCount ? (
                   <span
                     aria-hidden
