@@ -29,6 +29,8 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+// @ts-expect-error plain .mjs build script of the docs package
+import { inlineScripts } from "../../docs/scripts/inline-scripts.mjs";
 import {
   DOCS_SCRIPT_HASHES,
   DOCS_STYLE_ATTR_HASHES,
@@ -72,7 +74,6 @@ function* htmlFiles(dir: string): Generator<string> {
   }
 }
 
-const SCRIPT_RE = /<script(?<attrs>[^>]*)>(?<body>[\s\S]*?)<\/script>/gi;
 const STYLE_RE = /<style[^>]*>(?<body>[\s\S]*?)<\/style>/gi;
 
 const STYLE_ATTR_RE = /<[a-z][^>]*?\sstyle="(?<value>[^"]*)"/gi;
@@ -137,12 +138,8 @@ describe.skipIf(!existsSync(dist))(
       const styleAttrs = new Set<string>();
       for (const file of htmlFiles(dist)) {
         const html = readFileSync(file, "utf8");
-        for (const match of html.matchAll(SCRIPT_RE)) {
-          const attrs = match.groups?.attrs ?? "";
-          const body = match.groups?.body ?? "";
-          if (/\ssrc\s*=/i.test(attrs) || body.length === 0) continue;
-          scripts.add(cspHash(body));
-        }
+        // Real inline <script> elements only: `<script>` text inside an attribute value is not one.
+        for (const body of inlineScripts(html)) scripts.add(cspHash(body));
         for (const match of html.matchAll(STYLE_ATTR_RE)) {
           const value = decode(match.groups?.value ?? "");
           if (value.length > 0) styleAttrs.add(cspHash(value));
