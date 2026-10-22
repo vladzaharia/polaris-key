@@ -129,6 +129,7 @@ new PagefindUI(`;
         "@polaris-key/brand/fonts.css",
         "./src/styles/global.css",
         "./src/styles/help.css",
+        "./src/styles/chrome.css",
       ],
       // The launch kit's Pinned K web identity, copied into public/branding/key/ by
       // scripts/copy-artifacts.mjs (no terminal bit on favicons; BRAND.md §6 rule 0).
@@ -169,6 +170,8 @@ new PagefindUI(`;
         },
       ],
       components: {
+        Header: "./src/components/Header.astro",
+        ThemeProvider: "./src/components/ThemeProvider.astro",
         SiteTitle: "./src/components/SiteTitle.astro",
         PageFrame: "./src/components/PageFrame.astro",
         PageTitle: "./src/components/PageTitle.astro",
@@ -182,7 +185,7 @@ new PagefindUI(`;
       },
       // "On this page" for the Help messages pages, whose headings come from components rather
       // than from Markdown (src/routeData.ts).
-      routeMiddleware: "./src/routeData.ts",
+      routeMiddleware: ["./src/routeData.ts", "./src/routeToc.ts"],
       // The three doors' trees (src/lib/doors.ts), in door order. Stubs are hidden by their own
       // frontmatter. DOC-02b's Sidebar override renders only the current door's tree.
       sidebar: starlightSidebar(),

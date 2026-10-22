@@ -232,7 +232,7 @@ h6,
 }
 
 /* The brand is an outlined lockup (SiteTitle.astro), never live text: a 4 rem header carries the
-   Key lockup's 48 px glyph with 8 px of clear space. Under 26 rem there is no room for the Key
+   Key lockup's 48 px glyph with 8 px of clear space. Under 24 rem there is no room for the Key
    lockup's 180 px, so the mark stands alone (Locker guide p.7). */
 :root {
   --sl-nav-height: 4rem;
@@ -254,7 +254,7 @@ h6,
   display: none;
 }
 
-@media (max-width: 26rem) {
+@media (max-width: 24rem) {
   .pk-site-title:not([data-kind="locker"]) .pk-lockup {
     display: none;
   }

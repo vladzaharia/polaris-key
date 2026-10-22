@@ -22,3 +22,17 @@ export const HELP_ICONS = {
     '<path d="M11.5 2.3a.5.5 0 0 1 1 0l2.3 4.7a2 2 0 0 0 1.5 1.1l5.1.7a.5.5 0 0 1 .3.9l-3.7 3.6a2 2 0 0 0-.6 1.8l.9 5.1a.5.5 0 0 1-.7.5l-4.6-2.4a2 2 0 0 0-1.9 0l-4.6 2.4a.5.5 0 0 1-.7-.5l.9-5.1a2 2 0 0 0-.6-1.8L2.2 9.7a.5.5 0 0 1 .3-.9l5.1-.7A2 2 0 0 0 9.1 7l2.4-4.7Z"/>',
   ),
 } as const;
+
+/** The door cards' glyphs (the console's Lucide set, as HELP_ICONS). */
+export const DOOR_ICONS = {
+  help: svg(
+    '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+  ),
+  code: svg('<path d="m18 16 4-4-4-4M6 8l-4 4 4 4M14.5 4l-5 16"/>'),
+  dashboard: svg(
+    '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
+  ),
+  lock: svg(
+    '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  ),
+} as const;
