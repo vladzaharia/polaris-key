@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
+import { LANDED_EVENT } from "../src/console/useSettingTarget.js";
 import { activeSectionAt } from "../src/console/templates/Settings.js";
 import { platformOverview } from "./feedsFixture.js";
 import {
@@ -649,50 +650,64 @@ describe("Hosted assets (HA-10)", () => {
   });
 });
 
+/**
+ * A deep link lands on its row "at once": `landOn` finds the row on a frame and focuses it after
+ * one 50 ms turn, and only gives up on the row for its section after `rowWaitMs` of wall clock.
+ * Wall-clock budgets in a test measure the runner, not the code, so these tests freeze `Date`
+ * (the clock `landOn` times the fallback with) and wait for the `pk-landed` event instead. With
+ * the clock frozen the fallback can never fire, so landing on the row itself proves the row was
+ * found, not given up on; the event carries the element, so nothing polls a timer. A hang is
+ * bounded by the test timeout, not asserted on.
+ */
+function landing(): Promise<HTMLElement> {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  return new Promise((resolve) => {
+    window.addEventListener(
+      LANDED_EVENT,
+      (e) => resolve((e as CustomEvent<HTMLElement>).detail),
+      { once: true },
+    );
+  });
+}
+
 describe("the ?setting= deep link", () => {
+  afterEach(() => vi.useRealTimers());
+
   it.each([
     ["licensing.reservedNames", "platform-setting-LICENSING_RESERVED_NAMES"],
     ["LAZY_DELTAS", "platform-setting-LAZY_DELTAS"],
   ])("%s lands on its row at once", async (key, id) => {
+    const landed = landing();
     boot(`#/platform/settings?setting=${key}`, { extra: routes() });
+    const el = await landed;
     // A segmented control hands its focus to the checked option inside it.
-    await waitFor(
-      () =>
-        expect(
-          document.getElementById(id)?.contains(document.activeElement),
-        ).toBe(true),
-      { timeout: 1000 },
-    );
+    expect(el.id).toBe(id);
+    expect(el.contains(document.activeElement)).toBe(true);
   });
 });
 
 describe("the ?setting= deep link, stabilization (B-043, B-044, B-048)", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("B-048: a link to a deploy value inside the folded Advanced card opens the fold and lands on the row", async () => {
     HTMLElement.prototype.scrollIntoView = vi.fn();
+    const landed = landing();
     boot("#/platform/settings?setting=PLATFORM_ADMIN_GROUP", {
       extra: routes(),
     });
-    await waitFor(
-      () =>
-        expect(
-          document
-            .getElementById("platform-setting-PLATFORM_ADMIN_GROUP")
-            ?.contains(document.activeElement),
-        ).toBe(true),
-      { timeout: 2000 },
-    );
+    const el = await landed;
+    expect(el.id).toBe("platform-setting-PLATFORM_ADMIN_GROUP");
+    expect(el.contains(document.activeElement)).toBe(true);
   });
 
   it("B-043, B-044: a feed's pointer lands on that ecosystem's switch, and the rail marks the section that holds it", async () => {
     HTMLElement.prototype.scrollIntoView = vi.fn();
+    const landed = landing();
     boot("#/platform/settings?setting=feeds.policy.npm.enabled", {
       extra: routes(),
     });
-    await waitFor(
-      () =>
-        expect(document.activeElement?.id).toBe("platform-feeds-npm-enabled"),
-      { timeout: 2000 },
-    );
+    expect((await landed).id).toBe("platform-feeds-npm-enabled");
+    expect(document.activeElement?.id).toBe("platform-feeds-npm-enabled");
     const pills = await screen.findByRole("navigation", {
       name: "Jump to section",
     });
