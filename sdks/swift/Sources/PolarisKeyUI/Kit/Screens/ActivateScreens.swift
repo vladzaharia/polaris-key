@@ -16,8 +16,6 @@ public struct ActivateView: View {
     var onCancel: (() -> Void)?
     var onDone: (() -> Void)?
 
-    @AccessibilityFocusState private var calloutFocused: Bool
-
     /// `onDone` carries the Done step's one action (Start using <Product>, DL4): a lone action is
     /// always the primary. The drop-in gate leaves it nil because the app opens on success.
     public init(
@@ -119,6 +117,8 @@ struct ActivateBody: View {
 /// colour and no error glyph for a valid key that met a limit.
 struct KitCallout: View {
     let screen: KitScreen<ActivateState>
+    /// VoiceOver lands on the refusal when it appears (DL7), so the person hears it and its fix.
+    @AccessibilityFocusState private var focused: Bool
 
     var body: some View {
         kitStyle { style in
@@ -148,6 +148,8 @@ struct KitCallout: View {
                     .fill(style.palette.sunken)
             )
             .accessibilityElement(children: .combine)
+            .accessibilityFocused($focused)
+            .onAppear { focused = true }
         }
     }
 }

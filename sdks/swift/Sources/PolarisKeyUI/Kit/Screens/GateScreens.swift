@@ -177,12 +177,16 @@ public struct StatusScreenView: View {
     /// path); a missing one hides its button.
     var available: Set<String>
     var onTryAgain: () -> Void
+    /// The lines drawn: the state's, or the boot error's own sentence (DL7: a failed start says
+    /// what failed, never an icon and a button alone).
+    let lines: [CopyLine]
 
     public init(
         screen: KitScreen<StatusScreenState>, available: Set<String>,
         onFix: @escaping (String) -> Void, onTryAgain: @escaping () -> Void
     ) {
         self.screen = screen
+        self.lines = screen.copy
         self.available = available
         self.onFix = onFix
         self.onTryAgain = onTryAgain
@@ -192,6 +196,16 @@ public struct StatusScreenView: View {
     /// the name is not set twice (DL5).
     static func titleNamesProduct(_ title: CopyLine?) -> Bool {
         title.map { KitCopy.bundled.argumentNames($0.key).contains("product") } ?? false
+    }
+
+    /// A failed start: `lines` are the gate's error state (its title) and Try again is the one
+    /// primary.
+    public init(errorLines lines: [CopyLine], onTryAgain: @escaping () -> Void) {
+        self.screen = .hidden
+        self.lines = lines
+        self.available = []
+        self.onFix = { _ in }
+        self.onTryAgain = onTryAgain
     }
 
     private var fixes: [CopyLine] {
@@ -204,9 +218,9 @@ public struct StatusScreenView: View {
     }
 
     public var body: some View {
-        let title = screen.copy.first { $0.key.hasSuffix(".title") }
-        let message = screen.copy.first { $0.key.hasSuffix(".message") }
-        let allowed = screen.copy.first { $0.key.hasPrefix("status.allowed") }
+        let title = lines.first { $0.key.hasSuffix(".title") }
+        let message = lines.first { $0.key.hasSuffix(".message") }
+        let allowed = lines.first { $0.key.hasPrefix("status.allowed") }
         // DL5: the name appears once, in the title when the title names the product, else under
         // the icon.
         KitScreenScaffold(hero: true, header: false, heroName: !Self.titleNamesProduct(title)) {

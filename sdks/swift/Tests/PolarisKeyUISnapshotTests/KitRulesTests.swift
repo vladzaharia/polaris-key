@@ -235,6 +235,29 @@ final class KitRulesTests: XCTestCase {
         XCTAssertEqual(ToastView.lifetime, 6)
     }
 
+    @MainActor
+    func testAFailedStartSaysWhatFailedAndOffersTryAgain() {
+        // DL7: the boot error's own title is drawn, with the product named by it (DL5), never an
+        // icon and a button alone.
+        let lines = [CopyLine("gate.error.title", ["product": "Tidewater Studio"]),
+            CopyLine("common.tryAgain")]
+        let view = StatusScreenView(errorLines: lines, onTryAgain: {})
+        XCTAssertEqual(view.lines.map(\.key), ["gate.error.title", "common.tryAgain"])
+        XCTAssertTrue(StatusScreenView.titleNamesProduct(lines.first))
+    }
+
+    func testARefusalCalloutTakesAccessibilityFocus() throws {
+        // DL7: focus moves to the refusal when it appears. The focus state is SwiftUI-internal, so
+        // the rule is pinned at its source.
+        let source = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent("Sources/PolarisKeyUI/Kit/Screens/ActivateScreens.swift"),
+            encoding: .utf8)
+        XCTAssertTrue(source.contains(".accessibilityFocused($focused)"))
+        XCTAssertTrue(source.contains(".onAppear { focused = true }"))
+    }
+
     // MARK: Baselines
 
     static var snapshots: URL {
