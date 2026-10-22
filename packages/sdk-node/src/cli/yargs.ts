@@ -28,6 +28,7 @@ import { describeVerb, GROUP_HEADINGS, VERB_OPTIONS } from "./help.js";
 import { argName, type CliIO, type CliVerb } from "./kit.js";
 import {
   clientFactoryFor,
+  DEFAULT_ACTION,
   planMount,
   reportSkipped,
   verbId,
@@ -83,6 +84,45 @@ function makeBuildClient(factory: ClientFactory, options: YargsAdapterOptions) {
       expectedServices:
         options.expectedServices ?? options.config?.expectedServices,
     });
+}
+
+const camel = (s: string): string =>
+  s.replace(/-([a-z])/g, (_m, c: string) => c.toUpperCase());
+
+/**
+ * What yargs parsed that the verb does not take: an option it never declared (yargs keeps it in
+ * the argv bag, as `--name`) and the operands past the verb's own words. `usageProblem` turns
+ * either into the kit's usage result.
+ */
+function strays(verb: CliVerb, bag: Record<string, unknown>): string[] {
+  const known = new Set([
+    "_",
+    "$0",
+    "help",
+    "version",
+    "json",
+    "color",
+    "ascii",
+    "product",
+    "baseUrl",
+    "base-url",
+    "configDir",
+    "config-dir",
+  ]);
+  for (const a of verb.args) known.add(argName(a));
+  for (const o of VERB_OPTIONS[verb.path[0]!] ?? []) {
+    const { name, alias } = yargsOption(o.flags);
+    known.add(name).add(camel(name));
+    if (alias) known.add(alias);
+  }
+  const words = Array.isArray(bag._) ? (bag._ as unknown[]).map(String) : [];
+  const operands = words.slice(verb.path.length);
+  return [
+    ...operands,
+    ...Object.keys(bag)
+      .filter((k) => !known.has(k) && !known.has(camel(k)))
+      .map((k) => `${k.length === 1 ? "-" : "--"}${k}`),
+  ];
 }
 
 /** yargs spells a variadic positional `[name..]`; the table uses commander's `[name...]`. */
@@ -145,10 +185,22 @@ export function polarisCommands(
 
   const leaf = (verb: CliVerb) => ({
     // Under the kit, positionals are optional so a missing one ends in the kit's usage result.
-    command: [
-      verb.path.at(-1)!,
-      ...verb.args.map((a) => yargsArg(kit ? optionalArg(a) : a)),
-    ].join(" "),
+    // A bare group runs its default action (`devices` lists, `update` checks), as the Python kit does.
+    command:
+      kit &&
+      verb.path.length > 1 &&
+      DEFAULT_ACTION[verb.path[0]!] === verb.path[1]
+        ? [
+            [
+              verb.path.at(-1)!,
+              ...verb.args.map((a) => yargsArg(optionalArg(a))),
+            ].join(" "),
+            "$0",
+          ]
+        : [
+            verb.path.at(-1)!,
+            ...verb.args.map((a) => yargsArg(kit ? optionalArg(a) : a)),
+          ].join(" "),
     aliases: verb.aliases ?? [],
     describe: kit
       ? describeVerb(helpCtx, verb)
@@ -158,7 +210,10 @@ export function polarisCommands(
         return verb.path[0] === "secret" || verb.path[0] === "mint"
           ? y.option("reveal", { type: "boolean" })
           : y;
+      // Unknown options reach the kit, which ends in its usage line (and `--json` result), even
+      // when the host's parser is strict.
       let b = y
+        .strict(false)
         .option("json", {
           type: "boolean",
           describe: "JSON output for scripts",
@@ -205,7 +260,7 @@ export function polarisCommands(
         },
         () => buildClient(argv),
         {
-          usage: usageProblem(verb, positional),
+          usage: usageProblem(verb, positional, strays(verb, bag)),
           slug,
           bin: binOf(typeof bag.$0 === "string" ? bag.$0 : slug),
           ...(options.theme ? { theme: options.theme } : {}),
@@ -253,7 +308,9 @@ export function polarisCommands(
             gy = gy.command(
               leaf(v) as unknown as CommandModule<CommonArgs, CommonArgs>,
             );
-          return gy.demandCommand(1);
+          return gy.demandCommand(
+            inGroup.some((v) => DEFAULT_ACTION[word] === v.path[1]) ? 0 : 1,
+          );
         },
         handler: () => {
           /* group node; subcommand handlers do the work */

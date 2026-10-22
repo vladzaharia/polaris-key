@@ -103,7 +103,7 @@ const plain = (t: string) =>
 const CONFIG = {
   productSlug: "tidewater",
   baseUrl: "https://key.plrs.im",
-  trust: { pinnedKeys: {} },
+  trust: { pinnedKeys: { k1: "A".repeat(43) } },
 };
 
 /** Every kit command as typed, below `program` (the namespace first). */

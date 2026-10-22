@@ -106,6 +106,26 @@ export function usageProblem(
   return missing || stray || excess;
 }
 
+let pipeGuarded = false;
+
+/**
+ * `tidewater devices | head -1` closes our stdout early: end quietly, as `ls` and `git log` do,
+ * instead of a stack trace. Installed once, and only when nothing else listens for stream errors.
+ */
+function endQuietlyOnBrokenPipe(): void {
+  if (pipeGuarded || process.stdout.listenerCount("error") > 0) return;
+  pipeGuarded = true;
+  process.stdout.on("error", (e: NodeJS.ErrnoException) => {
+    if (e.code === "EPIPE") process.exit(0);
+    throw e;
+  });
+}
+
+/** Whether `DEBUG` names polaris (or `*`): the developer asked to see why a verb failed. */
+export function debugOn(env: NodeJS.ProcessEnv = process.env): boolean {
+  return /(^|[,\s])(polaris|\*)/.test(env.DEBUG ?? "");
+}
+
 /** Run `verb`'s flow and return its exit code. Never throws. */
 export async function runKitVerb(
   verb: CliVerb,
@@ -116,6 +136,7 @@ export async function runKitVerb(
 ): Promise<number> {
   const stdout: TerminalOutput =
     o.io?.stdout ?? (o.print ? lineSink(o.print) : process.stdout);
+  if (stdout === process.stdout) endQuietlyOnBrokenPipe();
   const io: TerminalIO = { ...o.io, stdout };
   const command = verb.path.join(" ");
   let client: PolarisKeyClient | null = null;
@@ -186,6 +207,9 @@ export async function runKitVerb(
     const code = (e as { code?: unknown })?.code;
     const typed = typeof code === "string";
     const c = typed ? code : "unknown";
+    // The screen says "Something went wrong"; the cause is for the developer: DEBUG=polaris.
+    if (!typed && debugOn((o.io?.env ?? process.env) as NodeJS.ProcessEnv))
+      ctx.stderr.write(`${ctx.bin}: ${(e as Error)?.stack ?? String(e)}\n`);
     r = {
       exitCode: EXIT.failed,
       state: "error",
