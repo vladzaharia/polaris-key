@@ -63,6 +63,7 @@ import {
   floorChannelOf,
   isMovingSelector,
   parseManualChannels,
+  policyChannelOf,
   resolutionPolicy,
   resolveChannel,
   semverOfTag,
@@ -488,24 +489,6 @@ export async function installationToken(
     now,
     fetchImpl,
   );
-}
-
-/**
- * The `release_channel_policy` channel a selector reads (canonical names, P0-04 plan §10): a
- * moving stable selector is `stable`, any beta spelling is `beta`, a PR or manual channel is
- * its own name. A pinned version reads no channel policy at all — it is explicit.
- */
-export function policyChannelOf(sel: ChannelSelector): string | null {
-  switch (sel.kind) {
-    case "stable":
-      return isMovingSelector(sel) ? "stable" : null;
-    case "beta":
-      return "beta";
-    case "dev":
-    case "pr":
-    case "manual":
-      return sel.raw;
-  }
 }
 
 /**

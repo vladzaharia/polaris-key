@@ -11,6 +11,11 @@ import { describe, expect, it } from "vitest";
 import {
   canonicalChannel,
   channelCandidates,
+  effectiveFloor,
+  hiddenFor,
+  loadDeliverableState,
+  resolveInState,
+  STORE_VIEW_HIDES_ABSENT,
   channelClosure,
   compareVersions,
   parsesInScheme,
@@ -563,5 +568,226 @@ describe("channelCandidates (the storefront feeds' history)", () => {
     expect(channelCandidates(base, "stable")[0]!.releaseId).toBe(
       resolveCandidates(base)!.release.releaseId,
     );
+  });
+});
+
+// ── The two candidate views (P2-12.2, plan D5) ───────────────────────────────────────────────
+
+describe("hidden rows (the view's candidate list)", () => {
+  const releases = [rel("1.0.0"), rel("1.1.0"), rel("2.0.0")];
+
+  it("drops hidden rows before the pointer lookup: a hidden promote is not added back", () => {
+    const base = input({
+      releases,
+      policies: new Map([["stable", pol({ pointer: "v2.0.0" })]]),
+    });
+    expect(resolveCandidates(base)!.release.releaseId).toBe("v2.0.0");
+    const hidden = new Set(["v2.0.0"]);
+    expect(resolveCandidates({ ...base, hidden })!.release.releaseId).toBe(
+      "v1.1.0",
+    );
+    expect(
+      channelCandidates({ ...base, hidden }, "stable").map((c) => c.releaseId),
+    ).toEqual(["v1.1.0", "v1.0.0"]);
+  });
+
+  it("a hidden pinned pointer resolves to nothing, never to another release", () => {
+    const base = input({
+      releases,
+      hidden: new Set(["v1.1.0"]),
+      policies: new Map([["stable", pol({ pointer: "v1.1.0", pinned: true })]]),
+    });
+    expect(resolveCandidates(base)).toBeNull();
+    expect(channelCandidates(base, "stable")).toEqual([]);
+  });
+
+  it("a version selector never resolves to a hidden row", () => {
+    const base = input({
+      releases,
+      selector: { type: "version", version: "1.1.0" },
+    });
+    expect(resolveCandidates(base)!.release.releaseId).toBe("v1.1.0");
+    expect(
+      resolveCandidates({ ...base, hidden: new Set(["v1.1.0"]) }),
+    ).toBeNull();
+  });
+});
+
+describe("the recorded floor (R6-10)", () => {
+  const releases = [rel("1.0.0"), rel("1.1.0"), rel("1.2.0")];
+
+  it("serves nothing when the channel regressed below its floor", () => {
+    const gone = releases.slice(0, 2);
+    expect(
+      resolveCandidates(input({ releases: gone, floor: { version: "1.2.0" } })),
+    ).toBeNull();
+    expect(
+      resolveCandidates(input({ releases: gone }))!.release.releaseId,
+    ).toBe("v1.1.0");
+  });
+
+  it("holds the channel up while the floor release is still a member", () => {
+    expect(
+      resolveCandidates(input({ releases, floor: { version: "1.1.0" } }))!
+        .release.releaseId,
+    ).toBe("v1.2.0");
+  });
+
+  it("offers an unpinned promote below a regressed floor, and a pin ignores the floor", () => {
+    const gone = releases.slice(0, 2);
+    const floor = { version: "1.2.0" };
+    expect(
+      resolveCandidates(
+        input({
+          releases: gone,
+          floor,
+          policies: new Map([["stable", pol({ pointer: "v1.0.0" })]]),
+        }),
+      )!.release.releaseId,
+    ).toBe("v1.0.0");
+    expect(
+      resolveCandidates(
+        input({
+          releases: gone,
+          floor,
+          policies: new Map([
+            ["stable", pol({ pointer: "v1.0.0", pinned: true })],
+          ]),
+        }),
+      )!.release.releaseId,
+    ).toBe("v1.0.0");
+  });
+
+  it("ignores a floor that is not a semver, and never floors a version selector", () => {
+    expect(
+      resolveCandidates(input({ releases, floor: { version: "2026.1" } }))!
+        .release.releaseId,
+    ).toBe("v1.2.0");
+    expect(
+      resolveCandidates(
+        input({
+          releases,
+          floor: { version: "9.0.0" },
+          selector: { type: "version", version: "1.0.0" },
+        }),
+      )!.release.releaseId,
+    ).toBe("v1.0.0");
+  });
+});
+
+describe("resolveInState: legacy and store views over D1", () => {
+  async function setup(): Promise<Db> {
+    const db = await seedDb();
+    // A tagless described release (never listed by GitHub) and a release gone upstream.
+    await db.run(
+      `INSERT INTO release_metadata
+         (product, release_id, version, metadata_access, artifacts_access, published_at,
+          metadata_json, created_at, modified_at, deliverable_id, seq)
+       VALUES (?, 'app@2.0.0', '2.0.0', 'public', 'public', ?, ?, ?, ?, 'app', 99)`,
+      SLUG,
+      NOW,
+      JSON.stringify({ descriptor: { status: "ingested" } }),
+      NOW,
+      NOW,
+    );
+    return db;
+  }
+  const markAbsent = (db: Db, id: string) =>
+    db.run(
+      `INSERT INTO release_health (product, subject_kind, subject_id, status, checked_at, details_json)
+       VALUES (?, 'release', ?, 'degraded', ?, '{"absentUpstream":true}')`,
+      SLUG,
+      id,
+      NOW,
+    );
+  const floor = (db: Db, channel: string, version: string, id: string | null) =>
+    db.run(
+      `INSERT INTO release_channel_floors (product, channel, version, release_id, raised_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      SLUG,
+      channel,
+      version,
+      id,
+      NOW,
+    );
+  const pick = async (
+    db: Db,
+    view: "legacy" | "store",
+    selector = "stable",
+  ) => {
+    const state = (await loadDeliverableState(db, SLUG, "app", undefined, {
+      narrow: view === "legacy",
+    }))!;
+    return (
+      resolveInState(state, { selector, view })?.release.release_id ?? null
+    );
+  };
+
+  it("the legacy view never offers a tagless row; the store view does (and described rows stay)", async () => {
+    const db = await setup();
+    expect(await pick(db, "legacy")).toBe("v1.2.0");
+    expect(await pick(db, "store")).toBe("app@2.0.0");
+  });
+
+  it("the narrow read carries no notes and keeps tag, prerelease and descriptor status", async () => {
+    const db = await setup();
+    const wide = (await loadDeliverableState(db, SLUG, "app"))!;
+    const narrow = (await loadDeliverableState(db, SLUG, "app", undefined, {
+      narrow: true,
+    }))!;
+    expect(narrow.rows.every((r) => r.notes === null)).toBe(true);
+    expect(narrow.candidates).toEqual(wide.candidates);
+    expect([...narrow.listed].sort()).toEqual([...wide.listed].sort());
+    expect([...narrow.described]).toEqual(["app@2.0.0"]);
+    for (const sel of ["stable", "beta", "1.1.0"])
+      expect(
+        resolveInState(narrow, { selector: sel, view: "legacy" })?.release
+          .release_id,
+      ).toBe(
+        resolveInState(wide, { selector: sel, view: "legacy" })?.release
+          .release_id,
+      );
+  });
+
+  it("absent rows: hidden in the legacy view; the store view hides none in PR 1 (L-P4)", async () => {
+    expect(STORE_VIEW_HIDES_ABSENT).toBe(false);
+    const db = await setup();
+    await markAbsent(db, "v1.2.0");
+    await markAbsent(db, "app@2.0.0");
+    expect(await pick(db, "legacy")).toBe("v1.1.0");
+    expect(await pick(db, "store")).toBe("app@2.0.0");
+    const state = (await loadDeliverableState(db, SLUG, "app"))!;
+    // With the switch on, only the undescribed absent row goes; the described one stays.
+    expect([...hiddenFor(state, "store", true)]).toEqual(["v1.2.0"]);
+    expect(hiddenFor(state, "store").size).toBe(0);
+  });
+
+  it("the recorded floor holds the legacy channel up, and a regression is a 404 there only", async () => {
+    const db = await setup();
+    await floor(db, "stable", "1.2.0", "v1.2.0");
+    await markAbsent(db, "v1.2.0");
+    expect(await pick(db, "legacy")).toBeNull();
+    expect(await pick(db, "store")).toBe("app@2.0.0");
+  });
+
+  it("a yanked floor falls back over every store row, absent ones included", async () => {
+    const db = await setup();
+    await floor(db, "stable", "1.2.0", "v1.2.0");
+    await yankRelease(db, SLUG, "v1.2.0", "test", "t", NOW);
+    const s2 = (await loadDeliverableState(db, SLUG, "app"))!;
+    expect(effectiveFloor(s2, "stable")).toEqual({ version: "1.1.0" });
+    // v1.1.0 is gone upstream: the fallback floor still stands, so the channel 404s.
+    await markAbsent(db, "v1.1.0");
+    expect(await pick(db, "legacy")).toBeNull();
+    // Without a floor row there is nothing to regress against.
+    await db.run("DELETE FROM release_channel_floors WHERE product = ?", SLUG);
+    expect(await pick(db, "legacy")).toBe("v1.0.0");
+  });
+
+  it("a described release is untouched by the store view", async () => {
+    const db = await setup();
+    await markAbsent(db, "app@2.0.0");
+    const state = (await loadDeliverableState(db, SLUG, "app"))!;
+    expect(hiddenFor(state, "store", true).has("app@2.0.0")).toBe(false);
   });
 });

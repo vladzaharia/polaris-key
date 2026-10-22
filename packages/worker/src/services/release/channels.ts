@@ -341,6 +341,24 @@ export function resolveChannel(
 }
 
 /**
+ * The `release_channel_policy` channel a selector reads (canonical names, P0-04 plan §10): a
+ * moving stable selector is `stable`, any beta spelling is `beta`, a PR or manual channel is
+ * its own name. A pinned version reads no channel policy at all — it is explicit.
+ */
+export function policyChannelOf(sel: ChannelSelector): string | null {
+  switch (sel.kind) {
+    case "stable":
+      return isMovingSelector(sel) ? "stable" : null;
+    case "beta":
+      return "beta";
+    case "dev":
+    case "pr":
+    case "manual":
+      return sel.raw;
+  }
+}
+
+/**
  * The truth-store channel name a selector's floor is kept under, or null when the selector is
  * never floored: a pinned version is immutable, `pr-<n>` is ephemeral, and `beta` with a channel
  * workflow resolves through the Actions API — which the sync (a pure pass over the list) cannot

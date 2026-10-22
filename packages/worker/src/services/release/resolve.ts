@@ -48,8 +48,13 @@ import {
   parseVersion,
 } from "@polaris-key/client-core/version";
 import {
+  compareSemver,
+  parseSemver,
+} from "../../core/licensing/entitlements.js";
+import {
   parseIgnoreTags,
   parseManualChannels,
+  semverOfTag,
   type ManualChannel,
 } from "./channels.js";
 import { getReleaseConfig, type ReleaseConfigRow } from "./config.js";
@@ -199,6 +204,18 @@ export interface ResolveInput {
   stableTagPattern?: string | null;
   ignoreTags?: ReadonlySet<string>;
   target?: Target;
+  /**
+   * Release ids this view does not offer (P2-12.2, plan D5). They are dropped BEFORE the pointer
+   * lookup, so a hidden promote pointer is not added back, a hidden pinned pointer resolves to
+   * nothing, and a version selector never resolves to a hidden row.
+   */
+  hidden?: ReadonlySet<string>;
+  /**
+   * The anti-rollback floor of the channel (R6-10) in the legacy view: on an UNPINNED channel the
+   * members below it are dropped before the pointer joins them, so a channel whose floor release
+   * is gone resolves to nothing instead of an older build. Ignored when it is not a semver.
+   */
+  floor?: { version: string } | undefined;
 }
 
 export interface Resolved {
@@ -300,7 +317,10 @@ export function resolveCandidates(input: ResolveInput): Resolved | null {
   if (selector.type === "version") {
     const want = selector.version.replace(/^v/, "");
     const exact = input.releases.filter(
-      (r) => r.version === want && servesTarget(r),
+      (r) =>
+        r.version === want &&
+        servesTarget(r) &&
+        !input.hidden?.has(r.releaseId),
     );
     // Two tags may strip to one version (`v1.2.0`, `1.2.0`); the later publication wins.
     const pick = [...exact].sort((a, b) => (b.seq ?? -1) - (a.seq ?? -1))[0];
@@ -341,7 +361,10 @@ function channelMembers(
   channel: string,
 ): { candidates: Candidate[]; pinned: boolean } {
   const { scheme } = input;
-  const byId = new Map(input.releases.map((r) => [r.releaseId, r]));
+  const releases = input.hidden?.size
+    ? input.releases.filter((r) => !input.hidden?.has(r.releaseId))
+    : input.releases;
+  const byId = new Map(releases.map((r) => [r.releaseId, r]));
   const closure = channelClosure(channel, input.policies);
   const isApp = input.deliverable === APP_DELIVERABLE_ID;
   const stableRe =
@@ -383,8 +406,23 @@ function channelMembers(
   const policy = input.policies.get(channel);
   const pointer = policy?.pointer ? (byId.get(policy.pointer) ?? null) : null;
   const pinned = !!policy?.pinned && pointer !== null;
+  // A pinned pointer this view hides serves nothing: never a silent fallback to another release.
+  if (policy?.pinned && policy.pointer && input.hidden?.has(policy.pointer))
+    return { candidates: [], pinned: true };
 
-  let candidates = input.releases.filter(isMember);
+  let candidates = releases.filter(isMember);
+  // R6-10: below the floor, before the pointer joins (a promote is still offered). A pinned
+  // channel serves its pointer whatever the floor says.
+  const floorVersion =
+    !pinned && input.floor && parseSemver(input.floor.version)
+      ? input.floor.version
+      : null;
+  if (floorVersion !== null) {
+    candidates = candidates.filter((c) => {
+      const v = c.tag === null ? null : semverOfTag(c.tag);
+      return v === null || compareSemver(v, floorVersion) >= 0;
+    });
+  }
   if (pointer && !candidates.includes(pointer)) candidates.push(pointer);
   candidates = candidates.filter(
     (c) => !input.yanked.has(c.releaseId) || (pinned && c === pointer),
@@ -497,6 +535,30 @@ export interface DeliverableState {
   /** Policy rows of THIS deliverable, by (canonical) channel. */
   policyRows: Map<string, ReleaseChannelPolicyRow>;
   candidates: Candidate[];
+  /**
+   * App only (empty for a pack): the rows the sync last listed (`metadata_json.tag` is set),
+   * the rows it saw gone upstream (`absentUpstream`), the recorded channel floors (R6-10) and
+   * the rows that carry an ingested descriptor (P2-12.2, plan §6.2).
+   */
+  listed: Set<string>;
+  absent: Set<string>;
+  floors: Map<string, FloorView>;
+  described: Set<string>;
+}
+
+export interface FloorView {
+  channel: string;
+  version: string;
+  releaseId: string | null;
+}
+
+export interface LoadStateOptions {
+  /**
+   * The narrow read for the legacy view: no `notes`, and `metadata_json` only through
+   * `json_extract` of `$.tag`, `$.prerelease` and `$.descriptor.status` (rebuilt as a small
+   * object). `storeRelease()` reads the picked row by key afterwards. App rows only.
+   */
+  narrow?: boolean;
 }
 
 export async function loadDeliverableState(
@@ -504,7 +566,9 @@ export async function loadDeliverableState(
   product: string,
   deliverableId: string,
   cfg?: ReleaseConfigRow | null,
+  loadOpts: LoadStateOptions = {},
 ): Promise<DeliverableState | null> {
+  const isApp = deliverableId === APP_DELIVERABLE_ID;
   const deliverable = await db.first<ReleaseDeliverableRow>(
     "SELECT * FROM release_deliverables WHERE product = ? AND deliverable_id = ?",
     product,
@@ -513,11 +577,13 @@ export async function loadDeliverableState(
   if (!deliverable) return null;
   const config = cfg === undefined ? await getReleaseConfig(db, product) : cfg;
   const manual = parseManualChannels(config?.manual_channels_json);
-  const rows = await db.all<ReleaseMetadataRow>(
-    "SELECT * FROM release_metadata WHERE product = ? AND deliverable_id = ?",
-    product,
-    deliverableId,
-  );
+  const rows = await (loadOpts.narrow
+    ? readNarrowRows(db, product, deliverableId)
+    : db.all<ReleaseMetadataRow>(
+        "SELECT * FROM release_metadata WHERE product = ? AND deliverable_id = ?",
+        product,
+        deliverableId,
+      ));
   const builds = await db.all<ReleaseBuildRow>(
     `SELECT b.* FROM release_builds b
        JOIN release_metadata m ON m.product = b.product AND m.release_id = b.release_id
@@ -534,6 +600,42 @@ export async function loadDeliverableState(
     product,
     deliverableId,
   );
+
+  let absent = new Set<string>();
+  let floors = new Map<string, FloorView>();
+  if (isApp) {
+    const gone = await db.all<{ subject_id: string }>(
+      `SELECT subject_id FROM release_health
+        WHERE product = ? AND subject_kind = 'release' AND status = 'degraded'
+          AND json_extract(details_json, '$.absentUpstream') = 1`,
+      product,
+    );
+    absent = new Set(gone.map((g) => g.subject_id));
+    const floorRows = await db.all<{
+      channel: string;
+      version: string;
+      release_id: string | null;
+    }>(
+      "SELECT channel, version, release_id FROM release_channel_floors WHERE product = ?",
+      product,
+    );
+    floors = new Map(
+      floorRows.map((f) => [
+        f.channel,
+        { channel: f.channel, version: f.version, releaseId: f.release_id },
+      ]),
+    );
+  }
+  const listed = new Set<string>();
+  const described = new Set<string>();
+  if (isApp) {
+    for (const r of rows) {
+      const meta = metaOf(r.metadata_json);
+      if (typeof meta.tag === "string" && meta.tag !== "")
+        listed.add(r.release_id);
+      if (meta.descriptor?.status === "ingested") described.add(r.release_id);
+    }
+  }
 
   const buildsByRelease = new Map<string, ReleaseBuildRow[]>();
   for (const b of builds) {
@@ -565,14 +667,164 @@ export async function loadDeliverableState(
     yanked: new Set(yanks.map((y) => y.release_id)),
     policyRows: new Map(policies.map((p) => [p.channel, p])),
     candidates,
+    listed,
+    absent,
+    floors,
+    described,
   };
+}
+
+interface MetaView {
+  tag?: unknown;
+  descriptor?: { status?: unknown } | null;
+}
+
+function metaOf(json: string | null): MetaView {
+  if (!json) return {};
+  try {
+    const v: unknown = JSON.parse(json);
+    return v && typeof v === "object" ? (v as MetaView) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** The narrow read of `loadDeliverableState`: every column but `notes`, three JSON members. */
+async function readNarrowRows(
+  db: Db,
+  product: string,
+  deliverableId: string,
+): Promise<ReleaseMetadataRow[]> {
+  const raw = await db.all<
+    Omit<ReleaseMetadataRow, "notes" | "metadata_json"> & {
+      m_tag: string | null;
+      m_prerelease: number | null;
+      m_status: string | null;
+    }
+  >(
+    `SELECT product, release_id, version, title, commit_sha, source_url, metadata_access,
+            artifacts_access, published_at, created_at, modified_at, deliverable_id, seq, channel,
+            json_extract(metadata_json, '$.tag') AS m_tag,
+            json_extract(metadata_json, '$.prerelease') AS m_prerelease,
+            json_extract(metadata_json, '$.descriptor.status') AS m_status
+       FROM release_metadata WHERE product = ? AND deliverable_id = ?`,
+    product,
+    deliverableId,
+  );
+  return raw.map(({ m_tag, m_prerelease, m_status, ...row }) => ({
+    ...row,
+    notes: null,
+    metadata_json: JSON.stringify({
+      ...(m_tag !== null ? { tag: m_tag } : {}),
+      ...(m_prerelease !== null ? { prerelease: m_prerelease === 1 } : {}),
+      ...(m_status !== null ? { descriptor: { status: m_status } } : {}),
+    }),
+  }));
+}
+
+// ── The two candidate views (P2-12.2, plan D5) ───────────────────────────────────────────────
+
+export type ResolveView = "legacy" | "store";
+
+/**
+ * PR 1 of P2-12 hides nothing in the store view (L-P4): every other caller sees the same
+ * candidates as before. PR 2 (P2-12.10) flips this, so that storefront feeds, the download page
+ * and `builds/` stop offering an undescribed release that was deleted upstream. It is a module
+ * constant on purpose, not a per-product flag (D8).
+ */
+export const STORE_VIEW_HIDES_ABSENT = false;
+
+/**
+ * The release ids a view does not offer. Legacy: every row the sync did not list (tagless and
+ * GitHub-less rows) and every row seen gone upstream, as GitHub's list is today's input. Store:
+ * only the undescribed rows seen gone upstream (a described release owns its files), and only
+ * while `hideAbsent` is on. A pack has no sync listing, so it hides nothing.
+ */
+export function hiddenFor(
+  state: Pick<
+    DeliverableState,
+    "deliverableId" | "rows" | "listed" | "absent" | "described"
+  >,
+  view: ResolveView,
+  hideAbsent: boolean = STORE_VIEW_HIDES_ABSENT,
+): Set<string> {
+  const out = new Set<string>();
+  if (state.deliverableId !== APP_DELIVERABLE_ID) return out;
+  if (view === "legacy") {
+    for (const r of state.rows)
+      if (!state.listed.has(r.release_id)) out.add(r.release_id);
+    for (const id of state.absent) out.add(id);
+  } else if (hideAbsent) {
+    for (const id of state.absent) if (!state.described.has(id)) out.add(id);
+  }
+  return out;
+}
+
+/** The inputs of `resolveCandidates` that do not depend on the selector or the view. */
+function baseInput(
+  state: DeliverableState,
+): Omit<ResolveInput, "selector" | "target"> {
+  return {
+    deliverable: state.deliverableId,
+    scheme: state.scheme,
+    releases: state.candidates,
+    yanked: state.yanked,
+    policies: new Map(
+      [...state.policyRows].map(([c, p]) => [c, policyView(p)]),
+    ),
+    manualChannels: state.manual,
+    stableTagPattern: state.config?.stable_tag_pattern ?? null,
+    ignoreTags: parseIgnoreTags(state.config?.ignore_tags_json),
+  };
+}
+
+/**
+ * The floor a channel effectively has (R6-10, plan D5): the recorded floor or, when its release
+ * is yanked, the newest tagged, unyanked store row (EVERY row, whatever made it stop being
+ * listed) at or below the recorded version that the channel would pick. A yanked floor is
+ * lowered, never removed, so the most common yank, the newest release, still protects the
+ * channel. Null: no floor (or one that is not a semver), and none is applied.
+ */
+export function effectiveFloor(
+  state: DeliverableState,
+  channel: string,
+): { version: string } | null {
+  if (state.deliverableId !== APP_DELIVERABLE_ID) return null;
+  const recorded = state.floors.get(channel);
+  if (!recorded || !parseSemver(recorded.version)) return null;
+  if (!recorded.releaseId || !state.yanked.has(recorded.releaseId))
+    return { version: recorded.version };
+  const below = state.candidates.filter((c) => {
+    if (c.tag === null || state.yanked.has(c.releaseId)) return false;
+    const v = semverOfTag(c.tag);
+    return v !== null && compareSemver(v, recorded.version) <= 0;
+  });
+  const base = baseInput(state);
+  // No pointer: the legacy fallback picks the newest member among the rows below the floor.
+  const pick = channelCandidates(
+    {
+      ...base,
+      releases: below,
+      yanked: new Set(),
+      policies: new Map(
+        [...base.policies].map(([c, p]) => [
+          c,
+          { ...p, pointer: null, pinned: false },
+        ]),
+      ),
+    },
+    channel,
+  )[0];
+  const version = pick?.tag ? semverOfTag(pick.tag) : null;
+  return version === null ? null : { version };
 }
 
 /** Resolve one selector against a loaded state (pure; see `resolveCandidates`). */
 export function resolveInState(
   state: DeliverableState,
-  opts: Omit<ResolveBuildOptions, "deliverable">,
+  opts: Omit<ResolveBuildOptions, "deliverable"> & { view?: ResolveView },
 ): BuildResolution | null {
+  const view = opts.view ?? "store";
   let selector: Selector;
   let channel: string | null = null;
   if (isVersionSelector(opts.selector)) {
@@ -583,18 +835,14 @@ export function resolveInState(
     selector = { type: "channel", channel };
   }
   if (state.rows.length === 0) return null;
+  const hidden = hiddenFor(state, view);
+  const floor =
+    view === "legacy" && channel ? effectiveFloor(state, channel) : null;
   const resolved = resolveCandidates({
-    deliverable: state.deliverableId,
-    scheme: state.scheme,
+    ...baseInput(state),
     selector,
-    releases: state.candidates,
-    yanked: state.yanked,
-    policies: new Map(
-      [...state.policyRows].map(([c, p]) => [c, policyView(p)]),
-    ),
-    manualChannels: state.manual,
-    stableTagPattern: state.config?.stable_tag_pattern ?? null,
-    ignoreTags: parseIgnoreTags(state.config?.ignore_tags_json),
+    ...(hidden.size > 0 ? { hidden } : {}),
+    ...(floor ? { floor } : {}),
     target: {
       ...(opts.platform !== undefined ? { platform: opts.platform } : {}),
       ...(opts.arch !== undefined ? { arch: opts.arch } : {}),
@@ -691,19 +939,9 @@ export async function resolveChannelReleases(
   const state = await loadDeliverableState(db, product, deliverableId, config);
   if (!state) return null;
   const byId = new Map(state.rows.map((r) => [r.release_id, r]));
+  const hidden = hiddenFor(state, "store");
   const ordered = channelCandidates(
-    {
-      deliverable: state.deliverableId,
-      scheme: state.scheme,
-      releases: state.candidates,
-      yanked: state.yanked,
-      policies: new Map(
-        [...state.policyRows].map(([c, p]) => [c, policyView(p)]),
-      ),
-      manualChannels: state.manual,
-      stableTagPattern: config?.stable_tag_pattern ?? null,
-      ignoreTags: parseIgnoreTags(config?.ignore_tags_json),
-    },
+    { ...baseInput(state), ...(hidden.size > 0 ? { hidden } : {}) },
     channel,
   );
   return {
