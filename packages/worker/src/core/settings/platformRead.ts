@@ -36,6 +36,7 @@ export interface PlatformValues {
   "blobs.gc.graceDays": number;
   "licensing.reservedNames": ReservedNamesMode;
   "identity.reservedDisplayNames": ReservedDisplayNamesMode;
+  "identity.reservedDisplayTerms": readonly string[];
   "identity.keyEntryRefusals": "on" | "off";
   "assets.hosting.enabled": "on" | "off";
   "email.dailyCapDefault": number;

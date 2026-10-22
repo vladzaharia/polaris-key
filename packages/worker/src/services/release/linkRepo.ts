@@ -50,7 +50,7 @@ import type { Ingest } from "../../core/ingest/types.js";
 import { repoBlobLookup } from "./assetSource.js";
 import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
 import type { LinkCheck } from "./linkExisting.js";
-import { reservedDisplayNamesMode } from "../../core/accounts/reservedDisplayNames.js";
+import { displayNameOptions } from "../../core/accounts/reservedDisplayNames.js";
 
 export type LinkRepoResult =
   | {
@@ -543,7 +543,7 @@ export async function prepareCreate(
   // reserved display names, as the create always did).
   const result = parseManifest(files, {
     reservedNames: await reservedNamesMode(env, db),
-    reservedDisplayNames: await reservedDisplayNamesMode(env, db),
+    ...(await displayNameOptions(env, db)),
   });
   if (!result.ok) {
     return {
@@ -664,7 +664,7 @@ export async function linkRepo(
 
   const result = parseManifest(files, {
     reservedNames: await reservedNamesMode(env, db),
-    reservedDisplayNames: await reservedDisplayNamesMode(env, db),
+    ...(await displayNameOptions(env, db)),
   });
   if (!result.ok)
     return {

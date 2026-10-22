@@ -13,6 +13,7 @@
  */
 
 import { checkDisplayName } from "@polaris-key/manifest";
+import { displayCheckOptions } from "../../../core/accounts/reservedDisplayNames.js";
 import type { ClientKind, ClientRecord } from "@polaris-key/protocol/identity";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
@@ -48,16 +49,15 @@ export async function clientRecordFor(
     now,
     "client",
   );
-  const nameVerified =
-    checkDisplayName(presentation.name, { slug: product.slug }) === null;
+  const check = await displayCheckOptions(env, db, product.slug);
+  const nameVerified = checkDisplayName(presentation.name, check) === null;
   const developer = presentation.developerName;
   return {
     product: product.slug,
     kind,
     appName: nameVerified ? presentation.name : product.slug,
     developerName:
-      developer !== null &&
-      checkDisplayName(developer, { slug: product.slug }) === null
+      developer !== null && checkDisplayName(developer, check) === null
         ? developer
         : null,
     iconUrl: presentation.iconUrl,

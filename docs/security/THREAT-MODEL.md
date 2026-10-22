@@ -8493,7 +8493,14 @@ closes S-16 §5.4 items 13 and 14 (app impersonation on the card, and spoofed de
   product `polaris-key` is exempt from the reserved check, never from the text check. Residual:
   the confusable map is a heuristic. A look-alike outside it ("Stéäm" with an unlisted
   homoglyph) reaches the card as written until the list grows, and the platform can add terms
-  later (`identity.reservedDisplayTerms`, registered for ST-04).
+  (`identity.reservedDisplayTerms`, PX-W13b).
+- **The two display-name settings (PX-W13b).** `identity.reservedDisplayTerms` (platform, L1,
+  audited) only adds to the code's floor: the Worker passes it to every check (ingest, listing
+  claims, the card's re-check), and nothing removes a built-in term. `identity.displayNameApproved`
+  (product, operator-only, L1 to grant, audited) clears `reserved_display_name` for that one
+  product at those same three checks. It never clears `invalid_display_text`, never reaches
+  another product or the platform, and a manifest cannot set it (it is not manifest-claimable).
+  A product being created has no approval, so its first ingest is judged without one.
 - **Label injection.** A device reports its own label (`deviceName`), so the card frames it as
   "reported by the device", never as a verified fact. §12.7.1 deletes bidi overrides, isolates and
   zero-width characters and folds whitespace controls before the label is stored, in every SDK

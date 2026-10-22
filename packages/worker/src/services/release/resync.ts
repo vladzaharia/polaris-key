@@ -39,7 +39,7 @@ import { fetchPinnedManifestFiles } from "./manifestFetch.js";
 import type { StoreOutcome } from "./packs/sets.js";
 import type { BreakGlassClaim, ClaimKey } from "../../core/settingsClaims.js";
 import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
-import { reservedDisplayNamesMode } from "../../core/accounts/reservedDisplayNames.js";
+import { displayNameOptions } from "../../core/accounts/reservedDisplayNames.js";
 import { type AssetWarning } from "../../core/assets/hostedAssetPulls.js";
 import { repoBlobLookup } from "./assetSource.js";
 import type { Ingest, PlanWarning } from "../../core/ingest/types.js";
@@ -355,7 +355,7 @@ export async function readLinkedManifest(
 
   const result = parseManifest(files, {
     reservedNames: await reservedNamesMode(env, db),
-    reservedDisplayNames: await reservedDisplayNamesMode(env, db),
+    ...(await displayNameOptions(env, db, slug)),
   });
   if (!result.ok)
     return {

@@ -44,7 +44,10 @@ import {
   checkDisplayName,
   type ReservedDisplayNamesMode,
 } from "@polaris-key/manifest";
-import { reservedDisplayNamesMode } from "../../../core/accounts/reservedDisplayNames.js";
+import {
+  displayCheckOptions,
+  reservedDisplayNamesMode,
+} from "../../../core/accounts/reservedDisplayNames.js";
 import type { ServiceContext } from "../../../core/registry.js";
 import type { AdminSession } from "../../../core/console/session.js";
 import { adminJson, err, readBody } from "../../../core/console/respond.js";
@@ -107,14 +110,14 @@ type AdminCtx = ServiceContext & { session: AdminSession };
  * product is exempt from the reserved check.
  */
 function displayNameProblems(
-  slug: string,
+  check: Parameters<typeof checkDisplayName>[1],
   reserved: ReservedDisplayNamesMode,
   fields: Record<string, unknown>,
 ): { field: string; message: string }[] {
   const out: { field: string; message: string }[] = [];
   for (const [field, v] of Object.entries(fields)) {
     if (typeof v !== "string" || v === "") continue;
-    const verdict = checkDisplayName(v, { slug });
+    const verdict = checkDisplayName(v, check);
     if (verdict === "invalid")
       out.push({
         field,
@@ -270,10 +273,14 @@ async function putListing(ctx: AdminCtx): Promise<Response> {
   const reserved = await reservedDisplayNamesMode(ctx.env, db);
   const problems = [
     ...appProblems(app, existing === null),
-    ...displayNameProblems(slug, reserved, {
-      name: app.name,
-      developerName: app.developerName,
-    }),
+    ...displayNameProblems(
+      await displayCheckOptions(ctx.env, db, slug),
+      reserved,
+      {
+        name: app.name,
+        developerName: app.developerName,
+      },
+    ),
   ];
   const locales = body.locales === undefined ? {} : body.locales;
   if (!isRecord(locales))
@@ -298,9 +305,13 @@ async function putListing(ctx: AdminCtx): Promise<Response> {
     }
     problems.push(...localeTextProblems(locale, patch));
     problems.push(
-      ...displayNameProblems(slug, reserved, {
-        [`locales.${locale}.name`]: patch.name,
-      }),
+      ...displayNameProblems(
+        await displayCheckOptions(ctx.env, db, slug),
+        reserved,
+        {
+          [`locales.${locale}.name`]: patch.name,
+        },
+      ),
     );
   }
   if (body.precedence !== undefined)

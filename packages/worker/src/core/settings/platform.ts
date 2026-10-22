@@ -239,7 +239,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
 
   // PX-W13 (§8 Q4, as amended): terms the platform reserves on top of the code's floor
   // (`RESERVED_DISPLAY_TERMS` in @polaris-key/manifest). It can only add terms, never remove one.
-  // PX-W13b wires it into the validator and the Worker's reserved-name check.
+  // Read by core/accounts/reservedDisplayNames.ts for every display-name check (PX-W13b).
   setting({
     key: "identity.reservedDisplayTerms",
     scope: "platform",
@@ -255,8 +255,9 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     merge: "cascade",
     ownership: "operator",
     confirm: { change: "L1" },
+    readers: ["core/accounts/reservedDisplayNames.ts"],
     storage: { kind: "scalar" },
-    pending: { wp: "PX-W13b" },
+    since: "PX-W13b",
   }),
 
   // ── Identity: Polaris Key's own terms (I-33, plans/I-27.md §2.4, Q2) ─────────────────────
