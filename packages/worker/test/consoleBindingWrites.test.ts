@@ -521,7 +521,8 @@ describe("POST /bindings", () => {
       scope: "product:alpha",
       areas: null,
     });
-    expect([404, 409]).toContain(r.status);
+    expect(r.status).toBe(409);
+    expect(r.b.error?.reason ?? r.b.reason).toBe("member_disabled");
     expect(
       await rows(
         "SELECT * FROM console_role_bindings WHERE role = 'product_admin'",
@@ -925,12 +926,74 @@ describe("PATCH /bindings/:id and DELETE", () => {
     expect(r.status).toBe(403);
     expect(r.b.error?.reason ?? r.b.reason).toBe("self_grant");
     expect(mine).toBeTruthy();
-    // Narrowing it is fine.
-    const narrow = await send(root, "PATCH", `/api/bindings/${own}`, {
+    // Widening it to every area is the same self-grant, whatever the engine allows a Superadmin.
+    const wider = await send(root, "PATCH", `/api/bindings/${own}`, {
       areas: null,
     });
-    expect(narrow.status).toBe(403); // null is wider than ["ship"]
+    expect(wider.status).toBe(403);
+    expect(wider.b.error?.reason ?? wider.b.reason).toBe("self_grant");
     expect(await storedAreas(own)).toBe('["ship"]');
+    // Narrowing your own binding is fine (taking access back only narrows): no step-up, no D-g.
+    const own2 = await bind(
+      db,
+      root.accountId,
+      "product_admin",
+      "product:beta",
+      ["ship", "keys"],
+    );
+    const narrow = await send(root, "PATCH", `/api/bindings/${own2}`, {
+      areas: ["ship"],
+    });
+    expect(narrow.status).toBe(200);
+    expect(narrow.b.widened).toBe(false);
+    expect(await storedAreas(own2)).toBe('["ship"]');
+  });
+
+  it("budgets G5 notices per recipient: a grant/revoke cycle mails an address ten times an hour", async () => {
+    const root = await person(env, db, "root", {
+      keepRoot: true,
+      stepUp: true,
+    });
+    const bob = await person(env, db, "bob");
+    await bind(db, bob.accountId, "console_access", "platform", null);
+    let last: Body | undefined;
+    for (let i = 0; i < 6; i++) {
+      const made = await send(root, "POST", "/api/bindings", {
+        member: bob.memberId,
+        role: "product_admin",
+        scope: "product:alpha",
+        areas: null,
+      });
+      expect(made.status).toBe(201);
+      last = (
+        await send(root, "DELETE", `/api/bindings/${made.b.binding!.bindingId}`)
+      ).b;
+    }
+    expect(mail.filter((m) => m.to === "bob@example.com")).toHaveLength(10);
+    expect(mail.filter((m) => m.to === "root@example.com")).toHaveLength(10);
+    // An over-budget notice counts as not sent; the change stands.
+    expect(last!.notified).toMatchObject({ sent: 0, nobodyNotified: true });
+  });
+
+  it("a guarded write fails closed on a Db that cannot count batch changes", async () => {
+    const root = await person(env, db, "root", {
+      keepRoot: true,
+      stepUp: true,
+    });
+    const bob = await person(env, db, "bob");
+    const id = await bind(db, bob.accountId, "product_admin", "product:alpha", [
+      "ship",
+    ]);
+    const original = db.batchChanges;
+    (db as { batchChanges?: unknown }).batchChanges = undefined;
+    try {
+      await expect(send(root, "DELETE", `/api/bindings/${id}`)).rejects.toThrow(
+        /batch changes/,
+      );
+    } finally {
+      db.batchChanges = original;
+    }
+    expect(await storedAreas(id)).toBe('["ship"]');
   });
 
   it("DELETE needs no step-up, removes the grant at once, audits it, and emails", async () => {

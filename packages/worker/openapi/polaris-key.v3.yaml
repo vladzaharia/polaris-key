@@ -18586,7 +18586,13 @@ paths:
       tags: [admin]
       summary: Grant a console role to a member
       description: >
-        ST-31.6. Body `{member, role, scope, areas, confirm?}`. `areas` is required for a
+        ST-31.6. Body `{member, role, scope, areas, confirm?}`, or, to invite (ST-31.7), `{emails, role,
+        scope, areas, confirm?}` with exactly one of `member` and `emails` (at most 20 addresses; see
+        `ConsoleInvitesResult`). An invite is held to the same rules as a grant, never names the
+        invitee in the audit trail, and sends the address a Polaris Key mail whose link opens the
+        sign-in page; it grants nothing until that address signs in. An address that belongs to an
+        existing console member becomes an account binding instead. At most 100 invited addresses
+        per member per hour (`429`, `reason: invite_budget`). `areas` is required for a
         `product_admin` (`null` = every area, otherwise a non-empty list of product areas) and
         absent or `null` for the other roles. An L2 target (Superadmin, Platform admin, `products:*`)
         needs `confirm: "L2"`. The product named by a product scope must exist and not be the system
@@ -18611,10 +18617,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [member, role, scope]
+              required: [role, scope]
               additionalProperties: false
               properties:
                 member: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
+                emails:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items: { type: string }
                 role:
                   {
                     type: string,
@@ -18636,7 +18647,17 @@ paths:
                   items: { type: string }
                 confirm: { type: string, enum: [L2] }
       responses:
-        "201": { $ref: "#/components/responses/ConsoleBindingWritten" }
+        "200": { $ref: "#/components/responses/ConsoleInvitesWritten" }
+        "201":
+          description: >
+            With `member`: the binding as stored. With `emails`: one result per address
+            (`ConsoleInvitesResult`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/ConsoleBindingResult" }
+                  - { $ref: "#/components/schemas/ConsoleInvitesResult" }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "404":
@@ -18655,6 +18676,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
+        "503":
+          description: "The erasure ledger could not be read (`reason: erasure_ledger_unavailable`); nothing was written."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   /manage/api/bindings/{id}:
     parameters:
       - { $ref: "#/components/parameters/BindingId" }
@@ -18719,7 +18745,9 @@ paths:
       summary: Take a console role back
       description: >
         ST-31.6. Removes the binding. No step-up: taking access back only narrows. The root rule is
-        computed and has no binding, so it cannot be revoked here.
+        computed and has no binding, so it cannot be revoked here. An invitation (a row for an address, no member) is cancelled the same
+        way and answers `{ok, bindingId, invite: true}`; no one is mailed. PATCH does not take an
+        invitation (404): cancel it and invite again.
         Session only (a token cannot call it) and CSRF-protected. Every write runs the grant rules
         before it writes: G1 (a granter gives only what it holds, with areas covering the areas
         asked for), G2 (Superadmin, Platform admin and anything at `products:*` are a Superadmin's
@@ -20415,7 +20443,8 @@ paths:
       tags: [admin]
       summary: Give a member access to one product
       description: >
-        ST-31.6 (D-d). The product twin of `POST /bindings`. Body `{member, role?, areas?, confirm?}`;
+        ST-31.6 (D-d). The product twin of `POST /bindings`. Body `{member, role?, areas?, confirm?}`, or
+        `{emails, role?, areas?, confirm?}` to invite (ST-31.7; exactly one of `member` and `emails`);
         `role` is `product_admin` (the default, scoped to this product, `areas` required) or
         `console_access` (platform scope, `areas` absent). Needs the Members area on this product and
         a console step-up.
@@ -20439,17 +20468,31 @@ paths:
           application/json:
             schema:
               type: object
-              required: [member]
               additionalProperties: false
               properties:
                 member: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
+                emails:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items: { type: string }
                 role: { type: string, enum: [product_admin, console_access] }
                 areas:
                   type: [array, "null"]
                   items: { type: string }
                 confirm: { type: string, enum: [L2] }
       responses:
-        "201": { $ref: "#/components/responses/ConsoleBindingWritten" }
+        "200": { $ref: "#/components/responses/ConsoleInvitesWritten" }
+        "201":
+          description: >
+            With `member`: the binding as stored. With `emails`: one result per address
+            (`ConsoleInvitesResult`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/ConsoleBindingResult" }
+                  - { $ref: "#/components/schemas/ConsoleInvitesResult" }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "404":
@@ -20468,6 +20511,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
+        "503":
+          description: "The erasure ledger could not be read (`reason: erasure_ledger_unavailable`); nothing was written."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   /manage/api/products/{product}/members/{bindingId}:
     parameters:
       - { $ref: "#/components/parameters/Product" }
@@ -20535,7 +20583,7 @@ paths:
       summary: Take a member's access to one product back
       description: >
         ST-31.6 (D-d). The product twin of `DELETE /bindings/{id}`, for a binding scoped to this
-        product only. No step-up.
+        product only. No step-up. An invitation to this product is cancelled the same way.
         Session only (a token cannot call it) and CSRF-protected. Every write runs the grant rules
         before it writes: G1 (a granter gives only what it holds, with areas covering the areas
         asked for), G2 (Superadmin, Platform admin and anything at `products:*` are a Superadmin's
@@ -21315,31 +21363,19 @@ components:
         edit widened, and who was told.
       content:
         application/json:
-          schema:
-            type: object
-            required: [ok, binding]
-            properties:
-              ok: { type: boolean }
-              unchanged:
-                type: boolean
-                description: An edit that changed nothing wrote nothing and told no one.
-              widened: { type: boolean }
-              confirm: { type: string, enum: [L1, L2] }
-              binding:
-                type: object
-                required:
-                  [bindingId, memberId, role, scope, areas, source, grantedAt]
-                properties:
-                  bindingId: { type: string }
-                  memberId: { type: string }
-                  role: { type: string }
-                  scope: { type: string }
-                  areas:
-                    type: [array, "null"]
-                    items: { type: string }
-                  source: { type: string }
-                  grantedAt: { type: integer }
-              notified: { $ref: "#/components/schemas/ConsoleNotified" }
+          schema: { $ref: "#/components/schemas/ConsoleBindingResult" }
+    ConsoleInvitesWritten:
+      description: >
+        A POST with `emails`: one result per address, in request order. `invited` (an invite row
+        that lapses after 7 days; inviting again renews it), `updated` (the address belongs to an
+        existing console member, so an account binding was written), `exists` (that member already
+        holds the grant), `merged` (the address repeated an earlier one) and `invalid` (not an
+        address). `link` is present only when the invitation mail did not go out; it is the console
+        sign-in page with the address as a hint and carries no secret. `201` when anything was
+        written, `200` when nothing was.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ConsoleInvitesResult" }
     AdminRateLimited:
       description: >
         The admin surface's per-principal budget (600 requests per 60 s). Keyed by the VERIFIED
@@ -24765,6 +24801,69 @@ components:
               bindingId: { type: [string, "null"] }
               grantedBy: { $ref: "#/components/schemas/ConsoleGrantedBy" }
               grantedAt: { type: [integer, "null"] }
+    ConsoleBindingResult:
+      type: object
+      required: [ok, binding]
+      properties:
+        ok: { type: boolean }
+        unchanged:
+          type: boolean
+          description: An edit that changed nothing wrote nothing and told no one.
+        widened: { type: boolean }
+        confirm: { type: string, enum: [L1, L2] }
+        binding:
+          type: object
+          required: [bindingId, memberId, role, scope, areas, source, grantedAt]
+          properties:
+            bindingId: { type: string }
+            memberId: { type: string }
+            role: { type: string }
+            scope: { type: string }
+            areas:
+              type: [array, "null"]
+              items: { type: string }
+            source: { type: string }
+            grantedAt: { type: integer }
+        notified: { $ref: "#/components/schemas/ConsoleNotified" }
+    ConsoleInvitesResult:
+      type: object
+      required: [ok, results, counts, confirm, emailOff, notified]
+      properties:
+        ok: { type: boolean }
+        confirm: { type: string, enum: [L1, L2] }
+        emailOff:
+          type: boolean
+          description: True when the deployment sends no email; the links are in `results`.
+        results:
+          type: array
+          items:
+            type: object
+            required: [email, status]
+            properties:
+              email: { type: string }
+              status:
+                type: string
+                enum: [invited, updated, exists, merged, invalid]
+              bindingId: { type: string }
+              expiresAt: { type: integer }
+              needsOperatorSignIn:
+                type: boolean
+                description: >
+                  An invite for a role that signs in through the operator identity provider
+                  (Superadmin, Platform admin, `products:*`). It is stored, and usable once that
+                  sign-in proves the address.
+              emailed: { type: boolean }
+              link: { type: string }
+        counts:
+          type: object
+          required: [invited, updated, exists, merged, invalid]
+          properties:
+            invited: { type: integer }
+            updated: { type: integer }
+            exists: { type: integer }
+            merged: { type: integer }
+            invalid: { type: integer }
+        notified: { $ref: "#/components/schemas/ConsoleNotified" }
     ConsoleNotified:
       type: object
       description: >
