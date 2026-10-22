@@ -87,6 +87,12 @@ static func shape_for(act: StringName, k: StringName) -> String:
 	return {JOY_BUTTON_A: "cross", JOY_BUTTON_B: "circle", JOY_BUTTON_X: "square", JOY_BUTTON_Y: "triangle"}.get(pad_button(act), "")
 
 
+## Whether there is a glyph to draw: a keyboard always, a pad only when the bound button is one of
+## the four face buttons (a shoulder or Start has no glyph here, and none is better than a wrong one).
+static func has_glyph(act: StringName, k: StringName) -> bool:
+	return k != PAD or spoken(act, k) != ""
+
+
 ## The name a screen reader speaks.
 static func spoken(act: StringName, k: StringName) -> String:
 	var l := label_for(act, k)
@@ -129,6 +135,8 @@ func _get_minimum_size() -> Vector2:
 
 func _draw() -> void:
 	_name_it()
+	if not has_glyph(action, kind):
+		return
 	var fill := get_theme_color("font_color", "Label")
 	var ink := Color.BLACK if fill.get_luminance() > 0.5 else Color.WHITE
 	var sz := size

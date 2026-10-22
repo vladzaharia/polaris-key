@@ -1008,10 +1008,13 @@ func close() -> void:
 		return
 	closed.emit()
 	restore_opener()
-	if has_meta(FREE_ON_CLOSE_META):
-		queue_free()
-	else:
-		hide()
+	PKeyUiMotion.exit(self, func() -> void:
+		if not is_instance_valid(self):
+			return
+		if has_meta(FREE_ON_CLOSE_META):
+			queue_free()
+		else:
+			hide())
 
 
 func _cancel() -> bool:

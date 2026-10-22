@@ -85,7 +85,7 @@ static func note_input(event: InputEvent) -> void:
 	if not (event is InputEventKey or event is InputEventJoypadButton or event is InputEventJoypadMotion):
 		return
 	for a in ["ui_up", "ui_down", "ui_left", "ui_right", "ui_focus_next", "ui_focus_prev"]:
-		if event.is_action_pressed(a):
+		if event.is_action_pressed(a, true):
 			_nav_stamp = Time.get_ticks_msec()
 			return
 

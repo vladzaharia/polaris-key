@@ -495,8 +495,10 @@ func _render() -> void:
 	show_text(_hint, hint_text)
 	# The glyph sits close to its words (the theme's tight gap).
 	_hint.get_parent().add_theme_constant_override("separation", int(role("tight_gap")))
-	_hint_glyph.visible = hint_text != ""
 	_hint_glyph.kind = input_kind() if input_kind() in [PKeyInputGlyphs.KEYBOARD, PKeyInputGlyphs.PAD] else PKeyInputGlyphs.KEYBOARD
+	# Never "[B] A to select": the glyph shows only while it agrees with the words (and exists).
+	var spoken_key := PKeyInputGlyphs.label_for(PKeyInputGlyphs.CONFIRM, _hint_glyph.kind)
+	_hint_glyph.visible = hint_text != "" and PKeyInputGlyphs.has_glyph(PKeyInputGlyphs.CONFIRM, _hint_glyph.kind) and spoken_key != "" and hint_text.begins_with(spoken_key + " ")
 	_hint.get_parent().visible = hint_text != ""
 	_submit.text = t.text("key_submit")
 	_sign_in_block.visible = caps["sign_in"]

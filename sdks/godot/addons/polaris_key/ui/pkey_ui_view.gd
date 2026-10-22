@@ -329,6 +329,8 @@ static func ensure_pad_bindings() -> void:
 		if not has_pad:
 			var ev := InputEventJoypadButton.new()
 			ev.button_index = pair[1]
+			# Every device: a second pad, a reconnected one or a Steam Input virtual pad is not device 0.
+			ev.device = -1
 			InputMap.action_add_event(action, ev)
 
 

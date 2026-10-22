@@ -134,8 +134,7 @@ func _settings_open(t: PKeyTestContext) -> void:
 	var closed := [false]
 	p.closed.connect(func() -> void: closed[0] = true)
 	t.check("DL18: Escape (ui_cancel) closes it", p._cancel() and closed[0])
-	await _tree().process_frame
-	await _tree().process_frame
+	await _tree().create_timer(0.4, true, false, true).timeout
 	t.check("DL18: closed, it is freed and the game's control has the focus back", not is_instance_valid(p) and game_button.has_focus())
 	var embedded: Control = await _sc.settings(false, {})
 	await _tree().process_frame
@@ -233,6 +232,7 @@ func _game_look(t: PKeyTestContext) -> void:
 	await _glyphs(t)
 	await _scheme(t)
 	await _focus_ring(t)
+	await _lead_fixes(t)
 	PKeyUiTheme.reset()
 
 
@@ -310,13 +310,27 @@ func _sound(t: PKeyTestContext) -> void:
 func _motion(t: PKeyTestContext) -> void:
 	PKeyUiTheme.reduce_motion_mode = "off"
 	var d: Control = _sc.sign_in("pending")
-	t.check("motion: built and shown in one frame, the dialog is still transparent", d.modulate.a < 0.05 and d.scale.x < 1.0, "%s %s" % [d.modulate.a, d.scale])
-	for i in 4:
+	t.check("motion: built and shown in one frame, the dialog is still transparent", d.modulate.a < 0.05, str(d.modulate.a))
+	# R1: only the card scales; the view (the scrim) is never smaller than its viewport, at every frame.
+	var covered := true
+	var card_scaled := false
+	var bad := ""
+	for i in 40:
 		await _tree().process_frame
+		var vp := d.get_viewport().get_visible_rect()
+		if d.scale != Vector2.ONE or not d.get_global_rect().encloses(vp):
+			covered = false
+			bad = "frame %d %s %s" % [i, d.scale, d.get_global_rect()]
+		var card0 := PKeyUiMotion.card_of(d)
+		if card0 != null and card0.scale.x < 0.999:
+			card_scaled = true
+	t.check("motion: the scrim covers the whole viewport at every frame of the entry", covered, bad)
+	t.check("motion: the card itself scales in from 98 %", card_scaled or PKeyUiMotion.card_of(d) == null)
 	await _tree().create_timer(0.1, true, false, true).timeout
-	t.check("motion: 100 ms into the fade it is part way (it arrives, not pops)", d.modulate.a > 0.0 and d.modulate.a < 0.95, str(d.modulate.a))
+	t.check("motion: it is part way (or done) after the settle frames", d.modulate.a > 0.0, str(d.modulate.a))
 	await _tree().create_timer(0.35, true, false, true).timeout
-	t.check("motion: it ends at full alpha and scale", is_equal_approx(d.modulate.a, 1.0) and is_equal_approx(d.scale.x, 1.0), "%s %s" % [d.modulate.a, d.scale])
+	var card1 := PKeyUiMotion.card_of(d)
+	t.check("motion: it ends at full alpha and scale", is_equal_approx(d.modulate.a, 1.0) and (card1 == null or is_equal_approx(card1.scale.x, 1.0)), "%s" % d.modulate.a)
 	_free(d)
 	# The clock stopped (a game pausing with time_scale): the dialog still arrives.
 	Engine.time_scale = 0.0
@@ -403,6 +417,103 @@ func _scheme(t: PKeyTestContext) -> void:
 	t.check("scheme: the light scrim is 0.35 (UI-KITS Godot row)", is_equal_approx(PKeyKitTokens.SCRIM_LIGHT_OPACITY, 0.35) and is_equal_approx(PKeyKitTokens.SCRIM_LIGHT.a, 0.35))
 
 
+## Slice 1's lead fix list: echo navigation, error coverage, glyphs that disagree or do not exist,
+## all-device pad bindings, and the ring clipped to a scroll area.
+func _lead_fixes(t: PKeyTestContext) -> void:
+	# n1: a held key (echo) is navigation.
+	PKeyUiFeedback.reset()
+	PKeyUiFeedback.log_events = true
+	var echo := InputEventKey.new()
+	echo.keycode = KEY_DOWN
+	echo.physical_keycode = KEY_DOWN
+	echo.pressed = true
+	echo.echo = true
+	PKeyUiFeedback.note_input(echo)
+	PKeyUiFeedback._on_focus()
+	t.check("n1: a held direction (key repeat) plays focus", PKeyUiFeedback.logged == [&"focus"], str(PKeyUiFeedback.logged))
+	# n2: a rejected offline response and the account tab's error play error.
+	PKeyUiFeedback.reset()
+	PKeyUiFeedback.log_events = true
+	var off: Control = _sc.offline(false, "bundle-jws-rejected")
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("n2: the offline dialog's rejected response plays error", PKeyUiFeedback.logged.has(&"error"), str(PKeyUiFeedback.logged))
+	_free(off)
+	PKeyUiFeedback.logged = []
+	var acct: Control = _sc.account("signed-in")
+	acct.cloud_sync = "error"
+	acct.refresh_view()
+	await _tree().process_frame
+	t.check("n2: the account tab's sync error plays error", PKeyUiFeedback.logged.has(&"error"), str(PKeyUiFeedback.logged))
+	_free(acct)
+	# n3: a bound shoulder button has no glyph.
+	PKeyInputGlyphs.family_override = "xbox"
+	var accept := InputMap.action_get_events(&"ui_accept").duplicate()
+	for e in accept:
+		if e is InputEventJoypadButton:
+			InputMap.action_erase_event(&"ui_accept", e)
+	var rb := InputEventJoypadButton.new()
+	rb.button_index = JOY_BUTTON_RIGHT_SHOULDER
+	InputMap.action_add_event(&"ui_accept", rb)
+	t.check("n3: ui_accept on a shoulder button has no glyph, not a wrong one", not PKeyInputGlyphs.has_glyph(&"confirm", PKeyInputGlyphs.PAD) and PKeyInputGlyphs.has_glyph(&"back", PKeyInputGlyphs.PAD))
+	InputMap.action_erase_event(&"ui_accept", rb)
+	# n5: accept moved to east: the hint's words say A, so the glyph (B) stays hidden.
+	var east := InputEventJoypadButton.new()
+	east.button_index = JOY_BUTTON_B
+	InputMap.action_add_event(&"ui_accept", east)
+	var panel: Control = _sc.activation(true, false, false, false)
+	panel._input_kind = &"pad"
+	panel.refresh_view()
+	await _tree().process_frame
+	var glyph := panel.find_child("HintGlyph", true, false) as Control
+	t.check("n5: with accept on east the glyph is hidden rather than '[B] A to select'", glyph != null and not glyph.visible)
+	_free(panel)
+	InputMap.action_erase_event(&"ui_accept", east)
+	for e in accept:
+		if e is InputEventJoypadButton:
+			InputMap.action_add_event(&"ui_accept", e)
+	PKeyInputGlyphs.family_override = null
+	# Older bug: the kit's pad bindings answer every device.
+	PKeyUiView.ensure_pad_bindings()
+	var press := InputEventJoypadButton.new()
+	press.device = 3
+	press.pressed = true
+	press.button_index = JOY_BUTTON_A
+	var press_b := InputEventJoypadButton.new()
+	press_b.device = 3
+	press_b.pressed = true
+	press_b.button_index = JOY_BUTTON_B
+	t.check("pads: device 3 confirms and goes back on kit screens", InputMap.event_is_action(press, &"ui_accept") and InputMap.event_is_action(press_b, &"ui_cancel"))
+	# n4: a field scrolled half out of its scroll area draws only the visible part of the ring.
+	if PKeyFocusRing.needed():
+		var sc := ScrollContainer.new()
+		sc.custom_minimum_size = Vector2(300, 100)
+		sc.size = Vector2(300, 100)
+		var box := VBoxContainer.new()
+		var pad := Control.new()
+		pad.custom_minimum_size = Vector2(10, 60)
+		box.add_child(pad)
+		var te := TextEdit.new()
+		te.custom_minimum_size = Vector2(280, 120)
+		box.add_child(te)
+		sc.add_child(box)
+		_tree().root.add_child(sc)
+		PKeyFocusRing.attach(te)
+		await _tree().process_frame
+		await _tree().process_frame
+		te.grab_focus()
+		await _tree().process_frame
+		await _tree().process_frame
+		var ring := te.get_node_or_null(^"FocusRing") as Control
+		var vis := sc.get_global_rect()
+		t.check("n4: the ring is clipped to the scroll area", ring != null and ring.visible and ring.clip_contents and vis.encloses(Rect2(ring.global_position, ring.size * ring.scale)) , "%s vs %s" % [ring.get_global_rect() if ring != null else null, vis])
+		sc.modulate.a = 0.5
+		await _tree().process_frame
+		await _tree().process_frame
+		t.check("n4: the ring follows the fade of its ancestors", ring != null and is_equal_approx(ring.modulate.a, 0.5), str(ring.modulate.a) if ring != null else "")
+		sc.queue_free()
+
+
 ## The ring of a multi-line field on engines before 4.6 is drawn from a top-level child.
 func _focus_ring(t: PKeyTestContext) -> void:
 	var d: Control = _sc.offline(false, "")
@@ -413,7 +524,7 @@ func _focus_ring(t: PKeyTestContext) -> void:
 		t.check("focus ring: before 4.6 the paste field's ring is drawn by a top-level child", ring != null and (ring as Control).top_level and paste.get_theme_stylebox("focus") is StyleBoxEmpty)
 		paste.grab_focus()
 		await _tree().process_frame
-		t.check("focus ring: it shows while the field has focus and sits over it", ring != null and (ring as Control).visible and (ring as Control).size == paste.size)
+		t.check("focus ring: it shows while the field has focus and sits over it", ring != null and (ring as Control).visible and (ring as Control).size.x > 0.0)
 		paste.release_focus()
 		await _tree().process_frame
 		t.check("focus ring: and hides when focus leaves", ring != null and not (ring as Control).visible)
@@ -483,6 +594,8 @@ static func _apply_look(look: String) -> void:
 
 
 func _layout(t: PKeyTestContext, all: Array) -> void:
+	# Layout is measured at rest (the entry scales the card for 280 ms; the motion tests own that).
+	PKeyUiTheme.reduce_motion_mode = "on"
 	var root := _tree().root
 	var before := root.size
 	var cases: Array = []
@@ -508,6 +621,8 @@ func _layout(t: PKeyTestContext, all: Array) -> void:
 				var v: PKeyUiView = await _build(c)
 				# A scenario configures a fake SDK (which applies its default ui_* options).
 				_apply_look(look)
+				PKeyUiTheme.reduce_motion_mode = "on"
+				PKeyUiMotion.cancel(v)
 				v.refresh_view()
 				v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 				v.refresh_view()

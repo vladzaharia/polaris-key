@@ -39,27 +39,47 @@ static func attach(field: TextEdit) -> PKeyFocusRing:
 
 
 func _sync() -> void:
-	visible = _field != null and _field.has_focus() and _field.is_visible_in_tree()
-	set_process(visible)
-	_follow()
-	queue_redraw()
+	var on := _field != null and _field.has_focus() and _field.is_visible_in_tree()
+	set_process(on)
+	if on:
+		_follow()
+	else:
+		visible = false
 
 
 func _process(_delta: float) -> void:
 	_follow()
 
 
-## Sit exactly over the field, whatever transform its ancestors carry (a scale tween, a scroll).
+## The ring node sits over the nearest scrolling ancestor's visible rect (or the field's own rect when
+## none clips it) and clips to it, so a field scrolled half out shows only its visible part of the
+## ring. It follows the field's own transform and the fade of every ancestor (a dialog's entry).
+var _origin := Vector2.ZERO
+
+
 func _follow() -> void:
 	if _field == null or not is_instance_valid(_field):
 		return
 	var t := _field.get_global_transform()
-	position = t.origin
-	rotation = t.get_rotation()
+	var clip := Rect2(t.origin, _field.size * t.get_scale()).grow(24.0 * t.get_scale().x)
+	var n := _field.get_parent()
+	var a := 1.0
+	var c: CanvasItem = _field
+	while c != null:
+		a *= c.modulate.a * c.self_modulate.a
+		c = c.get_parent() as CanvasItem if c.get_parent() is CanvasItem else null
+	while n != null:
+		if n is ScrollContainer or (n is Control and (n as Control).clip_contents):
+			clip = clip.intersection((n as Control).get_global_rect())
+		n = n.get_parent()
+	clip_contents = true
+	position = clip.position
+	size = clip.size / t.get_scale()
 	scale = t.get_scale()
-	if size != _field.size:
-		size = _field.size
-		queue_redraw()
+	_origin = (t.origin - clip.position) / t.get_scale()
+	modulate.a = a
+	visible = _field.has_focus() and _field.is_visible_in_tree() and clip.has_area()
+	queue_redraw()
 
 
 func _draw() -> void:
@@ -80,6 +100,6 @@ func _draw() -> void:
 		g.border_color.a = 0.3 * float(GLOW_STEPS - i + 1) / float(GLOW_STEPS * 3)
 		g.set_corner_radius_all(radius + reach + i * 2)
 		g.set_expand_margin_all(reach + i * 2)
-		draw_style_box(g, Rect2(Vector2.ZERO, size))
+		draw_style_box(g, Rect2(_origin, _field.size))
 	if ring is StyleBoxFlat:
-		draw_style_box(ring, Rect2(Vector2.ZERO, size))
+		draw_style_box(ring, Rect2(_origin, _field.size))

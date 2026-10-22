@@ -270,6 +270,7 @@ func _render() -> void:
 	show_text(_drop, t.text("offline_drop_hint") if not web and OS.has_feature("pc") else "")
 	show_text(_message, message)
 	_message.theme_type_variation = "PKeyMuted" if message_ok else "PKeyError"
+	fx_error(message if message != "" and not message_ok else "")
 	_import.text = t.text("offline_import")
 	set_loading(busy)
 	set_process(busy)
