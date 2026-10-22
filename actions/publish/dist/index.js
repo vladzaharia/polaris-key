@@ -25778,7 +25778,7 @@ function cmdLogout(io) {
       );
     const until = cred.expiresAt !== null ? `until ${day(cred.expiresAt, io.env)}` : "until it ends";
     const message = `Signed out on this computer, but ${outcome.why}, so it still works ${until}.`;
-    const revokeUrl = `${origin}/manage/#/personal-tokens`;
+    const revokeUrl = maskTokens(`${origin}/manage/#/personal-tokens`);
     const quote = t.caps.unicode ? ["“", "”"] : ['"', '"'];
     const hint2 = `pkeyp_${t.symbols.ellipsis}${shown(hintOf(stored), io.env)}`;
     const revokeLine = stored.label ? `Revoke ${quote[0]}${shown(stored.label, io.env)}${quote[1]} (${hint2}) in Personal tokens:` : `Revoke ${hint2} in Personal tokens:`;
@@ -27094,9 +27094,19 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 var DOCTOR_TIMEOUT_MS = 15e3;
 async function readCapped(res) {
   const text2 = await readCappedText(res);
-  if (text2 === null) throw new Error("The answer was too large to read.");
-  return JSON.parse(text2);
+  if (text2 === null) throw new ReadFailure("too large or unreadable");
+  try {
+    return JSON.parse(text2);
+  } catch {
+    throw new ReadFailure("not JSON");
+  }
 }
+var ReadFailure = class extends Error {
+  constructor(why) {
+    super(`The answer could not be read: ${why}.`);
+    this.name = "ReadFailure";
+  }
+};
 var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 function manifestFact(result, problem, fileWarnings = []) {
   if (!result)
@@ -27133,6 +27143,8 @@ async function checkRemote(opts) {
     url,
     host,
     keys: [],
+    keyStates: [],
+    pinned: [],
     ...status === void 0 ? {} : { status },
     services: [],
     signing: null,
@@ -27173,12 +27185,20 @@ async function checkRemote(opts) {
     );
   }
   const services = Object.entries(rec(rec(body)["services"])).filter(([, service]) => rec(service)["enabled"] === true).map(([slug]) => slug);
-  const signing = rec(body)["signing"] ?? rec(body)["trust"] ?? {};
-  const keys = signing !== null && typeof signing === "object" && !Array.isArray(signing) ? Object.keys(signing) : [];
+  const trust = rec(rec(body)["trust"]);
+  const keyStates = asArray(trust["keys"]).map(rec).filter((k) => typeof k["kid"] === "string" && k["kid"] !== "").map((k) => ({
+    kid: k["kid"],
+    status: typeof k["status"] === "string" ? k["status"] : k["active"] === true ? "active" : "unknown"
+  }));
+  const signing = rec(trust["pinnedKeys"]);
+  const pinned = Object.keys(signing);
+  const keys = keyStates.map((k) => k.kid);
   return {
     url,
     host,
     keys,
+    keyStates,
+    pinned,
     services,
     signing,
     facts: [
@@ -27334,8 +27354,31 @@ async function gatherSession(opts) {
   });
   const api = cred.token.startsWith("pkeya_");
   const host = hostOf3(cred.origin);
-  const reach = () => signal?.aborted ? "The console did not answer in time." : `Can't reach ${host}.`;
-  const reachFix = () => signal?.aborted ? "pkey doctor" : "Check your network, or --base-url.";
+  const failed = (e) => {
+    if (signal?.aborted)
+      return {
+        detail: "The console did not answer in time.",
+        fix: "pkey doctor",
+        code: "timeout"
+      };
+    if (e instanceof Redirected)
+      return {
+        detail: maskTokens(e.message),
+        fix: "Check --base-url.",
+        code: "redirect"
+      };
+    if (e instanceof Unreachable || !(e instanceof ReadFailure))
+      return {
+        detail: `Can't reach ${host}.`,
+        fix: "Check your network, or --base-url.",
+        code: "network"
+      };
+    return {
+      detail: `${host} didn't answer as a Polaris Key console.`,
+      fix: "Check --base-url.",
+      code: "not-a-console"
+    };
+  };
   const ended = () => ({
     signedIn: {
       state: "ended",
@@ -27372,12 +27415,8 @@ async function gatherSession(opts) {
           endsAt: ends
         };
       }
-    } catch {
-      signedIn = {
-        state: "unreadable",
-        detail: reach(),
-        fix: reachFix()
-      };
+    } catch (e) {
+      signedIn = { state: "unreadable", ...failed(e) };
     }
   }
   if (!slug)
@@ -27428,10 +27467,10 @@ async function gatherSession(opts) {
         ...integrationFacts(await readCapped(res), slug, cred.origin, io.env)
       }
     };
-  } catch {
+  } catch (e) {
     return {
       signedIn,
-      integration: { state: "unavailable", detail: reach(), fix: reachFix() }
+      integration: { state: "unavailable", ...failed(e) }
     };
   }
 }
@@ -27565,18 +27604,33 @@ function buildReport(input) {
           )
         ]
       });
-      if (!remote.keys.length)
+      if (!remote.keyStates.length)
         keys.push({
           lead: "warn",
           name: "Signing key",
           parts: [dim("none exposed")]
         });
-      for (const kid of remote.keys)
-        keys.push({
-          lead: "ok",
-          name: "Signing key",
-          parts: [plain3(u(kid)), dim("active")]
-        });
+      for (const k of remote.keyStates) {
+        if (k.status === "staged") {
+          const folders = config.dirs.length ? config.dirs : ["./"];
+          keys.push({
+            lead: "warn",
+            name: "Next signing key",
+            parts: [plain3(u(k.kid)), dim("is staged")],
+            fixes: folders.map(
+              (d2) => `pkey sdk --lang <sdk> --write --out ${d2 === "./" ? "" : d2}`.trimEnd()
+            ),
+            notes: [
+              [dim(`Pin ${u(k.kid)} beside the active key in each folder.`)]
+            ]
+          });
+        } else
+          keys.push({
+            lead: k.status === "active" ? "ok" : "none",
+            name: "Signing key",
+            parts: [plain3(u(k.kid)), dim(u(k.status))]
+          });
+      }
     }
   } else
     manifest.push({
@@ -27881,8 +27935,11 @@ function renderReport(report2, t, runMs) {
       for (const l of flow2(note.map(piece), width - 4, sep))
         out.push(`    ${paint(l)}`);
     const fixIndent = stackAll ? 4 : 6;
-    if (r.fix)
-      wrapSpans([{ text: r.fix }], Math.max(1, width - fixIndent - 2)).forEach(
+    for (const fixText of [...r.fix ? [r.fix] : [], ...r.fixes ?? []])
+      wrapSpans(
+        [{ text: fixText }],
+        Math.max(1, width - fixIndent - 2)
+      ).forEach(
         (l, n) => out.push(
           `${" ".repeat(fixIndent)}${n === 0 ? `${arrow} ` : "  "}${paint(l)}`
         )
@@ -48784,7 +48841,18 @@ var HANDLERS = {
   validate: (p, rt) => cmdValidate(p, rt.cwd, rt.stdout, rt.term(rt.stdout)),
   completion: (p, rt) => cmdCompletion(p, rt.stdout, rt.stderr),
   distribution: (p, rt) => cmdDistribution(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
-  doctor: (p, rt) => cmdDoctor(p, rt.cwd, rt.stdout, rt.term(rt.stdout), rt.ci, adminIo(p, rt)),
+  doctor: (p, rt) => guarded(
+    accountIo(p, rt),
+    "doctor",
+    () => cmdDoctor(
+      p,
+      rt.cwd,
+      rt.stdout,
+      rt.term(rt.stdout),
+      rt.ci,
+      adminIo(p, rt)
+    )
+  ),
   bundle: (p, rt) => withAdminCredential(
     adminIo(p, rt),
     "bundle",
@@ -49200,6 +49268,7 @@ async function cmdDoctor(parsed, cwd, stdout, term, ci, admin) {
     product: flagString(parsed, "product"),
     baseUrl: flagString(parsed, "base-url")
   });
+  originFor({ baseUrl: ctx.baseUrl.url }, "doctor");
   const signal = AbortSignal.timeout(DOCTOR_TIMEOUT_MS);
   const io = { ...admin, baseUrl: ctx.baseUrl.url, signal };
   let manifest;
@@ -49228,7 +49297,7 @@ async function cmdDoctor(parsed, cwd, stdout, term, ci, admin) {
   const config = await checkConfigFiles({
     cwd,
     host: hostOf3(ctx.baseUrl.url),
-    exposed: reached ? remote.keys : null
+    exposed: reached ? remote.pinned : null
   });
   const report2 = buildReport({
     product: ctx.product,
@@ -50237,7 +50306,7 @@ async function cmdListingImport(parsed, cwd, stdout, ci, token) {
     ...ci.fetchImpl ? { fetchImpl: ci.fetchImpl } : {}
   });
   stdout.write(
-    flagBool(parsed, "json") || flagBool(parsed, "dry-run") ? `${untrustedJson(flagBool(parsed, "dry-run") ? result.upload : result, 2)}
+    flagBool(parsed, "json") ? envelope("listing import", 0, { ...result }) : flagBool(parsed, "dry-run") ? `${untrustedJson(result.upload, 2)}
 ` : `${formatImport(result, ci.env)}
 `
   );

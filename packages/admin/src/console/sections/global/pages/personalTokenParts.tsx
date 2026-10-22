@@ -64,12 +64,8 @@ export function ScopeTag({ scope }: { scope: string }): React.ReactElement {
 export function TokenCell({ t }: { t: TokenLike }): React.ReactElement {
   const host = t.scope === "admin" ? hostOfLabel(t.label) : null;
   return (
-    <span className="inline-flex min-w-0 max-w-full flex-col max-[1279px]:max-w-[15rem]">
-      <span
-        dir="auto"
-        className="max-[1279px]:truncate max-sm:whitespace-normal [overflow-wrap:anywhere]"
-        title={t.label}
-      >
+    <span className="inline-flex min-w-0 max-w-full flex-col">
+      <span dir="auto" className="[overflow-wrap:anywhere]" title={t.label}>
         {host ?? t.label}
       </span>
       <span className="font-mono text-xs text-fg-muted">

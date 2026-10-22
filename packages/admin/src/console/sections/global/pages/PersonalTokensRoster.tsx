@@ -80,7 +80,7 @@ const emailOf = (t: AdminPersonalToken): React.ReactNode =>
   t.email ? (
     <span
       dir="ltr"
-      className="inline-block max-w-full align-bottom max-[1279px]:max-w-[13rem] max-[1279px]:truncate max-sm:whitespace-normal [overflow-wrap:anywhere]"
+      className="inline-block max-w-full align-bottom [overflow-wrap:anywhere]"
       title={t.email}
     >
       {t.email}

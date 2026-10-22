@@ -79,4 +79,27 @@ describe("Personal tokens roster", () => {
     // Focus does not fall to the body.
     await waitFor(() => expect(document.activeElement).not.toBe(document.body));
   });
+
+  it("a label and an email wrap in full at every width: no truncation class, the full text in the DOM", async () => {
+    const long = {
+      ...base,
+      label: "Ada's very long laptop label for the studio",
+      email: "ada.lindqvist.with.a.long.address@subsidiary.example.com",
+    };
+    boot("#/personal-tokens", {
+      extra: {
+        "/manage/api/me/personal-tokens": () => ({ tokens: [] }),
+        "/manage/api/account-tokens": () => ({ tokens: [long] }),
+      },
+    });
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("radio", { name: "Everyone" }));
+    const email = (await screen.findAllByText(long.email))[0]!;
+    const label = (await screen.findAllByText(long.label))[0]!;
+    for (const el of [email, label]) {
+      expect(el.className).not.toMatch(/truncate|max-\[1279px\]/);
+      expect(el.className).toContain("[overflow-wrap:anywhere]");
+    }
+  });
 });

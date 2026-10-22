@@ -34,7 +34,7 @@ export function PersonalTokens(): React.ReactElement {
               What <code>pkey</code> and package installs use to act as you.{" "}
               <a
                 className="underline underline-offset-2 hover:text-fg-strong"
-                href={`${docsUrl("packageFeeds")}#personal-tokens`}
+                href={docsUrl("personalTokens")}
                 target="_blank"
                 rel="noreferrer"
               >

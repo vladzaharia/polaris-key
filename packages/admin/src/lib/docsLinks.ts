@@ -46,6 +46,8 @@ export const DOCS_LINKS = {
   storefronts: "/docs/features/ship-builds/channels/storefronts/",
   storefrontListing: "/docs/features/ship-builds/channels/polaris-key/",
   packageFeeds: "/docs/features/ship-builds/packages/",
+  // The Personal tokens page's Learn-more link: the section on the packages page.
+  personalTokens: "/docs/features/ship-builds/packages/#personal-tokens",
   // ST-34.11: the CLI reference, where `pkey login` is.
   cliReference: "/docs/reference/cli/",
   packageFeedsHost: "/docs/features/ship-builds/packages/",
