@@ -7190,6 +7190,45 @@ yet. SR-1 (isolation) follows U-05.8.
   are guarded on the product being live, so a recreated object writes no directory or counter row
   for a deleted product, and the purge's next run erases it if it was listed.
 
+### The Cloud Sync pull: `GET /<p>/sync` (U-05.12)
+
+The first device route of Cloud Sync, and a read: it never writes the object, licence state, a
+cached document or the audit log. Rows are S-17 §5.14's; the route is `services/sync/handlers/pull.ts`.
+
+- **T2, a leaked licence key does not reach the data.** The route takes a `pkeyt_` device token and
+  nothing else (`validateDeviceToken`, which refuses a licence key on shape). The principal is
+  `syncAccess().subject`, from the device's sign-in binding; a key-activated device on an
+  account-owned licence has none and gets `403 account_required`, with no object call and no
+  change to the licence, device or key rows (`test/cloudSyncPull.test.ts`).
+- **T3, a stolen token after sign-out.** The subject is read from the device row on every request,
+  and again after the object answers (from a fresh row, never the one the request started with). A
+  sign-out, a "sign out everywhere" or a merge that lands in between changes the answer: no
+  binding is `account_required`, a moved binding repeats the pull against the survivor. The
+  object's `410 absorbed` is retried once the same way and otherwise is a `503 unavailable` with
+  `Retry-After`. The object's own code (`absorbed`, `pin_mismatch`) is mapped in one place
+  (`handlers/common.ts`) and never copied into a response.
+- **T5, client data does not reach a gate.** The route answers the person's synced settings and
+  nothing else, and nothing on the licence, config or gate paths imports `services/sync`
+  (`boundaries.test.ts` for the layers; `cloudSyncPull.test.ts` walks the import graph from
+  `core/licensing/payload.ts`, `core/licensing/gate.ts` and `core/documents.ts`). A pull never
+  changes `lastSyncUnauthorized` or a cached document.
+- **T13, a stolen browser token.** Bearer only: a session cookie is never read, so a cookie-only
+  request is `401`. CORS covers `sync` for a page on the product's `web.origins` only, never sends
+  `Access-Control-Allow-Credentials`, and is applied after the handler (`core/cors.ts`). The token
+  is scoped to one device of one product: product A's token on product B is `401`.
+- **Quota and tier are not the object's to say.** `quota` is `syncAccess`'s answer for the
+  requesting device; the object supplies only `usage`. A request parameter names no subject, quota
+  or family: the platform family comes from the device row (`core/devices/platformFamily.ts`).
+- **A deleted product is refused before the object** (`404`), by a second read of the product row
+  right before the call. Residual: the purge runs before the product's status flips, so during a
+  multi-run purge a pull is still served and returns the person's own data. A pull creates
+  nothing (the object's read path never creates a schema), so it cannot recreate an erased object;
+  the push route must still refuse (U-05.13).
+- **ETag.** The tag is the spec's `"<seq>.<lastMutationId>"`. A page with `more: true` carries no
+  tag and is never `304`, so a replayed tag cannot stop a client mid-snapshot. The tag does not
+  cover `quota` or `aliases`: a client that only revalidates does not learn a changed quota until
+  its next `200` (a push `200` carries both).
+
 ### The account override layer and the licence-override migration (U-03)
 
 Operators' managed config for one account on one product (`account_overrides`, keyed by the

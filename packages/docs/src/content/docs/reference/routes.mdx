@@ -394,6 +394,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/release/publish/uploads` | release | Obtain an upload ticket and R2 temporary credentials (trusted publishing) |
 | GET | `/{product}/release/records/{sha256}` | release | A CI-signed release record, by its SHA-256 |
 | POST | `/{product}/release/releases/{releaseId}/yank` | release | Yank a release (CI) |
+| GET | `/{product}/sync` | sync | Pull the person's synced settings since a cursor |
 | GET | `/{product}/update/{channel}/{buildId}.AppImage.zsync` | update | The stable per-channel zsync control file of an AppImage build |
 | GET | `/{product}/update/{channel}/app.appinstaller` | update | The MSIX App Installer file for a channel |
 | GET | `/{product}/update/{channel}/appcast.xml` | update | The Sparkle appcast for a channel |

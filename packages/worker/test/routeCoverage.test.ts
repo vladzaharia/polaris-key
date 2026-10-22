@@ -494,7 +494,7 @@ describe("router → spec", () => {
   it("every mounted service declares a surface", () => {
     // A service with no HTTP route yet declares `[]` (and is listed here, so the day it gains a
     // route its surface must be declared with it).
-    const ROUTELESS = new Set(["sync"]);
+    const ROUTELESS = new Set<string>();
     for (const [slug, descriptor] of SERVICES) {
       expect(
         Array.isArray(descriptor.surface),
@@ -514,7 +514,7 @@ describe("router → spec", () => {
           );
         if (storeHook) continue;
         expect(route.path, `${slug}: ${route.path}`).toMatch(
-          new RegExp(`^/\\{product\\}/${slug}/`),
+          new RegExp(`^/\\{product\\}/${slug}(/|$)`),
         );
         expect(route.methods.length, `${slug}: ${route.path}`).toBeGreaterThan(
           0,
