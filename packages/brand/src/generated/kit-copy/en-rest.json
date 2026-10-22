@@ -255,6 +255,8 @@
   "core.codes.op_invalid_for_policy.message": "That change isn't allowed for this setting.",
   "core.codes.setting_not_synced.title": "Not synced",
   "core.codes.setting_not_synced.message": "This setting isn't synced to your account.",
+  "core.codes.collection_unknown.title": "Unknown collection",
+  "core.codes.collection_unknown.message": "This collection isn't available.",
   "core.codes.quota_exceeded.title": "Storage full",
   "core.codes.quota_exceeded.message": "Your synced storage is full. Free some space, then try again.",
   "core.codes.writes_paused.title": "Sync paused",

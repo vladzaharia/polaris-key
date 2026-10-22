@@ -5448,6 +5448,16 @@ msgstr "동기화되지 않음"
 msgid "core.codes.setting_not_synced.message"
 msgstr "이 설정은 계정과 동기화되지 않습니다."
 
+#. Unknown collection
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.collection_unknown.title"
+msgstr "알 수 없는 컬렉션"
+
+#. This collection isn't available.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.collection_unknown.message"
+msgstr "이 컬렉션은 사용할 수 없습니다."
+
 #. Storage full
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.quota_exceeded.title"

@@ -941,6 +941,8 @@
   "core.codes.op_invalid_for_policy.message": "Ese cambio no está permitido para este ajuste.",
   "core.codes.setting_not_synced.title": "No sincronizado",
   "core.codes.setting_not_synced.message": "Este ajuste no se sincroniza con tu cuenta.",
+  "core.codes.collection_unknown.title": "Colección desconocida",
+  "core.codes.collection_unknown.message": "Esta colección no está disponible.",
   "core.codes.quota_exceeded.title": "Almacenamiento lleno",
   "core.codes.quota_exceeded.message": "Tu almacenamiento sincronizado está lleno. Libera espacio e inténtalo de nuevo.",
   "core.codes.writes_paused.title": "Sincronización en pausa",

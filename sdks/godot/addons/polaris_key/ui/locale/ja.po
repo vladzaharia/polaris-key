@@ -5448,6 +5448,16 @@ msgstr "同期されません"
 msgid "core.codes.setting_not_synced.message"
 msgstr "この設定はアカウントと同期されません。"
 
+#. Unknown collection
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.collection_unknown.title"
+msgstr "不明なコレクション"
+
+#. This collection isn't available.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.collection_unknown.message"
+msgstr "このコレクションは利用できません。"
+
 #. Storage full
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.quota_exceeded.title"

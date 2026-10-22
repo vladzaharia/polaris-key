@@ -2075,6 +2075,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_setting_not_synced_message">Diese Einstellung wird nicht mit Ihrem Konto synchronisiert.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_collection_unknown_title">Unbekannte Sammlung</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_collection_unknown_message">Diese Sammlung ist nicht verfügbar.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_title">Speicher voll</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_message">Ihr synchronisierter Speicher ist voll. Geben Sie Platz frei und versuchen Sie es erneut.</string>
