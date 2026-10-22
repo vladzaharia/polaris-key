@@ -19,9 +19,9 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 78 | 9 | 28 | 0 |
+| Node | `node` | 79 | 9 | 27 | 0 |
 | React | `web`, `desktop-bridge` | 82 | 19 | 14 | 0 |
-| Python | `python` | 78 | 9 | 28 | 0 |
+| Python | `python` | 79 | 9 | 27 | 0 |
 | Swift | `macos`, `ios` | 85 | 9 | 20 | 1 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 89 | 9 | 17 | 0 |
 | Kotlin | `android`, `jvm` | 78 | 8 | 28 | 1 |
@@ -183,7 +183,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `server.license` | Gate a server route with the app's licence document: X-PKey-License, the six-step verdict and the problem body | `backend-matrix.json` `verdict` + `backend-matrix.json` `problem` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | planned (SP-62); N/A (ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | ✓; N/A (android: runtime) | web, desktop-bridge, ios, android, macos, windows, linux: runtime |
 | `server.signin` | requireSignIn(): the signed-in account's pairwise subject from the licence document | `backend-matrix.json` `verdict` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | planned (SP-62); N/A (ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | ✓; N/A (android: runtime) | web, desktop-bridge, ios, android, macos, windows, linux: runtime |
-| `server.config` | Managed config on a server: serverClient() with a memory store and a stable device id | unit | planned (SP-63) | N/A (web, desktop-bridge: runtime) | planned (SP-63) | planned (unowned); N/A (ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | planned (unowned); N/A (android: runtime) | web, desktop-bridge, ios, android, macos, windows, linux: runtime |
+| `server.config` | Managed config on a server: serverClient() with a memory store and a stable device id | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | planned (unowned); N/A (ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | planned (unowned); N/A (android: runtime) | web, desktop-bridge, ios, android, macos, windows, linux: runtime |
 | `server.webhooks` | Developer webhooks: verifyWebhook() and polarisWebhook() in every server drop-in | unit | planned (SP-67) | N/A (web, desktop-bridge: runtime) | planned (SP-67) | planned (SP-67); N/A (ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | planned (SP-67); N/A (android: runtime) | web, desktop-bridge, ios, android, macos, windows, linux: runtime |
 
 ## Unowned gaps

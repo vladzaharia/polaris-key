@@ -270,6 +270,30 @@ def test_each_refusal() -> None:
 
 The kit has a clock you move with `kit.clock.advance(seconds)`. For a trust manifest, `kit.trust` is a fake service: `kit.trust.add_key()` publishes a second key, `kit.trust.offline = True` makes the fetch fail like an unreachable Polaris Key, and `PolarisKey(**kit.options(**kit.trust.options()))` turns the refresh on against it.
 
+## Read managed config on the server
+
+A server reads managed config as a device with its own license, so it never takes a customer's seat. Give it a license key whose tier has a high device limit. `server_client()` is the normal client with a memory store, a device id that survives a restart, the key from `PKEY_LICENSE_KEY`, no device reports and a background refresh.
+
+Set the key and a stable device id in the server's environment:
+
+- `PKEY_LICENSE_KEY` is the server's license key.
+- `PKEY_DEVICE_ID` is a 32-character id you generate once. Or set `PKEY_DEVICE_ID_FILE` to a file on a volume, and the first start writes an id there.
+
+A server with neither refuses to start, because a new id on each restart would take a new seat each time.
+
+```python title="Python: config.py"
+import polaris_config
+from polaris_key import server_client
+
+client = server_client(**polaris_config.CONFIG, version="1.4.2")
+
+
+def run_concurrency() -> int:
+    return client.config.get_config("run.concurrency", 3)
+```
+
+`server_client()` returns once the key is activated and the first sync is done. A refused key raises the server's code, for example `device_limit`. Per-user config is not offered: the device's config document carries secrets, so never forward it to a browser.
+
 ## Check it works
 
 Send a request with no `X-PKey-License` header to a gated route. You should get a 401 with `"code": "license_required"`. Then send the app's license from `pkey dev` ([Run Polaris Key locally](/docs/build/local/)).

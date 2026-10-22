@@ -211,6 +211,29 @@ describe("the export route", async () => {
 
 The kit has a clock you move with `kit.clock.advance(seconds)`. For a Hono app, `app.request("/api/export", { headers })` needs no server. For a trust manifest, `kit.trust` is a fake `fetch`: `kit.trust.addKey()` publishes a second key, `kit.trust.offline = true` makes the fetch fail like an unreachable Polaris Key, and `kit.polarisKey(kit.trust.options())` turns the refresh on against it.
 
+## Read managed config on the server
+
+A server reads managed config as a device with its own license, so it never takes a customer's seat. Give it a license key whose tier has a high device limit. `serverClient()` is the normal client with a memory store, a device id that survives a restart, the key from `PKEY_LICENSE_KEY`, no device reports and a background refresh.
+
+Set the key and a stable device id in the server's environment:
+
+- `PKEY_LICENSE_KEY` is the server's license key.
+- `PKEY_DEVICE_ID` is a 32-character id you generate once. Or set `PKEY_DEVICE_ID_FILE` to a file on a volume, and the first start writes an id there.
+
+A server with neither refuses to start, because a new id on each restart would take a new seat each time.
+
+```ts title="Node: config.ts"
+import { serverClient } from "@polaris-key/node";
+import { polarisConfig } from "./polaris.config";
+
+const client = await serverClient({ ...polarisConfig, version: "1.4.2" });
+
+export const runConcurrency = (): number =>
+  client.config.getConfig("run.concurrency", 3);
+```
+
+`serverClient()` resolves once the key is activated and the first sync is done. A refused key throws the server's code, for example `device_limit`. Per-user config is not offered: the device's config document carries secrets, so never forward it to a browser.
+
 ## Check it works
 
 Send a request with no `X-PKey-License` header to a gated route. You should get a 401 with `"code": "license_required"`. Then send the app's license from `pkey dev` ([Run Polaris Key locally](/docs/build/local/)).

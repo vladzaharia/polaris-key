@@ -37,16 +37,7 @@ Before you start:
 
 6. **App** Create the client and sync. Read a value with the client's config reader, with your own default as the fallback. List the user-visible settings for a settings screen. The SDK page has the code for each runtime.
 7. **App** Optional: read a secret through the client's secret reader. Secrets arrive in the signed document and are cached with it, not in the keyring.
-8. **Server** Optional: read the config on your backend with the plain Node client, the same as in the app. The backend has no drop-in for config: it creates the client, syncs, then reads the key.
-
-   ```ts title="Node: server.ts"
-   import type { PolarisKeyClient } from "@polaris-key/node";
-
-   export async function runConcurrency(client: PolarisKeyClient) {
-     await client.sync();
-     return client.getConfig("run.concurrency", 3);
-   }
-   ```
+8. **Server** Optional: read the config on your backend with `serverClient()` (Node) or `server_client()` (Python). A server is a device with its own license, set by `PKEY_LICENSE_KEY` and a stable `PKEY_DEVICE_ID`, and it sends no device reports. [Read managed config on the server](/docs/features/licensing/server-node/#read-managed-config-on-the-server) has the code, and the [Python page](/docs/features/licensing/server-python/#read-managed-config-on-the-server) the same in Python.
 
 | SDK    | Where the code is                                   |
 | ------ | --------------------------------------------------- |
