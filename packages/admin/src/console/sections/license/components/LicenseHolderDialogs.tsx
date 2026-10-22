@@ -24,6 +24,7 @@ import {
 } from "../../../../api.js";
 import { confirmFor } from "../../../../lib/actions.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
+import { ErrorDescription } from "../../../../ui/CopyDetails.js";
 import { formatDateTime, fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
@@ -211,7 +212,9 @@ function AssignForm({
         />
         {form.submitError && !Object.keys(form.errors).length ? (
           <Callout tone="danger" title="The license wasn't assigned" live>
-            {errorCopy(form.submitError, { thing: "License" }).description}
+            <ErrorDescription
+              copy={errorCopy(form.submitError, { thing: "License" })}
+            />
           </Callout>
         ) : null}
       </DialogBody>

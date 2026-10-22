@@ -25,6 +25,7 @@ import {
   formatRelative,
   fromSeconds,
 } from "../../../../lib/format.js";
+import { platformName } from "../../../../lib/vocab/platforms.js";
 import { actorName, type SeatLimit } from "./shared.js";
 
 const ORIGIN_TITLES = {
@@ -46,7 +47,7 @@ function Fact({
   return (
     <div className="flex items-start justify-between gap-4 px-5 py-3 text-sm">
       <dt className="shrink-0 text-fg-muted">{label}</dt>
-      <dd className="min-w-0 break-words text-right text-fg-strong">
+      <dd className="min-w-0 break-words text-end text-fg-strong">
         {children}
         {sub ? (
           <span className="mt-0.5 block text-xs text-fg-muted">{sub}</span>
@@ -171,7 +172,7 @@ export function OriginCard({
   return (
     <Section
       id="origin"
-      title={license.origin ? ORIGIN_TITLES[license.origin] : "Origin"}
+      title="Origin"
       variant="settings"
       actions={
         <Button asChild variant="link" size="sm">
@@ -183,6 +184,9 @@ export function OriginCard({
       }
     >
       <dl className="divide-y divide-border">
+        {license.origin ? (
+          <Fact label="Method">{ORIGIN_TITLES[license.origin]}</Fact>
+        ) : null}
         <Fact label="Created">{created}</Fact>
       </dl>
     </Section>
@@ -220,7 +224,9 @@ export function InvitationCard({
 }
 
 function deviceLine(d: DeviceDto): string {
-  return [d.platform, d.appVersion].filter(Boolean).join(" · ");
+  return [d.platform ? platformName(d.platform) : "", d.appVersion]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /** Floating: no holder, so the key itself activates devices. */
@@ -323,7 +329,7 @@ export function DevicesCard({
                   </span>
                 ) : null}
               </span>
-              <span className="shrink-0 text-right text-xs text-fg-muted">
+              <span className="shrink-0 text-end text-xs text-fg-muted">
                 {formatRelative(fromSeconds(d.lastSeen))}
                 <span
                   className="block"

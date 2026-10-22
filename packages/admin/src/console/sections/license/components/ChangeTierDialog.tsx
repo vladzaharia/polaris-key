@@ -17,6 +17,7 @@ import type {
 } from "../../../../api.js";
 import { mutate } from "../../../data/mutations.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
+import { ErrorDescription } from "../../../../ui/CopyDetails.js";
 import { formatDate, fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
@@ -217,7 +218,7 @@ function ChangeTierForm({
   return (
     <Form form={form} aria-label="Change tier" className="contents">
       <DialogBody className="space-y-4">
-        <FormField name="tier" label="Move to">
+        <FormField name="tier" label="Tier">
           {(f) => (
             <Combobox
               {...f}
@@ -296,7 +297,9 @@ function ChangeTierForm({
         )}
         {form.submitError && !Object.keys(form.errors).length ? (
           <Callout tone="danger" title="The tier wasn't changed" live>
-            {errorCopy(form.submitError, { thing: "License" }).description}
+            <ErrorDescription
+              copy={errorCopy(form.submitError, { thing: "License" })}
+            />
           </Callout>
         ) : null}
       </DialogBody>

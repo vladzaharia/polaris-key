@@ -1,15 +1,13 @@
 /**
  * The license record (ADMIN.md §6.5.2, T3; licenses.detail). The header carries the status, the
- * holder and the id, the **Tier: X ▾** control that opens Change tier, one primary action and a
- * menu with the rest (LDT-7, LDT-8). Route tabs (LDT-4): Status (segment `overview`: Limits with
- * where each value comes from, Devices, and the rail's Duration and Origin), Keys, Devices,
+ * holder and the id, the **Tier: X ▾** control, one primary action and a menu (LDT-7, LDT-8).
+ * Route tabs (LDT-4): Status (`overview`: Limits, Devices, Duration, Origin), Keys, Devices,
  * Activity and Config.
  *
  * LX-30 (S-24 §8.8): the holder variants. A license **waiting** for its holder leads with an
  * Invitation card and **Resend invitation**; a **floating** one with Anyone with the key and
- * **Assign to a person**, and "Key entries 3 of 10" beside the holder line (PX-W9). Reassign and
- * Make floating are I-12's relink tool (L3 typed). The newest move shows with its **Undo…** while
- * its 72 hours run.
+ * **Assign to a person**. Reassign and Make floating are I-12's relink tool (L3 typed); the
+ * newest move shows its **Undo…** for 72 hours.
  */
 
 import * as React from "react";
@@ -33,13 +31,12 @@ import { PageHeader } from "../../../../ui/PageHeader.js";
 import { PageTabs } from "../../../components/PageTabs.js";
 import { LicenseRegistryTokens } from "../../feeds/pages/RegistryTokens.js";
 import { confirmFor } from "../../../../lib/actions.js";
-import { fromSeconds, formatRelative } from "../../../../lib/format.js";
+import { fromSeconds } from "../../../../lib/format.js";
 import { SIGN_IN_LABELS } from "../../../../lib/labels.js";
 import { Button } from "../../../../ui/Button.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
-import { IdChip } from "../../../../ui/IdChip.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { toast } from "../../../../ui/toast.js";
 import { LicenseConfig } from "./LicenseConfig.js";
@@ -57,7 +54,6 @@ import {
   UndoableMoveCallout,
 } from "../components/LicenseHolderDialogs.js";
 import {
-  HolderLine,
   holderOf,
   licenseTitle,
   undoableMove,
@@ -71,6 +67,8 @@ import { ExpiryDialog, ProfilesDialog } from "./LicenseTerms.js";
 import { LicenseActivity } from "./LicenseActivity.js";
 import { ChangeTierDialog } from "../components/ChangeTierDialog.js";
 import {
+  HeaderStatus,
+  RecordFacts,
   StatusTab,
   useFocusTitleAfterUndo,
   type RecordDialog,
@@ -79,7 +77,6 @@ import {
   actorName,
   daysUntil,
   expiryText,
-  LicenseStatus,
   seatLimitOf,
   seatLimitText,
   useTiers,
@@ -197,7 +194,7 @@ function LicenseRecordBody({
 
   const id = license.id;
   const active = license.status === "active";
-  // Status stays "active" past expiresAt; a key emailed then would not activate anything.
+  // Status stays "active" past expiresAt, but a key emailed then would not activate.
   const expired =
     license.expiresAt != null && fromSeconds(license.expiresAt) <= Date.now();
   const holder = holderOf(license);
@@ -239,19 +236,21 @@ function LicenseRecordBody({
   const tierControl = (
     <Button
       variant="outline"
+      // A long tier name truncates (full name in the title and aria-label). Not at 200 % text
+      // on a phone: Change tier… is in More actions.
+      className="max-w-full sm:max-w-[16rem] max-sm:conbig:hidden"
       aria-haspopup="dialog"
       aria-label={`Tier: ${tierLabel ?? "No tier"}. Change tier`}
       iconStart={<Layers />}
       iconEnd={<ChevronDown />}
-      // A long tier name truncates (full name in the title and aria-label) rather than squeezing
-      // the title into a one-word-per-line column; on a phone the name is left to the Limits
-      // table and the button reads "Tier" (the gate rejects clipped text on a half-width button).
-      className="max-w-full sm:max-w-[16rem]"
       onClick={() => setDialog("tier")}
     >
       <span className="text-fg-muted conbig:sr-only">Tier</span>
       {tierLabel ? (
-        <span className="min-w-0 truncate max-sm:sr-only" title={tierLabel}>
+        <span
+          title={tierLabel}
+          className="min-w-0 max-w-56 truncate max-sm:max-w-full max-sm:conbig:whitespace-normal"
+        >
           {tierLabel}
         </span>
       ) : (
@@ -282,6 +281,21 @@ function LicenseRecordBody({
     </Button>
   );
 
+  // Drawn twice, CSS picks one: under the title, or under the tabs (phone, 200 % text, short).
+  const facts = (primary: boolean): React.ReactElement => (
+    <RecordFacts
+      primary={primary}
+      license={license}
+      waiting={waiting}
+      holderEmail={
+        inAccount && holder.kind === "assigned" ? holder.email : null
+      }
+      inAccount={inAccount}
+      keyEntries={keyEntries}
+      changedBy={changedBy}
+    />
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -296,7 +310,7 @@ function LicenseRecordBody({
         title={
           // The other end of the Licenses table's name (S-23 §6.1 shared-element): named
           // `pk-key` during a drill-down, fit-content like its source.
-          <span className="pk-vt-key block w-fit max-w-full">
+          <span className="pk-vt-key w-fit max-w-full line-clamp-2">
             {licenseTitle(license)}
           </span>
         }
@@ -304,17 +318,18 @@ function LicenseRecordBody({
         // facts strip below the tabs (CSS only; the other copy is `display: none`).
         titleAside={
           <span className="conbig:hidden">
-            <LicenseStatus license={license} />
+            <HeaderStatus license={license} waiting={waiting} />
           </span>
         }
         // The tier is a control beside the one action (licenses.detail): 50/50 on a phone.
         primaryAction={
-          <div className="grid grid-cols-2 gap-2 sm:flex [&>button]:min-w-0 conbig:[&>button]:whitespace-nowrap!">
+          <div className="grid grid-cols-2 gap-2 max-sm:conbig:grid-cols-1 sm:flex [&>button]:min-w-0 max-sm:[&>button]:whitespace-normal conbig:sm:[&>button]:whitespace-nowrap!">
             {tierControl}
             {mainAction}
           </div>
         }
         inlineSecondary={0}
+        menuLast
         secondaryActions={[
           { label: "Change tier…", onSelect: () => setDialog("tier") },
           ...(floating
@@ -369,6 +384,11 @@ function LicenseRecordBody({
             disabledReason: deletionBlockedReason(license.deletion),
           },
         ]}
+        factsRow={
+          <span className="hidden sm:flex conbig:hidden short:hidden">
+            {facts(true)}
+          </span>
+        }
         refetching={refetching}
         tabs={
           <PageTabs
@@ -406,26 +426,8 @@ function LicenseRecordBody({
         }
       />
 
-      <div
-        data-testid="record-facts"
-        className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted"
-      >
-        <span className="hidden conbig:inline-flex">
-          <LicenseStatus license={license} />
-        </span>
-        <HolderLine slug={slug} license={license} batch={batch} />
-        <IdChip value={id} noun="license id" />
-        {keyEntries ? (
-          <span data-testid="record-key-entries">
-            Key entries {keyEntries.used} of {keyEntries.limit}
-          </span>
-        ) : null}
-        {license.modifiedAt ? (
-          <span>
-            Changed {formatRelative(fromSeconds(license.modifiedAt))}
-            {changedBy ? ` by ${changedBy}` : ""}
-          </span>
-        ) : null}
+      <div className="hidden text-sm text-fg-muted max-sm:block conbig:block short:block">
+        {facts(false)}
       </div>
 
       {undoable ? (

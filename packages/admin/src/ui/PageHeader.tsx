@@ -40,6 +40,11 @@ export interface PageHeaderProps {
   description?: React.ReactNode;
   /** Badges after the description: `SourceBadge`, ids. */
   meta?: React.ReactNode;
+  /**
+   * A line of facts under the title row, the full width of the header (not just the title's
+   * column, which the actions narrow): a record's id and "Changed …".
+   */
+  factsRow?: React.ReactNode;
   /** T1: "Updated 2 min ago" plus Refresh. */
   freshness?: {
     updatedAt: number;
@@ -66,6 +71,11 @@ export interface PageHeaderProps {
   secondaryActions?: PageAction[];
   /** How many secondary actions show inline on ≥ 640 px (default 2; 0: all in "More actions"). */
   inlineSecondary?: number;
+  /**
+   * Draw "More actions" after the primary action, as the last thing on the row (a record with a
+   * control beside its primary action). Not for headers with freshness.
+   */
+  menuLast?: boolean;
   /** Always last in "More actions", after a separator, styled danger. */
   dangerActions?: PageAction[];
   /** `PageTabs`, under the header. */
@@ -106,10 +116,12 @@ export function PageHeader({
   titleAside,
   description,
   meta,
+  factsRow,
   freshness,
   primaryAction,
   secondaryActions = [],
   inlineSecondary = INLINE_SECONDARY,
+  menuLast = false,
   dangerActions = [],
   tabs,
   refetching = false,
@@ -179,11 +191,32 @@ export function PageHeader({
     !primaryAction,
   );
 
+  const trailing = menuLast && !freshness;
   const hasCluster =
     Boolean(freshness) ||
     inline.length > 0 ||
     desktopMenu.length > 0 ||
     mobileMenu.length > 0;
+
+  const primaryEl = primaryAction ? (
+    <div
+      className={cn(
+        "col-span-2 sm:@2xl:col-span-1 sm:@2xl:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto sm:@max-2xl:justify-self-end",
+        trailing
+          ? "sm:@2xl:col-start-2"
+          : cn(
+              "sm:@max-2xl:short:col-span-1 sm:@max-2xl:short:col-start-2",
+              // With a cluster the two share row 2; alone, the action sits beside the title.
+              hasCluster
+                ? "sm:@max-2xl:short:row-start-2"
+                : "sm:@max-2xl:short:row-start-1",
+              hasCluster ? "sm:@2xl:col-start-3" : "sm:@2xl:col-start-2",
+            ),
+      )}
+    >
+      {primaryAction}
+    </div>
+  ) : null;
 
   return (
     <header
@@ -271,19 +304,24 @@ export function PageHeader({
             ) : null}
           </div>
         </div>
+        {trailing ? primaryEl : null}
         {hasCluster ? (
           <div
             className={cn(
               "flex shrink-0 items-center justify-end gap-2",
+              // Last: beside the title on the first row, after the primary action when wide.
+              trailing && "col-start-2 row-start-1 sm:@2xl:col-start-3",
               // Below 42 rem the cluster takes its own row under the title. Alone (no primary
               // action to share the row with) it only does so below 36 rem: a lone action beside
               // a two-line title costs less height than a row of its own at 200 % browser zoom.
-              primaryAction
-                ? "sm:@max-2xl:col-span-2 sm:@max-2xl:justify-self-end"
-                : "sm:@max-xl:col-span-2 sm:@max-xl:justify-self-end",
+              !trailing &&
+                (primaryAction
+                  ? "sm:@max-2xl:col-span-2 sm:@max-2xl:justify-self-end"
+                  : "sm:@max-xl:col-span-2 sm:@max-xl:justify-self-end"),
               // A short window (200 % zoom on a laptop): the cluster and the primary action share
               // one row under the title instead of taking one each.
               primaryAction &&
+                !trailing &&
                 "sm:@max-2xl:short:col-span-1 sm:@max-2xl:short:col-start-1 sm:@max-2xl:short:row-start-2",
               // With an auto-refresh switch the cluster is too wide to share a phone's title row.
               freshness?.auto && "col-span-2 sm:col-span-1",
@@ -370,21 +408,13 @@ export function PageHeader({
             ) : null}
           </div>
         ) : null}
-        {primaryAction ? (
-          <div
-            className={cn(
-              "col-span-2 sm:@2xl:col-span-1 sm:@2xl:row-start-1 [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto sm:@max-2xl:justify-self-end sm:@max-2xl:short:col-span-1 sm:@max-2xl:short:col-start-2",
-              // With a cluster the two share row 2; alone, the action sits beside the title.
-              hasCluster
-                ? "sm:@max-2xl:short:row-start-2"
-                : "sm:@max-2xl:short:row-start-1",
-              hasCluster ? "sm:@2xl:col-start-3" : "sm:@2xl:col-start-2",
-            )}
-          >
-            {primaryAction}
-          </div>
-        ) : null}
+        {trailing ? null : primaryEl}
       </div>
+      {factsRow ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
+          {factsRow}
+        </div>
+      ) : null}
       {tabs ? (
         <div data-masthead-tabs="" className="border-b border-border pt-1">
           {tabs}

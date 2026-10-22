@@ -28,6 +28,7 @@ import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
+import { ErrorDescription } from "../../../../ui/CopyDetails.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { ChannelPicker } from "../../../../ui/ChannelPicker.js";
 import {
@@ -245,6 +246,18 @@ export function LimitsTable({
 
   const reset = async (row: LimitRow): Promise<void> => {
     setBusy(row.kind);
+    // What the license set itself, kept so the toast's Undo can put it back.
+    const previous =
+      row.kind === "devices"
+        ? { deviceLimit: license.deviceLimit ?? null }
+        : row.kind === "offline"
+          ? { maxOfflineDays: license.maxOfflineDays ?? null }
+          : row.kind === "tracks"
+            ? { channels: license.channels ?? [] }
+            : {
+                minVersion: license.minVersion ?? null,
+                maxVersion: license.maxVersion ?? null,
+              };
     try {
       if (row.kind === "devices")
         await mutate("patchLicense", slug, license.id, { deviceLimit: null });
@@ -259,10 +272,33 @@ export function LimitsTable({
           minVersion: null,
           maxVersion: null,
         });
-      toast.success(`${row.label} uses ${row.inherits}`);
+      toast.success(`${row.label} uses ${row.inherits}`, {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            mutate("patchLicense", slug, license.id, previous)
+              .then(() => toast.success(`${row.label} restored`))
+              .catch((e: unknown) => {
+                const copy = errorCopy(e, { thing: "License" });
+                toast.error(`${row.label} wasn't restored`, {
+                  description: copy.description,
+                  copyDetails:
+                    copy.action === "copy-details"
+                      ? JSON.stringify(copy.details ?? {}, null, 2)
+                      : undefined,
+                });
+              });
+          },
+        },
+      });
     } catch (e) {
+      const copy = errorCopy(e, { thing: "License" });
       toast.error(`${row.label} wasn't changed`, {
-        description: errorCopy(e, { thing: "License" }).description,
+        description: copy.description,
+        copyDetails:
+          copy.action === "copy-details"
+            ? JSON.stringify(copy.details ?? {}, null, 2)
+            : undefined,
       });
     } finally {
       setBusy(null);
@@ -274,11 +310,11 @@ export function LimitsTable({
       <table className="w-full text-sm max-sm:block">
         <caption className="sr-only">Limits and where each comes from</caption>
         <thead className="max-sm:sr-only">
-          <tr className="[&>th]:h-9 [&>th]:px-5 [&>th]:text-left [&>th]:text-xs [&>th]:font-medium [&>th]:text-fg-muted">
+          <tr className="[&>th]:h-9 [&>th]:px-5 [&>th]:text-start [&>th]:text-xs [&>th]:font-medium [&>th]:text-fg-muted">
             <th scope="col">Limit</th>
             <th scope="col">Value</th>
             <th scope="col">From</th>
-            <th scope="col" className="!text-right">
+            <th scope="col" className="!text-end">
               <span className="sr-only">Action</span>
             </th>
           </tr>
@@ -291,7 +327,7 @@ export function LimitsTable({
               data-service={row.kind === "tracks" ? "release" : undefined}
               data-marked={row.overridden ? "" : undefined}
               className={
-                "border-t border-border align-middle max-sm:grid max-sm:grid-cols-[1fr_auto] conbig:max-sm:grid-cols-1 max-sm:gap-x-3 max-sm:gap-y-1 max-sm:px-5 max-sm:py-3 [&>td]:px-5 [&>td]:py-3 max-sm:[&>td]:p-0" +
+                "border-t border-border align-middle max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] conbig:max-sm:grid-cols-[minmax(0,1fr)]! max-sm:gap-x-3 max-sm:gap-y-1 max-sm:px-5 max-sm:py-3 [&>td]:px-5 [&>td]:py-3 max-sm:[&>td]:min-w-0 max-sm:[&>td]:p-0" +
                 (row.overridden
                   ? " bg-surface-sunken shadow-[inset_3px_0_0_var(--pk-fg-strong,currentColor)]"
                   : "")
@@ -303,16 +339,17 @@ export function LimitsTable({
                   {row.label}
                 </span>
               </td>
-              <td className="max-sm:text-right conbig:max-sm:text-left">
+              <td className="max-sm:text-end conbig:max-sm:text-start">
                 <strong className="font-semibold tabular-nums text-fg-strong">
                   {row.value}
                 </strong>
               </td>
-              <td className="">
-                <span className="flex flex-col">
+              <td className="conbig:max-sm:col-span-2">
+                <span className="flex min-w-0 flex-col [overflow-wrap:anywhere]">
                   <span
                     className={
-                      row.overridden ? "font-medium text-fg-strong" : undefined
+                      "min-w-0 max-w-full break-words" +
+                      (row.overridden ? " font-medium text-fg-strong" : "")
                     }
                   >
                     {row.from}
@@ -322,8 +359,8 @@ export function LimitsTable({
                   ) : null}
                 </span>
               </td>
-              <td className="text-right max-sm:self-end conbig:max-sm:self-start conbig:max-sm:text-left">
-                <span className="inline-flex flex-wrap items-center justify-end gap-x-2 conbig:max-sm:justify-start">
+              <td className="text-end max-sm:col-span-2 max-sm:text-start">
+                <span className="inline-flex flex-wrap items-center justify-end gap-x-3 max-sm:justify-start">
                   {row.kind === "fingerprint" ? (
                     row.tierId ? (
                       <Button asChild variant="link" size="sm">
@@ -334,8 +371,9 @@ export function LimitsTable({
                     <>
                       {row.overridden ? (
                         <Button
-                          variant="ghost"
+                          variant="link"
                           size="sm"
+                          className="max-sm:whitespace-normal max-sm:text-start [overflow-wrap:anywhere]"
                           loading={busy === row.kind}
                           onClick={() => void reset(row)}
                           aria-label={`${row.label}: use ${row.inherits}`}
@@ -344,7 +382,7 @@ export function LimitsTable({
                         </Button>
                       ) : null}
                       <Button
-                        variant="ghost"
+                        variant="link"
                         size="sm"
                         aria-label={`${row.overridden ? "Edit" : "Override"} ${row.label.toLowerCase()}`}
                         onClick={() =>
@@ -490,7 +528,9 @@ function OverrideForm({
         ) : null}
         {form.submitError && !Object.keys(form.errors).length ? (
           <Callout tone="danger" title="This wasn't saved" live>
-            {errorCopy(form.submitError, { thing: "License" }).description}
+            <ErrorDescription
+              copy={errorCopy(form.submitError, { thing: "License" })}
+            />
           </Callout>
         ) : null}
       </DialogBody>

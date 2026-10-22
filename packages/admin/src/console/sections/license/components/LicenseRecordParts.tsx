@@ -10,6 +10,10 @@ import {
   type TierSummary,
 } from "../../../../api.js";
 import { useMe, useProduct } from "../../../data/hooks.js";
+import { Hourglass } from "lucide-react";
+import { fromSeconds, formatRelative } from "../../../../lib/format.js";
+import { IdChip } from "../../../../ui/IdChip.js";
+import { StatusPill } from "../../../../ui/StatusPill.js";
 import { holderOf } from "./holders.js";
 import { LimitsTable } from "./LimitsTable.js";
 import {
@@ -19,7 +23,7 @@ import {
   InvitationCard,
   OriginCard,
 } from "./LicenseRail.js";
-import { type seatLimitOf } from "./shared.js";
+import { LicenseStatus, licenseState, type seatLimitOf } from "./shared.js";
 
 /**
  * ADMIN.md §5.6: an undo removes the callout whose button opened it; once it has gone, focus
@@ -130,5 +134,77 @@ export function StatusTab({
         <OriginCard slug={slug} license={license} batch={batch} me={me} />
       </div>
     </div>
+  );
+}
+
+/** "now" reads "just now" after "Changed"; any other age is as formatted. */
+export function relativeWhen(ms: number): string {
+  const text = formatRelative(ms);
+  return text === formatRelative(Date.now()) ? "just now" : text;
+}
+
+/** The header pill. A license still waiting for its holder says so; its other states stand. */
+export function HeaderStatus({
+  license,
+  waiting,
+}: {
+  license: LicenseDetail;
+  waiting: boolean;
+}): React.ReactElement {
+  if (waiting && licenseState(license) === "active")
+    return (
+      <StatusPill tone="info" icon={Hourglass}>
+        Waiting
+      </StatusPill>
+    );
+  return <LicenseStatus license={license} />;
+}
+
+/** The record's facts line: an assigned license's email and state, the id, key entries, the last change. */
+export function RecordFacts({
+  primary,
+  license,
+  waiting,
+  holderEmail,
+  inAccount,
+  keyEntries,
+  changedBy,
+}: {
+  primary: boolean;
+  license: LicenseDetail;
+  waiting: boolean;
+  holderEmail: string | null | undefined;
+  inAccount: boolean;
+  keyEntries: { used: number; limit: number } | null;
+  changedBy: string | null | undefined;
+}): React.ReactElement {
+  return (
+    <span
+      data-testid={primary ? "record-facts" : undefined}
+      className="flex flex-wrap items-center gap-x-3 gap-y-1"
+    >
+      {primary ? null : (
+        <span className="hidden conbig:inline-flex">
+          <HeaderStatus license={license} waiting={waiting} />
+        </span>
+      )}
+      {inAccount ? (
+        <span data-testid={primary ? "record-holder" : undefined}>
+          {[holderEmail, "In an account"].filter(Boolean).join(" · ")}
+        </span>
+      ) : null}
+      <IdChip value={license.id} noun="license id" />
+      {keyEntries ? (
+        <span data-testid={primary ? "record-key-entries" : undefined}>
+          Key entries {keyEntries.used} of {keyEntries.limit}
+        </span>
+      ) : null}
+      {license.modifiedAt ? (
+        <span>
+          Changed {relativeWhen(fromSeconds(license.modifiedAt))}
+          {changedBy ? ` by ${changedBy}` : ""}
+        </span>
+      ) : null}
+    </span>
   );
 }
