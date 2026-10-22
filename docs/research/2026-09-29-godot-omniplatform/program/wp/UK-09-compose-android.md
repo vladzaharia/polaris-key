@@ -1,16 +1,16 @@
 # UK-09 Compose Multiplatform kit for Android: `:ui` to KMP (`commonMain` + `androidMain`), Material 3 Expressive, `PolarisKeyGate` one-liner, missing screens, Roborazzi re-baselined
 
-| Field       | Value                                                                                                                                                                                                                              |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                       |
-| Size        | 4–5 engineer-weeks                                                                                                                                                                                                                 |
-| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md)                                          |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-10](UK-10-compose-desktop.md), [UK-28](UK-28-android-views.md), [UK-35](UK-35-android-tv-glance.md), [UK-41](UK-41-must-tier-closeout.md), [UK-43](UK-43-activation-holders-native.md) |
-| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                  |
-| Plan mode   | no                                                                                                                                                                                                                                 |
-| Gates       | Roborazzi baselines; `AccessibilityTest`; `BrandRulesTest` and the Compose lint equivalents                                                                                                                                        |
-| Human input | none                                                                                                                                                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                          |
+| Field       | Value                                                                                                                                                                                                                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                                                  |
+| Size        | 4–5 engineer-weeks                                                                                                                                                                                                                                                                            |
+| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md)                                                                                                     |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-09b](UK-09b-compose-android-sample-and-expressive.md), [UK-10](UK-10-compose-desktop.md), [UK-28](UK-28-android-views.md), [UK-35](UK-35-android-tv-glance.md), [UK-41](UK-41-must-tier-closeout.md), [UK-43](UK-43-activation-holders-native.md) |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                                             |
+| Plan mode   | no                                                                                                                                                                                                                                                                                            |
+| Gates       | Roborazzi baselines; `AccessibilityTest`; `BrandRulesTest` and the Compose lint equivalents                                                                                                                                                                                                   |
+| Human input | none                                                                                                                                                                                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                     |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -311,3 +311,7 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
   `examples/ui/compose-android/`, docs pages and the kit README; (5) the `ui.*` parity rows stay
   `planned` (the signin and theme notes record progress) until a component ships all three layers;
   (6) design and UX reviews. Every acceptance criterion above is still open.
+
+## Split 2026-10-22 (triage)
+
+After the `ui.*` parity flip (45 min) UK-09 closes. The Android sample, Compose tabs, M3 Expressive, nav graph and deep links, tablet list-detail, ChannelPicker and the BUILT UX pass are **[UK-09b](UK-09b-compose-android-sample-and-expressive.md)**.

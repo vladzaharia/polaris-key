@@ -1,16 +1,16 @@
 # UK-12 Qt Quick kit on polaris_key.ui.core
 
-| Field       | Value                                                                                                                                                                                                                                                               |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                        |
-| Size        | 3–4 engineer-weeks                                                                                                                                                                                                                                                  |
-| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md), [UK-13](UK-13-python-terminal.md), [UK-56](UK-56-kit-mockups-refresh.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-38](UK-38-python-wx-kivy.md), [UK-39](UK-39-python-web-uis.md), [UK-41](UK-41-must-tier-closeout.md), [UK-43](UK-43-activation-holders-native.md), [UK-61](UK-61-gnome-native-kit.md)                                   |
-| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                   |
-| Plan mode   | no                                                                                                                                                                                                                                                                  |
-| Gates       | pytest-qt `grab()` baselines (offscreen); the Qt lint equivalent; Python `pytest -q`                                                                                                                                                                                |
-| Human input | none                                                                                                                                                                                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                           |
+| Field       | Value                                                                                                                                                                                                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                              |
+| Size        | 3–4 engineer-weeks                                                                                                                                                                                                                                                        |
+| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md), [UK-13](UK-13-python-terminal.md), [UK-56](UK-56-kit-mockups-refresh.md)       |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-12b](UK-12b-qt-scrim-mica-tabs.md), [UK-38](UK-38-python-wx-kivy.md), [UK-39](UK-39-python-web-uis.md), [UK-41](UK-41-must-tier-closeout.md), [UK-43](UK-43-activation-holders-native.md), [UK-61](UK-61-gnome-native-kit.md) |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                         |
+| Plan mode   | no                                                                                                                                                                                                                                                                        |
+| Gates       | pytest-qt `grab()` baselines (offscreen); the Qt lint equivalent; Python `pytest -q`                                                                                                                                                                                      |
+| Human input | none                                                                                                                                                                                                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                 |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -247,3 +247,7 @@ Remaining:
 - `ui.*` parity rows stay `planned`: the six families have corpus runners and snapshots, but the rich screens
   above are what make `ui.activate`, `ui.devices` and `ui.settings` honest. `ui.gate` can flip once the banner
   and toast parts exist.
+
+## Split 2026-10-22 (triage)
+
+UK-12 closes after KX-QT-DROP and KX-PY-MODELS land and the `ui.*` parity rows flip. Scrim, Mica, QSS, QAccessible, Flatpak, Qt tabs and the BUILT UX pass are **[UK-12b](UK-12b-qt-scrim-mica-tabs.md)**.

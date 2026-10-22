@@ -77,6 +77,8 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 ## Acceptance criteria
 
 - [ ] A token never exceeds its holder's roles at use time (test)
+- [ ] A member's own Personal tokens page (console account menu) resolves now that console members are accounts (taken over from F-33, 2026-10-22)
+- [ ] `pkey doctor` reports the same Verified facts as ST-40 (SDK sightings), once `pkey login` exists (taken over from P0-45, 2026-10-22)
 - [ ] An admin-scope token is refused by the registry and a packages token by the admin API (test)
 - [ ] No `PKEY_ADMIN_COOKIE` in the CLI, the Action bundle or the docs in the release that ships `pkey login`
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text; `PKEY_ADMIN_COOKIE` removed from `start/first-product`, `features/licensing/offline`, `reference/protocol/bundles`, `features/ship-builds/channels/polaris-key` and `contribute/agents/recipes`; `reference/cli` (`pkey login`).
@@ -95,3 +97,7 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set ST-34 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set ST-34 done`.
+
+## Consolidation 2026-10-22 (triage)
+
+Two criteria arrive here. From P0-45: "`pkey doctor` reports the same Verified facts as ST-40" was circular (it needs `pkey login`, and this package depends on P0-45). From F-33: the member's own Personal tokens page. Both are in the acceptance list above.

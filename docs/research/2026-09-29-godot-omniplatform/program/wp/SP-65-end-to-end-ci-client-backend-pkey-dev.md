@@ -5,7 +5,7 @@
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (framework drop-ins (2026-10-08))                                                                                                                                                                                    |
 | Size        | 0.6–0.9 engineer-weeks                                                                                                                                                                                                                                              |
 | Depends on  | [SP-41](SP-41-pkey-dev-a-local-polaris-key-for-integrators.md), [SP-55](SP-55-polaris-key-server-express-hono-next.md), [SP-56](SP-56-python-server-drop-ins.md), [SP-57](SP-57-kotlin-server-drop-ins-ktor.md), [SP-58](SP-58-client-backend-node-react-python.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                                                              |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-65b](SP-65b-e2e-react-native-require-sign-in.md)                                                                                                                                                                        |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                                  |
 | Plan mode   | no                                                                                                                                                                                                                                                                  |
 | Gates       | `ci`                                                                                                                                                                                                                                                                |
@@ -92,3 +92,7 @@ Left (named slots, each a leg or a case in the same job):
 4. `requireSignIn()` end to end, once SP-54 lands the signed-in subject.
 
 Status stays `in-progress`.
+
+## Split 2026-10-22 (triage)
+
+Stays in progress for the must tier (Django/DRF with an injectable clock; the Next stale case). The React `usePolarisFetch`, native-client and `requireSignIn` legs are **[SP-65b](SP-65b-e2e-react-native-require-sign-in.md)**.

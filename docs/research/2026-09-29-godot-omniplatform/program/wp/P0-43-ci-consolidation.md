@@ -61,9 +61,10 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] CI and gate.sh read one scope file
-- [ ] PR runs only affected lanes; main runs the full matrix
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] CI reads one scope file (`tools/ci-scope.{json,mjs}`; ci.yml `changes`)
+- [ ] gate.sh reads `ci-scope.mjs`: moved to AX-04 (2026-10-22)
+- [x] PR runs only affected lanes; main runs the full matrix
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 
@@ -85,3 +86,7 @@ Reconciled against main in the 2026-10-16 audit. Remaining:
 - Lead's local gate.sh must read tools/ci-scope.json (AGENTS.md says it does not yet)
 - Owner step: branch protection should require 'CI OK' instead of per-job checks
 - Split Apple jobs not yet run on GitHub (per PR #67)
+
+## Split 2026-10-22 (triage)
+
+Set done on 10dfa01cc: `.github/actions/setup-js`, `tools/ci-scope.{json,mjs}` and its test, ci.yml `changes` / `swift-floor` / `apple` / `ci-ok`, the PR and main matrices. The "Apple jobs not run on GitHub" note above is stale (they have run on main since). The lead's `gate.sh` reading `ci-scope.mjs` (about 20 min) moves to [AX-04](AX-04-pnpm-gate-in-the-repo.md), which replaces gate.sh. Owner step: branch protection requires `CI OK`.

@@ -67,9 +67,9 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Rule 11 text amended
-- [ ] Lockout recovery rehearsed in a test environment
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
+- [ ] Rule 11 text amended (taken over from ST-30, 2026-10-22)
+- [ ] Lockout recovery rehearsed in a test environment; the RUNBOOK lockout and break-glass recovery text (taken over from ST-30, 2026-10-22; ST-30c ships the break-glass link it documents)
+- [ ] Docs, in this PR (including the `operate/console/members` and `reference/roles` pages ST-30 used to list) ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
@@ -85,3 +85,7 @@ Then the full green gate in `AGENTS.md`.
 
 What downstream work packages rely on from this one is named in their briefs (the Unblocks row). The role agent sets `--set ST-35 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set ST-35 done`.
+
+## Consolidation 2026-10-22 (triage)
+
+ST-30 was split and set done. Its docs criteria move here: the members and roles pages (`operate/console/members`, `reference/roles`), the RUNBOOK lockout recovery and the rule 11 text. Scope and acceptance above carry them. The break-glass link they document is built in ST-30c.

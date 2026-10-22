@@ -454,6 +454,16 @@
       "verdict": "pass",
       "date": "2026-10-22",
       "evidence": "_mockups/review/stabilization/locker-final/ux-review-2.md (LK-07 re-check: refusal pages 18.75–19.89:1, mail ≥ 4.5:1)"
+    },
+    "ST-30": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/stabilization/console-final/ux-review.md (line 362: ST-30 listed as a pass; BUILT review, console-final)"
+    },
+    "F-33": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/F-33/ux-review-2.md (BUILT re-review of slice 2, pass with fixes; fixes landed)"
     }
   }
 }
