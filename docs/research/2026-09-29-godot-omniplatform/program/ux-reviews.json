@@ -479,6 +479,11 @@
       "verdict": "pass",
       "date": "2026-10-22",
       "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/UK-04-05/ux-review-2.md (BUILT re-review: pass-with-fixes; fixes landed in WEB-parity 0832e0bfb, eabc4ef23, 674e9a90b; live drop-in KX-EL-DRIVE bdef6358d)"
+    },
+    "UK-09": {
+      "verdict": "pass",
+      "date": "2026-10-22",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ux/UK-09-compose.md (BUILT review PASS, 0 blocking; majors F-1..F-4 → KX-CMP-FIX, V-1 two-pane → UK-09b)"
     }
   }
 }
