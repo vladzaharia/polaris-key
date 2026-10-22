@@ -3584,6 +3584,22 @@ Five controls make that true. The first, the fourth and the fifth are the ones t
    `reason`: it comes only from the server-side record. Tests: `deviceApproval.test.ts`,
    `hostedSigninPages.test.ts`, `oidcLicenseChoice.test.ts`.
 
+   **The completion has an attempt budget (I-37d).** Before, any failed mint put the flow back, so
+   a poller that held the device code could re-run the mint on every 2 s slot until the code
+   lapsed: about 300 attempts per approved flow, each about ten D1 statements, and one
+   `license_refusals` row per refused attempt. Now a refusal at the mint (seat, fingerprint,
+   hardware, licence) is attempted once: the bare `error`, the flow dropped, then `timeout`. A
+   transient failure after approval (WIRE-CONTRACT-V4 §12.10 rules 5-8) answers
+   `503 unavailable` with `Retry-After` and is attempted at most five times, no sooner than 2, 4,
+   8 and 16 s after each failure (at least 30 s in all); the fifth failure answers the bare
+   `error`. A poll inside the backoff answers the same 503 from the single-use store alone, so a
+   D1 outage adds no D1 load between attempts. The counter and the deadline (`mintFailures`,
+   `mintRetryAt`) live on the server-side flow record: nothing in a request sets, resets or skips
+   them, and a fresh budget needs a new code and a new approval. The 503 says only that the
+   server failed; it is never a policy outcome, so it discloses no refusal cause. Tests:
+   `oidcEdge.test.ts` › "the device-code completion after approval retries", `R8-oidc.test.ts` ›
+   "I-37d the completion attempt budget".
+
 **Cross-site POSTs.** Both device pages carry `referrer-policy: no-referrer`, and under that
 policy a browser sends a same-origin form POST with `Origin: null`. The origin check therefore
 decides on Fetch Metadata when the browser sends it (only `Sec-Fetch-Site: same-origin` passes)
@@ -3823,7 +3839,7 @@ two polls of a ready flow could both mint a device token. They now live in `Sing
 serialises every operation on one object, so each of these is one atomic step:
 
 - `consume` (read and delete together): portal and console callbacks, `/magic/verify`, and the
-  poll's final redemption, which takes the flow before minting (a failed mint puts it back);
+  poll's final redemption, which takes the flow before minting (a transiently failed mint puts it back, at most four times and only after its backoff; a refused one does not);
 - a compare-and-set `update`: the product callback's claim of a `state`, a device confirmation's
   spend of its CSRF token, and the device poll's `lastPollAt` slot (so the deferred activation of
   a device-code flow never runs twice side by side);

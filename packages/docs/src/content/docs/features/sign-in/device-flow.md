@@ -80,6 +80,8 @@ Every SDK maps the two `error` shapes to two codes:
 | `error` with `reason: "access_denied"` | `sign-in-denied` | A person pressed Deny, **Not you?** or Cancel. Say so, and offer a new code only if they ask. |
 | `error` without `reason`               | `sign-in-failed` | The sign-in failed after approval. Offer a new code at once; the cause is not said.           |
 
+If the sign-in was approved but the Worker could not finish it yet, the poll answers `503` with `{ "error": "unavailable" }` and a `Retry-After`. Keep polling at the usual interval: the Worker retries up to four times over at least 30 seconds, and the next successful poll is `ready`. Every SDK treats a `5xx` on the poll this way. If the retries run out the poll answers `error` without `reason` (`sign-in-failed`).
+
 A refusal stays refused until the code lapses, then the poll answers `timeout`. A client treats an unknown `reason` as absent. The UI kits' sign-in handoff shows a refusal as **denied** and a bare `error` as **failed**. An app that checked only `sign-in-denied` for every failure must now check `sign-in-failed` as well. Builds shipped before this split ignore `reason` and report both as `sign-in-denied`.
 
 Show `identity` (`name`, and `email` only when the provider verified it): if someone else approved the flow, this is where the player sees the device is now on a stranger's account. The flow record is deleted the moment a poll returns `ready` or `timeout`, so a token is handed out once. Minting runs the same seat authorization as activation.
