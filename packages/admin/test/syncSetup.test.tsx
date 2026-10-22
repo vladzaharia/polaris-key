@@ -701,9 +701,7 @@ describe("Cloud Sync → Setup", () => {
     expect(
       within(dialog).getByRole("button", { name: "Lower to 10.5 GiB" }),
     ).toBeTruthy();
-    expect(
-      within(dialog).getByText(/less than 10.5 GiB/),
-    ).toBeTruthy();
+    expect(within(dialog).getByText(/less than 10.5 GiB/)).toBeTruthy();
     await user.clear(field);
     await user.type(field, "0.5");
     expect(
