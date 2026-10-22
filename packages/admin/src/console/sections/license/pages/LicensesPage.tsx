@@ -414,6 +414,18 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
     if (!ok) toast.error("This browser can't save files from the page.");
   };
 
+  const copyId = (id: string): void => {
+    const clip = navigator.clipboard;
+    if (!clip?.writeText) {
+      toast.error("This browser can't copy from the page.");
+      return;
+    }
+    clip.writeText(id).then(
+      () => toast.success("License id copied"),
+      () => toast.error("This browser can't copy from the page."),
+    );
+  };
+
   const stopWalk = React.useRef(false);
   const searchAll = async (): Promise<void> => {
     stopWalk.current = false;
@@ -457,6 +469,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
                   {
                     label: "Batches",
                     icon: <Archive />,
+                    variant: "ghost" as const,
                     onSelect: () => navigate(r.licenseBatches(slug)),
                   },
                 ]
@@ -575,6 +588,35 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           serverFacets: serverFacetIds(serverFilter),
         }}
         onRetry={() => void licensesQ.refetch()}
+        errorThing="Licenses"
+        // One row at 1440: Columns and Export are icons below 1600 px, and density is left out.
+        toolbarMode="compact"
+        rowActions={(l) => [
+          {
+            label: "Open",
+            onSelect: () => void navigate(r.license(slug, l.id)),
+          },
+          { label: "Copy id", onSelect: () => copyId(l.id) },
+          licenseState(l, now) === "disabled"
+            ? {
+                label: "Enable…",
+                disabledReason: gate.disabledReason,
+                onSelect: () => setBulk({ enable: true, rows: [l] }),
+              }
+            : {
+                label: "Disable…",
+                disabledReason: gate.disabledReason,
+                onSelect: () => setBulk({ enable: false, rows: [l] }),
+              },
+          { type: "separator" },
+          {
+            label: "Delete…",
+            tone: "danger",
+            disabledReason:
+              gate.disabledReason ?? deletionBlockedReason(l.deletion),
+            onSelect: () => setBulkDelete([l]),
+          },
+        ]}
         empty={<LicensesFirstRun slug={slug} onCreate={openNew} />}
         // Once every row is loaded the filtered-empty state names what was asked for.
         noResults={

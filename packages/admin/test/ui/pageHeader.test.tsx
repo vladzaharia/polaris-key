@@ -51,3 +51,22 @@ describe("PageHeader freshness", () => {
     expect(refresh().hasAttribute("data-trailing-ghost")).toBe(false);
   });
 });
+
+describe("PageHeader secondary action variants", () => {
+  it("draws a ghost secondary without a border, and outline by default", () => {
+    render(
+      <PageHeader
+        title="Licenses"
+        secondaryActions={[
+          { label: "Batches", variant: "ghost", onSelect: () => undefined },
+          { label: "Bulk", onSelect: () => undefined },
+        ]}
+      />,
+    );
+    const ghost = screen.getByRole("button", { name: "Batches" });
+    const outline = screen.getByRole("button", { name: "Bulk" });
+    expect(ghost.className).not.toBe(outline.className);
+    expect(outline.className).toContain("border");
+    expect(ghost.className).not.toMatch(/(^| )border-border-strong/);
+  });
+});

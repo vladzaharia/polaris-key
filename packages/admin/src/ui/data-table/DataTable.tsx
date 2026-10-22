@@ -27,6 +27,7 @@ import { cn } from "../../lib/cn.js";
 import { formatCount } from "../../lib/format.js";
 import { ActionMenu } from "../ActionMenu.js";
 import { Button } from "../Button.js";
+import { IconButton } from "../IconButton.js";
 import { EmptyState } from "../EmptyState.js";
 import { ErrorState } from "../ErrorState.js";
 import { announce, LiveRegion } from "../LiveRegion.js";
@@ -400,6 +401,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     mobile = "scroll",
     mobileCard,
     toolbarActions,
+    toolbarMode = "full",
+    errorThing,
     toolbarLead,
     chrome = "auto",
     className,
@@ -461,6 +464,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const isPhone = useMediaQuery("(max-width: 767px)");
   // Cards below 1024 px (a phone, a tablet, a narrow window): a wide table there would scroll
   // sideways and hide its end-most columns, Actions included.
+  const compactBar = toolbarMode === "compact";
+  const iconOnlyBar = useMediaQuery("(max-width: 1599px)") && compactBar;
   const isCardWidth = useMediaQuery("(max-width: 1023px)");
   const isMobileCards = isCardWidth && mobile === "cards";
 
@@ -792,6 +797,8 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     if (!rowHref) return;
     const target = e.target as Element;
     if (target.closest(INTERACTIVE)) return;
+    // A portalled menu's padding bubbles to the row through React, not through the DOM.
+    if (!e.currentTarget.contains(target)) return;
     if (window.getSelection?.()?.toString()) return;
     e.currentTarget.querySelector<HTMLAnchorElement>(ROW_LINK)?.click();
   };
@@ -1018,6 +1025,27 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     downloadCsv(`${id}.csv`, tableCsv(sorted, visibleDefs));
   };
 
+  const exportLabel = exportAll
+    ? `Export all${
+        pagination.mode === "cursor" && pagination.total !== undefined
+          ? ` ${formatCount(pagination.total)}`
+          : ""
+      }`
+    : loadedOnlyCursor &&
+        pagination.mode === "cursor" &&
+        pagination.hasMore &&
+        allRows.length > 0
+      ? `Export ${formatCount(allRows.length)} loaded`
+      : "Export CSV";
+  const exportDisabled =
+    allRows.length === 0 ? "There are no rows to export." : undefined;
+  const onExport = (): void => {
+    if (exportAll) {
+      exportAfterWalk.current = true;
+      startSearchAll();
+    } else exportCsv();
+  };
+
   // The bulk-action bar enters and exits through <Presence> (S-23 §6.1 "enter"/"exit"). While it
   // leaves, it keeps the selection it had (inert), and the filter bar returns once it has gone.
   const bulkOpen = selectedCount > 0 && Boolean(selection);
@@ -1106,13 +1134,22 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
               <Popover
                 label="Columns"
                 trigger={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    iconStart={<Columns3 aria-hidden />}
-                  >
-                    Columns
-                  </Button>
+                  iconOnlyBar ? (
+                    <IconButton
+                      label="Columns"
+                      icon={<Columns3 aria-hidden />}
+                      variant="ghost"
+                      size="sm"
+                    />
+                  ) : (
+                    <Button
+                      variant={compactBar ? "ghost" : "outline"}
+                      size="sm"
+                      iconStart={<Columns3 aria-hidden />}
+                    >
+                      Columns
+                    </Button>
+                  )
                 }
                 align="end"
                 className="w-56 p-2"
@@ -1140,7 +1177,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
                 </fieldset>
               </Popover>
             ) : null}
-            {showViewControls ? (
+            {showViewControls && !compactBar ? (
               <div
                 role="group"
                 aria-label="Row density"
@@ -1163,36 +1200,26 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
               </div>
             ) : null}
             {csvEnabled ? (
-              <Button
-                variant="outline"
-                size="sm"
-                iconStart={<Download aria-hidden />}
-                onClick={() => {
-                  if (exportAll) {
-                    exportAfterWalk.current = true;
-                    startSearchAll();
-                  } else exportCsv();
-                }}
-                disabledReason={
-                  allRows.length === 0
-                    ? "There are no rows to export."
-                    : undefined
-                }
-              >
-                {exportAll
-                  ? `Export all${
-                      pagination.mode === "cursor" &&
-                      pagination.total !== undefined
-                        ? ` ${formatCount(pagination.total)}`
-                        : ""
-                    }`
-                  : loadedOnlyCursor &&
-                      pagination.mode === "cursor" &&
-                      pagination.hasMore &&
-                      allRows.length > 0
-                    ? `Export ${formatCount(allRows.length)} loaded`
-                    : "Export CSV"}
-              </Button>
+              iconOnlyBar ? (
+                <IconButton
+                  label={exportLabel}
+                  icon={<Download aria-hidden />}
+                  variant="outline"
+                  size="sm"
+                  onClick={onExport}
+                  disabledReason={exportDisabled}
+                />
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  iconStart={<Download aria-hidden />}
+                  onClick={onExport}
+                  disabledReason={exportDisabled}
+                >
+                  {exportLabel}
+                </Button>
+              )
             ) : null}
           </>
         }
@@ -1348,7 +1375,15 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
 
   let body: React.ReactNode;
   if (error) {
-    body = fullRow(<ErrorState error={error} onRetry={onRetry} compact />);
+    body = fullRow(
+      <ErrorState
+        error={error}
+        onRetry={onRetry}
+        compact={!errorThing}
+        thing={errorThing}
+        className={errorThing ? "border-0 bg-transparent py-8" : undefined}
+      />,
+    );
   } else if (showSkeleton) {
     body = Array.from({ length: 5 }, (_, i) => (
       <tr
@@ -1765,7 +1800,15 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             // Cards draw rows; a state is one full-width block, never a table in a scroller.
             <div className="rounded-lg border border-border bg-surface-raised p-4">
               {error ? (
-                <ErrorState error={error} onRetry={onRetry} compact />
+                <ErrorState
+                  error={error}
+                  onRetry={onRetry}
+                  compact={!errorThing}
+                  thing={errorThing}
+                  className={
+                    errorThing ? "border-0 bg-transparent py-8" : undefined
+                  }
+                />
               ) : showSkeleton ? (
                 <ul aria-hidden className="pk-skeleton-group space-y-2">
                   {[0, 1, 2].map((i) => (
