@@ -16,6 +16,8 @@ import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 The first-paint screen while the boot stages run: the product hero, a neutral indicator, consent for metered downloads, and the offline and blocked stops. It is the product's screen, so it carries the product ambient behind the hero and no Polaris Key mark.
 
+Boot shows nothing for the first 250 to 300 ms, so a quick start does not flash. After that it draws the product header (icon or monogram, then the name; a product with no name reads "Welcome"), a muted label and a 2 px loading shimmer. React and the web components, SwiftUI, Compose and the Python Qt kit draw the shimmer; it holds still under the system's reduce-motion setting, and Boot never draws a part-filled bar.
+
 ## States and copy
 
 <ComponentStates component="Boot" />

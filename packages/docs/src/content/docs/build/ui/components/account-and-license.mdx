@@ -14,7 +14,7 @@ import GodotKitTab from "../../../../../components/ui/GodotKitTab.astro";
 import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
 import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
-The account and license settings pane: product and tier, the holder, Manage, devices, Cloud Sync status, updates, managed settings and Sign out. A license that is not in an account says so, and offers to add a name and email.
+The account and license settings pane: product and tier, the holder, Manage, devices, Cloud Sync status, updates, managed settings and Sign out. A license that is not in an account says so, and offers to add a name and email. The React and web components kits draw it as grouped rows (a label and its value, a switch, the channel as a segmented control), with an Updates heading only when there are update rows, and no placeholder name where the holder is unknown.
 
 ## States and copy
 
@@ -30,7 +30,7 @@ The account and license settings pane: product and tier, the holder, Manage, dev
   <TabItem label="Terminal (Python)">
     <KitStatus kit="terminal-python" />
 
-    **Drop-in.** `status`; the Textual app's Account page (`polaris_key.ui.terminal.textual_app.run_app(client)`, `[tui]`).
+    **Drop-in.** `status`; the Textual app's Account page (`polaris_key.ui.terminal.textual_app.run_app(client)`, `[tui]`; [the full-screen app](/docs/build/ui/frameworks/terminal-python/#the-full-screen-app)).
 
     **Styled part.** `screens.gate(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
     `Theme(colors=…, symbols=…, preset="native")`.
