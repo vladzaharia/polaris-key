@@ -5,7 +5,8 @@
  * (docs/design/BRAND.md). This file defines almost none; it only:
  *   1. imports Tailwind, the Rubik faces, the tokens (both themes, the per-section accents) and
  *      the brand's Tailwind theme (bg-surface-raised, text-fg-muted, bg-accent, ring-focus…);
- *   2. adds the admin's own few tokens on top of them: the neutral fill (`bg-hover`), the
+ *   2. adds the admin's own few tokens on top of them: the neutral fills (`bg-hover`, and
+ *      `bg-menu-active` for a highlighted menu item, ui/theme.css), the
  *      customer site's breakpoints and the type steps the brand scale does not have;
  *   3. keeps the few Tailwind v3 defaults the views relied on.
  *

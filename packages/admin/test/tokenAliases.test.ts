@@ -121,8 +121,8 @@ function colorUtilityUses(): Use[] {
 }
 
 describe("the admin's tokens on the brand", () => {
-  it("styles.css defines no pre-brand alias: its one colour token is the admin fill", () => {
-    expect([...aliasColors.keys()]).toEqual(["hover"]);
+  it("styles.css defines no pre-brand alias: its colour tokens are the admin fills", () => {
+    expect([...aliasColors.keys()]).toEqual(["hover", "menu-active"]);
     expect(themeDecls(styles, "shadow").size).toBe(0);
     expect(themeDecls(styles, "font-weight").size).toBe(0);
   });
