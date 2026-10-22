@@ -13,13 +13,8 @@ import {
 import { KIT_GLYPHS, POWERED_BY } from "@polaris-key/brand";
 import { markSvg } from "@polaris-key/brand/svg";
 import type { Copy, UiInput, View } from "@polaris-key/ui-core";
-import {
-  encodeQr,
-  monogramOf,
-  OPENS,
-  spellOut,
-  type Resolved,
-} from "./contract.js";
+import { monogramOf, OPENS, spellOut, type Resolved } from "./contract.js";
+import { encodeQr } from "./lazy.js";
 
 /** What the drop-in adds around a view's own controls: the step's Back, controls and links the
  *  state lacks (Use another key), and keys it drops (Sign out on a signed-out screen). */
@@ -1054,4 +1049,36 @@ export function radioKeys(
       (host?.children[next] as HTMLElement | undefined)?.focus(),
     );
   }
+}
+
+/** "today", "yesterday", "3 days ago": passed to the copy as text (dates are the caller's). */
+export function days(n: number | null | undefined): string {
+  if (n === null || n === undefined) return "";
+  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  return rtf.format(-n, "day");
+}
+
+/** "3 days ago", "last month": a relative time from epoch seconds (the server's `lastSeen`). */
+export function since(epochSeconds: number, locale: string): string {
+  const d = Math.max(
+    0,
+    Math.floor((Date.now() - epochSeconds * 1000) / 86_400_000),
+  );
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  if (d < 45) return rtf.format(-d, "day");
+  if (d < 365) return rtf.format(-Math.round(d / 30), "month");
+  return rtf.format(-Math.round(d / 365), "year");
+}
+
+const warnedRows = new Set<string>();
+
+/** True when the string has every argument it names; else warns once and says no (the elements
+ *  do the same), so a missing fact is never drawn as "{name}". */
+export function usableKey(c: KitCtx, k: string): boolean {
+  if (!unfilled(c, k)) return true;
+  if (!warnedRows.has(k)) {
+    warnedRows.add(k);
+    console.warn(`[pk] ${k} has no value; not drawn`);
+  }
+  return false;
 }

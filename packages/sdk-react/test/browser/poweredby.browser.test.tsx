@@ -46,6 +46,8 @@ function input(): UiInput {
 }
 
 beforeAll(async () => {
+  // The QR encoder and the settings, device and account rows load on demand.
+  await Kit.preloadKitParts();
   const link = document.createElement("link");
   link.rel = "stylesheet";
   link.href = new URL("../../../brand/fonts/fonts.css", import.meta.url).href;

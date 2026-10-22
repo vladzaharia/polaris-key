@@ -64,7 +64,8 @@ import {
   HANDOFF_WAITING,
 } from "./adapt.js";
 import { withChoice } from "./licenseRows.js";
-import { renderView } from "./views.js";
+import { onLazyLoaded } from "./lazy.js";
+import { renderView, withBase } from "./views.js";
 
 const SYSTEM_FONT_STACK =
   'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
@@ -302,6 +303,7 @@ export function useKit(
 
   // Copy packs load on demand; a component showing one redraws when it arrives.
   useEffect(() => onCopyLoaded(force), []);
+  useEffect(() => onLazyLoaded(force), []);
   // Under the native preset the "system" scheme also follows the host page's own ground (a theme
   // toggle on the root or body), which the media queries below never see.
   const followsGround = options.preset === "native";
@@ -760,7 +762,11 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
     // The drop-in keeps each step's context and offers the way back (never in a fixture state).
     const v = driven ? adaptHandoff(raw) : raw;
     const chrome: Chrome = {};
-    if (driven && step !== "home" && !v.copy.includes("common.back"))
+    if (
+      driven &&
+      step !== "home" &&
+      !withBase(kit.ctxFor(v)).copy.includes("common.back")
+    )
       chrome.back = true;
     if (
       driven &&
@@ -769,8 +775,6 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
       kit.copy.has(HANDOFF_WAITING)
     )
       chrome.meta = [HANDOFF_WAITING];
-    if (driven && v.component === "Activate" && v.state === "device-limit")
-      chrome.links = ["signin.key.differentKey"];
     return renderView(kit.ctxFor(v, chrome));
   };
   const screen = gateScreen(view, step);

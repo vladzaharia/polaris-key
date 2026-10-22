@@ -13,7 +13,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { UiInput } from "@polaris-key/ui-core";
 
 import { SignIn } from "@polaris-key/react/kit";
-import { settingLabel } from "../src/kit/views.js";
+import { settingLabel } from "../src/kit/rows.js";
 
 type Obj = Record<string, unknown>;
 const REPO = join(import.meta.dirname, "..", "..", "..");
