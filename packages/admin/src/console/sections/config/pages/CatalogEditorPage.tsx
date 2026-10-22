@@ -1,14 +1,8 @@
 import * as React from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, Pencil, Plus, Trash2 } from "lucide-react";
-import {
-  ApiError,
-  type ConfigEntry,
-  type ProductCatalog,
-} from "../../../../api.js";
+import { AlertCircle, GitMerge, Pencil, Plus, Trash2 } from "lucide-react";
+import type { ConfigEntry, ProductCatalog } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
 import { diffSummary } from "../../../../lib/diff.js";
-import { errorCopy } from "../../../../lib/errorCopy.js";
 import {
   UNCATEGORISED,
   categoryLabel,
@@ -17,34 +11,32 @@ import {
 } from "../../../../schema/index.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
-import { Checkbox } from "../../../../ui/Checkbox.js";
-import { DiffViewer } from "../../../../ui/DiffViewer.js";
-import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { SourceBadge } from "../../../../ui/SourceBadge.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { toast } from "../../../../ui/toast.js";
-import { Textarea } from "../../../../ui/Textarea.js";
-import { BREAK_GLASS_REASON_MAX } from "../../../components/BreakGlassDialog.js";
 import { Breadcrumbs } from "../../../components/Breadcrumbs.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { useProduct } from "../../../data/hooks.js";
-import { mutate } from "../../../data/mutations.js";
-import { qk } from "../../../data/queries.js";
 import { codecs, navigate, useSearchParam } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { CatalogEntryForm } from "../components/CatalogEntryForm.js";
 import { CatalogFilters, ViewOnlyNote } from "../components/CatalogFilters.js";
 import { WriteLock } from "../../../../ui/WriteLock.js";
 import { useWriteGate } from "../../../access/useCan.js";
-import { JsonMode, TypeGlyph } from "../components/EditorParts.js";
+import {
+  ConflictPanel,
+  JsonMode,
+  TypeGlyph,
+} from "../components/EditorParts.js";
+import { ReviewDrawer } from "../components/ReviewDrawer.js";
+import { blockedKeys, useRemovals } from "../components/RemovedValues.js";
 import {
   clearDraft,
   draftDiff,
   draftDocument,
-  draftEntries,
   draftFrom,
   flagKeysOf,
   loadDraft,
@@ -57,10 +49,9 @@ import {
   catalogSource,
   isNotFound,
   useCatalog,
-  useCatalogUsage,
 } from "../data.js";
 import { ENTRY_TYPE_LABELS, entryType } from "../components/entryType.js";
-import { entryFieldView, typeChangeNotes } from "../model/diffView.js";
+import { WHOLE_ENTRY, mergeDraft, settle } from "../model/mergeDraft.js";
 
 const MODE = codecs.oneOf(["form", "json"] as const, "form");
 const KIND = codecs.oneOf(
@@ -196,22 +187,38 @@ function Editor({
   const [confirmDiscard, setConfirmDiscard] = React.useState(false);
 
   const diff = React.useMemo(() => draftDiff(draft), [draft]);
-  // A restored draft with no changes simply follows the server's newer version.
+  // A restored draft with no changes simply follows the server's newer version; one with edits is
+  // merged onto it, and only the fields both sides changed are left to settle (admin-2-21).
+  const commit = product?.sync?.commitSha ?? null;
   React.useEffect(() => {
-    if (
-      server !== null &&
-      server.schemaVersion !== draft.baseVersion &&
+    // Not under an open review: it shows the server's changes itself and merges on request.
+    if (server === null || server.schemaVersion === draft.baseVersion) return;
+    if (reviewing && diff.all.length > 0) return;
+    setDraft(
       diff.all.length === 0
-    )
-      setDraft(draftFrom(server));
-  }, [server, draft.baseVersion, diff, setDraft]);
+        ? draftFrom(server)
+        : { ...mergeDraft(draft, server), rebasedOnto: commit },
+    );
+  }, [server, draft, diff, commit, reviewing, setDraft]);
   const issues = React.useMemo(
     () => catalogIssues(draftDocument(draft)),
     [draft],
   );
   const dirty = diff.all.length > 0;
   const nextVersion = draft.baseVersion + 1;
-  const stale = server !== null && server.schemaVersion !== draft.baseVersion;
+  const conflicts = draft.conflicts ?? [];
+  const conflictCount = conflicts.reduce((n, c) => n + c.fields.length, 0);
+  const conflictKeys = new Set(conflicts.map((c) => c.key));
+  const { removals, pending: removalsPending } = useRemovals(slug, draft);
+  const heldKeys = blockedKeys(removals);
+  const holdReason =
+    conflictCount > 0
+      ? `Settle ${conflictCount === 1 ? "the conflict" : `the ${conflictCount} conflicts`} with the repository first.`
+      : heldKeys.length > 0
+        ? "Change what still uses a removed value first."
+        : removalsPending
+          ? "Checking what uses the removed values…"
+          : undefined;
 
   const changeOf = (key: string): "added" | "changed" | null => {
     if (diff.added.some((c) => c.key === key)) return "added";
@@ -313,24 +320,44 @@ function Editor({
         }
       />
 
-      {stale ? (
+      {conflictCount > 0 ? (
         <Callout
           tone="warning"
           live
-          title={`The catalog changed since you started (v${draft.baseVersion} → v${server!.schemaVersion})`}
-          action={
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setReviewing(true)}
-            >
-              Review
-            </Button>
-          }
+          title={`v${draft.baseVersion} arrived ${source === "manifest" ? `from ${CATALOG_PATH} ` : ""}while you edited`}
         >
-          Your draft was started from v{draft.baseVersion}. Review what changed
-          before you publish, or discard your draft to start from v
-          {server!.schemaVersion}.
+          <p id="conflict-note">
+            {draft.rebasedOnto ? (
+              <>
+                Commit{" "}
+                <code className="font-mono text-xs">
+                  {draft.rebasedOnto.slice(0, 7)}
+                </code>
+                .{" "}
+              </>
+            ) : null}
+            {conflictCount === 1
+              ? "1 of your edits conflicts."
+              : `${conflictCount} of your edits conflict.`}{" "}
+            The rest merged in. Pick a side for each; nothing is lost until you
+            publish.
+          </p>
+          {conflicts
+            .filter(
+              (c) =>
+                c.fields.some((f) => f.field === WHOLE_ENTRY) &&
+                !entries.some((e) => e.key === c.key),
+            )
+            .map((c) => (
+              <div key={c.key} className="mt-3">
+                <ConflictPanel
+                  conflict={c}
+                  onSettle={(field, take) =>
+                    setDraft(settle(draft, c.key, field, take))
+                  }
+                />
+              </div>
+            ))}
         </Callout>
       ) : null}
 
@@ -463,6 +490,14 @@ function Editor({
                                   <span className="sr-only">(changed)</span>
                                 </span>
                               ) : null}
+                              {conflictKeys.has(entry.key) ? (
+                                <span className="text-warning">
+                                  <GitMerge aria-hidden className="size-3" />
+                                  <span className="sr-only">
+                                    (conflicts with the repository)
+                                  </span>
+                                </span>
+                              ) : null}
                               {bad ? (
                                 <span className="text-danger">
                                   <AlertCircle aria-hidden className="size-3" />
@@ -514,6 +549,17 @@ function Editor({
                     Remove entry
                   </Button>
                 </div>
+                {conflicts
+                  .filter((c) => c.key === selected.key)
+                  .map((c) => (
+                    <ConflictPanel
+                      key={c.key}
+                      conflict={c}
+                      onSettle={(field, take) =>
+                        setDraft(settle(draft, c.key, field, take))
+                      }
+                    />
+                  ))}
                 <CatalogEntryForm
                   key={selectedIndex}
                   entry={selected}
@@ -523,6 +569,10 @@ function Editor({
                   slug={slug}
                   syncEnabled={product?.services?.sync?.enabled === true}
                   flagKeys={flagKeysOf(draft.entries)}
+                  baseEntry={draft.baseEntries.find(
+                    (e) => e.key === selected.key,
+                  )}
+                  removal={removals[selected.key]}
                   onChange={(next) => updateEntry(selectedIndex, next)}
                 />
               </div>
@@ -575,13 +625,9 @@ function Editor({
                 Discard draft
               </Button>
               <Button
-                disabledReason={
-                  !dirty
-                    ? "Nothing has changed yet."
-                    : issues.length
-                      ? "Fix the errors in the draft first."
-                      : undefined
-                }
+                // An error does not keep the review shut: it opens with the error pinned to its
+                // entry and Publish waiting (config.catalog-review-states).
+                disabledReason={holdReason}
                 onClick={() => setReviewing(true)}
               >
                 Review changes
@@ -600,7 +646,14 @@ function Editor({
         server={server}
         source={source}
         authoritative={authoritative}
-        blocked={issues.length > 0}
+        issues={issues}
+        holdReason={holdReason}
+        onFix={(index) => {
+          setReviewing(false);
+          setPinned(index);
+          setSelectedKey(entries[index]?.key ?? "");
+          setMode("form");
+        }}
         onPublished={(version) => {
           clearDraft(slug);
           toast.success(`Published catalog v${version}`);
@@ -612,276 +665,5 @@ function Editor({
         }}
       />
     </div>
-  );
-}
-
-// ── review and publish ─────────────────────────────────────────────────────────────────────────
-
-function ReviewDrawer({
-  slug,
-  open,
-  onOpenChange,
-  draft,
-  setDraft,
-  server,
-  source,
-  authoritative,
-  blocked,
-  onPublished,
-  onDiscard,
-}: {
-  slug: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  draft: CatalogDraft;
-  setDraft: (next: CatalogDraft) => void;
-  server: ProductCatalog | null;
-  source: "manifest" | "admin";
-  authoritative: boolean;
-  blocked: boolean;
-  onPublished: (version: number) => void;
-  onDiscard: () => void;
-}): React.ReactElement {
-  const queryClient = useQueryClient();
-  const diff = React.useMemo(() => draftDiff(draft), [draft]);
-  const removedKeys = React.useMemo(
-    () => (open ? diff.removed.map((c) => c.key) : []),
-    [open, diff],
-  );
-  const usage = useCatalogUsage(slug, removedKeys);
-  const [ack, setAck] = React.useState(false);
-  // ST-20: a manifest-authoritative product's publish is a break-glass claim with a reason (L2).
-  const [reason, setReason] = React.useState("");
-  const reasonId = React.useId();
-  const [publishing, setPublishing] = React.useState(false);
-  const [error, setError] = React.useState<unknown>(null);
-  React.useEffect(() => {
-    if (!open) {
-      setAck(false);
-      setReason("");
-      setError(null);
-    }
-  }, [open]);
-
-  const referencedBy: Record<string, string[]> = {};
-  const profilesAffected = new Set<string>();
-  for (const key of removedKeys) {
-    const u = usage.data?.keys[key];
-    if (!u) continue;
-    const refs = [
-      ...u.profiles.map((p) => `profile ${p.id}`),
-      ...u.licenses.map((l) => `license ${l.name || l.id}`),
-      ...(u.accounts ?? []).map((a) => `account ${a.subject}`),
-    ];
-    for (const p of u.profiles) profilesAffected.add(p.id);
-    if (refs.length) referencedBy[key] = refs;
-  }
-  const typeNotes = React.useMemo(() => typeChangeNotes(diff.changed), [diff]);
-  const breaking =
-    Object.keys(referencedBy).length > 0 || Object.keys(typeNotes).length > 0;
-  const conflict =
-    error instanceof ApiError &&
-    error.status === 409 &&
-    error.reason === "catalog_version_conflict";
-  const stale = server !== null && server.schemaVersion !== draft.baseVersion;
-  const nextVersion = (server?.schemaVersion ?? draft.baseVersion) + 1;
-
-  const publish = async (): Promise<void> => {
-    setPublishing(true);
-    setError(null);
-    try {
-      const res = await mutate(
-        "publishSchema",
-        slug,
-        draftDocument(draft),
-        draft.baseVersion,
-        authoritative ? { reason: reason.trim() } : undefined,
-      );
-      onOpenChange(false);
-      onPublished(res.schemaVersion);
-    } catch (err) {
-      setError(err);
-      if (err instanceof ApiError && err.status === 409)
-        void queryClient.invalidateQueries({ queryKey: qk.catalog(slug) });
-    } finally {
-      setPublishing(false);
-    }
-  };
-
-  const copy =
-    error && !conflict ? errorCopy(error, { thing: "Catalog" }) : null;
-
-  return (
-    <Drawer
-      open={open}
-      onOpenChange={onOpenChange}
-      dismissible={!publishing}
-      size="lg"
-      title={
-        stale || conflict
-          ? "The catalog changed since you started"
-          : `Publish version ${draft.baseVersion + 1}`
-      }
-      description={undefined}
-    >
-      <DrawerBody>
-        <div className="space-y-6">
-          {(stale || conflict) && server ? (
-            <section className="space-y-3" aria-label="Changes on the server">
-              <Callout tone="warning" live>
-                v{server.schemaVersion} was published after you started from v
-                {draft.baseVersion}. These are its changes. Review your draft
-                against it to publish over them, or discard your draft.
-              </Callout>
-              <DiffViewer<ConfigEntry>
-                mode="structured"
-                before={draft.baseEntries}
-                after={server.entries}
-                entryKey="key"
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setError(null);
-                    setDraft({
-                      ...draft,
-                      baseVersion: server.schemaVersion,
-                      baseEntries: server.entries,
-                    });
-                  }}
-                >
-                  Review my draft against v{server.schemaVersion}
-                </Button>
-                <Button variant="ghost" onClick={onDiscard}>
-                  Discard my draft
-                </Button>
-              </div>
-            </section>
-          ) : (
-            <>
-              <DiffViewer<ConfigEntry>
-                mode="structured"
-                before={draft.baseEntries}
-                after={draftEntries(draft)}
-                entryKey="key"
-                referencedBy={referencedBy}
-                fieldView={entryFieldView}
-                breakingChanged={typeNotes}
-              />
-              {usage.isFetching ? (
-                <p className="text-sm text-fg-muted">
-                  Checking what still uses the removed keys…
-                </p>
-              ) : null}
-              {usage.error ? (
-                <ErrorState
-                  compact
-                  error={usage.error}
-                  onRetry={() => void usage.refetch()}
-                />
-              ) : null}
-              {authoritative ? (
-                <Callout
-                  tone="danger"
-                  title="Publishing is a break-glass claim"
-                >
-                  <p>
-                    This product is manifest-authoritative:{" "}
-                    <code className="font-mono text-xs">{CATALOG_PATH}</code> is
-                    the only writer of its catalog. The published version holds
-                    for 7 days, or until the first resync that changes the
-                    catalog in the repository, whichever comes first. Commit the
-                    change to keep it.
-                  </p>
-                  <div className="mt-3 space-y-1">
-                    <label
-                      htmlFor={reasonId}
-                      className="text-sm font-medium text-fg-strong"
-                    >
-                      Reason
-                    </label>
-                    <Textarea
-                      id={reasonId}
-                      value={reason}
-                      maxLength={BREAK_GLASS_REASON_MAX}
-                      required
-                      onChange={(e) => setReason(e.target.value)}
-                    />
-                  </div>
-                </Callout>
-              ) : source === "manifest" ? (
-                <Callout tone="warning" title="This catalog is manifest-owned">
-                  Publishing claims it for the console: resyncs from the
-                  repository stop re-applying{" "}
-                  <code className="font-mono text-xs">{CATALOG_PATH}</code>{" "}
-                  until it is reverted to the manifest. Make the same change in
-                  the repository to keep the two in step.
-                </Callout>
-              ) : null}
-              {breaking ? (
-                <Checkbox
-                  label={
-                    Object.keys(typeNotes).length > 0 &&
-                    Object.keys(referencedBy).length === 0
-                      ? "I understand a changed Type changes how the app reads the key"
-                      : `I understand removed keys are dropped from ${profilesAffected.size} ${profilesAffected.size === 1 ? "profile's" : "profiles'"} payloads and the licenses and accounts listed above`
-                  }
-                  checked={ack}
-                  onCheckedChange={setAck}
-                />
-              ) : null}
-              {copy ? (
-                <div
-                  role="alert"
-                  className="rounded-md border border-danger-border bg-danger-subtle p-3 text-sm"
-                >
-                  <p className="font-semibold text-danger">{copy.title}</p>
-                  <p className="text-fg">{copy.description}</p>
-                  {copy.fieldErrors?.length ? (
-                    <ul className="mt-1 list-disc ps-5 font-mono text-xs">
-                      {copy.fieldErrors.map((f) => (
-                        <li key={f}>{f}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </div>
-              ) : null}
-            </>
-          )}
-        </div>
-      </DrawerBody>
-      <DrawerFooter>
-        <Button
-          variant="ghost"
-          disabled={publishing}
-          onClick={() => onOpenChange(false)}
-        >
-          Back to editing
-        </Button>
-        {stale || conflict ? null : (
-          <Button
-            variant={breaking || authoritative ? "danger" : "primary"}
-            loading={publishing}
-            disabledReason={
-              blocked
-                ? "Fix the errors in the draft first."
-                : diff.all.length === 0
-                  ? "Nothing has changed yet."
-                  : breaking && !ack
-                    ? "Confirm the breaking changes."
-                    : authoritative && reason.trim() === ""
-                      ? "Give a reason for the break-glass claim."
-                      : usage.isFetching
-                        ? "Checking the removed keys…"
-                        : undefined
-            }
-            onClick={() => void publish()}
-          >
-            Publish version {nextVersion}
-          </Button>
-        )}
-      </DrawerFooter>
-    </Drawer>
   );
 }

@@ -8,7 +8,11 @@ import { Checkbox } from "../../../../ui/Checkbox.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
 import { Select } from "../../../../ui/Select.js";
-import { USER_CONFLICT_LABELS, USER_SCOPE_OPTIONS } from "./entryType.js";
+import {
+  USER_CONFLICT_LABELS,
+  USER_SCOPE_OPTIONS,
+  WIDGETS,
+} from "./entryType.js";
 
 type Json = Record<string, unknown>;
 
@@ -251,5 +255,84 @@ export function NumberKeyword({
         />
       )}
     </FormField>
+  );
+}
+
+/** The Form hints group's fields: how generated forms draw the key. */
+export function FormHintsFields({
+  ui,
+  setUi,
+}: {
+  ui: Record<string, unknown>;
+  setUi: (field: string, value: unknown) => void;
+}): React.ReactElement {
+  return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField name="widget" label="Widget" value={ui.widget}>
+          {(f) => (
+            <Select
+              {...f}
+              value={typeof ui.widget === "string" ? ui.widget : null}
+              allowEmpty
+              emptyLabel="Automatic"
+              options={WIDGETS.map((w) => ({ value: w, label: w }))}
+              onChange={(v) => setUi("widget", v)}
+            />
+          )}
+        </FormField>
+        <FormField name="unit" label="Unit" value={ui.unit}>
+          {(f) => (
+            <Input
+              {...f}
+              value={typeof ui.unit === "string" ? ui.unit : ""}
+              placeholder="seconds"
+              onChange={(e) => setUi("unit", e.target.value)}
+            />
+          )}
+        </FormField>
+        <FormField name="help" label="Help" value={ui.help}>
+          {(f) => (
+            <Input
+              {...f}
+              value={typeof ui.help === "string" ? ui.help : ""}
+              onChange={(e) => setUi("help", e.target.value)}
+            />
+          )}
+        </FormField>
+        <FormField
+          name="placeholder"
+          label="Placeholder"
+          value={ui.placeholder}
+        >
+          {(f) => (
+            <Input
+              {...f}
+              value={typeof ui.placeholder === "string" ? ui.placeholder : ""}
+              onChange={(e) => setUi("placeholder", e.target.value)}
+            />
+          )}
+        </FormField>
+        <FormField name="order" label="Order" value={ui.order}>
+          {(f) => (
+            <Input
+              {...f}
+              type="number"
+              inputMode="numeric"
+              value={typeof ui.order === "number" ? String(ui.order) : ""}
+              onChange={(e) =>
+                setUi("order", numberOrUndefined(e.target.value))
+              }
+            />
+          )}
+        </FormField>
+      </div>
+      <Checkbox
+        label="Show under More settings"
+        description="Collapses the key into the trailing group of generated forms."
+        checked={ui.advanced === true}
+        onCheckedChange={(on) => setUi("advanced", on ? true : undefined)}
+      />
+    </>
   );
 }

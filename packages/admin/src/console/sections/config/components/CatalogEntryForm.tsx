@@ -11,7 +11,6 @@ import { MintRecipeFields } from "./MintRecipeFields.js";
 import {
   ENTRY_TYPE_LABELS,
   TYPE_LABELS,
-  WIDGETS,
   TYPE_HELP,
   codeOnlyText,
   entryType,
@@ -36,14 +35,15 @@ import { newEntry } from "../model/catalogDraft.js";
 import {
   Group,
   NumberKeyword,
+  FormHintsFields,
   UserSettingFields,
   conflictOptionsFor,
-  numberOrUndefined,
   withField,
 } from "./EntryFormParts.js";
 
 export { conflictOptionsFor };
 import { retiredNotes } from "../model/entryNotes.js";
+import { RemovedValues, type Removal } from "./RemovedValues.js";
 
 type Json = Record<string, unknown>;
 
@@ -138,6 +138,8 @@ export function CatalogEntryForm({
   slug,
   syncEnabled = true,
   flagKeys = [],
+  baseEntry,
+  removal,
   onChange,
 }: {
   entry: ConfigEntry;
@@ -153,6 +155,10 @@ export function CatalogEntryForm({
   syncEnabled?: boolean;
   /** The draft's flag keys, offered for a minted token's Required entitlement. */
   flagKeys?: string[];
+  /** The entry as published, for the allowed values this draft removed. */
+  baseEntry?: ConfigEntry;
+  /** The removed allowed values and who still holds one. */
+  removal?: Removal;
   onChange: (next: ConfigEntry) => void;
 }): React.ReactElement {
   const schema = (entry.schema ?? {}) as Json;
@@ -171,6 +177,7 @@ export function CatalogEntryForm({
     onChange(withField(entry, "ui", Object.keys(ui).length ? ui : undefined));
   };
   const listId = React.useId();
+  const removalNote = React.useId();
 
   const [advanced, setAdvanced] = React.useState(false);
   const [schemaText, setSchemaText] = React.useState(() =>
@@ -209,8 +216,23 @@ export function CatalogEntryForm({
     () => hasRules || schemaProblem !== undefined,
   );
   React.useEffect(() => {
-    if (schemaProblem) setValidationOpen(true);
-  }, [schemaProblem]);
+    if (schemaProblem || removal) setValidationOpen(true);
+  }, [schemaProblem, removal]);
+  // Undo: the value goes back where the published list had it.
+  const restoreValue = (v: unknown): void => {
+    const was = ((baseEntry?.schema as Json | undefined)?.enum ??
+      []) as unknown[];
+    const now = enumValues ?? [];
+    const keep = (x: unknown): boolean =>
+      JSON.stringify(x) === JSON.stringify(v) ||
+      now.some((n) => JSON.stringify(n) === JSON.stringify(x));
+    setSchemaField("enum", [
+      ...was.filter(keep),
+      ...now.filter(
+        (n) => !was.some((w) => JSON.stringify(w) === JSON.stringify(n)),
+      ),
+    ]);
+  };
   const userIssue = issue("user");
   const [userOpen, setUserOpen] = React.useState(
     () => entry.user !== undefined || userIssue !== undefined,
@@ -631,6 +653,16 @@ export function CatalogEntryForm({
                     />
                   )}
                 </FormField>
+                {removal ? (
+                  <div className="sm:col-span-2">
+                    <RemovedValues
+                      slug={slug ?? ""}
+                      removal={removal}
+                      describedBy={removalNote}
+                      onUndo={restoreValue}
+                    />
+                  </div>
+                ) : null}
                 {type === "integer" || type === "number" ? (
                   <>
                     <NumberKeyword
@@ -734,73 +766,7 @@ export function CatalogEntryForm({
             open={hintsOpen}
             onOpenChange={setHintsOpen}
           >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField name="widget" label="Widget" value={ui.widget}>
-                {(f) => (
-                  <Select
-                    {...f}
-                    value={typeof ui.widget === "string" ? ui.widget : null}
-                    allowEmpty
-                    emptyLabel="Automatic"
-                    options={WIDGETS.map((w) => ({ value: w, label: w }))}
-                    onChange={(v) => setUi("widget", v)}
-                  />
-                )}
-              </FormField>
-              <FormField name="unit" label="Unit" value={ui.unit}>
-                {(f) => (
-                  <Input
-                    {...f}
-                    value={typeof ui.unit === "string" ? ui.unit : ""}
-                    placeholder="seconds"
-                    onChange={(e) => setUi("unit", e.target.value)}
-                  />
-                )}
-              </FormField>
-              <FormField name="help" label="Help" value={ui.help}>
-                {(f) => (
-                  <Input
-                    {...f}
-                    value={typeof ui.help === "string" ? ui.help : ""}
-                    onChange={(e) => setUi("help", e.target.value)}
-                  />
-                )}
-              </FormField>
-              <FormField
-                name="placeholder"
-                label="Placeholder"
-                value={ui.placeholder}
-              >
-                {(f) => (
-                  <Input
-                    {...f}
-                    value={
-                      typeof ui.placeholder === "string" ? ui.placeholder : ""
-                    }
-                    onChange={(e) => setUi("placeholder", e.target.value)}
-                  />
-                )}
-              </FormField>
-              <FormField name="order" label="Order" value={ui.order}>
-                {(f) => (
-                  <Input
-                    {...f}
-                    type="number"
-                    inputMode="numeric"
-                    value={typeof ui.order === "number" ? String(ui.order) : ""}
-                    onChange={(e) =>
-                      setUi("order", numberOrUndefined(e.target.value))
-                    }
-                  />
-                )}
-              </FormField>
-            </div>
-            <Checkbox
-              label="Show under More settings"
-              description="Collapses the key into the trailing group of generated forms."
-              checked={ui.advanced === true}
-              onCheckedChange={(on) => setUi("advanced", on ? true : undefined)}
-            />
+            <FormHintsFields ui={ui} setUi={setUi} />
           </Group>
         )}
       </div>

@@ -50,6 +50,8 @@ export interface CalloutProps {
   action?: React.ReactNode;
   children?: React.ReactNode;
   live?: boolean;
+  /** `role="alert"`: for a failure that arrives on its own and needs reading at once. */
+  alert?: boolean;
   className?: string;
 }
 
@@ -59,12 +61,13 @@ export function Callout({
   action,
   children,
   live = false,
+  alert = false,
   className,
 }: CalloutProps): React.ReactElement {
   const t = TONE[tone];
   return (
     <div
-      role={live ? "status" : undefined}
+      role={alert ? "alert" : live ? "status" : undefined}
       data-tone={tone}
       className={cn(
         "flex flex-col gap-3 rounded-lg border px-4 py-3 text-sm sm:flex-row sm:items-start",

@@ -509,7 +509,7 @@ describe("Catalog editor", () => {
     });
   });
 
-  it("blocks review while the draft has an error, and names it", async () => {
+  it("opens the review with the error pinned to its entry, and Publish waits", async () => {
     await openEditor();
     const key = await screen.findByRole("textbox", { name: /^Key/ });
     await userEvent.clear(key);
@@ -518,11 +518,26 @@ describe("Catalog editor", () => {
       await screen.findByText("The key network.proxy.url is used twice."),
     ).toBeTruthy();
     expect(screen.getByText(/1 error/)).toBeTruthy();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Review changes" }),
+    );
+    const drawer = await screen.findByRole("dialog");
+    const pinned = within(drawer).getByRole("region", {
+      name: "Errors in the draft",
+    });
+    expect(pinned.textContent).toContain(
+      "The key network.proxy.url is used twice.",
+    );
     expect(
-      screen
-        .getByRole("button", { name: "Review changes" })
+      within(drawer)
+        .getByRole("button", { name: "Publish version 9" })
         .getAttribute("aria-disabled"),
     ).toBe("true");
+    // Fix it closes the review and leaves the entry open.
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Fix it" }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
   it("requires the acknowledgement for a breaking removal (L2)", async () => {
@@ -691,9 +706,16 @@ describe("Catalog editor", () => {
       }),
     );
     drawer = await screen.findByRole("dialog", { name: "Publish version 10" });
-    // Publishing over v9 now would drop the teammate's key: the review shows it as removed.
-    expect(within(drawer).getByText("teammate.key")).toBeTruthy();
+    // The merge keeps the teammate's key: the review does not show it as removed.
+    expect(within(drawer).queryByText("teammate.key")).toBeNull();
     expect(backend.writes()).toHaveLength(1);
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Publish version 10" }),
+    );
+    await waitFor(() => expect(backend.writes()).toHaveLength(2));
+    const sent = (backend.writes()[1]!.body as { catalog: ProductCatalog })
+      .catalog;
+    expect(sent.entries.map((e) => e.key)).toContain("teammate.key");
   });
 
   it("switches between form and JSON without losing the draft (CAT-4)", async () => {
