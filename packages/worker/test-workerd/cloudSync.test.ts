@@ -64,6 +64,8 @@ describe("CloudSyncDO under workerd (U-05.7)", () => {
     const pin = { product: "wd", subject: "sub_roundtrip" };
     const pushed = await pushTo(pin, "theme");
     expect(pushed.outcome).toBeDefined();
+    // U-05.18: the runtime's own cursor counts, not a mock's.
+    expect(pushed.meter?.rowsWritten).toBeGreaterThan(0);
     const pulled = await callCloudSync<"pull">(env, pin, {
       op: "pull",
       cursor: 0,
@@ -72,6 +74,7 @@ describe("CloudSyncDO under workerd (U-05.7)", () => {
       clientId: C1,
     });
     expect(JSON.stringify(pulled.outcome)).toContain("theme");
+    expect(pulled.meter?.rowsRead).toBeGreaterThan(0);
     const usage = await callCloudSync<"usage">(env, pin, { op: "usage" });
     expect(usage.empty).toBe(false);
   });

@@ -1054,3 +1054,46 @@ describe("POST /<p>/sync/ops: CORS", () => {
     expect(refused.headers.get("access-control-allow-origin")).toBeNull();
   });
 });
+
+describe("the meter header (U-05.18)", () => {
+  const FORM =
+    /^sync;desc="(push|pull)";dur=\d+\.\d, mut;desc="(\d+)", rr;desc="(\d+)", rw;desc="(\d+)"$/;
+
+  it("rides a push and a pull, carries no identifier, and is not CORS-exposed", async () => {
+    const w = await world();
+    const res = await push(
+      w,
+      [set("audio.gain", 3), set("ui.theme", "dark")],
+      {},
+      {
+        origin: LISTED,
+      },
+    );
+    expect(res.status).toBe(200);
+    const h = res.headers.get("server-timing")!;
+    const m = FORM.exec(h)!;
+    expect(m[1]).toBe("push");
+    expect(m[2]).toBe("2");
+    expect(Number(m[4])).toBeGreaterThan(0);
+    for (const secret of [w.subject, DEVICE, SLUG, "ada@example.com", w.token])
+      expect(h).not.toContain(secret);
+    expect(res.headers.get("access-control-expose-headers") ?? "").not.toMatch(
+      /server-timing/i,
+    );
+    expect(res.headers.get("timing-allow-origin")).toBeNull();
+
+    const pulled = await send(w, "", authed(w), `/${SLUG}/sync`, "GET");
+    expect(pulled.status).toBe(200);
+    const p = FORM.exec(pulled.headers.get("server-timing")!)!;
+    expect(p[1]).toBe("pull");
+    expect(p[2]).toBe("0");
+    expect(Number(p[3])).toBeGreaterThan(0);
+  });
+
+  it("is absent when the request never reached the object", async () => {
+    const w = await world();
+    const res = await send(w, batch([]), {}, `/${SLUG}/sync/ops`);
+    expect(res.status).toBe(401);
+    expect(res.headers.get("server-timing")).toBeNull();
+  });
+});

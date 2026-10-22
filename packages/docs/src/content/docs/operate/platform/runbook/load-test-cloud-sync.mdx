@@ -1,0 +1,79 @@
+---
+title: "Load-test Cloud Sync"
+description: "Drive one person's Cloud Sync object with several devices, read the per-operation meter and the billable duration."
+type: "runbook"
+lastReviewed: "2026-10-22"
+sidebar:
+  order: 11
+---
+
+**Role required:** Platform admin with a Cloudflare API token that can read Analytics. The owner schedules the production run.
+
+**Impact:** The script writes real settings into one signed-in person's Cloud Sync store on the product you name, and spends real Durable Object duration. Use a test account on a product whose catalog accepts the `load.key.*` keys.
+
+Use this to size Cloud Sync: how many rows one object reads and writes per operation, how long a push takes under load, and what the duration bill looks like.
+
+## What the Worker reports
+
+Every push and every pull that reached the person's object carries one standard `Server-Timing` header:
+
+```
+Server-Timing: sync;desc="push";dur=12.4, mut;desc="100", rr;desc="340", rw;desc="212"
+```
+
+| Metric | Meaning                                                                         |
+| ------ | ------------------------------------------------------------------------------- |
+| `sync` | The operation, `push` or `pull`. `dur` is the Worker's wall time in ms.         |
+| `mut`  | The mutations the request carried (`0` for a pull).                             |
+| `rr`   | Rows the object's SQL read, summed over every object call the operation made.   |
+| `rw`   | Rows the object's SQL wrote, summed the same way. A push also pulls its answer. |
+
+The header holds counts and timings only: no subject, device id, product key or email. It is not exposed to browsers (no CORS exposure, no `Timing-Allow-Origin`), so only a tool that reads response headers, like the load script, sees it. A request refused before the object (`401`, `429`, `503 writes_paused`) has no header. Account-merge absorbs are metered inside the object the same way, but no route answers with them.
+
+## Before you start
+
+1. Sign in one test account on the product and pair N devices to it. Keep each device's id and device token.
+2. Put them in the environment, never on the command line:
+
+```sh
+export PKEY_LOAD_DEVICES='[{"deviceId":"<id>","token":"<token>"}, ...]'
+export CF_ACCOUNT_ID=<account id>           # optional: billable duration
+export CF_ANALYTICS_TOKEN=<read-analytics>  # optional: billable duration
+```
+
+3. Dry-run first. It prints the plan and makes no network call:
+
+```sh
+node packages/worker/scripts/load/cloud-sync-one-do.mjs \
+  --base-url https://key.plrs.im --product <slug> --devices 5 --dry-run
+```
+
+## Run
+
+```sh
+node packages/worker/scripts/load/cloud-sync-one-do.mjs \
+  --base-url https://key.plrs.im --product <slug> --devices 5 --duration-s 300
+```
+
+Each device pushes 60 times a minute in 100-mutation batches (the per-device limit, so some `429` answers are expected near it) and pulls every 10 seconds. Options: `--pushes-per-min`, `--batch` (at most 100), `--pull-every-s`, `--key-prefix` (default `load.key`), `--analytics-delay-s` (default 120).
+
+## Read the report
+
+- **Rows per operation:** total and mean rows read and written for push and pull, from the header. `metered` below `requests` means some answers had no header, which a `429` does.
+- **p50 and p95:** client-side latency per operation, in ms.
+- **429 count:** pushes the per-device or per-product limit refused.
+- **Billable duration:** after the delay, the script asks the Cloudflare GraphQL Analytics API for `durableObjectsPeriodicGroups` `activeTime` over the run window and prints active milliseconds and GB-seconds at 128 MB. The sum is account-wide, so run on a quiet account. If the token is missing or the query fails, the line says why and never prints the token. Check the dataset and field names against the current GraphQL schema when the query is rejected.
+
+## Verify
+
+- The mean rows written per push is the same order as the batch size, not a multiple of it.
+- Pull rows read stay flat across the run for an unchanged store.
+- No device token appears in the terminal output or the shell history.
+
+## Roll back
+
+The script has no state to undo. The pushes wrote only the `load.key.*` settings of the test account. Delete that account's Cloud Sync data the way you erase any person's, then rotate the device tokens if they were stored outside a secret manager.
+
+## Escalate
+
+A rising `429` count with a flat push rate means a limiter shard is saturated: see [Troubleshoot the platform](/docs/operate/platform/runbook/troubleshooting/). A `503` on pushes means the kill switch `cloudSync.writesPaused` is on.
