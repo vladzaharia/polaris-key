@@ -50,11 +50,11 @@ const reply = (
   version: number,
 ): TrustPolicyResponse => ({ ok: true, policy, source, version });
 
-const mount = (locked = false) =>
+const mount = (locked = false, syncOn = false) =>
   renderAt(
     "#/p/djdl/settings/keys",
     <WriteLock locked={locked} reason="View-only">
-      <TrustPolicySection slug="djdl" />
+      <TrustPolicySection slug="djdl" syncOn={syncOn} />
     </WriteLock>,
   );
 
@@ -286,6 +286,62 @@ describe("Keys and secrets → Device trust", () => {
     );
     await screen.findByRole("alertdialog");
     await expectNoAxeViolations(document.body);
+  });
+});
+
+describe("Cloud Sync writes row (U-05.11)", () => {
+  it("is hidden while Cloud Sync is off", async () => {
+    mount();
+    await screen.findByText("ABCDE12345, production");
+    expect(screen.queryByText("Cloud Sync writes")).toBeNull();
+  });
+
+  it("reads Any device for a policy that predates it, and Attested when set", async () => {
+    mount(false, true);
+    const term = await screen.findByText("Cloud Sync writes");
+    expect(term.nextElementSibling?.textContent).toBe("Any device");
+  });
+
+  it("reads Attested device when set", async () => {
+    fns.trustPolicy.mockResolvedValue(
+      reply({ ...STRICT, cloudSyncWrite: "attested" }, "admin", 3),
+    );
+    mount(false, true);
+    const again = await screen.findByText("Cloud Sync writes");
+    expect(again.nextElementSibling?.textContent).toBe("Attested device");
+  });
+
+  it("raising it is L1; relaxing it is L2", async () => {
+    fns.putTrustPolicy.mockResolvedValue(reply(STRICT, "admin", 4));
+    mount(false, true);
+    const { user, drawer } = await openEditor();
+    await user.click(
+      within(drawer).getByRole("combobox", { name: "Cloud Sync writes" }),
+    );
+    await user.click(
+      await screen.findByRole("option", { name: "Attested device" }),
+    );
+    await user.click(
+      within(drawer).getByRole("button", { name: "Review changes…" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(
+        "Cloud Sync writes now accepts an attested device (was any device).",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText("Tighten the device trust policy?"),
+    ).toBeTruthy();
+    expect(
+      relaxesTrustPolicy(
+        { ...STRICT, cloudSyncWrite: "attested" },
+        { ...STRICT, cloudSyncWrite: "basic" },
+      ),
+    ).toBe(true);
+    expect(
+      relaxesTrustPolicy(STRICT, { ...STRICT, cloudSyncWrite: "attested" }),
+    ).toBe(false);
   });
 });
 

@@ -16,7 +16,9 @@ import type { SettingAdapter } from "./types.js";
 
 /** A trust policy as a sentence, for the audit row. */
 function describe(p: TrustPolicy): string {
-  const ops = (["mint", "gatedDelivery", "commerceClaim"] as const)
+  const ops = (
+    ["mint", "gatedDelivery", "commerceClaim", "cloudSyncWrite"] as const
+  )
     .map((op) => `${op}=${p[op]}`)
     .join(", ");
   return `${ops}; ${p.enforce ? "enforced" : "log-only"}; appAttest=${p.appAttest ? `${p.appAttest.teamId ?? "(platform team id)"}/${p.appAttest.environment}` : "off"}; playIntegrity=${p.playIntegrity ? `${p.playIntegrity.cloudProjectNumber ?? "(platform project)"}${p.playIntegrity.allowTestingResponses ? " (testing responses allowed)" : ""}` : "off"}`;
