@@ -15708,7 +15708,8 @@ paths:
         Home's Needs attention list (UX-12), composed on the server: a failed resync, a required
         secret with no value, a missing signing key, an edge-mint recipe awaiting approval, a store
         credential expiring within 14 days or expired, a store's typed app identity that differs
-        from the app assigned to the product (`storefront.identity_mismatch`, area `commerce`), a store channel's declared app identity that differs
+        from the app assigned to the product (`storefront.identity_mismatch`, area `commerce`), a store whose own
+        keys name different apps (`storefront.identity_ambiguous`, area `commerce`), a store channel's declared app identity that differs
         from the assigned app (`channel.identity_mismatch`, area `ship`).
         Only broken things appear; what a product
         has not set up yet does not. Each item states one fact per line, names its product, and
@@ -21623,6 +21624,7 @@ components:
                     mint.pending,
                     credential.expiring,
                     storefront.identity_mismatch,
+                    storefront.identity_ambiguous,
                     channel.identity_mismatch,
                   ]
               tone: { type: string, enum: [danger, warning] }

@@ -20,6 +20,7 @@ import {
 } from "../src/console/access/can.js";
 import { askReason } from "../src/console/access/useCan.js";
 import { ALL_PAGES } from "../src/console/nav.js";
+import { r } from "../src/console/routes.js";
 import { ALL_ON, ME, boot, resetConsole } from "./consoleHarness.js";
 
 beforeEach(resetConsole);
@@ -138,6 +139,25 @@ describe("canIn", () => {
     expect(canOpenHref(me, "#/p/djdl/license/licenses")).toBe(false);
     expect(canOpenHref(me, "#/platform/settings")).toBe(false);
     expect(canOpenHref(me, "/docs/")).toBe(true);
+  });
+
+  it("lets a commerce-only member open where a store identity item sends them", () => {
+    const base = { ...ME, ...SHIP_ONLY } as Me;
+    const perms = base.permissions!;
+    const me = {
+      ...base,
+      permissions: {
+        ...perms,
+        products: {
+          djdl: {
+            view: ["console", "commerce"],
+            edit: ["commerce"],
+          },
+        },
+      },
+    } as Me;
+    expect(canOpenHref(me, r.commerceOverview("djdl"))).toBe(true);
+    expect(canOpenHref(me, r.storefronts("djdl"))).toBe(false);
   });
 
   it("treats a worker without permissions as before: a platform admin holds every area", () => {

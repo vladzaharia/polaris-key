@@ -21,7 +21,10 @@ import {
   expiringCredentials,
   outletIdentityMismatches,
 } from "../../services/distribution/public.js";
-import { storefrontIdentityMismatches } from "../../services/commerce/public.js";
+import {
+  storefrontIdentityAmbiguities,
+  storefrontIdentityMismatches,
+} from "../../services/commerce/public.js";
 import { parseServices } from "../../core/services.js";
 import { attentionFactsFor } from "./shape.js";
 
@@ -35,6 +38,7 @@ export type AttentionKind =
   | "mint.pending"
   | "credential.expiring"
   | "storefront.identity_mismatch"
+  | "storefront.identity_ambiguous"
   | "channel.identity_mismatch";
 
 /** Where the fix lives: a product page, by the console's page id. */
@@ -121,6 +125,8 @@ export async function productAttention(
   db: Db,
   p: ProductRow,
   now: number,
+  /** Whether the asker may see an area's items; the reads for a hidden area are skipped. */
+  sees: (area: AreaId) => boolean = () => true,
 ): Promise<AttentionItem[]> {
   const product = { slug: p.slug, name: p.name || p.slug };
   const items: AttentionItem[] = [];
@@ -199,11 +205,9 @@ export async function productAttention(
       area: "config",
     });
 
-  const creds = await expiringCredentials(
-    db,
-    p.slug,
-    now + EXPIRY_WINDOW_SECONDS,
-  );
+  const creds = sees("ship")
+    ? await expiringCredentials(db, p.slug, now + EXPIRY_WINDOW_SECONDS)
+    : [];
   for (const c of creds) {
     const label = CREDENTIAL_LABELS[c.kind];
     if (!label) continue;
@@ -223,8 +227,9 @@ export async function productAttention(
 
   // Only a product that sells through Commerce; a block left over while it is off is not news.
   if (
+    sees("commerce") &&
     parseServices(p.services_json ?? null).services.commerce?.enabled === true
-  )
+  ) {
     for (const m of await storefrontIdentityMismatches(db, p.slug))
       items.push({
         id: id("storefront.identity_mismatch", m.store),
@@ -236,14 +241,31 @@ export async function productAttention(
         lines: [
           `${STORE_LABELS[m.store]} purchases are checked against \`${m.typed}\`, not the assigned app \`${m.assigned}\`.`,
         ],
-        action: { label: "Review", page: "storefronts" },
+        action: { label: "Review", page: "commerce-overview" },
         area: "commerce",
       });
+    for (const a of await storefrontIdentityAmbiguities(db, p.slug))
+      items.push({
+        id: id("storefront.identity_ambiguous", a.store),
+        product,
+        kind: "storefront.identity_ambiguous",
+        tone: "warning",
+        service: "commerce",
+        short: "Two apps assigned",
+        lines: [
+          `${STORE_LABELS[a.store]} keys name different apps.`,
+          `Purchases are checked against \`${a.value}\`.`,
+        ],
+        action: { label: "Review", page: "commerce-overview" },
+        area: "commerce",
+      });
+  }
 
   // Only while Distribution is on; an outlet row left over while it is off is not news.
   if (
+    sees("ship") &&
     parseServices(p.services_json ?? null).services.distribution?.enabled ===
-    true
+      true
   )
     for (const m of await outletIdentityMismatches(db, p.slug))
       items.push({
@@ -274,8 +296,9 @@ export async function attentionAcross(
   const per = await Promise.all(
     products.map(async (p) => {
       const scope = productScope(p);
-      const items = await productAttention(db, p, now);
-      return items.filter((i) => can(principal, scope, i.area, "view"));
+      const sees = (area: AreaId) => can(principal, scope, area, "view");
+      const items = await productAttention(db, p, now, sees);
+      return items.filter((i) => sees(i.area));
     }),
   );
   return per

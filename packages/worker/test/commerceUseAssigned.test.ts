@@ -15,7 +15,12 @@ import {
 import { setServices } from "../src/core/products/store.js";
 import { serializeServices } from "../src/core/services.js";
 import { effectiveCommerceSettings } from "../src/services/commerce/identity.js";
-import { storefrontIdentityMismatches } from "../src/services/commerce/public.js";
+import {
+  storefrontIdentityAmbiguities,
+  storefrontIdentityMismatches,
+} from "../src/services/commerce/public.js";
+import { putOutletCredential } from "../src/core/outletCredentials.js";
+import { generateKeyPairSync } from "node:crypto";
 import { SLUG } from "./releaseRoutesFixture.js";
 import { NOW } from "./seed.js";
 import { BUNDLE_ID, PLAY_PACKAGE, STEAM_APP } from "./commerceFake.js";
@@ -50,6 +55,7 @@ const grant = (sub: string, areas: string[] | null) =>
   } as Principal);
 grant("m-commerce", ["commerce"]);
 grant("m-ship", ["ship"]);
+grant("m-license", ["license"]);
 
 let w: CommerceWorld | null = null;
 afterEach(() => {
@@ -267,6 +273,8 @@ describe("storefront.identity_mismatch", () => {
     });
     expect(items[0].lines[0]).toContain(OTHER);
     expect(items[0].lines[0]).toContain(BUNDLE_ID);
+    // The fix is on the Commerce page, which a commerce-only member can open.
+    expect(items[0].action.page).toBe("commerce-overview");
 
     expect(await attention(cw, "m-ship")).toEqual([]);
     expect(await attention(cw, "m-commerce")).toHaveLength(3);
@@ -291,5 +299,91 @@ describe("storefront.identity_mismatch", () => {
       NOW,
     );
     expect(await attention(m)).toEqual([]);
+  });
+});
+
+const p8Pem = () =>
+  generateKeyPairSync("ec", { namedCurve: "P-256" })
+    .privateKey.export({ type: "pkcs8", format: "pem" })
+    .toString();
+
+describe("storefront.identity_ambiguous (D15)", () => {
+  const ambiguousItems = async (cw: CommerceWorld, sub?: string) =>
+    (await call(cw, "GET", "/api/attention", sub)).json.items.filter(
+      (i: { kind: string }) => i.kind === "storefront.identity_ambiguous",
+    );
+
+  it("is raised when a field is left out and two own keys name different apps", async () => {
+    const cw = await world({
+      settings: { appStore: {}, steam: {}, play: { ...SETTINGS.play } },
+    });
+    expect(await storefrontIdentityAmbiguities(cw.db, SLUG)).toEqual([]);
+    expect(await ambiguousItems(cw)).toEqual([]);
+    const r = await putOutletCredential(cw.env, cw.db, {
+      product: SLUG,
+      credentialId: "iap2",
+      kind: "app-store-server-key",
+      outletId: null,
+      value: {
+        keyId: "IAPKEY5678",
+        issuerId: "69a6de7f-0000-47e3-e053-5b8c7c11a4d1",
+        p8: p8Pem(),
+      },
+      pin: "gg.other.app",
+      expiresAt: null,
+      actor: "admin-1",
+      now: NOW,
+    });
+    expect(r.ok).toBe(true);
+    expect(await storefrontIdentityAmbiguities(cw.db, SLUG)).toEqual([
+      { store: "app-store", value: BUNDLE_ID },
+    ]);
+    const items = await ambiguousItems(cw);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      id: `${SLUG}:storefront.identity_ambiguous:app-store`,
+      area: "commerce",
+      service: "commerce",
+      tone: "warning",
+      action: { page: "commerce-overview" },
+    });
+    expect(items[0].lines.join(" ")).toContain(BUNDLE_ID);
+    expect(await ambiguousItems(cw, "m-commerce")).toHaveLength(1);
+    expect(await ambiguousItems(cw, "m-ship")).toEqual([]);
+  });
+});
+
+describe("attention reads follow the member's areas", () => {
+  it("a license-only member triggers no binding reads; a commerce member does", async () => {
+    const cw = await world({ settings: MISMATCHED });
+    const reads: string[] = [];
+    const counting = {
+      ...cw.db,
+      all: (sql: string, ...p: unknown[]) => (
+        reads.push(sql),
+        (cw.db.all as any)(sql, ...p)
+      ),
+      first: (sql: string, ...p: unknown[]) => (
+        reads.push(sql),
+        (cw.db.first as any)(sql, ...p)
+      ),
+    };
+    const binding = (sql: string) =>
+      /platform_credentials|outlet_credentials|dist_connector_settings|dist_outlets/.test(
+        sql,
+      );
+    const as = async (sub: string) => {
+      reads.length = 0;
+      const out = await call(
+        { ...cw, db: counting } as CommerceWorld,
+        "GET",
+        "/api/attention",
+        sub,
+      );
+      expect(out.status).toBe(200);
+      return reads.filter(binding).length;
+    };
+    expect(await as("m-license")).toBe(0);
+    expect(await as("m-commerce")).toBeGreaterThan(0);
   });
 });

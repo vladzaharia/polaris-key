@@ -1438,6 +1438,7 @@ export interface AttentionItemDto {
     | "mint.pending"
     | "credential.expiring"
     | "storefront.identity_mismatch"
+    | "storefront.identity_ambiguous"
     | "channel.identity_mismatch";
   tone: "danger" | "warning";
   /** The service the fix belongs to (the row's accent); `null` for the product itself. */

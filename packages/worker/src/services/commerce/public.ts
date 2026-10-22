@@ -44,3 +44,26 @@ export async function storefrontIdentityMismatches(
   }
   return out;
 }
+
+export interface StorefrontIdentityAmbiguity {
+  store: "app-store" | "play" | "steam";
+  /** The identity in force: the lowest-id pin wins (D15). */
+  value: string;
+}
+
+/**
+ * The stores whose own active pins for the identity field disagree (D15). Silent otherwise: a
+ * second key pinned elsewhere changes nothing a typed value would not have fixed. Read-only.
+ */
+export async function storefrontIdentityAmbiguities(
+  db: Db,
+  slug: string,
+): Promise<StorefrontIdentityAmbiguity[]> {
+  const { identity } = await effectiveCommerceSettings(db, slug);
+  const out: StorefrontIdentityAmbiguity[] = [];
+  for (const store of ["app-store", "play", "steam"] as const) {
+    const i = identity[store];
+    if (i.ambiguous && i.value !== null) out.push({ store, value: i.value });
+  }
+  return out;
+}
