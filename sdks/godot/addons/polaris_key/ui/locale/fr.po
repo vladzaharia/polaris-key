@@ -934,7 +934,7 @@ msgstr "Pour l’utiliser sur ce téléviseur, remplacez-en un. Vous pourrez le 
 msgid "deviceLimit.confirmTitle"
 msgstr "Remplacer {device} ?"
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "deviceLimit.consequence"
 msgstr "{device} sera déconnecté de {product} et {thisDevice} prendra sa place. Nous vous enverrons un e-mail à ce sujet."
@@ -2375,7 +2375,7 @@ msgctxt "macos"
 msgid "signin.choice.continue"
 msgstr "Utiliser cette licence et continuer"
 
-#. That seat was just taken. Choose again.
+#. That device was just replaced. Choose again.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.raced"
 msgstr "Cette place vient d’être prise. Faites un autre choix."
@@ -2420,7 +2420,7 @@ msgctxt "macos"
 msgid "signin.replace.open"
 msgstr "Remplacer un appareil"
 
-#. Choose a device to sign out. {thisDevice} takes its seat.
+#. Choose a device to sign out. {thisDevice} takes its place.
 #. Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice).
 msgid "signin.replace.lede"
 msgstr "Choisissez un appareil à déconnecter. {thisDevice} prend sa place."
@@ -2460,7 +2460,7 @@ msgstr "Ce navigateur"
 msgid "signin.replace.title"
 msgstr "Remplacer {device} ?"
 
-#. {device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.
+#. {device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "signin.replace.consequence"
 msgstr "{device} sera déconnecté de {product} et {thisDevice} prendra sa place. Nous vous enverrons un e-mail à ce sujet."
@@ -2509,12 +2509,12 @@ msgstr[0] "Trop de changements d’appareil. Réessayez dans {seconds} seconde."
 msgstr[1] "Trop de changements d’appareil. Réessayez dans {seconds} de secondes."
 msgstr[2] "Trop de changements d’appareil. Réessayez dans {seconds} secondes."
 
-#. Someone took that seat first. Choose again.
+#. Someone replaced that device first. Choose again.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
 msgid "signin.replace.raced"
 msgstr "Quelqu’un a pris cette place avant vous. Faites un autre choix."
 
-#. {device} was removed, but someone took the seat first. Choose again.
+#. {device} was removed, but someone signed in first. Choose again.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
 msgid "signin.replace.racedAfterFree"
 msgstr "{device} a été retiré, mais quelqu’un a pris la place avant vous. Faites un autre choix."
@@ -4332,7 +4332,7 @@ msgctxt "macos"
 msgid "signin.choice.replaceAndSignIn"
 msgstr "Remplacer et se connecter"
 
-#. The device you choose signs out of {app}. It can sign in again later if a seat is free. We'll email you about it.
+#. The device you choose signs out of {app}. It can sign in again later if there's room. We'll email you about it.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.choice.replaceSafety"
 msgstr "L’appareil choisi sera déconnecté de {app}. Il pourra se reconnecter plus tard si une place est libre. Nous vous préviendrons par e-mail."

@@ -329,7 +329,7 @@ function Icon({
         "shrink-0 passport:ms-6 passport:w-fit passport:rounded-[14px]",
         art
           ? "passport:-mt-7 passport:ring-4 passport:ring-surface-sunken"
-          : "passport:mt-8",
+          : "passport:mt-0",
       )}
     >
       {children}
@@ -377,13 +377,18 @@ export function HeaderSkeleton(): React.ReactElement {
 }
 
 const OUTER = "passport:flex passport:h-full passport:flex-col";
+/**
+ * Without art the identity block sits in the middle of the pane, so it never has a void under it
+ * (M4: icon, request, who and where, between the top and the receipt).
+ */
+const OUTER_NO_ART = `${OUTER} passport:justify-center passport:py-6`;
 
 export function CardHeader(props: CardHeaderProps): React.ReactElement {
   const hasArt = Boolean(props.art);
   if (props.variant === "context") {
     const { variant, icon, name, developer, where, art } = props;
     return (
-      <div data-header={variant} className={OUTER}>
+      <div data-header={variant} className={hasArt ? OUTER : OUTER_NO_ART}>
         <PaneArt src={art} />
         <div className="flex items-center gap-4 px-5 py-4 sm:px-7 passport:contents">
           <Icon art={hasArt}>{icon}</Icon>
@@ -410,7 +415,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
   }
   const { variant, icon, name, developer, where, code, art } = props;
   return (
-    <div data-header={variant} className={OUTER}>
+    <div data-header={variant} className={hasArt ? OUTER : OUTER_NO_ART}>
       <PaneArt src={art} />
       <div className="px-5 py-4 sm:px-7 passport:contents">
         <div className="flex items-center gap-4 passport:contents">

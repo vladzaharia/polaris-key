@@ -18,7 +18,6 @@ import { formatRelative } from "../../../lib/format.js";
 import { PORTAL_FMT } from "../../date.js";
 import type { PortalDevice, PortalLicenseDetail } from "../../api.js";
 import { useRemoveDevice } from "../../data.js";
-import { portalErrorCopy } from "../../errors.js";
 import {
   deviceFamily,
   deviceOsName,
@@ -261,6 +260,14 @@ function useListTransition(
   return { view: moving ? held : detail, listRef };
 }
 
+/** The heading of the card a row is in (Devices), else the page's `h1`. */
+function cardHeading(from: HTMLElement | null): HTMLElement | null {
+  return (
+    from?.closest("[data-section]")?.querySelector<HTMLElement>("h2") ??
+    pageHeading(from)
+  );
+}
+
 /** The page's `h1` (the product header's, focusable with `tabIndex={-1}`), from inside it. */
 function pageHeading(from: HTMLElement | null): HTMLElement | null {
   const h1 = (from?.closest("main") ?? document).querySelector<HTMLElement>(
@@ -436,7 +443,7 @@ export function DeviceRow({
             </ul>
             {remove.error ? (
               <p role="alert" className="text-sm text-danger">
-                {portalErrorCopy(remove.error).line}
+                {t("devices.removeFailed", { device: name })}
               </p>
             ) : null}
             <div className="flex flex-col gap-2 @[22rem]:flex-row @[22rem]:justify-end">
@@ -451,8 +458,9 @@ export function DeviceRow({
                 loading={remove.isPending}
                 onClick={() => {
                   if (gone) return;
-                  // The row leaves with the removal; find the page's heading while it is here.
-                  const heading = pageHeading(rowRef.current);
+                  // The row leaves with the removal; find the card's heading while it is here
+                  // (the page's `h1` is far off screen, up the page, from a long list).
+                  const heading = cardHeading(rowRef.current);
                   remove.mutate(device.deviceId, {
                     onSuccess: () => {
                       // Said once, with the count as it is when the removal lands (S-23 §6.5: a
@@ -471,9 +479,9 @@ export function DeviceRow({
                             })
                           : t("locker.devices.removedPlain", { name }),
                       );
-                      // Focus never falls to `body` (FLOWS.md P-7): it goes to the product's
-                      // `h1` (MO-05's page focus), without scrolling away from the list, which
-                      // closes up where the person is looking.
+                      // Focus never falls to `body` (FLOWS.md P-7): it goes to the Devices
+                      // heading, without scrolling away from the list, which closes up where
+                      // the person is looking.
                       focusPageHeading(() =>
                         heading?.isConnected ? heading : pageHeading(null),
                       );

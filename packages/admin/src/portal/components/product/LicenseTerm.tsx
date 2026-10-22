@@ -18,20 +18,29 @@ export function LicenseTerm({
   activatedAt,
   expiresAt,
   now,
+  updatesEndedAt = null,
   children,
 }: {
   activatedAt: number | null;
   expiresAt: number | null;
   now: number;
+  /**
+   * The last version an ended license still covers: it keeps working, only newer versions stop
+   * (portal.license-lapsed). The block then reads "Updates ended at <v>" over "Keeps working".
+   */
+  updatesEndedAt?: string | null;
   children?: React.ReactNode;
 }): React.ReactElement {
   const ended = expiresAt !== null && expiresAt <= now;
+  const keeps = ended && updatesEndedAt !== null;
   const headline =
     expiresAt === null
       ? t("signin.term.lifetime")
-      : ended
-        ? t("license.term.ended", { date: formatDay(expiresAt) })
-        : t("signin.term.until", { date: formatDay(expiresAt) });
+      : keeps
+        ? t("locker.status.updatesEnded", { version: updatesEndedAt })
+        : ended
+          ? t("license.term.ended", { date: formatDay(expiresAt) })
+          : t("signin.term.until", { date: formatDay(expiresAt) });
   const plot = termPlot(activatedAt, expiresAt);
   return (
     <div
@@ -43,7 +52,19 @@ export function LicenseTerm({
           : "space-y-3"
       }
     >
-      <p className="font-semibold text-fg-strong">{headline}</p>
+      {keeps ? (
+        <div className="space-y-1">
+          <p className="font-semibold text-fg-strong">{headline}</p>
+          <p className="text-sm text-fg-muted">
+            {t("locker.status.keepsWorking")}
+          </p>
+          <p className="text-sm text-fg-muted">
+            {t("locker.status.renewalStopped", { date: formatDay(expiresAt!) })}
+          </p>
+        </div>
+      ) : (
+        <p className="font-semibold text-fg-strong">{headline}</p>
+      )}
       {plot ? <Timeline {...plot} now={now} /> : null}
       {children}
     </div>

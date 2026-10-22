@@ -183,7 +183,7 @@ export const KIT_COPY: Readonly<
       "To use it on {formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}, replace one. You can add it back later.",
     "deviceLimit.confirmTitle": "Replace {device}?",
     "deviceLimit.consequence":
-      "{device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.",
+      "{device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.",
     "deviceLimit.primary": "Replace and continue",
     "deviceLimit.removed": "{device} was replaced. {product} is continuing.",
     "deviceLimit.failed": "{device} couldn't be replaced. Try again.",
@@ -451,7 +451,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.keyInstead": "Use a license key instead",
     "signin.choice.freeDevice": "Free a device",
     "signin.choice.continue": "Use this license and continue",
-    "signin.choice.raced": "That seat was just taken. Choose again.",
+    "signin.choice.raced": "That device was just replaced. Choose again.",
     "signin.choice.codeExpired":
       "The code on {device} expired. Get a new code there and scan it again.",
     "signin.none.title": "No {product} license in this account",
@@ -461,7 +461,7 @@ export const KIT_COPY: Readonly<
     "signin.none.otherAccount": "Use another account",
     "signin.replace.open": "Replace a device",
     "signin.replace.lede":
-      "Choose a device to sign out. {thisDevice} takes its seat.",
+      "Choose a device to sign out. {thisDevice} takes its place.",
     "signin.replace.heading": "Replace a device",
     "signin.replace.openSystem": "Replace…",
     "signin.replace.meta": "{platform} · last used {when}",
@@ -470,7 +470,7 @@ export const KIT_COPY: Readonly<
     "signin.replace.thisBrowser": "This browser",
     "signin.replace.title": "Replace {device}?",
     "signin.replace.consequence":
-      "{device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.",
+      "{device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.",
     "signin.replace.inUse": "{device} is in use right now.",
     "signin.replace.confirm": "Replace and continue",
     "signin.replace.confirmNamed": "Replace {device} and continue",
@@ -478,9 +478,9 @@ export const KIT_COPY: Readonly<
     "signin.replace.gone": "That device was already removed. Choose again.",
     "signin.replace.rateLimited":
       "Too many device changes. Try again in {seconds, plural, one {# second} other {# seconds}}.",
-    "signin.replace.raced": "Someone took that seat first. Choose again.",
+    "signin.replace.raced": "Someone replaced that device first. Choose again.",
     "signin.replace.racedAfterFree":
-      "{device} was removed, but someone took the seat first. Choose again.",
+      "{device} was removed, but someone signed in first. Choose again.",
     "signin.consent.title": "Continue to {app} as {name}?",
     "signin.consent.license": "License for this device",
     "signin.consent.licenseLine":
@@ -863,7 +863,7 @@ export const KIT_COPY: Readonly<
     "signin.choice.pickDevice": "Choose a device to replace.",
     "signin.choice.replaceAndSignIn": "Replace and sign in",
     "signin.choice.replaceSafety":
-      "The device you choose signs out of {app}. It can sign in again later if a seat is free. We'll email you about it.",
+      "The device you choose signs out of {app}. It can sign in again later if there's room. We'll email you about it.",
     "signin.choice.replacedTitle": "Device replaced",
     "signin.choice.replacedBody":
       "{device} signed out of {app}. {thisDevice} is signed in.",

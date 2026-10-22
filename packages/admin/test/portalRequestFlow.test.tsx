@@ -425,7 +425,7 @@ describe("LicenseChoiceStep (§3.6)", () => {
     ).toBe(true);
     expect(
       screen.getByText(
-        "The device you choose signs out of Diceroll. It can sign in again later if a seat is free. We'll email you about it.",
+        "The device you choose signs out of Diceroll. It can sign in again later if there's room. We'll email you about it.",
       ),
     ).toBeTruthy();
     const primary = screen.getByRole("button", { name: "Replace and sign in" });

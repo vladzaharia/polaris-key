@@ -125,11 +125,14 @@ function Boot(): React.ReactElement {
   // A load that is already signed in keeps the browser's own start (the skip link). An app's
   // sign-in (`/signin?request=`) manages its own focus.
   const sawSignedOut = React.useRef(false);
+  // The same for an app's sign-in, whose card is not mounted yet: its first step takes the focus.
+  const [signedInHere, setSignedInHere] = React.useState(false);
   React.useEffect(() => {
     if (session.data === null) sawSignedOut.current = true;
     else if (session.data && sawSignedOut.current) {
       sawSignedOut.current = false;
       if (window.location.pathname !== "/signin") focusPageHeading();
+      else setSignedInHere(true);
     }
   }, [session.data]);
   if (session.isPending) {
@@ -160,7 +163,13 @@ function Boot(): React.ReactElement {
   if (window.location.pathname === "/signin") {
     const handle = requestHandleFromUrl();
     if (handle)
-      return <RequestFlow account={session.data.account} handle={handle} />;
+      return (
+        <RequestFlow
+          account={session.data.account}
+          handle={handle}
+          focusOnArrival={signedInHere}
+        />
+      );
   }
   if (second)
     return (

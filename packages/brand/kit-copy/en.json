@@ -678,7 +678,7 @@
       "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block under the selected device. On macOS the kit wraps {device} in curly quotes. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
     },
     "deviceLimit.consequence": {
-      "value": "{device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.",
+      "value": "{device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.",
       "role": "body",
       "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”)."
     },
@@ -1892,7 +1892,7 @@
       "note": "Choose a license for this device (SIGN-IN.md §3.6)."
     },
     "signin.choice.raced": {
-      "value": "That seat was just taken. Choose again.",
+      "value": "That device was just replaced. Choose again.",
       "role": "body",
       "note": "Choose a license for this device (SIGN-IN.md §3.6)."
     },
@@ -1927,7 +1927,7 @@
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
     },
     "signin.replace.lede": {
-      "value": "Choose a device to sign out. {thisDevice} takes its seat.",
+      "value": "Choose a device to sign out. {thisDevice} takes its place.",
       "role": "body",
       "note": "Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice)."
     },
@@ -1967,7 +1967,7 @@
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
     },
     "signin.replace.consequence": {
-      "value": "{device} signs out of {product} and {thisDevice} takes its seat. We'll email you about it.",
+      "value": "{device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.",
       "role": "body",
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”)."
     },
@@ -2002,12 +2002,12 @@
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {seconds} = a number of seconds."
     },
     "signin.replace.raced": {
-      "value": "Someone took that seat first. Choose again.",
+      "value": "Someone replaced that device first. Choose again.",
       "role": "body",
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
     },
     "signin.replace.racedAfterFree": {
-      "value": "{device} was removed, but someone took the seat first. Choose again.",
+      "value": "{device} was removed, but someone signed in first. Choose again.",
       "role": "body",
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
     },
@@ -3652,7 +3652,7 @@
       "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
     },
     "signin.choice.replaceSafety": {
-      "value": "The device you choose signs out of {app}. It can sign in again later if a seat is free. We'll email you about it.",
+      "value": "The device you choose signs out of {app}. It can sign in again later if there's room. We'll email you about it.",
       "role": "body",
       "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated)."
     },
@@ -5377,7 +5377,7 @@
       "note": "Account → Where you're signed in (P0-36)."
     },
     "locker.sessions.askApps": {
-      "value": "Apps you signed in to with Polaris Locker sign out too. A device that got its license by signing in gives up its seat.",
+      "value": "Apps you signed in to with Polaris Locker sign out too. A device that got its license by signing in stops using it.",
       "role": "body",
       "note": "Account → Where you're signed in (P0-36)."
     },
@@ -7257,7 +7257,7 @@
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },
     "locker.devices.idle": {
-      "value": "{count, plural, one {# more device signed in, not using a seat} other {# more devices signed in, not using a seat}}",
+      "value": "{count, plural, one {# more device signed in, not counted} other {# more devices signed in, not counted}}",
       "role": "hint",
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },
@@ -7277,7 +7277,7 @@
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },
     "locker.devices.removeNote": {
-      "value": "Removing a device frees its seat at once.",
+      "value": "Removing a device makes room for another at once.",
       "role": "hint",
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },
@@ -7287,12 +7287,12 @@
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },
     "locker.devices.seatFreeCount": {
-      "value": "Its seat is free straight away: {detail} in use.",
+      "value": "Another device can sign in straight away: {detail} in use.",
       "role": "hint",
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },
     "locker.devices.seatFree": {
-      "value": "Its seat is free straight away.",
+      "value": "Another device can sign in straight away.",
       "role": "hint",
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },
@@ -7312,7 +7312,7 @@
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },
     "locker.devices.removedFree": {
-      "value": "{product} has a free seat now.",
+      "value": "{product} has room for another device now.",
       "role": "hint",
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
     },
@@ -7360,6 +7360,21 @@
       "value": "Updates ended at {version}",
       "role": "hint",
       "note": "Library and product models: statuses, origins, actions, devices (P0-36)."
+    },
+    "locker.status.updatesEndedPill": {
+      "value": "Updates ended",
+      "role": "hint",
+      "note": "Library and product models: statuses, origins, actions, devices (P0-36). The license card and tile of a license that keeps its last version."
+    },
+    "locker.status.keepsWorking": {
+      "value": "Keeps working",
+      "role": "hint",
+      "note": "Library and product models: statuses, origins, actions, devices (P0-36). The license card and tile of a license that keeps its last version."
+    },
+    "locker.status.renewalStopped": {
+      "value": "Renewal stopped {date}",
+      "role": "hint",
+      "note": "Library and product models: statuses, origins, actions, devices (P0-36). The license card and tile of a license that keeps its last version."
     },
     "locker.status.ends": {
       "value": "Ends {date}",

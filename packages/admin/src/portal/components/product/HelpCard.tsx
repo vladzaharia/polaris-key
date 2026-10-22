@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ExternalLink, LifeBuoy, Mail } from "lucide-react";
+import { ExternalLink, Mail } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import type { LibraryProduct } from "../../model/library.js";
 import { SectionCard } from "./Card.js";
@@ -18,50 +18,50 @@ export function HelpCard({
   product: LibraryProduct;
 }): React.ReactElement {
   const { developer, supportUrl, supportEmail, website } = product.presentation;
-  const who = developer ?? t("license.developerFallbackCap");
+  // Help is a head and its action (the mockup's `card-head plain`): the sentence that used to
+  // sit under it said what the button already does.
+  const actions = (
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
+      {!supportUrl && !supportEmail && !website ? (
+        <HelpLink href={HELP_LINKS.contact}>{t("locker.help.guide")}</HelpLink>
+      ) : null}
+      {supportUrl ? (
+        <Button asChild variant="outline" size="sm" className={WRAPS}>
+          <a href={supportUrl} target="_blank" rel="noreferrer">
+            <ExternalLink aria-hidden />
+            {t("locker.help.contact", {
+              developer: developer ?? t("license.developerFallback"),
+            })}
+            <span className="sr-only">{t("getIt.newTab")}</span>
+          </a>
+        </Button>
+      ) : supportEmail ? (
+        <Button asChild variant="outline" size="sm" className={WRAPS}>
+          <a href={`mailto:${supportEmail}`}>
+            <Mail aria-hidden />
+            {t("signin.email.label")} {supportEmail}
+          </a>
+        </Button>
+      ) : null}
+      {website ? (
+        <a
+          href={website}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex min-h-6 max-w-full items-center gap-2 text-sm text-fg-strong [overflow-wrap:anywhere] hover:underline"
+        >
+          <ExternalLink aria-hidden className="size-4" />
+          {new URL(website).host}
+        </a>
+      ) : null}
+    </div>
+  );
   return (
-    <SectionCard id="help" title={t("locker.help.title")}>
-      <div className="space-y-4">
-        <p className="flex gap-3 text-sm text-fg-muted [overflow-wrap:anywhere]">
-          <LifeBuoy aria-hidden className="mt-0.5 size-4 shrink-0" />
-          {t("locker.help.body", { developer: who, product: product.name })}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {!supportUrl && !supportEmail && !website ? (
-            <HelpLink href={HELP_LINKS.contact}>
-              {t("locker.help.guide")}
-            </HelpLink>
-          ) : null}
-          {supportUrl ? (
-            <Button asChild variant="quiet" className={WRAPS}>
-              <a href={supportUrl} target="_blank" rel="noreferrer">
-                <ExternalLink aria-hidden />
-                {t("locker.help.contact", {
-                  developer: developer ?? t("license.developerFallback"),
-                })}
-              </a>
-            </Button>
-          ) : supportEmail ? (
-            <Button asChild variant="quiet" className={WRAPS}>
-              <a href={`mailto:${supportEmail}`}>
-                <Mail aria-hidden />
-                {t("signin.email.label")} {supportEmail}
-              </a>
-            </Button>
-          ) : null}
-          {website ? (
-            <a
-              href={website}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex min-h-6 max-w-full items-center gap-2 text-sm text-fg-strong [overflow-wrap:anywhere] hover:underline"
-            >
-              <ExternalLink aria-hidden className="size-4" />
-              {new URL(website).host}
-            </a>
-          ) : null}
-        </div>
-      </div>
-    </SectionCard>
+    <SectionCard
+      id="help"
+      title={t("locker.help.title")}
+      aside={actions}
+      plain
+    />
   );
 }

@@ -41,6 +41,8 @@ import { formatDay } from "../date.js";
 export type StatusKind =
   | "suspended"
   | "expired"
+  /** An expired licence that keeps the newest version it covers: it works; only newer ones stop. */
+  | "updatesEnded"
   | "deviceLimit"
   | "keyNotActivated"
   | "expiresSoon"
@@ -61,6 +63,8 @@ export interface ProductStatus {
   note: string;
   /** Not "Active" or "From signing in": counted by the Needs attention filter. */
   attention: boolean;
+  /** `updatesEnded`: the last version the licence covers ("Updates ended at 1.8"). */
+  version?: string;
 }
 
 /** The presentation fields a product may carry (G1/G16 names); each may be absent. */
@@ -174,6 +178,7 @@ export function isJustAdded(
 const PRECEDENCE: readonly StatusKind[] = [
   "suspended",
   "expired",
+  "updatesEnded",
   "deviceLimit",
   "keyNotActivated",
   "expiresSoon",
@@ -600,15 +605,24 @@ export function statusFromServer(
         attention: true,
       };
     case "expired":
+      // A licence that still downloads an older build keeps working: "Updates ended", a warning,
+      // not "Expired" (PORTAL.md §5.4; portal.license-lapsed).
+      if (lastCovered)
+        return {
+          kind: "updatesEnded",
+          label: t("locker.status.updatesEndedPill"),
+          tone: "warning",
+          note: t("locker.status.updatesEnded", { version: lastCovered }),
+          attention: true,
+          version: lastCovered,
+        };
       return {
         kind: "expired",
         label: t("part.status.expired"),
         tone: "danger",
-        note: lastCovered
-          ? t("locker.status.updatesEnded", { version: lastCovered })
-          : best.expiresAt
-            ? t("locker.status.ended", { date: formatDay(best.expiresAt) })
-            : t("locker.status.endedPlain"),
+        note: best.expiresAt
+          ? t("locker.status.ended", { date: formatDay(best.expiresAt) })
+          : t("locker.status.endedPlain"),
         attention: true,
       };
     case "device_limit":
@@ -1165,7 +1179,8 @@ const URGENCY: Partial<Record<StatusKind, number>> = {
   suspended: 0,
   expired: 1,
   deviceLimit: 2,
-  expiresSoon: 3,
+  updatesEnded: 3,
+  expiresSoon: 4,
 };
 
 /**
@@ -1231,12 +1246,18 @@ export function attentionItems(
           external: true,
         },
       });
-    } else if (p.status.kind === "expired") {
+    } else if (
+      p.status.kind === "expired" ||
+      p.status.kind === "updatesEnded"
+    ) {
       out.push({
         product: p,
-        text: t("locker.attention.ended", {
-          date: unbroken(formatDay(p.best.expiresAt ?? 0)),
-        }),
+        text:
+          p.status.kind === "updatesEnded"
+            ? p.status.note
+            : t("locker.attention.ended", {
+                date: unbroken(formatDay(p.best.expiresAt ?? 0)),
+              }),
         action: {
           label: t("license.renew", { developer: who }),
           href: link,

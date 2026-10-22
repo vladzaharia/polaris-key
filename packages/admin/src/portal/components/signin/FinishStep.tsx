@@ -859,7 +859,7 @@ function FinishForm({
               }}
               aria-invalid={termsError.platform || undefined}
               aria-describedby={
-                termsError.platform ? `${errorId}-platform` : undefined
+                termsError.platform ? `${errorId}-terms` : undefined
               }
               label={
                 <TermsSentence
@@ -869,15 +869,6 @@ function FinishForm({
                 />
               }
             />
-            {termsError.platform ? (
-              <p
-                id={`${errorId}-platform`}
-                role="alert"
-                className="mt-1.5 text-sm text-danger"
-              >
-                {t("core.codes.terms_required.message")}
-              </p>
-            ) : null}
           </div>
         ) : null}
         {productTerms ? (
@@ -892,7 +883,7 @@ function FinishForm({
               }}
               aria-invalid={termsError.product || undefined}
               aria-describedby={
-                termsError.product ? `${errorId}-product` : undefined
+                termsError.product ? `${errorId}-terms` : undefined
               }
               label={
                 <TermsSentence
@@ -904,16 +895,17 @@ function FinishForm({
                 />
               }
             />
-            {termsError.product ? (
-              <p
-                id={`${errorId}-product`}
-                role="alert"
-                className="mt-1.5 text-sm text-danger"
-              >
-                {t("core.codes.terms_required.message")}
-              </p>
-            ) : null}
           </div>
+        ) : null}
+        {/* One message for the group, announced once; each unticked box points to it. */}
+        {termsError.platform || termsError.product ? (
+          <p
+            id={`${errorId}-terms`}
+            role="alert"
+            className="text-sm text-danger"
+          >
+            {t("core.codes.terms_required.message")}
+          </p>
         ) : null}
       </div>
     ) : null;

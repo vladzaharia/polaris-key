@@ -61,9 +61,12 @@ type Step =
 export function RequestFlow({
   account,
   handle,
+  focusOnArrival = false,
 }: {
   account: PortalAccount;
   handle: string;
+  /** This tab just signed in (the code step is gone): the first step takes the focus. */
+  focusOnArrival?: boolean;
 }): React.ReactElement {
   const qc = useQueryClient();
   const req = useSignInRequest(handle);
@@ -213,7 +216,14 @@ export function RequestFlow({
     }
   };
 
-  const header = view ? <RequestHeader view={view} /> : undefined;
+  // Once the sign-in is done (the Return and replaced steps) the pane no longer says the app
+  // "wants you to sign in": it keeps the product-context form, as the key on-ramp does.
+  const header = view ? (
+    <RequestHeader
+      view={view}
+      onRamp={current?.kind === "return" || current?.kind === "done"}
+    />
+  ) : undefined;
   const titleText =
     current?.kind === "done"
       ? t("signin.choice.replacedTitle")
@@ -425,6 +435,7 @@ export function RequestFlow({
       receipt={footer !== undefined}
       after={<LegalNav />}
       stepKey={key}
+      focusKey={focusOnArrival ? 1 : 0}
       direction={direction}
     >
       {body}

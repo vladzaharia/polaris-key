@@ -14,6 +14,11 @@ export type PortalScenario =
   | "one"
   | "three"
   | "twelve"
+  /**
+   * Ember Tactics expired, but its licence covers 1.8: the downloads view recommends that older
+   * build (`recommended.latest` false), so the product is "Updates ended", not "Expired" (§5.4).
+   */
+  | "updatesEnded"
   /** Sign-in licences: Quill alone, and Drift Kart held by a Steam key and by signing in. */
   | "signIn"
   /**
@@ -856,6 +861,73 @@ function emberDownloads() {
 }
 
 /**
+ * Ember Tactics, expired but covering 1.8 (§5.4: "an older covered release, an update window that
+ * ended"): 2.0 is outside the licence, so the Worker recommends 1.8 with `latest` false and offers
+ * its files. The page says "Updates ended at 1.8" and keeps the download.
+ */
+function emberKeepsDownloads() {
+  const m18 = file(
+    "rel_180",
+    "1.8",
+    "e18-mac",
+    "EmberTactics-1.8.dmg",
+    "macos",
+    "universal",
+  );
+  const w18 = file(
+    "rel_180",
+    "1.8",
+    "e18-win",
+    "EmberTactics-1.8.exe",
+    "windows",
+    "x86_64",
+  );
+  const rec = (
+    platform: string,
+    label: string,
+    f: ReturnType<typeof file>,
+  ) => ({
+    platform,
+    label,
+    releaseId: "rel_180",
+    version: "1.8",
+    universal: f.arch === "universal",
+    latest: false,
+    files: [f],
+  });
+  return {
+    product: { slug: "ember-tactics", name: "Ember Tactics" },
+    channel: "stable",
+    available: true,
+    access: "licensed",
+    detected: { platform: "macos", arch: null, touchAmbiguous: false },
+    latest: {
+      releaseId: "rel_200",
+      version: "2.0",
+      title: null,
+      publishedAt: NOW - 10 * DAY,
+    },
+    recommended: rec("macos", "macOS", m18),
+    platforms: [
+      {
+        platform: "macos",
+        label: "macOS",
+        recommended: rec("macos", "macOS", m18),
+        files: [m18],
+      },
+      {
+        platform: "windows",
+        label: "Windows",
+        recommended: rec("windows", "Windows", w18),
+        files: [w18],
+      },
+    ],
+    extras: [],
+    stores: [],
+  };
+}
+
+/**
  * PX-W10's `GET /api/discover` offers (mockup 23): what each would give and why. The empty,
  * one- and three-product accounts get them; the twelve-product account has nothing to add
  * (mockup 25).
@@ -1121,6 +1193,8 @@ function licensesFor(s: PortalScenario) {
       return [TIDEWATER_KEY, TIDEWATER_FREE];
     case "storefront":
       return [NIGHTFALL, TIDEWATER];
+    case "updatesEnded":
+      return [EMBER];
     default:
       return [];
   }
@@ -1707,7 +1781,9 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
     "/api/discover": () => ({ body: { offers: openOffers() } }),
     "/api/products/nightfall/downloads": { body: nightfallDownloads() },
     "/api/products/tidewater/downloads": { body: tidewaterDownloads() },
-    "/api/products/ember-tactics/downloads": { body: emberDownloads() },
+    "/api/products/ember-tactics/downloads": {
+      body: s === "updatesEnded" ? emberKeepsDownloads() : emberDownloads(),
+    },
     "POST /api/activate/preview": (req) => {
       const { key } = req.postDataJSON() as { key: string };
       if (key !== GOOD_KEY)
