@@ -71,9 +71,12 @@ func _card_variation() -> String:
 	return "PKeyBanner"
 
 
-## The words and their actions side by side on a landscape screen, stacked on a narrow one.
+## The words and their actions side by side on a landscape screen when both fit, stacked otherwise
+## (a narrow window, a game's large type).
 func _row_layout() -> bool:
-	return is_landscape() and not phone_screen()
+	if not is_landscape() or phone_screen():
+		return false
+	return _hug_width(true) <= content_room().x
 
 
 func _arrange(m: Dictionary) -> void:
@@ -101,14 +104,20 @@ func _apply_width(width: float) -> void:
 	if width <= 0.0:
 		super(width)
 		return
+	super(minf(_hug_width(_row_layout()), width))
+
+
+## The card's width hugging its lines (and, side by side, the buttons): as wide as the longest
+## line plus the card's padding.
+func _hug_width(with_actions: bool) -> float:
 	var widest := 0.0
 	for l in _lines.get_children():
 		var label_ := l as Label
 		if label_ != null and label_.visible:
 			widest = maxf(widest, text_width(label_, label_.text))
 	var glyph_w := (_glyph.custom_minimum_size.x + float(_row.get_theme_constant("separation"))) if _glyph.visible else 0.0
-	var actions_w := (_actions_line() + float(_card.get_theme_constant("separation"))) if _row_layout() and _actions.visible else 0.0
-	super(minf(ceilf(widest) + 2.0 + glyph_w + actions_w + card_padding_x(), width))
+	var actions_w := (_actions_line() + float(_card.get_theme_constant("separation"))) if with_actions and _actions.visible else 0.0
+	return ceilf(widest) + 2.0 + glyph_w + actions_w + card_padding_x()
 
 
 ## The width the buttons need on one line.

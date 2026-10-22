@@ -57,6 +57,7 @@ var _body: BoxContainer
 var _qr_column: CenterContainer
 var _info: VBoxContainer
 var _steps: VBoxContainer
+var _where: VBoxContainer
 var _product: PKeyProductHeader
 var _title_row: HBoxContainer
 var _glyph: TextureRect
@@ -114,6 +115,7 @@ func _build() -> void:
 	_status = label(titles, "Status", "PKeyMuted")
 	_steps = vbox(_info, "Steps", "PKeyStack")
 	var where := vbox(_steps, "Where", "PKeyTight")
+	_where = where
 	_instructions = label(where, "Instructions")
 	# The address on a line of its own, in the strong colour: the thing to type.
 	_url = label(where, "Address", "PKeyStrong", true)
@@ -281,6 +283,8 @@ func _column_mode() -> bool:
 func _arrange(m: Dictionary) -> void:
 	super(m)
 	var phone := phone_bleed()
+	# Squeezed, the header sits a tight gap above the title (DL3: spacing gives way before the code).
+	(_info.get_node("Header") as VBoxContainer).theme_type_variation = &"PKeyTight" if squeeze_level() >= 1 else &"PKeyStack"
 	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL if phone_screen() else Control.SIZE_FILL
 	var side := _side_by_side()
 	var level := squeeze_level()
@@ -303,6 +307,11 @@ func _arrange(m: Dictionary) -> void:
 		_actions.custom_minimum_size.x = 0.0
 	_device.visible = _device.visible and level < 3
 	_timing.visible = _expires.visible or _device.visible
+	# The address under the sentence on a pad; after the code otherwise.
+	if _qr_wanted():
+		place(_url, _where, -1)
+	else:
+		place(_url, _steps, _code.get_index() + 1)
 	var tile := _qr.get_parent()
 	if side:
 		place(tile, _qr_column)
@@ -450,13 +459,14 @@ func _render() -> void:
 	show_text(_status, status)
 	_status.theme_type_variation = "PKeyError" if failed and not expired else "PKeyMuted"
 	set_loading(state == "starting")
-	# One whole sentence, never a fragment above the address: with a QR code (a pad) the address is on
-	# a line of its own below the sentence; without one it is inside it. Without a QR code the line
-	# never says "scan".
+	# Never a fragment above the address. With a QR code (a pad) one whole sentence leads and the
+	# address is on a line of its own below it; without one the code leads and the address follows it
+	# as "Or go to polaris.locker/device" (the Open browser button is the first way). The line never
+	# says "scan" without a QR code.
 	var short := PKeySignInController.short_uri(prompt.verification_uri) if pending else ""
 	var qr_line := _qr_wanted()
-	show_text(_instructions, (t.text("sign_in_scan_tv") if qr_line else t.text("sign_in_code_body", short.replace("/", "/\u2060"))) if pending else "")
-	show_text(_url, short if qr_line else "")
+	show_text(_instructions, t.text("sign_in_scan_tv") if pending and qr_line else "")
+	show_text(_url, (short if qr_line else t.text("sign_in_go_to", short)) if pending else "")
 	show_text(_code, prompt.user_code if pending else "")
 	_qr.text = prompt.verification_uri_complete if pending else ""
 	var qr_on := _qr_wanted()

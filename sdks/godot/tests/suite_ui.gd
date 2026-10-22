@@ -1179,7 +1179,7 @@ const CATALOG_KEYS := {
 	"retry": "common.tryAgain",
 	"cancel": "common.cancel",
 	"sign_in_code_title": "signin.handoff.codeTitle",
-	"sign_in_code_body": "signin.handoff.codeBody",
+	"sign_in_go_to": "signin.handoff.url",
 	"sign_in_scan_tv": "signInHandoff.scanTv",
 	"sign_in_expires": "signin.handoff.expires",
 	"sign_in_copy_link": "signin.handoff.copyLink",
@@ -1293,8 +1293,9 @@ func _spec(t: PKeyTestContext) -> void:
 	var expires := (d.find_child("Expires", true, false) as Label).text
 	var ring := d.find_child("Ring", true, false) as PKeyCountdownRing
 	t.check("spec: the countdown is a determinate ring beside 'Code expires in m:ss' (§1.5 rule 4)", expires == "Code expires in 2:05" and ring != null and ring.visible and ring.fraction > 0.0 and ring.fraction < 1.0, "%s %s" % [expires, ring.fraction if ring != null else "no ring"])
-	var instructions := (d.find_child("Instructions", true, false) as Label).text
-	t.check("spec: the instruction is one sentence with the address inside it (no dangling fragment)", instructions.begins_with("On any phone or computer, go to ") and instructions.ends_with("enter this code.") and not (d.find_child("Address", true, false) as Label).visible, instructions)
+	var address := d.find_child("Address", true, false) as Label
+	var code_at := d.find_child("UserCode", true, false).get_index()
+	t.check("spec: without a QR code the address follows the code as 'Or go to <address>', with no fragment above it", address.text == "Or go to polaris.locker/device" and not (d.find_child("Instructions", true, false) as Label).visible and address.get_index() > code_at, address.text)
 	t.check("spec: the header sits a stack gap above the title", d.find_child("Header", true, false).theme_type_variation == &"PKeyStack")
 	_free(d)
 

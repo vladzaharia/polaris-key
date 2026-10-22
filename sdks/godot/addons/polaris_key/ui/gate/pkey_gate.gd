@@ -216,10 +216,13 @@ func _arrange(m: Dictionary) -> void:
 	# the end pane, above the form it concerns. In one column they sit under the product.
 	# (Deferred: a child's _ready can ask for this layout while the form is still setting up its
 	# children, and a node cannot move out of a parent that is busy.)
-	var head_home: Node = _main if two else _aside
+	# Squeezed, the title goes back under the product: the end pane then holds the form alone
+	# (DL3: decoration and secondary lines give way before the form scrolls).
+	var head_in_end := two and squeeze_level() == 0
+	var head_home: Node = _main if head_in_end else _aside
 	if _head.get_parent() != head_home:
-		_move_head.call_deferred(two)
-	_pane.visible = (_product.visible or (_head.visible and not two)) and not _activation_owns_screen()
+		_move_head.call_deferred(head_in_end)
+	_pane.visible = (_product.visible or (_head.visible and not head_in_end)) and not _activation_owns_screen()
 	# The last squeeze step drops the secondary line (the version range, say) before any scrolling.
 	_detail.visible = _detail.text != "" and squeeze_level() < 3
 	if two:
@@ -373,6 +376,8 @@ func _render() -> void:
 	_glyph.visible = net
 	var wants_form: bool = ctl["activation"] and not net
 	activation.visible = wants_form
+	# A refusal's own title leads its screen; only the Welcome form says what to do.
+	activation.show_lede = screen == "activation" or screen == "error"
 	activation.form_title = t.text("use_another_license") if screen == "not-available" else ""
 	if inline:
 		if activation.message != error:

@@ -107,7 +107,7 @@ const DEFAULTS := {
 	# ── PKeySignInDialog ────────────────────────────────────────────────────────────────────
 	"sign_in_title": "Sign in",
 	"sign_in_code_title": "Sign in with a code",
-	"sign_in_code_body": "On any phone or computer, go to %s and enter this code.",
+	"sign_in_go_to": "Or go to %s",
 	"sign_in_scan_tv": "Scan the QR code with your phone, or go to this address and enter the code below.",
 	"sign_in_starting": "Starting sign-in…",
 	"sign_in_expired_title": "Code expired",

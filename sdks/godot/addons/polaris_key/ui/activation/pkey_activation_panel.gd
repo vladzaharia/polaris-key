@@ -113,6 +113,8 @@ var _restore: Button
 ## The lede above the form: what the player can do here (`lede_text()`), where the product does not
 ## head the page with it (a phone's docked page, `_lede`, does).
 var _form_lede: Label
+## Say what to do above the form (off for the gate's refusal screens, whose title says it).
+var show_lede := true
 var _warned_store := false
 var _restore_note := ""
 var _spacer: Control
@@ -359,7 +361,7 @@ func _arrange(m: Dictionary) -> void:
 	_extras.add_theme_constant_override("h_separation", roundi(role("inline_gap")))
 	_extras.add_theme_constant_override("v_separation", 0)
 	# The lede leads the form wherever the product does not carry it to the top of a phone's page.
-	show_text(_form_lede, lede_text() if mode == "main" and limit.is_empty() and not outer_view().phone_bleed() and squeeze_level() < 3 else "")
+	show_text(_form_lede, lede_text() if show_lede and mode == "main" and limit.is_empty() and not outer_view().phone_bleed() and squeeze_level() < 1 else "")
 	# A full license on a landscape panel: the state on one side, the way out on the other.
 	set_columns(_limit_cols, _limit_side_by_side())
 	_spacer.visible = phone_screen() and not limit.is_empty()

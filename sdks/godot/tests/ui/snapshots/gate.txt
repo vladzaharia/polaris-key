@@ -123,8 +123,8 @@ Center/Card/Scroll/Body/Split/Form/Actions/Retry: Button "Try again" [focus 5]
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Header/Product/Monogram/Initial: Label "P"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Header/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Header/Titles/TitleRow/Title: Label "Sign in with a code"
-Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Steps/Where/Instructions: Label "On any phone or computer, go to polaris.locker/⁠device and enter this code."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Steps/UserCode: Label "WDJB-MJHT"
+Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Steps/Address: Label "Or go to polaris.locker/device"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Steps/Timing/ExpiresRow/Expires: Label "Code expires in 2:05"
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Steps/Timing/DeviceLabel: Label "The sign-in page will show “Living room TV”."
 Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stack/PKeySignInDialog/Card/Scroll/Stack/Body/Info/Actions/OpenBrowser: Button "Open browser" [focus 1]
