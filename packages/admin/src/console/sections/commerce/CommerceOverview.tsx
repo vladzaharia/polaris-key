@@ -210,7 +210,10 @@ export function CommerceOverviewPage({
                     <tbody className="divide-y divide-border">
                       {rows.map((s) => (
                         <tr key={s.id}>
-                          <th scope="row" className="py-2 pe-4 font-medium">
+                          <th
+                            scope="row"
+                            className="py-2 pe-4 text-start font-medium"
+                          >
                             {s.label}
                           </th>
                           <td className="py-2 pe-4">
