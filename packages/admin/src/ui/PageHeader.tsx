@@ -219,7 +219,14 @@ export function PageHeader({
             </span>
           ) : null}
           <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div
+              className={cn(
+                "flex items-center gap-x-3 gap-y-1",
+                // A status beside the title stays beside it: a long name shrinks (two lines,
+                // then an ellipsis) instead of pushing the status onto a third row.
+                titleAside ? "sm:flex-nowrap flex-wrap" : "flex-wrap",
+              )}
+            >
               {nested ? (
                 <h2 className="text-lg font-medium tracking-tight text-fg-strong">
                   {title}

@@ -325,7 +325,7 @@ function LicenseRecordBody({
         title={
           // The other end of the Licenses table's name (S-23 §6.1 shared-element): named
           // `pk-key` during a drill-down, fit-content like its source.
-          <span className="pk-vt-key inline-block max-w-full">
+          <span className="pk-vt-key block w-fit max-w-full">
             {licenseTitle(license)}
           </span>
         }
