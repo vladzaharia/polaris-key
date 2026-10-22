@@ -199,7 +199,7 @@ private fun PolarisUpdatePromptCard(
                     onUpdate,
                     initialFocus = true,
                 )
-                if (onLater != null && !ui.mandatory) PolarisTextButton(copy.updateLater, onLater)
+                if (onLater != null && !ui.mandatory) PolarisSecondaryButton(copy.updateLater, onLater)
             }
         }
     }

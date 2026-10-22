@@ -174,7 +174,7 @@ public fun PolarisBootScreen(
                 val consent = ui.consent ?: PolarisBootUi.Consent(0, false)
                 PolarisMessageScreen(PolarisMessageCopy(copy.consentTitle, copy.consentMessage(consent.bytes, consent.metered), PolarisMessageKind.Info)) {
                     PolarisPrimaryButton(copy.consentDownload, onClick = { onConsent(true) })
-                    PolarisTextButton(copy.consentLater, onClick = { onConsent(false) })
+                    PolarisSecondaryButton(copy.consentLater, onClick = { onConsent(false) })
                 }
             }
             BootScreen.Fetch ->
@@ -189,7 +189,7 @@ public fun PolarisBootScreen(
                 PolarisMessageScreen(copy.blockedMessage(reason)) {
                     if (reason == BootEmit.BlockedReason.updateRequired && onUpdate != null) {
                         PolarisPrimaryButton(copy.updateNow, onUpdate)
-                        PolarisTextButton(copy.retry, onRetry)
+                        PolarisSecondaryButton(copy.retry, onRetry)
                     } else {
                         PolarisPrimaryButton(copy.retry, onRetry)
                     }

@@ -219,15 +219,15 @@ public fun PolarisSignInScreen(
         }
         PolarisSignInUi.Expired -> PolarisMessageScreen(copy.coreMessage(SIGN_IN_EXPIRED, PolarisMessageKind.Info), modifier) {
             PolarisPrimaryButton(copy.signInNewCode, onRestart, initialFocus = true)
-            PolarisTextButton(copy.cancel, onCancel)
+            PolarisSecondaryButton(copy.cancel, onCancel)
         }
         PolarisSignInUi.Denied -> PolarisMessageScreen(copy.coreMessage(SIGN_IN_DENIED, PolarisMessageKind.Danger), modifier) {
             PolarisPrimaryButton(copy.signInNewCode, onRestart, initialFocus = true)
-            PolarisTextButton(copy.cancel, onCancel)
+            PolarisSecondaryButton(copy.cancel, onCancel)
         }
         PolarisSignInUi.Failed -> PolarisMessageScreen(copy.coreMessage(SIGN_IN_FAILED, PolarisMessageKind.Danger), modifier) {
             PolarisPrimaryButton(copy.retry, onRestart, initialFocus = true)
-            PolarisTextButton(copy.cancel, onCancel)
+            PolarisSecondaryButton(copy.cancel, onCancel)
         }
     }
 }
@@ -350,7 +350,8 @@ private fun PolarisCodeView(
                     PolarisPrimaryButton(copy.signInOpenBrowser, onClick = open, initialFocus = true)
                 }
                 Spacer(Modifier.height(PolarisSpace.controls))
-                PolarisTextButton(copy.cancel, onCancel)
+                // Paired with the opener, Cancel is the secondary: tonal, never bare text (DL4, rule 10).
+                PolarisSecondaryButton(copy.cancel, onCancel)
             }
         },
     )
