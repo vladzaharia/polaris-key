@@ -1474,12 +1474,27 @@ func _size_controls(n: Node) -> void:
 ## exactly its own minimum width the engine drops a bold label's last glyph. A label wider than
 ## `room` (a long German action on a 375 pt phone, a game's large type) wraps at its words inside
 ## a button exactly `room` wide, instead of pushing the screen wider (DL11).
+## The width Godot before 4.5 adds to a Button's minimum for its icon (the leaves-the-app glyph, capped
+## by `icon_max_width`) and the gap before it. That engine's Button keeps the full label and icon on one
+## line, so a label measured without them wraps too late and the card overflows a phone (CI 4.4.1,
+## sign_in / native28). Godot 4.5 and later lay the icon out within the width, so nothing is added there.
+static func _icon_extent(b: Button) -> float:
+	var v := Engine.get_version_info()
+	if b.icon == null or int(v["major"]) * 100 + int(v["minor"]) >= 405:
+		return 0.0
+	var iw := float(b.icon.get_width())
+	var cap := float(b.get_theme_constant("icon_max_width"))
+	if cap > 0.0:
+		iw = minf(iw, cap)
+	return iw + float(b.get_theme_constant("h_separation"))
+
+
 static func _fit_label(b: Button, room := INF) -> void:
 	var w := 0.0
 	var wrap := false
 	if b.text != "":
 		var box := b.get_theme_stylebox("normal")
-		w = ceilf(text_width(b, b.text) + 0.1 * b.get_theme_font_size("font_size") + (box.get_minimum_size().x if box != null else 0.0))
+		w = ceilf(text_width(b, b.text) + 0.1 * b.get_theme_font_size("font_size") + (box.get_minimum_size().x if box != null else 0.0) + _icon_extent(b))
 		if room > 1.0 and w > room and "autowrap_mode" in b:
 			w = floorf(room)
 			wrap = true
