@@ -344,7 +344,10 @@ export async function platformAudit(
   );
 }
 
-/** `platformAudit` as a statement, for a batch that commits it with the change it records. */
+/**
+ * `platformAudit` as a statement, for a batch that commits it with the change it records. `when`, a
+ * boolean SQL condition, writes the row only while it holds (see `auditStatementFor`).
+ */
 export function platformAuditStatementFor(
   session: AdminSession,
   now: number,
@@ -352,9 +355,11 @@ export function platformAuditStatementFor(
   target: Target,
   summary: string,
   change: { before?: unknown; after?: unknown } = {},
+  when?: { sql: string; params: DbParam[] },
 ): DbStatement {
   return platformAuditStatement(
     platformRow(session, now, action, target, summary, change),
+    when ? sql(`WHERE ${when.sql}`, ...when.params) : undefined,
   );
 }
 

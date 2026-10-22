@@ -749,3 +749,60 @@ export function licenseAssignedToYouNotice(input: {
     origin: input.origin,
   });
 }
+
+// ── Operator notices (Polaris Key, the console side) ─────────────────────────────────────────
+
+/**
+ * ST-31.6 (ST-28 G5): a console role was granted, changed or taken back. Sent as Polaris Key
+ * (`sender.audience: "operator"`) to the person it concerns and to every Superadmin, so a stolen
+ * session that hands out access cannot do it silently. It names the role, the scope, the areas
+ * and who did it, and carries no link and no token: the reader opens the console themselves.
+ */
+export function accessChangedNotice(input: {
+  change: "granted" | "changed" | "revoked";
+  /** The person whose access changed (a display name or address). */
+  member: string | null | undefined;
+  actor: string | null | undefined;
+  /** `Product admin`, `Console access`, …: the role's name. */
+  roleLabel: string;
+  /** `all products`, `the platform` or a product's name. */
+  scopeLabel: string | null | undefined;
+  /** `null` = every area (or an area-less role). */
+  areas: readonly string[] | null;
+  origin: string | null | undefined;
+}): NoticeMessage {
+  const member = displayValue(input.member, "A member");
+  const actor = displayValue(input.actor, "An operator");
+  const scope = displayValue(input.scopeLabel, "the platform");
+  const verb =
+    input.change === "granted"
+      ? "was given"
+      : input.change === "changed"
+        ? "now has changed access as"
+        : "no longer has";
+  const subject = `Access changed: ${member}`;
+  const line =
+    input.change === "changed"
+      ? `${actor} changed ${member}'s access: ${member} is ${input.roleLabel} on ${scope}${
+          input.areas ? `, limited to ${input.areas.join(", ")}` : ""
+        }.`
+      : `${actor} changed who can use the Polaris Key console: ${member} ${verb} ${input.roleLabel} on ${scope}${
+          input.areas && input.change === "granted"
+            ? `, limited to ${input.areas.join(", ")}`
+            : ""
+        }.`;
+  const footer =
+    "You get this because you are a Superadmin, or because the change is to your own access. " +
+    "If you did not expect it, open Members in the console and take the access back.";
+  return {
+    subject,
+    text: [subject, line, footer].join("\n\n"),
+    html: renderEmail({
+      subject,
+      heading: subject,
+      paragraphs: [line],
+      footer,
+      origin: emailAssetOrigin(input.origin),
+    }),
+  };
+}

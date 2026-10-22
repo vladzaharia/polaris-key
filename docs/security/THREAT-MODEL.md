@@ -7093,15 +7093,89 @@ answers "may this member act" and not "may this member give that away".
 
 **Residual.**
 
-- Nothing calls the engine yet; the grant handlers (ST-31.6 on) do.
+- The grant handlers (ST-31.6, below) call the engine.
 - A handler must combine the checks: `mayChange` for an edit, `mayRevoke` for a delete,
   `mayGrant` for a create, plus the step-up from `isWidening` and `confirmLevel`. Calling one
   alone is the gap.
 - The checks never see the grantee or the expiry. They cannot tell who receives a grant or how
   long it lasts; the handler owns that.
 - **D-g: no self-grants.** A grant whose grantee is the granter is refused. The engine cannot see
-  the grantee, so ST-31.6 enforces it and documents the refusal. Until then the engine would
-  let a Product admin grant itself a second scope or the same areas again.
+  the grantee, so the handlers enforce it (ST-31.6, below).
+
+### Console role bindings: writes (ST-31.6)
+
+**What arrived.** The first writes of `console_role_bindings`: `POST /manage/api/bindings`,
+`PATCH|DELETE /manage/api/bindings/:id` (platform scope, area `members`) and their product twins
+`POST /manage/api/products/:slug/members` and `PATCH|DELETE .../members/:bindingId` (product scope,
+area `members`, D-d). Session only: no row names a `tokenScope`, so a `pkeya_` token is refused
+before a handler runs. `handlers/bindings.ts` holds every check; the twins are thin callers.
+
+**Control, in the order the handler applies it.**
+
+1. **Identity of the writer.** A signed-in account with a member id (`aid` and an `mbr_` sub). A
+   v1 cookie has neither and cannot be told apart from its grantee, so it writes nothing. The
+   member id is the audit actor and `granted_by`.
+2. **Write budget.** `adminGrantWrite`, 30 writes per 5 minutes per member, **failing closed**: a
+   limiter outage refuses, it does not leave grants unmetered.
+3. **Shape.** Only the fields named; an unknown field (a `member` or `role` on a PATCH, a `scope`
+   on a twin) is a 422, so a change of grantee, role or scope is never an edit: it is a new grant.
+   `validateGrant` fixes role, scope and areas.
+4. **The engine, never `can()`.** `mayGrant` for a POST (G1, G2, G3), `mayChange` for a PATCH,
+   `mayRevoke` for a DELETE (D-c; a `products:*` binding and any Superadmin or Platform admin
+   binding are a Superadmin's alone). The route table cannot tell a Platform admin from a
+   Superadmin, so a Platform admin that reaches `/bindings` is refused every target but Console
+   access (`reason: grant_refused`, a 403 that is not `no_access`). An unreadable stored row is
+   cleared by a Superadmin only.
+5. **The target exists.** A product scope names a real product that is not the system product
+   (no bindings for future slugs, so a later product with that slug inherits nothing). The
+   engine runs first, so a caller who may not grant learns nothing about which slugs exist.
+6. **L2.** `confirmLevel` L2 targets (Superadmin, Platform admin, `products:*`) need
+   `confirm: "L2"` in the body (422 `confirm_required`). A UI confirm alone is not a control.
+7. **The grantee.** Found by computing each candidate's member id over accounts that hold a
+   binding or the root rule (the id is one-way, as `GET /members/:id`), so the endpoint cannot be
+   used to look up anyone else. The erasure ledger is read first (`erasureVerdict`: erased is a
+   404, unavailable is a 503), then a disabled account is refused (409). **D-g:** the writer is
+   never the grantee of a grant or of a widening, a Superadmin included (`reason: self_grant`).
+   Taking your own access back is allowed.
+8. **Step-up (G4).** POST rows carry `stepUp` in the route table (so it runs before the handler).
+   A PATCH checks it in the handler, after authorization, and only when `isWidening`; narrowing
+   and DELETE need none. `STEP_UP_ROUTES` lists the two `(body)` rows and `rbacRouteMatrix`
+   keeps the list and the table in step.
+9. **CSRF** is the dispatcher's, before the match, for every session mutation.
+
+**Commit and audit.** The change and its audit rows are one batch: `rbac.grant` or `rbac.revoke`
+(a widening edit is a grant, a narrowing one a revoke) to `platform_audit`, and to the product's
+`audit` for a product scope or a product route, through `core/audit.ts`. PATCH and DELETE carry a
+guard on the `areas_json` the caller authorised against, on both the change and its audit rows: a
+concurrent edit makes the second a 409 (`changed`) that writes neither. A duplicate
+`(account, role, scope)` is a 409 with the existing binding's id (also when the unique index
+catches a race). Rows name the grantee by member id only.
+
+**G5 notice.** After the commit, the grantee and every Superadmin (root holders and stored
+bindings, active accounts) are emailed through `core/notify` as Polaris Key
+(`sender.audience: "operator"`): the change, the role, the scope, the areas and who did it; no link
+and no token. At most 25 addresses. Best effort: a failed or suppressed address never undoes the
+change, and the response counts (`notified: {sent, of, nobodyNotified}`), never lists, recipients.
+With email off the change stands and the response says nobody was notified. The writer is mailed
+when it is a Superadmin, which is the point against a stolen session.
+
+**Revocation.** A deleted binding stops granting on the next request (the principal reads bindings
+on every request, ST-31.2); a disabled account and a cookie's 30 s live check are unchanged.
+
+**Tests:** `test/consoleBindingWrites.test.ts`; `rbacRouteMatrix` (the two new step-up rows and the
+six rows against the eight principals), `rbacRouteAreas`, `routeCoverage`, `accountIdBoundary`.
+
+**Residual.**
+
+- **Notice, not approval.** A stolen Superadmin session that completes a step-up can still grant
+  and revoke; G5 makes it loud, not impossible. The step-up needs a sign-in the IdP proved.
+- **A grantee must already hold a role or the root rule.** A person with no binding is reached by
+  an invite (ST-31.7), not here.
+- **Invites** are not edited or revoked here (email rows answer 404): 31.7.
+- **The L2 `confirm` field** is a server-side acknowledgement, not an interactive challenge. The
+  UI slices decide what the person types.
+- **Mail volume.** One change mails up to 25 addresses; the write budget (30 per 5 minutes per
+  member) bounds the volume per session. Mail is not per-recipient rate limited here.
 
 ### Identity as a per-product service (PX-W17)
 

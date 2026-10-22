@@ -209,6 +209,93 @@ export function stmtInsertBinding(b: NewBinding): DbStatement {
   };
 }
 
+/** One binding by id (an account row or an invite), or `null`. */
+export async function getBinding(
+  db: Db,
+  id: string,
+): Promise<BindingRow | null> {
+  return db.first<BindingRow>(
+    "SELECT * FROM console_role_bindings WHERE id = ?",
+    id,
+  );
+}
+
+/** The account's binding for one `(role, scope)`, which the unique index allows at most once. */
+export async function findAccountBinding(
+  db: Db,
+  accountId: string,
+  role: string,
+  scope: string,
+): Promise<BindingRow | null> {
+  return db.first<BindingRow>(
+    `SELECT * FROM console_role_bindings
+      WHERE account_id = ? AND role = ? AND scope = ?`,
+    accountId,
+    role,
+    scope,
+  );
+}
+
+/**
+ * The distinct accounts that hold a binding, for resolving a member id by computing each
+ * candidate's id (the id is one-way). `limit + 1` rows are asked for so a caller can tell a cap
+ * cut the list.
+ */
+export async function listBoundAccountIds(
+  db: Db,
+  limit: number,
+): Promise<string[]> {
+  const rows = await db.all<{ account_id: string }>(
+    `SELECT DISTINCT account_id FROM console_role_bindings
+      WHERE account_id IS NOT NULL ORDER BY account_id LIMIT ?`,
+    limit + 1,
+  );
+  return rows.map((r) => r.account_id);
+}
+
+/**
+ * ST-31.6: the guard a write carries so it applies only while the binding is still as the caller
+ * read it. `areasJson` is the stored `areas_json` the caller authorised against (`null` = every
+ * area). Used as the tail of the audit rows and in the statements below.
+ */
+export function bindingUnchangedSql(
+  id: string,
+  areasJson: string | null,
+): { sql: string; params: (string | null)[] } {
+  return {
+    sql: "EXISTS (SELECT 1 FROM console_role_bindings WHERE id = ? AND areas_json IS ?)",
+    params: [id, areasJson],
+  };
+}
+
+/** Narrow or widen one binding's areas, only while it still holds `expectedAreasJson`. */
+export function stmtUpdateBindingAreas(
+  id: string,
+  areas: readonly AreaId[] | null,
+  expectedAreasJson: string | null,
+): DbStatement {
+  const next = areas === null ? null : normalizeAreas(areas);
+  return {
+    sql: "UPDATE console_role_bindings SET areas_json = ? WHERE id = ? AND areas_json IS ?",
+    params: [
+      next === null ? null : JSON.stringify(next),
+      id,
+      expectedAreasJson,
+    ],
+  };
+}
+
+/** Delete one binding, only while it still holds `expectedAreasJson`. */
+export function stmtDeleteBindingIfUnchanged(
+  id: string,
+  expectedAreasJson: string | null,
+): DbStatement {
+  return {
+    sql: "DELETE FROM console_role_bindings WHERE id = ? AND areas_json IS ?",
+    params: [id, expectedAreasJson],
+  };
+}
+
 export function stmtDeleteBinding(id: string): DbStatement {
   return {
     sql: "DELETE FROM console_role_bindings WHERE id = ?",

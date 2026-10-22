@@ -17,7 +17,8 @@
  * not active is not named. `truncated: true` says a cap of 500 cut a list.
  */
 
-import { adminJson } from "../../core/console/respond.js";
+import { adminJson, err, readBody } from "../../core/console/respond.js";
+import { ErrorCode } from "../../core/errors.js";
 import {
   listAllInvites,
   listScopeBindings,
@@ -33,6 +34,7 @@ import {
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import type { AdminCtx } from "../routes.js";
+import { createBinding, editBinding, revokeBinding } from "./bindings.js";
 
 const LIMIT = 500;
 
@@ -172,3 +174,47 @@ export async function handleProductMembers(c: AdminCtx): Promise<Response> {
     platformRoles,
   });
 }
+
+// ── ST-31.6: the writes (D-d) ────────────────────────────────────────────────────────────────
+//
+// The product-scope twins of `POST /bindings` and `PATCH|DELETE /bindings/<id>`, for a Product admin
+// who holds `members` on this product and so cannot reach the platform rows. The role is fixed: a
+// Product admin on this product, or Console access (G3, platform scope: inviting someone to a
+// product brings the console with it). The checks and the audit are `./bindings.ts`'s.
+
+/** `POST /products/<slug>/members`: `{member, role?, areas?, confirm?}`. */
+export async function handleProductMemberCreate(
+  c: AdminCtx,
+): Promise<Response> {
+  const slug = c.product!.slug;
+  const body = await readBody(c.req);
+  const extra = Object.keys(body).filter(
+    (k) => !["member", "role", "areas", "confirm"].includes(k),
+  );
+  if (extra.length)
+    return err(422, ErrorCode.BadRequest, "invalid request", {
+      fields: extra,
+      reason: "unknown_field",
+    });
+  const role = body.role === undefined ? "product_admin" : body.role;
+  if (role !== "product_admin" && role !== "console_access")
+    return err(422, ErrorCode.BadRequest, "invalid request", {
+      fields: ["role"],
+      reason: "role",
+    });
+  return createBinding(c, { slug }, body, {
+    member: body.member,
+    role,
+    scope: role === "product_admin" ? `product:${slug}` : "platform",
+    areas:
+      role === "console_access" && body.areas === undefined ? null : body.areas,
+  });
+}
+
+/** `PATCH /products/<slug>/members/<bindingId>`: `{areas, confirm?}`. */
+export const handleProductMemberEdit = (c: AdminCtx) =>
+  editBinding(c, { slug: c.product!.slug });
+
+/** `DELETE /products/<slug>/members/<bindingId>`. */
+export const handleProductMemberRevoke = (c: AdminCtx) =>
+  revokeBinding(c, { slug: c.product!.slug });

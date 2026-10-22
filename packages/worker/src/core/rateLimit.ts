@@ -195,6 +195,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   // as "check again") rather than letting a loop through.
   credentialCheck: "closed",
 
+  // ST-31.6: console grant, edit and revoke, per member. Each one hands out (or takes back) standing
+  // access to the console, so an outage refuses rather than leaving a stolen session unmetered.
+  adminGrantWrite: "closed",
+
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",
   adminAccessDenied: "open",

@@ -160,6 +160,26 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   },
   {
     method: "POST",
+    path: "/bindings",
+    why: "gives someone console access, which a stolen session could use to keep its reach",
+  },
+  {
+    method: "POST",
+    path: "/products/:slug/members",
+    why: "gives someone console access to a product, which a stolen session could use to keep its reach",
+  },
+  {
+    method: "PATCH",
+    path: "/bindings/:id (body)",
+    why: "widens a Product admin's areas (narrowing skips it)",
+  },
+  {
+    method: "PATCH",
+    path: "/products/:slug/members/:bindingId (body)",
+    why: "widens a Product admin's areas on a product (narrowing skips it)",
+  },
+  {
+    method: "POST",
     path: "/tokens",
     why: "mints an admin API credential that outlives the session",
   },

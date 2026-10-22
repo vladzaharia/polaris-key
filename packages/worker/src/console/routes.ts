@@ -59,7 +59,17 @@ import {
   handleAccountTokenList,
   handleAccountTokenRevoke,
 } from "./handlers/accountTokens.js";
-import { handleProductMembers } from "./handlers/productMembers.js";
+import {
+  handleProductMemberCreate,
+  handleProductMemberEdit,
+  handleProductMemberRevoke,
+  handleProductMembers,
+} from "./handlers/productMembers.js";
+import {
+  handleBindingCreate,
+  handleBindingEdit,
+  handleBindingRevoke,
+} from "./handlers/bindings.js";
 import { handleMemberGet, handleMembersList } from "./handlers/members.js";
 
 /** What every handler receives once the dispatcher has authorized the request. */
@@ -359,6 +369,15 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   // Read-only here; `./handlers/members.ts`. Session only, like the rosters above.
   ...rows(["GET"], "/members", "members", handleMembersList),
   ...rows(["GET"], "/members/:memberId", "members", handleMemberGet),
+  // ST-31.6: the grant writes (`./handlers/bindings.ts`). A new grant is a step-up write; an edit
+  // checks it in the handler, only when the change widens (G4); taking access back needs none.
+  // The route table cannot tell a Platform admin from a Superadmin: the handler asks the grant
+  // rules (G1 to G3) before it writes anything.
+  ...rows(["POST"], "/bindings", "members", handleBindingCreate, {
+    stepUp: true,
+  }),
+  ...rows(["PATCH"], "/bindings/:id", "members", handleBindingEdit),
+  ...rows(["DELETE"], "/bindings/:id", "members", handleBindingRevoke),
 
   // ── One product: the record ───────────────────────────────────────────────────────────────
   // The record every holder of any of the product's areas reads (the shell's name and services);
@@ -369,6 +388,22 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
 
   // ST-31.5: who holds this product (bindings, invites) and, read-only, who reaches it from above.
   ...rows(["GET"], `${P}/members`, "members", handleProductMembers),
+  // ST-31.6 (D-d): the product-scope twins of the grant writes.
+  ...rows(["POST"], `${P}/members`, "members", handleProductMemberCreate, {
+    stepUp: true,
+  }),
+  ...rows(
+    ["PATCH"],
+    `${P}/members/:bindingId`,
+    "members",
+    handleProductMemberEdit,
+  ),
+  ...rows(
+    ["DELETE"],
+    `${P}/members/:bindingId`,
+    "members",
+    handleProductMemberRevoke,
+  ),
   // ── One product: the services, by prefix ──────────────────────────────────────────────────
   // Approving a minted token's recipe lets the product's signing key mint for every device it
   // names (P0-12, U-31): a sign-in proven in the last five minutes, ahead of Config's prefix.
