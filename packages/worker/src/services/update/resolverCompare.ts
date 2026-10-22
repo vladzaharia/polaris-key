@@ -39,6 +39,7 @@ import { RELEASE_PAGE_CAP } from "../release/github.js";
 import {
   describedFilesGitHubLacks,
   flooredChannels,
+  resolveStoreSelector,
 } from "../release/storeRelease.js";
 import {
   hiddenFor,
@@ -550,6 +551,18 @@ export async function classifyDifference(
   )
     return "beta-includes-stable";
 
+  // The same difference when the entitlement check refuses what the store's beta resolved: the
+  // legacy beta has no prerelease (404), the store's beta resolves the stable release (D6), and
+  // the grant refuses it (401 without a token, 403 for a capped grant). Only a refusal of the
+  // stable release counts; the refusal body names no version, so the store is asked.
+  if (
+    f.channel === "beta" &&
+    oldO.status === 404 &&
+    (newO.status === 401 || newO.status === 403) &&
+    (await storeResolvesStable(db, cfg, probe.selector))
+  )
+    return "beta-includes-stable";
+
   // `v1.2.0` and `1.2.0` both exist: the legacy path preferred `v`, the store the later one.
   for (const v of [oldO.version, newO.version]) {
     if (v !== null && rowsOfVersion(f, v).filter(f.visible).length > 1)
@@ -557,6 +570,20 @@ export async function classifyDifference(
   }
 
   return "unexpected";
+}
+
+/** True when the store's step resolves `selector` to a stable (non-prerelease) release. */
+async function storeResolvesStable(
+  db: Db,
+  cfg: ReleaseConfigRow,
+  selector: string | undefined,
+): Promise<boolean> {
+  try {
+    const { release } = await resolveStoreSelector(db, cfg, selector);
+    return !release.prerelease;
+  } catch {
+    return false;
+  }
 }
 
 /** Run a probe through both steps and classify the pair: one report row (§6.5). */

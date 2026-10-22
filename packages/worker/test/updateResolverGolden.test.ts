@@ -571,12 +571,6 @@ describe("a difference is classified", () => {
 beforeAll(() => installDigestStream());
 
 const MATRIX: { scenario: string; row: CompareRow }[] = [];
-/**
- * Rows the comparator classifies `unexpected` that this file has examined and pins by name, so a
- * change in either direction fails a test. Each is a finding for the lead (see the report of
- * P2-12.6), not a class: the switch rule still counts it as blocking.
- */
-const FINDINGS = new Set<CompareRow>();
 
 const { publicKey, privateKey } = generateKeyPairSync("ed25519");
 const PUB = Buffer.from(
@@ -1224,7 +1218,6 @@ describe("matrix: entitled and licensed refusals", () => {
     }).filter((x) => x.surface !== "version")) {
       const r = await compareProbe(w.db, c, p, ctx, { artifactsAccess: mode });
       MATRIX.push({ scenario: `${mode}-appcast`, row: r });
-      if (r.class === "unexpected") FINDINGS.add(r);
       out.push(r);
     }
     return out;
@@ -1270,15 +1263,13 @@ describe("matrix: entitled and licensed refusals", () => {
     const stableRow = rows.find((r) => r.probe === "stable")!;
     expect(stableRow.old.status).toBeGreaterThanOrEqual(400);
     expect(stableRow.new.status).toBe(stableRow.old.status);
-    // FINDING (P2-12.6): on a stable-only product the legacy `beta` has no prerelease to offer
-    // (404), while the store's beta includes stable (D6) and so reaches the same out-of-window
-    // release the grant refuses (403). That is the beta-includes-stable difference, but
-    // `classifyDifference` names it only when the store answers 200, so it reads `unexpected`.
-    const odd = rows.filter((r) => r.class === "unexpected");
-    expect(odd.map((r) => `${r.surface} ${r.probe}`)).toEqual([
-      "channelAppcast beta",
-    ]);
-    expect([odd[0]!.old.status, odd[0]!.new.status]).toEqual([404, 403]);
+    // On a stable-only product the legacy `beta` has no prerelease to offer (404), while the
+    // store's beta includes stable (D6) and reaches the same out-of-window release the grant
+    // refuses (403): the beta-includes-stable difference, named for a refusal too (P2-12.7).
+    expect(rows.filter((r) => r.class === "unexpected")).toEqual([]);
+    const beta = rows.find((r) => r.probe === "beta")!;
+    expect([beta.old.status, beta.new.status]).toEqual([404, 403]);
+    expect(beta.class).toBe("beta-includes-stable");
     // The version the 403 stands for is the one the stable probe was refused on.
     expect(stableRow.new.status).toBe(403);
   });
@@ -1296,13 +1287,12 @@ describe("matrix: entitled and licensed refusals", () => {
     const r = rows.find((x) => x.probe === "stable")!;
     expect(r.old.status).toBeGreaterThanOrEqual(400);
     expect(r.new.status).toBe(r.old.status);
-    // The same finding as above, from the other refusal: beta is 404 live, refused by the store.
-    const odd = rows.filter((x) => x.class === "unexpected");
-    expect(odd.map((x) => `${x.surface} ${x.probe}`)).toEqual([
-      "channelAppcast beta",
-    ]);
-    expect(odd[0]!.old.status).toBe(404);
-    expect(odd[0]!.new.status).toBeGreaterThanOrEqual(401);
+    // The same difference from the other refusal: beta is 404 live, 401 from the store.
+    expect(rows.filter((x) => x.class === "unexpected")).toEqual([]);
+    const beta = rows.find((x) => x.probe === "beta")!;
+    expect(beta.old.status).toBe(404);
+    expect(beta.new.status).toBe(401);
+    expect(beta.class).toBe("beta-includes-stable");
   });
 
   it("downloads: refused beyond the window, served inside it, the same in both steps", async () => {
@@ -1403,13 +1393,11 @@ describe("the matrix as a whole", () => {
   it("holds no blocking row, and every difference is a named expected class", () => {
     expect(MATRIX.length).toBeGreaterThan(400);
     for (const { scenario, row: r } of MATRIX) {
-      if (FINDINGS.has(r)) continue; // pinned above, reported to the lead
       expect(
         [...EXPECTED_CLASSES, "identical"],
         `${scenario}: ${r.surface} ${r.probe}`,
       ).toContain(r.class);
     }
-    expect(FINDINGS.size).toBe(2);
     expect(new Set(MATRIX.map((m) => m.row.surface))).toEqual(
       new Set(["appcast", "channelAppcast", "version", "download"]),
     );
