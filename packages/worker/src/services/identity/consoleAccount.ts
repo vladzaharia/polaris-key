@@ -659,7 +659,7 @@ export async function consoleRootHolders(
     )
       continue;
     // The erasure ledger outranks D1 (a restore can bring an erased account back); cached 30 s.
-    if ((await erasureVerdict(env, now, r.account_id)) === "clear")
+    if ((await erasureVerdict(env, now, r.account_id)) !== "erased")
       out.add(r.account_id);
   }
   return [...out];

@@ -19,7 +19,7 @@
  * past the list's cap is still found.
  */
 
-import { adminJson, notFound } from "../../core/console/respond.js";
+import { adminJson, err, notFound } from "../../core/console/respond.js";
 import { isMemberId } from "../../core/console/memberId.js";
 import {
   listAccountBindings,
@@ -179,5 +179,12 @@ export async function handleMemberGet(c: AdminCtx): Promise<Response> {
   if (!isMemberId(id)) return notFound();
   const { members, incomplete } = await build(c, true);
   const member = members.find((m) => m.memberId === id);
-  return member ? adminJson({ member, incomplete }) : notFound();
+  if (member) return adminJson({ member, incomplete });
+  // Not found is only an answer when the roster was whole: an account left out because the erasure
+  // ledger was unreadable may be this very member.
+  if (incomplete)
+    return err(503, "unavailable", "try again in a moment", {
+      reason: "erasure_ledger_unavailable",
+    });
+  return notFound();
 }

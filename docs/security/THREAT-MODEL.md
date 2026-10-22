@@ -7009,6 +7009,10 @@ here). Session only (no `tokenScope`). Read-only.
   most recently used strong link (as `consoleSubject` does). Each holder also passes `erasureVerdict` (cached
   30 s), and `consoleDirectory` skips accounts on the erasure ledger, so the roster cannot show a Superadmin
   the principal would not treat as one (ST-31.4 fix round; tested in `consoleMembers.test.ts`).
+- **An unreadable ledger is said, not hidden.** When `erasureVerdict` answers `unavailable` for an account (R2
+  failure or no bucket), the roster leaves that account out and sets `incomplete: true`, so a list that looks
+  whole never silently drops a Superadmin; `GET /members/:memberId` answers 503, not 404, for an id it did not
+  find while `incomplete` (`consoleMembers.test.ts`).
 - **Granter names.** `grantedBy` / `invitedBy` name a granter only while they are a member; a former member is
   `{ name: null }`, so the roster does not become a lookup of departed people.
 - **Last sign-in** is the newest `admin.signin` under the member id or any console IdP subject of the account
@@ -7040,6 +7044,9 @@ here). Session only (no `tokenScope`). Read-only.
 - **Real Superadmins.** The source is `consoleRootHolders` (the principal's own rule) plus stored platform
   Superadmin bindings, both on active accounts. The old rule counted every recent `admin.signin` actor, which
   could name a person the principal no longer treats as a Superadmin.
+- **An unreadable ledger is said, not hidden.** Both bodies carry `incomplete: true` when the erasure ledger
+  could not be read for an account (an uncached root-only holder included: `consoleRootHolders` keeps every
+  account the ledger has not said is erased, and the directory read drops and flags the unreadable ones).
 - **Bounded.** At most three people are named; the product route reads at most 500 bindings, 500 invites and
   the 200 stored Superadmin rows.
 

@@ -620,6 +620,68 @@ describe("ST-31.4 review fixes", () => {
     expect(downAcc.incomplete).toBe(true);
   });
 
+  it("an uncached root-only holder while the ledger is down is dropped and every roster says incomplete", async () => {
+    const root = await person(env, db, "rita", { keepRoot: true });
+    await person(env, db, "rob", { keepRoot: true });
+    const ledger = new LedgerBucket();
+    env.BLOBS = asR2(ledger);
+    // Warm only the caller's fence (a 404 never reads the roster), then take the ledger down.
+    expect(
+      (await call(env, db, root, "GET", "/api/members/mbr_short")).status,
+    ).toBe(404);
+    ledger.down = true;
+    const body = (await (
+      await call(env, db, root, "GET", "/api/members")
+    ).json()) as ListBody;
+    expect(body.incomplete).toBe(true);
+    expect(body.members.map((m) => m.email)).not.toContain("rob@example.com");
+    const prod = (await (
+      await call(env, db, root, "GET", "/api/products/alpha/members")
+    ).json()) as { platformRoles: { email: string }[]; incomplete: boolean };
+    expect(prod.incomplete).toBe(true);
+    expect(prod.platformRoles.map((r) => r.email)).not.toContain(
+      "rob@example.com",
+    );
+    const acc = (await (
+      await call(
+        env,
+        db,
+        root,
+        "GET",
+        "/api/access/admins?scope=product:alpha&area=members",
+      )
+    ).json()) as { incomplete: boolean };
+    expect(acc.incomplete).toBe(true);
+  });
+
+  it("GET /members/:id answers 503, not 404, when the member is not found and the roster is incomplete", async () => {
+    const root = await person(env, db, "rita", { keepRoot: true });
+    const rob = await person(env, db, "rob", { keepRoot: true });
+    const robId = await memberIdFor(env, rob.accountId);
+    const ledger = new LedgerBucket();
+    env.BLOBS = asR2(ledger);
+    await call(env, db, root, "GET", "/api/members/mbr_short");
+    ledger.down = true;
+    const res = await call(env, db, root, "GET", `/api/members/${robId}`);
+    expect(res.status).toBe(503);
+    expect(((await res.json()) as { reason?: string }).reason).toBe(
+      "erasure_ledger_unavailable",
+    );
+    // A forged id stays a plain 404 while the ledger is up.
+    ledger.down = false;
+    expect(
+      (
+        await call(
+          env,
+          db,
+          root,
+          "GET",
+          "/api/members/mbr_AAAAAAAAAAAAAAAAAAAAAA",
+        )
+      ).status,
+    ).toBe(404);
+  });
+
   it("says truncated when a cap cuts the list, and still finds a real member past the cap by id", async () => {
     const root = await person(env, db, "rita", { keepRoot: true });
     expect((await list(root)) as { truncated?: boolean }).toMatchObject({

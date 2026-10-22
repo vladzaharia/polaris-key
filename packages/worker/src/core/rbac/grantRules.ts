@@ -180,8 +180,8 @@ export function mayGrant(
  * binding's scope and areas covering the binding's, which is G1 applied to the thing taken away,
  * so no one removes a grant it could not have made. Superadmin and Platform admin bindings are
  * a Superadmin's alone (G2), and so is a `products:*` binding (see the departure below). Console access is taken back by `members` edit at
- * platform scope, not by a product admin, so a product admin cannot remove someone from the
- * console. A binding that does not validate is a Superadmin's alone.
+ * platform scope, not by a product admin, so a product admin cannot remove someone from
+ * the operator UI. A binding that does not validate is a Superadmin's alone.
  *
  * A `products:*` binding is revoked or narrowed by a Superadmin alone (ST-31.3 review B1). That
  * keeps the rule intact: a `products:*` holder could not have made the grant (G2), so it may not

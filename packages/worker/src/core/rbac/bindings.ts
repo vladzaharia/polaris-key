@@ -150,7 +150,7 @@ export async function listAccountGrants(
     );
   } catch (e) {
     // Deploy order: the code may run before the migration. Stored grants only ever narrow what a
-    // root operator holds, so a missing table means "no stored grants", not a locked-out console.
+    // root operator holds, so a missing table means "no stored grants", not a locked-out operator.
     if (/no such table/i.test(String((e as Error)?.message ?? e))) return [];
     throw e;
   }

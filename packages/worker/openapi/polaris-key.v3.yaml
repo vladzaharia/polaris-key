@@ -18428,6 +18428,66 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
         "429": { $ref: "#/components/responses/AdminRateLimited" }
+  /manage/api/access/admins:
+    get:
+      operationId: listAccessAdminsAdmin
+      tags: [admin]
+      summary: Who can give the caller access to an area
+      description: >
+        ST-29, ST-31.5. Up to three people, narrowest first: the admins of `product:<slug>` who hold
+        the area and Members, then Superadmins (the root rule's holders and stored bindings). Each is
+        a `name`, a `role` (`product_admin` or `superadmin`) and an address to copy; never an account
+        id. Platform admins and `products:*` admins are never named. A product's own admins are named
+        only to a caller who already holds an area of that product; anyone else gets the Superadmins
+        alone, the same answer for a product that does not exist. The caller is never on the list.
+        `scope` is `platform` (the default) or `product:<slug>`; `area` defaults to `console`; any
+        other value is a 400 naming the bad `fields`. Open to every signed-in member; admin session
+        cookie.
+      security:
+        - adminSession: []
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          schema: { type: string, default: platform }
+        - name: area
+          in: query
+          required: false
+          schema: { type: string, default: console }
+      responses:
+        "200":
+          description: The people who can help.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [scope, area, incomplete, admins]
+                properties:
+                  scope: { type: string }
+                  area: { type: string }
+                  incomplete:
+                    type: boolean
+                    description: >
+                      The erasure ledger could not be read for some account, which was left
+                      out. Try again.
+                  admins:
+                    type: array
+                    maxItems: 3
+                    items:
+                      type: object
+                      required: [name, email, role]
+                      properties:
+                        name: { type: string }
+                        email: { type: string }
+                        role:
+                          { type: string, enum: [superadmin, product_admin] }
+        "400":
+          description: An invalid `scope` or `area`; `fields` names them.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "429": { $ref: "#/components/responses/AdminRateLimited" }
   /manage/api/members:
     get:
       operationId: listMembersAdmin
@@ -18509,6 +18569,13 @@ paths:
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "404":
           description: No such member.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "503":
+          description: >
+            The member was not found and the erasure ledger could not be read for some account
+            (`reason: erasure_ledger_unavailable`), so the answer would not be reliable. Try again.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }

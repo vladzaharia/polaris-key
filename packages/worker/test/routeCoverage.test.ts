@@ -203,6 +203,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/search", ["post"]],
     ["/manage/api/support-codes/{code}", ["get"]],
     ["/manage/api/platform/ready", ["get"]],
+    // ST-29, ST-31.5: who can give the caller access to an area.
+    ["/manage/api/access/admins", ["get"]],
     // U-03: the licence-override migration (notes/S-17 §5.12, decision 21).
     // P0-49: the data-migration runner.
     ["/manage/api/platform/migrations", ["get"]],
