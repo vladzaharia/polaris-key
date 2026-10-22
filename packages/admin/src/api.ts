@@ -1429,7 +1429,8 @@ export type HostedAssetOutcome =
 /** One thing that needs the operator (`GET /manage/api/attention`; worker `console/lib/attention.ts`). */
 export interface AttentionItemDto {
   id: string;
-  product: { slug: string; name: string };
+  /** `null` for a platform item (the Cloud Sync pause): it belongs to no product. */
+  product: { slug: string; name: string } | null;
   kind:
     | "sync.failed"
     | "secret.missing"
@@ -1447,6 +1448,12 @@ export interface AttentionItemDto {
   lines: string[];
   action: { label: string; page: string; query?: Record<string, string> };
   area: string;
+  /** Platform items only: epoch seconds the pause began. */
+  since?: number | null;
+  /** Platform items only: the display name of who turned it on. */
+  by?: string | null;
+  /** Platform items only: the operator's reason. */
+  reason?: string | null;
 }
 
 /** One row of Platform ready (`GET /manage/api/platform/ready`). */

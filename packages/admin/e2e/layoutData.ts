@@ -719,6 +719,28 @@ function cloudSyncPause(over: Setting = {}): Setting {
   };
 }
 
+/** The platform settings with Cloud Sync's writes paused: the Resume dialog opened from Home. */
+export function pausedPlatformSettings(): Record<string, unknown> {
+  const v = view();
+  return {
+    ...v,
+    settings: v.settings.map((x) =>
+      x.key === "cloudSync.writesPaused"
+        ? cloudSyncPause({
+            value: "on",
+            version: 4,
+            stored: {
+              value: "on",
+              valid: true,
+              updatedAt: Math.floor(Date.now() / 1000) - 2 * 3600,
+              updatedBy: "m-ana",
+            },
+          })
+        : x,
+    ),
+  };
+}
+
 function grace(over: Setting = {}): Setting {
   return {
     key: "BLOB_GC_GRACE_DAYS",

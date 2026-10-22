@@ -19,7 +19,9 @@ import {
   IMG_ORIGIN,
   LONG_SLUG,
   PACK_ID,
+  PLATFORM_ONLY_ME,
   PRODUCT_ROLE_ME,
+  PLATFORM_PAUSE_ITEM,
   resolve,
   SYNC_USAGE,
 } from "./layoutFixtures.js";
@@ -34,6 +36,7 @@ import {
   unlabelledScrollers,
 } from "./pageChecks.js";
 import { reduceTransparency } from "../../ui-qa/src/index.ts";
+import { pausedPlatformSettings } from "./layoutData.js";
 import { staleUxDebt, uxBarChecked } from "./uxBar.js";
 import {
   probeLayout,
@@ -203,6 +206,41 @@ function cases(): Case[] {
         await page
           .locator("[role=radio][aria-checked=true]", { hasText: "Table" })
           .waitFor();
+      },
+    },
+    // ST-44b: Home while Cloud Sync writes are paused. Superadmin is `global:home` (the platform
+    // row among the product rows); a Platform admin with no product grant sees the row and the
+    // first-run state; a product admin never gets the item from the server.
+    {
+      name: "home:paused-platform-only",
+      hash: "#/",
+      override: {
+        "/manage/api/me": PLATFORM_ONLY_ME,
+        "/manage/api/products": { products: [] },
+        "/manage/api/attention": { items: [PLATFORM_PAUSE_ITEM] },
+        "/manage/api/platform/settings": pausedPlatformSettings(),
+      },
+    },
+    {
+      name: "home:paused-product-role",
+      hash: "#/",
+      override: {
+        "/manage/api/me": PRODUCT_ROLE_ME,
+        "/manage/api/attention": {
+          items: (
+            (resolve("/manage/api/attention") as { items: { id: string }[] })
+              .items ?? []
+          ).filter((i) => i.id !== PLATFORM_PAUSE_ITEM.id),
+        },
+      },
+    },
+    {
+      name: "dialog:resume-from-home",
+      hash: "#/",
+      override: { "/manage/api/platform/settings": pausedPlatformSettings() },
+      act: async (page) => {
+        await page.getByRole("button", { name: "Resume writes" }).click();
+        await page.getByRole("alertdialog").waitFor();
       },
     },
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },

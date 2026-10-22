@@ -1,7 +1,14 @@
 import * as React from "react";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { Eye, Plus } from "lucide-react";
-import type { AttentionItemDto } from "../../../../api.js";
+import { useQuery } from "@tanstack/react-query";
+import {
+  api,
+  type AttentionItemDto,
+  type PlatformSwitchSetting,
+} from "../../../../api.js";
+import { LogoMark } from "../../../../components/brand/Logo.js";
+import { formatSince } from "../../../../lib/format.js";
 import { releaseSourceOf } from "../../../../lib/products.js";
 import { ActionMenu } from "../../../../ui/ActionMenu.js";
 import { Button } from "../../../../ui/Button.js";
@@ -19,6 +26,7 @@ import {
   usePlatformReady,
   useProducts,
 } from "../../../data/hooks.js";
+import { qk } from "../../../data/queries.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import {
@@ -33,36 +41,81 @@ import {
 } from "../components/HomeStates.js";
 import { PlatformReady } from "../components/PlatformReady.js";
 import { ProductShelf } from "../components/ProductShelf.js";
-import { attentionHref, type HomeRow } from "../model/home.js";
+import {
+  PauseWritesDialog,
+  type PauseNotice,
+} from "../../sync/PauseWritesDialog.js";
+import {
+  attentionHref,
+  platformItems,
+  productItems,
+  type HomeRow,
+} from "../model/home.js";
 import { useSetupGuideHidden } from "../model/setupGuide.js";
 import { cn } from "../../../../lib/cn.js";
 import { toast } from "../../../../ui/toast.js";
 
-/** The attention list's rows: the subject is the product, logo and name, linking to Overview. */
+/** The platform row's "Since 14:06 (Ana Lima)." line; none when the server gave neither fact. */
+function sinceLine(a: AttentionItemDto): string | null {
+  const who = a.by ? ` (${a.by})` : "";
+  if (a.since) return `Since ${formatSince(a.since * 1000)}${who}.`;
+  return a.by ? `Paused by ${a.by}.` : null;
+}
+
+/**
+ * The attention list's rows. A product item's subject is the product, logo and name, linking to
+ * Overview. A platform item (`product: null`) has the Polaris Key mark and "Platform" for a
+ * subject, says since when and by whom, and its action opens the resume dialog in place.
+ */
 function attentionRows(
   items: readonly AttentionItemDto[],
   logo: (slug: string) => React.ReactNode,
+  onPlatform: (item: AttentionItemDto) => void,
 ): AttentionItem[] {
-  return items.map((a) => ({
-    id: a.id,
-    tone: a.tone,
-    object: (
-      <Link
-        to={r.overview(a.product.slug)}
-        className="flex min-w-0 max-w-full items-start gap-2 text-fg-strong underline-offset-4 hover:underline"
-      >
-        {logo(a.product.slug)}
-        <span className="min-w-0 line-clamp-2 break-words">
-          {a.product.name}
-        </span>
-      </Link>
-    ),
-    objectTitle: a.product.name,
-    reason: a.lines.join(" "),
-    lines: a.lines,
-    service: a.service ?? undefined,
-    action: { label: a.action.label, href: attentionHref(a) },
-  }));
+  return items.map((a): AttentionItem => {
+    if (a.product === null) {
+      const since = sinceLine(a);
+      const [first = "", ...rest] = a.lines;
+      const lines = since ? [first, since, ...rest] : a.lines;
+      return {
+        id: a.id,
+        tone: a.tone,
+        object: (
+          <span
+            data-platform-subject=""
+            className="flex min-w-0 max-w-full items-start gap-2"
+          >
+            <LogoMark size={24} title="" className="shrink-0" />
+            <span className="min-w-0 break-words">Platform</span>
+          </span>
+        ),
+        objectTitle: "Platform",
+        reason: lines.join(" "),
+        lines,
+        service: a.service ?? undefined,
+        action: { label: a.action.label, onSelect: () => onPlatform(a) },
+      };
+    }
+    const { slug, name } = a.product;
+    return {
+      id: a.id,
+      tone: a.tone,
+      object: (
+        <Link
+          to={r.overview(slug)}
+          className="flex min-w-0 max-w-full items-start gap-2 text-fg-strong underline-offset-4 hover:underline"
+        >
+          {logo(slug)}
+          <span className="min-w-0 line-clamp-2 break-words">{name}</span>
+        </Link>
+      ),
+      objectTitle: name,
+      reason: a.lines.join(" "),
+      lines: a.lines,
+      service: a.service ?? undefined,
+      action: { label: a.action.label, href: attentionHref(a) },
+    };
+  });
 }
 
 /**
@@ -94,8 +147,8 @@ export function Home(): React.ReactElement {
     [attention.data, canOpen],
   );
   const bySlug = React.useMemo(() => {
-    const m = new Map<string, AttentionItemDto[]>();
-    for (const a of openable)
+    const m = new Map<string, ReturnType<typeof productItems>>();
+    for (const a of productItems(openable))
       m.set(a.product.slug, [...(m.get(a.product.slug) ?? []), a]);
     return m;
   }, [openable]);
@@ -147,7 +200,53 @@ export function Home(): React.ReactElement {
         document.querySelector<HTMLElement>(heading)?.focus(),
       );
   };
-  const items = attentionRows(openable, logoOf);
+  // The platform's own item (the Cloud Sync pause): its resume dialog opens here, on Home.
+  const platformItem = platformItems(openable)[0];
+  const [resumeOpen, setResumeOpen] = React.useState(false);
+  const platformSettings = useQuery({
+    queryKey: qk.platformSettings(),
+    queryFn: () => api.platformSettings(),
+    retry: false,
+    enabled: platformItem !== undefined,
+  });
+  const paused = platformSettings.data?.settings?.find(
+    (x): x is PlatformSwitchSetting =>
+      x.key === "cloudSync.writesPaused" && x.kind === "switch",
+  );
+  const pauseNotice: PauseNotice | null = platformItem
+    ? {
+        since: platformItem.since ?? null,
+        by: platformItem.by ?? null,
+        reason: platformItem.reason ?? null,
+      }
+    : null;
+  // A successful resume clears the item (the write invalidates the read): the row's action is
+  // gone, so focus goes to the card that took its place.
+  const hadPlatformItem = React.useRef(false);
+  React.useEffect(() => {
+    if (platformItem) hadPlatformItem.current = true;
+    else if (hadPlatformItem.current) {
+      hadPlatformItem.current = false;
+      requestAnimationFrame(() =>
+        document
+          .querySelector<HTMLElement>("[data-home-grid] > section h2")
+          ?.focus(),
+      );
+    }
+  }, [platformItem]);
+  const resumeDialog =
+    paused && pauseNotice ? (
+      <PauseWritesDialog
+        open={resumeOpen}
+        onOpenChange={setResumeOpen}
+        setting={paused}
+        to="off"
+        propagationSeconds={platformSettings.data?.propagationSeconds ?? 30}
+        notice={pauseNotice}
+        reachUnlisted={list.length === 0}
+      />
+    ) : null;
+  const items = attentionRows(openable, logoOf, () => setResumeOpen(true));
   // The grid splits only when attention has rows to show (or is still loading or failed, so its
   // card holds the slot): a healthy platform's one-line all-clear never leaves a void beside the
   // guide, which then takes the row under it.
@@ -291,6 +390,14 @@ export function Home(): React.ReactElement {
     return (
       <div className="space-y-6" data-template="dashboard">
         {header}
+        {platformItem ? (
+          <AttentionList
+            items={attentionRows([platformItem], logoOf, () =>
+              setResumeOpen(true),
+            )}
+          />
+        ) : null}
+        {resumeDialog}
         <EmptyState
           kind="first-run"
           headingLevel={2}
@@ -327,6 +434,7 @@ export function Home(): React.ReactElement {
     // text size or a narrow window stacks the cards instead of squeezing them.
     <div className="@container space-y-6" data-template="dashboard">
       {header}
+      {resumeDialog}
       <div
         data-home-grid=""
         data-top-aligned=""

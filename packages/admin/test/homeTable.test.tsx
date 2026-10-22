@@ -172,6 +172,37 @@ describe("Home table", () => {
     expect(main().querySelector("tr[role=button]")).toBeNull();
   });
 
+  it("the Attention facet leaves out a product whose only item is the platform's (ST-44b.2)", async () => {
+    const extra = registry();
+    const items = (extra["/manage/api/attention"] as { items: unknown[] })
+      .items;
+    extra["/manage/api/attention"] = {
+      items: [
+        ...items,
+        {
+          id: "@platform:sync.paused",
+          product: null,
+          kind: "sync.paused",
+          tone: "warning",
+          service: "sync",
+          short: "Writes paused",
+          lines: ["Cloud Sync writes are paused for every product."],
+          action: {
+            label: "Resume writes",
+            page: "platform-settings",
+            query: { setting: "cloudSync.writesPaused" },
+          },
+          area: "platform",
+        },
+      ],
+    };
+    boot("#/?attention=yes", { extra });
+    await page();
+    await waitFor(() => expect(rows()).toHaveLength(1));
+    expect(rows()[0]!.textContent).toContain("acme");
+    expect(rows()[0]!.textContent).not.toContain("Writes paused");
+  });
+
   it("keeps search and facets in the URL", async () => {
     boot("#/?attention=yes", { extra: registry() });
     await page();

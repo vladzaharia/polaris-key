@@ -175,6 +175,29 @@ const PRODUCTS = [
   }),
 ];
 
+/** The platform's own attention item, as `GET /attention` composes it (ST-44b.1). */
+export const PLATFORM_PAUSE_ITEM = {
+  id: "@platform:sync.paused",
+  product: null,
+  kind: "sync.paused",
+  tone: "warning",
+  service: "sync",
+  short: "Writes paused",
+  lines: [
+    "Cloud Sync writes are paused for every product.",
+    "Devices keep their changes and send them on resume.",
+  ],
+  action: {
+    label: "Resume writes",
+    page: "platform-settings",
+    query: { setting: "cloudSync.writesPaused" },
+  },
+  area: "platform",
+  since: NOW - 2 * 3600,
+  by: "Ana Lima",
+  reason: "Storage errors in eu-west",
+};
+
 const ME = {
   ...(CORE_ROUTES["/manage/api/me"] as Record<string, unknown>),
   products: PRODUCTS.map((p, i) => ({
@@ -182,6 +205,19 @@ const ME = {
     name: p.name,
     schemaVersion: i + 1,
   })),
+};
+
+/**
+ * A Platform admin with no product grant: the console lists no product to them (the Worker's
+ * `canSeeProduct`), yet the pause reaches products they cannot see and the platform item is theirs.
+ */
+export const PLATFORM_ONLY_ME = {
+  ...ME,
+  sub: "m-ana",
+  name: "Ana Lima",
+  email: "ana@example.com",
+  platformAdmin: true,
+  products: [],
 };
 
 /** A member who administers the djdl product only (Cloud Sync Setup's product-role reads). */
@@ -302,25 +338,9 @@ const ROUTES: Record<string, unknown> = {
   // Home: what needs attention (`GET /attention`, long names and lines included) and Platform ready.
   "/manage/api/attention": {
     items: [
-      // U-05.21: the Cloud Sync pause, one row per product with Cloud Sync on.
-      {
-        id: `${LONG_SLUG}:sync.paused`,
-        product: { slug: LONG_SLUG, name: LONG_NAME },
-        kind: "sync.paused",
-        tone: "warning",
-        service: "sync",
-        short: "Writes paused",
-        lines: [
-          "Cloud Sync writes are paused for every product.",
-          "Devices keep their changes and send them on resume.",
-        ],
-        action: {
-          label: "Resume writes",
-          page: "sync-setup",
-          query: { resume: "1" },
-        },
-        area: "platform",
-      },
+      // ST-44b: the Cloud Sync pause is one platform row (product null), whatever the number of
+      // products with Cloud Sync on; the server sends it to Platform editors only.
+      PLATFORM_PAUSE_ITEM,
       {
         id: "acme:sync.failed",
         product: { slug: "acme", name: "Acme" },

@@ -86,6 +86,25 @@ export function formatDateTime(ms: number, opts: FormatOptions = {}): string {
   }).format(ms);
 }
 
+/**
+ * When something began, in the viewer's zone: the time of day for today ("14:06"), the date and
+ * time for an earlier day ("3 Sep 2026, 14:06"). The zone is the viewer's, so none is printed.
+ */
+export function formatSince(
+  ms: number,
+  now: number = Date.now(),
+  opts: FormatOptions = {},
+): string {
+  const clock = new Intl.DateTimeFormat(opts.locale, {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: opts.timeZone,
+  }).format(ms);
+  const day = (t: number): string =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: opts.timeZone }).format(t);
+  return day(ms) === day(now) ? clock : `${formatDate(ms, opts)}, ${clock}`;
+}
+
 /** Tables: relative under 7 days ("3 hr. ago"), else the date ("3 Sep 2026"). */
 export function formatTableTime(
   ms: number,

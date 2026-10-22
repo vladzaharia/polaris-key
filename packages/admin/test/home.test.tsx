@@ -19,6 +19,8 @@ import {
   productRow,
   resetConsole,
 } from "./consoleHarness.js";
+import type { ProductAttentionItem } from "../src/console/sections/global/model/home.js";
+import { formatDate, formatSince } from "../src/lib/format.js";
 import { movedHref, parseLocation } from "../src/console/routes.js";
 
 /**
@@ -976,7 +978,12 @@ describe("ProductCard", () => {
         unknown
       >),
     } as never;
-    render(<ProductCard product={p} attention={[item({ id: "x" })]} />);
+    render(
+      <ProductCard
+        product={p}
+        attention={[item({ id: "x" }) as ProductAttentionItem]}
+      />,
+    );
     const pips = Array.from(
       document.querySelectorAll<HTMLElement>("[data-pip]"),
     );
@@ -1057,5 +1064,225 @@ describe("a member with narrow access (ST-29)", () => {
     });
     expect(del.getAttribute("aria-disabled")).toBe("true");
     expect(del.textContent).toContain("Settings edit access");
+  });
+});
+
+describe("the platform row (ST-44b.2)", () => {
+  const PAUSE_KEY = "cloudSync.writesPaused";
+  const nowS = (): number => Math.floor(Date.now() / 1000);
+
+  function platformItem(
+    over: Partial<AttentionItemDto> = {},
+  ): AttentionItemDto {
+    return {
+      id: "@platform:sync.paused",
+      product: null,
+      kind: "sync.paused",
+      tone: "warning",
+      service: "sync",
+      short: "Writes paused",
+      lines: [
+        "Cloud Sync writes are paused for every product.",
+        "Devices keep their changes and send them on resume.",
+      ],
+      action: {
+        label: "Resume writes",
+        page: "platform-settings",
+        query: { setting: PAUSE_KEY },
+      },
+      area: "platform",
+      since: nowS() - 60,
+      by: "Ana Lima",
+      reason: "Storage errors in eu-west",
+      ...over,
+    };
+  }
+
+  const settingsView = (on: boolean): Record<string, unknown> => ({
+    settings: [
+      {
+        key: PAUSE_KEY,
+        area: "cloudSync",
+        label: "Pause Cloud Sync writes",
+        description: "",
+        kind: "switch",
+        scripts: ["main"],
+        precedence: "runtime",
+        default: "off",
+        deployValue: null,
+        value: on ? "on" : "off",
+        source: on ? "runtime" : "default",
+        forcedOff: false,
+        stored: null,
+        version: 4,
+        confirm: { on: "L2", off: "L1" },
+      },
+    ],
+    storeAvailable: true,
+    propagationSeconds: 30,
+    deployTime: [],
+    secrets: [],
+  });
+
+  /** Registry plus the pause; a resume flips the switch and the next attention read is clean. */
+  function paused(over: Partial<AttentionItemDto> = {}): {
+    routes: Record<string, unknown>;
+    state: { on: boolean };
+  } {
+    const state = { on: true };
+    const base = registry();
+    const routes = {
+      ...base,
+      "/manage/api/attention": () => ({
+        items: [
+          ...(state.on ? [platformItem(over)] : []),
+          ...ATTENTION.slice(1),
+        ],
+      }),
+      "/manage/api/platform/settings": () => settingsView(state.on),
+      [`PATCH /manage/api/platform/settings/${PAUSE_KEY}`]: () => {
+        state.on = false;
+        return settingsView(false).settings;
+      },
+    };
+    return { routes, state };
+  }
+
+  const platformRows = (): HTMLElement[] =>
+    within(main())
+      .queryAllByRole("listitem")
+      .filter((li) => li.querySelector("[data-platform-subject]"));
+
+  it("is one row, not one per product, with the mark and Platform for its subject", async () => {
+    boot("#/", { extra: paused().routes });
+    await home();
+    await within(main()).findByText(/Cloud Sync writes are paused/);
+    expect(platformRows()).toHaveLength(1);
+    const row = platformRows()[0]!;
+    expect(within(row).getByText("Platform")).toBeTruthy();
+    expect(within(row).getByText("Warning")).toBeTruthy();
+    expect(
+      within(row).getByRole("button", { name: "Resume writes" }),
+    ).toBeTruthy();
+    expect(row.querySelector("a[href]")).toBeNull();
+    expect(
+      within(main()).getAllByText(/Cloud Sync writes are paused/),
+    ).toHaveLength(1);
+  });
+
+  it("says since when and by whom: today the time, an earlier day the date, no name no parenthesis", async () => {
+    const at = nowS() - 90;
+    boot("#/", { extra: paused({ since: at }).routes });
+    await home();
+    await within(main()).findByText(/Cloud Sync writes are paused/);
+    expect(
+      within(platformRows()[0]!).getByText(
+        `Since ${formatSince(at * 1000)} (Ana Lima).`,
+      ),
+    ).toBeTruthy();
+    expect(formatSince(at * 1000)).not.toMatch(/\d{4}/);
+    cleanup();
+    resetConsole();
+
+    const earlier = nowS() - 3 * 86_400;
+    boot("#/", { extra: paused({ since: earlier, by: null }).routes });
+    await home();
+    await within(main()).findByText(/Cloud Sync writes are paused/);
+    const line = within(platformRows()[0]!).getByText(/^Since /);
+    expect(line.textContent).toBe(`Since ${formatSince(earlier * 1000)}.`);
+    expect(line.textContent).toContain(formatDate(earlier * 1000));
+    expect(line.textContent).not.toContain("(");
+  });
+
+  it("formats in the viewer's zone: the time of day today, date and time before", () => {
+    const now = Date.UTC(2026, 9, 22, 18, 0);
+    const opts = { locale: "en-GB", timeZone: "UTC" };
+    expect(formatSince(Date.UTC(2026, 9, 22, 14, 6), now, opts)).toBe("14:06");
+    expect(formatSince(Date.UTC(2026, 9, 21, 14, 6), now, opts)).toBe(
+      "21 Oct 2026, 14:06",
+    );
+    expect(
+      formatSince(Date.UTC(2026, 9, 22, 23, 30), Date.UTC(2026, 9, 23, 1, 0), {
+        ...opts,
+        timeZone: "Asia/Tokyo",
+      }),
+    ).toBe("8:30");
+  });
+
+  it("Resume writes opens the dialog in place with who and why; resuming removes the row and focuses the heading", async () => {
+    const user = userEvent.setup();
+    const { routes, state } = paused();
+    boot("#/", { extra: routes });
+    await home();
+    await user.click(
+      await within(main()).findByRole("button", { name: "Resume writes" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(window.location.hash).toBe("#/");
+    expect(within(dialog).getByText(/Ana Lima/)).toBeTruthy();
+    expect(within(dialog).getByText(/Storage errors in eu-west/)).toBeTruthy();
+    await user.type(within(dialog).getByLabelText(/Reason/), "Provider fixed");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Resume writes" }),
+    );
+    await waitFor(() => expect(state.on).toBe(false));
+    await waitFor(() => expect(platformRows()).toHaveLength(0));
+    await waitFor(() => expect(document.activeElement?.tagName).toBe("H2"));
+    expect(window.location.hash).toBe("#/");
+  });
+
+  it("is on no product: no pill, no count, no dot on any card", async () => {
+    const { routes } = paused();
+    routes["/manage/api/attention"] = { items: [platformItem()] };
+    boot("#/", { extra: routes });
+    await home();
+    await within(main()).findByText(/Cloud Sync writes are paused/);
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    for (const c of cards()) {
+      expect(within(c).queryByText(/need attention|Writes paused/)).toBeNull();
+      expect(c.querySelector("[data-issue-dot]")).toBeNull();
+    }
+  });
+
+  it("a Platform admin with no product grant sees the row and the first-run state, and can resume", async () => {
+    const user = userEvent.setup();
+    const { routes } = paused();
+    routes["/manage/api/products"] = { products: [] };
+    routes["/manage/api/attention"] = { items: [platformItem()] };
+    boot("#/", { me: { products: [] }, extra: routes });
+    await home();
+    expect(
+      await within(main()).findByText("Register your first product"),
+    ).toBeTruthy();
+    await user.click(
+      await within(main()).findByRole("button", { name: "Resume writes" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    // The products are not listed to this member, yet the switch reaches them: said in words.
+    expect(
+      within(dialog).getByText(
+        "Every product with Cloud Sync takes new data again.",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(dialog).queryByText("No product has Cloud Sync on."),
+    ).toBeNull();
+  });
+
+  it("a Product admin is never sent it, so Home draws no platform row", async () => {
+    const routes = registry();
+    boot("#/", {
+      me: {
+        platformAdmin: false,
+        products: [{ slug: "djdl", name: "DJDL", schemaVersion: 1 }],
+      },
+      extra: routes,
+    });
+    await home();
+    await waitFor(() => expect(cards().length).toBeGreaterThan(0));
+    expect(platformRows()).toHaveLength(0);
+    expect(
+      within(main()).queryByText(/Cloud Sync writes are paused/),
+    ).toBeNull();
   });
 });

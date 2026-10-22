@@ -65,6 +65,7 @@ export function PauseWritesDialog({
   to,
   propagationSeconds,
   notice,
+  reachUnlisted = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -74,6 +75,11 @@ export function PauseWritesDialog({
   propagationSeconds: number;
   /** Who paused it and why, led with when resuming. */
   notice?: PauseNotice | null;
+  /**
+   * The caller cannot list products (a Platform admin with no product grant sees none, though
+   * the switch reaches them): say so in words instead of naming "no product".
+   */
+  reachUnlisted?: boolean;
 }): React.ReactElement {
   const [reason, setReason] = React.useState("");
   const reasonRef = React.useRef<HTMLTextAreaElement>(null);
@@ -111,7 +117,13 @@ export function PauseWritesDialog({
               <PauseNoticeLine notice={notice} />
             </p>
           ) : null}
-          {reached.length === 0 ? (
+          {reached.length === 0 && reachUnlisted ? (
+            <p className="font-medium text-fg-strong">
+              {pausing
+                ? "Every product with Cloud Sync stops taking new data."
+                : "Every product with Cloud Sync takes new data again."}
+            </p>
+          ) : reached.length === 0 ? (
             <p className="text-fg">No product has Cloud Sync on.</p>
           ) : (
             <div>
@@ -144,7 +156,9 @@ export function PauseWritesDialog({
       }
       confirmLabel={
         pausing
-          ? `Pause writes for ${reached.length} ${products(reached.length)}`
+          ? reachUnlisted && reached.length === 0
+            ? "Pause writes"
+            : `Pause writes for ${reached.length} ${products(reached.length)}`
           : "Resume writes"
       }
       confirmDisabled={reason.trim() === ""}
