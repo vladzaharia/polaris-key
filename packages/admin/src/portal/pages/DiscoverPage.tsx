@@ -6,7 +6,12 @@ import { Button } from "../../ui/Button.js";
 import { StationaryStar } from "../../ui/EmptyState.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { toast } from "../../ui/toast.js";
-import { PortalApiError, type PortalDiscoverOffer } from "../api.js";
+import {
+  PortalApiError,
+  type PortalAccount,
+  type PortalDiscoverOffer,
+} from "../api.js";
+import { DiscoverAddedActions } from "../components/DiscoverAdded.js";
 import {
   DiscoverTile,
   type DiscoverTileState,
@@ -48,8 +53,11 @@ interface TileError {
  */
 export function DiscoverPage({
   params,
+  account,
 }: {
   params: URLSearchParams;
+  /** Whose address the toast says to sign in with; without it the toast is the title alone. */
+  account?: PortalAccount;
 }): React.ReactElement {
   useDocumentTitle(t("locker.discover.title"));
   const discover = useDiscover();
@@ -151,8 +159,20 @@ export function DiscoverPage({
       setFocusOpen(slug);
       // Read now, not from this render: another add may have finished meanwhile.
       setParams({ added: withAdded(addedParam(currentParams()), slug) });
-      // The tile says "Open"; the toast only confirms.
-      toast.success(t("locker.discover.added", { product: offer.name }));
+      // The tile has the next step; the toast confirms and, for a licence, says how to sign in.
+      const signIn =
+        account?.email && offer.paths[0] && offer.paths[0].kind !== "open";
+      toast.success(
+        t("locker.discover.addedTitle"),
+        signIn
+          ? {
+              description: t("locker.discover.addedBody", {
+                product: offer.name,
+                email: account.email,
+              }),
+            }
+          : undefined,
+      );
     } catch (err) {
       const failed = tileError(offer, err);
       setErrors((m) => new Map(m).set(slug, failed));
@@ -240,6 +260,15 @@ export function DiscoverPage({
                       ended={error?.ended ?? false}
                       onAdd={() => void add(offer)}
                       reserveStoreRow={reserveStores}
+                      addedActions={
+                        state === "added" ? (
+                          <DiscoverAddedActions
+                            slug={slug}
+                            name={offer.name}
+                            openId={`offer-${slug}-open`}
+                          />
+                        ) : undefined
+                      }
                     />
                   </li>
                 );

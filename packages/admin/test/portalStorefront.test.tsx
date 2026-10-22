@@ -441,7 +441,7 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
 
     await userEvent.click(trial);
     await userEvent.click(
-      screen.getByRole("button", { name: "Add to library" }),
+      screen.getByRole("button", { name: "Add to my library" }),
     );
     // The claim names the chosen path; the page is replaced by the product's library page.
     await waitFor(() => expect(window.location.hash).toBe("#/p/lumen-raw"));
@@ -488,7 +488,7 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
         renderPortal();
         await screen.findByRole("heading", { level: 1, name });
         await userEvent.click(
-          screen.getByRole("button", { name: "Add to library" }),
+          screen.getByRole("button", { name: "Add to my library" }),
         );
         await waitFor(() => expect(window.location.hash).toBe(`#/p/${slug}`));
         const h1 = await screen.findByRole("heading", { level: 1, name });
@@ -585,12 +585,12 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
     });
     renderPortal();
     await userEvent.click(
-      await screen.findByRole("button", { name: "Add to library" }),
+      await screen.findByRole("button", { name: "Add to my library" }),
     );
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Aperture Seven no longer gives Lumen RAW to your account.",
     );
-    expect(screen.queryByRole("button", { name: "Add to library" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add to my library" })).toBeNull();
     expect(window.location.hash).toBe("#/discover/lumen-raw");
     expect(
       screen
@@ -630,7 +630,7 @@ describe("the storefront product page, #/discover/:product (PS-05)", () => {
     mockFetch(storefrontWorker([STARFALL]));
     renderPortal();
     await screen.findByRole("heading", { level: 1, name: "Starfall Arena" });
-    expect(screen.queryByRole("button", { name: "Add to library" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add to my library" })).toBeNull();
     expect(screen.queryByRole("region", { name: /Ways to add/ })).toBeNull();
     expect(
       screen

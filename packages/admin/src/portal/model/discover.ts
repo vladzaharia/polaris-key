@@ -157,6 +157,29 @@ export function pathTermsLine(path: PortalObtainPath): string {
     : t("core.gate.not-applicable.title");
 }
 
+/**
+ * The decision panel's "You'd get" row for the one way to add it (portal.discover-detail):
+ * "Diceroll Standard · lifetime", the product's tier and how long it lasts; an open product
+ * ("No license needed") has neither. How many devices it covers is on the tile and the product
+ * page.
+ */
+export function youGetLine(
+  productName: string,
+  path: PortalObtainPath,
+): string {
+  const terms = path.terms;
+  if (!terms) return pathTermsLine(path);
+  const tier = terms.tierLabel ?? tierLabel(terms.tier);
+  const lasts =
+    terms.expiryDays !== null
+      ? t("locker.packages.days", { count: terms.expiryDays })
+      : terms.expiresAt !== null
+        ? t("signin.term.until", { date: formatDay(terms.expiresAt) })
+        : t("signin.term.lifetime");
+  const named = tier ? `${productName} ${tier}` : productName;
+  return `${named} · ${lasts.toLocaleLowerCase("en-US")}`;
+}
+
 /** "Get it on Steam", "Get it on the App Store": a link-only offer's action for one store page. */
 export function storeLinkLabel(store: PortalStorefrontStore): string {
   if (store.kind === "app-store") return t("locker.offer.storeAppStore");

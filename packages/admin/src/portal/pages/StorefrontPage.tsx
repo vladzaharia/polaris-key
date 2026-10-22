@@ -1,13 +1,6 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  AlertCircle,
-  ArrowLeft,
-  Compass,
-  ExternalLink,
-  LayoutGrid,
-  Plus,
-} from "lucide-react";
+import { AlertCircle, Compass, ExternalLink, LayoutGrid } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { StationaryStar } from "../../ui/EmptyState.js";
 import { Skeleton } from "../../ui/Skeleton.js";
@@ -35,6 +28,7 @@ import {
   pathCopy,
   pathTermsLine,
   storeLinkLabel,
+  youGetLine,
 } from "../model/discover.js";
 import { mediaUrl } from "../model/library.js";
 import { href, useDocumentTitle } from "../router.js";
@@ -182,13 +176,12 @@ function StorefrontBody({
       <nav aria-label={t("locker.storefront.breadcrumb")} className="mb-2">
         <a
           href={href.discover()}
-          className="inline-flex min-h-11 items-center gap-2 rounded-sm text-sm text-fg-muted hover:text-fg-strong"
+          className="inline-flex min-h-11 items-center rounded-sm text-sm text-fg-muted hover:text-fg-strong"
         >
-          <ArrowLeft aria-hidden className="size-4" />
           {t("locker.discover.title")}
         </a>
       </nav>
-      <div className="flex flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_21.25rem] desk:items-start desk:gap-x-8 desk:gap-y-8 wide:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="flex flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_20rem] desk:items-start desk:gap-x-8 desk:gap-y-8">
         <div className="min-w-0 desk:col-start-1 desk:row-start-1">
           <StorefrontHeader product={product} />
         </div>
@@ -283,11 +276,23 @@ function DecisionPanel({
       ? hasLinks
       : canAdd || error !== null || product.stores.length > 0;
   return (
-    <SectionCard
-      id="get"
-      title={t("locker.storefront.get", { product: product.name })}
+    <section
+      id="section-get"
+      aria-labelledby="section-get-h"
+      data-section="get"
+      className="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1"
     >
-      <div className="-mx-5 -mb-5 desk:-mx-6 desk:-mb-6">
+      {/* The panel's head is a tinted band (portal.discover-detail's card-head). */}
+      <div className="bg-surface-sunken px-5 py-3.5 @max-[20rem]:px-3 desk:px-6">
+        <h2
+          id="section-get-h"
+          tabIndex={-1}
+          className="text-lg font-semibold text-fg-strong outline-none"
+        >
+          {t("locker.storefront.get", { product: product.name })}
+        </h2>
+      </div>
+      <div>
         {platforms.length || (product.cta === "add" && !several && path) ? (
           <dl className="divide-y divide-border border-t border-border text-sm">
             {platforms.length ? (
@@ -298,7 +303,7 @@ function DecisionPanel({
             {product.cta === "add" && !several && path ? (
               <>
                 <Row term={t("locker.storefront.youGet")}>
-                  {pathTermsLine(path)}
+                  {youGetLine(product.name, path)}
                 </Row>
                 <Row term={t("locker.storefront.youQualify")}>
                   {pathCopy(path).text}
@@ -353,12 +358,13 @@ function DecisionPanel({
               <Button
                 size="lg"
                 className="h-auto min-h-12 w-full whitespace-normal px-6 py-2 font-medium"
-                iconStart={<Plus aria-hidden />}
                 loading={adding}
                 aria-describedby={error ? errorId : undefined}
                 onClick={onAdd}
               >
-                {adding ? t("locker.offer.adding") : t("locker.offer.add")}
+                {adding
+                  ? t("locker.offer.adding")
+                  : t("locker.activate.addToLibrary")}
               </Button>
             ) : null}
             {error ? (
@@ -391,7 +397,7 @@ function DecisionPanel({
           </div>
         ) : null}
       </div>
-    </SectionCard>
+    </section>
   );
 }
 
@@ -459,8 +465,6 @@ function StorefrontHeader({
   const [coverFailed, setCoverFailed] = React.useState(false);
   const cover = mediaUrl(product.headerUrl);
   const hasCover = Boolean(cover) && !coverFailed;
-  // On a phone the icon stands for the cover, so the panel reaches the first screen.
-  const hasIcon = Boolean(mediaUrl(product.iconUrl));
   return (
     <div className="@container">
       {hasCover ? (
@@ -471,17 +475,14 @@ function StorefrontHeader({
           src={cover}
           variant="banner"
           onError={() => setCoverFailed(true)}
-          className={cn(
-            "pk-vt-hero aspect-[3/1] rounded-xl desk:aspect-[3/1] desk:max-h-[26rem]",
-            hasIcon && "max-desk:hidden",
-          )}
+          className="pk-vt-hero aspect-[16/7] rounded-xl desk:max-h-[26rem]"
         />
       ) : null}
       <div
         data-cover={hasCover ? "image" : "none"}
         className={cn(
           "flex flex-col gap-3 @[20rem]:flex-row @[20rem]:items-start @[20rem]:gap-4",
-          hasCover ? (hasIcon ? "desk:mt-5" : "mt-5") : "pt-2",
+          hasCover ? "mt-5" : "pt-2",
         )}
       >
         <ProductIcon
@@ -489,13 +490,13 @@ function StorefrontHeader({
           name={product.name}
           tint={product.tintColor}
           src={mediaUrl(product.iconUrl)}
-          size={64}
+          size={56}
           className="pk-vt-hero-icon shrink-0"
         />
         <div className="min-w-0 flex-1 space-y-1 @[20rem]:pt-1">
           <h1
             tabIndex={-1}
-            className="pk-vt-hero-title w-fit max-w-full text-headline break-words hyphens-auto font-semibold leading-tight text-fg-strong outline-none desk:text-4xl"
+            className="pk-vt-hero-title w-fit max-w-full text-page-title-sm break-words hyphens-auto font-semibold text-fg-strong outline-none desk:text-page-title"
           >
             {product.name}
           </h1>

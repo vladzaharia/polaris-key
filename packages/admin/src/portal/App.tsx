@@ -332,7 +332,7 @@ function Page({
     case "library":
       return <LibraryPage account={account} params={route.params} />;
     case "discover":
-      return <DiscoverPage params={route.params} />;
+      return <DiscoverPage params={route.params} account={account} />;
     case "storefront":
       return <StorefrontPage key={route.product} product={route.product} />;
     case "product":

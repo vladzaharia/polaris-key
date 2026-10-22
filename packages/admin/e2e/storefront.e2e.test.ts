@@ -148,7 +148,7 @@ describe.concurrent("the storefront's flows (PS-05)", () => {
               await page.evaluate(() => window.scrollTo(0, 0));
               await page.waitForTimeout(100);
               const box = await page
-                .getByRole("button", { name: "Add to library" })
+                .getByRole("button", { name: "Add to my library" })
                 .boundingBox();
               const bar = await page
                 .getByRole("navigation", { name: "Phone" })
@@ -170,7 +170,7 @@ describe.concurrent("the storefront's flows (PS-05)", () => {
               r.method() === "POST" &&
               r.url().endsWith("/api/discover/lumen-raw/claim"),
           );
-          await page.getByRole("button", { name: "Add to library" }).click();
+          await page.getByRole("button", { name: "Add to my library" }).click();
           expect((await claim).postDataJSON()).toEqual({ path: "auto_issue" });
           await page.waitForURL(/#\/p\/lumen-raw$/);
           await h1(page, "Lumen RAW");
@@ -206,7 +206,7 @@ describe.concurrent("the storefront's flows (PS-05)", () => {
             document.documentElement.style.fontSize = "200%";
           });
           await page.waitForTimeout(150);
-          const add = page.getByRole("button", { name: "Add to library" });
+          const add = page.getByRole("button", { name: "Add to my library" });
           await add.scrollIntoViewIfNeeded();
           expect(await add.isVisible()).toBe(true);
           expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
