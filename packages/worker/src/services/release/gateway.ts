@@ -644,8 +644,12 @@ export async function recentChannelPullRequests(
         pr.number > 0
       )
         out.add(pr.number);
-  return [...out];
+  // One run can name several pull requests; the probe list stays as long as the runs read.
+  return [...out].slice(0, RECENT_PULL_REQUESTS);
 }
+
+/** The most `pr-<n>` selectors `recentChannelPullRequests` answers. */
+export const RECENT_PULL_REQUESTS = 10;
 
 /** Channel suffix used in asset names / install paths for non-stable selectors. */
 export function channelSuffix(sel: ChannelSelector): string | undefined {

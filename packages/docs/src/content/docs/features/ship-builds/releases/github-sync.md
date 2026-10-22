@@ -178,10 +178,12 @@ minutes) re-syncs each linked product's truth store when it is due:
   writes) is more than an hour old, or there is none.
 
 A repository with no releases still has channel rows, so it is not due on every tick. The pass
-runs the same sync as a webhook, at most 25 per tick across all products. A product over the cap
-reports `freshness: "deferred"` and stays due; one that is not due reports `fresh`. A failed
-sync, or one GitHub rate limits, writes nothing, so the product stays due and the pass never
-fails the tick.
+runs the same sync as a webhook, at most 25 per tick across all products and 8 per GitHub App
+installation, the product checked longest ago first. A product over a cap reports
+`freshness: "deferred"` and stays due; one that is not due reports `fresh`. Its GitHub calls count
+against the product's hourly budget, like serving. A failed sync, or one GitHub rate limits,
+writes nothing, so the product stays due; it is skipped for the next few ticks (up to six hours)
+so it cannot hold a slot, and the pass never fails the tick.
 
 The store is therefore at most 15 minutes behind GitHub while a release is new and 75 minutes
 behind otherwise, plus up to 300 seconds at the edge. A store that is behind serves the newest

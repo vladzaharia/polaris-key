@@ -27,7 +27,9 @@ import { listAllProductSlugs } from "../../core/products/store.js";
 import { APP_DELIVERABLE_ID } from "@polaris-key/manifest";
 import { classifyChannel } from "./channels.js";
 import { getReleaseConfig, isResolved } from "./config.js";
-import { channelTagsFor } from "./gateway.js";
+import { channelTagsFor, meterUpstreamCalls } from "./gateway.js";
+import { parsesInScheme, prereleaseOf } from "./resolve.js";
+import { versionFromTag } from "./channels.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import type { FetchImpl } from "./githubApp.js";
 import { syncReleaseStoreReport } from "./sync.js";
@@ -108,12 +110,13 @@ export function createBackfillStoreJob(
       const gap = await storeGap(ctx, unit);
       if (gap.appRows > 0 && gap.unlisted === 0)
         return { changes: 0, detail: { skipped: "store is current" } };
+      // Charged to the product's hourly GitHub budget, like serving and the freshness pass.
       const report = await syncReleaseStoreReport(
         ctx.env,
         ctx.db,
         unit,
         ctx.now,
-        upstream,
+        meterUpstreamCalls(ctx.env, unit, ctx.now, upstream),
       );
       const after = await storeGap(ctx, unit);
       const changes = Math.max(
@@ -173,22 +176,35 @@ function snapshotOf(detail: unknown): BetaSnapshot | null {
 
 const marks = (n: number) => Array.from({ length: n }, () => "?").join(", ");
 
-/** The ids in `tags` the apply would set: undescribed `app` rows whose channel is unset. */
+/**
+ * The ids in `tags` the apply would set: undescribed `app` rows whose channel is unset. A
+ * release GitHub does not flag as a prerelease and whose tag is a semver is a stable build that
+ * the workflow's beta set happens to name; it stays on `stable` and is never marked.
+ */
 async function candidates(
   ctx: MigrationContext,
   product: string,
   tags: readonly string[],
 ): Promise<string[]> {
   if (tags.length === 0) return [];
-  const rows = await ctx.db.all<{ release_id: string }>(
-    `SELECT release_id FROM release_metadata
+  const rows = await ctx.db.all<{
+    release_id: string;
+    metadata_json: string | null;
+  }>(
+    `SELECT release_id, metadata_json FROM release_metadata
       WHERE product = ? AND deliverable_id = ? AND channel IS NULL AND ${UNDESCRIBED_SQL}
         AND release_id IN (${marks(tags.length)}) ORDER BY release_id`,
     product,
     APP_DELIVERABLE_ID,
     ...tags,
   );
-  return rows.map((r) => r.release_id);
+  return rows
+    .filter(
+      (r) =>
+        prereleaseOf(r) ||
+        !parsesInScheme("semver", versionFromTag(r.release_id)),
+    )
+    .map((r) => r.release_id);
 }
 
 export function createMaterialiseWorkflowBetaJob(
@@ -236,29 +252,53 @@ export function createMaterialiseWorkflowBetaJob(
         cfg.beta_branch !== snapshot.betaBranch
       )
         throw new Error("config_changed: dry-run this unit again");
-      const set: string[] = [];
-      for (const id of await candidates(ctx, unit, snapshot.tags)) {
-        const n = await ctx.db.runChanges(
-          `UPDATE release_metadata SET channel = 'beta'
-            WHERE product = ? AND release_id = ? AND deliverable_id = ?
-              AND channel IS NULL AND ${UNDESCRIBED_SQL}`,
-          unit,
-          id,
-          APP_DELIVERABLE_ID,
-        );
-        if (n > 0) set.push(id);
-      }
+      // Only what the operator read: the apply never sets a row the dry run did not list.
+      const listed = Array.isArray(
+        (reported as { wouldSet?: unknown }).wouldSet,
+      )
+        ? new Set((reported as { wouldSet: unknown[] }).wouldSet)
+        : null;
+      const ids = (await candidates(ctx, unit, snapshot.tags)).filter(
+        (id) => !listed || listed.has(id),
+      );
+      // One statement: it applies in full or not at all, and RETURNING names exactly the rows it
+      // set, which is what `down` is handed. A concurrent change that took a row first drops it.
+      const set =
+        ids.length === 0
+          ? []
+          : (
+              await ctx.db.all<{ release_id: string }>(
+                `UPDATE release_metadata SET channel = 'beta'
+                  WHERE product = ? AND deliverable_id = ? AND channel IS NULL AND ${UNDESCRIBED_SQL}
+                    AND release_id IN (${marks(ids.length)})
+                  RETURNING release_id`,
+                unit,
+                APP_DELIVERABLE_ID,
+                ...ids,
+              )
+            )
+              .map((r) => r.release_id)
+              .sort();
+      let auditError: string | undefined;
       if (set.length > 0) {
-        await auditRow(
-          ctx,
-          unit,
-          "migration.release.materialise-workflow-beta",
-          `Set channel=beta on ${set.length} release(s) of the channel workflow`,
-          { workflow: snapshot.channelWorkflow, ids: set },
-        );
-        await bumpReleaseGeneration(ctx.env, unit, ctx.now);
+        // The rows are set; a failure to record them must not lose the list `down` needs.
+        try {
+          await auditRow(
+            ctx,
+            unit,
+            "migration.release.materialise-workflow-beta",
+            `Set channel=beta on ${set.length} release(s) of the channel workflow`,
+            { workflow: snapshot.channelWorkflow, ids: set },
+          );
+          await bumpReleaseGeneration(ctx.env, unit, ctx.now);
+        } catch (e) {
+          auditError = e instanceof Error ? e.message : String(e);
+        }
       }
-      return { changes: set.length, detail: { ids: set } };
+      return {
+        changes: set.length,
+        detail: { ids: set, ...(auditError ? { auditError } : {}) },
+      };
     },
     async down(ctx, unit, applied): Promise<UnitOutcome> {
       const ids =

@@ -375,6 +375,8 @@ describe("update.resolver-compare: pacing", () => {
     expect(w.kv.keys().some((k) => k.endsWith("resolver-compare:pause"))).toBe(
       true,
     );
+    // The platform-wide marker is not a product-scoped key, so no product slug can share it.
+    expect(w.kv.keys()).toContain("rc:resolver-compare:pause");
     expect(w.kv.keys().some((k) => k.endsWith("resolver-compare:cursor"))).toBe(
       true,
     );

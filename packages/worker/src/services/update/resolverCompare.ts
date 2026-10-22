@@ -60,6 +60,7 @@ import {
   resolveStoreSelector,
 } from "../release/storeRelease.js";
 import {
+  compareVersions,
   hiddenFor,
   loadDeliverableState,
   prereleaseOf,
@@ -565,7 +566,13 @@ export async function classifyDifference(
     f.channel === "beta" &&
     newO.status === 200 &&
     newRows.length > 0 &&
-    newRows.every((r) => githubTrack(r) === "stable")
+    newRows.every((r) => githubTrack(r) === "stable") &&
+    // The widening may only ADD a stable release the legacy beta skipped. Where the legacy beta
+    // answered a release, the store's must not be older: that is a downgrade, not D6.
+    (oldO.status === 404 ||
+      (oldO.version !== null &&
+        newO.version !== null &&
+        compareVersions(state.scheme, newO.version, oldO.version) >= 0))
   )
     return "beta-includes-stable";
 
@@ -709,7 +716,14 @@ interface Pause {
   until: number;
 }
 
-const pauseKey = (scope: string) => kvKey(scope, "resolver-compare", "pause");
+/**
+ * The platform-wide marker is deliberately not a `p:<product>:` key: a product could be named
+ * `platform` and would share it.
+ */
+const pauseKey = (scope: string) =>
+  scope === "platform"
+    ? "rc:resolver-compare:pause"
+    : kvKey(scope, "resolver-compare", "pause");
 const cursorKey = (product: string) =>
   kvKey(product, "resolver-compare", "cursor");
 

@@ -475,3 +475,59 @@ describe("health: the store step", () => {
     expect(store.status).toBe("error");
   });
 });
+
+describe("beta-includes-stable is only a widening", () => {
+  const outcome = (status: number, version: string | null): ProbeOutcome => ({
+    status,
+    contentType: "application/json",
+    cacheControl: null,
+    bodySha256: version ? sha256Hex(text(version)) : null,
+    version,
+  });
+
+  async function classify(old: ProbeOutcome, next: ProbeOutcome) {
+    const w = await world({
+      releases: [
+        release("v2.0.0", [asset(101, "djdl-arm64")], {
+          published_at: "2026-01-02T03:04:05Z",
+        }),
+        release("v2.0.0-rc1", [asset(102, "djdl-arm64")], {
+          published_at: "2026-01-01T03:04:05Z",
+          prerelease: true,
+        }),
+        release("v2.1.0-rc1", [asset(201, "djdl-arm64")], {
+          published_at: "2026-01-03T03:04:05Z",
+          prerelease: true,
+        }),
+      ],
+    });
+    const probe = w.probes.find(
+      (p) => p.surface === "version" && p.selector === "beta",
+    )!;
+    return classifyDifference(
+      w.db,
+      (await getReleaseConfig(w.db, SLUG))!,
+      probe,
+      old,
+      next,
+    );
+  }
+
+  it("is unexpected when the legacy beta has the newer prerelease and the store an older stable", async () => {
+    expect(
+      await classify(outcome(200, "2.1.0-rc1"), outcome(200, "2.0.0")),
+    ).toBe("unexpected");
+  });
+
+  it("stays expected when the legacy beta found nothing and the store has a stable", async () => {
+    expect(await classify(outcome(404, null), outcome(200, "2.0.0"))).toBe(
+      "beta-includes-stable",
+    );
+  });
+
+  it("stays expected when the store's stable is newer than the legacy beta's prerelease", async () => {
+    expect(
+      await classify(outcome(200, "2.0.0-rc1"), outcome(200, "2.0.0")),
+    ).toBe("beta-includes-stable");
+  });
+});

@@ -27,6 +27,11 @@ import {
   createMaterialiseWorkflowBetaJob,
   materialiseWorkflowBetaJob,
 } from "../src/services/release/resolverJobs.js";
+import { getReleaseConfig } from "../src/services/release/config.js";
+import {
+  RECENT_PULL_REQUESTS,
+  recentChannelPullRequests,
+} from "../src/services/release/gateway.js";
 import { apply, down, dryRun } from "../src/core/migrate/runner.js";
 import type { MigrationContext } from "../src/core/migrate/job.js";
 import { migrationJobs } from "../src/core/contributions.js";
@@ -271,7 +276,8 @@ describe("release.materialise-workflow-beta", () => {
   });
 
   it("down resets only rows still beta and still undescribed", async () => {
-    const w = await world(RELEASES());
+    // Every build in the beta set is a prerelease here; a stable one is never marked (below).
+    const w = await world(RELEASES().map((r) => ({ ...r, prerelease: true })));
     w.runs.branches = ["1.3.0-beta.1", "1.2.0", "1.1.0"];
     const job = createMaterialiseWorkflowBetaJob({ fetchImpl: w.fetchImpl });
     const report = await dryRun(w.ctx(), job, ACTOR);
@@ -301,5 +307,99 @@ describe("release.materialise-workflow-beta", () => {
       "migration.release.materialise-workflow-beta",
       "migration.release.materialise-workflow-beta.down",
     ]);
+  });
+
+  it("never marks a stable semver release the beta set happens to name", async () => {
+    const w = await world(RELEASES());
+    w.runs.branches = ["1.3.0-beta.1", "1.2.0", "1.1.0"];
+    const job = createMaterialiseWorkflowBetaJob({ fetchImpl: w.fetchImpl });
+    const report = await dryRun(w.ctx(), job, ACTOR);
+    expect(report.changes).toBe(1);
+    const applied = await apply(w.ctx(NOW + 1), job, ACTOR, report.id);
+    expect(applied.ok && applied.run.changes).toBe(1);
+    expect(await channelOf(w.db, "v1.3.0-beta.1")).toBe("beta");
+    expect(await channelOf(w.db, "v1.2.0")).toBeNull();
+    expect(await channelOf(w.db, "v1.1.0")).toBeNull();
+  });
+
+  it("sets only the ids the dry run listed", async () => {
+    const w = await world(RELEASES());
+    const job = createMaterialiseWorkflowBetaJob({ fetchImpl: w.fetchImpl });
+    const report = await dryRun(w.ctx(), job, ACTOR);
+    expect(
+      (report.units[0]!.detail as { wouldSet: string[] }).wouldSet,
+    ).toEqual(["v1.3.0-beta.1"]);
+    // A prerelease the workflow also built appears after the operator read the report.
+    const reported = report.units[0]!.detail;
+    w.state.releases.unshift(rel("v1.4.0-beta.1", 5, { prerelease: true }));
+    await syncReleaseStore(w.env, w.db, SLUG, NOW + 1, w.fetchImpl);
+    const out = await job.apply(w.ctx(NOW + 1), SLUG, {
+      ...(reported as object),
+      tags: ["v1.3.0-beta.1", "v1.4.0-beta.1"],
+    });
+    expect((out as { detail?: unknown }).detail).toEqual({
+      ids: ["v1.3.0-beta.1"],
+    });
+    expect(await channelOf(w.db, "v1.4.0-beta.1")).toBeNull();
+  });
+
+  it("is all or nothing: a failing write leaves no row changed", async () => {
+    const w = await world(RELEASES().map((r) => ({ ...r, prerelease: true })));
+    w.runs.branches = ["1.3.0-beta.1", "1.2.0", "1.1.0"];
+    const job = createMaterialiseWorkflowBetaJob({ fetchImpl: w.fetchImpl });
+    const report = await dryRun(w.ctx(), job, ACTOR);
+    expect(report.changes).toBe(3);
+    const updates: string[] = [];
+    const failing = Object.assign(Object.create(w.db), {
+      all: async (sql: string, ...p: never[]) => {
+        if (/UPDATE release_metadata/.test(sql)) {
+          updates.push(sql);
+          throw new Error("d1 failed");
+        }
+        return w.db.all(sql, ...p);
+      },
+    }) as Db;
+    await expect(
+      job.apply(
+        { env: w.env, db: failing, now: NOW + 1 },
+        SLUG,
+        report.units[0]!.detail,
+      ),
+    ).rejects.toThrow("d1 failed");
+    expect(updates).toHaveLength(1);
+    for (const id of ["v1.3.0-beta.1", "v1.2.0", "v1.1.0"])
+      expect(await channelOf(w.db, id)).toBeNull();
+    expect(await auditActions(w.db)).toEqual([]);
+  });
+});
+
+describe("recentChannelPullRequests", () => {
+  it("answers at most 10 pull requests, deduplicated, integers only", async () => {
+    const w = await world(RELEASES());
+    const cfg = (await getReleaseConfig(w.db, SLUG))!;
+    const fetchImpl: FetchImpl = async (input) => {
+      if (String(input).includes("/access_tokens"))
+        return new Response(JSON.stringify({ token: "t" }), { status: 200 });
+      return new Response(
+        JSON.stringify({
+          workflow_runs: [
+            {
+              pull_requests: Array.from({ length: 30 }, (_, i) => ({
+                number: i + 1,
+              })).concat([{ number: 3 }, { number: -1 }, { number: 1.5 }]),
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    };
+    const prs = await recentChannelPullRequests(
+      w.env,
+      cfg as never,
+      NOW,
+      fetchImpl,
+    );
+    expect(prs).toHaveLength(RECENT_PULL_REQUESTS);
+    expect(prs).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   });
 });

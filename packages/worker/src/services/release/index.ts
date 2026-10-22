@@ -74,11 +74,16 @@ export const releaseService: ServiceDescriptor = {
    * P2-12: the same tick runs the freshness pass (`freshness.ts`), which re-syncs a linked
    * product's truth store when no webhook did (at most 25 syncs per tick).
    */
-  scheduled: async (ctx) => ({
-    nativeUploads: await sweepNativeSessions(ctx),
-    pruneNotice: await sweepPruneNotice(ctx),
-    ...(await releaseFreshness(ctx)),
-  }),
+  scheduled: async (ctx) => {
+    // First, and on its own: it never throws, and a sweep that does must not cost the store its
+    // catch-up.
+    const freshness = await releaseFreshness(ctx);
+    return {
+      nativeUploads: await sweepNativeSessions(ctx),
+      pruneNotice: await sweepPruneNotice(ctx),
+      ...freshness,
+    };
+  },
   /**
    * Release's slice of `/.well-known/polaris.json` (design spec §4.3).
    *
