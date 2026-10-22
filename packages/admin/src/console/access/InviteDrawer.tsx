@@ -253,6 +253,13 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
     retry?: () => void;
   } | null>(null);
   const ids = React.useId();
+  // Whether the footer's notes overflow (at large text they do): then the region is focusable.
+  const footScroll = React.useRef<HTMLDivElement>(null);
+  const [footScrolls, setFootScrolls] = React.useState(false);
+  React.useLayoutEffect(() => {
+    const el = footScroll.current;
+    if (el) setFootScrolls(el.scrollHeight > el.clientHeight + 1);
+  });
   const wordRef = React.useRef<HTMLInputElement>(null);
 
   // Who opened the drawer, so focus goes back there after the links dialog too.
@@ -962,8 +969,15 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
           data-drawer-footer=""
           className="flex max-h-[55%] shrink-0 flex-col border-t border-border px-4 py-3 lg:px-6"
         >
-          {/* What can scroll; the buttons below never do. */}
-          <div className="min-h-0 space-y-2 overflow-y-auto [&:not(:empty)]:pb-2">
+          {/* What can scroll; the buttons below never do. A scrolling region takes focus, so a
+              keyboard can reach what is cut off. */}
+          <div
+            ref={footScroll}
+            {...(footScrolls
+              ? { tabIndex: 0, role: "region", "aria-label": "Summary" }
+              : {})}
+            className="min-h-0 space-y-2 overflow-y-auto [&:not(:empty)]:pb-2"
+          >
             {askBack ? (
               <DiscardStrip
                 className="rounded-md border px-3"
