@@ -115,6 +115,14 @@ var _bound: PKeyConfig = null
 var _writing := false
 
 
+func _notification(what: int) -> void:
+	super._notification(what)
+	# The Account pane is built with the panel but only parented while `account_tab` shows it; one
+	# the panel never parented (or took out of the list) is nobody's child and nobody frees it.
+	if what == NOTIFICATION_PREDELETE and account != null and is_instance_valid(account) and account.get_parent() == null:
+		account.free()
+
+
 func _build() -> void:
 	name = "PKeySettingsPanel"
 	account = PKeyAccountTab.new()
