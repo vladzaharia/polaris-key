@@ -68,17 +68,24 @@ export function OverviewHero({
       data-testid="overview-hero"
       data-issue={issue ? "" : undefined}
       className={cn(
-        "relative col-span-full grid grid-cols-1 overflow-hidden rounded-xl border border-border bg-surface-raised",
+        "relative isolate col-span-full grid grid-cols-1 overflow-hidden rounded-xl border border-border bg-surface-raised",
         pane && "@min-[800px]:grid-cols-2 @min-[976px]:grid-cols-subgrid",
       )}
     >
+      {issue ? (
+        // The wash covers the whole hero, so the subgrid's gap between the panes wears it too.
+        <span
+          aria-hidden
+          data-wash=""
+          className="absolute inset-0 -z-10 bg-warning-subtle/40"
+        />
+      ) : null}
       <div
         className={cn(
           "relative flex min-w-0 flex-col gap-8 p-6",
           pane
             ? "@min-[976px]:col-span-2 @min-[1488px]:col-span-3 @min-[1488px]:grid @min-[1488px]:grid-cols-subgrid @min-[1488px]:gap-y-0 @min-[1488px]:p-0"
             : "@min-[1488px]:grid @min-[1488px]:grid-cols-4 @min-[1488px]:gap-6 @min-[1488px]:p-0",
-          issue && "bg-warning-subtle/40",
         )}
       >
         {issue ? (
@@ -252,25 +259,21 @@ export function IntegrationPane({
       {query.isPending ? (
         <Skeleton className="h-16 w-full" />
       ) : query.isError || !view ? (
-        <ErrorState
-          compact
-          error={query.error}
-          onRetry={() => void query.refetch()}
-        />
+        <ErrorState error={query.error} onRetry={() => void query.refetch()} />
       ) : view.features.length === 0 ? (
         <p className="text-sm text-fg-muted">No feature is turned on.</p>
       ) : gauges.length > 0 ? (
         <ul aria-label="By platform" className="space-y-4">
           {gauges.map((g) => (
             <li key={g.platform} className="space-y-1.5">
-              <p className="flex items-center gap-2 text-sm">
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
                 <span className="inline-flex items-center gap-2 font-medium text-fg-strong">
                   {isKey(g.platform) ? (
                     <PlatformGlyph platform={g.platform} />
                   ) : null}
                   {g.label}
                 </span>
-                <span className="ms-auto whitespace-nowrap text-fg-muted">
+                <span className="ms-auto text-fg-muted">
                   {g.verified} of {g.total} verified
                 </span>
               </p>
