@@ -274,11 +274,11 @@ export function LimitsTable({
       <table className="w-full text-sm max-sm:block">
         <caption className="sr-only">Limits and where each comes from</caption>
         <thead className="max-sm:sr-only">
-          <tr className="[&>th]:h-9 [&>th]:px-5 [&>th]:text-left [&>th]:text-xs [&>th]:font-medium [&>th]:text-fg-muted">
+          <tr className="[&>th]:h-9 [&>th]:px-5 [&>th]:text-start [&>th]:text-xs [&>th]:font-medium [&>th]:text-fg-muted">
             <th scope="col">Limit</th>
             <th scope="col">Value</th>
             <th scope="col">From</th>
-            <th scope="col" className="!text-right">
+            <th scope="col" className="!text-end">
               <span className="sr-only">Action</span>
             </th>
           </tr>
@@ -303,7 +303,7 @@ export function LimitsTable({
                   {row.label}
                 </span>
               </td>
-              <td className="max-sm:text-right conbig:max-sm:text-left">
+              <td className="max-sm:text-end conbig:max-sm:text-start">
                 <strong className="font-semibold tabular-nums text-fg-strong">
                   {row.value}
                 </strong>
@@ -322,7 +322,7 @@ export function LimitsTable({
                   ) : null}
                 </span>
               </td>
-              <td className="text-right max-sm:self-end conbig:max-sm:self-start conbig:max-sm:text-left">
+              <td className="text-end max-sm:self-end conbig:max-sm:self-start conbig:max-sm:text-start">
                 <span className="inline-flex flex-wrap items-center justify-end gap-x-2 conbig:max-sm:justify-start">
                   {row.kind === "fingerprint" ? (
                     row.tierId ? (
