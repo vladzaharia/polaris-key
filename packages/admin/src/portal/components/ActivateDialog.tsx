@@ -692,7 +692,7 @@ function AccountRow({
     </div>
   );
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-surface-sunken px-3 py-2.5">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-surface-sunken px-3 py-2">
       {group}
       {/* The dialog's own form wraps this row, and forms do not nest: a detached POST form. */}
       <button
@@ -848,7 +848,7 @@ function DoneStep({
           variant="banner"
           className="h-36 rounded-lg"
         />
-        <span className="inline-flex items-center gap-1 rounded-full border border-success-border bg-surface-overlay px-2.5 py-1 text-xs font-medium text-success">
+        <span className="inline-flex items-center gap-1 rounded-full border border-success-border bg-surface-overlay px-2 py-1 text-xs font-medium text-success">
           {momentKey ? (
             <Celebration momentKey={momentKey} size={14} />
           ) : (

@@ -240,7 +240,7 @@ export function FeedNav({
           aria-current={active ? "page" : undefined}
           data-active={active ? "" : undefined}
           className={cn(
-            "relative inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-t-md px-2.5 text-sm",
+            "relative inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-t-md px-2 text-sm",
             "after:absolute after:inset-x-1.5 after:bottom-0 after:h-0.5 after:rounded-full",
             "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
             active

@@ -187,7 +187,7 @@ export function AppToaster({
         unstyled: true,
         classNames: {
           toast:
-            "group flex w-full items-start gap-3 rounded-lg border border-border bg-surface-overlay p-4 pe-11 text-sm max-sm:pe-14 text-fg shadow-elevation-3 sm:w-[22rem]",
+            "group flex w-full items-start gap-3 rounded-lg border border-border bg-surface-overlay p-4 pe-12 text-sm max-sm:pe-16 text-fg shadow-elevation-3 sm:w-[22rem]",
           // The mockups' toast has one neutral border for every variant (components `.toast`); the
           // icon carries the variant.
           icon: "mt-0.5",

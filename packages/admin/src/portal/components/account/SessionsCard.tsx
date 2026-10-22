@@ -118,7 +118,7 @@ function SessionList({
         ))}
       </ul>
       <Everywhere others={others} open={open} onClose={onClose} />
-      <div className="ms-13 mt-1 bigtext:max-sm:ms-0">
+      <div className="ms-12 mt-1 bigtext:max-sm:ms-0">
         <Button
           variant="link"
           className="h-auto min-h-11 pointer-coarse:min-h-11 max-w-full whitespace-normal py-2 text-start font-medium [overflow-wrap:anywhere]"
@@ -160,7 +160,7 @@ function SessionRow({
   return (
     <li className="py-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
+        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
           {phone ? (
             <Smartphone aria-hidden className="size-5" />
           ) : (
@@ -201,7 +201,7 @@ function SessionRow({
         )}
       </div>
       {end.error ? (
-        <p role="alert" className="mt-2 text-sm text-danger sm:ps-13">
+        <p role="alert" className="mt-2 text-sm text-danger sm:ps-12">
           {portalErrorCopy(end.error).line}
         </p>
       ) : null}

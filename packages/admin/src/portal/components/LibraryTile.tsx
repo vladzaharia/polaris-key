@@ -137,7 +137,7 @@ export function LibraryTile({
         <div className="flex flex-1 flex-col px-3 pb-3">
           <div
             className={cn(
-              "flex items-start gap-2.5 bigtext:flex-col bigtext:gap-1",
+              "flex items-start gap-2 bigtext:flex-col bigtext:gap-1",
               tiny && "flex-col gap-1",
               noArt ? "mt-1" : "-mt-4",
             )}

@@ -61,7 +61,7 @@ export function SecretInput({
           onChange={(e) => onChange?.(e.target.value)}
           disabled={disabled}
           readOnly={readOnly || locked}
-          className={cn(CONTROL_INPUT, "pe-11 font-mono text-xs")}
+          className={cn(CONTROL_INPUT, "pe-12 font-mono text-xs")}
           {...props}
         />
         <button

@@ -283,7 +283,7 @@ function DecisionPanel({
       className="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1"
     >
       {/* The panel's head is a tinted band (portal.discover-detail's card-head). */}
-      <div className="bg-surface-sunken px-5 py-3.5 @max-[20rem]:px-3 desk:px-6">
+      <div className="bg-surface-sunken px-5 py-3 @max-[20rem]:px-3 desk:px-6">
         <h2
           id="section-get-h"
           tabIndex={-1}
@@ -322,7 +322,7 @@ function DecisionPanel({
                 <label
                   key={p.kind}
                   className={cn(
-                    "flex min-h-11 cursor-pointer gap-3 rounded-lg border p-2.5 @max-[20rem]:gap-2 @max-[20rem]:p-2",
+                    "flex min-h-11 cursor-pointer gap-3 rounded-lg border p-2 @max-[20rem]:gap-2 @max-[20rem]:p-2",
                     chosen === p.kind
                       ? "border-border-strong bg-surface-sunken"
                       : "border-border hover:bg-hover",

@@ -112,7 +112,7 @@ export function KeyField({
           // A key is a token: it may break anywhere (the reflow checks leave tokens alone).
           data-token=""
           className={cn(
-            "min-h-[3.25rem] whitespace-pre-wrap py-3.5 ps-4 pe-24 font-mono text-md leading-6 [overflow-wrap:anywhere] [word-break:break-all]",
+            "min-h-[3.25rem] whitespace-pre-wrap py-3 ps-4 pe-24 font-mono text-md leading-6 [overflow-wrap:anywhere] [word-break:break-all]",
             value !== "" && "@max-[17rem]:pe-4",
           )}
         >
@@ -158,7 +158,7 @@ export function KeyField({
             }
           }}
           className={cn(
-            "absolute inset-0 size-full resize-none overflow-hidden bg-transparent py-3.5 ps-4 pe-24 font-mono text-md leading-6 text-transparent caret-fg-strong outline-none [overflow-wrap:anywhere] [word-break:break-all]",
+            "absolute inset-0 size-full resize-none overflow-hidden bg-transparent py-3 ps-4 pe-24 font-mono text-md leading-6 text-transparent caret-fg-strong outline-none [overflow-wrap:anywhere] [word-break:break-all]",
             value !== "" && "@max-[17rem]:pe-4",
           )}
         />
@@ -167,7 +167,7 @@ export function KeyField({
             <button
               type="button"
               onClick={() => void paste()}
-              className="inline-flex h-11 items-center gap-1.5 rounded-md border border-border-strong bg-surface-raised px-2.5 text-sm font-medium text-fg-strong hover:bg-hover"
+              className="inline-flex h-11 items-center gap-1.5 rounded-md border border-border-strong bg-surface-raised px-2 text-sm font-medium text-fg-strong hover:bg-hover"
             >
               <ClipboardPaste aria-hidden className="size-4 text-accent-fg" />
               {t("common.paste")}

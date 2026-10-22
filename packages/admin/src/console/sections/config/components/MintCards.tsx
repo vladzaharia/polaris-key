@@ -78,7 +78,7 @@ export function MintCards({
           </li>
           {recipe.requiredEntitlement ? (
             <li className="flex items-center gap-3 px-4 py-3">
-              <span className="ps-7">
+              <span className="ps-6">
                 The license must include{" "}
                 <code className="font-mono text-xs">
                   {recipe.requiredEntitlement}

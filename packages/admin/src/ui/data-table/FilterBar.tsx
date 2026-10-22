@@ -432,7 +432,7 @@ export function FilterBar({
                   "data-[state=closed]:animate-pk-fade-out motion-reduce:animate-none",
                 )}
               >
-                <span className="inline-flex h-7 items-center gap-1 rounded-full border border-accent-fg bg-accent-subtle ps-2.5 pe-1 text-xs text-fg-strong">
+                <span className="inline-flex h-7 items-center gap-1 rounded-full border border-accent-fg bg-accent-subtle ps-2 pe-1 text-xs text-fg-strong">
                   {c.facet.label}: {c.label}
                   <button
                     type="button"
