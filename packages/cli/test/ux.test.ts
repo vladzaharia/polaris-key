@@ -99,6 +99,70 @@ describe("exit codes: 0 success, 1 failure, 2 usage", () => {
     expect((await run(["validate"])).code).toBe(1);
   });
 
+  it("a leading unknown option names itself and exits 2", async () => {
+    for (const argv of [["--bogus"], ["--bogus=1", "release"]]) {
+      const r = await run(argv);
+      expect(r.code, argv.join(" ")).toBe(2);
+      expect(r.err).toContain(
+        "Unknown option --bogus. Run pkey help to see the options.",
+      );
+      expect(r.err).not.toContain("Unknown command");
+      expect(r.out).toBe("");
+    }
+  });
+
+  it("pkey sdk's usage lists sdk add", async () => {
+    const r = await run(["sdk"]);
+    expect(r.code).toBe(2);
+    expect(r.err).toContain("pkey sdk add <lang> --expect");
+  });
+
+  // A bad value the user typed is a usage error (2) wherever it is caught; no server is reached.
+  const BAD_VALUES: [string, string[]][] = [
+    ["a dev key that is not a test key", ["dev", "expire", "nokey"]],
+    ["dev config value that is not JSON", ["dev", "config", "a", "{nope"]],
+    ["a non-numeric port", ["dev", "--port", "x"]],
+    ["a mirror language that is unknown", ["mirror", "--lang", "cobol"]],
+    [
+      "an sdk product that is not a slug",
+      ["sdk", "--lang", "node", "--product", "Bad Slug"],
+    ],
+    [
+      "an sdk base URL that is not a URL",
+      ["sdk", "--lang", "node", "--product", "demo", "--base-url", "nope"],
+    ],
+    [
+      "an sdk base URL over http",
+      [
+        "sdk",
+        "--lang",
+        "node",
+        "--product",
+        "demo",
+        "--base-url",
+        "http://example.com",
+      ],
+    ],
+    ["a bundle device id that is too short", ["bundle", "--device", "abc"]],
+    [
+      "a feeds ecosystem that is unknown",
+      ["feeds", "setup", "--ecosystem", "x"],
+    ],
+    [
+      "a module that is not a module",
+      ["init", "--product", "d", "--modules", "nope"],
+    ],
+  ];
+  it.each(BAD_VALUES)("%s exits 2", async (_what, argv) => {
+    const r = await run(argv);
+    expect(r.code, argv.join(" ")).toBe(2);
+    expect(r.err).not.toContain("    at ");
+  });
+
+  it("a runtime failure stays a failure (1)", async () => {
+    expect((await run(["validate"])).code).toBe(1);
+  });
+
   it("the usage test reads both shapes of a usage message", () => {
     expect(isUsageError("Usage: pkey x")).toBe(true);
     expect(isUsageError("--bp must be a number")).toBe(true);

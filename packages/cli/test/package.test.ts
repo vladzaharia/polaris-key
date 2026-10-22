@@ -563,12 +563,12 @@ describe("pkey release publish --deliverable <package> (F-03)", () => {
       cwd,
       argv("npm.sdk", ["--version", "2.0.0"]),
     );
-    expect(wrongVersion.code).toBe(1);
+    expect(wrongVersion.code).toBe(2);
     expect(wrongVersion.err).toMatch(
       /does not match the packed files' version 1\.4\.0/,
     );
     const tagged = await run(cwd, argv("npm.sdk", ["--tag", "v1.4.0"]));
-    expect(tagged.code).toBe(1);
+    expect(tagged.code).toBe(2);
     expect(tagged.err).toMatch(/--tag does not apply here/);
   });
 

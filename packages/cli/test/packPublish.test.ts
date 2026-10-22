@@ -881,7 +881,7 @@ describe("the CLI", () => {
         "x.json",
       ]),
     ).toEqual({
-      code: 1,
+      code: 2,
       err: "--content-stamp does not apply here: --deliverable diceroll.core3d is a pack; these stamp an app release's packs.\n",
     });
     expect(

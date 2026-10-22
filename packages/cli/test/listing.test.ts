@@ -458,7 +458,7 @@ describe("pkey listing import --godot", () => {
         ],
         notAUrl.io as never,
       ),
-    ).toBe(1);
+    ).toBe(2);
     expect(notAUrl.err()).toContain("--base-url is not a valid URL");
     expect(remote.calls).toEqual([]);
 

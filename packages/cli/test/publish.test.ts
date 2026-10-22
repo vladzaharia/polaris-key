@@ -464,7 +464,7 @@ describe("pkey release publish", () => {
       "--dir",
       "dist",
     ]);
-    expect(code).toBe(1);
+    expect(code).toBe(2);
     expect(err).toContain(
       "--product other does not match .pkey/product's slug diceroll.",
     );
