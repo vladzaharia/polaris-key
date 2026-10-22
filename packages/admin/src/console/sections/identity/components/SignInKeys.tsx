@@ -170,7 +170,7 @@ export function LockerSection({
   const rows = [
     {
       key: "portalEnabled",
-      label: `Show ${name} in players' libraries`,
+      label: `Show ${name} in customers' libraries`,
     },
     // "Let customers replace a lost key" is hidden until the Locker has the reissue action (G7).
   ] as const;

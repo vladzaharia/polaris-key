@@ -125,7 +125,7 @@ const capitalize = (s: string): string =>
 
 const CHECK_TITLE: Record<CheckId, string> = {
   repository: "Repository",
-  app: "Polaris Key app installed",
+  app: "Polaris Key GitHub App installed",
   manifest: "Manifest valid",
   slug: "Manifest slug matches",
   policy: "Applies to this product",

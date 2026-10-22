@@ -88,7 +88,7 @@ export const PREREQUISITES: {
     label: "Login card",
     name: "the login card (I-07)",
     wp: "I-07",
-    help: "The sign-in card products show their players, so a customer can sign in and own a license.",
+    help: "The sign-in card products show their customers, so a customer can sign in and own a license.",
   },
   {
     key: "library",

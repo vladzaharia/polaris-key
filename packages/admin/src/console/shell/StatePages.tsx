@@ -339,6 +339,7 @@ export function ServiceOffPage({
           )
         }
         docs={section.docs}
+        docsFor={signIn ? "App sign-in" : feature}
       />
     </section>
   );

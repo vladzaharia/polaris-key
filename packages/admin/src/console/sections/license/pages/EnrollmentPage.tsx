@@ -74,12 +74,12 @@ export const MODES: {
   {
     value: "lenient",
     label: "Lenient",
-    description: "Up to 4 changed components still count as the same machine.",
+    description: "Up to 4 changed components still count as the same device.",
   },
   {
     value: "normal",
     label: "Normal",
-    description: "Up to 2 changed components still count as the same machine.",
+    description: "Up to 2 changed components still count as the same device.",
   },
   {
     value: "strict",
@@ -301,7 +301,7 @@ function PolicySection({
             name="mode"
             label="Mode"
             group
-            help="A tier may set its own mode. A device that still presents the machine anchor is allowed one extra changed component."
+            help="A tier may set its own mode. A device that still presents its anchor (machineUuid) is allowed one extra changed component."
           >
             {(f) => <RadioCards {...f} columns={4} options={MODES} />}
           </FormField>

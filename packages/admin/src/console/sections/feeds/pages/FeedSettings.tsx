@@ -526,7 +526,7 @@ function NamespaceSection({
       <SettingsSection
         id="feed-namespace"
         title="Namespace"
-        description="The names this feed may hold. Ingest refuses anything outside it, which is the defence against dependency confusion."
+        description="The names this feed may hold. Ingest refuses anything outside it, which is the defense against dependency confusion."
         footer={
           fields.length === 0 ? undefined : (
             <>

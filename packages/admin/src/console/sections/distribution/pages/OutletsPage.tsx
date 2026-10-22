@@ -323,7 +323,7 @@ export function OutletsPage({ slug }: { slug: string }): React.ReactElement {
           <EmptyState
             kind="first-run"
             title="No channels declared"
-            description="Channels are where a release reaches people: Polaris Key downloads, the stores, AltStore, F-Droid, Flathub. Declare them under channels in .pkey/distribution and resync."
+            description="Channels are where a release reaches people: Polaris Locker downloads, the stores, AltStore, F-Droid, Flathub. Declare them under channels in .pkey/distribution and resync."
             docs={docsUrl("rolloutControl")}
           />
         }

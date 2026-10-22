@@ -53,8 +53,8 @@ export const DOCS_LINKS = {
   updateAccessNote: "/docs/features/ship-builds/updates/eligibility/",
   identityOidcNote: "/docs/features/sign-in/oidc/",
   // P0-47: where auto-issue is set (the manifest's `autoIssue`), named from Identity → Sign-in,
-  // which links its `#auto-issue` section.
-  autoIssue: "/docs/features/licensing/access/",
+  // which sits under Enroll a device.
+  autoIssue: "/docs/features/licensing/access/#enroll-a-device",
   downloadPage: "/docs/help/download/",
   // Editors + policy surfaces
   managedPayloads: "/docs/features/managed-config/profiles/",
@@ -98,6 +98,7 @@ export const DOCS_LINKS = {
   keyringRunbook: "/docs/operate/platform/runbook/",
   storeConnectionsPage: "/docs/operate/platform/connections/",
   consoleDocsHome: "/docs/operate/",
+  storefrontSetup: "/docs/features/commerce/#setting-it-up",
   // Landing
   docsHome: "/docs/",
 } as const;

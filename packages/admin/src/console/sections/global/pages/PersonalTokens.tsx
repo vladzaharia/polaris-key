@@ -199,7 +199,7 @@ export function PersonalTokens(): React.ReactElement {
         <ErrorState
           error={tokens.error}
           onRetry={() => void tokens.refetch()}
-          context={{ thing: "personal tokens" }}
+          context={{ thing: "Personal tokens" }}
         />
       ) : (
         <DataTable<AdminPersonalToken>

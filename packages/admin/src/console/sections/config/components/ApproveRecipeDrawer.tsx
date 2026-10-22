@@ -89,7 +89,7 @@ function PublicFix({
           manifest&apos;s{" "}
           <a
             className={link}
-            href={`${docsUrl("autoIssue")}#auto-issue`}
+            href={docsUrl("autoIssue")}
             target="_blank"
             rel="noreferrer"
           >
