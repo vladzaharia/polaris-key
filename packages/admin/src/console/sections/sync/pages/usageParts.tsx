@@ -265,17 +265,11 @@ function declared(catalog: ProductCatalog | null): {
   };
 }
 
-export function StoredPanel({
-  usage,
-  nouns,
-  catalog,
-  className,
-}: {
-  usage: Usage["usage"];
-  nouns: Nouns;
-  catalog: ProductCatalog | null;
-  className?: string;
-}): React.ReactElement {
+/** The kinds "What's stored" lists, and whether it draws a bar (two or more kinds hold bytes). */
+export function storedKinds(
+  usage: Usage["usage"],
+  catalog: ProductCatalog | null,
+) {
   const sizes = {
     settings: usage.settingsBytes,
     records: usage.recordBytes,
@@ -296,7 +290,21 @@ export function StoredPanel({
     .filter((k) => sizes[k.key] > 0)
     .sort((a, b) => sizes[b.key] - sizes[a.key]);
   // One kind is the whole bar: the table says it, the bar would only repeat the total.
-  const bar = withBytes.length >= 2;
+  return { sizes, shown, withBytes, total, bar: withBytes.length >= 2 };
+}
+
+export function StoredPanel({
+  usage,
+  nouns,
+  catalog,
+  className,
+}: {
+  usage: Usage["usage"];
+  nouns: Nouns;
+  catalog: ProductCatalog | null;
+  className?: string;
+}): React.ReactElement {
+  const { sizes, shown, withBytes, total, bar } = storedKinds(usage, catalog);
   const lead = withBytes[0];
   const summary =
     bar && lead
@@ -309,7 +317,7 @@ export function StoredPanel({
           <div
             role="img"
             aria-label={summary}
-            className="flex h-3 max-w-[640px] gap-0.5 overflow-hidden rounded-full"
+            className="flex h-3 max-w-[640px] gap-0.5 overflow-hidden rounded-full bg-surface-raised"
           >
             {withBytes.map((k) => (
               <i
@@ -387,7 +395,12 @@ export function PlatformPanel({
   nouns: Nouns;
   className?: string;
 }): React.ReactElement {
-  const rows = data.usage.breakdown.byPlatform;
+  // Display order only: most people this week first, "Not reported" last.
+  const rows = [...data.usage.breakdown.byPlatform].sort(
+    (a, b) =>
+      Number(a.platform === null) - Number(b.platform === null) ||
+      b.peopleThisWeek - a.peopleThisWeek,
+  );
   return (
     <Panel
       title={`Where ${nouns.many} sync from`}
@@ -398,7 +411,7 @@ export function PlatformPanel({
         <p className="text-sm text-fg-muted">No platform has synced yet.</p>
       ) : (
         <Scroller label="Platforms table">
-          <table className="w-full border-collapse text-sm max-sm:block">
+          <table className="w-full max-w-[640px] border-collapse text-sm max-sm:block min-[1600px]:max-w-none">
             <caption className="sr-only">
               {cap(nouns.many)} per platform
             </caption>

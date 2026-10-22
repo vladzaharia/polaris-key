@@ -28,6 +28,7 @@ import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { StatTile } from "../../../../ui/charts/StatTile.js";
+import { DOCS_LINKS } from "../../../../lib/docsLinks.js";
 import { useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { SECTIONS } from "../../../nav.js";
@@ -41,6 +42,7 @@ import {
   nounsFor,
   PlatformPanel,
   StoredPanel,
+  storedKinds,
   TierPanel,
   cap,
   type Nouns,
@@ -146,7 +148,10 @@ const TILES =
 function UsageSkeleton(): React.ReactElement {
   return (
     <div className="space-y-6" aria-busy="true">
-      <div className={TILES}>
+      <p role="status" className="sr-only">
+        Loading usage
+      </p>
+      <div aria-hidden className={TILES}>
         {["a", "b", "c", "d"].map((k) => (
           <StatTile key={k} label="Loading" loading />
         ))}
@@ -186,6 +191,7 @@ function UsageEmpty({
       <EmptyState
         kind="first-run"
         headingLevel={2}
+        docs={DOCS_LINKS.syncUsage}
         title="No data yet"
         description={`Usage updates every 15 minutes, once a signed-in ${nouns.one} syncs.`}
         primaryAction={
@@ -212,6 +218,9 @@ function UsageBody({
   licensing: boolean;
 }): React.ReactElement {
   const { usage, today } = data;
+  // Stored and platforms share a row only when stored has the body to balance it.
+  const kinds = storedKinds(usage, catalog);
+  const paired = kinds.bar || kinds.shown.length >= 3;
   const updated = usage.computedAt
     ? `Updated ${formatRelative(fromSeconds(usage.computedAt))}.`
     : "";
@@ -240,27 +249,40 @@ function UsageBody({
       </div>
       {updated ? (
         <p className="-mt-3 text-xs text-fg-muted">
-          {updated} Syncs and conflicts are live.
+          {updated} Syncs and conflicts are live.{" "}
+          <a
+            href={DOCS_LINKS.syncUsage}
+            className="underline underline-offset-2 hover:text-fg-strong"
+          >
+            What these figures mean
+          </a>
         </p>
       ) : null}
 
-      <div className="grid gap-6 min-[1600px]:grid-cols-[minmax(0,1fr)_400px]">
+      <div className="grid gap-6 min-[1100px]:grid-cols-[3fr_2fr] min-[1600px]:grid-cols-[minmax(0,1fr)_400px]">
         <TierPanel
           data={data}
           nouns={nouns}
           slug={slug}
           licensing={licensing}
+          className="min-[1100px]:col-span-2 min-[1600px]:col-span-1 min-[1600px]:col-start-1 min-[1600px]:row-start-1"
         />
         <StoredPanel
           usage={usage}
           nouns={nouns}
           catalog={catalog}
-          className="min-[1600px]:col-span-2"
+          className={cn(
+            "min-[1600px]:col-start-1 min-[1600px]:row-start-2",
+            !paired && "min-[1100px]:col-span-2 min-[1600px]:col-span-1",
+          )}
         />
         <PlatformPanel
           data={data}
           nouns={nouns}
-          className="min-[1600px]:col-start-2 min-[1600px]:row-start-1"
+          className={cn(
+            "min-[1600px]:col-start-2 min-[1600px]:row-start-1",
+            !paired && "min-[1100px]:col-span-2 min-[1600px]:col-span-1",
+          )}
         />
       </div>
     </>

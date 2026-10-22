@@ -167,6 +167,7 @@ function cases(): Case[] {
         hash: `#/p/djdl/license/licenses/${id}/${tab}`,
       });
   list.push({ name: `long:overview`, hash: `#/p/${LONG_SLUG}` });
+  list.push({ name: `long:sync-usage`, hash: `#/p/${LONG_SLUG}/sync/usage` });
   list.push({ name: `long:settings`, hash: `#/p/${LONG_SLUG}/settings` });
   for (const p of GLOBAL_PAGES) {
     list.push({ name: `global:${p.page}`, hash: `#/${p.path}` });

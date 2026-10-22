@@ -319,6 +319,19 @@ const ROUTES: Record<string, unknown> = {
   [P]: { product: PRODUCTS[0] },
 };
 
+// A product whose data fills every kind (what U-09/U-10 will produce): the bar, four kinds, an
+// older-versions note, so the paired Stored/Platforms row is linted too (case `long:sync-usage`).
+const SYNC_USAGE_RICH = {
+  ...SYNC_USAGE,
+  usage: {
+    ...SYNC_USAGE.usage,
+    settingsBytes: 0.2 * GIB,
+    recordBytes: 3.1 * GIB,
+    fileBytes: 8.5 * GIB,
+    revisionBytes: 6.6 * GIB,
+  },
+};
+
 /** djdl → empty: every array emptied, every count zeroed, so a page draws its empty state. */
 function emptied(v: unknown, key = ""): unknown {
   if (Array.isArray(v)) return [];
@@ -353,6 +366,8 @@ export function resolve(pathname: string): unknown {
   for (const p of PRODUCTS) {
     if (p.slug === "djdl" || p.slug === "empty") continue;
     const base = `/manage/api/products/${p.slug}`;
+    if (p.slug === LONG_SLUG && pathname === `${base}/sync/usage`)
+      return SYNC_USAGE_RICH;
     if (pathname === base) return { product: p };
     if (pathname.startsWith(`${base}/`))
       return ROUTES[`${P}${pathname.slice(base.length)}`];

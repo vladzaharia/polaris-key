@@ -263,6 +263,30 @@ describe("Cloud Sync → Usage", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
+  it("loading: one polite status, tiles hidden from assistive tech, axe clean", async () => {
+    syncUsage.mockReturnValue(new Promise(() => {}));
+    const { container } = renderPage();
+    expect(await screen.findByText("Loading usage")).toBeTruthy();
+    expect(screen.getByText("Loading usage").getAttribute("role")).toBe(
+      "status",
+    );
+    expect(screen.queryAllByText("Loading")).toHaveLength(4);
+    for (const t of screen.getAllByText("Loading", { selector: "p" }))
+      expect(t.closest("[aria-hidden=true]")).not.toBeNull();
+    expect((await axe(container)).violations).toEqual([]);
+  });
+
+  it("lists platforms by people, most first, with Not reported last", async () => {
+    renderPage();
+    const platforms = await screen.findByRole("table", {
+      name: "Players per platform",
+    });
+    const names = within(platforms)
+      .getAllByRole("rowheader")
+      .map((h) => h.textContent);
+    expect(names).toEqual(["iOS", "Windows", "Not reported"]);
+  });
+
   it("with Licensing off, the no-tier row carries the default's limit", async () => {
     product.mockResolvedValue({ product: detail(true, false) });
     renderPage();
@@ -369,8 +393,9 @@ describe("Cloud Sync → Usage", () => {
   it("a refused read says so, never 'you need edit access'", async () => {
     syncUsage.mockRejectedValue(new ApiError(403, undefined, "forbidden"));
     renderPage();
-    await screen.findByRole("button", { name: "Retry" }).catch(() => null);
+    expect(await screen.findByRole("button", { name: "Retry" })).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/edit access/i);
+    expect(document.body.textContent).toMatch(/access/i);
   });
 
   it("says Cloud Sync is off, for the product or the read, as the shell does", async () => {
