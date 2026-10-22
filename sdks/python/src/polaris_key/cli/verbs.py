@@ -359,6 +359,20 @@ def namespace(verb: Verb, words: Sequence[str], values: Dict[str, Any]) -> Dict[
     return ns
 
 
+def _internal(term: Any, verb: Verb, e: BaseException) -> CommandResult:
+    """An unexpected failure: the generic screen (exit 1, ``"error": "internal"`` under ``--json``) and,
+    when ``DEBUG`` names polaris, the traceback on stderr. A person never meets a traceback."""
+    from .mount import debug_on
+
+    code = getattr(e, "code", None)
+    if debug_on():
+        import traceback
+
+        traceback.print_exception(type(e), e, e.__traceback__)
+    # A typed failure keeps its registry code; anything else is "internal".
+    return core.result_of(_flows()._error_outcome(term, code if isinstance(code, str) and code else "internal", verb.name), term)
+
+
 def run(
     factory: "core.ClientFactory",
     opts: "core.ClientOptions",
@@ -380,11 +394,11 @@ def run(
 
     try:
         client = factory(opts)
-    except Exception:
-        if not ns.get("json"):
-            raise
-        term = Terminal.create(product=opts.product, verb=verb.name, json=True)
-        return CommandResult(EXIT.failed, [], terminal=term, data={"error": "internal"})
+    except Exception as e:
+        term = Terminal.create(
+            product=opts.product, prog=prog, verb=verb.name, json=bool(ns.get("json")), no_color=bool(ns.get("no_color")), ascii=bool(ns.get("ascii"))
+        )
+        return _internal(term, verb, e)
     try:
         term = Terminal.create(
             product=opts.product,
@@ -411,11 +425,9 @@ def run(
             result = verb.run(client, ns)
         except KeyboardInterrupt:
             return CommandResult(EXIT.interrupted, [], terminal=term if term.env.json else None, data={"error": "interrupted"})
-        except Exception:
-            if not term.env.json:
-                raise
-            # --json always ends with a result line, whatever went wrong.
-            return CommandResult(EXIT.failed, [], terminal=term, data={"error": "internal"})
+        except Exception as e:
+            # Whatever went wrong ends in a result: the generic screen, or --json's result line.
+            return _internal(term, verb, e)
         if result.terminal is None:
             result.terminal = term
         return result
