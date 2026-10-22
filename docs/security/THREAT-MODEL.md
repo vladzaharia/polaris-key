@@ -6927,6 +6927,47 @@ empty / listed / unlisted / http cases, the Locker pointer), `test/adminSessions
 (the overlay, axe), `packages/admin/e2e/consoleSignin.e2e.test.ts` and `consoleSessionEnded.e2e.test.ts`
 (Chromium under the Worker's CSP).
 
+### Console role bindings: the principal (ST-31.2)
+
+**What arrived.** `console_role_bindings` (ST-31.1: `account_id` or `email_norm`, `role`, `scope`,
+`areas_json`, `source`, no cascade to accounts) existed but nothing read it. The principal was the
+root rule alone.
+
+**Control.**
+
+- **The principal is the root rule plus the stored bindings of the session's account**
+  (`core/rbac/principal.ts`). `callerFor` (`console/api.ts`) passes `session.aid`; `resolvePrincipal`
+  appends `listAccountGrants` after the root grant and drops exact duplicates. Roles still sum and
+  there are no deny rules, so a binding can add reach and never remove the root rule's.
+- **Per request, no cache.** The bindings are one indexed D1 read on each request, so a deleted
+  binding stops granting on the next request. The only cached part is the 30 s live check of the
+  session (`LIVE_CHECK_SECONDS`), which bounds a disabled account, a revoked session and a merge,
+  all of which still answer 401 whatever the account's bindings. A cache on the bindings that
+  outlived 30 s would be an ST-28 section 5.3 item 9 trigger.
+- **`aid` points, it does not grant.** `aid` comes from a v2 cookie whose session row the live check
+  resolved to this account (`row.account_id === cookie.aid`). A v1 cookie and a `pkeya_` token session
+  carry none (`verifySession` now deletes `aid` and `sid` from a v1 body as well), so they stay
+  root-only: a token never gains a stored grant. The sign-in gate in `console/auth.ts` still resolves
+  the root rule alone and is unchanged, so until ST-31.8 no non-root person can mint a cookie.
+- **Fail closed on a row it cannot read.** `rowToGrant` drops an unknown area, a malformed list, an
+  unknown role, scope or source; NULL `areas_json` means every area, `[]` means none and is dropped.
+- **`products:*` never covers the system product** (`can()` rule 4 is unchanged: a system product is
+  evaluated as the platform). A Product admin sees only its products and areas in the dispatcher,
+  `/products`, `/attention`, `/search` and `/me.permissions`; `/me.platformAdmin` stays
+  `can(platform, "platform")`, true only for Superadmin and Platform admin.
+- **Email rows never grant.** An invite row names an address, not an account, so a row whose
+  `email_norm` equals the account's email grants nothing; claiming it is ST-31.8's conversion.
+- **Tests:** `test/rbacStoredPrincipal.test.ts` (narrowed areas with the refusal naming the area,
+  `products:*` and the system product, Platform admin, Console access, a stranger, root plus a
+  binding, deletion on the next request and at 30 s, a disabled account, email rows, another
+  account's binding, a malformed row, a v1 cookie and a token).
+
+**Residual.** A binding for an account that is later disabled stays in the table; it is inert
+because the disabled account cannot hold a session (401 within 30 s). An account's `sub` (member
+id) is not its key here: bindings are keyed by the account id, which the principal receives but
+never logs or returns (`accountIdBoundary`). The binding read adds one D1 read to each console
+request. Nothing writes bindings yet (ST-31.3 on).
+
 ### Identity as a per-product service (PX-W17)
 
 One account per person; a product's `identity` toggle gates only sign-in through that product

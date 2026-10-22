@@ -225,6 +225,9 @@ export async function verifySession(
   if (!session.sub || !Array.isArray(session.groups)) return null;
   // The principal is resolved per request, never carried: a cookie body naming one is ignored.
   delete session.principal;
+  // A v1 cookie names no account: stored bindings (ST-31.2) are read for a v2 session only.
+  delete session.aid;
+  delete session.sid;
   return session;
 }
 

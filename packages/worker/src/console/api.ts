@@ -114,6 +114,8 @@ async function callerFor(
       // A v2 session's root is the computed rule (strong link, fresh assertion); a v1 session has
       // none and falls back to its groups.
       ...(session.root !== undefined ? { root: session.root } : {}),
+      // ST-31.2: only a v2 session has an account id; a v1 cookie and a token stay root-only.
+      ...(session.aid ? { accountId: session.aid } : {}),
     },
     now,
   );
