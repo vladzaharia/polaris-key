@@ -332,7 +332,7 @@ const AUTH_CARD_RULES = [
   `.tv .ac-foot,.tv .ac-head{padding-left:3rem;padding-right:3rem}`,
   `.tv .ac-body dl{font-size:1.5rem;line-height:2rem}`,
   `.tv .ac-body .small{font-size:1.25rem;line-height:1.75rem}`,
-  `@media (max-width: 30rem){[data-brand=locker] .tv .ac-brand svg{height:36px;max-width:calc(100% - 2rem)}.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:min(2rem,7vw)}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
+  `@media (max-width: 30rem){.tv .ac-body{padding:1.5rem}.tv .ac-body h1{font-size:2rem;line-height:2.5rem}.tv .ac-body input[type=text]{font-size:min(2rem,7vw)}.tv .ac-foot,.tv .ac-head{padding-left:1.25rem;padding-right:1.25rem}}`,
 ];
 
 const LOCKER_PAGE_CSS_TAIL = [
@@ -341,8 +341,9 @@ const LOCKER_PAGE_CSS_TAIL = [
   ...AUTH_CARD_RULES,
   // Phones: the Locker lockup drops to 36 px in its 56 px bar. Only here, not in `AUTH_CARD_RULES`,
   // which the console card shares with its brand attribute swapped: the console card keeps its
-  // compact Key lockup at the brand size (BRAND_LOCKUP_HEIGHT.key).
-  `@media (max-width: 30rem){.ac-brand svg{height:36px;width:auto}}`,
+  // compact Key lockup at the brand size (BRAND_LOCKUP_HEIGHT.key). `/tv`'s 72 px TV lockup drops
+  // to the same 36 px, inside the gutter.
+  `@media (max-width: 30rem){.ac-brand svg{height:36px;width:auto}.tv .ac-brand svg{height:36px;max-width:calc(100% - 2rem)}}`,
 ].join("");
 
 /** The stylesheet of a Locker page: `BRAND_PAGE_CSS` and its tail. */
