@@ -23,7 +23,9 @@ export type MemberRow =
   | { kind: "invite"; id: string; invite: MemberInvite };
 
 /** Members first (the Worker sorts them by name), then the invites, newest first. */
-export function rowsOf(view: MembersView | undefined): MemberRow[] {
+export function rowsOf(
+  view: Pick<MembersView, "members" | "invites"> | undefined,
+): MemberRow[] {
   if (!view) return [];
   return [
     ...view.members.map(

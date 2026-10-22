@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen } from "@testing-library/react";
 import { renderAt, resetCore } from "./coreTestUtils.js";
 
-const fns = vi.hoisted(() => ({ accessAdmins: vi.fn() }));
+const fns = vi.hoisted(() => ({ productMembers: vi.fn() }));
 vi.mock("../src/api.js", async () => {
   const actual =
     await vi.importActual<typeof import("../src/api.js")>("../src/api.js");
@@ -11,7 +11,7 @@ vi.mock("../src/api.js", async () => {
     ...actual,
     api: {
       ...actual.api,
-      accessAdmins: (...a: unknown[]) => fns.accessAdmins(...a),
+      productMembers: (...a: unknown[]) => fns.productMembers(...a),
     },
   };
 });
@@ -26,13 +26,33 @@ afterEach(cleanup);
 
 describe("settings layout", () => {
   it("B-046: Members gives the name column the width and Role a fixed end track", async () => {
-    fns.accessAdmins.mockResolvedValue({
-      scope: "product:djdl",
-      area: "core",
-      admins: [
-        { name: "Ana", email: "ana@x.io", role: "product_admin" },
-        { name: "Root", email: "root@x.io", role: "superadmin" },
+    fns.productMembers.mockResolvedValue({
+      product: "djdl",
+      truncated: false,
+      incomplete: false,
+      members: [
+        {
+          memberId: "m1",
+          name: "Ana",
+          email: "ana@x.io",
+          lastSignInAt: null,
+          disabled: false,
+          you: false,
+          roles: [
+            {
+              role: "product_admin",
+              scope: "product:djdl",
+              areas: null,
+              source: "grant",
+              bindingId: "b1",
+              grantedBy: null,
+              grantedAt: null,
+            },
+          ],
+        },
       ],
+      invites: [],
+      platformRoles: [],
     });
     renderAt("#/p/djdl/settings/members", <SettingsMembersPage slug="djdl" />);
     const head = (

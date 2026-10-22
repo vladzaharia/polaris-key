@@ -16,6 +16,7 @@ import {
   AREA_NAMES,
   canIn,
   isPlatformArea,
+  scopeSlug,
   listOf,
   type AreaId,
   type Level,
@@ -31,7 +32,7 @@ export function useCan(
   // Outside the shell (a page rendered alone) there is no session to read: show the control.
   // The shell renders nothing before `/me` arrives, and the worker refuses what it must anyway.
   if (!me) return true;
-  return canIn(me, area, isPlatformArea(area) ? null : slug, level);
+  return canIn(me, area, scopeSlug(area, slug), level);
 }
 
 /** The session `/me` the shell already loaded, read from the cache without fetching it. */
@@ -41,7 +42,9 @@ function useCachedMe(): Me | undefined {
 
 /** The `scope` query value for an area in a product (or the platform). */
 export function accessScope(area: AreaId, slug: string | null): string {
-  return slug === null || isPlatformArea(area) ? "platform" : `product:${slug}`;
+  return slug === null || (isPlatformArea(area) && area !== "members")
+    ? "platform"
+    : `product:${slug}`;
 }
 
 /** Up to three people who can give access to `area` there, narrowest first. */

@@ -28,6 +28,15 @@ import {
 import { SYSTEM_PRODUCT_SLUG } from "../sections/feeds/model/model.js";
 import { qk } from "./queries.js";
 
+/** What a product-scope Members write makes stale: the product's roster, the platform's, who can give access. */
+const productMemberTargets = (slug: string): Target[] => [
+  prefix(qk.productMembers(slug)),
+  prefix(qk.members()),
+  prefix(qk.platformActivity()),
+  prefix(qk.activity(slug)),
+  prefix(["access-admins"]),
+];
+
 /** One invalidation target: a key prefix, or one exact key. */
 export interface Target {
   key: QueryKey;
@@ -57,6 +66,9 @@ export type WriteMethod =
   | "testAlertDestination"
   | "revokePersonalToken"
   | "inviteMembers"
+  | "inviteProductMembers"
+  | "editProductMemberAreas"
+  | "revokeProductMember"
   | "grantRole"
   | "editBindingAreas"
   | "revokeBinding"
@@ -453,6 +465,19 @@ export const MUTATIONS: MutationTable = {
   revokeBinding: {
     label: "role revoke",
     invalidates: () => [prefix(qk.members()), prefix(qk.platformActivity())],
+  },
+  // ST-31.14: the product twins also move the platform roster and the access lists NoAccess reads.
+  inviteProductMembers: {
+    label: "product member invite",
+    invalidates: (slug) => productMemberTargets(slug),
+  },
+  editProductMemberAreas: {
+    label: "product role areas edit",
+    invalidates: (slug) => productMemberTargets(slug),
+  },
+  revokeProductMember: {
+    label: "product role revoke",
+    invalidates: (slug) => productMemberTargets(slug),
   },
   revokePersonalToken: {
     label: "personal token revoke",

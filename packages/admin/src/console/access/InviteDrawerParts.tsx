@@ -575,6 +575,56 @@ export function RoleFields({
   );
 }
 
+/**
+ * The role field of a product-scoped drawer (Product → Settings → Members): the role and the
+ * product are fixed, so there is nothing to pick but the areas, and the platform roles say where
+ * they are given instead.
+ */
+export function ScopedRole({
+  me,
+  draft,
+  onChange,
+  slug,
+  productLabel,
+  disabled,
+  idPrefix,
+}: {
+  me: Me | undefined;
+  draft: RoleDraft;
+  onChange: (d: RoleDraft) => void;
+  slug: string;
+  productLabel: string;
+  disabled?: boolean;
+  idPrefix: string;
+}): React.ReactElement {
+  const platformWhy = cannotGive(me, "platform_admin");
+  return (
+    <div className="space-y-5">
+      <div className="space-y-1.5" data-fixed-role="">
+        <span className="block text-sm font-medium text-fg-strong">Role</span>
+        <p className="text-sm text-fg">
+          <span className="font-medium text-fg-strong">
+            {productLabel} admin
+          </span>
+        </p>
+        <p className="text-xs text-fg-muted">
+          Platform roles are given in Platform &rarr; Members.
+          {platformWhy ? " Only a Superadmin can give them." : ""}
+        </p>
+      </div>
+      <AreaPicker
+        me={me}
+        draft={draft}
+        onChange={onChange}
+        slug={slug}
+        productLabel={productLabel}
+        disabled={disabled}
+        idPrefix={idPrefix}
+      />
+    </div>
+  );
+}
+
 /** The areas a product offers: only those whose feature is on. */
 export function useOfferedAreas(slug: string): {
   offered: AreaId[];

@@ -66,6 +66,7 @@ import { AREA_NAMES, listOf, roleLabel } from "./can.js";
 import {
   AreaPicker,
   EmailChips,
+  ScopedRole,
   giveableProducts,
   isEmail,
   MAX_INVITES,
@@ -158,16 +159,28 @@ export interface InviteDrawerProps {
   productName: ProductName;
   /** Why writes are off right now (read-only, no `members` edit), else `undefined`. */
   writeReason?: string | undefined;
+  /**
+   * Product → Settings → Members (ST-31.14): the drawer works on one product. The role is fixed to
+   * Product admin of it, only the areas the caller holds are offered, and every write goes through
+   * the product's own routes. `members` and `invites` are that product's.
+   */
+  productScope?: { slug: string; name: string };
+  /** Scoped edit: open straight in the Edit areas view of the member's product role. */
+  startView?: "areas";
 }
 
 type Undoable = { id: string; label: string; kind: "invited" | "updated" };
 
 /** Take bindings back one by one; what could not be, with a Retry for just those. */
-async function takeBack(items: Undoable[], done: string): Promise<void> {
+async function takeBack(
+  items: Undoable[],
+  done: string,
+  revoke: (id: string) => Promise<unknown>,
+): Promise<void> {
   const left: Undoable[] = [];
   for (const it of items) {
     try {
-      await mutate("revokeBinding", it.id);
+      await revoke(it.id);
     } catch (e) {
       // Already gone is the outcome we want.
       if (!(e instanceof ApiError && e.status === 404)) left.push(it);
@@ -188,18 +201,44 @@ async function takeBack(items: Undoable[], done: string): Promise<void> {
     ]
       .filter(Boolean)
       .join(" "),
-    action: { label: "Retry", onClick: () => void takeBack(left, done) },
+    action: {
+      label: "Retry",
+      onClick: () => void takeBack(left, done, revoke),
+    },
   });
 }
 
 export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
   const { open, member, onReopen, onClose, me, members, products } = props;
-  const { productName, writeReason, invites = [] } = props;
+  const { productName, writeReason, invites = [], productScope } = props;
   const editing = member !== null;
+  const scoped = productScope !== undefined;
+  // What a fresh invite starts as: scoped, Product admin of the one product, every area unless the
+  // caller holds only some.
+  const blank = React.useMemo<RoleDraft>(
+    () =>
+      productScope
+        ? {
+            choice: "product_admin",
+            product: productScope.slug,
+            areaMode:
+              cannotGive(me, "product_admin", productScope.slug, null) ===
+              undefined
+                ? "all"
+                : "some",
+            areas: [],
+          }
+        : EMPTY_DRAFT,
+    [productScope, me],
+  );
+  const revoke = (id: string): Promise<unknown> =>
+    productScope
+      ? mutate("revokeProductMember", productScope.slug, id)
+      : mutate("revokeBinding", id);
 
   const [tokens, setTokens] = React.useState<string[]>([]);
   const [text, setText] = React.useState("");
-  const [draft, setDraft] = React.useState<RoleDraft>(EMPTY_DRAFT);
+  const [draft, setDraft] = React.useState<RoleDraft>(blank);
   const [typed, setTyped] = React.useState("");
   const [view, setView] = React.useState<View>({ kind: "list" });
   const [error, setError] = React.useState<unknown>(null);
@@ -262,6 +301,9 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
           product: f.product ?? "",
           areaMode: f.areaMode === "some" ? "some" : "all",
           areas: splitEmails(f.areas ?? "") as AreaId[],
+          ...(productScope
+            ? { choice: "product_admin" as const, product: productScope.slug }
+            : {}),
         });
         setTyped(saved.typed);
         setView(
@@ -274,9 +316,20 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
       } else {
         setTokens([]);
         setText("");
-        setDraft(EMPTY_DRAFT);
+        setDraft(blank);
         setTyped("");
         setView({ kind: "list" });
+        // Scoped edit from the row's Edit areas: straight into that view.
+        const first =
+          props.startView === "areas"
+            ? member?.roles.find(
+                (r) => r.role === "product_admin" && r.bindingId !== null,
+              )
+            : undefined;
+        if (first) {
+          setDraft(areasSeed(first));
+          setView({ kind: "areas", bindingId: first.bindingId! });
+        }
       }
     }
     wasOpen.current = open;
@@ -491,7 +544,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
     return { ...EMPTY_DRAFT, choice };
   };
   const dirty = !editing
-    ? tokens.length > 0 || text.trim() !== "" || !sameDraft(draft, EMPTY_DRAFT)
+    ? tokens.length > 0 || text.trim() !== "" || !sameDraft(draft, blank)
     : view.kind === "add"
       ? !sameDraft(draft, addDefault()) || typed !== ""
       : view.kind === "areas" && areaRole
@@ -501,7 +554,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
   const toList = (): void => {
     setError(null);
     setAskBack(false);
-    setDraft(EMPTY_DRAFT);
+    setDraft(blank);
     setTyped("");
     setView({ kind: "list" });
   };
@@ -509,7 +562,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
   /** Undo from the notice: the drawer is modal, so the answer stays in it too. */
   const undoInline = async (id: string): Promise<void> => {
     try {
-      await mutate("revokeBinding", id);
+      await revoke(id);
     } catch (e) {
       if (!(e instanceof ApiError && e.status === 404)) {
         setNotice({
@@ -562,10 +615,18 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
           ...(bindingId ? { undo: () => void undoInline(bindingId) } : {}),
         });
       } else if (view.kind === "areas") {
-        await mutate("editBindingAreas", view.bindingId, {
-          ...areasBody,
-          ...(widens ? { confirm: "L2" as const } : {}),
-        });
+        if (productScope)
+          await mutate(
+            "editProductMemberAreas",
+            productScope.slug,
+            view.bindingId,
+            areasBody,
+          );
+        else
+          await mutate("editBindingAreas", view.bindingId, {
+            ...areasBody,
+            ...(widens ? { confirm: "L2" as const } : {}),
+          });
         toList();
         setNotice({ text: "Areas saved" });
       }
@@ -577,10 +638,12 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
   };
 
   const sendInvites = async (): Promise<void> => {
-    const result = await mutate("inviteMembers", {
-      ...grant!,
-      emails: sendable,
-    });
+    const result = productScope
+      ? await mutate("inviteProductMembers", productScope.slug, {
+          emails: sendable,
+          areas: grant!.areas,
+        })
+      : await mutate("inviteMembers", { ...grant!, emails: sendable });
     const renewed = new Set(invites.map((i) => i.bindingId));
     const pick = (status: "invited" | "updated"): Undoable[] =>
       result.results
@@ -629,6 +692,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
                     : invited.length === 0
                       ? "Roles taken back"
                       : "Invitations withdrawn and roles taken back",
+                  revoke,
                 ),
             },
           }
@@ -662,7 +726,8 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
   // Nothing to say when nobody will be sent anything.
   const showSentence =
     (!editing && sendable.length > 0) || (editing && view.kind === "add");
-  const lastRole = removing !== null && (member?.roles.length ?? 0) === 1;
+  const lastRole =
+    !scoped && removing !== null && (member?.roles.length ?? 0) === 1;
 
   return (
     <>
@@ -727,14 +792,26 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
                   ))}
                 </div>
               </div>
-              <RoleFields
-                draft={draft}
-                onChange={changeDraft}
-                me={me}
-                products={products}
-                disabled={pending}
-                idPrefix={`${ids}-i`}
-              />
+              {productScope ? (
+                <ScopedRole
+                  me={me}
+                  draft={draft}
+                  onChange={changeDraft}
+                  slug={productScope.slug}
+                  productLabel={productScope.name}
+                  disabled={pending}
+                  idPrefix={`${ids}-i`}
+                />
+              ) : (
+                <RoleFields
+                  draft={draft}
+                  onChange={changeDraft}
+                  me={me}
+                  products={products}
+                  disabled={pending}
+                  idPrefix={`${ids}-i`}
+                />
+              )}
             </>
           ) : view.kind === "list" ? (
             <>
@@ -981,7 +1058,8 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
                 {editing ? "Close" : "Cancel"}
               </Button>
             )}
-            {editing && view.kind === "list" ? (
+            {editing && view.kind === "list" && scoped ? null : editing &&
+              view.kind === "list" ? (
               <Button
                 variant="primary"
                 disabled={member!.you || !!writeReason}
@@ -1035,7 +1113,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
         describeError={describeMembersError}
         onConfirm={async () => {
           try {
-            await mutate("revokeBinding", removing!.bindingId!);
+            await revoke(removing!.bindingId!);
           } catch (e) {
             if (!(e instanceof ApiError && e.status === 404)) throw e;
           }
