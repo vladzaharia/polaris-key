@@ -23,8 +23,10 @@
  *     publish to (plans/P4-01.md decision 35).
  *   - `outlets` (P3-03): the live outlets with kind, identity and whether an operator narrowed
  *     them — what the signed feed keys its per-outlet entries by.
- *   - `listing` (PX-W1): the document's root listing (`dist_listing`), never an outlet's merged
- *     copy — the customer portal's product presentation and support links.
+ *   - `listing` (PX-W1, A-27.1): the product's resolved listing (`listing/resolved.ts`): the shared
+ *     listing model's default locale over the document's root listing (`dist_listing`), field by
+ *     field, never an outlet's merged copy — the customer portal's product presentation and
+ *     support links, and discovery's `core.presentation`.
  *   - `feedSelection` / `feedStamp` (P3-09): P2b-05's feed selection and its cache stamp, for
  *     Update's app-updater feeds (WinSparkle, Velopack, App Installer, zsync, the extended
  *     appcast and version check), which may not import this service.
@@ -55,7 +57,8 @@ import { bytesHostname } from "../../core/assets/bytesHost.js";
 import { accessModeOf, entitlementOf, openAccessOf } from "./access.js";
 import { getRollout, listRollouts, rolloutRecord } from "./rollouts.js";
 import { availabilityFor, inventory, submissionsFor } from "./availability.js";
-import { getListing, listOutlets } from "./outlets.js";
+import { listOutlets } from "./outlets.js";
+import { resolvedListing } from "./listing/resolved.js";
 import { selectFeedWith } from "./feeds/select.js";
 import { feedStateStamp } from "./feeds/cache.js";
 import { readinessReader, type ReadinessReader } from "./readiness.js";
@@ -131,7 +134,7 @@ export function delivery(ctx: HookContext): Delivery {
         });
     },
 
-    listing: () => getListing(db, slug),
+    listing: () => resolvedListing(db, slug),
 
     legalUrls: () => listingLegalUrls(db, slug),
 

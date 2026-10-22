@@ -1033,9 +1033,11 @@ export interface Delivery {
   /** The product's live outlets, by id (P3-03, the signed feed's outlet entries). */
   outlets(): Promise<DeliveryOutlet[]>;
   /**
-   * The product's own store listing (PX-W1): the `.pkey/distribution` document's root `listing`,
-   * never an outlet's merged override, or `null` when it declares none. The customer portal's
-   * product presentation (name, developer, tint, website, art URLs, support links) reads this.
+   * The product's own store listing (PX-W1, A-27.1): the shared listing model's default locale
+   * over the `.pkey/distribution` document's root `listing`, field by field (the model wins; art
+   * refs come from the document), never an outlet's merged override, or `null` when neither holds
+   * a value. The customer portal's product presentation (name, developer, tint, website, art
+   * URLs, support links) and discovery's `core.presentation` read this.
    */
   listing(): Promise<ManifestListing | null>;
   /**
