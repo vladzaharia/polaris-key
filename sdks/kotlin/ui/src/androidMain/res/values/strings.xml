@@ -104,8 +104,6 @@
     <string name="pkey_ui_settings_load_failed">Settings couldn\'t be loaded.</string>
     <string name="pkey_ui_settings_on">On</string>
     <string name="pkey_ui_settings_off">Off</string>
-    <string name="pkey_ui_settings_license">License</string>
-    <string name="pkey_ui_settings_values">Configuration</string>
     <string name="pkey_ui_settings_locked">Set by your organization</string>
     <string name="pkey_ui_settings_source_local">Changed by you</string>
     <string name="pkey_ui_settings_source_env">Set by the environment</string>

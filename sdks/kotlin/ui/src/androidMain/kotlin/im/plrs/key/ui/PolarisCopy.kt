@@ -154,8 +154,6 @@ public data class PolarisCopy(
     /** A boolean setting's value. */
     val settingsOn: String = "On",
     val settingsOff: String = "Off",
-    val settingsLicense: String = "License",
-    val settingsValues: String = "Configuration",
     val settingsLocked: String = "Set by your organization",
     val settingsSourceLocal: String = "Changed by you",
     val settingsSourceEnv: String = "Set by the environment",
