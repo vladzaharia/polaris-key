@@ -2,11 +2,10 @@ import * as React from "react";
 import { Layers, KeyRound, UserRound } from "lucide-react";
 import type { ConfigEntry } from "../../../../api.js";
 import { Section } from "../../../../ui/Section.js";
-import { EntityLink } from "../../../components/EntityLink.js";
 import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { useCatalogUsage } from "../data.js";
-import { valueText } from "../model/valueUse.js";
+import { holdsRemoved, valueText } from "../model/valueUse.js";
 import type { KeyHolders } from "./RemovedValues.js";
 
 /**
@@ -18,10 +17,13 @@ export function WhereItsSet({
   slug,
   entry,
   holders,
+  removed = [],
 }: {
   slug: string;
   entry: ConfigEntry;
   holders: KeyHolders | undefined;
+  /** Allowed values this draft removes: a holder of one reads as an em dash. */
+  removed?: unknown[];
 }): React.ReactElement | null {
   const usage = useCatalogUsage(slug, [entry.key]);
   const u = usage.data?.keys[entry.key];
@@ -44,17 +46,26 @@ export function WhereItsSet({
             >
               <span className="flex items-center gap-3">
                 <Layers aria-hidden className="size-4 text-fg-muted" />
-                <EntityLink
-                  slug={slug}
-                  kind="profile"
-                  id={p.id}
-                  label={`${p.name || p.id} profile`}
-                />
+                <Link
+                  to={r.profile(slug, p.id)}
+                  className="underline underline-offset-2"
+                >
+                  {`${p.name || p.id} profile`}
+                </Link>
               </span>
               {v !== undefined ? (
-                <code className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-xs">
-                  {valueText(v)}
-                </code>
+                holdsRemoved(v, removed) ? (
+                  <span className="text-fg-muted">
+                    <span aria-hidden>—</span>
+                    <span className="sr-only">
+                      Moves off {valueText(v)} before this publishes
+                    </span>
+                  </span>
+                ) : (
+                  <code className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-xs">
+                    {valueText(v)}
+                  </code>
+                )
               ) : null}
             </li>
           );

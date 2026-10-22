@@ -1,3 +1,4 @@
+import { focusAfterSettle } from "./focusField.js";
 import * as React from "react";
 import { GitMerge, Lock, SlidersHorizontal, Stamp } from "lucide-react";
 import type { ConfigEntry } from "../../../../api.js";
@@ -101,6 +102,12 @@ const sideText = (v: unknown): string =>
  * One entry's conflicts: each field shows the draft's side and the repository's, then Keep mine and
  * Take the repo's. Both stay outlined: neither is the primary.
  */
+/** A field's id as the form words it ("label" → "Label"). */
+const fieldLabel = (field: string): string =>
+  field === "managementDefault"
+    ? "In the app"
+    : field.charAt(0).toUpperCase() + field.slice(1);
+
 export function ConflictPanel({
   conflict,
   onSettle,
@@ -126,7 +133,7 @@ export function ConflictPanel({
         {conflict.fields.map((f) => (
           <li key={f.field} className="space-y-2">
             <p className="text-sm font-medium text-fg-strong">
-              {f.field === WHOLE_ENTRY ? conflict.key : f.field}
+              {f.field === WHOLE_ENTRY ? conflict.key : fieldLabel(f.field)}
             </p>
             <dl className="grid gap-2 sm:grid-cols-2">
               <div className="min-w-0 rounded-md border border-border bg-surface-raised p-2">
@@ -150,7 +157,11 @@ export function ConflictPanel({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => onSettle(f.field, false)}
+                data-conflict-keep=""
+                onClick={() => {
+                  onSettle(f.field, false);
+                  focusAfterSettle(f.field);
+                }}
               >
                 Keep mine
                 <span className="sr-only">
@@ -161,7 +172,10 @@ export function ConflictPanel({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => onSettle(f.field, true)}
+                onClick={() => {
+                  onSettle(f.field, true);
+                  focusAfterSettle(f.field);
+                }}
               >
                 Take the repo's
                 <span className="sr-only">

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { KeyRound } from "lucide-react";
+import { AlertTriangle, KeyRound } from "lucide-react";
 import type { ConfigEntry, EdgeMintRecipe } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
 import { Button } from "../../../../ui/Button.js";
@@ -31,7 +31,7 @@ export function RecipePill({
   if (!isMinted(entry) || !recipe) return null;
   if (needsKey(recipe))
     return (
-      <StatusPill tone="warning" size="sm">
+      <StatusPill tone="warning" icon={AlertTriangle} size="sm">
         Needs a signing key
       </StatusPill>
     );
@@ -55,8 +55,7 @@ export function SigningKeyEmpty({
     >
       <h3 className="flex items-center gap-2 text-sm font-medium text-fg-strong">
         <KeyRound aria-hidden className="size-4 text-fg-muted" />
-        Signing key
-        <span className="font-normal text-fg-muted">No key yet</span>
+        No key yet
       </h3>
       <p className="text-sm text-fg-muted">
         Download the private key for{" "}

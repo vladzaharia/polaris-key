@@ -110,7 +110,7 @@ export const STATUS = {
   edgeMint: {
     approved: e("Approved", "success"),
     pending: e("Needs approval", "warning", Clock),
-    changed: e("Changed since approval", "danger", AlertTriangle),
+    changed: e("Changed since approval", "warning", AlertTriangle),
   },
   secret: {
     configured: e("Configured", "success"),

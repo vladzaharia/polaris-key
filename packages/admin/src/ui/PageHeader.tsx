@@ -60,6 +60,8 @@ export interface PageHeaderProps {
       label: string;
     };
   };
+  /** A control that leads the action cluster (an editor's Form/JSON switch). */
+  toolbar?: React.ReactNode;
   /** The one primary action (a `Button`). */
   primaryAction?: React.ReactNode;
   /** Up to two show inline on ≥ 640 px (`inlineSecondary`); the rest go to "More actions". */
@@ -107,6 +109,7 @@ export function PageHeader({
   description,
   meta,
   freshness,
+  toolbar,
   primaryAction,
   secondaryActions = [],
   inlineSecondary = INLINE_SECONDARY,
@@ -181,6 +184,7 @@ export function PageHeader({
 
   const hasCluster =
     Boolean(freshness) ||
+    Boolean(toolbar) ||
     inline.length > 0 ||
     desktopMenu.length > 0 ||
     mobileMenu.length > 0;
@@ -286,6 +290,7 @@ export function PageHeader({
               freshness && "max-sm:@max-sm:col-span-2",
             )}
           >
+            {toolbar}
             {freshness ? (
               <span className="inline-flex flex-wrap items-center justify-end gap-x-1 text-sm text-fg-muted">
                 {/* Shown on a phone too: the freshness is the page's one trust cue (B-022). */}
