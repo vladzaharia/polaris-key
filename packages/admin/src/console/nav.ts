@@ -821,7 +821,7 @@ const PLATFORM_PAGES: NavPage[] = [
     keywords: "deployment operations deploy cron queue health migrations",
     path: "platform/status",
     icon: Server,
-    docs: "/docs/operate/platform/deploy/",
+    docs: "/docs/operate/platform/jobs/",
     inNav: true,
     group: "platform",
   },

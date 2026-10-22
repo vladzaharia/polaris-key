@@ -95,13 +95,13 @@ You should see the file written and each pin's key id and SHA-256 fingerprint:
 ```text title="Output"
 Product tidewater at https://key.plrs.im
 Services: license, config
-Trust pins (compare each key with Public key under Core → Keys & secrets before you ship):
+Trust pins (compare each key with Public key under Core → Keys and secrets before you ship):
   tidewater-2026  sha256:9f2c…
 Release keys: none
 Wrote /path/to/polaris.config.ts
 ```
 
-The pins are the product's public signing keys. Compare each key in the file with **Public key** under **Core → Keys & secrets**. A new product has one signing key, so the command also warns on stderr to stage a second before you ship.
+The pins are the product's public signing keys. Compare each key in the file with **Public key** under **Core → Keys and secrets**. A new product has one signing key, so the command also warns on stderr to stage a second before you ship.
 
 ## 5. Gate the app
 

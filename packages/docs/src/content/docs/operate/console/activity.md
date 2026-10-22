@@ -96,7 +96,7 @@ mutation like any other.
 The page groups rows by day (Today, Yesterday, then dates) and phrases each action as a verb:
 `license.disable` reads "disabled license", followed by a link to the target when the console
 has a page for it (a license, tier, profile or device; secrets, signing keys and CI tokens link to
-**Keys & secrets**). Expanding a row shows its summary and the raw action code. **Table** switches
+**Keys and secrets**). Expanding a row shows its summary and the raw action code. **Table** switches
 to a When / Actor / Action / Target / Summary table; **Export loaded (CSV)** saves the entries
 loaded so far.
 

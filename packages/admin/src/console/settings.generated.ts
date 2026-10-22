@@ -605,7 +605,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     rbacArea: "keys",
     label: "Required secrets",
     description:
-      "The names of the sealed secrets this product needs an operator to set (a custom OIDC client's secret, an edge-mint signing key). The manifest names them, never their values; each value is set on Keys & secrets and only its presence is ever shown.",
+      "The names of the sealed secrets this product needs an operator to set (a custom OIDC client's secret, an edge-mint signing key). The manifest names them, never their values; each value is set on Keys and secrets and only its presence is ever shown.",
     keywords: [
       "secrets.required",
       "product secrets",

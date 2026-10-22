@@ -94,11 +94,11 @@ the table.
 | ----------------------------- | -------------------------------------------- | -------------------------------------------------------------------------- | ---------------- |
 | `overview`                    | `#/p/<slug>`                                 | Core → Overview (`#/p/<slug>`)                                             | live             |
 | `integration`                 | `#/p/<slug>/integration`                     | Core → Integration (`#/p/<slug>/integration`)                              | live             |
-| `services`                    | `#/p/<slug>/settings/features`               | Core → Features & general (`#/p/<slug>/settings/features`)                 | live             |
+| `services`                    | `#/p/<slug>/settings/features`               | Core → Features and general (`#/p/<slug>/settings/features`)               | live             |
 | `devices`                     | `#/p/<slug>/devices`                         | Core → Devices (`#/p/<slug>/devices`)                                      | live             |
 | `users`                       | `#/p/<slug>/users`                           | Core → Users (`#/p/<slug>/users`)                                          | live             |
 | `presentation`                | `#/p/<slug>/settings/presentation`           | Core → Presentation (`#/p/<slug>/settings/presentation`)                   | live             |
-| `keys`                        | `#/p/<slug>/settings/keys`                   | Core → Keys & secrets (`#/p/<slug>/settings/keys`)                         | live             |
+| `keys`                        | `#/p/<slug>/settings/keys`                   | Core → Keys and secrets (`#/p/<slug>/settings/keys`)                       | live             |
 | `activity`                    | `#/p/<slug>/activity`                        | Core → Activity (`#/p/<slug>/activity`)                                    | live             |
 | `settings`                    | `#/p/<slug>/settings`                        | Core → Settings (`#/p/<slug>/settings`)                                    | live             |
 | `settings-members`            | `#/p/<slug>/settings/members`                | Core → Members (`#/p/<slug>/settings/members`)                             | live             |
@@ -145,10 +145,10 @@ the table.
 | `api-tokens`                  | `#/tokens`                                   | API tokens (`#/tokens`)                                                    | live             |
 | `personal-tokens`             | `#/personal-tokens`                          | Personal tokens (`#/personal-tokens`)                                      | live             |
 | `tab:overview`                | `#/p/<slug>/overview`                        | Core → Overview (`#/p/<slug>`)                                             | moved (P0-31)    |
-| `tab:services`                | `#/p/<slug>/services`                        | Core → Features & general (`#/p/<slug>/settings/features`)                 | moved (P0-31)    |
+| `tab:services`                | `#/p/<slug>/services`                        | Core → Features and general (`#/p/<slug>/settings/features`)               | moved (P0-31)    |
 | `tab:presentation`            | `#/p/<slug>/presentation`                    | Core → Presentation (`#/p/<slug>/settings/presentation`)                   | moved (P0-31)    |
-| `tab:keys`                    | `#/p/<slug>/keys`                            | Core → Keys & secrets (`#/p/<slug>/settings/keys`)                         | moved (P0-31)    |
-| `tab:secrets`                 | `#/p/<slug>/secrets`                         | Core → Keys & secrets (`#/p/<slug>/settings/keys`)                         | moved (P0-31)    |
+| `tab:keys`                    | `#/p/<slug>/keys`                            | Core → Keys and secrets (`#/p/<slug>/settings/keys`)                       | moved (P0-31)    |
+| `tab:secrets`                 | `#/p/<slug>/secrets`                         | Core → Keys and secrets (`#/p/<slug>/settings/keys`)                       | moved (P0-31)    |
 | `tab:licenses`                | `#/p/<slug>/licenses`                        | Licensing → Licenses (`#/p/<slug>/license/licenses`)                       | moved (P0-31)    |
 | `tab:tiers`                   | `#/p/<slug>/tiers`                           | Licensing → Tiers (`#/p/<slug>/license/tiers`)                             | moved (P0-31)    |
 | `tab:fingerprints`            | `#/p/<slug>/fingerprints`                    | Licensing → Enrollment (`#/p/<slug>/license/enrollment`)                   | moved (P0-31)    |
@@ -197,26 +197,28 @@ navigation or the palette.
 
 Every product has **Core**, drawn as a flat list (no group header; Settings sits at the foot):
 
-| Page        | Path and route detail                                                                 |
-| ----------- | ------------------------------------------------------------------------------------- |
-| Overview    | `#/p/<slug>`: attention, the Integration card, one tile per enabled feature, activity |
-| Integration | `#/p/<slug>/integration`                                                              |
-| Devices     | `#/p/<slug>/devices`, with a routed device record                                     |
-| Users       | `#/p/<slug>/users`, with overview, licenses, devices, activity, and data record tabs  |
-| Activity    | `#/p/<slug>/activity`                                                                 |
-| Settings    | `#/p/<slug>/settings`, the hub below                                                  |
+| Page        | Path and route detail                                                                  |
+| ----------- | -------------------------------------------------------------------------------------- |
+| Overview    | `#/p/<slug>`: the hero, the feature board, the Integration-steps rail, recent activity |
+| Integration | `#/p/<slug>/integration`                                                               |
+| Devices     | `#/p/<slug>/devices`, with a routed device record                                      |
+| Users       | `#/p/<slug>/users`, with overview, licenses, devices, activity, and data record tabs   |
+| Activity    | `#/p/<slug>/activity`                                                                  |
+| Settings    | `#/p/<slug>/settings`, the hub below                                                   |
 
-**Settings** is a hub with five tabs, none of them a sidebar item: **Features & general**
+**Settings** is a hub with five tabs, none of them a sidebar item: **Features and general**
 (`settings/features`: the feature switches, then the product's name, origins, repository, storage,
 alerts and the danger zone), **Presentation** (`settings/presentation`), **Polaris Locker**
-(`settings/portal`), **Keys & secrets** (`settings/keys`) and **Members** (`settings/members`).
+(`settings/portal`), **Keys and secrets** (`settings/keys`) and **Members** (`settings/members`).
 **All settings** (`settings/all`) lists every setting with its value where the registry has one, its
 source and the page that edits it.
 
-Overview draws one tile per feature the product runs, in the feature's accent with no accent top
-rule. **Ship builds** is one tile for Release, Distribution and Update (the version on stable, the
-rollouts live, the updater's state), as it is one group in the sidebar. The page's one filled
-primary is the first Needs attention action; with none, the Integration card's next step.
+The Overview opens with a hero: the product's state and the one next step, with the Integration
+pane beside it. The one filled primary on the page is that step. Under it, the feature board draws
+one tile per feature the product runs, in the feature's accent with no accent top rule. **Ship
+builds** is one tile for Release, Distribution and Update (the version on stable, the rollouts
+live, the updater's state), as it is one group in the sidebar. The Integration-steps rail lists the
+steps with a platform badge on each. Recent activity runs under the board.
 
 Enabled services add their sections. Release, Distribution and Update share one sidebar group,
 **Ship builds**; the rows below keep them apart because routes, docs and the feature switches do.
