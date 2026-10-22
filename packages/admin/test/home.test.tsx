@@ -252,7 +252,7 @@ describe("Home", () => {
           id: "djdl:storefront.identity_ambiguous:steam",
           kind: "storefront.identity_ambiguous",
           service: "commerce",
-          short: "Two apps assigned",
+          short: "Keys disagree",
           lines: [
             "Steam keys name different apps.",
             "Purchases are checked against `480`.",
@@ -266,9 +266,13 @@ describe("Home", () => {
           service: "distribution",
           short: "App mismatch",
           lines: [
-            "Channel `ios` names bundleId `com.typo.app`, not the assigned app `com.djdl.app`.",
+            "The `ios` channel declares bundle ID `com.typo.app`; the assigned app is `com.djdl.app`.",
           ],
-          action: { label: "Review", page: "storefronts" },
+          action: {
+            label: "Review",
+            page: "outlets",
+            query: { outlet: "ios" },
+          },
           area: "ship",
         }),
       ],
@@ -286,7 +290,7 @@ describe("Home", () => {
         .getAttribute("href"),
     );
     expect(hrefs.filter((h) => h === "#/p/djdl/commerce")).toHaveLength(2);
-    expect(hrefs.filter((h) => h!.endsWith("/storefronts"))).toHaveLength(1);
+    expect(hrefs).toContain("#/p/djdl/distribution/outlets?outlet=ios");
     expect(
       within(region).getAllByText("com.typo.app", { selector: "code" }),
     ).toHaveLength(2);

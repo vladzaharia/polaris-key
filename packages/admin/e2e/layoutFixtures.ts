@@ -253,9 +253,13 @@ const ROUTES: Record<string, unknown> = {
         service: "distribution",
         short: "App mismatch",
         lines: [
-          "Channel `ios` names bundleId `com.djdl.typo`, not the assigned app `com.djdl.app`.",
+          "The `ios` channel declares bundle ID `com.djdl.typo`; the assigned app is `com.djdl.app`.",
         ],
-        action: { label: "Review", page: "storefronts" },
+        action: {
+          label: "Review",
+          page: "outlets",
+          query: { outlet: "ios" },
+        },
         area: "ship",
       },
     ],

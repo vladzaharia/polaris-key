@@ -63,7 +63,8 @@ export async function storefrontIdentityAmbiguities(
   const out: StorefrontIdentityAmbiguity[] = [];
   for (const store of ["app-store", "play", "steam"] as const) {
     const i = identity[store];
-    if (i.ambiguous && i.value !== null) out.push({ store, value: i.value });
+    if (i.ambiguous && i.source === "assigned" && i.value !== null)
+      out.push({ store, value: i.value });
   }
   return out;
 }

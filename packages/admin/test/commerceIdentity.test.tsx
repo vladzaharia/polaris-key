@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ME, resetConsole } from "./consoleHarness.js";
-import { P, bootWith, writes } from "./distributionFixture.js";
+import { P, apiError, bootWith, writes } from "./distributionFixture.js";
 import type { CommerceView } from "../src/api.js";
 import { r } from "../src/console/routes.js";
 
@@ -82,10 +82,12 @@ describe("store identity on the Commerce overview", () => {
     bootWith(PAGE, { [VIEW_PATH]: view() });
     const apple = await row("App Store");
     expect(apple.getByText("com.djdl.app")).toBeTruthy();
-    expect(apple.getByText("From the App Store assignment")).toBeTruthy();
+    expect(apple.getByText("From the assignment")).toBeTruthy();
     const play = await row("Google Play");
     expect(play.getByText("gg.djdl.app")).toBeTruthy();
-    expect(play.getByText("Typed in settings")).toBeTruthy();
+    expect(play.getByText(/Typed in/).textContent).toBe(
+      "Typed in commerce.stores",
+    );
     expect(screen.queryByText("Use the assigned app")).toBeNull();
   });
 
@@ -120,6 +122,7 @@ describe("store identity on the Commerce overview", () => {
     const steam = await row("Steam");
     expect(steam.getByText("No app assigned")).toBeTruthy();
     expect(steam.queryByRole("link")).toBeNull();
+    expect(steam.getByText("A platform admin assigns it.")).toBeTruthy();
   });
 
   it("explains an own key that names no app", async () => {
@@ -132,10 +135,14 @@ describe("store identity on the Commerce overview", () => {
     bootWith(PAGE, { [VIEW_PATH]: v });
     const steam = await row("Steam");
     expect(
-      steam.getByText(/names no app and hides the platform's/),
+      steam.getByText(
+        "Its own key names no app, so the platform's assignment is ignored.",
+      ),
     ).toBeTruthy();
     expect(steam.queryByText("No app assigned")).toBeNull();
-    expect(steam.getByRole("link", { name: "Open keys" })).toBeTruthy();
+    expect(
+      steam.getByRole("link", { name: "Pin the key" }).getAttribute("href"),
+    ).toBe(r.credentials("djdl"));
   });
 
   it("shows a dash for a store with no settings", async () => {
@@ -179,6 +186,17 @@ describe("store identity on the Commerce overview", () => {
     );
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog.textContent).toContain("Use the assigned app?");
+    expect(dialog.textContent).toContain(
+      "App Store purchases are checked against com.djdl.app instead of com.typo.app.",
+    );
+    expect(dialog.textContent).toContain(
+      "Purchases of com.typo.app are refused.",
+    );
+    expect(dialog.textContent).toContain("The typed Apple ID is cleared too.");
+    expect(dialog.textContent).toContain(
+      "To undo, set commerce.stores again through the API.",
+    );
+    expect(dialog.textContent).not.toContain("typed app");
     expect(writes(calls)).toEqual([]);
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Use the assigned app" }),
@@ -191,6 +209,108 @@ describe("store identity on the Commerce overview", () => {
     await waitFor(() =>
       expect(screen.queryByText("App Store app mismatch")).toBeNull(),
     );
+    // Focus lands on the store's row, never <body>.
+    await waitFor(() => {
+      const active = document.activeElement as HTMLElement;
+      expect(active).not.toBe(document.body);
+      expect(active.getAttribute("data-store-row")).toBe("app-store");
+    });
+  });
+
+  it("agrees with the callout: a realistic mismatch reads App mismatch, not Needs a credential", async () => {
+    // The key is pinned to the assigned app and the typed value differs: the server says not configured.
+    const v = view();
+    v.identity["app-store"] = {
+      value: "com.typo.app",
+      source: "typed",
+      assigned: "com.djdl.app",
+      mismatch: true,
+      ambiguous: false,
+    };
+    v.setup["app-store"] = {
+      configured: false,
+      credential: "cred",
+      reason: "wrong_app",
+    };
+    bootWith(PAGE, { [VIEW_PATH]: v });
+    const apple = await row("App Store");
+    expect(apple.getByText("App mismatch")).toBeTruthy();
+    expect(apple.queryByText("Needs a credential")).toBeNull();
+  });
+
+  it("shows one callout for a store that is mismatched and ambiguous", async () => {
+    const v = view();
+    v.identity["app-store"] = {
+      value: "com.typo.app",
+      source: "typed",
+      assigned: "com.djdl.app",
+      mismatch: true,
+      ambiguous: true,
+    };
+    bootWith(PAGE, { [VIEW_PATH]: v });
+    await screen.findByText("App Store app mismatch");
+    expect(screen.queryByText("App Store keys name different apps")).toBeNull();
+  });
+
+  it("hides the identity callouts while Commerce is off", async () => {
+    const v = view();
+    v.identity["app-store"] = {
+      value: "com.typo.app",
+      source: "typed",
+      assigned: "com.djdl.app",
+      mismatch: true,
+      ambiguous: false,
+    };
+    bootWith(
+      PAGE,
+      { [VIEW_PATH]: v },
+      {
+        services: {
+          license: { enabled: true },
+          commerce: { enabled: false },
+        },
+      },
+    );
+    await screen.findByText("Commerce is off for this product");
+    await row("App Store");
+    expect(screen.queryByText("App Store app mismatch")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Use the assigned app" }),
+    ).toBeNull();
+  });
+
+  it("explains a 409 no_assigned_app and refetches the view", async () => {
+    const mismatched = view();
+    mismatched.identity["app-store"] = {
+      value: "com.typo.app",
+      source: "typed",
+      assigned: "com.djdl.app",
+      mismatch: true,
+      ambiguous: false,
+    };
+    let reads = 0;
+    bootWith(PAGE, {
+      [VIEW_PATH]: () => {
+        reads += 1;
+        return mismatched;
+      },
+      [`POST ${VIEW_PATH}/settings/app-store/use-assigned`]: () =>
+        apiError(
+          409,
+          "bad_request",
+          { reason: "no_assigned_app" },
+          "no app is assigned to this product on this store",
+        ),
+    });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Use the assigned app" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Use the assigned app" }),
+    );
+    await within(dialog).findByText("No app is assigned");
+    await waitFor(() => expect(reads).toBeGreaterThan(1));
   });
 
   it("cancel leaves the typed value alone", async () => {
@@ -222,8 +342,10 @@ describe("store identity on the Commerce overview", () => {
     ).closest("[data-tone]") as HTMLElement;
     expect(callout.textContent).toContain("com.djdl.app");
     expect(
-      within(callout).getByRole("link", { name: "Open keys" }),
-    ).toBeTruthy();
+      within(callout)
+        .getByRole("link", { name: "Open channel credentials" })
+        .getAttribute("href"),
+    ).toBe(r.credentials("djdl"));
     expect(
       screen.queryByRole("button", { name: "Use the assigned app" }),
     ).toBeNull();

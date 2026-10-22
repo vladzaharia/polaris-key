@@ -83,6 +83,15 @@ const STORE_LABELS = {
   steam: channelLabel("steam"),
 } as const;
 
+/** What an outlet identity field is called in a sentence. */
+const FIELD_LABELS: Readonly<Record<string, string>> = {
+  appleId: "Apple ID",
+  bundleId: "bundle ID",
+  packageName: "package name",
+  productId: "Store ID",
+  appId: "app ID",
+};
+
 const day = (epochSeconds: number): string =>
   new Date(epochSeconds * 1000).toLocaleDateString("en-US", {
     month: "short",
@@ -252,7 +261,7 @@ export async function productAttention(
         kind: "storefront.identity_ambiguous",
         tone: "warning",
         service: "commerce",
-        short: "Two apps assigned",
+        short: "Keys disagree",
         lines: [
           `${STORE_LABELS[a.store]} keys name different apps.`,
           `Purchases are checked against \`${a.value}\`.`,
@@ -277,9 +286,13 @@ export async function productAttention(
         service: "distribution",
         short: "App mismatch",
         lines: [
-          `Channel \`${m.outletId}\` names ${m.field} \`${m.declared}\`, not the assigned app \`${m.assigned}\`.`,
+          `The \`${m.outletId}\` channel declares ${FIELD_LABELS[m.field] ?? m.field} \`${m.declared}\`; the assigned app is \`${m.assigned}\`.`,
         ],
-        action: { label: "Review", page: "storefronts" },
+        action: {
+          label: "Review",
+          page: "outlets",
+          query: { outlet: m.outletId },
+        },
         area: "ship",
       });
   return items;

@@ -43,7 +43,7 @@ export interface ConfirmDialogProps {
   intent?: ConfirmIntent;
   title: React.ReactNode;
   description?: React.ReactNode;
-  consequences?: string[];
+  consequences?: React.ReactNode[];
   /** Leads the body, before the consequences (what the action reaches). */
   lead?: React.ReactNode;
   /** Repeats the verb: "Yank 2.4.0". */
@@ -303,14 +303,14 @@ export function ConfirmDialog({
           {consequences?.length && lead ? (
             // After a lead, the lines are plain text, not a list of one.
             <div className="space-y-1 text-fg-muted">
-              {consequences.map((c) => (
-                <p key={c}>{c}</p>
+              {consequences.map((c, i) => (
+                <p key={i}>{c}</p>
               ))}
             </div>
           ) : consequences?.length ? (
             <ul className="list-disc space-y-1 ps-5 text-fg">
-              {consequences.map((c) => (
-                <li key={c}>{c}</li>
+              {consequences.map((c, i) => (
+                <li key={i}>{c}</li>
               ))}
             </ul>
           ) : null}
