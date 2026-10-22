@@ -613,7 +613,7 @@ describe("the admin route", () => {
     expect(undone.body.run.status).toBe("reverted");
   });
 
-  it("reports Core's delegated override migration but never applies or undoes it", async () => {
+  it("reports Update's delegated resolver comparison but never applies or undoes it", async () => {
     const w = await seededWorld();
     const env = Object.assign(w.env, {
       ADMIN_SESSION_SECRET: "test-admin-session-secret",
@@ -621,7 +621,7 @@ describe("the admin route", () => {
       PLATFORM_OIDC_ISSUER: "https://id.plrs.example",
       PLATFORM_OIDC_CLIENT_ID: "platform-client",
     }) as Env;
-    const job = "core.licence-override-migration";
+    const job = "update.resolver-compare";
     const dry = await route(
       env,
       w.db,

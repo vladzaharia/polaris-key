@@ -11,8 +11,8 @@
  *   - the class of a difference (`classifyDifference`), named as in §6.5 and the brief's
  *     Corrections 5 and 6.
  *
- * There is no job here yet (P2-12.7 wraps `compareProbe` in a P0-49 job with pacing). Nothing is
- * routed: the probe runs `computeVersion` / `computeAppcast` directly, on a synthetic request, so
+ * `resolverCompareJob` (P2-12.7, below) wraps `compareProbe` in a report-only P0-49 job with
+ * pacing. Nothing is routed: the probe runs `computeVersion` / `computeAppcast` directly, on a synthetic request, so
  * it bypasses the edge cache, the access check and the rate limit. The legacy step keeps its
  * resolution cache (`ghCache`), so a probe costs what serving costs.
  *
@@ -22,6 +22,17 @@
  */
 
 import { sha256Hex } from "../../platform/hash.js";
+import type { Env } from "../../platform/env.js";
+import { pk as kvKey } from "../../platform/kv.js";
+import type {
+  MigrationContext,
+  MigrationJob,
+  UnitPlan,
+} from "../../core/migrate/job.js";
+import { loadProduct } from "../../core/products.js";
+import { listAllProductSlugs } from "../../core/products/store.js";
+import type { FetchImpl } from "../release/githubApp.js";
+import { meterUpstreamCalls } from "../release/gateway.js";
 import type { Db } from "../../db/types.js";
 import { harden, upstreamUnavailable } from "../release/gateway.js";
 import { notFound } from "../../core/errors.js";
@@ -32,7 +43,11 @@ import {
   policyChannelOf,
   versionFromTag,
 } from "../release/channels.js";
-import { isResolved, type ReleaseConfigRow } from "../release/config.js";
+import {
+  getReleaseConfig,
+  isResolved,
+  type ReleaseConfigRow,
+} from "../release/config.js";
 import { serveDownload, type ResolvedDownload } from "../release/source.js";
 import { NotFoundError, UpstreamRateLimitedError } from "../release/github.js";
 import { RELEASE_PAGE_CAP } from "../release/github.js";
@@ -605,3 +620,358 @@ export async function compareProbe(
     class: await classifyDifference(db, cfg, probe, oldO, newO),
   };
 }
+
+// ── The job (P2-12.7, plans/P2-12.md §6.5) ───────────────────────────────────────────────────
+
+/** Rows kept in a unit's report detail, worst first; the class counts always cover every row. */
+export const COMPARE_ROW_CAP = 50;
+/** Pause when GitHub says fewer calls than this are left in the installation's hour. */
+export const COMPARE_MIN_REMAINING = 500;
+/** Probes between checkpoint writes (KV allows one write a second per key). */
+const CHECKPOINT_EVERY = 10;
+/** A checkpoint is resumable for this long (seconds); a dry run later than that starts over. */
+const CHECKPOINT_TTL = 3600;
+/** The longest and the default pause (seconds). */
+const PAUSE_MAX = 3600;
+const PAUSE_DEFAULT = 900;
+
+/** The synthetic origin of the probes' requests; both steps see the same one. */
+const COMPARE_ORIGIN = "https://key.plrs.im";
+
+/** Where the switch rule lives: what `delegatedTo` names (L-P1, L-U5). */
+export const RESOLVER_SWITCH_RULE =
+  "the P2-12 switch rule (plans/P2-12.md §6.5): flip RESOLVE_FROM_STORE in release N+1 once a fresh dry run of this job holds no stale-store or unexpected row and the lead has acknowledged the expected classes by count";
+
+/** A compact outcome for a report row: the hash is cut to what a person can compare. */
+function compact(o: ProbeOutcome) {
+  return {
+    status: o.status,
+    contentType: o.contentType,
+    cacheControl: o.cacheControl,
+    bodySha256: o.bodySha256 === null ? null : o.bodySha256.slice(0, 12),
+    version: o.version,
+    ...(o.threw !== undefined ? { threw: o.threw } : {}),
+  };
+}
+
+const SEVERITY: Record<ResolverClass, number> = {
+  unexpected: 0,
+  "stale-store": 1,
+  "upstream-error": 2,
+  identical: 99,
+  "beta-includes-stable": 10,
+  "workflow-channel": 11,
+  "beyond-page-cap": 12,
+  "duplicate-version": 13,
+  "descriptor-channel": 14,
+  "descriptor-files": 15,
+  "beta-workflow-floor": 16,
+  "beta-yanked-floor-fallback": 17,
+};
+
+/** Class counts and the worst rows, capped: the unit's report detail. */
+export function reportDetail(rows: readonly CompareRow[]) {
+  const counts: Partial<Record<ResolverClass, number>> = {};
+  for (const r of rows) counts[r.class] = (counts[r.class] ?? 0) + 1;
+  const different = rows
+    .map((r, i) => ({ r, i }))
+    .filter(({ r }) => r.class !== "identical")
+    .sort((a, b) => SEVERITY[a.r.class] - SEVERITY[b.r.class] || a.i - b.i);
+  return {
+    counts,
+    rows: different.slice(0, COMPARE_ROW_CAP).map(({ r }) => ({
+      surface: r.surface,
+      probe: r.probe,
+      old: compact(r.old),
+      new: compact(r.new),
+      class: r.class,
+    })),
+    truncated: Math.max(0, different.length - COMPARE_ROW_CAP),
+  };
+}
+
+interface Checkpoint {
+  /** The probe list the rows belong to: a different list starts over. */
+  signature: string;
+  rows: CompareRow[];
+}
+
+interface Pause {
+  reason: string;
+  /** GitHub refused a call (403, 429): the probe it hit proves nothing and runs again. */
+  refused?: boolean;
+  /** Epoch seconds after which the run may continue. */
+  until: number;
+}
+
+const pauseKey = (scope: string) => kvKey(scope, "resolver-compare", "pause");
+const cursorKey = (product: string) =>
+  kvKey(product, "resolver-compare", "cursor");
+
+async function readJson<T>(env: Env, key: string): Promise<T | null> {
+  try {
+    const raw = await env.HOT.get(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeJson(
+  env: Env,
+  key: string,
+  value: unknown,
+  ttl: number,
+): Promise<void> {
+  try {
+    await env.HOT.put(key, JSON.stringify(value), {
+      expirationTtl: Math.max(60, Math.ceil(ttl)),
+    });
+  } catch {
+    /* a lost checkpoint only costs a re-run of its probes */
+  }
+}
+
+/**
+ * The environment a product's run sees: a KV whose resolution cache (`ghCache`) is private to the
+ * run, so the legacy step resolves against GitHub as it is now, and not against a 90-s entry an
+ * unrelated request left (yank, pin and promote do not drop the legacy step's entries in every
+ * colo). It still costs what serving costs inside the run. Everything else, the Sparkle memo
+ * included, passes through to the real KV: a DMG streams at most once, shared by both steps.
+ */
+function freshResolutionCache(env: Env): Env {
+  const real = env.HOT;
+  const mem = new Map<string, string>();
+  const own = (key: string) => key.includes(":release-resolution:");
+  const hot = {
+    get: (key: string, ...rest: unknown[]) =>
+      own(key)
+        ? Promise.resolve(mem.get(key) ?? null)
+        : (real.get as (...a: unknown[]) => unknown)(key, ...rest),
+    put: (key: string, value: string, ...rest: unknown[]) => {
+      if (own(key)) {
+        mem.set(key, value);
+        return Promise.resolve();
+      }
+      return (real.put as (...a: unknown[]) => unknown)(key, value, ...rest);
+    },
+    delete: (key: string) =>
+      own(key) ? Promise.resolve(void mem.delete(key)) : real.delete(key),
+  } as unknown as KVNamespace;
+  return { ...env, HOT: hot } as Env;
+}
+
+/** What GitHub's headers said about the installation's quota. */
+interface Quota {
+  pause: Pause | null;
+}
+
+/** Observe, never alter, every GitHub answer: a 403 or 429, or a low `x-ratelimit-remaining`. */
+function observing(base: FetchImpl, quota: Quota, now: number): FetchImpl {
+  return async (input, init) => {
+    const res = await base(input, init);
+    const remaining = res.headers.get("x-ratelimit-remaining");
+    const status = res.status;
+    let reason: string | null = null;
+    if (status === 403 || status === 429) reason = `github ${status}`;
+    else if (
+      remaining !== null &&
+      remaining !== "" &&
+      Number(remaining) < COMPARE_MIN_REMAINING
+    )
+      reason = `github x-ratelimit-remaining ${remaining}`;
+    if (reason !== null) {
+      const reset = Number(res.headers.get("x-ratelimit-reset"));
+      const retry = Number(res.headers.get("retry-after"));
+      const wait =
+        Number.isFinite(retry) && res.headers.get("retry-after") !== null
+          ? retry
+          : Number.isFinite(reset) && reset > now
+            ? reset - now
+            : PAUSE_DEFAULT;
+      quota.pause = {
+        reason,
+        ...(status === 403 || status === 429 ? { refused: true } : {}),
+        until: now + Math.min(PAUSE_MAX, Math.max(60, Math.ceil(wait))),
+      };
+    }
+    return res;
+  };
+}
+
+export interface CompareJobOptions {
+  /** The GitHub fetch; default the runtime's. */
+  fetchImpl?: FetchImpl;
+  /** Called after each probe of a unit (`index` counts from 0); the tests kill a run here. */
+  onProbe?: (product: string, index: number) => void | Promise<void>;
+}
+
+/** Every probe a product is compared on (appcast, channel appcast, version, download). */
+async function probesFor(
+  ctx: MigrationContext,
+  cfg: ReleaseConfigRow,
+): Promise<Probe[]> {
+  const channels = await probeChannels(ctx.db, cfg);
+  let stableVersion: string | null = null;
+  try {
+    const { release } = await resolveStoreSelector(ctx.db, cfg, "stable");
+    stableVersion = versionFromTag(release.tag_name);
+  } catch {
+    /* nothing stable: no pinned probe */
+  }
+  const set = { channels, stableVersion };
+  return [...buildProbes(set), ...buildDownloadProbes(set)];
+}
+
+const signatureOf = (probes: readonly Probe[]) =>
+  probes.map((p) => `${p.surface}|${p.probe}`).join("\n");
+
+/**
+ * `update.resolver-compare` (P2-12.7): the dry run that proves the two update steps equal. REPORT
+ * ONLY: it reads and writes nothing in D1; the only thing it stores is KV (a checkpoint and a
+ * pause marker, both expiring). A unit is a product with a resolved release config, run one at a
+ * time. A unit's report is its class counts plus the worst rows (`reportDetail`); its `changes`
+ * is what blocks the switch: the `unexpected` and `stale-store` rows, the `upstream-error` rows
+ * and the probes a pause left unrun. The expected classes are acknowledged by count, not here.
+ *
+ * Pacing. After a probe that saw GitHub answer 403 or 429, or `x-ratelimit-remaining` under 500,
+ * the run stops for the whole installation (a pause marker in KV until GitHub's reset), and the
+ * rest of the report says `paused`. An `UpstreamRateLimitedError` (the product's own budget, or
+ * GitHub's quota as the step mapped it) is an `upstream-error` row and pauses that product. A
+ * checkpoint holds the rows done, so the next dry run, after a pause or a killed call, resumes
+ * where this one stopped. `apply` and `down` are `delegated`.
+ */
+export function createResolverCompareJob(
+  opts: CompareJobOptions = {},
+): MigrationJob {
+  const upstream: FetchImpl = opts.fetchImpl ?? ((i, init) => fetch(i, init));
+  return {
+    id: "update.resolver-compare",
+    summary:
+      "Compare the legacy (GitHub) and store update steps on every probe, per product (report only)",
+    delegatedTo: RESOLVER_SWITCH_RULE,
+    async units({ db }) {
+      const out: string[] = [];
+      for (const slug of await listAllProductSlugs(db)) {
+        const cfg = await getReleaseConfig(db, slug);
+        if (cfg && isResolved(cfg)) out.push(slug);
+      }
+      return out;
+    },
+    async plan(ctx, unit): Promise<UnitPlan> {
+      const cfg = await getReleaseConfig(ctx.db, unit);
+      const product = cfg ? await loadProduct(ctx.env, ctx.db, unit) : null;
+      if (!cfg || !product)
+        return { changes: 0, detail: { skipped: "no release config" } };
+      const probes = await probesFor(ctx, cfg);
+      const signature = signatureOf(probes);
+      const saved = await readJson<Checkpoint>(ctx.env, cursorKey(unit));
+      const rows: CompareRow[] =
+        saved &&
+        saved.signature === signature &&
+        saved.rows.length <= probes.length
+          ? [...saved.rows]
+          : [];
+      const resumedFrom = rows.length;
+
+      const quota: Quota = { pause: null };
+      const standing =
+        (await readJson<Pause>(ctx.env, pauseKey("platform"))) ??
+        (await readJson<Pause>(ctx.env, pauseKey(unit)));
+      let pause: Pause | null =
+        standing && standing.until > ctx.now ? standing : null;
+
+      const env = freshResolutionCache(ctx.env);
+      const fetchImpl = meterUpstreamCalls(
+        ctx.env,
+        unit,
+        ctx.now,
+        observing(upstream, quota, ctx.now),
+      );
+      const probeCtx = {
+        req: new Request(`${COMPARE_ORIGIN}/${unit}/update/version`),
+        env,
+        db: ctx.db,
+        product,
+        cfg,
+        origin: COMPARE_ORIGIN,
+        now: ctx.now,
+        fetchImpl,
+      };
+
+      const checkpoint = (): Promise<void> => {
+        // An upstream-error row is not a result: it runs again on resume.
+        const bad = rows.findIndex((r) => r.class === "upstream-error");
+        return writeJson(
+          ctx.env,
+          cursorKey(unit),
+          {
+            signature,
+            rows: bad === -1 ? rows : rows.slice(0, bad),
+          } satisfies Checkpoint,
+          CHECKPOINT_TTL,
+        );
+      };
+
+      for (let i = rows.length; i < probes.length && !pause; i++) {
+        const probe = probes[i]!;
+        const row = await compareProbe(ctx.db, cfg, probe, probeCtx);
+        if (quota.pause) {
+          pause = quota.pause;
+          // A call GitHub refused leaves a row that proves nothing, unless it already reads as
+          // the upstream error it is: the probe runs again on resume.
+          if (!pause.refused || row.class === "upstream-error") rows.push(row);
+          await writeJson(
+            ctx.env,
+            pauseKey("platform"),
+            pause,
+            pause.until - ctx.now,
+          );
+        } else if (row.class === "upstream-error" && row.old.status === 503) {
+          rows.push(row);
+          // The product's own budget, or a quota the step mapped to a 503.
+          pause = {
+            reason: "upstream rate limited",
+            until: ctx.now + PAUSE_DEFAULT,
+          };
+          await writeJson(ctx.env, pauseKey(unit), pause, PAUSE_DEFAULT);
+        } else rows.push(row);
+        if (pause || (i + 1) % CHECKPOINT_EVERY === 0) await checkpoint();
+        await opts.onProbe?.(unit, i);
+      }
+
+      const finished = rows.length === probes.length && !pause;
+      if (finished)
+        await ctx.env.HOT.delete(cursorKey(unit)).catch(() => undefined);
+      const detail = reportDetail(rows);
+      const unrun = probes.length - rows.length;
+      const blocking = rows.filter(
+        (r) =>
+          BLOCKING_CLASSES.includes(r.class) || r.class === "upstream-error",
+      ).length;
+      return {
+        changes: blocking + unrun,
+        detail: {
+          probes: probes.length,
+          compared: rows.length,
+          resumedFrom,
+          ...detail,
+          ...(pause || unrun > 0
+            ? {
+                paused: {
+                  reason: pause?.reason ?? "incomplete",
+                  until: pause?.until ?? null,
+                  unrun,
+                },
+              }
+            : {}),
+        },
+      };
+    },
+    apply: () => Promise.reject(new Error("delegated")),
+    down: () => Promise.reject(new Error("delegated")),
+  };
+}
+
+/** The registered job: the runtime's GitHub fetch. */
+export const resolverCompareJob = createResolverCompareJob();
