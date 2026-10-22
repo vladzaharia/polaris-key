@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16)                                     |
 | Size        | 0.4–0.6 engineer-weeks                                                                                 |
 | Depends on  | [I-37b](I-37b-device-code-denied-kits.md)                                                              |
-| Unblocks    | [I-37d](I-37d-device-mint-retry.md)                                                                    |
+| Unblocks    | [I-37d](I-37d-device-mint-retry.md), [UK-64](UK-64-kit-matrix-gaps.md)                                 |
 | Role        | `pkey-sdk-porter`                                                                                      |
 | Plan mode   | yes: [plans/DENY-01.md](../plans/DENY-01.md) is the approved plan                                      |
 | Gates       | drift-gate, corpus, all-sdks, threat-model, rule-10, docs-generated, docs-links, ui-snapshots, workerd |

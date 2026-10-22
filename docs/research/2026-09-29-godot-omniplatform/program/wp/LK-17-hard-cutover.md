@@ -1,16 +1,16 @@
 # LK-17 Hard cutover: remove the customer.host switch, 301 old customer URLs, console hash hand-off
 
-| Field       | Value                                              |
-| ----------- | -------------------------------------------------- |
-| Phase       | LK: Polaris Locker                                 |
-| Size        | 0.5–0.75 engineer-weeks                            |
-| Depends on  | [LK-03](LK-03-customer-host-and-origin.md)         |
-| Unblocks    | [LK-11](LK-11-cutover.md)                          |
-| Role        | `pkey-implementer`                                 |
-| Plan mode   | no                                                 |
-| Gates       | rule-9, rule-10, drift-gate, workerd, threat-model |
-| Human input | none                                               |
-| Repo        | `vladzaharia/polaris-key`                          |
+| Field       | Value                                                              |
+| ----------- | ------------------------------------------------------------------ |
+| Phase       | LK: Polaris Locker                                                 |
+| Size        | 0.5–0.75 engineer-weeks                                            |
+| Depends on  | [LK-03](LK-03-customer-host-and-origin.md)                         |
+| Unblocks    | [LK-11](LK-11-cutover.md), [LK-18](LK-18-portal-link-discovery.md) |
+| Role        | `pkey-implementer`                                                 |
+| Plan mode   | no                                                                 |
+| Gates       | rule-9, rule-10, drift-gate, workerd, threat-model                 |
+| Human input | none                                                               |
+| Repo        | `vladzaharia/polaris-key`                                          |
 
 ## Goal
 
