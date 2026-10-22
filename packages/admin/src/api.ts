@@ -630,6 +630,8 @@ export interface PlatformSettingWrite {
   value: string | number;
   expectedVersion: number;
   confirm?: string;
+  /** Why (a critical setting needs one; the Worker records it in the trail). */
+  reason?: string;
 }
 
 /** `GET /manage/api/products/kek`: the keyring (kid names and per-kid counts, never key material). */

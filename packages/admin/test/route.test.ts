@@ -543,6 +543,7 @@ describe("the nav model (nav.ts)", () => {
       "credentials",
       "feed",
       "app-sign-in",
+      "sync-setup",
       "sync-data",
     ];
     expect(ALL_PAGES.map((p) => p.page).sort()).toEqual([...expected].sort());

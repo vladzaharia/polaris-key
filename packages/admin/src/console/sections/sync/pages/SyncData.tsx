@@ -29,7 +29,6 @@ import { DescriptionList } from "../../../../ui/DescriptionList.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
-import { PageHeader } from "../../../../ui/PageHeader.js";
 import { ScrollTable } from "../../../../ui/ScrollTable.js";
 import { useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
@@ -37,6 +36,7 @@ import { Link } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { SettingsSection } from "../../../templates/Settings.js";
 import { noCatalog, userSettings } from "../data.js";
+import { SyncHeader } from "../SyncHeader.js";
 
 /** Where a synced setting roams. */
 export const SYNC_LABEL: Record<"user" | "platform", string> = {
@@ -86,8 +86,9 @@ export function SyncDataPage({ slug }: { slug: string }): React.ReactElement {
   });
 
   const header = (
-    <PageHeader
-      title="Data"
+    <SyncHeader
+      slug={slug}
+      tab="sync-data"
       description={
         <>
           Declared in <code className="font-mono text-xs">.pkey/schema</code>.
