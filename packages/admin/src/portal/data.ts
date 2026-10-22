@@ -218,6 +218,7 @@ export function usePersonalTokens(): UseQueryResult<PortalPersonalTokens> {
 
 export function useMintPersonalToken() {
   return useWrite("mintPersonalToken", {
+    gcTime: 0, // the answer carries the minted token
     toArgs: (input: {
       label: string;
       expiresInDays?: number;
@@ -233,6 +234,7 @@ export function useRevokePersonalToken() {
 
 export function useMintRegistryToken(product: string, licenseId: string) {
   return useWrite("mintRegistryToken", {
+    gcTime: 0, // the answer carries the minted token
     toArgs: (
       input: PortalMintTokenInput,
     ): [string, string, PortalMintTokenInput] => [product, licenseId, input],
@@ -299,12 +301,14 @@ export function useEmailDownload() {
 /** The activate preview (PX-W5, G22): what adding a key would do, before it is added. */
 export function usePreviewKey() {
   return useWrite("previewKey", {
+    gcTime: 0, // the key or minted token must not linger in the cache
     toArgs: (key: string): [string] => [key],
   });
 }
 
 export function useClaimKey() {
   return useWrite("claimKey", {
+    gcTime: 0, // the key or minted token must not linger in the cache
     toArgs: (key: string): [string] => [key],
   });
 }

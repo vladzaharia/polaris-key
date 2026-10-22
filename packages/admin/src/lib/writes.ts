@@ -71,6 +71,11 @@ export interface WriteOptions<
   call?: (...args: Parameters<Api[M]>) => Promise<R>;
   onSuccess?: (result: R, variables: V) => void | Promise<void>;
   onError?: (error: Error, variables: V) => void;
+  /**
+   * How long the finished mutation (its variables and answer) stays in the MutationCache. `0` for
+   * a write whose variables or answer carry a secret (a key, a code, a minted token).
+   */
+  gcTime?: number;
 }
 
 export interface Writes<
@@ -212,6 +217,7 @@ export function createWrites<
         },
         onSuccess: options?.onSuccess as never,
         onError: options?.onError as never,
+        gcTime: options?.gcTime,
       });
     },
   } as Writes<Api, K>;
