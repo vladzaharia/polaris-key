@@ -26,9 +26,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -114,8 +111,8 @@ public fun PolarisToast(
         label = "PolarisToastTimer",
     )
     val glyph = when (kind) {
-        PolarisToastKind.Warning, PolarisToastKind.Error -> Icons.Filled.Warning
-        else -> Icons.Filled.Info
+        PolarisToastKind.Warning, PolarisToastKind.Error -> PolarisSymbols.Warning
+        else -> PolarisSymbols.Info
     }
     val tint = when (kind) {
         PolarisToastKind.Warning -> status.warning

@@ -11671,7 +11671,8 @@ var TERMINAL_SYMBOLS = {
     separator: "·",
     ellipsis: "…",
     lockerMark: "✦",
-    arrows: "↑↓"
+    arrows: "↑↓",
+    newWindow: "↗"
   },
   ascii: {
     stepActive: "*",
@@ -11689,7 +11690,8 @@ var TERMINAL_SYMBOLS = {
     separator: "-",
     ellipsis: "...",
     lockerMark: "*",
-    arrows: "^v"
+    arrows: "^v",
+    newWindow: ">"
   }
 };
 var TERMINAL_SPINNER = {

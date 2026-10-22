@@ -351,9 +351,9 @@ private fun PolarisCodeView(
                 if (noBrowser && linkOk) {
                     PolarisPrimaryButton(copy.signInCopyLink, onClick = copyLink, initialFocus = true)
                     Spacer(Modifier.height(PolarisSpace.controls))
-                    PolarisSecondaryButton(copy.signInOpenBrowser, onClick = open)
+                    PolarisSecondaryButton(copy.signInOpenBrowser, onClick = open, external = true)
                 } else {
-                    PolarisPrimaryButton(copy.signInOpenBrowser, onClick = open, initialFocus = true)
+                    PolarisPrimaryButton(copy.signInOpenBrowser, onClick = open, initialFocus = true, external = true)
                 }
                 Spacer(Modifier.height(PolarisSpace.controls))
                 // Paired with the opener, Cancel is the secondary: tonal, never bare text (DL4, rule 10).

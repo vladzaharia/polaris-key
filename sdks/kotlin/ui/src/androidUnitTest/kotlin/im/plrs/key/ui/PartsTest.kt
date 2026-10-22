@@ -125,7 +125,7 @@ class PartsTest {
         val screen = KitStates.resolve(KitComponent.paywall, inputs)
         var portal = 0
         show { PolarisPaywall(screen, emptyList(), onPortal = { portal++ }) }
-        rule.onNodeWithText("Buy in your browser ↗").performClick()
+        rule.onNodeWithText("Buy in your browser").performClick()
         assertEquals(1, portal)
         // No per-month price, no saving: the kit computes none.
         rule.onAllNodes(hasText("$", substring = true)).assertCountEquals(0)
@@ -274,7 +274,7 @@ class PartsTest {
         rule.onNodeWithText("About Diceroll").assertIsDisplayed()
         rule.onNodeWithText("Version 2.4.1 · build 241").assertIsDisplayed()
         rule.onNodeWithText("Open-source licenses").assertIsDisplayed()
-        rule.onNodeWithText("Privacy ↗").assertIsDisplayed()
+        rule.onNodeWithText("Privacy").assertIsDisplayed()
     }
 
     @Test

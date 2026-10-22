@@ -259,13 +259,13 @@ public fun PolarisGateScreen(
                         // as the Swift kit does; Use another license is always offered. Never Try
                         // again or Reconnect (the matrix pins both).
                         if (onRenew != null) {
-                            PolarisPrimaryButton(text = copy.renew, onClick = onRenew, initialFocus = true)
+                            PolarisPrimaryButton(text = copy.renew, onClick = onRenew, initialFocus = true, external = true)
                             PolarisSecondaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true })
                         } else {
                             PolarisPrimaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true }, initialFocus = true)
                         }
                     } else if (update != null) {
-                        PolarisPrimaryButton(text = copy.updateAction, onClick = update, initialFocus = true)
+                        PolarisPrimaryButton(text = copy.updateAction, onClick = update, initialFocus = true, external = true)
                         PolarisSecondaryButton(copy.retry, onClick = onRetry, busy = gate.refreshing)
                     } else {
                         PolarisPrimaryButton(

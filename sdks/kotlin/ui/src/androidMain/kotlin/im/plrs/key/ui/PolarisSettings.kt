@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Slider
@@ -51,8 +49,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -320,7 +316,7 @@ internal fun PolarisSettingRow(entry: PolarisSettingEntry, onSet: ((String, Json
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (locked) {
-                Icon(Icons.Filled.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                Icon(PolarisSymbols.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
             }
             Text(
@@ -527,13 +523,13 @@ internal fun PolarisChoiceRow(entry: PolarisSettingEntry, editor: PolarisSetting
                 SettingLabel(entry, Modifier.weight(1f))
                 Spacer(Modifier.width(16.dp))
                 Text(current, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                Icon(PolarisSymbols.ChevronDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
             }
             DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                 editor.options.forEachIndexed { i, (label, value) ->
                     DropdownMenuItem(
                         text = { Text(label) },
-                        trailingIcon = if (i == editor.selected) ({ Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(20.dp)) }) else null,
+                        trailingIcon = if (i == editor.selected) ({ Icon(PolarisSymbols.Check, contentDescription = null, modifier = Modifier.size(20.dp)) }) else null,
                         onClick = {
                             open = false
                             if (i != editor.selected) onSet(entry.key, value)

@@ -159,7 +159,7 @@ class GateToastTest {
         gate.activate()
         frames()
         // No browser answers: the link can be copied instead.
-        rule.onNodeWithText(copy.openInBrowser + " ↗").performClick()
+        rule.onNodeWithText(copy.openInBrowser).performClick()
         frames()
         rule.onNodeWithText(copy.signInCopyLink).performClick()
         frames()
