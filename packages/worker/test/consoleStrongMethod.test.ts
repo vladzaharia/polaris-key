@@ -31,7 +31,10 @@ import {
   consoleSubject,
 } from "../src/services/identity/public.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
-import { insertLink } from "../src/services/identity/accounts/repo.js";
+import {
+  insertLink,
+  markLinkStrong,
+} from "../src/services/identity/accounts/repo.js";
 import { mergeAccounts } from "../src/services/identity/accounts/merge.js";
 import {
   deleteAccount,
@@ -378,6 +381,31 @@ describe("SM-1 and SM-3: the console needs a strong method", () => {
       NOW + 5,
     );
     expect(r).toEqual({ status: "refused", reason: "method" });
+  });
+
+  it("markLinkStrong is account-scoped: another account's link changes nothing and is refused; the owner's marks once", async () => {
+    const db = makeTestDb();
+    await getOrCreateAccountByIdentity(
+      db,
+      { provider: ISSUER_KEY, subject: "op-a", groups: [] },
+      NOW,
+    );
+    await getOrCreateAccountByIdentity(
+      db,
+      { provider: ISSUER_KEY, subject: "op-b", groups: [] },
+      NOW,
+    );
+    const a = (await consoleLink(db, "op-a"))!;
+    const b = (await consoleLink(db, "op-b"))!;
+    expect(a.account_id).not.toBe(b.account_id);
+    expect(await markLinkStrong(db, a.account_id, b.id, NOW + 1)).toBe(false);
+    expect((await consoleLink(db, "op-b"))!.strong_at).toBeNull();
+    expect(await markLinkStrong(db, a.account_id, "missing", NOW + 1)).toBe(
+      false,
+    );
+    expect(await markLinkStrong(db, a.account_id, a.id, NOW + 2)).toBe(true);
+    expect(await markLinkStrong(db, a.account_id, a.id, NOW + 9)).toBe(true);
+    expect((await consoleLink(db, "op-a"))!.strong_at).toBe(NOW + 2);
   });
 
   it("SM-5: removing the strong method ends entry, not the account; a re-added method is not strong", async () => {
