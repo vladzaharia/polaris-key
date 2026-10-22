@@ -12,7 +12,16 @@ import { href } from "../router.js";
  * for a bug report. `resetKey` is the route: navigating away clears the failure.
  */
 export class PortalErrorBoundary extends React.Component<
-  { children: React.ReactNode; resetKey: string },
+  {
+    children: React.ReactNode;
+    resetKey: string;
+    /**
+     * Wraps the failure in the Locker's frame. Given when the boundary sits above the shell (the
+     * Library's data is read there, so a malformed field throws before any page renders): the
+     * header and its menus come back around the message.
+     */
+    frame?: (body: React.ReactElement) => React.ReactNode;
+  },
   { error: Error | null }
 > {
   override state: { error: Error | null } = { error: null };
@@ -29,7 +38,7 @@ export class PortalErrorBoundary extends React.Component<
   override render(): React.ReactNode {
     const { error } = this.state;
     if (!error) return this.props.children;
-    return (
+    const body = (
       <div
         role="alert"
         className="flex max-w-xl flex-col items-start gap-3 rounded-xl border border-border bg-surface-raised p-6"
@@ -63,5 +72,6 @@ export class PortalErrorBoundary extends React.Component<
         </div>
       </div>
     );
+    return this.props.frame ? this.props.frame(body) : body;
   }
 }

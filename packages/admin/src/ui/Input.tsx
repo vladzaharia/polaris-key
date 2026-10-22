@@ -84,8 +84,7 @@ export function Input({
       ) : null}
       {input}
       {suffix != null ? (
-        // Half the frame at most, then it wraps (a tag at 200 % text on a 320 px phone).
-        <span aria-hidden className="min-w-0 max-w-1/2 text-sm text-fg-subtle">
+        <span aria-hidden className="shrink-0 text-sm text-fg-subtle">
           {suffix}
         </span>
       ) : null}
