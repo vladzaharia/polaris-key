@@ -1,21 +1,95 @@
 ---
 /**
- * The page title, preceded on service pages by the section's name with its accent marker
+ * The page title. On service pages it is preceded by the section's name with its accent marker
  * (BRAND.md §5.4: section chrome only). The marker is decorative; the word names the section,
  * so the section is never told by colour alone (BRAND.md §9).
+ *
+ * On Help (docs.help-article): the topic's name with the marker, the title, and a Copy page button
+ * that copies the page's text. The topic is the sidebar group the page sits in; the home and the
+ * messages pages name themselves.
  */
 import Default from "@astrojs/starlight/components/PageTitle.astro";
+import { helpRoute } from "../lib/helpHost";
+import { HELP_ICONS } from "../lib/helpIcons";
 import { isServiceSection, sectionFor } from "../lib/section";
 
-const section = sectionFor(Astro.locals.starlightRoute.id);
+const route = Astro.locals.starlightRoute;
+const section = sectionFor(route.id);
+const help = helpRoute(route.id);
+
+interface Node {
+  type: string;
+  label?: string;
+  isCurrent?: boolean;
+  entries?: Node[];
+}
+const holdsCurrent = (n: Node): boolean =>
+  n.isCurrent === true || (n.entries ?? []).some(holdsCurrent);
+const topic =
+  route.id === "help"
+    ? "Help"
+    : route.id.startsWith("help/messages")
+      ? "Messages"
+      : ((route.sidebar as Node[]).find((n) => n.type === "group" && holdsCurrent(n))?.label ??
+        "Help");
 ---
 
 {
-  isServiceSection(section) && (
-    <p class="pk-eyebrow">
-      <span class="pk-eyebrow__marker" aria-hidden="true" />
-      {section.label}
-    </p>
+  route.id === "404" ? null : help ? (
+    <div class="pk-help-header">
+      <p class="pk-eyebrow pk-help-eyebrow">
+        <span class="pk-eyebrow__marker" aria-hidden="true" />
+        {topic}
+      </p>
+      <pk-help-copy class="pk-help-titlerow">
+        <h1 id="_top" data-page-title>
+          {route.entry.data.title}
+        </h1>
+        {route.id !== "help" && (
+          <button type="button" class="pk-help-copy" aria-label="Copy page">
+            <span set:html={HELP_ICONS.copy} />
+            <span class="pk-help-copy__label">Copy page</span>
+          </button>
+        )}
+      </pk-help-copy>
+    </div>
+  ) : (
+    <>
+      {isServiceSection(section) && (
+        <p class="pk-eyebrow">
+          <span class="pk-eyebrow__marker" aria-hidden="true" />
+          {section.label}
+        </p>
+      )}
+      <Default />
+    </>
   )
 }
-<Default />
+
+<script>
+  /** Copy page: the title, then the page's own text. */
+  class HelpCopy extends HTMLElement {
+    constructor() {
+      super();
+      const button = this.querySelector<HTMLButtonElement>("button");
+      const label = button?.querySelector(".pk-help-copy__label");
+      button?.addEventListener("click", async () => {
+        const title = this.querySelector("h1")?.textContent?.trim() ?? "";
+        const body =
+          document.querySelector<HTMLElement>(".sl-markdown-content")
+            ?.innerText ?? "";
+        try {
+          await navigator.clipboard.writeText(`${title}\n\n${body.trim()}\n`);
+          if (label) label.textContent = "Copied";
+        } catch {
+          if (label) label.textContent = "Copy failed";
+        }
+        setTimeout(() => {
+          if (label) label.textContent = "Copy page";
+        }, 2000);
+      });
+    }
+  }
+  if (!customElements.get("pk-help-copy"))
+    customElements.define("pk-help-copy", HelpCopy);
+</script>

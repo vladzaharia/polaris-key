@@ -1,0 +1,44 @@
+---
+/**
+ * Help's theme control is one icon button that flips dark and light, as in the mockup; the
+ * three-way choice (System, Dark, Light) is in the mobile menu (MobileMenuFooter). Every other page
+ * keeps Starlight's select.
+ */
+import Default from "@astrojs/starlight/components/ThemeSelect.astro";
+import { helpRoute } from "../lib/helpHost";
+import { HELP_ICONS } from "../lib/helpIcons";
+
+const help = helpRoute(Astro.locals.starlightRoute.id) || Astro.locals.starlightRoute.id === "404";
+---
+
+{
+  help ? (
+    <pk-help-theme-toggle>
+      <button type="button" class="pk-help-iconbtn" aria-label="Theme">
+        <span class="pk-help-theme__dark" set:html={HELP_ICONS.moon} />
+        <span class="pk-help-theme__light" set:html={HELP_ICONS.sun} />
+      </button>
+    </pk-help-theme-toggle>
+  ) : (
+    <Default />
+  )
+}
+
+<script>
+  import { setTheme } from "../scripts/helpTheme";
+
+  class HelpThemeToggle extends HTMLElement {
+    constructor() {
+      super();
+      this.querySelector("button")?.addEventListener("click", () =>
+        setTheme(
+          document.documentElement.dataset.theme === "light"
+            ? "dark"
+            : "light",
+        ),
+      );
+    }
+  }
+  if (!customElements.get("pk-help-theme-toggle"))
+    customElements.define("pk-help-theme-toggle", HelpThemeToggle);
+</script>

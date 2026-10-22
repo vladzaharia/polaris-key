@@ -1,0 +1,12 @@
+---
+/**
+ * Starlight's page footer (edit link, last updated, previous and next). Help has none of them: its
+ * site footer is drawn by PageFrame, and a Help page ends with its own "Still need help?".
+ */
+import Default from "@astrojs/starlight/components/Footer.astro";
+import { helpRoute } from "../lib/helpHost";
+
+const help = helpRoute(Astro.locals.starlightRoute.id);
+---
+
+{help ? null : <Default />}

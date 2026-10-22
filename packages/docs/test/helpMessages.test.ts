@@ -1066,8 +1066,12 @@ describe("the route middleware", () => {
     );
   });
 
-  it("leaves every other page's list as it is", async () => {
-    expect(await run("help/activate", levels)).toEqual(["_top", "own-heading"]);
+  it("leaves every page outside Help as it is, and drops the list from a Help article (docs.help-article has none)", async () => {
+    expect(await run("start/first-product", levels)).toEqual([
+      "_top",
+      "own-heading",
+    ]);
+    expect(await run("help/activate", levels)).toBeUndefined();
   });
 
   it("leaves a page without a list, or with one that does not show level 2, alone", async () => {

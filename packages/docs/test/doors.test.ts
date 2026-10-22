@@ -36,7 +36,8 @@ const deferred = new Set(map.rows.filter((r) => r.deferred).map((r) => r.from));
 
 describe("doors and tiers come from the directory", () => {
   it("every page belongs to a door and a tier", () => {
-    const orphans = ids.filter((id) => doorOf(id) === null);
+    // The page-not-found page is one file for every door and no door's.
+    const orphans = ids.filter((id) => id !== "404" && doorOf(id) === null);
     expect(orphans).toEqual([]);
   });
 
@@ -100,6 +101,7 @@ describe("the sidebar", () => {
         !deferred.has(id) &&
         id !== "index" &&
         id !== "access" &&
+        id !== "404" &&
         !id.startsWith("access/"),
     );
     expect(

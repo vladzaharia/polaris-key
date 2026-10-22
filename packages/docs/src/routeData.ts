@@ -104,6 +104,12 @@ export const onRequest = defineRouteMiddleware(async (context) => {
   if (helpRoute(id)) {
     route.siteTitle = "Polaris Locker";
     route.siteTitleHref = "/docs/help/";
+    // The home is one column, and no Help page has a previous and next (docs.help-home,
+    // docs.help-article). "On this page" stays on the messages pages only: they hold up to 27
+    // entries and the list is the way to jump to one (below).
+    if (id === "help") route.hasSidebar = false;
+    route.pagination = { prev: undefined, next: undefined };
+    if (!id.startsWith("help/messages")) route.toc = undefined;
     for (const h of head ?? []) {
       if (h.tag === "title" && typeof h.content === "string")
         h.content = h.content.replace(/ \| Polaris Key$/, " · Polaris Locker");
@@ -138,7 +144,12 @@ export const onRequest = defineRouteMiddleware(async (context) => {
   )
     head.push({ tag: "meta", attrs: { name: "robots", content: "noindex" } });
   // The list is off for the page, or does not show level 2.
-  if (toc === undefined || toc.minHeadingLevel > 2 || toc.maxHeadingLevel < 2)
+  if (
+    route.toc === undefined ||
+    toc === undefined ||
+    toc.minHeadingLevel > 2 ||
+    toc.maxHeadingLevel < 2
+  )
     return;
   const body = (entry as { body?: string } | undefined)?.body ?? "";
   toc.items.splice(

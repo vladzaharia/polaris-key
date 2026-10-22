@@ -1,0 +1,31 @@
+---
+/**
+ * The Help home's large search field (docs.help-home). It opens Starlight's search dialog, the same
+ * one the header's field and the ⌘K shortcut open, so Help has one search and one result list.
+ */
+import { HELP_ICONS } from "../../lib/helpIcons";
+import "./home.css";
+---
+
+<pk-help-bigsearch class="not-content">
+  <button type="button" class="pk-help-bigsearch">
+    <Fragment set:html={HELP_ICONS.search} />
+    <span>Search help</span>
+    <kbd>⌘K</kbd>
+  </button>
+</pk-help-bigsearch>
+
+<script>
+  class HelpBigSearch extends HTMLElement {
+    constructor() {
+      super();
+      this.querySelector("button")?.addEventListener("click", () =>
+        document
+          .querySelector<HTMLButtonElement>("site-search button[data-open-modal]")
+          ?.click(),
+      );
+    }
+  }
+  if (!customElements.get("pk-help-bigsearch"))
+    customElements.define("pk-help-bigsearch", HelpBigSearch);
+</script>
