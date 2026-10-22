@@ -245,7 +245,10 @@ describe("Product Members: the page", () => {
   it("shows the empty state when no one holds the product", async () => {
     answer = view({ members: [], invites: [] });
     open();
-    expect(await screen.findByText("No product admins")).toBeTruthy();
+    expect(await screen.findByText("No one has DJDL admin yet")).toBeTruthy();
+    expect(
+      screen.getByText(/Platform roles below can still manage DJDL/),
+    ).toBeTruthy();
     expect(screen.getByRole("table", { name: "Platform roles" })).toBeTruthy();
   });
 
@@ -341,9 +344,13 @@ describe("Product Members: the drawer from the product", () => {
         within(drawer).getByRole("radio", { name: /Every area of DJDL/ }),
       ),
     ).toBe(true);
+    // The areas the member cannot give are not offered, and one line says so.
     expect(
-      disabledOf(within(drawer).getByRole("checkbox", { name: "Commerce" })),
-    ).toBe(true);
+      within(drawer).queryByRole("checkbox", { name: "Commerce" }),
+    ).toBeNull();
+    expect(drawer.textContent).toContain(
+      "You can give only the areas you hold.",
+    );
     await typeEmails(user, drawer, "new@example.com");
     await user.click(
       within(drawer).getByRole("checkbox", { name: "Licensing" }),
@@ -357,7 +364,7 @@ describe("Product Members: the drawer from the product", () => {
       areas: ["license"],
       role: "product_admin",
     });
-    expect(await screen.findByText("Invited 1 person")).toBeTruthy();
+    expect(await screen.findByText("Invited new@example.com")).toBeTruthy();
     fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
     await waitFor(() =>
       expect(
@@ -524,13 +531,155 @@ describe("Product Members: a row's menu", () => {
     );
   });
 
-  it("says why a role beyond the member's areas cannot be changed", async () => {
+  it("names the real cause once for the row: an area the person has and the viewer lacks", async () => {
     const user = userEvent.setup();
     // Holds Members and Licensing only; Lucía has Ship builds and Commerce.
     open(productAdmin(["members", "license"]));
+    const t = await admins();
+    expect(
+      within(t).getAllByText(
+        "Lucía Ortega has Ship builds and Commerce, which you don't hold. Ask a Superadmin.",
+      ).length,
+    ).toBe(1);
     await menu(user, "Lucía Ortega");
     const edit = await screen.findByRole("menuitem", { name: /Edit areas/ });
     expect(edit.getAttribute("aria-disabled")).toBe("true");
-    expect(edit.textContent).toMatch(/Only a Superadmin or an admin of DJDL/);
+  });
+});
+
+describe("Product Members: one fix round (ST-31.14)", () => {
+  async function menu(user: ReturnType<typeof userEvent.setup>, who: string) {
+    const t = await admins();
+    await user.click(
+      within(t).getByRole("button", { name: `Actions for ${who}` }),
+    );
+  }
+
+  it("Edit areas: Save waits for a change, closes the drawer, says what changed and refocuses the row menu", async () => {
+    const user = userEvent.setup();
+    open(productAdmin(), {
+      "PATCH /manage/api/products/djdl/members/b_lucia": { ok: true },
+    });
+    await menu(user, "Lucía Ortega");
+    await user.click(
+      await screen.findByRole("menuitem", { name: /Edit areas/ }),
+    );
+    const drawer = await screen.findByRole("dialog", {
+      name: /Areas for Lucía Ortega/,
+    });
+    expect(drawer.textContent).toContain("lucia@example.com");
+    expect(
+      disabledOf(within(drawer).getByRole("button", { name: "Save areas" })),
+    ).toBe(true);
+    // Never the platform's roles list.
+    expect(within(drawer).getByRole("button", { name: "Cancel" })).toBeTruthy();
+    expect(
+      within(drawer).queryByRole("button", { name: "Back to roles" }),
+    ).toBeNull();
+    await user.click(
+      within(drawer).getByRole("checkbox", { name: "Licensing" }),
+    );
+    await user.click(
+      within(drawer).getByRole("button", { name: "Save areas" }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: /Areas for/ })).toBeNull(),
+    );
+    expect(screen.queryByRole("dialog", { name: /Edit roles/ })).toBeNull();
+    expect(
+      await screen.findByText(
+        "Lucía Ortega now manages Licensing, Ship builds and Commerce",
+      ),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute("aria-label")).toBe(
+        "Actions for Lucía Ortega",
+      ),
+    );
+  });
+
+  it("removing yourself says you lose the page and goes Home", async () => {
+    const user = userEvent.setup();
+    const log = open(productAdmin(), {
+      "DELETE /manage/api/products/djdl/members/b_kenji": { ok: true },
+    });
+    await menu(user, "Kenji Mori");
+    await user.click(
+      await screen.findByRole("menuitem", { name: /Remove yourself/ }),
+    );
+    const dlg = await screen.findByRole("alertdialog", {
+      name: /Remove yourself from DJDL/,
+    });
+    expect(dlg.textContent).toContain(
+      "You lose access to DJDL, including this page.",
+    );
+    await user.click(
+      within(dlg).getByRole("button", { name: "Remove yourself" }),
+    );
+    await waitFor(() =>
+      expect(
+        calls(log, "DELETE", "/manage/api/products/djdl/members/b_kenji")
+          .length,
+      ).toBe(1),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).not.toContain("settings/members"),
+    );
+  });
+
+  it("the drawer knows Superadmins and All products admins from the platform roles", async () => {
+    const user = userEvent.setup();
+    answer = view({
+      platformRoles: [
+        ...view().platformRoles,
+        {
+          memberId: "mbr_sam",
+          name: "Sam Okoye",
+          email: "sam@example.com",
+          role: "product_admin",
+          scope: "products:*",
+          areas: ["ship"],
+          source: "grant",
+        },
+      ],
+    });
+    open();
+    const drawer = await openInvite(user);
+    await typeEmails(
+      user,
+      drawer,
+      "ada@example.com sam@example.com new@example.com ",
+    );
+    expect(drawer.textContent).toContain(
+      "Ada Lindqvist is a Superadmin and already manages DJDL.",
+    );
+    expect(drawer.textContent).toContain(
+      "Sam Okoye manages DJDL through All products admin (Ship builds). Adds DJDL admin.",
+    );
+    // Ada is left out; Sam is an update; the new address is an invite.
+    expect(
+      within(drawer).getByRole("button", {
+        name: "Invite 1 person and update 1",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("a 403 read says what is needed and offers no Retry", async () => {
+    answer = json({ error: { code: "forbidden", message: "no" } }, 403);
+    open();
+    expect(
+      await screen.findByText("You can't see who manages DJDL"),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: /Retry|Try again/ }),
+    ).toBeNull();
+  });
+
+  it("a view-only member sees the reason in the page, not only in a tooltip", async () => {
+    open(productAdmin(["members"], []));
+    await admins();
+    expect(screen.getAllByText(/Members/i).length).toBeGreaterThan(0);
+    const head = document.getElementById("members-admins")!;
+    expect(head.textContent).toMatch(/Ask|edit/i);
   });
 });

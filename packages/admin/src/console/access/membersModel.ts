@@ -309,3 +309,30 @@ export function describeMembersError(e: unknown): {
 /** "Ship builds and Commerce" for an area list. */
 export const areaWords = (areas: readonly AreaId[]): string =>
   listOf(areas.map((a) => AREA_NAMES[a]));
+
+/**
+ * Why the signed-in member cannot change or remove this person's role on a product, said once for
+ * the row: when they hold Members there, the real cause is an area the person has and they lack.
+ */
+export function cannotChangeProductRole(
+  me: Me | undefined,
+  who: string,
+  role: MemberRole,
+  slug: string,
+  productName: (slug: string) => string,
+): string | undefined {
+  if (role.bindingId === null)
+    return "This comes from a rule. It can't be changed here.";
+  const generic = cannotEditAreas(me, role, productName);
+  if (generic === undefined) return undefined;
+  if (cannotGive(me, "product_admin", slug, ["members"]) === undefined) {
+    const unheld = (role.areas ?? PRODUCT_AREAS).filter(
+      (a) => cannotGive(me, "product_admin", slug, [a]) !== undefined,
+    );
+    if (unheld.length > 0)
+      return role.areas === null
+        ? `${who} has every area of ${productName(slug)}, and you hold only some. Ask a Superadmin.`
+        : `${who} has ${areaWords(unheld)}, which you don't hold. Ask a Superadmin.`;
+  }
+  return generic;
+}

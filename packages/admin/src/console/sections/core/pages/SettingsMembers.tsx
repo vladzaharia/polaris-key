@@ -1,190 +1,61 @@
 /**
- * Settings → Members (ST-08, then ST-31.14; mockup `admin.product-members`): who can administer
- * this product, read from `GET /products/:slug/members`. Two tables: the product's own admins
- * (people and the invites waiting, this product's role only) and, read-only, who reaches it
- * through a platform-wide role.
+ * Settings → Members (ST-08, then ST-31.14; mockup `admin.product-members`): who can manage this
+ * product, read from `GET /products/:slug/members`. Two tables: the product's own admins (people
+ * and the invites waiting, this product's role only) and, read-only, who reaches it through a
+ * platform-wide role. Both share one column template, so Role and Access from line up.
  *
  * Invite people opens the Members drawer (`access/InviteDrawer.tsx`) scoped to the product: the
  * role is Product admin of it, and only the areas the signed-in member holds are offered. A row's
  * menu edits areas or removes the role. The Worker enforces every rule; the console declines to
  * offer what it would refuse, and says why. Rows given by an SSO rule are ST-32's.
+ *
+ * Below 64em (a rem breakpoint, so large text gets it too) the rows stack.
  */
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { UserPlus } from "lucide-react";
-import {
-  api,
-  ApiError,
-  type Member,
-  type MemberInvite,
-  type MemberRole,
-  type ProductPlatformRole,
-} from "../../../../api.js";
-import { cn } from "../../../../lib/cn.js";
+import { api, ApiError } from "../../../../api.js";
 import { ActionMenu, type ActionMenuEntry } from "../../../../ui/ActionMenu.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
-import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
-import { toast } from "../../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
-import { roleLabel } from "../../../access/can.js";
 import { InviteDrawer } from "../../../access/InviteDrawer.js";
 import type { ProductName } from "../../../access/InviteDrawerParts.js";
 import {
-  cannotEditAreas,
+  cannotChangeProductRole,
   cannotTake,
-  describeMembersError,
   rowsOf,
   type MemberRow,
 } from "../../../access/membersModel.js";
 import { RoleSet } from "../../../access/RoleTag.js";
 import { useCan, useWriteGate } from "../../../access/useCan.js";
 import { useMe } from "../../../data/hooks.js";
-import { mutate } from "../../../data/mutations.js";
 import { qk } from "../../../data/queries.js";
 import { SettingsSection } from "../../../templates/Settings.js";
 import {
   AccessLines,
   accessLines,
-  Avatar,
   inviteLines,
 } from "../../platform/pages/platformMembersParts.js";
 
-/** The roles a row holds on this product; an invite is its one role. */
-const rolesOf = (r: MemberRow): MemberRole[] =>
-  r.kind === "member"
-    ? r.member.roles
-    : [
-        {
-          role: r.invite.role,
-          scope: r.invite.scope,
-          areas: r.invite.areas,
-          source: "invite",
-          bindingId: r.invite.bindingId,
-          grantedBy: r.invite.invitedBy,
-          grantedAt: r.invite.sentAt,
-        },
-      ];
-
-function Person({
-  name,
-  email,
-  you,
-  pending,
-}: {
-  name: string;
-  email: string;
-  you: boolean;
-  pending: boolean;
-}): React.ReactElement {
-  return (
-    <div className="flex min-w-0 items-center gap-3">
-      <Avatar name={name} email={email} pending={pending} />
-      <div className="min-w-0">
-        {name ? (
-          <p className="flex flex-wrap items-center gap-x-2 text-sm font-medium text-fg-strong">
-            <span className="[overflow-wrap:anywhere]">{name}</span>
-            {you ? (
-              <span className="text-xs font-normal text-fg-muted">You</span>
-            ) : null}
-          </p>
-        ) : null}
-        <p
-          className={
-            name
-              ? "text-sm text-fg-muted [overflow-wrap:anywhere]"
-              : "text-sm font-medium text-fg-strong [overflow-wrap:anywhere]"
-          }
-        >
-          {email}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-/** One table: Member, Role, and the optional Access-from and Actions columns. */
-function Table({
-  label,
-  head,
-  children,
-}: {
-  label: string;
-  head: string[];
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <table
-      role="table"
-      className="w-full text-start max-sm:block"
-      aria-label={label}
-    >
-      <thead role="rowgroup" className="max-sm:sr-only">
-        <tr
-          role="row"
-          className="border-b border-border bg-surface-sunken text-sm text-fg-strong"
-        >
-          {head.map((h) => (
-            <th
-              key={h || "actions"}
-              role="columnheader"
-              scope="col"
-              className={cn(
-                "px-5 py-2.5 text-start font-medium",
-                h === "Role" && "w-48",
-              )}
-            >
-              {h || <span className="sr-only">Actions</span>}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody role="rowgroup" className="divide-y divide-border max-sm:block">
-        {children}
-      </tbody>
-    </table>
-  );
-}
-
-const ROW = "max-sm:relative max-sm:block max-sm:px-5 max-sm:py-3 align-top";
-const CELL = "px-5 py-3 max-sm:block max-sm:p-0 max-sm:pb-2";
-
-function PlatformRows({
-  rows,
-  productName,
-}: {
-  rows: ProductPlatformRole[];
-  productName: ProductName;
-}): React.ReactElement {
-  return (
-    <Table label="Platform roles" head={["Member", "Role", "Access from"]}>
-      {rows.map((r) => (
-        <tr key={`${r.memberId}:${r.scope}`} role="row" className={ROW}>
-          <td role="cell" className={CELL}>
-            <Person name={r.name} email={r.email} you={false} pending={false} />
-          </td>
-          <td role="cell" className={CELL}>
-            <RoleSet
-              role={{ role: r.role, scope: r.scope, areas: r.areas }}
-              productName={productName}
-            />
-          </td>
-          <td role="cell" className={`${CELL} text-sm text-fg-muted`}>
-            {r.source === "root"
-              ? "Root rule"
-              : r.source === "creator"
-                ? "Created a product"
-                : "Added by a Superadmin"}
-          </td>
-        </tr>
-      ))}
-    </Table>
-  );
-}
+import {
+  CELL,
+  INDENT,
+  Person,
+  PlatformRows,
+  ROW,
+  RemoveDialog,
+  Table,
+  actionsButton,
+  focusWhen,
+  inviteButton,
+  rolesOf,
+  rowLabel,
+} from "./SettingsMembersParts.js";
 
 export function SettingsMembersPage({
   slug,
@@ -200,7 +71,8 @@ export function SettingsMembersPage({
     queryFn: () => api.productMembers(slug),
     enabled: canView,
   });
-  useLoadingAnnouncement("members", q.isPending && canView);
+  // A failed load announces nothing here: its alert speaks for it.
+  useLoadingAnnouncement("members", (q.isPending && canView) || q.isError);
   const products = React.useMemo(
     () => (me?.products ?? []).map((p) => ({ slug: p.slug, name: p.name })),
     [me?.products],
@@ -215,12 +87,24 @@ export function SettingsMembersPage({
     areas?: boolean;
   } | null>(null);
   const [removing, setRemoving] = React.useState<MemberRow | null>(null);
+  // Whom the drawer was opened from, so focus goes back to that row's menu.
+  const opener = React.useRef<string | null>(null);
 
   const view = q.data;
   const rows = React.useMemo(() => rowsOf(view), [view]);
   const editingMember =
     view?.members.find((m) => m.memberId === drawer?.member) ?? null;
   const live = write.allowed;
+
+  // After a Retry that works the alert is gone: focus goes to Invite people, not the body.
+  const wasFailed = React.useRef(false);
+  React.useEffect(() => {
+    if (q.isError) wasFailed.current = true;
+    else if (view && wasFailed.current) {
+      wasFailed.current = false;
+      focusWhen(inviteButton);
+    }
+  }, [q.isError, view]);
 
   if (!canView)
     return (
@@ -233,65 +117,102 @@ export function SettingsMembersPage({
         />
       </SettingsSection>
     );
-  if (q.isPending && canView)
+  if (q.isPending)
     return (
-      <SettingsSection id="members-admins" title="Admins">
-        <div className="space-y-3 p-5" aria-busy="true">
-          <Skeleton className="h-6 w-full" />
-          <Skeleton className="h-6 w-full" />
+      <SettingsSection
+        id="members-admins"
+        title="Admins"
+        actions={
+          <Button variant="primary" size="sm" disabled>
+            Invite people
+          </Button>
+        }
+      >
+        <div className="divide-y divide-border" aria-busy="true">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-3">
+              <Skeleton className="size-9 rounded-full" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Skeleton className="h-4 w-40 max-w-full" />
+                <Skeleton className="h-3.5 w-56 max-w-full" />
+              </div>
+              <Skeleton className="h-6 w-28 max-sm:hidden" />
+            </div>
+          ))}
         </div>
       </SettingsSection>
     );
   if (q.isError || !view)
     return (
       <SettingsSection id="members-admins" title="Admins">
-        <div className="p-5">
-          <ErrorState
-            error={q.error}
-            onRetry={() => void q.refetch()}
-            thing="Members"
-            compact
+        {q.error instanceof ApiError && q.error.status === 403 ? (
+          <EmptyState
+            kind="not-found"
+            variant="inline"
+            title={`You can't see who manages ${name}`}
+            description="Ask a Superadmin."
           />
-        </div>
+        ) : (
+          <div className="p-5">
+            <ErrorState
+              error={q.error}
+              onRetry={() => void q.refetch()}
+              thing="Members"
+              compact
+            />
+          </div>
+        )}
       </SettingsSection>
     );
 
-  const menu = (r: MemberRow): ActionMenuEntry[] => {
+  const menu = (r: MemberRow, why: string | undefined): ActionMenuEntry[] => {
     if (r.kind === "invite") {
-      const why = cannotTake(me, rolesOf(r)[0]!, productName, "revoke");
+      const cant = cannotTake(me, rolesOf(r)[0]!, productName, "revoke");
       return [
         {
           label: "Withdraw invite…",
           tone: "danger",
           onSelect: () => setRemoving(r),
-          ...(why ? { disabledReason: why } : {}),
+          ...(cant ? { disabledReason: cant } : {}),
         },
       ];
     }
-    const mine = r.member.roles.filter((x) => x.bindingId !== null);
-    const narrowable = mine.find((x) => x.role === "product_admin");
-    const editWhy = narrowable
-      ? cannotEditAreas(me, narrowable, productName)
-      : "Nothing to narrow.";
-    const removeWhy =
-      mine.map((x) => cannotTake(me, x, productName)).find(Boolean) ??
-      (mine.length === 0
-        ? "This comes from a rule. It can't be removed here."
-        : undefined);
+    const narrowable = r.member.roles.find(
+      (x) => x.role === "product_admin" && x.bindingId !== null,
+    );
+    const hint = why ? "Not available. See the row." : undefined;
     return [
       {
         label: "Edit areas…",
-        onSelect: () => setDrawer({ member: r.member.memberId, areas: true }),
-        ...(editWhy ? { disabledReason: editWhy } : {}),
+        onSelect: () => {
+          opener.current = rowLabel(r);
+          setDrawer({ member: r.member.memberId, areas: true });
+        },
+        ...(why || !narrowable
+          ? { disabledReason: hint ?? "This comes from a rule." }
+          : {}),
       },
       { type: "separator" },
       {
-        label: `Remove from ${name}…`,
+        label: r.member.you ? `Remove yourself…` : `Remove from ${name}…`,
         tone: "danger",
         onSelect: () => setRemoving(r),
-        ...(removeWhy ? { disabledReason: removeWhy } : {}),
+        ...(why ? { disabledReason: hint! } : {}),
       },
     ];
+  };
+
+  /** One reason per member row: the first role they hold here that the viewer cannot change. */
+  const reasonOf = (r: MemberRow): string | undefined => {
+    if (r.kind !== "member") return undefined;
+    const who = r.member.name || r.member.email;
+    const mine = r.member.roles;
+    if (mine.length === 0) return undefined;
+    for (const x of mine) {
+      const why = cannotChangeProductRole(me, who, x, slug, productName);
+      if (why) return why;
+    }
+    return undefined;
   };
 
   return (
@@ -313,26 +234,37 @@ export function SettingsMembersPage({
       <SettingsSection
         id="members-admins"
         title="Admins"
+        description={!live ? write.disabledReason : undefined}
         actions={
           <Button
+            id="members-invite"
             variant="primary"
             size="sm"
             iconStart={<UserPlus className="size-4" aria-hidden="true" />}
             disabled={!live}
             disabledReason={write.disabledReason}
-            onClick={() => setDrawer({ member: null })}
+            onClick={() => {
+              opener.current = null;
+              setDrawer({ member: null });
+            }}
           >
             Invite people
           </Button>
         }
       >
         {rows.length === 0 ? (
-          <EmptyState
-            kind="first-run"
-            variant="inline"
-            title="No product admins"
-            description="Superadmins below can still administer this product."
-          />
+          <div className="p-5">
+            <EmptyState
+              kind="first-run"
+              variant="inline"
+              title={`No one has ${name} admin yet`}
+              description={
+                view.platformRoles.length > 0
+                  ? `Platform roles below can still manage ${name}.`
+                  : undefined
+              }
+            />
+          </div>
         ) : (
           <Table
             label="Admins"
@@ -342,10 +274,17 @@ export function SettingsMembersPage({
               const email =
                 r.kind === "member" ? r.member.email : r.invite.email;
               const who = r.kind === "member" ? r.member.name : "";
-              const items = menu(r);
+              const why = reasonOf(r);
+              const items = menu(r, why);
+              const rule =
+                r.kind === "member" &&
+                r.member.roles.some((x) => x.bindingId === null);
               return (
                 <tr key={r.id} role="row" className={ROW}>
-                  <td role="cell" className={`${CELL} max-sm:pe-10`}>
+                  <td
+                    role="cell"
+                    className={`${CELL} group-data-[stacked]/t:pe-10`}
+                  >
                     <Person
                       name={who}
                       email={email}
@@ -353,7 +292,7 @@ export function SettingsMembersPage({
                       pending={r.kind === "invite"}
                     />
                   </td>
-                  <td role="cell" className={CELL}>
+                  <td role="cell" className={`${CELL} ${INDENT}`}>
                     <span className="flex min-w-0 flex-col items-start gap-1.5">
                       {rolesOf(r).map((x, i) => (
                         <RoleSet
@@ -363,20 +302,32 @@ export function SettingsMembersPage({
                         />
                       ))}
                     </span>
+                    {why && live ? (
+                      <p className="mt-1.5 text-xs text-fg-muted">{why}</p>
+                    ) : null}
                   </td>
-                  <td role="cell" className={`${CELL} max-sm:pb-0`}>
-                    <AccessLines
-                      lines={
-                        r.kind === "invite"
-                          ? inviteLines(r.invite)
-                          : accessLines(r.member, null, productName)
-                      }
-                    />
+                  <td
+                    role="cell"
+                    className={`${CELL} ${INDENT} group-data-[stacked]/t:pb-0`}
+                  >
+                    {rule ? (
+                      <span className="text-sm text-fg-muted">
+                        Comes from a rule
+                      </span>
+                    ) : (
+                      <AccessLines
+                        lines={
+                          r.kind === "invite"
+                            ? inviteLines(r.invite)
+                            : accessLines(r.member, null, productName)
+                        }
+                      />
+                    )}
                   </td>
                   {live ? (
                     <td
                       role="cell"
-                      className="w-12 px-5 py-3 text-end max-sm:absolute max-sm:end-2 max-sm:top-2 max-sm:w-auto max-sm:p-0"
+                      className={`px-5 py-3 text-end group-data-[stacked]/t:absolute group-data-[stacked]/t:end-2 group-data-[stacked]/t:top-2 group-data-[stacked]/t:w-auto group-data-[stacked]/t:p-0`}
                     >
                       <ActionMenu
                         label={`Actions for ${who || email}`}
@@ -404,10 +355,15 @@ export function SettingsMembersPage({
         member={editingMember}
         {...(drawer?.areas ? { startView: "areas" as const } : {})}
         onReopen={(member) => setDrawer({ member })}
-        onClose={() => setDrawer(null)}
+        onClose={() => {
+          setDrawer(null);
+          const back = opener.current;
+          if (back) focusWhen(() => actionsButton(back));
+        }}
         me={me}
         members={view.members}
         invites={view.invites}
+        platformRoles={view.platformRoles}
         products={products}
         productName={productName}
         writeReason={write.disabledReason}
@@ -417,87 +373,11 @@ export function SettingsMembersPage({
         slug={slug}
         name={name}
         row={removing}
+        rows={rows}
         members={view.members}
         onClose={() => setRemoving(null)}
         productName={productName}
       />
     </div>
-  );
-}
-
-/** Remove a person's roles on this product, or withdraw an invite. They keep their other roles. */
-function RemoveDialog({
-  slug,
-  name,
-  row,
-  members,
-  onClose,
-  productName,
-}: {
-  slug: string;
-  name: string;
-  row: MemberRow | null;
-  members: readonly Member[];
-  onClose: () => void;
-  productName: ProductName;
-}): React.ReactElement {
-  const invite: MemberInvite | null =
-    row?.kind === "invite" ? row.invite : null;
-  const live =
-    row?.kind === "member"
-      ? (members.find((m) => m.memberId === row.member.memberId) ?? row.member)
-      : null;
-  const who = live ? live.name || live.email : (invite?.email ?? "");
-  const ids = live
-    ? live.roles.flatMap((r) => (r.bindingId ? [r.bindingId] : []))
-    : invite
-      ? [invite.bindingId]
-      : [];
-  const label = invite
-    ? roleLabel(
-        {
-          role: invite.role,
-          scope: invite.scope,
-          areas: invite.areas,
-          source: "invite",
-        },
-        productName,
-      ).label
-    : `${name} admin`;
-  return (
-    <ConfirmDialog
-      open={row !== null}
-      onOpenChange={(o) => !o && onClose()}
-      intent="caution"
-      title={
-        invite
-          ? `Withdraw the invite for ${who}?`
-          : `Remove ${who} from ${name}?`
-      }
-      consequences={
-        invite
-          ? [`The link stops working. ${label} is not given.`]
-          : [
-              `${who} loses ${label}. Any other role they hold stays.`,
-              "The role stops applying within 30 seconds.",
-              "Every Superadmin is told.",
-            ]
-      }
-      confirmLabel={invite ? "Withdraw invite" : `Remove from ${name}`}
-      describeError={describeMembersError}
-      onConfirm={async () => {
-        for (const id of ids) {
-          try {
-            await mutate("revokeProductMember", slug, id);
-          } catch (e) {
-            // Already gone is the outcome we want.
-            if (!(e instanceof ApiError && e.status === 404)) throw e;
-          }
-        }
-        toast.success(
-          invite ? "Invite withdrawn" : `Removed ${who} from ${name}`,
-        );
-      }}
-    />
   );
 }

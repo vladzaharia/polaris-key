@@ -26,6 +26,7 @@ import {
   type Member,
   type MemberInvite,
   type MemberRole,
+  type ProductPlatformRole,
 } from "../../api.js";
 import { Button } from "../../ui/Button.js";
 import {
@@ -165,6 +166,8 @@ export interface InviteDrawerProps {
    * the product's own routes. `members` and `invites` are that product's.
    */
   productScope?: { slug: string; name: string };
+  /** Scoped: who reaches the product from above, matched against the addresses typed. */
+  platformRoles?: readonly ProductPlatformRole[];
   /** Scoped edit: open straight in the Edit areas view of the member's product role. */
   startView?: "areas";
 }
@@ -336,6 +339,16 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
         if (first) {
           setDraft(areasSeed(first));
           setView({ kind: "areas", bindingId: first.bindingId! });
+          // The title, not the unchecked radio: Space there would switch the mode.
+          window.setTimeout(
+            () =>
+              document
+                .querySelector<HTMLElement>(
+                  '[data-pk-overlay-header] [tabindex="-1"]',
+                )
+                ?.focus({ preventScroll: true }),
+            60,
+          );
         }
       }
     }
@@ -373,6 +386,10 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
   const invalid = tokens.filter((e) => !isEmail(e));
   const valid = all.filter(isEmail);
   const byEmail = new Map(members.map((m) => [m.email.toLowerCase(), m]));
+  const wide = new Map(
+    (props.platformRoles ?? []).map((p) => [p.email.toLowerCase(), p]),
+  );
+  const scopeName = productScope?.name ?? "";
   const waiting = new Map(invites.map((i) => [i.email.toLowerCase(), i]));
   const selfIn = valid.some((e) => e.toLowerCase() === selfEmail);
   const tooMany = valid.length > MAX_INVITES;
@@ -410,10 +427,14 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
   const sendable = valid.filter((e) => {
     const k = e.toLowerCase();
     if (k === selfEmail) return false;
+    // A Superadmin already manages every product: a binding would be redundant.
+    if (wide.get(k)?.role === "superadmin") return false;
     const m = byEmail.get(k);
     return !(m && holds(m, grant));
   });
-  const updating = sendable.filter((e) => byEmail.has(e.toLowerCase())).length;
+  const updating = sendable.filter(
+    (e) => byEmail.has(e.toLowerCase()) || wide.has(e.toLowerCase()),
+  ).length;
   const adding = sendable.length - updating;
 
   const problems: string[] = [];
@@ -439,6 +460,15 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
         part
           ? `${m.name || m.email} already has ${roleText} (${areaWordsOf(part.areas!)}). Adds the rest.`
           : `${m.name || m.email} is a member. Adds ${roleText}.`,
+      ];
+    }
+    const w = wide.get(k);
+    if (w) {
+      const n = w.name || w.email;
+      return [
+        w.role === "superadmin"
+          ? `${n} is a Superadmin and already manages ${scopeName}.`
+          : `${n} manages ${scopeName} through All products admin${w.areas ? ` (${areaWordsOf(w.areas)})` : ""}. Adds ${scopeName} admin.`,
       ];
     }
     if (waiting.has(k))
@@ -523,8 +553,13 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
     why = draftWhy;
   } else if (view.kind === "areas") {
     label = "Save areas";
-    rest = areasPicked && areasWhy === undefined;
-    why = !areasPicked ? "Choose at least one area" : areasWhy;
+    // Scoped, Save waits for a change.
+    const unchanged =
+      scoped && !!areaRole && sameDraft(draft, areasSeed(areaRole));
+    rest = areasPicked && areasWhy === undefined && !unchanged;
+    why = !areasPicked
+      ? "Choose at least one area"
+      : (areasWhy ?? (unchanged ? "Change an area first" : undefined));
   }
   const needWord = view.kind === "areas" ? widens : l2;
   const word = areasL2 ? WORD.all_products : WORD[draft.choice];
@@ -634,8 +669,19 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
             ...areasBody,
             ...(widens ? { confirm: "L2" as const } : {}),
           });
-        toList();
-        setNotice({ text: "Areas saved" });
+        if (productScope) {
+          onClose();
+          toast.success(
+            `${name} now manages ${
+              areasBody.areas === null
+                ? `every area of ${productScope.name}`
+                : areaWordsOf(areasBody.areas)
+            }`,
+          );
+        } else {
+          toList();
+          setNotice({ text: "Areas saved" });
+        }
       }
       setPending(false);
     } catch (e) {
@@ -669,7 +715,9 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
       invited.length + updated.length === 0
         ? "Nobody new to invite"
         : updated.length === 0
-          ? `Invited ${people(invited.length)}`
+          ? scoped && invited.length === 1
+            ? `Invited ${invited[0]!.email}`
+            : `Invited ${people(invited.length)}`
           : invited.length === 0
             ? `Updated ${people(updated.length)}`
             : `Invited ${people(invited.length)} and updated ${updated.length}`;
@@ -748,7 +796,9 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
         }}
         title={title}
         description={
-          editing && view.kind === "list" ? member!.email : undefined
+          editing && (view.kind === "list" || scoped)
+            ? member!.email
+            : undefined
         }
         unsaved={dirty && !pending}
         dismissible={!pending}
@@ -982,7 +1032,7 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
               <DiscardStrip
                 className="rounded-md border px-3"
                 onKeep={() => setAskBack(false)}
-                onDiscard={toList}
+                onDiscard={scoped ? onClose : toList}
               />
             ) : null}
             {err ? (
@@ -1056,9 +1106,11 @@ export function InviteDrawer(props: InviteDrawerProps): React.ReactElement {
               <Button
                 variant="outline"
                 disabled={pending}
-                onClick={() => (dirty ? setAskBack(true) : toList())}
+                onClick={() =>
+                  dirty ? setAskBack(true) : scoped ? onClose() : toList()
+                }
               >
-                Back to roles
+                {scoped ? "Cancel" : "Back to roles"}
               </Button>
             ) : (
               <Button

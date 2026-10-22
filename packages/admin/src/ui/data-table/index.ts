@@ -8,6 +8,7 @@ export {
   filterRows,
   tableCsv,
   useMediaQuery,
+  useNarrowRem,
 } from "./DataTable.js";
 export {
   FilterBar,

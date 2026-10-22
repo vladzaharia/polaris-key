@@ -25,7 +25,7 @@ beforeEach(resetCore);
 afterEach(cleanup);
 
 describe("settings layout", () => {
-  it("B-046: Members gives the name column the width and Role a fixed end track", async () => {
+  it("B-046: Members gives the name column the width and both tables share one column template", async () => {
     fns.productMembers.mockResolvedValue({
       product: "djdl",
       truncated: false,
@@ -59,9 +59,15 @@ describe("settings layout", () => {
       await screen.findAllByRole("columnheader", { name: "Member" })
     )[0]!;
     expect(head.className).not.toContain("w-3/5");
+    // ST-31.14 M1: one column template (a colgroup), no fixed Role track.
     expect(
       screen.getAllByRole("columnheader", { name: "Role" })[0]!.className,
-    ).toContain("w-48");
+    ).not.toContain("w-48");
+    expect(
+      screen
+        .getAllByRole("table", { name: "Admins" })[0]!
+        .querySelector("colgroup"),
+    ).not.toBeNull();
   });
 
   it("B-045: the miniatures sit three across only at lg, and the sign-in head wraps instead of truncating", () => {

@@ -433,6 +433,42 @@ function cases(): Case[] {
         await primaryInView(page);
       },
     },
+    // ST-31.14: no name or short address breaks inside a word in the Member cell.
+    {
+      name: "djdl:settings-members?words",
+      hash: "#/p/djdl/settings/members",
+      act: async (page) => {
+        const broken = await page.evaluate(() => {
+          const out: string[] = [];
+          for (const el of document.querySelectorAll<HTMLElement>(
+            'table[aria-label="Admins"] td:first-child p',
+          )) {
+            const node =
+              el.firstChild?.nodeType === 3
+                ? el.firstChild
+                : el.querySelector("span")?.firstChild;
+            if (!node || node.nodeType !== 3) continue;
+            const text = node.textContent ?? "";
+            if (text.length > 24) continue;
+            let at = 0;
+            for (const word of text.split(/\s+/)) {
+              const i = text.indexOf(word, at);
+              at = i + word.length;
+              const r = document.createRange();
+              r.setStart(node, i);
+              r.setEnd(node, i + word.length);
+              const tops = new Set(
+                [...r.getClientRects()].map((x) => Math.round(x.top)),
+              );
+              if (tops.size > 1) out.push(`${text}: ${word}`);
+            }
+          }
+          return out;
+        });
+        if (broken.length > 0)
+          throw new Error(`broken words: ${broken.join("; ")}`);
+      },
+    },
     // ST-31.14: the Invite drawer from the product's Members tab (role fixed, product fixed).
     {
       name: "djdl:settings-members?invite",
@@ -621,6 +657,8 @@ const TEXT200_CASES = [
   "global:platform-members?edit-areas",
   "global:platform-members?edit-roles",
 ];
+/** The product Members tab, with the check that no name breaks inside a word (ST-31.14). */
+const MEMBERS_TAB = ["djdl:settings-members", "djdl:settings-members?words"];
 /** The Members drawer's views (ST-31.12). */
 const DRAWER_CASES = [
   "djdl:settings-members?invite",
@@ -726,6 +764,10 @@ const VIEWPORTS: {
         rootFontPercent: 150,
         only: DRAWER_CASES,
       })),
+      // ST-31.14 B1: the product Members tab at a small tablet's width (large text on a desktop is
+      // e2e/productMembers.e2e.test.ts).
+      { label: "tablet-700", width: 700, height: 900, only: MEMBERS_TAB },
+
       {
         label: "phone-text200",
         width: 390,

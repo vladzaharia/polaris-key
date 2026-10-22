@@ -131,7 +131,7 @@ export function useMediaQuery(query: string): boolean {
 }
 
 /** Whether the window is narrower than `rem` root-font units (false without `rem`, or in jsdom). */
-function useNarrowRem(rem: number | undefined): boolean {
+export function useNarrowRem(rem: number | undefined): boolean {
   const get = (): boolean => {
     if (rem === undefined || typeof window === "undefined") return false;
     const px = parseFloat(

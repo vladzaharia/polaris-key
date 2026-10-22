@@ -16,6 +16,8 @@ import {
 import { RadioGroup } from "radix-ui";
 import type { AreaId, Me, Member, MemberRole } from "../../api.js";
 import { cn } from "../../lib/cn.js";
+import { Link } from "../router.js";
+import { r as routes } from "../routes.js";
 import { Checkbox } from "../../ui/Checkbox.js";
 import { RadioCards } from "../../ui/RadioCards.js";
 import { Select } from "../../ui/Select.js";
@@ -608,8 +610,18 @@ export function ScopedRole({
           </span>
         </p>
         <p className="text-xs text-fg-muted">
-          Platform roles are given in Platform &rarr; Members.
-          {platformWhy ? " Only a Superadmin can give them." : ""}
+          Platform roles are given in{" "}
+          {platformWhy ? (
+            "Platform → Members"
+          ) : (
+            <Link
+              to={routes.platformMembers()}
+              className="underline underline-offset-4"
+            >
+              Platform → Members
+            </Link>
+          )}
+          .{platformWhy ? " Only a Superadmin can give them." : ""}
         </p>
       </div>
       <AreaPicker
@@ -720,7 +732,9 @@ export function AreaPicker({
         ]}
       />
       {everyWhy ? (
-        <p className="text-xs text-fg-muted">You hold only some areas.</p>
+        <p className="text-xs text-fg-muted">
+          You can give only the areas you hold.
+        </p>
       ) : null}
       {hint ? <p className="text-xs text-fg-muted">{hint}</p> : null}
       <span className="sr-only" aria-live="polite">
@@ -751,8 +765,13 @@ export function AreaChecks({
   offNote?: string;
 }): React.ReactElement {
   // What is held shows even when its feature is off, so it can be taken away.
+  // Only the areas the signed-in member can give; one the binding holds shows too (dimmed).
   const shown = PRODUCT_AREAS.filter(
-    (a) => offered.includes(a) || areas.includes(a),
+    (a) =>
+      areas.includes(a) ||
+      (offered.includes(a) &&
+        (slug === "" ||
+          cannotGive(me, "product_admin", slug, [a]) === undefined)),
   );
   return (
     <div
