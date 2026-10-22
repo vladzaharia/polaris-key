@@ -243,11 +243,17 @@ function LicenseRecordBody({
       aria-label={`Tier: ${tierLabel ?? "No tier"}. Change tier`}
       iconStart={<Layers />}
       iconEnd={<ChevronDown />}
+      // A long tier name truncates (full name in the title and aria-label) rather than squeezing
+      // the title into a one-word-per-line column; on a phone the name is left to the Limits
+      // table and the button reads "Tier" (the gate rejects clipped text on a half-width button).
+      className="max-w-full sm:max-w-[16rem]"
       onClick={() => setDialog("tier")}
     >
       <span className="text-fg-muted conbig:sr-only">Tier</span>
       {tierLabel ? (
-        <span>{tierLabel}</span>
+        <span className="min-w-0 truncate max-sm:sr-only" title={tierLabel}>
+          {tierLabel}
+        </span>
       ) : (
         <span className="text-fg-muted">No tier</span>
       )}
@@ -290,7 +296,7 @@ function LicenseRecordBody({
         title={
           // The other end of the Licenses table's name (S-23 §6.1 shared-element): named
           // `pk-key` during a drill-down, fit-content like its source.
-          <span className="pk-vt-key inline-block max-w-full">
+          <span className="pk-vt-key block w-fit max-w-full">
             {licenseTitle(license)}
           </span>
         }

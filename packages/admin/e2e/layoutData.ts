@@ -1548,6 +1548,17 @@ export const LICENSE_DETAIL = {
   })),
 };
 
+/** CX-LREC's holder variants: lic_3 is a Waiting license (invited, no account yet), lic_10 a
+ *  Floating one ("anyone with the key", in key batch batch_oct). Same shape as lic_1. */
+export const LICENSE_DETAIL_WAITING = {
+  ...LICENSE_DETAIL,
+  ...LICENSES[2],
+};
+export const LICENSE_DETAIL_FLOATING = {
+  ...LICENSE_DETAIL,
+  ...LICENSES[9],
+};
+
 // ── Platform → Override migration (U-03): a run part-way through, so every section draws ─────
 
 const MIGRATION_AT = 1_790_000_000;
@@ -2041,11 +2052,15 @@ export const DATA_ROUTES: Record<string, unknown> = {
     FILES,
   [`${PROD}/license/licenses`]: { licenses: LICENSES },
   [`${PROD}/license/licenses/lic_1`]: LICENSE_DETAIL,
+  [`${PROD}/license/licenses/lic_3`]: LICENSE_DETAIL_WAITING,
+  [`${PROD}/license/licenses/lic_10`]: LICENSE_DETAIL_FLOATING,
   [`${PROD}/license/tiers`]: { tiers: TIERS },
   [`${PROD}/license/batches`]: { batches: BATCHES, nextCursor: null },
   [`${PROD}/license/batches/batch_oct`]: BATCHES[0],
   [`${PROD}/license/batches/batch_long`]: BATCHES[1],
   [`${PROD}/users/licenses/lic_1/relinks`]: { relinks: [] },
+  [`${PROD}/users/licenses/lic_3/relinks`]: { relinks: [] },
+  [`${PROD}/users/licenses/lic_10/relinks`]: { relinks: [] },
   [`${PROD}/config/catalog`]: CATALOG,
   [`${PROD}/config/profiles`]: { profiles: PROFILES },
   [`${PROD}/config/profiles/base`]: PROFILE,
