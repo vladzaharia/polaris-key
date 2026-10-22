@@ -160,9 +160,11 @@ describe("discovery's core.presentation", () => {
     const env = envWith();
     await tidewater(db, null);
     const { doc, res } = await discover(env, db);
+    // `portal` is always emitted (DISC-01, WIRE-CONTRACT-V4 §5.7); `presentation` is what this test omits.
     expect(Object.keys(doc.core).sort()).toEqual([
       "compat",
       "endpoints",
+      "portal",
       "registration",
     ]);
     // Q4: no ETag; the cache window is what bounds a change.
