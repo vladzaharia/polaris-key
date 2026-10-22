@@ -183,9 +183,9 @@ export function mayGrant(
  * platform scope, not by a product admin, so a product admin cannot remove someone from the
  * console. A binding that does not validate is a Superadmin's alone.
  *
- * One ruling departs from "no one removes a grant it could not have made": a `products:*` binding
- * is revoked or narrowed by a Superadmin alone (ST-31.3 review B1). A `products:*` holder could
- * otherwise strip another holder, and G2 already keeps the grant itself a Superadmin's.
+ * A `products:*` binding is revoked or narrowed by a Superadmin alone (ST-31.3 review B1). That
+ * keeps the rule intact: a `products:*` holder could not have made the grant (G2), so it may not
+ * strip it from another holder either.
  */
 export function mayRevoke(
   granter: Principal | null | undefined,

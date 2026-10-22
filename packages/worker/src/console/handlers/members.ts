@@ -28,7 +28,7 @@ import {
   type BindingRow,
 } from "../../core/rbac/bindings.js";
 import {
-  consoleDirectory,
+  consoleDirectoryRead,
   consoleRootHolders,
   type ConsoleDirectoryEntry,
 } from "../../services/identity/public.js";
@@ -77,6 +77,8 @@ interface Built {
   bindings: BindingRow[];
   /** A cap cut the bindings or the members. */
   truncated: boolean;
+  /** The erasure ledger was unreadable for some account, which was left out. */
+  incomplete: boolean;
 }
 
 async function build(c: AdminCtx, one = false): Promise<Built> {
@@ -87,7 +89,12 @@ async function build(c: AdminCtx, one = false): Promise<Built> {
   const bound = fetched.slice(0, bindingCap);
   const roots = await consoleRootHolders(c.env, c.db, c.now);
   const ids = [...new Set([...bound.map((b) => b.account_id!), ...roots])];
-  const dir = await consoleDirectory(c.env, c.db, ids, c.now);
+  const { entries: dir, incomplete } = await consoleDirectoryRead(
+    c.env,
+    c.db,
+    ids,
+    c.now,
+  );
   const names = new Map<string, string>();
   for (const e of dir.values()) names.set(e.memberId, e.name || e.email);
 
@@ -131,7 +138,7 @@ async function build(c: AdminCtx, one = false): Promise<Built> {
     members.length = memberCap;
     truncated = true;
   }
-  return { members, names, bindings: bound, truncated };
+  return { members, names, bindings: bound, truncated, incomplete };
 }
 
 /** `GET /members`. */
@@ -143,6 +150,7 @@ export async function handleMembersList(c: AdminCtx): Promise<Response> {
   return adminJson({
     rootRule: { group: c.env.PLATFORM_ADMIN_GROUP ?? null },
     truncated: built.truncated || fetchedInvites.length > LIMIT,
+    incomplete: built.incomplete,
     members,
     invites: invites.flatMap((row) => {
       const grant = rowToGrant(row);
@@ -169,7 +177,7 @@ export async function handleMembersList(c: AdminCtx): Promise<Response> {
 export async function handleMemberGet(c: AdminCtx): Promise<Response> {
   const id = c.params.memberId ?? "";
   if (!isMemberId(id)) return notFound();
-  const { members } = await build(c, true);
+  const { members, incomplete } = await build(c, true);
   const member = members.find((m) => m.memberId === id);
-  return member ? adminJson({ member }) : notFound();
+  return member ? adminJson({ member, incomplete }) : notFound();
 }

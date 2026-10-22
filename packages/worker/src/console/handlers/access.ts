@@ -21,15 +21,16 @@
  * Superadmin bindings of active accounts. The caller is never on their own list.
  */
 
+import { PRODUCT_SLUG_RE } from "@polaris-key/manifest";
 import { adminJson, err } from "../../core/console/respond.js";
 import { PRODUCT_AREAS, type AreaId } from "../../core/rbac/areas.js";
 import {
+  listProductAdminBindings,
   mergeAreas,
   rowToGrant,
-  type BindingRow,
 } from "../../core/rbac/bindings.js";
 import { can } from "../../core/rbac/can.js";
-import { consoleDirectory } from "../../services/identity/public.js";
+import { consoleDirectoryPeople } from "../../services/identity/public.js";
 import { isAreaId } from "../authz.js";
 import type { AdminCtx } from "../routes.js";
 import { byPerson, superadminAccountIds } from "./productMembers.js";
@@ -45,7 +46,10 @@ export interface AccessAdmin {
 /** At most this many are named. */
 export const ACCESS_ADMINS_LIMIT = 3;
 
-const SCOPE_RE = /^(platform|product:[a-z0-9][a-z0-9-]{0,62})$/;
+const isScope = (s: string) =>
+  s === "platform" ||
+  (s.startsWith("product:") &&
+    PRODUCT_SLUG_RE.test(s.slice("product:".length)));
 
 /** Does the caller hold any area of this product? Only then are its admins named. */
 function holdsAreaOf(c: AdminCtx, slug: string): boolean {
@@ -60,7 +64,7 @@ export async function handleAccessAdmins(c: AdminCtx): Promise<Response> {
   const scope = url.searchParams.get("scope") ?? "platform";
   const area = url.searchParams.get("area") ?? "console";
   const fields: string[] = [];
-  if (!SCOPE_RE.test(scope)) fields.push("scope");
+  if (!isScope(scope)) fields.push("scope");
   if (!isAreaId(area)) fields.push("area");
   if (fields.length)
     return err(400, "bad_request", "invalid scope or area", { fields });
@@ -76,12 +80,7 @@ export async function handleAccessAdmins(c: AdminCtx): Promise<Response> {
     (PRODUCT_AREAS as readonly string[]).includes(area) &&
     holdsAreaOf(c, scope.slice("product:".length))
   ) {
-    const rows = await c.db.all<BindingRow>(
-      `SELECT b.* FROM console_role_bindings b JOIN accounts a ON a.id = b.account_id
-        WHERE b.role = 'product_admin' AND b.scope = ? AND a.status = 'active'
-        ORDER BY b.granted_at, b.id LIMIT 200`,
-      scope,
-    );
+    const rows = await listProductAdminBindings(c.db, scope, 200);
     // One person's bindings on this product add up: their areas are the union (NULL = every area).
     const union = new Map<string, { areas: AreaId[] | null; at: number }>();
     for (const row of rows) {
@@ -112,7 +111,7 @@ export async function handleAccessAdmins(c: AdminCtx): Promise<Response> {
   }
 
   const supers = await superadminAccountIds(c.env, c.db, c.now);
-  const dir = await consoleDirectory(
+  const { people: dir, incomplete } = await consoleDirectoryPeople(
     c.env,
     c.db,
     [...candidates.map((x) => x.accountId), ...supers.map((s) => s.id)],
@@ -137,6 +136,7 @@ export async function handleAccessAdmins(c: AdminCtx): Promise<Response> {
   return adminJson({
     scope,
     area,
+    incomplete,
     admins: admins.slice(0, ACCESS_ADMINS_LIMIT),
   });
 }

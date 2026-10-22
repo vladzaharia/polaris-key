@@ -18450,8 +18450,16 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [rootRule, members, invites]
+                required: [rootRule, truncated, incomplete, members, invites]
                 properties:
+                  truncated:
+                    type: boolean
+                    description: A cap of 500 cut a list.
+                  incomplete:
+                    type: boolean
+                    description: >
+                      The erasure ledger could not be read for some account, which was left
+                      out. Try again.
                   rootRule:
                     type: object
                     required: [group]
@@ -18489,8 +18497,13 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [member]
+                required: [member, incomplete]
                 properties:
+                  incomplete:
+                    type: boolean
+                    description: >
+                      The erasure ledger could not be read for some account, which was left
+                      out. Try again.
                   member: { $ref: "#/components/schemas/ConsoleMember" }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }
         "403": { $ref: "#/components/responses/AdminForbidden" }
@@ -20226,20 +20239,35 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [product, members, invites, platformRoles]
+                required:
+                  [
+                    product,
+                    truncated,
+                    incomplete,
+                    members,
+                    invites,
+                    platformRoles,
+                  ]
                 properties:
                   product: { type: string }
+                  truncated:
+                    type: boolean
+                    description: A cap of 500 cut a list.
+                  incomplete:
+                    type: boolean
+                    description: >
+                      The erasure ledger could not be read for some account, which was left
+                      out. Try again.
                   members:
                     type: array
                     items:
                       type: object
-                      required:
-                        [memberId, name, email, lastSignInAt, you, roles]
+                      description: A Product admin does not see a last sign-in.
+                      required: [memberId, name, email, you, roles]
                       properties:
                         memberId: { type: string }
                         name: { type: string }
                         email: { type: string }
-                        lastSignInAt: { type: [integer, "null"] }
                         you: { type: boolean }
                         roles:
                           type: array
@@ -24635,12 +24663,15 @@ components:
         name: { type: [string, "null"] }
     ConsoleMember:
       type: object
-      required: [memberId, name, email, lastSignInAt, you, roles]
+      required: [memberId, name, email, lastSignInAt, disabled, you, roles]
       properties:
         memberId: { type: string, pattern: "^mbr_[A-Za-z0-9_-]{22}$" }
         name: { type: string }
         email: { type: string }
         lastSignInAt: { type: [integer, "null"] }
+        disabled:
+          type: boolean
+          description: The account is disabled, so the member cannot sign in.
         you: { type: boolean }
         roles:
           type: array

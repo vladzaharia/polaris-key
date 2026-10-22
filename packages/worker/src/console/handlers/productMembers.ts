@@ -14,7 +14,9 @@
  *
  * Privacy. A person is named by member id, display name and address, and by nothing else: the
  * account id stays inside this file's joins (`accountIdBoundary.test.ts`). An account that is
- * not active is not named. `truncated: true` says a cap of 500 cut a list.
+ * not active is not named. `truncated: true` says a cap of 500 cut a list; `incomplete: true` says the erasure
+ * ledger could not be read for some account, so it was left out. No last sign-in is returned: a
+ * Product admin learns who holds the product, not when each co-admin was last active.
  */
 
 import { adminJson, err, readBody } from "../../core/console/respond.js";
@@ -27,9 +29,9 @@ import {
   rowToGrant,
 } from "../../core/rbac/bindings.js";
 import {
-  consoleDirectory,
+  consoleDirectoryPeople,
   consoleRootHolders,
-  type ConsoleDirectoryEntry,
+  type ConsoleDirectoryPerson,
 } from "../../services/identity/public.js";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
@@ -54,8 +56,10 @@ export async function superadminAccountIds(
   return [...out].map(([id, source]) => ({ id, source }));
 }
 
+type PersonKey = Pick<ConsoleDirectoryPerson, "memberId" | "name" | "email">;
+
 /** Sorted for a stable page: name, then address, then member id. */
-export function byPerson(a: ConsoleDirectoryEntry, b: ConsoleDirectoryEntry) {
+export function byPerson(a: PersonKey, b: PersonKey) {
   return (
     (a.name || a.email).localeCompare(b.name || b.email) ||
     a.email.localeCompare(b.email) ||
@@ -78,11 +82,16 @@ export async function handleProductMembers(c: AdminCtx): Promise<Response> {
       ...supers.map((s) => s.id),
     ]),
   ];
-  const dir = await consoleDirectory(c.env, c.db, ids, c.now);
+  const { people: dir, incomplete } = await consoleDirectoryPeople(
+    c.env,
+    c.db,
+    ids,
+    c.now,
+  );
   const names = new Map<string, string>();
   for (const e of dir.values()) names.set(e.memberId, e.name || e.email);
 
-  const isYou = (accountId: string, e: ConsoleDirectoryEntry) =>
+  const isYou = (accountId: string, e: ConsoleDirectoryPerson) =>
     (c.session.aid !== undefined && c.session.aid === accountId) ||
     c.session.sub === e.memberId;
 
@@ -107,7 +116,13 @@ export async function handleProductMembers(c: AdminCtx): Promise<Response> {
   const members = [...roles]
     .map(([accountId, list]) => {
       const e = dir.get(accountId)!;
-      return { ...e, you: isYou(accountId, e), roles: list };
+      return {
+        memberId: e.memberId,
+        name: e.name,
+        email: e.email,
+        you: isYou(accountId, e),
+        roles: list,
+      };
     })
     .sort(byPerson);
 
@@ -141,9 +156,7 @@ export async function handleProductMembers(c: AdminCtx): Promise<Response> {
       source: grant.source,
     });
   }
-  platformRoles.sort((a, b) =>
-    byPerson(a as ConsoleDirectoryEntry, b as ConsoleDirectoryEntry),
-  );
+  platformRoles.sort((a, b) => byPerson(a as PersonKey, b as PersonKey));
 
   const invitesAll = await listAllInvites(c.db, c.now, LIMIT, scope);
   const invites = invitesAll.slice(0, LIMIT);
@@ -153,6 +166,7 @@ export async function handleProductMembers(c: AdminCtx): Promise<Response> {
       boundAll.length > LIMIT ||
       wideAll.length > LIMIT ||
       invitesAll.length > LIMIT,
+    incomplete,
     members,
     invites: invites.flatMap((row) => {
       const grant = rowToGrant(row);
