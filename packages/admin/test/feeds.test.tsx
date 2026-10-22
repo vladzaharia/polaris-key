@@ -566,7 +566,7 @@ describe("service tokens (F-33b.4)", () => {
     ).toContain("Never");
     const legacy = within(table).getByText("CI pull").closest("tr")!;
     // The console's date format, in the pill and in Expires.
-    expect(legacy.textContent).toMatch(/Legacy · works until [A-Z][a-z]{2} \d/);
+    expect(legacy.textContent).toMatch(/Legacy\s*works until [A-Z][a-z]{2} \d/);
     expect(
       within(table).getByText("Pusher").closest("tr")!.textContent,
     ).toContain("Publishes to npm");
@@ -597,15 +597,52 @@ describe("service tokens (F-33b.4)", () => {
     const m = await mainReady();
     expect(
       await within(m).findByText(
-        "Give CI and servers read access to djdl's private feeds",
+        "Give CI and servers read access to DJDL's private feeds",
       ),
     ).toBeTruthy();
     expect(m.textContent).toContain(
       "pkey feeds setup --ecosystem npm --owner djdl --token-env PKEY_REGISTRY_TOKEN",
     );
+    // One New token…, in the header, while the list is empty.
     expect(within(m).getAllByRole("button", { name: /New token/ }).length).toBe(
-      2,
+      1,
     );
+  });
+
+  it("an empty product with no private feed names no command", async () => {
+    const page = tokensPage({ tokens: [], serviceTokens: [] }) as {
+      feeds: Record<string, unknown>[];
+    };
+    boot("#/p/djdl/distribution/feeds/tokens", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        [TOKENS_URL]: {
+          ...page,
+          feeds: page.feeds.map((f) => ({ ...f, accessMode: "public" })),
+        },
+      },
+    });
+    const m = await mainReady();
+    await within(m).findByText(/read access to DJDL's private feeds/);
+    expect(m.textContent).not.toContain("pkey feeds setup");
+  });
+
+  it("the platform's Revoke all calls owner-bound read tokens registry tokens", async () => {
+    boot("#/platform/feeds/tokens", { extra: feedRoutes() });
+    const m = await mainReady();
+    await within(m).findByRole("table", { name: "Registry tokens" });
+    await userEvent.click(
+      within(m).getAllByRole("button", { name: /More actions/i })[0]!,
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Revoke all/ }),
+    );
+    const all = await screen.findByRole("alertdialog");
+    expect(all.textContent).toContain("Revoke the 1 active token?");
+    expect(all.textContent).toContain("1 registry token stops working");
+    expect(all.textContent).not.toContain("license token");
+    expect(all.textContent).not.toContain("service");
   });
 
   it("revokes by cit_ id at L2, names the kind in the toast, and keeps focus on the next row's actions", async () => {
@@ -736,7 +773,7 @@ describe("service tokens (F-33b.4)", () => {
         confirm.getAttribute("aria-disabled") === "true",
     ).toBe(true);
     await userEvent.type(
-      within(all).getByRole("textbox", { name: /Type djdl/ }),
+      within(all).getByRole("textbox", { name: /Type to confirm/ }),
       "djdl",
     );
     await userEvent.click(
@@ -871,6 +908,12 @@ describe("service tokens (F-33b.4)", () => {
       await within(dialog).findByText(/The server refused this label/),
     ).toBeTruthy();
     expect(within(dialog).queryByRole("alert")).toBeNull();
+    // Focus moves to the marked field.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(dialog).getByRole("textbox", { name: /Label/ }),
+      ),
+    );
   });
 
   it("returns focus to New token… when the shown-once dialog is done", async () => {

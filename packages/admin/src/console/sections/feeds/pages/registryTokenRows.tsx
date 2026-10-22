@@ -135,9 +135,12 @@ function AccessCell({
 function StatusCell({ t }: { t: TokenRow }): React.ReactElement {
   if (t.legacy && t.status === "active")
     return (
-      <StatusPill tone="warning">
-        Legacy · works until {dateOf(t.expiresAt)}
-      </StatusPill>
+      <span className="inline-flex flex-col items-start gap-0.5">
+        <StatusPill tone="warning">Legacy</StatusPill>
+        <span className="text-xs text-fg-muted">
+          works until {dateOf(t.expiresAt)}
+        </span>
+      </span>
     );
   return (
     <span className="inline-flex flex-col items-start gap-0.5">
@@ -163,10 +166,8 @@ function TokenCell({ t }: { t: TokenRow }): React.ReactElement {
     t.scopes.includes("publish") ? "read and publish" : null,
   ].filter((x): x is string => x !== null);
   return (
-    <span className="inline-flex min-w-[min(16rem,100%)] flex-col">
-      <span dir="auto" className="break-words">
-        {t.label}
-      </span>
+    <span dir="auto" className="inline-flex min-w-[min(16rem,100%)] flex-col">
+      <span className="[overflow-wrap:anywhere]">{t.label}</span>
       <span
         className="flex flex-wrap gap-x-1 font-mono text-xs text-fg-muted"
         title={t.tokenId}

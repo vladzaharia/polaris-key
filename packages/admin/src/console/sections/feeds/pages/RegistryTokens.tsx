@@ -33,6 +33,7 @@ import { toast } from "../../../../ui/toast.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { mutate } from "../../../data/mutations.js";
 import { useWriteGate } from "../../../access/useCan.js";
+import { useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { r } from "../../../routes.js";
 import { intentOf } from "../../core/pages/confirmGate.js";
@@ -111,6 +112,16 @@ function breakdown(live: TokenRow[]): { parts: string; licensee: number } {
         (t) =>
           !t.service &&
           !t.legacy &&
+          t.binding !== "license" &&
+          !t.scopes.includes("publish"),
+      ),
+      "registry",
+    ],
+    [
+      n(
+        (t) =>
+          !t.service &&
+          t.binding === "license" &&
           !t.scopes.includes("publish") &&
           !licensee(t),
       ),
@@ -166,10 +177,16 @@ function TokensTable({
   const live = rows.filter((t) => t.status === "active");
   const ended = rows.filter((t) => t.status !== "active");
   // Ended tokens fold away while any token is active; an all-ended list shows them.
+  const endedNoun = ended.every((t) => t.status === "revoked")
+    ? "revoked"
+    : "ended";
   const folded = !showEnded && live.length > 0 && ended.length > 0;
   const shown = folded ? live : rows;
   const service = licenseId === undefined && scope.kind === "product";
   const owner = query.data?.owner ?? "";
+  const productName =
+    useProduct(scope.kind === "product" ? scope.slug : null).data?.name ??
+    owner;
   const now = Date.now();
 
   /** Focus the next row's actions (or the previous one's, or New token…), never `<body>`. */
@@ -203,14 +220,9 @@ function TokensTable({
   };
 
   const sums = breakdown(live);
-  const emptyAction = (
-    <Button
-      iconStart={<Plus aria-hidden />}
-      onClick={() => onMintingChange(true)}
-      disabledReason={gates.mintReason}
-    >
-      New token…
-    </Button>
+  // The empty state's command names the first private feed (a service token is for those).
+  const firstPrivate = (query.data?.feeds ?? []).find(
+    (f) => f.enabled && f.accessMode !== "public" && f.ecosystem !== "godot",
   );
   return (
     <div ref={box} tabIndex={-1} className="space-y-4 outline-none">
@@ -246,7 +258,7 @@ function TokensTable({
         onRetry={() => void query.refetch()}
         exportCsv={false}
         mobile="cards"
-        cardBreakpoint="(max-width: 64em)"
+        cardBreakpoint="(max-width: 63.99em)"
         mobileCard={(t, primary) => (
           <TokenCard
             row={t}
@@ -267,9 +279,7 @@ function TokensTable({
               size="sm"
               onClick={() => setShowEnded(!showEnded)}
             >
-              {showEnded
-                ? "Hide ended"
-                : `Show ${ended.length} ${ended.every((t) => t.status === "revoked") ? "revoked" : "ended"}`}
+              {`${showEnded ? "Hide" : "Show"} ${ended.length} ${endedNoun}`}
             </Button>
           ) : undefined
         }
@@ -287,20 +297,23 @@ function TokensTable({
               kind="first-run"
               variant="inline"
               headingLevel={3}
-              title={`Give CI and servers read access to ${owner}'s private feeds`}
+              title={`Give CI and servers read access to ${productName}'s private feeds`}
               description={
-                <span className="block min-w-0 max-w-[calc(100vw-3rem)] space-y-2">
-                  <span className="block">
-                    Create a service token, then print each client's setup:
+                firstPrivate ? (
+                  <span className="block min-w-0 max-w-[calc(100vw-3rem)] space-y-2">
+                    <span className="block">
+                      Create a service token, then print each client's setup:
+                    </span>
+                    <CodeBlock
+                      code={`pkey feeds setup --ecosystem ${firstPrivate.ecosystem} --owner ${owner} --token-env ${TOKEN_ENV}`}
+                      language="sh"
+                      copy
+                    />
                   </span>
-                  <CodeBlock
-                    code={`pkey feeds setup --ecosystem npm --owner ${owner} --token-env ${TOKEN_ENV}`}
-                    language="sh"
-                    copy
-                  />
-                </span>
+                ) : (
+                  "Create a service token for when a feed turns private. Public feeds need none."
+                )
               }
-              primaryAction={emptyAction}
             />
           ) : (
             <EmptyState
@@ -383,7 +396,9 @@ function TokensTable({
         title={
           licenseId
             ? "Revoke every token of this license?"
-            : `Revoke all ${live.length} active token${live.length === 1 ? "" : "s"}?`
+            : live.length === 1
+              ? "Revoke the 1 active token?"
+              : `Revoke all ${live.length} active tokens?`
         }
         consequences={[
           ...(sums.parts
@@ -401,8 +416,9 @@ function TokensTable({
             : "Clients of private feeds need a new token.",
         ]}
         typedConfirmation={{
-          value: owner,
-          label: `Type ${owner} to confirm`,
+          // The object on screen: the license on its panel, else the product.
+          value: licenseId ?? owner,
+          label: "Type to confirm:",
         }}
         confirmLabel="Revoke all"
         describeError={(e) => errorCopy(e)}

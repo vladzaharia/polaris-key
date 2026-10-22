@@ -317,6 +317,15 @@ export function MintDialog({
       onMinted(res);
     } catch (err) {
       setFailure(err);
+      // A 422 marks fields: focus the first one.
+      if (err instanceof ApiError && err.fields?.length)
+        window.setTimeout(
+          () =>
+            formRef.current
+              ?.querySelector<HTMLElement>('[aria-invalid="true"]')
+              ?.focus(),
+          0,
+        );
     } finally {
       setSaving(false);
     }
