@@ -120,6 +120,9 @@ fun patchFrom(base: ByteArray, target: ByteArray): ByteArray = ZstdCompressCtx()
     c.compress(target)
 }
 
+/** A `pkey-chunks/1` ref (as the record carries it) and the objects behind it: the index and its bundles. */
+class ChunkSpec(val ref: JsonObject, val objects: Map<String, ByteArray>)
+
 /** A `container` pack of [payload] (one file, no gaps), with optional payload [deltas] (`from`, frame). */
 fun containerPack(
     packId: String,
@@ -128,6 +131,7 @@ fun containerPack(
     payload: ByteArray,
     type: String = "custom.blob",
     deltas: List<Pair<ByteArray, ByteArray>> = emptyList(),
+    chunks: ChunkSpec? = null,
 ): BuiltPack {
     val payloadSha = sha256Of(payload)
     val index = canonicalJson(
@@ -162,8 +166,10 @@ fun containerPack(
         put("full", ref(payload))
         put("files", JsonObject(ref(index) + mapOf("format" to JsonPrimitive("pkey-files/1"), "layout" to JsonPrimitive("container"), "gaps" to ref(gaps))))
         if (deltaJson.isNotEmpty()) put("deltas", JsonArray(deltaJson))
+        if (chunks != null) put("chunks", chunks.ref)
     }
     val jws = PackFixtures.release.sign("pkey-release+jws", record(packId, version, seq, type, listOf(v), emptyMap()))
+    if (chunks != null) objects.putAll(chunks.objects)
     objects[sha256Of(index)] = index
     objects[sha256Of(payload)] = payload
     objects[sha256Of(gaps)] = gaps
@@ -203,6 +209,16 @@ class ByteServer(vararg packs: BuiltPack) {
     val recordRequests = ArrayList<String>()
     /** Objects that answer 404. */
     val missing = HashSet<String>()
+    /** Answer every ranged request (one with a length: a chunk bundle run) with this status. */
+    @Volatile var rangeStatus: Int? = null
+    /** Fail every ranged request with no response at all (a dropped connection). */
+    @Volatile var rangeDrops = false
+    /** Answer every request for these objects with this status (a refused full payload, say). */
+    val statusFor = HashMap<String, Int>()
+    /** Fail every request for these objects with no response at all. */
+    val dropFor = HashSet<String>()
+    /** Serve these objects with other bytes than their hash names (a tampered bundle). */
+    val tampered = HashMap<String, ByteArray>()
     /** Cut the next transfer of this object after this many bytes (an interrupted download). */
     val cutAfter = HashMap<String, Int>()
 
@@ -222,8 +238,13 @@ class ByteServer(vararg packs: BuiltPack) {
 
     val fetchObject: ObjectFetch = { req ->
         synchronized(this) { objectRequests += req }
-        val b = objects[req.sha256]
-        if (b == null || req.sha256 in missing) {
+        if (req.length != null && rangeDrops) throw java.io.IOException("connection dropped")
+        if (req.sha256 in dropFor) throw java.io.IOException("connection dropped")
+        val b = tampered[req.sha256] ?: objects[req.sha256]
+        val forced = (if (req.length != null) rangeStatus else null) ?: statusFor[req.sha256]
+        if (forced != null) {
+            ObjectResponse(forced, null, null, ByteStream.empty)
+        } else if (b == null || req.sha256 in missing) {
             ObjectResponse(404, null, null, ByteStream.empty)
         } else {
             val end = req.length?.let { minOf(b.size.toLong(), req.offset + it) } ?: b.size.toLong()
