@@ -260,10 +260,18 @@ describe("Personal tokens: Yours", () => {
       within(dialog).getByText("Revoke pkey on ada-mbp.local?"),
     ).toBeTruthy();
     expect(
-      within(dialog).getByText("pkey on that computer stops working at once."),
+      within(dialog).getByText(
+        (_, el) =>
+          el?.tagName === "LI" &&
+          el.textContent === "pkey on that computer stops working at once.",
+      ),
     ).toBeTruthy();
     expect(
-      within(dialog).getByText("Run pkey login there to sign in again."),
+      within(dialog).getByText(
+        (_, el) =>
+          el?.tagName === "LI" &&
+          el.textContent === "Run pkey login there to sign in again.",
+      ),
     ).toBeTruthy();
     expect(
       within(dialog).getByRole("button", { name: "Revoke token" }).className,
@@ -352,11 +360,18 @@ describe("Personal tokens: Everyone", () => {
     const dialog = await openActions(table, "pkey on ada-mbp.local", user);
     expect(
       within(dialog).getByText(
-        "pkey on that computer stops working at once, for ada@example.com.",
+        (_, el) =>
+          el?.tagName === "LI" &&
+          el.textContent ===
+            "pkey on that computer stops working at once, for ada@example.com.",
       ),
     ).toBeTruthy();
     expect(
-      within(dialog).getByText("They run pkey login there to sign in again."),
+      within(dialog).getByText(
+        (_, el) =>
+          el?.tagName === "LI" &&
+          el.textContent === "They run pkey login there to sign in again.",
+      ),
     ).toBeTruthy();
     expect(within(dialog).queryByText(/Installs using/)).toBeNull();
   });

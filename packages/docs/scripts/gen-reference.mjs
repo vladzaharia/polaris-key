@@ -935,10 +935,16 @@ function consoleTour() {
       ? `${cell.replace(/^\[([^\]]+)\]\([^)]*\)$/, "$1")} (platform admins)`
       : cell;
   };
+  // Pages not in the sidebar that the account menu opens (UserMenu.tsx).
+  const ACCOUNT_MENU_PAGES = new Set(["personal-tokens"]);
   const row = (p, url) => [
     `**${p.label}**`,
     `\`${url}\``,
-    p.inNav ? "Sidebar" : "Tab or sub-page",
+    p.inNav
+      ? "Sidebar"
+      : ACCOUNT_MENU_PAGES.has(p.page)
+        ? "Account menu"
+        : "Tab or sub-page",
     docsCell(p.docs),
   ];
   const cols = ["Page", "URL", "Where", "Docs"];

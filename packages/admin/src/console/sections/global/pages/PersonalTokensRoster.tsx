@@ -10,7 +10,11 @@
  */
 
 import * as React from "react";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import { api, type AdminPersonalToken } from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
@@ -75,8 +79,8 @@ const REVOKED_BY: Record<string, string> = {
 const emailOf = (t: AdminPersonalToken): React.ReactNode =>
   t.email ? (
     <span
-      dir="auto"
-      className="inline-block max-w-[13rem] truncate align-bottom max-sm:max-w-full max-sm:whitespace-normal [overflow-wrap:anywhere]"
+      dir="ltr"
+      className="inline-block max-w-full align-bottom max-[1279px]:max-w-[13rem] max-[1279px]:truncate max-sm:whitespace-normal [overflow-wrap:anywhere]"
       title={t.email}
     >
       {t.email}
@@ -141,6 +145,11 @@ const COLUMNS: DataColumn<AdminPersonalToken>[] = [
 
 export function PersonalTokensRoster(): React.ReactElement {
   const tokens = usePersonalTokens();
+  const queryClient = useQueryClient();
+  const statusesRef = React.useRef<ReadonlyMap<string, string>>(new Map());
+  statusesRef.current = new Map(
+    (tokens.data ?? []).map((t) => [t.id, t.status]),
+  );
   useLoadingAnnouncement("Personal tokens", tokens.isPending);
   const write = useWriteGate("platform");
   const [state, setState] = useTableUrlState("everyone", {
@@ -202,8 +211,11 @@ export function PersonalTokensRoster(): React.ReactElement {
               title="No personal tokens"
               description={
                 <>
-                  People make them with <code>pkey login</code> or in{" "}
-                  <AccountPackagesLink />.
+                  People make them with{" "}
+                  <code className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-xs">
+                    pkey login
+                  </code>{" "}
+                  or in <AccountPackagesLink />.
                 </>
               }
               docs={docsUrl("cliReference")}
@@ -223,8 +235,12 @@ export function PersonalTokensRoster(): React.ReactElement {
         describeError={(e) => errorCopy(e)}
         onConfirm={async () => {
           await mutate("revokePersonalToken", revoking!.id);
-          toast.success("Personal token revoked");
-          focusActionsAfter(tokens.data ?? [], revoking!.id);
+          toast.success("Token revoked");
+          void focusActionsAfter(
+            queryClient.invalidateQueries({ queryKey: qk.personalTokens() }),
+            () => statusesRef.current,
+            revoking!.id,
+          );
         }}
       >
         {copy?.packagesNote ? <PackagesNote owner={revoking?.email} /> : null}

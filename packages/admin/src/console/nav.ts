@@ -947,7 +947,7 @@ export const GLOBAL_PAGES: NavPage[] = [
     label: "Personal tokens",
     keywords: "pkeyp packages read registry person revoke",
     path: "personal-tokens",
-    icon: UserRound,
+    icon: KeyRound,
     docs: "/docs/features/ship-builds/packages/",
     // ST-34.11: reached from the account menu, not the sidebar (admin-4-21; D-9).
     inNav: false,

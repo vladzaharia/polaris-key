@@ -324,3 +324,115 @@ describe.concurrent("Personal tokens: Yours", () => {
     }
   }
 });
+
+/**
+ * Focus after a revoke never falls to `<body>` (ST-34.11 item 15): the refetch is slow and
+ * answers the row revoked; focus then lands on the next row that stays active, else the previous.
+ */
+describe.concurrent("Personal tokens: focus after revoke", () => {
+  for (const w of [1440, 390]) {
+    for (const tab of ["yours", "everyone"] as const) {
+      for (const [victim, expected] of [
+        ["Token B", "Token C"],
+        ["Token C", "Token B"],
+      ] as const) {
+        it(`${tab} at ${w}: revoking ${victim} focuses ${expected}`, async () => {
+          const ctx = await browser.newContext({
+            viewport: { width: w, height: w > 600 ? 900 : 844 },
+            reducedMotion: "reduce",
+          });
+          const rows = ["a", "b", "c"].map((k) =>
+            row({
+              id: `pt_${k}`,
+              label: `Token ${k.toUpperCase()}`,
+              status: "active",
+            }),
+          );
+          // Token A is already revoked: it is never a target.
+          rows[0] = row({
+            id: "pt_a",
+            label: "Token A",
+            status: "revoked",
+            revokedAt: NOW - 60,
+            revokeReason: "manual",
+          });
+          let revokedId: string | null = null;
+          const list = () => ({
+            tokens: rows.map((t) =>
+              t.id === revokedId
+                ? { ...t, status: "revoked", revokedAt: NOW }
+                : t,
+            ),
+          });
+          await ctx.route("**/*", async (route) => {
+            const url = new URL(route.request().url());
+            const p = url.pathname;
+            if (p.startsWith("/manage/api/")) {
+              if (route.request().method() === "DELETE") {
+                revokedId = p.split("/").pop()!;
+                return route.fulfill({ json: { ok: true } });
+              }
+              if (
+                p === "/manage/api/me/personal-tokens" ||
+                p === "/manage/api/account-tokens"
+              ) {
+                // The refetch after a revoke is slow: focus must wait for it.
+                if (revokedId) await new Promise((r) => setTimeout(r, 700));
+                return route.fulfill({ json: list() });
+              }
+              const body: Record<string, unknown> = {
+                "/manage/api/me": ME,
+                "/manage/api/products": { products: [] },
+                "/manage/api/attention": { items: [] },
+              };
+              return body[p]
+                ? route.fulfill({ json: body[p] })
+                : route.fulfill({ status: 404, json: { error: "not_found" } });
+            }
+            const res = await route.fetch();
+            const headers = { ...res.headers() };
+            if (p.endsWith(".html")) headers["content-security-policy"] = CSP;
+            return route.fulfill({ response: res, headers });
+          });
+          const page = await ctx.newPage();
+          try {
+            await page.goto(
+              `${base}/manage.html#/personal-tokens${tab === "everyone" ? "?who=everyone" : ""}`,
+            );
+            await page
+              .getByRole("heading", { level: 1, name: "Personal tokens" })
+              .waitFor();
+            await page
+              .getByRole("button", { name: `Actions for ${victim}` })
+              .click();
+            await page.getByRole("menuitem", { name: /Revoke/ }).click();
+            await page.getByRole("alertdialog").waitFor();
+            await page.getByRole("button", { name: "Revoke token" }).click();
+            await page.getByRole("alertdialog").waitFor({ state: "hidden" });
+            await page.waitForFunction(
+              (label) =>
+                document.activeElement?.getAttribute("aria-label") ===
+                `Actions for ${label}`,
+              expected,
+              { timeout: 5000 },
+            );
+            // The revoked row really is revoked by then.
+            expect(
+              await page
+                .locator(`[data-row-id="pt_${victim.slice(-1).toLowerCase()}"]`)
+                .filter({ visible: true })
+                .first()
+                .innerText(),
+            ).toMatch(/Revoked/);
+            if (SHOTS)
+              await page.screenshot({
+                path: `${SHOTS}/focus-${tab}-${w}-${victim.slice(-1)}.png`,
+              });
+          } finally {
+            await closeContext(ctx);
+          }
+        });
+      }
+    }
+  }
+});

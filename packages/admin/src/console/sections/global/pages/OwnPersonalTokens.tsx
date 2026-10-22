@@ -10,7 +10,11 @@
 
 import * as React from "react";
 import { LogIn } from "lucide-react";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import { api, ApiError, type OwnPersonalToken } from "../../../../api.js";
 import { docsUrl } from "../../../../lib/docsLinks.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
@@ -101,6 +105,11 @@ const COLUMNS: DataColumn<OwnPersonalToken>[] = [
 
 export function OwnPersonalTokens(): React.ReactElement {
   const tokens = useMyPersonalTokens();
+  const queryClient = useQueryClient();
+  const statusesRef = React.useRef<ReadonlyMap<string, string>>(new Map());
+  statusesRef.current = new Map(
+    (tokens.data ?? []).map((t) => [t.id, t.status]),
+  );
   // Two tables share the page's query across the tabs: each keeps its own keys.
   const [state, setState] = useTableUrlState("yours", {
     facets: ["status"],
@@ -199,7 +208,11 @@ export function OwnPersonalTokens(): React.ReactElement {
         onConfirm={async () => {
           await mutate("revokeMyPersonalToken", revoking!.id);
           toast.success("Token revoked");
-          focusActionsAfter(tokens.data ?? [], revoking!.id);
+          void focusActionsAfter(
+            queryClient.invalidateQueries({ queryKey: qk.myPersonalTokens() }),
+            () => statusesRef.current,
+            revoking!.id,
+          );
         }}
       >
         {copy?.packagesNote ? <PackagesNote /> : null}

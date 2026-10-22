@@ -197,9 +197,11 @@ export function PackagesCard(): React.ReactElement | null {
                 ) : null}
               </div>
               {listed.length === 0 ? (
-                <p className="text-sm text-fg-muted">
-                  {t("locker.packages.none")}
-                </p>
+                hasPersonal ? (
+                  <p className="text-sm text-fg-muted">
+                    {t("locker.packages.none")}
+                  </p>
+                ) : null
               ) : (
                 <ul className="divide-y divide-border border-y border-border -mx-4 desk:-mx-5 bigtext:max-sm:mx-0 [&>li]:px-4 desk:[&>li]:px-5 bigtext:max-sm:[&>li]:px-0">
                   {shown.map((tok, i) => (

@@ -122,7 +122,14 @@ export function UserMenu({
         <DropdownMenuItem asChild>
           <Link
             to={r.personalTokens()}
-            onClick={() => (navigated.current = true)}
+            onClick={() => {
+              navigated.current = true;
+              // Already on the page: no route change moves focus, so the heading takes it.
+              if (window.location.hash.split("?")[0] === r.personalTokens())
+                requestAnimationFrame(() =>
+                  document.querySelector<HTMLElement>("h1")?.focus(),
+                );
+            }}
           >
             <KeyRound aria-hidden />
             Personal tokens

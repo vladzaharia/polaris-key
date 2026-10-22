@@ -64,10 +64,10 @@ export function ScopeTag({ scope }: { scope: string }): React.ReactElement {
 export function TokenCell({ t }: { t: TokenLike }): React.ReactElement {
   const host = t.scope === "admin" ? hostOfLabel(t.label) : null;
   return (
-    <span className="inline-flex min-w-0 max-w-[15rem] flex-col max-sm:max-w-full">
+    <span className="inline-flex min-w-0 max-w-full flex-col max-[1279px]:max-w-[15rem]">
       <span
         dir="auto"
-        className="truncate max-sm:whitespace-normal [overflow-wrap:anywhere]"
+        className="max-[1279px]:truncate max-sm:whitespace-normal [overflow-wrap:anywhere]"
         title={t.label}
       >
         {host ?? t.label}
@@ -117,7 +117,9 @@ export function TokenCard({
 }): React.ReactElement {
   return (
     <div className="space-y-1.5">
-      <div className="@max-[18rem]:pe-9">{primary}</div>
+      <div className="@max-[18rem]:pe-9 [&_*]:max-w-full! [&_*]:whitespace-normal! [&_*]:[overflow-wrap:anywhere]">
+        {primary}
+      </div>
       {extra}
       <div className="flex flex-wrap items-center gap-2">
         <ScopeTag scope={t.scope} />
@@ -145,7 +147,16 @@ export function AccountPackagesLink({
       rel="noreferrer"
     >
       {children}
+      <span aria-hidden> ↗</span>
     </a>
+  );
+}
+
+function Code({ children }: { children: React.ReactNode }): React.ReactElement {
+  return (
+    <code className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-xs">
+      {children}
+    </code>
   );
 }
 
@@ -164,7 +175,7 @@ export function revokeCopy(
 ): {
   action: RevokeAction;
   title: string;
-  consequences: string[];
+  consequences: React.ReactNode[];
   packagesNote: boolean;
 } {
   const forOwner = owner ? `, for ${owner}` : "";
@@ -174,12 +185,18 @@ export function revokeCopy(
       action: "ownToken.revokeAdmin",
       title: host ? `Revoke pkey on ${host}?` : "Revoke this admin token?",
       consequences: [
-        host
-          ? `pkey on that computer stops working at once${forOwner}.`
-          : `This admin token stops working at once${forOwner}.`,
-        owner
-          ? "They run pkey login there to sign in again."
-          : "Run pkey login there to sign in again.",
+        host ? (
+          <>
+            <Code>pkey</Code> on that computer stops working at once
+            {forOwner}.
+          </>
+        ) : (
+          `This admin token stops working at once${forOwner}.`
+        ),
+        <>
+          {owner ? "They run " : "Run "}
+          <Code>pkey login</Code> there to sign in again.
+        </>,
       ],
       packagesNote: false,
     };
@@ -241,24 +258,41 @@ export function expiresColumn<T extends TokenLike>(): DataColumn<T> {
   };
 }
 
+/** The ids of the rows on screen (table rows or phone cards), in displayed order. */
+export function displayedRowIds(): string[] {
+  return Array.from(
+    document.querySelectorAll<HTMLElement>(".pk-vt-table [data-row-id]"),
+  )
+    .filter((el) => el.getClientRects().length > 0)
+    .map((el) => el.dataset.rowId!);
+}
+
 /**
- * After a revoke the dialog closes onto nothing: the next row's (or card's) Actions button takes
- * focus, else the heading.
+ * After a revoke the dialog closes onto nothing. Read the displayed order, wait for the refetch
+ * (the revoked row now says so), then focus the Actions button of the next row that stays
+ * active, else the previous one, else the heading. Never `<body>`.
  */
-export function focusActionsAfter(
-  rows: readonly { id: string }[],
+export async function focusActionsAfter(
+  refetched: Promise<unknown>,
+  readStatus: () => ReadonlyMap<string, string>,
   id: string,
-): void {
-  const at = rows.findIndex((t) => t.id === id);
-  requestAnimationFrame(() =>
-    requestAnimationFrame(() => {
-      const buttons = document.querySelectorAll<HTMLElement>(
-        '.pk-vt-table button[aria-label^="Actions for"]',
-      );
-      (
-        buttons[Math.min(Math.max(at, 0), buttons.length - 1)] ??
-        document.querySelector<HTMLElement>("h1")
-      )?.focus();
-    }),
-  );
+): Promise<void> {
+  const order = displayedRowIds();
+  await refetched.catch(() => undefined);
+  const status = readStatus();
+  const at = order.indexOf(id);
+  const stays = (x: string) => status.get(x) === "active";
+  const next = order.slice(at + 1).find(stays);
+  const prev = order.slice(0, Math.max(at, 0)).reverse().find(stays);
+  const target = next ?? prev;
+  const focus = () => {
+    const btn = target
+      ? document.querySelector<HTMLElement>(
+          `[data-row-id="${CSS.escape(target)}"] button[aria-label^="Actions for"]`,
+        )
+      : null;
+    (btn ?? document.querySelector<HTMLElement>("h1"))?.focus();
+  };
+  // The dialog returns focus on close; land after it.
+  requestAnimationFrame(() => requestAnimationFrame(focus));
 }
