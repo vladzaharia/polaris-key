@@ -219,6 +219,7 @@ export function licenseRows(c: KitCtx): ReactNode {
         has("signin.choice.group") ? plain(c, "signin.choice.group") : ""
       }
       data-part="license-list"
+      data-scroll=""
       data-key={has("signin.choice.group") ? "signin.choice.group" : undefined}
     >
       {entries.map(rowFor)}
