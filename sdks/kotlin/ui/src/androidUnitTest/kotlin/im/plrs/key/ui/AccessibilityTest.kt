@@ -105,7 +105,7 @@ class AccessibilityTest {
         for ((name, content) in kitScreens) {
             show(content)
             // The update banner sits over the product, which brings its own heading.
-            checkScreen(name, failures, requireHeading = name != "update-banner")
+            checkScreen(name, failures, requireHeading = name != "updatePrompt-ready")
         }
         assertTrue(failures.joinToString("\n"), failures.isEmpty())
     }
@@ -142,7 +142,7 @@ class AccessibilityTest {
     @Test
     fun activationReadsInOrder() {
         host(PolarisBranding.None)
-        show(kitScreens.first { it.first == "gate-activation" }.second)
+        show(kitScreens.first { it.first == "polarisKeyGate-needs-activation" }.second)
         val copy = sampleCopy
         val order = rule.onRoot().fetchSemanticsNode().let { root ->
             val out = mutableListOf<String>()

@@ -279,7 +279,7 @@ describe("the modernity lint (UI-KITS §7.3)", () => {
     for (const src of [
       "../../../packages/sdk-react/test/visual/__screenshots__/Activate.parsed/1440-dark.png",
       "../../../sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__/activate-parsed-dark.png",
-      "../../../sdks/kotlin/ui/src/test/snapshots/sign-in/foldable-673x841-polaris-light.png",
+      "../../../sdks/kotlin/ui/src/test/snapshots/signInHandoff-code/foldable-673x841-polaris-light.png",
       "../../../packages/sdk-node/test/cli/golden/gate-refused-needs-activation-dark.png",
       "shots/godot-built/gate-dark.png",
       "shots/ipad-built/Welcome.default-dark.jpg",

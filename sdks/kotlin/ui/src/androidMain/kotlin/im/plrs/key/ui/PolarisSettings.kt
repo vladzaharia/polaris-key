@@ -97,6 +97,7 @@ public fun PolarisSettings(
         navigationIcon = navigationIcon,
         onSet = state::set,
         onReset = state::reset,
+        onChannel = state::setChannel,
     )
 }
 
@@ -113,6 +114,8 @@ public fun PolarisSettingsScreen(
     navigationIcon: (@Composable () -> Unit)? = null,
     onSet: ((String, JsonElement) -> Unit)? = null,
     onReset: ((String) -> Unit)? = null,
+    /** The host's handler for a release-channel pick; without it the channel choice draws only when locked (with its reason). */
+    onChannel: ((String) -> Unit)? = null,
 ) {
     val copy = PolarisTheme.copy
     if (ui.loading) {
@@ -141,6 +144,7 @@ public fun PolarisSettingsScreen(
             }
             val valuesCard: @Composable (Modifier) -> Unit = { m ->
                 Column(m, verticalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
+                    ui.channel?.let { PolarisChannelPicker(it, onSelect = onChannel) }
                     if (ui.loadFailure != null) {
                         PolarisSection(null) {
                             Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -291,6 +295,7 @@ public fun PolarisCopy.sourceLabel(source: ConfigSource?): String? = when (sourc
 /** Catalog copy for a typed settings failure; never display a backend detail verbatim. */
 internal fun PolarisCopy.settingsFailureMessage(failure: PolarisSettingsFailure?): String = when (failure?.code) {
     ErrorCode.managedByAdmin -> settingsLocked
+    ErrorCode.channelNotAllowed -> KitCopy.bundled.format("core.codes.channel_not_allowed.message", coreLocale())
     else -> settingsLoadFailed
 }
 
