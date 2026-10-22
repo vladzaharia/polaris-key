@@ -128,6 +128,73 @@ describe("Roles tab at 200 % text", () => {
   }
 });
 
+describe("Roles tab matrix at 200 % text", () => {
+  for (const [w, h] of [
+    [640, 900],
+    [700, 900],
+    [1024, 768],
+    [1280, 800],
+    [1440, 900],
+  ] as const) {
+    it(`${w}px: no cell overflows, no header names overlap, no sideways scroll`, async () => {
+      const { page, close } = await open(w, h, 200);
+      try {
+        const found = await page.evaluate(() => {
+          const out: string[] = [];
+          const cells = [
+            ...document.querySelectorAll<HTMLElement>("table th, table td"),
+          ].filter((c) => c.offsetParent !== null);
+          for (const c of cells) {
+            if (c.scrollWidth > c.clientWidth + 1)
+              out.push(
+                `${c.textContent?.trim().slice(0, 20)}: content ${c.scrollWidth - c.clientWidth}px wider than its cell`,
+              );
+            const box = c.getBoundingClientRect();
+            for (const el of c.querySelectorAll<HTMLElement>("*")) {
+              const r = el.getBoundingClientRect();
+              if (
+                r.width > 0 &&
+                (r.right > box.right + 1 || r.left < box.left - 1)
+              )
+                out.push(`${el.textContent?.slice(0, 20)}: outside its cell`);
+            }
+          }
+          const names = [...document.querySelectorAll<HTMLElement>("thead th")]
+            .filter((c) => c.offsetParent !== null)
+            .map((th) => {
+              const range = document.createRange();
+              range.selectNodeContents(th);
+              return {
+                t: th.textContent!.trim(),
+                rects: [...range.getClientRects()],
+              };
+            });
+          for (let i = 0; i < names.length; i++)
+            for (let j = i + 1; j < names.length; j++)
+              for (const a of names[i]!.rects)
+                for (const b of names[j]!.rects)
+                  if (
+                    a.left < b.right - 1 &&
+                    b.left < a.right - 1 &&
+                    a.top < b.bottom - 1 &&
+                    b.top < a.bottom - 1
+                  )
+                    out.push(`${names[i]!.t} overlaps ${names[j]!.t}`);
+          const content = document.getElementById("content")!;
+          if (content.scrollWidth > content.clientWidth + 1)
+            out.push(
+              `page scrolls sideways by ${content.scrollWidth - content.clientWidth}px`,
+            );
+          return out;
+        });
+        expect(found).toEqual([]);
+      } finally {
+        await close();
+      }
+    });
+  }
+});
+
 describe("Roles tab: the matrix starts in the first screen", () => {
   // 844x390 cannot hold the first row: the shell and the page header take 223 px of 390. The
   // matrix's own card must at least begin on screen there, with its title.
@@ -148,6 +215,7 @@ describe("Roles tab: the matrix starts in the first screen", () => {
   for (const [w, h] of [
     [1024, 768],
     [1180, 820],
+    [1280, 800],
   ] as const) {
     it(`${w}x${h}`, async () => {
       const { page, close } = await open(w, h);

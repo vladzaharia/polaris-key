@@ -15,15 +15,11 @@ import {
   BookOpen,
   Boxes,
   Check,
-  Blocks,
-  Crown,
-  LogIn,
   KeySquare,
   LayoutDashboard,
   Link2,
   Plus,
   Settings,
-  ShieldCheck,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -33,7 +29,8 @@ import {
   type MembersView,
 } from "../../../../api.js";
 import { cn } from "../../../../lib/cn.js";
-import { Callout } from "../../../../ui/Callout.js";
+import { ErrorState } from "../../../../ui/ErrorState.js";
+import { ROLE_GLYPHS } from "../../../access/RoleTag.js";
 import { Section } from "../../../../ui/Section.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { ServiceGlyph } from "../../../../ui/ServiceBadge.js";
@@ -46,12 +43,12 @@ import {
 
 type RoleId = (typeof ROLES_MATRIX.roles)[number]["id"];
 
+/** The glyph of a role id, from the one map the roster's tags use (RoleTag.tsx). */
 const ROLE_GLYPH: Record<string, LucideIcon> = {
-  superadmin: Crown,
-  platform_admin: ShieldCheck,
-  // Not the key and package glyphs: Licensing and Ship builds carry those in the matrix.
-  product_admin: Blocks,
-  console_access: LogIn,
+  superadmin: ROLE_GLYPHS.superadmin,
+  platform_admin: ROLE_GLYPHS.platform_admin,
+  product_admin: ROLE_GLYPHS.product,
+  console_access: ROLE_GLYPHS.console_access,
 };
 
 /** What each role covers and who can give it. The matrix says the rest. */
@@ -65,11 +62,11 @@ const ROLE_COPY: Record<string, { covers: string[]; givenBy: string }> = {
     givenBy: "Given by a Superadmin",
   },
   product_admin: {
-    covers: ["One product, or all of them.", "Can be narrowed to some areas."],
+    covers: ["One product or all of them, narrowable by area."],
     givenBy: "Given by a Superadmin or that product’s admin",
   },
   console_access: {
-    covers: ["Can sign in and read the docs.", "Every other role includes it."],
+    covers: ["Sign in and read the docs. Every role includes it."],
     givenBy: "Given by a Superadmin or a Platform admin",
   },
 };
@@ -188,11 +185,11 @@ function RoleCard({
   name: string;
   count: React.ReactNode;
 }): React.ReactElement {
-  const Glyph = ROLE_GLYPH[id] ?? Blocks;
+  const Glyph = ROLE_GLYPH[id] ?? ROLE_GLYPHS.product;
   const copy = ROLE_COPY[id]!;
   return (
     // A subgrid row pair, so the footers' dividers line up across the cards of a row. Between md
-    // and xl the cards are compact: the second line of "covers" is the matrix's to say.
+    // and xl the cards are compact (tighter padding).
     <article
       data-role-card={id}
       className="row-span-2 grid grid-rows-subgrid rounded-xl border border-border bg-surface-raised light:shadow-elevation-1"
@@ -202,11 +199,8 @@ function RoleCard({
           <Glyph className="mt-1 size-4 shrink-0" aria-hidden="true" />
           <span className="min-w-0 [overflow-wrap:anywhere]">{name}</span>
         </h2>
-        {copy.covers.map((line, i) => (
-          <p
-            key={line}
-            className={cn("text-sm text-fg-muted", i > 0 && "md:max-xl:hidden")}
-          >
+        {copy.covers.map((line) => (
+          <p key={line} className="text-sm text-fg-muted">
             {line}
           </p>
         ))}
@@ -246,7 +240,7 @@ function WordLink({
         el?.focus();
         el?.scrollIntoView?.({ block: "nearest" });
       }}
-      className="rounded-sm text-sm text-fg underline decoration-dotted underline-offset-4 focus-visible:outline-2 focus-visible:outline-focus"
+      className="rounded-sm text-sm text-fg underline decoration-dotted underline-offset-4 [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-focus"
     >
       {word}
     </button>
@@ -267,7 +261,7 @@ function Cell({
       data-role-col={role}
       className={cn(
         TABLE.cell,
-        "text-center",
+        "text-center [overflow-wrap:anywhere]",
         // A phone shows the Area column and the picked role's only.
         picked
           ? "max-md:bg-accent-subtle [@media(max-height:500px)]:bg-accent-subtle"
@@ -292,7 +286,13 @@ function AreaCell({ row }: { row: RolesMatrixRow }): React.ReactElement {
   const service = ROW_SERVICE[row.id];
   const Icon = ROW_ICON[row.id] ?? LayoutDashboard;
   return (
-    <th scope="row" className={cn(TABLE.cell, "py-2 text-start font-normal")}>
+    <th
+      scope="row"
+      className={cn(
+        TABLE.cell,
+        "py-2 text-start font-normal [overflow-wrap:anywhere]",
+      )}
+    >
       <div className="flex min-w-0 items-center gap-3">
         <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-fg-muted">
           {service ? (
@@ -423,7 +423,7 @@ function RolePicker({
       className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-2"
     >
       {roles.map((r, i) => {
-        const Glyph = ROLE_GLYPH[r.id] ?? Blocks;
+        const Glyph = ROLE_GLYPH[r.id] ?? ROLE_GLYPHS.product;
         const on = r.id === picked;
         return (
           <button
@@ -500,9 +500,13 @@ export function PlatformRoles({
   // After a Retry that works, the alert is gone: focus moves to the cards' region.
   const region = React.useRef<HTMLDivElement>(null);
   const wasFailed = React.useRef(false);
+  // The flag clears only on success: a retried query with no data goes back to pending first.
   React.useEffect(() => {
-    if (wasFailed.current && !failed && !loading) region.current?.focus();
-    wasFailed.current = failed;
+    if (failed) wasFailed.current = true;
+    else if (!loading && wasFailed.current) {
+      wasFailed.current = false;
+      region.current?.focus();
+    }
   }, [failed, loading]);
 
   const matrix = (
@@ -512,12 +516,15 @@ export function PlatformRoles({
         <tr className={TABLE.headRow}>
           <th
             scope="col"
-            className={cn(TABLE.headCell, "text-start max-sm:w-3/5 sm:w-[34%]")}
+            className={cn(
+              TABLE.headCell,
+              "text-start [overflow-wrap:anywhere] max-sm:w-3/5 sm:w-[34%]",
+            )}
           >
             Area
           </th>
           {ROLES_MATRIX.roles.map((r) => {
-            const Glyph = ROLE_GLYPH[r.id] ?? Blocks;
+            const Glyph = ROLE_GLYPH[r.id] ?? ROLE_GLYPHS.product;
             return (
               <th
                 key={r.id}
@@ -525,17 +532,18 @@ export function PlatformRoles({
                 data-role-col={r.id}
                 className={cn(
                   TABLE.headCell,
-                  "text-center whitespace-normal",
-                  r.id !== picked && "max-sm:hidden",
+                  "text-center whitespace-normal [overflow-wrap:anywhere]",
+                  r.id !== picked
+                    ? "max-sm:hidden"
+                    : "max-md:bg-accent-subtle [@media(max-height:500px)]:bg-accent-subtle",
                 )}
               >
-                <span className="inline-flex items-center justify-center gap-1.5">
-                  <Glyph
-                    className="size-3.5 shrink-0 max-sm:hidden"
-                    aria-hidden="true"
-                  />
-                  {r.name}
-                </span>
+                {/* Inline, not a flex row: a long name at large text must be able to break. */}
+                <Glyph
+                  className="me-1.5 inline size-3.5 align-[-2px] max-sm:hidden"
+                  aria-hidden="true"
+                />
+                {r.name}
               </th>
             );
           })}
@@ -551,49 +559,41 @@ export function PlatformRoles({
   );
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] space-y-6" data-roles-tab="">
+    <div className="w-full max-w-[1280px] space-y-6" data-roles-tab="">
       {refused ? (
         <p role="status" className="text-sm text-fg-muted">
           You can’t see who holds each role.
         </p>
       ) : failed ? (
-        <Callout
-          tone="warning"
-          title="The member counts didn’t load"
-          action={
-            <button
-              type="button"
-              onClick={onRetry}
-              className="rounded-md px-2 py-1 text-sm font-medium text-fg-strong underline focus-visible:outline-2 focus-visible:outline-focus"
-            >
-              Try again
-            </button>
-          }
-        >
-          {null}
-        </Callout>
+        <ErrorState
+          compact
+          error={error}
+          onRetry={onRetry}
+          thing="The member counts"
+          context={{ thing: "members" }}
+        />
       ) : null}
 
       <div
         ref={region}
         tabIndex={-1}
+        role="group"
         aria-label="Roles"
         className="space-y-6 outline-hidden"
       >
-        <div
-          className={cn(
-            "grid grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))] gap-4 md:max-xl:grid-cols-[repeat(auto-fill,minmax(min(100%,11rem),1fr))] md:max-xl:gap-3",
-            CARDS_SHOWN,
-          )}
-        >
-          {ROLES_MATRIX.roles.map((r) => (
-            <RoleCard
-              key={r.id}
-              id={r.id}
-              name={r.name}
-              count={countOf(true)(r.id)}
-            />
-          ))}
+        {/* One column, two from 30rem, four from 54rem of the row's own width: rem, so large text
+            drops columns, and never three and an orphan. */}
+        <div className={cn("@container", CARDS_SHOWN)}>
+          <div className="grid grid-cols-1 gap-4 @[30rem]:grid-cols-2 @[54rem]:grid-cols-4 md:max-xl:gap-3">
+            {ROLES_MATRIX.roles.map((r) => (
+              <RoleCard
+                key={r.id}
+                id={r.id}
+                name={r.name}
+                count={countOf(true)(r.id)}
+              />
+            ))}
+          </div>
         </div>
 
         <div className={cn("space-y-3", TILES_SHOWN)}>
@@ -654,27 +654,29 @@ export function PlatformRoles({
           // From sm up the matrix never scrolls sideways, so the header can stick to the page.
           matrix
         )}
-        <ul
-          aria-label="Notes"
-          className="flex flex-col gap-1 border-t border-border px-5 py-4 text-xs text-fg-muted"
-        >
-          {ROLES_MATRIX.footnotes.map((f) => (
-            <li
-              key={f.id}
-              id={`roles-note-${f.id}`}
-              tabIndex={-1}
-              className={cn(
-                "outline-hidden focus-visible:outline-2 focus-visible:outline-focus",
-                !pickedNotes.has(f.id) && "max-sm:hidden",
-              )}
-            >
-              <strong className="font-medium text-fg-strong">{f.word}</strong>{" "}
-              {f.role
-                ? `${roleName(f.role)}: ${f.text.charAt(0).toLowerCase()}${f.text.slice(1)}`
-                : f.text}
-            </li>
-          ))}
-        </ul>
+        {phone && pickedNotes.size === 0 ? null : (
+          <ul
+            aria-label="Notes"
+            className="flex flex-col gap-1 border-t border-border px-5 py-4 text-xs text-fg-muted"
+          >
+            {ROLES_MATRIX.footnotes.map((f) => (
+              <li
+                key={f.id}
+                id={`roles-note-${f.id}`}
+                tabIndex={-1}
+                className={cn(
+                  "rounded-sm outline-hidden focus:bg-accent-subtle focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-focus",
+                  !pickedNotes.has(f.id) && "max-sm:hidden",
+                )}
+              >
+                <strong className="font-medium text-fg-strong">{f.word}</strong>{" "}
+                {f.role
+                  ? `${roleName(f.role)}: ${f.text.charAt(0).toLowerCase()}${f.text.slice(1)}`
+                  : f.text}
+              </li>
+            ))}
+          </ul>
+        )}
       </Section>
     </div>
   );

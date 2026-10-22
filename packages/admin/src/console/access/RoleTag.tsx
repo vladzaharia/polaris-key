@@ -9,7 +9,14 @@
  */
 
 import * as React from "react";
-import { Crown, KeyRound, Layers, Package, ShieldCheck } from "lucide-react";
+import {
+  Blocks,
+  Crown,
+  Layers,
+  LogIn,
+  ShieldCheck,
+  type LucideIcon,
+} from "lucide-react";
 import type { AreaId, MeRole } from "../../api.js";
 import { cn } from "../../lib/cn.js";
 import { ServiceGlyph } from "../../ui/ServiceBadge.js";
@@ -18,22 +25,28 @@ import { AREA_ACCENTS, AREA_NAMES, roleLabel } from "./can.js";
 /** The subset of a role the tag draws. */
 export type RoleLike = Pick<MeRole, "role" | "scope" | "areas">;
 
+/** The one role-glyph map: the roster's tags and the Roles tab draw a role the same way. */
+export const ROLE_GLYPHS: Record<
+  "superadmin" | "platform_admin" | "console_access" | "product" | "products",
+  LucideIcon
+> = {
+  superadmin: Crown,
+  platform_admin: ShieldCheck,
+  console_access: LogIn,
+  product: Blocks,
+  products: Layers,
+};
+
 function Glyph({ role }: { role: RoleLike }): React.ReactElement {
   const cls = "size-3.5 shrink-0";
-  switch (role.role) {
-    case "superadmin":
-      return <Crown className={cls} aria-hidden="true" />;
-    case "platform_admin":
-      return <ShieldCheck className={cls} aria-hidden="true" />;
-    case "console_access":
-      return <KeyRound className={cls} aria-hidden="true" />;
-    case "product_admin":
-      return role.scope.startsWith("product:") ? (
-        <Package className={cls} aria-hidden="true" />
-      ) : (
-        <Layers className={cls} aria-hidden="true" />
-      );
-  }
+  const key =
+    role.role === "product_admin"
+      ? role.scope.startsWith("product:")
+        ? "product"
+        : "products"
+      : role.role;
+  const Icon = ROLE_GLYPHS[key];
+  return <Icon className={cls} aria-hidden="true" />;
 }
 
 export function RoleTag({

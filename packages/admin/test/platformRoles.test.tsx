@@ -3,6 +3,9 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AreaId, Me, Member, MembersView } from "../src/api.js";
 import { ROLES_MATRIX } from "../src/console/access/rolesMatrix.generated.js";
+import { render } from "@testing-library/react";
+import { ApiError } from "../src/api.js";
+import { PlatformRoles } from "../src/console/sections/platform/pages/platformRoles.js";
 import { boot, resetConsole } from "./consoleHarness.js";
 
 /** Platform → Members → Roles (`#/platform/members?tab=roles`, ST-31.13). */
@@ -174,7 +177,7 @@ describe("Members: Roles tab", () => {
     await user.keyboard("{ArrowLeft}");
     expect(shown()).toEqual(["console_access"]);
     expect(
-      screen.getByText(/Every other role includes it/, {
+      screen.getByText(/Every role includes it/, {
         selector: "#roles-detail p",
       }),
     ).toBeTruthy();
@@ -315,5 +318,51 @@ describe("Members: Roles tab", () => {
     await user.click(members);
     expect(await screen.findByRole("table", { name: "Members" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Invite people" })).toBeTruthy();
+  });
+});
+
+describe("Roles tab: focus after a Retry", () => {
+  it("walks error, then pending, then success, and lands on the cards", () => {
+    const noop = () => undefined;
+    const props = { onRetry: noop };
+    const ui = (
+      v: MembersView | undefined,
+      loading: boolean,
+      error: unknown,
+    ) => <PlatformRoles view={v} loading={loading} error={error} {...props} />;
+    const { rerender } = render(ui(undefined, false, new ApiError(500)));
+    expect(screen.getByRole("alert")).toBeTruthy();
+    // A retried query with no data goes back to pending: the flag must survive it.
+    rerender(ui(undefined, true, null));
+    expect(document.activeElement?.getAttribute("aria-label")).not.toBe(
+      "Roles",
+    );
+    rerender(ui(view(), false, null));
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Roles");
+  });
+
+  it("a failure keeps the house alert, a 403 does not", () => {
+    const { rerender } = render(
+      <PlatformRoles
+        view={undefined}
+        loading={false}
+        error={new ApiError(500)}
+        onRetry={() => undefined}
+      />,
+    );
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /Retry|Try again/ }),
+    ).toBeTruthy();
+    rerender(
+      <PlatformRoles
+        view={undefined}
+        loading={false}
+        error={new ApiError(403)}
+        onRetry={() => undefined}
+      />,
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("You can’t see who holds each role.")).toBeTruthy();
   });
 });
