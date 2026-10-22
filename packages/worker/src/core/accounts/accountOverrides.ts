@@ -355,9 +355,9 @@ const PROVISION_ATTEMPTS = 3;
  * Write an identity's provisioned SECRETS (e.g. `proxy.subscriptionUrl`) onto the licence owner's
  * account overrides, the surgical way LX-02 writes them on the licence: every key the product's
  * provisioning declares is removed, then set again only where the identity's claims provide it,
- * and every other key (an operator's) is kept. Used from the migration run's start (S-19: "U-03
- * moves secrets to the account override layer, which then becomes their target"); before it, the
- * licence column is still their target. Sealed under PLATFORM_KEK when `env` is given (every
+ * and every other key (an operator's) is kept. Called when the licence has an owner and the
+ * signing identity is linked to it (`provisionedSecretTarget`, U-27.2, L-U1); every other licence
+ * keeps its provisioned secrets in the column. Sealed under PLATFORM_KEK when `env` is given (every
  * caller passes it; without one the value is stored as the licence column stores it today, and
  * `openManagedValue` reads both). A read-merge-write under compare-and-set, so an operator's edit
  * in between is merged again, never lost.

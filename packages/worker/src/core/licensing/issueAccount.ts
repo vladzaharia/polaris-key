@@ -22,7 +22,6 @@ import type { ProductPublic } from "../products.js";
 import { auditStatement } from "../audit.js";
 import { stmtAttachNewLicense } from "../accounts/accountSubjects.js";
 import { applyProvisionedAccountSecrets } from "../accounts/accountOverrides.js";
-import { licenseConfigOverridesFrozen } from "../ops/overrideMigration.js";
 import { oidcGrantStatements } from "./grants.js";
 import {
   getOidcConfig,
@@ -30,7 +29,11 @@ import {
   type IssueVia,
   type OidcIdentity,
 } from "./issue.js";
-import { provisionedColumn, signInProvisioning } from "./provisioning.js";
+import {
+  provisionedColumn,
+  provisionedSecretTarget,
+  signInProvisioning,
+} from "./provisioning.js";
 import { issueTierFor } from "./implicitTier.js";
 import { stmtInsertLicense } from "./store.js";
 
@@ -69,13 +72,15 @@ export async function issueAccountLicense(
     identity,
     now,
   );
-  const frozen = await licenseConfigOverridesFrozen(db);
+  // The licence is minted for `accountId`, so it has an owner: its secrets go to that account's
+  // row when the identity is linked to it (L-U1), else to the column.
+  const target = await provisionedSecretTarget(db, accountId, identity.sub);
   const column = await provisionedColumn(
     via.env,
     db,
     product.slug,
     provisioned,
-    frozen,
+    target,
   );
   const licenseId = randomId("lic");
   await db.batch([
@@ -128,7 +133,7 @@ export async function issueAccountLicense(
           }),
         ]),
   ]);
-  if (frozen)
+  if (target === "account")
     await applyProvisionedAccountSecrets(
       via.env,
       db,
