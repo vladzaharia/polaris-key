@@ -161,8 +161,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
     group: "account",
     json: true,
     context: ["baseUrl"],
-    summary: "Show who this terminal is signed in as",
-    rows: [["whoami", "Show who this terminal is signed in as"]],
+    summary: "Show who pkey is signed in as",
+    rows: [["whoami", "Show who pkey is signed in as"]],
     usage: ["pkey whoami [--base-url url] [--json]"],
     about: [
       {
@@ -170,6 +170,15 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "Prints the person, their roles and when the sign-in ends. The token is never " +
           "printed. It reads the sign-in stored for the origin (--base-url), or " +
           `${ADMIN_TOKEN_ENV} when that is set to a personal token (pkeyp_).`,
+      },
+      {
+        text:
+          "--json prints one line, the result line: " +
+          '{"v":1,"command":"whoami","event":"result","ok","exit","host","name","email",' +
+          '"roles","token"}, with role ids. A refusal is {"ok":false,"exit":4,"error","message"}: ' +
+          "not-signed-in, sign-in-ended, no-credential-store, keychain-refused, " +
+          "admin-api-token, env-token-refused or redirect. A failure is exit 1: unreachable, " +
+          "server-error or not-a-console.",
       },
     ],
     env: [
@@ -184,16 +193,25 @@ export const COMMANDS: readonly PkeyCommand[] = [
     group: "account",
     json: true,
     context: ["baseUrl"],
-    summary: "Revoke this terminal's sign-in and remove it",
-    rows: [["logout", "Revoke this terminal's sign-in and remove it"]],
+    summary: "Revoke the stored sign-in and remove it",
+    rows: [["logout", "Revoke the stored sign-in and remove it"]],
     usage: ["pkey logout [--base-url url] [--json]"],
     about: [
       {
         text:
           "Revokes the stored token on the server, then removes it from the credential " +
-          "store. If the server cannot be reached the stored token is still removed, and " +
-          "pkey says it stays valid until it ends. Exit 1 then. It refuses (exit 4) while " +
+          "store. The stored sign-in is per operating-system user and origin (--base-url). " +
+          "If the server can't be reached, or won't revoke the token, the stored copy is " +
+          "still removed, and pkey says the token works until its end date and where to " +
+          "revoke it. That exits 1. It refuses (exit 4) while " +
           `${ADMIN_TOKEN_ENV} is set: pkey only ends a sign-in it stored.`,
+      },
+      {
+        text:
+          "--json prints one line, the result line: " +
+          '{"v":1,"command":"logout","event":"result","ok","exit","host","revoked","cleared"}. ' +
+          "When the token still works it adds error (unreachable, redirect, revoke-refused or " +
+          "server-error), message, tokenEndsAt and revokeUrl.",
       },
     ],
   },
@@ -1123,7 +1141,7 @@ export const EXIT_CODES: ReadonlyArray<readonly [string, string]> = [
   ["0", "Success."],
   [
     "1",
-    "Failure: an invalid manifest, a refused request, a server or network error. The message says what to do next.",
+    "Failure: an invalid manifest, a request the server rejected, a server or network error. The message says what to do next.",
   ],
   [
     "2",
@@ -1131,7 +1149,7 @@ export const EXIT_CODES: ReadonlyArray<readonly [string, string]> = [
   ],
   [
     "4",
-    "Refused: not signed in, no credential store, or a token the server will not accept. The message names the fix.",
+    "Refused, by pkey login, whoami and logout: not signed in, no credential store, or a token the server won't accept. The message names the fix.",
   ],
 ];
 

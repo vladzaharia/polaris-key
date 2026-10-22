@@ -5189,14 +5189,14 @@ var require_foldFlowLines = __commonJS({
     var FOLD_FLOW = "flow";
     var FOLD_BLOCK = "block";
     var FOLD_QUOTED = "quoted";
-    function foldFlowLines(text, indent, mode = "flow", { indentAtStart, lineWidth = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
+    function foldFlowLines(text2, indent, mode = "flow", { indentAtStart, lineWidth = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
       if (!lineWidth || lineWidth < 0)
-        return text;
+        return text2;
       if (lineWidth < minContentWidth)
         minContentWidth = 0;
       const endStep = Math.max(1 + minContentWidth, 1 + lineWidth - indent.length);
-      if (text.length <= endStep)
-        return text;
+      if (text2.length <= endStep)
+        return text2;
       const folds = [];
       const escapedFolds = {};
       let end = lineWidth - indent.length;
@@ -5213,14 +5213,14 @@ var require_foldFlowLines = __commonJS({
       let escStart = -1;
       let escEnd = -1;
       if (mode === FOLD_BLOCK) {
-        i = consumeMoreIndentedLines(text, i, indent.length);
+        i = consumeMoreIndentedLines(text2, i, indent.length);
         if (i !== -1)
           end = i + endStep;
       }
-      for (let ch; ch = text[i += 1]; ) {
+      for (let ch; ch = text2[i += 1]; ) {
         if (mode === FOLD_QUOTED && ch === "\\") {
           escStart = i;
-          switch (text[i + 1]) {
+          switch (text2[i + 1]) {
             case "x":
               i += 3;
               break;
@@ -5237,12 +5237,12 @@ var require_foldFlowLines = __commonJS({
         }
         if (ch === "\n") {
           if (mode === FOLD_BLOCK)
-            i = consumeMoreIndentedLines(text, i, indent.length);
+            i = consumeMoreIndentedLines(text2, i, indent.length);
           end = i + indent.length + endStep;
           split = void 0;
         } else {
           if (ch === " " && prev && prev !== " " && prev !== "\n" && prev !== "	") {
-            const next = text[i + 1];
+            const next = text2[i + 1];
             if (next && next !== " " && next !== "\n" && next !== "	")
               split = i;
           }
@@ -5254,12 +5254,12 @@ var require_foldFlowLines = __commonJS({
             } else if (mode === FOLD_QUOTED) {
               while (prev === " " || prev === "	") {
                 prev = ch;
-                ch = text[i += 1];
+                ch = text2[i += 1];
                 overflow = true;
               }
               const j = i > escEnd + 1 ? i - 2 : escStart - 1;
               if (escapedFolds[j])
-                return text;
+                return text2;
               folds.push(j);
               escapedFolds[j] = true;
               end = j + endStep;
@@ -5274,39 +5274,39 @@ var require_foldFlowLines = __commonJS({
       if (overflow && onOverflow)
         onOverflow();
       if (folds.length === 0)
-        return text;
+        return text2;
       if (onFold)
         onFold();
-      let res = text.slice(0, folds[0]);
+      let res = text2.slice(0, folds[0]);
       for (let i2 = 0; i2 < folds.length; ++i2) {
         const fold = folds[i2];
-        const end2 = folds[i2 + 1] || text.length;
+        const end2 = folds[i2 + 1] || text2.length;
         if (fold === 0)
           res = `
-${indent}${text.slice(0, end2)}`;
+${indent}${text2.slice(0, end2)}`;
         else {
           if (mode === FOLD_QUOTED && escapedFolds[fold])
-            res += `${text[fold]}\\`;
+            res += `${text2[fold]}\\`;
           res += `
-${indent}${text.slice(fold + 1, end2)}`;
+${indent}${text2.slice(fold + 1, end2)}`;
         }
       }
       return res;
     }
-    function consumeMoreIndentedLines(text, i, indent) {
+    function consumeMoreIndentedLines(text2, i, indent) {
       let end = i;
       let start = i + 1;
-      let ch = text[start];
+      let ch = text2[start];
       while (ch === " " || ch === "	") {
         if (i < start + indent) {
-          ch = text[++i];
+          ch = text2[++i];
         } else {
           do {
-            ch = text[++i];
+            ch = text2[++i];
           } while (ch && ch !== "\n");
           end = i;
           start = i + 1;
-          ch = text[start];
+          ch = text2[start];
         }
       }
       return end;
@@ -11611,6 +11611,16 @@ var require_dist = __commonJS({
   }
 });
 
+// scripts/keyring-stub.mjs
+var keyring_stub_exports = {};
+var init_keyring_stub = __esm({
+  "scripts/keyring-stub.mjs"() {
+    "use strict";
+    init_define_PKEY_EMBEDDED_SCHEMAS();
+    throw new Error("pkey-action-no-keyring");
+  }
+});
+
 // src/bin/standalone.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
@@ -11794,8 +11804,8 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var HIDDEN_CHARS = /[\u0000-\u001f\u007f-\u009f\u061c\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/g;
 var EDGE_JOINERS = /^[\u200c\u200d]+|[\u200c\u200d]+$/g;
-function clean(text) {
-  return text.replace(HIDDEN_CHARS, (ch, at) => ch === "​" && (text.startsWith("::", at + 1) || text.slice(at - 2, at) === "##" && text[at + 1] === "[") ? ch : "").replace(EDGE_JOINERS, "");
+function clean(text2) {
+  return text2.replace(HIDDEN_CHARS, (ch, at) => ch === "​" && (text2.startsWith("::", at + 1) || text2.slice(at - 2, at) === "##" && text2[at + 1] === "[") ? ch : "").replace(EDGE_JOINERS, "");
 }
 var LOOPBACK = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 function safeLink(url) {
@@ -11817,11 +11827,11 @@ function safeLink(url) {
 }
 
 // ../sdk-node/dist/cli/term/osc.js
-function osc8(url, text) {
+function osc8(url, text2) {
   const safe = safeLink(url);
   if (!safe)
-    return text;
-  return `\x1B]8;;${safe}\x1B\\${text}\x1B]8;;\x1B\\`;
+    return text2;
+  return `\x1B]8;;${safe}\x1B\\${text2}\x1B]8;;\x1B\\`;
 }
 
 // ../sdk-node/dist/cli/term/paint.js
@@ -11877,17 +11887,17 @@ var Painter = class {
   }
   /** Apply roles to text. */
   style(raw, roles = []) {
-    const text = clean(raw);
+    const text2 = clean(raw);
     if (!this.colored) {
-      if (!this.attributes || text === "")
-        return text;
+      if (!this.attributes || text2 === "")
+        return text2;
       const keep = roles.filter((r) => r === "strong" || r === "code" || r === "chip");
       const names = keep.flatMap((r) => r === "chip" ? ["inverse"] : roleStyles(r));
-      return names.length ? styleText([...new Set(names)], text, { validateStream: false }) : text;
+      return names.length ? styleText([...new Set(names)], text2, { validateStream: false }) : text2;
     }
-    if (text === "" || roles.length === 0)
-      return text;
-    let out = text;
+    if (text2 === "" || roles.length === 0)
+      return text2;
+    let out = text2;
     for (const r of roles) {
       const role = this.ink && r === "accent" ? "strong" : r;
       const hex5 = this.caps.color === "truecolor" && role !== "code" && role !== "qr" ? this.overrides[role] : void 0;
@@ -11925,16 +11935,16 @@ var Painter = class {
   }
   /** The chip's colours over already padded text. */
   chipText(raw) {
-    const text = clean(raw);
+    const text2 = clean(raw);
     if (!this.colored)
-      return this.attributes && text ? styleText("inverse", text, { validateStream: false }) : text;
+      return this.attributes && text2 ? styleText("inverse", text2, { validateStream: false }) : text2;
     if (this.caps.color === "truecolor" && this.accent) {
       const bg = rgb(this.accent.solid);
       const fg = rgb(this.accent.on);
       if (bg && fg)
-        return `\x1B[48;2;${bg[0]};${bg[1]};${bg[2]}m\x1B[38;2;${fg[0]};${fg[1]};${fg[2]}m${text}\x1B[39m\x1B[49m`;
+        return `\x1B[48;2;${bg[0]};${bg[1]};${bg[2]}m\x1B[38;2;${fg[0]};${fg[1]};${fg[2]}m${text2}\x1B[39m\x1B[49m`;
     }
-    return this.accent && !this.ink ? styleText(["cyan", "inverse"], text, { validateStream: false }) : styleText("inverse", text, { validateStream: false });
+    return this.accent && !this.ink ? styleText(["cyan", "inverse"], text2, { validateStream: false }) : styleText("inverse", text2, { validateStream: false });
   }
 };
 
@@ -12030,10 +12040,10 @@ function pieces(span) {
   }
   return out;
 }
-function splitAt(text, after, before) {
+function splitAt(text2, after, before) {
   const out = [];
   let cur = "";
-  for (const ch of text) {
+  for (const ch of text2) {
     if (before?.test(ch) && cur !== "") {
       out.push(cur);
       cur = "";
@@ -12048,11 +12058,11 @@ function splitAt(text, after, before) {
     out.push(cur);
   return out;
 }
-function hardSplit(text, width) {
+function hardSplit(text2, width) {
   const out = [];
   let cur = "";
   let w = 0;
-  for (const ch of text) {
+  for (const ch of text2) {
     const cw = charWidth(ch);
     if (w + cw > width && cur !== "") {
       out.push(cur);
@@ -12066,9 +12076,9 @@ function hardSplit(text, width) {
     out.push(cur);
   return out;
 }
-function breakPieces(text, kind, width) {
+function breakPieces(text2, kind, width) {
   const w = Math.max(1, width);
-  const first = kind === "url" ? splitAt(text, /\//, /[?&]/) : splitAt(text, /-/);
+  const first = kind === "url" ? splitAt(text2, /\//, /[?&]/) : splitAt(text2, /-/);
   const second = kind === "url" ? first.flatMap((p) => cellWidth(p) > w ? splitAt(p, /-/, /\./) : [p]) : first;
   return second.flatMap((p) => cellWidth(p) > w ? hardSplit(p, w) : [p]);
 }
@@ -12172,11 +12182,11 @@ function wrapPieces(spans, width, ellipsis) {
             w += cellWidth(p.text);
           }
         }
-        for (const text of breakPieces(span.text, span.break, width)) {
-          const pw = cellWidth(text);
+        for (const text2 of breakPieces(span.text, span.break, width)) {
+          const pw = cellWidth(text2);
           if (w > 0 && w + pw > width)
             newLine();
-          cur().push({ ...span, text });
+          cur().push({ ...span, text: text2 });
           w += pw;
         }
         continue;
@@ -12485,10 +12495,10 @@ var LiveRegion = class {
    * Replace the region with its final screen (it stays) and stop. Without animation the first
    * frame was already printed once, so only `plain` (the result, no header) prints.
    */
-  commit(screen = [], plain2) {
+  commit(screen = [], plain3) {
     const animate2 = this.host.caps.animate;
     const extra = this.pendingRestore();
-    const rows = animate2 || plain2 === void 0 ? this.rows(screen) : rowsOf(plain2);
+    const rows = animate2 || plain3 === void 0 ? this.rows(screen) : rowsOf(plain3);
     const s = animate2 ? this.erase(extra) : "";
     const show3 = this.stop();
     const lines4 = this.host.render(rows);
@@ -12539,11 +12549,11 @@ function defuse(line) {
   return s.trimStart().startsWith("::") ? `${COMMAND_BREAK}${s}` : s;
 }
 function untrusted(value, env) {
-  const text = clean(String(value));
-  return underActions(env) ? defuse(text) : text;
+  const text2 = clean(String(value));
+  return underActions(env) ? defuse(text2) : text2;
 }
-function untrustedLines(text, env) {
-  return String(text).split("\n").map((line) => untrusted(line, env)).join("\n");
+function untrustedLines(text2, env) {
+  return String(text2).split("\n").map((line) => untrusted(line, env)).join("\n");
 }
 function untrustedJson(value, space) {
   return (JSON.stringify(value, null, space) ?? "null").replace(
@@ -12575,9 +12585,9 @@ function guardOutput(out, env) {
     }
     const complete = pending.slice(0, end);
     pending = pending.slice(end + 1);
-    const text = `${complete.split("\n").map(guardLine).join("\n")}
+    const text2 = `${complete.split("\n").map(guardLine).join("\n")}
 `;
-    return cb ? out.write(text, cb) : out.write(text);
+    return cb ? out.write(text2, cb) : out.write(text2);
   };
   const stream = {
     write,
@@ -12662,8 +12672,8 @@ function isInternalError(err) {
   return (err instanceof TypeError || err instanceof RangeError || err instanceof ReferenceError) && err.code === void 0;
 }
 function internalMessage(err) {
-  const text = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-  return `pkey hit an unexpected error: ${text}
+  const text2 = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  return `pkey hit an unexpected error: ${text2}
 This is a bug in pkey. Re-run with PKEY_DEBUG=1 for the stack, and report it.`;
 }
 
@@ -12824,12 +12834,12 @@ function statusHint(status) {
   return void 0;
 }
 async function errorDetail(res) {
-  const text = await res.text().catch(() => "");
+  const text2 = await res.text().catch(() => "");
   let parsed;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(text2);
   } catch {
-    const trimmed2 = text.trim();
+    const trimmed2 = text2.trim();
     return trimmed2 ? { message: clip(trimmed2) } : {};
   }
   if (!isRecord(parsed)) return {};
@@ -12844,13 +12854,13 @@ async function errorDetail(res) {
   return detail;
 }
 async function readJson(res, url) {
-  const text = await res.text();
+  const text2 = await res.text();
   let parsed;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(text2);
   } catch {
     throw new Error(
-      `${url} answered ${res.status} with a body that is not JSON: ${clip(text.trim())}`
+      `${url} answered ${res.status} with a body that is not JSON: ${clip(text2.trim())}`
     );
   }
   if (!isRecord(parsed))
@@ -15172,9 +15182,9 @@ var CONFUSABLES = {
   "χ": "x",
   "γ": "y"
 };
-function displayNameSkeleton(text) {
+function displayNameSkeleton(text2) {
   let s = "";
-  for (const ch of text) {
+  for (const ch of text2) {
     if (new RegExp("\\p{M}", "u").test(ch)) continue;
     if (!/[\p{L}\p{N}]/u.test(ch)) {
       s += " ";
@@ -15192,8 +15202,8 @@ var TERM_WORDS = RESERVED_DISPLAY_TERMS.map(
 function byLength(terms) {
   return terms.sort((a, b) => b.w.length - a.w.length);
 }
-function reservedDisplayTerm(text, extraTerms = []) {
-  const words2 = displayNameSkeleton(text);
+function reservedDisplayTerm(text2, extraTerms = []) {
+  const words2 = displayNameSkeleton(text2);
   const terms = byLength([
     ...RESERVED_DISPLAY_TERMS.map((term, i) => ({ term, w: TERM_WORDS[i] })),
     ...extraTerms.map((term) => ({ term, w: displayNameSkeleton(term) }))
@@ -15211,19 +15221,19 @@ function reservedDisplayTerm(text, extraTerms = []) {
   }
   return null;
 }
-function invalidDisplayText(text) {
-  if (/^\s|\s$/u.test(text)) return true;
-  for (const ch of text) {
+function invalidDisplayText(text2) {
+  if (/^\s|\s$/u.test(text2)) return true;
+  for (const ch of text2) {
     const cp3 = ch.codePointAt(0);
     for (const [lo, hi] of DISPLAY_TEXT_STRIP)
       if (cp3 >= lo && cp3 <= hi) return true;
   }
   return false;
 }
-function checkDisplayName(text, opts = {}) {
-  if (invalidDisplayText(text)) return "invalid";
+function checkDisplayName(text2, opts = {}) {
+  if (invalidDisplayText(text2)) return "invalid";
   if (opts.slug === DISPLAY_NAME_EXEMPT_SLUG) return null;
-  return reservedDisplayTerm(text, opts.extraTerms) ? "reserved" : null;
+  return reservedDisplayTerm(text2, opts.extraTerms) ? "reserved" : null;
 }
 var DEFAULT_RESERVED_NAMES_MODE = "warn";
 var RESERVED_ENTITLEMENT_KEYS = [
@@ -15480,13 +15490,13 @@ function mergeMemberLimit(errors, schema, path32) {
       `A merged value has at most ${CLOUD_SYNC_MAX_MERGE_MEMBERS} top-level members (maxProperties and declared properties).`
     );
 }
-function validateCatalogBlock(errors, block, flags, keys) {
+function validateCatalogBlock(errors, block2, flags, keys) {
   const base = "/cloudSync";
-  if (!isRecord22(block)) {
+  if (!isRecord22(block2)) {
     shape(errors, "schema", base, "cloudSync must be an object.");
     return;
   }
-  for (const k of Object.keys(block)) {
+  for (const k of Object.keys(block2)) {
     if (CATALOG_MEMBERS.has(k)) continue;
     const at = `${base}/${escapePointer2(k)}`;
     if (k === "saves")
@@ -15505,9 +15515,9 @@ function validateCatalogBlock(errors, block, flags, keys) {
       );
     else shape(errors, "schema", at, `${k} is not a member here.`);
   }
-  if (block.collections !== void 0) {
+  if (block2.collections !== void 0) {
     const max = CLOUD_SYNC_DEFAULTS.records.maxCollections;
-    if (!Array.isArray(block.collections) || block.collections.length > max) {
+    if (!Array.isArray(block2.collections) || block2.collections.length > max) {
       shape(
         errors,
         "schema",
@@ -15517,14 +15527,14 @@ function validateCatalogBlock(errors, block, flags, keys) {
     } else {
       validateCollections(
         errors,
-        block.collections,
+        block2.collections,
         flags,
         `${base}/collections`
       );
     }
   }
-  if (block.migrations !== void 0) {
-    if (!Array.isArray(block.migrations)) {
+  if (block2.migrations !== void 0) {
+    if (!Array.isArray(block2.migrations)) {
       shape(
         errors,
         "schema",
@@ -15532,7 +15542,7 @@ function validateCatalogBlock(errors, block, flags, keys) {
         "cloudSync.migrations must be a list."
       );
     } else {
-      for (const [i, m] of block.migrations.entries()) {
+      for (const [i, m] of block2.migrations.entries()) {
         validateMigration(errors, m, keys, `${base}/migrations/${i}`);
       }
     }
@@ -16244,9 +16254,9 @@ function isPresent(value, how = "value") {
   return value !== void 0 && value !== null;
 }
 function show(value) {
-  const text = JSON.stringify(value);
-  if (text === void 0) return String(value);
-  return text.length > 40 ? `${text.slice(0, 37)}...` : text;
+  const text2 = JSON.stringify(value);
+  if (text2 === void 0) return String(value);
+  return text2.length > 40 ? `${text2.slice(0, 37)}...` : text2;
 }
 function describeCanonical(s) {
   const [doc, path32] = s.canonical.split(":");
@@ -18512,9 +18522,9 @@ function buildLabel(input, opts = {}) {
   const platform = isAnyPlatform(input.platform) && arch !== null ? UNKNOWN_PLATFORM_LABEL : platformLabel(input.platform, opts);
   const raw = present(input.arch) ? input.arch : null;
   const archLong = arch === null ? null : raw !== null && raw !== "any" && arch.toLowerCase() !== raw.toLowerCase() ? `${arch} (${raw})` : arch;
-  const short = arch === null ? platform : `${platform} ${arch}`;
+  const short2 = arch === null ? platform : `${platform} ${arch}`;
   const long = [platform, archLong, present(input.format) ? input.format : null].filter((p) => p !== null).join(" · ");
-  return { platform, arch, short, long };
+  return { platform, arch, short: short2, long };
 }
 var ASSET_PACK_ID_PATTERN = /^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$/;
 var ASSET_PACK_ID_MAX = 64;
@@ -22405,8 +22415,8 @@ function isReservedIpv6(b) {
   if (b[0] === 255) return true;
   return false;
 }
-function parseIpv6(text) {
-  const bare = text.split("%")[0] ?? "";
+function parseIpv6(text2) {
+  const bare = text2.split("%")[0] ?? "";
   const halves = bare.split("::");
   if (halves.length > 2) return null;
   const head = expandIpv6Groups(halves[0] ?? "");
@@ -22956,8 +22966,8 @@ var ConfigParser = class {
     return { $type: type, args: this.list(")") };
   }
 };
-function parseGodotConfig(text, file = "config") {
-  return new ConfigParser(text.replace(/^\uFEFF/, ""), file).parse();
+function parseGodotConfig(text2, file = "config") {
+  return new ConfigParser(text2.replace(/^\uFEFF/, ""), file).parse();
 }
 var PLATFORMS = {
   Android: "android",
@@ -23464,14 +23474,14 @@ function backoff(attempt, retryAfter) {
   return Math.min(BASE_BACKOFF_MS * 2 ** (attempt - 1), MAX_BACKOFF_MS);
 }
 async function readBody(res) {
-  const text = await res.text().catch(() => "");
+  const text2 = await res.text().catch(() => "");
   try {
-    const parsed = JSON.parse(text);
+    const parsed = JSON.parse(text2);
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
       return parsed;
   } catch {
   }
-  const trimmed2 = text.trim();
+  const trimmed2 = text2.trim();
   return trimmed2 ? { message: clip2(trimmed2) } : {};
 }
 function renderRefusal(what, target, status, body, env = {}) {
@@ -23738,12 +23748,15 @@ var COMMANDS = [
     group: "account",
     json: true,
     context: ["baseUrl"],
-    summary: "Show who this terminal is signed in as",
-    rows: [["whoami", "Show who this terminal is signed in as"]],
+    summary: "Show who pkey is signed in as",
+    rows: [["whoami", "Show who pkey is signed in as"]],
     usage: ["pkey whoami [--base-url url] [--json]"],
     about: [
       {
         text: `Prints the person, their roles and when the sign-in ends. The token is never printed. It reads the sign-in stored for the origin (--base-url), or ${ADMIN_TOKEN_ENV} when that is set to a personal token (pkeyp_).`
+      },
+      {
+        text: '--json prints one line, the result line: {"v":1,"command":"whoami","event":"result","ok","exit","host","name","email","roles","token"}, with role ids. A refusal is {"ok":false,"exit":4,"error","message"}: not-signed-in, sign-in-ended, no-credential-store, keychain-refused, admin-api-token, env-token-refused or redirect. A failure is exit 1: unreachable, server-error or not-a-console.'
       }
     ],
     env: [
@@ -23758,12 +23771,15 @@ var COMMANDS = [
     group: "account",
     json: true,
     context: ["baseUrl"],
-    summary: "Revoke this terminal's sign-in and remove it",
-    rows: [["logout", "Revoke this terminal's sign-in and remove it"]],
+    summary: "Revoke the stored sign-in and remove it",
+    rows: [["logout", "Revoke the stored sign-in and remove it"]],
     usage: ["pkey logout [--base-url url] [--json]"],
     about: [
       {
-        text: `Revokes the stored token on the server, then removes it from the credential store. If the server cannot be reached the stored token is still removed, and pkey says it stays valid until it ends. Exit 1 then. It refuses (exit 4) while ${ADMIN_TOKEN_ENV} is set: pkey only ends a sign-in it stored.`
+        text: `Revokes the stored token on the server, then removes it from the credential store. The stored sign-in is per operating-system user and origin (--base-url). If the server can't be reached, or won't revoke the token, the stored copy is still removed, and pkey says the token works until its end date and where to revoke it. That exits 1. It refuses (exit 4) while ${ADMIN_TOKEN_ENV} is set: pkey only ends a sign-in it stored.`
+      },
+      {
+        text: '--json prints one line, the result line: {"v":1,"command":"logout","event":"result","ok","exit","host","revoked","cleared"}. When the token still works it adds error (unreachable, redirect, revoke-refused or server-error), message, tokenEndsAt and revokeUrl.'
       }
     ]
   },
@@ -24434,7 +24450,7 @@ function twoColumns(term, rows, column, indent = 2) {
   const descCol = stacked ? indent + 2 : indent + column + 2;
   const width = Math.max(1, caps.columns - descCol);
   const out = [];
-  for (const [t, text] of rows) {
+  for (const [t, text2] of rows) {
     const name = painter.style(t, ["strong"]);
     const fits = !stacked && cellWidth(t) <= column;
     const termLines = fits ? [] : wrapSpans(
@@ -24443,7 +24459,7 @@ function twoColumns(term, rows, column, indent = 2) {
     );
     const col = stacked && termLines.length > 1 ? indent + 4 : descCol;
     const lines4 = wrapSpans(
-      [{ text, style: ["muted"] }],
+      [{ text: text2, style: ["muted"] }],
       Math.max(1, caps.columns - col)
     );
     termLines.forEach(
@@ -24466,16 +24482,16 @@ function termColumn(term, terms, cap = term.caps.columns < 70 ? 18 : 26) {
     Math.max(0, ...terms.map(cellWidth).filter((w) => w <= cap))
   );
 }
-function logoHeader(term, art2, block) {
+function logoHeader(term, art2, block2) {
   const gap = 2;
   const room = Math.max(1, term.caps.columns - LOGO_COLS - gap);
-  const text = block.flatMap((l) => l.length ? wrapSpans(l, room) : [l]);
-  const top = Math.max(0, Math.floor((art2.length - text.length) / 2));
-  const rows = Math.max(art2.length, top + text.length);
+  const text2 = block2.flatMap((l) => l.length ? wrapSpans(l, room) : [l]);
+  const top = Math.max(0, Math.floor((art2.length - text2.length) / 2));
+  const rows = Math.max(art2.length, top + text2.length);
   const out = [];
   for (let r = 0; r < rows; r++) {
     const left = art2[r] ?? [];
-    const right = text[r - top] ?? [];
+    const right = text2[r - top] ?? [];
     const pad2 = LOGO_COLS + gap - cellWidth(left.map((x) => x.text).join(""));
     const spans = right.length ? [...left, { text: " ".repeat(pad2) }, ...right] : left;
     out.push(term.painter.line(spans));
@@ -24489,8 +24505,8 @@ var LABEL_WIDTH = 7;
 function hereLines(here, width, separator) {
   const product = here.product;
   const room = Math.max(1, width - LABEL_WIDTH);
-  const text = product ? `${product.name ? `${product.name} (${product.slug})` : product.slug} from ${product.source === "manifest" ? ".pkey/product" : "--product"}` : "no product: no .pkey/product here or above; pass --product";
-  const lines4 = wrapSpans([{ text }], room);
+  const text2 = product ? `${product.name ? `${product.name} (${product.slug})` : product.slug} from ${product.source === "manifest" ? ".pkey/product" : "--product"}` : "no product: no .pkey/product here or above; pass --product";
+  const lines4 = wrapSpans([{ text: text2 }], room);
   const url = shortUrl(here.baseUrl);
   const tail = lines4.at(-1) ?? [];
   const used = cellWidth(tail.map((x) => x.text).join(""));
@@ -24572,11 +24588,11 @@ function renderHelp(term, here) {
   return `${out.join("\n")}
 `;
 }
-function usageUnits(text) {
+function usageUnits(text2) {
   const raw = [];
   let depth = 0;
   let cur = "";
-  for (const ch of text) {
+  for (const ch of text2) {
     if (ch === "[" || ch === "(") depth += 1;
     if (ch === "]" || ch === ")") depth -= 1;
     if (ch === " " && depth === 0) {
@@ -24598,10 +24614,10 @@ function usageUnits(text) {
   }
   return units;
 }
-function usageLines(term, cmd, text, indent = 2) {
+function usageLines(term, cmd, text2, indent = 2) {
   const { painter, caps } = term;
   const cont = indent + 4;
-  const units = usageUnits(text);
+  const units = usageUnits(text2);
   const isIn = (word, words2) => word !== void 0 && word.split("|").every((w2) => words2.includes(w2));
   let lead = 2;
   if (cmd.tree && isIn(units[2], Object.keys(cmd.tree))) {
@@ -24626,18 +24642,18 @@ function usageLines(term, cmd, text, indent = 2) {
     (l, i) => `${" ".repeat(i === 0 ? indent : cont)}${l.join(" ")}`
   );
 }
-function usageSubs(cmd, text) {
+function usageSubs(cmd, text2) {
   if (!cmd.tree) return null;
-  const word = text.split(" ")[2] ?? "";
+  const word = text2.split(" ")[2] ?? "";
   const subs = word.split("|");
   return subs.every((s) => s in cmd.tree) ? subs : null;
 }
 function rowSubs(term) {
   return (term.split(" ")[1] ?? "").split("|");
 }
-function paragraph(term, text, indent = 2) {
+function paragraph(term, text2, indent = 2) {
   const width = Math.max(1, term.caps.columns - indent);
-  return wrapSpans([{ text }], width).map(
+  return wrapSpans([{ text: text2 }], width).map(
     (l) => `${" ".repeat(indent)}${term.painter.line(l)}`
   );
 }
@@ -25452,8 +25468,8 @@ function moveLegacyRecipes(docs, cwd, moves) {
           const at = [list2, String(j)];
           if (schema.edit.get([...at, "key"]) !== id || schema.edit.get([...at, "kind"]) !== "secret" || schema.edit.get([...at, "delivery"]) !== "edgeMint" || isSet(schema.edit.get([...at, "mint"])))
             continue;
-          const { id: _id, ...block } = recipe;
-          schema.edit.set([...at, "mint"], block);
+          const { id: _id, ...block2 } = recipe;
+          schema.edit.set([...at, "mint"], block2);
           doc.edit.remove(["edgeMint", String(i)]);
           if (lengthOf(doc.edit.get(["edgeMint"])) === 0)
             doc.edit.remove(["edgeMint"]);
@@ -25528,45 +25544,77 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var KEYCHAIN_SERVICE = "pkey";
 var CREDENTIAL_SHAPE = /^pkey[ap]_[A-Za-z0-9_-]{43,}$/;
+var PERSONAL_SHAPE = /^pkeyp_[A-Za-z0-9_-]{43,}$/;
 function isCredentialShape(value) {
   return CREDENTIAL_SHAPE.test(value);
 }
+function isPersonalShape(value) {
+  return PERSONAL_SHAPE.test(value);
+}
+function hintOf(c) {
+  return c.hint ?? c.token.slice(-4);
+}
 var Refusal = class extends Error {
-  constructor(message, fix) {
+  constructor(message, fix, code = "refused") {
     super(message);
     this.fix = fix;
+    this.code = code;
     this.name = "Refusal";
   }
   fix;
+  code;
 };
 var NoStoreError = class extends Refusal {
   constructor() {
     super(
-      "No credential store on this machine.",
-      `Set ${ADMIN_TOKEN_ENV} instead.`
+      "No credential store on this computer.",
+      `Set ${ADMIN_TOKEN_ENV} to a personal token (pkeyp_…) instead.`,
+      "no-credential-store"
     );
     this.name = "NoStoreError";
+  }
+};
+var KeychainRefusedError = class extends Refusal {
+  constructor() {
+    super(
+      "The credential store refused access.",
+      "Allow pkey when it asks, or unlock the store, then run the command again.",
+      "keychain-refused"
+    );
+    this.name = "KeychainRefusedError";
   }
 };
 function originOf(baseUrl) {
   return new URL(normalizeBaseUrl(baseUrl, ADMIN_TOKEN_ENV)).origin;
 }
 function encode(c) {
-  return JSON.stringify({ t: c.token, e: c.expiresAt });
+  if (!isPersonalShape(c.token))
+    throw new Error("The credential store keeps personal tokens only.");
+  return JSON.stringify({
+    t: c.token,
+    e: c.expiresAt,
+    l: c.label ?? null,
+    h: hintOf(c)
+  });
 }
+var short = (v) => typeof v === "string" && v.length > 0 && v.length <= 200 ? v : null;
 function decode(raw) {
   try {
     const v = JSON.parse(raw);
-    if (typeof v.t === "string" && isCredentialShape(v.t))
+    if (typeof v.t === "string" && isPersonalShape(v.t))
       return {
         token: v.t,
-        expiresAt: typeof v.e === "number" && v.e > 0 ? v.e : null
+        expiresAt: typeof v.e === "number" && v.e > 0 ? v.e : null,
+        label: short(v.l),
+        hint: typeof v.h === "string" && /^.{1,8}$/.test(v.h) ? v.h : null
       };
+    return null;
   } catch {
   }
-  return isCredentialShape(raw) ? { token: raw, expiresAt: null } : null;
+  return isPersonalShape(raw) ? { token: raw, expiresAt: null } : null;
 }
-async function keyringStore(load = () => import("@napi-rs/keyring")) {
+var REFUSED = /NoStorageAccess|denied|locked|cancel|interaction|authori[sz]|not allowed|permission/i;
+async function keyringStore(load = () => Promise.resolve().then(() => (init_keyring_stub(), keyring_stub_exports)), platform = process.platform) {
   let mod;
   try {
     mod = await load();
@@ -25576,11 +25624,15 @@ async function keyringStore(load = () => import("@napi-rs/keyring")) {
   const guard = (fn) => {
     try {
       return fn();
-    } catch {
-      throw new NoStoreError();
+    } catch (e) {
+      throw REFUSED.test(e instanceof Error ? e.message : String(e)) ? new KeychainRefusedError() : new NoStoreError();
     }
   };
-  const entry = (origin) => new mod.Entry(KEYCHAIN_SERVICE, origin);
+  const entry = (origin) => new mod.Entry(
+    KEYCHAIN_SERVICE,
+    origin,
+    platform === "linux" ? { linux: { store: "secret-service" } } : void 0
+  );
   return {
     get: (origin) => guard(() => {
       const raw = entry(origin).getPassword();
@@ -25597,7 +25649,8 @@ async function adminCredential(opts) {
     if (!isCredentialShape(fromEnv))
       throw new Refusal(
         `${ADMIN_TOKEN_ENV} is not a pkeya_ or pkeyp_ token.`,
-        "Copy it again whole."
+        "Copy it again whole.",
+        "env-token-refused"
       );
     return { token: fromEnv, source: "env", origin, expiresAt: null };
   }
@@ -25605,92 +25658,188 @@ async function adminCredential(opts) {
   if (!stored)
     throw new Refusal(
       `Not signed in to ${new URL(origin).host}.`,
-      "Run pkey login."
+      "Run pkey login.",
+      "not-signed-in"
     );
   return {
     token: stored.token,
     source: "store",
     origin,
-    expiresAt: stored.expiresAt
+    expiresAt: stored.expiresAt,
+    label: stored.label ?? null,
+    hint: hintOf(stored)
   };
 }
 
 // src/account.ts
-var day = (epochSeconds) => new Date(epochSeconds * 1e3).toISOString().slice(0, 10);
-function refusalText(r, t) {
+var Failure = class extends Error {
+  constructor(message, fix, code, extra = {}) {
+    super(message);
+    this.fix = fix;
+    this.code = code;
+    this.extra = extra;
+    this.name = "Failure";
+  }
+  fix;
+  code;
+  extra;
+};
+var Unreachable = class extends Failure {
+  constructor(host, cause) {
+    super(
+      `Can't reach ${host}.`,
+      "Check your network, or --base-url.",
+      "unreachable",
+      cause ? { cause } : {}
+    );
+    this.name = "Unreachable";
+  }
+};
+var Redirected = class extends Refusal {
+  constructor(host) {
+    super(
+      `${host} answered with a redirect, so pkey sent nothing further.`,
+      "Check --base-url.",
+      "redirect"
+    );
+    this.name = "Redirected";
+  }
+};
+function day(epochSeconds, env) {
+  const when = new Date(epochSeconds * 1e3);
+  const parts = (timeZone) => Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(when).map((p2) => [p2.type, p2.value])
+  );
+  let p;
+  try {
+    p = parts(env.TZ || void 0);
+  } catch {
+    p = parts(void 0);
+  }
+  return `${p["year"]}-${p["month"]}-${p["day"]}`;
+}
+var shown = (value, env) => untrusted(value, env).replace(/pkey[ap]_[A-Za-z0-9_-]{20,}/g, "[token]");
+var hostOf2 = (origin) => new URL(origin).host;
+var text = (t, extra = {}) => ({
+  text: t,
+  ...extra
+});
+function block(t, kind, paragraphs) {
   const { painter, symbols, caps } = t;
+  const glyph = kind === "ok" ? painter.style(symbols.ok, ["success"]) : kind === "warn" ? painter.style(symbols.warn, ["warning"]) : painter.style(symbols.fail, ["error"]);
   const width = Math.max(1, caps.columns - 3);
-  const body = (text, first) => wrapSpans([{ text }], width).map(
-    (l, i) => `${first && i === 0 ? painter.style(symbols.warn, ["warning"]) + "  " : "   "}${painter.line(l)}`
-  ).join("\n");
-  return `${[body(r.message, true), ...r.fix ? [body(r.fix, false)] : []].join("\n")}
+  const out = [];
+  for (const para of paragraphs)
+    for (const l of wrapSpans(para, width))
+      out.push(`${out.length === 0 ? `${glyph}  ` : "   "}${painter.line(l)}`);
+  return `${out.join("\n")}
 `;
 }
-function note(text, t, kind) {
-  const { painter, symbols, caps } = t;
-  const glyph = kind === "warn" ? painter.style(symbols.warn, ["warning"]) : painter.style(symbols.ok, ["success"]);
-  return wrapSpans([{ text }], Math.max(1, caps.columns - 3)).map((l, i) => `${i === 0 ? `${glyph}  ` : "   "}${painter.line(l)}`).join("\n") + "\n";
+var plain2 = (...lines4) => lines4.filter((l) => !!l).map((l) => [text(l)]);
+function envelope(command, exit, fields) {
+  return `${untrustedJson({ v: 1, command, event: "result", ok: exit === 0, exit, ...fields }).replace(/[\u007f-￿]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}
+`;
 }
-var hostOf2 = (origin) => new URL(origin).host;
+function networkCode(e) {
+  const code = e?.cause?.code;
+  return typeof code === "string" && /^[A-Z0-9_]{1,40}$/.test(code) ? code : null;
+}
 async function call(io, cred, method, path32) {
-  const res = await request(
-    io.fetchImpl ?? fetch,
-    `${cred.origin}/manage/api${path32}`,
-    {
+  let res;
+  try {
+    res = await (io.fetchImpl ?? fetch)(`${cred.origin}/manage/api${path32}`, {
       method,
       redirect: "manual",
       headers: {
         authorization: `Bearer ${cred.token}`,
         accept: "application/json"
       }
-    }
-  );
+    });
+  } catch (e) {
+    throw new Unreachable(hostOf2(cred.origin), networkCode(e));
+  }
   if (res.status >= 300 && res.status < 400)
-    throw new Refusal(
-      `${hostOf2(cred.origin)} answered with a redirect, so pkey sent nothing further.`,
-      "Check --base-url."
-    );
+    throw new Redirected(hostOf2(cred.origin));
   return res;
 }
 async function jsonOf(res) {
   try {
     const v = await res.json();
-    return v && typeof v === "object" ? v : {};
+    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
   } catch {
     return {};
   }
 }
-async function guarded(io, run2) {
+async function guarded(io, command, run2) {
   try {
     return await run2();
   } catch (e) {
-    if (e instanceof Refusal) {
-      io.stderr.write(refusalText(e, io.term(io.stderr)));
-      return 4;
-    }
-    throw e;
+    const refusal = e instanceof Refusal;
+    if (!refusal && !(e instanceof Failure)) throw e;
+    const exit = refusal ? 4 : 1;
+    const fix = e.fix;
+    if (io.json)
+      io.stdout.write(
+        envelope(command, exit, {
+          error: e.code,
+          message: [e.message, fix].filter(Boolean).join(" "),
+          ...e instanceof Failure ? e.extra : {}
+        })
+      );
+    else
+      io.stderr.write(
+        block(
+          io.term(io.stderr),
+          refusal ? "warn" : "fail",
+          plain2(e.message, fix)
+        )
+      );
+    return exit;
   }
 }
 function endedRefusal(cred) {
   return cred.source === "env" ? new Refusal(
-    `${ADMIN_TOKEN_ENV} was refused. It may have ended or been revoked.`,
-    "Set a current one, or unset it and run pkey login."
+    `${ADMIN_TOKEN_ENV} was refused. It may have ended, been revoked, or isn't an admin token.`,
+    "Set a current one, or unset it and run pkey login.",
+    "env-token-refused"
   ) : new Refusal(
     `Your sign-in to ${hostOf2(cred.origin)} has ended.`,
-    "Run pkey login."
+    "Run pkey login.",
+    "sign-in-ended"
   );
 }
+function roleName(role, scope, productName) {
+  switch (role) {
+    case "superadmin":
+      return "Superadmin";
+    case "platform_admin":
+      return "Platform admin";
+    case "console_access":
+      return "Console access";
+    case "product_admin":
+      return scope.startsWith("product:") ? `${productName(scope.slice("product:".length))} admin` : "All products admin";
+    default:
+      return role;
+  }
+}
 function cmdWhoami(io) {
-  return guarded(io, async () => {
+  return guarded(io, "whoami", async () => {
     const cred = await adminCredential({
       env: io.env,
       baseUrl: io.baseUrl,
       store: io.store
     });
+    const host = hostOf2(cred.origin);
     if (cred.token.startsWith("pkeya_"))
       throw new Refusal(
-        `${ADMIN_TOKEN_ENV} is an admin API token (pkeya_), which has no person behind it.`,
-        "Run pkey login for a personal sign-in."
+        `${ADMIN_TOKEN_ENV} is an admin API token, not a person's sign-in.`,
+        "Unset it, then run pkey login.",
+        "admin-api-token"
       );
     const now = (io.now ?? (() => Math.floor(Date.now() / 1e3)))();
     if (cred.expiresAt !== null && cred.expiresAt <= now)
@@ -25699,144 +25848,257 @@ function cmdWhoami(io) {
     if (res.status === 401) throw endedRefusal(cred);
     if (res.status === 403)
       throw new Refusal(
-        "The console refused this sign-in, usually because Superadmin access needs a recent console sign-in.",
-        "Sign in to the console, then run pkey whoami again."
+        "The console refused this sign-in.",
+        "Run pkey login again, or ask an admin for access.",
+        "sign-in-ended"
       );
     if (!res.ok)
-      throw new Error(
-        `Could not read your identity from ${hostOf2(cred.origin)} (HTTP ${res.status}).`
+      throw new Failure(
+        `${host} answered ${res.status}.`,
+        "Try again in a minute.",
+        "server-error",
+        { status: res.status }
       );
     const me = await jsonOf(res);
+    if (!(typeof me["email"] === "string" && me["email"]) && !(typeof me["sub"] === "string" && me["sub"]))
+      throw new Failure(
+        `${host} didn't answer as a Polaris Key console.`,
+        "Check --base-url.",
+        "not-a-console"
+      );
     const perms = me["permissions"] ?? {};
-    const roles = [
+    const rawRoles = Array.isArray(perms.roles) ? perms.roles : [];
+    const products = /* @__PURE__ */ new Map();
+    if (Array.isArray(me["products"])) {
+      for (const p of me["products"])
+        if (typeof p?.slug === "string" && typeof p.name === "string")
+          products.set(p.slug, p.name);
+    }
+    const roleNames = [
       ...new Set(
-        (perms.roles ?? []).map(
-          (r) => `${untrusted(r.role, io.env)} (${untrusted(r.scope, io.env)})`
+        rawRoles.map(
+          (r) => shown(
+            roleName(String(r.role), String(r.scope), (slug) => {
+              return products.get(slug) ?? slug;
+            }),
+            io.env
+          )
         )
       )
     ];
-    const superadmin = (perms.roles ?? []).some((r) => r.role === "superadmin");
+    const supers = rawRoles.filter((r) => r.role === "superadmin");
+    const rootOnly = supers.length > 0 && supers.every((r) => r.source === "root");
     const ends = typeof me["sessionExpiresAt"] === "number" ? me["sessionExpiresAt"] : cred.expiresAt;
-    const name = untrusted(me["name"] ?? "", io.env);
-    const email = untrusted(me["email"] ?? "", io.env);
-    const host = hostOf2(cred.origin);
+    const name = shown(me["name"] ?? "", io.env);
+    const email = shown(me["email"] ?? "", io.env);
+    const label = cred.source === "store" ? shown(cred.label ?? `pkey on ${host}`, io.env) : null;
     if (io.json) {
       io.stdout.write(
-        `${JSON.stringify({
-          v: 1,
-          command: "whoami",
-          ok: true,
+        envelope("whoami", 0, {
           host,
           name,
           email,
-          roles: (perms.roles ?? []).map((r) => ({
-            role: untrusted(r.role, io.env),
-            scope: untrusted(r.scope, io.env)
+          roles: rawRoles.map((r) => ({
+            role: shown(r.role, io.env),
+            scope: shown(r.scope, io.env)
           })),
           token: {
             type: "personal",
             source: cred.source === "env" ? "environment" : "credential-store",
             scope: "admin",
+            ...label ? { label, hint: shown(hintOf(cred), io.env) } : {},
             expiresAt: ends === null ? null : new Date(ends * 1e3).toISOString()
           }
-        })}
-`
+        })
       );
       return 0;
     }
     const t = io.term(io.stdout);
-    const label = (s) => t.painter.style(s.padEnd(8), ["muted"]);
-    const rows = [
-      ["Host", host],
-      ["Name", name],
-      ["Email", email],
-      ["Roles", roles.length ? roles.join(", ") : "none"],
-      [
-        "Token",
-        `personal (admin)${ends === null ? "" : `, ends ${day(ends)}`}${cred.source === "env" ? `, from ${ADMIN_TOKEN_ENV}` : ""}`
-      ]
+    const labelWidth = 8;
+    const quote = t.caps.unicode ? ["“", "”"] : ['"', '"'];
+    const ellipsis = t.symbols.ellipsis;
+    const tokenLine = [
+      text(
+        label ? `${quote[0]}${label}${quote[1]} (${ellipsis}${shown(hintOf(cred), io.env)})` : `personal token from ${ADMIN_TOKEN_ENV}`,
+        { unit: true }
+      ),
+      ...ends === null ? [] : [text(", "), text(`ends ${day(ends, io.env)}`, { unit: true })]
     ];
-    for (const [k, v] of rows) if (v) io.stdout.write(`${label(k)}${v}
+    const rolesLine = roleNames.length ? roleNames.flatMap((r, i) => [
+      ...i ? [text(", ")] : [],
+      text(r, { unit: true })
+    ]) : [text("none")];
+    const rows = [
+      ["Host", [text(host, { keep: true })]],
+      ["Name", name ? [text(name, { unit: true })] : []],
+      ["Email", email ? [text(email, { keep: true })] : []],
+      ["Roles", rolesLine],
+      ["Token", tokenLine]
+    ];
+    const room = Math.max(1, t.caps.columns - labelWidth);
+    for (const [k, v] of rows) {
+      if (!v.length) continue;
+      wrapSpans(v, room).forEach((l, i) => {
+        const head = i === 0 ? t.painter.style(k.padEnd(labelWidth), ["muted"]) : " ".repeat(labelWidth);
+        io.stdout.write(`${head}${t.painter.line(l)}
 `);
-    if (superadmin)
+      });
+    }
+    if (rootOnly)
       io.stdout.write(
-        note(
-          "Superadmin access lapses without a recent console sign-in. Sign in to the console to keep it.",
+        block(
           t,
-          "warn"
+          "warn",
+          plain2(
+            "Superadmin from your identity provider lasts 8 hours after a console sign-in. Ask for a stored Superadmin role to keep it in pkey."
+          )
         )
       );
     return 0;
   });
 }
 function cmdLogout(io) {
-  return guarded(io, async () => {
+  return guarded(io, "logout", async () => {
     const t = io.term(io.stdout);
-    const done = (code, host2, state, text, kind = "ok", fix) => {
+    const ok = (host2, state, message2) => {
       if (io.json)
-        io.stdout.write(
-          `${JSON.stringify({ v: 1, command: "logout", ok: kind === "ok", host: host2, ...state })}
-`
-        );
-      else
-        (kind === "ok" ? io.stdout : io.stderr).write(
-          kind === "ok" ? note(text, t, "ok") : refusalText(new Refusal(text, fix), io.term(io.stderr))
-        );
-      return code;
+        io.stdout.write(envelope("logout", 0, { host: host2, ...state, message: message2 }));
+      else io.stdout.write(block(t, "ok", plain2(message2)));
+      return 0;
     };
     if (io.env[ADMIN_TOKEN_ENV]?.trim())
       throw new Refusal(
-        `${ADMIN_TOKEN_ENV} is set, and pkey only ends a sign-in it stored.`,
-        "Revoke that token in the console, then unset it."
+        `pkey is using ${ADMIN_TOKEN_ENV}, which pkey logout doesn't end.`,
+        `Unset it, then run pkey logout.`,
+        "env-token-refused"
       );
     const origin = originOf(io.baseUrl);
+    const host = hostOf2(origin);
     const store = await io.store();
     const stored = store.get(origin);
     if (!stored)
-      return done(
-        0,
-        hostOf2(origin),
+      return ok(
+        host,
         { revoked: false, cleared: false },
-        `Not signed in to ${hostOf2(origin)}.`
+        `Already signed out of ${host}.`
       );
     const cred = {
       token: stored.token,
       source: "store",
       origin,
-      expiresAt: stored.expiresAt
+      expiresAt: stored.expiresAt,
+      label: stored.label ?? null,
+      hint: hintOf(stored)
     };
-    const host = hostOf2(origin);
-    let outcome = "revoked";
-    try {
-      const res = await call(io, cred, "DELETE", "/me/personal-tokens/current");
-      if (res.status === 401 || res.status === 404) outcome = "ended";
-      else if (!res.ok) outcome = "unreached";
-    } catch (e) {
-      if (e instanceof Refusal) throw e;
-      outcome = "unreached";
+    const now = (io.now ?? (() => Math.floor(Date.now() / 1e3)))();
+    let outcome;
+    if (cred.expiresAt !== null && cred.expiresAt <= now)
+      outcome = { kind: "ended" };
+    else {
+      try {
+        const res = await call(
+          io,
+          cred,
+          "DELETE",
+          "/me/personal-tokens/current"
+        );
+        if (res.ok) outcome = { kind: "revoked" };
+        else if (res.status === 401) outcome = { kind: "ended" };
+        else {
+          const body = await jsonOf(res);
+          const err = body["error"];
+          const notFound = res.status === 404 && (err?.code === "not_found" || body["code"] === "not_found");
+          if (notFound) outcome = { kind: "ended" };
+          else if (res.status === 403 || res.status === 409 || res.status === 429)
+            outcome = {
+              kind: "live",
+              why: `${host} refused to revoke the token (HTTP ${res.status})`,
+              code: "revoke-refused"
+            };
+          else
+            outcome = {
+              kind: "live",
+              why: `${host} didn't revoke it (HTTP ${res.status})`,
+              code: res.status >= 500 ? "server-error" : "revoke-refused"
+            };
+        }
+      } catch (e) {
+        if (e instanceof Redirected)
+          outcome = {
+            kind: "live",
+            why: `${host} redirected the request`,
+            code: "redirect"
+          };
+        else if (e instanceof Unreachable)
+          outcome = {
+            kind: "live",
+            why: `couldn't reach ${host}`,
+            code: "unreachable"
+          };
+        else throw e;
+      }
     }
-    store.delete(cred.origin);
-    if (outcome !== "unreached")
-      return done(
-        0,
-        host,
-        { revoked: outcome === "revoked", cleared: true },
-        outcome === "revoked" ? `Signed out of ${host}. The token is revoked.` : `Signed out of ${host}. The token had already ended.`
+    try {
+      store.delete(origin);
+    } catch (e) {
+      if (!(e instanceof Refusal)) throw e;
+      const gone = outcome.kind !== "live";
+      throw new Failure(
+        gone ? "The token is revoked, but pkey couldn't remove it from the credential store." : "pkey couldn't remove the sign-in from the credential store.",
+        "Run pkey logout again.",
+        e.code,
+        { host, revoked: gone, cleared: false }
       );
-    const until = cred.expiresAt !== null ? `until ${day(cred.expiresAt)}` : "until it ends";
-    return done(
-      1,
-      host,
-      { revoked: false, cleared: true },
-      `Signed out here, but ${host} could not be reached to revoke the token. It stays valid ${until}.`,
-      "warn",
-      `Revoke it at ${cred.origin}/manage/#/personal-tokens.`
-    );
+    }
+    if (outcome.kind === "revoked")
+      return ok(
+        host,
+        { revoked: true, cleared: true },
+        `Signed out of ${host}. The token is revoked.`
+      );
+    if (outcome.kind === "ended")
+      return ok(
+        host,
+        { revoked: false, cleared: true },
+        `Signed out of ${host}. The token had already ended.`
+      );
+    const until = cred.expiresAt !== null ? `until ${day(cred.expiresAt, io.env)}` : "until it ends";
+    const message = `Signed out on this computer, but ${outcome.why}, so the token still works ${until}.`;
+    const revokeUrl = `${origin}/manage/#/personal-tokens`;
+    const label = shown(stored.label ?? `pkey on ${host}`, io.env);
+    const quote = t.caps.unicode ? ["“", "”"] : ['"', '"'];
+    const revokeLine = `Revoke ${quote[0]}${label}${quote[1]} (${t.symbols.ellipsis}${shown(hintOf(stored), io.env)}) in Personal tokens:`;
+    if (io.json) {
+      io.stdout.write(
+        envelope("logout", 1, {
+          error: outcome.code,
+          message: `${message} ${revokeLine} ${revokeUrl}`,
+          host,
+          revoked: false,
+          cleared: true,
+          tokenEndsAt: cred.expiresAt === null ? null : new Date(cred.expiresAt * 1e3).toISOString(),
+          revokeUrl
+        })
+      );
+    } else {
+      io.stderr.write(
+        block(io.term(io.stderr), "warn", [
+          [text(message)],
+          [text(revokeLine)],
+          [text(revokeUrl, { break: "url" })]
+        ])
+      );
+    }
+    return 1;
   });
 }
 function cmdLogin(io) {
-  return guarded(io, async () => {
-    throw new Refusal("pkey login is not available in this build yet.");
+  return guarded(io, "login", async () => {
+    throw new Refusal(
+      "pkey login is not available in this build yet.",
+      void 0,
+      "not-available"
+    );
   });
 }
 
@@ -26190,8 +26452,8 @@ async function putFile(opts) {
         await res.body?.cancel().catch(() => void 0);
         return;
       }
-      const text = (await res.text().catch(() => "")).slice(0, 300);
-      failure = `${res.status}${text ? ` ${text.replace(/\s+/g, " ")}` : ""}`;
+      const text2 = (await res.text().catch(() => "")).slice(0, 300);
+      failure = `${res.status}${text2 ? ` ${text2.replace(/\s+/g, " ")}` : ""}`;
       if (!TRANSIENT.has(res.status))
         throw new Error(
           `Uploading ${opts.file} to ${opts.key} failed: ${failure}`
@@ -26362,8 +26624,8 @@ function unescapeXml(s) {
     }
   );
 }
-function parseXml(text) {
-  const body = text.replace(/<\?xml[\s\S]*?\?>/g, "").replace(/<!--[\s\S]*?-->/g, "").replace(/<!DOCTYPE[\s\S]*?>/g, "");
+function parseXml(text2) {
+  const body = text2.replace(/<\?xml[\s\S]*?\?>/g, "").replace(/<!--[\s\S]*?-->/g, "").replace(/<!DOCTYPE[\s\S]*?>/g, "");
   const tokens = body.match(/<\/?[A-Za-z]+(?:\s[^>]*)?\/?>|[^<]+/g) ?? [];
   let i = 0;
   const skipSpace = () => {
@@ -26922,9 +27184,9 @@ function lpItems(buf, at, end) {
   }
   return out;
 }
-function schemeBlockCertificate(block) {
-  if (block.length < 4) return null;
-  const signers = lpItems(block, 4, 4 + block.readUInt32LE(0));
+function schemeBlockCertificate(block2) {
+  if (block2.length < 4) return null;
+  const signers = lpItems(block2, 4, 4 + block2.readUInt32LE(0));
   const signer = signers[0];
   if (!signer || signer.length < 4) return null;
   const signedData = signer.subarray(4, 4 + signer.readUInt32LE(0));
@@ -26946,14 +27208,14 @@ async function signingBlockCertificate(zip) {
   if (footer.toString("latin1", 8, 24) !== APK_SIG_BLOCK_MAGIC) return null;
   const size = Number(footer.readBigUInt64LE(0));
   if (size < 24 || size + 8 > cd) return null;
-  const block = await zip.readRaw(cd - size - 8, size + 8);
+  const block2 = await zip.readRaw(cd - size - 8, size + 8);
   const pairs = /* @__PURE__ */ new Map();
   let p = 8;
-  const end = block.length - 24;
+  const end = block2.length - 24;
   while (p + 12 <= end) {
-    const len = Number(block.readBigUInt64LE(p));
+    const len = Number(block2.readBigUInt64LE(p));
     if (len < 4 || p + 8 + len > end) break;
-    pairs.set(block.readUInt32LE(p + 8), block.subarray(p + 12, p + 8 + len));
+    pairs.set(block2.readUInt32LE(p + 8), block2.subarray(p + 12, p + 8 + len));
     p += 8 + len;
   }
   for (const id of [
@@ -27070,16 +27332,16 @@ function canonicalJson(value) {
   return JSON.stringify(value) ?? "null";
 }
 async function readJson2(file, what) {
-  let text;
+  let text2;
   try {
-    text = await readFile5(file, "utf8");
+    text2 = await readFile5(file, "utf8");
   } catch (e) {
     if (e.code === "ENOENT")
       throw new Error(`${what} ${file} does not exist.`);
     throw e;
   }
   try {
-    return JSON.parse(text);
+    return JSON.parse(text2);
   } catch (e) {
     throw new Error(`${what} ${file} is not JSON: ${e.message}`);
   }
@@ -27296,7 +27558,7 @@ var PointerSet = class {
 var StrictJsonRefused = class extends Error {
 };
 var NUMBER_TOKEN_RE = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
-function scanStrictJson(text) {
+function scanStrictJson(text2) {
   let i = 0;
   const nonWire = new PointerSet();
   const segs = [];
@@ -27315,32 +27577,32 @@ function scanStrictJson(text) {
     throw new StrictJsonRefused();
   };
   const ws = () => {
-    while (i < text.length) {
-      const c = text.charCodeAt(i);
+    while (i < text2.length) {
+      const c = text2.charCodeAt(i);
       if (c === 32 || c === 9 || c === 10 || c === 13) i++;
       else break;
     }
   };
   const hex42 = () => {
-    const h = text.slice(i, i + 4);
+    const h = text2.slice(i, i + 4);
     if (!/^[0-9a-fA-F]{4}$/.test(h)) refuse2();
     i += 4;
     return parseInt(h, 16);
   };
   const str6 = () => {
-    if (text.charCodeAt(i) !== 34) refuse2();
+    if (text2.charCodeAt(i) !== 34) refuse2();
     i++;
     let out = "";
     for (; ; ) {
-      if (i >= text.length) refuse2();
-      const c = text.charCodeAt(i);
+      if (i >= text2.length) refuse2();
+      const c = text2.charCodeAt(i);
       if (c === 34) {
         i++;
         break;
       }
       if (c < 32) refuse2();
       if (c === 92) {
-        const e = text[i + 1];
+        const e = text2[i + 1];
         i += 2;
         switch (e) {
           case '"':
@@ -27375,7 +27637,7 @@ function scanStrictJson(text) {
         }
         continue;
       }
-      out += text[i];
+      out += text2[i];
       i++;
     }
     for (let k = 0; k < out.length; k++) {
@@ -27393,7 +27655,7 @@ function scanStrictJson(text) {
   };
   const num = () => {
     NUMBER_TOKEN_RE.lastIndex = i;
-    const m = NUMBER_TOKEN_RE.exec(text);
+    const m = NUMBER_TOKEN_RE.exec(text2);
     if (!m) refuse2();
     const token = m[0];
     i += token.length;
@@ -27402,13 +27664,13 @@ function scanStrictJson(text) {
   };
   const value = (depth) => {
     ws();
-    const c = text[i];
+    const c = text2[i];
     if (c === "{") {
       if (depth + 1 > MAX_JSON_DEPTH) refuse2();
       i++;
       const names = /* @__PURE__ */ new Set();
       ws();
-      if (text[i] === "}") {
+      if (text2[i] === "}") {
         i++;
         return;
       }
@@ -27419,7 +27681,7 @@ function scanStrictJson(text) {
         if (names.has(name)) refuse2();
         names.add(name);
         ws();
-        if (text[i] !== ":") refuse2();
+        if (text2[i] !== ":") refuse2();
         i++;
         segs.push(name);
         ids.push(-1);
@@ -27427,11 +27689,11 @@ function scanStrictJson(text) {
         segs.pop();
         ids.pop();
         ws();
-        if (text[i] === ",") {
+        if (text2[i] === ",") {
           i++;
           continue;
         }
-        if (text[i] === "}") {
+        if (text2[i] === "}") {
           i++;
           return;
         }
@@ -27442,7 +27704,7 @@ function scanStrictJson(text) {
       if (depth + 1 > MAX_JSON_DEPTH) refuse2();
       i++;
       ws();
-      if (text[i] === "]") {
+      if (text2[i] === "]") {
         i++;
         return;
       }
@@ -27453,11 +27715,11 @@ function scanStrictJson(text) {
         segs.pop();
         ids.pop();
         ws();
-        if (text[i] === ",") {
+        if (text2[i] === ",") {
           i++;
           continue;
         }
-        if (text[i] === "]") {
+        if (text2[i] === "]") {
           i++;
           return;
         }
@@ -27473,7 +27735,7 @@ function scanStrictJson(text) {
       return;
     }
     for (const lit of ["true", "false", "null"]) {
-      if (text.startsWith(lit, i)) {
+      if (text2.startsWith(lit, i)) {
         i += lit.length;
         return;
       }
@@ -27482,11 +27744,11 @@ function scanStrictJson(text) {
   };
   try {
     ws();
-    if (text[i] !== "{")
+    if (text2[i] !== "{")
       return { ok: false, nonWireIntegers: new PointerSet() };
     value(0);
     ws();
-    if (i !== text.length)
+    if (i !== text2.length)
       return { ok: false, nonWireIntegers: new PointerSet() };
     return { ok: true, nonWireIntegers: nonWire };
   } catch (e) {
@@ -27496,18 +27758,18 @@ function scanStrictJson(text) {
   }
 }
 function parseStrictJson(bytes) {
-  let text;
+  let text2;
   try {
-    text = dec.decode(bytes);
+    text2 = dec.decode(bytes);
   } catch {
     return null;
   }
-  if (text.charCodeAt(0) === 65279) return null;
-  const scan = scanStrictJson(text);
+  if (text2.charCodeAt(0) === 65279) return null;
+  const scan = scanStrictJson(text2);
   if (!scan.ok) return null;
   try {
     return {
-      value: JSON.parse(text),
+      value: JSON.parse(text2),
       nonWireIntegers: scan.nonWireIntegers
     };
   } catch {
@@ -27615,8 +27877,8 @@ var StrictJsonError = class extends Error {
   }
   part;
 };
-function assertStrictJson(text, part) {
-  if (!scanStrictJson(text).ok) {
+function assertStrictJson(text2, part) {
+  if (!scanStrictJson(text2).ok) {
     throw new StrictJsonError(
       part,
       `the ${part} breaks WIRE-CONTRACT-V4 §1.2 (a lone surrogate, U+0000 in a member name, a number out of range, or nesting past ${MAX_JSON_DEPTH} levels), so no strict verifier would accept it`
@@ -28575,20 +28837,20 @@ var invalid = {
   error: "files-index-invalid"
 };
 function strictParse(bytes) {
-  let text;
+  let text2;
   try {
-    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+    text2 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     return null;
   }
-  if (text.charCodeAt(0) === 65279)
+  if (text2.charCodeAt(0) === 65279)
     return null;
-  const scan = scanStrictJson(text);
+  const scan = scanStrictJson(text2);
   if (!scan.ok)
     return null;
   try {
     return {
-      value: JSON.parse(text),
+      value: JSON.parse(text2),
       nonWire: scan.nonWireIntegers
     };
   } catch {
@@ -28896,13 +29158,13 @@ var DATA_ONLY_SCRIPT_MARKERS = [
   "script/source",
   "source_code"
 ];
-function asciiEscape(text) {
-  for (let at = text.indexOf("\\"); at >= 0; at = text.indexOf("\\", at + 1)) {
-    const c = text[at + 1];
+function asciiEscape(text2) {
+  for (let at = text2.indexOf("\\"); at >= 0; at = text2.indexOf("\\", at + 1)) {
+    const c = text2[at + 1];
     if (c !== "u" && c !== "U")
       continue;
     const n = c === "u" ? 4 : 6;
-    const digits = text.slice(at + 2, at + 2 + n);
+    const digits = text2.slice(at + 2, at + 2 + n);
     if (!new RegExp(`^[0-9A-Fa-f]{${n}}$`).test(digits))
       return true;
     if (parseInt(digits, 16) < 128)
@@ -28911,19 +29173,19 @@ function asciiEscape(text) {
   return false;
 }
 function dataOnlyTextRefusal(bytes) {
-  let text;
+  let text2;
   try {
-    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    text2 = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
     return "content";
   }
-  if (text.includes("\0"))
+  if (text2.includes("\0"))
     return "content";
-  if (asciiEscape(text))
+  if (asciiEscape(text2))
     return "content";
-  const bare = text.replaceAll("\\", "");
+  const bare = text2.replaceAll("\\", "");
   for (const m of DATA_ONLY_SCRIPT_MARKERS)
-    if (text.includes(m) || bare.includes(m))
+    if (text2.includes(m) || bare.includes(m))
       return "content";
   return null;
 }
@@ -28989,12 +29251,12 @@ var invalid2 = {
 };
 function parseContentStamp(input) {
   try {
-    let text;
+    let text2;
     if (typeof input === "string")
-      text = input;
+      text2 = input;
     else {
       try {
-        text = new TextDecoder("utf-8", {
+        text2 = new TextDecoder("utf-8", {
           fatal: true,
           ignoreBOM: true
         }).decode(input);
@@ -29002,12 +29264,12 @@ function parseContentStamp(input) {
         return invalid2;
       }
     }
-    if (text.charCodeAt(0) === 65279)
+    if (text2.charCodeAt(0) === 65279)
       return invalid2;
-    const scan = scanStrictJson(text);
+    const scan = scanStrictJson(text2);
     if (!scan.ok)
       return invalid2;
-    const doc = JSON.parse(text);
+    const doc = JSON.parse(text2);
     if (!isObject(doc) || doc.format !== CONTENT_STAMP_FORMAT)
       return invalid2;
     if (!contentClaims(doc, { nonWire: scan.nonWireIntegers, pointer: "" }))
@@ -29096,15 +29358,15 @@ function sameLocale(a, b) {
 }
 var fail3 = { ok: false, detail: "table" };
 function parseL10nFile(path32, bytes) {
-  let text;
+  let text2;
   try {
-    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+    text2 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     return fail3;
   }
-  if (text.includes("\0"))
+  if (text2.includes("\0"))
     return fail3;
-  const body = text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+  const body = text2.charCodeAt(0) === 65279 ? text2.slice(1) : text2;
   let at = 0;
   while (at < body.length && " 	\n\r".includes(body[at]))
     at++;
@@ -29128,8 +29390,8 @@ function parseL10nFile(path32, bytes) {
   }
   return { ok: true, tables };
 }
-function parseJsonTable(text) {
-  const parsed = strictParse(new TextEncoder().encode(text));
+function parseJsonTable(text2) {
+  const parsed = strictParse(new TextEncoder().encode(text2));
   if (parsed === null)
     return null;
   const v = parsed.value;
@@ -29185,12 +29447,12 @@ function poString(s) {
       return null;
   return out;
 }
-function parsePo(text) {
+function parsePo(text2) {
   const entries = [];
   let cur = null;
   let last = null;
   const complete = (e) => e.id !== null && e.strings.length > 0;
-  for (let line of text.split("\n")) {
+  for (let line of text2.split("\n")) {
     if (line.endsWith("\r"))
       line = line.slice(0, -1);
     if (/^[ \t]*$/.test(line)) {
@@ -29305,23 +29567,23 @@ function parsePo(text) {
     return null;
   return [{ locale, messages }];
 }
-function csvRecords(text) {
+function csvRecords(text2) {
   const records = [];
   let record = [];
   let i = 0;
-  const n = text.length;
+  const n = text2.length;
   let started = false;
   while (i < n) {
     let field = "";
-    if (text[i] === '"') {
+    if (text2[i] === '"') {
       started = true;
       i++;
       for (; ; ) {
         if (i >= n)
           return null;
-        const c = text[i];
+        const c = text2[i];
         if (c === '"') {
-          if (text[i + 1] === '"') {
+          if (text2[i + 1] === '"') {
             field += '"';
             i += 2;
             continue;
@@ -29332,13 +29594,13 @@ function csvRecords(text) {
         field += c;
         i++;
       }
-      if (i < n && text[i] !== "," && text[i] !== "\n" && !(text[i] === "\r" && text[i + 1] === "\n"))
+      if (i < n && text2[i] !== "," && text2[i] !== "\n" && !(text2[i] === "\r" && text2[i + 1] === "\n"))
         return null;
     } else {
-      while (i < n && text[i] !== "," && text[i] !== "\n" && !(text[i] === "\r" && text[i + 1] === "\n")) {
-        if (text[i] === '"')
+      while (i < n && text2[i] !== "," && text2[i] !== "\n" && !(text2[i] === "\r" && text2[i + 1] === "\n")) {
+        if (text2[i] === '"')
           return null;
-        field += text[i];
+        field += text2[i];
         i++;
       }
       if (field.length > 0)
@@ -29347,14 +29609,14 @@ function csvRecords(text) {
     record.push(field);
     if (i >= n)
       break;
-    if (text[i] === ",") {
+    if (text2[i] === ",") {
       started = true;
       i++;
       if (i >= n)
         record.push("");
       continue;
     }
-    i += text[i] === "\r" ? 2 : 1;
+    i += text2[i] === "\r" ? 2 : 1;
     if (started)
       records.push(record);
     record = [];
@@ -29364,8 +29626,8 @@ function csvRecords(text) {
     records.push(record);
   return records;
 }
-function parseCsv(text) {
-  const records = csvRecords(text);
+function parseCsv(text2) {
+  const records = csvRecords(text2);
   if (records === null || records.length === 0)
     return null;
   const header = records[0];
@@ -30152,9 +30414,9 @@ async function readMarker(file, ctx) {
   const fail4 = (step, why) => {
     throw new Error(`${file}: marker rejected at ${step}: ${why}`);
   };
-  const text = await readFile7(file, "utf8");
-  if (!scanStrictJson(text).ok) fail4("format", "not strict JSON");
-  const m = JSON.parse(text);
+  const text2 = await readFile7(file, "utf8");
+  if (!scanStrictJson(text2).ok) fail4("format", "not strict JSON");
+  const m = JSON.parse(text2);
   if (!m || typeof m !== "object" || m.format !== MARKER_FORMAT || !isPackId(m.packId) || typeof m.version !== "string" || !VERSION_RE4.test(m.version) || typeof m.release !== "string")
     fail4("format", `not a ${MARKER_FORMAT} document`);
   const jws = m.release;
@@ -30378,13 +30640,13 @@ function stampText(content) {
     expects: content.expects,
     ...holds.length > 0 ? { holds } : {}
   };
-  const text = `${JSON.stringify(doc, null, 2)}
+  const text2 = `${JSON.stringify(doc, null, 2)}
 `;
-  if (!parseContentStamp(text).ok)
+  if (!parseContentStamp(text2).ok)
     throw new Error("Self-check: the content stamp fails parseContentStamp.");
-  if (JSON.stringify(holdsOf(JSON.parse(text), void 0, "")) !== JSON.stringify(holds))
+  if (JSON.stringify(holdsOf(JSON.parse(text2), void 0, "")) !== JSON.stringify(holds))
     throw new Error("Self-check: the content stamp's holds fail holdsOf.");
-  return text;
+  return text2;
 }
 async function readContentStamp(file) {
   let bytes;
@@ -32790,7 +33052,7 @@ function renderSdkSetup(sdk, o) {
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { createHash as createHash8 } from "node:crypto";
 var SDK_CONFIG_USAGE = "Usage: pkey sdk --lang node|react|python|swift|kotlin|godot --product <slug> [--base-url <url>]\n                [--write] [--out <path>] [--force] [--kid <kid> --public-key <key>]\n                [--release-key <kid>=<key> ...] [--package <kotlin package>]\n       pkey sdk add <lang> --expect <kid>@sha256:<fingerprint>[,...] [--product <slug>] [--base-url <url>]\n                [--out <path>] [--force] [--release-key <kid>=<key> ...] [--package <kotlin package>]";
-var shown = (v) => untrusted(v, {});
+var shown2 = (v) => untrusted(v, {});
 var PRODUCT_RE = /^[a-z0-9][a-z0-9_-]*$/;
 var KID_RE2 = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 var KEY_RE = /^[A-Za-z0-9_-]{43}$/;
@@ -32861,11 +33123,11 @@ async function resolveSdkFacts(opts) {
   if (!isRecord8(doc)) throw new Error(`${discoveryUrl} is not an object.`);
   if (doc.product !== opts.product)
     throw new Error(
-      `Discovery names product ${shown(JSON.stringify(doc.product))}, not ${opts.product}.`
+      `Discovery names product ${shown2(JSON.stringify(doc.product))}, not ${opts.product}.`
     );
   if (doc.protocolVersion !== PROTOCOL_VERSION)
     throw new Error(
-      `Discovery speaks protocol ${shown(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`
+      `Discovery speaks protocol ${shown2(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`
     );
   const trust = isRecord8(doc.trust) ? doc.trust : {};
   const pins = isRecord8(trust.pinnedKeys) ? trust.pinnedKeys : {};
@@ -32874,7 +33136,7 @@ async function resolveSdkFacts(opts) {
     const key = pins[kid];
     if (!KID_RE2.test(kid) || typeof key !== "string" || !KEY_RE.test(key))
       throw new Error(
-        `Discovery's trust.pinnedKeys has a malformed entry (${shown(kid)}).`
+        `Discovery's trust.pinnedKeys has a malformed entry (${shown2(kid)}).`
       );
     pinnedKeys[kid] = key;
   }
@@ -32924,7 +33186,7 @@ async function resolveSdkFacts(opts) {
   const undeclared = advertised.filter((fp) => !declaredPrints.has(fp));
   if (undeclared.length > 0)
     throw new Error(
-      `Discovery advertises ${undeclared.length} release key${undeclared.length === 1 ? "" : "s"} you did not declare (fingerprint ${undeclared.map(shown).join(", ")}). Run pkey sdk in the product repo (it reads .pkey/release), or pass each key with --release-key <kid>=<key>.`
+      `Discovery advertises ${undeclared.length} release key${undeclared.length === 1 ? "" : "s"} you did not declare (fingerprint ${undeclared.map(shown2).join(", ")}). Run pkey sdk in the product repo (it reads .pkey/release), or pass each key with --release-key <kid>=<key>.`
     );
   return {
     product: opts.product,
@@ -34645,10 +34907,10 @@ function cargoFeatures(manifest) {
     out[k] = strings(v, `Cargo.toml's features.${k}`);
   return out;
 }
-function cargoMetadata(text) {
+function cargoMetadata(text2) {
   let manifest;
   try {
-    manifest = parse(text);
+    manifest = parse(text2);
   } catch (e) {
     throw new PackageExtractError(
       `the crate's Cargo.toml is not TOML (${e.message}).`
@@ -34725,9 +34987,9 @@ function goHash1(files) {
 function goModHash1(data) {
   return goHash1([{ name: "go.mod", data }]);
 }
-function parseGoMod(text) {
+function parseGoMod(text2) {
   const out = {};
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of text2.split(/\r?\n/)) {
     const m = /^module\s+(?:"([^"]+)"|`([^`]+)`|([^\s"`]+?))\s*(?:\/\/.*)?$/.exec(
       raw.trim()
     );
@@ -34756,8 +35018,8 @@ function goFilePathProblem(rel) {
     for (const ch of elem)
       if (!/[A-Za-z0-9!#$%&()+,\-.=@[\]^_{}~ ]/.test(ch) && !new RegExp("\\p{L}", "u").test(ch))
         return `the character ${JSON.stringify(ch)}`;
-    const short = elem.split(".")[0].toUpperCase();
-    if (WINDOWS_RESERVED.has(short)) return `the Windows reserved name ${elem}`;
+    const short2 = elem.split(".")[0].toUpperCase();
+    if (WINDOWS_RESERVED.has(short2)) return `the Windows reserved name ${elem}`;
   }
   return null;
 }
@@ -34960,10 +35222,10 @@ async function extractGo(input) {
 
 // src/package/godot.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-function parsePluginCfg(text) {
+function parsePluginCfg(text2) {
   const out = /* @__PURE__ */ new Map();
   let section = "";
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of text2.split(/\r?\n/)) {
     const line = raw.trim();
     const s = /^\[([^\]]+)\]$/.exec(line);
     if (s) {
@@ -35250,9 +35512,9 @@ async function extractOci(input) {
 init_define_PKEY_EMBEDDED_SCHEMAS();
 import { writeFile as writeFile8 } from "node:fs/promises";
 import path13 from "node:path";
-function parseCoreMetadata(text) {
+function parseCoreMetadata(text2) {
   const out = /* @__PURE__ */ new Map();
-  for (const line of text.split(/\r?\n/)) {
+  for (const line of text2.split(/\r?\n/)) {
     if (line === "") break;
     const m = /^([A-Za-z0-9-]+):\s?(.*)$/.exec(line);
     if (m && !out.has(m[1].toLowerCase()))
@@ -35271,7 +35533,7 @@ async function extractPypi(input) {
   const files = [];
   let headers = null;
   for (const w of wheels) {
-    const text = await withZip(w.path, async (zip) => {
+    const text2 = await withZip(w.path, async (zip) => {
       const entry = zip.entries.find(
         (e) => /^[^/]+\.dist-info\/METADATA$/.test(e.name)
       );
@@ -35281,12 +35543,12 @@ async function extractPypi(input) {
     });
     const metaName = `${w.name}.metadata`;
     const metaPath = path13.join(input.workDir, metaName);
-    await writeFile8(metaPath, text);
+    await writeFile8(metaPath, text2);
     files.push(
       { path: w.path, name: w.name, type: "wheel" },
       { path: metaPath, name: metaName, type: "core-metadata" }
     );
-    headers ??= parseCoreMetadata(text);
+    headers ??= parseCoreMetadata(text2);
   }
   for (const s of sdists) {
     files.push({ path: s.path, name: s.name, type: "sdist" });
@@ -36052,7 +36314,7 @@ function readGodotZip(b, name = "the zip") {
   const entries = [];
   const seen = /* @__PURE__ */ new Set();
   const ranges = [];
-  const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+  const text2 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
   let p = cdOffset;
   for (let i = 0; i < count; i++) {
     if (p + 46 > e || u32(p) !== CDH)
@@ -36071,7 +36333,7 @@ function readGodotZip(b, name = "the zip") {
     if (end > e) fail4(`central directory entry ${i} runs past the directory.`);
     let entryName;
     try {
-      entryName = text.decode(b.subarray(p + 46, p + 46 + nameLen));
+      entryName = text2.decode(b.subarray(p + 46, p + 46 + nameLen));
     } catch {
       return fail4(`central directory entry ${i}'s name is not UTF-8.`);
     }
@@ -36670,9 +36932,9 @@ function uidText(id) {
   } while (v > 0n);
   return `uid://${out}`;
 }
-function canonicalUid(text) {
-  if (!text.startsWith("uid://")) return null;
-  const s = text.slice(6);
+function canonicalUid(text2) {
+  if (!text2.startsWith("uid://")) return null;
+  const s = text2.slice(6);
   if (s.length < 1 || s.length > 13) return null;
   let v = 0n;
   for (const ch of s) {
@@ -36681,7 +36943,7 @@ function canonicalUid(text) {
     if (v > (UID_MAX - BigInt(d)) / 34n) return null;
     v = v * 34n + BigInt(d);
   }
-  return uidText(v) === text ? v : null;
+  return uidText(v) === text2 ? v : null;
 }
 function attachableEntryProblem(s) {
   if (s.startsWith("uid://"))
@@ -36742,8 +37004,8 @@ function refProblem(ref, ctx) {
 var EXT_LINE_RE = /^[ \t]*\[ext_resource((?: [a-z_]+="[^"\\]*")+)\][ \t]*$/;
 var EXT_ATTR_RE = / ([a-z_]+)="([^"\\]*)"/g;
 var EXT_KEYS = ["type", "uid", "path", "id"];
-function textRefs(text) {
-  const t = text.replace(/\r/g, "\n");
+function textRefs(text2) {
+  const t = text2.replace(/\r/g, "\n");
   if (t.includes("resource_path") || t.replace(/\\/g, "").includes("resource_path"))
     return { why: RESOURCE_PATH_WHY };
   const lines4 = t.split("\n");
@@ -36830,7 +37092,7 @@ function binaryRefs(b, start) {
     pos += n;
     return s;
   };
-  const text = (s) => {
+  const text2 = (s) => {
     const z = s.indexOf(0);
     const cut = z === -1 ? s : s.subarray(0, z);
     if (Buffer.from(cut).indexOf(BOM) !== -1) throw fail4();
@@ -36869,8 +37131,8 @@ function binaryRefs(b, start) {
     const refs = [];
     const next = u32();
     for (let i = 0; i < next; i++) {
-      const type = text(str6());
-      const path32 = text(str6());
+      const type = text2(str6());
+      const path32 = text2(str6());
       let uid = null;
       if (flags & FLAG_UIDS) {
         need2(8);
@@ -36883,7 +37145,7 @@ function binaryRefs(b, start) {
     const offsets = [];
     let tableEnd = 0;
     for (let i = 0; i < nint; i++) {
-      const path32 = text(str6());
+      const path32 = text2(str6());
       need2(8);
       const lo = dv.getUint32(pos, true);
       const hi = dv.getUint32(pos + 4, true);
@@ -37136,9 +37398,9 @@ function isNative(path32) {
 function resPath(p) {
   return p.startsWith("res://") ? p.slice("res://".length) : null;
 }
-function remapTargets(text) {
+function remapTargets(text2) {
   const out = /* @__PURE__ */ new Set();
-  for (const v of remapValues(text)) {
+  for (const v of remapValues(text2)) {
     const p = resPath(v);
     if (p !== null) out.add(p);
   }
@@ -37147,12 +37409,12 @@ function remapTargets(text) {
 var PATH_ANY_RE = /(^|[^A-Za-z0-9_/.-])"?path(\.[A-Za-z0-9_-]+)*"?[ \t\f\x0B]*=/;
 var PATH_LINE_RE = /^[ \t\f\x0B]*path(?:\.[A-Za-z0-9_-]+)?[ \t\f\x0B]*=[ \t\f\x0B]*"([^"\\]*)"[ \t\f\x0B]*$/;
 var DEST_LINE_RE = /^[ \t\f\x0B]*dest_files[ \t\f\x0B]*=[ \t\f\x0B]*\[([^\]]*)\]/;
-function lines3(text) {
-  return text.replace(/\r/g, "\n").split("\n");
+function lines3(text2) {
+  return text2.replace(/\r/g, "\n").split("\n");
 }
-function remapValues(text) {
+function remapValues(text2) {
   const out = /* @__PURE__ */ new Set();
-  const ls = lines3(text);
+  const ls = lines3(text2);
   for (const l of ls) {
     const m = PATH_LINE_RE.exec(l);
     if (m) out.add(m[1]);
@@ -37172,8 +37434,8 @@ function remapProblem(data) {
   if (!utf8Valid(data)) return "a .remap or .import that is not valid UTF-8";
   if (Buffer.from(data.buffer, data.byteOffset, data.byteLength).indexOf(BOM2) !== -1)
     return "a .remap or .import with a byte-order mark";
-  const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(data);
-  for (const l of lines3(text))
+  const text2 = new TextDecoder("utf-8", { ignoreBOM: true }).decode(data);
+  for (const l of lines3(text2))
     if (PATH_ANY_RE.test(l) && !PATH_LINE_RE.test(l))
       return `a path line the engine could read differently (${l})`;
   return null;
@@ -37261,7 +37523,7 @@ function lintPck(dir, bytes, opts) {
   const stripped = new Set(PCK_STRIP_PATHS);
   const named = /* @__PURE__ */ new Set();
   const deferred = [];
-  const text = new TextDecoder("utf-8", { fatal: false });
+  const text2 = new TextDecoder("utf-8", { fatal: false });
   const inPack = new Set(dir.entries.map((e) => e.path));
   const kinds = scriptKinds(opts);
   const cache = dir.entries.find((e) => e.path === ".godot/uid_cache.bin");
@@ -37325,7 +37587,7 @@ function lintPck(dir, bytes, opts) {
           continue;
         }
         const targets = remapTargets(
-          text.decode(bytes.subarray(e.offset, e.offset + e.size))
+          text2.decode(bytes.subarray(e.offset, e.offset + e.size))
         );
         const source = p.slice(0, p.lastIndexOf("."));
         const script = targets.find((t) => isScript(t, kinds));
@@ -37336,7 +37598,7 @@ function lintPck(dir, bytes, opts) {
           continue;
         }
         const outside = remapValues(
-          text.decode(bytes.subarray(e.offset, e.offset + e.size))
+          text2.decode(bytes.subarray(e.offset, e.offset + e.size))
         ).find((v) => {
           if (v === "") return false;
           const t = resPath(v);
@@ -38669,11 +38931,11 @@ ${errors.map((e) => `  ${e}`).join("\n")}`
 `
         );
       }
-      const { seq: _seq, ...shown2 } = record;
+      const { seq: _seq, ...shown3 } = record;
       out.write(
         `
 Pack record (unsigned; a dry run signs nothing${seq === void 0 ? "; seq is the preflight's answer" : ""}):
-${JSON.stringify(seq === void 0 ? shown2 : record, null, 2)}
+${JSON.stringify(seq === void 0 ? shown3 : record, null, 2)}
 `
       );
       out.write("Dry run: nothing uploaded, signed or written.\n");
@@ -39771,7 +40033,7 @@ var AscApi = class {
         },
         ...body !== void 0 ? { body: JSON.stringify(body) } : {}
       });
-      const text = await r.text();
+      const text2 = await r.text();
       if ((r.status === 429 || r.status >= 500) && attempt < 4) {
         await this.sleep(2 ** attempt * 5e3);
         continue;
@@ -39779,9 +40041,9 @@ var AscApi = class {
       if (!r.ok)
         throw new AscUploadError(
           "asc-http-error",
-          `${method} ${p} answered ${r.status}: ${untrusted(text.slice(0, 500), {})}`
+          `${method} ${p} answered ${r.status}: ${untrusted(text2.slice(0, 500), {})}`
         );
-      return text ? JSON.parse(text) : {};
+      return text2 ? JSON.parse(text2) : {};
     }
   }
 };
@@ -40114,31 +40376,31 @@ android {
     }
 }
 `;
-function patchSettingsGradle(text, name) {
+function patchSettingsGradle(text2, name) {
   const line = `include ':${name}'`;
-  if (text.split(/\r?\n/).some((l) => l.trim() === line)) return text;
-  const lines4 = text.split("\n");
+  if (text2.split(/\r?\n/).some((l) => l.trim() === line)) return text2;
+  const lines4 = text2.split("\n");
   let at = -1;
   lines4.forEach((l, i) => {
     if (/^\s*include\s+['"]:/.test(l)) at = i;
   });
   if (at < 0) {
-    const sep = text.endsWith("\n") ? "" : "\n";
-    return `${text}${sep}${line}
+    const sep = text2.endsWith("\n") ? "" : "\n";
+    return `${text2}${sep}${line}
 `;
   }
   lines4.splice(at + 1, 0, line);
   return lines4.join("\n");
 }
-function patchAppGradle(text, name, textureSplit) {
+function patchAppGradle(text2, name, textureSplit) {
   const re = /^(\s*assetPacks\s*=\s*\[)([^\]]*)(\])/m;
-  const m = re.exec(text);
+  const m = re.exec(text2);
   if (!m)
     throw new Error(
       'build.gradle declares no assetPacks = [...] list: --project must be a Godot Android Gradle build (android/build, from "Install Android Build Template").'
     );
   const items = m[2].split(",").map((s) => s.trim()).filter(Boolean);
-  let out = text;
+  let out = text2;
   if (!items.some((s) => s === `":${name}"` || s === `':${name}'`)) {
     const next = [...items, `":${name}"`].join(", ");
     out = out.replace(re, `$1${next}$3`);
@@ -41450,11 +41712,11 @@ function oarsAttributes(descriptors) {
 function xmlEscape(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-function metainfoMarkup(text, indent) {
+function metainfoMarkup(text2, indent) {
   const out = [];
   const isItem = (l) => /^[-*]\s+/.test(l);
-  for (const block of text.replace(/\r\n/g, "\n").split(/\n\s*\n/)) {
-    const lines4 = block.split("\n").map((l) => l.trim()).filter(Boolean);
+  for (const block2 of text2.replace(/\r\n/g, "\n").split(/\n\s*\n/)) {
+    const lines4 = block2.split("\n").map((l) => l.trim()).filter(Boolean);
     for (let n = 0; n < lines4.length; ) {
       const list2 = isItem(lines4[n]);
       const run2 = [];
@@ -41757,10 +42019,10 @@ function extraDataSources(modules, out = []) {
   }
   return out;
 }
-function updateFlathubManifest(text, path32, i) {
+function updateFlathubManifest(text2, path32, i) {
   const builds = new Map(linuxBuilds(i));
   const json = path32.endsWith(".json");
-  const doc = (0, import_yaml4.parseDocument)(text);
+  const doc = (0, import_yaml4.parseDocument)(text2);
   if (doc.errors.length)
     throw new Error(`${path32} does not parse: ${doc.errors[0].message}`);
   const sources = extraDataSources(doc.get("modules"));
@@ -41828,10 +42090,10 @@ function githubClient(o = {}) {
       ...body !== void 0 ? { body: JSON.stringify(body) } : {}
     });
     if (res.status === 404 && allow404) return null;
-    const text = await res.text();
+    const text2 = await res.text();
     let parsed = null;
     try {
-      parsed = text ? JSON.parse(text) : null;
+      parsed = text2 ? JSON.parse(text2) : null;
     } catch {
       parsed = null;
     }
@@ -42682,11 +42944,11 @@ async function planPr(store, i, o, gh) {
         const base = await gh.defaultBranch(repo);
         let found = false;
         for (const name of [`${appId}.yml`, `${appId}.yaml`, `${appId}.json`]) {
-          const text = await gh.fileText(repo, name, base);
-          if (text === null) continue;
+          const text2 = await gh.fileText(repo, name, base);
+          if (text2 === null) continue;
           files.unshift({
             path: name,
-            content: updateFlathubManifest(text, name, i)
+            content: updateFlathubManifest(text2, name, i)
           });
           found = true;
           break;
@@ -44899,20 +45161,20 @@ var SCREENSHOT_RULES = [
     classes: ["phone-portrait", "tablet", "tv", "wear"],
     check(_cls, width, height) {
       const long = Math.max(width, height);
-      const short = Math.min(width, height);
+      const short2 = Math.min(width, height);
       const problems = [];
       const notes = [];
-      if (short < 320) {
-        problems.push(`a side of ${short} px is under Play's 320 px minimum`);
+      if (short2 < 320) {
+        problems.push(`a side of ${short2} px is under Play's 320 px minimum`);
         return { fits: false, problems, notes };
       }
       if (long > 3840)
         problems.push(`a side of ${long} px is over Play's 3840 px maximum`);
-      if (long > 2 * short)
+      if (long > 2 * short2)
         problems.push(
-          `${width}x${height} is ${(long / short).toFixed(2)}:1, over Play's 2:1 ("can't be more than twice")`
+          `${width}x${height} is ${(long / short2).toFixed(2)}:1, over Play's 2:1 ("can't be more than twice")`
         );
-      if (short < 1080)
+      if (short2 < 1080)
         notes.push("under 1080 px: not eligible for Play's featuring");
       if (problems.length === 0) return { fits: true, problems, notes };
       if (long > 3840) return { fits: false, problems, notes };
@@ -46372,9 +46634,9 @@ function unknownOption(flag, term) {
     term
   );
 }
-function failLine(text, term) {
+function failLine(text2, term) {
   const { painter, symbols, caps } = term;
-  const lines4 = wrapSpans([{ text }], Math.max(1, caps.columns - 3));
+  const lines4 = wrapSpans([{ text: text2 }], Math.max(1, caps.columns - 3));
   return `${lines4.map(
     (l, i) => i === 0 ? `${painter.style(symbols.fail, ["danger"])}  ${painter.line(l)}` : `   ${painter.line(l)}`
   ).join("\n")}
@@ -46528,14 +46790,14 @@ async function validateText(dir, cwd, stdout, term) {
         { text: result.requiredSecrets.join(", ") }
       ]
     });
-  const message = (kind, at, text) => {
+  const message = (kind, at, text2) => {
     const role = kind === "warning" ? "warning" : "danger";
     return {
       mark: mark(kind === "warning" ? symbols.warn : symbols.fail, role),
       spans: [
         { text: `${kind} `, style: [role] },
         ...at,
-        { text: `: ${text}` }
+        { text: `: ${text2}` }
       ]
     };
   };
@@ -46560,14 +46822,14 @@ async function validateText(dir, cwd, stdout, term) {
   return result.ok ? 0 : 1;
 }
 async function validateJson(dir, cwd, stdout, fixed) {
-  const envelope = (exit, rest) => `${JSON.stringify({ v: 1, command: "validate", event: "result", ok: exit === 0, exit, ...rest }).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}
+  const envelope2 = (exit, rest) => `${JSON.stringify({ v: 1, command: "validate", event: "result", ok: exit === 0, exit, ...rest }).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}
 `;
   let manifest;
   try {
     manifest = await loadManifest(dir);
   } catch (e) {
     stdout.write(
-      envelope(1, {
+      envelope2(1, {
         error: /is not valid (?:JSON|YAML)/.test(e.message) ? "unreadable-manifest" : "no-manifest",
         message: e.message
       })
@@ -46586,7 +46848,7 @@ async function validateJson(dir, cwd, stdout, fixed) {
   };
   const exitCode = result.ok ? 0 : 1;
   stdout.write(
-    envelope(exitCode, {
+    envelope2(exitCode, {
       ...fixed ? { fixed } : {},
       valid: result.ok,
       modules: result.enabledModules,
