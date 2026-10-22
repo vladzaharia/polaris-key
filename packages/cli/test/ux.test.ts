@@ -489,3 +489,244 @@ describe("terminology", () => {
     }
   });
 });
+
+describe("pkey whoami and pkey logout at narrow widths (goldens)", () => {
+  const PERSONAL = `pkeyp_${"P".repeat(39)}h7Q2`;
+  const ORIGIN = "https://key.plrs.im";
+  const role = (r: string, scope: string, source = "grant") => ({
+    role: r,
+    scope,
+    areas: null,
+    source,
+  });
+  const ME = {
+    sub: "s1",
+    name: "Priya Raman",
+    email: "priya@example.com",
+    products: [{ slug: "djdl", name: "DJDL" }],
+    permissions: {
+      roles: [
+        role("platform_admin", "platform"),
+        role("product_admin", "product:djdl"),
+        role("product_admin", "products:*"),
+        role("superadmin", "platform", "root"),
+        role("console_access", "platform"),
+      ],
+    },
+    sessionExpiresAt: 1_793_000_000,
+  };
+
+  async function narrow(
+    argv: string[],
+    columns: number,
+    fetchImpl: typeof fetch,
+  ) {
+    let out = "";
+    let err = "";
+    const entries = new Map([
+      [
+        ORIGIN,
+        {
+          token: PERSONAL,
+          expiresAt: 1_793_000_000,
+          label: "pkey on priya-mbp",
+          hint: "h7Q2",
+        },
+      ],
+    ]);
+    const store = {
+      get: (o: string) => entries.get(o) ?? null,
+      set: () => undefined,
+      delete: (o: string) => entries.delete(o),
+    };
+    const code = await runPkey(argv, {
+      cwd: await tempDir(),
+      env: { CI: "true", NO_COLOR: "1", TERM: "dumb", TZ: "UTC" },
+      stdout: {
+        write: (c: string) => ((out += c), true),
+        isTTY: true,
+        columns,
+      },
+      stderr: {
+        write: (c: string) => ((err += c), true),
+        isTTY: true,
+        columns,
+      },
+      fetchImpl,
+      credentialStore: async () => store,
+    });
+    return { code, out, err };
+  }
+
+  const answers = (async () =>
+    new Response(JSON.stringify(ME), { status: 200 })) as typeof fetch;
+
+  it("whoami at 40 columns", async () => {
+    const r = await narrow(["whoami"], 40, answers);
+    expect(r.code).toBe(0);
+    expect(r.out).toBe(
+      [
+        "Host    key.plrs.im",
+        "Name    Priya Raman",
+        "Email   priya@example.com",
+        "Roles   Platform admin, DJDL admin,",
+        "        All products admin, Superadmin,",
+        "        Console access",
+        'Token   "pkey on priya-mbp"',
+        "        (pkeyp_...h7Q2)",
+        "Ends    2026-10-26",
+        "",
+        "!  Superadmin ends 8 hours after your",
+        "   last console sign-in. Ask for a",
+        "   stored Superadmin role to keep it.",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("whoami at 32 columns", async () => {
+    const r = await narrow(["whoami"], 32, answers);
+    expect(r.code).toBe(0);
+    expect(r.out).toBe(
+      [
+        "Host    key.plrs.im",
+        "Name    Priya Raman",
+        "Email   priya@example.com",
+        "Roles   Platform admin,",
+        "        DJDL admin,",
+        "        All products admin,",
+        "        Superadmin,",
+        "        Console access",
+        'Token   "pkey on priya-mbp"',
+        "        (pkeyp_...h7Q2)",
+        "Ends    2026-10-26",
+        "",
+        "!  Superadmin ends 8 hours after",
+        "   your last console sign-in.",
+        "   Ask for a stored Superadmin",
+        "   role to keep it.",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("whoami at 28 columns: each label on its own line, values at column 0", async () => {
+    const r = await narrow(["whoami"], 28, answers);
+    expect(r.code).toBe(0);
+    expect(r.out).toBe(
+      [
+        "Host",
+        "key.plrs.im",
+        "Name",
+        "Priya Raman",
+        "Email",
+        "priya@example.com",
+        "Roles",
+        "Platform admin, DJDL admin,",
+        "All products admin,",
+        "Superadmin, Console access",
+        "Token",
+        '"pkey on priya-mbp"',
+        "(pkeyp_...h7Q2)",
+        "Ends",
+        "2026-10-26",
+        "",
+        "!  Superadmin ends 8 hours",
+        "   after your last console",
+        "   sign-in. Ask for a stored",
+        "   Superadmin role to",
+        "   keep it.",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("whoami with a long email wraps it at its own break points (40 columns)", async () => {
+    const long = (async () =>
+      new Response(
+        JSON.stringify({
+          ...ME,
+          email: "priya.ramanathan-subramanian@analytical-engine.example",
+        }),
+        { status: 200 },
+      )) as typeof fetch;
+    const r = await narrow(["whoami"], 40, long);
+    expect(r.code).toBe(0);
+    expect(r.out).toBe(
+      [
+        "Host    key.plrs.im",
+        "Name    Priya Raman",
+        "Email   priya.ramanathan-",
+        "        subramanian@analytical-engine",
+        "        .example",
+        "Roles   Platform admin, DJDL admin,",
+        "        All products admin, Superadmin,",
+        "        Console access",
+        'Token   "pkey on priya-mbp"',
+        "        (pkeyp_...h7Q2)",
+        "Ends    2026-10-26",
+        "",
+        "!  Superadmin ends 8 hours after your",
+        "   last console sign-in. Ask for a",
+        "   stored Superadmin role to keep it.",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("logout (offline) at 40 columns", async () => {
+    const off = (async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    const r = await narrow(["logout"], 40, off);
+    expect(r.code).toBe(1);
+    expect(r.err).toBe(
+      [
+        "!  Signed out on this computer, but",
+        "   couldn't reach key.plrs.im, so it",
+        "   still works until 2026-10-26.",
+        '   Revoke "pkey on priya-mbp"',
+        "   (pkeyp_...h7Q2) in Personal tokens:",
+        "   https://key.plrs.im/manage/#/",
+        "   personal-tokens",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("logout (offline) at 32 columns", async () => {
+    const off = (async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    const r = await narrow(["logout"], 32, off);
+    expect(r.code).toBe(1);
+    expect(r.err).toBe(
+      [
+        "!  Signed out on this computer,",
+        "   but couldn't reach",
+        "   key.plrs.im, so it still",
+        "   works until 2026-10-26.",
+        '   Revoke "pkey on priya-mbp"',
+        "   (pkeyp_...h7Q2) in",
+        "   Personal tokens:",
+        "   https://key.plrs.im/manage/#/",
+        "   personal-tokens",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("logout (revoked) at 32 columns", async () => {
+    const r = await narrow(
+      ["logout"],
+      32,
+      (async () => new Response("{}", { status: 200 })) as typeof fetch,
+    );
+    expect(r.code).toBe(0);
+    expect(r.out).toBe(
+      ["+  Signed out of key.plrs.im.", "   The token is revoked.", ""].join(
+        "\n",
+      ),
+    );
+  });
+});

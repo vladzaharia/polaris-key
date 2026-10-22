@@ -18,6 +18,7 @@
  */
 
 import { wrapSpans } from "@polaris-key/node/terminal";
+import { block, plain, roleName } from "./account.js";
 import { HttpFailure, request } from "./bundle.js";
 import {
   adminCredential,
@@ -54,24 +55,6 @@ export interface AdminIo {
   fetchImpl?: typeof fetch;
   /** One deadline for a caller that makes several requests (`pkey doctor`). */
   signal?: AbortSignal;
-}
-
-/** The console's role names (`roleLabel` in the admin SPA), by role id. */
-function roleName(role: string, scope: string): string {
-  switch (role) {
-    case "superadmin":
-      return "Superadmin";
-    case "platform_admin":
-      return "Platform admin";
-    case "console_access":
-      return "Console access";
-    case "product_admin":
-      return scope.startsWith("product:")
-        ? `${scope.slice("product:".length)} admin`
-        : "All products admin";
-    default:
-      return role;
-  }
 }
 
 interface Person {
@@ -179,7 +162,10 @@ export async function accessInfo(
   const roles = [
     ...new Set(
       rawRoles.map((r) =>
-        str(roleName(String(r.role), String(r.scope)), io.env),
+        str(
+          roleName(String(r.role), String(r.scope), (slug) => slug),
+          io.env,
+        ),
       ),
     ),
   ];
@@ -190,7 +176,10 @@ export async function accessInfo(
   ).map((p) => ({
     name: str(p.name ?? p.email ?? "", io.env),
     email: str(p.email ?? "", io.env),
-    role: str(roleName(String(p.role), scope), io.env),
+    role: str(
+      roleName(String(p.role), scope, (slug) => slug),
+      io.env,
+    ),
   }));
   return {
     product: scope.startsWith("product:")
@@ -255,8 +244,7 @@ export async function withAdminCredential(
   }
 }
 
-/** `▲  sentence` and the fix on its own line, wrapped. */
+/** `▲  sentence` and the fix on its own line, wrapped (the shared ▲ block). */
 export function refusalLines(r: Refusal, t: Term): string {
-  const warn = `${t.painter.style(t.symbols.warn, ["warning"])}  `;
-  return `${[wrapped(r.message, t, warn, "   "), ...(r.fix ? [wrapped(r.fix, t, "   ", "   ")] : [])].join("\n")}\n`;
+  return block(t, "warn", plain(r.message, r.fix));
 }

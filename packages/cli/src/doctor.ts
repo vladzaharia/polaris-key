@@ -23,7 +23,7 @@
  */
 
 import { cellWidth, wrapSpans } from "@polaris-key/node/terminal";
-import { day } from "./account.js";
+import { day, glyphOf } from "./account.js";
 import {
   accessInfo,
   accessText,
@@ -576,15 +576,19 @@ function breakLink(text: string, width: number): string[] {
 }
 
 /** The report's text, drawn from the session's facts (DL6-DL8; 80 columns, re-wrapped narrow). */
-export function sessionText(s: DoctorSession, t: Term): string {
+export function sessionText(
+  s: DoctorSession,
+  t: Term,
+  env: UntrustedEnv = {},
+): string {
   const { painter, symbols, caps } = t;
   const width = Math.max(20, caps.columns);
   const wide = width >= WIDE;
   const out: string[] = [];
   const mark = {
-    ok: painter.style(symbols.ok, ["success"]),
-    warn: painter.style(symbols.warn, ["warning"]),
-    fail: painter.style(symbols.fail, ["danger"]),
+    ok: glyphOf(t, "ok"),
+    warn: glyphOf(t, "warn"),
+    fail: glyphOf(t, "fail"),
     wait: painter.style(symbols.radioOn, ["strong"]),
     none: painter.style(symbols.radioOff, ["muted"]),
   };
@@ -645,7 +649,7 @@ export function sessionText(s: DoctorSession, t: Term): string {
             si.name && si.email
               ? `${si.name} (${si.email})`
               : si.name || si.email,
-            si.endsAt ? `ends ${day(si.endsAt)}` : "",
+            si.endsAt ? `ends ${day(si.endsAt, env)}` : "",
           ]
             .filter(Boolean)
             .join(" · ");
@@ -724,7 +728,7 @@ export function sessionText(s: DoctorSession, t: Term): string {
       blank();
       heading("CI");
       out.push(
-        `  ${mark.ok} First release${i.ci.firstAt ? `, ${day(i.ci.firstAt)}` : ""}`,
+        `  ${mark.ok} First release${i.ci.firstAt ? `, ${day(i.ci.firstAt, env)}` : ""}`,
       );
     }
     if (i.commerce === "off") {

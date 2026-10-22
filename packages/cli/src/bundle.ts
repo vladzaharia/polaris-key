@@ -355,11 +355,11 @@ export function adminToken(
 }
 
 /**
- * A token pasted where a URL belongs (`--base-url pkeyp_…`) must not be printed back: every
- * `pkey…_` credential shape (pkeya_, pkeyp_, pkeyci_, pkeyr_, pkeyt_) becomes `[token]`.
+ * `text` with any pkey token in it (`pkeya_`, `pkeyp_`, `pkeyci_`, `pkeyr_`, a device token) shown
+ * as `[token]`: a mistyped `--base-url` can carry one, and an error must not echo it.
  */
-function maskTokens(text: string): string {
-  return text.replace(/pkey[a-z]*_[A-Za-z0-9_-]*/g, "[token]");
+export function maskTokens(text: string): string {
+  return text.replace(/pkey[a-z]{1,2}t?_[A-Za-z0-9_-]{20,}/g, "[token]");
 }
 
 /**

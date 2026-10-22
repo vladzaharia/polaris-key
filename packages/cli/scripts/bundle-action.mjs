@@ -116,9 +116,14 @@ async function bundle() {
     entryPoints: ["src/bin/standalone.ts"],
     // `pkey listing assets` (A-18d) loads the native sharp library on first use; the bundle runs
     // where none is installed, so it stays external and that one command asks for it.
-    // `@napi-rs/keyring` (ST-34.7, D-8) stays out the same way: only `pkey whoami` and `logout`
-    // load it, on first use. Where it is absent the bundle refuses and names PKEY_ADMIN_TOKEN.
-    external: ["sharp", "@napi-rs/keyring"],
+    // `@napi-rs/keyring` (ST-34.7, D-8) never loads in the Action: it is aliased to a module that
+    // throws, so the lazy import fails and the account commands refuse with "No credential store".
+    // An external import would instead resolve whatever `@napi-rs/keyring` the runner's working
+    // directory holds, which is code the Action did not ship.
+    alias: {
+      "@napi-rs/keyring": path.join(pkgDir, "scripts/keyring-stub.mjs"),
+    },
+    external: ["sharp"],
     bundle: true,
     platform: "node",
     format: "esm",

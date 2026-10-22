@@ -3,7 +3,7 @@
  * network error becomes. No stack trace ever reaches the terminal; `PKEY_DEBUG=1` adds one.
  *
  *   0  success
- *   1  a failure: an invalid manifest, a refusal, a network or server error
+ *   1  a failure: an invalid manifest, a refused request, a network or server error
  *   2  a usage error: an unknown command or subcommand, a missing or misused argument
  *   4  a refusal: not signed in, no credential store, a token the server will not accept
  */

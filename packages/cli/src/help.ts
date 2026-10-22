@@ -145,24 +145,29 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "that the code in your browser matches the one here before you approve: it is how " +
           "you know the request is yours. On approval a personal token (admin, 7 days) goes " +
           "to your operating system's credential store, bound to the origin that issued it. " +
-          "The token is never printed. Keys: Enter opens the page again, c copies the code, " +
-          "Esc cancels.",
+          "The token is never printed. Keys: Enter opens the page again, c copies the code " +
+          "(not over SSH), Esc cancels.",
       },
       {
         text:
-          "A second pkey login first ends the token it replaces. It refuses (exit 4) in CI, " +
-          "where PKEY_ADMIN_TOKEN is the credential; without a credential store; and when you " +
-          "already have the most personal tokens allowed (revoke one at Personal tokens, then run " +
-          "it again). A denied code exits 4; an expired code or an unreachable console exits 1; " +
-          "Esc and Ctrl+C cancel and exit 130.",
+          "A second pkey login ends the token it replaces once the new one is saved; if you " +
+          "cancel, are denied, run out of time or lose the network, the old sign-in keeps " +
+          "working. It refuses (exit 4) in CI, where PKEY_ADMIN_TOKEN is the credential; " +
+          "without a credential store; and when you already have the most personal tokens " +
+          "allowed (revoke one at Personal tokens, then run it again). A code canceled in the " +
+          "browser exits 4; an expired code, an unreachable console or a credential store that " +
+          "won't save exits 1. Esc and Ctrl+D cancel and exit 1; Ctrl+C exits 130. A base " +
+          "URL that is not https is exit 2 (http works only on localhost).",
       },
       {
         text:
           "--json prints one line when the code is ready, " +
-          '{"v":1,"command":"login","event":"started","host","code","url","expiresIn"}, then ' +
-          'one result line, {"v":1,"command":"login","event":"result","ok","exit"} with name, ' +
-          "email, roles, token (no secret) and storedIn on success, or error (denied, expired, " +
-          "token_limit, cancelled, refused or error) and message. It never prompts or opens a browser.",
+          '{"v":1, "command":"login", "event":"started", "host", "code", "url", "expiresIn", ' +
+          '"replaces"}, then one result line, {"v":1, "command":"login", "event":"result", ' +
+          '"ok", "exit"} with name, email, roles, token (no secret), storedIn and replaced on ' +
+          "success, or error and message. error is denied, expired, token_limit, cancelled, " +
+          "interrupted, refused, network, server-error, store-failed, usage or internal. " +
+          "It never prompts or opens a browser.",
       },
     ],
   },
@@ -171,8 +176,8 @@ export const COMMANDS: readonly PkeyCommand[] = [
     group: "account",
     json: true,
     context: ["baseUrl"],
-    summary: "Show who this terminal is signed in as",
-    rows: [["whoami", "Show who this terminal is signed in as"]],
+    summary: "Show who pkey is signed in as",
+    rows: [["whoami", "Show who pkey is signed in as"]],
     usage: ["pkey whoami [--base-url url] [--json]"],
     about: [
       {
@@ -180,6 +185,16 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "Prints the person, their roles and when the sign-in ends. The token is never " +
           "printed. It reads the sign-in stored for the origin (--base-url), or " +
           `${ADMIN_TOKEN_ENV} when that is set to a personal token (pkeyp_).`,
+      },
+      {
+        text:
+          "--json prints one line, the result line: " +
+          '{"v":1, "command":"whoami", "event":"result", "ok", "exit", "host", "name", ' +
+          '"email", "roles", "token"}, with role ids. A refusal is {"ok":false, "exit":4, ' +
+          '"error", "message"}: not-signed-in, sign-in-ended, sign-in-refused, ' +
+          "no-credential-store, keychain-refused, admin-api-token, env-token-refused or " +
+          "redirect. A failure is exit 1: network, server-error or not-a-console. A base " +
+          "URL that is not https is exit 2, error usage.",
       },
     ],
     env: [
@@ -194,16 +209,26 @@ export const COMMANDS: readonly PkeyCommand[] = [
     group: "account",
     json: true,
     context: ["baseUrl"],
-    summary: "Revoke this terminal's sign-in and remove it",
-    rows: [["logout", "Revoke this terminal's sign-in and remove it"]],
+    summary: "Revoke the stored sign-in and remove it",
+    rows: [["logout", "Revoke the stored sign-in and remove it"]],
     usage: ["pkey logout [--base-url url] [--json]"],
     about: [
       {
         text:
           "Revokes the stored token on the server, then removes it from the credential " +
-          "store. If the server cannot be reached the stored token is still removed, and " +
-          "pkey says it stays valid until it ends. Exit 1 then. It refuses (exit 4) while " +
+          "store. The stored sign-in is per operating-system user and origin (--base-url). " +
+          "If the server can't be reached, or won't revoke the token, the stored copy is " +
+          "still removed, and pkey says the token works until its end date and where to " +
+          "revoke it. That exits 1. It refuses (exit 4) while " +
           `${ADMIN_TOKEN_ENV} is set: pkey only ends a sign-in it stored.`,
+      },
+      {
+        text:
+          "--json prints one line, the result line: " +
+          '{"v":1, "command":"logout", "event":"result", "ok", "exit", "host", "revoked", ' +
+          '"cleared"}. ' +
+          "When the token still works it adds error (network, redirect, revoke-refused or " +
+          "server-error), message, tokenEndsAt and revokeUrl.",
       },
     ],
   },
@@ -1152,7 +1177,7 @@ export const EXIT_CODES: ReadonlyArray<readonly [string, string]> = [
   ["0", "Success."],
   [
     "1",
-    "Failure: an invalid manifest, a refused request, a server or network error. The message says what to do next.",
+    "Failure: an invalid manifest, a request the server rejected, a server or network error. The message says what to do next.",
   ],
   [
     "2",
@@ -1160,7 +1185,7 @@ export const EXIT_CODES: ReadonlyArray<readonly [string, string]> = [
   ],
   [
     "4",
-    "Refused: not signed in, no credential store, or a token the server will not accept. The message names the fix.",
+    "Refused, by pkey login, whoami and logout: not signed in, no credential store, or a token the server won't accept. The message names the fix.",
   ],
 ];
 

@@ -33,6 +33,7 @@ import {
   type SdkConfigFacts,
   type SdkLang,
 } from "@polaris-key/manifest/integration";
+import { maskTokens } from "./bundle.js";
 import { untrusted } from "./untrusted.js";
 import { UsageError } from "./errors.js";
 
@@ -83,7 +84,7 @@ export function normalizeBaseUrl(raw: string): string {
   try {
     url = new URL(raw);
   } catch {
-    throw new UsageError(`--base-url ${raw} is not a URL.`);
+    throw new UsageError(`--base-url ${maskTokens(raw)} is not a URL.`);
   }
   const loopback =
     url.hostname === "localhost" ||
@@ -91,7 +92,7 @@ export function normalizeBaseUrl(raw: string): string {
     url.hostname === "[::1]";
   if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback))
     throw new UsageError(
-      `--base-url must be https: (http: only for localhost); got ${raw}.`,
+      `--base-url must be https: (http: only for localhost); got ${maskTokens(raw)}.`,
     );
   if (url.search || url.hash || url.username || url.password)
     throw new UsageError(

@@ -36,7 +36,12 @@ import {
   type DevInfo,
 } from "./devCommand.js";
 import { fixManifest, type FixMove } from "./fix.js";
-import { cmdLogout, cmdWhoami, type AccountIo } from "./account.js";
+import {
+  cmdLogout,
+  cmdWhoami,
+  envelope,
+  type AccountIo,
+} from "./account.js";
 import { withAdminCredential, type AdminIo } from "./adminAuth.js";
 import { cmdLogin, type LoginSeams } from "./login.js";
 import { keyringStore, type CredentialStore } from "./credentials.js";
@@ -758,6 +763,7 @@ const defaultStore = (): Promise<CredentialStore> =>
 function accountIo(parsed: ParsedArgs, rt: Runtime): AccountIo {
   return {
     baseUrl: flagString(parsed, "base-url") ?? DEFAULT_BASE_URL,
+    baseUrlGiven: flagString(parsed, "base-url") !== undefined,
     json: flagBool(parsed, "json"),
     env: rt.ci.env,
     stdout: rt.stdout,
@@ -1332,7 +1338,7 @@ async function cmdDoctor(
     slug: ctx.product.slug,
     signal,
   });
-  stdout.write(`\n${sessionText(session, term)}`);
+  stdout.write(`\n${sessionText(session, term, io.env)}`);
   return localCode === 0 && todoCount(session.integration) === 0 ? 0 : 1;
 }
 
@@ -1381,22 +1387,14 @@ async function doctorJson(
   });
   const exit = doctorOk(facts) && todoCount(session.integration) === 0 ? 0 : 1;
   stdout.write(
-    `${untrustedJson({
-      v: 1,
-      command: "doctor",
-      event: "result",
-      ok: exit === 0,
-      exit,
+    envelope("doctor", exit, {
       product: ctx.product?.slug ?? null,
       baseUrl: ctx.baseUrl.url,
       facts,
       services,
       signing,
       ...sessionJson(session),
-    }).replace(
-      /[\u007f-\uffff]/g,
-      (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
-    )}\n`,
+    }),
   );
   return exit;
 }
