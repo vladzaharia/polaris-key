@@ -126,6 +126,7 @@ export const STATUS = {
     ready: e("Ready", "success"),
     unset: e("Not set up", "neutral", Circle),
     credential: e("Needs a credential", "warning"),
+    mismatch: e("App mismatch", "warning"),
   },
   source: {
     manifest: e("From manifest", "neutral"),

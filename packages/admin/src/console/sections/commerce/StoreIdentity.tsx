@@ -34,6 +34,15 @@ export interface StoreIdentityRow {
 const hasBlock = (reason: string | null): boolean =>
   !reason?.startsWith("no settings");
 
+/** Move focus to a store's row header (visible one: the table or the phone list). */
+export function focusStoreRow(id: CommerceStore): void {
+  const all = Array.from(
+    document.querySelectorAll<HTMLElement>(`[data-store-row="${id}"]`),
+  );
+  const el = all.find((e) => e.getClientRects().length > 0) ?? all[0];
+  el?.focus();
+}
+
 /** The identity cell: the value and its source, or why there is none. */
 export function StoreIdentityCell({
   slug,
@@ -43,7 +52,7 @@ export function StoreIdentityCell({
   row: StoreIdentityRow;
 }): React.ReactElement {
   const platformAdmin = useCan("platform");
-  const { identity, reason, label } = row;
+  const { identity, reason } = row;
   if (identity?.value) {
     return (
       <div className="min-w-0" data-identity={row.id}>
@@ -52,8 +61,8 @@ export function StoreIdentityCell({
         </code>
         <p className="text-xs text-fg-muted">
           {identity.source === "typed"
-            ? "Typed in settings"
-            : `From the ${label} assignment`}
+            ? inlineCode("Typed in `commerce.stores`")
+            : "From the assignment"}
         </p>
       </div>
     );
@@ -68,10 +77,10 @@ export function StoreIdentityCell({
     return (
       <div className="min-w-0 text-sm" data-identity={row.id}>
         <p className="text-fg">
-          Its own key names no app and hides the platform's.
+          Its own key names no app, so the platform's assignment is ignored.
         </p>
-        <Link to={r.keys(slug)} className={LINK}>
-          Open keys
+        <Link to={r.credentials(slug)} className={LINK}>
+          Pin the key
         </Link>
       </div>
     );
@@ -82,7 +91,9 @@ export function StoreIdentityCell({
         <Link to={r.platformStores()} className={LINK}>
           Platform → Store connections
         </Link>
-      ) : null}
+      ) : (
+        <p className="text-fg-muted">A platform admin assigns it.</p>
+      )}
     </div>
   );
 }
@@ -101,15 +112,29 @@ export function IdentityAttention({
   const gate = useWriteGate("commerce", slug);
   const [fixing, setFixing] = React.useState<StoreIdentityRow | null>(null);
   const mismatched = rows.filter((s) => s.identity?.mismatch);
+  // Keys only decide an assigned identity; a typed value in force is not theirs to settle.
   const ambiguous = rows.filter(
-    (s) => s.identity?.ambiguous && s.identity.value,
+    (s) =>
+      s.identity?.ambiguous &&
+      s.identity.value &&
+      s.identity.source === "assigned",
   );
+  // After a fix the callout is gone: focus the store's row, not <body>.
+  const refocus = React.useRef<CommerceStore | null>(null);
+  const stillMismatched = mismatched.some((s) => s.id === refocus.current);
+  React.useEffect(() => {
+    const id = refocus.current;
+    if (id === null || stillMismatched) return;
+    refocus.current = null;
+    focusStoreRow(id);
+  }, [stillMismatched, rows]);
   if (mismatched.length === 0 && ambiguous.length === 0) return null;
   const policy = confirmFor("commerce.useAssigned");
   const fix = async (): Promise<void> => {
     if (!fixing) return;
     const done = fixing;
     await mutate("commerceUseAssigned", slug, done.id);
+    refocus.current = done.id;
     toast.success(`${done.label} now uses the assigned app`);
   };
   return (
@@ -144,7 +169,7 @@ export function IdentityAttention({
           title={`${s.label} keys name different apps`}
           action={
             <Button size="sm" variant="outline" asChild>
-              <Link to={r.keys(slug)}>Open keys</Link>
+              <Link to={r.credentials(slug)}>Open channel credentials</Link>
             </Button>
           }
         >
@@ -166,17 +191,28 @@ export function IdentityAttention({
           fixing ? (
             <p>
               {inlineCode(
-                `${fixing.label} purchases move from \`${fixing.identity!.value}\` to \`${fixing.identity!.assigned}\`.`,
+                `${fixing.label} purchases are checked against \`${fixing.identity!.assigned}\` instead of \`${fixing.identity!.value}\`.`,
               )}
             </p>
           ) : null
         }
-        consequences={[
-          "Purchases of the typed app stop claiming licenses.",
-          "Typing the value again undoes it.",
-        ]}
+        consequences={
+          fixing
+            ? [
+                inlineCode(
+                  `Purchases of \`${fixing.identity!.value}\` are refused.`,
+                ),
+                ...(fixing.id === "app-store"
+                  ? ["The typed Apple ID is cleared too."]
+                  : []),
+                inlineCode(
+                  "To undo, set `commerce.stores` again through the API.",
+                ),
+              ]
+            : []
+        }
         confirmLabel="Use the assigned app"
-        describeError={errorCopy}
+        describeError={(e) => errorCopy(e, { area: "commerce" })}
         onConfirm={fix}
       />
     </div>

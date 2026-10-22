@@ -59,6 +59,18 @@ const TABLE: [
     { title: "You don't have access to this", action: "none" },
   ],
   [
+    "403 in the commerce area names it",
+    api(403, { code: "forbidden", message: "nope" }),
+    { area: "commerce" },
+    { title: "You can't do that", action: "none" },
+  ],
+  [
+    "409 no_assigned_app",
+    api(409, { code: "bad_request", reason: "no_assigned_app" }),
+    { area: "commerce" },
+    { title: "No app is assigned", action: "none" },
+  ],
+  [
     "404",
     api(404, { code: "not_found" }),
     { thing: "License" },
@@ -500,6 +512,13 @@ describe("errorCopy: GitHub access", () => {
         repo: "acme/beatgrid",
       },
     });
+  });
+
+  it("a plain 403 in the commerce area says Commerce", () => {
+    expect(
+      errorCopy(api(403, { code: "forbidden" }), { area: "commerce" })
+        .description,
+    ).toBe("You need Commerce edit access to do this.");
   });
 
   it.each([

@@ -244,8 +244,12 @@ describe("channel.identity_mismatch attention", () => {
       tone: "warning",
       area: "ship",
       service: "distribution",
-      action: { page: "storefronts" },
+      action: { page: "outlets", query: { outlet: "app-store" } },
     });
+    expect(items[0].lines[0]).toContain(
+      "The `app-store` channel declares Apple ID",
+    );
+    expect(items[0].lines[0]).not.toContain("appleId");
     expect(items[0].lines[0]).toContain(APPLE_ID);
     expect(items[0].lines[0]).toContain(OTHER_APP);
     expect(await attention(w, "m-ship")).toHaveLength(1);
