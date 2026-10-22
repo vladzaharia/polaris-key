@@ -715,12 +715,18 @@ importers:
 
   packages/ui-core:
     dependencies:
+      '@polaris-key/catalog':
+        specifier: workspace:*
+        version: link:../shared-catalog
       '@polaris-key/client-core':
         specifier: workspace:*
         version: link:../client-core
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol
+      hash-wasm:
+        specifier: ^4.12.0
+        version: 4.12.0
     devDependencies:
       '@polaris-key/brand':
         specifier: workspace:*

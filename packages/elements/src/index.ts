@@ -18,6 +18,12 @@ export {
   PkProvider,
   PkUpdatePrompt,
 } from "./components.js";
+export {
+  GateBinding,
+  HOST_ACTIONS,
+  type GateConfig,
+  type GateSeams,
+} from "./drive.js";
 export { PkElement, type PkActionDetail } from "./element.js";
 export {
   PkSignIn,

@@ -35,6 +35,14 @@
     "./terminal": {
       "types": "./dist/terminal.d.ts",
       "default": "./dist/terminal.js"
+    },
+    "./browser": {
+      "types": "./dist/browser/index.d.ts",
+      "default": "./dist/browser/index.js"
+    },
+    "./browser/sdk/*.js": {
+      "types": "./dist/browser/sdk/*.d.ts",
+      "default": "./dist/browser/sdk/*.js"
     }
   },
   "files": [
@@ -46,14 +54,16 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.headless.json",
     "test": "vitest run",
     "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "@polaris-key/client-core": "workspace:*",
-    "@polaris-key/protocol": "workspace:*"
+    "@polaris-key/protocol": "workspace:*",
+    "@polaris-key/catalog": "workspace:*",
+    "hash-wasm": "^4.12.0"
   },
   "peerDependencies": {
     "@polaris-key/brand": "workspace:*"

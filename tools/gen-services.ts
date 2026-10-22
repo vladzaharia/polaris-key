@@ -792,7 +792,7 @@ export const TARGETS: readonly Target[] = [
     parser: "typescript",
   },
   {
-    path: "packages/sdk-react/src/core/services.generated.ts",
+    path: "packages/ui-core/src/browser/sdk/core/services.generated.ts",
     render: renderSdkTs,
     parser: "typescript",
   },
