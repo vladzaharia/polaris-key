@@ -142,7 +142,10 @@ export function ReplaceDeviceStep({
         <AuthTitle>{t("signin.replace.heading")}</AuthTitle>
         <p className="flex flex-wrap items-center gap-2 text-fg-muted">
           <span className="font-medium text-fg-strong">{m.title}</span>
-          <Pill>{m.pill}</Pill>
+          {/* The tier once: "Diceroll Family" needs no "Family" pill beside it. */}
+          {m.title.toLowerCase().endsWith(m.pill.toLowerCase()) ? null : (
+            <Pill>{m.pill}</Pill>
+          )}
           {m.devices ? <span className="text-sm">{m.devices}</span> : null}
         </p>
         <p className="text-fg-muted">
