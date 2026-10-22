@@ -6,6 +6,7 @@ extends RefCounted
 ## invents checkout; a style override is never authorization.
 
 const Context := preload("res://addons/polaris_key/ui/model/context.gd")
+const Link := preload("res://addons/polaris_key/ui/model/link.gd")
 const Loading := preload("res://addons/polaris_key/ui/model/loading.gd")
 const View := preload("res://addons/polaris_key/ui/model/view.gd")
 
@@ -240,10 +241,15 @@ static func paywall_view(ctx: RefCounted) -> Dictionary:
 			"primary": "common.done",
 		})
 	if not View.truthy(offers.get("available")):
+		# Not sold here: hand off to the page that sells it, only when the opener accepts it (DL14).
+		var portal := Link.verdict(offers.get("url"), ctx.platform, "purchase")
+		var has_portal: bool = portal["url"] != null
 		return View.make(ctx, "Paywall", {
 			"state": "not-available",
-			"copy": ["paywall.notAvailable"],
+			"copy": ["paywall.title", "paywall.notAvailable", "paywall.portal" if has_portal else null],
 			"args": args,
+			"primary": "paywall.portal" if has_portal else null,
+			"link": portal if has_portal else null,
 			"tone": "neutral",
 		})
 	return View.make(ctx, "Paywall", {

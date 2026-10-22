@@ -70,8 +70,14 @@ func _build() -> void:
 	_body = columns(_stack, "Body")
 	_step1 = vbox(_body, "Request", "PKeyStack")
 	_step1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_s1_title = label(_step1, "SendTitle", "PKeyStrong")
-	_request = label(_step1, "RequestText", "PKeyMuted")
+	# The number marker sits beside its sentence (one row, not a heading row of its own).
+	var send_row := hbox(_step1, "SendRow")
+	_s1_title = label(send_row, "SendTitle", "PKeyStrong", true)
+	_s1_title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_s1_title.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_s1_title.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_request = label(send_row, "RequestText", "PKeyMuted")
+	_request.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_code_field = PanelContainer.new()
 	_code_field.name = "CodeField"
 	_code_field.theme_type_variation = "PKeyRail"
@@ -86,8 +92,13 @@ func _build() -> void:
 	_qr.get_parent().size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_step2 = vbox(_body, "Import", "PKeyStack")
 	_step2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_s2_title = label(_step2, "LoadTitle", "PKeyStrong")
-	_hint = label(_step2, "LoadHint", "PKeyMuted")
+	var load_title_row := hbox(_step2, "LoadTitleRow")
+	_s2_title = label(load_title_row, "LoadTitle", "PKeyStrong", true)
+	_s2_title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_s2_title.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_s2_title.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_hint = label(load_title_row, "LoadHint", "PKeyMuted")
+	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var load_row := actions_row(_step2, "LoadRow", BoxContainer.ALIGNMENT_BEGIN)
 	_load = button(load_row, "LoadFile", _on_load)
 	_paste = TextEdit.new()
@@ -180,8 +191,10 @@ func _arrange(m: Dictionary) -> void:
 		place(_actions, _step2)
 	else:
 		place(_actions, _stack)
-	_request.visible = level < 3
-	_hint.visible = level < 3
+	# Squeezed to the last step: the sentences go, and the numbers with them (a lone digit is a row of
+	# height the code and the buttons need more).
+	_s1_title.get_parent().visible = level < 3
+	_s2_title.get_parent().visible = level < 3
 	if level >= 3:
 		_drop.visible = false
 	elif _drop.text != "":
@@ -191,7 +204,7 @@ func _arrange(m: Dictionary) -> void:
 	# The product's name leads; it is the screen's name for the product, never a slug.
 	_product.centered = false
 	# The QR code at a scannable size where the screen has the height for it, else not at all.
-	var want := _device_id() != "" and not _qr.encode_failed and (not is_phone_device() or pad_only())
+	var want := _device_id() != "" and not _qr.encode_failed
 	_qr.visible = want
 	_qr.get_parent().visible = want
 	if want:
@@ -237,15 +250,18 @@ func _render() -> void:
 	if show_product:
 		_product.refresh()
 	_title.text = t.text("offline_title")
-	_s1_title.text = t.text("offline_step_send")
+	# The two steps carry the number marker; the catalog sentences are the steps (UIM-05 D4).
+	_s1_title.text = "1"
 	_request.text = t.text("offline_request")
 	show_text(_code, _device_id())
 	_code_field.visible = _device_id() != ""
 	_qr.text = _device_id()
 	_copy.text = t.text("offline_copy_code")
 	_copy.visible = _device_id() != ""
-	_s2_title.text = t.text("offline_step_load")
+	_s2_title.text = "2"
 	_hint.text = t.text("offline_load_hint")
+	_qr.tooltip_text = t.text("offline_qr_label")
+	_qr.set("accessibility_name", t.text("offline_qr_label"))
 	_load.text = t.text("offline_load_file")
 	_load.get_parent().visible = not web
 	_paste.placeholder_text = t.text("offline_paste_placeholder")

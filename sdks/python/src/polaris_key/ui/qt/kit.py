@@ -46,11 +46,13 @@ class KitView:
         font_scale: float = 1.0,
         system_scheme: str = "dark",
         loading_delay_ms: int = LOADING_DELAY_MS,
+        request_code: str = "",
     ) -> None:
         qt.require()
         load_fonts()
         self.bridge = KitBridge(
-            theme, source=source, font_scale=font_scale, system_scheme=system_scheme, loading_delay_ms=loading_delay_ms
+            theme, source=source, font_scale=font_scale, system_scheme=system_scheme, loading_delay_ms=loading_delay_ms,
+            request_code=request_code,
         )
         self.view = qt.QtQuick.QQuickView()
         self.view.setResizeMode(qt.QtQuick.QQuickView.ResizeMode.SizeRootObjectToView)
