@@ -1,5 +1,6 @@
 /**
- * The Superadmin's Personal tokens roster (`#/personal-tokens`, F-33) in real Chromium under the
+ * Personal tokens (`#/personal-tokens`): the Superadmin's roster (F-33, the Everyone tab) and a
+ * member's own tokens (ST-34.11, the Yours tab) in real Chromium under the
  * Worker's CSP, with a 66-character label and a 75-character email: the table must fit 1280 and
  * 1440 px (Status, Expires, Last used and Actions on screen, no sideways scroll inside its
  * scroller), with no CSP violation and no page-level scroll. With PK_SHOTS_DIR set it saves each
@@ -60,6 +61,22 @@ const TOKENS = [
   }),
 ];
 
+const OWN = [
+  row({
+    id: "pt_cli",
+    label: "pkey on ada-lovelace-macbook-pro.studio.example.com",
+    scope: "admin",
+  }),
+  row({ id: "pt_ci", label: "CI build server", lastUsedAt: null }),
+  row({
+    id: "pt_rev",
+    label: "Old laptop",
+    status: "revoked",
+    revokedAt: NOW - 86400,
+    revokeReason: "manual",
+  }),
+];
+
 let server: PreviewServer;
 let browser: Browser;
 let base: string;
@@ -109,6 +126,7 @@ describe.concurrent("Personal tokens roster", () => {
         "/manage/api/products": { products: [] },
         "/manage/api/attention": { items: [] },
         "/manage/api/account-tokens": { tokens: TOKENS },
+        "/manage/api/me/personal-tokens": { tokens: OWN },
       };
       await ctx.route("**/*", async (route) => {
         const url = new URL(route.request().url());
@@ -130,6 +148,7 @@ describe.concurrent("Personal tokens roster", () => {
         await page
           .getByRole("heading", { level: 1, name: "Personal tokens" })
           .waitFor();
+        await page.getByRole("radio", { name: "Everyone" }).click();
         await page.getByText("Ada laptop").first().waitFor();
         if (SHOTS)
           await page.screenshot({
@@ -167,5 +186,88 @@ describe.concurrent("Personal tokens roster", () => {
         await closeContext(ctx);
       }
     });
+  }
+});
+
+/** Yours, its empty state and both revoke confirms, with shots when PK_SHOTS_DIR is set. */
+describe.concurrent("Personal tokens: Yours", () => {
+  for (const s of [
+    { w: 1440, h: 900, theme: "light" },
+    { w: 390, h: 844, theme: "dark" },
+  ] as const) {
+    for (const mode of [
+      "yours",
+      "empty",
+      "confirm-admin",
+      "confirm-packages",
+    ] as const) {
+      it(`${mode} at ${s.w}`, async () => {
+        const ctx = await browser.newContext({
+          viewport: { width: s.w, height: s.h },
+          colorScheme: s.theme,
+          reducedMotion: "reduce",
+        });
+        await ctx.addInitScript((t) => {
+          window.localStorage.setItem("pk-admin-theme", t);
+        }, s.theme);
+        const routes: Record<string, unknown> = {
+          "/manage/api/me": ME,
+          "/manage/api/products": { products: [] },
+          "/manage/api/attention": { items: [] },
+          "/manage/api/account-tokens": { tokens: TOKENS },
+          "/manage/api/me/personal-tokens": {
+            tokens: mode === "empty" ? [] : OWN,
+          },
+        };
+        await ctx.route("**/*", async (route) => {
+          const url = new URL(route.request().url());
+          if (url.pathname.startsWith("/manage/api/")) {
+            const body = routes[url.pathname];
+            return body
+              ? route.fulfill({ json: body })
+              : route.fulfill({ status: 404, json: { error: "not_found" } });
+          }
+          const res = await route.fetch();
+          const headers = { ...res.headers() };
+          if (url.pathname.endsWith(".html"))
+            headers["content-security-policy"] = CSP;
+          return route.fulfill({ response: res, headers });
+        });
+        const page = await ctx.newPage();
+        try {
+          await page.goto(`${base}/manage.html#/personal-tokens`);
+          await page
+            .getByRole("heading", { level: 1, name: "Personal tokens" })
+            .waitFor();
+          if (mode === "empty") await page.getByText("No tokens yet").waitFor();
+          else await page.getByText("CI build server").first().waitFor();
+          if (mode.startsWith("confirm")) {
+            const who =
+              mode === "confirm-admin"
+                ? "pkey on ada-lovelace-macbook-pro.studio.example.com"
+                : "CI build server";
+            await page
+              .getByRole("button", { name: `Actions for ${who}` })
+              .click();
+            await page.getByRole("menuitem", { name: /Revoke/ }).click();
+            await page.getByRole("alertdialog").waitFor();
+          }
+          if (SHOTS)
+            await page.screenshot({
+              path: `${SHOTS}/own-${mode}-${s.w}-${s.theme}.png`,
+              fullPage: mode === "yours" || mode === "empty",
+            });
+          expect(
+            await page.evaluate(
+              () =>
+                document.documentElement.scrollWidth -
+                document.documentElement.clientWidth,
+            ),
+          ).toBeLessThanOrEqual(0);
+        } finally {
+          await closeContext(ctx);
+        }
+      });
+    }
   }
 });

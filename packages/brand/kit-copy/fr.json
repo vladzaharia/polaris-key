@@ -1213,6 +1213,7 @@
     "locker.packages.atLimit": "{count} jetons personnels au maximum. Révoquez-en d’abord un",
     "locker.packages.create": "Créer un jeton personnel",
     "locker.packages.none": "Aucun jeton personnel pour l’instant. Créez-en un pour chaque ordinateur ou serveur de build.",
+    "locker.packages.adminPointer": "Les jetons d’administration sont dans la console.",
     "locker.packages.reconnectPersonal": "Créez-en un nouveau et définissez-le de nouveau pour vous reconnecter.",
     "locker.packages.showAll": "Afficher les {count}",
     "locker.packages.createTitle": "Créer un jeton personnel",

@@ -1213,6 +1213,7 @@
     "locker.packages.atLimit": "个人令牌最多 {count} 个。请先撤销一个",
     "locker.packages.create": "创建个人令牌",
     "locker.packages.none": "还没有个人令牌。请为每台电脑或构建服务器各创建一个。",
+    "locker.packages.adminPointer": "管理员令牌在控制台中。",
     "locker.packages.reconnectPersonal": "请新建一个并重新设置，以恢复连接。",
     "locker.packages.showAll": "显示全部 {count} 个",
     "locker.packages.createTitle": "创建个人令牌",

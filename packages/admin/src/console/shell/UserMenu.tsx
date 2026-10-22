@@ -1,5 +1,12 @@
 import * as React from "react";
-import { BookOpen, CloudUpload, Keyboard, Library, LogOut } from "lucide-react";
+import {
+  BookOpen,
+  CloudUpload,
+  Keyboard,
+  KeyRound,
+  Library,
+  LogOut,
+} from "lucide-react";
 import type { Me, PlatformIdentity } from "../../api.js";
 import { Button } from "../../ui/Button.js";
 import {
@@ -41,7 +48,7 @@ export function formatSessionEnd(epochSeconds: number): string {
  * The account menu (ADMIN.md §2.2, fixes SH-14): who is signed in, when the session ends (A-1;
  * the session is a hard 8 h, so the time is worth knowing before a long edit), the running build
  * (a chip linking to Platform → Deployment, so the version is one click from every page; notes/S-13
- * §9.1), the shortcut sheet, the docs home and Sign out. The theme lives in its own menu beside
+ * §9.1), your Personal tokens, the shortcut sheet, the docs home and Sign out. The theme lives in its own menu beside
  * this one, except under 640 px, where the bar has no room for it and this menu carries the theme
  * and motion choices.
  */
@@ -101,6 +108,12 @@ export function UserMenu({
             </Link>
           </DropdownMenuItem>
         ) : null}
+        <DropdownMenuItem asChild>
+          <Link to={r.personalTokens()}>
+            <KeyRound aria-hidden />
+            Personal tokens
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={onShortcuts}>
           <Keyboard aria-hidden />
           Keyboard shortcuts
