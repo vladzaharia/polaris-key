@@ -39,10 +39,34 @@ export const RULES: RuleInfo[] = [
     says: "Text uses the theme's families only (Rubik and the kit mono by default).",
   },
   {
-    id: "font-weight-700",
+    id: "weights",
     group: "type",
-    spec: "§1.5 rule 6",
-    says: "Weights are 400, 500 and 600; 700 only on the game wordmark fallback.",
+    spec: "DL12, §1.5 rule 6",
+    says: "Three weights: 400, 500 and 600 (a computed weight outside them fails); 700 only on the game wordmark fallback.",
+  },
+  {
+    id: "px-font",
+    group: "type",
+    spec: "DL11",
+    says: "No font-size in px in kit CSS: rem, a clamp() of rem and container units, or a token.",
+  },
+  {
+    id: "spacing-off-scale",
+    group: "shape",
+    spec: "DL3",
+    says: "Every margin, padding and gap is a --pk-space-* step or a kit token; 0 and a 1 px hairline are allowed.",
+  },
+  {
+    id: "polaris-mark",
+    group: "shape",
+    spec: "DL5",
+    says: "The Polaris mark (Pinned K, Star Cut) appears only in the opt-in Powered-by line or badge.",
+  },
+  {
+    id: "mark-size",
+    group: "shape",
+    spec: "DL5, B-brand",
+    says: "No Polaris mark below the 16 px favicon cut; 16 to 23 px must be the favicon cut.",
   },
   {
     id: "text-size-floor",
@@ -159,6 +183,30 @@ export const RULES: RuleInfo[] = [
     says: "A selected, current or checked element paints only the accent of its nearest data-service.",
   },
   {
+    id: "refusal-styling",
+    group: "behaviour",
+    spec: "DL6",
+    says: "A refusal the person can resolve (device limit, revoked, expired, version, channel) is a neutral callout: never in the danger role, never beside an aria-invalid field.",
+  },
+  {
+    id: "initial-focus",
+    group: "behaviour",
+    spec: "DL9",
+    says: "After a full-window state mounts with keyboard modality, document.activeElement is inside the kit root.",
+  },
+  {
+    id: "link-validation",
+    group: "behaviour",
+    spec: "DL14",
+    says: "A link opens only through the kit's one validating opener: no window.open, location assignment or computed href, and no http (loopback aside), javascript:, data: or file: link.",
+  },
+  {
+    id: "native-accent-tint",
+    group: "behaviour",
+    spec: "§7.3, B17",
+    says: "Under the native preset or forced colours, no border, rim or shadow is tinted with a service accent.",
+  },
+  {
     id: "tier-caption",
     group: "copy",
     spec: "UK-59",
@@ -192,7 +240,7 @@ export const RULES: RuleInfo[] = [
     id: "kit-source",
     group: "behaviour",
     spec: "§7.3 per-kit equivalents",
-    says: "The native kits' source rules (SwiftUI, Compose, Godot, Qt): see rules/kit-rules.json.",
+    says: "The native kits' source rules (SwiftUI, Compose, Godot, Qt, the terminals, React): see rules/kit-rules.json.",
   },
 ];
 

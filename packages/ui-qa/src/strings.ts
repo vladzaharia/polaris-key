@@ -519,3 +519,30 @@ export function lintBrandName(
   }
   return findings;
 }
+
+/**
+ * The refusal copy (DL6): the device-limit messages and the core gate and activation entries a
+ * person can resolve (device limit, revoked, expired, version too old or too new, channel not
+ * entitled, license disabled, key-entry limit, claimed). Found by key, so no kit needs new markup.
+ */
+export const REFUSAL_KEY =
+  /^(deviceLimit\.|core\.gate\.(expired|revoked|version-too-old|version-too-new|channel-not-entitled)\.|core\.activation\.(device-limit|license-disabled|license-expired|key-entry-limit|enroll-claimed)\.|core\.codes\.(device_limit|license_disabled|key_entry_limit)\.)/;
+
+/** Regex sources (for the in-page lint) matching the visible text of every refusal message. */
+export function refusalPatterns(catalog: CatalogMessage[]): string[] {
+  const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const out = new Set<string>();
+  for (const m of catalog) {
+    if (!REFUSAL_KEY.test(m.key)) continue;
+    for (const value of [m.value, ...Object.values(m.variants)]) {
+      // A message with an argument matches around it; a bare "{product}" alone matches nothing.
+      const parts = tokens(normalise(value)).map((t) =>
+        t.lit !== undefined ? esc(t.lit) : ".+",
+      );
+      const literal = parts.filter((p) => p !== ".+").join("");
+      if (literal.replace(/[\\\s]/g, "").length < 8) continue;
+      out.add(`^${parts.join("")}$`);
+    }
+  }
+  return [...out];
+}

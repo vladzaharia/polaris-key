@@ -8,6 +8,7 @@ import {
   loadAllow,
   loadCatalog,
   matchString,
+  refusalPatterns,
   stateOf,
   titleCase,
   type CatalogMessage,
@@ -234,5 +235,33 @@ describe("the brand-name rule", () => {
     const found = lintBrandName(dir, ["c"]);
     expect(found).toHaveLength(1);
     expect(found[0]!.state).toContain("messages.a.value");
+  });
+});
+
+describe("refusalPatterns (DL6)", () => {
+  const patterns = refusalPatterns(loadCatalog(REPO_ROOT)).map(
+    (p) => new RegExp(p),
+  );
+  const refused = (t: string) => patterns.some((r) => r.test(t));
+
+  it("finds the device-limit and gate refusal copy by key, arguments as wildcards", () => {
+    expect(
+      refused("Sign out of Tidewater on another device, then try again."),
+    ).toBe(true);
+    expect(refused("Your license is on 3 of 3 devices")).toBe(true);
+    expect(
+      refused(
+        "This device was signed out. Sign in or activate again to continue.",
+      ),
+    ).toBe(true);
+    expect(
+      refused("Connect to the internet or renew your license to continue."),
+    ).toBe(true);
+  });
+
+  it("leaves bad-input, success and button copy alone", () => {
+    expect(refused("That key is not valid.")).toBe(false);
+    expect(refused("Try again")).toBe(false);
+    expect(refused("Your license is active.")).toBe(false);
   });
 });

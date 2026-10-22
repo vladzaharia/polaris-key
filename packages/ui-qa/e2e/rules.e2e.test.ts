@@ -3,7 +3,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser } from "playwright";
 import { lintPage, prepare } from "../src/run.ts";
 import { RULES } from "../src/rules.ts";
-import type { LintResult } from "../src/types.ts";
+import { loadCatalog, refusalPatterns } from "../src/strings.ts";
+import { REPO_ROOT } from "../src/config.ts";
+import type { LintOptions, LintResult } from "../src/types.ts";
+
+const REFUSALS = refusalPatterns(loadCatalog(REPO_ROOT));
 
 let browser: Browser;
 beforeAll(async () => {
@@ -18,14 +22,14 @@ const BASE = `
 <style>
   :root { --c: rgb(38 132 122); --fg: rgb(230 232 238); --bg: rgb(16 18 24); }
   body { margin: 0; font: 400 15px/22px Rubik; color: var(--fg); background: var(--bg); }
-  .card { border-radius: 22px; padding: 28px; overflow: hidden; }
-  .k-btn { font: 500 15px/1 Rubik; height: 44px; min-width: 96px; border: 0; border-radius: 12px;
+  .card { border-radius: 22px; padding: 1.5rem; overflow: hidden; }
+  .k-btn { font: 500 0.9375rem/1 Rubik; height: 44px; min-width: 96px; border: 0; border-radius: 12px;
     background: var(--c); color: var(--fg); }
   .k-btn:hover { background: var(--bg); }
   .k-btn:active { transform: scale(0.98); }
   .k-btn:disabled, .k-btn[aria-disabled="true"] { opacity: 0.42; }
   .k-btn:focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
-  h1 { font: 600 28px/34px Rubik; margin: 0; text-wrap: balance; }
+  h1 { font: 600 1.75rem/2.125rem Rubik; margin: 0; text-wrap: balance; }
 </style>`;
 
 const page = (body: string) =>
@@ -34,11 +38,15 @@ const page = (body: string) =>
     `<!doctype html><html lang="en"><head><meta charset="utf-8">${BASE}</head><body><div data-shot="s">${body}</div></body></html>`,
   ).toString("base64");
 
-async function lint(body: string, width = 1200): Promise<LintResult> {
+async function lint(
+  body: string,
+  width = 1200,
+  extra: LintOptions = {},
+): Promise<LintResult> {
   const p = await browser.newPage({ viewport: { width, height: 900 } });
   await prepare(p);
   await p.goto(page(body));
-  const r = await lintPage(p, { fonts: ["Rubik"] });
+  const r = await lintPage(p, { fonts: ["Rubik"], ...extra });
   await p.close();
   return r;
 }
@@ -49,7 +57,14 @@ const SEEDED: Record<string, string> = {
   "focus-ring-spread": `<style>.b:focus-visible { box-shadow: 0 0 0 4px var(--c) }</style><button class="k-btn b">Go</button>`,
   "button-glow": `<button class="k-btn" style="box-shadow: 0 6px 16px rgb(0 128 255 / 0.6)">Go</button>`,
   "font-family": `<p style="font-family: Arial">Hello</p>`,
-  "font-weight-700": `<p style="font-weight: 700">Hello</p>`,
+  weights: `<p style="font-weight: 700">Hello</p>`,
+  "px-font": `<style>.p { font-size: 15px }</style><p class="p">Hello</p>`,
+  "spacing-off-scale": `<div style="padding: 13px">Hello</div>`,
+  "polaris-mark": `<svg role="img" aria-label="Polaris Key" width="24" height="24"></svg>`,
+  "mark-size": `<p data-part="powered-by"><svg role="img" aria-label="Polaris Key" width="12" height="12"></svg></p>`,
+  "refusal-styling": `<style>:root { --pk-danger: rgb(220 50 50); }</style><p style="color: var(--pk-danger)">Sign out of Tidewater on another device, then try again.</p>`,
+  "initial-focus": `<div data-pk-fullwindow><button class="k-btn">Go</button></div>`,
+  "link-validation": `<a class="k-btn" href="http://example.com/x">Go</a>`,
   "text-size-floor": `<p style="font-size: 11px">Hello</p>`,
   "fractional-font-size": `<style>.p { font-size: 13.5px }</style><p class="p">Hello</p>`,
   "button-uppercase": `<button class="k-btn" style="text-transform: uppercase">Go</button>`,
@@ -70,6 +85,7 @@ const SEEDED: Record<string, string> = {
   // Console shell v2 (ST-48; B4, B17): the service accents are the page's own tokens.
   "accent-as-status": `<style>:root { --pk-service-license: rgb(198 233 64); }</style><p role="status" style="color: rgb(198 233 64)">Active</p>`,
   "state-accent": `<style>:root { --pk-service-license: rgb(198 233 64); --pk-service-config: rgb(250 199 0); }</style><div data-service="license"><a href="#" aria-current="page" style="color: rgb(250 199 0)">Catalog</a></div>`,
+  "native-accent-tint": `<style>:root { --pk-service-license: rgb(198 233 64); }</style><div data-ui-preset="native"><div style="border: 1px solid rgb(198 233 64)">Row</div></div>`,
   "section-index": `<h2>01 Limits</h2>`,
   "tier-caption": `<figure><figcaption>ios · gate</figcaption><div data-shot="g">Gate</div></figure>`,
   "masthead-tile": `<span data-masthead-tile style="display: inline-block; inline-size: 48px; block-size: 48px"></span>`,
@@ -99,9 +115,12 @@ describe("the modernity lint (UI-KITS §7.3)", () => {
 
   // A rule that depends on the window: the masthead tile is for 1024 px and wider.
   const WIDTH: Record<string, number> = { "masthead-tile": 800 };
+  const OPTS: Record<string, LintOptions> = {
+    "refusal-styling": { refusals: REFUSALS },
+  };
   for (const [rule, body] of Object.entries(SEEDED)) {
     it(`fails on a seeded ${rule}`, async () => {
-      const r = await lint(body, WIDTH[rule]);
+      const r = await lint(body, WIDTH[rule], OPTS[rule]);
       expect(r.violations.map((v) => v.rule)).toContain(rule);
     });
   }
@@ -117,6 +136,121 @@ describe("the modernity lint (UI-KITS §7.3)", () => {
     expect(ok.violations.map((v) => v.rule)).not.toContain("section-index");
     expect(ok.violations.map((v) => v.rule)).not.toContain("masthead-tile");
     expect(ok.violations.map((v) => v.rule)).not.toContain("accent-as-status");
+  });
+
+  // Design language v2 (UK-55): what each rule must spare, and the second shape of those that have one.
+  describe("design-language rules", () => {
+    const rules = async (body: string, extra: LintOptions = {}) =>
+      (await lint(body, 1200, extra)).violations.map((v) => v.rule);
+
+    it("spacing-off-scale passes the scale, a hairline and a kit token", async () => {
+      expect(
+        await rules(
+          `<style>:root { --pk-space-4: 1rem; --kit-pad: 0.75rem; }</style><div style="padding: var(--pk-space-4) 8px 0 1px; margin: 0 auto; gap: 12px"><p style="padding-inline: var(--kit-pad)">Hello</p></div>`,
+        ),
+      ).not.toContain("spacing-off-scale");
+    });
+    it("spacing-off-scale fails an authored margin and a flex gap", async () => {
+      expect(await rules(`<p style="margin: 7px 0">Hello</p>`)).toContain(
+        "spacing-off-scale",
+      );
+      expect(
+        await rules(
+          `<div style="display: flex; gap: 10px"><span>a</span><span>b</span></div>`,
+        ),
+      ).toContain("spacing-off-scale");
+    });
+    it("weights fails 300 and 800, spares 400 500 600", async () => {
+      expect(await rules(`<p style="font-weight: 300">Hello</p>`)).toContain(
+        "weights",
+      );
+      expect(await rules(`<p style="font-weight: 800">Hello</p>`)).toContain(
+        "weights",
+      );
+      expect(
+        await rules(
+          `<p style="font-weight: 400">a</p><p style="font-weight: 500">b</p><p style="font-weight: 600">c</p>`,
+        ),
+      ).not.toContain("weights");
+    });
+    it("px-font spares rem and container units", async () => {
+      expect(
+        await rules(
+          `<style>.p { font-size: 1rem } .q { font-size: clamp(0.875rem, 3cqi, 1.25rem) }</style><p class="p">a</p><p class="q">b</p>`,
+        ),
+      ).not.toContain("px-font");
+    });
+    it("polaris-mark spares the Powered-by badge and line", async () => {
+      expect(
+        await rules(
+          `<p data-part="powered-by"><svg role="img" aria-label="Polaris Locker" width="24" height="24"></svg></p>`,
+        ),
+      ).not.toContain("polaris-mark");
+    });
+    it("mark-size fails 16 to 23 px that is not the favicon cut, spares the cut", async () => {
+      const mark = (cut: string) =>
+        `<p data-part="powered-by"><svg role="img" aria-label="Polaris Key" width="20" height="20" ${cut}></svg></p>`;
+      expect(await rules(mark(""))).toContain("mark-size");
+      expect(await rules(mark('data-cut="favicon"'))).not.toContain(
+        "mark-size",
+      );
+    });
+    it("refusal-styling fails a refusal beside an aria-invalid field, spares a neutral callout", async () => {
+      const text = "Sign out of Tidewater on another device, then try again.";
+      expect(
+        await rules(
+          `<div><input aria-invalid="true" aria-label="Key"><p>${text}</p></div>`,
+          { refusals: REFUSALS },
+        ),
+      ).toContain("refusal-styling");
+      expect(
+        await rules(`<div><input aria-label="Key"><p>${text}</p></div>`, {
+          refusals: REFUSALS,
+        }),
+      ).not.toContain("refusal-styling");
+    });
+    it("refusal-styling fails a refusal on a danger ground", async () => {
+      expect(
+        await rules(
+          `<style>:root { --pk-danger-subtle: rgb(60 20 20); }</style><div style="background: var(--pk-danger-subtle)"><p>Sign out of Tidewater on another device, then try again.</p></div>`,
+          { refusals: REFUSALS },
+        ),
+      ).toContain("refusal-styling");
+    });
+    it("initial-focus passes once focus is inside the kit root", async () => {
+      const p = await browser.newPage({
+        viewport: { width: 1200, height: 900 },
+      });
+      await prepare(p);
+      await p.goto(
+        page(`<div data-pk-fullwindow><button class="k-btn">Go</button></div>`),
+      );
+      await p.focus("button");
+      const r = await lintPage(p, { fonts: ["Rubik"] });
+      await p.close();
+      expect(r.violations.map((v) => v.rule)).not.toContain("initial-focus");
+    });
+    it("link-validation fails window.open and javascript: / file: / data: links, spares https and loopback", async () => {
+      for (const href of [
+        "javascript:void(0)",
+        "file:///etc/hosts",
+        "data:text/html,x",
+        "http://example.com/",
+      ])
+        expect(await rules(`<a class="k-btn" href="${href}">Go</a>`)).toContain(
+          "link-validation",
+        );
+      expect(
+        await rules(
+          `<a class="k-btn" href="https://example.com/">Go</a><a class="k-btn" href="http://127.0.0.1:8787/cb">Back</a><a class="k-btn" href="#top">Top</a>`,
+        ),
+      ).not.toContain("link-validation");
+      expect(
+        await rules(
+          `<script>function go(u) { window.open(u); }</script><p>Hello</p>`,
+        ),
+      ).toContain("link-validation");
+    });
   });
 
   // UK-59: a "Built today" frame is a committed render, not a drawing.

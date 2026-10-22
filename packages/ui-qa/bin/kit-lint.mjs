@@ -19,7 +19,7 @@ const RULES = "packages/ui-qa/rules/kit-rules.json";
 const DEBT = "packages/ui-qa/rules/kit-debt.json";
 
 const DEBT_COMMENT =
-  "Per-kit source-lint debt (bin/kit-lint.mjs): hits per rule and file that existed when the lint landed (UK-15), owned by each kit's modernisation work package (swiftui UK-07, compose UK-09, godot UK-11, qt UK-12, react UK-05). The lint fails on any hit beyond these counts and on a count above today's. Shrink it with: node packages/ui-qa/bin/kit-lint.mjs --record.";
+  "Per-kit source-lint debt (bin/kit-lint.mjs): hits per rule and file that existed when the lint landed (UK-15), owned by each kit's modernisation work package (swiftui UK-49, UK-07 and UK-08; compose UK-09 and UK-10; godot UK-50 and UK-11; qt UK-12; react UK-47 and UK-05; terminal-node UK-45; terminal-python UK-48). The design-language rules (UK-55: spacing-off-scale DL3, weights DL12, polaris-mark DL5, initial-focus DL9, catalog-string DL8, link-validation DL14, px-font DL11) record today's hits per rule and file; the owning package clears its kit's entries and re-records. The lint fails on any hit beyond these counts and on a count above today's. Shrink it with: node packages/ui-qa/bin/kit-lint.mjs --record.";
 
 function walk(dir, exts, out) {
   let entries;
@@ -55,7 +55,9 @@ export function scan(root = DEFAULT_ROOT, kits = null, rulesFile = RULES) {
       .filter((r) => r.kit === kit)
       .map((r) => ({
         ...r,
-        re: new RegExp(r.pattern),
+        re: r.pattern ? new RegExp(r.pattern) : null,
+        include: r.include ? new RegExp(r.include) : null,
+        need: r.require ? new RegExp(r.require) : null,
         skip: (r.exclude ?? []).map((x) => new RegExp(x)),
       }));
     for (const rootDir of k.roots) {
@@ -63,10 +65,27 @@ export function scan(root = DEFAULT_ROOT, kits = null, rulesFile = RULES) {
         const text = readFileSync(file, "utf8");
         if (/GENERATED/.test(text.slice(0, 400))) continue;
         const rel = relPosix(root, file);
+        // A file rule (DL9 initial focus): a file matching `include` must contain `require`.
+        // The hit sits on line 1; a `ui-lint: allow <rule> <reason>` anywhere in the file exempts it.
+        for (const r of rules) {
+          if (r.scope !== "file" || r.skip.some((x) => x.test(rel))) continue;
+          if (!r.include.test(rel) || r.need.test(text)) continue;
+          if (new RegExp(`ui-lint: allow ${r.id}\\b.{8,}`).test(text)) continue;
+          hits.push({
+            kit,
+            rule: r.id,
+            file: rel,
+            line: 1,
+            text: "",
+            detail: r.says,
+          });
+        }
         text.split("\n").forEach((line, i) => {
           for (const r of rules) {
-            if (r.skip.some((x) => x.test(rel))) continue;
+            if (r.scope === "file" || r.skip.some((x) => x.test(rel))) continue;
             if (!r.re.test(line)) continue;
+            // The design-language rules (r.dl) read code, not comments that describe it.
+            if (r.dl && /^\s*(\/\/|\/\*|\*|#)/.test(line)) continue;
             if (new RegExp(`ui-lint: allow ${r.id}\\b.{8,}`).test(line))
               continue;
             hits.push({

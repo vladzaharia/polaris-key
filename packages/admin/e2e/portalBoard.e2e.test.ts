@@ -33,7 +33,7 @@ const RULES = new Set([
   "tier-separator",
   "x-beside-cancel",
   "empty-placeholder",
-  "font-weight-700",
+  "weights",
   "font-family",
 ]);
 
