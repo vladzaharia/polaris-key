@@ -269,6 +269,8 @@ interface Row {
   headers: Record<string, string>;
   cookies: string[];
   body: string;
+  /** What the request left behind: the licence's account link (the sweep), live sessions. */
+  after: string;
 }
 
 interface World {
@@ -442,8 +444,24 @@ async function observe(
     status: res.status,
     headers,
     cookies,
+    after: "",
     body: `${text.length}:${createHash("sha256").update(text).digest("hex").slice(0, 16)}`,
   };
+}
+
+/** The rows a request can change that its response does not show. */
+async function afterState(db: Db): Promise<string> {
+  const lic = await db.first<{ linked: number }>(
+    "SELECT COUNT(account_id) AS linked FROM licenses WHERE id = ?",
+    LICENSE,
+  );
+  const sessions = await db.first<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM account_sessions",
+  );
+  const links = await db.first<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM account_links",
+  );
+  return `linked:${lic?.linked} sessions:${sessions?.n} links:${links?.n}`;
 }
 
 function canonical(v: unknown, leaf: (text: string) => string): unknown {
@@ -544,7 +562,9 @@ describe("the portal /api routes replay the hand dispatch", () => {
         db,
         NOW,
       );
-      return [key, await observe(res, secrets)];
+      const row = await observe(res, secrets);
+      row.after = await afterState(db);
+      return [key, row];
     } catch (e) {
       return [
         key,
@@ -553,6 +573,7 @@ describe("the portal /api routes replay the hand dispatch", () => {
           headers: {},
           cookies: [],
           body: normalise(e instanceof Error ? e.message : String(e), secrets),
+          after: await afterState(db),
         },
       ];
     } finally {
