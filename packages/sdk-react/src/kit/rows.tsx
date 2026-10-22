@@ -690,25 +690,48 @@ export function settingsRows(c: KitCtx): ReactNode {
         {group}
       </>
     );
+  // What the policy locks is its own group: "Managed settings" (§4.1), the person's own below
+  // "From <Developer>".
+  const open = drawn.filter((_, i) => !visible[i]!.locked);
+  const managed = drawn.filter((_, i) => visible[i]!.locked);
   return (
     <>
       {search}
-      <div className="group" data-part="settings-group">
-        {group}
-        <ul className="list" data-part="settings-list">
-          {drawn}
-        </ul>
-        {rest.length ? (
-          <p className="meta">
-            {rest.map((k, i) => (
-              <Fragment key={k}>
-                {i ? " · " : ""}
-                <span data-key={k}>{text(c, k)}</span>
-              </Fragment>
-            ))}
-          </p>
-        ) : null}
-      </div>
+      {open.length || rest.length ? (
+        <div className="group" data-part="settings-group">
+          {open.length ? group : null}
+          {open.length ? (
+            <ul className="list" data-part="settings-list">
+              {open}
+            </ul>
+          ) : null}
+          {rest.length ? (
+            <p className="meta">
+              {rest.map((k, i) => (
+                <Fragment key={k}>
+                  {i ? " · " : ""}
+                  <span data-key={k}>{text(c, k)}</span>
+                </Fragment>
+              ))}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {managed.length ? (
+        <div className="group" data-part="settings-group" data-managed="">
+          {has("account.managedSettings") ? (
+            <h2
+              className="label group-label"
+              data-key="account.managedSettings"
+            >
+              {text(c, "account.managedSettings")}
+            </h2>
+          ) : null}
+          <ul className="list" data-part="settings-list">
+            {managed}
+          </ul>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -915,40 +938,21 @@ export function accountRows(c: KitCtx): ReactNode {
   );
 }
 
-/** The release channels on offer as one radio group: the one in use is checked, a pick is reported
- *  through `onSelect` (the channel's own name, which is the product's, never the catalog's). */
+/** The release channels on offer as one segmented choice: the one in use is checked, a pick is
+ *  reported through `onSelect` (the channel's own name, which is the product's, never the
+ *  catalog's). The elements draw the same, Stable and Beta when the host names none. */
 export function channelRows(c: KitCtx): ReactNode {
-  const ch = c.input.channel;
-  const options = ch?.options ?? [];
-  if (c.view.state !== "default" || options.length === 0) return null;
-  const on = c.input.selected ?? ch?.current ?? options[0];
-  return (
-    <div
-      className="list"
-      role="radiogroup"
-      aria-labelledby="pk-title"
-      data-part="channel-list"
-    >
-      {options.map((o, i) => (
-        <div
-          key={o}
-          className="row"
-          role="radio"
-          data-part="channel-row"
-          tabIndex={o === on ? 0 : -1}
-          aria-checked={o === on ? "true" : "false"}
-          onClick={() => c.pick(o)}
-          onKeyDown={(e) =>
-            radioKeys(e, c, i, options.length, (n) => options[n]!)
-          }
-        >
-          <span />
-          <span className="row-title">
-            <bdi>{o}</bdi>
-          </span>
-          {o === on ? GLYPHS.check() : <span />}
-        </div>
-      ))}
-    </div>
+  if (c.view.state !== "default") return null;
+  const options = (c.input.channel?.options ?? ["stable", "beta"]).map(
+    (id) => ({
+      id,
+      label: channelLabel(id),
+    }),
+  );
+  return segmented(
+    plain(c, "channel.title"),
+    options,
+    c.input.selected ?? c.input.channel?.current,
+    (id) => c.pick(id),
   );
 }

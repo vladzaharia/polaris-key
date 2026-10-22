@@ -1720,21 +1720,44 @@ function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
     return group === nothing && search === nothing
       ? nothing
       : html`${search}${group}`;
+  // What the policy locks is its own group: "Managed settings" (§4.1), the person's own below
+  // "From <Developer>".
+  const open = drawn.filter((_, i) => !visible[i]!.locked);
+  const managed = drawn.filter((_, i) => visible[i]!.locked);
+  const managedHead = has("account.managedSettings")
+    ? html`<h2 class="label group-label" data-key="account.managedSettings">
+        ${text(c, "account.managedSettings")}
+      </h2>`
+    : nothing;
   return html`${search}
-    <div class="group" data-part="settings-group">
-      ${group}
-      <ul class="list" data-part="settings-list">
-        ${drawn}
-      </ul>
-      ${rest.length
-        ? html`<p class="meta">
-            ${rest.map(
-              (k, i) =>
-                html`${i ? " · " : ""}<span data-key=${k}>${text(c, k)}</span>`,
-            )}
-          </p>`
-        : nothing}
-    </div>`;
+  ${open.length || rest.length
+    ? html`<div class="group" data-part="settings-group">
+        ${open.length ? group : nothing}
+        ${open.length
+          ? html`<ul class="list" data-part="settings-list">
+              ${open}
+            </ul>`
+          : nothing}
+        ${rest.length
+          ? html`<p class="meta">
+              ${rest.map(
+                (k, i) =>
+                  html`${i ? " · " : ""}<span data-key=${k}
+                      >${text(c, k)}</span
+                    >`,
+              )}
+            </p>`
+          : nothing}
+      </div>`
+    : nothing}
+  ${managed.length
+    ? html`<div class="group" data-part="settings-group" data-managed="">
+        ${managedHead}
+        <ul class="list" data-part="settings-list">
+          ${managed}
+        </ul>
+      </div>`
+    : nothing}`;
 }
 
 /** A label-and-value row of the account pane. */
@@ -1842,7 +1865,11 @@ function accountRows(c: RenderCtx): TemplateResult | typeof nothing {
       </ul>`
     : nothing}
   ${keys.has("account.updates")
-    ? html`<h2 class="label group-label" data-key="account.updates">
+    ? html`<h2
+        class="label group-label"
+        data-key="account.updates"
+        ?hidden=${updateRows.length === 0}
+      >
         ${t("account.updates")}
       </h2>`
     : nothing}

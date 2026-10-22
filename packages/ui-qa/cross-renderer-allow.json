@@ -1,18 +1,6 @@
 {
   "_": "States where the React and elements baselines differ today. Each is a finding, not a pass: pnpm ui:report fails on any other drift and on an entry that no longer differs, so this list only shrinks.",
   "states": {
-    "AccountAndLicense.key-only": {
-      "reason": "Small layout drift of 0.1-2 %: Sign out is a link in elements and a button in React (AccountAndLicense); the banner button row sits 2 px apart (GraceBanner, PolarisKeyGate.grace); and the single-control rows of ChannelPicker, EntitlementGate, Paywall.not-available, UpdateProgress.failed differ by a few px."
-    },
-    "AccountAndLicense.signed-in": {
-      "reason": "Small layout drift of 0.1-2 %: Sign out is a link in elements and a button in React (AccountAndLicense); the banner button row sits 2 px apart (GraceBanner, PolarisKeyGate.grace); and the single-control rows of ChannelPicker, EntitlementGate, Paywall.not-available, UpdateProgress.failed differ by a few px."
-    },
-    "ChannelPicker.default": {
-      "reason": "Small layout drift of 0.1-2 %: Sign out is a link in elements and a button in React (AccountAndLicense); the banner button row sits 2 px apart (GraceBanner, PolarisKeyGate.grace); and the single-control rows of ChannelPicker, EntitlementGate, Paywall.not-available, UpdateProgress.failed differ by a few px."
-    },
-    "EntitlementGate.not-entitled": {
-      "reason": "Small layout drift of 0.1-2 %: Sign out is a link in elements and a button in React (AccountAndLicense); the banner button row sits 2 px apart (GraceBanner, PolarisKeyGate.grace); and the single-control rows of ChannelPicker, EntitlementGate, Paywall.not-available, UpdateProgress.failed differ by a few px."
-    },
     "PolarisKeyGate.booting": {
       "reason": "The looping shimmer is caught at a different frame: one 390 dark render differs by 0.11 %.",
       "maxRatio": 0.005

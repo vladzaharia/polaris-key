@@ -628,7 +628,7 @@ function strip(c: KitCtx, layout: Layout, kind: "banner" | "toast"): ReactNode {
 
 /** A small status inside the host's layout. */
 function inline(c: KitCtx, layout: Layout): ReactNode {
-  const p = placeKeys(c.view, layout);
+  const p = place(c, layout);
   const lines = [...p.titles, ...p.meta, ...p.body];
   return (
     <div

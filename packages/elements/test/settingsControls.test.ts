@@ -96,6 +96,14 @@ describe("Settings controls", () => {
     ]);
     expect(root.querySelector('[role="switch"], input, select')).toBeNull();
     expect(root.textContent).toContain("5 dB");
+    // The locked rows are their own group, under "Managed settings".
+    const managed = root.querySelector("[data-managed]");
+    expect(
+      managed?.querySelectorAll('[data-part="settings-row"]'),
+    ).toHaveLength(2);
+    expect(root.querySelectorAll('[data-part="settings-group"]')).toHaveLength(
+      1,
+    );
   });
 
   it("offers Reset to default after a local change and Show advanced for an advanced row", async () => {
