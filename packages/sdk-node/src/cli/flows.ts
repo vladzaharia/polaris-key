@@ -18,7 +18,11 @@ import type {
 } from "../identity/client.js";
 import type { ActivationResult } from "../license/endpoints.js";
 import { SDK_NAME, SDK_VERSION } from "../version.js";
-import { CUSTOMER_ORIGIN_DEFAULT, Feature } from "../constants.generated.js";
+import {
+  CUSTOMER_ORIGIN_DEFAULT,
+  ErrorCode,
+  Feature,
+} from "../constants.generated.js";
 import { DEFAULT_BASE } from "../core/context.js";
 import { getConfig } from "./commands.js";
 import type { KitContext } from "./context.js";
@@ -1398,23 +1402,34 @@ export async function loginFlow(
     ]);
     return { exitCode: EXIT.ok, state: "signedIn", result };
   }
-  const expired = r.status === "expired";
-  const error: CliJsonError = expired
-    ? {
-        code: "signin_expired",
-        title: ctx.copy.code("sign-in-expired", "title"),
-        message: t("signin.cli.signInAgain", { command: cmd(ctx, verb) }),
-      }
-    : {
-        code: "sign-in-denied",
-        title: ctx.copy.code("sign-in-denied", "title"),
-        message: t("signin.cli.signInAgain", { command: cmd(ctx, verb) }),
-      };
+  // Three ways to end without signing in (DENY-01): the code lapsed, a person refused, or the
+  // sign-in failed after approval. Only the poll's refusal code is a refusal.
+  const how =
+    r.status === "expired"
+      ? ("expired" as const)
+      : r.status === "error" && r.code === ErrorCode.signInDenied
+        ? ("denied" as const)
+        : ("failed" as const);
+  const error: CliJsonError =
+    how === "expired"
+      ? {
+          code: "signin_expired",
+          title: ctx.copy.code("sign-in-expired", "title"),
+          message: t("signin.cli.signInAgain", { command: cmd(ctx, verb) }),
+        }
+      : {
+          code: how === "failed" ? "sign-in-failed" : "sign-in-denied",
+          title: ctx.copy.code(
+            how === "failed" ? "sign-in-failed" : "sign-in-denied",
+            "title",
+          ),
+          message: t("signin.cli.signInAgain", { command: cmd(ctx, verb) }),
+        };
   finish([stepRow("fail", error.title), ...gap(ctx), ...again(), endRow()]);
   return {
     exitCode: EXIT.failed,
-    state: expired ? "expired" : "denied",
-    result: { state: expired ? "expired" : "denied" },
+    state: how,
+    result: { state: how },
     error,
   };
 }

@@ -85,6 +85,7 @@ func all() -> Array:
 	out.append(["sign_in", "ok", sign_in.bind("ok")])
 	out.append(["sign_in", "expired", sign_in.bind("expired")])
 	out.append(["sign_in", "denied", sign_in.bind("denied")])
+	out.append(["sign_in", "failed", sign_in.bind("failed")])
 	# ── PKeyOfflineDialog.
 	out.append(["offline", "native", offline.bind(false, "")])
 	out.append(["offline", "web", offline.bind(true, "")])
@@ -319,6 +320,8 @@ func sign_in(state: String) -> Control:
 			d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
 		"denied":
 			d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_DENIED, PKeyErrors.SIGN_IN_DENIED, ""))
+		"failed":
+			d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_ERROR, PKeyErrors.SIGN_IN_FAILED, ""))
 	return d
 
 

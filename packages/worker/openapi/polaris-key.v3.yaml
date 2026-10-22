@@ -7870,10 +7870,10 @@ paths:
       description: >
         Four flow states, all at HTTP 200 unless noted: `pending` (nothing confirmed yet),
         `ready` (with the minted `pkeyt_` token), `timeout` (the flow record is gone,
-        including immediately after a `ready`, which deletes it) and `error`, which
-        deliberately carries no reason. The body names `deviceCode` (the spelling `state` is
+        including immediately after a `ready`, which deletes it) and `error`, which names a
+        reason only for a refusal (WIRE-CONTRACT-V4 §12.10, below). The body names `deviceCode` (the spelling `state` is
         accepted for the same value) and `deviceId`. RFC 8628's error codes are NOT used — `pending` stands in for
-        `authorization_pending`, `timeout` for `expired_token`, `error` for `access_denied`.
+        `authorization_pending`, `timeout` for `expired_token`, `error` with `reason: access_denied` for `access_denied`.
 
 
         `slow_down` is the exception and it is unusual: polling inside the advertised
@@ -7888,7 +7888,8 @@ paths:
         person approves** (I-37): the browser that signed in must press **Sign in on {device}**
         on `deviceAuthApprovePage` first, and until it has this route discloses no identity,
         activates no licence and mints no token. **Deny** (or Cancel on the
-        licence chooser) makes the poll answer `error`. An ordinary poll after approval yields
+        licence chooser) makes the poll answer `{"status":"error","reason":"access_denied"}`.
+        An ordinary poll after approval yields
         the identity's own licence (or a new one) and nothing else, and its `ready` carries the
         `identity` (name, verified e-mail) for the device to show the player.
 
@@ -7955,7 +7956,12 @@ paths:
                     schemaVersion: 1
                     identity: { name: Player, email: player@example.com }
                 timeout: { value: { status: timeout } }
-                error: { value: { status: error } }
+                error:
+                  summary: the sign-in failed after approval; the cause is not said
+                  value: { status: error }
+                denied:
+                  summary: a person refused (Deny, Not you?, the chooser's Cancel)
+                  value: { status: error, reason: access_denied }
         "400":
           description: Unparseable body, or a missing `deviceCode`/`deviceId` — LEGACY FLAT.
           content:
@@ -25603,8 +25609,9 @@ components:
     AuthFlowState:
       type: object
       description: >
-        The polled state of a sign-in flow, at HTTP 200 in every case. `error` carries NO
-        reason: an unauthenticated poller learns that it failed, not why. A `ready` poll
+        The polled state of a sign-in flow, at HTTP 200 in every case. `error` carries
+        `reason: access_denied` only when a person refused the flow; every other failure is the
+        bare `error`, so an unauthenticated poller learns that it failed, never why. A `ready` poll
         deletes the flow record, so the poll after it is `timeout`.
       required: [status]
       properties:
@@ -25614,6 +25621,12 @@ components:
           description: >
             `confirm` is `deviceAuthPoll` only, answered to a poll that asked to confirm the
             identity (`confirmIdentity` / `attachLicense`) once the player has signed in.
+        reason:
+          type: string
+          enum: [access_denied]
+          description: >
+            Present only on `error`, and only for a refusal. A client reads an unknown value as
+            absent (WIRE-CONTRACT-V4 §12.10).
         token:
           type: string
           description: Present only on `ready`.

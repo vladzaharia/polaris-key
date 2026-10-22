@@ -78,11 +78,13 @@ const BUNDLE_CLAIMS_REJECTED := &"bundle-claims-rejected"
 const BUNDLE_TRUST_REJECTED := &"bundle-trust-rejected"
 const INNER_DOC_REJECTED := &"inner-doc-rejected"
 ## Device-code sign-in (PolarisKey.identity): the wait was cancelled; the code expired (on this
-## client or at the server); the poll answered the generic `error`; a poll answered 5xx
+## client or at the server); the poll answered `error` with `reason: access_denied` (a Deny), or a bare `error`
+## (`sign-in-failed`: the sign-in failed after approval); a poll answered 5xx
 ## (transient, retried at the same interval).
 const CANCELLED := &"cancelled"
 const SIGN_IN_EXPIRED := &"sign-in-expired"
 const SIGN_IN_DENIED := &"sign-in-denied"
+const SIGN_IN_FAILED := &"sign-in-failed"
 const SERVER_ERROR := &"server-error"
 
 

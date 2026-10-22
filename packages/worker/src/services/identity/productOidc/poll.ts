@@ -20,6 +20,11 @@ import {
 } from "../../../core/singleUse.js";
 import { readBodyJson } from "../../../core/cappedBody.js";
 import { signInAccountRefused } from "./callback.js";
+import { FLOW_DENIED } from "./deviceApproval.js";
+import {
+  DEVICE_POLL_DENIED,
+  type DevicePollResponse,
+} from "@polaris-key/protocol/identity";
 import {
   DEVICE_POLL_INTERVAL_SECONDS,
   type DeviceFlowRecord,
@@ -35,6 +40,17 @@ import {
   getOidcConfig,
 } from "../../../core/licensing/issue.js";
 import { deleteUserCodeIndex } from "./userCode.js";
+
+/** The poll's `error` state (WIRE-CONTRACT-V4 §12.10). A person's refusal names itself with
+ *  `reason: "access_denied"`; every other failure stays bare, so a poller never learns an
+ *  account, provider or licence cause (D8). */
+function errorState(
+  flow: FlowRecord,
+): Extract<DevicePollResponse, { status: "error" }> {
+  return flow.error === FLOW_DENIED
+    ? { status: "error", reason: DEVICE_POLL_DENIED }
+    : { status: "error" };
+}
 
 /** Authorize a device for a license and mint a per-device token. */
 export async function authorizeAndMint(
@@ -110,7 +126,7 @@ export async function pollAuthFlow(
   // 303'd to, so a surface keyed by it alone (plus the device id) was a complete credential for
   // the victim's token (R8-02, P1-06).
   // Generic error only — never echo an IdP failure reason a poller could enumerate (D8).
-  if (flow.error) return json({ status: "error" });
+  if (flow.error) return json(errorState(flow));
   // I-26: the person is choosing a licence in the browser. The poll waits, with the same body
   // it answers before the callback (no wire change).
   if (flow.choiceOpen) return json({ status: "pending" });
@@ -316,7 +332,7 @@ export async function handleAuthDevicePoll(
       await flowKey(env, product.slug, deviceFlow.state),
     );
     const flow = raw ? parseFlowRecord<FlowRecord>(raw) : null;
-    return json({ status: flow?.error ? "error" : "pending" });
+    return json(flow?.error ? errorState(flow) : { status: "pending" });
   }
   const res = await pollAuthFlow(
     env,

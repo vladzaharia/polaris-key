@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "devicecode-denied",
-  "description": "A device-code flow the person refuses (I-37). beginSignIn() posts the device id alone; one poll is pending. The player confirms the code, signs in at the (mocked) IdP and presses Deny on the approval page, server-side and unrecorded. The next poll answers the generic error (the same shape as a provider failure, so the poller learns nothing about the cause), which the client reports as an error with the sign-in-denied code, holding no token. The flow stays denied on the next poll.",
+  "description": "A device-code flow the person refuses (I-37). beginSignIn() posts the device id alone; one poll is pending. The player confirms the code, signs in at the (mocked) IdP and presses Deny on the approval page, server-side and unrecorded. The next poll answers error with reason access_denied (DENY-01, WIRE-CONTRACT-V4 12.10), which the client reports as an error with the sign-in-denied code, holding no token. The flow stays denied on the next poll.",
   "features": ["identity.devicecode"],
   "requires": ["core.store"],
   "product": "djdl",
@@ -127,7 +127,7 @@
     },
     {
       "action": "pollSignIn",
-      "note": "The person pressed Deny: the generic error, no token.",
+      "note": "The person pressed Deny: error with reason access_denied, no token.",
       "args": {},
       "now": 1700000005,
       "exchanges": {
@@ -165,7 +165,7 @@
                 "cache-control": "no-store",
                 "content-type": "application/json"
               },
-              "body": { "status": "error" }
+              "body": { "status": "error", "reason": "access_denied" }
             }
           }
         ]
@@ -216,7 +216,7 @@
                 "cache-control": "no-store",
                 "content-type": "application/json"
               },
-              "body": { "status": "error" }
+              "body": { "status": "error", "reason": "access_denied" }
             }
           }
         ]

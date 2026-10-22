@@ -225,7 +225,7 @@ describe("the confirm step", () => {
 });
 
 describe("Deny before sign-in (B-096)", () => {
-  it("ends the device's poll with `error` and writes one audit row", async () => {
+  it("ends the device's poll with `error` + `access_denied` and writes one audit row", async () => {
     const { userCode, deviceCode } = await start();
     const { csrf } = await confirmPage(userCode);
     const poll = async () =>
@@ -235,7 +235,7 @@ describe("Deny before sign-in (B-096)", () => {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ deviceCode, deviceId: "tv-1" }),
         })
-      ).json()) as { status: string };
+      ).json()) as { status: string; reason?: string };
     const res = await send(`${API}/djdl/identity/auth/device`, {
       method: "POST",
       headers: FORM,
@@ -243,7 +243,8 @@ describe("Deny before sign-in (B-096)", () => {
     });
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("Sign-in denied");
-    expect((await poll()).status).toBe("error");
+    // DENY-01: the same body as a Deny after sign-in (deviceApproval.test.ts pins that one).
+    expect(await poll()).toEqual({ status: "error", reason: "access_denied" });
     const rows = await db.all<{ action: string }>(
       "SELECT action FROM audit WHERE action = 'identity.signin.device_denied'",
     );

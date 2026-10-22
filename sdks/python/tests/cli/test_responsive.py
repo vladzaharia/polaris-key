@@ -575,7 +575,7 @@ def test_the_device_limit_shrunk_and_grown_again_shows_a_fresh_launchs_screen(cp
     "label,result,title",
     [
         ("expired", SimpleNamespace(status="expired"), "Code expired"),
-        ("declined", SimpleNamespace(status="error", message="access_denied"), "Sign-in declined"),
+        ("declined", SimpleNamespace(status="error", code="sign-in-denied"), "Sign-in declined"),
         ("signed in", SimpleNamespace(status="ready", identity=SimpleNamespace(name="Mara Fennick", email="mara@fennick.studio"), attached=None), "Signed in as Mara Fennick"),
     ],
 )

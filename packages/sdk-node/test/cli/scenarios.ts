@@ -606,7 +606,36 @@ export const SCENARIOS: Scenario[] = [
         h.ctx,
         stubClient({
           identity: {
-            waitForSignIn: async () => ({ status: "error", message: "denied" }),
+            waitForSignIn: async () => ({
+              status: "error",
+              message: "denied",
+              code: "sign-in-denied",
+            }),
+          },
+        }),
+      ),
+  },
+  {
+    name: "sign-in-handoff-failed",
+    opts: { headless: true },
+    data: [
+      ...COMMON,
+      "login",
+      "polaris.locker/device",
+      "WDJB-MJHT",
+      "4:12",
+      "tidewater login",
+    ],
+    run: (h) =>
+      loginFlow(
+        h.ctx,
+        stubClient({
+          identity: {
+            waitForSignIn: async () => ({
+              status: "error",
+              message: "failed",
+              code: "sign-in-failed",
+            }),
           },
         }),
       ),

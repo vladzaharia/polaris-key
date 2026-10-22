@@ -107,7 +107,8 @@ func _slow_down_without_interval(t: PKeyTestContext, bed: B) -> void:
 func _endings(t: PKeyTestContext, bed: B) -> void:
 	var cases := [
 		[B.state("timeout"), PKeySignInResult.KIND_TIMEOUT, PKeyErrors.SIGN_IN_EXPIRED],
-		[B.state("error"), PKeySignInResult.KIND_DENIED, PKeyErrors.SIGN_IN_DENIED],
+		[B.state("error", {"reason": "access_denied"}), PKeySignInResult.KIND_DENIED, PKeyErrors.SIGN_IN_DENIED],
+		[B.state("error"), PKeySignInResult.KIND_ERROR, PKeyErrors.SIGN_IN_FAILED],
 		[B.json(401, {"error": "unauthorized", "message": "device mismatch"}), PKeySignInResult.KIND_DEVICE_MISMATCH, PKeyErrors.UNAUTHORIZED],
 		[B.state("ready"), PKeySignInResult.KIND_ERROR, PKeyErrors.INVALID_RESPONSE],
 		[B.state("weird"), PKeySignInResult.KIND_ERROR, PKeyErrors.INVALID_RESPONSE],
@@ -152,7 +153,7 @@ func _expiry(t: PKeyTestContext, bed: B) -> void:
 func _transient(t: PKeyTestContext, bed: B) -> void:
 	_reset(bed)
 	bed.starts = [B.started(3)]
-	bed.polls = [{"status": 503}, B.state("pending"), B.state("error")]
+	bed.polls = [{"status": 503}, B.state("pending"), B.state("error", {"reason": "access_denied"})]
 	var sdk = await bed.make_sdk()
 	var results := B.record(sdk.identity)
 	await sdk.identity.begin_sign_in("x")

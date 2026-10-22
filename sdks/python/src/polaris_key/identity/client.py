@@ -96,8 +96,9 @@ class SignInPoll:
     for the player's acceptance, with ``identity`` and ``attachable``), ``"ready"`` (the token is
     stored and the post-acquisition sync has run; ``identity`` and ``attached`` —
     ``"claimed"`` / ``"migrated"`` / ``None`` — when the Worker sent them), ``"expired"`` or
-    ``"error"`` (with ``message``, and ``code`` ``"sign-in-denied"`` when the Worker answered its
-    generic ``error``: the provider failed, or the person pressed Deny; it never says which)."""
+    ``"error"`` (with ``message``, and ``code`` ``"sign-in-denied"`` when the Worker answered
+    ``error`` with ``reason: access_denied`` (the person pressed Deny), or ``"sign-in-failed"``
+    for a bare ``error``: the sign-in failed after approval)."""
 
     status: str
     interval: Optional[int] = None
@@ -111,7 +112,7 @@ class SignInPoll:
 @dataclass(frozen=True)
 class SignInResult:
     """How :meth:`IdentityClient.wait_for_sign_in` ended: ``"ready"`` (with ``identity`` and
-    ``attached``), ``"expired"`` or ``"error"`` (with ``message`` and, for a denied sign-in, ``code``)."""
+    ``attached``), ``"expired"`` or ``"error"`` (with ``message`` and, for a denied or failed sign-in, ``code``)."""
 
     status: str
     message: Optional[str] = None
@@ -280,10 +281,18 @@ class IdentityClient:
         if status == "timeout":
             return SignInPoll(status="expired")
         if status == "error":
+            # DENY-01: `reason: access_denied` is the person pressing Deny; a bare `error` is a
+            # sign-in that failed after approval (the provider, an activation, a mint).
+            if body.get("reason") == "access_denied":
+                return SignInPoll(
+                    status="error",
+                    message="device sign-in was declined.",
+                    code=ErrorCode.SIGN_IN_DENIED,
+                )
             return SignInPoll(
                 status="error",
                 message="device sign-in failed.",
-                code=ErrorCode.SIGN_IN_DENIED,
+                code=ErrorCode.SIGN_IN_FAILED,
             )
         if status == "confirm":
             return SignInPoll(

@@ -318,6 +318,21 @@ class _Identity:
         raise PolarisError("cancelled", "cancelled")
 
 
+class _PollEnds:
+    """A sign-in whose device-code poll ends in an error carrying ``code``."""
+
+    def __init__(self, code: str) -> None:
+        self.product = "tidewater"
+        self._code = code
+        self.identity = self
+
+    def begin_sign_in(self, name: Any = None, confirm_identity: bool = False) -> Any:
+        return _Identity().begin_sign_in(name, confirm_identity)
+
+    def wait_for_sign_in(self, prompt: Any, *, cancel: Any, on_confirm: Any = None) -> Any:
+        return SimpleNamespace(status="error", message="device sign-in failed.", code=self._code, identity=None)
+
+
 def _offline() -> Any:
     raise PolarisError("network", "offline")
 
@@ -343,6 +358,8 @@ SITUATIONS: Dict[str, Callable[[Terminal], Any]] = {
     "usage": lambda t: flows.devices(SimpleNamespace(product="tidewater"), t, ["rename"]),
     "interrupt": lambda t: flows.activate(_ActivateClient(), t, None),
     "sign-in-cancelled": lambda t: flows.sign_in(SimpleNamespace(product="tidewater", identity=_Identity()), t),
+    "sign-in-denied": lambda t: flows.sign_in(_PollEnds("sign-in-denied"), t),
+    "sign-in-failed": lambda t: flows.sign_in(_PollEnds("sign-in-failed"), t),
 }
 
 #: The keys an interactive situation is given once it waits.

@@ -1333,7 +1333,7 @@ public let DEVICE_LABEL_VERSION = 1
 public let PRESENTATION_MATRIX_VERSION = 1
 
 /// `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-public let UI_MATRIX_VERSION = 4
+public let UI_MATRIX_VERSION = 5
 
 /// `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
 public let BACKEND_MATRIX_VERSION = 1

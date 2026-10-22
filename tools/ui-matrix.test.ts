@@ -47,7 +47,7 @@ describe("ui-matrix.json", () => {
     );
     const file = JSON.parse(text) as UiMatrix;
     expect(file.uiMatrixVersion).toBe(UI_MATRIX_VERSION);
-    expect(UI_MATRIX_VERSION).toBe(4);
+    expect(UI_MATRIX_VERSION).toBe(5);
     expect(JSON.parse(JSON.stringify(DOC))).toEqual(file);
     // eslint-disable-next-line no-control-regex
     expect(/[^\x00-\x7f]/.test(text)).toBe(false);
@@ -926,9 +926,11 @@ describe("the cli family (plans/UK-51.md)", () => {
   });
 
   it("draws no refusal as a cross", () => {
+    // A cross is for a failure (DL7): a lost connection, and a sign-in the person denied or that
+    // failed after approval (I-37c). A refusal is a ▲ (DL6).
+    const failures = ["network", "sign-in-denied", "sign-in-failed"];
     const crossed = cli.outcomes.filter(
-      (r) =>
-        r.expect.mark === "fail" && !["network"].includes(r.input.situation),
+      (r) => r.expect.mark === "fail" && !failures.includes(r.input.situation),
     );
     expect(crossed).toEqual([]);
   });

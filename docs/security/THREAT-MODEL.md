@@ -3569,6 +3569,21 @@ Five controls make that true. The first, the fourth and the fifth are the ones t
    started, and the callout when the place differs) and its primary names the device ("Use this
    license on {device}"). Tests: `deviceApproval.test.ts`, `oidcLicenseChoice.test.ts`.
 
+   **A refusal names itself (DENY-01).** When a person refuses (**Deny**, **Not you?**, the
+   chooser's Cancel, or Deny on the code page), the poll answers `{"status":"error","reason":
+"access_denied"}` (WIRE-CONTRACT-V4 §12.10); every other failure stays the bare `error`. That
+   is one fact: a person refused this flow, on a page reached through its code. Only the holder
+   of the secret device code, polling as the device the flow was started for, can read it (any
+   other device gets a 401; 40 polls a minute per code, 120 per network). It does not say who
+   refused, which page, or whether the person had signed in (both refusals answer the same
+   body), and it carries no identity, provider, account or licence cause: the post-approval
+   refusals (N9, a failed activation, a failed mint) stay bare. The starter already learns it:
+   before approval the only reachable `error` is a refusal, and the user code stops resolving on
+   the entry page once anyone decides. Under R1-07 the attacker learns that the victim refused,
+   which is what the approval page exists to produce. Nothing in a request can set or probe
+   `reason`: it comes only from the server-side record. Tests: `deviceApproval.test.ts`,
+   `hostedSigninPages.test.ts`, `oidcLicenseChoice.test.ts`.
+
 **Cross-site POSTs.** Both device pages carry `referrer-policy: no-referrer`, and under that
 policy a browser sends a same-origin form POST with `Origin: null`. The origin check therefore
 decides on Fetch Metadata when the browser sends it (only `Sec-Fetch-Site: same-origin` passes)
@@ -3781,6 +3796,9 @@ label is only a speed bump because `deviceName` is client-supplied. I-37 retired
 put the explicit “Sign in on <device>?” approval before any account-bound step, for the chooser
 and for flows outside the chooser trigger alike; the chooser's choice is itself that approval. Pinned by
 `test/oidcLicenseChoice.test.ts` (› "I-26 browser binder").
+
+A Deny answers `error` + `access_denied` (DENY-01), so the starter learns that the victim refused,
+never why or as whom.
 
 **Unchanged until I-37.** The legacy `/identity/auth/device/verify?device_code=` page stayed for
 flows in flight across the deploy; I-37 retired it (the generic start-again page, no store read). Confirmation on both routes is one function: the Fetch Metadata /

@@ -64,6 +64,7 @@ import {
   type HardwareFingerprint,
   type JSONValue,
 } from "@polaris-key/protocol/core";
+import { DEVICE_POLL_DENIED } from "@polaris-key/protocol/identity";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
 import {
   STRICTEST_BLOCK_REASON,
@@ -170,9 +171,13 @@ export type SignInPoll =
    *  signed-in identity the server named, when it did (§3.12). */
   | { status: "ready"; identity?: { name?: string; email?: string } }
   | { status: "expired" }
-  /** `code` is `sign-in-denied` when the Worker answered its generic `error`: the provider
-   *  failed, or the person pressed Deny (the server never says which). */
-  | { status: "error"; message: string; code?: "sign-in-denied" };
+  /** `code` is `sign-in-denied` when the Worker answered `error` + `access_denied` (a person
+   *  refused), and `sign-in-failed` for a bare `error` (it failed after approval). */
+  | {
+      status: "error";
+      message: string;
+      code?: "sign-in-denied" | "sign-in-failed";
+    };
 
 export type SignInResult = Exclude<
   SignInPoll,
@@ -1492,6 +1497,7 @@ export class BearerSession {
       interval?: unknown;
       token?: unknown;
       identity?: unknown;
+      reason?: unknown;
     };
     if (res.status === 429)
       return {
@@ -1511,11 +1517,17 @@ export class BearerSession {
       case "timeout":
         return { status: "expired" };
       case "error":
-        return {
-          status: "error",
-          message: "device sign-in failed.",
-          code: ErrorCode.signInDenied,
-        };
+        return b.reason === DEVICE_POLL_DENIED
+          ? {
+              status: "error",
+              message: "device sign-in was refused.",
+              code: ErrorCode.signInDenied,
+            }
+          : {
+              status: "error",
+              message: "device sign-in failed.",
+              code: ErrorCode.signInFailed,
+            };
       case "ready": {
         if (!isString(b.token))
           return { status: "error", message: "ready without a token." };

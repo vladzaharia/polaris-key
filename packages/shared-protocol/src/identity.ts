@@ -163,6 +163,32 @@ export interface DeviceStartResponse {
   deviceName: string | null;
 }
 
+/** §12.10: the one `reason` a device-code poll's `error` carries. A person refused the flow. */
+export const DEVICE_POLL_DENIED = "access_denied" as const;
+
+/** §12.10: `POST /<p>/identity/auth/device/poll` at HTTP 200. */
+export type DevicePollResponse =
+  | { status: "pending" }
+  | {
+      status: "confirm";
+      identity: { name?: string; email?: string };
+      attachable: false;
+    }
+  | {
+      status: "ready";
+      token: string;
+      schemaVersion: number;
+      identity?: { name?: string; email?: string };
+    }
+  | { status: "timeout" }
+  | { status: "error"; reason?: typeof DEVICE_POLL_DENIED };
+
+/** §12.10: the same route at HTTP 429 (a state, not an error body). */
+export interface DevicePollSlowDown {
+  status: "slow_down";
+  interval: number;
+}
+
 // ── §12.2 Key entry (PX-W9) ─────────────────────────────────────────────────────────────────
 
 /**

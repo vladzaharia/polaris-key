@@ -220,7 +220,7 @@ describe("the sources", () => {
       syncScenariosVersion: 2,
       deviceLabelVersion: 1,
       presentationMatrixVersion: 1,
-      uiMatrixVersion: 4,
+      uiMatrixVersion: 5,
       backendMatrixVersion: 1,
       contentCorpusVersion: 2,
     });

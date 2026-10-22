@@ -30,7 +30,7 @@
 // `sdk-node` or ui-core.
 //
 // The file is ASCII only (sign-corpus writes it through `asciiJson`) and append-only within
-// `uiMatrixVersion` 4: a new row keeps the version; a changed row, input member or rule bumps it
+// `uiMatrixVersion` 5: a new row keeps the version; a changed row, input member or rule bumps it
 // (plans/UK-02b.md §4.8). Version 2 (UK-03): the `elapsedMs` input member and DL7's
 // delayed-response rows (the `dl7-delayed-response` gap of version 1), and the fixture key's
 // secret corrected to the 22 characters every license key has. Version 3 (UK-51): the `cli`
@@ -39,13 +39,16 @@
 // rejected and busy states carry the base copy; the fixture URLs name https://polaris.locker.
 // Version 4 also carries H1a's `cli` gate rules (rows and rules changed before the first release
 // of version 4): a refusal leads with the product page, a failed check is a cross, and the
-// `status` outcomes for a version or channel refusal stop looping.
+// `status` outcomes for a version or channel refusal stop looping. Version 5 (DENY-01): a
+// device-code poll's `error` is a refusal only with `reason: access_denied`; a bare `error` is a
+// failure. SignInHandoff gains the `failed` state (phase `failed`), and the `cli` family the
+// `login` outcomes `sign-in-denied` and `sign-in-failed`.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const UI_MATRIX_VERSION = 4;
+export const UI_MATRIX_VERSION = 5;
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -309,6 +312,7 @@ export const DEVICE_CODE_PHASES = [
   "slow-down",
   "ok",
   "denied",
+  "failed",
   "expired",
   "cancelled",
 ] as const;
@@ -2121,6 +2125,7 @@ function signInFamily(a: A): Draft[] {
       "all",
     ),
     row("SignInHandoff/denied", dc("denied"), "SignInHandoff", "denied", "all"),
+    row("SignInHandoff/failed", dc("failed"), "SignInHandoff", "failed", "all"),
     row(
       "SignInHandoff/expired: a lapsed code is never polled again",
       dc("expired"),
@@ -3694,6 +3699,10 @@ export const CLI_SITUATIONS: Readonly<Record<string, string>> = {
     "`activate` on an interactive terminal with no key: Ctrl-C at the key prompt.",
   "sign-in-cancelled":
     "`login` on an interactive terminal: Esc while it waits for the browser.",
+  "sign-in-denied":
+    "`login`: the device-code poll answers `error` with `reason: access_denied`.",
+  "sign-in-failed":
+    "`login`: the device-code poll answers a bare `error` (no `reason`).",
 };
 
 /** What `activate` with no key may find on stdin (DL16). */
@@ -4323,6 +4332,18 @@ function cliFamily(): CliFamily {
       error: null,
       stdout: "screen",
     }),
+    ...outcome(
+      "sign-in-denied",
+      "login",
+      { mark: "fail", exit: 1, error: "sign-in-denied", stdout: "screen" },
+      { exit: 1, error: "sign-in-denied" },
+    ),
+    ...outcome(
+      "sign-in-failed",
+      "login",
+      { mark: "fail", exit: 1, error: "sign-in-failed", stdout: "screen" },
+      { exit: 1, error: "sign-in-failed" },
+    ),
   ];
   const noKey = (copy: string, withinMs?: number): CliStdinExpect => ({
     read: "none",
@@ -5261,7 +5282,7 @@ const DESCRIPTION = [
   "theme rows pin UI-KITS §1.2 and §3.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter).",
   "vocabulary.loadingDelay pins DL7's delayed response: a row whose input has elapsedMs below min expects its loading state with no copy; from max, the state's usual copy.",
   "cli is the terminal drop-in contract (plans/UK-51.md), one object rather than component rows: verbs (the end-user set a mount offers, the developer verbs it offers only by name, the aliases), mount and help (what registering into a host CLI mounts, refuses with polaris-verb-collision, skips, hides and lists), gate (every licenseStatus x tty x json x entitled: run, the inline flow, or a refusal that is a triangle with its fix and exits 4), outcomes (a kit verb in a vocabulary.cli.situations situation: its mark, exit, result fields, stdout and fix verbs), stdin (what activate with no key reads, per vocabulary.cli.stdinKinds), capabilities (environment x streams x flags) and exit (the exit table). vocabulary.cli holds the rules; mount, help, gate and capabilities are computed by the generator's references.",
-  "Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 3: a changed row, input member or rule bumps it.",
+  "Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 5: a changed row, input member or rule bumps it.",
 ].join(" ");
 
 export function buildUiMatrix(

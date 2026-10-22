@@ -1795,6 +1795,36 @@ The transcripts `locker-refusal-links.json`, `locker-discovery-identity.json`,
 `locker-devicecode.json` and `locker-redirect-web.json` pin rules 1 and 3 for the SDKs; the Worker
 suite (`test/signInBind.test.ts`, `test/customerDevicePage.test.ts`) pins the rest.
 
+### 12.10 The device-code poll [C]
+
+`POST /<p>/identity/auth/device/poll` (the device-code flow's poll; the request names `deviceCode`
+and `deviceId`). Nothing here is signed: `PROTOCOL_VERSION` stays 4. The types are
+`DevicePollResponse` and `DevicePollSlowDown` in `@polaris-key/protocol/identity`; the transcripts
+`devicecode-*.json` and `locker-devicecode.json` pin it.
+
+| HTTP | Body                                          | Meaning                                                                              | SDK result            |
+| ---- | --------------------------------------------- | ------------------------------------------------------------------------------------ | --------------------- |
+| 200  | `{"status":"pending"}`                        | Not yet confirmed, signed in and approved                                            | keep polling          |
+| 429  | `{"status":"slow_down","interval":n}`         | Polled inside `interval` (a state, not an error body)                                | lengthen the interval |
+| 200  | `confirm` / `ready`                           | Unchanged (I-37: `attachable` is always `false`)                                     | unchanged             |
+| 200  | `{"status":"timeout"}`                        | The flow is gone: expired, redeemed, or dropped after a refusal                      | `expired`             |
+| 200  | `{"status":"error","reason":"access_denied"}` | A person refused: Deny, **Not you?**, the chooser's Cancel, or Deny on the code page | `sign-in-denied`      |
+| 200  | `{"status":"error"}`                          | The sign-in failed after approval; the cause is not said                             | `sign-in-failed`      |
+
+1. `reason` appears only on `error`, and `access_denied` is its only value. A client reads an
+   unknown `reason` as absent.
+2. A refusal is sticky: the poll answers it until the flow lapses (600 s), then `timeout`.
+3. Every refusal gets the same body, whichever page refused and whether or not the person had
+   signed in.
+4. No account, identity, provider or licence cause is ever named. These stay the bare `error`.
+
+The route does not use RFC 8628's token-endpoint wire. It maps the RFC's codes to statuses:
+`pending` stands for `authorization_pending`, `timeout` for `expired_token`, and `slow_down` keeps
+the RFC's spelling. `reason: "access_denied"` is §3.5's `access_denied`, and the token §12.4
+returns on Cancel. The member is not named `error`: the flat-error parsers read that key. A build
+before this subsection ignores `reason` and treats every `error` as a refusal; the Worker deploys
+first and nothing else changes for it.
+
 ## 13. Cloud Sync (HTTP, additive)
 
 Cloud Sync stores a signed-in person's synced settings and records, any of which may carry one file, for one product. Nothing in this section is signed: there is no new `typ`, claim, header or signed shape, `PROTOCOL_VERSION` stays 4 and `DISCOVERY_VERSION` 2 (§9). Every route is unsigned, lives under `/<p>/sync`, and is detected from `services.sync` (§13.5). Each subsection names the package that serves it. A subsection is normative from the release that serves it, and discovery names an endpoint only from then, so no SDK calls one earlier. The long form is `plans/U-01.md` as amended by `plans/U-01b.md`; §11.5 is the client state machine.

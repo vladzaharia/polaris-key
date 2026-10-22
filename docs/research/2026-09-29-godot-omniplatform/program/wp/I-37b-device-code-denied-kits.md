@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) |
 | Size        | 0.3–0.5 engineer-weeks                                             |
 | Depends on  | [I-37](I-37-device-code-explicit-confirm.md)                       |
-| Unblocks    | none                                                               |
+| Unblocks    | [I-37c](I-37c-device-poll-denied.md)                               |
 | Role        | `pkey-sdk-porter`                                                  |
 | Plan mode   | no: [plans/I-37.md](../plans/I-37.md) §8 is the plan               |
 | Gates       | drift-gate, all-sdks, corpus                                       |
@@ -15,6 +15,8 @@
 ## Goal
 
 Teach the SDKs what I-37 added to the browser half of a device-code sign-in. No wire change: the device sees `pending` until approval, and **Deny** is the poll's generic `error`.
+
+> **Superseded in part by [I-37c](I-37c-device-poll-denied.md) ([plans/DENY-01.md](../plans/DENY-01.md)).** `sign-in-denied` now means a refusal only (`error` + `reason: access_denied`); a bare `error` is `sign-in-failed`.
 
 ## Scope
 

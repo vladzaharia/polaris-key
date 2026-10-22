@@ -255,6 +255,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			out["result"] = _sign_in_status(p["status"])
 			if p["status"] == "denied":
 				out["code"] = String(PKeyErrors.SIGN_IN_DENIED)
+			elif p["status"] == "error" and p.get("code") == PKeyErrors.SIGN_IN_FAILED:
+				out["code"] = String(PKeyErrors.SIGN_IN_FAILED)
 			if p.has("interval"):
 				out["interval"] = p["interval"]
 		"waitForSignIn":
@@ -262,7 +264,7 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			sdk.identity.sleeper = func(_s: float) -> void: pass
 			var r: PKeySignInResult = await sdk.identity.wait_for_sign_in(sdk.get_meta("pkey_prompt"))
 			out["result"] = "ready" if r.ok else _sign_in_status(String(r.kind))
-			if String(r.kind) == "denied":
+			if String(r.kind) == "denied" or r.code == PKeyErrors.SIGN_IN_FAILED:
 				out["code"] = String(r.code)
 		"changelog":
 			var r: PKeyChangelogResult = await sdk.release.changelog()

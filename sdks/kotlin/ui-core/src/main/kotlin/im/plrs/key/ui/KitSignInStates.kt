@@ -137,6 +137,15 @@ internal fun signInHandoffScreen(inputs: KitInputs): KitScreen {
                     context.line("signInHandoff.newCode"),
                 ),
             )
+            "failed" -> screen(
+                KitComponent.signInHandoff,
+                "failed",
+                listOf(
+                    context.line("core.codes.sign-in-failed.title"),
+                    context.line("core.codes.sign-in-failed.message", context.productArgs),
+                    context.line("signInHandoff.newCode"),
+                ),
+            )
             "expired" -> screen(
                 KitComponent.signInHandoff,
                 "expired",

@@ -24,6 +24,7 @@ import {
 } from "../src/services/identity/oidc.js";
 import { choiceKey } from "../src/services/identity/productOidc/chooser.js";
 import { hashKey } from "../src/platform/crypto.js";
+import { activateFromIdentity } from "../src/services/identity/productOidc/activate.js";
 import {
   decideDeviceFlow,
   denyChosenDeviceFlow,
@@ -329,6 +330,29 @@ describe("the gate: nothing account-bound until the person approves", () => {
     }).toEqual(before);
   });
 
+  it("a failure after approval stays the bare error, with no reason (DENY-01)", async () => {
+    const { c, token } = await atApprovalPage();
+    const done = await postApprove(c.cookie, { token, decision: "approve" });
+    expect(done.status).toBe(200);
+    // The identity's own licence is disabled between the approval and the poll that activates it.
+    const identity = (await flowOf(c))!.identity as Parameters<
+      typeof activateFromIdentity
+    >[2];
+    const made = await activateFromIdentity(db, product, identity, NOW);
+    expect("licenseId" in made).toBe(true);
+    await db.run(
+      "UPDATE licenses SET status = ? WHERE product = ?",
+      "disabled",
+      "djdl",
+    );
+    const out = await poll(c);
+    expect(out).toEqual({ status: "error" });
+    expect("reason" in out).toBe(false);
+    // The failed flow was dropped.
+    expect(await poll(c)).toEqual({ status: "timeout" });
+    expect(await count("devices")).toBe(0);
+  });
+
   it("approval makes the next poll ready, with exactly one device row", async () => {
     const { c, token } = await atApprovalPage();
     const done = await postApprove(c.cookie, { token, decision: "approve" });
@@ -379,9 +403,13 @@ describe("Deny", () => {
       const res = await postApprove(c.cookie, { token, decision: press });
       expect(res.status).toBe(200);
       expect(await res.text()).toContain("Sign-in denied");
-      expect(await poll(c)).toEqual({ status: "error" });
+      expect(await poll(c)).toEqual({
+        status: "error",
+        reason: "access_denied",
+      });
       expect(await poll(c, { confirmIdentity: true })).toEqual({
         status: "error",
+        reason: "access_denied",
       });
       const flow = await flowOf(c);
       expect(flow!.error).toBe("denied");
@@ -395,7 +423,10 @@ describe("Deny", () => {
       // A second decision, from the same cookie, is refused and changes nothing.
       const again = await postApprove(c.cookie, { token, decision: "approve" });
       expect(again.status).toBe(403);
-      expect(await poll(c)).toEqual({ status: "error" });
+      expect(await poll(c)).toEqual({
+        status: "error",
+        reason: "access_denied",
+      });
     });
   }
 
