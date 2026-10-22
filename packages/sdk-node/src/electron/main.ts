@@ -48,6 +48,9 @@ export interface WebContentsLike {
   isDestroyed?(): boolean;
   once?(event: "destroyed", listener: () => void): unknown;
   removeListener?(event: "destroyed", listener: () => void): unknown;
+  /** The window's top frame (Electron's `webContents.mainFrame`). Pushes that are not a reply to
+   *  a call (`open`) are re-checked against it; a window that reports none gets no such push. */
+  readonly mainFrame?: { url: string; parent?: unknown } | null;
 }
 
 /** The part of Electron's `IpcMainInvokeEvent` the bridge uses. */
@@ -1095,6 +1098,11 @@ export function exposePolarisBridge(
         continue;
       }
       try {
+        // Re-checked at push time, as the progress push is: a window that navigated off the app
+        // since it subscribed gets nothing. `allowSender` runs against the window's main frame
+        // (what a call from the window's top frame would have carried); no frame, no push.
+        if (!senderAllowed({ sender: wc, senderFrame: wc.mainFrame ?? null }))
+          continue;
         wc.send(openChannel(prefix), view);
       } catch {
         subscribers.delete(id);

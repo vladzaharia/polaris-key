@@ -1560,10 +1560,27 @@ describe("menu items and open(view) (UK-06.4)", () => {
     expect(seen).toEqual(["settings"]);
   });
 
+  it("a window that navigated off the app after subscribing gets no open", async () => {
+    const { handle, ipc, bridge } = await setup();
+    const seen: string[] = [];
+    (bridge as PolarisBridge).onOpen!((v) => seen.push(v));
+    await new Promise((r) => setTimeout(r, 0));
+    handle.open("settings");
+    expect(seen).toEqual(["settings"]);
+    ipc.sender.mainFrame.url = "https://evil.test/";
+    handle.open("update");
+    expect(seen).toEqual(["settings"]);
+    // A window that reports no frame at all is not pushed to either.
+    ipc.sender.mainFrame = undefined as never;
+    handle.open("update");
+    expect(seen).toEqual(["settings"]);
+  });
+
   it("a destroyed window is dropped and the others still get the push", async () => {
     const sent: unknown[] = [];
     const live = {
       id: 1,
+      mainFrame: { url: "app://main" },
       send: (_c: string, v: unknown) => void sent.push(v),
     };
     const dead = {
