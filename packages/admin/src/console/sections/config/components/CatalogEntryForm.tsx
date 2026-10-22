@@ -178,6 +178,7 @@ export function CatalogEntryForm({
   };
   const listId = React.useId();
   const removalNote = React.useId();
+  const [enumRaw, setEnumRaw] = React.useState<string | null>(null);
 
   const [advanced, setAdvanced] = React.useState(false);
   const [schemaText, setSchemaText] = React.useState(() =>
@@ -634,9 +635,13 @@ export function CatalogEntryForm({
                     <Input
                       {...f}
                       value={
-                        enumValues ? enumValues.map(String).join(", ") : ""
+                        enumRaw ??
+                        (enumValues ? enumValues.map(String).join(", ") : "")
                       }
+                      onBlur={() => setEnumRaw(null)}
                       onChange={(e) => {
+                        // Keep what is typed (a trailing comma) until the box loses focus.
+                        setEnumRaw(e.target.value);
                         const parts = e.target.value
                           .split(",")
                           .map((p) => p.trim())

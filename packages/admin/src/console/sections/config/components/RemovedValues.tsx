@@ -92,12 +92,20 @@ export function useRemovals(
           : r.kind === "license"
             ? qk.license(slug, r.id)
             : qk.userOverrides(slug, r.id),
-      queryFn: async (): Promise<Record<string, { value?: unknown }>> =>
+      // The key's cache holds the whole record (one shape per key); the config is read from it.
+      queryFn: (): Promise<unknown> =>
         r.kind === "profile"
-          ? (await api.profile(slug, r.id)).payload.config
+          ? api.profile(slug, r.id)
           : r.kind === "license"
-            ? (await api.license(slug, r.id)).overrides.config
-            : (await api.productUserOverrides(slug, r.id)).overrides.config,
+            ? api.license(slug, r.id)
+            : api.productUserOverrides(slug, r.id),
+      select: (data: unknown): Record<string, { value?: unknown }> => {
+        const d = data as {
+          payload?: { config: Record<string, { value?: unknown }> };
+          overrides?: { config: Record<string, { value?: unknown }> };
+        };
+        return d.payload?.config ?? d.overrides?.config ?? {};
+      },
     })),
   });
   const pending =
