@@ -192,6 +192,47 @@ export async function resolveStoreSelector(
 }
 
 /**
+ * What the store answers for a MOVING selector, and whether its channel regressed (P2-12.5, the
+ * health check's store variant). `regressed` is the legacy meaning: the best release the channel
+ * has sits below its floor and the floor's release is gone, so the channel answers nothing.
+ * `offered` is that best release (the pick without the floor). No GitHub read: the floor's
+ * release is a store row or it is not.
+ */
+export async function storeResolution(
+  db: Db,
+  cfg: ReleaseConfigRow,
+  sel: ChannelSelector,
+): Promise<{
+  release: Release | null;
+  offered: Release | null;
+  regressed: boolean;
+}> {
+  const selector = policyChannelOf(sel) ?? sel.raw;
+  const state = await loadDeliverableState(
+    db,
+    cfg.product,
+    APP_DELIVERABLE_ID,
+    cfg,
+    { narrow: true, view: "legacy" },
+  );
+  if (!state) return { release: null, offered: null, regressed: false };
+  const read = async (st: typeof state) => {
+    const picked = resolveInState(st, { selector, view: "legacy" });
+    return picked
+      ? await storeRelease(db, cfg.product, picked.release.release_id)
+      : null;
+  };
+  const release = await read(state);
+  if (release) return { release, offered: release, regressed: false };
+  const offered = await read({ ...state, floors: new Map() });
+  return {
+    release: null,
+    offered,
+    regressed: offered !== null && state.floors.has(selector),
+  };
+}
+
+/**
  * The release GitHub would answer for the exact tag `tag` (`getReleaseByTag`), from the store:
  * the legacy view's rows only, so a release the sync did not list or saw gone upstream is null,
  * as GitHub's 404 is. The appcast's `v<version>` twin check reads it (plan §6.1).

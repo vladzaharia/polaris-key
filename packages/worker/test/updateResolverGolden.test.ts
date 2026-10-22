@@ -29,6 +29,7 @@ import { getReleaseConfig } from "../src/services/release/config.js";
 import type { Release, ReleaseAsset } from "../src/services/release/github.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import {
+  buildDownloadProbes,
   buildProbes,
   compareProbe,
   probeChannels,
@@ -222,6 +223,34 @@ describe("the probe list", () => {
       "version 1.2.0",
       "version v1.2.0",
     ]);
+  });
+});
+
+describe("the /release/dl probes (P2-12.5)", () => {
+  it("compare identical, or as beta-includes-stable on the beta selectors", async () => {
+    const w = await world([
+      rel("v1.3.0-beta.1", 4, { prerelease: true }),
+      rel("v1.2.0", 3),
+      rel("v1.1.0", 2),
+    ]);
+    const c = (await getReleaseConfig(w.db, SLUG))!;
+    const rows = await w.run(
+      buildDownloadProbes({
+        channels: await probeChannels(w.db, c),
+        stableVersion: "1.2.0",
+      }),
+    );
+    expect(rows.length).toBe(4 * 8);
+    // A real release id, asset name and size on both sides, or a matching refusal.
+    for (const r of rows) {
+      expect(r.surface).toBe("download");
+      if (r.class === "identical") expect(r.new).toEqual(r.old);
+    }
+    const diff = nonIdentical(rows);
+    for (const [k, cls] of Object.entries(diff)) {
+      expect(k).toMatch(/^download (beta|staging)\//);
+      expect(cls).toBe("beta-includes-stable");
+    }
   });
 });
 

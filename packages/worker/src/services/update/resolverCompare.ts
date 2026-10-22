@@ -32,7 +32,8 @@ import {
   policyChannelOf,
   versionFromTag,
 } from "../release/channels.js";
-import type { ReleaseConfigRow } from "../release/config.js";
+import { isResolved, type ReleaseConfigRow } from "../release/config.js";
+import { serveDownload, type ResolvedDownload } from "../release/source.js";
 import { NotFoundError, UpstreamRateLimitedError } from "../release/github.js";
 import { RELEASE_PAGE_CAP } from "../release/github.js";
 import {
@@ -98,7 +99,15 @@ export const BLOCKING_CLASSES: readonly ResolverClass[] = [
 
 // ── Probes ───────────────────────────────────────────────────────────────────────────────────
 
-export type ProbeSurface = UpdateSurfaceKind;
+/** `download` is `/release/dl` (and `?checksum=sha256`): P2-12.5. */
+export type ProbeSurface = UpdateSurfaceKind | "download";
+
+/** What a `download` probe asks for: the route's `format`, `arch` and whether it wants the sidecar. */
+export interface DownloadProbe {
+  format: "cli" | "dmg";
+  arch: string;
+  checksum: boolean;
+}
 
 export interface Probe {
   surface: ProbeSurface;
@@ -107,6 +116,8 @@ export interface Probe {
   /** The selector as the request spelled it (undefined: omitted). */
   selector: string | undefined;
   params: ReleaseParams;
+  /** Set on a `download` probe. */
+  download?: DownloadProbe;
 }
 
 export interface ProbeSet {
@@ -163,6 +174,36 @@ export function buildProbes(set: ProbeSet): Probe[] {
         params: { version: pinned },
       });
   }
+  return out;
+}
+
+/** The architectures the download probes ask for. */
+export const DOWNLOAD_ARCHES = ["arm64", "x86_64"] as const;
+
+/**
+ * The `/release/dl` probes (P2-12.5): `cli` and `dmg` x `arm64` and `x86_64` x plain and
+ * checksum, on `latest` and every channel, plus the current stable pinned bare. Kept apart from
+ * `buildProbes` so the appcast and version list is unchanged; the job runs both lists.
+ */
+export function buildDownloadProbes(set: ProbeSet): Probe[] {
+  const out: Probe[] = [];
+  const channels = [...new Set(set.channels)].filter((c) => c !== "stable");
+  const selectors = [
+    "latest",
+    ...channels,
+    ...(set.stableVersion ? [set.stableVersion] : []),
+  ];
+  for (const selector of selectors)
+    for (const format of ["cli", "dmg"] as const)
+      for (const arch of DOWNLOAD_ARCHES)
+        for (const checksum of [false, true])
+          out.push({
+            surface: "download",
+            probe: `${selector}/${format}-${arch}${checksum ? "?checksum=sha256" : ""}`,
+            selector,
+            params: {},
+            download: { format, arch, checksum },
+          });
   return out;
 }
 
@@ -244,6 +285,40 @@ export function sameOutcome(a: ProbeOutcome, b: ProbeOutcome): boolean {
   );
 }
 
+/**
+ * A download's outcome. The bytes of a plain download are the artifact (up to 2 GB, streamed from
+ * R2 or from GitHub), so they are not read: the body is stood in for by the release, the asset's
+ * name and its size, which is what makes two downloads the same file (§6.5). The checksum
+ * sidecar is a few bytes and is compared as served.
+ */
+async function downloadOutcome(
+  res: Response,
+  probe: DownloadProbe,
+  resolved: ResolvedDownload | null,
+): Promise<ProbeOutcome> {
+  const identity = res.status === 200 && !probe.checksum && resolved?.asset;
+  let bodySha256: string | null = null;
+  if (identity) {
+    await res.body?.cancel().catch(() => undefined);
+    bodySha256 = await sha256Hex(
+      new TextEncoder().encode(
+        `${resolved.tag}\n${resolved.asset!.name}\n${resolved.asset!.size}`,
+      ),
+    );
+  } else {
+    const text = await res.text();
+    bodySha256 =
+      text.length > 0 ? await sha256Hex(new TextEncoder().encode(text)) : null;
+  }
+  return {
+    status: res.status,
+    contentType: res.headers.get("content-type"),
+    cacheControl: res.headers.get("cache-control"),
+    bodySha256,
+    version: resolved ? versionFromTag(resolved.tag) : null,
+  };
+}
+
 export interface StepOptions {
   artifactsAccess?: ReleaseAccess;
   waitUntil?: (promise: Promise<unknown>) => void;
@@ -269,7 +344,36 @@ export async function runProbe(
     cfg: { ...ctx.cfg, metadata_access: "public" },
     params: probe.params,
   };
+  let resolved: ResolvedDownload | null = null;
   try {
+    if (probe.download && probe.surface === "download") {
+      const dl = probe.download;
+      const cfg = full.cfg;
+      const res = isResolved(cfg)
+        ? await serveDownload(
+            {
+              env: full.env,
+              db: full.db,
+              product: full.product,
+              now: full.now,
+            },
+            cfg,
+            {
+              kind: "dl",
+              selector: probe.selector,
+              arch: dl.arch,
+              format: dl.format,
+              checksum: dl.checksum,
+              access: "public",
+            },
+            full.req,
+            full.fetchImpl,
+            step,
+            (r) => (resolved = r),
+          )
+        : harden(notFound());
+      return await downloadOutcome(harden(res), dl, resolved);
+    }
     const res =
       probe.surface === "version"
         ? await computeVersion(full, step)
@@ -282,12 +386,18 @@ export async function runProbe(
             opts.waitUntil,
             step,
           );
-    return await outcomeOf(probe.surface, harden(res));
+    return await outcomeOf(probe.surface as UpdateSurfaceKind, harden(res));
   } catch (err) {
-    if (err instanceof UpstreamRateLimitedError)
-      return outcomeOf(probe.surface, harden(upstreamUnavailable(err)));
-    if (err instanceof NotFoundError)
-      return outcomeOf(probe.surface, harden(notFound()));
+    const mapped =
+      err instanceof UpstreamRateLimitedError
+        ? upstreamUnavailable(err)
+        : err instanceof NotFoundError
+          ? notFound()
+          : null;
+    if (mapped)
+      return probe.download
+        ? downloadOutcome(harden(mapped), probe.download, resolved)
+        : outcomeOf(probe.surface as UpdateSurfaceKind, harden(mapped));
     return {
       status: 0,
       contentType: null,

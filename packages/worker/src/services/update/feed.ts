@@ -25,9 +25,13 @@ import type { UpdateArch } from "@polaris-key/protocol/update";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import type { FetchImpl } from "../release/githubApp.js";
 import {
+  fetchAssetStream,
   fetchTextAsset,
   getReleaseByTag,
+  MAX_TEXT_ASSET_BYTES,
+  NotFoundError,
   type Release,
+  type ReleaseAsset,
 } from "../release/github.js";
 import { matchAsset, normalizeArch, sigAssetName } from "../release/assets.js";
 import { extractSummary } from "../release/changelog.js";
@@ -40,7 +44,12 @@ import {
   resolveStoreSelector,
   storeReleaseByTag,
 } from "../release/storeRelease.js";
-import { verifySparkleSignature } from "../release/sparkle.js";
+import {
+  MAX_VERIFY_BYTES,
+  verifyEd25519OverBytes,
+  verifySparkleSignature,
+} from "../release/sparkle.js";
+import { openStoredAsset, storedTextAsset } from "../release/storeBytes.js";
 import {
   accessModeFor,
   artifactPolicy,
@@ -137,8 +146,10 @@ export function handleUpdate(
  *             suite are its only callers; PR 2 routes to it.
  *
  * The two steps share every line after the resolution, so they differ in nothing but the release
- * they are given. The Sparkle sidecar and DMG still come from GitHub by asset id in both
- * (P2-12.5 moves what it moves).
+ * they are given, and in where the Sparkle sidecar and DMG come from (P2-12.5): the legacy step
+ * reads both from GitHub by asset id; the store step reads Polaris Key's own copy first
+ * (`storeBytes.ts`) and falls back to the asset by id. The store step lists no release, reads
+ * no tag and no workflow run from GitHub while serving.
  */
 export type UpdateStep = "legacy" | "store";
 
@@ -149,6 +160,18 @@ interface StepSource {
   }>;
   /** The release tagged exactly `tag`, or null (the appcast's `v<version>` twin check). */
   byTag(tok: string, tag: string): Promise<Release | null>;
+  /** The installation token, minted on first use. */
+  token(): Promise<string>;
+  /** A `.sig` sidecar's text. */
+  text(tok: string, asset: ReleaseAsset): Promise<string>;
+  /** Verify the Sparkle signature over `dmg`'s bytes. */
+  verify(
+    tok: string,
+    dmg: ReleaseAsset,
+    signature: string,
+    publicKey: string,
+    waitUntil: ((promise: Promise<unknown>) => void) | undefined,
+  ): Promise<boolean>;
 }
 
 function stepSource(
@@ -156,12 +179,76 @@ function stepSource(
   { env, db, now, fetchImpl }: SurfaceContext,
   cfg: ResolvedConfig,
 ): StepSource {
+  let minted: Promise<string> | undefined;
+  const token = () => (minted ??= installationToken(env, cfg, now, fetchImpl));
+  const sizeOf = (dmg: ReleaseAsset) =>
+    Number.isSafeInteger(dmg.size) && dmg.size >= 0
+      ? { expectedSize: dmg.size }
+      : {};
   if (step === "store")
     return {
       resolve: (selector) => resolveStoreSelector(db, cfg, selector),
       byTag: (_tok, tag) => storeReleaseByTag(db, cfg, tag),
+      token,
+      text: async (_tok, asset) =>
+        (await storedTextAsset(
+          env,
+          db,
+          cfg.product,
+          asset,
+          MAX_TEXT_ASSET_BYTES,
+        )) ??
+        fetchTextAsset(
+          await token(),
+          cfg.gh_owner,
+          cfg.gh_repo,
+          asset.id,
+          fetchImpl,
+        ),
+      verify: (_tok, dmg, signature, publicKey, waitUntil) =>
+        verifyEd25519OverBytes(env, cfg.product, {
+          // The memo subject stays the asset id: a verdict the legacy step memoised holds.
+          subject: dmg.id,
+          signature,
+          publicKey,
+          maxBytes: MAX_VERIFY_BYTES,
+          ...sizeOf(dmg),
+          ...(waitUntil ? { waitUntil } : {}),
+          open: async () => {
+            const stored = await openStoredAsset(env, db, cfg.product, dmg);
+            if (stored) return stored;
+            try {
+              return await fetchAssetStream(
+                await token(),
+                cfg.gh_owner,
+                cfg.gh_repo,
+                dmg.id,
+                MAX_VERIFY_BYTES,
+                fetchImpl,
+              );
+            } catch (err) {
+              if (err instanceof NotFoundError) return null;
+              throw err;
+            }
+          },
+        }),
     };
   return {
+    token,
+    text: (tok, asset) =>
+      fetchTextAsset(tok, cfg.gh_owner, cfg.gh_repo, asset.id, fetchImpl),
+    verify: (tok, dmg, signature, publicKey, waitUntil) =>
+      verifySparkleSignature(env, cfg.product, {
+        token: tok,
+        owner: cfg.gh_owner,
+        repo: cfg.gh_repo,
+        assetId: dmg.id,
+        signature,
+        publicKey,
+        fetchImpl,
+        ...sizeOf(dmg),
+        ...(waitUntil ? { waitUntil } : {}),
+      }),
     resolve: (selector) =>
       resolveSelector(env, db, cfg, selector, now, fetchImpl),
     byTag: (tok, tag) =>
@@ -253,7 +340,9 @@ export async function computeAppcast(
   if (policy.requireSparkleSignature && !cfg.sparkle_ed25519_pub) {
     return notFound();
   }
-  const tok = await installationToken(env, cfg, now, fetchImpl);
+  // The legacy step mints its token here, as it always has; the store step mints one only if a
+  // read has to fall back to GitHub.
+  const tok = step === "legacy" ? await source.token() : "";
 
   // Stable feeds (latest/stable/pinned) point the enclosure at the concrete version so the DMG
   // URL is immutable; moving channels point at their channel segment.
@@ -278,27 +367,18 @@ export async function computeAppcast(
   }
   let edSignature: string | undefined;
   if (sig) {
-    const claimed = (
-      await fetchTextAsset(tok, cfg.gh_owner, cfg.gh_repo, sig.id, fetchImpl)
-    ).trim();
+    const claimed = (await source.text(tok, sig)).trim();
     // The sidecar is repo-controlled. Verify it against the configured public key over the
     // DMG's own bytes before it goes anywhere near the feed — the pubkey used to be a mere
     // presence flag, so any string in the `.sig` shipped as `sparkle:edSignature`.
     const verified = cfg.sparkle_ed25519_pub
-      ? await verifySparkleSignature(env, product.slug, {
-          token: tok,
-          owner: cfg.gh_owner,
-          repo: cfg.gh_repo,
-          assetId: dmg.id,
-          signature: claimed,
-          publicKey: cfg.sparkle_ed25519_pub,
-          fetchImpl,
-          // The listed size: a body of any other length is no verdict (P0-10 follow-up).
-          ...(Number.isSafeInteger(dmg.size) && dmg.size >= 0
-            ? { expectedSize: dmg.size }
-            : {}),
-          ...(waitUntil ? { waitUntil } : {}),
-        })
+      ? await source.verify(
+          tok,
+          dmg,
+          claimed,
+          cfg.sparkle_ed25519_pub,
+          waitUntil,
+        )
       : false;
     // Fail closed: the item is dropped and the feed 404s rather than shipping an
     // unverifiable enclosure. No log line — the worker deliberately carries no logging
