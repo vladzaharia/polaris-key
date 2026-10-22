@@ -80,4 +80,47 @@ class PolarisSettingsStateTest {
         runCurrent()
         assertEquals(PolarisSettingsFailure(ErrorCode.platformError, "offline"), state.ui.value.loadFailure)
     }
+
+    @Test
+    fun theChannelChoiceLoadsSwitchesAndKeepsTheRefusal() = runTest {
+        var current = "stable"
+        var lockedBy: String? = null
+        val actions = object : PolarisSettingsActions {
+            override suspend fun license(): PolarisLicenseSummary? = null
+            override suspend fun entries() = emptyList<PolarisSettingEntry>()
+            override suspend fun set(key: String, value: JsonElement) = Unit
+            override suspend fun reset(key: String) = Unit
+            override suspend fun channel() = PolarisChannelUi(current, listOf("stable", "beta"), lockedBy)
+            override suspend fun setChannel(channel: String) {
+                if (channel == "alpha") throw PolarisException(ErrorCode.channelNotAllowed, "no")
+                current = channel
+            }
+        }
+        val state = PolarisSettingsState(actions, backgroundScope)
+        state.load()
+        runCurrent()
+        assertEquals(PolarisChannelUi("stable", listOf("stable", "beta")), state.ui.value.channel)
+        state.setChannel("beta")
+        runCurrent()
+        assertEquals("beta", state.ui.value.channel?.current)
+        state.setChannel("alpha")
+        runCurrent()
+        assertEquals(ErrorCode.channelNotAllowed, state.ui.value.error?.code)
+        assertEquals("beta", state.ui.value.channel?.current)
+    }
+
+    @Test
+    fun aPickerWithNothingToPickAndNothingFixingItIsNotDrawn() {
+        assertEquals(false, PolarisChannelUi("stable", listOf("stable")).drawn)
+        assertEquals(true, PolarisChannelUi("stable", listOf("stable"), "play").drawn)
+        assertEquals(true, PolarisChannelUi("stable", listOf("stable", "beta")).drawn)
+    }
+
+    @Test
+    fun outletsHaveStoreNames() {
+        assertEquals("Google Play", outletStoreName("play"))
+        assertEquals("App Store", outletStoreName("app-store"))
+        assertEquals("Steam", outletStoreName("steam"))
+        assertEquals("Custom", outletStoreName("custom"))
+    }
 }

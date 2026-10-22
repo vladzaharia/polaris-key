@@ -147,7 +147,7 @@ class BrandingTest {
         host(dark = true) { content -> PolarisTheme(branding = PolarisBranding.PolarisKey, copy = sampleCopy, darkTheme = true, content = content) }
         show {
             body = MaterialTheme.typography.bodyLarge.fontFamily
-            kitScreens.first { it.first == "gate-activation" }.second()
+            kitScreens.first { it.first == "polarisKeyGate-needs-activation" }.second()
         }
         assertEquals(PolarisRubik, body)
         // UI-KITS.md §1.2, §1.6: the product is the hero; no Polaris Key mark on a kit screen.
@@ -180,7 +180,7 @@ class BrandingTest {
         var branding by mutableStateOf(PolarisBranding.None)
         host { content -> PolarisTheme(branding = branding, showPoweredBy = true, copy = sampleCopy, darkTheme = false, content = content) }
         // UI-KITS.md section 1.6: never on the gate or a message screen (the settings and About panes place it).
-        for ((name, content) in kitScreens.filter { it.first != "settings" && it.first != "about" }) {
+        for ((name, content) in kitScreens.filter { it.first != "settings-list" && it.first != "about-default" }) {
             show(content)
             assertEquals("$name draws the attribution", 0, badges())
         }
@@ -212,7 +212,7 @@ class BrandingTest {
                 }
             }
         }
-        show(kitScreens.first { it.first == "gate-activation" }.second)
+        show(kitScreens.first { it.first == "polarisKeyGate-needs-activation" }.second)
         assertTrue("the kit sees the host's own scheme object", inside === dynamic)
         assertTrue("the primary button wears the dynamic primary", dynamic.primary.toArgb() in pixels())
     }
@@ -229,7 +229,7 @@ class BrandingTest {
         host(dark = true) { content ->
             PolarisTheme(branding = branding, copy = sampleCopy, logo = {}, darkTheme = true, accent = teal, content = content)
         }
-        show(kitScreens.first { it.first == "gate-activation" }.second)
+        show(kitScreens.first { it.first == "polarisKeyGate-needs-activation" }.second)
         assertTrue("branded: the primary button wears the product accent", solid in pixels())
         assertTrue("branded: the core violet gives way to it", violet !in pixels())
         rule.runOnIdle { branding = PolarisBranding.None }
@@ -248,7 +248,7 @@ class BrandingTest {
         host { content ->
             PolarisTheme(copy = sampleCopy, logo = { androidx.compose.material3.Text("ACME") }, content = content)
         }
-        show(kitScreens.first { it.first == "gate-activation" }.second)
+        show(kitScreens.first { it.first == "polarisKeyGate-needs-activation" }.second)
         assertEquals(1, rule.onAllNodesWithText("ACME").fetchSemanticsNodes().size)
         assertEquals(0, marks())
     }

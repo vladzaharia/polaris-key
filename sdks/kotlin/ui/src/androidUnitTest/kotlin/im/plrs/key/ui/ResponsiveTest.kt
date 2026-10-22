@@ -109,26 +109,26 @@ internal val responsiveVariants: List<SnapshotVariant> = responsiveSizes.flatMap
 
 /** The screens every main-set size renders. */
 internal val responsiveScreens: List<String> = listOf(
-    "sign-in",
-    "gate-activation",
-    "gate-device-limit-manage",
-    "gate-revoked",
-    "gate-expired",
-    "devices",
-    "settings",
-    "update-prompt",
+    "signInHandoff-code",
+    "polarisKeyGate-needs-activation",
+    "deviceLimit-browser-mode",
+    "statusScreen-revoked",
+    "statusScreen-expired",
+    "devices-list",
+    "settings-list",
+    "updatePrompt-available",
 )
 
 /** Every screen drawn with PolarisMessageScreen (or its layout). */
 internal val messageScreens: List<String> = listOf(
     "boot-consent", "boot-offline", "boot-blocked", "boot-error",
-    "gate-expired", "gate-version-too-old", "gate-version-too-new", "gate-channel-not-entitled",
-    "sign-in-starting", "sign-in-expired", "sign-in-failed", "sign-in-denied",
+    "statusScreen-expired", "statusScreen-version-too-old", "statusScreen-version-too-new", "statusScreen-channel-not-entitled",
+    "signInHandoff-starting", "sign-in-expired", "signInHandoff-failed", "signInHandoff-denied",
 )
 
 /** Where the layout test checks controls: the control groups and every message screen. */
 internal val controlScreens: List<String> =
-    (listOf("sign-in", "gate-activation", "gate-activation-error", "gate-device-limit-manage", "gate-revoked") + messageScreens).distinct()
+    (listOf("signInHandoff-code", "polarisKeyGate-needs-activation", "activate-device-limit", "deviceLimit-browser-mode", "statusScreen-revoked") + messageScreens).distinct()
 
 internal fun kitScreen(name: String): @Composable () -> Unit = kitScreens.first { it.first == name }.second
 
@@ -150,7 +150,7 @@ class ResponsiveSnapshotTest(private val variant: SnapshotVariant) {
         val wide = wideSizes.any { variant.name.startsWith(it.name) }
         val short = variant.name.startsWith("landscape-891x411") || variant.name.startsWith("small-landscape-640x360")
         val screens = when {
-            wide -> listOf("sign-in", "gate-activation")
+            wide -> listOf("signInHandoff-code", "polarisKeyGate-needs-activation")
             short -> (responsiveScreens + messageScreens).distinct()
             else -> responsiveScreens
         }
@@ -170,13 +170,13 @@ class TvSnapshotTest {
     fun theTvScreens() {
         val screens: List<Pair<String, @Composable () -> Unit>> = listOf(
             // On TV the gate offers its key field back: "Use a license key instead".
-            "sign-in" to { PolarisSignInScreen(PolarisSignInUi.Showing(samplePrompt, NOW), onUseKey = {}) },
+            "signInHandoff-code" to { PolarisSignInScreen(PolarisSignInUi.Showing(samplePrompt, NOW), onUseKey = {}) },
             "sign-in-expired" to kitScreen("sign-in-expired"),
-            "sign-in-failed" to kitScreen("sign-in-failed"),
-            "gate-activation" to kitScreen("gate-activation"),
-            "gate-device-limit-manage-tv" to deviceLimitTv,
-            "gate-revoked" to kitScreen("gate-revoked"),
-            "gate-expired" to kitScreen("gate-expired"),
+            "signInHandoff-failed" to kitScreen("signInHandoff-failed"),
+            "polarisKeyGate-needs-activation" to kitScreen("polarisKeyGate-needs-activation"),
+            "deviceLimit-browser-mode-tv" to deviceLimitTv,
+            "statusScreen-revoked" to kitScreen("statusScreen-revoked"),
+            "statusScreen-expired" to kitScreen("statusScreen-expired"),
         )
         for (variant in bothLooks(tvSize)) for ((name, content) in screens) rule.capture("$name/${variant.name}", variant, settle = true, content = content)
     }
@@ -197,10 +197,10 @@ class FocusSnapshotTest {
     fun theFocusRing() {
         val tv = bothLooks(tvSize)[1]
         rule.capture("focus/tv-sign-in-polaris-dark", tv, settle = true) { PolarisSignInScreen(PolarisSignInUi.Showing(samplePrompt, NOW), onUseKey = {}) }
-        rule.capture("focus/tv-gate-activation-polaris-dark", tv, settle = true, content = kitScreen("gate-activation"))
-        rule.capture("focus/tv-gate-expired-polaris-dark", tv, settle = true, content = kitScreen("gate-expired"))
+        rule.capture("focus/tv-gate-activation-polaris-dark", tv, settle = true, content = kitScreen("polarisKeyGate-needs-activation"))
+        rule.capture("focus/tv-gate-expired-polaris-dark", tv, settle = true, content = kitScreen("statusScreen-expired"))
         val phone = SnapshotVariant("phone-native-light", PolarisBranding.None, dark = false)
-        rule.capture("focus/phone-gate-activation-keyboard-native-light", phone, keyboard = true, settle = true, content = kitScreen("gate-activation"))
+        rule.capture("focus/phone-gate-activation-keyboard-native-light", phone, keyboard = true, settle = true, content = kitScreen("polarisKeyGate-needs-activation"))
     }
 }
 
@@ -224,7 +224,7 @@ class AccentSnapshotTest {
             surfaceContainerHighest = Color(0xFF555861),
         )
         val variant = SnapshotVariant("phone-native-dark", PolarisBranding.None, dark = true)
-        rule.capture("accent/navy-over-3a3d45-native-dark", variant, accent = Color(0xFF1B2A6B), host = host, content = kitScreen("gate-activation"))
+        rule.capture("accent/navy-over-3a3d45-native-dark", variant, accent = Color(0xFF1B2A6B), host = host, content = kitScreen("polarisKeyGate-needs-activation"))
     }
 }
 
@@ -249,16 +249,16 @@ class ResponsiveLayoutTest(private val variant: SnapshotVariant) {
     fun everyControlIsOnScreenAndFullSize() {
         val failures = mutableListOf<String>()
         val screens = controlScreens.map { it to kitScreen(it) } +
-            (if (variant.tv) listOf("gate-device-limit-manage-tv" to deviceLimitTv) else emptyList())
+            (if (variant.tv) listOf("deviceLimit-browser-mode-tv" to deviceLimitTv) else emptyList())
         for ((name, content) in screens) show(content) {
             checkControls(name, failures)
-            if (name == "sign-in") {
+            if (name == "signInHandoff-code") {
                 // The code itself is whole: the mono text is never cut at the side or the foot.
                 val code = onAllNodes(hasText(samplePrompt.userCode), useUnmergedTree = true).fetchSemanticsNodes().firstOrNull()
                 val layout = textLayout(code)
                 if (layout == null) failures += "sign-in: the code has no text layout"
                 else if (layout.didOverflowWidth || layout.didOverflowHeight) failures += "sign-in: the code is cut (${layout.size})"
-                checkWhole("sign-in", "the code", code, failures)
+                checkWhole("signInHandoff-code", "the code", code, failures)
             }
         }
         assertTrue("${variant.name}:\n" + failures.joinToString("\n"), failures.isEmpty())

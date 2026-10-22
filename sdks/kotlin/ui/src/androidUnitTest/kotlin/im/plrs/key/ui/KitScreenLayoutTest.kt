@@ -149,7 +149,7 @@ class KitScreenLayoutTest {
 
     @Test
     fun aStateWithNothingToSayDrawsNoHeaderEither() {
-        show(case("gate-licensed"))
+        show(case("polarisKeyGate-licensed"))
         assertEquals("a licensed gate is the product, not a screen: ${texts()}", emptyList<String>(), texts())
     }
 }
