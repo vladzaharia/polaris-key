@@ -292,7 +292,7 @@ final class KitRulesTests: XCTestCase {
         var missing: [String] = []
         for preview in PolarisKeyPreviewState.all {
             // Previews the drop-in does not draw on iOS yet have no baseline.
-            guard ![KitComponent.boot, .offlineActivation, .toast].contains(preview.component)
+            guard ![KitComponent.boot, .toast].contains(preview.component)
             else { continue }
             // States that draw no kit view of their own: the gate past booting shows another
             // component's screen (Welcome, the status screen) or the app, up to date draws

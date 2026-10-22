@@ -24,6 +24,7 @@ public struct PolarisKeyPreview: View {
         switch state.component {
         case .signIn, .signInHandoff, .licenseChoice: route = .signIn
         case .activate: route = .activate
+        case .offlineActivation: route = .offline
         default: route = .welcome
         }
         let request = KitSignInRequest(
@@ -68,6 +69,10 @@ public struct PolarisKeyPreview: View {
             ActivateView(
                 screen: model.activate, text: $model.keyText, onSubmit: {},
                 onReplaceDevice: {}, onCancel: {}, onDone: {})
+        case .offlineActivation:
+            OfflineActivationView(
+                screen: model.offlineActivation, requestCode: model.offlineRequestCode,
+                text: $model.offlineText, onSubmit: {}, onCancel: {}, onDone: {})
         case .deviceLimit:
             DeviceLimitView(
                 screen: model.deviceLimit, devices: model.inputs.devices ?? [],
