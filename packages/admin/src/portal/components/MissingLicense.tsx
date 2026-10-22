@@ -79,7 +79,7 @@ export function MissingLicense({
       aria-label={t("locker.missing.title")}
       className="sticky bottom-[calc(3.25rem+1px+env(safe-area-inset-bottom))] z-20 border-t border-border bg-surface-raised desk:bottom-0 short:static short:max-desk:mb-[calc(3.25rem+1px+env(safe-area-inset-bottom))] tight:max-desk:static tight:max-desk:mb-[calc(3.25rem+1px+env(safe-area-inset-bottom))]"
     >
-      <div className="mx-auto flex w-full max-w-[82rem] flex-col-reverse px-4 desk:px-8 wide:flex-row wide:flex-wrap wide:items-center wide:gap-x-6">
+      <div className="mx-auto flex w-full max-w-[82rem] flex-col-reverse px-4 desk:px-6 wide:flex-row wide:flex-wrap wide:items-center wide:gap-x-6">
         <p
           aria-hidden
           className="hidden shrink-0 text-sm font-medium text-fg-strong wide:block"

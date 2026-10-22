@@ -53,7 +53,7 @@ export function FocusedFlow({
         {t("locker.shell.skip")}
       </a>
       <header className="@container border-b border-border bg-surface-page">
-        <div className="mx-auto flex min-h-14 w-full max-w-[82rem] items-center justify-between gap-4 px-4 desk:min-h-16 desk:px-8">
+        <div className="mx-auto flex min-h-14 w-full max-w-[82rem] items-center justify-between gap-4 px-4 desk:min-h-16 desk:px-6">
           <a
             href={href.library()}
             aria-label={t("locker.shell.home")}
