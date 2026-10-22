@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from ... import qr as _qr
+from .._tokens import THEMES
 from ..core.copy import Copy
 from ..core.ui_contract import ACTION_KEYS
 from ..core.ui_loading import DELAYED_LOADING_STATES
@@ -318,7 +319,7 @@ def _code_block(view: View, copy: Copy, args: Mapping[str, Any], data: Optional[
     link = view.decisions.link
     qr = ""
     if view.decisions.qr and link is not None and link.url:
-        svg = _qr.svg(link.url, dark="#060912", light="#ffffff")
+        svg = _qr.svg(link.url, dark=THEMES["dark"]["surface_page"], light=THEMES["light"]["surface_raised"])
         if svg:
             qr = "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("ascii")
     return Code(
