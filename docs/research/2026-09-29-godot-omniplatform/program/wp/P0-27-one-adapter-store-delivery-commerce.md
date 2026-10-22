@@ -47,6 +47,22 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Working id **CQW-13**; DX consolidation H: Distribution channels, storefronts and commerce.
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Corrections (2026-10-22)
+
+The code is the fact; these replace any contrary brief text. Source: `_lead/plans/P0-27-F-34-slices.md` §0.
+
+- **C1. itch.io has no client, credentials or events.** Its only code is the CI-plane declaration `core/storefront/stores/itch.ts`. Its adapter is a declaration with no delivery runtime and no commerce facet; CM-27 is the spike for itch commerce.
+- **C2. `StorefrontRuntime` had no implementer.** A-18j replaced it with `FlowRuntime`. "Fold StorefrontRuntime" means: delete the interface (done in P0-27.1), and the flow runtime becomes a member of the delivery facet.
+- **C3. `DistributionConnector` exists for three stores only** (`asc`, `play`, `ms-store`). Steam has no connector; its delivery code is `storefronts/steam/*` over `core/stores/steam/`. `core/ops/operations.ts` repeats the connector kinds as a second list.
+- **C4. Commerce's per-store code** lives in `services/commerce/{apple,appleRoot,play,steam}.ts`, dispatched by `store === ...` ladders (`bridge.ts`, the two hook handlers, `recheck.ts`, `admin.ts`). Approved `plans/CM-29.md` D3 puts these files at `services/commerce/stores/<store>/`.
+- **C5. The commerce store ids are wire.** A claim body's `store` is `app-store`, `play` or `steam` (`core/licensing/storeGrants.ts`); the storefront id is `google-play`. The adapter maps the two; nothing on the wire changes.
+- **C6. The catalogue's two-way test already exists for `STOREFRONT_ADAPTERS`** (`tools/gen-channels.test.ts`, A-19). P0-27 adds the store-adapter and facet binding, including `verification`, `notification` and `sku`.
+- **C7. Rule 6 rules out one module per store holding both facets.** The declaration lives in Core (`core/stores/`), each service registers its facet by id, and a test binds the two.
+- **C8. Credential reach.** A new Core file that reads credential metadata needs a reviewed line in `test/outletCredentialReach.test.ts`.
+- **C9. Stale text.** CM-29 is done. The two lines `plans/CM-29.md` section 10 tells P0-27 to delete ("no commerce service slug (C-17)", "device routes keep `/<p>/distribution/commerce/*`") are not in this brief; nothing to delete here.
+- **C10. Routes.** No route changes; `routeCoverage` stays green with no spec edit.
+- **C11. Size.** tracks.md says 1.2-1.8 weeks; this brief says 0.8-1.3 after the P0-27a split. The brief stands.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
