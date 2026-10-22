@@ -143,7 +143,7 @@ async function noteOutcome(
     const ticks = Math.min(2 ** n - 1, BACKOFF_MAX_TICKS);
     const until = now + (ticks + 1) * TICK_SECONDS - 1;
     await env.HOT.put(backoffKey(product), JSON.stringify({ n, until }), {
-      expirationTtl: Math.max(60, ticks * TICK_SECONDS),
+      expirationTtl: Math.max(60, (ticks + 1) * TICK_SECONDS),
     });
   } catch {
     /* a lost marker only costs a retry on the next tick */

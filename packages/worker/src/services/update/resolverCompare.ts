@@ -68,6 +68,7 @@ import {
   type DeliverableState,
 } from "../release/resolve.js";
 import type { ReleaseParams } from "../release/access.js";
+import { compareSemver } from "../../core/licensing/entitlements.js";
 import type { SurfaceContext } from "../release/surface.js";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
@@ -464,6 +465,22 @@ const githubTrack = (r: DeliverableState["rows"][number]): string =>
   prereleaseOf(r) ? "beta" : "stable";
 
 /**
+ * The store's version is not older than the legacy one. A version the product's scheme cannot
+ * parse compares as equal there, so an unparsed pair falls back to semver (the legacy order) and
+ * counts only when strictly newer: an unreadable pair is a difference to look at, never D6.
+ */
+function notOlder(
+  scheme: Parameters<typeof compareVersions>[0],
+  next: string,
+  prev: string,
+): boolean {
+  if (next === prev) return true;
+  const cmp = compareVersions(scheme, next, prev);
+  if (cmp !== 0) return cmp > 0;
+  return compareSemver(next, prev) > 0;
+}
+
+/**
  * Why two answers differ. The checks run most specific first and the first hit wins. Pure over
  * the store: it reads the same rows both steps read, and never GitHub.
  */
@@ -572,7 +589,7 @@ export async function classifyDifference(
     (oldO.status === 404 ||
       (oldO.version !== null &&
         newO.version !== null &&
-        compareVersions(state.scheme, newO.version, oldO.version) >= 0))
+        notOlder(state.scheme, newO.version, oldO.version)))
   )
     return "beta-includes-stable";
 
