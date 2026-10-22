@@ -52,6 +52,8 @@ export interface AdminIo {
   term: (out: TermOut) => Term;
   store: () => Promise<CredentialStore>;
   fetchImpl?: typeof fetch;
+  /** One deadline for a caller that makes several requests (`pkey doctor`). */
+  signal?: AbortSignal;
 }
 
 /** The console's role names (`roleLabel` in the admin SPA), by role id. */
@@ -138,6 +140,7 @@ async function getJson(
       `${cred.origin}/manage/api${path}`,
       {
         redirect: "manual",
+        ...(io.signal ? { signal: io.signal } : {}),
         headers: {
           authorization: `Bearer ${cred.token}`,
           accept: "application/json",
@@ -154,7 +157,7 @@ async function getJson(
 
 const str = (v: unknown, env: UntrustedEnv): string => untrusted(v, env);
 
-async function accessInfo(
+export async function accessInfo(
   io: AdminIo,
   cred: ResolvedCredential,
   f: HttpFailure,

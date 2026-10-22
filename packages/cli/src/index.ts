@@ -43,8 +43,13 @@ import { keyringStore, type CredentialStore } from "./credentials.js";
 import { applyContext, resolveContext, type PkeyContext } from "./context.js";
 import {
   checkRemote,
+  DOCTOR_TIMEOUT_MS,
   doctorOk,
+  gatherSession,
   manifestFact,
+  sessionJson,
+  sessionText,
+  todoCount,
   type DoctorFact,
 } from "./doctor.js";
 import {
@@ -716,7 +721,8 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
   completion: (p, rt) => cmdCompletion(p, rt.stdout, rt.stderr),
   distribution: (p, rt) =>
     cmdDistribution(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
-  doctor: (p, rt) => cmdDoctor(p, rt.cwd, rt.stdout, rt.term(rt.stdout), rt.ci),
+  doctor: (p, rt) =>
+    cmdDoctor(p, rt.cwd, rt.stdout, rt.term(rt.stdout), rt.ci, adminIo(p, rt)),
   bundle: (p, rt) =>
     withAdminCredential(adminIo(p, rt), "bundle", (token) =>
       cmdBundle(p, rt.cwd, rt.stdout, rt.ci.env, token, rt.ci.fetchImpl),
@@ -1279,6 +1285,7 @@ async function cmdDoctor(
   stdout: TermOut,
   term: Term,
   ci: CiIo & { env: CiEnv },
+  admin: AdminIo,
 ): Promise<number> {
   const u = (v: unknown) => untrusted(v, ci.env);
   const ctx = await resolveContext({
@@ -1287,7 +1294,11 @@ async function cmdDoctor(
     product: flagString(parsed, "product"),
     baseUrl: flagString(parsed, "base-url"),
   });
-  if (flagBool(parsed, "json")) return doctorJson(ctx, cwd, stdout, ci);
+  // One deadline for discovery, /me and the Integration view.
+  const signal = AbortSignal.timeout(DOCTOR_TIMEOUT_MS);
+  const io: AdminIo = { ...admin, baseUrl: ctx.baseUrl.url, signal };
+  if (flagBool(parsed, "json"))
+    return doctorJson(ctx, cwd, stdout, ci, io, signal);
 
   const localCode = await validateText(cwd, cwd, stdout, term);
   if (!ctx.product) {
@@ -1300,6 +1311,7 @@ async function cmdDoctor(
     baseUrl: ctx.baseUrl.url,
     product: ctx.product.slug,
     fetchImpl: ci.fetchImpl,
+    signal,
   });
   if (remote.status !== undefined) {
     stdout.write(
@@ -1315,7 +1327,13 @@ async function cmdDoctor(
     `Services enabled: ${enabled.length ? enabled.join(", ") : "none"}\n`,
   );
   stdout.write(`Signing keys exposed: ${u(JSON.stringify(remote.signing))}\n`);
-  return localCode;
+  const session = await gatherSession({
+    io,
+    slug: ctx.product.slug,
+    signal,
+  });
+  stdout.write(`\n${sessionText(session, term)}`);
+  return localCode === 0 && todoCount(session.integration) === 0 ? 0 : 1;
 }
 
 /** `pkey doctor --json`: one result line, the facts beside the envelope's fields. */
@@ -1324,6 +1342,8 @@ async function doctorJson(
   cwd: string,
   stdout: TermOut,
   ci: CiIo & { env: CiEnv },
+  io: AdminIo,
+  signal: AbortSignal,
 ): Promise<number> {
   let result: ValidationResult | null = null;
   let problem: string | undefined;
@@ -1341,6 +1361,7 @@ async function doctorJson(
         baseUrl: ctx.baseUrl.url,
         product: ctx.product.slug,
         fetchImpl: ci.fetchImpl,
+        signal,
       });
       facts.push(...remote.facts);
       services = remote.services;
@@ -1353,7 +1374,12 @@ async function doctorJson(
       });
     }
   }
-  const exit = doctorOk(facts) ? 0 : 1;
+  const session = await gatherSession({
+    io,
+    slug: ctx.product?.slug ?? null,
+    signal,
+  });
+  const exit = doctorOk(facts) && todoCount(session.integration) === 0 ? 0 : 1;
   stdout.write(
     `${untrustedJson({
       v: 1,
@@ -1366,6 +1392,7 @@ async function doctorJson(
       facts,
       services,
       signing,
+      ...sessionJson(session),
     }).replace(
       /[\u007f-\uffff]/g,
       (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,

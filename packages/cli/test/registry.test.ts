@@ -23,6 +23,7 @@ import {
   VALUELESS_FLAGS,
   type PkeyCommand,
 } from "../src/help.js";
+import { memoryStore } from "../src/credentials.js";
 import { HANDLERS, runPkey } from "../src/index.js";
 import { termFor } from "../src/terminal.js";
 import { CLI_VERSION } from "../src/version.js";
@@ -64,6 +65,8 @@ async function run(
     stdout,
     stderr,
     env: opts.env ?? {},
+    // No one is signed in: doctor must not open the machine's keychain.
+    credentialStore: async () => memoryStore(),
     ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
   });
   return { code, out: stdout.text(), err: stderr.text() };

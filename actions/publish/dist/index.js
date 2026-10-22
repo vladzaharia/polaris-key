@@ -22929,9 +22929,9 @@ function renderRefusal(what, target, status, body, env = {}) {
     lines4.push(`  fields: ${body.fields.map(u).join(", ")}`);
   if (Array.isArray(body.errors)) {
     for (const e of body.errors.slice(0, 50)) {
-      const rec = e ?? {};
+      const rec2 = e ?? {};
       lines4.push(
-        `  ${u(rec.path ?? "")} ${u(rec.code ?? "")}: ${u(rec.message ?? "")}`
+        `  ${u(rec2.path ?? "")} ${u(rec2.code ?? "")}: ${u(rec2.message ?? "")}`
       );
     }
   }
@@ -23262,7 +23262,10 @@ var COMMANDS = [
         text: "pkey doctor runs validate first. When a product is known (--product, else the nearest .pkey/product) it also fetches <base-url>/<product>/.well-known/polaris.json (--base-url, else $PKEY_BASE_URL, else key.plrs.im) and reports whether discovery answers, which services it enables and which signing keys it exposes; a failed remote check exits 1. Without a product the remote checks are skipped and it says so."
       },
       {
-        text: '--json prints one result line: {"v":1,"command":"doctor","event":"result","ok","exit","product","baseUrl","facts","services","signing"}, each fact as {"id","state","detail"} with id manifest, discovery, services or signing-keys and state ok, warn or todo. It exits 1 while any fact is todo.'
+        text: "With a product it also shows who is signed in (pkey login, or $PKEY_ADMIN_TOKEN), and the product's Integration from the console: per feature and platform Verified, Waiting or Not seen yet, then Left to do, each open console step with its link. Signed out, or refused access, is a warning, and signed out makes no console request. Open console steps exit 1."
+      },
+      {
+        text: '--json prints one result line: {"v":1,"command":"doctor","event":"result","ok","exit","product","baseUrl","facts","services","signing"}, each fact as {"id","state","detail"} with id manifest, discovery, services or signing-keys and state ok, warn or todo, plus "signedIn" (state in, out, ended or unreadable, and when it ends) and "integration" (state ok, skipped, denied or unavailable; ok carries features, platforms, ci, commerce and todo). It exits 1 while any fact or console step is todo.'
       }
     ]
   },
@@ -25376,6 +25379,7 @@ async function getJson(io, cred, path32) {
       `${cred.origin}/manage/api${path32}`,
       {
         redirect: "manual",
+        ...io.signal ? { signal: io.signal } : {},
         headers: {
           authorization: `Bearer ${cred.token}`,
           accept: "application/json"
@@ -26199,6 +26203,7 @@ async function applyContext(keys, flags, input) {
 
 // src/doctor.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
+var DOCTOR_TIMEOUT_MS = 15e3;
 function manifestFact(result, problem) {
   if (!result)
     return {
@@ -26222,7 +26227,10 @@ async function checkRemote(opts) {
   const url = `${opts.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(opts.product)}/.well-known/polaris.json`;
   let res;
   try {
-    res = await (opts.fetchImpl ?? fetch)(url);
+    res = await (opts.fetchImpl ?? fetch)(
+      url,
+      opts.signal ? { signal: opts.signal } : void 0
+    );
   } catch (err) {
     throw new Error(networkMessage(err, url));
   }
@@ -26265,6 +26273,437 @@ async function checkRemote(opts) {
 }
 function doctorOk(facts) {
   return facts.every((f) => f.state !== "todo");
+}
+var FEATURE_LABELS = {
+  licensing: "Licensing",
+  config: "Managed config",
+  identity: "Sign-in",
+  update: "Ship builds",
+  packs: "Content packs",
+  sync: "Cloud Sync",
+  commerce: "Commerce"
+};
+var PLATFORM_LABELS = {
+  macos: "macOS",
+  ios: "iOS",
+  windows: "Windows",
+  linux: "Linux",
+  android: "Android",
+  web: "Web",
+  godot: "Godot",
+  server: "Server"
+};
+var STEPS = {
+  tiers: { label: "A tier", page: "license/tiers" },
+  catalog: { label: "A published catalog", page: "config/catalog" },
+  oidc: { label: "A sign-in provider", page: "identity/app-sign-in" },
+  release: { label: "A release", page: "release/releases" },
+  distribution: { label: "Distribution turned on", page: "settings/features" },
+  outlets: { label: "A channel", page: "distribution/outlets" },
+  repository: { label: "A linked repository", page: "release/releases" }
+};
+var STEP_IDS = { outlets: "channels" };
+var platformLabel2 = (id) => PLATFORM_LABELS[id] ?? id.charAt(0).toUpperCase() + id.slice(1);
+var asArray = (v) => Array.isArray(v) ? v : [];
+var rec = (v) => v && typeof v === "object" ? v : {};
+function integrationFacts(view2, slug, origin, env) {
+  const u = (v) => untrusted(v, env);
+  const features = asArray(rec(view2)["features"]).map(rec);
+  const seen = /* @__PURE__ */ new Set();
+  for (const f of features)
+    for (const v of asArray(f["verifiedOn"])) {
+      const p = rec(v)["platform"];
+      if (typeof p === "string" && p) seen.add(p);
+    }
+  for (const s of asArray(rec(view2)["sightings"])) {
+    const p = rec(s)["platform"];
+    if (typeof p === "string" && p) seen.add(p);
+  }
+  const platforms = [...seen].map((id) => ({ id: u(id), label: u(platformLabel2(id)) })).sort((a, b) => a.label.localeCompare(b.label));
+  const out = [];
+  const todo = [];
+  const have = /* @__PURE__ */ new Set();
+  for (const f of features) {
+    const id = String(f["id"] ?? "");
+    have.add(id);
+    const label = u(FEATURE_LABELS[id] ?? id);
+    const status = f["status"];
+    const verifiedOn = new Set(
+      asArray(f["verifiedOn"]).map((v) => String(rec(v)["platform"]))
+    );
+    const base = status === "verified" ? "verified" : status === "not_seen" ? "waiting" : "unseen";
+    const per = {};
+    for (const p of platforms)
+      per[p.id] = verifiedOn.has(p.id) ? "verified" : base === "waiting" ? "waiting" : "unseen";
+    out.push({ id: u(id), label, state: base, platforms: per });
+    if (f["unavailable"] === true) continue;
+    for (const pre of asArray(f["prerequisites"]).map(rec)) {
+      if (pre["met"] !== false) continue;
+      const pid = String(pre["id"] ?? "");
+      const step = STEPS[pid];
+      const stepId = u(STEP_IDS[pid] ?? pid);
+      const dup = todo.find((t) => t.id === stepId);
+      if (dup) {
+        if (!dup.feature.split(", ").includes(label))
+          dup.feature += `, ${label}`;
+        continue;
+      }
+      todo.push({
+        id: stepId,
+        label: u(step?.label ?? pid),
+        feature: label,
+        link: `${origin}/manage/#/p/${encodeURIComponent(slug)}/${step?.page ?? "settings/features"}`
+      });
+    }
+  }
+  let ci = null;
+  for (const f of features) {
+    const facts = rec(f["facts"]);
+    if (typeof facts["packages"] === "number" && facts["packages"] > 0)
+      ci = {
+        firstAt: typeof facts["firstPackageAt"] === "number" ? facts["firstPackageAt"] : null
+      };
+  }
+  return {
+    features: out,
+    platforms,
+    ci,
+    commerce: have.has("commerce") ? "on" : "off",
+    commerceNeedsLicensing: !have.has("licensing"),
+    todo
+  };
+}
+function todoCount(i) {
+  return i.state === "ok" ? i.todo.length : 0;
+}
+async function gatherSession(opts) {
+  const { io, slug, signal } = opts;
+  const f = io.fetchImpl ?? fetch;
+  const u = (v) => untrusted(v, io.env);
+  let cred;
+  try {
+    cred = await adminCredential({
+      env: io.env,
+      baseUrl: io.baseUrl,
+      store: io.store
+    });
+  } catch (e) {
+    if (!(e instanceof Refusal)) throw e;
+    const out = e.message.startsWith("Not signed in");
+    return {
+      signedIn: {
+        state: "out",
+        detail: out ? "Not signed in" : e.message,
+        fix: out ? "pkey login" : e.fix ?? "pkey login"
+      },
+      integration: { state: "skipped", reason: "signed-out" }
+    };
+  }
+  const get2 = (path32) => request(f, `${cred.origin}/manage/api${path32}`, {
+    redirect: "manual",
+    ...signal ? { signal } : {},
+    headers: {
+      authorization: `Bearer ${cred.token}`,
+      accept: "application/json"
+    }
+  });
+  const api = cred.token.startsWith("pkeya_");
+  const reach = () => signal?.aborted ? "The console did not answer in time." : `Could not reach ${new URL(cred.origin).host}.`;
+  let signedIn;
+  if (api) {
+    signedIn = {
+      state: "in",
+      tokenType: "api",
+      endsAt: cred.expiresAt
+    };
+  } else {
+    try {
+      const res = await get2("/me");
+      if (res.status === 401)
+        return {
+          signedIn: {
+            state: "ended",
+            detail: "Your sign-in has ended",
+            fix: "pkey login"
+          },
+          integration: { state: "skipped", reason: "ended" }
+        };
+      if (!res.ok) {
+        signedIn = {
+          state: "unreadable",
+          detail: `Could not read your identity (HTTP ${res.status})`
+        };
+      } else {
+        const me = rec(await res.json());
+        const ends = typeof me["sessionExpiresAt"] === "number" ? me["sessionExpiresAt"] : cred.expiresAt;
+        signedIn = {
+          state: "in",
+          tokenType: "personal",
+          name: u(me["name"] ?? ""),
+          email: u(me["email"] ?? ""),
+          endsAt: ends
+        };
+      }
+    } catch {
+      signedIn = { state: "unreadable", detail: reach() };
+    }
+  }
+  if (!slug)
+    return {
+      signedIn,
+      integration: { state: "skipped", reason: "no-product" }
+    };
+  try {
+    const res = await get2(`/products/${encodeURIComponent(slug)}/integration`);
+    if (res.status === 401)
+      return {
+        signedIn: {
+          state: "ended",
+          detail: "Your sign-in has ended",
+          fix: "pkey login"
+        },
+        integration: { state: "skipped", reason: "ended" }
+      };
+    if (res.status === 403) {
+      const failure = await httpError(res, "Integration");
+      if (failure.detail.reason === "no_access")
+        return {
+          signedIn,
+          integration: {
+            state: "denied",
+            reason: "no_access",
+            access: await accessInfo(
+              { ...io, ...signal ? { signal } : {} },
+              cred,
+              failure
+            )
+          }
+        };
+      return {
+        signedIn,
+        integration: {
+          state: "denied",
+          reason: api ? "api_token" : "personal_token",
+          access: null
+        }
+      };
+    }
+    if (!res.ok)
+      return {
+        signedIn,
+        integration: {
+          state: "unavailable",
+          detail: `The console answered HTTP ${res.status}.`
+        }
+      };
+    return {
+      signedIn,
+      integration: {
+        state: "ok",
+        ...integrationFacts(await res.json(), slug, cred.origin, io.env)
+      }
+    };
+  } catch {
+    return {
+      signedIn,
+      integration: { state: "unavailable", detail: reach() }
+    };
+  }
+}
+function sessionWarnings(s) {
+  return (s.signedIn.state === "in" ? 0 : 1) + (s.integration.state === "denied" || s.integration.state === "unavailable" ? 1 : 0);
+}
+var iso = (seconds) => typeof seconds === "number" ? new Date(seconds * 1e3).toISOString() : null;
+function sessionJson(s) {
+  const { endsAt, ...rest } = s.signedIn;
+  const i = s.integration;
+  return {
+    signedIn: {
+      ...rest,
+      ...endsAt === void 0 ? {} : { endsAt: iso(endsAt) }
+    },
+    integration: i.state === "ok" ? { ...i, ci: i.ci ? { firstAt: iso(i.ci.firstAt) } : null } : { ...i }
+  };
+}
+var WIDE = 60;
+var NAME_W = 24;
+function breakLink(text, width) {
+  const parts = text.match(/[^/#]*[/#]?/g)?.filter(Boolean) ?? [text];
+  const lines4 = [];
+  let cur = "";
+  for (let part of parts) {
+    while (cellWidth(part) > width) {
+      const room = width - cellWidth(cur);
+      if (room > 0 && cur) {
+        lines4.push(cur + part.slice(0, room));
+        part = part.slice(room);
+        cur = "";
+      } else {
+        lines4.push(part.slice(0, width));
+        part = part.slice(width);
+      }
+    }
+    if (cellWidth(cur) + cellWidth(part) > width && cur) {
+      lines4.push(cur);
+      cur = "";
+    }
+    cur += part;
+  }
+  if (cur) lines4.push(cur);
+  return lines4;
+}
+function sessionText(s, t) {
+  const { painter, symbols, caps } = t;
+  const width = Math.max(20, caps.columns);
+  const wide = width >= WIDE;
+  const out = [];
+  const mark = {
+    ok: painter.style(symbols.ok, ["success"]),
+    warn: painter.style(symbols.warn, ["warning"]),
+    fail: painter.style(symbols.fail, ["danger"]),
+    wait: painter.style(symbols.radioOn, ["strong"]),
+    none: painter.style(symbols.radioOff, ["muted"])
+  };
+  const text = (v, roles = []) => roles.length ? painter.style(v, roles) : v;
+  const heading = (v) => out.push(painter.style(v, ["strong"]));
+  const wrapAt = (v, indent) => wrapSpans([{ text: v }], Math.max(1, width - indent)).map(
+    (l) => painter.line(l)
+  );
+  const row2 = (m, name, value, nameW = NAME_W) => {
+    if (wide) {
+      const indent = 4 + nameW + 2;
+      wrapAt(value, indent).forEach(
+        (l, i2) => out.push(
+          i2 === 0 ? `  ${m} ${painter.style(name.padEnd(nameW), ["strong"])}  ${l}` : `${" ".repeat(indent)}${l}`
+        )
+      );
+      return;
+    }
+    if (4 + cellWidth(name) + 2 + cellWidth(value) <= width)
+      out.push(`  ${m} ${painter.style(name, ["strong"])}  ${value}`);
+    else {
+      out.push(`  ${m} ${painter.style(name, ["strong"])}`);
+      for (const l of wrapAt(value, 4)) out.push(`    ${l}`);
+    }
+  };
+  const fix = (v) => {
+    for (const [i2, l] of wrapAt(v, wide ? 8 : 6).entries())
+      out.push(`${" ".repeat(wide ? 6 : 4)}${i2 === 0 ? "→ " : "  "}${l}`);
+  };
+  const stateWord = (st) => st === "verified" ? `${mark.ok} Verified` : st === "waiting" ? `${mark.wait} Waiting` : `${mark.none} Not seen yet`;
+  const stateMark = (st) => st === "verified" ? mark.ok : st === "waiting" ? mark.wait : mark.none;
+  const stateText = (st) => st === "verified" ? "Verified" : st === "waiting" ? "Waiting" : "Not seen yet";
+  const blank = () => out.push("");
+  const si = s.signedIn;
+  if (si.state === "in") {
+    const who = si.tokenType === "api" ? "API token, no person" : [
+      si.name && si.email ? `${si.name} (${si.email})` : si.name || si.email,
+      si.endsAt ? `ends ${day(si.endsAt)}` : ""
+    ].filter(Boolean).join(" · ");
+    row2(mark.ok, "Signed in", who || "yes");
+  } else {
+    row2(mark.warn, "Signed in", si.detail ?? "Not signed in");
+    if (si.fix) fix(si.fix);
+  }
+  const i = s.integration;
+  if (i.state === "denied") {
+    blank();
+    if (i.access) out.push(accessText(i.access, t).trimEnd());
+    else
+      row2(
+        mark.warn,
+        "Integration",
+        `Isn't available to ${i.reason === "api_token" ? "API" : "personal"} tokens.`
+      );
+  } else if (i.state === "unavailable") {
+    blank();
+    row2(mark.warn, "Integration", i.detail);
+  } else if (i.state === "ok") {
+    const collapsed = (label, st) => {
+      if (wide)
+        out.push(
+          `${painter.style(label.padEnd(NAME_W + 6), ["strong"])}${stateWord(st)}`
+        );
+      else {
+        heading(label);
+        out.push(`  ${stateWord(st)}`);
+      }
+    };
+    const featureRows = (pick) => {
+      const nameW = Math.max(
+        NAME_W - 2,
+        ...i.features.map((f) => cellWidth(f.label))
+      );
+      for (const f of i.features) {
+        if (wide) {
+          out.push(
+            `  ${painter.style(f.label.padEnd(NAME_W + 2), ["strong"])}  ${stateWord(pick(f))}`
+          );
+        } else {
+          const w = Math.min(nameW, 16);
+          const st = pick(f);
+          out.push(
+            `  ${stateMark(st)} ${painter.style(f.label.padEnd(w), ["strong"])} ${stateText(st)}`
+          );
+        }
+      }
+    };
+    if (i.features.length) {
+      if (!i.platforms.length) {
+        blank();
+        heading("Integration");
+        featureRows((f) => f.state);
+      }
+      for (const p of i.platforms) {
+        blank();
+        const mine = i.features.map((f) => f.platforms[p.id] ?? "unseen");
+        if (!mine.includes("verified")) {
+          const st = mine.includes("waiting") ? "waiting" : "unseen";
+          collapsed(`Integration on ${p.label}`, st);
+          continue;
+        }
+        heading(`Integration on ${p.label}`);
+        featureRows((f) => f.platforms[p.id] ?? "unseen");
+      }
+    }
+    if (i.ci) {
+      blank();
+      heading("CI");
+      out.push(
+        `  ${mark.ok} First release${i.ci.firstAt ? `, ${day(i.ci.firstAt)}` : ""}`
+      );
+    }
+    if (i.commerce === "off") {
+      blank();
+      const note2 = i.commerceNeedsLicensing ? "off, needs Licensing" : "off";
+      out.push(
+        wide ? `${painter.style("Commerce".padEnd(NAME_W + 6), ["strong"])}${text(note2, ["muted"])}` : `${painter.style("Commerce", ["strong"])}  ${text(note2, ["muted"])}`
+      );
+    }
+    if (i.todo.length) {
+      blank();
+      heading("Left to do");
+      for (const step of i.todo) {
+        row2(mark.fail, step.label, `${step.feature} needs it`);
+        const link = step.link.replace(/^https?:\/\//, "");
+        for (const [n, l] of breakLink(link, width - (wide ? 8 : 6)).entries())
+          out.push(
+            `${" ".repeat(wide ? 6 : 4)}${n === 0 ? "→ " : "  "}${text(l, ["muted"])}`
+          );
+      }
+    }
+  }
+  const todo = todoCount(i);
+  const warnings = sessionWarnings(s);
+  blank();
+  out.push(
+    painter.style(
+      `${todo} to do · ${warnings} warning${warnings === 1 ? "" : "s"}`,
+      [todo ? "danger" : warnings ? "warning" : "success"]
+    )
+  );
+  return `${out.join("\n")}
+`;
 }
 
 // src/publish.ts
@@ -26700,13 +27139,13 @@ var ZipReader = class _ZipReader {
         if (loc < 0 || tail.readUInt32LE(loc) !== ZIP64_LOCATOR_SIG)
           throw new ZipError(`${path32}: ZIP64 locator missing`);
         const recOffset = u64(tail, loc + 8);
-        const rec = Buffer.alloc(56);
-        await fh.read(rec, 0, 56, recOffset);
-        if (rec.readUInt32LE(0) !== ZIP64_EOCD_SIG)
+        const rec2 = Buffer.alloc(56);
+        await fh.read(rec2, 0, 56, recOffset);
+        if (rec2.readUInt32LE(0) !== ZIP64_EOCD_SIG)
           throw new ZipError(`${path32}: ZIP64 end record missing`);
-        count = u64(rec, 32);
-        cdSize = u64(rec, 40);
-        cdOffset = u64(rec, 48);
+        count = u64(rec2, 32);
+        cdSize = u64(rec2, 40);
+        cdOffset = u64(rec2, 48);
       }
       if (cdOffset + cdSize > size)
         throw new ZipError(`${path32}: the central directory runs past the end`);
@@ -34098,15 +34537,15 @@ var TomlDate = class _TomlDate extends Date {
     return this.#hasDate || this.#hasTime;
   }
   toISOString() {
-    let iso2 = super.toISOString();
+    let iso3 = super.toISOString();
     if (this.isDate())
-      return iso2.slice(0, 10);
+      return iso3.slice(0, 10);
     if (this.isTime())
-      return iso2.slice(11, 23);
+      return iso3.slice(11, 23);
     if (this.#offset === null)
-      return iso2.slice(0, -1);
+      return iso3.slice(0, -1);
     if (this.#offset === "Z" || this.#offset === "z")
-      return iso2;
+      return iso3;
     let offset = +this.#offset.slice(1, 3) * 60 + +this.#offset.slice(4, 6);
     offset = this.#offset[0] === "-" ? offset : -offset;
     let offsetDate = new Date(this.getTime() - offset * 6e4);
@@ -36345,7 +36784,7 @@ var WINDOW_WARN_DAYS = 14;
 var KEY_B64URL_RE2 = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
 var SHA256_RE5 = /^[0-9a-f]{64}$/;
 var sha256Hex3 = (s) => createHash10("sha256").update(s).digest("hex");
-var iso = (t) => new Date(t * 1e3).toISOString();
+var iso2 = (t) => new Date(t * 1e3).toISOString();
 async function generateContentKey(opts) {
   const { privateKey, publicKey } = generateKeyPairSync2("ed25519");
   const pem = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
@@ -36571,7 +37010,7 @@ ${validation.errors.map((e) => `  ${e.file}${e.path}: ${e.message}`).join("\n")}
       "Self-check: the delegation fails the record claims or the delegation body (plans/P4-19.md §2.2); nothing was signed."
     );
   const summary = `Delegation of ${opts.prefix} (seq ${seq}) for ${types.join(", ")} to key ${fingerprint.slice(0, 12)}…
-Window: ${iso(record.issuedAt)} to ${iso(record.expiresAt)} (${days} days)
+Window: ${iso2(record.issuedAt)} to ${iso2(record.expiresAt)} (${days} days)
 `;
   out.write(summary);
   if (opts.dryRun) {
@@ -36681,11 +37120,11 @@ async function contentSigner(o) {
     );
   if (o.now < d.issuedAt || o.now > d.expiresAt)
     throw new Error(
-      `The delegation's window (${iso(d.issuedAt)} to ${iso(d.expiresAt)}) does not hold now (${iso(o.now)}); renew it with a new key and delegation.`
+      `The delegation's window (${iso2(d.issuedAt)} to ${iso2(d.expiresAt)}) does not hold now (${iso2(o.now)}); renew it with a new key and delegation.`
     );
   if (d.expiresAt - o.now < WINDOW_WARN_DAYS * SECONDS_PER_DAY)
     o.warn(
-      `the delegation's window closes ${iso(d.expiresAt)}, within ${WINDOW_WARN_DAYS} days: rotate the content key (a new key and delegation) before then.`
+      `the delegation's window closes ${iso2(d.expiresAt)}, within ${WINDOW_WARN_DAYS} days: rotate the content key (a new key and delegation) before then.`
     );
   const kid = delegatedKid(o.key.delegation);
   const trust = trustOf(o.declared);
@@ -39510,10 +39949,10 @@ async function reportDistribution(opts) {
     );
     return { body, ok: false };
   }
-  const rec = body[opts.type] ?? {};
-  const target = `${u(rec.releaseId)}${rec.buildId ? `/${u(rec.buildId)}` : ""}`;
+  const rec2 = body[opts.type] ?? {};
+  const target = `${u(rec2.releaseId)}${rec2.buildId ? `/${u(rec2.buildId)}` : ""}`;
   opts.stdout.write(
-    `Reported ${opts.type} of ${target} on ${u(rec.outletId)}: ${u(rec.state)}
+    `Reported ${opts.type} of ${target} on ${u(rec2.outletId)}: ${u(rec2.state)}
 `
   );
   return { body, ok: true };
@@ -47066,7 +47505,7 @@ var HANDLERS = {
   validate: (p, rt) => cmdValidate(p, rt.cwd, rt.stdout, rt.term(rt.stdout)),
   completion: (p, rt) => cmdCompletion(p, rt.stdout, rt.stderr),
   distribution: (p, rt) => cmdDistribution(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
-  doctor: (p, rt) => cmdDoctor(p, rt.cwd, rt.stdout, rt.term(rt.stdout), rt.ci),
+  doctor: (p, rt) => cmdDoctor(p, rt.cwd, rt.stdout, rt.term(rt.stdout), rt.ci, adminIo(p, rt)),
   bundle: (p, rt) => withAdminCredential(
     adminIo(p, rt),
     "bundle",
@@ -47463,7 +47902,7 @@ async function cmdDistributionCi(parsed, stdout, stderr, ci) {
   });
   return 0;
 }
-async function cmdDoctor(parsed, cwd, stdout, term, ci) {
+async function cmdDoctor(parsed, cwd, stdout, term, ci, admin) {
   const u = (v) => untrusted(v, ci.env);
   const ctx = await resolveContext({
     cwd,
@@ -47471,7 +47910,10 @@ async function cmdDoctor(parsed, cwd, stdout, term, ci) {
     product: flagString(parsed, "product"),
     baseUrl: flagString(parsed, "base-url")
   });
-  if (flagBool(parsed, "json")) return doctorJson(ctx, cwd, stdout, ci);
+  const signal = AbortSignal.timeout(DOCTOR_TIMEOUT_MS);
+  const io = { ...admin, baseUrl: ctx.baseUrl.url, signal };
+  if (flagBool(parsed, "json"))
+    return doctorJson(ctx, cwd, stdout, ci, io, signal);
   const localCode = await validateText(cwd, cwd, stdout, term);
   if (!ctx.product) {
     stdout.write(
@@ -47482,7 +47924,8 @@ async function cmdDoctor(parsed, cwd, stdout, term, ci) {
   const remote = await checkRemote({
     baseUrl: ctx.baseUrl.url,
     product: ctx.product.slug,
-    fetchImpl: ci.fetchImpl
+    fetchImpl: ci.fetchImpl,
+    signal
   });
   if (remote.status !== void 0) {
     stdout.write(
@@ -47503,9 +47946,16 @@ Remote discovery: ok ${remote.url}
   );
   stdout.write(`Signing keys exposed: ${u(JSON.stringify(remote.signing))}
 `);
-  return localCode;
+  const session = await gatherSession({
+    io,
+    slug: ctx.product.slug,
+    signal
+  });
+  stdout.write(`
+${sessionText(session, term)}`);
+  return localCode === 0 && todoCount(session.integration) === 0 ? 0 : 1;
 }
-async function doctorJson(ctx, cwd, stdout, ci) {
+async function doctorJson(ctx, cwd, stdout, ci, io, signal) {
   let result = null;
   let problem;
   try {
@@ -47521,7 +47971,8 @@ async function doctorJson(ctx, cwd, stdout, ci) {
       const remote = await checkRemote({
         baseUrl: ctx.baseUrl.url,
         product: ctx.product.slug,
-        fetchImpl: ci.fetchImpl
+        fetchImpl: ci.fetchImpl,
+        signal
       });
       facts.push(...remote.facts);
       services = remote.services;
@@ -47534,7 +47985,12 @@ async function doctorJson(ctx, cwd, stdout, ci) {
       });
     }
   }
-  const exit = doctorOk(facts) ? 0 : 1;
+  const session = await gatherSession({
+    io,
+    slug: ctx.product?.slug ?? null,
+    signal
+  });
+  const exit = doctorOk(facts) && todoCount(session.integration) === 0 ? 0 : 1;
   stdout.write(
     `${untrustedJson({
       v: 1,
@@ -47546,7 +48002,8 @@ async function doctorJson(ctx, cwd, stdout, ci) {
       baseUrl: ctx.baseUrl.url,
       facts,
       services,
-      signing
+      signing,
+      ...sessionJson(session)
     }).replace(
       /[\u007f-\uffff]/g,
       (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`

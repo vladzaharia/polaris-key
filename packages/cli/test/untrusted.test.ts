@@ -10,6 +10,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runAction, writeOutputs } from "../src/action.js";
+import { memoryStore } from "../src/credentials.js";
 import { mask } from "../src/oidc.js";
 import {
   COMMAND_BREAK,
@@ -408,7 +409,12 @@ describe("pkey doctor against a hostile discovery document", () => {
       const io = capture();
       const code = await runPkey(
         ["doctor", "--base-url", BASE, "--product", SLUG],
-        { cwd, ...io, env: actions ? { ...ACTIONS } : {} },
+        {
+          cwd,
+          ...io,
+          env: actions ? { ...ACTIONS } : {},
+          credentialStore: async () => memoryStore(),
+        },
       );
       expect(code).toBe(0);
       expect(io.out()).toContain("Remote discovery: ok");
@@ -428,7 +434,12 @@ describe("pkey doctor against a hostile discovery document", () => {
     const io = capture();
     const code = await runPkey(
       ["doctor", "--base-url", BASE, "--product", SLUG],
-      { cwd, ...io, env: { ...ACTIONS } },
+      {
+        cwd,
+        ...io,
+        env: { ...ACTIONS },
+        credentialStore: async () => memoryStore(),
+      },
     );
     expect(code).toBe(1);
     expectInert(`${io.out()}${io.err()}`, true);

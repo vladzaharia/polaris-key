@@ -289,11 +289,20 @@ export const COMMANDS: readonly PkeyCommand[] = [
       },
       {
         text:
+          "With a product it also shows who is signed in (pkey login, or $PKEY_ADMIN_TOKEN), and the " +
+          "product's Integration from the console: per feature and platform Verified, Waiting or Not " +
+          "seen yet, then Left to do, each open console step with its link. Signed out, or refused " +
+          "access, is a warning, and signed out makes no console request. Open console steps exit 1.",
+      },
+      {
+        text:
           "--json prints one result line: " +
           '{"v":1,"command":"doctor","event":"result","ok","exit","product","baseUrl",' +
           '"facts","services","signing"}, each fact as {"id","state","detail"} with id manifest, ' +
-          "discovery, services or signing-keys and state ok, warn or todo. It exits 1 while any " +
-          "fact is todo.",
+          "discovery, services or signing-keys and state ok, warn or todo, plus " +
+          '"signedIn" (state in, out, ended or unreadable, and when it ends) and "integration" ' +
+          "(state ok, skipped, denied or unavailable; ok carries features, platforms, ci, commerce " +
+          "and todo). It exits 1 while any fact or console step is todo.",
       },
     ],
   },
