@@ -17,7 +17,7 @@ tags, the same order, under UI-KITS §4.1 and §4.3 (inset grouped lists, 64 px 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from ..core.copy import Copy
@@ -855,6 +855,18 @@ def _account(view: View, copy: Copy, data: RowData, args: Mapping[str, Any]) -> 
                 seat=seat,
             )
         )
+    # An account page that holds the devices and settings panes links to them: a Review button on a row.
+    review = copy("common.review")
+    if acct.get("devicesPage") is True and "account.devices" in keys:
+        link = RowAction("common.review", review, "open-devices", name=review + " " + copy("account.devices"))
+        existing = next((r for r in main if r.id == "devices"), None)
+        if existing is not None:
+            main[main.index(existing)] = replace(existing, actions=(link,))
+        else:
+            main.append(Row("devices", "account", title=copy("account.devices"), actions=(link,)))
+    if acct.get("settingsPage") is True:
+        link = RowAction("common.review", review, "open-settings", name=review + " " + copy("settings.title"))
+        main.append(Row("settings", "account", title=copy("settings.title"), actions=(link,)))
     updates: List[Row] = []
     auto = acct.get("autoUpdate")
     if isinstance(auto, bool) and "account.autoUpdate" in keys:
@@ -872,7 +884,27 @@ def _account(view: View, copy: Copy, data: RowData, args: Mapping[str, Any]) -> 
             )
         )
     channel = _text(acct.get("channel"))
-    if channel and "account.channel" in keys:
+    picker = _map(acct.get("channelPicker"))
+    if picker and channel and "account.channel" in keys:
+        # The ChannelPicker (UI-KITS §4.1): a choice, or locked with the reason when the outlet fixes the
+        # channel (decision 6; never locked without saying why).
+        options = tuple((str(o.get("value")), str(o.get("label", o.get("value")))) for o in _maps(picker.get("options")))
+        if picker.get("locked") is True or not options:
+            store = _text(picker.get("store"))
+            updates.append(
+                Row(
+                    "channel", "account", title=copy("channel.title"), control="value", value=bidi_isolate(channel),
+                    meta=copy("channel.locked", store=bidi_isolate(store)) if store else "",
+                    locked=True, lock_label=copy("a11y.locked"), name=copy("channel.title"),
+                )
+            )
+        else:
+            index = next((i for i, (v, _l) in enumerate(options) if v == channel), 0)
+            updates.append(
+                Row("channel", "setting", title=copy("channel.title"), control="choice", options=options, current=index,
+                    key="channel", name=copy("channel.title"))
+            )
+    elif channel and "account.channel" in keys:
         updates.append(Row("channel", "account", title=copy("account.channel"), control="value", value=bidi_isolate(channel)))
     version = _text(acct.get("version"))
     check = (
