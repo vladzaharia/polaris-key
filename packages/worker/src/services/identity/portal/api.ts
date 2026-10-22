@@ -1785,7 +1785,7 @@ type LinkSweep = boolean | { except: string };
  *     header is `403 csrf`, before the sweep and before any handler.
  *   - `sweep` (session rows): see `LinkSweep`.
  *
- * `methods` is not a gate: each handler keeps its own method policy, as the walk this table
+ * Rows carry no method list: each handler keeps its own method policy, as the walk this table
  * replaced left them. A path no row names is the `**` row: the session, the CSRF check and the
  * sweep, then the not-found.
  */
