@@ -225,10 +225,143 @@
               }
             },
             "capture": { "token": "$.token" }
+          },
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris-trust.jws",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/jose"
+              },
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktdHJ1c3QrandzIiwia2lkIjoicGtleS10ZXN0LXByb2QtMjAyNiJ9.eyJzY2hlbWFWZXJzaW9uIjoxLCJhdWQiOiJkamRsIiwiaXNzIjoia2V5LnBscnMuaW0iLCJpc3N1ZWRBdCI6MTcwMDAwMDAwOCwiZXhwaXJlc0F0IjoxNzAwMDAwMzA4LCJqd2tzVXJsIjoiaHR0cHM6Ly9rZXkucGxycy5pbS9kamRsLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImNhY2hlU2Vjb25kcyI6MzAwLCJrZXlzIjpbeyJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2IiwiYWxnIjoiRWREU0EiLCJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwicHVibGljS2V5Ijoia0RKRjZEZXVleG85MWhGWjlUQVByMlNtalVFdVRYZGlhNjdVb2dURXBrSSIsInN0YXR1cyI6ImFjdGl2ZSJ9XX0.n9oCbf0AWeOW_pP5-oG89O9YAyV0xeFXJ3v395fHoCYKPXGPpIQ6zNo66TaihUkszskLl_PAG7AwXvrXC3xGAg"
+            }
+          },
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/license/document",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/jwt",
+                "etag": "\"EUHc2jameb13pifnISQOnu4AJS9tuAtkwklaiPxD0nw\""
+              },
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktbGljZW5zZStqd3MiLCJraWQiOiJwa2V5LXRlc3QtcHJvZC0yMDI2In0.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6IlRSQU5TQ1JJUFRERVZJQ0UwMDAwMDAwMDAwMDAwMDAxIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDgsImV4cGlyZXNBdCI6MTcwMDAwMzYwOCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwOCwibGljZW5zZUlkIjoibGljX2hDcVlndzVSZndmaSIsInByb2ZpbGUiOnsibmFtZSI6IlRyYW5zY3JpcHQgUGxheWVyIiwiZmlyc3ROYW1lIjoiVHJhbnNjcmlwdCIsImVtYWlsIjoiIiwiYWN0aXZhdGVkQXQiOjE3MDAwMDAwMDV9LCJlbnRpdGxlbWVudHMiOnsibGljZW5zZS50aWVyIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTcwMDAwMDAwNX0sImxpY2Vuc2UudGllckxhYmVsIjp7InN0YXRlIjoiZW5mb3JjZWQiLCJ2YWx1ZSI6InBybyIsInVwZGF0ZWRBdCI6MTcwMDAwMDAwNX19fQ.AsSV-rb_y-FsU0akjz2xFLKjhwWaahZwDUHLSF4euaujFzVi5Ily1nxuA1XWoPNLqsWFLs70WAwrrBTYJtreAw"
+            }
+          },
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/config/document",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/jwt",
+                "etag": "\"3QVTeOzeGWSyhYLqdFrdNPqQpi31v1R23qnumPZC5FQ\""
+              },
+              "body": "eyJhbGciOiJFZERTQSIsInR5cCI6InBrZXktY29uZmlnK2p3cyIsImtpZCI6InBrZXktdGVzdC1wcm9kLTIwMjYifQ.eyJpc3MiOiJrZXkucGxycy5pbSIsImF1ZCI6ImRqZGwiLCJkZXZpY2VJZCI6IlRSQU5TQ1JJUFRERVZJQ0UwMDAwMDAwMDAwMDAwMDAxIiwiaXNzdWVkQXQiOjE3MDAwMDAwMDgsImV4cGlyZXNBdCI6MTcwMDAwMzYwOCwiZ3JhY2VVbnRpbCI6MTcwMjU5MjAwOCwic2NoZW1hVmVyc2lvbiI6MSwiY29uZmlnIjp7fSwic2VjcmV0cyI6e319.2-wex3RqbQ_om9BLf529HGx49Z2SCQrhtsS8H72H9_4j-2TAk-oSuNHjr6xHjHOnbStWLywwciD0KonjzS79CQ"
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/devices/report",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "config": {}, "entitlements": {} },
+                "match": "shape",
+                "allowedKeys": [
+                  "os",
+                  "hardware",
+                  "runtime",
+                  "locale",
+                  "timezone",
+                  "probes",
+                  "sdk",
+                  "sdkVersion",
+                  "appVersion",
+                  "platform",
+                  "arch",
+                  "gate",
+                  "config",
+                  "entitlements",
+                  "timestamp",
+                  "engine",
+                  "outlet",
+                  "content",
+                  "updates",
+                  "caps",
+                  "packInstalls"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "ok": true }
+            }
           }
         ]
       },
-      "expect": { "result": "ready", "tokenHeld": true }
+      "expect": { "result": "ready", "tokenHeld": true, "licenseStatus": "ok" }
     }
   ]
 }

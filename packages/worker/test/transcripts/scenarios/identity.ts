@@ -667,8 +667,19 @@ export const devicecodeMintRetry: Scenario = {
           const body = (await res.json()) as { status: string; token: string };
           expect(body.status).toBe("ready");
           expect(body.token.startsWith("pkeyt_")).toBe(true);
+          await trust(s, PRODUCT);
+          expect((await document(s, PRODUCT, "license")).status).toBe(200);
+          expect((await document(s, PRODUCT, "config")).status).toBe(200);
+          expect(
+            (
+              await syncReport(s, PRODUCT, {
+                config: {},
+                entitlements: {},
+              })
+            ).status,
+          ).toBe(200);
         },
-        { result: "ready", tokenHeld: true },
+        { result: "ready", tokenHeld: true, licenseStatus: "ok" },
       );
       world.db = realDb;
       return r.transcript();
