@@ -67,7 +67,7 @@ public struct PolarisKeyPreview: View {
         case .activate:
             ActivateView(
                 screen: model.activate, text: $model.keyText, onSubmit: {},
-                onReplaceDevice: {}, onCancel: {})
+                onReplaceDevice: {}, onCancel: {}, onDone: {})
         case .deviceLimit:
             DeviceLimitView(
                 screen: model.deviceLimit, devices: model.inputs.devices ?? [],
@@ -94,7 +94,7 @@ public struct PolarisKeyPreview: View {
                     PreviewHostApp()
                     UpdatePromptView(
                         screen: screen, fraction: model.inputs.update?.progress?.fraction,
-                        onUpdate: {}, onLater: {})
+                        details: model.inputs.update, onUpdate: {}, onLater: {})
                 }
             }
         case .updateProgress:

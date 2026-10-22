@@ -147,6 +147,94 @@ final class KitRulesTests: XCTestCase {
         XCTAssertEqual(BootSkeletonModel.bars, [1, 0.7])
     }
 
+    // MARK: Spec conformance (UI-KITS §4.3, DL4, DL5)
+
+    @MainActor
+    func testAStatusScreenNamesTheProductOnceUnderItsIcon() {
+        // DL5: "License expired" does not name the product, so the name sits under the icon;
+        // "Update to keep using {product}" does, so it does not repeat.
+        XCTAssertFalse(StatusScreenView.titleNamesProduct(CopyLine("core.codes.license-expired.title")))
+        XCTAssertFalse(StatusScreenView.titleNamesProduct(nil))
+        XCTAssertTrue(StatusScreenView.titleNamesProduct(CopyLine("update.mandatoryTitle")))
+    }
+
+    @MainActor
+    func testTheDeviceCodeIsFortyPointsAtHalfWeightWithWideTracking() {
+        XCTAssertEqual(CodeDisplay.size, 40)
+        XCTAssertEqual(CodeDisplay.tracking, 0.12)
+    }
+
+    func testTheHandoffCodeViewKeepsItsCheckLine() throws {
+        // "Check the code there matches this one" is in the catalog and drawn with the code.
+        XCTAssertFalse(KitCopy.bundled.argumentNames("signin.handoff.check").contains("x"))
+        let source = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent("Sources/PolarisKeyUI/Kit/Screens/SignInScreens.swift"),
+            encoding: .utf8)
+        XCTAssertTrue(source.contains("CopyLine(\"signin.handoff.check\")"))
+    }
+
+    @MainActor
+    func testActivateDoneHasItsOnePrimaryWhenTheHostGivesOne() {
+        XCTAssertEqual(ActivateActions.doneActionKey(onDone: true), "signin.done.start")
+        XCTAssertNil(ActivateActions.doneActionKey(onDone: false))
+    }
+
+    @MainActor
+    func testALicenseRowDrawsItsSeatMeterMutedWhenFull() {
+        let free = KitLicenseChoice(
+            id: "a", tierName: "Pro", origin: "key", seats: KitSeats(used: 1, limit: 3))
+        let full = KitLicenseChoice(
+            id: "b", tierName: "Edu", origin: "developer", seats: KitSeats(used: 3, limit: 3),
+            state: "full")
+        let hidden = KitLicenseChoice(id: "c", tierName: "Pro", origin: "key")
+        XCTAssertEqual(LicenseChoiceView.meter(for: free)?.used, 1)
+        XCTAssertEqual(LicenseChoiceView.meter(for: free)?.muted, false)
+        XCTAssertEqual(LicenseChoiceView.meter(for: full)?.muted, true)
+        XCTAssertNil(LicenseChoiceView.meter(for: hidden))
+    }
+
+    @MainActor
+    func testSettingsRowsGetTypedControlsAndGroups() {
+        let rows = PolarisKeyPreviewState.config
+        let byKey = Dictionary(uniqueKeysWithValues: rows.map { ($0.key, $0) })
+        XCTAssertEqual(SettingsSection.control(byKey["ui.compact"]!), .toggle)
+        XCTAssertEqual(SettingsSection.control(byKey["audio.volume"]!), .slider)
+        XCTAssertEqual(SettingsSection.control(byKey["render.quality"]!), .text)
+        let open = KitConfigRow(key: "x.n", type: "number", source: "local", value: .number(3))
+        XCTAssertEqual(SettingsSection.control(open), .stepper)
+        let locked = KitConfigRow(
+            key: "net.lockdown", type: "boolean", source: "enforced", locked: true, org: "Fennick",
+            value: .bool(true))
+        XCTAssertEqual(SettingsSection.control(locked), .locked)
+        XCTAssertEqual(SettingsSection.group(locked), .managed)
+        XCTAssertEqual(SettingsSection.group(byKey["ui.compact"]!), .developer)
+        XCTAssertEqual(SettingsSection.group(byKey["audio.volume"]!), .yours)
+    }
+
+    @MainActor
+    func testTheUpdatePromptShowsAtMostThreeNotes() {
+        XCTAssertEqual(UpdatePromptView.noteLines(["a", "", "b", "c", "d"]), ["a", "b", "c"])
+        XCTAssertEqual(UpdatePromptView.noteLines(nil), [])
+    }
+
+    func testTimeLeftIsWordsNotAClock() {
+        let twenty = KitFormat.timeLeft(20)
+        XCTAssertTrue(twenty.contains("20") && twenty.lowercased().contains("sec"), twenty)
+        let four = KitFormat.timeLeft(252)
+        XCTAssertTrue(four.contains("4") && !four.contains(":"), four)
+    }
+
+    @MainActor
+    func testOnlyAnErrorToastStays() {
+        XCTAssertTrue(ToastView.persists(.danger))
+        for tone in [StatusPill.Tone.neutral, .success, .warning] {
+            XCTAssertFalse(ToastView.persists(tone))
+        }
+        XCTAssertEqual(ToastView.lifetime, 6)
+    }
+
     // MARK: Baselines
 
     static var snapshots: URL {

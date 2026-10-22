@@ -110,6 +110,17 @@ public enum KitFormat {
             ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
     }
 
+    /// The time left in words, "20 seconds" or "4 minutes": what "About {time} left" reads after
+    /// (§4.3). One unit, rounded up, in the live locale.
+    public static func timeLeft(_ seconds: Double) -> String {
+        let formatter = DateComponentsFormatter()
+        formatter.unitsStyle = .full
+        formatter.maximumUnitCount = 1
+        formatter.allowedUnits = seconds >= 3600 ? [.hour] : seconds >= 60 ? [.minute] : [.second]
+        formatter.zeroFormattingBehavior = .dropAll
+        return formatter.string(from: max(1, seconds.rounded(.up))) ?? duration(seconds)
+    }
+
     /// A fraction as a whole percentage.
     public static func percent(_ fraction: Double) -> String {
         "\(Int((max(0, min(1, fraction)) * 100).rounded()))%"

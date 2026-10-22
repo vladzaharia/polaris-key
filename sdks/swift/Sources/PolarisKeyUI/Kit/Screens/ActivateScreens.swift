@@ -14,18 +14,23 @@ public struct ActivateView: View {
     var onSubmit: () -> Void
     var onReplaceDevice: (() -> Void)?
     var onCancel: (() -> Void)?
+    var onDone: (() -> Void)?
 
     @AccessibilityFocusState private var calloutFocused: Bool
 
+    /// `onDone` carries the Done step's one action (Start using <Product>, DL4): a lone action is
+    /// always the primary. The drop-in gate leaves it nil because the app opens on success.
     public init(
         screen: KitScreen<ActivateState>, text: Binding<String>, onSubmit: @escaping () -> Void,
-        onReplaceDevice: (() -> Void)? = nil, onCancel: (() -> Void)? = nil
+        onReplaceDevice: (() -> Void)? = nil, onCancel: (() -> Void)? = nil,
+        onDone: (() -> Void)? = nil
     ) {
         self.screen = screen
         self._text = text
         self.onSubmit = onSubmit
         self.onReplaceDevice = onReplaceDevice
         self.onCancel = onCancel
+        self.onDone = onDone
     }
 
     public var body: some View {
@@ -52,7 +57,7 @@ public struct ActivateView: View {
         } actions: {
             ActivateActions(
                 screen: screen, onSubmit: onSubmit, onReplaceDevice: onReplaceDevice,
-                onCancel: onCancel)
+                onCancel: onCancel, onDone: onDone)
         }
     }
 }
@@ -153,6 +158,10 @@ struct ActivateActions: View {
     var onSubmit: () -> Void
     var onReplaceDevice: (() -> Void)?
     var onCancel: (() -> Void)?
+    var onDone: (() -> Void)?
+
+    /// The Done step's lone action, when the host gave one (DL4: a lone action is the primary).
+    static func doneActionKey(onDone: Bool) -> String? { onDone ? "signin.done.start" : nil }
 
     var body: some View {
         KitActionStack {
@@ -169,7 +178,16 @@ struct ActivateActions: View {
                         .keyboardShortcut(.defaultAction)
                 }
             case .done:
-                EmptyView()
+                if Self.doneActionKey(onDone: onDone != nil) != nil, let onDone {
+                    kitStyle { style in
+                        KitButton(
+                            line: CopyLine(
+                                "signin.done.start", ["product": .text(style.identity.name)]),
+                            kind: .primary, action: onDone
+                        )
+                        .keyboardShortcut(.defaultAction)
+                    }
+                }
             default:
                 KitButton(
                     line: CopyLine("activate.submit"), kind: .primary, busy: screen.state == .busy,

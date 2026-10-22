@@ -9,16 +9,21 @@ struct KitBanner<Leading: View, Lines: View, Actions: View>: View {
     @ViewBuilder let leading: () -> Leading
     @ViewBuilder let text: () -> Lines
     @ViewBuilder let actions: () -> Actions
+    /// Always the stacked form: a banner that carries a body (notes, a link) is a card, with its
+    /// actions under it.
+    var stacked = false
 
     var body: some View {
         kitStyle { style in
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: style.space(.sm)) {
-                    leading()
-                    textBlock(style)
-                        .layoutPriority(1)
-                    HStack(spacing: style.space(.xs)) { actions() }
-                        .fixedSize()
+                if !stacked {
+                    HStack(spacing: style.space(.sm)) {
+                        leading()
+                        textBlock(style)
+                            .layoutPriority(1)
+                        HStack(spacing: style.space(.xs)) { actions() }
+                            .fixedSize()
+                    }
                 }
                 VStack(alignment: .leading, spacing: style.space(.sm)) {
                     HStack(alignment: .top, spacing: style.space(.sm)) {
