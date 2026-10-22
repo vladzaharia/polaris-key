@@ -6,6 +6,9 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Kit screens match the shared states.** Version too new keeps Try again as its one action. The offline-activation screen is a numbered two-step form (send the request, then load the response) in every state but done, with the request QR where it fits, labelled for screen readers, and no product line; a rejected response adds its error, and done has a title and a Done button. An expired license offers Use another license, and Renew only when you supply a renew handler or URL; it never offers Try again or Reconnect. The TV QR on the device-limit screen is labelled as the device management page. Compose draws the numbered steps and the request QR.
+  Migrating: pass an https `offers.url` in the kit's offers input to get Buy in your browser on the paywall, and a renew handler or URL to get Renew.
+
 - **Client backend (`core.backend`, SP-59).** `client.backend.install(OkHttpClient.Builder())` sends
   `X-PKey-License` and `X-PKey-Device` to the app's own backend, only to `backendOrigins`. The
   network half checks every hop's origin before it is sent (OkHttp keeps custom headers across a
