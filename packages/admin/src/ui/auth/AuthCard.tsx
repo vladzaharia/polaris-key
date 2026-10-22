@@ -343,16 +343,19 @@ const PANE_TEXT = "passport:px-6";
 
 function Where({
   where,
+  centered = false,
 }: {
   where:
     | { glyph: "globe" | "device" | "phone" | "tv"; text: string }
     | null
     | undefined;
+  /** No art: the pane centres its identity block. */
+  centered?: boolean;
 }): React.ReactElement | null {
   if (!where) return null;
   const Glyph = WHERE_GLYPH[where.glyph];
   return (
-    <p className={WHERE}>
+    <p className={cn(WHERE, centered && "passport:justify-center")}>
       <Glyph aria-hidden className="mt-0.5 size-4 shrink-0" />
       <span className="min-w-0 [overflow-wrap:anywhere]">{where.text}</span>
     </p>
@@ -379,9 +382,10 @@ export function HeaderSkeleton(): React.ReactElement {
 const OUTER = "passport:flex passport:h-full passport:flex-col";
 /**
  * Without art the identity block sits in the middle of the pane, so it never has a void under it
- * (M4: icon, request, who and where, between the top and the receipt).
+ * (M4: icon, request, who and where, between the top and the receipt), centred, the icon large:
+ * the one no-art rule, as the Worker's pages draw it (`ac-noart`).
  */
-const OUTER_NO_ART = `${OUTER} passport:justify-center passport:py-6`;
+const OUTER_NO_ART = `${OUTER} passport:items-center passport:justify-center passport:py-6 passport:text-center`;
 
 export function CardHeader(props: CardHeaderProps): React.ReactElement {
   const hasArt = Boolean(props.art);
@@ -407,7 +411,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
                 {t("signin.header.contextLine")}
               </p>
             )}
-            <Where where={where} />
+            <Where where={where} centered={!hasArt} />
           </div>
         </div>
       </div>
@@ -447,7 +451,7 @@ export function CardHeader(props: CardHeaderProps): React.ReactElement {
                 {developer}
               </p>
             ) : null}
-            <Where where={where} />
+            <Where where={where} centered={!hasArt} />
           </div>
         </div>
         {code ? (
