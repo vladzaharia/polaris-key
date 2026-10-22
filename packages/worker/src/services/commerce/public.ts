@@ -82,7 +82,23 @@ export interface StorefrontState {
   state: "not_set_up" | "ready";
   /** A code, never prose: `no_settings` or `no_credential`; `null` when ready. */
   reason: "no_settings" | "no_credential" | null;
+  /**
+   * The identity in force (A-28.7): the field it fills (`bundleId`, `packageName`, `appId`), its
+   * value and where it comes from. `mismatch`: a typed value differs from the assigned app.
+   */
+  identity: {
+    field: "bundleId" | "packageName" | "appId";
+    value: string | null;
+    source: "typed" | "assigned" | null;
+    mismatch: boolean;
+  };
 }
+
+const IDENTITY_FIELD = {
+  "app-store": "bundleId",
+  play: "packageName",
+  steam: "appId",
+} as const;
 
 /**
  * Each store's commerce facet for the channels read (A-20.4): `ready` when the store's settings
@@ -105,6 +121,15 @@ export async function storefrontStates(
   return (Object.keys(STORE_CHANNEL) as (keyof typeof STORE_CHANNEL)[]).map(
     (store) => ({
       channel: STORE_CHANNEL[store],
+      identity: {
+        field: IDENTITY_FIELD[store],
+        value: effective.identity[store].value,
+        source: effective.identity[store].source,
+        mismatch:
+          effective.identity[store].mismatch &&
+          effective.identity[store].value !== null &&
+          effective.identity[store].assigned !== null,
+      },
       state: setup[store].configured ? "ready" : "not_set_up",
       reason: setup[store].configured
         ? null

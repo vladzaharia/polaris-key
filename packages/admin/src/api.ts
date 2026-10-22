@@ -1480,7 +1480,9 @@ export type ChannelAttention =
       reasons: ("format" | "arch" | "unknown-format")[];
     }
   | { code: "credential_expiring" }
-  | { code: "credential_missing" };
+  | { code: "credential_missing" }
+  /** An outlet's declared app differs from the assigned one (A-28.7); names the field, no value. */
+  | { code: "identity_mismatch"; field: string };
 
 export interface ProductPlatformFact {
   platform: string;
@@ -1490,8 +1492,16 @@ export interface ProductPlatformFact {
 }
 
 export interface ChannelCommerceFacet {
-  state: "not_set_up" | "ready";
+  state: "not_set_up" | "ready" | "attention";
   reason: "no_settings" | "no_credential" | "commerce_off" | null;
+  /** The store's typed app differs from the assigned one (A-28.7). */
+  attention: { code: "identity_mismatch" }[];
+}
+
+/** The app a store channel's purchases belong to; `null` without the commerce area (A-28.7). */
+export interface ChannelIdentity {
+  fields: Record<string, string>;
+  source: "typed" | "assigned" | null;
 }
 
 /** One channel of `GET …/distribution/channels`. Credential facts are booleans and codes only. */
@@ -1508,6 +1518,8 @@ export interface ChannelRow {
     platforms: { platform: string; arches: string[] }[];
   };
   commerce: ChannelCommerceFacet | null;
+  /** Store channels only, and only for a session that sees the commerce area. */
+  identity: ChannelIdentity | null;
 }
 
 export interface ChannelsView {

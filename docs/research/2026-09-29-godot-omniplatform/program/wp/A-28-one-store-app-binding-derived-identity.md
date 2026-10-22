@@ -65,10 +65,10 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] No store identity is typed twice
-- [ ] A pin mismatch raises attention instead of failing silently
-- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/channels/*`, rewritten in place (one page per channel; the matrix section at A-21); `reference/channels`.
-- [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
+- [x] No store identity is typed twice
+- [x] A pin mismatch raises attention instead of failing silently
+- [x] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/channels/*`, rewritten in place (one page per channel; the matrix section at A-21); `reference/channels`.
+- [x] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 
