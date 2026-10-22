@@ -121,7 +121,8 @@ final class KitRenderTests: XCTestCase {
         "Settings.error", "Devices.renaming",
         "Settings.list", "Settings.locked", "Devices.list", "Devices.empty", "Devices.error",
         "Devices.browser-mode", "Paywall.offers", "Paywall.not-available",
-        "EntitlementGate.not-entitled",
+        "EntitlementGate.not-entitled", "Boot.progress", "Boot.consent", "Boot.fetching",
+        "Boot.offline", "Boot.blocked", "Boot.declined", "Boot.rolled-back", "Boot.error",
     ]
 
     /// The states rendered again in a launch pack, for the catalog's i18n proof.
