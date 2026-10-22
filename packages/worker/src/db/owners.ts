@@ -71,7 +71,7 @@ export const TABLE_OWNERS: Readonly<Record<string, readonly string[]>> = {
     "device_store_identities",
     "holder_versions",
     "entitlement_events",
-    // ST-28 (plans/ST-28.md §10): operator-owned console role bindings; the migration is ST-31's.
+    // ST-28 (plans/ST-28.md §10): operator-owned console role bindings (migration 0129_a, ST-31); store: core/rbac/bindings.ts.
     "console_role_bindings",
   ],
   license: [
