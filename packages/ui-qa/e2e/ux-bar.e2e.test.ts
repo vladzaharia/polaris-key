@@ -100,6 +100,10 @@ describe("the console and portal UX bar (UK-63)", () => {
       `<div class="card" style="background-image: linear-gradient(rgb(16 18 24), transparent)">Fade</div>`,
     );
     expect(fade).toEqual([]);
+    const arc = await findings(
+      `<span style="display:inline-block;inline-size:16px;block-size:16px;background:conic-gradient(rgb(250 199 0) 0 75%, transparent 0);mask:radial-gradient(farthest-side, transparent 60%, #000 62%)"></span>`,
+    );
+    expect(arc).toEqual([]);
   });
 
   it("allows a blur when transparency is not reduced", async () => {

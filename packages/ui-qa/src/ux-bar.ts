@@ -164,6 +164,10 @@ export function uxBarInPage(opts: { scopeSelector: string }): string[] {
       if (
         /gradient\(/.test(cs.backgroundImage) &&
         !el.closest(skeleton) &&
+        // A masked gradient is a shape (the spinner's arc), not a wash.
+        (cs.maskImage ||
+          cs.getPropertyValue("-webkit-mask-image") ||
+          "none") === "none" &&
         !el.closest("[data-ui-allow~=ux-gradient]")
       ) {
         // A wash is a gradient with a coloured stop, or two different opaque stops. A fade to

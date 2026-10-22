@@ -84,9 +84,16 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 
 ## Acceptance criteria
 
-- [ ] The lint and e2e rows fail on a seeded violation of each rule and pass on the shipped screens.
-- [ ] No debt ledger entry is added to get green.
+- [x] The lint and e2e rows fail on a seeded violation of each rule and pass on the shipped screens. (`packages/ui-qa/e2e/ux-bar.e2e.test.ts` seeds every rule; `portalUxBar.e2e.test.ts` and `layout.e2e.test.ts` run them over the built screens; `PK_UXBAR_NO_DEBT=1` is the wiring's negative control.)
+- [x] No debt ledger entry is added to get green. (Deviation, on the lead's instruction: one `UX_BAR_DEBT` entry, `ux-name-over-art` on `discover-added`, owner PX-16, in `packages/admin/e2e/uxBar.ts`. The console holds none.)
 - [ ] The green gate passes (AGENTS.md), including any drift gate this work package touches.
+
+## Built (code is the fact)
+
+- The in-page lint already ran accent-as-status, state-accent, section-index, button-glow, font-weight-700 and the touch floor over the console and portal, and the e2e already held 400 % reflow, forced colours, `prefers-contrast: more`, labelled scroll regions and 24/44 px targets. UK-63 adds what was missing, in `packages/ui-qa/src/ux-bar.ts` (`uxBarFindings`): `ux-glow`, `ux-gradient`, `ux-rim-neutral`, `ux-eyebrow-breadcrumb`, `ux-tagline`, `ux-name-over-art`, `ux-weight`, `ux-focus-colour`, `ux-transparency`.
+- Rows added: `portalUxBar.e2e.test.ts` (every shipped state, 1920, 390 phone, 640 x 360, reduced transparency, both themes) and the console's `landscape-small` and `reduced-transparency` viewports in `layout.e2e.test.ts`.
+- `tools/ux-reviews.test.ts` is the ledger guard; `NO_REVIEW_DEBT` holds the six packages closed before it.
+- The reviewer bar gained the same rows in `.claude/agents/pkey-ux-reviewer.md`.
 
 ## Verify
 
