@@ -561,6 +561,8 @@
     "cli.option.help": "Aide sur une commande",
     "cli.option.yes": "Ne pas demander avant la déconnexion",
     "cli.option.deviceCode": "Se connecter avec un code au lieu du navigateur local",
+    "cli.option.keyFile": "Lire la clé de licence depuis un fichier",
+    "cli.option.keyStdin": "Lire la clé de licence depuis l’entrée standard",
     "cli.option.allowWorkflowCommands": "Afficher la valeur même si un journal de CI exécuterait l’une de ses lignes comme une commande",
     "cli.keys.activate": "Entrée activer · Échap annuler",
     "cli.keys.code": "c copier le code · Échap annuler",

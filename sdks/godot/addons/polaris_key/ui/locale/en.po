@@ -3407,6 +3407,16 @@ msgstr "Don't ask before signing out"
 msgid "cli.option.deviceCode"
 msgstr "Sign in with a code instead of this computer's browser"
 
+#. Read the license key from a file
+#. Terminal help: what the --key-file flag of the activate command does.
+msgid "cli.option.keyFile"
+msgstr "Read the license key from a file"
+
+#. Read the license key from standard input
+#. Terminal help: what the --key-stdin flag of the activate command does.
+msgid "cli.option.keyStdin"
+msgstr "Read the license key from standard input"
+
 #. Print the value even if a CI log would run a line of it as a command
 #. Terminal help: what the --allow-workflow-commands flag of the secret and mint commands does. A CI log is a build server's job log (GitHub Actions, Azure Pipelines); a command is an instruction the build server reads from that log.
 msgid "cli.option.allowWorkflowCommands"

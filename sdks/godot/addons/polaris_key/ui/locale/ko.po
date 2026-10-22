@@ -3397,6 +3397,16 @@ msgstr "로그아웃 전에 확인하지 않음"
 msgid "cli.option.deviceCode"
 msgstr "이 컴퓨터의 브라우저 대신 코드로 로그인"
 
+#. Read the license key from a file
+#. Terminal help: what the --key-file flag of the activate command does.
+msgid "cli.option.keyFile"
+msgstr "라이선스 키를 파일에서 읽기"
+
+#. Read the license key from standard input
+#. Terminal help: what the --key-stdin flag of the activate command does.
+msgid "cli.option.keyStdin"
+msgstr "라이선스 키를 표준 입력에서 읽기"
+
 #. Print the value even if a CI log would run a line of it as a command
 #. Terminal help: what the --allow-workflow-commands flag of the secret and mint commands does. A CI log is a build server's job log (GitHub Actions, Azure Pipelines); a command is an instruction the build server reads from that log.
 msgid "cli.option.allowWorkflowCommands"

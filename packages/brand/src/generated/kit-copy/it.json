@@ -554,6 +554,8 @@
   "cli.option.help": "Aiuto per un comando",
   "cli.option.yes": "Non chiedere conferma prima di uscire",
   "cli.option.deviceCode": "Accedi con un codice invece del browser locale",
+  "cli.option.keyFile": "Leggi la chiave di licenza da un file",
+  "cli.option.keyStdin": "Leggi la chiave di licenza dallo standard input",
   "cli.option.allowWorkflowCommands": "Mostra il valore anche se un log di CI eseguirebbe una sua riga come comando",
   "cli.keys.activate": "Invio attiva · Esc annulla",
   "cli.keys.code": "c copia il codice · Esc annulla",

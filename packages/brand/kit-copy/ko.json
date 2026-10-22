@@ -561,6 +561,8 @@
     "cli.option.help": "명령 도움말",
     "cli.option.yes": "로그아웃 전에 확인하지 않음",
     "cli.option.deviceCode": "이 컴퓨터의 브라우저 대신 코드로 로그인",
+    "cli.option.keyFile": "라이선스 키를 파일에서 읽기",
+    "cli.option.keyStdin": "라이선스 키를 표준 입력에서 읽기",
     "cli.option.allowWorkflowCommands": "CI 로그가 값의 한 줄을 명령으로 실행하더라도 값을 출력",
     "cli.keys.activate": "Enter 활성화 · Esc 취소",
     "cli.keys.code": "c 코드 복사 · Esc 취소",

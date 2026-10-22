@@ -45,6 +45,8 @@
   "cli.option.help": "Help for a command",
   "cli.option.yes": "Don't ask before signing out",
   "cli.option.deviceCode": "Sign in with a code instead of this computer's browser",
+  "cli.option.keyFile": "Read the license key from a file",
+  "cli.option.keyStdin": "Read the license key from standard input",
   "cli.option.allowWorkflowCommands": "Print the value even if a CI log would run a line of it as a command",
   "cli.keys.activate": "Enter activate · Esc cancel",
   "cli.keys.code": "c copy the code · Esc cancel",

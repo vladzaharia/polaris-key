@@ -198,6 +198,8 @@ OPTION_COPY: Mapping[str, str] = {
     "ascii": "cli.option.ascii",
     "yes": "cli.option.yes",
     "device-code": "cli.option.deviceCode",
+    "key-file": "cli.option.keyFile",
+    "key-stdin": "cli.option.keyStdin",
     "reveal": "cli.option.reveal",
     "allow-workflow-commands": "cli.option.allowWorkflowCommands",
 }
