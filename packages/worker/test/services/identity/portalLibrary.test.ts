@@ -50,9 +50,12 @@ import {
   MEDIA_SHORT,
   handlePortalMedia,
   mediaSourceUrl,
+  mediaUrlFor,
   mediaVersion,
+  screenshotUrlsFor,
   sniffImageType,
 } from "../../../src/services/identity/portal/media.js";
+import { hostedAssetSource } from "../../../src/core/assets/hostedImages.js";
 import { handlePortalApi, portalHooksFor } from "../../portalHarness.js";
 
 const PORTAL_SECRET = "test-portal-session-secret";
@@ -836,5 +839,172 @@ describe("GET /media/<product>/<asset> (the SSRF-safe proxy)", () => {
         "application/json",
       );
     }
+  });
+});
+
+/** A hosted-asset row as the manifest pull leaves it (A-27.2: only `source_kind`/`source_ref` matter here). */
+async function hostedSource(
+  db: Db,
+  slug: string,
+  slot: string,
+  kind: string,
+  ref: string | null,
+): Promise<void> {
+  await db.run(
+    `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, source_ref, status, modified_at)
+     VALUES (?, ?, '', 'manifest', ?, ?, 'pending', ?)`,
+    slug,
+    slot,
+    kind,
+    ref,
+    NOW,
+  );
+}
+
+describe("the proxy's source is the slot's hosted_assets.source_ref (A-27.2)", () => {
+  const OTHER =
+    "https://raw.githubusercontent.com/fennick/tidewater/main/other.png";
+
+  it("a url row is the source, and the handed-out URL is the one the blob gives", async () => {
+    const db = makeTestDb();
+    await productWithListing(db, "tidewater", {
+      icon: { kind: "url", src: ICON },
+    });
+    const before = await mediaUrlFor(db, "tidewater", "icon", {
+      icon: { kind: "url", src: ICON },
+    });
+    await hostedSource(db, "tidewater", "listing.icon", "url", ICON);
+    const listing = { icon: { kind: "url", src: ICON } };
+    expect(await mediaUrlFor(db, "tidewater", "icon", listing)).toBe(before);
+    expect(before).toBe(
+      `/media/tidewater/icon?v=${await mediaVersion(ICON)}`,
+    );
+    const up = upstream({ [ICON]: image(PNG) });
+    expect(
+      (await media(db, "/media/tidewater/icon", up.fetchImpl)).status,
+    ).toBe(200);
+    expect(up.calls.map((c) => c.url)).toEqual([ICON]);
+  });
+
+  it("the row wins over the blob when both name a URL", async () => {
+    const db = makeTestDb();
+    await productWithListing(db, "tidewater", {
+      icon: { kind: "url", src: ICON },
+    });
+    await hostedSource(db, "tidewater", "listing.icon", "url", OTHER);
+    const up = upstream({ [OTHER]: image(PNG) });
+    expect(
+      (await media(db, "/media/tidewater/icon", up.fetchImpl)).status,
+    ).toBe(200);
+    expect(up.calls.map((c) => c.url)).toEqual([OTHER]);
+  });
+
+  it("a slot with no row falls back to the listing art", async () => {
+    const db = makeTestDb();
+    await productWithListing(db, "tidewater", {
+      icon: { kind: "url", src: ICON },
+    });
+    await hostedSource(db, "tidewater", "listing.header", "url", OTHER);
+    const up = upstream({ [ICON]: image(PNG) });
+    expect(
+      (await media(db, "/media/tidewater/icon", up.fetchImpl)).status,
+    ).toBe(200);
+    expect(up.calls.map((c) => c.url)).toEqual([ICON]);
+  });
+
+  it("a repo row is never fetched, and an upload row is never a source", async () => {
+    const db = makeTestDb();
+    await productWithListing(db, "tidewater", null);
+    await hostedSource(db, "tidewater", "listing.icon", "repo", "art/i.png@abc");
+    await hostedSource(db, "tidewater", "listing.header", "upload", OTHER);
+    const up = upstream({ [OTHER]: image(PNG) });
+    for (const asset of ["icon", "header"]) {
+      const res = await media(db, `/media/tidewater/${asset}`, up.fetchImpl);
+      expect(res.status, asset).toBe(404);
+    }
+    expect(up.calls).toEqual([]);
+    expect(await mediaUrlFor(db, "tidewater", "icon", null)).toBeNull();
+    expect(await mediaUrlFor(db, "tidewater", "header", null)).toBeNull();
+    expect(
+      await hostedAssetSource(db, "tidewater", ["listing.icon", "listing.header"]),
+    ).toEqual(new Map());
+  });
+
+  it("an upload row falls back to the listing's own art, as before", async () => {
+    const db = makeTestDb();
+    await productWithListing(db, "tidewater", {
+      icon: { kind: "url", src: ICON },
+    });
+    await hostedSource(db, "tidewater", "listing.icon", "upload", null);
+    const up = upstream({ [ICON]: image(PNG) });
+    expect(
+      (await media(db, "/media/tidewater/icon", up.fetchImpl)).status,
+    ).toBe(200);
+    expect(up.calls.map((c) => c.url)).toEqual([ICON]);
+  });
+
+  it("rule 2 still applies to a row: nothing off the allowlist is fetched or handed out", async () => {
+    for (const src of [
+      "https://tidewater.example/icon.png",
+      "http://raw.githubusercontent.com/a/b/main/icon.png",
+      "https://127.0.0.1/icon.png",
+      "https://[::1]/icon.png",
+      "https://localhost/icon.png",
+      "https://raw.githubusercontent.com:8443/a/b/main/icon.png",
+      "https://user:pw@raw.githubusercontent.com/a/b/main/icon.png",
+      "https://raw.githubusercontent.com.evil.example/icon.png",
+      "https://key.plrs.im/manage/api/me",
+    ]) {
+      const db = makeTestDb();
+      await productWithListing(db, "tidewater", {
+        icon: { kind: "url", src: ICON },
+      });
+      await hostedSource(db, "tidewater", "listing.icon", "url", src);
+      const up = upstream({});
+      const res = await media(db, "/media/tidewater/icon", up.fetchImpl);
+      expect(res.status, src).toBe(404);
+      expect(up.calls, src).toEqual([]);
+      expect(await mediaUrlFor(db, "tidewater", "icon", null), src).toBeNull();
+    }
+  });
+
+  it("a row's redirect hop off the allowlist is refused", async () => {
+    const GH =
+      "https://github.com/fennick/tidewater/releases/download/v1/icon.png";
+    const db = makeTestDb();
+    await productWithListing(db, "tidewater", null);
+    await hostedSource(db, "tidewater", "listing.icon", "url", GH);
+    const up = upstream({
+      [GH]: () =>
+        new Response(null, {
+          status: 302,
+          headers: { location: "https://169.254.169.254/latest/meta-data" },
+        }),
+    });
+    expect(
+      (await media(db, "/media/tidewater/icon", up.fetchImpl)).status,
+    ).toBe(404);
+    expect(up.calls.map((c) => c.url)).toEqual([GH]);
+  });
+
+  it("screenshot-n counts https screenshots by position, rows and blob alike", async () => {
+    const db = makeTestDb();
+    const S2 = "https://raw.githubusercontent.com/fennick/tidewater/main/s2.png";
+    const S3 = "https://raw.githubusercontent.com/fennick/tidewater/main/s3.png";
+    const listing = {
+      screenshots: [
+        { kind: "repo", src: "art/s1.png" },
+        { kind: "url", src: S2 },
+        { kind: "url", src: S3 },
+      ],
+    };
+    await productWithListing(db, "tidewater", listing);
+    await hostedSource(db, "tidewater", "listing.screenshot:1", "repo", "art/s1.png@abc");
+    await hostedSource(db, "tidewater", "listing.screenshot:2", "url", S2);
+    const urls = await screenshotUrlsFor(db, "tidewater", listing);
+    expect(urls).toEqual([
+      `/media/tidewater/screenshot-0?v=${await mediaVersion(S2)}`,
+      `/media/tidewater/screenshot-1?v=${await mediaVersion(S3)}`,
+    ]);
   });
 });

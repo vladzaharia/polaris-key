@@ -187,8 +187,8 @@ async function presentationArt(
 ): Promise<{ iconUrl: string | null; headerUrl: string | null }> {
   if ((await hostedImageOrigin(env, db)) === null)
     return {
-      iconUrl: await mediaUrlFor(product.slug, "icon", listing),
-      headerUrl: await mediaUrlFor(product.slug, "header", listing),
+      iconUrl: await mediaUrlFor(db, product.slug, "icon", listing),
+      headerUrl: await mediaUrlFor(db, product.slug, "header", listing),
     };
   const images = await hostedImages(env, db, product.slug, [
     ...PRESENTATION_ICON_SLOTS,
@@ -198,7 +198,7 @@ async function presentationArt(
   const header = firstHostedImage(images, PRESENTATION_HEADER_SLOTS);
   // A slot without a copy keeps its pre-HA-07 art: the proxy URL (`media.ts` proxies it too).
   const proxied = (asset: "icon" | "header") =>
-    mediaUrlFor(product.slug, asset, listing);
+    mediaUrlFor(db, product.slug, asset, listing);
   if (surface === "client")
     return {
       // §12.7.2: the same-origin path; `v` moves with the copy, so a new icon is a new URL.

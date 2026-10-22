@@ -416,7 +416,7 @@ export async function handleStorefrontPage(
   const body = {
     ...(await offerView(env, db, offer, listing, hooksFor, now, "product")),
     description: text(listing?.description),
-    screenshots: await screenshotUrlsFor(ev.product.slug, listing),
+    screenshots: await screenshotUrlsFor(db, ev.product.slug, listing),
     // Every live store page, whatever the action: the page lists where else the product is.
     stores: await storeLinks(ev.product, hooksFor, now),
   };

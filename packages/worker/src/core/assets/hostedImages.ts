@@ -188,6 +188,37 @@ export async function hostedImages(
   return out;
 }
 
+/**
+ * The URL a product's slots were declared with, by slot (A-27.2): `hosted_assets.source_ref` of a
+ * `source_kind = 'url'` row at locale `''`. This is the proxy's hosting-off source (media proxy
+ * rule 1): the slot's own row replaces the listing blob as the place the URL is read from.
+ *
+ * Only a `url` row is a source: a `repo` row's ref is `<path>@<commit>` (nothing to fetch), an
+ * `upload` / `ci` / `github-asset` row names bytes Polaris Key already holds. The value is
+ * returned as stored and is NOT a vetted URL: the caller still applies the proxy's own rule 2
+ * (https, default port, no credentials, a GitHub-hosted name). Unlike `hostedImages` it does not
+ * need a stored copy or an image host, and it ignores `status` (a pending or failed pull still
+ * names its source). Slots without such a row are absent from the map.
+ */
+export async function hostedAssetSource(
+  db: Db,
+  product: string,
+  slots: readonly string[],
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const wanted = [...new Set(slots)];
+  if (wanted.length === 0) return out;
+  const rows = await db.all<{ slot: string; source_ref: string | null }>(
+    `SELECT slot, source_ref FROM hosted_assets
+      WHERE product = ? AND locale = '' AND source_kind = 'url' AND source_ref IS NOT NULL
+        AND slot IN (${wanted.map(() => "?").join(", ")})`,
+    product,
+    ...wanted,
+  );
+  for (const row of rows) if (row.source_ref) out.set(row.slot, row.source_ref);
+  return out;
+}
+
 /** A row's `variants_json` as the ladder: one entry per positive width, ascending. */
 function ladderOf(json: string | null): HostedImageVariant[] {
   const byWidth = new Map<number, string>();

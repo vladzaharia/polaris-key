@@ -6243,6 +6243,9 @@ wrote (docs/design/PORTAL.md G1, G5, G16).
 - **The media proxy is not a URL fetcher (Portal media proxy).** The request names a product and
   one fixed listing slot (`icon`, `header`, or since PS-04 `screenshot-<n>`, the n-th https
   screenshot of the stored listing, n below 16); there is no URL, host or path in it. The
+  source is the slot's own `hosted_assets.source_ref` (a `source_kind = 'url'` row, written only
+  by the manifest pull; an upload, CI or repo row is never a source), else the stored listing's
+  art (A-27.2; the same two places a manifest can name it, both manifest-written). The
   source must be `https`, on the default port, with no credentials, on a GitHub-hosted name
   (`isAllowedStorageHost`: `github.com`, `*.githubusercontent.com`, the predicate the release
   fetch and the portal download redirect already use). IP literals, `localhost`, a custom domain
