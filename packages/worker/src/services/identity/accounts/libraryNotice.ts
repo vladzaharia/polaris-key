@@ -6,7 +6,8 @@
  * Who gets it: only the address that was just verified on the account, which is also the
  * license's own address. Never an unverified address and never another of the account's.
  * One per product however many licenses of it joined; none for a license an invitation already
- * went out for (`invited_at`: the invitation said what would happen). A send that does not go out
+ * went out for (`invited_at`: the invitation said what would happen), and none for a license that is not active and
+ * unexpired (the attach is unchanged; there is just nothing to announce). A send that does not go out
  * (no mail binding, suppressed, a provider error) is swallowed: the join already committed and the
  * worker has no logging; nothing here is audited, as the join is (`account.license.attach`).
  */
@@ -33,7 +34,9 @@ export async function sendLibraryNotices(
 ): Promise<number> {
   const products = [
     ...new Set(
-      args.joined.filter((j) => j.invitedAt === null).map((j) => j.product),
+      args.joined
+        .filter((j) => j.active && j.invitedAt === null)
+        .map((j) => j.product),
     ),
   ];
   let sent = 0;

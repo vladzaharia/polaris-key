@@ -256,6 +256,8 @@ export interface JoinedLicense {
   id: string;
   /** `licenses.invited_at`: when an invitation for it went out; null when none did. */
   invitedAt: number | null;
+  /** Active and unexpired when it joined: only such a license announces itself (LX-27c.3). */
+  active: boolean;
 }
 
 /** Identity's implementation of the association directions. */

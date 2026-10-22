@@ -1298,4 +1298,26 @@ describe("the library notice at an address's first verification (LX-27c.3)", () 
     expect(await ownerOf(none.licenseId)).toBe(none.acct.id);
     expect(libraryMail()).toHaveLength(0);
   });
+
+  it("announces only an active, unexpired license; a disabled or expired one joins silently", async () => {
+    const acct = await account("mix@example.com");
+    const make = async (sql: string) => {
+      const c = await create({ email: "elsewhere@example.com" });
+      await db.run(
+        `UPDATE licenses SET email = 'mix@example.com'${sql} WHERE product = ? AND id = ?`,
+        SLUG,
+        c.licenseId,
+      );
+      return c.licenseId;
+    };
+    const disabled = await make(", status = 'disabled'");
+    const expired = await make(`, expires_at = ${NOW - 10}`);
+    const active = await make("");
+    mail = [];
+    expect(await portalMe(acct.id)).toBe(200);
+    for (const id of [disabled, expired, active])
+      expect(await ownerOf(id)).toBe(acct.id);
+    // One sweep joined all three; only the active license announced itself.
+    expect(libraryMail()).toHaveLength(1);
+  });
 });

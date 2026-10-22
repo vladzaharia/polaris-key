@@ -536,8 +536,11 @@ export async function attachWaitingLicensesByEmailRows(
     product: string;
     id: string;
     invited_at: number | null;
+    status: string;
+    expires_at: number | null;
   }>(
-    `SELECT l.product AS product, l.id AS id, l.invited_at AS invited_at
+    `SELECT l.product AS product, l.id AS id, l.invited_at AS invited_at,
+            l.status AS status, l.expires_at AS expires_at
        FROM licenses l
        LEFT JOIN portal_product_settings s ON s.product = l.product
        LEFT JOIN oidc_config o ON o.product = l.product
@@ -553,6 +556,9 @@ export async function attachWaitingLicensesByEmailRows(
         product: licence.product,
         id: licence.id,
         invitedAt: licence.invited_at ?? null,
+        active:
+          licence.status === "active" &&
+          (licence.expires_at === null || licence.expires_at > now),
       });
   }
   return joined;
