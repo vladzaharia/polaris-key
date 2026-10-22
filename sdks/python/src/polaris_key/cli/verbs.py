@@ -359,6 +359,16 @@ def namespace(verb: Verb, words: Sequence[str], values: Dict[str, Any]) -> Dict[
     return ns
 
 
+def _command_id(verb: str, words: Sequence[str]) -> str:
+    """The verb id a result line names: ``sign-in`` is ``login``, and a bare ``devices`` is ``devices list``."""
+    from .mount import DEFAULT_ACTION, IDS
+
+    verb = ALIASES_OF.get(verb, verb)
+    ids = {i for i, _ in IDS}
+    action = words[0] if words else DEFAULT_ACTION.get(verb, "")
+    return f"{verb} {action}" if f"{verb} {action}" in ids else verb
+
+
 def _internal(term: Any, verb: Verb, e: BaseException) -> CommandResult:
     """An unexpected failure: the generic screen (exit 1, ``"error": "internal"`` under ``--json``) and,
     when ``DEBUG`` names polaris, the traceback on stderr. A person never meets a traceback."""
@@ -430,6 +440,9 @@ def run(
             return _internal(term, verb, e)
         if result.terminal is None:
             result.terminal = term
+        # The result line names the command by its id, as the Node kit does: `devices list`, `login`.
+        if result.terminal is term:
+            term.verb = _command_id(verb.name, ns.get("words") or [])
         return result
     finally:
         if close:

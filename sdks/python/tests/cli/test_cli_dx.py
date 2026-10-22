@@ -145,3 +145,19 @@ def test_typer_usage_errors_end_in_a_result_line() -> None:
     assert res.exit_code == 2
     last = _result(res.output)
     assert last["command"] == "login" and last["error"] == "usage" and last["exit"] == 2
+
+
+def test_a_result_line_names_the_command_by_its_id(tmp_path: Any, capsys: pytest.CaptureFixture) -> None:
+    """`devices` is `devices list` and `sign-out` is `logout`, as the Node kit's result lines say."""
+    parser = GroupedHelpParser(prog="tidewater")
+    sub = parser.add_subparsers(dest="command", required=True)
+    register_argparse(sub, config={**GOOD, "base_url": "http://127.0.0.1:9", "config_dir": str(tmp_path)}, version="1.0.0", verbs="all")
+    for argv, command in (
+        (["devices", "--json"], "devices list"),
+        (["devices", "list", "--json"], "devices list"),
+        (["sign-out", "--yes", "--json"], "logout"),
+        (["status", "--json"], "status"),
+    ):
+        args = parser.parse_args(argv)
+        args.func(args)
+        assert _result(capsys.readouterr().out)["command"] == command
