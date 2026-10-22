@@ -84,6 +84,8 @@ export interface PkeyCommand {
   /** The usage lines, one logical line each (wrapped when printed). */
   usage: readonly string[];
   about?: readonly Para[];
+  /** Paragraphs for the docs reference page only (shapes too long for a terminal). */
+  reference?: readonly Para[];
   /** Environment variables the command reads; `subs` limits one to those subcommands' help. */
   env?: readonly EnvVar[];
 }
@@ -145,18 +147,20 @@ export const COMMANDS: readonly PkeyCommand[] = [
     summary: "Scaffold .pkey/ in this directory",
     rows: [["init", "Scaffold .pkey/ in this directory"]],
     usage: [
-      `pkey init [--product slug] [--name name] [--modules ${SERVICE_SLUGS.join(",")}] ` +
-        "[--admin-group group] [--release-owner owner] [--release-repo repo] [--force]",
+      "pkey init [--product slug] [--name name] [--modules slugs] [--admin-group group] " +
+        "[--release-owner owner] [--release-repo repo] [--force]",
     ],
     about: [
       {
         text:
-          "pkey init scaffolds .pkey/ in the current directory: product.yaml and schema.yaml " +
-          "always, release.yaml when Release is on. --modules takes the service slugs or the " +
-          "legacy module names (licensing, releases, oidc, edgeMint) and writes service slugs; " +
-          "without it you get license,config. --product (or --slug) defaults to the directory's " +
-          "name and --name to a titleized slug. Existing files are never overwritten without " +
-          "--force.",
+          "Writes product.yaml and schema.yaml, and release.yaml when Release is on. A file " +
+          "that exists is kept unless you pass --force.",
+      },
+      {
+        text:
+          `--modules takes feature slugs (${SERVICE_SLUGS.join(", ")}); the default is ` +
+          "license,config. The old names licensing, releases, oidc and edgeMint still work. " +
+          "--product (or --slug) defaults to the directory name, --name to that name in title case.",
       },
     ],
   },
@@ -173,30 +177,30 @@ export const COMMANDS: readonly PkeyCommand[] = [
     about: [
       {
         text:
-          "pkey validate reads the .pkey/ under path (relative to the current directory; " +
-          "default the current directory) and runs it through the validator repo-link and " +
-          "resync apply. It prints a verdict, the services the manifest enables, any required " +
-          "secret names, then every warning and error with its document, JSON pointer and the " +
-          "file it was read from, and exits 1 when the manifest is invalid.",
+          "Checks .pkey/ with the rules the platform applies. Prints the verdict, the " +
+          "features it turns on and the secrets it needs, then each warning and error with " +
+          "the file and field it points at. Exits 1 when it is invalid. path is relative to " +
+          "here; the default is here.",
       },
       {
         text:
-          "--json prints one JSON line on stdout instead, the terminal kits' result line, " +
-          "its fields beside the envelope's: " +
-          '{"v":1,"command":"validate","event":"result","ok","exit","valid","modules",' +
-          '"requiredSecrets","warnings","errors"}, each warning and error as ' +
-          '{"code","message","at","file"}. When no manifest can be read it is ' +
-          '{"v":1,"command":"validate","event":"result","ok":false,"exit":1,' +
-          '"error":"no-manifest","message"}, or "error":"unreadable-manifest" when a ' +
-          "file is not valid JSON or YAML.",
+          "--fix moves a field written in an old spelling to its new place when that place " +
+          "is empty. It keeps your comments, never overwrites a value, and prints each move.",
       },
       {
+        text: "--json prints one line instead; its shape is at /docs/reference/cli/#validate.",
+      },
+    ],
+    reference: [
+      {
         text:
-          "--fix repairs what it safely can before it validates: a field written in an old " +
-          "spelling moves to its canonical place when that place is empty (the " +
-          "deprecated_spelling warnings), keeping YAML comments. It never overwrites a value " +
-          'and leaves a conflict for you. It prints each move, or "Nothing to fix." With ' +
-          '--json the moves are the result\'s "fixed" list.',
+          "--json prints one JSON line on stdout, the terminal kits' result line, its fields " +
+          'beside the envelope\'s: {"v":1,"command":"validate","event":"result","ok","exit","valid",' +
+          '"modules","requiredSecrets","warnings","errors"}, each warning and error as ' +
+          '{"code","message","at","file"}. With --fix, "fixed" lists the moves. When no manifest ' +
+          'can be read it is {"v":1,"command":"validate","event":"result","ok":false,"exit":1,' +
+          '"error":"no-manifest","message"}, or "error":"unreadable-manifest" when a file is ' +
+          "not valid JSON or YAML.",
       },
     ],
   },
@@ -206,25 +210,30 @@ export const COMMANDS: readonly PkeyCommand[] = [
     json: true,
     valueless: ["json"],
     context: ["product", "baseUrl"],
-    summary: "Validate, then check the live product's discovery",
-    rows: [["doctor", "Validate, then check the live product's discovery"]],
+    summary: "Check .pkey/ and the live product",
+    rows: [["doctor", "Check .pkey/ and the live product"]],
     usage: ["pkey doctor [--product slug] [--base-url url] [--json]"],
     about: [
       {
         text:
-          "pkey doctor runs validate first. When a product is known (--product, else the nearest " +
-          ".pkey/product) it also fetches <base-url>/<product>/.well-known/polaris.json (--base-url, " +
-          "else $PKEY_BASE_URL, else key.plrs.im) and reports whether discovery answers, which " +
-          "services it enables and which signing keys it exposes; a failed remote check exits 1. " +
-          "Without a product the remote checks are skipped and it says so.",
+          "Checks .pkey/ like validate, then asks the live product what it has: whether it " +
+          "answers, its features and its signing keys. It flags features that differ from " +
+          ".pkey/. Exits 1 while anything is to do.",
       },
+      {
+        text:
+          "Waits up to 10 s. With no product it skips the live checks and says so. --json " +
+          "prints one line instead; its shape is at /docs/reference/cli/#doctor.",
+      },
+    ],
+    reference: [
       {
         text:
           "--json prints one result line: " +
           '{"v":1,"command":"doctor","event":"result","ok","exit","product","baseUrl",' +
-          '"facts","services","signing"}, each fact as {"id","state","detail"} with id manifest, ' +
-          "discovery, services or signing-keys and state ok, warn or todo. It exits 1 while any " +
-          "fact is todo.",
+          '"facts","services","signing"}, each fact as {"id","state","detail","fix"} with id ' +
+          "manifest, discovery, services, signing-keys or in-sync and state ok, warn or todo; " +
+          'signing is a list of {"kid","status"}. It exits 1 while any fact is todo.',
       },
     ],
   },
@@ -319,7 +328,7 @@ export const COMMANDS: readonly PkeyCommand[] = [
           "pkey dev runs the Worker's real router in this process (Node 22.13 or newer; no " +
           "account, no secrets, no install) on 127.0.0.1:8787. It seeds the product in " +
           "./.pkey/, else the built-in Tidewater Studio, with throwaway signing and release " +
-          "keys, a licence key for each state (ok, expired, disabled, revoked, " +
+          "keys, a license key for each state (ok, expired, disabled, revoked, " +
           "device-limit-full, key-entry-limit, floating), a fake identity provider, and a " +
           "signed release on stable and beta. It writes polaris-key.json and prints the pins; " +
           "nothing outlives the process. --auto-approve signs people in without the approval " +
@@ -1280,7 +1289,7 @@ function hereLines(here: HelpHere, width: number, separator: string): Line[] {
   const joined = ` ${separator} ${url}`;
   if (used + cellWidth(joined) <= room)
     tail.push({ text: joined, style: ["muted"] });
-  else lines.push([{ text: url, style: ["muted"] }]);
+  else lines.push([{ text: `${separator} ${url}`, style: ["muted"] }]);
   return lines.map(
     (l, i): Line => [
       i === 0
