@@ -37,6 +37,13 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 - No new copies (tracks.md rule 4): build on the one mechanism the plan names, never beside it.
 
+## Corrections (code is the fact)
+
+- SP-55 landed `@polaris-key/server` with a DX pass: the new adapters follow the same shape
+  (`PolarisKeyConfigError` for wiring mistakes, `requireTier`/`requireAll`, preflight pass-through,
+  `Cache-Control: private`, `onRefusal`, typed accessors; `./testing` kits serve all six).
+- Example apps (`examples/server-*`) were not added in this package; follow-up.
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
@@ -44,7 +51,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 ## Acceptance criteria
 
-- [ ] A gated Fastify, NestJS and Koa route answers each §5.2 verdict over the shared core.
+- [x] A gated Fastify, NestJS and Koa route answers each §5.2 verdict over the shared core.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify

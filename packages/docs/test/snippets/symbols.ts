@@ -46,6 +46,11 @@ const NOT_EXPORTS = new Set([
   "createNextPolarisKey",
   "createTestKit",
   "PolarisKeyError",
+  "PolarisKeyConfigError",
+  "GetPolarisAuth",
+  "RequireAll",
+  // NestJS's own exception class, named beside the server package's onRefusal.
+  "HttpException",
 ]);
 
 /** The names a page's prose claims, minus the lines that label them planned. */

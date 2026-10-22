@@ -171,6 +171,18 @@ export class PolarisKeyError extends Error {
   }
 }
 
+/**
+ * A drop-in used out of order: a gate that runs before `polarisKey()` installed the middleware,
+ * a decorator without its module. A mistake in the app's wiring, never a verdict, so it is not
+ * a refusal: the framework answers it as a server error and the message says what to add.
+ */
+export class PolarisKeyConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PolarisKeyConfigError";
+  }
+}
+
 const SEGMENTS = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 const utf8 = new TextEncoder();
 
