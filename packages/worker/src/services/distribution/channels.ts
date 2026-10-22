@@ -53,12 +53,29 @@ export const CREDENTIAL_EXPIRY_WINDOW_SECONDS = 14 * 86_400;
 
 export type DeliveryState = "not_set_up" | "ready" | "live" | "attention";
 
-export type DeliveryAttention =
-  | { code: "out_of_scope" }
-  /** Builds exist but none fits; `reasons` come from `channelFit`. */
-  | { code: "no_fitting_build"; reasons: FitReason[] }
-  | { code: "credential_expiring" }
-  | { code: "credential_missing" };
+/**
+ * Why a channel needs the operator. These are read-model reasons for the console, never wire
+ * error codes: they are typed values passed to `attention(...)`, not `code:` literals, so the
+ * errors.json scan does not take them for codes an SDK can receive.
+ */
+export type DeliveryAttentionCode =
+  | "out_of_scope"
+  | "no_fitting_build"
+  | "credential_expiring"
+  | "credential_missing";
+
+export type DeliveryAttention = {
+  code: DeliveryAttentionCode;
+  /** Only `no_fitting_build`: the reasons from `channelFit`. */
+  reasons?: FitReason[];
+};
+
+function attention(
+  code: DeliveryAttentionCode,
+  reasons?: FitReason[],
+): DeliveryAttention {
+  return reasons === undefined ? { code } : { code, reasons };
+}
 
 export interface DeliveryFacet {
   /** The catalogue channel id. */
@@ -184,21 +201,22 @@ export async function deliveryFacets(
     const inScope = shared.length > 0 && kindOk;
     if (!inScope && !declared) continue;
 
-    const attention: DeliveryAttention[] = [];
-    if (!inScope) attention.push({ code: "out_of_scope" });
+    const attentions: DeliveryAttention[] = [];
+    if (!inScope) attentions.push(attention("out_of_scope"));
 
     const fit = channelFit(c, builds);
     const anyFit = fit.some((f) => f.fits);
     if (inScope && fit.length > 0 && !anyFit)
-      attention.push({
-        code: "no_fitting_build",
-        reasons: [...new Set(fit.flatMap((f) => f.reasons))],
-      });
+      attentions.push(
+        attention("no_fitting_build", [
+          ...new Set(fit.flatMap((f) => f.reasons)),
+        ]),
+      );
 
     const slot = c.storefront?.credential ?? null;
     const slotHeld = slot === null ? true : await heldSlot(slot);
     if (declared && slot !== null && !slotHeld)
-      attention.push({ code: "credential_missing" });
+      attentions.push(attention("credential_missing"));
     // Expiry only turns a channel the team uses (declared) into attention; an undeclared channel
     // stays not_set_up (and one click), whatever its shared credential's age.
     if (
@@ -207,7 +225,7 @@ export async function deliveryFacets(
       isPlatformCredentialId(slot) &&
       expiring.some((e) => e.kind === PLATFORM_CREDENTIALS[slot].kind)
     )
-      attention.push({ code: "credential_expiring" });
+      attentions.push(attention("credential_expiring"));
 
     let live = false;
     if (anyFit && inScope) {
@@ -223,7 +241,7 @@ export async function deliveryFacets(
       live = true;
 
     const state: DeliveryState =
-      attention.length > 0
+      attentions.length > 0
         ? "attention"
         : live
           ? "live"
@@ -239,7 +257,7 @@ export async function deliveryFacets(
       declared,
       oneClick: inScope && !declared && slot !== null && slotHeld,
       state,
-      attention,
+      attention: attentions,
       platforms: shared.map((p) => {
         const list = accepted[c.platforms.find((x) => x === p.platform)!];
         return {
