@@ -6,11 +6,13 @@
 import { RELEASE_PLATFORMS } from "@polaris-key/manifest";
 import { setting } from "../../core/settings/define.js";
 import type { ServiceSettingsSlice } from "../../core/settings/types.js";
+import { DISTRIBUTION_ADAPTERS } from "./settingsAdapters.js";
 
 const VISIBLE = { service: "distribution", offBehaviour: "hide" } as const;
 
 export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
   namespaces: ["distribution"],
+  adapters: DISTRIBUTION_ADAPTERS,
   entries: [
     setting({
       key: "distribution.access",

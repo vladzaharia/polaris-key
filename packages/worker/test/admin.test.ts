@@ -1697,7 +1697,7 @@ describe("admin services enablement", () => {
       "releaseCatalog",
     );
     try {
-      const at = "/api/products/djdl/update/settings";
+      const at = "/api/products/djdl/update/simulate";
       const hit = () =>
         dispatch(
           mkReq("GET", at, { cookie: w.cookie, csrf: w.csrf }),

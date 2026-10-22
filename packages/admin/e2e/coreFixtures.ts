@@ -488,17 +488,20 @@ export const CORE_ROUTES: Record<string, unknown> = {
       },
     ],
   },
-  "/manage/api/products/djdl/trust-policy": {
-    ok: true,
-    source: "admin",
-    version: 2,
-    policy: {
-      mint: "attested",
-      gatedDelivery: "basic",
-      commerceClaim: "attested",
-      enforce: false,
-      appAttest: { teamId: "ABCDE12345", environment: "production" },
-      playIntegrity: { cloudProjectNumber: "123456789012" },
+  // ST-05b: the device trust policy is the setting `core.trustPolicy` of the generic settings API.
+  "/manage/api/products/djdl/settings/core.trustPolicy": {
+    setting: {
+      key: "core.trustPolicy",
+      source: "console",
+      version: 2,
+      value: {
+        mint: "attested",
+        gatedDelivery: "basic",
+        commerceClaim: "attested",
+        enforce: false,
+        appAttest: { teamId: "ABCDE12345", environment: "production" },
+        playIntegrity: { cloudProjectNumber: "123456789012" },
+      },
     },
   },
   "/manage/api/products/djdl/ci-publisher": {
@@ -547,19 +550,23 @@ export const CORE_ROUTES: Record<string, unknown> = {
   },
   "/manage/api/products/djdl/activity": { items: activity, nextCursor: null },
   // Enrollment's fingerprint policy (and the probes that ride on it), so the page renders whole.
-  "/manage/api/products/djdl/license/policy": {
-    policy: {
-      enabled: true,
-      defaultMode: "normal",
-      probes: [
-        {
-          id: "rekordbox",
-          label: "rekordbox",
-          macos: "/Applications/rekordbox 7/rekordbox.app",
-        },
-      ],
+  "/manage/api/products/djdl/settings/license.fingerprint": {
+    setting: {
+      key: "license.fingerprint",
+      source: "manifest",
+      version: 0,
+      value: {
+        enabled: true,
+        defaultMode: "normal",
+        probes: [
+          {
+            id: "rekordbox",
+            label: "rekordbox",
+            macos: "/Applications/rekordbox 7/rekordbox.app",
+          },
+        ],
+      },
     },
-    source: "manifest",
   },
   "/manage/api/products/djdl/config/catalog": {
     schemaVersion: 8,
@@ -633,15 +640,30 @@ export const CORE_ROUTES: Record<string, unknown> = {
       },
     ],
   },
-  "/manage/api/products/djdl/update/settings": {
-    metadataAccess: "licensed",
-    accessSource: "manifest",
-    compatMin: "2.0.0",
-    compatMax: "3.0.0",
-    compatSource: "manifest",
-    minimumSystemVersion: null,
-    requireSparkleSignature: true,
-    configured: true,
+  // The update settings, one setting per key (Overview's Ship builds tile reads the access mode).
+  "/manage/api/products/djdl/settings/update.metadataAccess": {
+    setting: {
+      key: "update.metadataAccess",
+      source: "manifest",
+      version: 0,
+      value: "licensed",
+    },
+  },
+  "/manage/api/products/djdl/settings/release.compatWindow": {
+    setting: {
+      key: "release.compatWindow",
+      source: "manifest",
+      version: 0,
+      value: { min: "2.0.0", max: "3.0.0" },
+    },
+  },
+  "/manage/api/products/djdl/settings/update.operatorPolicy": {
+    setting: {
+      key: "update.operatorPolicy",
+      source: "default",
+      version: 0,
+      value: { requireSparkleSignature: true },
+    },
   },
   "/manage/api/products/djdl/identity/portal": {
     settings: {

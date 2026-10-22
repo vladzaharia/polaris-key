@@ -2026,10 +2026,14 @@ export const DATA_ROUTES: Record<string, unknown> = {
   [`${PROD}/release/delegations`]: KEYS,
   // The delivery gate form (a pack's Delivery tab): without its modes the Select has no option
   // for the app's mode, the form opens dirty and its save bar stretches the page.
-  [`${PROD}/distribution/access`]: {
-    modes: ["public", "authenticated", "licensed", "entitled"],
-    app: { deliverableId: "app", mode: "entitled", source: "manifest" },
-    deliverables: [],
+  [`${PROD}/settings/distribution.access`]: {
+    // No rows: the app reads `entitled`, failing closed, and no pack has a gate yet.
+    setting: {
+      key: "distribution.access",
+      source: "manifest",
+      version: 0,
+      value: {},
+    },
   },
   [`${PROD}/release/deliverables`]: LIST,
   [`${PROD}/release/deliverables/${CORE}/releases`]: RELEASES,

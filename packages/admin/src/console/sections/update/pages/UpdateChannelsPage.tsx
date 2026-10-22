@@ -3,7 +3,7 @@
  * minus delivery access (now Distribution → Access). Fixes UPS-1 to UPS-7.
  *
  * Four sections, three of them saved on their own (one form and SaveBar each; UPS-1, UPS-6), all
- * through `PATCH …/update/settings` with only that section's fields:
+ * through `PATCH …/settings/<key>` of the section's own setting:
  *
  * - **Metadata access** (manifest-owned until saved; Revert to manifest while the console owns
  *   it, UPS-7). Needs a release configuration: without one it is read-only and says why.

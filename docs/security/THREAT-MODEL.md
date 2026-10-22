@@ -688,7 +688,7 @@ the old column.
   it into each pack record, and the stage round and ingest refuse an object or a record that
   disagrees (`gated_mismatch`, `pack-entitlement`, `pack-object`). `.pkey/release` may assert a
   gate, which can only refuse a publish that differs, so no push gates, un-gates or re-flags a
-  pack. `update/settings` refuses `artifactsAccess` by name.
+  pack. No update setting carries `artifactsAccess`.
 - **Turning Distribution on cannot loosen access.** Enabling a service in the console
   (`console/handlers/servicesAdmin.ts`) runs no ingest, so the `app` row must already be right at that
   moment. Distribution writes it through `manifestIngestAlways` (`core/registry.ts`), the one
@@ -5559,7 +5559,7 @@ sideloaded builds, which cannot attest and stay `basic` by design.
   until the operator sets `enforce: true`. An outage of Google's decode endpoint is `503`, never
   a rejection and never an attestation.
 - **Who chooses what is verified.** The App Attest RP ID is `<TeamID>.<bundleId>`: the Team ID is
-  operator-owned (the trust policy, written only by the platform-admin `trust-policy` resource, never
+  operator-owned (the trust policy, written only by the platform-admin `core.trustPolicy` setting, never
   by a manifest), the bundle ids come from the live `app-store`/`testflight` outlets' identities
   (manifest-owned). A repo writer can therefore name another bundle id, but an attestation for it
   still needs a genuine install of an app of the operator's own team. The Play package and the
@@ -5569,7 +5569,7 @@ sideloaded builds, which cannot attest and stay `basic` by design.
   App Attestation Root CA in source (fingerprint pinned by a test); test roots enter only through a
   handler argument production dispatch never passes.
 - **The console write path is guarded (ST-12).** The policy is edited in Keys & secrets → Device
-  trust, through the same `trust-policy` resource and the same `keys` area; no new route. The
+  trust, through the generic settings route for `core.trustPolicy` (ST-05b; the `trust-policy` route is gone) and the same `keys` area. The
   Worker, not the page, classifies each change (`relaxesTrustPolicy`): a change that only tightens
   is L1; one that relaxes it (an operation drops from `attested`, `enforce` turns off, an App
   Attest or Play Integrity block is removed or pointed at another Team ID or project, production

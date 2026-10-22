@@ -50,6 +50,7 @@ import type { SettingDef } from "./settings/types.js";
 import type { Principal } from "./rbac/can.js";
 import {
   writeSetting,
+  type SettingWrite,
   type SettingsWriteContext,
   type WriteRefusal,
 } from "./settings/write.js";
@@ -106,6 +107,8 @@ export const OPERATOR_ROW_KEYS: readonly string[] = [
   "deltas.lazy.hotDevices",
   "deltas.lazy.dailyCap",
   "email.dailyCap",
+  // ST-05b: the operator-only artifact policy, which the bespoke `update/settings` route wrote.
+  "update.operatorPolicy",
 ];
 
 /** Does the settings API serve `def`: a row-backed claimable key or an operator row key? */
@@ -381,6 +384,10 @@ export interface RowSettingWriteInput {
   reason?: unknown;
   /** ST-20: the request's break-glass claim, `{ reason }` (a manifest-authoritative product). */
   breakGlass?: unknown;
+  /** The audit row's action and summary when the key's adapter names its own (ST-05b). */
+  audit?: SettingWrite["audit"];
+  /** Default true: a critical key needs a reason. */
+  requireReason?: boolean;
 }
 
 const NEXT_RESYNC = "applies at the next resync";
@@ -441,7 +448,7 @@ export async function writeRowSetting(
       reason: (typeof input.reason === "string"
         ? input.reason.trim()
         : input.reason) as string | null | undefined,
-      audit: {
+      audit: input.audit ?? {
         action: claimed ? "setting.claim" : "setting.update",
         summary: ({ breakGlass }) =>
           `${def.key} set in the console${claimed ? " (claimed from the manifest)" : ""}: ${auditValue(view.value)} → ${auditValue(input.value)}${typeof input.reason === "string" && input.reason.trim() ? ` (reason: ${input.reason.trim()})` : ""}${breakGlass ? ` (break-glass claim until ${new Date(breakGlass.expiresAt * 1000).toISOString()}: ${breakGlass.reason})` : ""}`,
@@ -457,7 +464,7 @@ export async function writeRowSetting(
       // `writeSetting()`'s own checks.
       strict: false,
       requireVersion: true,
-      requireReason: true,
+      requireReason: input.requireReason ?? true,
       breakGlass: input.breakGlass,
     },
   );
@@ -481,7 +488,7 @@ export async function revertRowSetting(
   ctx: SettingsWriteContext,
   product: RowSettingProduct,
   def: SettingDef,
-  input: { expectedVersion: unknown },
+  input: { expectedVersion: unknown; audit?: SettingWrite["audit"] },
   actor: AuditActor,
   now: number,
   principal?: Principal,
@@ -536,7 +543,7 @@ export async function revertRowSetting(
       expectedVersion: input.expectedVersion as number | undefined,
       // The manifest's value goes back as a `source = 'manifest'` row (none: the row goes).
       ...(restore ? { restore: restore.value } : {}),
-      audit: {
+      audit: input.audit ?? {
         action: "setting.revert",
         summary:
           claimsApply(product) && isRowBacked(def)

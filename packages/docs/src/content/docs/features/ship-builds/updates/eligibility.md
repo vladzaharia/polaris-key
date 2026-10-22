@@ -217,8 +217,9 @@ _offered_ in the first place.
 
 ## The console: Feed
 
-**Ship builds → Feed** edits `GET|PATCH /manage/api/products/<product>/update/settings` in three
-sections, each saved on its own with only its own fields:
+**Ship builds → Feed** edits the settings `update.metadataAccess`, `release.compatWindow` and
+`update.operatorPolicy` (`/manage/api/products/<product>/settings/<key>`) in three sections, each
+saved on its own with only its own setting:
 
 - **Metadata access** — governs the version check (and, on Release's side, the changelog
   and install script).
@@ -241,35 +242,34 @@ platform, every updater feed is listed.
 **Artifact access** — who may read the appcast, the downloads and Polaris Locker's download
 mint — is Distribution's [delivery access](/docs/features/ship-builds/channels/delivery/#delivery-access).
 The Feed page shows it read-only and links to **Ship builds → Access**, where it is set, saved to
-the `/manage/api/products/<product>/distribution/access` route (`PUT`) with its own owner and revert;
-`update/settings` refuses `artifactsAccess` by name.
+the setting `distribution.access` (`PATCH` at `/manage/api/products/<product>/settings/distribution.access`)
+with its own owner and revert; no update setting carries `artifactsAccess`.
 
 A product with no release configuration yet has nowhere to store an access mode or an
 artifact policy, so the page shows those fields read-only and says why, and the API answers
 `422` rather than accepting a value the next read wouldn't return — the compatibility window,
-living on the product row itself, stays editable regardless. Saving is a partial patch: an
-unset field keeps its current value, so changing the compat window never re-submits an access
-mode.
+living on the product row itself, stays editable regardless. Each setting is saved on its own, so
+changing the compat window never re-submits an access mode.
 
 ### Who owns each field
 
 The access modes and the compatibility window are also written by `.pkey/`: a resync
 re-applies `release.access` and `product.compatMin`/`compatMax`. Saving one here **claims**
-it — `accessSource` / `compatSource` in the response flips from `manifest` to `admin` — and a
+it — the setting's `source` in the response flips from `manifest` to `console` — and a
 resync then skips a claimed block. That matters most for `entitled`, which no manifest can
 express: without the claim, the next push would quietly downgrade the product to the
 manifest's mode (default `public`). Since P2b-04 the two access modes have separate owners:
-`accessSource` covers the metadata mode, and the delivery access carries its own `source` on
-Distribution's endpoint, with its own revert (`POST …/distribution/access/revert`).
+the metadata mode's `source` covers it, and the delivery access carries its own `source` on
+Distribution's setting, with its own revert (`DELETE` on `distribution.access`).
 
 ```text title="Request"
-/manage/api/products/<product>/update/settings/revert   (POST)
-{ "fields": ["access" | "compat", …] }
+/manage/api/products/<product>/settings/update.metadataAccess   (DELETE)
+{ "expectedVersion": 1 }
 ```
 
-hands the named blocks back to the manifest and changes **nothing else**: the live values stay
-as the operator left them until the next resync re-applies `.pkey/`. The response is the same
-settings object as `GET`; the event is audited as `update.settings.revert`.
+hands the block back to the manifest and changes **nothing else**: the live value stays as the
+operator left it until the next resync re-applies `.pkey/`. `release.compatWindow` reverts the same
+way. The response is the setting as it now reads; the event is audited as `update.settings.revert`.
 
 The two artifact-policy fields carry no owner because they have no second writer — no manifest
 shape spells them, and they live in a column resync never names. A push can neither set nor

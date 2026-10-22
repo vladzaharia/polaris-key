@@ -20,7 +20,6 @@ import { handleProductDevices } from "./handlers/devices.js";
 import { handleProductUsers } from "./handlers/users.js";
 import { handleRefusals } from "./handlers/refusals.js";
 import { handleHostedAssets } from "./handlers/hostedAssets.js";
-import { handleTrustPolicy } from "./handlers/trustPolicy.js";
 import { handleAlertDestinations } from "./handlers/alertDestinations.js";
 import { handleProductSettings } from "./handlers/productSettings.js";
 import { handleServicesAdmin } from "./handlers/servicesAdmin.js";
@@ -156,11 +155,14 @@ export async function handleProductScoped(c: AdminCtx): Promise<Response> {
       now,
     );
 
-  // The product settings API's first slice (LX-06, S-18 §4.7): the row-backed claimable settings
-  // of every service in one store. CORE, like `claims`: a console edit claims, Revert hands back.
+  // The generic product settings API (S-18 §4.7; LX-06, ST-05b): every product setting of every
+  // service, in one path. CORE, like `claims`: a console edit claims, Revert hands back.
   //   GET /products/<slug>/settings/effective[?area=]
-  //   PATCH|DELETE /products/<slug>/settings/<key>
-  if (resource === "settings")
+  //   GET|PATCH|DELETE /products/<slug>/settings/<key>
+  if (resource === "settings") {
+    // The hooks a key's adapter reads other services through (`distribution.access` asks Release
+    // which deliverables exist).
+    const loaded = await c.productCtx!.load();
     return handleProductSettings(
       req,
       env,
@@ -169,7 +171,16 @@ export async function handleProductScoped(c: AdminCtx): Promise<Response> {
       product,
       rest.slice(1),
       now,
+      loaded
+        ? serviceContext("host", SERVICES, loaded.services, {
+            env,
+            db,
+            product: loaded,
+            now,
+          }).hooks
+        : undefined,
     );
+  }
 
   // Trusted publishing (P2-02): the publisher policy and static CI tokens. CORE, like the
   // secrets: the credential store serves Release now and Distribution (P2b-03) later.
@@ -179,12 +190,6 @@ export async function handleProductScoped(c: AdminCtx): Promise<Response> {
     return handleCiPublisher(req, env, db, session, slug, id, now);
   if (resource === "ci-tokens")
     return handleCiTokens(req, env, db, session, slug, id, now);
-
-  // The device-trust policy (P6-02): which operations require an attested device, enforced or
-  // log-only, and the App Attest / Play Integrity settings. CORE, like the device trust level.
-  //   GET|PUT|DELETE /products/<slug>/trust-policy
-  if (resource === "trust-policy")
-    return handleTrustPolicy(req, env, db, session, product, id, now);
 
   // Which Polaris Key services this product runs (plan §R4). A CORE resource, not a per-service
   // one: a service cannot own its own off switch, because it would have to be running to be
