@@ -28,6 +28,7 @@ import {
   recordWrite,
 } from "./directory.js";
 import { SCHEMA_VERSION, SqlStore } from "./sqlStore.js";
+import { knownPlatform } from "../../../core/devices/platformFamily.js";
 
 // One person's Cloud Sync store for one product (U-05.6; plans/U-05-slices.md §2). The Worker
 // classifies a push (catalog, quota, pause, trust) and this object applies it with the engine's
@@ -425,7 +426,8 @@ export class CloudSyncDO implements DurableObject {
           nowMs: this.now(),
           quotaBytes: op.limits.quotaBytes,
           tierId: op.tierId,
-          platform: op.family,
+          // The directory column is a closed set: anything outside it is dropped, not stored.
+          platform: knownPlatform(op.platform) ?? undefined,
           syncs: 1,
           conflicts: out.counts.conflicts,
         });

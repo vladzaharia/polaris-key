@@ -11,6 +11,13 @@
 
 import type { ClientPlatform } from "@polaris-key/protocol/core";
 
+/** The closed set of platform ids a device can report (the keys of `FAMILY_OF`). */
+export function knownPlatform(value: unknown): ClientPlatform | null {
+  return typeof value === "string" && Object.hasOwn(FAMILY_OF, value)
+    ? (value as ClientPlatform)
+    : null;
+}
+
 export type PlatformFamily = "desktop" | "mobile" | "console" | "web";
 
 const FAMILY_OF: Readonly<Record<ClientPlatform, PlatformFamily>> = {

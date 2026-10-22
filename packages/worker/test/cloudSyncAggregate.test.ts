@@ -2,6 +2,7 @@
  * U-05.9: the 15-minute per-product aggregate (`sync_product_usage`, L6) and the daily-counter
  * retention (L17).
  */
+import { knownPlatform } from "../src/core/devices/platformFamily.js";
 import { describe, expect, it } from "vitest";
 import "../src/index.js";
 import type { ScheduledServiceContext } from "../src/core/registry.js";
@@ -61,26 +62,26 @@ describe("sync product aggregate (U-05.9)", () => {
     await dir(db, "acme", "s1", {
       bytes: 100,
       tier: "free",
-      platform: "desktop",
+      platform: "macos",
       revisions: 5,
     });
     await dir(db, "acme", "s2", {
       bytes: 900,
       quota: 1000,
       tier: "free",
-      platform: "mobile",
+      platform: "ios",
     });
     await dir(db, "acme", "s3", {
       bytes: 300,
       tier: "free",
-      platform: "desktop",
+      platform: "macos",
       active: NOW - 8 * DAY,
     });
     await dir(db, "acme", "s4", {
       bytes: 800,
       quota: 1000,
       tier: "pro",
-      platform: "desktop",
+      platform: "macos",
     });
     await dir(db, "acme", "s5", { bytes: 0, tier: "pro", platform: "web" });
     await dir(db, "other", "s9", { bytes: 7777, tier: "pro", platform: "web" });
@@ -103,11 +104,17 @@ describe("sync product aggregate (U-05.9)", () => {
       ],
       byKind: { settings: 2100, records: 0, files: 0, revisions: 5 },
       byPlatform: [
-        { platform: "desktop", peopleThisWeek: 2, lastSyncAt: NOW },
-        { platform: "mobile", peopleThisWeek: 1, lastSyncAt: NOW },
+        { platform: "ios", peopleThisWeek: 1, lastSyncAt: NOW },
+        { platform: "macos", peopleThisWeek: 2, lastSyncAt: NOW },
         { platform: "web", peopleThisWeek: 1, lastSyncAt: NOW },
       ],
     });
+    // byPlatform keys stay in the closed set the directory records (or null).
+    const keys = JSON.parse(String(row?.breakdown_json)).byPlatform.map(
+      (p: { platform: string | null }) => p.platform,
+    );
+    for (const k of keys)
+      expect(k === null || knownPlatform(k) !== null).toBe(true);
     expect(await read(db, "other")).toBeNull();
   });
 

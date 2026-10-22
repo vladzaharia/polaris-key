@@ -122,6 +122,7 @@ describe("directory flush (U-05.9)", () => {
     const w = await world();
     await write(w, A, [mut("a", "set", T0 - 1000, { value: "x" })], {
       tierId: "pro",
+      platform: "macos",
     });
     expect(w.ns.instance(NAME(A)).storage.alarm).toBe(T0);
     expect(await dirRow(w, A)).toBeNull();
@@ -131,7 +132,7 @@ describe("directory flush (U-05.9)", () => {
       settings: 1,
       quota_bytes: 1000,
       tier_id: "pro",
-      platform: "desktop",
+      platform: "macos",
       last_active_at: T0 / 1000,
       updated_at: T0 / 1000,
     });
@@ -204,15 +205,38 @@ describe("directory flush (U-05.9)", () => {
     ).toBe(3);
   });
 
-  it("platform is the last seen; a push without one keeps it", async () => {
+  it("platform is the device's own, the last seen; a push without one keeps it", async () => {
     const w = await world();
     await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
     w.clock.t += 1000;
     await write(w, A, [mut("b", "set", w.clock.t - 500, { value: 1 })], {
       family: "mobile",
+      platform: "ios",
     });
     await w.ns.fireAlarm(NAME(A));
-    expect((await dirRow(w, A))?.platform).toBe("mobile");
+    expect((await dirRow(w, A))?.platform).toBe("ios");
+    w.clock.t += 1000;
+    await write(w, A, [mut("c", "set", w.clock.t - 500, { value: 2 })]);
+    await w.ns.fireAlarm(NAME(A));
+    expect((await dirRow(w, A))?.platform).toBe("ios");
+  });
+
+  it("the directory column is a closed set: an unknown or odd platform is stored as null", async () => {
+    for (const odd of [
+      "mobile",
+      "Windows 11",
+      "<script>",
+      "x".repeat(500),
+      "__proto__",
+      "",
+    ]) {
+      const w = await world();
+      await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })], {
+        platform: odd,
+      });
+      await w.ns.fireAlarm(NAME(A));
+      expect((await dirRow(w, A))?.platform, odd).toBeNull();
+    }
   });
 
   it("a D1 failure leaves the object dirty and the retry flushes", async () => {
