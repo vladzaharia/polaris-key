@@ -254,7 +254,7 @@ function GeneralSection({
                 detail.settings.accessDisplay ??
                   "customers, packages gated individually",
               )}
-              . Picking Customers again gates every package with the feed.
+              .
             </p>
           ) : null}
         </SettingsRow>
