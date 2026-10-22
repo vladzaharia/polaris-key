@@ -67,6 +67,7 @@ import {
   syncAccountLicenseLinks,
   upsertPortalProductSettings,
 } from "../src/services/identity/portal/repo.js";
+import { attachClaimedLicenses } from "../src/services/identity/accounts/platformMigration.js";
 import { suppressEmail } from "../src/core/notify/emailDelivery.js";
 import { sendLibraryNotices } from "../src/services/identity/accounts/libraryNotice.js";
 import { PORTAL_COOKIE } from "../src/services/identity/portal/session.js";
@@ -1196,5 +1197,105 @@ describe("the library notice at an address's first verification (LX-27c.3)", () 
     mail = [];
     await link(sup.id, "sup@example.com");
     expect(mail.filter((m) => m.subject.includes("library"))).toHaveLength(0);
+  });
+
+  /** A license waiting on an address its account already verified (a sweep, not the hook, joins it). */
+  async function waitingForVerified(email: string) {
+    const acct = await account(email);
+    const created = await create({ email: "elsewhere@example.com" });
+    await db.run(
+      "UPDATE licenses SET email = ? WHERE product = ? AND id = ?",
+      email,
+      SLUG,
+      created.licenseId,
+    );
+    return { acct, licenseId: created.licenseId };
+  }
+  const libraryMail = () => mail.filter((m) => m.subject.includes("library"));
+
+  it("names the developer from the listing when Distribution has one", async () => {
+    await db.run(
+      "UPDATE products SET services_json = ? WHERE slug = ?",
+      JSON.stringify({
+        license: { enabled: true },
+        identity: { enabled: true },
+        distribution: { enabled: true },
+      }),
+      SLUG,
+    );
+    await db.run(
+      "INSERT INTO dist_listing (product, listing_json, modified_at) VALUES (?, ?, ?)",
+      SLUG,
+      JSON.stringify({ developerName: "Fennick Studio" }),
+      NOW,
+    );
+    await create({ email: "dev@example.com" });
+    const acct = await account("dev.old@example.com");
+    mail = [];
+    await link(acct.id, "dev@example.com");
+    expect(libraryMail()).toHaveLength(1);
+    expect(libraryMail()[0]!.text).toContain("From Fennick Studio.");
+  });
+
+  it("sends the notice from the portal's per-request sweeps too, once", async () => {
+    const { acct, licenseId } = await waitingForVerified("sweep@example.com");
+    mail = [];
+    expect(await portalMe(acct.id)).toBe(200);
+    expect(await ownerOf(licenseId)).toBe(acct.id);
+    expect(libraryMail()).toHaveLength(1);
+    expect(libraryMail()[0]!.to).toBe("sweep@example.com");
+    expect(await portalMe(acct.id)).toBe(200);
+    expect(libraryMail()).toHaveLength(1);
+
+    const second = await waitingForVerified("list@example.com");
+    mail = [];
+    const { token } = await issuePortalSessionRow(
+      env,
+      db,
+      { accountId: second.acct.id, email: null, name: null },
+      NOW,
+    );
+    await handlePortalApi(
+      new Request("https://key.plrs.im/api/licenses", {
+        headers: { cookie: `${PORTAL_COOKIE}=${token}` },
+      }),
+      env,
+      db,
+      "/api/licenses",
+      NOW,
+    );
+    expect(await ownerOf(second.licenseId)).toBe(second.acct.id);
+    expect(libraryMail().map((m) => m.to)).toEqual(["list@example.com"]);
+  });
+
+  it("sends it after a product sign-in's claim sweep, and none for an invited license or without an origin", async () => {
+    const a = await waitingForVerified("claim@example.com");
+    mail = [];
+    await attachClaimedLicenses(env, db, a.acct.id, NOW, "https://key.plrs.im");
+    expect(await ownerOf(a.licenseId)).toBe(a.acct.id);
+    expect(libraryMail().map((m) => m.to)).toEqual(["claim@example.com"]);
+
+    const inv = await waitingForVerified("claim2@example.com");
+    await db.run(
+      "UPDATE licenses SET invited_at = ? WHERE id = ?",
+      NOW,
+      inv.licenseId,
+    );
+    mail = [];
+    await attachClaimedLicenses(
+      env,
+      db,
+      inv.acct.id,
+      NOW,
+      "https://key.plrs.im",
+    );
+    expect(await ownerOf(inv.licenseId)).toBe(inv.acct.id);
+    expect(libraryMail()).toHaveLength(0);
+
+    const none = await waitingForVerified("claim3@example.com");
+    mail = [];
+    await attachClaimedLicenses(env, db, none.acct.id, NOW, null);
+    expect(await ownerOf(none.licenseId)).toBe(none.acct.id);
+    expect(libraryMail()).toHaveLength(0);
   });
 });

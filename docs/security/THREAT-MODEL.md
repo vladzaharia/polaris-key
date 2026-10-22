@@ -8312,11 +8312,14 @@ method added or auto-linked, or the sign-in's link sweep), the person gets one n
   before the subject or text, and are HTML-escaped on top. The notice never says how the license
   was delivered and carries no key.
 - **Best effort.** It goes through Core's send choke point (suppression, relay gate, cap); a failed
-  or blocked send is swallowed and never undoes or reports the join. The sweep run on each portal
-  request sends none: only the hook's callers and the sign-in's sweep do.
-- **Residual.** The developer name is not yet resolved at these call sites (Distribution's listing
-  is reachable only through service hooks, which they do not hold), so the notice reads "From
-  <Product>" until a Core read of the listing name is added.
+  or blocked send is swallowed and never undoes or reports the join.
+- **Every path that attaches by address sends it,** under the same rules: the hook's callers, the
+  sign-in's sweep, the portal's per-request sweeps (`/api/me`, `/api/licenses`, the portal
+  dispatch), the device-login poll and the product sign-in's claim sweep. A sweep that cannot
+  build a link origin runs without sending.
+- **The developer name comes from Core.** `productDeveloperName` (`core/presentation.ts`) builds
+  the product's hooks from the bound registry, gated on that product's enablement, and reads the
+  listing through them; Identity imports no service. Any failure falls back to the product name.
 
 ### Licence holders: association by email and the auto-attach block (LX-26)
 

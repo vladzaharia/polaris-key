@@ -356,16 +356,25 @@ type Sent = {
   from: { name: string; email: string };
 };
 
-function portalEnv(): { env: Env; sent: Sent[] } {
+/**
+ * `sent` holds every mail but the library notice (LX-27c.3): the first request of these fixtures
+ * joins the seeded waiting license by address and mails it, which is not what their tests count.
+ * `library` holds those.
+ */
+function portalEnv(): { env: Env; sent: Sent[]; library: Sent[] } {
   const env = makeEnv(new KvMock(), ["djdl"]);
   env.PORTAL_SESSION_SECRET = "test-portal-session-secret";
   const sent: Sent[] = [];
+  const library: Sent[] = [];
   env.EMAIL = {
     send: async (m: Sent) => {
-      sent.push(m);
+      (m.subject.endsWith("is in your Polaris Locker library")
+        ? library
+        : sent
+      ).push(m);
     },
   } as unknown as Env["EMAIL"];
-  return { env, sent };
+  return { env, sent, library };
 }
 
 function req(

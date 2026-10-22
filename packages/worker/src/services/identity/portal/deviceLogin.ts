@@ -47,6 +47,10 @@
  */
 
 import {
+  noticeOrigin,
+  syncLicenseLinksAndNotify,
+} from "../accounts/libraryNotice.js";
+import {
   PLATFORM_LABELS,
   detectPlatform,
 } from "../../../core/platformDetect.js";
@@ -78,7 +82,6 @@ import {
   getPortalAccount,
   portalAuthCapabilities,
   portalAudit,
-  syncAccountLicenseLinks,
 } from "./repo.js";
 import { portalSessionAuthenticatedAt, type PortalSession } from "./session.js";
 import { startAccountSession } from "./accountSessions.js";
@@ -442,7 +445,13 @@ export async function handleDeviceLoginPoll(
     if (survivor === "erased")
       return err(403, "account_disabled", "this account cannot sign in");
   }
-  await syncAccountLicenseLinks(db, account.id, now);
+  await syncLicenseLinksAndNotify(
+    env,
+    db,
+    account.id,
+    now,
+    noticeOrigin(env, req),
+  );
   // One account session like every other sign-in (I-07), carrying the approver's sign-in time.
   const { cookie: sessionCookie } = await startAccountSession(
     env,

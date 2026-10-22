@@ -14,11 +14,11 @@
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import type { JoinedLicense } from "../../../core/licensing/licenseHolders.js";
+import { productDeveloperName } from "../../../core/presentation.js";
+import { customerOrigin } from "../../../core/hosts.js";
+import { syncAccountLicenseLinks } from "../portal/repo.js";
 import { sendNotice } from "../../../core/notify/send.js";
 import { licenseFromDeveloperNotice } from "../../../core/notify/templates.js";
-
-/** Resolves a product's developer name (the listing's), or null. Optional: the product name stands in. */
-export type DeveloperNameOf = (product: string) => Promise<string | null>;
 
 export async function sendLibraryNotices(
   env: Env,
@@ -29,7 +29,6 @@ export async function sendLibraryNotices(
     joined: readonly JoinedLicense[];
     origin: string;
     now: number;
-    developerNameOf?: DeveloperNameOf;
   },
 ): Promise<number> {
   const products = [
@@ -45,12 +44,8 @@ export async function sendLibraryNotices(
         slug,
       );
       if (!row) continue;
-      let developerName: string | null = null;
-      try {
-        developerName = (await args.developerNameOf?.(slug)) ?? null;
-      } catch {
-        // Display data only: the product name stands in.
-      }
+      // Core's read of the presented developer name; the product name stands in when none.
+      const developerName = await productDeveloperName(env, db, slug, args.now);
       const message = licenseFromDeveloperNotice({
         productName: row.name,
         productSlug: slug,
@@ -63,4 +58,33 @@ export async function sendLibraryNotices(
     }
   }
   return sent;
+}
+
+/** The origin a notice links to for a request: the customer site, else the origin it was reached on. */
+export function noticeOrigin(env: Env, req: Request): string {
+  return customerOrigin(env, req) ?? new URL(req.url).origin;
+}
+
+/**
+ * The portal's link sweep for an account, with the library notice for every license that joined
+ * by address (same rules as the hook: the verified address only, none for an invited license,
+ * one per product). Without an `origin` the sweep still runs and no notice is sent.
+ */
+export async function syncLicenseLinksAndNotify(
+  env: Env,
+  db: Db,
+  accountId: string,
+  now: number,
+  origin: string | null,
+): Promise<void> {
+  await syncAccountLicenseLinks(
+    db,
+    accountId,
+    now,
+    origin === null
+      ? undefined
+      : async (joined, email) => {
+          await sendLibraryNotices(env, db, { to: email, joined, origin, now });
+        },
+  );
 }
