@@ -659,7 +659,7 @@ func _ready() -> void:
   show (or, without the signed decision, the v3 check found a newer version), otherwise `none`.
   Floors never stop play; a CI-signed revocation of a REQUIRED pack does: decide is then `required` and the boot stops at a confirmed BLOCKED
   `update-required` with the revoked-content copy ("Content withdrawn": "Some of this game's
-  content was withdrawn by its developer and can't be used. Update the app to keep playing."),
+  content was withdrawn by its developer and can't be used. Update the game to keep playing."),
   with the update button when the answer is an offer and none for `blocked`. A `packs` answer is
   `none`; fetch and mount drive packs (see "Packs"), FETCH at its exact releases. `fail` is only for a store failure or an options file that
   cannot configure. The sync stage has one wall-clock deadline (`sync_timeout_seconds`, 20 s, or

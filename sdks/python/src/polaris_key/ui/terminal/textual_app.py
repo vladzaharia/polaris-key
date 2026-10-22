@@ -638,7 +638,7 @@ class PolarisKeyApp(App):
         reconnect = Button(t("common.reconnect"), classes="pk-primary", id="pk-reconnect")
         if g.component == "StatusScreen":
             # A refusal, never a failure: ▲, what happened, and the fix as the one primary (DL6).
-            out += [self._refusal(t(f"core.gate.{g.state}.title")), _text(t(f"core.gate.{g.state}.message"), classes="pk-muted")]
+            out += [self._refusal(t(f"core.gate.{g.state}.title")), _text(t(f"core.gate.{g.state}.message", product=self.identity.name), classes="pk-muted")]
             if g.state in ("version-too-old", "version-too-new") and (g.allowed_min or g.allowed_max):
                 if g.allowed_min and g.allowed_max:
                     out.append(_text(t("status.allowedRange", min=g.allowed_min, max=g.allowed_max), classes="pk-muted"))

@@ -311,7 +311,7 @@ const FR: CopyBundle = {
     "needs-activation":
       "Saisissez une clé de licence ou connectez-vous pour continuer.",
     "version-too-old":
-      "Cette version n’est plus prise en charge. Mettez l’app à jour pour continuer.",
+      "Cette version n’est plus prise en charge. Mettez {product} à jour pour continuer.",
     "version-too-new":
       "Ce build est plus récent que ce que votre licence autorise.",
     "channel-not-entitled": "Votre licence n’inclut pas ce canal.",

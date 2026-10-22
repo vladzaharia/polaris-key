@@ -840,7 +840,8 @@ export const COPY_GATE: Readonly<Record<string, CopyEntry>> = {
   },
   "version-too-old": {
     title: "Update required",
-    message: "This version is no longer supported. Update the app to continue.",
+    message:
+      "This version is no longer supported. Update {product} to continue.",
   },
   "version-too-new": {
     title: "Not available on this license",

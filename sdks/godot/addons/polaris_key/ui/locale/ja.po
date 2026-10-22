@@ -616,10 +616,10 @@ msgstr "{product}には{size}の新しいコンテンツが必要です。現在
 msgid "boot.consent.download"
 msgstr "ダウンロード"
 
-#. If this keeps happening, restart the app.
-#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics.
+#. If this keeps happening, restart {product}.
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "boot.error.body"
-msgstr "問題が続く場合は、アプリを再起動してください。"
+msgstr "問題が続く場合は、{product}を再起動してください。"
 
 #. Welcome to {product}
 #. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -646,10 +646,10 @@ msgstr "続けるには、サインインするかライセンスキーを使用
 msgid "welcome.ledeKeyOnly"
 msgstr "続けるには、ライセンスキーを入力してください。"
 
-#. Sign in to use {product}.
-#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Sign in to continue.
+#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. The title already names the product.
 msgid "welcome.ledeSignInOnly"
-msgstr "{product}を使うにはサインインしてください。"
+msgstr "続けるにはサインインしてください。"
 
 #. Sign in
 #. Welcome screen, the gate's first screen. Primary button.
@@ -1075,6 +1075,11 @@ msgstr "アップデートがあります"
 msgid "update.current"
 msgstr "現在のバージョン：{version} · ダウンロードサイズ：{size}"
 
+#. You have {version}
+#. UpdatePrompt: an app update. The installed version, when the update decision carries no download size (update.current names a size). Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateCurrentNoSize"
+msgstr "現在のバージョン：{version}"
+
 #. What's new
 #. UpdatePrompt: an app update. Label over the release notes.
 msgid "update.whatsNew"
@@ -1140,6 +1145,11 @@ msgctxt "macos"
 msgid "update.install"
 msgstr "今すぐアップデート"
 
+#. Download {version}
+#. UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1.
+msgid "common.updateDownload"
+msgstr "{version}をダウンロード"
+
 #. Downloading · {size} of {total}
 #. UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”).
 msgid "update.downloading"
@@ -1150,15 +1160,25 @@ msgstr "ダウンロード中 · {total}中{size}"
 msgid "update.timeLeft"
 msgstr "残り約{time}"
 
+#. About {minutes} min
+#. UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more.
+msgid "common.updateTimeMinutes"
+msgstr "約{minutes}分"
+
+#. Less than a minute
+#. UpdatePrompt: an app update. Time left on the download when under a minute remains.
+msgid "common.updateTimeLessThanMinute"
+msgstr "1分未満"
+
 #. {product} {version} is ready
 #. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1.
 msgid "update.readyTitle"
 msgstr "{product} {version}の準備ができました"
 
-#. Restart {product} to finish updating.
-#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Restart to finish updating.
+#. UpdatePrompt: an app update. The title already names the product.
 msgid "update.readyBody"
-msgstr "アップデートを完了するには{product}を再起動してください。"
+msgstr "アップデートを完了するには再起動してください。"
 
 #. Update to keep using {product}
 #. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -1265,10 +1285,10 @@ msgstr "パッケージマネージャーがインストールします。"
 msgid "update.platform.generic"
 msgstr "{product}を入手したストアまたはプラットフォームからインストールされます。"
 
-#. Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going.
+#. Some of {product}'s content was withdrawn and can't be used. Update to keep going.
 #. UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "update.revokedContent"
-msgstr "{product}の一部のコンテンツは取り下げられたため、使用できません。続けるには{product}をアップデートしてください。"
+msgstr "{product}の一部のコンテンツは取り下げられたため、使用できません。続けるにはアップデートしてください。"
 
 #. You're up to date
 #. UpdatePrompt: an app update.
@@ -1632,10 +1652,10 @@ msgstr "購入を完了しています…"
 msgid "paywall.purchased"
 msgstr "{tier}のロックが解除されました"
 
-#. Purchases aren't available in this version of {product}.
-#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Purchases aren't available in this version.
+#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "paywall.notAvailable"
-msgstr "このバージョンの{product}では購入できません。"
+msgstr "このバージョンでは購入できません。"
 
 #. Buy in your browser
 #. Paywall: what a tier adds, and how to get it.
@@ -1787,10 +1807,10 @@ msgstr "Polaris Lockerにサインイン"
 msgid "signin.methods.titleApp"
 msgstr "サインイン"
 
-#. Use your {product} purchase email or a work or school email.
-#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated).
+#. Use your purchase email or a work or school email.
+#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product.
 msgid "signin.methods.ledeApp"
-msgstr "{product} の購入時のメールアドレス、または職場・学校のメールアドレスを使用してください。"
+msgstr "購入時のメールアドレス、または職場・学校のメールアドレスを使用してください。"
 
 #. Email
 #. Hosted sign-in card, email field (SIGN-IN.md §3.3).
@@ -6663,10 +6683,10 @@ msgstr "続けるには、ライセンスキーを入力するか、サインイ
 msgid "core.gate.version-too-old.title"
 msgstr "アップデートが必要です"
 
-#. This version is no longer supported. Update the app to continue.
+#. This version is no longer supported. Update {product} to continue.
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.version-too-old.message"
-msgstr "このバージョンはサポートが終了しました。続けるにはアプリをアップデートしてください。"
+msgstr "このバージョンはサポートが終了しました。続けるには{product}をアップデートしてください。"
 
 #. Not available on this license
 #. Core copy (conformance/parity/copy.en.json, gate).

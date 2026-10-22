@@ -43,7 +43,10 @@ final class ErrorCopyTests: XCTestCase {
         for status in statuses {
             let entry = COPY_GATE[status.rawValue]!
             // `ok` is also an activation result; the gate table answers first.
-            XCTAssertEqual(ErrorCopy.message(status.rawValue), entry.message, status.rawValue)
+            // A placeholder this call was not given is dropped with the space before it.
+            XCTAssertEqual(
+                ErrorCopy.message(status.rawValue),
+                entry.message.replacingOccurrences(of: " {product}", with: ""), status.rawValue)
             XCTAssertEqual(ErrorCopy.title(status.rawValue), entry.title, status.rawValue)
         }
     }

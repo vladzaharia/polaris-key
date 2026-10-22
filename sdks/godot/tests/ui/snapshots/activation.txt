@@ -71,22 +71,22 @@ Card/Scroll/Stack/Main/Form/Extras/OfflineActivation: Button "Activate offline" 
 == license off, identity on, enrolment on, native ==
 Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Stack/Main/Pane/Intro/Lede: Label "Sign in to use Polaris Key SDK."
+Card/Scroll/Stack/Main/Pane/Intro/Lede: Label "Sign in to continue."
 Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 1]
 == license off, identity on, enrolment on, web ==
 Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Stack/Main/Pane/Intro/Lede: Label "Sign in to use Polaris Key SDK."
+Card/Scroll/Stack/Main/Pane/Intro/Lede: Label "Sign in to continue."
 Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 1]
 == license off, identity on, enrolment off, native ==
 Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Stack/Main/Pane/Intro/Lede: Label "Sign in to use Polaris Key SDK."
+Card/Scroll/Stack/Main/Pane/Intro/Lede: Label "Sign in to continue."
 Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 1]
 == license off, identity on, enrolment off, web ==
 Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
 Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Stack/Main/Pane/Intro/Lede: Label "Sign in to use Polaris Key SDK."
+Card/Scroll/Stack/Main/Pane/Intro/Lede: Label "Sign in to continue."
 Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 1]
 == license off, identity off, enrolment on, native ==
 Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"

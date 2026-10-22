@@ -230,8 +230,8 @@
     <string name="boot_consent_bodyMetered">%1$s a besoin de %2$s de nouveau contenu, et votre connexion est facturée à l’usage.</string>
     <!-- Boot screen, shown while the product starts. -->
     <string name="boot_consent_download">Télécharger</string>
-    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. -->
-    <string name="boot_error_body">Si le problème persiste, redémarrez l’app.</string>
+    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. The error code is not shown; kits keep it for logs and diagnostics. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="boot_error_body">Si le problème persiste, redémarrez %1$s.</string>
     <!-- Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="welcome_title">Bienvenue dans %1$s</string>
     <!-- Welcome screen title when no product name is known anywhere (no integrator name, presentation or bundle). Replaces welcome.title, which needs {product}. -->
@@ -242,8 +242,8 @@
     <string name="welcome_lede">Connectez-vous ou utilisez une clé de licence pour continuer.</string>
     <!-- Welcome screen, the gate's first screen. Shown when the product only takes license keys. -->
     <string name="welcome_ledeKeyOnly">Saisissez une clé de licence pour continuer.</string>
-    <!-- Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="welcome_ledeSignInOnly">Connectez-vous pour utiliser %1$s.</string>
+    <!-- Welcome screen, the gate's first screen. Shown when the product only takes sign-in. The title already names the product. -->
+    <string name="welcome_ledeSignInOnly">Connectez-vous pour continuer.</string>
     <!-- Welcome screen, the gate's first screen. Primary button. -->
     <string name="welcome_signIn">Se connecter</string>
     <string name="welcome_signIn__macos">Se connecter</string>
@@ -398,6 +398,8 @@
     <string name="update_availableTitle">Une mise à jour est disponible</string>
     <!-- UpdatePrompt: an app update. Arguments: {version} = a version string such as 2.4.1; {size} = a byte size already formatted by the platform (“38 MB”). Arguments: 1=version, 2=size. -->
     <string name="update_current">Vous avez la version %1$s · %2$s à télécharger</string>
+    <!-- UpdatePrompt: an app update. The installed version, when the update decision carries no download size (update.current names a size). Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
+    <string name="common_updateCurrentNoSize">Vous avez la version %1$s</string>
     <!-- UpdatePrompt: an app update. Label over the release notes. -->
     <string name="update_whatsNew">Nouveautés</string>
     <!-- UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
@@ -418,14 +420,20 @@
     <!-- UpdatePrompt: an app update. -->
     <string name="update_install">Mettre à jour</string>
     <string name="update_install__macos">Mettre à jour</string>
+    <!-- UpdatePrompt: an app update. The web prompt's primary action: the browser opens the download page. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
+    <string name="common_updateDownload">Télécharger %1$s</string>
     <!-- UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”). Arguments: 1=size, 2=total. -->
     <string name="update_downloading">Téléchargement · %1$s sur %2$s</string>
     <!-- UpdatePrompt: an app update. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
     <string name="update_timeLeft">Il reste environ %1$s</string>
+    <!-- UpdatePrompt: an app update. Time left on the download, rounded up to whole minutes (update.timeLeft shows a clock time such as 4:12). Arguments: {minutes} = a whole number of minutes, 1 or more. Arguments: 1=minutes. -->
+    <string name="common_updateTimeMinutes">Environ %1$s min</string>
+    <!-- UpdatePrompt: an app update. Time left on the download when under a minute remains. -->
+    <string name="common_updateTimeLessThanMinute">Moins d’une minute</string>
     <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
     <string name="update_readyTitle">%1$s %2$s est prêt</string>
-    <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="update_readyBody">Redémarrez %1$s pour terminer la mise à jour.</string>
+    <!-- UpdatePrompt: an app update. The title already names the product. -->
+    <string name="update_readyBody">Redémarrez pour terminer la mise à jour.</string>
     <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_mandatoryTitle">Mettez à jour pour continuer à utiliser %1$s</string>
     <!-- UpdatePrompt: an app update. Mandatory update. -->
@@ -468,7 +476,7 @@
     <!-- UpdatePrompt: an app update. Platform-managed update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="update_platform_generic">Elle s’installe via la boutique ou la plateforme d’où vous avez obtenu %1$s.</string>
     <!-- UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="update_revokedContent">Une partie du contenu de %1$s a été retirée et ne peut plus être utilisée. Mettez à jour %1$s pour continuer.</string>
+    <string name="update_revokedContent">Une partie du contenu de %1$s a été retirée et ne peut plus être utilisée. Mettez à jour pour continuer.</string>
     <!-- UpdatePrompt: an app update. -->
     <string name="update_upToDate">Vous êtes à jour</string>
     <!-- UpdatePrompt: an app update. Menu item and settings button. -->
@@ -609,8 +617,8 @@
     <string name="paywall_purchasing">Finalisation de l’achat…</string>
     <!-- Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="paywall_purchased">%1$s est débloqué</string>
-    <!-- Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="paywall_notAvailable">Les achats ne sont pas disponibles dans cette version de %1$s.</string>
+    <!-- Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product. -->
+    <string name="paywall_notAvailable">Les achats ne sont pas disponibles dans cette version.</string>
     <!-- Paywall: what a tier adds, and how to get it. -->
     <string name="paywall_portal">Acheter dans votre navigateur</string>
     <string name="paywall_portal__macos">Acheter dans votre navigateur</string>
@@ -666,8 +674,8 @@
     <string name="signin_methods_title">Se connecter à Polaris Locker</string>
     <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
     <string name="signin_methods_titleApp">Se connecter</string>
-    <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_methods_ledeApp">Utilisez l’adresse e-mail de votre achat de %1$s ou une adresse professionnelle ou scolaire.</string>
+    <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). The title already names the product. -->
+    <string name="signin_methods_ledeApp">Utilisez l’adresse e-mail de votre achat ou une adresse professionnelle ou scolaire.</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
     <string name="signin_email_label">E-mail</string>
     <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
@@ -2573,8 +2581,8 @@
     <string name="core_gate_needs_activation_message">Saisissez une clé de licence ou connectez-vous pour continuer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_version_too_old_title">Mise à jour requise</string>
-    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
-    <string name="core_gate_version_too_old_message">Cette version n’est plus prise en charge. Mettez l’app à jour pour continuer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). Arguments: 1=product. -->
+    <string name="core_gate_version_too_old_message">Cette version n’est plus prise en charge. Mettez %1$s à jour pour continuer.</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->
     <string name="core_gate_version_too_new_title">Indisponible avec cette licence</string>
     <!-- Core copy (conformance/parity/copy.en.json, gate). -->

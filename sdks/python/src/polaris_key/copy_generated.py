@@ -227,7 +227,7 @@ COPY_GATE: Mapping[str, CopyEntry] = MappingProxyType(
         "expired": CopyEntry("License expired", "Connect to the internet or renew your license to continue."),
         "revoked": CopyEntry("Signed out", "This device was signed out. Sign in or activate again to continue."),
         "needs-activation": CopyEntry("Activate", "Enter a license key or sign in to continue."),
-        "version-too-old": CopyEntry("Update required", "This version is no longer supported. Update the app to continue."),
+        "version-too-old": CopyEntry("Update required", "This version is no longer supported. Update {product} to continue."),
         "version-too-new": CopyEntry("Not available on this license", "This build is newer than your license allows."),
         "channel-not-entitled": CopyEntry("Channel not included", "Your license doesn't include this channel."),
         "not-applicable": CopyEntry("No license needed", "This app doesn't need a license."),
