@@ -6784,6 +6784,12 @@ const rawApi = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  /** F-33b.4: a read service token (`binding: "service"`), answered once with the `pkeyci_` value. */
+  mintServiceToken: (scope: FeedScope, body: MintRegistryTokenBody) =>
+    call<MintedServiceToken>(`${feedsBase(scope)}/tokens`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   revokeRegistryToken: (scope: FeedScope, tokenId: string) =>
     call<{ ok: true; view: RegistryTokenDto }>(
       `${feedsBase(scope)}/tokens/${enc(tokenId)}/revoke`,

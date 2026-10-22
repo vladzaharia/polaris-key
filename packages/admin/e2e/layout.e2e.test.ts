@@ -201,6 +201,20 @@ function cases(): Case[] {
       },
     },
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
+    // F-33b.4: Service tokens (product) and Registry tokens (platform, no Create), and the mint dialog.
+    {
+      name: "djdl:feeds/tokens",
+      hash: "#/p/djdl/distribution/feeds/tokens",
+    },
+    { name: "global:platform-feeds/tokens", hash: "#/platform/feeds/tokens" },
+    {
+      name: "dialog:new-service-token",
+      hash: "#/p/djdl/distribution/feeds/tokens",
+      act: async (page) => {
+        await page.getByRole("button", { name: "New token…" }).click();
+        await page.getByRole("dialog", { name: "New service token" }).waitFor();
+      },
+    },
     {
       name: "global:platform-activity?timeline",
       hash: "#/platform/activity?view=timeline",

@@ -877,12 +877,12 @@ describe("overlays under the Worker's CSP", () => {
       location.hash = "#/p/djdl/distribution/feeds/tokens";
     });
     await page
-      .locator("[data-page-title]", { hasText: "Registry tokens" })
+      .locator("[data-page-title]", { hasText: "Service tokens" })
       .first()
       .waitFor();
-    await check(page, "new registry token dialog", async () => {
+    await check(page, "new service token dialog", async () => {
       await page.getByRole("button", { name: "New token…" }).click();
-      await page.getByRole("dialog", { name: "New registry token" }).waitFor();
+      await page.getByRole("dialog", { name: "New service token" }).waitFor();
     });
     await check(page, "registry token revoke", async () => {
       await page.getByRole("button", { name: "Actions for CI pull" }).click();

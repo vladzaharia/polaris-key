@@ -118,7 +118,7 @@ A product's own feeds prune by default. Before the first cleanup, the feeds send
 
 ### Private feeds
 
-A product's own feeds can require a token. A person with a license uses a personal token (`pkeyp_…`), created under **Account → Packages** at key.plrs.im: one token reads every feed their licenses reach. A product's own CI uses a registry token (`pkeyr_…`) from the console. Keep either in an environment variable and print the setup for any client:
+A product's own feeds can require a token. A person with a license uses a personal token (`pkeyp_…`), created under **Account → Packages** at key.plrs.im: one token reads every feed their licenses reach. A product's own CI uses a service token (`pkeyci_…`) from **Package feeds → Tokens** in the console. Keep either in an environment variable and print the setup for any client:
 
 ```sh title="Terminal"
 pkey feeds setup --ecosystem <ecosystem> --owner <slug> --token-env PKEY_REGISTRY_TOKEN

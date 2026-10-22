@@ -5,8 +5,7 @@
  * - Editing the publisher claims it from the manifest (`source` becomes `admin`); resyncs then
  *   leave it alone. Claiming is the only way to grant `release:yank`.
  * - A static token is shown once (`OneTimeSecretDialog`); only its hash is stored. Revoke is L2.
- * - CI publishing lives here, but Release's guided first-release panel edits it too, through the
- *   same `PublisherDrawer` and `IssueCiTokenFlow` (EXPERIENCE.md §0.4 S2).
+ * - Release's guided panel edits it too, via `PublisherDrawer` and `IssueCiTokenFlow` (§0.4 S2).
  */
 
 import * as React from "react";
@@ -56,6 +55,7 @@ const SCOPE_TEXT: Record<string, string> = {
   "distribution:feeds": "Publish package feeds",
   "distribution:listing": "Upload listing assets",
   "assets:write": "Upload hosted assets",
+  "packages:read": "Read private package feeds",
 };
 
 export function fetchCiPublisher(

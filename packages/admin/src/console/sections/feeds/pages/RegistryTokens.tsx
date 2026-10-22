@@ -1,71 +1,52 @@
 /**
- * Registry tokens (F-21, plans/F-20.md §6.5): the `pkeyr_` credentials package-feed clients
- * present on the registry host, in three places with one component set:
+ * Registry tokens (F-21, plans/F-20.md §6.5) and Service tokens (F-33b.4): the credentials
+ * package-feed clients present on the registry host, in three places with one component set:
  *
  * - **Distribution → Package feeds → Tokens** (`#/p/:slug/distribution/feeds/tokens`): the
- *   product's tokens, owner-bound or bound to one of its licences;
+ *   product's **Service tokens**: read `pkeyci_` tokens (F-33b.3), publish `pkeyr_` tokens, the
+ *   licence-bound ones, and the retired owner-wide read `pkeyr_` marked Legacy until they expire;
  * - **Platform → Package feeds → Tokens** (`#/platform/feeds/tokens`): the system product's;
  * - **the licence page's Registry tokens panel**: one licence's tokens (`LicenseRegistryTokens`).
  *
  * A token is shown once, in a dialog that also renders every client's setup with the real value
  * (`feedSetupSnippets` with a `token` credential). Revoking is L2; Revoke all needs confirmation.
- * A licensee can mint their own read tokens in the portal; those are listed here too.
+ * A licensee can mint their own read tokens in the portal; those are listed here too. The
+ * platform scope has no Create: team members install with their personal token.
  */
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Ban,
-  BadgeCheck,
-  Building2,
-  Gamepad2,
-  KeyRound,
-  Plus,
-  Upload,
-} from "lucide-react";
+import { Ban, Plus } from "lucide-react";
 import {
   api,
-  type FeedEcosystem,
   type MintedRegistryToken,
-  type RegistryTokenDto,
   type RegistryTokensDto,
 } from "../../../../api.js";
 import { errorCopy } from "../../../../lib/errorCopy.js";
-import { fromSeconds } from "../../../../lib/format.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
-import { Checkbox } from "../../../../ui/Checkbox.js";
-import { CodeBlock } from "../../../../ui/CodeBlock.js";
-import { Combobox } from "../../../../ui/Combobox.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
-import { DataTable, type DataColumn } from "../../../../ui/data-table/index.js";
-import { Dialog, DialogBody, DialogFooter } from "../../../../ui/Dialog.js";
+import { DataTable } from "../../../../ui/data-table/index.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
-import { FormField } from "../../../../ui/form.js";
-import { Input } from "../../../../ui/Input.js";
-import { NumberInput } from "../../../../ui/NumberInput.js";
 import { OneTimeSecretDialog } from "../../../../ui/OneTimeSecretPanel.js";
-import { RadioCards } from "../../../../ui/RadioCards.js";
-import { StatusPill } from "../../../../ui/StatusPill.js";
-import { Switch } from "../../../../ui/Switch.js";
-import { Timestamp } from "../../../../ui/Timestamp.js";
 import { toast } from "../../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
 import { mutate } from "../../../data/mutations.js";
+import { useWriteGate } from "../../../access/useCan.js";
 import { qk } from "../../../data/queries.js";
 import { intentOf } from "../../core/pages/confirmGate.js";
 import { SettingsRow, SettingsSection } from "../../../templates/Settings.js";
-import { useLicenses } from "../../license/components/shared.js";
 import { FeedNav } from "./FeedsArea.js";
+import { MintDialog, MintedSnippets } from "./RegistryTokenMint.js";
 import {
-  ECOSYSTEMS,
-  ECOSYSTEM_ICONS,
-  ECOSYSTEM_LABELS,
-  feedSetupSnippets,
-  type FeedScope,
-} from "../model/model.js";
+  columns,
+  dateOf,
+  serviceRow,
+  type TokenRow,
+} from "./registryTokenRows.js";
+import { feedSetupSnippets, type FeedScope } from "../model/model.js";
 
 export function fetchRegistryTokens(
   scope: FeedScope,
@@ -79,140 +60,6 @@ export function useRegistryTokens(scope: FeedScope, licenseId?: string) {
     queryKey: qk.pkgFeedTokens(scope, licenseId ?? ""),
     queryFn: () => fetchRegistryTokens(scope, licenseId),
   });
-}
-
-const STATUS_PILL: Record<
-  RegistryTokenDto["status"],
-  { tone: "success" | "neutral"; label: string }
-> = {
-  active: { tone: "success", label: "Active" },
-  expired: { tone: "neutral", label: "Expired" },
-  revoked: { tone: "neutral", label: "Revoked" },
-};
-
-/** Who minted a token, in words: an operator's address, or "Portal" for a licensee. */
-function creatorOf(t: RegistryTokenDto): string {
-  if (t.createdBy.startsWith("admin:")) return t.createdBy.slice(6);
-  if (t.createdBy.startsWith("portal:")) return "Licensee, in Polaris Locker";
-  return t.createdBy;
-}
-
-function FeedList({
-  ecosystems,
-}: {
-  ecosystems: RegistryTokenDto["ecosystems"];
-}): React.ReactElement {
-  if (ecosystems === null)
-    return (
-      <StatusPill tone="neutral" icon={null} size="sm">
-        Every feed
-      </StatusPill>
-    );
-  return (
-    <span className="flex flex-wrap gap-1">
-      {ecosystems.map((e) => {
-        const Icon = ECOSYSTEM_ICONS[e] ?? KeyRound;
-        return (
-          <StatusPill key={e} tone="neutral" size="sm" icon={Icon}>
-            {ECOSYSTEM_LABELS[e] ?? e}
-          </StatusPill>
-        );
-      })}
-    </span>
-  );
-}
-
-function columns(withBinding: boolean): DataColumn<RegistryTokenDto>[] {
-  const cols: DataColumn<RegistryTokenDto>[] = [
-    {
-      id: "token",
-      header: "Token",
-      accessorFn: (t) => t.label,
-      meta: { priority: 1, primary: true, label: "Token" },
-      cell: ({ row }) => {
-        const t = row.original;
-        const Icon = t.presentation === "url" ? Gamepad2 : KeyRound;
-        return (
-          <span className="inline-flex min-w-0 items-center gap-2">
-            <Icon aria-hidden className="size-4 shrink-0 text-fg-muted" />
-            <span className="inline-flex min-w-0 flex-col">
-              <span className="[overflow-wrap:anywhere]">{t.label}</span>
-              <span className="break-all font-mono text-xs text-fg-muted">
-                {t.tokenId} · …{t.hint}
-                {t.scopes.includes("publish") ? " · read and publish" : ""}
-              </span>
-            </span>
-          </span>
-        );
-      },
-    },
-    {
-      id: "status",
-      header: "Status",
-      accessorFn: (t) => t.status,
-      meta: { priority: 1, label: "Status" },
-      cell: ({ row }) => (
-        <StatusPill tone={STATUS_PILL[row.original.status].tone}>
-          {STATUS_PILL[row.original.status].label}
-        </StatusPill>
-      ),
-    },
-    {
-      id: "feeds",
-      header: "Feeds",
-      accessorFn: (t) => (t.ecosystems ?? ["*"]).join(","),
-      meta: { priority: 2, label: "Feeds" },
-      enableSorting: false,
-      cell: ({ row }) => <FeedList ecosystems={row.original.ecosystems} />,
-    },
-  ];
-  if (withBinding)
-    cols.push({
-      id: "binding",
-      header: "Bound to",
-      accessorFn: (t) => t.licenseId ?? "owner",
-      meta: { priority: 2, label: "Bound to" },
-      cell: ({ row }) =>
-        row.original.binding === "license" ? (
-          <span className="inline-flex items-center gap-1.5">
-            <BadgeCheck aria-hidden className="size-4 text-fg-muted" />
-            <span className="font-mono text-xs">{row.original.licenseId}</span>
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5">
-            <Building2 aria-hidden className="size-4 text-fg-muted" />
-            Owner
-          </span>
-        ),
-    });
-  cols.push(
-    {
-      id: "createdBy",
-      header: "Created by",
-      accessorFn: (t) => creatorOf(t),
-      meta: { priority: 3, label: "Created by" },
-    },
-    {
-      id: "expiresAt",
-      header: "Expires",
-      accessorKey: "expiresAt",
-      meta: { numeric: true, priority: 2, label: "Expires" },
-      cell: ({ row }) => <Timestamp at={fromSeconds(row.original.expiresAt)} />,
-    },
-    {
-      id: "lastUsedAt",
-      header: "Last used",
-      accessorFn: (t) => t.lastUsedAt ?? 0,
-      meta: { numeric: true, priority: 3, label: "Last used" },
-      cell: ({ row }) =>
-        row.original.lastUsedAt ? (
-          <Timestamp at={fromSeconds(row.original.lastUsedAt)} />
-        ) : (
-          <span className="text-fg-muted">Never</span>
-        ),
-    },
-  );
-  return cols;
 }
 
 /** The table, the mint dialog, the shown-once dialog and the revoke dialogs, for one scope. */
@@ -234,18 +81,29 @@ function TokensTable({
   const query = useRegistryTokens(scope, licenseId);
   useLoadingAnnouncement("registry tokens", query.isPending);
   const [minted, setMinted] = React.useState<MintedRegistryToken | null>(null);
-  const [revoking, setRevoking] = React.useState<RegistryTokenDto | null>(null);
+  const [revoking, setRevoking] = React.useState<TokenRow | null>(null);
   const cols = React.useMemo(
     () => columns(licenseId === undefined),
     [licenseId],
   );
-  const live = (query.data?.tokens ?? []).filter((t) => t.status === "active");
+  const rows = React.useMemo<TokenRow[]>(
+    () => [
+      ...(licenseId === undefined
+        ? (query.data?.serviceTokens ?? []).map(serviceRow)
+        : []),
+      ...(query.data?.tokens ?? []),
+    ],
+    [query.data, licenseId],
+  );
+  const live = rows.filter((t) => t.status === "active");
+  const service = licenseId === undefined && scope.kind === "product";
+  const noun = service ? "Service token" : "Registry token";
   return (
     <>
-      <DataTable<RegistryTokenDto>
+      <DataTable<TokenRow>
         id={`registry-tokens-${scope.kind}${licenseId ? "-license" : ""}`}
-        caption="Registry tokens"
-        data={query.data?.tokens ?? []}
+        caption={service ? "Service tokens" : "Registry tokens"}
+        data={rows}
         columns={cols}
         getRowId={(t) => t.tokenId}
         rowLabel={(t) => t.label}
@@ -270,11 +128,13 @@ function TokensTable({
             kind="first-run"
             variant="inline"
             headingLevel={3}
-            title="No registry tokens"
+            title={service ? "No service tokens" : "No registry tokens"}
             description={
               licenseId
                 ? "Tokens bound to this license appear here, whether an operator or the licensee minted them."
-                : "A client of a feed that is not public presents one. Public feeds need none."
+                : service
+                  ? "CI and servers present one to install from feeds that are not public. Public feeds need none."
+                  : "Team members install with their personal token. Public feeds need none."
             }
           />
         }
@@ -298,13 +158,17 @@ function TokensTable({
           if (!o) setMinted(null);
         }}
         size="lg"
-        title="Registry token created"
+        title={`${minted?.view.tokenId.startsWith("cit_") ? "Service" : "Registry"} token created`}
         description={
           minted
-            ? `Token ${minted.view.tokenId}, expiring ${new Date(minted.view.expiresAt * 1000).toLocaleDateString()}.`
+            ? `Token ${minted.view.tokenId}, expiring ${dateOf(minted.view.expiresAt)}.`
             : undefined
         }
-        label="Registry token"
+        label={
+          minted?.view.tokenId.startsWith("cit_")
+            ? "Service token"
+            : "Registry token"
+        }
         value={minted?.token ?? ""}
         hint="Shown once. Polaris Key stores only its hash. The setup below already holds it."
         details={
@@ -327,7 +191,7 @@ function TokensTable({
         describeError={(e) => errorCopy(e)}
         onConfirm={async () => {
           await mutate("revokeRegistryToken", scope, revoking!.tokenId);
-          toast.success("Registry token revoked");
+          toast.success(`${noun} revoked`);
         }}
       />
       <ConfirmDialog
@@ -337,11 +201,15 @@ function TokensTable({
         title={
           licenseId
             ? "Revoke every token of this license?"
-            : "Revoke every registry token?"
+            : service
+              ? "Revoke every service token?"
+              : "Revoke every registry token?"
         }
         consequences={[
           `${live.length} active token${live.length === 1 ? "" : "s"} stop${live.length === 1 ? "s" : ""} working within 30 seconds, including those licensees minted in Polaris Locker.`,
-          "Clients of feeds that are not public need a new token.",
+          service
+            ? "Includes service, publish and legacy tokens. CI and servers need a new service token."
+            : "Clients of feeds that are not public need a new token.",
         ]}
         confirmLabel="Revoke all"
         describeError={(e) => errorCopy(e)}
@@ -356,421 +224,6 @@ function TokensTable({
   );
 }
 
-/** Every client's setup for the feeds the new token reaches, with the real value. */
-function MintedSnippets({
-  data,
-  minted,
-}: {
-  data: RegistryTokensDto;
-  minted: MintedRegistryToken;
-}): React.ReactElement {
-  const reach = minted.view.ecosystems;
-  const feeds = data.feeds.filter(
-    (f) =>
-      f.enabled &&
-      f.baseUrl !== null &&
-      (reach === null || reach.includes(f.ecosystem)),
-  );
-  if (feeds.length === 0)
-    return (
-      <Callout tone="info" title="No enabled feed to set up yet">
-        The token works once a feed it reaches is enabled.
-      </Callout>
-    );
-  return (
-    <div className="space-y-4">
-      {feeds.map((f) => {
-        const Icon = ECOSYSTEM_ICONS[f.ecosystem];
-        // The shared renderer (`renderFeedSetup`, the same bytes `pkey feeds setup` prints),
-        // with the real token; null only for a token a snippet cannot carry.
-        const snippets =
-          feedSetupSnippets(
-            f.ecosystem,
-            { origin: f.baseUrl!, owner: data.owner, namespace: {} },
-            minted.view.presentation === "url"
-              ? { kind: "godot-url", value: minted.token }
-              : { kind: "token", value: minted.token },
-          ) ?? [];
-        return (
-          <section key={f.ecosystem} className="space-y-2">
-            <h3 className="inline-flex items-center gap-2 text-sm font-semibold text-fg-strong">
-              <Icon aria-hidden className="size-4 text-fg-muted" />
-              {f.label}
-            </h3>
-            {snippets.map((s) => (
-              <div key={s.id} className="space-y-1">
-                <p className="text-xs text-fg-muted">{s.title}</p>
-                {s.warning ? (
-                  <Callout tone="warning">{s.warning}</Callout>
-                ) : null}
-                <CodeBlock
-                  code={s.code}
-                  language={s.language}
-                  filename={s.filename}
-                  copy
-                />
-              </div>
-            ))}
-          </section>
-        );
-      })}
-    </div>
-  );
-}
-
-/** The licences of a product, to bind a token to one (rendered only when binding a licence). */
-function LicensePicker({
-  slug,
-  value,
-  onChange,
-}: {
-  slug: string;
-  value: string | null;
-  onChange: (v: string | null) => void;
-}): React.ReactElement {
-  const licenses = useLicenses(slug);
-  return (
-    <FormField
-      name="licenseId"
-      label="License"
-      required
-      value={value}
-      onChange={(v: string | null) => onChange(v)}
-    >
-      {(f) => (
-        <Combobox
-          {...f}
-          options={(licenses.data?.licenses ?? []).map((l) => ({
-            value: l.id,
-            label: l.name || l.email || l.id,
-            secondary: l.id,
-          }))}
-          placeholder={
-            licenses.isPending ? "Loading licenses…" : "Choose a license"
-          }
-          searchPlaceholder="Search licenses"
-          emptyText="No license matches."
-        />
-      )}
-    </FormField>
-  );
-}
-
-function MintDialog({
-  scope,
-  data,
-  licenseId,
-  open,
-  onOpenChange,
-  onMinted,
-}: {
-  scope: FeedScope;
-  data: RegistryTokensDto;
-  /** Fixed binding: the licence page mints for its licence only. */
-  licenseId?: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onMinted: (m: MintedRegistryToken) => void;
-}): React.ReactElement {
-  const [label, setLabel] = React.useState("");
-  const [everyFeed, setEveryFeed] = React.useState(true);
-  const [picked, setPicked] = React.useState<FeedEcosystem[]>([]);
-  const [godotUrl, setGodotUrl] = React.useState(false);
-  // A publish token (native clients: npm publish, twine, SwiftPM, Maven/Gradle, docker push).
-  const [access, setAccess] = React.useState<"read" | "publish">("read");
-  const [days, setDays] = React.useState<number | null>(
-    data.limits.defaultDays,
-  );
-  const [binding, setBinding] = React.useState<"owner" | "license">(
-    licenseId ? "license" : "owner",
-  );
-  const [license, setLicense] = React.useState<string | null>(
-    licenseId ?? null,
-  );
-  const [saving, setSaving] = React.useState(false);
-  const [failure, setFailure] = React.useState<unknown>(null);
-  React.useEffect(() => {
-    if (!open) return;
-    setLabel("");
-    setEveryFeed(true);
-    setPicked([]);
-    setGodotUrl(false);
-    setAccess("read");
-    setDays(data.limits.defaultDays);
-    setBinding(licenseId ? "license" : "owner");
-    setLicense(licenseId ?? null);
-    setFailure(null);
-  }, [open, data.limits.defaultDays, licenseId]);
-  const publish = access === "publish";
-  const publishEcosystems: readonly FeedEcosystem[] = React.useMemo(
-    () => data.limits.publishEcosystems ?? [],
-    [data.limits.publishEcosystems],
-  );
-  // Never on the platform scope: the SDK feeds are published by the deploy pipeline only (F-10).
-  const canPublish =
-    scope.kind === "product" &&
-    licenseId === undefined &&
-    publishEcosystems.length > 0;
-  React.useEffect(() => {
-    setDays(
-      publish
-        ? (data.limits.publishDefaultDays ?? data.limits.defaultDays)
-        : godotUrl
-          ? data.limits.urlDefaultDays
-          : data.limits.defaultDays,
-    );
-  }, [
-    publish,
-    godotUrl,
-    data.limits.urlDefaultDays,
-    data.limits.defaultDays,
-    data.limits.publishDefaultDays,
-  ]);
-  React.useEffect(() => {
-    if (!publish) return;
-    setBinding("owner");
-    setGodotUrl(false);
-    setEveryFeed(false);
-    setPicked((p) => {
-      const kept = p.filter((e) => publishEcosystems.includes(e));
-      return kept.length === p.length ? p : kept;
-    });
-  }, [publish, publishEcosystems]);
-
-  const minDays = data.limits.minDays;
-  const maxDays = publish
-    ? (data.limits.publishMaxDays ?? data.limits.maxDays)
-    : data.limits.maxDays;
-  const daysError =
-    days === null || !Number.isInteger(days) || days < minDays || days > maxDays
-      ? `Use a whole number of days from ${minDays} to ${maxDays}.`
-      : undefined;
-  const labelError =
-    label.trim() === "" || label.trim().length > 64
-      ? "Give the token a label of up to 64 characters."
-      : undefined;
-  const feedsError =
-    !godotUrl && (publish || !everyFeed) && picked.length === 0
-      ? publish
-        ? "Choose the feeds this token publishes to."
-        : "Choose at least one feed."
-      : undefined;
-  const licenseError =
-    binding === "license" && !license ? "Choose a license." : undefined;
-  const invalid = !!(daysError || labelError || feedsError || licenseError);
-
-  const submit = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    if (saving || invalid) return;
-    setSaving(true);
-    setFailure(null);
-    try {
-      const res = await mutate("mintRegistryToken", scope, {
-        label: label.trim(),
-        binding,
-        ...(binding === "license" ? { licenseId: license! } : {}),
-        expiresInDays: days!,
-        ...(publish
-          ? { scopes: ["publish" as const], ecosystems: picked }
-          : godotUrl
-            ? { presentation: "url" as const }
-            : { ecosystems: everyFeed ? null : picked }),
-      });
-      onMinted(res);
-    } catch (err) {
-      setFailure(err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (!saving) onOpenChange(o);
-      }}
-      dismissible={!saving}
-      title="New registry token"
-      description="Access to this owner's feeds. Shown once; Polaris Key stores only its hash."
-    >
-      <form onSubmit={submit} noValidate>
-        <DialogBody className="space-y-4">
-          <FormField
-            name="label"
-            label="Label"
-            required
-            value={label}
-            onChange={(v: string) => setLabel(v)}
-            error={label === "" ? undefined : labelError}
-          >
-            {(f) => <Input {...f} maxLength={64} />}
-          </FormField>
-          {canPublish ? (
-            <FormField
-              name="access"
-              label="Access"
-              group
-              value={access}
-              onChange={(v: string) => setAccess(v as "read" | "publish")}
-            >
-              {(f) => (
-                <RadioCards<string>
-                  {...f}
-                  columns={2}
-                  options={[
-                    {
-                      value: "read",
-                      label: "Read",
-                      description: "Install from feeds that are not public.",
-                      icon: <KeyRound aria-hidden className="size-4" />,
-                    },
-                    {
-                      value: "publish",
-                      label: "Read and publish",
-                      description: `npm publish, twine, SwiftPM, Maven or Gradle deploys and docker push. At most ${data.limits.publishMaxDays ?? maxDays} days; in CI use the job's OIDC token instead.`,
-                      icon: <Upload aria-hidden className="size-4" />,
-                    },
-                  ]}
-                />
-              )}
-            </FormField>
-          ) : null}
-          {licenseId === undefined && scope.kind === "product" && !publish ? (
-            <FormField
-              name="binding"
-              label="Bound to"
-              group
-              value={binding}
-              onChange={(v: string) => setBinding(v as "owner" | "license")}
-            >
-              {(f) => (
-                <RadioCards<string>
-                  {...f}
-                  columns={2}
-                  options={[
-                    {
-                      value: "owner",
-                      label: "This product",
-                      description:
-                        "Passes every access mode, entitled included.",
-                      icon: <Building2 aria-hidden className="size-4" />,
-                    },
-                    {
-                      value: "license",
-                      label: "One license",
-                      description:
-                        "Works while the license is active; entitled needs its flag.",
-                      icon: <BadgeCheck aria-hidden className="size-4" />,
-                    },
-                  ]}
-                />
-              )}
-            </FormField>
-          ) : null}
-          {binding === "license" &&
-          licenseId === undefined &&
-          scope.kind === "product" ? (
-            <LicensePicker
-              slug={scope.slug}
-              value={license}
-              onChange={setLicense}
-            />
-          ) : null}
-          {!publish ? (
-            <Switch
-              label="Godot editor URL"
-              description="The editor sends no credentials, so this token goes in its URL: Godot feeds only, read only."
-              checked={godotUrl}
-              onCheckedChange={setGodotUrl}
-            />
-          ) : null}
-          {!godotUrl ? (
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-semibold text-fg-strong">
-                Feeds
-              </legend>
-              {!publish ? (
-                <Checkbox
-                  label="Every feed"
-                  description="Today's and any this owner enables later."
-                  checked={everyFeed}
-                  onCheckedChange={setEveryFeed}
-                />
-              ) : null}
-              {publish || !everyFeed ? (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {(publish ? publishEcosystems : ECOSYSTEMS).map((e) => {
-                    const Icon = ECOSYSTEM_ICONS[e];
-                    return (
-                      <Checkbox
-                        key={e}
-                        label={
-                          <span className="inline-flex items-center gap-1.5">
-                            <Icon aria-hidden className="size-4" />
-                            {ECOSYSTEM_LABELS[e]}
-                          </span>
-                        }
-                        checked={picked.includes(e)}
-                        onCheckedChange={(on) =>
-                          setPicked(
-                            on ? [...picked, e] : picked.filter((x) => x !== e),
-                          )
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              ) : null}
-              {feedsError ? (
-                <p className="text-xs text-danger">{feedsError}</p>
-              ) : null}
-            </fieldset>
-          ) : null}
-          <FormField
-            name="expiresInDays"
-            label="Expires after"
-            className="w-44"
-            required
-            value={days}
-            onChange={(v: number | null) => setDays(v)}
-            error={daysError}
-          >
-            {(f) => (
-              <NumberInput
-                {...f}
-                integer
-                nullable
-                min={minDays}
-                max={maxDays}
-                unit="days"
-              />
-            )}
-          </FormField>
-          {failure ? (
-            <Callout tone="danger" title={errorCopy(failure).title}>
-              {errorCopy(failure).description}
-            </Callout>
-          ) : null}
-        </DialogBody>
-        <DialogFooter>
-          <Button
-            variant="ghost"
-            type="button"
-            disabled={saving}
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" loading={saving} disabled={invalid}>
-            Create token
-          </Button>
-        </DialogFooter>
-      </form>
-    </Dialog>
-  );
-}
-
 /** Distribution → Package feeds → Tokens, or Platform → Package feeds → Tokens. */
 export function RegistryTokensPage({
   scope,
@@ -780,24 +233,37 @@ export function RegistryTokensPage({
   const [minting, setMinting] = React.useState(false);
   const [revokingAll, setRevokingAll] = React.useState(false);
   const query = useRegistryTokens(scope);
-  const anyLive = (query.data?.tokens ?? []).some((t) => t.status === "active");
+  const anyLive = [
+    ...(query.data?.tokens ?? []),
+    ...(query.data?.serviceTokens ?? []),
+  ].some((t) => t.status === "active");
+  const product = scope.kind === "product";
+  const keys = useWriteGate("keys", product ? scope.slug : null);
+  // A member without Keys can still mint a publish token, when the product has a publish feed.
+  const mintReason = !query.data
+    ? "Loading"
+    : keys.allowed || (query.data.limits.publishEcosystems ?? []).length > 0
+      ? undefined
+      : keys.disabledReason;
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Registry tokens"
+        title={product ? "Service tokens" : "Registry tokens"}
         description={
           query.data?.registryOrigin
             ? `For clients of feeds that are not public, on ${new URL(query.data.registryOrigin).host}.`
             : undefined
         }
         primaryAction={
-          <Button
-            iconStart={<Plus aria-hidden />}
-            onClick={() => setMinting(true)}
-            disabledReason={query.data ? undefined : "Loading"}
-          >
-            New token…
-          </Button>
+          product ? (
+            <Button
+              iconStart={<Plus aria-hidden />}
+              onClick={() => setMinting(true)}
+              disabledReason={mintReason}
+            >
+              New token…
+            </Button>
+          ) : undefined
         }
         dangerActions={[
           {
@@ -817,13 +283,21 @@ export function RegistryTokensPage({
           context={{ area: "distribution", thing: "Registry tokens" }}
         />
       ) : (
-        <TokensTable
-          scope={scope}
-          minting={minting}
-          onMintingChange={setMinting}
-          revokingAll={revokingAll}
-          onRevokingAllChange={setRevokingAll}
-        />
+        <>
+          {product ? null : (
+            <Callout tone="info">
+              Team members install with their personal token. Tokens listed here
+              keep working until they expire, and you can revoke them.
+            </Callout>
+          )}
+          <TokensTable
+            scope={scope}
+            minting={minting}
+            onMintingChange={setMinting}
+            revokingAll={revokingAll}
+            onRevokingAllChange={setRevokingAll}
+          />
+        </>
       )}
     </div>
   );
