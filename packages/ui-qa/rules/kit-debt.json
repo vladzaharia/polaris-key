@@ -311,7 +311,7 @@
       "kit": "swiftui",
       "rule": "swiftui-link-validation",
       "file": "sdks/swift/Sources/PolarisKeyUI/Kit/PolarisKeyGate.swift",
-      "count": 1
+      "count": 2
     },
     {
       "kit": "swiftui",
@@ -402,6 +402,12 @@
       "rule": "swiftui-spacing-off-scale",
       "file": "sdks/swift/Sources/PolarisKeyUI/Kit/KitParts.swift",
       "count": 5
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-spacing-off-scale",
+      "file": "sdks/swift/Sources/PolarisKeyUI/Kit/PolarisKeyGate.swift",
+      "count": 1
     },
     {
       "kit": "swiftui",

@@ -36,7 +36,7 @@ export function ErrorState({
   const base = errorCopy(error, context);
   const copy =
     thing && base.action !== "sign-in"
-      ? { ...base, title: `${thing} didn’t load` }
+      ? { ...base, title: `${thing} didn't load` }
       : base;
   const titleId = React.useId();
   if (compact) {

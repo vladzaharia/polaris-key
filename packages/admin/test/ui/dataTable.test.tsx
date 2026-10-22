@@ -512,7 +512,7 @@ describe("opt-in console additions", () => {
         errorThing="Licenses"
       />,
     );
-    expect(screen.getByText("Licenses didn’t load")).toBeTruthy();
+    expect(screen.getByText("Licenses didn't load")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(onRetry).toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Copy details" })).toBeTruthy();
@@ -524,7 +524,7 @@ describe("opt-in console additions", () => {
       <Harness data={[]} error={new Error("boom")} onRetry={() => undefined} />,
     );
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
-    expect(screen.queryByText(/didn’t load/)).toBeNull();
+    expect(screen.queryByText(/didn't load/)).toBeNull();
   });
 });
 
