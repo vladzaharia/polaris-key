@@ -7530,7 +7530,7 @@ the account holder into approving it ("read me the code", "scan this to claim yo
   never an approval. The design's approve screen (§4.24) carries the warning "Only approve if you
   started this yourself, on a device in front of you".
 - **The place is shown.** The request records the asking browser and OS and its coarse place
-  (Cloudflare's edge geolocation, which the client cannot set); `lookup` shows them next to the
+  (Cloudflare's edge geolocation, which a client cannot forge in the request; a VPN can choose the exit city); the device line comes from the User-Agent and is attacker-chosen too; `lookup` shows them next to the
   approver's own country, and the security notice names them.
 - **Step-up for a new location.** Approving a request whose country is not the approver's, or
   where either is unknown (Tor, an unlocated address), needs a sign-in no older than 5 minutes
@@ -7577,7 +7577,7 @@ the account holder into approving it ("read me the code", "scan this to claim yo
   console context) and asks for `admin` only; `packages:read` is a `422 bad_request`. The client
   block is attacker-chosen text, cleaned (control and bidi characters dropped, host at most 64
   characters) and shown to the approver as "unverified"; the approver also sees the place
-  (edge geolocation), which a client cannot set. **Residual:** the phishing of the portal feature
+  (edge geolocation), which a client cannot forge in the request (a VPN can choose the exit city); the device line comes from the User-Agent and is attacker-chosen too. **Residual:** the phishing of the portal feature
   applies, and an admin token is worth more. The console card (ST-34.6) must require a stepped-up
   console session, so approving needs a fresh sign-in, not just a cookie.
 

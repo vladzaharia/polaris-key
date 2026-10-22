@@ -38,7 +38,7 @@
  *
  * AUDIT. The mint and the revoke are audited by the caller through the account audit
  * (`portal_audit`, the portal) or the platform audit (`core/audit.ts`, the console); this module
- * writes no audit row. A token USE is not audited per request (a package install is dozens of
+ * writes no audit row (the audit row also records who created the token: the row itself keeps no creator). A token USE is not audited per request (a package install is dozens of
  * requests); `last_used_at` is the signal, written at most once an hour.
  */
 
@@ -169,7 +169,8 @@ export interface MintPersonalTokenInput {
   /** Exactly one scope. */
   readonly scope: string;
   readonly expiresInDays?: number;
-  /** `portal:<accountId>` or `admin:<sub>`. */
+  /** `portal:<accountId>`, `admin:<sub>` or `console:<memberId>`. Informational: the token row keeps
+   *  no `created_by` column, so the caller's audit row is the provenance record. */
   readonly createdBy: string;
 }
 

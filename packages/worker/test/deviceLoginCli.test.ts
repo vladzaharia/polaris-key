@@ -24,7 +24,10 @@ import {
   cliDeviceLoginDecide,
   cliDeviceLoginLookup,
 } from "../src/services/identity/public.js";
-import { resolvePersonalToken } from "../src/core/accounts/personalTokens.js";
+import {
+  mintAccountToken,
+  resolvePersonalToken,
+} from "../src/core/accounts/personalTokens.js";
 import { memberIdFor } from "../src/core/console/memberId.js";
 import { handlePortalApi } from "./portalHarness.js";
 import { eraseAndRestore, LedgerBucket } from "./eraseRestore.js";
@@ -306,6 +309,9 @@ describe("the console's lookup and decision", () => {
   });
 });
 
+const LONE_SURROGATE =
+  /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
 describe("the poll of a CLI record", () => {
   async function approved() {
     const w = await setup();
@@ -372,6 +378,52 @@ describe("the poll of a CLI record", () => {
       const dump = JSON.stringify(await db.all(`SELECT * FROM "${name}"`));
       expect(dump).not.toContain(token);
     }
+  });
+
+  it("cleans client text by code points: no lone surrogate, no invisible fillers, no zalgo", async () => {
+    const { env, db } = await setup();
+    const emoji = await startCli(env, db, {
+      ...CLI_START,
+      client: {
+        host: `${"a".repeat(63)}\u{1F600}`,
+        name: "n".repeat(31) + "\u{1F600}x",
+      },
+    });
+    const v = (await cliDeviceLoginLookup(env, emoji.code, NOW))!;
+    expect(Array.from(v.client.host)).toHaveLength(64);
+    expect(v.client.host.endsWith("\u{1F600}")).toBe(true);
+    expect(Array.from(v.client.name)).toHaveLength(32);
+    for (const t of [v.client.host, v.client.name])
+      expect(t).not.toMatch(LONE_SURROGATE);
+    // 63 + emoji = 66 UTF-16 units but 64 points; one more point is cut whole.
+    const over = await startCli(
+      env,
+      db,
+      { ...CLI_START, client: { host: `${"a".repeat(63)}\u{1F600}\u{1F600}` } },
+      "203.0.113.8",
+    );
+    const ov = (await cliDeviceLoginLookup(env, over.code, NOW))!;
+    expect(ov.client.host).not.toMatch(LONE_SURROGATE);
+    expect(Array.from(ov.client.host)).toHaveLength(64);
+    const fill = await startCli(
+      env,
+      db,
+      {
+        ...CLI_START,
+        client: { host: "\u3164\u115F\u1160\uFFA0\u2800\u200B" },
+      },
+      "203.0.113.9",
+    );
+    const fv = (await cliDeviceLoginLookup(env, fill.code, NOW))!;
+    expect(fv.client.host).toBe("an unnamed host");
+    const zalgo = await startCli(
+      env,
+      db,
+      { ...CLI_START, client: { host: `z${"\u0301".repeat(40)}` } },
+      "203.0.113.10",
+    );
+    const zv = (await cliDeviceLoginLookup(env, zalgo.code, NOW))!;
+    expect(zv.client.host.length).toBeLessThanOrEqual(4);
   });
 
   it("answers denied with no token", async () => {
@@ -456,8 +508,75 @@ describe("the poll of a CLI record", () => {
     expect(await res.json()).toMatchObject({ error: "account_disabled" });
   });
 
-  it("names the approver's member id as the creator through Core's mint", async () => {
-    const { env, ada } = await approved();
-    expect(await memberIdFor(env, ada.accountId)).toMatch(/^mbr_/);
+  it("writes the create audit row on a successful CLI mint, with the approver's member id and no plaintext", async () => {
+    const { env, db, ada, s } = await approved();
+    const res = await poll(env, db, s);
+    const body = (await res.json()) as { token: string };
+    const rows = await db.all<{
+      account_id: string;
+      action: string;
+      target_kind: string;
+      target_id: string;
+      summary: string;
+    }>(
+      "SELECT * FROM portal_audit WHERE action = 'portal.personal_token.create'",
+    );
+    expect(rows).toHaveLength(1);
+    const tok = await db.first<{ id: string }>(
+      "SELECT id FROM account_tokens WHERE account_id = ?",
+      ada.accountId,
+    );
+    expect(rows[0]).toMatchObject({
+      account_id: ada.accountId,
+      target_kind: "account_token",
+      target_id: tok!.id,
+    });
+    expect(rows[0]!.summary).toContain("pkey on ada-mbp.local");
+    expect(rows[0]!.summary).toContain("admin");
+    expect(rows[0]!.summary).toContain(await memberIdFor(env, ada.accountId));
+    expect(rows[0]!.summary).not.toContain(body.token);
+  });
+
+  it("writes no create row for a refused mint (token_limit, 409)", async () => {
+    const { env, db, ada, s } = await approved();
+    for (let i = 0; i < 25; i++)
+      await mintAccountToken(
+        env,
+        db,
+        {
+          accountId: ada.accountId,
+          label: `t${i}`,
+          scope: "packages:read",
+          createdBy: "x",
+        },
+        NOW,
+      );
+    const res = await poll(env, db, s);
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ reason: "token_limit" });
+    const n = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM portal_audit WHERE action = 'portal.personal_token.create'",
+    );
+    expect(n!.n).toBe(0);
+  });
+
+  it("answers expired and mints nothing when the approver was merged away before the poll", async () => {
+    const { env, db, ada, s } = await approved();
+    const bob = await signIn(env, db, "bob@example.com");
+    await db.run("PRAGMA foreign_keys = OFF");
+    await db.run("DELETE FROM accounts WHERE id = ?", ada.accountId);
+    await db.run(
+      "INSERT INTO account_tombstones (id, merged_into, deleted_at) VALUES (?, ?, ?)",
+      ada.accountId,
+      bob.accountId,
+      NOW,
+    );
+    await db.run("PRAGMA foreign_keys = ON");
+    const res = await poll(env, db, s);
+    expect(res.status).toBe(410);
+    const n = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM account_tokens WHERE scope = 'admin'",
+    );
+    expect(n!.n).toBe(0);
   });
 });
