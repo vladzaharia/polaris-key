@@ -1259,6 +1259,10 @@
     <string name="cli_option_yes">退出登录前不再询问</string>
     <!-- Terminal help: what the -device-code flag does. -->
     <string name="cli_option_deviceCode">使用代码登录，而非此电脑的浏览器</string>
+    <!-- Terminal help: what the -key-file flag of the activate command does. -->
+    <string name="cli_option_keyFile">从文件读取许可证密钥</string>
+    <!-- Terminal help: what the -key-stdin flag of the activate command does. -->
+    <string name="cli_option_keyStdin">从标准输入读取许可证密钥</string>
     <!-- Terminal help: what the -allow-workflow-commands flag of the secret and mint commands does. A CI log is a build server's job log (GitHub Actions, Azure Pipelines); a command is an instruction the build server reads from that log. -->
     <string name="cli_option_allowWorkflowCommands">即使CI日志会将其中一行作为命令执行，也输出该值</string>
     <!-- Terminal key hints under the license key prompt. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators. -->

@@ -561,6 +561,8 @@
     "cli.option.help": "コマンドのヘルプ",
     "cli.option.yes": "サインアウト前に確認しない",
     "cli.option.deviceCode": "このコンピュータのブラウザの代わりにコードでサインイン",
+    "cli.option.keyFile": "ライセンスキーをファイルから読み込む",
+    "cli.option.keyStdin": "ライセンスキーを標準入力から読み込む",
     "cli.option.allowWorkflowCommands": "CIログが値の行をコマンドとして実行する場合でも値を出力",
     "cli.keys.activate": "Enter アクティベート · Esc キャンセル",
     "cli.keys.code": "c コードをコピー · Esc キャンセル",

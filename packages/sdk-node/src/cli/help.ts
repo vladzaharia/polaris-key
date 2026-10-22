@@ -30,9 +30,10 @@ export const GLOBAL_OPTIONS: ReadonlyArray<{ flags: string; key: string }> = [
 export const VERB_OPTIONS: Readonly<
   Record<string, ReadonlyArray<{ flags: string; key?: string }>>
 > = {
-  // No description yet: the catalog has no `cli.option.keyFile` / `cli.option.keyStdin`, and the
-  // kit shows catalog copy only. Python spells them out in English.
-  activate: [{ flags: "--key-file <path>" }, { flags: "--key-stdin" }],
+  activate: [
+    { flags: "--key-file <path>", key: "cli.option.keyFile" },
+    { flags: "--key-stdin", key: "cli.option.keyStdin" },
+  ],
   login: [{ flags: "--device-code", key: "cli.option.deviceCode" }],
   logout: [{ flags: "-y, --yes", key: "cli.option.yes" }],
   deactivate: [{ flags: "-y, --yes", key: "cli.option.yes" }],

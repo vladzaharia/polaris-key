@@ -1279,6 +1279,10 @@
     <string name="cli_option_yes">Não perguntar antes de sair</string>
     <!-- Terminal help: what the -device-code flag does. -->
     <string name="cli_option_deviceCode">Entrar com um código, sem o navegador deste computador</string>
+    <!-- Terminal help: what the -key-file flag of the activate command does. -->
+    <string name="cli_option_keyFile">Ler a chave de licença de um arquivo</string>
+    <!-- Terminal help: what the -key-stdin flag of the activate command does. -->
+    <string name="cli_option_keyStdin">Ler a chave de licença da entrada padrão</string>
     <!-- Terminal help: what the -allow-workflow-commands flag of the secret and mint commands does. A CI log is a build server's job log (GitHub Actions, Azure Pipelines); a command is an instruction the build server reads from that log. -->
     <string name="cli_option_allowWorkflowCommands">Mostrar o valor mesmo que um log de CI execute uma linha dele como comando</string>
     <!-- Terminal key hints under the license key prompt. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators. -->

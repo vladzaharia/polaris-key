@@ -568,6 +568,8 @@ export type KitCopyKey =
   | "cli.option.help"
   | "cli.option.yes"
   | "cli.option.deviceCode"
+  | "cli.option.keyFile"
+  | "cli.option.keyStdin"
   | "cli.option.allowWorkflowCommands"
   | "cli.keys.activate"
   | "cli.keys.code"

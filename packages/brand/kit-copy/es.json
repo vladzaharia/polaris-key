@@ -561,6 +561,8 @@
     "cli.option.help": "Ayuda de un comando",
     "cli.option.yes": "No preguntar antes de cerrar sesión",
     "cli.option.deviceCode": "Iniciar sesión con un código en vez del navegador local",
+    "cli.option.keyFile": "Leer la clave de licencia de un archivo",
+    "cli.option.keyStdin": "Leer la clave de licencia de la entrada estándar",
     "cli.option.allowWorkflowCommands": "Mostrar el valor aunque un registro de CI ejecute una de sus líneas como comando",
     "cli.keys.activate": "Intro activar · Esc cancelar",
     "cli.keys.code": "c copiar el código · Esc cancelar",

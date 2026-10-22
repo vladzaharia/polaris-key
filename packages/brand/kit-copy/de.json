@@ -561,6 +561,8 @@
     "cli.option.help": "Hilfe zu einem Befehl",
     "cli.option.yes": "Vor dem Abmelden nicht nachfragen",
     "cli.option.deviceCode": "Mit Code statt im Browser dieses Computers anmelden",
+    "cli.option.keyFile": "Lizenzschlüssel aus einer Datei lesen",
+    "cli.option.keyStdin": "Lizenzschlüssel von der Standardeingabe lesen",
     "cli.option.allowWorkflowCommands": "Den Wert auch ausgeben, wenn ein CI-Log eine Zeile davon als Befehl ausführen würde",
     "cli.keys.activate": "Enter aktivieren · Esc abbrechen",
     "cli.keys.code": "c Code kopieren · Esc abbrechen",

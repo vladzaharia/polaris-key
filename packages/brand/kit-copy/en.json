@@ -2791,6 +2791,16 @@
       "role": "body",
       "note": "Terminal help: what the --device-code flag does."
     },
+    "cli.option.keyFile": {
+      "value": "Read the license key from a file",
+      "role": "body",
+      "note": "Terminal help: what the --key-file flag of the activate command does."
+    },
+    "cli.option.keyStdin": {
+      "value": "Read the license key from standard input",
+      "role": "body",
+      "note": "Terminal help: what the --key-stdin flag of the activate command does."
+    },
     "cli.option.allowWorkflowCommands": {
       "value": "Print the value even if a CI log would run a line of it as a command",
       "role": "body",

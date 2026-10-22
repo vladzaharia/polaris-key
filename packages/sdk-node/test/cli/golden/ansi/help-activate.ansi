@@ -5,8 +5,8 @@
 [2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
-  [1m--key-file <path>[22m
-  [1m--key-stdin[22m
+  [1m--key-file <path>[22m  Read the license key from a file
+  [1m--key-stdin[22m        Read the license key from standard input
   [1m--json[22m             JSON output for scripts, on every command
   [1m--no-color[22m         Plain text (also NO_COLOR=1)
   [1m--ascii[22m            ASCII symbols only
@@ -19,8 +19,8 @@
 [2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
-  [1m--key-file <path>[22m
-  [1m--key-stdin[22m
+  [1m--key-file <path>[22m  Read the license key from a file
+  [1m--key-stdin[22m        Read the license key from standard input
   [1m--json[22m             JSON output for scripts, on every command
   [1m--no-color[22m         Plain text (also NO_COLOR=1)
   [1m--ascii[22m            ASCII symbols only
@@ -33,8 +33,8 @@
 [2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
-  [1m--key-file <path>[22m
-  [1m--key-stdin[22m
+  [1m--key-file <path>[22m  Read the license key from a file
+  [1m--key-stdin[22m        Read the license key from standard input
   [1m--json[22m             JSON output for scripts, on every command
   [1m--no-color[22m         Plain text (also NO_COLOR=1)
   [1m--ascii[22m            ASCII symbols only
@@ -47,8 +47,8 @@ Add a license key (prompted, or piped on stdin)
 Usage  tidewater activate [key] [options]
 
 [1mOptions[22m
-  [1m--key-file <path>[22m
-  [1m--key-stdin[22m
+  [1m--key-file <path>[22m  Read the license key from a file
+  [1m--key-stdin[22m        Read the license key from standard input
   [1m--json[22m             JSON output for scripts, on every command
   [1m--no-color[22m         Plain text (also NO_COLOR=1)
   [1m--ascii[22m            ASCII symbols only
@@ -61,8 +61,8 @@ Usage  tidewater activate [key] [options]
 [2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
-  [1m--key-file <path>[22m
-  [1m--key-stdin[22m
+  [1m--key-file <path>[22m  Read the license key from a file
+  [1m--key-stdin[22m        Read the license key from standard input
   [1m--json[22m             JSON output for scripts, on every command
   [1m--no-color[22m         Plain text (also NO_COLOR=1)
   [1m--ascii[22m            ASCII symbols only
@@ -75,8 +75,9 @@ Usage  tidewater activate [key] [options]
 [2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
-  [1m--key-file <path>[22m
-  [1m--key-stdin[22m
+  [1m--key-file <path>[22m  Read the license key from a file
+  [1m--key-stdin[22m        Read the license key from
+                     standard input
   [1m--json[22m             JSON output for scripts, on
                      every command
   [1m--no-color[22m         Plain text (also NO_COLOR=1)
@@ -90,8 +91,9 @@ Usage  tidewater activate [key] [options]
 [2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
-  [1m--key-file <path>[22m
-  [1m--key-stdin[22m
+  [1m--key-file <path>[22m  Read the license key from a file
+  [1m--key-stdin[22m        Read the license key from
+                     standard input
   [1m--json[22m             JSON output for scripts, on
                      every command
   [1m--no-color[22m         Plain text (also NO_COLOR=1)
@@ -105,8 +107,9 @@ Usage  tidewater activate [key] [options]
 [2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
-  [1m--key-file <path>[22m
-  [1m--key-stdin[22m
+  [1m--key-file <path>[22m  Read the license key from a file
+  [1m--key-stdin[22m        Read the license key from
+                     standard input
   [1m--json[22m             JSON output for scripts, on
                      every command
   [1m--no-color[22m         Plain text (also NO_COLOR=1)
@@ -120,8 +123,9 @@ Add a license key (prompted, or piped on stdin)
 Usage  tidewater activate [key] [options]
 
 [1mOptions[22m
-  [1m--key-file <path>[22m
-  [1m--key-stdin[22m
+  [1m--key-file <path>[22m  Read the license key from a file
+  [1m--key-stdin[22m        Read the license key from
+                     standard input
   [1m--json[22m             JSON output for scripts, on
                      every command
   [1m--no-color[22m         Plain text (also NO_COLOR=1)
@@ -135,8 +139,9 @@ Usage  tidewater activate [key] [options]
 [2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
-  [1m--key-file <path>[22m
-  [1m--key-stdin[22m
+  [1m--key-file <path>[22m  Read the license key from a file
+  [1m--key-stdin[22m        Read the license key from
+                     standard input
   [1m--json[22m             JSON output for scripts, on
                      every command
   [1m--no-color[22m         Plain text (also NO_COLOR=1)
