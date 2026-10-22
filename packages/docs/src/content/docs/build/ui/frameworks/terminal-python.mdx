@@ -10,6 +10,7 @@ lanes: ["kit"]
 
 import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
 import KitFacts from "../../../../../components/ui/KitFacts.astro";
+import Snippet from "../../../../../components/docs/Snippet.astro";
 
 The Python SDK's terminal kit, `polaris_key.ui.terminal`. It draws every verb of the
 `polaris-key` CLI, and any host CLI that mounts those verbs, in the product's identity: the
@@ -153,6 +154,33 @@ prints ▲ with its fix as a command; only a failure prints ✗. `login` tells a
 (hand-off state `denied`, code `sign-in-denied`, "Sign-in declined") from a sign-in that
 failed (`failed`, `sign-in-failed`, "Sign-in failed"). `status` points to the product's page with
 a labelled line, "Next step on the Tidewater page:", and the link under it.
+
+## Your CLI framework
+
+Each framework mounts the same verbs and gates a command of your own. Pick yours.
+
+### argparse
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/python/kit/licensing.argparse.py"
+  title="cli.py"
+/>
+
+### click
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/python/kit/licensing.click.py"
+  title="cli.py"
+/>
+
+### typer
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/python/kit/licensing.typer.py"
+  title="cli.py"
+/>
+
+Textual has no verb adapter: it is the [full-screen app](#the-full-screen-app). A CLI that also serves requests gates them with a [server drop-in](/docs/build/servers/).
 
 ## The full-screen app
 

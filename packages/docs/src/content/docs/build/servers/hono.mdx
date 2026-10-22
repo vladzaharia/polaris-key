@@ -1,0 +1,43 @@
+---
+title: "Gate a Hono route with the license"
+description: "Refuse a request to your Hono route unless the device's license allows it, on Node, Bun, Deno or Cloudflare Workers. Verified offline, with no call to Polaris Key."
+type: "how-to"
+lastReviewed: "2026-10-22"
+lanes: ["server"]
+sidebar:
+  order: 3
+---
+
+import Snippet from "../../../../components/docs/Snippet.astro";
+
+The Node drop-in reads the device's license document from the `X-PKey-License` header, verifies it offline against your pinned keys and refuses the request when the license doesn't allow it. A route with no gate stays open. The contract is on [Verify licenses on your server](/docs/build/servers/).
+
+Requires the License feature and the config file `pkey sdk --lang node --write` writes. The app sends `X-PKey-License` and `X-PKey-Device` with each call to your server.
+
+## Steps
+
+1. **Server** Install `@polaris-key/server` from Polaris Key's npm feed, and generate the config file with `pkey sdk --lang node --write`.
+2. **Server** Add `polarisKey({ config })` with `app.use` on the paths you gate. It never refuses.
+3. **Server** Put a gate on each route: `requireLicense`, `requireEntitlement`, `requireTier` or `requireSignIn`.
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/node/server/licensing.hono.ts"
+  title="app.ts"
+/>
+
+Behind a gate, `c.var.polaris.license` is typed as present. On Cloudflare Workers, pass `waitUntil` to `polarisKey()` so the trust refresh outlives the response. Hono runs on Node, Bun, Deno and workerd.
+
+## Require a signed-in account
+
+`requireSignIn()` refuses with `sign_in_required` (403) while no account is signed in on the device. Behind it, `c.var.polaris.user.subject` is the account's pairwise subject.
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/node/server/identity.hono.ts"
+  title="app.ts"
+/>
+
+## More
+
+- Refusal shapes, several requirements, your own status codes and tests without a network: [Node server reference](/docs/features/licensing/server-node/).
+- Freshness, revocation and replay: [Verify licenses on your server](/docs/build/servers/).
+- The codes a refused request carries: [Error codes](/docs/reference/error-codes/).

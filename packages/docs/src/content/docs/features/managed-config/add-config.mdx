@@ -8,6 +8,8 @@ sidebar:
 ---
 
 import Requires from "../../../../components/docs/Requires.astro";
+import Snippet from "../../../../components/docs/Snippet.astro";
+import Lanes from "../../../../components/docs/Lanes.astro";
 
 You declare keys in a catalog, set values on a profile, and your app reads the signed config document. The app keeps working offline from the cached document.
 
@@ -37,16 +39,7 @@ Before you start:
 
 6. **App** Create the client and sync. Read a value with the client's config reader, with your own default as the fallback. List the user-visible settings for a settings screen. The SDK page has the code for each runtime.
 7. **App** Optional: read a secret through the client's secret reader. Secrets arrive in the signed document and are cached with it, not in the keyring.
-8. **Server** Optional: read the config on your backend with the plain Node client, the same as in the app. The backend has no drop-in for config: it creates the client, syncs, then reads the key.
-
-   ```ts title="Node: server.ts"
-   import type { PolarisKeyClient } from "@polaris-key/node";
-
-   export async function runConcurrency(client: PolarisKeyClient) {
-     await client.sync();
-     return client.getConfig("run.concurrency", 3);
-   }
-   ```
+8. **Server** Optional: read the config on your backend, as [Your backend](#your-backend) shows.
 
 | SDK    | Where the code is                                   |
 | ------ | --------------------------------------------------- |
@@ -58,6 +51,26 @@ Before you start:
 | Godot  | [Your own UI](/docs/build/sdks/godot/your-own-ui/)  |
 
 The drop-in [Settings component](/docs/build/ui/components/settings/) renders the user-visible keys. A config-only product needs no license: every route authenticates with a device token.
+
+## Your backend
+
+<Lanes lanes={["server"]} intro="Your backend reads the same signed config as the app. It has no drop-in for config: it creates the plain client, syncs, then reads the key.">
+  <Fragment slot="server">
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/node/library/config.ts"
+  title="config.ts"
+/>
+
+<Snippet
+  src="packages/shared-manifest/test/fixtures/integration/python/library/config.py"
+  title="config.py"
+/>
+
+A backend that only needs to gate a route on the license uses [the server drop-ins](/docs/build/servers/) instead.
+
+  </Fragment>
+</Lanes>
 
 ## Check it works
 

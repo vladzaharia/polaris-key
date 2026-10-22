@@ -48,7 +48,10 @@ export const SDK_LABELS: Readonly<Record<SdkId, string>> = {
  */
 export const LANE_IDS = ["kit", "library", "server"] as const;
 /** The lanes a `<Lanes>` shows when a page names none: the two around app code. */
-export const APP_LANE_IDS = ["kit", "library"] as const satisfies readonly LaneId[];
+export const APP_LANE_IDS = [
+  "kit",
+  "library",
+] as const satisfies readonly LaneId[];
 export type LaneId = (typeof LANE_IDS)[number];
 
 export const LANE_LABELS: Readonly<Record<LaneId, string>> = {
