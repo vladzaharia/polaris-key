@@ -477,6 +477,24 @@ describe("N3: a break-glass session mints no durable credential", () => {
     },
   );
 
+  it("a trusted-publisher policy (a repository minting CI tokens later) is refused too", async () => {
+    await seedProduct(db, "alpha");
+    const r = await breakGlass();
+    const res = await call(
+      r.token!,
+      NOW + 1,
+      "PUT",
+      "/api/products/alpha/ci-publisher",
+      String(r.body!.csrf),
+      { repository: "acme/app", workflows: ["release.yml"] },
+    );
+    expect(res.status).toBe(403);
+    const j = (await res.json()) as {
+      error: { code: string; reason?: string };
+    };
+    expect(j.error.reason).toBe("break_glass_session");
+  });
+
   it("personal tokens have no console mint route: the account-tokens rows are list and revoke only", async () => {
     const r = await breakGlass();
     const res = await call(
