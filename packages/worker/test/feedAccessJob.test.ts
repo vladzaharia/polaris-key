@@ -41,7 +41,10 @@ import type {
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/platform/env.js";
 import { SERVICES } from "../src/mount.js";
-import { feedAccessCustomersJob } from "../src/services/distribution/feedAccessJob.js";
+import {
+  feedAccessCustomersJob,
+  PHASE_GAP_SECONDS,
+} from "../src/services/distribution/feedAccessJob.js";
 
 const OWNER = "acme";
 const PKG_ID = "npm.sdk";
@@ -164,11 +167,36 @@ async function answers(ecosystem = "npm", id = PKG_ID): Promise<string[]> {
 
 const ctx = (at = NOW): MigrationContext => ({ env, db, now: at });
 
+/**
+ * Apply as an operator does: the first call writes the package rows and stops with a retryable
+ * failure while an entitled feed waits out the cache window; the same report, a window later,
+ * finishes it.
+ */
 async function runJob(job: MigrationJob = feedAccessCustomersJob) {
   const report = await dryRun(ctx(), job, ACTOR);
-  const applied = await apply(ctx(NOW + 1), job, ACTOR, report.id);
+  let applied = await apply(ctx(NOW + 1), job, ACTOR, report.id);
+  if (applied.ok && applied.run.status === "failed")
+    applied = await apply(
+      ctx(NOW + 1 + PHASE_GAP_SECONDS),
+      job,
+      ACTOR,
+      report.id,
+    );
   if (!applied.ok) throw new Error(JSON.stringify(applied));
   return { report, applied };
+}
+
+/** Down the same way: the feeds first, the package rows a window later. */
+async function runDown(applyId: string, at = NOW + 9) {
+  let d = await down(ctx(at), feedAccessCustomersJob, ACTOR, applyId);
+  if (d.ok && d.run.status === "failed")
+    d = await down(
+      ctx(at + PHASE_GAP_SECONDS),
+      feedAccessCustomersJob,
+      ACTOR,
+      applyId,
+    );
+  return d;
 }
 
 beforeEach(async () => {
@@ -593,8 +621,8 @@ describe("runner behaviour", () => {
     let killOnce = true;
     const killed: MigrationJob = {
       ...feedAccessCustomersJob,
-      apply: async (c, u) => {
-        const n = await feedAccessCustomersJob.apply(c, u);
+      apply: async (c, u, r) => {
+        const n = await feedAccessCustomersJob.apply(c, u, r);
         if (killOnce) {
           killOnce = false;
           throw new Error("killed after the write");
@@ -603,7 +631,14 @@ describe("runner behaviour", () => {
       },
     };
     const report = await dryRun(ctx(), killed, ACTOR);
-    const first = await apply(ctx(NOW + 1), killed, ACTOR, report.id);
+    // The first call waits out the cache window; the second finishes the unit and is killed
+    // just after its write.
+    const waited = await apply(ctx(NOW + 1), killed, ACTOR, report.id);
+    expect(waited.ok && waited.run.units[0]?.error).toBe(
+      "registry_cache_window",
+    );
+    const T = NOW + 1 + PHASE_GAP_SECONDS;
+    const first = await apply(ctx(T), killed, ACTOR, report.id);
     expect(first.ok && first.run.status).toBe("failed");
     const ledgerAfterKill = await db.all(
       "SELECT * FROM dist_registry_access_moves ORDER BY deliverable_id",
@@ -613,7 +648,7 @@ describe("runner behaviour", () => {
     );
     const feedsAfterKill = await db.all("SELECT * FROM dist_registry_feeds");
 
-    const resumed = await apply(ctx(NOW + 2), killed, ACTOR, report.id);
+    const resumed = await apply(ctx(T + 1), killed, ACTOR, report.id);
     expect(resumed.ok && resumed.run.status).toBe("applied");
     // The resumed unit wrote nothing: every row is as the killed call left it.
     expect(
@@ -627,7 +662,9 @@ describe("runner behaviour", () => {
     expect(await db.all("SELECT * FROM dist_registry_feeds")).toEqual(
       feedsAfterKill,
     );
-    expect((await dryRun(ctx(NOW + 3), killed, ACTOR)).changes).toBe(0);
+    expect((await dryRun(ctx(T + 2), killed, ACTOR)).changes).toBe(0);
+    // The resumed unit still answers its ledger, so `down` can undo it.
+    expect(resumed.ok && resumed.run.units[0]?.changes).toBeGreaterThan(0);
   });
 
   it("a second apply of a finished report is a no-op", async () => {
@@ -667,12 +704,7 @@ describe("runner behaviour", () => {
     const { applied } = await runJob();
     const during = await snap();
     expect(during).not.toEqual(before);
-    const d = await down(
-      ctx(NOW + 9),
-      feedAccessCustomersJob,
-      ACTOR,
-      applied.run.id,
-    );
+    const d = await runDown(applied.run.id);
     expect(d.ok && d.run.status).toBe("reverted");
     expect(await snap()).toEqual(before);
     expect(await db.all("SELECT * FROM dist_registry_access_moves")).toEqual(
@@ -690,7 +722,7 @@ describe("runner behaviour", () => {
       OWNER,
       PKG_ID,
     );
-    await down(ctx(NOW + 9), feedAccessCustomersJob, ACTOR, applied.run.id);
+    await runDown(applied.run.id);
     expect(
       (
         await db.first<{ access_mode: string }>(
@@ -706,5 +738,293 @@ describe("runner behaviour", () => {
         )
       )?.entitlement,
     ).toBe(FLAG);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// The security fix round (REV-F34-4): the cache window (B1), down never widening (B2), the batch
+// re-checking a "keep" row (B3), and the apply naming a feed the report did not list.
+// ---------------------------------------------------------------------------------------------
+
+const GAP = PHASE_GAP_SECONDS;
+const admitted = (a: string): boolean => a.includes('"ok":true');
+const named = (all: string[], who: string, id: string | null): string =>
+  all.find((a) => a.startsWith(`${who}|${id ?? "list"}|`)) ?? "";
+
+/** A read with the isolate's settings caches left warm (the production shape). */
+async function warmRead(who: string, tSec: number, id: string | null) {
+  const credential = principals.find((p) => p.name === who)?.credential ?? null;
+  return authorizeFeedRead(
+    { db, env, services: ON, nowMs: (NOW + tSec) * 1000 },
+    credential,
+    OWNER,
+    "npm",
+    id,
+  );
+}
+
+/** No principal admitted after that was not admitted before: the one claim of `down`. */
+function notWider(before: string[], after: string[]): void {
+  expect(after.length).toBe(before.length);
+  after.forEach((a, i) => {
+    if (admitted(a)) expect(before[i]).toSatisfy(admitted);
+  });
+}
+
+const feedMode = async (eco = "npm") =>
+  (
+    await db.first<{ access_mode: string }>(
+      "SELECT access_mode FROM dist_registry_feeds WHERE ecosystem = ?",
+      eco,
+    )
+  )?.access_mode;
+const ownRow = (id = PKG_ID) =>
+  db.first<{ mode: string; source: string }>(
+    "SELECT mode, source FROM dist_access WHERE deliverable_id = ?",
+    id,
+  );
+
+describe("B1: the feed and its packages never change in one cache window", () => {
+  it("apply: rows first, the feed only a window later; a warm cache never admits a licence without the flag", async () => {
+    await setFeed("entitled");
+    await setAccessRow("app", { mode: "public", entitlement: null });
+    // Warm this isolate's caches the way traffic does: the feed row, the package's mode.
+    expect((await warmRead("license-noflag", 0, null)).ok).toBe(true);
+    expect((await warmRead("license-noflag", 10, PKG_ID)).ok).toBe(false);
+    const report = await dryRun(ctx(NOW + 14), feedAccessCustomersJob, ACTOR);
+    const T = NOW + 15;
+    const first = await apply(ctx(T), feedAccessCustomersJob, ACTOR, report.id);
+    expect(first.ok && first.run.units[0]?.error).toBe("registry_cache_window");
+    // Phase A: the package row is there, the feed has not moved.
+    expect(await ownRow()).toEqual({ mode: "entitled", source: "admin" });
+    expect(await feedMode()).toBe("entitled");
+    // Every call inside the window waits and changes nothing, however often it is retried.
+    for (const at of [T + 1, T + 10, T + GAP - 1]) {
+      const r = await apply(ctx(at), feedAccessCustomersJob, ACTOR, report.id);
+      expect(r.ok && r.run.units[0]?.error).toBe("registry_cache_window");
+      expect(await feedMode()).toBe("entitled");
+    }
+    // At no sampled moment is the licence without the flag let in, caches warm throughout.
+    for (const t of [16, 31, 41, 50])
+      expect((await warmRead("license-noflag", t, PKG_ID)).ok).toBe(false);
+    const done = await apply(
+      ctx(T + GAP),
+      feedAccessCustomersJob,
+      ACTOR,
+      report.id,
+    );
+    expect(done.ok && done.run.status).toBe("applied");
+    expect(await feedMode()).toBe("licensed");
+    for (const t of [T + GAP - NOW + 1, T + GAP - NOW + 40]) {
+      expect((await warmRead("license-noflag", t, PKG_ID)).ok).toBe(false);
+    }
+  });
+
+  it("apply: the feed update is refused inside the window even if the unit is applied again at once", async () => {
+    await setFeed("entitled");
+    const report = await dryRun(ctx(), feedAccessCustomersJob, ACTOR);
+    await apply(ctx(NOW + 1), feedAccessCustomersJob, ACTOR, report.id);
+    // Straight to the statements: the guard, not the caller's clock, is what holds the feed.
+    await db.run(
+      "UPDATE dist_registry_access_moves SET moved_at = ? WHERE deliverable_id <> ''",
+      NOW + 1,
+    );
+    const again = await apply(
+      ctx(NOW + GAP),
+      feedAccessCustomersJob,
+      ACTOR,
+      report.id,
+    );
+    expect(again.ok && again.run.units[0]?.error).toBe("registry_cache_window");
+    expect(await feedMode()).toBe("entitled");
+  });
+
+  it("authenticated -> licensed is one row and needs no window", async () => {
+    await setFeed("authenticated");
+    const report = await dryRun(ctx(), feedAccessCustomersJob, ACTOR);
+    const r = await apply(
+      ctx(NOW + 1),
+      feedAccessCustomersJob,
+      ACTOR,
+      report.id,
+    );
+    expect(r.ok && r.run.status).toBe("applied");
+    expect(await feedMode()).toBe("licensed");
+  });
+
+  it("down: the feed first, the package rows a window later, never the other way", async () => {
+    await setFeed("entitled");
+    await setAccessRow("app", { mode: "public", entitlement: null });
+    const before = await answers();
+    const { applied } = await runJob();
+    expect(applied.ok && applied.run.id).toBeTruthy();
+    const applyId = applied.ok ? applied.run.id : "";
+    const T = NOW + 200;
+    const first = await down(ctx(T), feedAccessCustomersJob, ACTOR, applyId);
+    expect(first.ok && first.run.units[0]?.error).toBe("registry_cache_window");
+    // Phase 1 done: the feed is back to entitled; the rows are still in place.
+    expect(await feedMode()).toBe("entitled");
+    expect(await ownRow()).toEqual({ mode: "entitled", source: "admin" });
+    expect((await warmRead("license-noflag", T - NOW, PKG_ID)).ok).toBe(false);
+    for (const at of [T + 1, T + GAP - 1]) {
+      const r = await down(ctx(at), feedAccessCustomersJob, ACTOR, applyId);
+      expect(r.ok && r.run.units[0]?.error).toBe("registry_cache_window");
+      expect(await ownRow()).toEqual({ mode: "entitled", source: "admin" });
+    }
+    const done = await down(
+      ctx(T + GAP),
+      feedAccessCustomersJob,
+      ACTOR,
+      applyId,
+    );
+    expect(done.ok && done.run.status).toBe("reverted");
+    expect(await ownRow()).toBeNull();
+    expect(await answers()).toEqual(before);
+    expect(await db.all("SELECT * FROM dist_registry_access_moves")).toEqual(
+      [],
+    );
+  });
+});
+
+describe("B2: down never leaves access wider than before the apply", () => {
+  it("P2: the operator set Public after the apply; down leaves the package rows (narrower) and says so", async () => {
+    await setFeed("entitled");
+    await setAccessRow("app", { mode: "public", entitlement: null });
+    const preApply = await answers();
+    const { applied } = await runJob();
+    if (!applied.ok) throw new Error("apply");
+    await setFeed("public"); // the operator's later choice
+    const preDown = await answers();
+    const d = await runDown(applied.run.id);
+    expect(d.ok && d.run.status).toBe("reverted");
+    const postDown = await answers();
+    // The operator's Public is theirs; what down must not add is anything beyond it.
+    notWider(preDown, postDown);
+    expect(named(preApply, "anonymous", PKG_ID)).not.toSatisfy(admitted);
+    expect(named(postDown, "anonymous", PKG_ID)).not.toSatisfy(admitted);
+    expect(await feedMode()).toBe("public");
+    expect(await ownRow()).toEqual({ mode: "entitled", source: "admin" });
+    const detail = d.ok
+      ? (d.run.units[0]?.detail as Record<string, unknown>)
+      : {};
+    expect(detail.rowsKept).toEqual(["npm"]);
+    expect(String(detail.note)).toMatch(/narrower/);
+  });
+
+  it("P3: apply, the operator re-entitles, apply again, then down: no principal gains over the state before the second apply", async () => {
+    await setFeed("authenticated");
+    await setAccessRow("app", { mode: "licensed", entitlement: null });
+    const r1 = await dryRun(ctx(), feedAccessCustomersJob, ACTOR);
+    const a1 = await apply(ctx(NOW + 1), feedAccessCustomersJob, ACTOR, r1.id);
+    if (!a1.ok) throw new Error("a1");
+    await setFeed("entitled"); // the operator, before F-34.5 closes the option
+    const preApply2 = await answers();
+    const r2 = await dryRun(ctx(NOW + 2), feedAccessCustomersJob, ACTOR);
+    let a2 = await apply(ctx(NOW + 3), feedAccessCustomersJob, ACTOR, r2.id);
+    if (a2.ok && a2.run.status === "failed")
+      a2 = await apply(
+        ctx(NOW + 3 + GAP),
+        feedAccessCustomersJob,
+        ACTOR,
+        r2.id,
+      );
+    if (!a2.ok) throw new Error("a2");
+    expect(a2.run.status).toBe("applied");
+    const d = await runDown(a2.run.id, NOW + 500);
+    expect(d.ok && d.run.status).toBe("reverted");
+    const postDown = await answers();
+    notWider(preApply2, postDown);
+    expect(named(postDown, "license-noflag", PKG_ID)).not.toSatisfy(admitted);
+    expect(named(postDown, "person-noflag", PKG_ID)).not.toSatisfy(admitted);
+  });
+});
+
+describe("B3: a 'keep' row is re-checked when the batch runs", () => {
+  it("P1: an operator lowers an already-entitled row between the plan and the batch: the feed does not move over it", async () => {
+    await setFeed("entitled");
+    await setAccessRow("app", { mode: "public", entitlement: null });
+    await setAccessRow(PKG_ID, {
+      mode: "entitled",
+      entitlement: null,
+      source: "admin",
+    });
+    const report = await dryRun(ctx(), feedAccessCustomersJob, ACTOR);
+    const realBatch = db.batch.bind(db);
+    let raced = false;
+    db.batch = async (stmts) => {
+      if (
+        !raced &&
+        JSON.stringify(stmts).includes("dist_registry_access_moves")
+      ) {
+        raced = true; // lands after the plan read, before the batch
+        await db.run(
+          "UPDATE dist_access SET mode = 'licensed', modified_at = ? WHERE product = ? AND deliverable_id = ?",
+          NOW + 1,
+          OWNER,
+          PKG_ID,
+        );
+      }
+      return realBatch(stmts);
+    };
+    const r = await apply(
+      ctx(NOW + 1),
+      feedAccessCustomersJob,
+      ACTOR,
+      report.id,
+    );
+    db.batch = realBatch;
+    expect(r.ok && r.run.units[0]?.error).toBe("registry_cache_window");
+    expect(raced).toBe(true);
+    expect(await feedMode()).toBe("entitled");
+    expect(named(await answers(), "license-noflag", PKG_ID)).not.toSatisfy(
+      admitted,
+    );
+    // The next call sees the lowered row, raises it again, and a window later the feed moves.
+    const resumed = await apply(
+      ctx(NOW + 2),
+      feedAccessCustomersJob,
+      ACTOR,
+      report.id,
+    );
+    expect(resumed.ok && resumed.run.units[0]?.error).toBe(
+      "registry_cache_window",
+    );
+    expect(await ownRow()).toEqual({ mode: "entitled", source: "admin" });
+    expect(await feedMode()).toBe("entitled");
+    const done = await apply(
+      ctx(NOW + 2 + GAP),
+      feedAccessCustomersJob,
+      ACTOR,
+      report.id,
+    );
+    expect(done.ok && done.run.status).toBe("applied");
+    expect(await feedMode()).toBe("licensed");
+    expect(named(await answers(), "license-noflag", PKG_ID)).not.toSatisfy(
+      admitted,
+    );
+  });
+});
+
+describe("the apply names feeds the dry run did not list", () => {
+  it("a feed that became Authenticated after the report is moved and reported", async () => {
+    await setFeed("authenticated");
+    const report = await dryRun(ctx(), feedAccessCustomersJob, ACTOR);
+    await seedPackage("mvn.one", "maven");
+    await setFeed("authenticated", "maven"); // after the operator read the report
+    const r = await apply(
+      ctx(NOW + 1),
+      feedAccessCustomersJob,
+      ACTOR,
+      report.id,
+    );
+    expect(r.ok && r.run.status).toBe("applied");
+    const detail = r.ok
+      ? (r.run.units[0]?.detail as Record<string, unknown>)
+      : {};
+    expect(detail.notInReport).toEqual(["maven (authenticated)"]);
+    expect(detail.moved).toEqual([
+      { ecosystem: "maven", from: "authenticated" },
+      { ecosystem: "npm", from: "authenticated" },
+    ]);
   });
 });

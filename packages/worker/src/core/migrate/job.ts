@@ -39,6 +39,13 @@ export interface UnitPlan {
   detail?: unknown;
 }
 
+/** What an apply or down of one unit answers when it has more than a count to say. */
+export interface UnitOutcome {
+  changes: number;
+  /** JSON kept on the unit of the apply or down run; never secret material. */
+  detail?: unknown;
+}
+
 export interface MigrationJob {
   /** Stable id, `<owner>.<name>` (`identity.seed-platform-connection`). */
   id: string;
@@ -56,9 +63,17 @@ export interface MigrationJob {
   plan(ctx: MigrationContext, unit: string): Promise<UnitPlan>;
   /**
    * Apply one unit. MUST be idempotent: the runner calls it again for a unit it could not prove
-   * finished (a call killed between the write and the runner's mark). Answers rows changed.
+   * finished (a call killed between the write and the runner's mark). Answers rows changed, or
+   * an outcome with a detail line. `reported` is the dry run's `detail` for this unit (the report
+   * the operator read), when the apply has one: a job that re-plans can tell what differs.
+   * A job that must wait before it can finish a unit throws an error naming the wait; the unit
+   * is marked failed and calling apply again with the same report resumes it.
    */
-  apply(ctx: MigrationContext, unit: string): Promise<number>;
-  /** Undo one unit. Answers rows changed. */
-  down(ctx: MigrationContext, unit: string): Promise<number>;
+  apply(
+    ctx: MigrationContext,
+    unit: string,
+    reported?: unknown,
+  ): Promise<number | UnitOutcome>;
+  /** Undo one unit. Answers rows changed, or an outcome with a detail line. */
+  down(ctx: MigrationContext, unit: string): Promise<number | UnitOutcome>;
 }

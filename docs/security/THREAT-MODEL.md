@@ -1170,9 +1170,21 @@ The rows it can write are only: `dist_registry_access_moves` (the ledger, writte
 same atomic batch); `dist_access` (insert at `entitled`, or raise an existing own row to
 `entitled`); `dist_registry_feeds.access_mode` (`authenticated` or `entitled` to `licensed`).
 Every one is the same strictness or stricter on the ladder. Each guard re-checks the feed is still
-at the mode the plan saw. `down` restores from the ledger, only where a row still reads what the
-job wrote, so it never overwrites an operator's later edit, and it cannot widen past the prior
-state. Two accepted effects, both listed in the dry run: a package declared AFTER the move in a
+at the mode the plan saw. **Two phases a cache window apart.** The ladder caches a feed row and a
+deliverable's mode separately, 30 s each per isolate, so an isolate can hold the new feed beside
+the old mode. The job therefore never changes both in one step: apply writes the ledger and the
+package rows, and moves an entitled feed only once those rows are older than the window (plus a
+5 s margin); until then it fails the unit with the retryable `registry_cache_window` and applying
+the same report again finishes it. The feed update is also guarded, in the same statement, on every
+declared package having an own `entitled` row at that moment (so a row an operator lowered between
+the plan and the batch holds the feed back) and on no job-written row being younger than the
+window. `authenticated` to `licensed` is one row and needs no gap. `down` runs the other way
+round: the feeds are restored first, the package rows a window later, and only where that
+ecosystem's feed reads `entitled` after the restore. Where it reads anything else (the operator
+chose Public, say) the rows stay at `entitled`, which is narrower than either state, and the run
+detail says so; `down` restores from the ledger only where a row still reads what the job wrote, so
+it never overwrites an operator's later edit, and no principal is admitted after `down` that was
+not admitted before it. Two accepted effects, both listed in the dry run: a package declared AFTER the move in a
 formerly entitled feed lands at Customers (decision F4), not fail-closed; and a product whose PS-03
 open access was true turns false once its package rows are written. `test/feedAccessJob.test.ts`
 pins `authorizeFeedRead` identical before and after, for every principal, list and per-deliverable

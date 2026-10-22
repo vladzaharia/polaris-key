@@ -19,11 +19,18 @@
  *   - **Dry run** (`plan`): per feed, the rows the apply writes, the formerly-entitled feeds
  *     (decision F4), whether the product's PS-03 open access (`openAccessOf`) turns false (E9)
  *     and the Maven feeds with a stored `false` (F9). Reads only.
- *   - **Apply**: one atomic batch per product. Ledger first (`dist_registry_access_moves`), then
- *     the own package rows, then the feeds, each statement guarded on the feed still being at
- *     the mode the plan saw. Idempotent: once moved, a feed no longer matches. The ledger insert
- *     is `OR IGNORE`, so a re-run keeps the FIRST prior state.
- *   - **Down**: restores from the ledger. A row is restored only while it still reads what the
+ *   - **Apply**: one atomic batch per product, in two phases a cache window apart (the ladder
+ *     caches the feed row and a deliverable's mode separately, so changing both in one step lets
+ *     an isolate hold the new feed beside the old mode). Phase A: the ledger, then the own
+ *     package rows, each guarded on the feed still being at the mode the plan saw. Phase B: the
+ *     feed, guarded in SQL on every declared package having an own `entitled` row NOW and on
+ *     no job-written row being younger than the window. An entitled feed with rows to write
+ *     therefore moves on a later call; the first throws `registry_cache_window` (the unit is
+ *     marked failed) and applying the same report again finishes it. `authenticated` to
+ *     `licensed` is a single row and moves at once. The ledger insert keeps the FIRST prior state.
+ *   - **Down**: the feeds are restored first, the package rows a window later, and only where
+ *     that ecosystem's feed reads `entitled` after the batch. Otherwise the rows stay, which is
+ *     narrower, and the run detail says so. A row is restored only while it still reads what the
  *     apply wrote, so an operator's later edit is never overwritten; the ledger rows then go.
  *
  * What it writes (every write only narrows or keeps): `dist_registry_access_moves` (the ledger);
@@ -36,11 +43,26 @@
 
 import { bound } from "../../core/contributions.js";
 import { buildHooks, type HookContext } from "../../core/hooks.js";
-import type { MigrationJob } from "../../core/migrate/job.js";
+import type {
+  MigrationContext,
+  MigrationJob,
+  UnitOutcome,
+} from "../../core/migrate/job.js";
 import { SERVICE_SLUGS, type ServicesMap } from "../../core/services.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import { parseJsonObject } from "../../platform/json.js";
 import { openAccessOf } from "./access.js";
+import {
+  forgetRegistrySettings,
+  REGISTRY_SETTINGS_TTL_SECONDS,
+} from "./registry/settings.js";
+
+/**
+ * The least time between the two phases of either direction: one cache window, plus a margin
+ * for the whole-second clock the runner hands a job (an entry cached just before a write lives
+ * a little past `moved_at + TTL`).
+ */
+export const PHASE_GAP_SECONDS = REGISTRY_SETTINGS_TTL_SECONDS + 5;
 
 const MOVES = "dist_registry_access_moves";
 
@@ -186,14 +208,60 @@ function changesOf(plan: FeedAccessUnitPlan): number {
   );
 }
 
-async function ledgerCount(db: Db, product: string): Promise<number> {
-  const row = await db.first<{ n: number }>(
-    `SELECT COUNT(*) AS n FROM ${MOVES} WHERE product = ?`,
-    product,
-  );
-  return row?.n ?? 0;
+/** Thrown while a unit waits out the registry settings cache window; apply again to resume. */
+export class RegistryCacheWindowError extends Error {
+  override name = "registry_cache_window";
+  constructor(
+    readonly waitSeconds: number,
+    what: string,
+  ) {
+    super(
+      `${what}: wait ${waitSeconds}s for the registry settings cache, then apply again with the same report`,
+    );
+  }
 }
 
+/**
+ * The conditions under which an entitled feed may move to `licensed`, as SQL over the feed named
+ * by (product, ecosystem): it still reads `entitled`; EVERY declared package id has an own
+ * `entitled` row now (not as planned: an operator edit between the plan and the batch widens
+ * otherwise); and no package row the job wrote is younger than one cache window. Authenticated
+ * feeds need none of the last two (one row, same strictness).
+ */
+function moveGuard(
+  product: string,
+  f: FeedPlan,
+  now: number,
+): { sql: string; params: (string | number)[] } {
+  const feedIs = `EXISTS (SELECT 1 FROM dist_registry_feeds
+                    WHERE product = ? AND ecosystem = ? AND access_mode = ?)`;
+  const params: (string | number)[] = [product, f.ecosystem, f.from];
+  if (f.from !== "entitled") return { sql: feedIs, params };
+  return {
+    sql: `${feedIs}
+      AND NOT EXISTS (SELECT 1 FROM json_each(?) j
+                        LEFT JOIN dist_access a ON a.product = ? AND a.deliverable_id = j.value
+                       WHERE a.mode IS NOT 'entitled')
+      AND NOT EXISTS (SELECT 1 FROM ${MOVES} l
+                       WHERE l.product = ? AND l.ecosystem = ? AND l.deliverable_id <> ''
+                         AND l.moved_at > ?)`,
+    params: [
+      ...params,
+      JSON.stringify(f.packages.map((p) => p.deliverableId)),
+      product,
+      product,
+      f.ecosystem,
+      now - PHASE_GAP_SECONDS,
+    ],
+  };
+}
+
+/**
+ * Phase A (the ledger and the package rows) and, where the guard allows, phase B (the feed), in
+ * one batch per product. Within one batch the rows are always younger than the window, so an
+ * entitled feed with rows to write moves on a LATER call; an authenticated feed, or an entitled
+ * feed whose rows were written a window ago, moves now.
+ */
 function applyStatements(
   product: string,
   plan: FeedAccessUnitPlan,
@@ -201,7 +269,9 @@ function applyStatements(
 ): DbStatement[] {
   const out: DbStatement[] = [];
   for (const f of plan.feeds) {
-    // 1. The ledger, first: the feed row's prior mode, then each package row's prior state.
+    // 1. The ledger, first: the feed row's prior mode, then each package row's prior state. A
+    //    row raised again (an operator lowered it after phase A) keeps its first prior state and
+    //    restarts its window.
     out.push({
       sql: `INSERT OR IGNORE INTO ${MOVES}
               (product, ecosystem, deliverable_id, from_feed_mode, had_row, prior_mode,
@@ -213,14 +283,15 @@ function applyStatements(
     });
     for (const p of f.packages.filter((k) => k.action !== "keep")) {
       out.push({
-        sql: `INSERT OR IGNORE INTO ${MOVES}
+        sql: `INSERT INTO ${MOVES}
                 (product, ecosystem, deliverable_id, from_feed_mode, had_row, prior_mode,
                  prior_entitlement, prior_source, moved_at)
               SELECT f.product, f.ecosystem, ?, f.access_mode, a.product IS NOT NULL, a.mode,
                      a.entitlement, a.source, ?
                 FROM dist_registry_feeds f
                 LEFT JOIN dist_access a ON a.product = f.product AND a.deliverable_id = ?
-               WHERE f.product = ? AND f.ecosystem = ? AND f.access_mode = 'entitled'`,
+               WHERE f.product = ? AND f.ecosystem = ? AND f.access_mode = 'entitled'
+              ON CONFLICT (product, ecosystem, deliverable_id) DO UPDATE SET moved_at = excluded.moved_at`,
         params: [p.deliverableId, now, p.deliverableId, product, f.ecosystem],
       });
     }
@@ -237,54 +308,210 @@ function applyStatements(
         params: [product, p.deliverableId, now, product, f.ecosystem],
       });
     }
-    // 3. The feed. Last, so every guard above still saw the old mode.
+    // 3. The feed, under the guard. Its ledger row is stamped first by the same guard (neither
+    //    statement changes what the guard reads), so the stamp says "this job moved it".
+    const g = moveGuard(product, f, now);
+    out.push({
+      sql: `UPDATE ${MOVES} SET feed_moved_at = ?
+             WHERE product = ? AND ecosystem = ? AND deliverable_id = '' AND feed_moved_at IS NULL
+               AND ${g.sql}`,
+      params: [now, product, f.ecosystem, ...g.params],
+    });
     out.push({
       sql: `UPDATE dist_registry_feeds SET access_mode = 'licensed'
-             WHERE product = ? AND ecosystem = ? AND access_mode = ?`,
-      params: [product, f.ecosystem, f.from],
+             WHERE product = ? AND ecosystem = ? AND access_mode = ? AND ${g.sql}`,
+      params: [product, f.ecosystem, f.from, ...g.params],
     });
   }
   return out;
 }
 
-function downStatements(product: string): DbStatement[] {
-  const row = (col: string) =>
-    `(SELECT l.${col} FROM ${MOVES} l
-       WHERE l.product = dist_access.product AND l.deliverable_id = dist_access.deliverable_id)`;
-  return [
-    // A row that existed goes back to its prior mode and source (the flag was never changed),
-    // only while it still reads what the apply wrote.
-    {
-      sql: `UPDATE dist_access SET mode = ${row("prior_mode")}, source = ${row("prior_source")}
-             WHERE product = ? AND mode = 'entitled' AND source = 'admin'
-               AND deliverable_id IN (SELECT deliverable_id FROM ${MOVES}
-                                       WHERE product = ? AND had_row = 1 AND deliverable_id <> '')`,
-      params: [product, product],
+interface MoveRow {
+  ecosystem: string;
+  deliverable_id: string;
+  from_feed_mode: string;
+  had_row: number;
+  prior_mode: string | null;
+  prior_source: string | null;
+  moved_at: number;
+  feed_moved_at: number | null;
+  feed_restored_at: number | null;
+}
+
+async function movesOf(db: Db, product: string): Promise<MoveRow[]> {
+  return db.all<MoveRow>(
+    `SELECT ecosystem, deliverable_id, from_feed_mode, had_row, prior_mode, prior_source,
+            moved_at, feed_moved_at, feed_restored_at
+       FROM ${MOVES} WHERE product = ? ORDER BY ecosystem, deliverable_id`,
+    product,
+  );
+}
+
+async function applyUnit(
+  ctx: MigrationContext,
+  unit: string,
+  reported: unknown,
+): Promise<UnitOutcome> {
+  const { db, now } = ctx;
+  const plan = await planUnit(ctx, unit);
+  if (plan.feeds.length === 0)
+    // Nothing left to move. A unit this job already moved (a call killed after its write, or
+    // resumed after the wait) still answers its ledger size, so `down` finds it.
+    return { changes: (await movesOf(db, unit)).length };
+  await db.batch(applyStatements(unit, plan, now));
+  forgetRegistrySettings(unit);
+  const after = new Map(
+    (await feedsOf(db, unit)).map((r) => [r.ecosystem, r.access_mode]),
+  );
+  const moved = plan.feeds.filter((f) => after.get(f.ecosystem) !== f.from);
+  const waiting = plan.feeds.filter((f) => after.get(f.ecosystem) === f.from);
+  if (waiting.length > 0) {
+    const ledger = await movesOf(db, unit);
+    const youngest = Math.max(
+      ...ledger
+        .filter(
+          (m) =>
+            m.deliverable_id !== "" &&
+            waiting.some((w) => w.ecosystem === m.ecosystem),
+        )
+        .map((m) => m.moved_at),
+      now,
+    );
+    throw new RegistryCacheWindowError(
+      Math.max(1, youngest + PHASE_GAP_SECONDS - now),
+      `${waiting.map((w) => w.ecosystem).join(", ")}: package rows written, feed not yet moved`,
+    );
+  }
+  // The apply re-plans (the report was read earlier): name every feed it moved that the dry run
+  // the operator read did not list, so the F4 owner confirmation sees them.
+  const listed = new Set(
+    ((reported as FeedAccessUnitPlan | null)?.feeds ?? []).map(
+      (f) => `${f.ecosystem}:${f.from}`,
+    ),
+  );
+  const notInReport = moved
+    .filter((f) => !listed.has(`${f.ecosystem}:${f.from}`))
+    .map((f) => `${f.ecosystem} (${f.from})`);
+  return {
+    changes:
+      moved.length +
+      plan.feeds.reduce(
+        (n, f) => n + f.packages.filter((p) => p.action !== "keep").length,
+        0,
+      ),
+    detail: {
+      moved: moved.map((f) => ({ ecosystem: f.ecosystem, from: f.from })),
+      ...(notInReport.length > 0 ? { notInReport } : {}),
     },
-    // A row the job created goes, unless an operator has since given it a flag.
-    {
-      sql: `DELETE FROM dist_access
-             WHERE product = ? AND mode = 'entitled' AND source = 'admin' AND entitlement IS NULL
-               AND deliverable_id IN (SELECT deliverable_id FROM ${MOVES}
-                                       WHERE product = ? AND had_row = 0 AND deliverable_id <> '')`,
-      params: [product, product],
+  };
+}
+
+/**
+ * Down, two phases a cache window apart so the feed and a package's mode never change in one
+ * step: (1) each feed the job moved goes back to its prior mode (only while it still reads
+ * `licensed`), stamped `feed_restored_at`; (2) a window later, the package rows. The rows are
+ * restored or deleted only where that ecosystem's feed reads `entitled` after phase 1. Where it
+ * reads anything else (the operator chose Public, or moved it since) the rows stay: an
+ * `entitled` row under another feed mode is narrower, never wider, than the state before the
+ * apply, and restoring them could widen past what the operator now has.
+ */
+async function downUnit(
+  ctx: MigrationContext,
+  unit: string,
+): Promise<UnitOutcome> {
+  const { db, now } = ctx;
+  let ledger = await movesOf(db, unit);
+  if (ledger.length === 0) return { changes: 0 };
+  const total = ledger.length;
+  const feedRows = ledger.filter((m) => m.deliverable_id === "");
+  const phase1: DbStatement[] = [];
+  for (const m of feedRows.filter((r) => r.feed_restored_at === null)) {
+    if (m.feed_moved_at !== null)
+      phase1.push({
+        sql: `UPDATE dist_registry_feeds SET access_mode = ?
+               WHERE product = ? AND ecosystem = ? AND access_mode = 'licensed'`,
+        params: [m.from_feed_mode, unit, m.ecosystem],
+      });
+    phase1.push({
+      sql: `UPDATE ${MOVES} SET feed_restored_at = ?
+             WHERE product = ? AND ecosystem = ? AND deliverable_id = ''`,
+      params: [now, unit, m.ecosystem],
+    });
+  }
+  if (phase1.length > 0) {
+    await db.batch(phase1);
+    forgetRegistrySettings(unit);
+    ledger = await movesOf(db, unit);
+  }
+  const modes = new Map(
+    (await feedsOf(db, unit)).map((r) => [r.ecosystem, r.access_mode]),
+  );
+  const restoredAt = new Map(
+    ledger
+      .filter((m) => m.deliverable_id === "")
+      .map((m) => [m.ecosystem, m.feed_restored_at ?? now]),
+  );
+  const phase2: DbStatement[] = [];
+  const restored: string[] = [];
+  const left: string[] = [];
+  const waiting: number[] = [];
+  for (const eco of [...new Set(ledger.map((m) => m.ecosystem))]) {
+    const rows = ledger.filter(
+      (m) => m.ecosystem === eco && m.deliverable_id !== "",
+    );
+    const entitledNow = modes.get(eco) === "entitled";
+    if (rows.length > 0 && entitledNow) {
+      const due = (restoredAt.get(eco) ?? now) + PHASE_GAP_SECONDS;
+      if (due > now) {
+        waiting.push(due - now);
+        continue; // this ecosystem's ledger stays for the next call
+      }
+      for (const m of rows)
+        phase2.push(
+          m.had_row === 1
+            ? {
+                // A row that existed goes back to its prior mode and source (the flag was never
+                // changed), only while it still reads what the apply wrote.
+                sql: `UPDATE dist_access SET mode = ?, source = ?
+                       WHERE product = ? AND deliverable_id = ? AND mode = 'entitled' AND source = 'admin'`,
+                params: [m.prior_mode, m.prior_source, unit, m.deliverable_id],
+              }
+            : {
+                // A row the job created goes, unless an operator has since given it a flag.
+                sql: `DELETE FROM dist_access
+                       WHERE product = ? AND deliverable_id = ? AND mode = 'entitled'
+                         AND source = 'admin' AND entitlement IS NULL`,
+                params: [unit, m.deliverable_id],
+              },
+        );
+      restored.push(eco);
+    } else if (rows.length > 0) left.push(eco);
+    phase2.push({
+      sql: `DELETE FROM ${MOVES} WHERE product = ? AND ecosystem = ?`,
+      params: [unit, eco],
+    });
+  }
+  if (phase2.length > 0) {
+    await db.batch(phase2);
+    forgetRegistrySettings(unit);
+  }
+  if (waiting.length > 0)
+    throw new RegistryCacheWindowError(
+      Math.max(1, Math.min(...waiting)),
+      "feeds restored, package rows not yet",
+    );
+  return {
+    changes: total,
+    detail: {
+      restoredRows: restored,
+      ...(left.length > 0
+        ? {
+            rowsKept: left,
+            note: "the feed no longer reads entitled, so the package rows were left at entitled (narrower than before the apply)",
+          }
+        : {}),
     },
-    // The feed, only while it still reads `licensed` (an operator's later change stands).
-    {
-      sql: `UPDATE dist_registry_feeds
-               SET access_mode = (SELECT l.from_feed_mode FROM ${MOVES} l
-                                   WHERE l.product = dist_registry_feeds.product
-                                     AND l.ecosystem = dist_registry_feeds.ecosystem
-                                     AND l.deliverable_id = '')
-             WHERE product = ? AND access_mode = 'licensed'
-               AND EXISTS (SELECT 1 FROM ${MOVES} l
-                            WHERE l.product = dist_registry_feeds.product
-                              AND l.ecosystem = dist_registry_feeds.ecosystem
-                              AND l.deliverable_id = '')`,
-      params: [product],
-    },
-    { sql: `DELETE FROM ${MOVES} WHERE product = ?`, params: [product] },
-  ];
+  };
 }
 
 export const feedAccessCustomersJob: MigrationJob = {
@@ -315,17 +542,6 @@ export const feedAccessCustomersJob: MigrationJob = {
     const plan = await planUnit(ctx, unit);
     return { changes: changesOf(plan), detail: plan };
   },
-  async apply(ctx, unit) {
-    const plan = await planUnit(ctx, unit);
-    if (plan.feeds.length === 0) return 0;
-    const before = await ledgerCount(ctx.db, unit);
-    await ctx.db.batch(applyStatements(unit, plan, ctx.now));
-    return (await ledgerCount(ctx.db, unit)) - before;
-  },
-  async down(ctx, unit) {
-    const n = await ledgerCount(ctx.db, unit);
-    if (n === 0) return 0;
-    await ctx.db.batch(downStatements(unit));
-    return n;
-  },
+  apply: (ctx, unit, reported) => applyUnit(ctx, unit, reported),
+  down: (ctx, unit) => downUnit(ctx, unit),
 };
