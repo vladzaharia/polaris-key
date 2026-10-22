@@ -1,0 +1,413 @@
+/**
+ * The chrome of the developer and Operate doors, the landing and the docs 404, drawn as
+ * docs/design/mockups/screens/docs/docs.landing, docs.reference, docs.sdk-quickstart,
+ * docs.guide-lanes, docs.operate-guide, docs.mobile-menu and docs.not-found. Help's own is
+ * help.css and is scoped to [data-brand="locker"]; every rule here that could reach Help says
+ * `:not([data-brand="locker"])`. Tokens only, so dark and light come with them. Loads last.
+ */
+
+.pk-section:not([data-brand="locker"]) {
+  /* The mockups' compact density: 15/24 prose, 24 px titles. */
+  --sl-text-body: 0.9375rem;
+  --sl-line-height: 1.6;
+  --sl-text-h1: 1.5rem;
+  --sl-text-h2: 1.125rem;
+  --sl-text-h3: 1rem;
+  --sl-text-h4: 1rem;
+  --sl-line-height-headings: 1.35;
+  --sl-menu-button-size: 2.75rem;
+}
+
+/* ---- Header --------------------------------------------------------------------------------- */
+
+.pk-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-nav-gap);
+  height: 100%;
+}
+.pk-header .title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+}
+.pk-header-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-end;
+}
+.pk-header-end {
+  display: none;
+  align-items: center;
+  gap: var(--pk-space-4);
+}
+.pk-header .social-icons {
+  gap: var(--pk-space-4);
+}
+.pk-header .social-icons::after {
+  display: none;
+}
+.pk-doors {
+  display: none;
+}
+
+/* "Search the docs": Starlight's label says "Search" and is shared with Help's, so the words are
+   drawn here (as help.css does for "Search help"); the button keeps its accessible name. */
+.pk-section:not([data-brand="locker"])
+  site-search
+  button[data-open-modal]
+  > span[aria-hidden="true"] {
+  font-size: 0;
+}
+.pk-section:not([data-brand="locker"])
+  site-search
+  button[data-open-modal]
+  > span[aria-hidden="true"]::after {
+  content: "Search the docs";
+  font-size: var(--sl-text-sm);
+}
+
+.pk-doc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-1);
+  min-height: 2rem;
+  color: var(--pk-text-muted);
+  font-size: var(--sl-text-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.pk-doc-link:hover {
+  color: var(--pk-text-strong);
+}
+.pk-doc-link .pk-help-ic {
+  width: 1rem;
+  height: 1rem;
+}
+
+@media (min-width: 50rem) {
+  .pk-header .title-wrapper {
+    flex: 0 0
+      calc(var(--sl-sidebar-width) - var(--sl-nav-pad-x) - var(--sl-nav-gap));
+  }
+  .pk-header-search {
+    flex: 0 1 21.25rem;
+  }
+  .pk-header-end {
+    display: flex;
+    margin-inline-start: auto;
+  }
+  .pk-header .pk-doors {
+    display: flex;
+    align-self: stretch;
+    gap: var(--pk-space-5, 1.25rem);
+  }
+  .pk-doors a {
+    display: inline-flex;
+    align-items: center;
+    padding-inline: var(--pk-space-1);
+    border-block-end: 2px solid transparent;
+    color: var(--pk-text-muted);
+    font-size: var(--sl-text-sm);
+    text-decoration: none;
+  }
+  .pk-doors a:hover {
+    color: var(--pk-text-strong);
+  }
+  .pk-doors a[aria-current="true"] {
+    border-block-end-color: var(--pk-accent);
+    color: var(--pk-text-strong);
+    font-weight: 700;
+  }
+}
+@media (min-width: 50rem) and (max-width: 63.99rem) {
+  .pk-header-end .pk-doc-link:first-child {
+    display: none;
+  }
+}
+/* The landing and the 404 have no tree: their search starts where the sidebar would end. */
+.pk-doors a:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: -2px;
+}
+
+/* The page-not-found page draws both brands; under /docs/help/ help.css hides the Key's. */
+:root[data-help-miss] .pk-key-footer,
+:root[data-help-miss] .pk-header-end .social-icons {
+  display: none !important;
+}
+
+/* ---- Sidebar -------------------------------------------------------------------------------- */
+
+.pk-section:not([data-brand="locker"])
+  .sidebar-content
+  .top-level
+  > li
+  > details
+  > summary
+  .large {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  color: var(--pk-text-strong);
+  font-size: var(--sl-text-sm);
+  font-weight: 700;
+}
+.pk-section:not([data-brand="locker"])
+  .sidebar-content
+  .top-level
+  > li
+  > details
+  > summary
+  .large::before {
+  content: "";
+  width: 3px;
+  height: 1rem;
+  border-radius: 2px;
+  background-color: var(--pkd-group-accent, var(--pk-accent));
+}
+.pk-section:not([data-brand="locker"]) .sidebar-content a {
+  font-size: 0.9375rem;
+}
+.pk-section:not([data-brand="locker"]) .sidebar-content .top-level > li + li {
+  margin-top: var(--pk-space-4);
+}
+
+/* ---- Page header ---------------------------------------------------------------------------- */
+
+.pk-section:not([data-brand="locker"]) .pk-doc-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-3);
+}
+.pk-doc-header .pk-eyebrow {
+  margin: 0;
+  font-size: var(--sl-text-sm);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.pk-doc-header .pk-eyebrow__marker {
+  width: 3px;
+  height: 1rem;
+  border-radius: 2px;
+}
+.pk-section:not([data-brand="locker"]) .pk-help-titlerow > h1#_top {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 1.5rem;
+  line-height: 2rem;
+  color: var(--pk-text-strong);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+/* Copy page follows the accent's neutral ink like the other filled-less buttons. */
+.pk-section:not([data-brand="locker"]) .pk-help-copy:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+.pk-section:not([data-brand="locker"]) .content-panel {
+  padding-block: var(--pk-space-4);
+}
+.pk-section:not([data-brand="locker"]) .content-panel:first-child {
+  padding-block-start: var(--pk-space-8, 2rem);
+}
+.pk-section:not([data-brand="locker"]) .content-panel + .content-panel {
+  border-top: 0;
+  padding-block-start: 0;
+}
+/* The page's first paragraph is its lede. */
+.pk-section:not([data-brand="locker"]) .sl-markdown-content > p:first-child {
+  max-width: 64ch;
+  margin-top: 0;
+  color: var(--pk-text-muted);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+}
+.pk-section:not([data-brand="locker"]) .sl-markdown-content :is(h2, h3, h4) {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+@media (max-width: 39.99rem) {
+  .pk-section:not([data-brand="locker"]) .pk-help-copy {
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+  }
+  .pk-section:not([data-brand="locker"]) .pk-help-copy__label {
+    display: none;
+  }
+}
+
+/* ---- Landing: one column, the large search and the cards ------------------------------------ */
+
+:root:not([data-has-sidebar]):has([data-door="landing"]) {
+  --sl-content-width: 61.5rem;
+}
+.pk-section[data-door="landing"] .pk-help-titlerow > h1#_top {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+}
+@media (min-width: 40rem) {
+  .pk-section[data-door="landing"] .pk-help-titlerow > h1#_top {
+    font-size: 2.5rem;
+    line-height: 3rem;
+  }
+}
+.pk-section[data-door="landing"] .pk-landing-section h2 {
+  margin: var(--pk-space-8, 2rem) 0 0;
+  font-size: 1.125rem;
+  line-height: 1.5;
+  color: var(--pk-text-strong);
+}
+.pk-landing-pill {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--pk-space-1);
+  height: 1.25rem;
+  padding-inline: var(--pk-space-2);
+  border: 1px solid var(--pk-border-strong);
+  border-radius: var(--pk-radius-full);
+  color: var(--pk-text-muted);
+  font-size: var(--pk-font-size-xs, 0.75rem);
+}
+.pk-landing-pill .pk-help-ic {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+.pk-help-cards__title .pk-help-ic:first-child:not(:last-child) {
+  margin-inline-start: 0;
+  color: var(--pk-text-strong);
+}
+
+/* ---- Footer: the brand's, on every page that is not Help's ---------------------------------- */
+
+@media (min-width: 40rem) {
+  .pk-key-footer {
+    padding-inline: var(--pk-space-12, 3rem);
+  }
+}
+
+/* ---- Pager: no shadow, a small label over the title ----------------------------------------- */
+
+.pagination-links a {
+  border-color: var(--pk-border-subtle);
+  border-radius: var(--pk-radius-lg);
+  background-color: var(--pk-surface-raised);
+  box-shadow: none;
+}
+.pagination-links a:hover {
+  border-color: var(--pk-border-strong);
+  background-color: var(--pk-surface-overlay);
+}
+.pagination-links .link-title {
+  color: var(--pk-text-strong);
+  font-size: 1rem;
+  font-weight: 700;
+}
+.pagination-links span {
+  color: var(--pk-text-muted);
+  font-size: var(--sl-text-xs);
+}
+
+/* ---- On this page --------------------------------------------------------------------------- */
+
+.right-sidebar-container .right-sidebar a[aria-current="true"] {
+  color: var(--pk-text-strong);
+  font-weight: 700;
+}
+
+/* ---- Phone: the menu is a drawer (docs.mobile-menu) ------------------------------------------ */
+
+.pk-doors--drawer {
+  display: flex;
+  gap: var(--pk-space-4);
+  margin: 0 calc(-1 * var(--sl-sidebar-pad-x));
+  padding-inline: var(--sl-sidebar-pad-x);
+  border-bottom: 1px solid var(--pk-border-subtle);
+}
+.pk-doors--drawer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  border-block-end: 2px solid transparent;
+  color: var(--pk-text-muted);
+  font-size: var(--sl-text-sm);
+  text-decoration: none;
+}
+.pk-doors--drawer a[aria-current="true"] {
+  border-block-end-color: var(--pk-accent);
+  color: var(--pk-text-strong);
+  font-weight: 700;
+}
+@media (min-width: 50rem) {
+  .pk-doors--drawer {
+    display: none;
+  }
+  .pk-section .pk-help-drawer-head {
+    display: none;
+  }
+}
+.pk-doc-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pk-space-4);
+  padding-top: var(--pk-space-3);
+}
+.pk-doc-links .pk-doc-link {
+  color: var(--pk-accent-fg);
+}
+
+@media (max-width: 49.99rem) {
+  .pk-section:not([data-brand="locker"]) .sl-menu-button {
+    inset-inline: var(--sl-nav-pad-x) auto;
+    background: transparent;
+    box-shadow: none;
+    color: var(--pk-text-strong);
+    border-radius: var(--pk-radius-md);
+  }
+  .pk-section:not([data-brand="locker"]) .sl-menu-button svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+  :root[data-has-sidebar] .pk-section:not([data-brand="locker"]) header.header {
+    padding-inline: calc(
+        var(--sl-nav-pad-x) + var(--sl-menu-button-size) + 0.5rem
+      )
+      var(--sl-nav-pad-x);
+  }
+  .pk-section:not([data-brand="locker"]) .sidebar-pane {
+    inset-block: 0;
+    inset-inline: 0;
+    width: 100%;
+    background-color: var(--pk-surface-raised);
+    box-shadow: var(--sl-shadow-lg);
+  }
+  .pk-section:not([data-brand="locker"]) .pk-help-drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--pk-space-3);
+    margin: -1rem calc(-1 * var(--sl-sidebar-pad-x)) 0;
+    padding: 0 var(--sl-sidebar-pad-x);
+    min-height: var(--sl-nav-height);
+    border-bottom: 1px solid var(--pk-border-subtle);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-section * {
+    scroll-behavior: auto;
+    transition: none;
+  }
+}
+
+/* A nested group (an SDK's pages) is a plain label: the marker is for the door's own groups. */
+.pk-section:not([data-brand="locker"]) .sidebar-content ul ul summary .large {
+  color: var(--pk-text-default);
+  font-size: 0.9375rem;
+  font-weight: 700;
+}

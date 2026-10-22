@@ -50,6 +50,8 @@ export function doorOf(
   id: string,
 ): { door: DoorId; tier: Tier; prefix: string } | null {
   let best: (typeof TIER_PREFIXES)[number] | null = null;
+  // Starlight's route id for the site's root page is empty; the table calls it `index`.
+  if (id === "") id = "index";
   for (const row of TIER_PREFIXES) {
     // A section's own page (`help` for help/index) belongs to the section.
     const hit = row[0].endsWith("/")

@@ -1,0 +1,108 @@
+---
+/**
+ * The landing's layout (docs.landing): the large search, the three doors and the Help home's top
+ * tasks. DOC-07a owns the words; this owns the arrangement. The search opens Starlight's dialog, the
+ * same one the header's field and the ⌘K shortcut open. The Operate card keeps its "For console
+ * members" label; the Developers card has none (the developer docs are public, README D2).
+ */
+import { DOOR_ICONS, HELP_ICONS } from "../lib/helpIcons";
+
+const doors = [
+  {
+    title: "I use an app",
+    text: "Activate, sign in, devices and downloads.",
+    href: "/docs/help/",
+    icon: DOOR_ICONS.help,
+  },
+  {
+    title: "I’m building an app",
+    text: "Your first product, start to finish.",
+    href: "/docs/start/",
+    icon: DOOR_ICONS.code,
+  },
+  {
+    title: "I run a console",
+    members: true,
+    href: "/docs/operate/",
+    icon: DOOR_ICONS.dashboard,
+  },
+];
+
+const tasks = [
+  ["Activate your app", "Use a key or sign in.", "/docs/help/activate/"],
+  ["Device limit reached", "Free a device to continue.", "/docs/help/device-limit/"],
+  ["Move to a new computer", "Remove the old device.", "/docs/help/new-computer/"],
+  ["Download your app", "Find the right download.", "/docs/help/download/"],
+  ["Your code didn’t arrive", "Check sign-in email.", "/docs/help/code-didnt-arrive/"],
+  ["Refunds", "Ask the app developer or store.", "/docs/help/refunds/"],
+] as const;
+---
+
+<pk-help-bigsearch class="not-content">
+  <button type="button" class="pk-help-bigsearch">
+    <Fragment set:html={HELP_ICONS.search} />
+    <span>Search Polaris Key docs</span>
+    <kbd>⌘K</kbd>
+  </button>
+</pk-help-bigsearch>
+
+<section class="pk-landing-section not-content">
+  <h2>Choose a door</h2>
+  <ul class="pk-help-cards">
+    {
+      doors.map((door) => (
+        <li>
+          <a href={door.href}>
+            <span class="pk-help-cards__title">
+              <Fragment set:html={door.icon} />
+              {door.title}
+              <Fragment set:html={HELP_ICONS.arrowRight} />
+            </span>
+            {door.members ? (
+              <span class="pk-landing-pill">
+                <Fragment set:html={DOOR_ICONS.lock} />
+                For console members
+              </span>
+            ) : (
+              <span class="pk-help-cards__text">{door.text}</span>
+            )}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</section>
+
+<section class="pk-landing-section not-content">
+  <h2>Top help tasks</h2>
+  <ul class="pk-help-cards">
+    {
+      tasks.map(([title, text, href]) => (
+        <li>
+          <a href={href}>
+            <span class="pk-help-cards__title">
+              {title}
+              <Fragment set:html={HELP_ICONS.arrowRight} />
+            </span>
+            <span class="pk-help-cards__text">{text}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</section>
+
+<script>
+  class HelpBigSearch extends HTMLElement {
+    constructor() {
+      super();
+      this.querySelector("button")?.addEventListener("click", () =>
+        document
+          .querySelector<HTMLButtonElement>("site-search button[data-open-modal]")
+          ?.click(),
+      );
+    }
+  }
+  if (!customElements.get("pk-help-bigsearch"))
+    customElements.define("pk-help-bigsearch", HelpBigSearch);
+</script>

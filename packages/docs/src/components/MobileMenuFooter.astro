@@ -1,12 +1,12 @@
 ---
 /**
  * The menu's preferences. On Help: the theme as one segmented choice (System, Dark, Light) and the
- * link to the library (docs.mobile-menu). Elsewhere Starlight's own.
+ * link to the library (docs.mobile-menu). Elsewhere the same choice and the header's two links.
  */
-import Default from "@astrojs/starlight/components/MobileMenuFooter.astro";
 import { helpRoute } from "../lib/helpHost";
 import { HELP_ICONS } from "../lib/helpIcons";
 import { portalHref } from "../lib/portalHref";
+import { DOC_LINKS } from "../lib/chrome";
 
 const help = helpRoute(Astro.locals.starlightRoute.id);
 const themes = [
@@ -16,26 +16,33 @@ const themes = [
 ] as const;
 ---
 
-{
-  help ? (
-    <pk-help-theme-picker class="pk-help-prefs">
-      <strong id="pk-help-theme-label">Theme</strong>
-      <div class="pk-help-segmented" role="radiogroup" aria-labelledby="pk-help-theme-label">
-        {themes.map(([value, label]) => (
-          <button type="button" role="radio" aria-checked="false" data-theme-value={value}>
-            {label}
-          </button>
-        ))}
-      </div>
+<pk-help-theme-picker class="pk-help-prefs">
+  <strong id="pk-help-theme-label">Theme</strong>
+  <div class="pk-help-segmented" role="radiogroup" aria-labelledby="pk-help-theme-label">
+    {themes.map(([value, label]) => (
+      <button type="button" role="radio" aria-checked="false" data-theme-value={value}>
+        {label}
+      </button>
+    ))}
+  </div>
+  {
+    help ? (
       <a class="pk-help-library" href={portalHref("library")}>
         Your library
         <Fragment set:html={HELP_ICONS.arrowUpRight} />
       </a>
-    </pk-help-theme-picker>
-  ) : (
-    <Default />
-  )
-}
+    ) : (
+      <div class="pk-doc-links">
+        {DOC_LINKS.map((link) => (
+          <a class="pk-doc-link" href={link.href}>
+            {link.label}
+            <Fragment set:html={link.out ? HELP_ICONS.arrowUpRight : HELP_ICONS.arrowRight} />
+          </a>
+        ))}
+      </div>
+    )
+  }
+</pk-help-theme-picker>
 
 <script>
   import { setTheme, storedTheme, type Theme } from "../scripts/helpTheme";

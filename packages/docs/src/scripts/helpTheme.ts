@@ -1,7 +1,7 @@
-/** Starlight's theme storage, shared by Help's two theme controls (ThemeSelect, MobileMenuFooter). */
+/** The theme storage every docs page shares: the console's key (ThemeProvider.astro), read by ThemeSelect and MobileMenuFooter. */
 export type Theme = "auto" | "dark" | "light";
 
-const KEY = "starlight-theme";
+const KEY = "pk-admin-theme";
 
 export function storedTheme(): Theme {
   const v = typeof localStorage !== "undefined" && localStorage.getItem(KEY);
@@ -16,6 +16,6 @@ export function setTheme(theme: Theme): void {
         : "dark"
       : theme;
   if (typeof localStorage !== "undefined")
-    localStorage.setItem(KEY, theme === "auto" ? "" : theme);
+    localStorage.setItem(KEY, theme === "auto" ? "system" : theme);
   document.dispatchEvent(new CustomEvent("pk-help-theme", { detail: theme }));
 }

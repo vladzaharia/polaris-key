@@ -1,0 +1,49 @@
+---
+/**
+ * The header (docs.landing, docs.reference, docs.operate-guide): lockup and Docs tag, the door tabs
+ * on a Developers or Operate page, the search trigger, the door links and the theme button. Help
+ * keeps Starlight's own header, which LX-help styled; the page-not-found page is drawn here and
+ * help.css swaps it to Help's brand from the address.
+ */
+import Default from "@astrojs/starlight/components/Header.astro";
+import Search from "virtual:starlight/components/Search";
+import SiteTitle from "virtual:starlight/components/SiteTitle";
+import SocialIcons from "virtual:starlight/components/SocialIcons";
+import ThemeSelect from "virtual:starlight/components/ThemeSelect";
+import { DOOR_TABS, kindOf, tabOf } from "../lib/chrome";
+import { helpRoute } from "../lib/helpHost";
+
+const id = Astro.locals.starlightRoute.id;
+const kind = kindOf(id);
+const current = tabOf(id);
+---
+
+{
+  helpRoute(id) ? (
+    <Default />
+  ) : (
+    <div class="header pk-header" data-kind={kind}>
+      <div class="title-wrapper sl-flex">
+        <SiteTitle />
+      </div>
+      {kind === "door" && (
+        <nav class="pk-doors" aria-label="Docs sections">
+          {DOOR_TABS.map((tab) => (
+            <a href={tab.href} aria-current={tab === current ? "true" : undefined}>
+              {tab.label}
+            </a>
+          ))}
+        </nav>
+      )}
+      <div class="pk-header-search sl-flex print:hidden">
+        <Search />
+      </div>
+      <div class="pk-header-end print:hidden">
+        <div class="sl-flex social-icons">
+          <SocialIcons />
+        </div>
+        <ThemeSelect />
+      </div>
+    </div>
+  )
+}
