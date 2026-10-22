@@ -271,8 +271,9 @@ def status_screen_view(ctx: Context) -> View:
             ctx,
             "StatusScreen",
             status,
-            head + (None if range_key == "status.allowedMin" else range_key,),
+            head + (None if range_key == "status.allowedMin" else range_key, "common.tryAgain"),
             args=args,
+            primary="common.tryAgain",
             tone="neutral",
         )
     return make_view(
