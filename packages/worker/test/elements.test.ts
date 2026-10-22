@@ -34,6 +34,7 @@ const FILES: Record<string, { body: string; extra?: Record<string, string> }> =
     "/elements/1.4.2/fonts/rubik.woff2": { body: "wOF2" },
     "/elements/1.4.2/fonts/fonts.css": { body: "@font-face{}" },
     "/elements/1.4.2/integrity.json": { body: "{}" },
+    "/elements/0.0.0/pk.js": { body: "unstamped" },
     "/elements/1.4.2/evil.html": { body: "<script>alert(1)</script>" },
   };
 
@@ -125,6 +126,29 @@ describe("handleElements", () => {
       "cross-origin",
     );
     expect(res.headers.get("etag")).toBe('"abc"');
+  });
+
+  it("never serves the unstamped 0.0.0 build as immutable", async () => {
+    const res = await get("/elements/0.0.0/pk.js");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-cache");
+  });
+
+  it("answers a matching If-None-Match with 304 and the same cache headers", async () => {
+    const hit = await get("/elements/1.4.2/pk.js", {
+      headers: { "if-none-match": '"abc"' },
+    });
+    expect(hit.status).toBe(304);
+    expect(await hit.text()).toBe("");
+    expect(hit.headers.get("cache-control")).toBe(ELEMENTS_IMMUTABLE_CACHE);
+    const weak = await get("/elements/1.4.2/pk.js", {
+      headers: { "if-none-match": 'W/"abc", "zzz"' },
+    });
+    expect(weak.status).toBe(304);
+    const miss = await get("/elements/1.4.2/pk.js", {
+      headers: { "if-none-match": '"other"' },
+    });
+    expect(miss.status).toBe(200);
   });
 
   it("serves the floating major briefly, never immutable", async () => {
@@ -230,8 +254,9 @@ describe("the built bundle", () => {
       const b = mkdtempSync(join(tmpdir(), "elements-b-"));
       try {
         const script = join(pkg, "scripts", "bundle-cdn.mjs");
-        execFileSync(process.execPath, [script, a], { stdio: "pipe" });
-        execFileSync(process.execPath, [script, b], { stdio: "pipe" });
+        const env = { ...process.env, PKEY_ELEMENTS_UNSTAMPED_OK: "1" };
+        execFileSync(process.execPath, [script, a], { stdio: "pipe", env });
+        execFileSync(process.execPath, [script, b], { stdio: "pipe", env });
         const version = JSON.parse(
           readFileSync(join(pkg, "package.json"), "utf8"),
         ).version as string;
@@ -263,6 +288,75 @@ describe("the built bundle", () => {
       } finally {
         rmSync(a, { recursive: true, force: true });
         rmSync(b, { recursive: true, force: true });
+      }
+    },
+    60_000,
+  );
+});
+
+describe("bundle:cdn stamping and the major", () => {
+  const pkg = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "elements",
+  );
+  const built = existsSync(join(pkg, "dist", "index.js"));
+  const script = join(pkg, "scripts", "bundle-cdn.mjs");
+  const base = { ...process.env } as Record<string, string | undefined>;
+  delete base.PKEY_ELEMENTS_VERSION;
+  delete base.PKEY_ELEMENTS_FLOAT;
+  delete base.PKEY_ELEMENTS_UNSTAMPED_OK;
+  const run = (out: string, env: Record<string, string>) =>
+    execFileSync(process.execPath, [script, out], {
+      stdio: "pipe",
+      env: { ...base, ...env },
+    });
+
+  it.skipIf(!built)(
+    "refuses the unstamped 0.0.0 under CI, and names the bundle for PKEY_ELEMENTS_VERSION",
+    () => {
+      const out = mkdtempSync(join(tmpdir(), "elements-s-"));
+      try {
+        expect(() => run(out, { CI: "true" })).toThrow();
+        run(out, { CI: "true", PKEY_ELEMENTS_VERSION: "3.2.1" });
+        expect(existsSync(join(out, "3.2.1", "pk.js"))).toBe(true);
+        expect(readFileSync(join(out, "3", "pk.js"), "utf8")).toBe(
+          'export * from "../3.2.1/pk.js";\n',
+        );
+        // The import map carries every module (pk.js and each chunk) keyed by absolute URL.
+        const ints = JSON.parse(
+          readFileSync(join(out, "3.2.1", "integrity.json"), "utf8"),
+        );
+        const js = Object.keys(ints.files).filter((f) => f.endsWith(".js"));
+        expect(js).toContain("pk.js");
+        expect(Object.keys(ints.importMap.integrity).sort()).toEqual(
+          js.map((f) => `https://key.plrs.im/elements/3.2.1/${f}`).sort(),
+        );
+        for (const f of js)
+          expect(
+            ints.importMap.integrity[`https://key.plrs.im/elements/3.2.1/${f}`],
+          ).toBe(ints.files[f]);
+      } finally {
+        rmSync(out, { recursive: true, force: true });
+      }
+    },
+    60_000,
+  );
+
+  it.skipIf(!built)(
+    "a prerelease deploy (PKEY_ELEMENTS_FLOAT=0) writes the exact version and no major",
+    () => {
+      const out = mkdtempSync(join(tmpdir(), "elements-p-"));
+      try {
+        run(out, {
+          PKEY_ELEMENTS_VERSION: "3.3.0-rc.1",
+          PKEY_ELEMENTS_FLOAT: "0",
+        });
+        expect(existsSync(join(out, "3.3.0-rc.1", "pk.js"))).toBe(true);
+        expect(existsSync(join(out, "3"))).toBe(false);
+      } finally {
+        rmSync(out, { recursive: true, force: true });
       }
     },
     60_000,

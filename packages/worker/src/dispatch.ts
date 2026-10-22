@@ -275,8 +275,9 @@ async function routeRequest(
     );
   }
 
-  // Admin + platform routes. These never answer CORS: they share this origin with the admin
-  // cookie (THREAT-MODEL R1-09).
+  // Admin + platform routes. The credentialed ones never answer CORS: they share this origin
+  // with the admin cookie (THREAT-MODEL R1-09). The Elements CDN route below is the exception:
+  // public bytes, `*` and no cookie.
   switch (route.kind) {
     case "githubWebhook":
       return handleGithubWebhook(req, env, db, now);
@@ -287,10 +288,10 @@ async function routeRequest(
     // under the prefix — assets and machine-readable artifacts included.
     case "docs":
       return handleDocs(req, env, now, db);
-    // `/help[/*]` → the public Help; no session, no database.
     // The Elements CDN module: public bytes from the assets root, no session, no database.
     case "elements":
       return handleElements(req, env, url);
+    // `/help[/*]` → the public Help; no session, no database.
     case "helpAlias":
       return helpAliasResponse(req, env, url, onCustomerHost);
     case "webauthnOrigins":

@@ -237,6 +237,12 @@ jobs:
           fi
           echo "env=prod" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          # UK-04b: the Elements CDN bundle is named for the release, never package.json's
+          # unstamped 0.0.0 (an exact version is served immutable). Only a stable tag moves the
+          # floating major (/elements/<major>/pk.js); an -alpha/-beta/-rc/-a/-b deploy publishes
+          # its exact version and writes no major shim.
+          echo "elements_version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          if [[ "$TAG" == *-* ]]; then echo "elements_float=0" >> "$GITHUB_OUTPUT"; else echo "elements_float=1" >> "$GITHUB_OUTPUT"; fi
           echo "database=polaris_key_prod" >> "$GITHUB_OUTPUT"
           # A data-plane endpoint, deliberately NOT the SPA. The previous smoke URL was
           # https://key.plrs.im/manage — a STATIC ASSET, which returns 200 with D1, KV and
@@ -281,6 +287,19 @@ jobs:
         run: |
           cd packages/worker
           npx wrangler secret list --env "$ENV" --format json | node scripts/check-config.mjs "$ENV"
+      # UK-04b: /elements/* is served by the Worker, so a product that already holds the slug
+      # `elements` (reserved for new products since UK-04b) would be shadowed. Fail before anything
+      # changes. test/releaseWorkflows.test.ts pins this step.
+      - name: Elements slug preflight
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ENV: ${{ steps.target.outputs.env }}
+          DATABASE: ${{ steps.target.outputs.database }}
+        run: |
+          cd packages/worker
+          npx wrangler d1 execute "$DATABASE" --env "$ENV" --remote --json \
+            --command "SELECT slug FROM products WHERE slug = 'elements'" > "$RUNNER_TEMP/elements-slug.json"
+          node -e 'const r=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); const n=r.flatMap(x=>x.results??[]).length; if(n){console.error("A product uses the slug elements; /elements/* would shadow it. Rename it first.");process.exit(1)}' "$RUNNER_TEMP/elements-slug.json"
       - name: Apply D1 migrations
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -331,6 +350,9 @@ jobs:
             --var "PKEY_RELEASE_TAG:$TAG" --var "PKEY_GIT_SHA:$GITHUB_SHA" \
             --tag "${TAG:0:25}" --message "${TAG:0:80} ${GITHUB_SHA:0:12}"
       - name: Assemble static assets (admin SPA + docs site)
+        env:
+          PKEY_ELEMENTS_VERSION: ${{ steps.target.outputs.elements_version }}
+          PKEY_ELEMENTS_FLOAT: ${{ steps.target.outputs.elements_float }}
         run: pnpm --filter @polaris-key/worker assemble
       - name: Deploy worker + admin assets
         id: deploy-main

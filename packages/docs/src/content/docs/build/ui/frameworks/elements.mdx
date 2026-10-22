@@ -46,12 +46,36 @@ hash. `integrity.json` beside `pk.js` lists the sha384 of every file:
 ></script>
 ```
 
-An exact-version URL is immutable, cached for a year, and its bytes never change. The module loads
-its locale packs and fonts from beside itself, and the hash covers the packs, which `pk.js` names by
-content. Do not put `integrity` on the floating URL: its bytes change with each release and the
-browser refuses the module. Before 1.0 the major is `0`, which is not stable: pin the exact version.
+An exact-version URL is immutable, cached for a year, and its bytes never change. Do not put
+`integrity` on the floating URL: its bytes change with each release and the browser refuses the
+module. Before 1.0 the major is `0`, which is not stable: pin the exact version. A prerelease
+(`-alpha`, `-beta`, `-rc`) is published at its exact version only; the floating major follows stable
+releases. A build that was not stamped with a release version (`0.0.0`) is served `no-cache`.
 
-A page with a Content-Security-Policy allows `https://key.plrs.im` in `script-src` and `font-src`.
+The `integrity` attribute covers `pk.js` only. A browser does not check it on the modules `pk.js`
+imports, and the locale packs are such modules (`chunks/*.js`). To verify the whole graph, add an
+import map before the script. `integrity.json` carries it ready to paste, as `importMap`, with
+every module's sha384 keyed by its URL:
+
+```html
+<script type="importmap">
+  {
+    "integrity": {
+      "https://key.plrs.im/elements/1.0.0/pk.js": "sha384-…",
+      "https://key.plrs.im/elements/1.0.0/chunks/en-….js": "sha384-…"
+    }
+  }
+</script>
+<script type="module" src="https://key.plrs.im/elements/1.0.0/pk.js"></script>
+```
+
+Import-map integrity needs a browser that supports it (Chrome and Edge 127 and later; check the
+current table for Firefox and Safari). Where it is unsupported the map is ignored and only the
+`integrity` attribute on `pk.js` protects the page, so keep the attribute as well. Fonts are data and
+are not covered.
+
+A page with a Content-Security-Policy allows the path, not the whole host:
+`script-src https://key.plrs.im/elements/` and `font-src https://key.plrs.im/elements/`.
 The route sends `access-control-allow-origin: *`, no cookie and no credentials.
 
 The gate builds the browser client from `config`, and never shows sign-in while a cached session is

@@ -7,7 +7,8 @@
 // Output, all under outDir:
 //   <version>/pk.js, <version>/chunks/*.js   the files, named for the exact version: immutable
 //   <version>/fonts/*                        Rubik and the kit's mono face, beside the module
-//   <version>/integrity.json                 the SRI hash of every file (sha384)
+//   <version>/integrity.json                 the SRI hash of every file (sha384), and the same
+//                                            hashes as an import-map "integrity" table
 //   <major>/pk.js                            a one-line shim, `export * from "../<version>/pk.js"`,
 //                                            for the floating major URL
 //   <major>/integrity.json                   the shim's hash
@@ -34,8 +35,30 @@ import { build } from "esbuild";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const out = process.argv[2] ?? join(root, "dist", "cdn");
-const version = pkg.version;
+// The release being deployed names the bundle: PKEY_ELEMENTS_VERSION (deploy.yml passes the tag's
+// version) wins over package.json, whose committed "0.0.0" is only stamped at publish time. An
+// unstamped 0.0.0 is a local/CI build, and the Worker serves it `no-cache`; a deploy must never
+// ship it, so under CI it is refused unless the job says so (PKEY_ELEMENTS_UNSTAMPED_OK=1, the
+// test/assemble jobs that never publish).
+const version = process.env.PKEY_ELEMENTS_VERSION || pkg.version;
+if (!/^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$/.test(version)) {
+  console.error(`bundle-cdn: "${version}" is not a version.`);
+  process.exit(1);
+}
+if (
+  version === "0.0.0" &&
+  process.env.CI &&
+  process.env.PKEY_ELEMENTS_UNSTAMPED_OK !== "1"
+) {
+  console.error(
+    "bundle-cdn: refusing to build the unstamped 0.0.0 under CI. Set PKEY_ELEMENTS_VERSION to the release version.",
+  );
+  process.exit(1);
+}
 const major = version.split(".")[0];
+// A prerelease deploy publishes its exact version but must not move the floating major
+// (PKEY_ELEMENTS_FLOAT=0): the major directory is then not written at all.
+const float = process.env.PKEY_ELEMENTS_FLOAT !== "0";
 
 const exact = join(out, version);
 rmSync(out, { recursive: true, force: true });
@@ -73,29 +96,44 @@ for (const f of files(exact)) {
   integrity[rel] =
     "sha384-" + createHash("sha384").update(readFileSync(f)).digest("base64");
 }
+// `importMap` is the same hashes keyed by absolute URL, ready to paste as
+// <script type="importmap">: a browser checks `integrity` on the top-level module only, but an
+// import map's "integrity" table covers every module the graph loads, chunks included.
+const origin = process.env.PKEY_ELEMENTS_ORIGIN || "https://key.plrs.im";
+const importMap = { integrity: {} };
+for (const [rel, hash] of Object.entries(integrity))
+  if (rel.endsWith(".js"))
+    importMap.integrity[`${origin}/elements/${version}/${rel}`] = hash;
 writeFileSync(
   join(exact, "integrity.json"),
-  JSON.stringify({ name: pkg.name, version, files: integrity }, null, 2) + "\n",
-);
-
-// The floating major URL is the shim.
-const shim = `export * from "../${version}/pk.js";\n`;
-mkdirSync(join(out, major), { recursive: true });
-writeFileSync(join(out, major, "pk.js"), shim);
-writeFileSync(
-  join(out, major, "integrity.json"),
   JSON.stringify(
-    {
-      name: pkg.name,
-      version,
-      files: {
-        "pk.js": "sha384-" + createHash("sha384").update(shim).digest("base64"),
-      },
-    },
+    { name: pkg.name, version, files: integrity, importMap },
     null,
     2,
   ) + "\n",
 );
+
+// The floating major URL is the shim.
+const shim = `export * from "../${version}/pk.js";\n`;
+if (float) {
+  mkdirSync(join(out, major), { recursive: true });
+  writeFileSync(join(out, major, "pk.js"), shim);
+  writeFileSync(
+    join(out, major, "integrity.json"),
+    JSON.stringify(
+      {
+        name: pkg.name,
+        version,
+        files: {
+          "pk.js":
+            "sha384-" + createHash("sha384").update(shim).digest("base64"),
+        },
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+}
 
 console.log(
   `bundle-cdn: ${Object.keys(integrity).length} files, pk.js ${integrity["pk.js"]} -> ${out}`,

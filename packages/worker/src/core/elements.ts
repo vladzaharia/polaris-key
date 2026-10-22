@@ -19,6 +19,11 @@
  * {@link CONTENT_TYPES}. The Worker reads the file from the ASSETS binding at the same path;
  * what is not in the tree is a 404, never a fallback to the nearest version.
  *
+ * An unstamped `0.0.0` (a local or CI build; `bundle-cdn.mjs` refuses it under CI unless the job
+ * opts in, and deploy.yml stamps the tag's version) is served `no-cache`, never immutable.
+ * A prerelease deploy (`PKEY_ELEMENTS_FLOAT=0`) writes no major shim, so the major URL does not
+ * move to a prerelease: it answers 404 until a stable deploy.
+ *
  * ── HEADERS ─────────────────────────────────────────────────────────────────────────────────
  *
  *   - exact version: `public, max-age=31536000, immutable`; a release's bytes never change, so
@@ -52,6 +57,9 @@ export const ELEMENTS_MAJOR_MAX_AGE = 300;
 
 /** Cache-Control of a file under an exact version. */
 export const ELEMENTS_IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
+
+/** Cache-Control of the unstamped `0.0.0` build (a local or CI build): never cached as immutable. */
+export const ELEMENTS_UNSTAMPED_CACHE = "no-cache";
 
 /** The file types the bundle contains, and the type each is served as. */
 export const CONTENT_TYPES: Readonly<Record<string, string>> = {
@@ -103,6 +111,16 @@ function baseHeaders(): Headers {
   });
 }
 
+/** `If-None-Match` against one ETag: `*`, or any listed tag (weak comparison). */
+function ifNoneMatch(header: string | null, etag: string): boolean {
+  if (!header) return false;
+  const strip = (t: string) => t.trim().replace(/^W\//, "");
+  return (
+    header.trim() === "*" ||
+    header.split(",").some((t) => strip(t) === strip(etag))
+  );
+}
+
 export async function handleElements(
   req: Request,
   env: Env,
@@ -142,10 +160,15 @@ export async function handleElements(
   headers.set("content-type", CONTENT_TYPES[parsed.ext]!);
   headers.set(
     "cache-control",
-    parsed.exact
-      ? ELEMENTS_IMMUTABLE_CACHE
-      : `public, max-age=${ELEMENTS_MAJOR_MAX_AGE}`,
+    parsed.version === "0.0.0"
+      ? ELEMENTS_UNSTAMPED_CACHE
+      : parsed.exact
+        ? ELEMENTS_IMMUTABLE_CACHE
+        : `public, max-age=${ELEMENTS_MAJOR_MAX_AGE}`,
   );
+  // A conditional request the asset still satisfies is a 304 (the ETag is the assets layer's).
+  if (etag && ifNoneMatch(req.headers.get("if-none-match"), etag))
+    return new Response(null, { status: 304, headers });
   return new Response(req.method === "HEAD" ? null : res.body, {
     status: 200,
     headers,

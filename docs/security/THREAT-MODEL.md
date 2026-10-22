@@ -9998,6 +9998,10 @@ layer's `Set-Cookie`, if it ever sent one, is dropped (the response is rebuilt f
 headers). `access-control-allow-origin: *` is safe only for that reason: it is never combined with
 `Allow-Credentials`, so a foreign page that fetches the file learns nothing it could not `curl`. The
 route is on the console host only; the customer host answers it 404 (`CUSTOMER_ROUTE_KINDS`).
+The console and docs pages carry `script-src 'self'`, which now admits `/elements/*` as same-origin
+script: the module is public, reviewed bytes from the same deploy, not user content, so this adds no
+injection path, but it does widen what "same origin" means. Follow-up before 1.0: serve the module
+from a cookie-less CDN origin and leave the console CSP untouched; this round does not change it.
 
 **Control: the file set.** Only files `scripts/assemble-assets.mjs` copied from `bundle:cdn` exist
 under `assets/elements/`: `pk.js`, content-hashed `chunks/*.js`, `fonts/*`, `integrity.json`. The
@@ -10014,29 +10018,44 @@ lookup, so `?x=` reaches the same bytes (a shared cache may key on it, which onl
 changes content); the response carries no `Vary` on a request header, so a shared cache holds one object per
 URL; and only a whole `200` is cacheable (an error is `no-store`, so a transient 404 during a deploy is
 not remembered by the edge for a year). An exact-version URL is `immutable` for a year: it is safe
-because its bytes can never legitimately change, and unsafe the day they do. The deploy never
-rewrites a published version's files (the bundle is named for `package.json`'s version, and
-`publish-sdks.yml` stamps that version once per release); a fix ships as a new version.
+because its bytes can never legitimately change, and unsafe the day they do. The bundle is named for
+the release: `deploy.yml` passes the tag's version (`PKEY_ELEMENTS_VERSION`) to `assemble`, because
+the committed `package.json` says `0.0.0`. `bundle-cdn.mjs` refuses `0.0.0` under `CI` (the test and
+assemble jobs opt in with `PKEY_ELEMENTS_UNSTAMPED_OK`), and the route serves an unstamped `0.0.0`
+`no-cache`, never immutable. A fix ships as a new version. The floating major follows only stable
+tags: a prerelease deploy (`PKEY_ELEMENTS_FLOAT=0`) publishes its exact version and writes no major
+shim, so the major URL does not move to a prerelease (it answers 404 until the next stable deploy,
+since the assets root holds one build; see Residual 2). `deploy.yml` also fails before the migrations
+if a product already uses the slug `elements`. `test/releaseWorkflows.test.ts` pins all three.
 
 **Control: pinning.** Integrators have two tiers. The floating major (`/elements/1/pk.js`,
 `max-age=300`) is a one-line shim that re-exports the exact version, so a new release reaches pages
 within minutes and the shim never refers to a chunk that was removed; it carries no `integrity` (its
 target changes). Pinned pages use `/elements/1.4.2/pk.js` with
 `integrity="sha384-…"` from `/elements/1.4.2/integrity.json` (`crossorigin` is implied for module
-scripts). A browser verifies the module's hash before running it, and `pk.js` names its chunks by
-content hash, so the hash covers them transitively. Fonts and `integrity.json` itself are not covered
-by the module's SRI: fonts are data and the integrity file is a convenience, not a root of trust, so
-the hash in the integrator's page comes from the release notes or `pkey`-side tooling, not from a
-fetch at load time.
+scripts). A browser verifies the module's hash before running it, but only for the top-level
+module: `integrity` on a `<script>` is **not** checked on the modules it imports, and a content-hashed
+chunk name is not a check either (reviewer probe: a tampered `chunks/*.js` ran under a valid `pk.js`
+hash). Transitive coverage needs an import map: `integrity.json` carries `importMap`, every `.js`
+file's sha384 keyed by absolute URL, for `<script type="importmap">{"integrity": {…}}</script>`
+placed before the module script (the probe then refuses the tampered chunk). Where the browser lacks
+import-map integrity, only `pk.js` is verified (Residual 5). Fonts and `integrity.json` itself are
+not covered: fonts are data and the integrity file is a convenience, not a root of trust, so the hash
+in the integrator's page comes from the release notes or `pkey`-side tooling, not from a fetch at
+load time.
 
 **Residual.** (1) Whoever can deploy the Worker, or alter the `elements` build in CI, can change the
 bytes served at the floating major (and at a not-yet-released exact version); a page without
 `integrity` trusts that supply chain. This is the same trust as the package feed, no more. (2) Only
 the exact versions a deployment was built with exist: the assets root holds the current version, so an
-older pinned URL 404s after the next release until an archive of released versions is added; pinned
-pages fail closed, not open. (3) The integrator's own CSP must allow `script-src https://key.plrs.im`
-and `font-src https://key.plrs.im`; this route sets no CSP of its own (it serves no document). (4) A
+older pinned URL 404s after the next release, a rollback or the redeploy of an older tag (which replaces
+the root with that tag's build) until an archive of released versions is added; pinned pages fail
+closed, not open. (3) The integrator's own CSP should allow the path, not the host: `script-src
+https://key.plrs.im/elements/` and `font-src https://key.plrs.im/elements/`, so no other script on the
+console origin is admitted; this route sets no CSP of its own (it serves no document). (4) A
 compromised module could read what the page gives the gate (the license key typed into it, the bearer
-token) and post it elsewhere; the defence is SRI on an exact version, not anything the route can add.
+token) and post it elsewhere; the defence is SRI on an exact version, with the import map so the chunks are covered too, not
+anything the route can add. (5) Import-map `integrity` is not supported by every browser (Chrome and
+Edge 127 and later; others vary): where it is not, only `pk.js` is verified and a tampered chunk runs.
 Tests: `test/elements.test.ts` (paths, headers, 404s, byte stability and integrity of the built
 bundle), `test/routeCoverage.test.ts`.

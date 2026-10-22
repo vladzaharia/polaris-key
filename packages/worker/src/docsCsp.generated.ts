@@ -19,6 +19,7 @@ export const DOCS_SCRIPT_HASHES: readonly string[] = [
   "'sha256-VBXjWD/njPiGpVaqYMUlMIHfdBZbA865+ZfgTH/zHa8='",
   "'sha256-VgrgcKBvIM3XpiLJ6fEv1Vy6YHBwlKLkYtFdfBMouTo='",
   "'sha256-XaA2pEspIeNwRwmw9WyviJqNFlspRpob+lgtes1zzYE='",
+  "'sha256-aabBEzxOMoexahSQo+0u6IcLZoHZk4K5yh1bXguPFB0='",
   "'sha256-abC4lxKzuPelqMjA4iLVxB0tgZiP5lgCLsdxWdHy34w='",
   "'sha256-cWzNk5BJWLj7tqXPbljaFnZW2niFgIdv0FiguIWpgg0='",
   "'sha256-hP48sUywTAXyg22qvpdOC/cYIA8MfPdKEbPC/mvGk4M='",
