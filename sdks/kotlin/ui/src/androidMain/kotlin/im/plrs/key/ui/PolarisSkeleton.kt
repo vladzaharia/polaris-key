@@ -55,6 +55,20 @@ internal fun rememberReduceMotion(): Boolean {
     }
 }
 
+/** The shimmer's sweep position (-0.3..1.3 across a shape), still at 0.35 under reduced motion. */
+@Composable
+internal fun rememberShimmerPhase(reduceMotion: Boolean = rememberReduceMotion()): Float {
+    if (reduceMotion) return 0.35f
+    val transition = rememberInfiniteTransition(label = "PolarisSkeleton")
+    val value by transition.animateFloat(
+        initialValue = -0.3f,
+        targetValue = 1.3f,
+        animationSpec = infiniteRepeatable(tween(PolarisKitTokens.Motion.shimmer, easing = LinearEasing), RepeatMode.Restart),
+        label = "PolarisSkeletonPhase",
+    )
+    return value
+}
+
 /**
  * The boot skeleton for [label] (the stage's line): the product header, the label, and bars shaped
  * like a focused step. [reduceMotion] holds the shimmer still; it defaults to the system setting.
@@ -66,18 +80,7 @@ internal fun PolarisBootSkeleton(label: String, modifier: Modifier = Modifier, r
     val scheme = MaterialTheme.colorScheme
     val base = scheme.surfaceContainerHighest
     val sweep = scheme.onSurface.copy(alpha = 0.08f)
-    val phase = if (reduceMotion) {
-        0.35f
-    } else {
-        val transition = rememberInfiniteTransition(label = "PolarisSkeleton")
-        val value by transition.animateFloat(
-            initialValue = -0.3f,
-            targetValue = 1.3f,
-            animationSpec = infiniteRepeatable(tween(PolarisKitTokens.Motion.shimmer, easing = LinearEasing), RepeatMode.Restart),
-            label = "PolarisSkeletonPhase",
-        )
-        value
-    }
+    val phase = rememberShimmerPhase(reduceMotion)
     PolarisScaffold(
         modifier = modifier,
         anchor = PolarisAnchor.Top,
@@ -121,7 +124,7 @@ private fun ColumnScope.SkeletonLines(phase: Float, base: Color, sweep: Color) {
 
 /** One skeleton shape: [base] with a soft [sweep] band at [phase] (0..1 across the shape). */
 @Composable
-private fun SkeletonBar(
+internal fun SkeletonBar(
     phase: Float,
     base: Color,
     sweep: Color,

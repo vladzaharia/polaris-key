@@ -270,7 +270,7 @@ class ResponsiveLayoutTest(private val variant: SnapshotVariant) {
         if (size !in dialogSizes) return
         val failures = mutableListOf<String>()
         show(updateDialog) {
-            checkControls("update-dialog", failures, expected = listOf(sampleCopy.updateNow, sampleCopy.updateLater))
+            checkControls("update-dialog", failures, expected = listOf(sampleCopy.updateGooglePlay, sampleCopy.updateLater))
         }
         assertTrue("${variant.name}:\n" + failures.joinToString("\n"), failures.isEmpty())
     }

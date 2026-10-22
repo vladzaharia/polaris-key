@@ -118,7 +118,19 @@ internal val deviceLimitTv: @Composable () -> Unit = {
 /** The update prompt in its dialog, as an app shows it over its own screen. */
 internal val updateDialog: @Composable () -> Unit = {
     SampleProduct()
-    PolarisUpdatePromptDialog(PolarisUpdateUi("2.5.0"), onUpdate = {}, onLater = {})
+    PolarisUpdatePromptDialog(
+        PolarisUpdateUi(
+        "2.5.0",
+        currentVersion = "2.4.1",
+        size = 61_000_000L,
+        notes = listOf("Faster sync on slow networks", "Fixes a crash when resuming"),
+        notesUrl = "https://example.com/releases/2.5.0",
+        outlet = "play",
+    ),
+        onUpdate = {},
+        onLater = {},
+        onSkip = {},
+    )
 }
 
 /** Every screen the kit ships, by snapshot name. */
@@ -177,7 +189,19 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     },
     "update-prompt" to {
         PolarisScreen(showLogo = false) {
-            PolarisUpdatePrompt(PolarisUpdateUi("2.5.0"), Modifier.padding(0.dp), onLater = {})
+            PolarisUpdatePrompt(
+                PolarisUpdateUi(
+            "2.5.0",
+            currentVersion = "2.4.1",
+            size = 61_000_000L,
+            notes = listOf("Faster sync on slow networks", "Fixes a crash when resuming"),
+            notesUrl = "https://example.com/releases/2.5.0",
+            outlet = "play",
+        ),
+                Modifier.padding(0.dp),
+                onLater = {},
+                onSkip = {},
+            )
         }
     },
     "pack-progress" to { PolarisPackProgressScreen(samplePacks) },

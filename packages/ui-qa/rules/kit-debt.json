@@ -33,36 +33,6 @@
     },
     {
       "kit": "compose",
-      "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisBoot.kt",
-      "count": 4
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisDevices.kt",
-      "count": 2
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisGate.kt",
-      "count": 2
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisScreen.kt",
-      "count": 7
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-legacy-icons",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisUpdate.kt",
-      "count": 4
-    },
-    {
-      "kit": "compose",
       "rule": "compose-link-validation",
       "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisGate.kt",
       "count": 1
@@ -143,13 +113,7 @@
       "kit": "compose",
       "rule": "compose-spacing-off-scale",
       "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisUpdate.kt",
-      "count": 14
-    },
-    {
-      "kit": "compose",
-      "rule": "compose-stock-spinner",
-      "file": "sdks/kotlin/ui/src/androidMain/kotlin/im/plrs/key/ui/PolarisScreen.kt",
-      "count": 1
+      "count": 17
     },
     {
       "kit": "godot",
