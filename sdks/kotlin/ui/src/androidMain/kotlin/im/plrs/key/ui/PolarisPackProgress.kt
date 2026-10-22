@@ -116,10 +116,10 @@ public fun PolarisPackList(ui: PolarisPackProgressUi, modifier: Modifier = Modif
     }
 }
 
-/** A linear progress bar in the release accent (primary, neutral); indeterminate when [fraction] is null. */
+/** A linear progress bar in the product's primary (never a service accent, UI-KITS.md 1.2); indeterminate when [fraction] is null. */
 @Composable
 internal fun PolarisProgressBar(fraction: Float?, description: String) {
-    val color = PolarisTheme.accent("release")
+    val color = MaterialTheme.colorScheme.primary
     if (fraction == null) {
         LinearProgressIndicator(
             modifier = Modifier.fillMaxWidth().semantics { stateDescription = description },

@@ -54,6 +54,17 @@ class BrandRulesTest {
     }
 
     @Test
+    fun productScreensDrawNoServiceAccent() {
+        // UI-KITS.md 1.2: the six service accents do not appear on product-facing screens. The
+        // helper stays for a host that opts in; no screen of the kit calls it.
+        val call = Regex("""PolarisTheme\.(accent|brandAccent)\(""")
+        val problems = sources.filterNot { it.name == "PolarisTheme.kt" }.flatMap { file ->
+            file.readLines().mapIndexedNotNull { i, line -> if (call.containsMatchIn(line)) "${file.name}:${i + 1}: ${line.trim()}" else null }
+        }
+        assertTrue("service accents on product screens:\n" + problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    @Test
     fun theGeneratedFilesAreTheGenerators() {
         val tokens = module.resolve("src/commonMain/kotlin/im/plrs/key/ui/brand/PolarisBrandTokens.generated.kt").readText()
         assertTrue(tokens.startsWith("// GENERATED FILE — do not edit by hand."))

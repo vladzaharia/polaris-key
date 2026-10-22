@@ -110,6 +110,8 @@ kotlin {
             implementation(libs.compose.ui.tooling.preview)
             implementation(libs.zxing.core)
             implementation(libs.androidx.lifecycle.viewmodel)
+            // BackHandler: every step with a back target backs out (UI-KITS.md 1.4 Android, DL9).
+            implementation(libs.androidx.activity.compose)
         }
         getByName("androidUnitTest") {
             dependencies {

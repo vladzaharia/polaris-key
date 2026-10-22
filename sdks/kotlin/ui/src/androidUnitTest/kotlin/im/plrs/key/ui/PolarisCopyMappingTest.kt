@@ -32,11 +32,11 @@ class PolarisCopyMappingTest {
     fun terminalStatusesMapToTheirCopy() {
         // Revoked and expired are core.copy's gate entries (copy.en.json), verbatim.
         assertEquals(
-            PolarisMessageCopy("Signed out", "This device was signed out. Sign in or activate again to continue.", PolarisMessageKind.Locked),
+            PolarisMessageCopy("Signed out", "This device was signed out. Sign in or activate again to continue.", PolarisMessageKind.Blocked),
             copy.gateMessage(LicenseStatus.revoked),
         )
         assertEquals(
-            PolarisMessageCopy("License expired", "Connect to the internet or renew your license to continue.", PolarisMessageKind.Warning),
+            PolarisMessageCopy("License expired", "Connect to the internet or renew your license to continue.", PolarisMessageKind.Blocked),
             copy.gateMessage(LicenseStatus.expired),
         )
         // Sign-in's stops read core.copy too.
@@ -139,14 +139,23 @@ class PolarisCopyMappingTest {
         assertEquals(copy.bootOfflinePlayableBody, copy.offlineMessage(true).body)
         assertEquals("Couldn't check your license", copy.errorMessage("sync-failed").title)
         assertFalse(copy.errorMessage("sync-failed").body.contains("sync-failed"))
-        assertEquals("The app couldn't finish starting (mystery-code).", copy.errorMessage("mystery-code").body)
+        assertEquals("Diceroll couldn't finish starting (mystery-code).", copy.errorMessage("mystery-code").body)
+        // A nameless kit starts the sentence with a capital: "This app", never "this app".
+        assertEquals("This app couldn't finish starting (mystery-code).", PolarisCopy().errorMessage("mystery-code").body)
     }
 
     @Test
     fun graceCountdown() {
         assertEquals(copy.graceBodyNoDeadline, copy.graceBody(null, 100))
         assertEquals(copy.graceBodyNoDeadline, copy.graceBody(50, 100))
-        assertEquals("We couldn't reach the license server. You can keep working for 3 days.", copy.graceBody(100 + 3 * 86_400 + 5, 100))
+        // The headline counts the days left (grace.daysLeft), the last day names the product (grace.lastDay).
+        assertEquals("Offline · 3 days left", copy.graceHeadline(100 + 3 * 86_400, 100, "en"))
+        assertEquals("Offline · 4 days left", copy.graceHeadline(100 + 3 * 86_400 + 5, 100, "en"))
+        assertEquals("Offline · last day to use Diceroll", copy.graceHeadline(100 + 86_400, 100, "en"))
+        assertEquals("Offline · last day to use Diceroll", copy.graceHeadline(100 + 3_600, 100, "en"))
+        assertEquals(copy.graceTitle, copy.graceHeadline(null, 100, "en"))
+        // The deadline line is the catalog's grace.deadline with a localised date.
+        assertTrue(copy.graceBody(1_790_000_000, 100, "en").startsWith("Works offline until "))
     }
 
     @Test
@@ -179,8 +188,8 @@ class PolarisCopyMappingTest {
         assertEquals("2 GB", copy.bytes(2_000_000_000, Locale.US))
         assertEquals("1,5 MB", copy.bytes(1_500_000, Locale.GERMANY))
         assertEquals(
-            "268.4 MB of new content is needed, and you're on a metered connection.",
-            PolarisCopy().let { c -> c.format(c.consentBodyMetered, c.bytes(268_400_000, Locale.US)) },
+            "Diceroll needs 268.4 MB of new content, and you're on a metered connection.",
+            copy.let { c -> c.format(c.consentBodyMetered, c.productLead(), c.bytes(268_400_000, Locale.US)) },
         )
     }
 

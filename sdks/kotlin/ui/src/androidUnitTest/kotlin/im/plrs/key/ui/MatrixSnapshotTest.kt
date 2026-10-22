@@ -84,8 +84,11 @@ class MatrixSnapshotTest(private val dark: Boolean) {
                 // SignIn/code carries no copy in the matrix (the user code, the address and the countdown
                 // are runtime values, not catalogue lines), so PolarisKitScreen would draw nothing: the
                 // picture is the code view the stateful form draws for a prompt.
-                if (case.id == "signIn-code") PolarisSignInScreen(PolarisSignInUi.Showing(samplePrompt, NOW), showQr = false)
-                else PolarisKitScreen(case.screen)
+                // Reduced motion holds the toast's timer full, so the picture is the same on every run.
+                androidx.compose.runtime.CompositionLocalProvider(LocalPolarisReduceMotion provides true) {
+                    if (case.id == "signIn-code") PolarisSignInScreen(PolarisSignInUi.Showing(samplePrompt, NOW), showQr = false)
+                    else PolarisKitScreen(case.screen)
+                }
             }
         }
     }

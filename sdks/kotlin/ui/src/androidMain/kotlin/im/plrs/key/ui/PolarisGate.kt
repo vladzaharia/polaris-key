@@ -61,7 +61,6 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import im.plrs.key.core.Copy
 import im.plrs.key.core.LicenseStatus
 import im.plrs.key.core.ManageLink
 import im.plrs.key.license.ActivationResult
@@ -78,6 +77,8 @@ import kotlinx.coroutines.launch
  * @param signIn runs sign-in inside the gate instead (the one sign-in form): Sign in morphs the
  *   activation screen into the code view, whose Cancel and "Use a license key instead" come back
  *   to the key field.
+ * @param onUpdate opens the update (the store, the installer) from a "version too old" stop, where
+ *   it is the screen's one primary (DL6); null leaves Try again as the only action.
  */
 @Composable
 public fun PolarisGate(
@@ -85,6 +86,7 @@ public fun PolarisGate(
     modifier: Modifier = Modifier,
     onSignIn: (() -> Unit)? = null,
     signIn: PolarisSignInState? = null,
+    onUpdate: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val gate by state.gate.collectAsState()
@@ -99,6 +101,7 @@ public fun PolarisGate(
         onSignIn = onSignIn,
         onRetry = state::refresh,
         signIn = signIn,
+        onUpdate = onUpdate,
         content = content,
     )
 }
@@ -131,6 +134,7 @@ public fun PolarisGateScreen(
     onRetry: () -> Unit = {},
     manageAsQr: Boolean = false,
     signIn: PolarisSignInState? = null,
+    onUpdate: (() -> Unit)? = null,
     content: @Composable () -> Unit = {},
 ) {
     val copy = PolarisTheme.copy
@@ -139,6 +143,7 @@ public fun PolarisGateScreen(
     var anotherLicense by rememberSaveable { mutableStateOf(false) }
     var signingIn by rememberSaveable { mutableStateOf(false) }
     var focusKey by remember { mutableStateOf(false) }
+    var graceDismissed by rememberSaveable { mutableStateOf(false) }
     val base = gateScreen(status)
     LaunchedEffect(base) {
         // A usable licence (or a different stop) ends the gate's own detours.
@@ -146,6 +151,8 @@ public fun PolarisGateScreen(
             anotherLicense = false
             signingIn = false
         }
+        // The banner comes back the next time the licence goes offline.
+        if (base != GateScreen.Grace) graceDismissed = false
     }
     val screen = when {
         base == GateScreen.Message && status == LicenseStatus.expired && anotherLicense ->
@@ -159,12 +166,17 @@ public fun PolarisGateScreen(
             GateScreen.Loading -> PolarisProgressScreen(copy.gateLoading)
             GateScreen.Content -> content()
             GateScreen.Grace -> Column(Modifier.fillMaxSize()) {
-                PolarisGraceBanner(
-                    body = copy.graceBody(license?.graceUntil, gate.nowSeconds),
-                    onReconnect = onRetry,
-                    busy = gate.refreshing,
-                    modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
-                )
+                // Dismissible for the session (UI-KITS.md 4.1 GraceBanner); the licence and its deadline are untouched.
+                if (!graceDismissed) {
+                    PolarisGraceBanner(
+                        body = copy.graceBody(license?.graceUntil, gate.nowSeconds),
+                        title = copy.graceHeadline(license?.graceUntil, gate.nowSeconds),
+                        onReconnect = onRetry,
+                        onDismiss = { graceDismissed = true },
+                        busy = gate.refreshing,
+                        modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
+                    )
+                }
                 Box(Modifier.weight(1f)) { content() }
             }
             GateScreen.Activation -> PolarisActivationScreen(
@@ -189,13 +201,21 @@ public fun PolarisGateScreen(
             GateScreen.Message -> {
                 val stop = status ?: LicenseStatus.expired
                 val message = copy.gateMessage(stop, license?.allowedRange) ?: return@Crossfade
+                // DL6: the fix is the one primary. A version that is too old is fixed by updating, when
+                // the host can open the update; otherwise Try again stays, and the message names the fix.
+                val update = onUpdate.takeIf { stop == LicenseStatus.versionTooOld }
                 PolarisMessageScreen(message) {
-                    PolarisPrimaryButton(
-                        text = if (stop == LicenseStatus.expired) copy.reconnect else copy.retry,
-                        onClick = onRetry,
-                        busy = gate.refreshing,
-                        initialFocus = true,
-                    )
+                    if (update != null) {
+                        PolarisPrimaryButton(text = copy.updateAction, onClick = update, initialFocus = true)
+                        PolarisSecondaryButton(copy.retry, onClick = onRetry, busy = gate.refreshing)
+                    } else {
+                        PolarisPrimaryButton(
+                            text = if (stop == LicenseStatus.expired) copy.reconnect else copy.retry,
+                            onClick = onRetry,
+                            busy = gate.refreshing,
+                            initialFocus = true,
+                        )
+                    }
                     if (stop == LicenseStatus.expired) {
                         // No renew link exists on the device side; another license is the way on.
                         PolarisSecondaryButton(copy.useAnotherLicense, onClick = { anotherLicense = true })
@@ -248,16 +268,16 @@ public fun PolarisActivationScreen(
         PolarisActivationError.KeyEmpty -> copy.activationKeyEmpty
         is PolarisActivationError.Refused -> if (error.result is ActivationResult.DeviceLimit) null else copy.activationMessage(error.result)
     }
-    val supporting = if (limit == null) {
-        emptyList()
-    } else {
-        val reason = if (manage != null) copy.activationMessage(limit) else copy.format(copy.deviceLimitNoManage, copy.productName)
-        val seats = limit.deviceCount?.let { used -> limit.limit?.let { max -> copy.format(copy.seatCaption, used, max) } }
-        listOfNotNull(reason, seats)
-    }
+    val seats = limit?.deviceCount?.let { used -> limit.limit?.let { max -> used.toInt() to max.toInt() } }
+    // The key path stays closed behind "Use a license key" while Sign in is on offer (UI-KITS.md 4.3
+    // Welcome); with no sign-in, a failed key or a typed one, it is the screen.
+    var keyOpen by rememberSaveable { mutableStateOf(ui.key.isNotEmpty()) }
+    val showKey = onSignIn == null || keyOpen || focusKey || ui.error != null
+    // Back has somewhere to go (UI-KITS.md 1.4 Android): from the key path to the Welcome with the
+    // draft kept, from the device-limit step to the key. The Welcome itself never consumes it.
+    androidx.activity.compose.BackHandler(enabled = limit == null && onSignIn != null && keyOpen && ui.error == null && !focusKey) { keyOpen = false }
+    androidx.activity.compose.BackHandler(enabled = limit != null && !ui.busy) { onKeyChange(ui.key) }
     val keyField: @Composable () -> Unit = {
-        // The reason leads the content as its lede; the field keeps only its own text.
-        val aside = limit != null
         PolarisTextField(
             value = ui.key,
             onValueChange = onKeyChange,
@@ -265,7 +285,6 @@ public fun PolarisActivationScreen(
             placeholder = copy.keyPlaceholder,
             enabled = !ui.busy,
             error = errorText,
-            supporting = if (aside) emptyList() else supporting,
             focusRequester = keyFocus,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
@@ -276,26 +295,44 @@ public fun PolarisActivationScreen(
             keyboardActions = KeyboardActions(onDone = { onActivate() }),
         )
     }
+    // Opening the key path puts the cursor in the field, so the person can type or paste at once.
+    var openedByTap by remember { mutableStateOf(false) }
+    if (openedByTap) LaunchedEffect(Unit) { runCatching { keyFocus.requestFocus() } }
     PolarisScaffold(
         modifier = modifier,
         anchor = if (limit != null) PolarisAnchor.Top else PolarisAnchor.Hero,
         contentAlign = if (limit != null) TextAlign.Start else TextAlign.Center,
         content = {
             if (limit != null) {
-                // A focused step: the product header, then the stop's own title.
+                // A focused step (UI-KITS.md 4.3 DeviceLimit): the product header, "Replace a device",
+                // the count, the lede, the neutral seat meter (only when the refusal carries the counts).
                 PolarisProductHeader()
-                PolarisTitle(Copy.activationTitle(im.plrs.key.core.ErrorCode.deviceLimit, coreLocale()))
-                // Reason and seat caption as the lede, at body size, in one column and in two panes.
-                for (line in supporting) {
+                PolarisTitle(copy.freeDevice)
+                seats?.let { (used, max) ->
                     Spacer(Modifier.height(PolarisSpace.tight))
-                    PolarisBody(line)
+                    PolarisBody(KitCopy.bundled.format("deviceLimit.heading", kitLocale(), mapOf("used" to CopyArgument.Number(used), "limit" to CopyArgument.Number(max))))
+                }
+                Spacer(Modifier.height(PolarisSpace.tight))
+                PolarisBody(
+                    when {
+                        manage == null -> copy.format(copy.deviceLimitNoManage, copy.productName)
+                        manageAsQr -> copy.freeDeviceScan
+                        else -> copy.format(copy.deviceLimitBrowser, copy.productLead())
+                    },
+                )
+                seats?.let { (used, max) ->
+                    Spacer(Modifier.height(polarisWindow.section))
+                    PolarisSeatMeter(
+                        used = used,
+                        limit = max,
+                        caption = copy.format(copy.seatCaption, used, max),
+                        description = KitCopy.bundled.format("a11y.seatMeter", kitLocale(), mapOf("used" to CopyArgument.Number(used), "limit" to CopyArgument.Number(max))),
+                    )
                 }
                 if (manageAsQr && manage != null) {
                     Spacer(Modifier.height(polarisWindow.section))
-                    // The QR and its caption are one group, set apart from the next.
+                    // The QR sits beside its sentence (the lede above), one group set apart from the next.
                     PolarisQrCode(manage, copy.freeDeviceQrDescription, Modifier.size(polarisWindow.qrSize))
-                    Spacer(Modifier.height(PolarisSpace.controls))
-                    PolarisBody(copy.freeDeviceScan)
                     Spacer(Modifier.height(PolarisSpace.group))
                 }
             } else {
@@ -303,32 +340,43 @@ public fun PolarisActivationScreen(
                 PolarisProductIcon(if (window.compactHeight) 56.dp else 120.dp)
                 if (productName(copy) != null || PolarisTheme.current.logo != null) Spacer(Modifier.height(window.section))
                 PolarisTitle(notice?.title ?: copy.format(copy.activationTitle, copy.productName))
+                // "by <Developer>" under the title, on the Welcome only (UI-KITS.md 1.2), when it is known.
+                val developer = PolarisTheme.current.developer
+                if (notice == null && developer != null) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = copy.format(copy.byDeveloper, developer),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = LocalPolarisTextAlign.current,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 Spacer(Modifier.height(PolarisSpace.tight))
                 PolarisBody(notice?.body ?: if (onSignIn != null) copy.activationSubtitle else copy.activationSubtitleKeyOnly)
             }
         },
-        detail = if (limit != null) {
-            { keyField() }
-        } else {
-            null
-        },
         actions = {
             val replace = limit != null && manage != null && !manageAsQr
             if (limit == null) {
-                if (onSignIn != null) {
-                    PolarisPrimaryButton(text = copy.signIn, onClick = onSignIn, enabled = !ui.busy, initialFocus = true)
-                    Spacer(Modifier.height(PolarisSpace.group))
+                if (!showKey) {
+                    // The Welcome: Sign in is the one primary, the key path is the secondary.
+                    PolarisPrimaryButton(text = copy.signIn, onClick = onSignIn!!, enabled = !ui.busy, initialFocus = true)
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                    PolarisSecondaryButton(text = copy.useKey, onClick = { keyOpen = true; openedByTap = true }, enabled = !ui.busy)
+                    return@PolarisScaffold
                 }
+                // The key path: Activate is the primary once a key is being entered; Sign in steps down to tonal.
                 keyField()
                 Spacer(Modifier.height(PolarisSpace.controls))
+                PolarisPrimaryButton(text = if (ui.busy) copy.activating else copy.activate, onClick = onActivate, busy = ui.busy, initialFocus = true)
                 if (onSignIn != null) {
-                    PolarisSecondaryButton(text = if (ui.busy) copy.activating else copy.activate, onClick = onActivate, busy = ui.busy)
-                } else {
-                    PolarisPrimaryButton(text = if (ui.busy) copy.activating else copy.activate, onClick = onActivate, busy = ui.busy, initialFocus = true)
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                    PolarisSecondaryButton(text = copy.signIn, onClick = onSignIn, enabled = !ui.busy)
                 }
                 return@PolarisScaffold
             }
-            // After a device-limit refusal: one filled button (Replace a device, or Try again).
+            // After a device-limit refusal: one filled button (Open in browser, or Try again).
             if (noBrowser) {
                 PolarisInlineNotice(copy.signInNoBrowser)
                 Spacer(Modifier.height(PolarisSpace.controls))
@@ -338,8 +386,10 @@ public fun PolarisActivationScreen(
                     val opened = runCatching { (onOpenManage ?: uriHandler::openUri)(manage!!) }.isSuccess
                     noBrowser = !opened
                 }
-                if (noBrowser) PolarisSecondaryButton(text = copy.freeDevice, onClick = openManage, enabled = !ui.busy) else PolarisPrimaryButton(
-                    text = copy.freeDevice,
+                // A fix that leaves the app carries the new-window glyph, never an ellipsis (rule 11).
+                val openLabel = copy.openInBrowser + " ↗"
+                if (noBrowser) PolarisSecondaryButton(text = openLabel, onClick = openManage, enabled = !ui.busy) else PolarisPrimaryButton(
+                    text = openLabel,
                     onClick = openManage,
                     enabled = !ui.busy,
                     initialFocus = true,
@@ -362,6 +412,9 @@ public fun PolarisActivationScreen(
                 Spacer(Modifier.height(PolarisSpace.controls))
                 PolarisSecondaryButton(text = copy.signIn, onClick = onSignIn, enabled = !ui.busy)
             }
+            // Back to the key (a tertiary link at the foot): editing it clears the refusal.
+            Spacer(Modifier.height(PolarisSpace.controls))
+            PolarisTextButton(text = copy.back, onClick = { onKeyChange(ui.key) }, enabled = !ui.busy)
         },
     )
 }
@@ -391,39 +444,54 @@ public fun PolarisNotice(message: PolarisMessageCopy, modifier: Modifier = Modif
 }
 
 /**
- * The offline-grace banner shown over the product: the time left and a Reconnect action. A polite
- * live region, so TalkBack announces it once when it appears.
+ * The offline-grace banner shown over the product (UI-KITS.md 4.1 GraceBanner): the headline with
+ * the days left, the deadline under it, then Reconnect and, when the host can remember it for the
+ * session, Dismiss. A polite live region, so TalkBack announces it once when it appears. The
+ * actions sit under the text, so neither is squeezed at a large font scale.
+ *
+ * @param title the headline; defaults to the kit's "Offline" line, [PolarisCopy.graceHeadline] gives
+ *   the days left.
+ * @param onDismiss hides the banner for the session; null leaves it without a Dismiss.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 public fun PolarisGraceBanner(
     body: String,
     modifier: Modifier = Modifier,
     onReconnect: (() -> Unit)? = null,
     busy: Boolean = false,
+    title: String = PolarisTheme.copy.graceTitle,
+    onDismiss: (() -> Unit)? = null,
 ) {
     val copy = PolarisTheme.copy
     val status = PolarisTheme.status
     Surface(modifier = modifier.fillMaxWidth(), color = status.warningContainer, contentColor = status.onWarningContainer) {
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Row(
+            Column(
                 modifier = Modifier
                     .widthIn(max = PolarisMaxContentWidth * 1.5f)
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
             ) {
-                Icon(Icons.Filled.Warning, contentDescription = null, tint = status.warning, modifier = Modifier.size(24.dp))
-                Spacer(Modifier.width(12.dp))
-                Column(
-                    modifier = Modifier.weight(1f).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Text(copy.graceTitle, style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
-                    Text(body, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Start)
+                Row(verticalAlignment = Alignment.Top) {
+                    Icon(Icons.Filled.Warning, contentDescription = null, tint = status.warning, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column(
+                        modifier = Modifier.weight(1f).padding(end = 8.dp).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
+                        if (body.isNotEmpty()) Text(body, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Start)
+                    }
                 }
-                if (onReconnect != null) {
-                    Spacer(Modifier.width(8.dp))
-                    PolarisTextButton(text = copy.reconnect, onClick = onReconnect, enabled = !busy)
+                if (onReconnect != null || onDismiss != null) {
+                    androidx.compose.foundation.layout.FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+                    ) {
+                        if (onDismiss != null) PolarisTextButton(text = copy.updateDismiss, onClick = onDismiss)
+                        if (onReconnect != null) PolarisTextButton(text = copy.reconnect, onClick = onReconnect, enabled = !busy)
+                    }
                 }
             }
         }

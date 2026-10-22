@@ -155,11 +155,11 @@ class AccessibilityTest {
             out
         }
         fun at(text: String) = order.indexOfFirst { it.contains(text) }
+        // The Welcome reads title, lede, Sign in, then Use a license key (the key field sits behind it).
         val title = at(copy.format(copy.activationTitle, copy.productName))
-        val signIn = at(copy.signIn)
-        val key = at(copy.keyLabel)
-        val activate = order.indexOfLast { it == copy.activate }
-        assertTrue("reading order $order", title in 0 until signIn && signIn < key && key < activate)
+        val signIn = order.indexOfFirst { it == copy.signIn }
+        val useKey = order.indexOfFirst { it == copy.useKey }
+        assertTrue("reading order $order", title in 0 until signIn && signIn < useKey)
     }
 
 }

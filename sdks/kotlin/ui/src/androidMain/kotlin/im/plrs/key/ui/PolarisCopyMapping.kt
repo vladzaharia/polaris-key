@@ -15,7 +15,18 @@ import java.text.DecimalFormatSymbols
 import java.util.Locale
 
 /** The glyph a message card shows; the screen picks the icon, the mapping picks the meaning. */
-public enum class PolarisMessageKind { Info, Warning, Danger, Blocked, Offline, Locked }
+public enum class PolarisMessageKind {
+    Info,
+    Warning,
+    Danger,
+
+    /** A refusal the person can resolve (revoked, expired, version or channel): neutral, never danger (DL6). */
+    Blocked,
+    Offline,
+
+    /** The kind revoked licences used before DL6 made every resolvable refusal neutral; drawn as [Blocked]. */
+    Locked,
+}
 
 /** The resolved copy of one full-screen message (a terminal gate state, a boot stop). */
 public data class PolarisMessageCopy(
@@ -37,8 +48,8 @@ public fun PolarisCopy.gateMessage(status: LicenseStatus, allowedRange: AllowedR
     when (status) {
         LicenseStatus.ok, LicenseStatus.grace, LicenseStatus.needsActivation, LicenseStatus.notApplicable -> null
         // core.copy's gate entries: "Signed out", "License expired" (UI-KITS.md: gate copy is core copy).
-        LicenseStatus.revoked -> coreMessage("revoked", PolarisMessageKind.Locked)
-        LicenseStatus.expired -> coreMessage("expired", PolarisMessageKind.Warning)
+        LicenseStatus.revoked -> coreMessage("revoked", PolarisMessageKind.Blocked)
+        LicenseStatus.expired -> coreMessage("expired", PolarisMessageKind.Blocked)
         LicenseStatus.versionTooOld ->
             PolarisMessageCopy(versionTooOldTitle, withAllowedRange(versionTooOldBody, allowedRange), PolarisMessageKind.Blocked)
         LicenseStatus.versionTooNew ->
@@ -60,10 +71,32 @@ public fun PolarisCopy.withAllowedRange(body: String, range: AllowedRange?): Str
     return body + "\n" + format(versionAllowed, window)
 }
 
-/** The grace banner's body: how long is left, when the licence says. */
-public fun PolarisCopy.graceBody(graceUntilSeconds: Long?, nowSeconds: Long): String =
-    if (graceUntilSeconds == null || graceUntilSeconds <= nowSeconds) graceBodyNoDeadline
-    else format(graceBody, duration(graceUntilSeconds - nowSeconds))
+/**
+ * The grace banner's headline (UI-KITS.md 4.1 GraceBanner): the count of days left ("Offline · 3
+ * days left", grace.daysLeft), or on the last day "Offline · last day to use Diceroll" (grace.lastDay).
+ * Without a deadline it is the kit's own [graceTitle]. The wording is the catalog's, in [locale].
+ */
+public fun PolarisCopy.graceHeadline(graceUntilSeconds: Long?, nowSeconds: Long, locale: String = coreLocale()): String {
+    if (graceUntilSeconds == null || graceUntilSeconds <= nowSeconds) return graceTitle
+    val days = (graceUntilSeconds - nowSeconds + 86_399) / 86_400
+    return if (days <= 1) {
+        KitCopy.bundled.format("grace.lastDay", locale, mapOf("product" to CopyArgument.Text(productName)))
+    } else {
+        KitCopy.bundled.format("grace.daysLeft", locale, mapOf("days" to CopyArgument.Number(days.toInt())))
+    }
+}
+
+/**
+ * The grace banner's body: when offline use ends ("Works offline until Nov 4, 2026", grace.deadline),
+ * in [locale] and the device's time zone, or the no-deadline sentence when the licence names none.
+ */
+public fun PolarisCopy.graceBody(graceUntilSeconds: Long?, nowSeconds: Long, locale: String = coreLocale()): String {
+    if (graceUntilSeconds == null || graceUntilSeconds <= nowSeconds) return graceBodyNoDeadline
+    val date = java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)
+        .withLocale(Locale.forLanguageTag(locale))
+        .format(java.time.Instant.ofEpochSecond(graceUntilSeconds).atZone(java.time.ZoneId.systemDefault()))
+    return KitCopy.bundled.format("grace.deadline", locale, mapOf("date" to CopyArgument.Text(date)))
+}
 
 /**
  * The error an activation result shows, or null for success: one message per §3.1 kind
@@ -117,7 +150,17 @@ public fun PolarisCopy.errorCodeMessage(code: String): String? = when (code) {
     }
 }
 
+/** The browser-mode action: it leaves the app, so it carries the new-window glyph, never an ellipsis (UI-KITS.md 1.5 rule 11). */
+internal val PolarisCopy.openInBrowserAction: String get() = "$openInBrowser ↗"
+
 internal val DEFAULT_PRODUCT_NAME: String = PolarisCopy().productName
+
+/**
+ * The product's name where a sentence starts with it (`{product} needs ...`): the host's name as it
+ * is, or the "this app" default with a capital, so a nameless kit never starts a sentence in lower case.
+ */
+internal fun PolarisCopy.productLead(): String =
+    if (productName == DEFAULT_PRODUCT_NAME) productName.replaceFirstChar { it.uppercaseChar() } else productName
 
 /** The locale core.copy reads (the default locale; a host registers translations with Copy.registerLocale). */
 internal fun coreLocale(): String = Locale.getDefault().toLanguageTag()
@@ -152,7 +195,7 @@ public fun PolarisCopy.blockedMessage(reason: BootEmit.BlockedReason): PolarisMe
     BootEmit.BlockedReason.notAvailable ->
         PolarisMessageCopy(bootBlockedUnavailableTitle, bootBlockedUnavailableBody, PolarisMessageKind.Blocked)
     BootEmit.BlockedReason.contentDeclined ->
-        PolarisMessageCopy(bootDeclinedTitle, bootDeclinedBody, PolarisMessageKind.Info)
+        PolarisMessageCopy(bootDeclinedTitle, format(bootDeclinedBody, productLead()), PolarisMessageKind.Info)
 }
 
 /** The message an offline stop shows; [canPlayOffline] is the playable stop of stage-matrix v3. */
@@ -165,11 +208,11 @@ public fun PolarisCopy.offlineMessage(canPlayOffline: Boolean): PolarisMessageCo
  */
 public fun PolarisCopy.errorMessage(code: String): PolarisMessageCopy =
     if (Copy.hasCopy(code, coreLocale())) coreMessage(code, PolarisMessageKind.Danger)
-    else PolarisMessageCopy(bootErrorTitle, format(bootErrorBody, code), PolarisMessageKind.Danger)
+    else PolarisMessageCopy(bootErrorTitle, format(bootErrorBody, productLead(), code), PolarisMessageKind.Danger)
 
 /** The consent card's body for a fetch of [bytes]. */
 public fun PolarisCopy.consentMessage(bytes: Long, metered: Boolean): String =
-    format(if (metered) consentBodyMetered else consentBody, bytes(bytes))
+    format(if (metered) consentBodyMetered else consentBody, productLead(), bytes(bytes))
 
 /** The settings badge for a licence status. */
 public fun PolarisCopy.entitlementLabel(status: LicenseStatus): String = when (status) {
