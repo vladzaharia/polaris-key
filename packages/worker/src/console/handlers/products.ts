@@ -559,17 +559,19 @@ export async function handleProducts(
         fields: ["confirmSlug"],
       });
     }
+    // Data a service keeps outside D1 (Cloud Sync's per-person objects) goes first, before the
+    // per-device token deletes: the batch below removes the rows that say what exists, and a big
+    // product is asked again, so the bounded purge must not spend each retry's subrequests on tokens
+    // already deleted (SR-1 N6). Bounded.
+    if (!(await purgeProductData(db, env, slug, now)))
+      return err(409, ErrorCode.BadRequest, "erasure is not finished; retry", {
+        reason: "purge_incomplete",
+      });
     const devices = await listDevicesByProduct(db, slug);
     for (const device of devices) {
       if (device.token_hash)
         await deleteTokenRecord(env, slug, device.token_hash);
     }
-    // Data a service keeps outside D1 (Cloud Sync's per-person objects) goes first: the batch
-    // below removes the rows that say what exists. Bounded; a big product is asked again.
-    if (!(await purgeProductData(db, env, slug, now)))
-      return err(409, ErrorCode.BadRequest, "erasure is not finished; retry", {
-        reason: "purge_incomplete",
-      });
     await audit(
       db,
       slug,

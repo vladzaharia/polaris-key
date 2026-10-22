@@ -60,9 +60,6 @@ export type PullOutcome =
 export const pullEtag = (seq: number, lastMutationId: number): string =>
   `"${seq}.${lastMutationId}"`;
 
-const visible = (row: StoredSetting, family: string): boolean =>
-  row.scope === "user" || row.family === family;
-
 function toChange(row: StoredSetting): SettingChange {
   return {
     setting: row.key,
@@ -80,10 +77,9 @@ export function applyPull(store: SyncStore, input: PullInput): PullOutcome {
   if (cursor !== 0 && (cursor < store.getWatermark() || cursor > seq))
     return { ok: false, error: "cursor_expired" };
 
-  const rows = store
-    .settingsAfter(cursor)
-    .filter((r) => visible(r, input.family));
   const size = input.pageSize ?? SYNC_PULL_PAGE_CHANGES;
+  // One row past the page says whether more remain; the store pages in storage (SR-1 N12).
+  const rows = store.settingsPageAfter(cursor, input.family, size + 1);
   const page = rows.slice(0, size);
   const more = rows.length > size;
   const last = page[page.length - 1];

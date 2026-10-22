@@ -86,6 +86,16 @@ export interface SyncStore {
   deleteSetting(key: string, scope: SyncScope, family?: string): void;
   /** Every row, tombstones included, whose `version` is above `seq`, in ascending `version`. */
   settingsAfter(seq: number): StoredSetting[];
+  /**
+   * One page of what a pull serves (SR-1 N12): the rows, tombstones included, above `seq` that a
+   * device of `family` sees (every `user` row, and the `platform` rows of that family), in
+   * ascending `version`, at most `limit` of them. A store pages in storage, never loading the rest.
+   */
+  settingsPageAfter(
+    seq: number,
+    family: string,
+    limit: number,
+  ): StoredSetting[];
   /** No row at all, tombstones included. */
   isEmpty(): boolean;
   /** The person's running totals. The engine keeps them current; a store only holds them. */

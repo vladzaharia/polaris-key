@@ -7096,10 +7096,14 @@ migration tag `v4`, in every environment) and makes it a claimed subject store; 
 yet. SR-1 (isolation) follows U-05.8.
 
 - **The id is the pair.** Only `services/sync/do/client.ts` calls `idFromName`, with
-  `"<product>:<subject>"`, the subject taken from the authenticated principal (`syncAccess`), never
-  from a request. The same pair goes in the body and the object pins it on its first write: any other
-  pair on that object is `403 pin_mismatch` and touches nothing. Product slugs and pairwise subjects
-  hold no `:`, so two pairs cannot share a name.
+  `"<product>:<subject>"`. A device request's subject comes from the authenticated principal
+  (`syncAccess`), never from a request body; the subject-store hooks (merge, delete, export, size)
+  pass the subjects Identity's D1 rows hold, which are the same pairwise ids. The same pair goes in
+  the body and the object pins it on its first write: any other pair on that object is
+  `403 pin_mismatch` and touches nothing. Product slugs (`[a-z0-9-]`) and pairwise subjects
+  (`[A-Za-z0-9_-]`) hold no `:`, and `cloudSyncObjectName` asserts both grammars, so two pairs cannot
+  share a name. Dropping the `sync_directory` table (migration 0130's down script) blinds the
+  product purge, which enumerates objects through it: roll the objects back first.
 - **What an unauthenticated caller reaches: nothing.** There is no Sync route (discovery stays
   `settings: false`), the namespace is a binding and not a URL, and a Durable Object answers only
   through the Worker's stub.
@@ -7123,10 +7127,34 @@ yet. SR-1 (isolation) follows U-05.8.
   object only if it is still at the exported sequence, then merge the directory rows in one batch.
   The data leaves the absorbed object only after the survivor holds it, and a retry is safe at
   every step. A write that lands on the absorbed object meanwhile keeps it alive and is absorbed
-  on the next round.
-- **Residual.** A request that resolved the absorbed subject before the merge committed can still
-  write to the (deleted) absorbed object afterwards. The push route (U-05.13) resolves the subject
-  through the aliases on every request, which closes it for any request that starts after the merge.
+  on the next round. "Still the exported object" compares the sequence and a write count: a client
+  binding or a conflict-only push moves the count without moving the sequence, and must not be lost
+  (SR-1 N2).
+- **A merged object is marked, not just emptied (SR-1 N3).** The delete leaves the pin and a
+  marker (`absorbed_into`, `absorbed_at`): no setting, no value, only the survivor's subject (a pair
+  of pairwise ids of one person on one product, which the pin already ties together). The marker
+  refuses every later push and absorb with a fixed `410 absorbed`, so a request that resolved the
+  absorbed subject before the merge committed fails instead of building an orphan the survivor never
+  sees. It reads as empty, exports as nothing, and a plain `deleteAll` (an erasure) removes it.
+  Residuals: the push route (U-05.13) resolves the subject through the aliases on every request,
+  which closes the window for any request that starts after the merge; a marker is not listed in
+  the directory (the row moves to the survivor), so a product deletion does not reach it, and it
+  holds only the two ids. Having an alarm remove markers after a retention window is U-05.9's.
+- **Residual: the hook runs before Identity's D1 batch (SR-1 N5).** The store's `merge` runs before
+  Identity commits the account merge. If that batch then fails, the data already sits under the
+  survivor and the absorbed object is marked, while the accounts are still two: the retry of the
+  merge converges (each step is idempotent), but until it succeeds the absorbed subject's devices
+  get `410 absorbed` on push and read an empty store. Nothing is lost; availability is.
+- **Residual: no catalog policies yet (SR-1 N4).** The merge passes no `policies`, so a `max` or
+  `min` key joins by `lastWrite` (the later stamp) rather than the better value, until U-05.13
+  passes the catalog's policies. The join is still deterministic and loses no row; the next
+  `max`/`min` push re-asserts the better value.
+- **A member name is bounded (SR-1 B1).** `setMember` and `removeMember` refuse a name over 1 KiB
+  of UTF-8 (`value_invalid`). Removals are never refused for quota, so without the bound a device
+  with quota 0 could store unlimited uncounted bytes in member tombstones.
+- **A push is incremental (SR-1 B2).** A mutation on a merge setting upserts the cells it changed
+  and deletes the names it pruned, not every cell of the row, so one push writes O(mutations) rows
+  and cannot amplify into the row's whole width.
 - **Product deletion** erases every object the directory lists for the product, then the rows, before
   the product's status flips (`contributes.productPurge`, bounded per run). The object cannot be
   listed, so an object whose directory row was never written would survive: U-05.9's first-write

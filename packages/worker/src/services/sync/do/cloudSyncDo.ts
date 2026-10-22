@@ -4,7 +4,11 @@ import { absorbSettings } from "../engine/absorb.js";
 import { applyPull } from "../engine/pull.js";
 import { applyPush } from "../engine/push.js";
 import { validatePush } from "../engine/validate.js";
-import type { CatalogMigrations, SyncStore } from "../engine/types.js";
+import type {
+  CatalogMigrations,
+  PushLimits,
+  SyncStore,
+} from "../engine/types.js";
 import type {
   CloudSyncError,
   CloudSyncOp,
@@ -37,6 +41,15 @@ const reply = (body: CloudSyncReply | CloudSyncError, status = 200): Response =>
 
 const isName = (v: unknown): v is string =>
   typeof v === "string" && v.length > 0 && v.length <= 256;
+
+const isLimits = (v: unknown): v is PushLimits =>
+  typeof v === "object" &&
+  v !== null &&
+  typeof (v as PushLimits).quotaBytes === "number" &&
+  Number.isFinite((v as PushLimits).quotaBytes) &&
+  (v as PushLimits).quotaBytes >= 0 &&
+  ((v as PushLimits).productOverCeiling === undefined ||
+    typeof (v as PushLimits).productOverCeiling === "boolean");
 
 function migrationsOf(
   w: WireMigrations | undefined,
@@ -80,6 +93,13 @@ export class CloudSyncDO implements DurableObject {
     const pin = this.pinned();
     if (pin && (pin.product !== op.product || pin.subject !== op.subject))
       return reply({ error: "pin_mismatch" }, 403);
+    // An absorbed object (account merge) takes no write; only an erasure (`deleteAll`) and the
+    // merge's own repeat delete get through. Reads answer empty.
+    if (
+      this.store.getMeta("absorbed_into") !== undefined &&
+      (op.op === "push" || op.op === "absorb")
+    )
+      return reply({ error: "absorbed" }, 410);
 
     switch (op.op) {
       case "push":
@@ -96,23 +116,66 @@ export class CloudSyncDO implements DurableObject {
         });
       }
       case "exportAll":
-        return reply({ op: "exportAll", document: this.exportAll(op) });
+        return reply({
+          op: "exportAll",
+          // An absorbed object has nothing left to export: a retried merge finds it settled.
+          document:
+            this.store.getMeta("absorbed_into") !== undefined
+              ? null
+              : this.exportAll(op),
+        });
       case "absorb":
         return this.absorb(op);
-      case "deleteAll": {
-        // An absorbed object is deleted only while it is the one that was exported (U-05.8): a
-        // write that landed since stays, and the merge absorbs again. No `ifSeq` is an erasure.
-        if (op.ifSeq !== undefined && this.store.currentSeq() !== op.ifSeq)
-          return reply({ op: "deleteAll", deleted: false });
-        // deleteAll does not clear an alarm; the order here is the point (no wake-up on a ghost).
-        await this.ctx.storage.deleteAlarm();
-        await this.ctx.storage.deleteAll();
-        this.store.reset();
-        return reply({ op: "deleteAll", deleted: true });
-      }
+      case "deleteAll":
+        return this.deleteAll(op);
       default:
         return reply({ error: "bad_request" }, 400);
     }
+  }
+
+  /**
+   * Erasure, or the merge's delete of an absorbed object. The merge passes the exported `seq` and
+   * write count, and the object goes only while both still hold: a write that landed since stays,
+   * and the merge absorbs again (a client binding or a conflict-only push moves the write count,
+   * not `seq`: SR-1 N2). A merge delete leaves a marker (`absorbed_into`, `absorbed_at`) and the
+   * pin, which refuse every later write with `410 absorbed` instead of letting a late write build
+   * an orphan the survivor never sees (SR-1 N3). The marker holds no setting and no value, only
+   * the subject the object was folded into. A plain `deleteAll` is the erasure and leaves nothing.
+   */
+  private async deleteAll(
+    op: Extract<CloudSyncOp, { op: "deleteAll" }>,
+  ): Promise<Response> {
+    const merge = op.absorbedInto !== undefined;
+    if (merge) {
+      if (
+        !isName(op.absorbedInto) ||
+        typeof op.ifSeq !== "number" ||
+        typeof op.ifWrites !== "number"
+      )
+        return reply({ error: "bad_request" }, 400);
+      // Already absorbed: settled, nothing to do.
+      if (this.store.getMeta("absorbed_into") !== undefined)
+        return reply({ op: "deleteAll", deleted: true });
+      if (
+        this.store.currentSeq() !== op.ifSeq ||
+        this.store.writeCount() !== op.ifWrites
+      )
+        return reply({ op: "deleteAll", deleted: false });
+    }
+    // deleteAll does not clear an alarm; the order here is the point (no wake-up on a ghost).
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+    this.store.reset();
+    if (merge) {
+      this.ctx.storage.transactionSync(() => {
+        this.store.prepare(true);
+        this.store.setMeta("product", op.product);
+        this.store.setMeta("subject", op.subject);
+        this.store.setMeta("absorbed_into", op.absorbedInto as string);
+        this.store.setMeta("absorbed_at", String(Date.now()));
+      });
+    }
+    return reply({ op: "deleteAll", deleted: true });
   }
 
   /** Reads migrate an existing older schema but never create one. */
@@ -121,8 +184,12 @@ export class CloudSyncDO implements DurableObject {
   }
 
   private push(op: Extract<CloudSyncOp, { op: "push" }>): Response {
+    // The Worker always sends the device's family and the resolved limits (SR-1 N1): a push
+    // without either is a bug in the caller, never "no quota" and never a family-less platform row.
     if (
       !isName(op.deviceId) ||
+      !isName(op.family) ||
+      !isLimits(op.limits) ||
       typeof op.serverNow !== "number" ||
       !Array.isArray(op.classified)
     )
@@ -147,8 +214,8 @@ export class CloudSyncDO implements DurableObject {
     const outcome = this.store.transaction(() =>
       applyPush(this.store as SyncStore, {
         deviceId: op.deviceId,
-        ...(op.family ? { family: op.family } : {}),
-        ...(op.limits ? { limits: op.limits } : {}),
+        family: op.family,
+        limits: op.limits,
         ...(op.migrations ? { migrations: migrationsOf(op.migrations) } : {}),
         request: op.request,
         classified: op.classified,
@@ -163,6 +230,8 @@ export class CloudSyncDO implements DurableObject {
    * one transaction (the schema and pin included, so an object is never half-made). The join is
    * idempotent (`engine/absorb.ts`), so a retry writes nothing. Nothing is refused for budget or
    * quota (L8). Marks the directory dirty when anything changed (U-05.9 reads the flag).
+   * `policies` is whatever the caller passes; the merge hook passes none yet, so a `max` or `min`
+   * key joins by `lastWrite` until U-05.13 hands over the catalog's policies (THREAT-MODEL).
    */
   private absorb(op: Extract<CloudSyncOp, { op: "absorb" }>): Response {
     const doc = op.document;
@@ -228,6 +297,7 @@ export class CloudSyncDO implements DurableObject {
       product: op.product,
       subject: op.subject,
       seq: this.store.currentSeq(),
+      writes: this.store.writeCount(),
       watermark: this.store.getWatermark(),
       usage: this.store.getUsage(),
       settings: this.store.settingsAfter(0).map(({ members, ...row }) => ({

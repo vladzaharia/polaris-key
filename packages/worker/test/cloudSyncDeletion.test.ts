@@ -83,6 +83,7 @@ async function populate(env: Cs, product: string, subject: string) {
       op: "push",
       deviceId: "d1",
       family: "desktop",
+      limits: { quotaBytes: 1_000_000_000 },
       request: {
         clientId: C1,
         cursor: 0,

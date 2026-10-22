@@ -15,7 +15,11 @@
  *             2. absorb into `to`             one transaction, convergent join, a repeat writes nothing
  *             3. delete `from` if still at the exported sequence (else go back to 1)
  *             4. directory rows, ONE batch    a retry finds no absorbed row and does nothing
- *           A crash after 1 or 2 re-runs from 1 (the join of the same or a fresher export is the
+ *           The absorbed object is left with a marker (not empty): it refuses every later push with
+           `410 absorbed`, so a write racing the merge fails instead of becoming an orphan.
+           Residuals (THREAT-MODEL, Cloud Sync merge): the hook runs before Identity's D1 batch, and
+           the join passes no catalog policies yet (U-05.13), so `max`/`min` keys join by lastWrite.
+           A crash after 1 or 2 re-runs from 1 (the join of the same or a fresher export is the
  *           same state); after 3, the export is empty and only 4 runs. Called only by Identity's
  *           account merge, through Core's `runSubjectMerge`.
  *           The directory part adds the counters (the survivor row is made if absent), takes the
@@ -42,7 +46,8 @@ const ABSORB_ROUNDS = 3;
 
 /**
  * Move one subject's object into another's: absorb, then delete the source, while the source
- * stays the one that was absorbed. Throws when it will not settle, and the merge is retried.
+ * stays the one that was absorbed (same `seq` and write count: a client binding moves only the
+ * latter). The deleted source keeps a marker that refuses later writes (`410 absorbed`). Throws when it will not settle, and the merge is retried.
  */
 async function absorbObject(
   env: Parameters<typeof exportCloudSync>[0],
@@ -55,7 +60,12 @@ async function absorbObject(
     if (!doc) return;
     await absorbCloudSync(env, { product, subject: to }, doc);
     if (
-      await deleteCloudSyncIfUnchanged(env, { product, subject: from }, doc.seq)
+      await deleteCloudSyncIfUnchanged(
+        env,
+        { product, subject: from },
+        { seq: doc.seq, writes: doc.writes },
+        to,
+      )
     )
       return;
   }

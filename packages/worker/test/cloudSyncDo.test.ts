@@ -80,6 +80,7 @@ const push = (
     op: "push",
     deviceId: "device-1",
     family: "desktop",
+    limits: { quotaBytes: 1_000_000_000 },
     request: { clientId: C1, cursor: 0, mutations },
     classified,
     serverNow: NOW,
@@ -254,12 +255,107 @@ describe("CloudSyncDO: push and pull", () => {
     const r = await call(ns, P, ALICE, {
       op: "push",
       deviceId: "d",
+      family: "desktop",
+      limits: { quotaBytes: 1 },
       request: { clientId: "x", cursor: 0, mutations: [] },
       classified: [],
       serverNow: NOW,
     });
     expect(r.body.outcome).toMatchObject({ ok: false, error: "bad_request" });
     expect(tables(ns, nameOf(P, ALICE))).toEqual([]);
+  });
+
+  it("answers 400 to a push without a family or without limits, and to a platform write with an empty family; creates nothing (SR-1 N1)", async () => {
+    const ns = new CloudSyncNamespaceMock();
+    ids = 1;
+    const base = {
+      op: "push",
+      deviceId: "d",
+      family: "desktop",
+      limits: { quotaBytes: 1000 },
+      request: {
+        clientId: C1,
+        cursor: 0,
+        mutations: [
+          mut("res", "set", {
+            value: 1,
+            target: { setting: "res", scope: "platform" },
+          }),
+        ],
+      },
+      classified: [
+        { verdict: "accept", scope: "platform", policy: "lastWrite" },
+      ],
+      serverNow: NOW,
+    };
+    const without = (k: string) => {
+      const { [k]: _gone, ...rest } = base as Record<string, unknown>;
+      void _gone;
+      return rest;
+    };
+    for (const body of [
+      without("family"),
+      without("limits"),
+      { ...base, family: "" },
+      { ...base, limits: { quotaBytes: -1 } },
+      { ...base, limits: { quotaBytes: "1000" } },
+      { ...base, limits: null },
+    ]) {
+      const r = await call(ns, P, ALICE, body);
+      expect(r.status).toBe(400);
+    }
+    expect(tables(ns, nameOf(P, ALICE))).toEqual([]);
+    expect((await call(ns, P, ALICE, base)).body.outcome.ok).toBe(true);
+  });
+
+  it("one setMember on a 256-member row writes a small, constant number of rows (SR-1 B2)", async () => {
+    const ns = new CloudSyncNamespaceMock();
+    ids = 1;
+    for (let b = 0; b < 3; b++) {
+      const n = b === 2 ? 56 : 100;
+      const muts = Array.from({ length: n }, (_, i) =>
+        mut("tags", "setMember", { member: `m${b}-${i}`, value: i }),
+      );
+      await push(
+        ns,
+        ALICE,
+        muts,
+        muts.map(() => MERGE),
+      );
+    }
+    const sql = ns.instance(nameOf(P, ALICE)).storage.sql;
+    const cells = sql.db
+      .prepare("SELECT count(*) AS n FROM setting_members")
+      .get() as { n: number };
+    expect(cells.n).toBe(256);
+    const written = async (m: SyncMutation) => {
+      const before = sql.rowsWritten;
+      const r = await push(ns, ALICE, [m], [MERGE]);
+      expect(r.body.outcome.results[0].status).toBe("ok");
+      return sql.rowsWritten - before;
+    };
+    const set = await written(
+      mut("tags", "setMember", { member: "m0-0", value: "new" }),
+    );
+    const remove = await written(
+      mut("tags", "removeMember", { member: "m0-1" }),
+    );
+    // The row, the cell, the seq, the usage counters, the client binding and its write count:
+    // a handful, however many cells the row holds.
+    expect(set).toBeLessThanOrEqual(12);
+    expect(remove).toBeLessThanOrEqual(12);
+    expect(
+      (
+        sql.db.prepare("SELECT count(*) AS n FROM setting_members").get() as {
+          n: number;
+        }
+      ).n,
+    ).toBe(256);
+    // The cells keep their order (ord): the rewritten one did not move to the end.
+    const first = sql.db
+      .prepare("SELECT member FROM setting_members ORDER BY ord LIMIT 2")
+      .all() as { member: string }[];
+    expect(first.map((r) => r.member)).toEqual(["m0-0", "m0-1"]);
   });
 
   it("runs the push in a transaction: a thrown push leaves no write behind", async () => {
@@ -558,5 +654,80 @@ describe("CloudSyncDO: exportAll and deleteAll", () => {
   it("deleteAll on a never-written object is a clean no-op", async () => {
     const ns = new CloudSyncNamespaceMock();
     expect((await call(ns, P, ALICE, { op: "deleteAll" })).status).toBe(200);
+  });
+});
+
+describe("cloudSyncObjectName (SR-1 N8)", () => {
+  it("is product:subject for the two grammars, and throws for anything outside them", async () => {
+    const { cloudSyncObjectName } =
+      await import("../src/services/sync/do/client.js");
+    expect(
+      cloudSyncObjectName({
+        product: "my-app-2",
+        subject: "ps_Ab-_09xyzXYZ0123456789",
+      }),
+    ).toBe("my-app-2:ps_Ab-_09xyzXYZ0123456789");
+    for (const pin of [
+      { product: "a:b", subject: "ps_x" },
+      { product: "A", subject: "ps_x" },
+      { product: "", subject: "ps_x" },
+      { product: "app", subject: "ps:x" },
+      { product: "app", subject: "ps x" },
+      { product: "app", subject: "" },
+      { product: "app", subject: "ps_é" },
+    ])
+      expect(() => cloudSyncObjectName(pin), JSON.stringify(pin)).toThrow();
+  });
+});
+
+describe("settingsPageAfter (SR-1 N12)", () => {
+  it("pages in storage: the same rows as the memory store, tombstones and families included, and never more than the limit", async () => {
+    const { SqlTestStore } = await import("./cloudSyncSqlTestStore.js");
+    const { MemoryStore } =
+      await import("../src/services/sync/engine/memoryStore.js");
+    const sqlStore = new SqlTestStore();
+    const mem = new MemoryStore();
+    for (const store of [sqlStore, mem])
+      for (let i = 1; i <= 40; i++) {
+        const scope = i % 3 === 0 ? "platform" : "user";
+        const family = i % 2 === 0 ? "desktop" : "mobile";
+        store.putSetting({
+          key: `k${i}`,
+          scope,
+          ...(scope === "platform" ? { family } : {}),
+          version: store.nextSeq(),
+          stamp: { hlc: formatHlc(NOW, i), clientId: C1 },
+          deleted: i % 5 === 0,
+          value: i % 5 === 0 ? null : i,
+        });
+      }
+    for (const family of ["desktop", "mobile", "console"])
+      for (const [after, limit] of [
+        [0, 7],
+        [0, 1000],
+        [13, 5],
+        [39, 5],
+        [40, 5],
+      ] as const) {
+        const a = sqlStore.settingsPageAfter(after, family, limit);
+        const b = mem.settingsPageAfter(after, family, limit);
+        expect(a.length).toBeLessThanOrEqual(limit);
+        expect(a.map((r) => [r.key, r.version, r.deleted])).toEqual(
+          b.map((r) => [r.key, r.version, r.deleted]),
+        );
+        expect(a.map((r) => r.version)).toEqual(
+          [...a.map((r) => r.version)].sort((x, y) => x - y),
+        );
+      }
+    // Walking the pages by the last version visits every visible row exactly once.
+    const seen: string[] = [];
+    for (let cursor = 0; ; ) {
+      const page = sqlStore.settingsPageAfter(cursor, "desktop", 6);
+      if (page.length === 0) break;
+      seen.push(...page.map((r) => r.key));
+      cursor = page[page.length - 1]!.version;
+    }
+    expect(seen).toHaveLength(new Set(seen).size);
+    expect(seen.length).toBe(mem.settingsPageAfter(0, "desktop", 1000).length);
   });
 });

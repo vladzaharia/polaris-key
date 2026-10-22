@@ -91,9 +91,7 @@ describe("merge: the member name bound (SR-1 B1)", () => {
     // Exactly 1 KiB is allowed.
     const ok = "y".repeat(SYNC_MAX_UNION_ELEMENT_BYTES);
     expect(
-      only(
-        push(store, [mut("removeMember", { member: ok })], "merge"),
-      ).status,
+      only(push(store, [mut("removeMember", { member: ok })], "merge")).status,
     ).toBe("ok");
   });
 });
