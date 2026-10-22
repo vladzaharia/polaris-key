@@ -48,7 +48,6 @@ import { brandedHtmlSecurityHeaders } from "../core/securityHeaders.js";
 import {
   renderConsoleNotice,
   renderConsoleSignin,
-  signinOffersPasskey,
   signinState,
   type NoticeAction,
 } from "./signinPage.js";
@@ -56,7 +55,9 @@ import { SIGNIN_SCRIPT_HASH } from "./signinScript.js";
 import { resolveConsoleCaller } from "./api.js";
 import {
   consoleAssertedEmail,
+  accountHasConsolePasskey,
   consoleLinkedAccount,
+  consolePasskeyAvailable,
   consoleSignIn,
   endConsoleSession,
   type ConsoleRefusal,
@@ -432,17 +433,21 @@ async function signinCard(
   // D-S5: "Change" clears the remembered address and shows the empty field.
   const change = url.searchParams.get("change") === "1";
   const remembered = change ? null : readConsoleHint(req);
-  const known =
+  const caller =
     state === "stepUp"
-      ? ((
-          await resolveConsoleCaller(
-            env,
-            db,
-            req,
-            Math.floor(Date.now() / 1000),
-          )
-        )?.session.email ?? null)
+      ? await resolveConsoleCaller(env, db, req, Math.floor(Date.now() / 1000))
       : null;
+  const known = caller?.session.email ?? null;
+  // The passkey button and its script (hash in the CSP) only where a ceremony can run: the console
+  // RP resolves for this request, and on a step-up the signed-in account holds a console passkey.
+  let passkey = state !== "breakGlass" && consolePasskeyAvailable(env, req);
+  if (passkey && state === "stepUp") {
+    const aid =
+      caller && !caller.session.breakGlass ? caller.session.aid : null;
+    passkey = Boolean(
+      aid && db && (await accountHasConsolePasskey(env, db, aid)),
+    );
+  }
   const headers = brandedHtmlSecurityHeaders(
     new Headers({
       "content-type": "text/html; charset=utf-8",
@@ -450,7 +455,7 @@ async function signinCard(
     }),
     {
       brand: "console",
-      ...(signinOffersPasskey(state) ? { scriptHash: SIGNIN_SCRIPT_HASH } : {}),
+      ...(passkey ? { scriptHash: SIGNIN_SCRIPT_HASH } : {}),
     },
   );
   allowFormAction(headers, origins);
@@ -465,6 +470,7 @@ async function signinCard(
       chip: ctx.hint ? null : remembered,
       knownEmail: known,
       focusEmail: change,
+      passkey,
     }),
     { status: 200, headers },
   );

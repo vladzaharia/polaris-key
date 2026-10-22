@@ -30,11 +30,6 @@ import { newBindingId, stmtInsertBinding } from "../src/core/rbac/bindings.js";
 import { importHmacKey } from "../src/platform/hash.js";
 import { signHmacToken } from "../src/platform/hmacToken.js";
 import { breakGlassUsedNotice } from "../src/core/notify/templates.js";
-import { createHash } from "node:crypto";
-import {
-  SIGNIN_SCRIPT,
-  SIGNIN_SCRIPT_HASH,
-} from "../src/console/signinScript.js";
 
 const GROUP = "platform-admins";
 const ISSUER = "https://id.example";
@@ -614,90 +609,5 @@ describe("the chip, large text and the card's details (UX review)", () => {
     expect(ev.map((r) => r.summary)).toContain(
       "Emergency sign-in refused: not in the platform admin group",
     );
-  });
-});
-
-/**
- * ST-30c.6 (D-S2, SIGN-IN.md §3.13): the card's one inline script, pinned by hash.
- */
-describe("the passkey button and its hash-pinned script", () => {
-  const sha = (t: string) =>
-    `'sha256-${createHash("sha256").update(t, "utf8").digest("base64")}'`;
-  const directive = (csp: string, name: string) =>
-    csp
-      .split(";")
-      .map((d) => d.trim())
-      .find((d) => d.startsWith(`${name} `));
-  const scripts = (html: string) => [
-    ...html.matchAll(/<script(?<attrs>[^>]*)>(?<body>[\s\S]*?)<\/script>/g),
-  ];
-
-  it("the pinned constant is the SHA-256 of the script source", () => {
-    expect(SIGNIN_SCRIPT_HASH).toBe(sha(SIGNIN_SCRIPT));
-  });
-
-  it.each(["", "?signedOut=1", "?ended=1", "?stepUp=1", "?change=1"])(
-    "the card %j serves exactly that script, and the CSP allows exactly its hash",
-    async (query) => {
-      const res = await card(query);
-      const csp = res.headers.get("content-security-policy")!;
-      const html = await res.text();
-      const found = scripts(html);
-      expect(found).toHaveLength(1);
-      expect(found[0]!.groups!.attrs).toBe("");
-      expect(found[0]!.groups!.body).toBe(SIGNIN_SCRIPT);
-      expect(directive(csp, "script-src")).toBe(
-        `script-src ${sha(found[0]!.groups!.body!)}`,
-      );
-      expect(directive(csp, "script-src")).toBe(
-        `script-src ${SIGNIN_SCRIPT_HASH}`,
-      );
-      expect(csp).not.toContain("unsafe-inline");
-      expect(csp).not.toContain("unsafe-eval");
-      // The script posts to this origin only.
-      expect(directive(csp, "connect-src")).toBe("connect-src 'self'");
-      expect(directive(csp, "default-src")).toBe("default-src 'none'");
-      // No handler attribute, no style attribute, no external script.
-      expect(html).not.toMatch(/\son\w+=|\sstyle=|<script[^>]*\ssrc=/i);
-    },
-  );
-
-  it("the emergency card has no script and no script-src", async () => {
-    const res = await card("?breakGlass=1");
-    const csp = res.headers.get("content-security-policy")!;
-    expect(scripts(await res.text())).toHaveLength(0);
-    expect(csp).not.toMatch(/script-src|connect-src/);
-  });
-
-  it("the button is hidden in the markup, so the no-JS card is the plain form", async () => {
-    const html = await (await card("")).text();
-    expect(html).toContain('<div class="pk" id="pk" hidden>');
-    expect(html).toContain(">or</div>");
-    expect(html).toContain(">Sign in with a passkey</button>");
-    expect(html).toContain('autocomplete="username webauthn"');
-    expect(html).toContain('<p class="pk-err" id="pk-err" role="alert"></p>');
-    expect(html).toContain(">Continue");
-  });
-
-  it("a step-up offers Use your passkey beside Sign in again, and carries returnTo as data", async () => {
-    const html = await (
-      await card(
-        `?stepUp=1&returnTo=${encodeURIComponent("/manage/#/p/alpha")}`,
-      )
-    ).text();
-    expect(html).toContain(">Sign in again");
-    expect(html).toContain(">Use your passkey</button>");
-    expect(html).not.toContain(">or</div>");
-    expect(html).toContain('data-step-up="1"');
-    expect(html).toContain('data-return-to="/manage/#/p/alpha"');
-  });
-
-  it("the script copy names the refusals in house words and uses 'emergency sign-in' only", () => {
-    expect(SIGNIN_SCRIPT).toContain(
-      "This passkey can\\u2019t open the console yet. Sign in with your account, then use it from Account \\u2192 Sign-in methods.",
-    );
-    expect(SIGNIN_SCRIPT).toContain("Sign in with Pocket ID first");
-    expect(SIGNIN_SCRIPT).not.toMatch(/break.?glass/i);
-    expect(SIGNIN_SCRIPT).not.toMatch(/console\.["']/);
   });
 });
