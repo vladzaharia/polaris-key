@@ -68,6 +68,8 @@ async function run(
   opts: {
     env?: Record<string, string>;
     stored?: { token: string; expiresAt: number | null };
+    /** The origin the stored credential is for; the default is `ORIGIN`. */
+    storedAt?: string;
     fetchImpl: typeof fetch;
     columns?: number;
   },
@@ -77,7 +79,7 @@ async function run(
   const cwd = await mkdtemp(path.join(os.tmpdir(), "pkey-fixa-"));
   dirs.push(cwd);
   const store = memoryStore(
-    opts.stored ? { [ORIGIN]: opts.stored } : undefined,
+    opts.stored ? { [opts.storedAt ?? ORIGIN]: opts.stored } : undefined,
   );
   const tty = opts.columns
     ? { isTTY: true as const, columns: opts.columns }
@@ -146,6 +148,31 @@ describe("S-B1: a token in --base-url never prints", () => {
           }
       });
     }
+
+  for (const [where, base] of pasted)
+    it(`logout: ${where}, signed in, when the revoke cannot reach the host (the Personal tokens link)`, async () => {
+      const down = server(() => {
+        throw new TypeError("fetch failed");
+      });
+      let origin = ORIGIN;
+      try {
+        origin = new URL(base).origin;
+      } catch {
+        // not a URL: logout refuses it
+      }
+      for (const flags of [[], ["--json"]]) {
+        const r = await run(["logout", "--base-url", base, ...flags], {
+          fetchImpl: down.f,
+          stored: { token: STORED, expiresAt: FAR },
+          storedAt: origin,
+        });
+        for (const text of [r.out, r.err]) {
+          expect(text.toLowerCase()).not.toContain("pppppppppp");
+          expect(text).not.toContain(PERSONAL);
+          expect(text).not.toContain(STORED);
+        }
+      }
+    });
 
   it("the server's own words are masked when it echoes a token", async () => {
     const s = server(() =>

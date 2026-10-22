@@ -42,6 +42,8 @@ import {
   cmdLogout,
   cmdWhoami,
   envelope,
+  guarded,
+  originFor,
   text,
   type AccountIo,
 } from "./account.js";
@@ -731,7 +733,16 @@ export const HANDLERS: Readonly<Record<string, Handler>> = {
   distribution: (p, rt) =>
     cmdDistribution(p, rt.cwd, rt.stdout, rt.stderr, rt.ci),
   doctor: (p, rt) =>
-    cmdDoctor(p, rt.cwd, rt.stdout, rt.term(rt.stdout), rt.ci, adminIo(p, rt)),
+    guarded(accountIo(p, rt), "doctor", () =>
+      cmdDoctor(
+        p,
+        rt.cwd,
+        rt.stdout,
+        rt.term(rt.stdout),
+        rt.ci,
+        adminIo(p, rt),
+      ),
+    ),
   bundle: (p, rt) =>
     withAdminCredential(adminIo(p, rt), "bundle", (token) =>
       cmdBundle(
@@ -1315,6 +1326,8 @@ async function cmdDoctor(
     product: flagString(parsed, "product"),
     baseUrl: flagString(parsed, "base-url"),
   });
+  // An address that is not https (http works on localhost) is a ▲ usage line, not a report.
+  originFor({ baseUrl: ctx.baseUrl.url }, "doctor");
   // One deadline for discovery, /me and the Integration view.
   const signal = AbortSignal.timeout(DOCTOR_TIMEOUT_MS);
   const io: AdminIo = { ...admin, baseUrl: ctx.baseUrl.url, signal };
@@ -2627,10 +2640,13 @@ async function cmdListingImport(
     ...(token ? { token } : {}),
     ...(ci.fetchImpl ? { fetchImpl: ci.fetchImpl } : {}),
   });
+  // `--json` is one envelope line like every other command's; a bare `--dry-run` prints the upload.
   stdout.write(
-    flagBool(parsed, "json") || flagBool(parsed, "dry-run")
-      ? `${untrustedJson(flagBool(parsed, "dry-run") ? result.upload : result, 2)}\n`
-      : `${formatImport(result, ci.env)}\n`,
+    flagBool(parsed, "json")
+      ? envelope("listing import", 0, { ...result })
+      : flagBool(parsed, "dry-run")
+        ? `${untrustedJson(result.upload, 2)}\n`
+        : `${formatImport(result, ci.env)}\n`,
   );
   return 0;
 }

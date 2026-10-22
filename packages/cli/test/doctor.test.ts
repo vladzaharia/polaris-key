@@ -1285,3 +1285,33 @@ describe("pkey doctor: a failed console read says what happened (NM1)", () => {
     expect(j.signedIn.detail).toBe("Can't reach key.example.");
   });
 });
+
+describe("pkey doctor: an address that is not https (m1)", () => {
+  it("is the ▲ usage line, exit 2, and sends nothing", async () => {
+    const s = server();
+    const r = await run([], { fetchImpl: s.f, baseUrl: "http://key.example" });
+    expect(r.code).toBe(2);
+    expect(plain(r.err)).toContain("▲  pkey doctor needs an https address.");
+    expect(plain(r.err)).toContain("http works only on localhost");
+    expect(r.out).toBe("");
+    expect(s.calls).toEqual([]);
+  });
+
+  it("under --json prints one result line", async () => {
+    const s = server();
+    const r = await run(["--json"], {
+      fetchImpl: s.f,
+      baseUrl: "http://key.example",
+    });
+    expect(r.code).toBe(2);
+    const lines = r.out.trimEnd().split("\n");
+    expect(lines).toHaveLength(1);
+    expect(JSON.parse(lines[0]!)).toMatchObject({
+      v: 1,
+      command: "doctor",
+      event: "result",
+      ok: false,
+      exit: 2,
+    });
+  });
+});

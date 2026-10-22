@@ -483,6 +483,39 @@ describe("pkey listing import --godot", () => {
     ]);
   });
 
+  it("--json success is one envelope line, with the upload and the import inside", async () => {
+    const admin = fakeAdmin({ preview: PREVIEW }, "http://127.0.0.1:8787");
+    const t = io(admin.fetchImpl);
+    expect(
+      await runPkey(
+        [
+          "listing",
+          "import",
+          "--godot",
+          PROJECT,
+          "--product",
+          "djdl",
+          "--base-url",
+          "http://127.0.0.1:8787/",
+          "--json",
+        ],
+        t.io as never,
+      ),
+    ).toBe(0);
+    const lines = t.out().trimEnd().split("\n");
+    expect(lines).toHaveLength(1);
+    const line = JSON.parse(lines[0]!);
+    expect(line).toMatchObject({
+      v: 1,
+      command: "listing import",
+      event: "result",
+      ok: true,
+      exit: 0,
+    });
+    expect(line.upload).toBeTruthy();
+    expect(line.import).toBeTruthy();
+  });
+
   it("--dry-run prints the upload and contacts nothing; refusals cost no call", async () => {
     const admin = fakeAdmin({ preview: PREVIEW });
     const t = io(admin.fetchImpl, null);

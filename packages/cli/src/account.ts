@@ -719,7 +719,8 @@ export function cmdLogout(io: AccountIo): Promise<number> {
         ? `until ${day(cred.expiresAt, io.env)}`
         : "until it ends";
     const message = `Signed out on this computer, but ${outcome.why}, so it still works ${until}.`;
-    const revokeUrl = `${origin}/manage/#/personal-tokens`;
+    // A token pasted as the host is lowercased in the origin: mask it like every other line.
+    const revokeUrl = maskTokens(`${origin}/manage/#/personal-tokens`);
     const quote = t.caps.unicode ? ["“", "”"] : ['"', '"'];
     const hint = `pkeyp_${t.symbols.ellipsis}${shown(hintOf(stored), io.env)}`;
     const revokeLine = stored.label
