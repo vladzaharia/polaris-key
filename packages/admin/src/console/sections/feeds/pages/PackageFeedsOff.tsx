@@ -125,7 +125,6 @@ export function PackageFeedsOff({
           {
             label: "Registry tokens",
             icon: <KeyRound aria-hidden />,
-            variant: "ghost",
             onSelect: () => navigate(tokensHref({ kind: "product", slug })),
           },
         ]}
