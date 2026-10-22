@@ -445,12 +445,13 @@ def enroll(client: PolarisKeyClient, platform: Optional[str] = None, *, terminal
     return res
 
 
-def deactivate(client: PolarisKeyClient, *, terminal: Any = None) -> CommandResult:
-    """Deauthorize this device and wipe the local token + cache."""
+def deactivate(client: PolarisKeyClient, *, yes: bool = False, terminal: Any = None) -> CommandResult:
+    """Deauthorize this device and wipe the local token + cache. On an interactive terminal it asks
+    first, unless ``yes``."""
     from ..ui.terminal import flows
 
     t = terminal_for(client, "deactivate", terminal=terminal)
-    return result_of(flows.deactivate(client, t), terminal)
+    return result_of(flows.deactivate(client, t, yes=yes), terminal)
 
 
 def status(client: PolarisKeyClient, *, terminal: Any = None) -> CommandResult:

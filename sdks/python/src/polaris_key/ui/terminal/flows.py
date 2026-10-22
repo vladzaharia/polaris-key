@@ -410,7 +410,26 @@ def enroll(client: Any, t: Terminal) -> Outcome:
     return Outcome(EXIT.ok if view.state == "done" else EXIT.failed, lines, data)
 
 
-def deactivate(client: Any, t: Terminal) -> Outcome:
+def _declined(t: Terminal, verb: str, yes: bool) -> Optional[Outcome]:
+    """The sign-out question (D-71) on an interactive terminal unless ``--yes``: ``None`` to go on,
+    else the cancelled outcome. Anywhere else (a pipe, CI, ``--json``) it never asks."""
+    k = t.kit
+    if yes or not t.env.interactive:
+        return None
+    lines = [k.header(verb)] + [k.rail()] + k.step("warn", [k.t("signin.cli.logoutConfirm", "strong", product=k.inline_product)])
+    t.device.print(lines)
+    with t.device.keys() as keys:
+        key = keys.read(None)
+    if key in ("y", "Y"):
+        return None
+    return Outcome(EXIT.failed, [], {"signedOut": False, "state": "cancelled"})
+
+
+def deactivate(client: Any, t: Terminal, *, yes: bool = False) -> Outcome:
+    """``deactivate``: asks ``(y/N)`` on an interactive terminal unless ``--yes``, as Node does."""
+    declined = _declined(t, t.verb or "deactivate", yes)
+    if declined is not None:
+        return declined
     try:
         client.license.deactivate()
     except PolarisError as e:
@@ -533,14 +552,9 @@ def sign_in(
 def sign_out(client: Any, t: Terminal, *, yes: bool = False) -> Outcome:
     """``logout`` / ``sign-out`` (D-71): asks ``(y/N)`` on an interactive terminal unless
     ``--yes``; anywhere else it signs out as it always has."""
-    k = t.kit
-    if t.env.interactive and not yes:
-        lines = [k.header(t.verb or "sign-out")] + [k.rail()] + k.step("warn", [k.t("signin.cli.logoutConfirm", "strong", product=k.inline_product)])
-        t.device.print(lines)
-        with t.device.keys() as keys:
-            key = keys.read(None)
-        if key not in ("y", "Y"):
-            return Outcome(EXIT.failed, [], {"signedOut": False, "state": "cancelled"})
+    declined = _declined(t, t.verb or "sign-out", yes)
+    if declined is not None:
+        return declined
     try:
         client.identity.sign_out()
     except PolarisError as e:

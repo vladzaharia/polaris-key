@@ -208,6 +208,28 @@ def test_sign_out_asks_on_a_terminal_and_yes_skips_it() -> None:
     assert C("signin.cli.logoutConfirm", product="Tidewater Studio") in screen.device.out.getvalue()
 
 
+def test_deactivate_asks_on_a_terminal_and_never_off_one_or_with_yes_or_json() -> None:
+    class Lic:
+        released = 0
+
+        def deactivate(self) -> None:
+            Lic.released += 1
+
+    client = type("C", (), {"license": Lic(), "product": "tidewater"})()
+    declined = flows.deactivate(client, terminal(["n"]))
+    assert declined.code == 1 and declined.data == {"signedOut": False, "state": "cancelled"} and Lic.released == 0
+    assert flows.deactivate(client, terminal(["y"])).code == 0 and Lic.released == 1
+    assert flows.deactivate(client, terminal([]), yes=True).code == 0 and Lic.released == 2
+    # --json and a terminal that cannot prompt: no question (the script has no keys to answer with).
+    assert flows.deactivate(client, terminal([], json_mode=True)).code == 0 and Lic.released == 3
+    piped = terminal([])
+    piped.kit.env = piped.kit.env.but(interactive=False)
+    assert flows.deactivate(client, piped).code == 0 and Lic.released == 4
+    asked = terminal(["n"])
+    flows.deactivate(client, asked)
+    assert C("signin.cli.logoutConfirm", product="Tidewater Studio") in asked.device.out.getvalue()
+
+
 # ── rich renders the kit's lines to the kit's bytes ──────────────────────────────────────────
 
 _LINK_ID = re.compile(r"\x1b\]8;id=[^;]*;")
