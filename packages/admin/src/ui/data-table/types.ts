@@ -84,6 +84,8 @@ export interface Facet<T> {
     counts?: Record<string, number | undefined>;
     pending?: boolean;
   };
+  /** Folded into one "More" menu after the other facet menus (see `FilterBarFacet.secondary`). */
+  secondary?: boolean;
 }
 
 export interface BulkAction<T> {

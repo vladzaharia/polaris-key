@@ -309,6 +309,8 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
       {
         id: "status",
         label: "Status",
+        // The tiles above are the status filter; the band keeps one row at 1440.
+        secondary: true,
         options: STATES.map((s) => ({
           value: s,
           label: LICENSE_STATE_LABELS[s],
@@ -364,12 +366,14 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
       {
         id: "channel",
         label: "Channel",
+        secondary: true,
         options: channels.map((c) => ({ value: c, label: c })),
         accessor: (l) => l.channels,
       },
       {
         id: "signin",
         label: "Sign-in",
+        secondary: true,
         options: [
           { value: "manual", label: SIGN_IN_LABELS.manual! },
           { value: "oidc", label: SIGN_IN_LABELS.oidc! },

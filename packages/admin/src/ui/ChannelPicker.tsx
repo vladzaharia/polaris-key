@@ -79,7 +79,8 @@ export function ChannelPicker({
                   <span
                     tabIndex={0}
                     data-locked
-                    className="inline-flex cursor-default items-center rounded-sm border border-dashed border-border-strong px-1.5 font-mono text-xs focus-visible:outline-2 focus-visible:outline-focus"
+                    data-ui-static
+                    className="inline-flex min-h-6 min-w-6 cursor-default items-center justify-center rounded-sm border border-dashed border-border-strong px-1.5 font-mono text-xs focus-visible:outline-2 focus-visible:outline-focus"
                   >
                     {o.name}
                   </span>
