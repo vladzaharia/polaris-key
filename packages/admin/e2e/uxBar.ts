@@ -18,16 +18,7 @@ import {
 export const UX_BAR_DEBT: readonly (UxBarDebt & {
   /** Which e2e suite finds it: `layout.e2e` (console) or `uiLint.e2e` (customer site). */
   surface: "console" | "portal";
-})[] = [
-  {
-    surface: "portal",
-    rule: "ux-name-over-art",
-    match: /^"In your library" is drawn over art/,
-    where: /^discover-added$/,
-    owner: "PX-16",
-    why: "The just-added Discover tile paints its In your library plate on the cover art (DiscoverTile.tsx). B6 keeps text off customer art: the plate moves below the art or into the tile's caption row.",
-  },
-];
+})[] = [];
 
 const used = new Set<number>();
 

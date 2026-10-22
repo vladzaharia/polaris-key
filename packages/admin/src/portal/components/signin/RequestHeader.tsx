@@ -2,6 +2,7 @@ import * as React from "react";
 import { Shield, ShieldCheck } from "lucide-react";
 import type { SignInRequestView } from "@polaris-key/protocol/identity";
 import { CardHeader } from "../../../ui/auth/index.js";
+import { cn } from "../../../lib/cn.js";
 import { t } from "../../../lib/copy.js";
 import { headerModel } from "../../model/signInRequest.js";
 import { ProductIcon } from "../ProductIcon.js";
@@ -24,6 +25,9 @@ export function RequestHeader({
   onRamp?: boolean;
 }): React.ReactElement {
   const m = headerModel(view);
+  const art = m.verified ? (view.client.artUrl ?? null) : null;
+  // No art: the passport's pane centres the icon, large (96 px), as the Worker's page does.
+  const big = art ? undefined : "passport:size-24 passport:rounded-3xl";
   const icon =
     m.verified && view.client.iconUrl ? (
       <ProductIcon
@@ -32,11 +36,16 @@ export function RequestHeader({
         tint={null}
         size={56}
         src={view.client.iconUrl}
+        className={big}
       />
     ) : (
       <span
         aria-hidden
-        className="flex size-14 shrink-0 items-center justify-center rounded-[14px] border border-border bg-surface-sunken text-xl font-semibold text-fg-strong"
+        className={cn(
+          "flex size-14 shrink-0 items-center justify-center rounded-[14px] border border-border bg-surface-sunken text-xl font-semibold text-fg-strong",
+          art ? undefined : "passport:text-4xl",
+          big,
+        )}
       >
         {m.verified ? (
           (m.name[0] ?? "?").toUpperCase()
@@ -45,7 +54,6 @@ export function RequestHeader({
         )}
       </span>
     );
-  const art = m.verified ? (view.client.artUrl ?? null) : null;
   if (onRamp)
     return (
       <CardHeader
@@ -61,7 +69,7 @@ export function RequestHeader({
     <CardHeader
       variant={m.variant}
       icon={icon}
-      art={m.verified ? (view.client.artUrl ?? null) : null}
+      art={art}
       name={m.name}
       developer={m.developer}
       where={m.where}
