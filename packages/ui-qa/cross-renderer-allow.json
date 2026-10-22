@@ -7,24 +7,6 @@
     "Devices.renaming": {
       "reason": "Elements confirm and rename inline in the row; React swaps the list for the confirm."
     },
-    "Settings.dirty": {
-      "reason": "Elements draw editable controls (inputs, switches); React draws read-only value rows."
-    },
-    "Settings.error": {
-      "reason": "Elements draw editable controls (inputs, switches); React draws read-only value rows."
-    },
-    "Settings.list": {
-      "reason": "Elements draw editable controls (inputs, switches); React draws read-only value rows."
-    },
-    "Settings.loading": {
-      "reason": "Elements draw editable controls (inputs, switches); React draws read-only value rows."
-    },
-    "Settings.locked": {
-      "reason": "Elements draw editable controls (inputs, switches); React draws read-only value rows."
-    },
-    "Settings.saving": {
-      "reason": "Elements draw editable controls (inputs, switches); React draws read-only value rows."
-    },
     "UpdatePrompt.available": {
       "reason": "Elements draw the prompt as a modal dialog/bottom sheet over the host (UK-04); React draws it as a window screen."
     },

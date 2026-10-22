@@ -3,6 +3,13 @@
 // rows, progress, release notes and settings rows. Every string is a key of the view (DL8).
 
 import { html, nothing, type TemplateResult } from "lit";
+import {
+  settingKind,
+  settingLabel,
+  settingText,
+  sliderStep,
+  type SettingsRow,
+} from "./settings.js";
 import { ifDefined } from "lit/directives/if-defined.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { markSvg, poweredBySvg } from "@polaris-key/brand/svg";
@@ -716,10 +723,20 @@ function withBase(c: RenderCtx): View {
         "a11y.removeDevice",
       );
     }
-    case "Settings":
-      return ["dirty", "locked", "saving"].includes(view.state)
+    case "Settings": {
+      const titled = ["dirty", "locked", "saving"].includes(view.state)
         ? add("settings.title")
         : view;
+      // Reset to default waits for a change of the person's; Show advanced for an advanced row.
+      const rows = input.config ?? [];
+      const gone = new Set<string>([
+        ...(rows.some((r) => r.source === "local") ? [] : ["settings.reset"]),
+        ...(rows.some((r) => r.advanced) ? [] : ["settings.advanced"]),
+      ]);
+      return gone.size === 0
+        ? titled
+        : { ...titled, copy: titled.copy.filter((k) => !gone.has(k)) };
+    }
     case "UpdatePrompt": {
       const notes = input.releaseNotes ?? [];
       if (view.state === "downloading")
@@ -1488,54 +1505,7 @@ function releaseNotes(c: RenderCtx): TemplateResult | typeof nothing {
   </div>`;
 }
 
-/** A config row as the kit takes it: ui-core's row plus the catalog entry's `label`, when the
- *  adapter passes it (every product catalog entry has one). */
-type SettingsRow = NonNullable<RenderCtx["input"]["config"]>[number] & {
-  label?: string;
-};
-
-/** A setting's name: the catalog entry's label, else its key read as words (`audio.volume` →
- *  "Audio volume"), never the raw key (DL8). */
-/** Words a key spells in capitals when it is read as a label (ui.compact reads "UI compact"). */
-const ACRONYMS: ReadonlySet<string> = new Set([
-  "ui",
-  "url",
-  "uri",
-  "id",
-  "api",
-  "cpu",
-  "gpu",
-  "fps",
-  "hdr",
-  "vr",
-  "ar",
-  "ip",
-  "dns",
-  "vpn",
-  "usb",
-  "tls",
-  "ssl",
-  "sdk",
-  "os",
-  "pc",
-  "tv",
-  "hdmi",
-  "pin",
-  "qr",
-]);
-
-export function settingLabel(row: SettingsRow): string {
-  if (row.label?.trim()) return row.label.trim();
-  const phrase = row.key
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .split(/[._\-\s/:]+/)
-    .filter(Boolean)
-    .map((w) =>
-      ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w.toLocaleLowerCase(),
-    )
-    .join(" ");
-  return phrase ? phrase[0]!.toLocaleUpperCase() + phrase.slice(1) : row.key;
-}
+export { settingLabel };
 
 function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
   const has = (k: string) => c.copy.has(k);
@@ -1579,16 +1549,49 @@ function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
       );
     const change = (value: string | number | boolean) =>
       c.edit("setting", value, { key: r.key });
+    const kind = settingKind(r);
+    const word =
+      typeof r.value === "boolean"
+        ? r.value
+          ? "settings.on"
+          : "settings.off"
+        : null;
     let control: TemplateResult | typeof nothing;
-    if (typeof r.value === "boolean" || r.type === "boolean") {
+    if (r.locked) {
+      // A locked row shows its value as text, with the lock and its source (§4.1).
+      control =
+        word !== null
+          ? html`<span data-key=${word}
+              >${has(word) ? text(c, word) : ""}</span
+            >`
+          : html`<bdi>${settingText(r)}</bdi>`;
+    } else if (kind === "switch") {
       const on = r.value === true;
-      const word = on ? "settings.on" : "settings.off";
-      control = html`${has(word)
-        ? html`<span class="meta" data-key=${word}>${text(c, word)}</span>`
-        : nothing}${switchControl(c, label, on, change, {
-        disabled: r.locked,
-      })}`;
-    } else if (r.type === "number" || typeof r.value === "number") {
+      const w = on ? "settings.on" : "settings.off";
+      control = html`${has(w)
+        ? html`<span class="meta" data-key=${w}>${text(c, w)}</span>`
+        : nothing}${switchControl(c, label, on, change)}`;
+    } else if (kind === "slider") {
+      const min = r.min as number;
+      const max = r.max as number;
+      const now = typeof r.value === "number" ? r.value : min;
+      control = html`<span class="slider" data-part="slider"
+        ><input
+          type="range"
+          aria-label=${label}
+          aria-invalid=${bad ? "true" : "false"}
+          aria-describedby=${ifDefined(
+            has("settings.range") ? `pk-range-${r.key}` : undefined,
+          )}
+          min=${min}
+          max=${max}
+          step=${sliderStep(r)}
+          .value=${String(now)}
+          @input=${(e: Event) =>
+            change(Number((e.target as HTMLInputElement).value))}
+        /><output class="meta">${r.display ?? String(now)}</output></span
+      >`;
+    } else if (kind === "number") {
       control = html`<span class="field"
         ><input
           type="number"
@@ -1602,7 +1605,7 @@ function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
           )}
           min=${ifDefined(r.min)}
           max=${ifDefined(r.max)}
-          ?disabled=${r.locked}
+          step=${ifDefined(r.step)}
           .value=${r.value === undefined || r.value === null
             ? ""
             : String(r.value)}
@@ -1611,13 +1614,31 @@ function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
             if (v !== "") change(Number(v));
           }}
       /></span>`;
+    } else if (kind === "select") {
+      const now =
+        r.value === undefined || r.value === null ? "" : String(r.value);
+      const options =
+        r.options ?? (now ? [{ value: now, label: settingText(r) }] : []);
+      control = html`<span class="field"
+        ><select
+          aria-label=${label}
+          @change=${(e: Event) => change((e.target as HTMLSelectElement).value)}
+        >
+          ${options.map(
+            (o) =>
+              html`<option value=${o.value} ?selected=${o.value === now}>
+                ${o.label}
+              </option>`,
+          )}
+        </select></span
+      >`;
     } else {
       control = html`<span class="field"
         ><input
           type="text"
           aria-label=${label}
           autocomplete="off"
-          ?disabled=${r.locked}
+          maxlength=${ifDefined(r.maxLength)}
           .value=${r.value === undefined || r.value === null
             ? ""
             : String(r.value)}

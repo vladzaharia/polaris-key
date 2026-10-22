@@ -161,7 +161,7 @@ describe("UK-04 fix", () => {
       ],
       edit: { kind: "value" },
     });
-    const field = q(el, 'input[type="number"]') as HTMLInputElement;
+    const field = q(el, 'input[type="range"]') as HTMLInputElement;
     expect(field.getAttribute("aria-invalid")).toBe("true");
     const id = field.getAttribute("aria-describedby")!;
     expect(el.shadowRoot!.getElementById(id)?.getAttribute("data-tone")).toBe(
@@ -174,7 +174,7 @@ describe("UK-04 fix", () => {
     field.dispatchEvent(new Event("input", { bubbles: true }));
     await el.updateComplete;
     expect(
-      (q(el, 'input[type="number"]') as HTMLInputElement).getAttribute(
+      (q(el, 'input[type="range"]') as HTMLInputElement).getAttribute(
         "aria-invalid",
       ),
     ).toBe("false");

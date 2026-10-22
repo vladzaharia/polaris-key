@@ -441,7 +441,7 @@ describe("the panes have real controls", () => {
     const el = await draw("pk-settings", base({ config }));
     const root = el.shadowRoot!;
     expect(root.querySelectorAll('[role="switch"]')).toHaveLength(1);
-    expect(root.querySelector('input[type="number"]')).not.toBeNull();
+    expect(root.querySelector('input[type="range"]')).not.toBeNull();
     const events: unknown[] = [];
     el.addEventListener("pk-input", (e) =>
       events.push((e as CustomEvent).detail),

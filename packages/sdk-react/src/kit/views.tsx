@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import type { View } from "@polaris-key/ui-core";
 import { LAYOUTS, placeKeys, platformLabel, type Layout } from "./contract.js";
 import { rowsOf } from "./lazy.js";
-export type { SettingsRow } from "./rows.js";
+export type { SettingsRow } from "./contract.js";
 
 import {
   a11yOnly,
@@ -272,6 +272,20 @@ export function withBase(c: KitCtx): View {
         decisions: { ...done.decisions, primary: "common.done" },
       };
     }
+  }
+  if (view.component === "Settings") {
+    const titled = ["dirty", "locked", "saving"].includes(view.state)
+      ? add("settings.title")
+      : view;
+    // Reset to default waits for a change of the person's; Show advanced for an advanced row.
+    const rows = c.input.config ?? [];
+    const gone = new Set<string>([
+      ...(rows.some((r) => r.source === "local") ? [] : ["settings.reset"]),
+      ...(rows.some((r) => r.advanced) ? [] : ["settings.advanced"]),
+    ]);
+    return gone.size === 0
+      ? titled
+      : { ...titled, copy: titled.copy.filter((k) => !gone.has(k)) };
   }
   return view;
 }

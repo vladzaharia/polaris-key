@@ -3,6 +3,7 @@
 // where each key goes; the parts below draw them with stable `part` and `data-part` names, the
 // DOM contract React shares (UI-KITS.md §3.2, §7.1).
 
+import { outOfRange } from "./settings.js";
 import { html, nothing, svg, type TemplateResult } from "lit";
 import { ifDefined } from "lit/directives/if-defined.js";
 import { html as staticHtml, unsafeStatic } from "lit/static-html.js";
@@ -753,20 +754,7 @@ export function a11yOnly(c: RenderCtx): TemplateResult | typeof nothing {
 // ── The one screen template ──────────────────────────────────────────────────────────────────
 
 /** The controls, the primary first on top in a card (§1.5 rule 10). */
-/** A number setting whose value is outside its range: Save waits until it is fixed. */
-export function outOfRange(r: {
-  type?: string;
-  value?: unknown;
-  min?: number;
-  max?: number;
-}): boolean {
-  if (r.type !== "number" || typeof r.value !== "number") return false;
-  return (
-    Number.isNaN(r.value) ||
-    (typeof r.min === "number" && r.value < r.min) ||
-    (typeof r.max === "number" && r.value > r.max)
-  );
-}
+export { outOfRange };
 
 function settingsInvalid(input: RenderCtx["input"]): boolean {
   return (input.config ?? []).some((r) => outOfRange(r));

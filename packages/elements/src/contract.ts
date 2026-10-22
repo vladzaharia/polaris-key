@@ -18,6 +18,16 @@ export { encodeQr } from "@polaris-key/node/qr";
 // DL5: the monogram's letter, past a name's bidi isolates.
 export { monogramOf } from "./monogram.js";
 export { spellOut } from "./spell.js";
+// The Settings pane's typed controls, decided once.
+export {
+  outOfRange,
+  settingKind,
+  settingLabel,
+  settingText,
+  sliderStep,
+  type SettingKind,
+  type SettingsRow,
+} from "./settings.js";
 // DL8: platform names, never a raw id.
 export { platformLabel } from "./platforms.js";
 // The one sign-in form's steps (SIGN-IN.md §3.17): the body each snapshot draws, the travel order.
