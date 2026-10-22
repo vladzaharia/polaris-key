@@ -256,6 +256,16 @@ export interface ConfigRowInput {
   min?: number;
   max?: number;
   advanced?: boolean;
+  /** The catalog entry's name for the setting; absent, the key read as words. */
+  label?: string;
+  /** The value as the person reads it ("48,000 Hz", "WAV"): drawn for a locked row. */
+  display?: string;
+  /** The choices of an enum setting, in the catalog's order: a select. */
+  options?: readonly { value: string; label: string }[];
+  /** The slider's step for a bounded number; absent, a whole number when both bounds are. */
+  step?: number;
+  /** The longest a text value may be. */
+  maxLength?: number;
 }
 
 /** Everything a view model reads. Every member is optional; see `vocabulary.inputs`. */

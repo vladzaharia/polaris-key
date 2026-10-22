@@ -1464,8 +1464,25 @@ dialog.sheet .card,
 .row-value .field input {
   inline-size: 7rem;
 }
-.row-value .field input[type="text"] {
+.row-value .field input[type="text"],
+.row-value .field select {
   inline-size: 12rem;
+}
+/* A bounded number: the slider, with its value read out beside it (§4.1). */
+.slider {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-3);
+}
+.slider input[type="range"] {
+  inline-size: 9rem;
+  min-block-size: 1.5rem;
+  accent-color: var(--pk-primary);
+}
+.slider output {
+  min-inline-size: 2.5ch;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
 }
 .sheet-close {
   position: absolute;

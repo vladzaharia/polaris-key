@@ -473,6 +473,15 @@ export function useKit(
     ...(props.embedded ? { embedded: true } : {}),
     ...(chrome ? { chrome } : {}),
     act: (key, extra = {}) => {
+      // Show advanced settings toggles in the pane itself, as in the elements.
+      if (key === "settings.advanced")
+        setLocal((l) => {
+          const drafts = (l as { drafts?: Record<string, unknown> }).drafts;
+          return {
+            ...l,
+            drafts: { ...drafts, advanced: drafts?.advanced !== true },
+          } as Partial<UiInput>;
+        });
       if (key === "activate.submit")
         setLocal((l) => ({
           ...l,

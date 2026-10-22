@@ -130,7 +130,7 @@ describe("Settings rows", () => {
     expect(values).toContain("Off");
     // A boolean is a switch, a number a number field: the controls the pane edits with.
     expect(root.querySelector('[role="switch"]')).not.toBeNull();
-    expect(root.querySelector('input[type="number"]')).not.toBeNull();
+    expect(root.querySelector('input[type="range"]')).not.toBeNull();
   });
 
   it("reads a key as words when the catalog gives no label", () => {

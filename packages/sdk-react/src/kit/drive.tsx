@@ -309,6 +309,12 @@ function DrivenSettings(props: Props & { adapter: PolarisAdapter }): ReactNode {
       onAction={both((a: KitAction) => {
         if (a.key === "common.tryAgain" && last.current)
           save(last.current.row, last.current.raw);
+        // Reset to default: drop every override of this device's.
+        if (a.key === "settings.reset")
+          adapter.config.clearAll().then(
+            () => setFailed(false),
+            () => setFailed(true),
+          );
       }, props.onAction)}
       onInput={both((field: string, value: string) => {
         if (!field.startsWith("config:")) return;

@@ -3,8 +3,16 @@
 // channel picker. Loaded on demand (lazy.ts) so the gate's entry stays inside its size budget
 // (SP-47): until it arrives these draw nothing, and every kit component redraws when it does.
 
-import { Fragment, type ReactNode } from "react";
-import { platformLabel } from "./contract.js";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
+import {
+  outOfRange,
+  platformLabel,
+  settingKind,
+  settingLabel,
+  settingText,
+  sliderStep,
+  type SettingsRow,
+} from "./contract.js";
 import {
   button,
   days,
@@ -358,23 +366,59 @@ export function releaseNotes(c: KitCtx): ReactNode {
   );
 }
 
-/** A config row as the kit takes it: ui-core's row plus the catalog entry's `label`, when the
- *  adapter passes it (every product catalog entry has one). */
-export type SettingsRow = NonNullable<KitCtx["input"]["config"]>[number] & {
-  label?: string;
-  /** The value as the person reads it ("48,000 Hz", "WAV"): the catalog's unit and option label. */
-  display?: string;
-  /** The choices of an enum setting, in the catalog's order. */
-  options?: readonly { value: string; label: string }[];
-  step?: number;
-};
+export { settingLabel, type SettingsRow };
 
-/** The field a setting's value is edited in. Switches and choices apply at once; a number or text
- *  applies when it loses focus or on Enter. The host hears `config:<key>` with the new value. */
-function settingControl(c: KitCtx, r: SettingsRow, name: string): ReactNode {
+/** A bounded number: the slider, with its value read out beside it. It keeps its own position
+ *  while it is dragged and reports each move; a new value from the host moves it. */
+function SettingSlider(props: {
+  row: SettingsRow;
+  name: string;
+  describedBy: string | undefined;
+  bad: boolean;
+  onChange: (value: string) => void;
+}): ReactNode {
+  const { row, name } = props;
+  const min = row.min as number;
+  const max = row.max as number;
+  const start = typeof row.value === "number" ? row.value : min;
+  const [now, setNow] = useState(start);
+  useEffect(() => setNow(start), [start]);
+  return (
+    <span className="slider" data-part="slider">
+      <input
+        type="range"
+        aria-label={name}
+        aria-invalid={props.bad ? "true" : "false"}
+        aria-describedby={props.describedBy}
+        min={min}
+        max={max}
+        step={sliderStep(row)}
+        value={now}
+        onChange={(e) => {
+          setNow(Number(e.currentTarget.value));
+          props.onChange(e.currentTarget.value);
+        }}
+      />
+      <output className="meta">{row.display ?? String(now)}</output>
+    </span>
+  );
+}
+
+/** The field a setting's value is edited in (UI-KITS.md §4.1): a switch, a slider for a bounded
+ *  number, a number field, a select or text. Switches, sliders and choices apply at once; a number
+ *  or text applies when it loses focus or on Enter. The host hears `config:<key>` with the new
+ *  value. */
+function settingControl(
+  c: KitCtx,
+  r: SettingsRow,
+  name: string,
+  describedBy: string | undefined,
+  bad: boolean,
+): ReactNode {
   const field = `config:${r.key}`;
-  if (typeof r.value === "boolean") {
-    const on = r.value;
+  const kind = settingKind(r);
+  if (kind === "switch") {
+    const on = r.value === true;
     const word = on ? "settings.on" : "settings.off";
     return (
       <>
@@ -399,15 +443,28 @@ function settingControl(c: KitCtx, r: SettingsRow, name: string): ReactNode {
       </>
     );
   }
-  if (r.options && r.options.length > 0)
+  if (kind === "slider")
     return (
-      <span className="field" style={{ inlineSize: "10rem" }}>
+      <SettingSlider
+        row={r}
+        name={name}
+        describedBy={describedBy}
+        bad={bad}
+        onChange={(v) => c.edit(field, v)}
+      />
+    );
+  const now = r.value === undefined || r.value === null ? "" : String(r.value);
+  if (kind === "select") {
+    const options =
+      r.options ?? (now ? [{ value: now, label: settingText(r) }] : []);
+    return (
+      <span className="field">
         <select
           aria-label={name}
-          value={String(r.value ?? "")}
+          value={now}
           onChange={(e) => c.edit(field, e.currentTarget.value)}
         >
-          {r.options.map((o) => (
+          {options.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
@@ -415,26 +472,31 @@ function settingControl(c: KitCtx, r: SettingsRow, name: string): ReactNode {
         </select>
       </span>
     );
-  const number = r.type === "number" || typeof r.value === "number";
+  }
+  const number = kind === "number";
   const commit = (el: HTMLInputElement) => {
-    if (el.value !== String(r.value ?? "")) c.edit(field, el.value);
+    if (el.value !== now) c.edit(field, el.value);
   };
   return (
-    <span className="field" style={{ inlineSize: "9rem" }}>
+    <span className="field">
       <input
-        key={String(r.value ?? "")}
+        key={now}
         type={number ? "number" : "text"}
         aria-label={name}
-        defaultValue={String(r.value ?? "")}
+        defaultValue={now}
         autoComplete="off"
         {...(number
           ? {
               inputMode: "decimal" as const,
+              "aria-invalid": bad ? ("true" as const) : ("false" as const),
+              "aria-describedby": describedBy,
               ...(r.min !== undefined ? { min: r.min } : {}),
               ...(r.max !== undefined ? { max: r.max } : {}),
               ...(r.step !== undefined ? { step: r.step } : {}),
             }
-          : {})}
+          : r.maxLength !== undefined
+            ? { maxLength: r.maxLength }
+            : {})}
         onBlur={(e) => commit(e.currentTarget)}
         onKeyDown={(e) => {
           if (e.key === "Enter") commit(e.currentTarget);
@@ -444,103 +506,70 @@ function settingControl(c: KitCtx, r: SettingsRow, name: string): ReactNode {
   );
 }
 
-/** Words a key spells in capitals when it is read as a label (ui.compact reads "UI compact"). */
-const ACRONYMS: Readonly<Record<string, string>> = {
-  ui: "UI",
-  url: "URL",
-  uri: "URI",
-  id: "ID",
-  api: "API",
-  cpu: "CPU",
-  gpu: "GPU",
-  fps: "FPS",
-  hdr: "HDR",
-  vr: "VR",
-  ar: "AR",
-  ip: "IP",
-  dns: "DNS",
-  vpn: "VPN",
-  usb: "USB",
-  tls: "TLS",
-  ssl: "SSL",
-  sdk: "SDK",
-  os: "OS",
-  pc: "PC",
-  tv: "TV",
-  hdmi: "HDMI",
-  pin: "PIN",
-  qr: "QR",
-};
-
-/** A setting's name: the catalog entry's label, else its key read as words (`audio.volume` →
- *  "Audio volume"), never the raw key (DL8). */
-export function settingLabel(row: SettingsRow): string {
-  if (row.label?.trim()) return row.label.trim();
-  const phrase = row.key
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .split(/[._\-\s/:]+/)
-    .filter(Boolean)
-    .map((w) =>
-      Object.prototype.hasOwnProperty.call(ACRONYMS, w.toLowerCase())
-        ? ACRONYMS[w.toLowerCase()]!
-        : w.toLocaleLowerCase(),
-    )
-    .join(" ");
-  return phrase ? phrase[0]!.toLocaleUpperCase() + phrase.slice(1) : row.key;
-}
-
 export function settingsRows(c: KitCtx): ReactNode {
-  const keys = new Set(c.view.copy);
+  const has = (k: string) => c.copy.has(k);
   const rows = (c.input.config ?? []) as SettingsRow[];
-  const used = new Set<string>();
-  const use = (k: string) => (keys.has(k) ? (used.add(k), true) : false);
+  const advanced =
+    (c.input as { drafts?: Record<string, unknown> }).drafts?.advanced === true;
+  const visible = rows.filter((r) => !r.advanced || advanced);
   // Each row: its name, where its value comes from (or who set it), and the value at the end.
-  const drawn = rows.map((r) => {
+  const drawn = visible.map((r) => {
+    const label = settingLabel(r);
     const meta: ReactNode[] = [];
     const from = r.locked
       ? r.org
         ? "settings.setBy"
         : "settings.setByGuardian"
       : `settings.source.${r.source}`;
-    if (use(from))
+    // Validated as you type: the range turns into the error, and Save waits (aria-invalid).
+    const bad = outOfRange(r);
+    if (has(from))
       meta.push(
         <span key={from} data-key={from}>
           {text(c, from, { org: r.org ?? "" })}
         </span>,
       );
-    if (
+    const ranged =
       r.type === "number" &&
       typeof r.min === "number" &&
       typeof r.max === "number" &&
-      use("settings.range")
-    )
+      has("settings.range");
+    if (ranged)
       meta.push(
-        <span key="range" data-key="settings.range">
-          {text(c, "settings.range", { min: r.min, max: r.max })}
+        <span
+          key="range"
+          id={`pk-range-${r.key}`}
+          data-key="settings.range"
+          {...(bad ? { className: "message", "data-tone": "danger" } : {})}
+        >
+          {text(c, "settings.range", {
+            min: r.min as number,
+            max: r.max as number,
+          })}
         </span>,
       );
-    let value: ReactNode = null;
-    if (
-      c.interactive &&
-      !r.locked &&
-      r.value !== undefined &&
-      r.value !== null
-    ) {
-      // The switch says On or Off itself.
-      use("settings.on");
-      use("settings.off");
-      value = settingControl(c, r, settingLabel(r));
-    } else if (typeof r.value === "boolean") {
-      const k = r.value ? "settings.on" : "settings.off";
-      use(k);
-      value = <span data-key={k}>{text(c, k)}</span>;
-    } else if (r.value !== undefined && r.value !== null)
-      value = <bdi>{r.display ?? String(r.value)}</bdi>;
+    let value: ReactNode;
+    if (r.locked) {
+      // A locked row shows its value as text, with the lock and its source (§4.1).
+      if (typeof r.value === "boolean") {
+        const k = r.value ? "settings.on" : "settings.off";
+        value = <span data-key={k}>{has(k) ? text(c, k) : ""}</span>;
+      } else value = <bdi>{settingText(r)}</bdi>;
+    } else
+      value = settingControl(
+        c,
+        r,
+        label,
+        ranged || (has("settings.range") && typeof r.max === "number")
+          ? `pk-range-${r.key}`
+          : undefined,
+        bad,
+      );
     return (
       <li key={r.key} className="row" data-part="settings-row">
         <span className="row-text">
           <span className="row-title">
-            <bdi>{settingLabel(r)}</bdi>
+            <bdi>{label}</bdi>
           </span>
           {meta.length ? (
             <span className="meta">
@@ -554,7 +583,7 @@ export function settingsRows(c: KitCtx): ReactNode {
           ) : null}
         </span>
         <span className="row-value">
-          {r.locked && keys.has("a11y.locked") ? (
+          {r.locked && has("a11y.locked") ? (
             <span
               role="img"
               data-key="a11y.locked"
@@ -569,12 +598,12 @@ export function settingsRows(c: KitCtx): ReactNode {
     );
   });
   // The provenance group's heading (B10: "From <Developer>" for what the person can change).
-  const group = use("settings.fromDeveloper") ? (
+  const group = has("settings.fromDeveloper") ? (
     <h2 className="label group-label" data-key="settings.fromDeveloper">
       {text(c, "settings.fromDeveloper")}
     </h2>
   ) : null;
-  const search = use("settings.search") ? (
+  const search = c.view.copy.includes("settings.search") ? (
     <div className="field" data-part="search">
       <input
         type="search"
@@ -586,10 +615,23 @@ export function settingsRows(c: KitCtx): ReactNode {
       />
     </div>
   ) : null;
-  // A key of the state no row carried (an "On" with no boolean row) still shows, once.
-  const rest = [...keys].filter(
+  // The view's own source and state words that no row carried still show, once.
+  const shown = new Set<string>();
+  for (const r of visible) {
+    shown.add(
+      r.locked
+        ? r.org
+          ? "settings.setBy"
+          : "settings.setByGuardian"
+        : `settings.source.${r.source}`,
+    );
+    if (typeof r.value === "boolean")
+      shown.add(r.value ? "settings.on" : "settings.off");
+    if (r.type === "number") shown.add("settings.range");
+  }
+  const rest = c.view.copy.filter(
     (k) =>
-      !used.has(k) &&
+      !shown.has(k) &&
       (k.startsWith("settings.source.") ||
         k === "settings.on" ||
         k === "settings.off" ||
@@ -597,7 +639,7 @@ export function settingsRows(c: KitCtx): ReactNode {
         k === "settings.setByGuardian" ||
         k === "settings.range"),
   );
-  if (rows.length === 0 && rest.length === 0)
+  if (visible.length === 0 && rest.length === 0)
     return group === null && search === null ? null : (
       <>
         {search}
