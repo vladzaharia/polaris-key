@@ -18,6 +18,15 @@ Filed from [F-33](F-33-personal-tokens-pkeyp-packages-read.md) by the program tr
 
 On staging already: F-33 slices 1 and 2 on staging (2db897218, 9e2ae1609): `core/accounts/personalTokens.ts`, migration 0120, `/api/me/tokens`, `personMayRead`, the portal Packages card and the console Personal tokens page.
 
+## Verified against the code (F-33b.1)
+
+Checked on `integ/next-stage` (2026-10-22). Where this brief disagrees, the code is the fact.
+
+- **(b) List documents already filter per deliverable.** Each listed package runs `authorizeFeedRead` with its own deliverable id, so person and licence principals are judged per package: PyPI simple index `services/distribution/registry/pypi/routes.ts:180-215`, Godot `listedPackages` `godot/routes.ts:168-190`, Swift identifiers `swift/routes.ts:460-500`. Cargo `config.json` names no package; npm, Maven, Go and OCI have no owner-level list. Item (b) becomes a cross-adapter conformance pin (F-33b.5), not new code; it fixes only a leak the pin finds.
+- **(d) Account-minted licence-bound tokens are already revoked** on detach, relink and account deletion (`onLicenseOwnershipEnded`, `core/accounts/subjectHooks.ts`), and re-checked at serve time (B-155, `registryTokens.ts` `resolveRow`). The gap was operator-minted ones (`portal_account_id IS NULL`), which outlived an ownership change. F-33b.1 closes it: the hook also revokes those, as `system`.
+- **(a) `pkeyci_` already reads with `release:publish`** (`CI_FEED_READ_SCOPE`). F-33b.2 adds the read-only `packages:read` scope.
+- **C4.** Role-granted access in `personMayRead` is ST-31.9's. No root-only Superadmin hook is added (D-F7).
+
 ## Goal
 
 `pkeyci_` packages:read, serve-time list filtering, the registry-clients two-owner row, revoke licence-bound tokens on unlink. Done when every acceptance criterion holds and the green gate passes.

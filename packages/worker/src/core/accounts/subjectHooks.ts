@@ -339,8 +339,11 @@ export type OwnershipEndReason = "detached" | "relinked" | "account_deleted";
 /**
  * An account stopped owning a licence (its owner detached it, a developer relinked it, or the
  * account was deleted). F-21: every live registry token that account minted bound to this licence
- * is revoked, so a credential never outlives the ownership that justified it. I-11 extends this
- * hook as its surfaces need; it is the one place the consequence of losing a licence is decided.
+ * is revoked, so a credential never outlives the ownership that justified it. F-33b.1: so is every
+ * live licence-bound token an operator minted on the licence (`portal_account_id IS NULL`),
+ * revoked by `system`; those were minted for the owner that just went. Two statements, two
+ * filters: the account-minted one is unchanged. I-11 extends this hook as its surfaces need; it
+ * is the one place the consequence of losing a licence is decided.
  */
 export async function onLicenseOwnershipEnded(
   db: Db,
@@ -353,13 +356,23 @@ export async function onLicenseOwnershipEnded(
     now: number;
   },
 ): Promise<{ revokedTokens: number }> {
-  const revokedTokens = await revokeAllRegistryTokens(
+  const reason =
+    args.reason === "account_deleted" ? "account_deleted" : "link_removed";
+  const accountMinted = await revokeAllRegistryTokens(
     db,
     args.product,
     `portal:${args.accountId}`,
-    args.reason === "account_deleted" ? "account_deleted" : "link_removed",
+    reason,
     args.now,
     { licenseId: args.licenseId, portalAccountId: args.accountId },
   );
-  return { revokedTokens };
+  const operatorMinted = await revokeAllRegistryTokens(
+    db,
+    args.product,
+    "system",
+    reason,
+    args.now,
+    { licenseId: args.licenseId, operatorMinted: true },
+  );
+  return { revokedTokens: accountMinted + operatorMinted };
 }

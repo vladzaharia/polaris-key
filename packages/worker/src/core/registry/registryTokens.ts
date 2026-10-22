@@ -397,6 +397,12 @@ export async function mintRegistryToken(
 export interface RegistryTokenFilter {
   readonly licenseId?: string;
   readonly portalAccountId?: string;
+  /**
+   * Only tokens no portal account minted (`portal_account_id IS NULL`: an operator's, from the
+   * console). A form of its own so "this account's tokens" and "nobody's tokens" never share a
+   * statement; it is never combined with `portalAccountId`.
+   */
+  readonly operatorMinted?: true;
 }
 
 function filterSql(filter: RegistryTokenFilter): {
@@ -412,6 +418,9 @@ function filterSql(filter: RegistryTokenFilter): {
   if (filter.portalAccountId !== undefined) {
     parts.push("portal_account_id = ?");
     params.push(filter.portalAccountId);
+  }
+  if (filter.operatorMinted === true) {
+    parts.push("portal_account_id IS NULL");
   }
   return {
     sql: parts.length ? ` AND ${parts.join(" AND ")}` : "",

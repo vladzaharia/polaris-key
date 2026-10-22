@@ -1678,6 +1678,19 @@ as sharing the key, bounded by expiry, the per-licence cap, the licence's own st
 operator's revoke (per token, per licence, or every token of the owner). Device trust (P6-02)
 does not apply, because a token has no device; this is the portal download's rule.
 
+**Ownership end revokes every licence-bound token of the licence (F-33b.1).** When an account stops
+owning a licence (detach, relink, a merge undone that hands it back, account deletion), every
+live licence-bound token of that licence is revoked in the same step
+(`onLicenseOwnershipEnded`, `core/accounts/subjectHooks.ts`): the ones the account minted as
+`portal:<account>`, and the ones an operator minted in the console (`portal_account_id IS NULL`) as
+`system`, reason `link_removed` (`account_deleted` on deletion). The two are separate statements
+behind separate `RegistryTokenFilter` forms (`portalAccountId`, `operatorMinted`), so neither
+filter widens the other. Before this, an operator-minted token outlived a change of owner and kept
+reading the feeds the new owner's entitlements did not justify. A licence with no account, and
+every other licence of the product, is untouched. Residual: an operator can mint a new token for a
+licence that went floating; that is a deliberate act, audited at mint. **Review trigger:** a path
+that changes `licenses.account_id` without calling `onLicenseOwnershipEnded`.
+
 **Godot URL tokens.** The editor sends no `Authorization`, so a URL token rides in the path
 (`/godot/<owner>/t/<token>/…`): it appears in Cloudflare's own request logs and in the editor's
 settings file on disk. That is why the class is narrow (read, Godot only, enforced by a table
