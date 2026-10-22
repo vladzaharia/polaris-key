@@ -118,12 +118,20 @@ function Table({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <table className="w-full text-start" aria-label={label}>
-      <thead className="max-sm:sr-only">
-        <tr className="border-b border-border bg-surface-sunken text-sm text-fg-strong">
+    <table
+      role="table"
+      className="w-full text-start max-sm:block"
+      aria-label={label}
+    >
+      <thead role="rowgroup" className="max-sm:sr-only">
+        <tr
+          role="row"
+          className="border-b border-border bg-surface-sunken text-sm text-fg-strong"
+        >
           {head.map((h) => (
             <th
               key={h || "actions"}
+              role="columnheader"
               scope="col"
               className={cn(
                 "px-5 py-2.5 text-start font-medium",
@@ -135,7 +143,9 @@ function Table({
           ))}
         </tr>
       </thead>
-      <tbody className="divide-y divide-border">{children}</tbody>
+      <tbody role="rowgroup" className="divide-y divide-border max-sm:block">
+        {children}
+      </tbody>
     </table>
   );
 }
@@ -153,17 +163,17 @@ function PlatformRows({
   return (
     <Table label="Platform roles" head={["Member", "Role", "Access from"]}>
       {rows.map((r) => (
-        <tr key={`${r.memberId}:${r.scope}`} className={ROW}>
-          <td className={CELL}>
+        <tr key={`${r.memberId}:${r.scope}`} role="row" className={ROW}>
+          <td role="cell" className={CELL}>
             <Person name={r.name} email={r.email} you={false} pending={false} />
           </td>
-          <td className={CELL}>
+          <td role="cell" className={CELL}>
             <RoleSet
               role={{ role: r.role, scope: r.scope, areas: r.areas }}
               productName={productName}
             />
           </td>
-          <td className={`${CELL} text-sm text-fg-muted`}>
+          <td role="cell" className={`${CELL} text-sm text-fg-muted`}>
             {r.source === "root"
               ? "Root rule"
               : r.source === "creator"
@@ -334,8 +344,8 @@ export function SettingsMembersPage({
               const who = r.kind === "member" ? r.member.name : "";
               const items = menu(r);
               return (
-                <tr key={r.id} className={ROW}>
-                  <td className={CELL}>
+                <tr key={r.id} role="row" className={ROW}>
+                  <td role="cell" className={CELL}>
                     <Person
                       name={who}
                       email={email}
@@ -343,7 +353,7 @@ export function SettingsMembersPage({
                       pending={r.kind === "invite"}
                     />
                   </td>
-                  <td className={CELL}>
+                  <td role="cell" className={CELL}>
                     <span className="flex min-w-0 flex-col items-start gap-1.5">
                       {rolesOf(r).map((x, i) => (
                         <RoleSet
@@ -354,7 +364,7 @@ export function SettingsMembersPage({
                       ))}
                     </span>
                   </td>
-                  <td className={`${CELL} max-sm:pb-0`}>
+                  <td role="cell" className={`${CELL} max-sm:pb-0`}>
                     <AccessLines
                       lines={
                         r.kind === "invite"
@@ -364,7 +374,10 @@ export function SettingsMembersPage({
                     />
                   </td>
                   {live ? (
-                    <td className="w-12 px-5 py-3 text-end max-sm:block max-sm:px-0 max-sm:py-0 max-sm:pt-2 max-sm:text-start">
+                    <td
+                      role="cell"
+                      className="w-12 px-5 py-3 text-end max-sm:block max-sm:px-0 max-sm:py-0 max-sm:pt-2 max-sm:text-start"
+                    >
                       <ActionMenu
                         label={`Actions for ${who || email}`}
                         items={items}

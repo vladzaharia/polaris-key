@@ -433,6 +433,26 @@ function cases(): Case[] {
         await primaryInView(page);
       },
     },
+    // ST-31.14: the Invite drawer from the product's Members tab (role fixed, product fixed).
+    {
+      name: "djdl:settings-members?invite",
+      hash: "#/p/djdl/settings/members",
+      act: async (page) => {
+        await openInviteDrawer(page);
+        await primaryInView(page);
+      },
+    },
+    {
+      name: "djdl:settings-members?invite-filled",
+      hash: "#/p/djdl/settings/members",
+      act: async (page) => {
+        const drawer = await openInviteDrawer(page);
+        await drawer.getByLabel("Email addresses").fill("hana@example.com, ");
+        await drawer.getByLabel("Email addresses").fill("theo@example.com, ");
+        await drawer.getByRole("radio", { name: /Only these areas/ }).click();
+        await primaryInView(page);
+      },
+    },
     // ST-31.13: the Roles tab, and on a phone the tile that picks the matrix column.
     {
       name: "global:platform-members?tab=roles",
@@ -594,6 +614,7 @@ const TEXT200_CASES = [
   "djdl:activity",
   "global:platform-status",
   "djdl:settings-members",
+  "djdl:settings-members?invite-filled",
   // ST-31.12: the Members drawer, at its tallest views.
   "global:platform-members?invite-filled",
   "global:platform-members?add-role",
@@ -602,6 +623,8 @@ const TEXT200_CASES = [
 ];
 /** The Members drawer's views (ST-31.12). */
 const DRAWER_CASES = [
+  "djdl:settings-members?invite",
+  "djdl:settings-members?invite-filled",
   "global:platform-members?invite",
   "global:platform-members?invite-filled",
   "global:platform-members?add-role",

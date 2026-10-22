@@ -36,6 +36,83 @@ const IDENTITY = {
 };
 
 /** `GET /members`: the roster Platform → Members draws. */
+function productMembersView() {
+  const role = (bindingId: string, over: Record<string, unknown> = {}) => ({
+    role: "product_admin",
+    areas: null,
+    source: "grant",
+    bindingId,
+    grantedBy: { name: "Ada Lindqvist" },
+    grantedAt: 1_789_000_000,
+    ...over,
+  });
+  return {
+    product: "djdl",
+    truncated: false,
+    incomplete: false,
+    members: [
+      {
+        memberId: "mbr_kenji",
+        name: "Kenji Mori",
+        email: "kenji@example.com",
+        you: true,
+        roles: [role("b_kenji")],
+      },
+      {
+        memberId: "mbr_lucia",
+        name: "Lucía Ortega",
+        email: "lucia@example.com",
+        you: false,
+        roles: [role("b_lucia", { areas: ["ship", "commerce"] })],
+      },
+      {
+        memberId: "mbr_bart",
+        name: "Bartholomew Featherstonehaugh-Cholmondeley",
+        email:
+          "bartholomew.featherstonehaugh-cholmondeley@a-very-long-company-name.example.com",
+        you: false,
+        roles: [
+          role("b_bart", {
+            areas: ["license", "config", "ship", "signin"],
+            source: "invite",
+          }),
+        ],
+      },
+    ],
+    invites: [
+      {
+        bindingId: "b_marco",
+        email: "marco@example.com",
+        role: "product_admin",
+        areas: ["commerce"],
+        invitedBy: { name: "Kenji Mori" },
+        sentAt: 1_789_980_000,
+        expiresAt: 1_790_500_000,
+      },
+    ],
+    platformRoles: [
+      {
+        memberId: "mbr_ada",
+        name: "Ada Lindqvist",
+        email: "ada@example.com",
+        role: "superadmin",
+        scope: "platform",
+        areas: null,
+        source: "root",
+      },
+      {
+        memberId: "mbr_sam",
+        name: "Sam Okoye",
+        email: "sam@example.com",
+        role: "product_admin",
+        scope: "products:*",
+        areas: ["ship"],
+        source: "grant",
+      },
+    ],
+  };
+}
+
 function membersView() {
   const role = (
     role: string,
@@ -2116,6 +2193,9 @@ export const DATA_ROUTES: Record<string, unknown> = {
   // ST-31.11: Platform → Members. Nine people (a root holder, both admin kinds, a narrowed
   // Product admin, a long name and address) and three invites, one of them for a platform role.
   "/manage/api/members": membersView(),
+  // ST-31.14: Product → Settings → Members (DJDL): Kenji (you), Lucía (two areas), a long name
+  // with a long address and four areas, an invite, and two roles that reach DJDL from above.
+  [`${PROD}/members`]: productMembersView(),
   "/manage/api/platform/operations": operations(),
   "/manage/api/platform/settings": view(),
   "/manage/api/platform/settings/identity.keyEntry.limit/reach": {
