@@ -26,6 +26,7 @@ import { useWriteGate } from "../../../access/useCan.js";
 import { cn } from "../../../../lib/cn.js";
 import { fromSeconds, formatDate } from "../../../../lib/format.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
+import { FillRect } from "../../../../ui/charts/FillRect.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import {
   HOLDER_STATES,
@@ -426,15 +427,29 @@ export function DevicesCell({
       <span className={cn("tabular-nums", full && "text-warning")}>
         {count} of {limit}
       </span>
-      <span aria-hidden className="block h-1 rounded-full bg-border">
-        <span
-          className={cn(
-            "block h-full rounded-full",
-            full ? "bg-warning" : "bg-accent",
-          )}
-          style={{ width: `${Math.round(ratio * 100)}%` }}
+      {/* The 4 px bar draws its share by transform like every meter (FillRect, S-23 §6.1). */}
+      <svg
+        aria-hidden
+        width="100%"
+        height="4"
+        className="block forced-color-adjust-none"
+      >
+        <rect
+          width="100%"
+          height="4"
+          rx="2"
+          className="fill-border forced-colors:fill-[Canvas] forced-colors:stroke-[CanvasText]"
         />
-      </span>
+        <FillRect
+          ratio={ratio}
+          height={4}
+          rx={2}
+          className={cn(
+            full ? "fill-warning" : "fill-accent",
+            "forced-colors:fill-[Highlight]",
+          )}
+        />
+      </svg>
     </span>
   );
 }

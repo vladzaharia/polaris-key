@@ -278,8 +278,12 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
       const page = await open(theme, "#/p/djdl/license/licenses");
       const table = page.getByRole("table", { name: "Licenses" });
       await table.waitFor();
-      await table.getByText("Waiting for sam@reyes.fm").waitFor();
-      await table.getByText("anyone with the key").first().waitFor();
+      // CX-LIST: a waiting holder is the name over the email, with a Waiting pill and the
+      // invite date; a floating one is a Floating pill.
+      const sam = table.getByRole("row", { name: /Sam Reyes/ });
+      await sam.getByText("sam@reyes.fm").waitFor();
+      await sam.getByText("Waiting", { exact: true }).waitFor();
+      await table.getByText("Floating", { exact: true }).first().waitFor();
       await table
         .getByRole("link", { name: "Steam keys, October" })
         .first()
@@ -295,10 +299,16 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
         .locator("[data-page-title]", { hasText: "Floating license" })
         .first()
         .waitFor();
-      await page.getByText("Not in anyone's account").waitFor();
-      await page.getByRole("link", { name: "Steam keys, October" }).waitFor();
+      // CX-LREC: the holder variant of the Status tab is the Anyone with the key card.
+      await page.getByRole("region", { name: "Anyone with the key" }).waitFor();
+      // The Key batch card names the batch and links to it.
+      await page.getByText("Steam keys, October").first().waitFor();
+      await page.getByRole("link", { name: "Open batch" }).waitFor();
       await shot(page, `license-holders-floating-record-${theme}`);
-      await page.getByRole("button", { name: "Assign…" }).first().click();
+      await page
+        .getByRole("button", { name: "Assign to a person" })
+        .first()
+        .click();
       await page.getByRole("dialog", { name: "Assign license" }).waitFor();
       await page
         .getByRole("textbox", { name: /^Email/ })
@@ -445,7 +455,10 @@ describe("Licence holder surfaces under the Worker's CSP", () => {
           .locator("[data-page-title]", { hasText: "Floating license" })
           .first()
           .waitFor();
-        await page.getByRole("button", { name: "Assign…" }).first().click();
+        await page
+          .getByRole("button", { name: "Assign to a person" })
+          .first()
+          .click();
         const dialog = page.getByRole("dialog", { name: "Assign license" });
         await dialog.waitFor();
         await dialog

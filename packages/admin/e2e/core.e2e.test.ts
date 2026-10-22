@@ -283,11 +283,11 @@ describe("Core pages under the Worker's CSP", () => {
   // ST-41 F4: a link that names a feature lands on its card, after the shell's own scroll reset.
   it("an Overview feature link scrolls to its card and focuses its heading", async () => {
     const page = await open("dark", "#/p/djdl", { width: 1440, height: 700 });
-    await page.getByTestId("integration-card").waitFor();
-    await page
-      .getByTestId("integration-card")
-      .getByRole("link", { name: /Updates/ })
-      .click();
+    // CX-OVW: the Integration steps rail offers the drop-in kit on the first feature waiting
+    // on the app (the fixture's Updates), and that link lands on the feature's card.
+    const steps = page.getByRole("list", { name: "Integration steps" });
+    await steps.waitFor();
+    await steps.getByRole("link", { name: "Updates drop-in kit" }).click();
     const heading = page.getByRole("heading", { level: 2, name: "Updates" });
     await heading.waitFor();
     await page.waitForFunction(

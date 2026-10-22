@@ -1,4 +1,5 @@
 import type { Page } from "playwright";
+import { atRest } from "./atRest.js";
 import { h1, type Override } from "./portalHarness.js";
 import { REQUEST_STATES } from "./portalRequestStates.js";
 import {
@@ -1720,6 +1721,9 @@ export const SHIPPED: ShippedState[] = [
           name: "Schedule your Polaris Locker account for deletion?",
         })
         .waitFor();
+      // At 390 px the dialog is a bottom sheet that slides up (pk-sheet): the baseline is the
+      // sheet at rest, not a frame of its rise (CI's fast runner caught it 1-2 px low).
+      await atRest(p);
     },
   },
   // §4.30 Account → Profile (PX-22).
