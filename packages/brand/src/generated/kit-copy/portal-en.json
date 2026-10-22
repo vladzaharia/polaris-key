@@ -555,7 +555,7 @@
   "locker.shell.helpLink": "Help",
   "locker.shell.privacy": "Privacy",
   "locker.missing.title": "Missing a license?",
-  "locker.missing.steamTitle": "Bought on Steam? Open the app from Steam and choose Restore purchase.",
+  "locker.missing.steamTitle": "On Steam? Restore in the app.",
   "locker.notFound.title": "Not in your library",
   "locker.notFound.heading": "That product isn't in your library",
   "locker.notFound.body": "You're signed in as {email}. If you got it with another email or a license key, add it to this account.",

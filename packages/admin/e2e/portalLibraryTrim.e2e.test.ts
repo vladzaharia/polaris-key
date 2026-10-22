@@ -190,11 +190,11 @@ describe("the Library shell trim", () => {
       const b = (await bar.boundingBox())!;
       expect(Math.round(s.y + s.height)).toBeLessThanOrEqual(Math.round(b.y));
       expect((await toggle.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-      expect(await strip.locator("a").count()).toBe(2);
+      expect(await strip.locator("a").count()).toBe(1);
       expect(await strip.locator("a").first().isVisible()).toBe(false);
       const closedTop = s.y;
       await toggle.click();
-      const link = strip.getByRole("link", { name: "Connect Steam" });
+      const link = strip.getByRole("link", { name: "Add it in Sign-in methods" });
       await link.waitFor();
       const open = (await strip.boundingBox())!;
       // The ways open above the button, and the strip grows upward.
