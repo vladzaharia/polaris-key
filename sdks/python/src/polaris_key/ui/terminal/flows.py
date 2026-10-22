@@ -348,6 +348,10 @@ def activate(client: Any, t: Terminal, key: Optional[str], *, reason: Optional[S
             lines = screens._frame(k, verb, k.step("done", [k.t("part.keyField.label")]), [k.t("cli.nothingChanged", "muted")])
             return _cancelled(t, lines, {"kind": "cancelled"})
     verdict = parse_key(key, final=True)
+    if verdict.state in ("empty", "malformed", "cut-short"):
+        # Refused here, before any request: exit 1 with the kind, as the Node kit.
+        kind = "cut-short" if verdict.state == "cut-short" else "malformed"
+        return Outcome(EXIT.failed, screens.key_refused(k, key, verdict, verb), {"kind": kind, "code": None})
     while True:
         result = _busy(t, lambda: client.license.activate_with_key(key), lambda f: screens.key_entry(k, key, verdict, busy=True, frame=f, reason=reason))
         view = activation_view(result, key)

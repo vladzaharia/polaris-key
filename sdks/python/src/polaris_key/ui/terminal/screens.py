@@ -328,6 +328,16 @@ def key_entry(
     return _frame(k, verb, body, hints, bool(hints))
 
 
+def key_refused(k: Kit, key: str, verdict: KeyVerdict, verb: str = "activate") -> Lines:
+    """A key refused on this machine, before any request: the answered key row, then the verdict's
+    own sentence (``Keys start with pkey_`` or the cut-short one), as the Node kit draws it."""
+    if verdict.state == "cut-short":
+        row = k.step("warn", [k.t("part.keyField.cutShort", "strong", prefix=verdict.prefix, used=verdict.used, limit=verdict.limit)])
+    else:
+        row = k.step("fail", [k.t("part.keyField.empty" if verdict.state == "empty" else "part.keyField.malformed", "strong")])
+    return _frame(k, verb, _key_done(k, key) + row, [])
+
+
 def _slug_of(k: Kit) -> Optional[str]:
     return k.slug
 

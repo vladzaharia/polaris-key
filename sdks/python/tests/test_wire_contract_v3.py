@@ -1283,11 +1283,11 @@ def test_r12_13_argparse_activate_reads_the_env_var(monkeypatch) -> None:
     parser = argparse.ArgumentParser(prog="host")
     sub = parser.add_subparsers(dest="command", required=True)
     register_argparse(sub, client_factory=lambda opts: _Fake(), verbs="all")
-    monkeypatch.setenv(cli_core.KEY_ENV_VAR, "PKEY-FROM-ENV")
+    monkeypatch.setenv(cli_core.KEY_ENV_VAR, "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv")
     args = parser.parse_args(["activate", "--product", PRODUCT])
     assert args.key is None, "the positional is optional now"
     assert args.func(args) == 0
-    assert seen["key"] == "PKEY-FROM-ENV"
+    assert seen["key"] == "pkey_djdl_AbCdEfGhIjKlMnOpQrStUv"
     assert seen["closed"] is True
 
 

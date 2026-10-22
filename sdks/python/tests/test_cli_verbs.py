@@ -225,3 +225,24 @@ def test_usage_results_carry_usage_and_message_like_the_node_kit(capsys) -> None
     r = json.loads(out.strip().splitlines()[-1])
     assert code == 2 and r["error"] == "usage"
     assert r["usage"].endswith(" activate") and r["message"]
+
+
+def test_a_malformed_key_is_refused_locally_without_a_request(capsys) -> None:
+    """Keys start with pkey_: exit 1 with the kit's sentence, as the Node kit, and no request."""
+    hits: list = []
+    base = _worker()
+
+    def spy(r: httpx.Request) -> httpx.Response:
+        hits.append(r.url.path)
+        return base(r)
+
+    def factory(opts: core.ClientOptions):
+        return make_client(spy, expected_services=["license", "config"])
+
+    code, out = _argparse(["activate", "--product", PRODUCT, "not-a-key"], factory, capsys)
+    assert code == 1 and C("part.keyField.malformed") in out and "Keys start with pkey_" in out
+    assert not any("activate" in p for p in hits)
+    code, out = _argparse(["activate", "--product", PRODUCT, "--json", "not-a-key"], factory, capsys)
+    r = json.loads(out.strip().splitlines()[-1])
+    assert code == 1 and r["kind"] == "malformed" and r["code"] is None
+    assert "not-a-key" not in out
