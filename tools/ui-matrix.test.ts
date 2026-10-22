@@ -928,8 +928,7 @@ describe("the cli family (plans/UK-51.md)", () => {
   it("draws no refusal as a cross", () => {
     const crossed = cli.outcomes.filter(
       (r) =>
-        r.expect.mark === "fail" &&
-        !["network", "sign-in-cancelled"].includes(r.input.situation),
+        r.expect.mark === "fail" && !["network"].includes(r.input.situation),
     );
     expect(crossed).toEqual([]);
   });

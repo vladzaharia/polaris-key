@@ -162,7 +162,7 @@ def test_an_esc_typed_005_seconds_after_launch_is_honoured(answers: bool) -> Non
         # counted. The wait itself only guards against a hang.
         code = run.wait_exit(20)
         text = "\n".join(r for r, _ in run.term.all())
-        assert "Sign-in canceled" in text and "Code expired" not in text, text
+        assert "Nothing changed." in text and "✗" not in text and "Code expired" not in text, text
         assert code == 1
         assert run.osc11_seen and run.osc11_at is not None and run.exited_at is not None
         assert run.exited_at - run.osc11_at < 3

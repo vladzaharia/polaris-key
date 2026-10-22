@@ -9403,6 +9403,66 @@
         }
       }
     },
+    "cli.status.portal": {
+      "comment": "Terminal status and gate: the line over the product page link, for a refusal no command fixes (version too new, channel not entitled). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next step on the %1$@ page:"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nächster Schritt auf der Seite von %1$@:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prochaine étape sur la page de %1$@ :"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiente paso en la página de %1$@:"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próximo passo na página de %1$@:"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prossimo passo nella pagina di %1$@:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の手順は%1$@のページにあります："
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 단계는 %1$@ 페이지에서 확인하세요:"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一步请见 %1$@ 的页面："
+          }
+        }
+      }
+    },
     "cli.status.seatsOf": {
       "comment": "Terminal status: devices in use out of the license's limit, like '2 of 3'. Arguments: 1=used, 2=limit.",
       "extractionState": "manual",

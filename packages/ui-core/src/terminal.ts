@@ -584,6 +584,7 @@ export type UpdatePromptView = View<
   | "store"
   | "platform"
   | "ready"
+  | "revoked-required-content"
   | "up-to-date"
 > & {
   version: string | null;
@@ -637,6 +638,14 @@ export function updateView(d: UpdateDecision): UpdatePromptView {
         version: d.release.version,
       };
     case "blocked":
+      // Required content was withdrawn: a refusal whose fix is the update (DL6).
+      if (d.reason === "revoked-content")
+        return {
+          ...base,
+          state: "revoked-required-content",
+          copy: ["core.codes.pack-revoked.title", "update.revokedContent"],
+          version: null,
+        };
       return {
         ...base,
         state: "blocked",

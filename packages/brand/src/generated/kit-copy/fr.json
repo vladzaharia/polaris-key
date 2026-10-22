@@ -566,6 +566,7 @@
   "cli.status.offlineUntil": "jusqu’au {date}",
   "cli.status.version": "Version",
   "cli.status.fixes": "Pour continuer à utiliser {product} :",
+  "cli.status.portal": "Prochaine étape sur la page de {product} :",
   "cli.fix.signIn": "Utiliser la licence de votre compte",
   "cli.logout.done": "Déconnecté de {product} sur cet appareil.",
   "cli.deactivate.done": "{product} n’utilise plus votre licence sur cet appareil. Sa place est libre.",

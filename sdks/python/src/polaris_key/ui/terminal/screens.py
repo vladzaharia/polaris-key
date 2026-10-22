@@ -169,6 +169,11 @@ def link_row(k: Kit, url: str) -> Lines:
     return [replace(ln, keep=True) for ln in k.body([k.link(url)])]
 
 
+def portal_rows(k: Kit, url: str) -> Lines:
+    """The product page as a labelled link: the line says what the page is for, the link follows."""
+    return k.body([k.t("cli.status.portal", product=k.product)]) + link_row(k, url)
+
+
 def contact_row(k: Kit) -> Lines:
     """``Contact {developer}``: where the kit knows no product page to link to."""
     return k.body([k.t("status.contact", developer=k.identity.developer or k.product)])
@@ -216,7 +221,7 @@ def gate(k: Kit, v: GateView, verb: str = "status", portal: Optional[str] = None
             "channel-not-entitled": [],
         }[v.state]
         if v.state in ("version-too-new", "channel-not-entitled"):
-            body += link_row(k, portal) if portal else contact_row(k)
+            body += portal_rows(k, portal) if portal else contact_row(k)
         if fixes:
             body += _gap(k)
             body += k.body([k.t("cli.status.fixes", product=k.product)])
@@ -450,6 +455,9 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
         who = bind_parens(k.units("signin.cli.signedIn", "strong", name=v.name, email=v.email)) if (v.name and v.email) else [k.t("account.holder", name=v.name or v.email or k.product)]
         body += k.step("ok", who)
         end = [k.t("signin.cli.closeTab", "muted")] if not v.headless else []
+    elif v.state == "cancelled":
+        # Cancelling is not an error (DL7): the block closes on a neutral line, no ✗ and no screen.
+        end = [k.t("cli.nothingChanged", "muted")]
     else:
         # One result block: the title and the command that starts over, nothing that restates it.
         code = v.code or ("cancelled" if v.state == "cancelled" else "sign-in-failed")
@@ -701,8 +709,8 @@ def update(k: Kit, v: UpdateView, verb: str = "update") -> Lines:
         body += _gap(k)
         body += _fixes(k, [("update apply", "common.tryAgain")])
     elif v.state == "cancelled":
-        body += k.step("fail", [k.t("cli.update.cancelled", "strong")])
-        body += k.body([k.t("cli.update.nothingInstalled")])
+        # Cancelling is not an error (DL7): one neutral closing line, no ✗.
+        end = [k.t("cli.update.nothingInstalled", "muted")]
     else:
         if v.state == "mandatory":
             body += k.step("warn", [k.t("update.mandatoryTitle", "strong", product=k.inline_product)])

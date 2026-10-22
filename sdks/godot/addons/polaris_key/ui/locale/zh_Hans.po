@@ -3452,6 +3452,11 @@ msgstr "版本"
 msgid "cli.status.fixes"
 msgstr "要继续使用{product}："
 
+#. Next step on the {product} page:
+#. Terminal status and gate: the line over the product page link, for a refusal no command fixes (version too new, channel not entitled). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "cli.status.portal"
+msgstr "下一步请见 {product} 的页面："
+
 #. Use the license on your account
 #. Terminal status: what the login command does as a fix for a blocked license.
 msgid "cli.fix.signIn"

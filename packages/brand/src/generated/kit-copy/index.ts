@@ -580,6 +580,7 @@ export type KitCopyKey =
   | "cli.status.offlineUntil"
   | "cli.status.version"
   | "cli.status.fixes"
+  | "cli.status.portal"
   | "cli.fix.signIn"
   | "cli.logout.done"
   | "cli.deactivate.done"

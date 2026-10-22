@@ -554,7 +554,7 @@ export async function statusFlow(
       // A version above the range and a missing channel are fixed on the product's page, not by
       // any command: the link is the way out (never a row that sends the person back here).
       if (keyOnly || view.link === "portal")
-        rows.push(linkRow(portalUrl(client)));
+        rows.push(...portalRows(ctx, client));
       if (shown.length)
         rows.push(
           ...gap(ctx),
@@ -658,6 +658,17 @@ export const linkRow = (url: string): RailRow => ({
   ...textRow([linkSpan(url)]),
   keep: true,
 });
+
+/** The product page as a labelled link: the line says what the page is for, the link follows. */
+export function portalRows(
+  ctx: KitContext,
+  client: PolarisKeyClient,
+): RailRow[] {
+  return [
+    textRow(ctx.copy.t("cli.status.portal", { product: ctx.product.name })),
+    linkRow(portalUrl(client)),
+  ];
+}
 
 /** Rows for an activation outcome other than the device limit. */
 function outcomeRows(
@@ -1353,8 +1364,8 @@ export async function loginFlow(
     ]);
 
   if (r === "cancelled") {
-    const error = codeError(ctx, "cancelled");
-    finish([stepRow("fail", error.title), ...gap(ctx), ...again(), endRow()]);
+    // Cancelling is not an error (DL7): the block closes on a neutral line, no ✗ and no screen.
+    finish([endRow(t("cli.nothingChanged"))]);
     if (interrupt) return interrupted({ state: "cancelled" });
     // Esc: cancelled, exit 1 (the Python kit's `{"state": "cancelled"}`).
     return {
@@ -1987,6 +1998,25 @@ export async function updateCheckFlow(
           ),
         );
         break;
+      case "revoked-required-content":
+        // A refusal with its fix: ▲ and the command that installs the update (DL6).
+        rows.push(
+          ...problemRows(
+            "warn",
+            t("core.codes.pack-revoked.title"),
+            t("update.revokedContent", { product }),
+          ),
+          ...(offered("update apply")
+            ? [
+                ...gap(ctx),
+                ...fixRows(ctx, [
+                  { verb: "update apply", key: "update.install" },
+                ]),
+              ]
+            : []),
+          endRow(),
+        );
+        break;
       case "blocked":
         rows.push(
           ...problemRows(
@@ -2355,11 +2385,8 @@ export async function updateApplyFlow(
     abort.abort();
     await keyLoop;
     if (cancelled) {
-      finish([
-        stepRow("fail", t("cli.update.cancelled")),
-        textRow(t("cli.update.nothingInstalled")),
-        endRow(),
-      ]);
+      // Cancelling is not an error (DL7): one neutral closing line, no ✗.
+      finish([endRow(t("cli.update.nothingInstalled"))]);
       if (interrupt) return interrupted({ state: "cancelled", ...fields });
       return {
         exitCode: EXIT.failed,

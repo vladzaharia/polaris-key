@@ -179,7 +179,7 @@ def test_escape_cancels_sign_in() -> None:
     t.kit.env = t.kit.env.but(headless=True)
     out = flows.sign_in(_SignInClient(ident), t)
     assert out.code == 1 and out.data == {"state": "cancelled"}
-    assert C("core.codes.cancelled.title") in "\n".join(out.text)
+    assert C("cli.nothingChanged") in "\n".join(out.text) and "✗" not in "\n".join(out.text)  # not an error (DL7)
 
 
 def test_sign_in_json_is_pending_then_result_and_never_prompts() -> None:

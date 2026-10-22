@@ -15,8 +15,7 @@ import {
   activateFlow,
   busyAfter,
   ensureDiscovery,
-  linkRow,
-  portalUrl,
+  portalRows,
 } from "./flows.js";
 import { envelope, EXIT, jsonLine } from "./json.js";
 import { endRow, fixRows, gap, problemRows, textRow } from "./parts.js";
@@ -132,7 +131,7 @@ function linkRows(
   client: PolarisKeyClient | undefined,
   link: "portal" | "contact",
 ): RailRow[] {
-  if (link === "portal" && client) return [linkRow(portalUrl(client))];
+  if (link === "portal" && client) return portalRows(ctx, client);
   return [
     textRow(
       ctx.copy.t("status.contact", {

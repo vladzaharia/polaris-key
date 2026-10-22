@@ -39,6 +39,18 @@ def test_a_sign_in_that_could_not_start_offers_the_way_to_start_again() -> None:
     assert "tidewater login" in text and "Sign in again" in text
 
 
-@pytest.mark.parametrize("name", ["sign-in-handoff-expired", "sign-in-handoff-denied", "sign-in-handoff-cancelled"])
+@pytest.mark.parametrize("name", ["sign-in-handoff-expired", "sign-in-handoff-denied"])
 def test_every_ending_of_a_sign_in_keeps_the_action_that_starts_again(name: str) -> None:
     assert "Sign in again" in _plain(name)
+
+
+def test_cancelling_is_not_an_error_so_there_is_no_cross_and_no_way_to_start_again() -> None:
+    text = _plain("sign-in-handoff-cancelled")
+    assert "✗" not in text and "Sign in again" not in text
+    assert text.rstrip().endswith("└  Nothing changed.")
+
+
+@pytest.mark.parametrize("name", ["status-screen-version-too-new", "status-screen-channel-not-entitled"])
+def test_a_refusal_no_command_fixes_labels_the_product_page(name: str) -> None:
+    text = _plain(name)
+    assert "Next step on the" in text and "page:" in text

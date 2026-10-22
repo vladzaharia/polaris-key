@@ -1,35 +1,41 @@
 #### truecolor-80-dark
 [33m▲[39m  [1mYour license doesn't include export[22m
+[2m│[22m  Next step on the Tidewater page:
 [2m│[22m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[24m]8;;\
 [2m│[22m
 [2m└[22m  [1mtidewater status[22m   Show your license, devices and offline time
 
 #### truecolor-80-light
 [33m▲[39m  [1mYour license doesn't include export[22m
+[2m│[22m  Next step on the Tidewater page:
 [2m│[22m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[24m]8;;\
 [2m│[22m
 [2m└[22m  [1mtidewater status[22m   Show your license, devices and offline time
 
 #### ansi16-80
 [33m▲[39m  [1mYour license doesn't include export[22m
+[2m│[22m  Next step on the Tidewater page:
 [2m│[22m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[24m]8;;\
 [2m│[22m
 [2m└[22m  [1mtidewater status[22m   Show your license, devices and offline time
 
 #### no-color-80
 ▲  [1mYour license doesn't include export[22m
+│  Next step on the Tidewater page:
 │  ]8;;https://polaris.locker/activate?product=tidewater\polaris.locker/activate?product=tidewater]8;;\
 │
 └  [1mtidewater status[22m   Show your license, devices and offline time
 
 #### ascii-80
 [33m![39m  [1mYour license doesn't include export[22m
+[2m|[22m  Next step on the Tidewater page:
 [2m|[22m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[24m]8;;\
 [2m|[22m
 [2m`[22m  [1mtidewater status[22m   Show your license, devices and offline time
 
 #### truecolor-60-dark
 [33m▲[39m  [1mYour license doesn't include export[22m
+[2m│[22m  Next step on the Tidewater page:
 [2m│[22m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[24m]8;;\
 [2m│[22m
 [2m│[22m  [1mtidewater status[22m
@@ -37,6 +43,7 @@
 
 #### truecolor-60-light
 [33m▲[39m  [1mYour license doesn't include export[22m
+[2m│[22m  Next step on the Tidewater page:
 [2m│[22m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[24m]8;;\
 [2m│[22m
 [2m│[22m  [1mtidewater status[22m
@@ -44,6 +51,7 @@
 
 #### ansi16-60
 [33m▲[39m  [1mYour license doesn't include export[22m
+[2m│[22m  Next step on the Tidewater page:
 [2m│[22m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[24m]8;;\
 [2m│[22m
 [2m│[22m  [1mtidewater status[22m
@@ -51,6 +59,7 @@
 
 #### no-color-60
 ▲  [1mYour license doesn't include export[22m
+│  Next step on the Tidewater page:
 │  ]8;;https://polaris.locker/activate?product=tidewater\polaris.locker/activate?product=tidewater]8;;\
 │
 │  [1mtidewater status[22m
@@ -58,6 +67,7 @@
 
 #### ascii-60
 [33m![39m  [1mYour license doesn't include export[22m
+[2m|[22m  Next step on the Tidewater page:
 [2m|[22m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate?product=tidewater[24m]8;;\
 [2m|[22m
 [2m|[22m  [1mtidewater status[22m
@@ -65,6 +75,7 @@
 
 #### truecolor-40-dark
 [33m▲[39m  [1mYour license doesn't include export[22m
+[2m│[22m  Next step on the Tidewater page:
 [2m│[22m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate[24m]8;;\
 [2m│[22m  ]8;;https://polaris.locker/activate?product=tidewater\[4m?product=tidewater[24m]8;;\
 [2m│[22m
@@ -74,6 +85,7 @@
 
 #### no-color-40
 ▲  [1mYour license doesn't include export[22m
+│  Next step on the Tidewater page:
 │  ]8;;https://polaris.locker/activate?product=tidewater\polaris.locker/activate]8;;\
 │  ]8;;https://polaris.locker/activate?product=tidewater\?product=tidewater]8;;\
 │
@@ -84,6 +96,8 @@
 #### truecolor-32-dark
 [33m▲[39m  [1mYour license doesn't[22m
 [2m│[22m  [1minclude export[22m
+[2m│[22m  Next step on the
+[2m│[22m  Tidewater page:
 [2m│[22m  ]8;;https://polaris.locker/activate?product=tidewater\[4mpolaris.locker/activate[24m]8;;\
 [2m│[22m  ]8;;https://polaris.locker/activate?product=tidewater\[4m?product=tidewater[24m]8;;\
 [2m│[22m
@@ -94,6 +108,8 @@
 #### no-color-32
 ▲  [1mYour license doesn't[22m
 │  [1minclude export[22m
+│  Next step on the
+│  Tidewater page:
 │  ]8;;https://polaris.locker/activate?product=tidewater\polaris.locker/activate]8;;\
 │  ]8;;https://polaris.locker/activate?product=tidewater\?product=tidewater]8;;\
 │

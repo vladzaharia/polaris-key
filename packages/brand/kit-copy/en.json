@@ -2851,6 +2851,11 @@
       "role": "label",
       "note": "Terminal status: the heading over the commands that fix a blocked license."
     },
+    "cli.status.portal": {
+      "value": "Next step on the {product} page:",
+      "role": "label",
+      "note": "Terminal status and gate: the line over the product page link, for a refusal no command fixes (version too new, channel not entitled). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
     "cli.fix.signIn": {
       "value": "Use the license on your account",
       "role": "body",

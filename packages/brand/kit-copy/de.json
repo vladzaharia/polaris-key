@@ -573,6 +573,7 @@
     "cli.status.offlineUntil": "bis {date}",
     "cli.status.version": "Version",
     "cli.status.fixes": "Um {product} weiter zu verwenden:",
+    "cli.status.portal": "Nächster Schritt auf der Seite von {product}:",
     "cli.fix.signIn": "Die Lizenz Ihres Kontos verwenden",
     "cli.logout.done": "Auf diesem Gerät von {product} abgemeldet.",
     "cli.deactivate.done": "{product} verwendet Ihre Lizenz auf diesem Gerät nicht mehr. Der Platz ist frei.",
