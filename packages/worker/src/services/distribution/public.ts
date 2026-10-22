@@ -56,6 +56,11 @@ export {
   storesMissingAccount,
 } from "./attentionFacts.js";
 export {
+  productPlatforms,
+  type ProductPlatform,
+  type ProductPlatforms,
+} from "./facts.js";
+export {
   channelFacts,
   type DeliveryAttention,
   type DeliveryFacet,

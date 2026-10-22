@@ -1463,6 +1463,68 @@ export interface PlatformReadyDto {
   total: number;
 }
 
+/** A-20.4: a channel's delivery state. `setting_up` is reserved for a later slice. */
+export type ChannelDeliveryState =
+  | "not_set_up"
+  | "ready"
+  | "live"
+  | "attention";
+
+export type ChannelAttention =
+  | { code: "out_of_scope" }
+  | {
+      code: "no_fitting_build";
+      reasons: ("format" | "arch" | "unknown-format")[];
+    }
+  | { code: "credential_expiring" }
+  | { code: "credential_missing" };
+
+export interface ProductPlatformFact {
+  platform: string;
+  arches: string[];
+  formats: string[];
+  sources: ("builds" | "declared" | "outlet" | "planned")[];
+}
+
+export interface ChannelCommerceFacet {
+  state: "not_set_up" | "ready";
+  reason: "no_settings" | "no_credential" | "commerce_off" | null;
+}
+
+/** One channel of `GET …/distribution/channels`. Credential facts are booleans and codes only. */
+export interface ChannelRow {
+  id: string;
+  label: string;
+  inScope: boolean;
+  declared: boolean;
+  oneClick: boolean;
+  notUsing: boolean;
+  delivery: {
+    state: ChannelDeliveryState;
+    attention: ChannelAttention[];
+    platforms: { platform: string; arches: string[] }[];
+  };
+  commerce: ChannelCommerceFacet | null;
+}
+
+export interface ChannelsView {
+  product: string;
+  now: number;
+  platforms: ProductPlatformFact[];
+  kinds: string[];
+  channels: ChannelRow[];
+}
+
+/** The compact channel rows on the one-product read (`ProductDetail.channels`). */
+export interface ProductChannelSummary {
+  id: string;
+  label: string;
+  delivery: ChannelDeliveryState;
+  commerce: "not_set_up" | "ready" | null;
+  oneClick: boolean;
+  notUsing: boolean;
+}
+
 export interface ProductDetail {
   slug: string;
   name: string;
@@ -1478,6 +1540,10 @@ export interface ProductDetail {
   /** The operator-owned `packageFeeds` sub-capability (F-11): Distribution → Package feeds shows
    *  only while it is on. */
   packageFeeds?: boolean;
+  /** A-20.4: what the product can ship to. One-product read only (not the list). */
+  platforms?: ProductPlatformFact[];
+  /** A-20.4: the channels it can use, compact. One-product read only. */
+  channels?: ProductChannelSummary[];
   signingKid: string;
   releaseSource?: ProductReleaseSource;
   signing?: ProductSigningBundle | null;
@@ -6548,6 +6614,8 @@ const rawApi = {
     ),
 
   /** ST-40: per enabled feature, its prerequisites and where it is Verified. */
+  channels: (slug: string) =>
+    call<ChannelsView>(`${p(slug)}/distribution/channels`),
   integration: (slug: string) =>
     call<IntegrationView>(`${p(slug)}/integration`),
 

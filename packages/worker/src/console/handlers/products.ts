@@ -35,6 +35,7 @@ import {
   stmtRetireOrRevokeKey,
   stmtsActivateKey,
 } from "../../keyTransitions.js";
+import { channelsRead } from "./channels.js";
 import { Catalog } from "@polaris-key/catalog";
 import {
   MAX_WEB_ORIGINS,
@@ -320,7 +321,16 @@ export async function handleProducts(
   const row = await getProduct(db, slug);
   if (!row) return notFound();
   if (req.method === "GET")
-    return adminJson({ product: await productView(env, db, row, now) });
+    return adminJson({
+      product: await productView(
+        env,
+        db,
+        row,
+        now,
+        undefined,
+        (await channelsRead(env, db, slug, now)) ?? undefined,
+      ),
+    });
   if (req.method === "PATCH") {
     const body = await readBody(req);
     // F-03: the system product keeps its name (it is the platform's, and the feeds and the

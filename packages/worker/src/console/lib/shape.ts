@@ -28,6 +28,7 @@ import {
   type ProductPresentationView,
 } from "./presentation.js";
 import { parseJsonStringList } from "../../platform/json.js";
+import { compactChannels, type ChannelsView } from "../handlers/channels.js";
 import { parseWebOrigins } from "../../core/cors.js";
 
 interface RequiredSecretStatus {
@@ -76,6 +77,8 @@ export async function productView(
   /** Every product's icon, read once by the list (`productIcons(env, db)`); one product's
    *  own read otherwise. */
   icons?: Map<string, ProductIconView>,
+  /** A-20.4: the channels read, passed by the one-product read only (never by the list). */
+  channels?: ChannelsView,
 ): Promise<Record<string, unknown>> {
   const activeKey = await loadPublicSigningKey(db, p.slug);
   const signingKid = activeKey?.kid ?? p.signing_kid;
@@ -135,6 +138,14 @@ export async function productView(
     ...(await claimsView(db, p, now)),
     createdAt: p.created_at,
     modifiedAt: p.modified_at,
+    ...(channels
+      ? {
+          // A-20.4: what the product can ship to and the compact channel rows (`…/distribution/
+          // channels` has the full facets).
+          platforms: channels.platforms,
+          channels: compactChannels(channels),
+        }
+      : {}),
   };
 }
 
