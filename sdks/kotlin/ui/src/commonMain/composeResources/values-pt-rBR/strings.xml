@@ -1118,6 +1118,8 @@
     <string name="signin_approve_ask">Aprovar um novo dispositivo?</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_warning">Só aprove se foi você que iniciou isto, em um dispositivo à sua frente. Ninguém do Polaris Locker nem nenhum desenvolvedor vai pedir isso a você.</string>
+    <!-- Device approval page (SIGN-IN.md §3.13): always shown above the buttons. Polaris Locker never translated. -->
+    <string name="signin_approve_checkDevice">Confira se o seu dispositivo mostra este código.</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_approve">Aprovar e conectar</string>
     <string name="signin_approve_approve__macos">Aprovar e conectar</string>

@@ -492,6 +492,7 @@ export type KitCopyKey =
   | "signin.approve.waiting"
   | "signin.approve.ask"
   | "signin.approve.warning"
+  | "signin.approve.checkDevice"
   | "signin.approve.approve"
   | "signin.approve.deny"
   | "signin.approve.denied"

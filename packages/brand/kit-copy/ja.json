@@ -485,6 +485,7 @@
     "signin.approve.waiting": "もう一方のデバイスで承認されるのを待っています…",
     "signin.approve.ask": "新しいデバイスを承認しますか？",
     "signin.approve.warning": "ご自身が目の前のデバイスで開始した場合にのみ承認してください。Polaris Lockerや開発者がこれを求めることは絶対にありません。",
+    "signin.approve.checkDevice": "お使いのデバイスにこのコードが表示されているか確認してください。",
     "signin.approve.approve": "承認してサインイン",
     "signin.approve.deny": "拒否",
     "signin.approve.denied": "このリクエストは拒否されました。別の方法でサインインしてください。",

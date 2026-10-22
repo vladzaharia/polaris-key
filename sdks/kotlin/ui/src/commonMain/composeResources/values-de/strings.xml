@@ -1109,6 +1109,8 @@
     <string name="signin_approve_ask">Neues Gerät bestätigen?</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_warning">Bestätigen Sie nur, wenn Sie dies selbst auf einem Gerät vor Ihnen gestartet haben. Niemand von Polaris Locker oder einem Entwickler wird Sie jemals danach fragen.</string>
+    <!-- Device approval page (SIGN-IN.md §3.13): always shown above the buttons. Polaris Locker never translated. -->
+    <string name="signin_approve_checkDevice">Prüfen Sie, ob Ihr Gerät diesen Code anzeigt.</string>
     <!-- Sign in with another device (SIGN-IN.md §3.11). -->
     <string name="signin_approve_approve">Bestätigen und anmelden</string>
     <string name="signin_approve_approve__macos">Bestätigen und anmelden</string>

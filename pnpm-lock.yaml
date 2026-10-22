@@ -819,6 +819,9 @@ importers:
       better-sqlite3:
         specifier: ^11.8.0
         version: 11.10.0
+      playwright:
+        specifier: 1.63.0
+        version: 1.63.0
       wrangler:
         specifier: 4.116.0
         version: 4.116.0(@cloudflare/workers-types@4.20260623.1)(@types/node@22.20.5)

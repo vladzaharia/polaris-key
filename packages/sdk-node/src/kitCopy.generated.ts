@@ -577,6 +577,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.ask": "Approve a new device?",
     "signin.approve.warning":
       "Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Locker or a developer will ever ask you for this.",
+    "signin.approve.checkDevice": "Check that your device shows this code.",
     "signin.approve.approve": "Approve and sign it in",
     "signin.approve.deny": "Deny",
     "signin.approve.denied":
@@ -2140,6 +2141,8 @@ export const KIT_COPY: Readonly<
     "signin.approve.ask": "Neues Gerät bestätigen?",
     "signin.approve.warning":
       "Bestätigen Sie nur, wenn Sie dies selbst auf einem Gerät vor Ihnen gestartet haben. Niemand von Polaris Locker oder einem Entwickler wird Sie jemals danach fragen.",
+    "signin.approve.checkDevice":
+      "Prüfen Sie, ob Ihr Gerät diesen Code anzeigt.",
     "signin.approve.approve": "Bestätigen und anmelden",
     "signin.approve.deny": "Ablehnen",
     "signin.approve.denied":
@@ -3758,6 +3761,8 @@ export const KIT_COPY: Readonly<
     "signin.approve.ask": "Approuver un nouvel appareil ?",
     "signin.approve.warning":
       "N’approuvez que si vous êtes à l’origine de cette demande, sur un appareil qui se trouve devant vous. Personne chez Polaris Locker ni aucun développeur ne vous le demandera jamais.",
+    "signin.approve.checkDevice":
+      "Vérifiez que votre appareil affiche ce code.",
     "signin.approve.approve": "Approuver et connecter",
     "signin.approve.deny": "Refuser",
     "signin.approve.denied":
@@ -5366,6 +5371,8 @@ export const KIT_COPY: Readonly<
     "signin.approve.ask": "¿Aprobar un dispositivo nuevo?",
     "signin.approve.warning":
       "Apruébalo solo si lo iniciaste tú, en un dispositivo que tienes delante. Nadie de Polaris Locker ni ningún desarrollador te lo pedirá nunca.",
+    "signin.approve.checkDevice":
+      "Comprueba que tu dispositivo muestra este código.",
     "signin.approve.approve": "Aprobar e iniciar sesión",
     "signin.approve.deny": "Denegar",
     "signin.approve.denied":
@@ -6969,6 +6976,8 @@ export const KIT_COPY: Readonly<
     "signin.approve.ask": "Aprovar um novo dispositivo?",
     "signin.approve.warning":
       "Só aprove se foi você que iniciou isto, em um dispositivo à sua frente. Ninguém do Polaris Locker nem nenhum desenvolvedor vai pedir isso a você.",
+    "signin.approve.checkDevice":
+      "Confira se o seu dispositivo mostra este código.",
     "signin.approve.approve": "Aprovar e conectar",
     "signin.approve.deny": "Recusar",
     "signin.approve.denied":
@@ -8544,6 +8553,8 @@ export const KIT_COPY: Readonly<
     "signin.approve.ask": "Approvare un nuovo dispositivo?",
     "signin.approve.warning":
       "Approva solo se hai avviato tu questa operazione, su un dispositivo che hai davanti. Nessuno di Polaris Locker o di uno sviluppatore te lo chiederà mai.",
+    "signin.approve.checkDevice":
+      "Controlla che il tuo dispositivo mostri questo codice.",
     "signin.approve.approve": "Approva e fai accedere",
     "signin.approve.deny": "Rifiuta",
     "signin.approve.denied":
@@ -10134,6 +10145,8 @@ export const KIT_COPY: Readonly<
     "signin.approve.ask": "新しいデバイスを承認しますか？",
     "signin.approve.warning":
       "ご自身が目の前のデバイスで開始した場合にのみ承認してください。Polaris Lockerや開発者がこれを求めることは絶対にありません。",
+    "signin.approve.checkDevice":
+      "お使いのデバイスにこのコードが表示されているか確認してください。",
     "signin.approve.approve": "承認してサインイン",
     "signin.approve.deny": "拒否",
     "signin.approve.denied":
@@ -11718,6 +11731,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.ask": "새 기기를 승인할까요?",
     "signin.approve.warning":
       "직접 시작했고 기기가 눈앞에 있을 때만 승인하세요. Polaris Locker나 개발자는 절대 이것을 요청하지 않아요.",
+    "signin.approve.checkDevice": "기기에 이 코드가 표시되는지 확인하세요.",
     "signin.approve.approve": "승인하고 로그인",
     "signin.approve.deny": "거부",
     "signin.approve.denied": "요청이 거부됐어요. 다른 방법으로 로그인하세요.",
@@ -13215,6 +13229,7 @@ export const KIT_COPY: Readonly<
     "signin.approve.ask": "要批准新设备吗？",
     "signin.approve.warning":
       "仅当是你本人在面前的设备上发起时才批准。Polaris Locker或任何开发者都不会向你索要此信息。",
+    "signin.approve.checkDevice": "请确认你的设备上显示的是这个代码。",
     "signin.approve.approve": "批准并登录",
     "signin.approve.deny": "拒绝",
     "signin.approve.denied": "该请求已被拒绝。请换一种方式登录。",

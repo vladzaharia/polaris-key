@@ -485,6 +485,7 @@
     "signin.approve.waiting": "In attesa della tua approvazione sull'altro dispositivo…",
     "signin.approve.ask": "Approvare un nuovo dispositivo?",
     "signin.approve.warning": "Approva solo se hai avviato tu questa operazione, su un dispositivo che hai davanti. Nessuno di Polaris Locker o di uno sviluppatore te lo chiederà mai.",
+    "signin.approve.checkDevice": "Controlla che il tuo dispositivo mostri questo codice.",
     "signin.approve.approve": "Approva e fai accedere",
     "signin.approve.deny": "Rifiuta",
     "signin.approve.denied": "La richiesta è stata rifiutata. Usa un altro modo per accedere.",

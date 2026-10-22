@@ -485,6 +485,7 @@
     "signin.approve.waiting": "Esperando a que lo apruebes en el otro dispositivo…",
     "signin.approve.ask": "¿Aprobar un dispositivo nuevo?",
     "signin.approve.warning": "Apruébalo solo si lo iniciaste tú, en un dispositivo que tienes delante. Nadie de Polaris Locker ni ningún desarrollador te lo pedirá nunca.",
+    "signin.approve.checkDevice": "Comprueba que tu dispositivo muestra este código.",
     "signin.approve.approve": "Aprobar e iniciar sesión",
     "signin.approve.deny": "Denegar",
     "signin.approve.denied": "Se denegó esa solicitud. Usa otra forma de iniciar sesión.",

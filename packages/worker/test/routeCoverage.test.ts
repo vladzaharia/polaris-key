@@ -105,6 +105,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/device", ["get"]],
     ["/tv", ["get"]],
   ],
+  // The approval after sign-in, on the customer host (LXF-DEV; the product is found by the binder).
+  deviceApprove: [["/device/approve", ["get", "post"]]],
   portalMedia: [
     ["/media/{product}/{asset}", ["get"]],
     // I-07, PX-W16: account pictures, re-encoded (`avatar` is a reserved product slug).

@@ -41,10 +41,18 @@ async function bindRef(env: Env, token: string) {
 }
 
 /**
- * What a token carries: the card's binder for one request handle, redeemed on the customer host.
- * A device confirmation never uses it: that stays on the API host, in the confirming browser (R1-07).
+ * What a token carries. `request`: the card's binder for one request handle, redeemed on the
+ * customer host. The two `device-*` kinds (the device-code pages on the customer host): the
+ * flow's binder crossing to the API host for the IdP leg and its callback (`device-start`, with
+ * the authorize URL read back from the store, never from a query), and back to the customer
+ * host for the approval page (`device-approve`).
  */
-export type BindPayload = { kind: "request"; handle: string; binder: string };
+export type BindPayload =
+  | { kind: "request"; handle: string; binder: string }
+  | { kind: "device-start"; slug: string; binder: string; next: string }
+  | { kind: "device-approve"; slug: string; binder: string };
+
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 /** Store a bind token, to be redeemed once. */
 export async function issueBindToken(
@@ -79,6 +87,20 @@ export async function consumeBindToken(
       HANDLE_RE.test(v.handle)
     )
       return { kind: "request", handle: v.handle, binder: v.binder };
+    if (typeof v.slug === "string" && SLUG_RE.test(v.slug)) {
+      if (v.kind === "device-approve")
+        return { kind: "device-approve", slug: v.slug, binder: v.binder };
+      if (v.kind === "device-start" && typeof v.next === "string") {
+        const next = new URL(v.next);
+        if (next.protocol === "https:" || next.protocol === "http:")
+          return {
+            kind: "device-start",
+            slug: v.slug,
+            binder: v.binder,
+            next: v.next,
+          };
+      }
+    }
   } catch {
     /* fall through */
   }

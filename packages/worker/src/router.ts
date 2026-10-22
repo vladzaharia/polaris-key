@@ -62,6 +62,7 @@ export type Route =
   | { kind: "portalApi" }
   | { kind: "portalLogin" }
   | { kind: "deviceEntry"; tv: boolean }
+  | { kind: "deviceApprove" }
   | { kind: "signInEntry" }
   /** I-06: the login card's platform providers, `/login/<provider>[/callback|/notifications]`. */
   | { kind: "portalProviderSignIn" }
@@ -200,6 +201,8 @@ export function matchRoute(pathname: string): Route {
   if (path === "/signin") return { kind: "signInEntry" };
   if (path === "/device") return { kind: "deviceEntry", tv: false };
   if (path === "/tv") return { kind: "deviceEntry", tv: true };
+  // The approval after sign-in, on the customer host only (the product is found by the binder).
+  if (path === "/device/approve") return { kind: "deviceApprove" };
   // I-06: `/login/<provider>`, its callback and Apple's notifications (`login` is a reserved
   // slug), and I-30's `/login/sso/<connection id>` (finished by `/callback`). The provider, step
   // and connection are validated by the handler; any other shape under `/login/` is its

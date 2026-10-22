@@ -478,6 +478,7 @@
   "signin.approve.waiting": "Waiting for you to approve it on the other device…",
   "signin.approve.ask": "Approve a new device?",
   "signin.approve.warning": "Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Locker or a developer will ever ask you for this.",
+  "signin.approve.checkDevice": "Check that your device shows this code.",
   "signin.approve.approve": "Approve and sign it in",
   "signin.approve.deny": "Deny",
   "signin.approve.denied": "That request was denied. Use another way to sign in.",

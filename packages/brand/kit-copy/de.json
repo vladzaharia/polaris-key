@@ -485,6 +485,7 @@
     "signin.approve.waiting": "Warten auf Ihre Bestätigung auf dem anderen Gerät…",
     "signin.approve.ask": "Neues Gerät bestätigen?",
     "signin.approve.warning": "Bestätigen Sie nur, wenn Sie dies selbst auf einem Gerät vor Ihnen gestartet haben. Niemand von Polaris Locker oder einem Entwickler wird Sie jemals danach fragen.",
+    "signin.approve.checkDevice": "Prüfen Sie, ob Ihr Gerät diesen Code anzeigt.",
     "signin.approve.approve": "Bestätigen und anmelden",
     "signin.approve.deny": "Ablehnen",
     "signin.approve.denied": "Diese Anfrage wurde abgelehnt. Melden Sie sich auf andere Weise an.",
