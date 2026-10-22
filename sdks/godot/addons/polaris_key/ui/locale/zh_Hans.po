@@ -931,7 +931,7 @@ msgstr "替换{device}？"
 #. {device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "deviceLimit.consequence"
-msgstr "{device}将退出登录{product}，{thisDevice}将占用它的席位。我们会通过电子邮件通知你。"
+msgstr "{device}将退出登录{product}，由{thisDevice}取代。我们会通过电子邮件通知你。"
 
 #. Replace and continue
 #. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button.
@@ -2364,7 +2364,7 @@ msgstr "使用此许可证并继续"
 #. That device was just replaced. Choose again.
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.raced"
-msgstr "该席位刚刚被占用。请重新选择。"
+msgstr "该设备刚刚已被替换。请重新选择。"
 
 #. The code on {device} expired. Get a new code there and scan it again.
 #. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
@@ -2409,7 +2409,7 @@ msgstr "替换设备"
 #. Choose a device to sign out. {thisDevice} takes its place.
 #. Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice).
 msgid "signin.replace.lede"
-msgstr "选择要退出登录的设备。{thisDevice}将占用其席位。"
+msgstr "选择要退出登录的设备。由{thisDevice}取代。"
 
 #. Replace a device
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). The step's heading; the same words as the DeviceLimit title.
@@ -2449,7 +2449,7 @@ msgstr "替换{device}？"
 #. {device} signs out of {product} and {thisDevice} takes its place. We'll email you about it.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
 msgid "signin.replace.consequence"
-msgstr "{device}将退出登录{product}，{thisDevice}将占用它的席位。我们会通过电子邮件通知你。"
+msgstr "{device}将退出登录{product}，由{thisDevice}取代。我们会通过电子邮件通知你。"
 
 #. {device} is in use right now.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
@@ -2496,12 +2496,12 @@ msgstr[0] "设备更改次数过多。请在{seconds}秒后重试。"
 #. Someone replaced that device first. Choose again.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
 msgid "signin.replace.raced"
-msgstr "有人先占用了该席位。请重新选择。"
+msgstr "有人先替换了该设备。请重新选择。"
 
 #. {device} was removed, but someone signed in first. Choose again.
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
 msgid "signin.replace.racedAfterFree"
-msgstr "{device}已移除，但有人先占用了该席位。请重新选择。"
+msgstr "{device}已移除，但有人先登录了。请重新选择。"
 
 #. Continue to {app} as {name}?
 #. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated); {name} = the person's display name.
@@ -4315,7 +4315,7 @@ msgstr "替换并登录"
 #. The device you choose signs out of {app}. It can sign in again later if there's room. We'll email you about it.
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.choice.replaceSafety"
-msgstr "你选择的设备将退出 {app}。如有空位，它之后可以重新登录。我们会通过电子邮件通知你。"
+msgstr "你选择的设备将退出 {app}。如果设备数量未达上限，它之后可以重新登录。我们会通过电子邮件通知你。"
 
 #. Device replaced
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
