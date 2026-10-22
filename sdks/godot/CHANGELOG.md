@@ -9,6 +9,7 @@ SDK: `.github/workflows/publish-sdks.yml` stamps `plugin.cfg`'s `version` and `P
 
 ## Unreleased
 
+- **Device-code sign-in tells a refusal from a failure.** A poll answering `error` with `reason: "access_denied"` (a person pressed Deny, Not you? or Cancel) ends as `sign-in-denied`; a bare `error` (the sign-in failed after approval) now ends as `sign-in-failed`, and the sign-in handoff has a `failed` state. Migration: check `sign-in-failed` as well as `sign-in-denied`. Builds already shipped ignore `reason` and behave as before.
 - **US spelling and shorter kit copy.** The English template strings `Sign-in was cancelled.`, `The
 purchase was cancelled.` and `Last seen %s` read `Sign-in was canceled.`, `The purchase was
 canceled.` and `Last used %s`; `Your license doesn't include this release channel.` drops

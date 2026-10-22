@@ -65,13 +65,22 @@ Codes are unique among live flows: if a drawn code is already held, the Worker d
 
 `POST /<product>/identity/auth/device/poll` takes `{ "deviceCode": "<secret>", "deviceId": "<id>" }`. The `deviceId` must equal the one given at start, else `401`, so a stolen code can't be redeemed by another device. The advertised `interval` is enforced: a second poll inside it gets `429` with `{ "status": "slow_down", "interval": 2 }`.
 
-| Status    | Meaning                                                                                                                           |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `pending` | The person hasn't confirmed, signed in or approved yet                                                                            |
-| `confirm` | See below: the identity is waiting for the device's decision                                                                      |
-| `ready`   | Carries `token` (a device token, never a cookie), `schemaVersion` and `identity`                                                  |
-| `error`   | The provider failed, or the person pressed Deny. The same generic shape for every cause; every SDK reports it as `sign-in-denied` |
-| `timeout` | The code expired or is stale                                                                                                      |
+| Status    | Meaning                                                                                                                                            |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pending` | The person hasn't confirmed, signed in or approved yet                                                                                             |
+| `confirm` | See below: the identity is waiting for the device's decision                                                                                       |
+| `ready`   | Carries `token` (a device token, never a cookie), `schemaVersion` and `identity`                                                                   |
+| `error`   | The sign-in did not complete. With `reason: "access_denied"` a person refused; without `reason` it failed after approval and the cause is not said |
+| `timeout` | The code expired or is stale                                                                                                                       |
+
+Every SDK maps the two `error` shapes to two codes:
+
+| Poll answer                            | Code             | What the app does                                                                             |
+| -------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------- |
+| `error` with `reason: "access_denied"` | `sign-in-denied` | A person pressed Deny, **Not you?** or Cancel. Say so, and offer a new code only if they ask. |
+| `error` without `reason`               | `sign-in-failed` | The sign-in failed after approval. Offer a new code at once; the cause is not said.           |
+
+A refusal stays refused until the code lapses, then the poll answers `timeout`. A client treats an unknown `reason` as absent. The UI kits' sign-in handoff shows a refusal as **denied** and a bare `error` as **failed**. An app that checked only `sign-in-denied` for every failure must now check `sign-in-failed` as well. Builds shipped before this split ignore `reason` and report both as `sign-in-denied`.
 
 Show `identity` (`name`, and `email` only when the provider verified it): if someone else approved the flow, this is where the player sees the device is now on a stranger's account. The flow record is deleted the moment a poll returns `ready` or `timeout`, so a token is handed out once. Minting runs the same seat authorization as activation.
 

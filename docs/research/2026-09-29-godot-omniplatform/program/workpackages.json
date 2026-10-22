@@ -5196,7 +5196,7 @@
       "optional": false,
       "refs": ["plans/DENY-01.md", "plans/I-37.md D3", "ledger B-096"],
       "brief": "wp/I-37c-device-poll-denied.md",
-      "status": "in-progress"
+      "status": "in-review"
     },
     {
       "id": "I-38",
