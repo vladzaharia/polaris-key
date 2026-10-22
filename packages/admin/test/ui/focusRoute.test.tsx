@@ -57,9 +57,9 @@ describe("focusRoute", () => {
     expect(announced).toEqual([]);
   });
 
-  it("waits for a closing overlay, and for a busy placeholder", async () => {
+  it("waits for a closing overlay, and for a heading that is a loading placeholder", async () => {
     html(
-      "<h1>Page</h1><div role='dialog' data-state='closed'></div><div aria-busy='true'></div>",
+      "<div role='dialog' data-state='closed'></div><div aria-busy='true'><h1>Loading</h1></div>",
     );
     const p = focusRoute();
     await vi.advanceTimersByTimeAsync(200);
@@ -67,15 +67,50 @@ describe("focusRoute", () => {
     document.querySelector("[role=dialog]")!.remove();
     await vi.advanceTimersByTimeAsync(100);
     expect(document.activeElement).toBe(document.body);
-    document.querySelector("[aria-busy]")!.remove();
+    html("<h1>Real</h1>");
     await vi.advanceTimersByTimeAsync(100);
     expect(await p).toBe("focused");
     expect(document.activeElement?.tagName).toBe("H1");
+    expect(announced).toEqual(["Real, page loaded"]);
+  });
+
+  it("does not wait for a busy panel when the heading is real", async () => {
+    html("<h1>Account</h1><section aria-busy='true'>Loading</section>");
+    expect(await focusRoute()).toBe("focused");
+  });
+
+  it("keeps a user's place: a control focused during the wait is not taken", async () => {
+    html(
+      "<button id='b'>go</button><div aria-busy='true'><h1>Loading</h1></div>",
+    );
+    const p = focusRoute();
+    await vi.advanceTimersByTimeAsync(100);
+    document.getElementById("b")!.focus();
+    html("<button id='c'>other</button>");
+    document.getElementById("c")!.focus();
+    html("<button id='c'>other</button><h1>Real</h1>");
+    document.getElementById("c")!.focus();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(await p).toBe("moved");
+    expect(document.activeElement?.id).toBe("c");
+    expect(announced).toEqual([]);
+  });
+
+  it("takes focus from the element that had it at the start, or one that was removed", async () => {
+    html("<button id='b'>go</button><h1>Page</h1>");
+    document.getElementById("b")!.focus();
+    expect(await focusRoute()).toBe("focused");
+    html("<button id='x'>x</button>");
+    document.getElementById("x")!.focus();
+    const p = focusRoute();
+    html("<h1>Later</h1>");
+    await vi.advanceTimersByTimeAsync(100);
+    expect(await p).toBe("focused");
   });
 
   it("does nothing once alive() turns false", async () => {
     let live = true;
-    html("<div aria-busy='true'></div><h1>Page</h1>");
+    html("<div aria-busy='true'><h1>Page</h1></div>");
     const p = focusRoute({ alive: () => live });
     live = false;
     await vi.advanceTimersByTimeAsync(100);
@@ -99,14 +134,30 @@ describe("focusRoute", () => {
     expect(announced).toEqual(["A, page loaded"]);
   });
 
-  it("at the deadline focuses a heading despite a busy region, or gives up", async () => {
-    html("<div aria-busy='true'></div><h1>Slow</h1>");
+  it("never focuses or announces a placeholder; it keeps waiting while alive, then ends silently", async () => {
+    html("<div aria-busy='true'><h1>Loading</h1></div>");
+    const p = focusRoute({ deadline: 300, alive: () => true });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(document.activeElement).toBe(document.body);
+    html("<h1>Slow</h1>");
+    await vi.advanceTimersByTimeAsync(100);
+    expect(await p).toBe("focused");
+    expect(announced).toEqual(["Slow, page loaded"]);
+    html("<div aria-busy='true'><h1>Loading</h1></div>");
+    const q = focusRoute({ deadline: 300, alive: () => true });
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(await q).toBe("timeout");
+    expect(announced).toEqual(["Slow, page loaded"]);
+    const r = focusRoute({ deadline: 300 });
+    await vi.advanceTimersByTimeAsync(400);
+    expect(await r).toBe("timeout");
+  });
+
+  it("the deadline releases a closing overlay's hold and reads performance.now, not Date", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(0);
+    html("<h1>Slow</h1><div role='dialog' data-state='closed'></div>");
     const p = focusRoute({ deadline: 300 });
     await vi.advanceTimersByTimeAsync(400);
     expect(await p).toBe("focused");
-    html("<div aria-busy='true'></div>");
-    const q = focusRoute({ deadline: 300 });
-    await vi.advanceTimersByTimeAsync(400);
-    expect(await q).toBe("timeout");
   });
 });
