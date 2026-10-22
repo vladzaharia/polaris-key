@@ -62,17 +62,22 @@ Each screen is a scene under `addons/polaris_key/ui/`, with a view script and a 
 controller. The class is the name to use in code; the gate's scene file is `pkey_gate.tscn` and
 its class is `PKeyGateView`.
 
-| Class                  | Scene                                   | Shows                                                                    |
-| ---------------------- | --------------------------------------- | ------------------------------------------------------------------------ |
-| `PKeyBoot`             | `boot/pkey_boot.tscn`                   | The stages from start to ready, and a card with Try again on a stop      |
-| `PKeyGateView`         | `gate/pkey_gate.tscn`                   | The license gate: activation, grace, expired, blocked                    |
-| `PKeyActivationPanel`  | `activation/pkey_activation_panel.tscn` | Key entry, sign-in, free tier, offline activation, Replace a device      |
-| `PKeySignInDialog`     | `sign_in/pkey_sign_in_dialog.tscn`      | The device code, its QR code and the countdown                           |
-| `PKeyOfflineDialog`    | `offline/pkey_offline_dialog.tscn`      | The request code, and the import of an activation file                   |
-| `PKeyUpdatePrompt`     | `update/pkey_update_prompt.tscn`        | An update offer, with the action the install's outlet allows             |
-| `PKeyStatusBanner`     | `banner/pkey_status_banner.tscn`        | Offline grace, an expired check, an available update                     |
-| `PKeySettingsPanel`    | `settings/pkey_settings_panel.tscn`     | The product's settings, with a lock on each managed value                |
-| `PKeyEntitlementBadge` | `badge/pkey_entitlement_badge.tscn`     | "Included with" chips for the user-facing entitlements the license holds |
+| Class                  | Scene                                     | Shows                                                                    |
+| ---------------------- | ----------------------------------------- | ------------------------------------------------------------------------ |
+| `PKeyBoot`             | `boot/pkey_boot.tscn`                     | The stages from start to ready, and a card with Try again on a stop      |
+| `PKeyGateView`         | `gate/pkey_gate.tscn`                     | The license gate: activation, grace, expired, blocked                    |
+| `PKeyActivationPanel`  | `activation/pkey_activation_panel.tscn`   | Key entry, sign-in, free tier, offline activation, Replace a device      |
+| `PKeySignInDialog`     | `sign_in/pkey_sign_in_dialog.tscn`        | The device code, its QR code and the countdown                           |
+| `PKeyOfflineDialog`    | `offline/pkey_offline_dialog.tscn`        | The request code, and the import of an activation file                   |
+| `PKeyUpdatePrompt`     | `update/pkey_update_prompt.tscn`          | An update offer, with the action the install's outlet allows             |
+| `PKeyStatusBanner`     | `banner/pkey_status_banner.tscn`          | Offline grace, an expired check, an available update                     |
+| `PKeySettingsPanel`    | `settings/pkey_settings_panel.tscn`       | The product's settings, with a lock on each managed value                |
+| `PKeyDeviceList`       | `devices/pkey_device_list.tscn`           | The devices using the license, with Rename and Remove in place           |
+| `PKeyLicenseChoice`    | `license_choice/pkey_license_choice.tscn` | Which license this device uses, when an account holds several            |
+| `PKeyAccountTab`       | `settings/pkey_account_tab.tscn`          | The Account and license pane, embedded in settings or opened as a page   |
+| `PKeyToast`            | `toast/pkey_toast.tscn`                   | A brief message over the game, with at most two actions                  |
+| `PKeyUpdateProgress`   | `progress/pkey_update_progress.tscn`      | Download and install progress for an update or content packs             |
+| `PKeyEntitlementBadge` | `badge/pkey_entitlement_badge.tscn`       | "Included with" chips for the user-facing entitlements the license holds |
 
 A scene finds the `PolarisKey` autoload by itself and follows its `state_changed` signal. To place
 one in your own layout, instance it and add it as a child:
@@ -104,12 +109,17 @@ interactive control is in one wrapping focus chain, so `ui_up`, `ui_down`, `ui_a
 Each scene reads a controller, and a game that draws its own screens can read the same ones. They
 are in `addons/polaris_key/ui/` and are pure functions of the state they are given:
 
-| Class                        | Answers                                                                        |
-| ---------------------------- | ------------------------------------------------------------------------------ |
-| `PKeyGateController`         | Which screen a license status renders, with its copy keys and its controls     |
-| `PKeyActivationController`   | Which ways to activate this build offers, and the copy key for each refusal    |
-| `PKeySignInController`       | The copy key for how a sign-in ended, the countdown and the identity line      |
-| `PKeyUpdatePromptController` | Whether an update answer shows, its copy keys, its action and whether it locks |
+| Class                         | Answers                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------ |
+| `PKeyGateController`          | Which screen a license status renders, with its copy keys and its controls     |
+| `PKeyActivationController`    | Which ways to activate this build offers, and the copy key for each refusal    |
+| `PKeySignInController`        | The copy key for how a sign-in ended, the countdown and the identity line      |
+| `PKeyUpdatePromptController`  | Whether an update answer shows, its copy keys, its action and whether it locks |
+| `PKeyDevicesController`       | The roster as rows, how long ago each device was last used, which is this one  |
+| `PKeyLicenseChoiceController` | The rows the license step offers, the selected one and what each says          |
+| `PKeyAccountController`       | What the Account and license pane knows: tier, holder, seats, update rows      |
+| `PKeyToastController`         | A toast's model view, its status glyph and its actions                         |
+| `PKeyProgressController`      | The model input for a download, the time left and the sizes as one unit        |
 
 [Your own UI](/docs/build/sdks/godot/your-own-ui/#gate-status-screen-and-copy-key) maps every status
 to its screen and copy keys.

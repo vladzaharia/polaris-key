@@ -118,8 +118,24 @@ export const GODOT_COMPONENTS: Readonly<Record<string, GodotComponent>> = {
     shows:
       "A full license as a state of its own: one column with the seat meter and the way to free a seat",
   },
-  Devices: { model: "Devices" },
-  LicenseChoice: { model: "LicenseChoice" },
+  Devices: {
+    view: "devices/pkey_device_list",
+    controller: "devices/devices_controller",
+    answers:
+      "the roster as the rows the Devices model reads, how long ago each device was last used, and which row is this device",
+    model: "Devices",
+    shows:
+      'The devices using this license as 64 px rows: a form-factor glyph, the name, a "This device" tag, the platform and when it was last used, with Rename and Remove in place (Remove confirms in the row, never in a dialog). A failed load is "Couldn\'t load your devices." with Try again, and browser-only management opens the portal',
+  },
+  LicenseChoice: {
+    view: "license_choice/pkey_license_choice",
+    controller: "license_choice/choice_controller",
+    answers:
+      "the rows the license step offers, which one is selected and what each says about itself (tier, origin and term, seats)",
+    model: "LicenseChoice",
+    shows:
+      'Step 3 of sign-in, when an account holds several licenses: each is a row with its tier, origin, a seat meter and a tag ("On this device", "All devices in use"). One row is selected and Use this license and continue is the one primary; a full license offers Replace a device instead',
+  },
   UpdatePrompt: {
     view: "update/pkey_update_prompt",
     controller: "update/update_prompt_controller",
@@ -130,7 +146,15 @@ export const GODOT_COMPONENTS: Readonly<Record<string, GodotComponent>> = {
     shows:
       "An update offer as a banner (a strip that never takes the focus from play) or, for a dismissable answer, a modal card; a mandatory or blocked answer is always a locked banner with no dismiss. The action is the outlet's: a store opens its listing, a web export reloads, a direct build installs",
   },
-  UpdateProgress: { model: "UpdateProgress" },
+  UpdateProgress: {
+    view: "progress/pkey_update_progress",
+    controller: "progress/progress_controller",
+    answers:
+      "the model input for a download or install, the time left from the rate so far, and the sizes as one unit",
+    model: "UpdateProgress",
+    shows:
+      'A compact strip with a counted bar and one line ("Downloading · 38 of 91 MB · 1 minute left") for an app update or content packs. Paused offers Download now and failed offers Try again; it never takes the focus from play and hides while there is no progress',
+  },
   ReleaseNotes: { model: "ReleaseNotes" },
   StatusScreen: {
     view: "gate/pkey_gate",
@@ -151,8 +175,24 @@ export const GODOT_COMPONENTS: Readonly<Record<string, GodotComponent>> = {
     shows:
       'A thin, non-blocking strip: "Offline — 3 days left", when the license was last checked, and that an update is available. It never takes the focus and hides itself when there is nothing to say',
   },
-  Toast: { model: "Toast" },
-  AccountAndLicense: { model: "AccountAndLicense" },
+  Toast: {
+    view: "toast/pkey_toast",
+    controller: "toast/toast_controller",
+    answers:
+      "the model view of a toast, which glyph marks its status and its actions (at most two)",
+    model: "Toast",
+    shows:
+      "A brief message over the game: one line, a status glyph, at most two actions and a visible timer that runs out in six seconds. An error stays until dismissed, a toast never steals the focus, and toasts queue behind an error that is still up",
+  },
+  AccountAndLicense: {
+    view: "settings/pkey_account_tab",
+    controller: "settings/account_controller",
+    answers:
+      "what the Account and license pane knows: the tier, who is signed in, the seat count and the update rows",
+    model: "AccountAndLicense",
+    shows:
+      'The pane in inset grouped rows: the license and its status, who is signed in with Manage, Devices with a seat meter, the update rows, and Sign out in a group of its own. It embeds as the first section of `PKeySettingsPanel` or opens as a page; a floating license shows no holder, and offline it says "showing the last saved details"',
+  },
   Settings: {
     view: "settings/pkey_settings_panel",
     controller: "settings/settings_controller",
