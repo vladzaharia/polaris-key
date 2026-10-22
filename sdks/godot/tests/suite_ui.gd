@@ -1114,6 +1114,7 @@ func _presentation(t: PKeyTestContext) -> void:
 	await _rerender(t)
 	await _keeps_texture(t)
 	await _identity_order(t)
+	await _kx_identity(t)
 	await _set_by(t)
 	PKeyUiTheme.reset()
 
@@ -1282,6 +1283,73 @@ func _identity_order(t: PKeyTestContext) -> void:
 	t.check("identity: the integrator's icon is never replaced by a fetch", PKeyUiTheme.product_identity()["icon"] == own and icon.texture == own)
 	header.queue_free()
 	PKeyUiTheme.reset()
+
+
+## KX-GD-ID: the live verdict on the key field, the input hints, and the wordmark and art.
+func _kx_identity(t: PKeyTestContext) -> void:
+	var whole := "pkey_tidewater_" + "A".repeat(22)
+	var v := PKeyActivationController.key_verdict(whole)
+	t.check("verdict: a whole key reads 'Key for <Product>' from its prefix", v.get("copy") == "key_for_product" and not v["danger"], str(v))
+	t.check("verdict: a key still being typed says nothing", PKeyActivationController.key_verdict("pkey_tidewater_AB").is_empty() and PKeyActivationController.key_verdict("").is_empty())
+	var cut := PKeyActivationController.key_verdict("pkey_tidewater_" + "A".repeat(10), true)
+	t.check("verdict: a cut-short key on submit counts its characters", cut.get("copy") == "key_cut_short" and cut["danger"] and cut["args"] == ["pkey_tidewater_", 10, 22], str(cut))
+	t.check("verdict: the tier is unknown before the server answers", PKeyActivationController.done_verdict(null).is_empty())
+	t.check("hints: keyboard, pad, none for touch", PKeyActivationController.input_hint(&"keyboard") == "hint_keyboard" and PKeyActivationController.input_hint(&"pad") == "hint_pad" and PKeyActivationController.input_hint(&"touch") == "" and PKeyActivationController.input_hint(&"") == "")
+	PKeyUiTheme.reset()
+	PKeyUiTheme.product_name = "Tidewater"
+	var panel := PKeyActivationPanel.new()
+	panel.auto_sdk = false
+	panel.set_capabilities({"key_entry": true, "sign_in": false, "continue_free": false, "offline": false})
+	_sc.add(panel)
+	await _tree().process_frame
+	t.check("verdict: nothing under an empty field, no hint before any input", not panel._verdict.visible and not panel._hint.visible)
+	panel._key.text = whole
+	panel._key.text_changed.emit(whole)
+	await _tree().process_frame
+	t.check("verdict: 'Key for Tidewater' under the field", panel._verdict.visible and panel._verdict.text == "Key for Tidewater", panel._verdict.text)
+	panel._key.text = "pkey_tidewater_" + "A".repeat(10)
+	panel._on_submit()
+	await _tree().process_frame
+	t.check("verdict: a cut-short key is not sent and says so", panel._msg_key.text == "This key is cut short: after pkey_tidewater_ it has 10 of 22 characters." and not panel.busy, panel._msg_key.text)
+	var ev := InputEventJoypadButton.new()
+	ev.button_index = JOY_BUTTON_A
+	panel._input(ev)
+	await _tree().process_frame
+	t.check("hints: a pad shows 'A to select'", panel._hint.visible and panel._hint.text == "A to select", panel._hint.text)
+	var key_ev := InputEventKey.new()
+	panel._input(key_ev)
+	await _tree().process_frame
+	t.check("hints: the keyboard shows Enter", panel._hint.text == "Enter to activate", panel._hint.text)
+	var touch := InputEventScreenTouch.new()
+	panel._input(touch)
+	await _tree().process_frame
+	t.check("hints: touch shows none", not panel._hint.visible)
+	# The panel's _input also tells PKeyUiView what the last input was: leave it as found.
+	PKeyUiView.pointer_last = false
+	PKeyUiView._pointer_known = false
+	_free(panel)
+	# Wordmark and art are integrator data: absent, the header and panes are as they were.
+	var header := PKeyProductHeader.new()
+	header.hero = true
+	_tree().root.add_child(header)
+	header.refresh()
+	var mark := header.find_child("Wordmark", false, false) as TextureRect
+	t.check("wordmark: none by default, the name shows", not mark.visible and header.find_child("Name", false, false).visible)
+	var img := Image.create(120, 30, false, Image.FORMAT_RGBA8)
+	img.fill(Color.WHITE)
+	PKeyUiTheme.product_wordmark = ImageTexture.create_from_image(img)
+	PKeyUiTheme.product_art = ImageTexture.create_from_image(img)
+	header.refresh()
+	t.check("wordmark: beside the icon on a hero header, standing in for the name's text", mark.visible and not header.find_child("Name", false, false).visible)
+	header.hero = false
+	header.refresh()
+	t.check("wordmark: a step header keeps icon and name", not mark.visible and header.find_child("Name", false, false).visible)
+	header.queue_free()
+	var art := PKeyUiTheme.art_ground("Art")
+	t.check("art: shown for the pane with art, hidden without", PKeyUiTheme.show_art(art, true) and art.visible and not PKeyUiTheme.show_art(art, false) and not art.visible)
+	art.free()
+	PKeyUiTheme.reset()
+	t.check("art and wordmark: reset puts the look back", PKeyUiTheme.product_art == null and PKeyUiTheme.product_wordmark == null)
 
 
 ## "Set by" names the presented developer, else the presented name, bidi-isolated.

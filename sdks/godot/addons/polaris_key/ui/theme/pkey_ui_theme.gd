@@ -264,6 +264,10 @@ static var product_icon: Texture2D = null:
 	set(value):
 		product_icon = value
 		_cache = null
+## The game's wordmark (`ui_product_wordmark`) and key art (`ui_product_art`): ProductIdentity data
+## the integrator sets (UI-KITS.md §1.2). Null for none; the screens then look as they always did.
+static var product_wordmark: Texture2D = null
+static var product_art: Texture2D = null
 ## The SDK's presentation source the kit reads (`PolarisKey.presentation_source`; configure()
 ## binds it with `use_presentation()`), or null. The values below follow its `changed` signal.
 static var presentation: PKeyPresentationSource = null
@@ -318,6 +322,8 @@ static func apply_options(opts: Resource) -> void:
 	var pn = opts.get("ui_product_name")
 	product_name = pn if pn is String else ""
 	product_icon = opts.get("ui_product_icon") as Texture2D
+	product_wordmark = opts.get("ui_product_wordmark") as Texture2D
+	product_art = opts.get("ui_product_art") as Texture2D
 	refresh_views()
 
 
@@ -340,6 +346,8 @@ static func reset() -> void:
 	density = DEFAULT_DENSITY
 	product_name = ""
 	product_icon = null
+	product_wordmark = null
+	product_art = null
 	reduce_motion_mode = "auto"
 	reduce_transparency_mode = "auto"
 	use_presentation(null)
@@ -441,7 +449,36 @@ static func product_identity() -> Dictionary:
 		var path := str(ProjectSettings.get_setting("application/config/icon", ""))
 		if path != "" and ResourceLoader.exists(path):
 			icon = load(path) as Texture2D
-	return {"name": n, "icon": icon}
+	return {"name": n, "icon": icon, "wordmark": product_wordmark, "art": product_art}
+
+
+## The game's key art as a ground for a pane or a screen (ProductIdentity.art): a TextureRect that
+## covers its parent, cropped not stretched, with a soft scrim so the text over it stays legible
+## ("behind the glass", UI-KITS.md DL1). Hidden until `show_art` shows it; it takes no input.
+static func art_ground(node_name: String) -> TextureRect:
+	var r := TextureRect.new()
+	r.name = node_name
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.visible = false
+	var scrim := ColorRect.new()
+	scrim.name = "Scrim"
+	scrim.color = Color(0, 0, 0, 0.38)
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	r.add_child(scrim)
+	return r
+
+
+## Show or hide an `art_ground` with the integrator's art; true when it shows.
+static func show_art(ground: TextureRect, on: bool) -> bool:
+	var tex := product_art
+	var shown := on and tex != null and ground != null
+	if ground != null:
+		ground.texture = tex if shown else null
+		ground.visible = shown
+	return shown
 
 
 ## True when the Polaris Key brand is on (and no override Theme replaces it).

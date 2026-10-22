@@ -149,7 +149,7 @@ Card/Scroll/Frame/Actions/Secondary: Button "Back" [focus 2]
 Card/Scroll/Frame/Head/Product/Monogram/Initial: Label "P"
 Card/Scroll/Frame/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Frame/Head/Titles/Title: Label "Choose a license for this device"
-Card/Scroll/Frame/Notice: Label "That seat was just taken. Choose again."
+Card/Scroll/Frame/Notice: Label "That device was just replaced. Choose again."
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Pick: Button "Pro" [pressed, focus 1]
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Detail/Seats/Caption: Label "1 of 3 devices"
 Card/Scroll/Frame/ListScroll/List/Rows/Entry_0/Detail/Meta: Label "Lifetime"

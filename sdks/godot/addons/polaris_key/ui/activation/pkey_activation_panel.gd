@@ -82,6 +82,7 @@ var _main: BoxContainer
 ## The product pane (wide) or header (one column).
 var intro: VBoxContainer
 var _intro_panel: PanelContainer
+var _art: TextureRect
 var _form: VBoxContainer
 var _product: PKeyProductHeader
 ## The form's lede on a phone's page, under the product (`lede_text()`).
@@ -98,6 +99,11 @@ var _placeholder := ""
 var _hint_fits := true
 var _submit: Button
 var _msg_key: Label
+## The live verdict under the field ("Key for <Product>"), and the input hint beside it.
+var _verdict: Label
+var _hint: Label
+## The kind of the last input: keyboard, pad or touch (&"" before any; a mouse leaves the hint off).
+var _input_kind: StringName = &""
 var _sign_in_block: VBoxContainer
 var _sign_in: Button
 var _msg_sign_in: Label
@@ -153,6 +159,9 @@ func _build() -> void:
 	_intro_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_intro_panel.size_flags_stretch_ratio = 0.8
 	_main.add_child(_intro_panel)
+	# The game's key art, behind the identity pane's content (landscape only; `_arrange`).
+	_art = PKeyUiTheme.art_ground("Art")
+	_intro_panel.add_child(_art)
 	intro = vbox(_intro_panel, "Intro", "PKeyStack")
 	intro.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_product = product_header(intro, "Product", true)
@@ -183,10 +192,12 @@ func _build() -> void:
 	_key.secret = false
 	_key.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_PASSWORD
 	_key.text_submitted.connect(func(_t): _on_submit())
-	_key.text_changed.connect(func(_t): _clear_key_error())
+	_key.text_changed.connect(func(_t): _clear_key_error(); refresh_view())
 	row.add_child(_key)
 	_submit = button(row, "Activate", _on_submit, "PKeyPrimary")
 	_msg_key = label(_key_field, "Message")
+	_verdict = label(_key_field, "Verdict", "PKeyMuted")
+	_hint = label(_key_field, "Hint", "PKeyMuted")
 	_sign_in_block = vbox(_form, "SignInBlock", "PKeyTight")
 	_sign_in = button(_sign_in_block, "SignIn", _on_sign_in)
 	_msg_sign_in = label(_sign_in_block, "SignInMessage")
@@ -248,6 +259,29 @@ func _ready() -> void:
 	super()
 	sign_in_dialog.sdk = sdk
 	offline_dialog.sdk = sdk
+
+
+func _input(event: InputEvent) -> void:
+	super(event)
+	var kind: StringName = &""
+	if event is InputEventKey:
+		kind = &"keyboard"
+	elif event is InputEventJoypadButton or (event is InputEventJoypadMotion and absf((event as InputEventJoypadMotion).axis_value) > 0.5):
+		kind = &"pad"
+	elif event is InputEventScreenTouch:
+		kind = &"touch"
+	elif event is InputEventMouseButton:
+		kind = &"mouse"
+	if kind != &"" and kind != _input_kind:
+		_input_kind = kind
+		refresh_view()
+
+
+## The input kind the hint follows: the last input, else a pad-only device reads as a pad.
+func input_kind() -> StringName:
+	if _input_kind != &"":
+		return _input_kind
+	return &"pad" if pad_only() else &""
 
 
 func _process(_delta: float) -> void:
@@ -340,6 +374,8 @@ func _arrange(m: Dictionary) -> void:
 			_intro_panel.remove_theme_stylebox_override("panel")
 	elif not _intro_panel.has_theme_stylebox_override("panel"):
 		_intro_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	# The art is the passport's ground in the two-pane layout only; a one-column header strip stays plain.
+	_intro_panel.clip_contents = PKeyUiTheme.show_art(_art, two and show_product and mode == "main")
 	_product.centered = two
 	_product.as_title = two
 	_product.hero = two
@@ -444,6 +480,11 @@ func _render() -> void:
 	_placeholder = t.text("key_placeholder")
 	_key.placeholder_text = _placeholder if _hint_fits else ""
 	_key.editable = true
+	# The verdict follows the text as it is typed, and holds back while an error or an answer shows.
+	var v := PKeyActivationController.key_verdict(_key.text) if message == "" and not busy else {}
+	show_text(_verdict, t.text(v["copy"], v["args"]) if not v.is_empty() else "")
+	var hint_key := PKeyActivationController.input_hint(input_kind())
+	show_text(_hint, t.text(hint_key) if hint_key != "" and caps["key_entry"] and mode == "main" else "")
 	_submit.text = t.text("key_submit")
 	_sign_in_block.visible = caps["sign_in"]
 	_sign_in.text = t.text("sign_in")
@@ -613,6 +654,11 @@ func show_result(r: PKeyActivationResult, key := "", slot := "key") -> void:
 	_message_is_data = false
 	var m := PKeyActivationController.message_for(r)
 	message = c().text(m[0], m[1])
+	if r != null and r.ok:
+		# The tier follows the server's answer, never before it.
+		var done := PKeyActivationController.done_verdict(sdk)
+		if not done.is_empty():
+			message = c().text(done["copy"], done["args"])
 	message_ok = r != null and r.ok
 	message_danger = r == null or r.kind == PKeyActivationResult.KIND_UNAUTHORIZED or r.kind == PKeyActivationResult.KIND_ERROR
 	message_slot = slot
@@ -641,6 +687,18 @@ func show_message(text: String, slot := "key") -> void:
 		_key.grab_focus.call_deferred()
 
 
+## The cut-short line: the kit's own wording under the field, in the error style, focus kept in the field.
+func show_message_text(text: String) -> void:
+	_message_is_data = true
+	message = text
+	message_ok = false
+	message_danger = true
+	message_slot = "key"
+	limit = {}
+	refresh_view()
+	_key.grab_focus.call_deferred()
+
+
 func _clear_key_error() -> void:
 	if message != "" and not message_ok and message_slot == "key":
 		message = ""
@@ -658,6 +716,11 @@ func _on_submit() -> void:
 		message_slot = "key"
 		refresh_view()
 		_key.grab_focus()
+		return
+	var cut := PKeyActivationController.key_verdict(key, true)
+	if not cut.is_empty() and cut["danger"]:
+		# A key that is whole but for its end: say so here, not "unknown key" from the server.
+		show_message_text(c().text(cut["copy"], cut["args"]))
 		return
 	if sdk == null or sdk.get("license") == null:
 		show_result(PKeyActivationResult.of(PKeyActivationResult.KIND_ERROR, PKeyErrors.NOT_CONFIGURED, ""))
