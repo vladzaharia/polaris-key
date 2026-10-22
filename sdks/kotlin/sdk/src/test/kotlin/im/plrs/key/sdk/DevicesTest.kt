@@ -92,6 +92,16 @@ class DevicesTest {
     }
 
     @Test
+    fun theRosterPlatformAndLastSeenReachTheFacade() = runBlocking {
+        // The Worker's roster carries `platform` and `lastSeen` (seconds); the facade must not drop them.
+        val roster = """{"devices":[{"id":"dev1","platform":"android","lastSeen":1699999000},{"id":"dev2","label":"Studio","platform":"macos","lastSeen":1699913600},{"id":"dev3"}]}"""
+        val (client, _, _) = client { r -> if (r.path == "/djdl/devices") respond(200, roster) else respond(404) }
+        val devices = client.listDevices()
+        assertEquals(listOf("android", "macos", null), devices.map { it.platform })
+        assertEquals(listOf(1_699_999_000_000L, 1_699_913_600_000L, null), devices.map { it.lastSeenAt })
+    }
+
+    @Test
     fun renameAndDeauthorizeCarryTheBearerAndTheirOwnFailureCodes() = runBlocking {
         val (client, transport, _) = client { r ->
             when ("${r.method} ${r.path}") {
