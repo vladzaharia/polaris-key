@@ -12,6 +12,7 @@ package im.plrs.key.ui
 
 import android.content.ClipData
 import androidx.compose.foundation.background
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -343,9 +344,7 @@ private fun KitScreenBody(
     val body: @Composable ColumnScope.() -> Unit = {
         if (component == KitComponent.welcome) {
             // The icon at hero size, then the title, "by <Developer>" and the lede (the lines in order).
-            val window = polarisWindow
-            PolarisProductIcon(if (window.compactHeight) 56.dp else 120.dp, name = product)
-            if (product != null || PolarisTheme.current.logo != null) Spacer(Modifier.height(window.section))
+            PolarisHeroIcon(name = product)
         } else if (text.isNotEmpty() || controls.isNotEmpty()) {
             // The product heads every other screen (DL5): the integrator's name, else the product the lines name.
             // A state with nothing to say (the gate let the product through) is not a screen: no header either.
@@ -407,6 +406,7 @@ private fun KitScreenBody(
         }
     }
     val asColumn = component in centredComponents
+    CompositionLocalProvider(LocalPolarisArtName provides (productName ?: product)) {
     if (!asColumn) {
         PolarisScaffold(
             modifier = semanticsModifier,
@@ -417,6 +417,7 @@ private fun KitScreenBody(
         )
     } else {
         PolarisScreen(modifier = semanticsModifier, showLogo = false, actions = actions, content = body)
+    }
     }
 }
 

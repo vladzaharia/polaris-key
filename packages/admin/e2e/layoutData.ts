@@ -1413,6 +1413,15 @@ export const CATALOG = {
       schema: { type: "string" },
     },
     {
+      key: "applemusic.token",
+      kind: "secret",
+      delivery: "edgeMint",
+      category: "Secrets",
+      label: "Apple Music token",
+      description: "Signed on request.",
+      schema: { type: "string" },
+    },
+    {
       key: "license.hd",
       kind: "flag",
       category: "Content",

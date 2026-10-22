@@ -782,8 +782,9 @@ export function probeLayout(opts: ProbeOptions): ProbeResult {
     if (right === null) return;
     const edge = contentRight(row);
     const card =
-      row.closest("section,[data-template] > div,[class*=rounded-lg]") ??
-      row.parentElement!;
+      row.closest(
+        "section,[data-template] > div,[class*=rounded-lg],[class*=rounded-xl]",
+      ) ?? row.parentElement!;
     rowsByCard.set(card, [...(rowsByCard.get(card) ?? []), { row, right }]);
     if (Math.abs(edge - right) > 2)
       out.push({

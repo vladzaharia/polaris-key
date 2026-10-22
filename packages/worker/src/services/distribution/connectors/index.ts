@@ -29,9 +29,7 @@ import type { ServiceHooks } from "../../../core/hooks.js";
 import type { ServiceContext } from "../../../core/registry.js";
 import type { FetchImpl } from "../../../core/stores/apple/client.js";
 import type { ConnectorControl, ConnectorRead } from "./asc/controls.js";
-import { ascConnector } from "./asc/index.js";
-import { msStoreConnector } from "./msstore/index.js";
-import { playConnector } from "./play/index.js";
+import { FACET_CONNECTORS } from "../stores/index.js";
 
 /** What a poll is given: one product, outside any request. */
 export interface ConnectorContext {
@@ -76,12 +74,8 @@ export interface DistributionConnector {
   }): Promise<Record<string, unknown>>;
 }
 
-/** Every connector this build has. */
-export const CONNECTORS: readonly DistributionConnector[] = [
-  ascConnector,
-  playConnector,
-  msStoreConnector,
-];
+/** Every connector this build has: the delivery facets' connectors (`../stores/`), in order. */
+export const CONNECTORS: readonly DistributionConnector[] = FACET_CONNECTORS;
 
 export function connectorOf(kind: string): DistributionConnector | null {
   return CONNECTORS.find((c) => c.kind === kind) ?? null;

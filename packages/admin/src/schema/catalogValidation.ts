@@ -16,6 +16,7 @@ import {
   describeRepresentabilityIssue,
   prepareSchema,
   userSettingIssues,
+  validatePrepared,
 } from "@polaris-key/catalog";
 import type { CodeDiagnostic } from "../ui/CodeEditor.js";
 
@@ -43,6 +44,23 @@ export function schemaIssue(schema: unknown): string | null {
   } catch (e) {
     return e instanceof Error ? e.message : "This schema is not supported.";
   }
+}
+
+/**
+ * The Default's problem, or `null`: the publish route refuses a default its own schema rejects
+ * (`Catalog.compileAll`), so the editor stops it first. Skipped while the schema itself is bad.
+ */
+export function defaultIssue(schema: unknown, value: unknown): string | null {
+  if (value === undefined || !isObject(schema)) return null;
+  try {
+    if (validatePrepared(prepareSchema(schema), value).length === 0)
+      return null;
+  } catch {
+    return null;
+  }
+  return Array.isArray(schema.enum)
+    ? "Pick a default from the allowed values."
+    : "The default doesn't fit the validation rules.";
 }
 
 /**
@@ -115,6 +133,8 @@ export function catalogIssues(doc: unknown): CatalogIssue[] {
     }
     const schema = schemaIssue(raw.schema);
     if (schema) issues.push({ ...at, field: "schema", message: schema });
+    const fallback = schema ? null : defaultIssue(raw.schema, raw.default);
+    if (fallback) issues.push({ ...at, field: "default", message: fallback });
     const mint = mintIssue(raw, key);
     if (mint) issues.push({ ...at, field: "mint", message: mint });
     // A synced setting's block (Cloud Sync rules 1–5): the same check the publish route runs.

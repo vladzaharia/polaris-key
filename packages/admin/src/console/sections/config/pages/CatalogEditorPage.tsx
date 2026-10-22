@@ -1,11 +1,9 @@
 import * as React from "react";
-import { AlertCircle, GitMerge, Pencil, Plus } from "lucide-react";
-import type { ConfigEntry, ProductCatalog } from "../../../../api.js";
-import { cn } from "../../../../lib/cn.js";
+import { ArrowRight, Plus } from "lucide-react";
 import { diffSummary } from "../../../../lib/diff.js";
+import type { ConfigEntry, ProductCatalog } from "../../../../api.js";
 import {
   UNCATEGORISED,
-  categoryLabel,
   catalogIssues,
   type CatalogIssue,
 } from "../../../../schema/index.js";
@@ -18,19 +16,19 @@ import { SourceBadge } from "../../../../ui/SourceBadge.js";
 import { StatusPill } from "../../../../ui/StatusPill.js";
 import { toast } from "../../../../ui/toast.js";
 import { Breadcrumbs } from "../../../components/Breadcrumbs.js";
-import { PageHeader } from "../../../../ui/PageHeader.js";
+import { PageHeader, type PageHeaderProps } from "../../../../ui/PageHeader.js";
+import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
+import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
 import { useProduct } from "../../../data/hooks.js";
 import { codecs, navigate, useSearchParam } from "../../../router.js";
 import { r } from "../../../routes.js";
 import { EntryPane } from "../components/EntryPane.js";
-import { CatalogFilters, ViewOnlyNote } from "../components/CatalogFilters.js";
-import { WriteLock } from "../../../../ui/WriteLock.js";
+import { ViewOnlyNote } from "../components/CatalogFilters.js";
+import { EntryList } from "../components/EntryList.js";
+import { focusInvalid } from "../components/focusField.js";
+import { Unlocked, WriteLock } from "../../../../ui/WriteLock.js";
 import { useWriteGate } from "../../../access/useCan.js";
-import {
-  ConflictPanel,
-  JsonMode,
-  TypeGlyph,
-} from "../components/EditorParts.js";
+import { ConflictPanel, JsonMode } from "../components/EditorParts.js";
 import { ReviewDrawer } from "../components/ReviewDrawer.js";
 import { blockedKeys, useRemovals } from "../components/RemovedValues.js";
 import {
@@ -49,15 +47,9 @@ import {
   isNotFound,
   useCatalog,
 } from "../data.js";
-import { ENTRY_TYPE_LABELS, entryType } from "../components/entryType.js";
 import { WHOLE_ENTRY, mergeDraft, settle } from "../model/mergeDraft.js";
 
 const MODE = codecs.oneOf(["form", "json"] as const, "form");
-const KIND = codecs.oneOf(
-  ["all", "setting", "secret", "minted", "flag"] as const,
-  "all",
-);
-const CHANGED = codecs.oneOf(["0", "1"] as const, "0");
 
 /**
  * Config → Catalog → Edit (docs/design/ADMIN.md §6.6.2, T7): the catalog editor.
@@ -133,13 +125,15 @@ function EditorHeader({
   slug,
   title,
   aside,
-  meta,
+  ...rest
 }: {
   slug: string;
   title: string;
   aside?: React.ReactNode;
-  meta?: React.ReactNode;
-}): React.ReactElement {
+} & Pick<
+  PageHeaderProps,
+  "description" | "toolbar" | "secondaryActions" | "primaryAction"
+>): React.ReactElement {
   return (
     <PageHeader
       eyebrow={
@@ -149,7 +143,7 @@ function EditorHeader({
       }
       title={title}
       titleAside={aside}
-      meta={meta}
+      {...rest}
       sticky
     />
   );
@@ -180,8 +174,6 @@ function Editor({
     codecs.string(),
   );
   const [query, setQuery] = useSearchParam("q", codecs.string());
-  const [kind, setKind] = useSearchParam("kind", KIND);
-  const [changedOnly, setChangedOnly] = useSearchParam("changed", CHANGED);
   const [reviewing, setReviewing] = React.useState(false);
   const [confirmDiscard, setConfirmDiscard] = React.useState(false);
 
@@ -234,8 +226,6 @@ function Editor({
   const needle = query.trim().toLowerCase();
   const visible = entries
     .map((entry, index) => ({ entry, index }))
-    .filter(({ entry }) => kind === "all" || entryType(entry) === kind)
-    .filter(({ entry }) => changedOnly === "0" || changeOf(entry.key) !== null)
     .filter(
       ({ entry }) =>
         needle === "" ||
@@ -314,8 +304,58 @@ function Editor({
             <StatusPill tone="neutral" icon={false} size="sm">
               Draft v{nextVersion}
             </StatusPill>
-            <SourceBadge source={source} path={CATALOG_PATH} />
+            {/* With big text on a phone the badge would take a row of its own: the review names the source. */}
+            <span className="@max-xs:hidden">
+              <SourceBadge source={source} path={CATALOG_PATH} />
+            </span>
           </span>
+        }
+        description={dirty || issues.length > 0 ? summary : undefined}
+        toolbar={
+          <Unlocked>
+            <SegmentedControl<"form" | "json">
+              className="max-sm:hidden"
+              aria-label="Editing mode"
+              size="sm"
+              value={mode}
+              onChange={(m) => setMode(m)}
+              options={[
+                { value: "form", label: "Form" },
+                { value: "json", label: "JSON" },
+              ]}
+            />
+          </Unlocked>
+        }
+        secondaryActions={[
+          {
+            label: mode === "form" ? "Edit as JSON" : "Edit as form",
+            phoneOnly: true,
+            onSelect: () => setMode(mode === "form" ? "json" : "form"),
+          },
+          ...(dirty
+            ? [
+                {
+                  label: "Discard draft",
+                  onSelect: () => setConfirmDiscard(true),
+                },
+              ]
+            : []),
+        ]}
+        primaryAction={
+          // Nothing to review draws no button: with a clean draft the header is the page's title.
+          dirty || issues.length > 0 ? (
+            <Button
+              // An error does not keep the review shut: it opens with the error pinned to its
+              // entry and Publish waiting (config.catalog-review-states).
+              disabledReason={holdReason}
+              iconEnd={<ArrowRight aria-hidden />}
+              onClick={() => setReviewing(true)}
+            >
+              {dirty
+                ? `Review ${diff.all.length} ${diff.all.length === 1 ? "change" : "changes"}`
+                : "Review changes"}
+            </Button>
+          ) : undefined
         }
       />
 
@@ -362,27 +402,6 @@ function Editor({
 
       <ViewOnlyNote />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <CatalogFilters
-          mode={mode}
-          setMode={setMode}
-          query={query}
-          setQuery={setQuery}
-          kind={kind}
-          setKind={setKind}
-          changedOnly={changedOnly}
-          setChangedOnly={setChangedOnly}
-          hasFlags={entries.some((e) => e.kind === "flag")}
-        />
-        <Button
-          variant="outline"
-          iconStart={<Plus aria-hidden />}
-          onClick={addEntry}
-        >
-          Add entry
-        </Button>
-      </div>
-
       {mode === "json" ? (
         <JsonMode draft={draft} setDraft={setDraft} />
       ) : entries.length === 0 ? (
@@ -398,135 +417,22 @@ function Editor({
           }
         />
       ) : (
-        // A single track below 1024 px: a long key truncates, and the list scrolls in a short box.
         <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
-          <nav
-            aria-label="Catalog entries"
-            className="relative min-w-0 max-h-64 space-y-4 overflow-y-auto rounded-lg border border-border p-2 pk-scroll lg:max-h-none lg:overflow-visible lg:rounded-none lg:border-0 lg:p-0"
-          >
-            {visible.length === 0 ? (
-              <EmptyState
-                kind="no-results"
-                title="No entries match"
-                filters={[
-                  needle ? `“${query.trim()}”` : null,
-                  kind !== "all" ? `type: ${ENTRY_TYPE_LABELS[kind]}` : null,
-                  changedOnly === "1" ? "changed only" : null,
-                ]
-                  .filter(Boolean)
-                  .join(", ")}
-                onClearFilters={() => {
-                  setQuery("");
-                  setKind("all");
-                  setChangedOnly("0");
-                }}
-              />
-            ) : (
-              [...groups].map(([category, items]) => {
-                const changed = items.filter((i) =>
-                  changeOf(i.entry.key),
-                ).length;
-                const errors = items.filter(
-                  (i) => issuesAt(i.index).length,
-                ).length;
-                return (
-                  <section key={category} className="space-y-1">
-                    <h2 className="flex items-center gap-2 px-2 text-xs font-semibold text-fg-muted">
-                      <span className="flex-1">{categoryLabel(category)}</span>
-                      <span className="tabular-nums">{items.length}</span>
-                      {changed ? (
-                        <span className="inline-flex items-center gap-0.5 text-accent-fg">
-                          <Pencil aria-hidden className="size-3" />
-                          {changed}
-                          <span className="sr-only"> changed</span>
-                        </span>
-                      ) : null}
-                      {errors ? (
-                        <span className="inline-flex items-center gap-0.5 text-danger">
-                          <AlertCircle aria-hidden className="size-3" />
-                          {errors}
-                          <span className="sr-only"> with errors</span>
-                        </span>
-                      ) : null}
-                    </h2>
-                    <ul>
-                      {items.map(({ entry, index }) => {
-                        const change = changeOf(entry.key);
-                        const bad = issuesAt(index).length > 0;
-                        const current = index === selectedIndex;
-                        return (
-                          <li key={`${index}:${entry.key}`}>
-                            <button
-                              type="button"
-                              aria-current={current ? "true" : undefined}
-                              onClick={() => {
-                                setPinned(index);
-                                setSelectedKey(entry.key);
-                              }}
-                              className={cn(
-                                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start font-mono text-xs",
-                                "focus-visible:outline-2 focus-visible:outline-focus",
-                                current
-                                  ? "bg-accent-subtle text-fg-strong"
-                                  : "text-fg hover:bg-hover",
-                              )}
-                            >
-                              <TypeGlyph type={entryType(entry)} />
-                              <span
-                                className="min-w-0 flex-1 truncate"
-                                title={entry.key || undefined}
-                              >
-                                {entry.key || "(no key)"}
-                              </span>
-                              {change === "added" ? (
-                                <span className="text-success">
-                                  <Plus aria-hidden className="size-3" />
-                                  <span className="sr-only">(added)</span>
-                                </span>
-                              ) : change === "changed" ? (
-                                <span className="text-accent-fg">
-                                  <Pencil aria-hidden className="size-3" />
-                                  <span className="sr-only">(changed)</span>
-                                </span>
-                              ) : null}
-                              {conflictKeys.has(entry.key) ? (
-                                <span className="text-warning">
-                                  <GitMerge aria-hidden className="size-3" />
-                                  <span className="sr-only">
-                                    (conflicts with the repository)
-                                  </span>
-                                </span>
-                              ) : null}
-                              {bad ? (
-                                <span className="text-danger">
-                                  <AlertCircle aria-hidden className="size-3" />
-                                  <span className="sr-only">(has errors)</span>
-                                </span>
-                              ) : null}
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </section>
-                );
-              })
-            )}
-            {diff.removed.length ? (
-              <section className="space-y-1">
-                <h2 className="px-2 text-xs font-semibold text-fg-muted">
-                  Removed in this draft
-                </h2>
-                <ul className="px-2 font-mono text-xs text-danger">
-                  {diff.removed.map((c) => (
-                    <li key={c.key} className="truncate line-through">
-                      {c.key}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-          </nav>
+          <EntryList
+            groups={groups}
+            selectedIndex={selectedIndex}
+            query={query}
+            onQuery={setQuery}
+            changeOf={changeOf}
+            hasErrors={(i) => issuesAt(i).length > 0}
+            conflictKeys={conflictKeys}
+            removedKeys={diff.removed.map((c) => c.key)}
+            onSelect={(index, key) => {
+              setPinned(index);
+              setSelectedKey(key);
+            }}
+            onAdd={addEntry}
+          />
 
           <section
             aria-label={selected ? `Entry ${selected.key}` : "Entry"}
@@ -561,57 +467,16 @@ function Editor({
         </div>
       )}
 
-      {dirty || issues.length > 0 ? (
-        <div
-          role="region"
-          aria-label="Draft"
-          className="sticky bottom-0 z-30 -mx-1 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-surface-overlay px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-elevation-3"
-        >
-          <p className="min-w-0 flex-1 text-sm text-fg">
-            {confirmDiscard ? (
-              <span role="alert" className="text-fg-strong">
-                Discard this draft? Nothing has been published.
-              </span>
-            ) : (
-              summary
-            )}
-          </p>
-          {confirmDiscard ? (
-            <>
-              <Button
-                variant="ghost"
-                autoFocus
-                onClick={() => setConfirmDiscard(false)}
-              >
-                Keep editing
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => {
-                  setConfirmDiscard(false);
-                  onDiscard();
-                }}
-              >
-                Discard draft
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="ghost" onClick={() => setConfirmDiscard(true)}>
-                Discard draft
-              </Button>
-              <Button
-                // An error does not keep the review shut: it opens with the error pinned to its
-                // entry and Publish waiting (config.catalog-review-states).
-                disabledReason={holdReason}
-                onClick={() => setReviewing(true)}
-              >
-                Review changes
-              </Button>
-            </>
-          )}
-        </div>
-      ) : null}
+      <ConfirmDialog
+        open={confirmDiscard}
+        onOpenChange={setConfirmDiscard}
+        intent="caution"
+        title="Discard this draft?"
+        description="Nothing has been published."
+        confirmLabel="Discard draft"
+        cancelLabel="Keep editing"
+        onConfirm={onDiscard}
+      />
 
       <ReviewDrawer
         slug={slug}
@@ -624,11 +489,12 @@ function Editor({
         authoritative={authoritative}
         issues={issues}
         holdReason={holdReason}
-        onFix={(index) => {
+        onFix={(index, field) => {
           setReviewing(false);
           setPinned(index);
           setSelectedKey(entries[index]?.key ?? "");
           setMode("form");
+          focusInvalid(field);
         }}
         onPublished={(version) => {
           clearDraft(slug);

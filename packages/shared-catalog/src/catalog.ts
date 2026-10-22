@@ -92,6 +92,9 @@ export class Catalog {
    * declaration and delivered under another, including a `delivery: "serverOnly"` entry
    * shadowed by a plain one, so the duplicate is refused rather than silently resolved.
    *
+   * **A `default` its own schema rejects.** The interpreter treats `default` as an annotation, so
+   * the catalog would publish a fallback no device could accept.
+   *
    * **`secret: true` on a `kind: "flag"`.** A flag's value is an ENTITLEMENT: it merges into
    * `payload.entitlements`, which `openManagedPayload` never opens and no signed document ever
    * decrypts. Marking one secret makes `isManagedSecretKey` true, so the console KEK-seals it
@@ -115,6 +118,15 @@ export class Catalog {
       const result = this.analyse(entry);
       if (isRejected(result))
         throw new UnsupportedSchemaError(`${entry.key}: ${result.rejected}`);
+      // A default is the value a device gets when nothing else is set, so it must pass the
+      // entry's own schema. `default` is an annotation to the interpreter, which never checks it.
+      if (
+        entry.default !== undefined &&
+        validatePrepared(result, entry.default).length > 0
+      )
+        throw new UnsupportedSchemaError(
+          `${entry.key}: default does not satisfy the entry's own schema`,
+        );
     }
   }
 

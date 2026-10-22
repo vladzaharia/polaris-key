@@ -480,7 +480,7 @@ function FieldFrame({
           <LabelTag
             id={`${id}-label`}
             {...(group ? {} : { htmlFor: id })}
-            className="flex items-center gap-1.5 text-sm font-medium text-fg-strong"
+            className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm font-medium text-fg-strong [overflow-wrap:anywhere]"
           >
             {label}
             {required ? (
