@@ -26,7 +26,7 @@ import {
   PRODUCT_AREAS,
   type RoleChoice,
   type RoleDraft,
-} from "../sections/platform/pages/platformMembersModel.js";
+} from "./membersModel.js";
 import { AREA_ACCENTS, AREA_NAMES, listOf } from "./can.js";
 import { RoleGlyph } from "./RoleTag.js";
 import { ServiceGlyph } from "../../ui/ServiceBadge.js";

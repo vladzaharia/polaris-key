@@ -17,7 +17,10 @@ import { toast } from "../../../../ui/toast.js";
 import { roleLabel } from "../../../access/can.js";
 import type { ProductName } from "../../../access/InviteDrawerParts.js";
 import { mutate } from "../../../data/mutations.js";
-import { cannotTake, describeMembersError } from "./platformMembersModel.js";
+import {
+  cannotTake,
+  describeMembersError,
+} from "../../../access/membersModel.js";
 
 // ── Revoke an invite ────────────────────────────────────────────────────────────────────────
 

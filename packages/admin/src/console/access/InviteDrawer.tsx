@@ -61,7 +61,7 @@ import {
   productOfScope,
   type RoleChoice,
   type RoleDraft,
-} from "../sections/platform/pages/platformMembersModel.js";
+} from "./membersModel.js";
 import { AREA_NAMES, listOf, roleLabel } from "./can.js";
 import {
   AreaPicker,

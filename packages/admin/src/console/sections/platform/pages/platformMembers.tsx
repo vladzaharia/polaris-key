@@ -59,7 +59,7 @@ import {
   rowsOf,
   visibleRoles,
   type MemberRow,
-} from "./platformMembersModel.js";
+} from "../../../access/membersModel.js";
 
 const ROLE_OPTIONS = [
   { value: "superadmin", label: "Superadmin" },

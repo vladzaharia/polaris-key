@@ -1,5 +1,5 @@
 /**
- * Platform → Members, the model (ST-31.11): one table of members and invites, who may change what
+ * The Members model (ST-31.11; moved to access/ for ST-31.14, shared by Platform and Product members): one table of members and invites, who may change what
  * (mirroring the Worker's grant rules so the console never offers what it would refuse; the Worker
  * decides), and how an error from a write reads. Pure: no React, no fetch.
  */
@@ -13,9 +13,9 @@ import {
   type MemberInvite,
   type MemberRole,
   type MembersView,
-} from "../../../../api.js";
-import { errorCopy } from "../../../../lib/errorCopy.js";
-import { AREA_NAMES, listOf } from "../../../access/can.js";
+} from "../../api.js";
+import { errorCopy } from "../../lib/errorCopy.js";
+import { AREA_NAMES, listOf } from "./can.js";
 
 /** One table row: a person with a role, or an address with an invite. */
 export type MemberRow =

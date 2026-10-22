@@ -20,7 +20,7 @@ import { ALL_ON, boot, resetConsole, type FetchLog } from "./consoleHarness.js";
 import {
   cannotEditAreas,
   cannotTake,
-} from "../src/console/sections/platform/pages/platformMembersModel.js";
+} from "../src/console/access/membersModel.js";
 
 /** Platform → Members (`#/platform/members`, ST-31.11): the roster, invites and role changes. */
 

@@ -15,7 +15,7 @@ import {
   productOfScope,
   visibleRoles,
   type MemberRow,
-} from "./platformMembersModel.js";
+} from "../../../access/membersModel.js";
 import type { ProductName } from "../../../access/InviteDrawerParts.js";
 
 export function Avatar({
