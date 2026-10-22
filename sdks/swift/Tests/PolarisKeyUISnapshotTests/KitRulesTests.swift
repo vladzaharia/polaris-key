@@ -258,6 +258,20 @@ final class KitRulesTests: XCTestCase {
         XCTAssertTrue(source.contains(".onAppear { focused = true }"))
     }
 
+    func testADeviceRowsMetaWrapsInsteadOfClipping() throws {
+        // DL11: a long dated meta ("Windows · last used Sep 18, 2025") wraps between words; the
+        // accessibility audit flagged it as clipped before it could. Pinned at its source.
+        let source = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent("Sources/PolarisKeyUI/Kit/KitParts.swift"),
+            encoding: .utf8)
+        let row = try XCTUnwrap(source.range(of: "Text(meta)"))
+        XCTAssertTrue(
+            source[row.lowerBound...].prefix(400).contains(
+                ".fixedSize(horizontal: false, vertical: true)"))
+    }
+
     // MARK: Baselines
 
     static var snapshots: URL {
