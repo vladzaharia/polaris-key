@@ -19,7 +19,11 @@ import {
   PORTAL_CSRF_HEADER,
 } from "../src/services/identity/portal/session.js";
 import { issuePortalSessionRow } from "./portalSessionRow.js";
-import { DEVICE_LOGIN_COOKIE } from "../src/services/identity/portal/deviceLogin.js";
+import {
+  cliTokenLabel,
+  DEVICE_LOGIN_COOKIE,
+} from "../src/services/identity/portal/deviceLogin.js";
+import { PERSONAL_TOKEN_LABEL_MAX } from "../src/core/accounts/personalTokens.js";
 import {
   cliDeviceLoginDecide,
   cliDeviceLoginLookup,
@@ -424,6 +428,14 @@ describe("the poll of a CLI record", () => {
     );
     const zv = (await cliDeviceLoginLookup(env, zalgo.code, NOW))!;
     expect(zv.client.host.length).toBeLessThanOrEqual(4);
+  });
+
+  it("keeps an astral host's label within the mint's UTF-16 cap, cut between whole code points", () => {
+    for (const host of [`${"a".repeat(55)}\u{1F4BB}`, "\u{1F4BB}".repeat(40)]) {
+      const label = cliTokenLabel({ name: "pkey", version: "", host });
+      expect(label.length).toBeLessThanOrEqual(PERSONAL_TOKEN_LABEL_MAX);
+      expect(label).not.toMatch(LONE_SURROGATE);
+    }
   });
 
   it("answers denied with no token", async () => {

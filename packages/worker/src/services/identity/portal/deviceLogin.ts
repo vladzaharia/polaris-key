@@ -174,12 +174,16 @@ function cleanClient(raw: unknown): DeviceLoginClient {
   };
 }
 
-/** The label of a CLI-minted token. */
+/** The label of a CLI-minted token. Core's mint caps the label in UTF-16 units, so the cut counts
+ *  units too, and only ever falls between whole code points: an astral host never pushes the
+ *  label over the cap (which would refuse the mint after the approval was spent). */
 export function cliTokenLabel(client: DeviceLoginClient): string {
-  return truncate(
-    `${CLI_LABEL_PREFIX}${client.host}`,
-    PERSONAL_TOKEN_LABEL_MAX,
-  ).trim();
+  let out = "";
+  for (const ch of `${CLI_LABEL_PREFIX}${client.host}`) {
+    if (out.length + ch.length > PERSONAL_TOKEN_LABEL_MAX) break;
+    out += ch;
+  }
+  return out.trim();
 }
 
 /** The stored request. */
