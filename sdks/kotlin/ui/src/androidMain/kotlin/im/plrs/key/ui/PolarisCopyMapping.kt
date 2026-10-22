@@ -92,9 +92,9 @@ public fun PolarisCopy.graceHeadline(graceUntilSeconds: Long?, nowSeconds: Long,
  */
 public fun PolarisCopy.graceBody(graceUntilSeconds: Long?, nowSeconds: Long, locale: String = coreLocale()): String {
     if (graceUntilSeconds == null || graceUntilSeconds <= nowSeconds) return graceBodyNoDeadline
-    val date = java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)
-        .withLocale(Locale.forLanguageTag(locale))
-        .format(java.time.Instant.ofEpochSecond(graceUntilSeconds).atZone(java.time.ZoneId.systemDefault()))
+    // java.text, not java.time: the latter needs API 26 and the kit supports 24 without desugaring.
+    val date = java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM, Locale.forLanguageTag(locale))
+        .format(java.util.Date(graceUntilSeconds * 1000L))
     return KitCopy.bundled.format("grace.deadline", locale, mapOf("date" to CopyArgument.Text(date)))
 }
 
