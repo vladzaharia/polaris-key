@@ -6,6 +6,7 @@
 import express from "express";
 import {
   getPolarisAuth,
+  getPolarisLicense,
   polarisKey,
   requireEntitlement,
   requireLicense,
@@ -24,7 +25,7 @@ export function createApp(
   app.get("/health", (_req, res) => void res.json({ ok: true }));
 
   app.get("/api/export", requireEntitlement("export.pdf"), (req, res) => {
-    res.json({ tier: getPolarisAuth(req).license!.tier });
+    res.json({ tier: getPolarisLicense(req).tier });
   });
 
   app.post("/api/saves", requireSignIn(), (req, res) => {
@@ -32,11 +33,12 @@ export function createApp(
   });
 
   app.get("/whoami", requireLicense(), (req, res) => {
-    const { license, user } = getPolarisAuth(req);
+    const license = getPolarisLicense(req);
+    const { user } = getPolarisAuth(req);
     res.json({
-      licenseId: license!.id,
-      tier: license!.tier,
-      ageSeconds: license!.ageSeconds,
+      licenseId: license.id,
+      tier: license.tier,
+      ageSeconds: license.ageSeconds,
       signedIn: user !== null,
     });
   });

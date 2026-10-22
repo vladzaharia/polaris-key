@@ -18,20 +18,157 @@ See [Installing the SDKs from the feeds](https://key.plrs.im/docs/build/install/
 
 ## Quick start
 
-```ts
-import { polarisKey, requireEntitlement } from "@polaris-key/server/express";
+Write the config once with `pkey sdk --lang node --write`, then pick your framework. Every drop-in works the same way: install it once, then put a gate on the routes that need one. A route with no gate stays open.
 
+### Express
+
+```ts
+import express from "express";
+import {
+  getPolarisLicense,
+  polarisKey,
+  requireEntitlement,
+  requireTier,
+} from "@polaris-key/server/express";
+import { polarisConfig } from "./polaris.config";
+
+const app = express();
 app.use(polarisKey({ config: polarisConfig }));
-app.get("/api/export", requireEntitlement("export.pdf"), handler);
+
+app.get("/api/export", requireEntitlement("export.pdf"), (req, res) => {
+  res.json({ tier: getPolarisLicense(req).tier });
+});
+app.get("/api/team", requireTier("pro", "team"), (_req, res) => void res.end());
 ```
 
-The app sends its licence document in `X-PKey-License`. The core decides it in the six steps of [WIRE-CONTRACT-V4 §14](https://github.com/vladzaharia/polaris-key/blob/main/docs/security/WIRE-CONTRACT-V4.md) against the product's pinned keys and the signed trust manifest, and answers a refusal as `application/problem+json`.
+`polarisKey()` sets `req.polaris` and never refuses. `getPolarisLicense(req)` is the license without a null check.
+
+### Hono
+
+```ts
+import { Hono } from "hono";
+import {
+  polarisKey,
+  requireEntitlement,
+  type PolarisEnv,
+} from "@polaris-key/server/hono";
+import { polarisConfig } from "./polaris.config";
+
+const app = new Hono<PolarisEnv>();
+app.use("/api/*", polarisKey({ config: polarisConfig }));
+app.get("/api/export", requireEntitlement("export.pdf"), (c) =>
+  c.json({ tier: c.var.polaris.license.tier }),
+);
+export default app;
+```
+
+On Workers, pass `waitUntil: ctx.waitUntil.bind(ctx)` so the trust refresh outlives the response.
+
+### Next.js route handlers
+
+```ts
+import { createNextPolarisKey } from "@polaris-key/server/next";
+import { polarisConfig } from "./polaris.config";
+
+export const polaris = createNextPolarisKey({ config: polarisConfig });
+
+export const GET = polaris.requireEntitlement(
+  "export.pdf",
+  async (_req, { license }) => Response.json({ tier: license.tier }),
+);
+```
+
+### Next.js middleware
+
+```ts
+import { createNextPolarisKey, requirement } from "@polaris-key/server/next";
+import { polarisConfig } from "./polaris.config";
+
+const polaris = createNextPolarisKey({ config: polarisConfig });
+
+export const middleware = polaris.middleware([
+  { path: "/api/pro/*", require: [requirement.tier("pro")] },
+  { path: "/api/*" },
+]);
+export const config = { matcher: "/api/:path*" };
+```
+
+The first matching rule decides; a path no rule matches passes. The middleware can't hand the license to the route.
+
+### How it decides
+
+The app sends its license document in `X-PKey-License`. The core decides it in the six steps of [WIRE-CONTRACT-V4 §14](https://github.com/vladzaharia/polaris-key/blob/main/docs/security/WIRE-CONTRACT-V4.md) against the product's pinned keys and the signed trust manifest, and answers a refusal as `application/problem+json`.
 
 - The trust manifest refreshes every 900 s on a request, and an unknown `kid` fetches at most once a minute. A failed fetch keeps the last verified set and the pinned keys always verify.
 - The trust fetch is claimed before it is awaited, so concurrent junk kids cost one request; the body read stops at 128 KiB and a credential header over 64 KiB is refused unsplit.
 - Verified documents sit in an LRU of 1 000, keyed by the header's SHA-256, until their freshness deadline.
 - No secret reaches a log line or a `toJSON`: the header, the JWS, the holder's name and email.
 - `verifyLicenseDocument` lives here; it moved from `@polaris-key/node/server` in 0.9 with no alias.
+
+## Gates
+
+| Gate                          | Refuses unless                                       |
+| ----------------------------- | ---------------------------------------------------- |
+| `requireLicense()`            | the document is valid and fresh                      |
+| `requireEntitlement(name, t)` | boolean entitlement `name` is granted, or `t(value)` |
+| `requireTier(...tiers)`       | the `license.tier` entitlement is one of `tiers`     |
+| `requireSignIn()`             | an account is signed in on the device                |
+| `requireAll(...reqs)`         | every `requirement.*` holds, checked in order        |
+
+In Next.js a gate wraps the handler and `requireTier` and `requireAll` take a list first. Each refusal carries the catalog's title and detail in the caller's `Accept-Language`.
+
+| Code               | Status | Cause                                  |
+| ------------------ | ------ | -------------------------------------- |
+| `license_required` | 401    | No `X-PKey-License` header             |
+| `license_invalid`  | 401    | Bad signature, wrong product or device |
+| `license_stale`    | 401    | Past its window; the app must refresh  |
+| `not_entitled`     | 403    | Missing entitlement or tier            |
+| `sign_in_required` | 403    | No account signed in                   |
+
+## Options
+
+Every drop-in takes the core's options plus:
+
+| Option         | Default     | Effect                                                                   |
+| -------------- | ----------- | ------------------------------------------------------------------------ |
+| `config`       | required    | The object `pkey sdk --lang node --write` writes, or an array of them    |
+| `onRefusal`    | respond     | Answer a refusal yourself, in your shape or with another status          |
+| `errors`       | `"respond"` | `"throw"` raises a `PolarisKeyError` into the framework's error handling |
+| `preflight`    | `"pass"`    | A CORS preflight passes every gate; `"gate"` refuses it                  |
+| `waitUntil`    | none        | Keeps the trust refresh alive after the response (Workers)               |
+| `debug`        | none        | One line per verdict, no header or document; trust failures with reason  |
+| `trustRefresh` | `true`      | `false` runs on the pinned keys alone                                    |
+
+The drop-ins set no CORS headers: allow `X-PKey-License` and `X-PKey-Device` in your own. A passing response gets `Cache-Control: private` unless the route set one; streaming responses are unaffected.
+
+Startup throws a `TypeError` that says what to fix when the config is missing, has no pins, has a pin that isn't a 43-character key, or has a `baseUrl` that isn't an origin.
+
+## Testing a gated route
+
+`@polaris-key/server/testing` signs documents with a throwaway key and fakes the trust manifest, so a test needs no network.
+
+```ts
+import { createTestKit } from "@polaris-key/server/testing";
+import { polarisKey, requireEntitlement } from "@polaris-key/server/express";
+import express from "express";
+
+const kit = await createTestKit({ product: "acme" });
+const app = express();
+app.use(polarisKey(kit.options()));
+app.get(
+  "/api/export",
+  requireEntitlement("export.pdf"),
+  (_req, res) => void res.end(),
+);
+
+const ok = await kit.signedHeaders({ entitlements: { "export.pdf": true } });
+const stale = await kit.headersFor("license_stale"); // each refusal code, or "ok"
+kit.clock.advance(3600); // the kit's clock
+const rotated = await kit.trust.addKey(); // a key only the fake manifest vouches for
+kit.trust.offline = true; // the trust fetch fails like an unreachable Polaris Key
+```
+
+Never import it from production code.
 
 ## Before you start
 
@@ -48,7 +185,7 @@ Read [AGENTS.md](https://github.com/vladzaharia/polaris-key/blob/main/AGENTS.md)
 
 ## Versions
 
-The package carries the platform's version, in lockstep. It needs Node 18 or later.
+The package carries the platform's version, in lockstep. It needs Node 22.13 or later, or any runtime with Ed25519 in Web Crypto: Bun, Deno and Workers.
 
 ## License
 

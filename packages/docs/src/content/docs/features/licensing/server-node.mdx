@@ -1,0 +1,225 @@
+---
+title: "Gate a Node route with the license"
+description: "Refuse a request to your Express, Hono or Next.js route unless the device's license allows it, and test the gate without a network."
+type: "how-to"
+lastReviewed: "2026-10-21"
+sidebar:
+  order: 13
+---
+
+A drop-in from `@polaris-key/server` reads the device's license document from the `X-PKey-License` header, verifies it offline and refuses the request when the license doesn't allow it. A route with no gate stays open. For the other backends and the steps behind this, see [Verify licenses on your server](/docs/features/licensing/server-verification/).
+
+Requires the License feature and the config file `pkey sdk --lang node --write` writes. The app sends `X-PKey-License` and `X-PKey-Device` with each call to your server.
+
+## Steps
+
+1. **Server** Install the package and import the config file.
+2. **Server** Install the middleware once, before any route that needs a gate.
+3. **Server** Put a gate on each route: `requireLicense`, `requireEntitlement`, `requireTier` or `requireSignIn`.
+
+## Express
+
+```ts title="Express: app.ts"
+import express from "express";
+import {
+  getPolarisLicense,
+  polarisKey,
+  requireEntitlement,
+  requireLicense,
+  requireTier,
+} from "@polaris-key/server/express";
+import { polarisConfig } from "./polaris.config";
+
+const app = express();
+app.use(polarisKey({ config: polarisConfig }));
+
+app.get("/health", (_req, res) => void res.json({ ok: true }));
+
+app.get("/api/me", requireLicense(), (req, res) => {
+  res.json({ tier: getPolarisLicense(req).tier });
+});
+
+app.get("/api/export", requireEntitlement("export.pdf"), (_req, res) => {
+  res.json({ exported: true });
+});
+
+app.get("/api/team", requireTier("pro", "team"), (_req, res) => {
+  res.json({ team: true });
+});
+
+app.listen(3000);
+```
+
+`polarisKey()` never refuses. It decides each request and sets `req.polaris`. Only the `require*` gates refuse. `getPolarisLicense(req)` returns the license without a null check, and throws if the route has no gate.
+
+## Hono
+
+```ts title="Hono: index.ts"
+import { Hono } from "hono";
+import {
+  polarisKey,
+  requireEntitlement,
+  requireTier,
+  type PolarisEnv,
+} from "@polaris-key/server/hono";
+import { polarisConfig } from "./polaris.config";
+
+const app = new Hono<PolarisEnv>();
+app.use("/api/*", polarisKey({ config: polarisConfig }));
+
+app.get("/api/me", requireEntitlement("export.pdf"), (c) =>
+  c.json({ tier: c.var.polaris.license.tier }),
+);
+
+app.get("/api/team", requireTier("pro", "team"), (c) => c.text("team"));
+
+export default app;
+```
+
+Behind a gate, `c.var.polaris.license` is typed as present. On Cloudflare Workers, pass `waitUntil` to `polarisKey()` so the trust refresh outlives the response.
+
+## Next.js
+
+```ts title="Next.js: app/api/export/route.ts"
+import { createNextPolarisKey } from "@polaris-key/server/next";
+import { polarisConfig } from "./polaris.config";
+
+// Build this once in a shared module and import it from each route.
+const polaris = createNextPolarisKey({ config: polarisConfig });
+
+export const GET = polaris.requireEntitlement(
+  "export.pdf",
+  async (_req, { license }) => Response.json({ tier: license.tier }),
+);
+```
+
+A gated handler receives the request, then the license context, then Next's own route context with its `params`.
+
+To refuse before a route runs, export a middleware. The first rule whose `path` matches decides the request, and a path no rule matches passes.
+
+```ts title="Next.js: middleware.ts"
+import { createNextPolarisKey, requirement } from "@polaris-key/server/next";
+import { polarisConfig } from "./polaris.config";
+
+const polaris = createNextPolarisKey({ config: polarisConfig });
+
+export const middleware = polaris.middleware([
+  { path: "/api/pro/*", require: [requirement.tier("pro")] },
+  { path: "/api/*" },
+]);
+
+export const config = { matcher: "/api/:path*" };
+```
+
+The middleware can't pass the license on to the route. A route that reads it wraps its handler too: the verdict is cached, so it isn't verified twice.
+
+## Several requirements
+
+`requireAll` checks requirements in order and refuses with the first one that fails:
+
+```ts title="Express: requireAll"
+import { requireAll, requirement } from "@polaris-key/server/express";
+
+export const pro = requireAll(
+  requirement.signIn(),
+  requirement.tier("pro"),
+  requirement.entitlement(
+    "seats",
+    (value) => typeof value === "number" && value >= 5,
+  ),
+);
+```
+
+## What a refusal looks like
+
+A refusal is `application/problem+json` with the status, `Cache-Control: no-store` and, on a 401, a `WWW-Authenticate` challenge. The title and detail are the catalog's, in the caller's `Accept-Language`.
+
+| Code               | Status | Cause                                             |
+| ------------------ | ------ | ------------------------------------------------- |
+| `license_required` | 401    | No `X-PKey-License` header                        |
+| `license_invalid`  | 401    | Bad signature, wrong product or wrong device      |
+| `license_stale`    | 401    | Past its window: the app must refresh its license |
+| `not_entitled`     | 403    | The license lacks the entitlement or the tier     |
+| `sign_in_required` | 403    | No account is signed in on the device             |
+
+To answer in your own shape, or with another status, pass `onRefusal`. You end the response yourself:
+
+```ts title="Express: onRefusal"
+import express from "express";
+import { polarisKey } from "@polaris-key/server/express";
+import { polarisConfig } from "./polaris.config";
+
+const app = express();
+app.use(
+  polarisKey({
+    config: polarisConfig,
+    onRefusal: (problem, _req, res) => {
+      res.status(problem.code === "not_entitled" ? 402 : problem.status).json({
+        error: problem.body.code,
+        title: problem.body.title,
+        message: problem.body.detail,
+      });
+    },
+  }),
+);
+```
+
+`errors: "throw"` hands a `PolarisKeyError` to the framework's error handling instead. A browser's CORS preflight carries no license, so every gate lets it through; `preflight: "gate"` turns that off. The drop-ins set no CORS headers: add `X-PKey-License` and `X-PKey-Device` to your own `Access-Control-Allow-Headers`.
+
+## Test a gated route
+
+`@polaris-key/server/testing` signs documents with a throwaway key, so a test needs no network and no Polaris Key.
+
+```ts title="Express: app.test.ts"
+import express from "express";
+import { describe, expect, it } from "vitest";
+import { polarisKey, requireEntitlement } from "@polaris-key/server/express";
+import { createTestKit } from "@polaris-key/server/testing";
+
+describe("GET /api/export", async () => {
+  const kit = await createTestKit({ product: "acme" });
+  const app = express();
+  app.use(polarisKey(kit.options()));
+  app.get("/api/export", requireEntitlement("export.pdf"), (_req, res) => {
+    res.json({ ok: true });
+  });
+  const server = app.listen(0);
+  const port = (server.address() as { port: number }).port;
+  const get = (headers: Record<string, string>) =>
+    fetch(`http://127.0.0.1:${port}/api/export`, { headers });
+
+  it("lets a license with the entitlement in", async () => {
+    const headers = await kit.signedHeaders({
+      entitlements: { "export.pdf": true },
+    });
+    expect((await get(headers)).status).toBe(200);
+  });
+
+  it("refuses each verdict", async () => {
+    expect((await get(await kit.headersFor("license_required"))).status).toBe(
+      401,
+    );
+    expect((await get(await kit.headersFor("license_invalid"))).status).toBe(
+      401,
+    );
+    expect((await get(await kit.headersFor("license_stale"))).status).toBe(401);
+    expect((await get(await kit.headersFor("not_entitled"))).status).toBe(403);
+    server.close();
+  });
+});
+```
+
+The kit has a clock you move with `kit.clock.advance(seconds)`. For a Hono app, `app.request("/api/export", { headers })` needs no server. For a trust manifest, `kit.trust` is a fake `fetch`: `kit.trust.addKey()` publishes a second key, `kit.trust.offline = true` makes the fetch fail like an unreachable Polaris Key, and `kit.polarisKey(kit.trust.options())` turns the refresh on against it.
+
+## Check it works
+
+Send a request with no `X-PKey-License` header to a gated route. You should get a 401 with `"code": "license_required"`. Then send the app's license from `pkey dev` ([Run Polaris Key locally](/docs/build/local/)).
+
+## If it isn't working
+
+- The server won't start and names the option: the config is missing, empty or malformed. Run `pkey sdk --lang node --write` again.
+- Every request is `license_invalid`: the pins in the config are for another environment, or the `X-PKey-Device` header isn't the device the document names.
+- `license_stale` on a device that is online: the app didn't refresh its license before sending it.
+- The browser blocks the call: allow the two headers in your CORS settings.
+- To see why a request was refused, pass `debug: console.log`. A line shows the step, the key id and a short device hash, never the header. A failed trust fetch is logged there with its reason, and the pinned keys keep verifying.
+- [Troubleshoot licensing](/docs/features/licensing/troubleshooting/).

@@ -43,6 +43,9 @@ const NOT_EXPORTS = new Set([
   "useDriver",
   "registerHandler",
   "createPolarisKey",
+  "createNextPolarisKey",
+  "createTestKit",
+  "PolarisKeyError",
 ]);
 
 /** The names a page's prose claims, minus the lines that label them planned. */
