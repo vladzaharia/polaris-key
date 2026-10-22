@@ -5,8 +5,9 @@
  * - **Platform → Package feeds** (`#/platform/feeds…`): the system product's feeds (the platform's
  *   own packages, our SDKs) and the platform policy. Before the bootstrap there is no system
  *   product: the page offers to set the feeds up.
- * - **Distribution → Package feeds** (`#/p/:slug/distribution/feeds…`): the product's feeds,
- *   listed in the sidebar while `packageFeeds` is on; with it off the page says where to turn it on.
+ * - **Ship builds → Packages** (`#/p/:slug/distribution/feeds…`): the product's feeds, one card
+ *   each (F-34.7), listed in the sidebar whenever Distribution is on; with `packageFeeds` off the
+ *   page offers to turn it on.
  *
  * Under the overview, one page per feed (`FeedPage`) and the package record (`PackageRecord`).
  * `FeedNav` links the overview and every feed page, so each feed is a page of its own.
@@ -55,6 +56,11 @@ import {
 } from "../model/model.js";
 import { BootstrapEmpty, OwnersPanel } from "./FeedsOwners.js";
 import { PackageRecord } from "./PackageRecord.js";
+import {
+  FeedCards,
+  PackagesEmpty,
+  provisionedFeeds,
+} from "./PackagesOverview.js";
 import { RegistryTokensPage } from "./RegistryTokens.js";
 
 /** The area's page for a route: the overview, a feed, or a package. */
@@ -70,8 +76,8 @@ export function FeedsArea({
   child?: RouteChild;
 }): React.ReactElement {
   const product = useProduct(scope.kind === "product" ? scope.slug : null);
-  // Product scope: the page exists while `packageFeeds` is on (the sidebar lists it then); a deep
-  // link with it off says where to turn it on instead of showing empty feeds.
+  // Product scope: the sidebar lists the page whenever Distribution is on; with `packageFeeds`
+  // off it offers to turn the feeds on instead of showing empty feeds.
   if (scope.kind === "product" && product.data?.packageFeeds === false)
     return <PackageFeedsOff slug={scope.slug} name={product.data.name} />;
   if (eco === undefined) return <FeedsOverview scope={scope} />;
@@ -148,7 +154,7 @@ function PackageFeedsOff({
   const failureCopy = failure ? errorCopy(failure) : null;
   return (
     <div className="space-y-6">
-      <PageHeader title="Package feeds" />
+      <PageHeader title="Packages" />
       <EmptyState
         kind="first-run"
         service="distribution"
@@ -412,6 +418,7 @@ export function FeedsOverview({
   scope: FeedScope;
 }): React.ReactElement {
   const query = useFeedsOverview(scope);
+  const product = useProduct(scope.kind === "product" ? scope.slug : null);
   useLoadingAnnouncement("package feeds", query.isPending);
   const columns = React.useMemo(() => overviewColumns(scope), [scope]);
   const data = query.data;
@@ -420,13 +427,20 @@ export function FeedsOverview({
     : "the registry host";
   const header = (
     <PageHeader
-      title="Package feeds"
+      title={scope.kind === "platform" ? "Package feeds" : "Packages"}
       description={
         scope.kind === "platform"
           ? `Polaris Key's own SDKs and tools, on ${host}. Policy set here covers every product.`
           : `On ${host}.`
       }
-      tabs={<FeedNav scope={scope} current="overview" />}
+      tabs={
+        // Nothing declared: no feed pages to switch between (packages.feeds-empty).
+        scope.kind === "product" &&
+        data &&
+        provisionedFeeds(data).length === 0 ? undefined : (
+          <FeedNav scope={scope} current="overview" />
+        )
+      }
       refetching={query.isFetching && !query.isPending}
     />
   );
@@ -455,6 +469,22 @@ export function FeedsOverview({
         <BootstrapEmpty />
       </div>
     );
+  if (scope.kind === "product") {
+    const feeds = provisionedFeeds(data);
+    return (
+      <div className="space-y-6">
+        {header}
+        {feeds.length ? (
+          <FeedCards scope={scope} feeds={feeds} />
+        ) : (
+          <PackagesEmpty
+            slug={scope.slug}
+            name={product.data?.name ?? scope.slug}
+          />
+        )}
+      </div>
+    );
+  }
   const ordered = ECOSYSTEMS.map(
     (e) => data.feeds.find((f) => f.ecosystem === e)!,
   ).filter(Boolean);

@@ -849,14 +849,13 @@ describe("package feeds (F-11): a feed under a page, a package under a feed, in 
     expect(viewKey(a)).not.toBe(viewKey(d));
   });
 
-  it("lists Package feeds in Distribution only while the product has them on", () => {
+  it("lists Packages in Distribution whatever the package-feeds switch says (F-34.7)", () => {
     const distribution = SECTIONS.find((s) => s.key === "distribution")!;
-    const labels = (f: { packageFeeds: boolean } | null) =>
+    const labels = (f: Parameters<typeof navItems>[1]) =>
       navItems(distribution, f).map((p) => p.label);
-    expect(labels({ packageFeeds: false })).not.toContain("Package feeds");
-    expect(labels({ packageFeeds: true })).toContain("Package feeds");
-    // While the product loads, the item shows (the nav does not jump).
-    expect(labels(null)).toContain("Package feeds");
+    // Nothing about the switch or a declaration reaches the nav: off, on and loading all list it.
+    expect(labels({})).toContain("Packages");
+    expect(labels(null)).toContain("Packages");
     expect(docsFor("package-feeds")).toBe(
       "/docs/features/ship-builds/packages/",
     );

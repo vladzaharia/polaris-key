@@ -71,7 +71,7 @@ interface Group {
 const GROUPS: Group[] = [];
 for (const s of SECTIONS) {
   if (s.key === "core") continue;
-  const pages = navItems(s, { packageFeeds: false });
+  const pages = navItems(s, {});
   const ship = SHIP_BUILDS_KEYS.includes(s.key);
   const held = ship ? GROUPS.find((g) => g.label === "Ship builds") : undefined;
   if (held) held.pages.push(...pages);
@@ -224,7 +224,7 @@ describe("items and headers (owner, 2026-10-03)", () => {
     const coreItems = navItems(core).filter((p) => p.page !== "settings");
     expect(links.map((a) => a.textContent)).toEqual([
       ...coreItems.map((p) => p.label),
-      // The product row says nothing of package feeds, so Distribution → Package feeds is absent.
+      // Ship builds → Packages is listed whenever Distribution is on (F-34.7).
       ...FEATURES.flatMap((g) =>
         isSingle(g) ? [g.label] : g.pages.map((p) => p.label),
       ),

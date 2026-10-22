@@ -10,7 +10,7 @@ import {
   resetConsole,
   servicesResponse,
 } from "./consoleHarness.js";
-import { feedDetail, feedRoutes } from "./feedsFixture.js";
+import { feedDetail, feedRoutes, productOverview } from "./feedsFixture.js";
 import { confirmFor } from "../src/lib/actions.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -642,32 +642,110 @@ describe("the Feeds overview", () => {
     );
   });
 
-  it("product scope: the product's feeds, no owners panel, and the same components", async () => {
+  it("product scope: one card per provisioned feed with a read-only access chip, no owners panel", async () => {
     boot("#/p/djdl/distribution/feeds", {
       extra: { ...feedRoutes(), ...product(true) },
     });
-    await heading("Package feeds");
-    const table = await within(await mainReady()).findByRole("table", {
-      name: "Package feeds",
-    });
+    await heading("Packages");
+    const page = within(await mainReady());
+    const list = await page.findByRole("list", { name: "Package feeds" });
+    // The fixture provisioned npm, PyPI and OCI; the other feeds have no card.
+    const cards = within(list).getAllByRole("region");
     expect(
-      within(table).getByText("https://pkg.plrs.im/npm/djdl/"),
+      cards.map((c) => within(c).getByRole("heading").textContent),
+    ).toEqual(["npm", "PyPI", "Docker / OCI"]);
+    const npm = cards[0]!;
+    expect(within(npm).getByText("pkg.plrs.im/npm/djdl/")).toBeTruthy();
+    expect(npm.querySelector("[data-access-chip]")!.textContent).toBe("Public");
+    expect(within(npm).getByText(/2 packages/)).toBeTruthy();
+    expect(within(npm).queryByText(/Waiting for the first package/)).toBeNull();
+    // No switch, no field, no button that creates a feed.
+    expect(page.queryByRole("switch")).toBeNull();
+    expect(
+      page.queryByRole("button", { name: /new feed|turn on/i }),
+    ).toBeNull();
+    expect(page.queryByRole("heading", { name: "Owners" })).toBeNull();
+    // A feed with no package yet waits, in words.
+    const pypi = cards[1]!;
+    expect(
+      within(pypi).getByText("Waiting for the first package…"),
     ).toBeTruthy();
     expect(
-      within(table).getAllByText("This feed has no settings yet.").length,
-    ).toBe(5);
-    expect(
-      within(main()).queryByRole("heading", { name: "Owners" }),
-    ).toBeNull();
-    // Listed under Distribution while package feeds are on.
+      within(npm)
+        .getByRole("link", { name: "Open the npm feed" })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/distribution/feeds/npm");
+    // Listed under Ship builds as Packages.
     expect(
       within(nav())
-        .getByRole("link", { name: "Package feeds" })
+        .getByRole("link", { name: "Packages" })
         .getAttribute("href"),
     ).toBe("#/p/djdl/distribution/feeds");
   });
 
-  it("product scope with package feeds off: absent from the sidebar, and the page offers Turn on", async () => {
+  it("a Customers feed reads Customers on its card", async () => {
+    const routes = feedRoutes();
+    const overview = productOverview();
+    overview.feeds = overview.feeds.map((f) =>
+      f.ecosystem === "npm"
+        ? { ...f, accessMode: "licensed", accessDisplay: "customers" }
+        : f,
+    );
+    routes["/manage/api/products/djdl/distribution/feeds"] = overview;
+    boot("#/p/djdl/distribution/feeds", {
+      extra: { ...routes, ...product(true) },
+    });
+    await heading("Packages");
+    const list = await within(await mainReady()).findByRole("list", {
+      name: "Package feeds",
+    });
+    expect(list.querySelector("[data-access-chip]")!.textContent).toBe(
+      "Customers",
+    );
+  });
+
+  it("nothing declared: the empty card shows the declaration and the publish command, nothing to turn on", async () => {
+    const routes = feedRoutes();
+    const overview = productOverview();
+    overview.feeds = overview.feeds.map((f) => ({
+      ...f,
+      configured: false,
+      enabled: false,
+      status: "off" as const,
+      reason: "not-set-up" as const,
+      packages: 0,
+    }));
+    routes["/manage/api/products/djdl/distribution/feeds"] = overview;
+    boot("#/p/djdl/distribution/feeds", {
+      extra: { ...routes, ...product(true) },
+    });
+    await heading("Packages");
+    const page = within(await mainReady());
+    expect(await page.findByText("DJDL declares no packages yet")).toBeTruthy();
+    expect(page.getByText(".pkey/release", { selector: "code" })).toBeTruthy();
+    expect(main().querySelector("[data-code-frame]")!.textContent).toMatch(
+      /kind: package/,
+    );
+    expect(
+      page.getByText(
+        "pkey release publish --deliverable npm.sourcekit --dir dist/npm",
+      ),
+    ).toBeTruthy();
+    expect(page.queryByRole("list", { name: "Package feeds" })).toBeNull();
+    // No feed pages to switch between yet.
+    expect(
+      screen.queryByRole("navigation", { name: "Package feeds" }),
+    ).toBeNull();
+    expect(page.queryByRole("switch")).toBeNull();
+    expect(
+      page.queryByRole("button", { name: /turn on|new feed/i }),
+    ).toBeNull();
+    // The nav still lists Packages (nothing declared is not a reason to hide the page).
+    expect(within(nav()).getByRole("link", { name: "Packages" })).toBeTruthy();
+    expect((await axe(main())).violations.map((v) => v.id)).toEqual([]);
+  });
+
+  it("product scope with package feeds off: still in the sidebar, and the page offers Turn on", async () => {
     boot("#/p/djdl/distribution/feeds/npm", {
       extra: {
         ...feedRoutes(),
@@ -681,7 +759,7 @@ describe("the Feeds overview", () => {
         },
       },
     });
-    await heading("Package feeds");
+    await heading("Packages");
     const page = within(await mainReady());
     expect(await page.findByText(/Package feeds are off for/)).toBeTruthy();
     expect(await page.findByText(/Nothing was deleted/)).toBeTruthy();
@@ -692,9 +770,9 @@ describe("the Feeds overview", () => {
     ).toBeTruthy();
     expect(
       within(nav())
-        .queryAllByRole("link", { name: "Package feeds" })
-        .filter((a) => a.getAttribute("href")?.startsWith("#/p/")),
-    ).toEqual([]);
+        .getByRole("link", { name: "Packages" })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/distribution/feeds");
   });
 
   it("loading and error states", async () => {

@@ -323,6 +323,9 @@ const TEXT200_CASES = [
   "djdl:activity",
   "global:platform-status",
   "djdl:settings-members",
+  // F-34.7: the Packages cards (the access chip beside a long title) at 200 % text.
+  "djdl:package-feeds",
+  "empty:package-feeds",
 ];
 /** The console's content column at its widest (BRAND.md §7.6). */
 const CONSOLE_COLUMN_MAX = 1760;

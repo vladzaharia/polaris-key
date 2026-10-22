@@ -39,7 +39,7 @@ const row = (slug: string, name: string) => ({
   services,
   effectiveRegistration: "requires-license",
   servicesSource: "manifest",
-  // F-11: Distribution → Package feeds is listed while the product has package feeds on.
+  // F-11: the product's package feeds (F-34.7: Ship builds → Packages, listed whenever Distribution is on).
   packageFeeds: true,
 });
 const ROUTES: Record<string, unknown> = {
@@ -837,7 +837,7 @@ describe("overlays under the Worker's CSP", () => {
         "#/platform/feeds/npm/packages/polaris-key/%40polaris-key%2Fnode",
         "@polaris-key/node",
       ],
-      ["#/p/djdl/distribution/feeds", "Package feeds"],
+      ["#/p/djdl/distribution/feeds", "Packages"],
       ["#/p/djdl/distribution/feeds/npm", "npm"],
       ["#/p/djdl/distribution/feeds/maven/settings", "Maven / Gradle"],
       ["#/p/djdl/distribution/feeds/oci/packages/djdl-server", "djdl-server"],
